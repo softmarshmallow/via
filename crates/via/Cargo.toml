@@ -1,0 +1,20 @@
+[package]
+name = "via"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pipeline runner CLI."
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+via-artifact = { workspace = true }
+via-ecology = { workspace = true }
+via-suitability = { workspace = true }
+via-terrain = { workspace = true }
+via-viz = { workspace = true }
+
+[[bin]]
+name = "via"
+path = "src/main.rs"
