@@ -17,10 +17,12 @@ inspection (M3-era maps), each with a different verdict:
    M7 era)**.
 2. **Single-thread lacustrine delta** (artifact): comb-like deposition
    bands. → Largely resolved by MFD spreading on flooded cells.
-3. **Texture monotony** (missing process, not a bug): one rock type
-   everywhere, no coastal processes, purely diffusive hillslopes. Real
-   landscapes get their character from lithology breaking through.
-   → **Open: M4 (lithology), M5 (soil), M6 (coasts).**
+3. **Texture monotony** (missing process, not a bug): no coastal
+   processes, purely diffusive hillslopes — and, until M4 landed, one
+   rock type everywhere. Lithology shipped (ADR 0007): declared strata
+   put ridge-and-valley corrugation, escarpments, and knickzones back
+   (see experiments/strata512), though the *default* column stays
+   homogeneous. → **Remaining: M5 (soil), M6 (coasts).**
 
 Things that look odd but are **correct physics**: the regular ridge–valley
 spacing (wavelength selection from the K/κ competition — Perron et al.

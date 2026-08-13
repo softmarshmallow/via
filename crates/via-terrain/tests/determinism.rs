@@ -150,6 +150,7 @@ fn bitwise_identical_with_layered_column() {
                 throw_m: 150.0,
             }],
             sediment_k_mult: 1.5,
+            sediment_kappa_mult: 0.8,
             sediment_cover_min_m: 0.5,
         },
         ..TerrainConfig::default()

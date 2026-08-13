@@ -51,9 +51,10 @@ pub struct GatesReport {
     pub slope_area_theta: Gate,
     pub slope_area_r2: f64,
     pub slope_area_n_cells: u64,
-    /// The exposed unit the regression was restricted to (ADR 0007);
-    /// 0 on homogeneous substrates.
-    pub slope_area_modal_unit: u32,
+    /// The erodibility class (per-cell K value) the regression was
+    /// restricted to (ADR 0007): the modal K among uplift-band fluvial
+    /// cells, folding in both unit and sediment-cover contrast.
+    pub slope_area_modal_k: f64,
     /// Fluvial cells excluded from the regression as ε-fill flats
     /// (S below the slope floor), as on real DEMs.
     pub slope_area_flat_cells_excluded: u64,
@@ -289,18 +290,28 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         .filter(|&u| u > 0.0)
         .collect();
     let u_median = median(&mut uplifts);
-    // With layered K a single log-log regression across units measures
-    // the column, not the incision law: the fit restricts to the modal
-    // exposed unit (ADR 0007). Homogeneous runs have one unit and the
-    // restriction is a no-op — bitwise-identical samples.
-    let mut unit_counts: BTreeMap<u32, u64> = BTreeMap::new();
-    for &idx in &fluvial_idx {
-        *unit_counts.entry(inp.exposed_unit[idx]).or_insert(0) += 1;
+    // With heterogeneous K a single log-log regression mixes incision
+    // regimes and measures the geology, not the incision law. The fit
+    // restricts to the modal *erodibility class* — cells keyed by the K
+    // they actually eroded with (which folds in both the exposed unit and
+    // the sediment-cover contrast; keying on unit index alone was shown
+    // to tilt θ out of its band on a perfectly converged landscape when
+    // sediment_k_mult ≠ 1). The class is chosen within the uplift band —
+    // the regression's own population — so the modal class can never
+    // starve the fit. Homogeneous runs have one class and the restriction
+    // is a no-op: bitwise-identical samples (ADR 0007).
+    let mut class_counts: BTreeMap<u64, u64> = BTreeMap::new();
+    if let Some(um) = u_median {
+        for (&(_, _, u), &idx) in fluvial.iter().zip(fluvial_idx.iter()) {
+            if u >= UPLIFT_BAND.0 * um && u <= UPLIFT_BAND.1 * um {
+                *class_counts.entry(inp.k_cell[idx].to_bits()).or_insert(0) += 1;
+            }
+        }
     }
-    let modal_unit = unit_counts
+    let modal_k_bits = class_counts
         .iter()
-        .max_by_key(|&(u, &c)| (c, std::cmp::Reverse(*u)))
-        .map(|(&u, _)| u)
+        .max_by_key(|&(kb, &c)| (c, std::cmp::Reverse(*kb)))
+        .map(|(&kb, _)| kb)
         .unwrap_or(0);
     let sa_points: Vec<(f64, f64)> = match u_median {
         Some(um) => fluvial
@@ -309,7 +320,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
             .filter(|&(&(_, _, u), &idx)| {
                 u >= UPLIFT_BAND.0 * um
                     && u <= UPLIFT_BAND.1 * um
-                    && inp.exposed_unit[idx] == modal_unit
+                    && inp.k_cell[idx].to_bits() == modal_k_bits
             })
             .map(|(&(a, s, _), _)| (a.log10(), s.log10()))
             .collect(),
@@ -336,6 +347,26 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
             }
         }
         lap / (inp.grid.dx * inp.grid.dx)
+    };
+    // The gate must evaluate the operator the evolution applied: with
+    // heterogeneous κ that is the symmetric edge-flux form of
+    // diffuse_variable, not κᵢ·∇²h. The uniform branch keeps the exact
+    // pre-M4 expression (bitwise contract).
+    let kappa_uniform = inp.kappa_cell.windows(2).all(|w| w[0] == w[1]);
+    let flux_divergence = |i: usize| -> f64 {
+        let (x, y) = inp.grid.xy(i as u32);
+        let (x, y) = (x as i64, y as i64);
+        let (w, hh) = (inp.grid.w as i64, inp.grid.h as i64);
+        let c = inp.h[i];
+        let ki = inp.kappa_cell[i];
+        let mut flux = 0.0;
+        for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+            if nx >= 0 && ny >= 0 && nx < w && ny < hh {
+                let j = (ny * w + nx) as usize;
+                flux += 0.5 * (ki + inp.kappa_cell[j]) * (inp.h[j] - c);
+            }
+        }
+        flux / (inp.grid.dx * inp.grid.dx)
     };
     // With deposition the steady balance is U = K·√Q·S − κ∇²h − G·q_s/Q;
     // the deposition rate comes from the diagnostic replay on the final
@@ -366,7 +397,11 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
                 }
             }
             let fluvial_term = inp.k_cell[idx] * a.sqrt() * s_weighted;
-            let diff_term = inp.kappa_cell[idx] * laplacian(idx);
+            let diff_term = if kappa_uniform {
+                inp.kappa_cell[idx] * laplacian(idx)
+            } else {
+                flux_divergence(idx)
+            };
             let dep_term = inp.deposition_rate_m_per_yr[idx];
             let balance = (fluvial_term - diff_term - dep_term) / u;
             residuals.push((balance - 1.0).abs());
@@ -709,7 +744,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         slope_area_theta: Gate::new(theta, 0.40, 0.60, false),
         slope_area_r2: sa_r2,
         slope_area_n_cells: sa_n,
-        slope_area_modal_unit: modal_unit,
+        slope_area_modal_k: f64::from_bits(modal_k_bits),
         slope_area_flat_cells_excluded: flat_excluded,
         // Core, not advisory: this is the tripwire for operator-splitting
         // violations (ADR 0002) — a config whose dt breaks the κ∇²h·dt ≲

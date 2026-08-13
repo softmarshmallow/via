@@ -6,7 +6,7 @@
 
 ![Current pipeline output: relief and drainage, sediment, precipitation and biome classes at two scales](docs/images/cover.png)
 
-<sub>Current output of the natural-substrate stages (M3.5). Placeholder figure — it shows what exists today and will be replaced as later layers land.</sub>
+<sub>Output of the natural-substrate stages as of M3.5; the M4 lithology layer is not yet pictured. Placeholder figure — it will be replaced as later layers land.</sub>
 
 ## Motivation
 
@@ -75,7 +75,8 @@ Complete, with every core statistical gate passing at both calibration scales (1
 - **Terrain** — stream-power landscape evolution, implicit O(n) solve, priority-flood depression handling ([ADR 0001](docs/adr/0001-crate-layout-and-artifact-format.md))
 - **Climate & ecology** — orographic precipitation and lapse-rate temperature as forcing, erosion on precipitation-weighted discharge, Whittaker biome classes and vegetation spectra ([ADR 0002](docs/adr/0002-climate-coupling-and-ecology-stage.md))
 - **Sediment & standing water** — erosion–deposition, lakes as an emergent diagnosis, bedrock/sediment bookkeeping under a mass-closure gate ([ADR 0004](docs/adr/0004-sediment-and-standing-water.md))
-- **Flow routing** — hybrid multiple-flow-direction routing, converging in channels ([ADR 0005](docs/adr/0005-mfd-routing.md))
+- **Flow routing** — hybrid multiple-flow-direction routing, converging in channels ([ADR 0005](docs/adr/0005-mfd-routing.md)); the coupled erosion–deposition term solved as one implicit fixed point ([ADR 0006](docs/adr/0006-implicit-erosion-deposition.md))
+- **Lithology & structure** — a deformed stratigraphic column as declared forcing, per-unit erodibility and diffusivity through the solve, karst potential as a spectrum ([ADR 0007](docs/adr/0007-lithology-and-structure.md))
 
 The working doctrine is recorded in [ADR 0003](docs/adr/0003-epistemic-tiers.md): process (gated), forcing (declared in config), and interpretation (optional, labeled) are separate tiers, outputs are spectra rather than authored taxonomy, and modules never encode a practical use case. Planned layers are in the [roadmap](docs/ROADMAP.md); recurring design questions and the known limitations behind them are tracked in the [FAQ](docs/faq/README.md).
 

@@ -31,7 +31,7 @@ What cannot appear without new process:
 | Meanders, oxbows, scroll bars, levees | lateral bank erosion + point-bar deposition | **river-corridor meander stage** (ledger): kinematic centerline migration, Howard & Knutson 1984 lineage; runs downstream of terrain on extracted corridors — justified by timescale separation (meanders: 10²–10⁴ yr; terrain: 10⁶⁺). Oxbows then *emerge* from cutoffs into the water-depth spectrum |
 | Braided rivers | bedload sorting + width dynamics | same era; may remain content |
 | Terminal lakes, salt flats | evaporative lake water budget | ledger (core routing upgrade) |
-| Persistent waterfalls | rock-strength contrast | **M4** — emerges from layered K |
-| Springs, underground rivers | karst hydrology | M4 ships karst *potential*; conduits stay content |
+| Persistent waterfalls | rock-strength contrast | **landed (M4, ADR 0007)** — declared lithology forcing; knickzones hold where rivers cross resistant contacts. The default column is homogeneous, so they appear only when a config declares strata |
+| Springs, underground rivers | karst hydrology | M4 shipped karst *potential* (solubility × discharge, ADR 0007); conduits stay content |
 | Estuaries, tidal channels | waves/tides | **M6** |
 | Glacial valleys, cirques, fjords | ice flow | unplanned; the Landlab ecosystem shows it is addable |

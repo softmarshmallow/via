@@ -67,10 +67,12 @@ pub fn diffuse(grid: &Grid, h: &mut [f64], is_base: &[bool], kappa: f64, dt: f64
 }
 
 /// Explicit diffusion with per-cell κ (ADR 0007): the flux form
-/// ∇·(κ∇h) with the symmetric edge coefficient κᵢⱼ = ½(κᵢ + κⱼ), so
-/// every exchange is pairwise antisymmetric and mass is conserved
-/// exactly (up to the same Dirichlet base / Neumann edge behavior as
-/// the uniform path). Subcycled to the max-κ stability limit.
+/// ∇·(κ∇h) with the symmetric edge coefficient κᵢⱼ = ½(κᵢ + κⱼ). Every
+/// edge exchange is pairwise antisymmetric in exact arithmetic, so mass
+/// is conserved up to the final per-cell rounding of h + a·flux (the
+/// same order of drift the uniform path carries), with the same
+/// Dirichlet base / Neumann edge behavior. Subcycled to the max-κ
+/// stability limit.
 ///
 /// Callers with uniform κ must use [`diffuse`]: this function computes
 /// the same physics but not the same floating-point expressions, and
@@ -120,4 +122,100 @@ pub fn max_abs_diff(a: &[f64], b: &[f64]) -> f64 {
 pub fn mean_abs_diff(a: &[f64], b: &[f64]) -> f64 {
     let sum: f64 = a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).sum();
     sum / a.len() as f64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn checker_field(grid: &Grid) -> (Vec<f64>, Vec<f64>, Vec<bool>) {
+        let n = grid.n();
+        let h: Vec<f64> = (0..n as u32)
+            .map(|i| {
+                let (x, y) = grid.xy(i);
+                ((x * 7 + y * 13) % 11) as f64 * 0.9 + (x as f64) * 0.1
+            })
+            .collect();
+        let kappa: Vec<f64> = (0..n as u32)
+            .map(|i| {
+                let (x, y) = grid.xy(i);
+                if (x / 3 + y / 3) % 2 == 0 {
+                    0.05
+                } else {
+                    0.01
+                }
+            })
+            .collect();
+        (h, kappa, vec![false; n])
+    }
+
+    /// Closed Neumann domain (no base cells): the symmetric edge form must
+    /// conserve total height to rounding.
+    #[test]
+    fn variable_diffusion_conserves_mass() {
+        let grid = Grid::new(16, 100.0);
+        let (mut h, kappa, is_base) = checker_field(&grid);
+        let before: f64 = h.iter().sum();
+        diffuse_variable(&grid, &mut h, &is_base, &kappa, 5.0e4);
+        let after: f64 = h.iter().sum();
+        assert!(
+            (before - after).abs() <= 1e-9 * before.abs().max(1.0),
+            "mass drift {} over {} cells",
+            before - after,
+            grid.n()
+        );
+    }
+
+    /// With a constant κ field the flux form must agree with the uniform
+    /// path physically (not bitwise — different expressions by design).
+    #[test]
+    fn variable_diffusion_matches_uniform_on_constant_kappa() {
+        let grid = Grid::new(16, 100.0);
+        let (h0, _, is_base) = checker_field(&grid);
+        let kappa = vec![0.05f64; grid.n()];
+        let mut ha = h0.clone();
+        let mut hb = h0.clone();
+        diffuse(&grid, &mut ha, &is_base, 0.05, 5.0e4);
+        diffuse_variable(&grid, &mut hb, &is_base, &kappa, 5.0e4);
+        let worst = max_abs_diff(&ha, &hb);
+        assert!(worst < 1e-9, "uniform vs flux form diverge by {worst} m");
+    }
+
+    /// A κ step must slow the flux across the contact: the low-κ side
+    /// keeps more of its relief than the high-κ side after the same time.
+    #[test]
+    fn kappa_contrast_shows_in_relaxation() {
+        let grid = Grid::new(16, 100.0);
+        let n = grid.n();
+        let mut h = vec![0.0f64; n];
+        let mut kappa = vec![0.0f64; n];
+        for i in 0..n as u32 {
+            let (x, _) = grid.xy(i);
+            h[i as usize] = if (2..6).contains(&x) || (10..14).contains(&x) {
+                10.0
+            } else {
+                0.0
+            };
+            kappa[i as usize] = if x < 8 { 0.05 } else { 0.005 };
+        }
+        let is_base = vec![false; n];
+        let before = h.clone();
+        diffuse_variable(&grid, &mut h, &is_base, &kappa, 2.0e4);
+        let decay = |xs: std::ops::Range<u32>| -> f64 {
+            let mut lost = 0.0;
+            for i in 0..n as u32 {
+                let (x, _) = grid.xy(i);
+                if xs.contains(&x) {
+                    lost += before[i as usize] - h[i as usize];
+                }
+            }
+            lost
+        };
+        assert!(
+            decay(2..6) > 3.0 * decay(10..14),
+            "high-κ block relaxed {} vs low-κ {} — contrast lost",
+            decay(2..6),
+            decay(10..14)
+        );
+    }
 }

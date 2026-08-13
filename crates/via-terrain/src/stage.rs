@@ -131,6 +131,21 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             })
             .collect()
     };
+    // κ reads the frozen surface exactly as K does: loose fill diffuses
+    // as cover, not as the unit buried beneath it (review of ADR 0007).
+    let kappa_cell_of = |exposed: &[u32], sediment_m: &[f64]| -> Vec<f64> {
+        exposed
+            .par_iter()
+            .zip(sediment_m.par_iter())
+            .map(|(&u, &s)| {
+                if s > cfg.lithology.sediment_cover_min_m {
+                    cfg.kappa * cfg.lithology.sediment_kappa_mult
+                } else {
+                    cfg.kappa * strat.kappa_mult(u)
+                }
+            })
+            .collect()
+    };
     let mut convergence = Vec::with_capacity(cfg.steps as usize);
     // Whole-run sediment budget; the mass-closure gate audits these. The
     // shallow-pond merge is a declared mass source and is metered alongside.
@@ -242,10 +257,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         match uniform_kappa {
             Some(m) => erosion::diffuse(&grid, &mut h, &is_base, cfg.kappa * m, cfg.dt_years),
             None => {
-                let kappa_cell: Vec<f64> = exposed
-                    .par_iter()
-                    .map(|&u| cfg.kappa * strat.kappa_mult(u))
-                    .collect();
+                let kappa_cell = kappa_cell_of(&exposed, &sediment_m);
                 erosion::diffuse_variable(&grid, &mut h, &is_base, &kappa_cell, cfg.dt_years);
             }
         }
@@ -332,10 +344,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         .map(|(&u, &q)| strat.solubility(u) * q)
         .collect();
     let k_cell_final = k_cell_of(&exposed_final, &sediment_m);
-    let kappa_cell_final: Vec<f64> = exposed_final
-        .par_iter()
-        .map(|&u| cfg.kappa * strat.kappa_mult(u))
-        .collect();
+    let kappa_cell_final = kappa_cell_of(&exposed_final, &sediment_m);
 
     // Diagnostic replay of one step's coupled solve on a scratch copy:
     // the per-cell deposition rate the residual gate needs. The real

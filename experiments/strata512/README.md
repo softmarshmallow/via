@@ -15,9 +15,10 @@ cores really do erase their cover. One resistant unit (index 3) is
 soluble (0.7) to exercise the karst-potential spectrum. The bottom unit
 is moderately resistant basement.
 
-Structure: regional dip [0.02, 0.008] (≈1.2°, ~2.5 km of displacement
-across the domain), one 600 m / 30 km fold train at azimuth 40°, one
-900 m fault at azimuth 70° through (−8, +4) km.
+Structure: regional dip [0.02, 0.008] (≈1.2°; up to ~2.0 km of
+displacement along x plus ~0.8 km along y ≈ 2.9 km corner-to-corner),
+one 600 m / 30 km fold train at azimuth 40°, one 900 m fault at azimuth
+70° through (−8, +4) km.
 
 ## What is expected to emerge (never drawn)
 

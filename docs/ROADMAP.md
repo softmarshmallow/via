@@ -36,9 +36,11 @@ lapse temperature. Erosion runs on precipitation-weighted discharge.
 Ecology stage: Whittaker (1975) T×P classes, wetland/bare-rock overrides as
 measurements, TWI, vegetation density/canopy spectra. ADR 0002.
 
-### M3 — Sediment & standing water (NEXT)
-The two known fakes in the substrate die here: ε-fill plains (no deposition)
-and no lakes.
+### M3 — Sediment & standing water (DONE)
+The two known fakes in the substrate died here: ε-fill plains (no
+deposition) and no lakes. Landed as ADR 0004, extended by hybrid MFD
+routing (M3.5, ADR 0005) and the implicit erosion–deposition solve
+(ADR 0006).
 - Method: erosion–deposition after Davy & Lague 2009 in the G-coefficient
   form of Yuan et al. 2019 (deposition rate G·q_s/q); sediment routed down
   the receiver tree; depressions hold water — flow is routed across the
@@ -52,13 +54,16 @@ and no lakes.
   elevation (consistency), floodplain slope (advisory). ADR 0004.
 - New spectra: sediment_m, water_depth_m.
 
-### M4 — Lithology & structure
+### M4 — Lithology & structure (DONE)
 Layered rock units with per-unit erodibility K, diffusivity κ, solubility;
-unit geometry (dip, folds, faults) is tier-2 forcing like uplift. Emergent:
-cliff bands, waterfalls, escarpments, trellis vs dendritic drainage on
-tilted strata. Karst potential = soluble unit × water flux (a spectrum;
-cave geometry is downstream content, not via's claim).
-Gate candidates: per-unit relief/slope contrast, drainage-pattern statistics.
+unit geometry (dip, folds, faults) is tier-2 forcing like uplift, looked
+up in the material frame. Emergent (strata512): escarpments, knickzones,
+ridge-and-valley corrugation, exhumation rings with the geologic-map
+V-rule. Karst potential = solubility × discharge (a spectrum; cave
+geometry is downstream content, not via's claim). Shipped gates: the SPL
+residual evaluates each cell against its own K and κ; the slope–area fit
+restricts to the modal erodibility class; advisory unit SPL consistency
+(max/min of per-unit median balance). ADR 0007.
 
 ### M5 — Soil, regolith & microclimate
 Regolith production (Heimsath et al. 1997 exponential decline with depth),
@@ -94,11 +99,12 @@ via module's claim; via ships mixture-weight spectra per biome at most.
 - Smith & Barstad 2004 linear orographic precipitation (better rain fields).
 - Parametric seasonality → Köppen classification becomes available.
 - Holdridge via PET.
-- K contrast bedrock vs sediment (Davy & Lague full form) once M4 exists.
-  Its vehicle — the Yuan et al. 2019 implicit erosion–deposition solve —
-  landed as ADR 0006, and the solve already evaluates K per edge, so this
-  is now a local change. (ADR 0006's dt study found the remaining dt
-  limit is outer-loop accuracy, not the solver.)
+- K contrast bedrock vs sediment (Davy & Lague full form): the
+  *mechanism* shipped with M4 (`sediment_k_mult`/`sediment_kappa_mult`,
+  ADR 0007) at neutral defaults. Turning it on is a calibration
+  experiment of its own — the θ gate already classifies its fit
+  population by erodibility class, so a non-neutral cover K is measured
+  correctly.
 - **Deposition-everywhere re-examination** (ADR 0006): under the implicit
   fixed point, applying G-deposition on hillslopes too is the faithful
   Davy & Lague configuration (the explicit scheme's one-cell-per-step

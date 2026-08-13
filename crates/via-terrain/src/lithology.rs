@@ -59,6 +59,15 @@ impl Stratigraphy {
             z -= u.thickness_m;
             bottoms.push(z);
         }
+        // Config validation bounds each factor, but the COMPOSED field is
+        // what exposure trusts: a non-finite displacement would make every
+        // s-comparison false and silently collapse the lookup to the
+        // basement. Fail loudly instead (CONTRIBUTING).
+        assert!(
+            bottoms.iter().all(|b| b.is_finite()) && deform.iter().all(|d| d.is_finite()),
+            "lithology deformation or unit boundaries are non-finite; the dip, fold, \
+             and fault parameters compose to values f64 cannot hold"
+        );
         Self {
             deform,
             bottoms,

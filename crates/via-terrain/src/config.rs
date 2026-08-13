@@ -96,6 +96,10 @@ pub struct LithologyConfig {
     /// K multiplier where the frozen sediment cover exceeds
     /// `sediment_cover_min_m` (Davy & Lague K contrast). 1 = neutral.
     pub sediment_k_mult: f64,
+    /// κ multiplier under the same cover test: loose fill must not
+    /// inherit the buried unit's diffusivity — the K and κ paths read
+    /// the frozen surface the same way (review of ADR 0007). 1 = neutral.
+    pub sediment_kappa_mult: f64,
     pub sediment_cover_min_m: f64,
 }
 
@@ -108,20 +112,30 @@ impl Default for LithologyConfig {
             folds: Vec::new(),
             faults: Vec::new(),
             sediment_k_mult: 1.0,
+            sediment_kappa_mult: 1.0,
             sediment_cover_min_m: 1.0,
         }
     }
 }
 
 impl LithologyConfig {
-    /// Some(shared multiplier) when every unit diffuses alike — the
-    /// uniform-κ fast path that keeps homogeneous runs bitwise identical.
+    /// Some(shared multiplier) when every κ source agrees — all units
+    /// and the sediment cover diffuse alike — the uniform-κ fast path
+    /// that keeps homogeneous runs bitwise identical. A covered cell
+    /// diffuses at `sediment_kappa_mult`, so a column of identical units
+    /// with a different cover multiplier is NOT uniform.
     pub fn uniform_kappa_mult(&self) -> Option<f64> {
         let first = self.units.first().map(|u| u.kappa_mult)?;
+        (self.units.iter().all(|u| u.kappa_mult == first) && self.sediment_kappa_mult == first)
+            .then_some(first)
+    }
+
+    /// Largest κ multiplier any cell can take (units or cover).
+    pub fn max_kappa_mult(&self) -> f64 {
         self.units
             .iter()
-            .all(|u| u.kappa_mult == first)
-            .then_some(first)
+            .map(|u| u.kappa_mult)
+            .fold(self.sediment_kappa_mult, f64::max)
     }
 }
 
@@ -395,8 +409,23 @@ impl TerrainConfig {
         if !(lith.sediment_k_mult.is_finite() && lith.sediment_k_mult > 0.0) {
             return bad("lithology.sediment_k_mult must be finite and positive");
         }
+        if !(lith.sediment_kappa_mult.is_finite() && lith.sediment_kappa_mult >= 0.0) {
+            return bad("lithology.sediment_kappa_mult must be finite and non-negative");
+        }
         if !(lith.sediment_cover_min_m.is_finite() && lith.sediment_cover_min_m >= 0.0) {
             return bad("lithology.sediment_cover_min_m must be finite and non-negative");
+        }
+        // Diffusion is subcycled to the stability limit of the LARGEST κ
+        // any cell can take; an absurd multiplier would demand a subcycle
+        // count that reads as a hang. Bound the derived count, not the
+        // raw factors.
+        let alpha_max = self.kappa * lith.max_kappa_mult() * self.dt_years
+            / (self.cell_size_m * self.cell_size_m);
+        if !(alpha_max.is_finite() && alpha_max / 0.24 <= 1.0e4) {
+            return bad(
+                "kappa × max lithology kappa_mult × dt_years implies more than 1e4 \
+                 diffusion subcycles per step; reduce kappa, the multiplier, or dt_years",
+            );
         }
         Ok(())
     }

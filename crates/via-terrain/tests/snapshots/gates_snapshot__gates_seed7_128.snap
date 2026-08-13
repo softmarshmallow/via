@@ -91,7 +91,7 @@ expression: gates
   },
   "sediment_mean_land_m": 0.2527509738,
   "slope_area_flat_cells_excluded": 0,
-  "slope_area_modal_unit": 0,
+  "slope_area_modal_k": 0.000005,
   "slope_area_n_cells": 26,
   "slope_area_r2": 0.7129829639,
   "slope_area_theta": {

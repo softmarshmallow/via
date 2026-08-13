@@ -204,7 +204,7 @@ fn run_terrain(args: TerrainArgs) -> Result<()> {
     // unit (categorical — every cell sits exactly on an integer stop) and
     // the karst-potential spectrum when any unit is soluble.
     if cfg.lithology.units.len() > 1 {
-        const LITH_COLORS: [[u8; 3]; 8] = [
+        const LITH_COLORS: [[u8; 3]; 16] = [
             [225, 213, 189],
             [166, 118, 90],
             [116, 158, 189],
@@ -213,10 +213,31 @@ fn run_terrain(args: TerrainArgs) -> Result<()> {
             [104, 152, 112],
             [204, 140, 158],
             [96, 112, 132],
+            [214, 170, 118],
+            [88, 130, 104],
+            [176, 144, 196],
+            [148, 148, 74],
+            [98, 140, 168],
+            [190, 108, 84],
+            [130, 170, 158],
+            [160, 126, 108],
         ];
+        // Beyond 16 units, later cycles darken by 30% per lap so no two
+        // unit indices ever share an RGB (the config caps units at 64).
+        let unit_color = |k: usize| -> [u8; 3] {
+            let base = LITH_COLORS[k % LITH_COLORS.len()];
+            let lap = (k / LITH_COLORS.len()) as u32;
+            base.map(|c| {
+                let mut v = c as f64;
+                for _ in 0..lap {
+                    v *= 0.7;
+                }
+                v.round() as u8
+            })
+        };
         let unit_f: Vec<f64> = out.lithology_unit.iter().map(|&u| u as f64).collect();
         let stops: Vec<(f64, [u8; 3])> = (0..cfg.lithology.units.len())
-            .map(|k| (k as f64, LITH_COLORS[k % LITH_COLORS.len()]))
+            .map(|k| (k as f64, unit_color(k)))
             .collect();
         via_viz::render_scalar(&inp, &unit_f, &stops).save(render_dir.join("lithology.png"))?;
     }
@@ -346,8 +367,8 @@ fn run_terrain(args: TerrainArgs) -> Result<()> {
                 "unit SPL consistency",
                 gate,
                 &format!(
-                    "   ({} units; θ fit on unit {})",
-                    g.unit_spl_units, g.slope_area_modal_unit
+                    "   ({} units; θ fit on K class {:.3e})",
+                    g.unit_spl_units, g.slope_area_modal_k
                 ),
             )
         );

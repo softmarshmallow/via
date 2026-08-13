@@ -8,10 +8,11 @@ Through M3.5 the substrate is mechanically uniform: one K, one κ,
 everywhere. Real terrain is unmistakably structured because rock is not
 uniform — cliff bands hold on resistant units, rivers knick where they
 cross contacts, drainage turns trellis on tilted strata, escarpments
-walk back from faults. FAQ 0005 lists these landform classes as locked
-behind "uniform substrate"; this ADR unlocks them. The vehicle is the
-ADR 0006 implicit solve, which already evaluates K per edge — making
-per-cell K a local change.
+walk back from faults. FAQ 0005's unlock table names the missing
+mechanisms — rock-strength contrast (persistent waterfalls) and karst
+hydrology (springs) — and slates both for M4; this ADR delivers them.
+The vehicle is the ADR 0006 implicit solve, which already evaluates K
+per edge — making per-cell K a local change.
 
 ## Representation: a deformed layer-cake in the material frame
 
@@ -52,12 +53,15 @@ propagate it mechanistically. The model is the standard LEM treatment
   Davy & Lague full form's K contrast, shipped with a **neutral
   default** (`sediment_k_mult = 1`) so M2/M3 calibration is untouched
   until an experiment declares otherwise.
-- **Diffusivity.** Per-cell κ = kappa_mult(exposed unit) × κ. Variable
-  κ uses a mass-conserving symmetric edge form (flux κ_ij = ½(κ_i+κ_j)
-  on the 4-neighbour graph, subcycled to the max-κ stability limit).
-  When every multiplier is 1 the code takes the **existing uniform
-  path unchanged** — homogeneous runs stay bitwise identical, which is
-  a regression test, not a hope.
+- **Diffusivity.** Per-cell κ = kappa_mult(exposed unit) × κ, with the
+  same cover switch K has (`sediment_kappa_mult`, neutral default):
+  loose fill must not inherit the buried unit's diffusivity — the two
+  material responses read the frozen surface identically. Variable κ
+  uses a symmetric edge form (flux κ_ij = ½(κ_i+κ_j) on the
+  4-neighbour graph, conserving mass up to per-cell rounding,
+  subcycled to the max-κ stability limit). When every κ source agrees
+  the code takes the **existing uniform path unchanged** — homogeneous
+  runs stay bitwise identical, which is a regression test, not a hope.
 - **Karst potential.** `solubility(exposed) × discharge` — a spectrum
   artifact. Where water crosses soluble rock, dissolution is possible;
   cave geometry is downstream content, not via's claim (FAQ 0005).
@@ -65,21 +69,25 @@ propagate it mechanistically. The model is the standard LEM treatment
 ## Gates
 
 - **SPL residual (core, unchanged bounds)** now evaluates each cell
-  against its *own* K — with heterogeneous K this is precisely the
-  lithology-consistency check: the landscape must balance the equation
-  it was evolved under, unit by unit.
-- **Slope–area θ (core, unchanged bounds)**: when more than one unit is
-  exposed in the regression population, the regression restricts to
-  the modal exposed unit — mixing K regimes in one log-log fit measures
-  the column, not the incision law. With one unit this is a no-op
-  (bitwise-identical samples).
+  against its *own* K and κ — and against the operator actually
+  applied: with heterogeneous κ the diffusion term uses the same
+  symmetric edge-flux form the evolution ran, not κᵢ∇²h. This is
+  precisely the lithology-consistency check: the landscape must
+  balance the equation it was evolved under, cell by cell.
+- **Slope–area θ (core, unchanged bounds)**: the regression restricts
+  to the modal *erodibility class* — cells keyed by the per-cell K they
+  actually eroded with, chosen within the uplift band. Keying folds in
+  both the exposed unit and the sediment-cover contrast; review probes
+  showed a unit-index key lets a non-neutral cover K tilt θ out of its
+  band on a perfectly converged landscape. With one class this is a
+  no-op (bitwise-identical samples).
 - **Unit SPL consistency (new, advisory)**: per exposed unit with
-  enough fluvial cells in the uplift band, the median of K·√Q·S/U
-  should be a unit-independent constant near 1; the gate reports
-  max/min across units. Advisory because transient reaches (knickzones
-  migrating through contacts — the very feature we want) legitimately
-  deviate; it is reported so drift is visible, promoted only if it
-  proves stable.
+  enough fluvial cells (≥ 50 with U > 0), the median of the full
+  steady balance (K·√Q·S − κ∇²h − D)/U should be a unit-independent
+  constant near 1; the gate reports max/min across units. Advisory
+  because transient reaches (knickzones migrating through contacts —
+  the very feature we want) legitimately deviate; it is reported so
+  drift is visible, promoted only if it proves stable.
 
 ## Artifacts
 

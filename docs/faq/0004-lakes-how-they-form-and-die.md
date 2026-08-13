@@ -33,4 +33,9 @@ Three kinds of "lake", three different homes:
    see FAQ 0005.
 
 Also absent as depression *sources*: glacial scour, fault grabens,
-calderas, landslide dams. Grabens arrive naturally with M4 structure.
+calderas, landslide dams. A correction recorded after M4 landed: its
+faults offset the *stratigraphic column* only (ADR 0007) — a fault-line
+scarp emerges from differential erosion across the contact, but a
+graben needs differential *subsidence*, which is uplift-field forcing
+(tier 2, expressible today by shaping the uplift field; no new
+mechanism required, just declared geometry).
