@@ -132,6 +132,7 @@ fn run_terrain(args: TerrainArgs) -> Result<()> {
     let stats = serde_json::json!({
         "wall_ms_simulation": sim_ms,
         "steps": cfg.steps,
+        "gs_iterations_max": out.gs_iterations_max,
         "convergence_dh_m": out.convergence_m,
     });
     std::fs::write(

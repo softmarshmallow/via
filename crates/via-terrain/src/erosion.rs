@@ -1,4 +1,6 @@
-//! The three terms of ∂h/∂t = U − K·A^½·S + κ∇²h.
+//! Uplift, hillslope diffusion, and convergence metrics. The coupled
+//! fluvial term (detachment + deposition) lives in `sediment` — one
+//! implicit Gauss–Seidel solve since ADR 0006.
 
 use rayon::prelude::*;
 
@@ -19,75 +21,6 @@ pub fn apply_uplift(h: &mut [f64], uplift: &[f64], dt: f64, floor_m: f64) {
                 *hi = (*hi + u * dt).max(floor_m);
             }
         });
-}
-
-/// Braun & Willett (2013) implicit stream-power solve with n = 1, m = ½,
-/// generalized over the MFD DAG (ADR 0005): walking the topological order
-/// (receivers first), each cell's new elevation is the closed form
-///   h⁺ = (h + Σᵢ cᵢ·hrᵢ⁺) / (1 + Σᵢ cᵢ),   cᵢ = K·√Q·dt·wᵢ / distᵢ,
-/// which relaxes h toward the weight-blend of its (already-updated)
-/// receivers. One out-edge reduces this exactly to the single-receiver
-/// update.
-///
-/// Standing water (ADR 0004): `flooded` and `water_level` are frozen from
-/// the pre-erosion state of the step. The mask MUST be static — deciding
-/// "submerged" by comparing the evolving surface against the routed copy
-/// re-classifies every freshly incised cell as flooded, and the routing
-/// sweep then refills exactly what detachment cut (observed: deposition ≈
-/// 89% of detachment, landscape smears). Flooded cells do not incise (the
-/// implicit form would otherwise *raise* a lake-bottom cell toward its
-/// across-lake receiver, which is deposition by the wrong mechanism).
-/// Rivers grade to water surfaces, not submerged beds: a flooded
-/// receiver's effective elevation is its water level, and a base-level
-/// receiver's is max(h_rcv, sea_level).
-///
-/// Returns the detached depth (m, ≥ 0) per cell — the sediment supply for
-/// the routing sweep.
-#[allow(clippy::too_many_arguments)]
-pub fn erode_stream_power(
-    grid: &Grid,
-    h: &mut [f64],
-    mfd: &crate::flow::MfdGraph,
-    discharge_cells: &[f64],
-    is_base: &[bool],
-    flooded: &[bool],
-    water_level: &[f64],
-    k_spl: f64,
-    dt: f64,
-    sea_level: f64,
-) -> Vec<f64> {
-    let mut detached = vec![0.0f64; h.len()];
-    for &i in &mfd.order {
-        let iu = i as usize;
-        if is_base[iu] || flooded[iu] {
-            continue;
-        }
-        let sqrt_q_m = grid.dx * discharge_cells[iu].sqrt();
-        let hi = h[iu];
-        let mut num = hi;
-        let mut den = 1.0f64;
-        for (r, w, dist) in mfd.edges(i) {
-            let ru = r as usize;
-            let hr = if is_base[ru] {
-                h[ru].max(sea_level)
-            } else if flooded[ru] {
-                water_level[ru]
-            } else {
-                h[ru]
-            };
-            if hi > hr {
-                let c = k_spl * sqrt_q_m * dt * w / dist;
-                num += c * hr;
-                den += c;
-            }
-        }
-        if den > 1.0 {
-            let hn = num / den;
-            detached[iu] = hi - hn;
-            h[iu] = hn;
-        }
-    }
-    detached
 }
 
 /// Explicit linear diffusion (4-neighbour Laplacian), subcycled to its

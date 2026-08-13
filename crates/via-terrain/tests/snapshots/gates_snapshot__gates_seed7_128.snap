@@ -5,15 +5,15 @@ expression: gates
 ---
 {
   "artifact_blake3": {
-    "area_cells": "148d59eead6860e6c6b87bd05b1a65a5b808b6a60439eaa9c6cf3025629f4d4d",
-    "basin": "88807e1dca8b7fe38a3178f3b147de9b92cbf88d6f00182a1234bf1a34f602f4",
-    "discharge": "453d56145667ce4b29a434fcd4b7af238113685eb5d4381c2bca59096b14e022",
-    "heights_cm": "27c5a025d851818bb0fc9ae5827676380a19229cec284bdb46f889d1723c6c23",
-    "precip": "722ec1f7fde214be31375ef142cfd3b02a044e7eb61e134a763261cb7877d467",
-    "receivers": "b0ac41851c2303142d30b7e8f8ffa45e9a4d1695e725fc8a234e7abb0d197a0b",
-    "sediment": "d74bf9d7868d4c081ec32ae4eed7bd905117f6e37c326a44a25d967bb41d4901",
-    "strahler": "7203eb00f71cdab566285b3fa414bf33de67769f5d28e98e0f0153dd4e26ff41",
-    "temperature": "36bd18c5dad74163df808f5da237fecb0bff3bf6a698f901de322d5b9068ddc4",
+    "area_cells": "61db9d55e5aa15a7b0a3b86797990bc2380be9684227a5f8f0e3ed209062f1bc",
+    "basin": "2c66fec9f3cfbeb1c17dbf7921bd50600da365ad86dcb249045de4bd07d7e17c",
+    "discharge": "69baf5a7439853bedd6a35e1d866592b41ed03c995748574c0fbd88886cb1dbf",
+    "heights_cm": "b032beb9101f3fd2de04dcd6252b17219ebb3f8b245e9f259aed40943dd28ce6",
+    "precip": "c1e4fcb2dd44481885565c4b802d974e21bfde9db7afe65ade5198b766db7d53",
+    "receivers": "9f760609be8bce596cb7b513c11301a6e115745480fc57c6b51ae24d4b826d78",
+    "sediment": "483d756cb67c62f3e67d74ec90723d513c225780e20a39c61da66731d48fbe10",
+    "strahler": "9f79459e0c2941c455211e96acf2d3af4f6cd4d954b8af073473ee15adb7cae5",
+    "temperature": "1c319fd4b6bf2d55383e0cd6eb69b7ee20478b6e6429def67dcc4415a1aa2e31",
     "uplift": "4f97fb1e07b04d99608c0ebe7a32fa647987be1092e0d126fa46780b5ae73a5f",
     "water_depth": "b151b9ea8d0113c36464d779652548b2bc7f53ca9a7e1dcb9d6877ad5aa53512"
   },
@@ -29,17 +29,17 @@ expression: gates
     "hi": 1.0,
     "lo": 0.0,
     "pass": true,
-    "value": 0.002393295108
+    "value": 0.1141854093
   },
   "hack_exponent": {
     "advisory": false,
     "hi": 0.7,
     "lo": 0.45,
     "pass": false,
-    "value": 0.4042490093
+    "value": 0.4278463792
   },
-  "hack_n_basins": 35,
-  "hack_r2": 0.7451569942,
+  "hack_n_basins": 30,
+  "hack_r2": 0.8345801912,
   "horton_bifurcation": null,
   "horton_length_ratio": null,
   "hypsometric_integral": {
@@ -47,7 +47,7 @@ expression: gates
     "hi": 0.6,
     "lo": 0.35,
     "pass": false,
-    "value": 0.2424826841
+    "value": 0.2427736609
   },
   "interior_water_cells": 0,
   "lake_cells": 0,
@@ -59,7 +59,7 @@ expression: gates
     "value": 0.0
   },
   "land_fraction": 0.1196289062,
-  "max_elevation_m": 146.1555878,
+  "max_elevation_m": 146.2085602,
   "overall_pass": false,
   "pit_cells": {
     "advisory": false,
@@ -68,18 +68,18 @@ expression: gates
     "pass": true,
     "value": 0.0
   },
-  "pond_merge_m3": 1305323.175,
+  "pond_merge_m3": 591540.667,
   "rain_shadow_ratio": {
     "advisory": true,
     "hi": 100.0,
     "lo": 1.05,
     "pass": true,
-    "value": 1.082592902
+    "value": 1.084188407
   },
-  "relief_m": 146.1555878,
-  "sediment_deposited_m3": 61202172.84,
-  "sediment_detached_m3": 1581770097.0,
-  "sediment_exported_m3": 1520567924.0,
+  "relief_m": 146.2085602,
+  "sediment_deposited_m3": 64575154.2,
+  "sediment_detached_m3": 1580203943.0,
+  "sediment_exported_m3": 1515628788.0,
   "sediment_mass_closure": {
     "advisory": false,
     "hi": 0.000000001,
@@ -87,23 +87,23 @@ expression: gates
     "pass": true,
     "value": 0.0
   },
-  "sediment_mean_land_m": 0.2356918315,
-  "slope_area_flat_cells_excluded": 1,
-  "slope_area_n_cells": 28,
-  "slope_area_r2": 0.6691503682,
+  "sediment_mean_land_m": 0.2759616798,
+  "slope_area_flat_cells_excluded": 0,
+  "slope_area_n_cells": 26,
+  "slope_area_r2": 0.7129829639,
   "slope_area_theta": {
     "advisory": false,
     "hi": 0.6,
     "lo": 0.4,
     "pass": false,
-    "value": 0.3295637983
+    "value": 0.3527919243
   },
   "spl_residual_median": {
     "advisory": false,
     "hi": 0.35,
     "lo": 0.0,
     "pass": true,
-    "value": 0.295621844
+    "value": 0.2528037759
   },
   "wind": [
     0,

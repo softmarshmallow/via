@@ -45,6 +45,9 @@ pub struct TerrainOutput {
     pub samples: GateSamples,
     /// (step, max |Δh|, mean |Δh|) in metres — the convergence trace.
     pub convergence_m: Vec<(u32, f64, f64)>,
+    /// Worst-case Gauss–Seidel iteration count across all steps
+    /// (ADR 0006) — observability for the coupled solve.
+    pub gs_iterations_max: u32,
 }
 
 /// The border ring is the open boundary: heights are pinned to base depth
@@ -109,6 +112,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     // shallow-pond merge is a declared mass source and is metered alongside.
     let (mut run_det, mut run_dep, mut run_exp) = (0.0f64, 0.0f64, 0.0f64);
     let mut run_pond_merge_m3 = 0.0f64;
+    let mut gs_iter_max = 0u32;
     // Deposition acts on the fluvial domain only (ADR 0004): same
     // threshold the slope–area gate uses for channel membership.
     let fluvial_min_cells = (cfg.fluvial_min_area_km2 * 1.0e6) / cfg.cell_area_m2();
@@ -163,7 +167,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             &flooded,
         );
         let discharge = flow::accumulate_discharge_mfd(&mfd, &weights);
-        let detached = erosion::erode_stream_power(
+        let solved = sediment::solve_implicit(
             &grid,
             &mut h,
             &mfd,
@@ -172,31 +176,22 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             &flooded,
             &h_route,
             cfg.k_spl,
-            cfg.dt_years,
-            cfg.sea_level_m,
-        );
-        // Detachment takes sediment cover first, then bedrock.
-        sediment_m
-            .par_iter_mut()
-            .zip(detached.par_iter())
-            .for_each(|(s, &d)| *s = (*s - d).max(0.0));
-        let budget = sediment::route_sediment(
-            &grid,
-            &mut h,
-            &mut sediment_m,
-            &mfd,
-            &discharge,
-            &is_base,
-            &flooded,
-            &h_route,
-            &detached,
             cfg.g_deposition,
+            cfg.dt_years,
             fluvial_min_cells,
             cfg.sea_level_m,
         );
-        run_det += budget.detached_m3;
-        run_dep += budget.deposited_m3;
-        run_exp += budget.exported_m3;
+        // Detachment takes sediment cover first, then bedrock; deposition
+        // adds to the cover.
+        sediment_m
+            .par_iter_mut()
+            .zip(solved.detached_m.par_iter())
+            .zip(solved.deposited_m.par_iter())
+            .for_each(|((s, &d), &p)| *s = (*s - d).max(0.0) + p);
+        run_det += solved.detached_m3;
+        run_dep += solved.deposited_m3;
+        run_exp += solved.exported_m3;
+        gs_iter_max = gs_iter_max.max(solved.iterations);
         // Hillslope diffusion moves colluvium: falling cells shed sediment
         // first, rising cells gain it.
         let h_before_diff = h.clone();
@@ -270,40 +265,26 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     let dist_m = extract::flow_distance_m(&grid, &receivers, &stack);
     let mainstream_m = extract::mainstream_length_m(&receivers, &stack, &dist_m);
 
-    // Diagnostic replay of one step's detachment + routing on scratch
-    // copies: the per-cell deposition rate the residual gate needs. The
-    // real state is not touched.
+    // Diagnostic replay of one step's coupled solve on a scratch copy:
+    // the per-cell deposition rate the residual gate needs. The real
+    // state is not touched.
     let deposition_rate_m_per_yr: Vec<f64> = {
-        let flooded = &flooded_final;
         let mut h_diag = h.clone();
-        let mut sed_diag = sediment_m.clone();
-        let detached = erosion::erode_stream_power(
+        let solved = sediment::solve_implicit(
             &grid,
             &mut h_diag,
             &mfd,
             &discharge_cells,
             &is_base,
-            flooded,
+            &flooded_final,
             &h_route,
             cfg.k_spl,
-            cfg.dt_years,
-            cfg.sea_level_m,
-        );
-        let budget = sediment::route_sediment(
-            &grid,
-            &mut h_diag,
-            &mut sed_diag,
-            &mfd,
-            &discharge_cells,
-            &is_base,
-            flooded,
-            &h_route,
-            &detached,
             cfg.g_deposition,
+            cfg.dt_years,
             fluvial_min_cells,
             cfg.sea_level_m,
         );
-        budget
+        solved
             .deposited_m
             .iter()
             .map(|&d| d / cfg.dt_years)
@@ -357,6 +338,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         gates: gates_report,
         samples,
         convergence_m: convergence,
+        gs_iterations_max: gs_iter_max,
     };
     out.gates.artifact_blake3 = artifact_hashes(&out);
     out
