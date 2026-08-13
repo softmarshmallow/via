@@ -27,4 +27,6 @@ Early project. This file records the decisions that are **settled**, so they are
 
 ## Open
 
-Artifact format, crate layout, epoch model, export target. Raise a discussion before building on an assumption about any of these.
+Epoch model, export target. Raise a discussion before building on an assumption about any of these.
+
+Artifact format and crate layout were settled in [ADR 0001](docs/adr/0001-crate-layout-and-artifact-format.md).
