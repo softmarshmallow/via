@@ -1,0 +1,8 @@
+{
+  "label": "village_site",
+  "max_slope": 0.105,
+  "min_elevation_m": 2.0,
+  "max_elevation_m": 80.0,
+  "max_freshwater_dist_m": 400.0,
+  "min_patch_area_ha": 12.0
+}

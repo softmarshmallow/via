@@ -1,0 +1,12 @@
+{
+  "size": 512,
+  "cell_size_m": 16.0,
+  "dt_years": 2000.0,
+  "steps": 2500,
+  "k_spl": 3.2e-5,
+  "kappa": 0.005,
+  "uplift_max_m_per_yr": 5.0e-4,
+  "base_depth_m": -25.0,
+  "river_min_area_km2": 0.04,
+  "fluvial_min_area_km2": 0.02
+}
