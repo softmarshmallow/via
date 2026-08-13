@@ -1,0 +1,11 @@
+[package]
+name = "via-viz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "QA renderers: artifacts in, PNG map packs out. Never a dependency of a stage."
+
+[dependencies]
+image = { workspace = true }
+rayon = { workspace = true }
+via-artifact = { workspace = true }
