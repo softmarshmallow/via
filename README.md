@@ -4,6 +4,10 @@
 
 **via** is a research project on the end-to-end simulation of inhabited landscapes: terrain, hydrology, economics, transport, settlement growth, and building placement modeled as **one causal system**, rather than as independent generators composited after the fact.
 
+![Current pipeline output: relief and drainage, sediment, precipitation and biome classes at two scales](docs/images/cover.png)
+
+<sub>Current output of the natural-substrate stages (M3.5). Placeholder figure — it shows what exists today and will be replaced as later layers land.</sub>
+
 ## Motivation
 
 Procedural generation has produced excellent single-layer results. Landscape evolution models synthesize terrain with physically correct drainage; tensor-field and grammar-based methods generate street networks with convincing local geometry; shape grammars fill blocks with buildings. Each is strong in isolation — and each, in isolation, is insufficient for a real-world-like setup.
@@ -64,7 +68,16 @@ Each community treats the others' output as an exogenous given. **via** is about
 
 ## Status
 
-Early. This document is the statement of intent; design notes and the first experiments follow. Nothing here is final except the thesis.
+Early. The **natural substrate** — the part of the chain upstream of people — is built and gated; nothing downstream of suitability has started. Nothing here is final except the thesis.
+
+Complete, with every core statistical gate passing at both calibration scales (102 km / 200 m and 8.2 km / 16 m):
+
+- **Terrain** — stream-power landscape evolution, implicit O(n) solve, priority-flood depression handling ([ADR 0001](docs/adr/0001-crate-layout-and-artifact-format.md))
+- **Climate & ecology** — orographic precipitation and lapse-rate temperature as forcing, erosion on precipitation-weighted discharge, Whittaker biome classes and vegetation spectra ([ADR 0002](docs/adr/0002-climate-coupling-and-ecology-stage.md))
+- **Sediment & standing water** — erosion–deposition, lakes as an emergent diagnosis, bedrock/sediment bookkeeping under a mass-closure gate ([ADR 0004](docs/adr/0004-sediment-and-standing-water.md))
+- **Flow routing** — hybrid multiple-flow-direction routing, converging in channels ([ADR 0005](docs/adr/0005-mfd-routing.md))
+
+The working doctrine is recorded in [ADR 0003](docs/adr/0003-epistemic-tiers.md): process (gated), forcing (declared in config), and interpretation (optional, labeled) are separate tiers, outputs are spectra rather than authored taxonomy, and modules never encode a practical use case. Planned layers are in the [roadmap](docs/ROADMAP.md); recurring design questions and the known limitations behind them are tracked in the [FAQ](docs/faq/README.md).
 
 ## Reading list
 
