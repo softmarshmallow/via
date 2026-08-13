@@ -94,9 +94,17 @@ via module's claim; via ships mixture-weight spectra per biome at most.
 - Smith & Barstad 2004 linear orographic precipitation (better rain fields).
 - Parametric seasonality → Köppen classification becomes available.
 - Holdridge via PET.
-- K contrast bedrock vs sediment (Davy & Lague full form) once M4 exists,
-  via the Yuan et al. 2019 implicit erosion–deposition solve (also removes
-  the explicit-deposition dt limit of ADR 0004).
+- K contrast bedrock vs sediment (Davy & Lague full form) once M4 exists.
+  Its vehicle — the Yuan et al. 2019 implicit erosion–deposition solve —
+  landed as ADR 0006, and the solve already evaluates K per edge, so this
+  is now a local change. (ADR 0006's dt study found the remaining dt
+  limit is outer-loop accuracy, not the solver.)
+- **Deposition-everywhere re-examination** (ADR 0006): under the implicit
+  fixed point, applying G-deposition on hillslopes too is the faithful
+  Davy & Lague configuration (the explicit scheme's one-cell-per-step
+  creep artifact that forced the fluvial-domain restriction is gone).
+  Its own physics change with its own calibration consequences —
+  hillslope steady slopes become transport-limited — decided by gates.
 - Marine sediment transport (shelf deposition) beyond M3's at-mouth
   progradation.
 - Research-preset dt/κ retune (residual currently carries mild splitting

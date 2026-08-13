@@ -136,12 +136,16 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         // sub-grid noise and merges back into the terrain (ADR 0004).
         let mut h_route = h.clone();
         flow::priority_flood_eps(&grid, &mut h_route, &is_base, cfg.epsilon_fill_m);
-        run_pond_merge_m3 +=
-            flow::merge_shallow_depressions(&grid, &mut h, &h_route, sediment::MIN_LAKE_DEPTH_M)
-                * cfg.cell_area_m2();
+        run_pond_merge_m3 += flow::merge_shallow_depressions(
+            &grid,
+            &mut h,
+            &mut sediment_m,
+            &h_route,
+            sediment::MIN_LAKE_DEPTH_M,
+        ) * cfg.cell_area_m2();
         // The step's standing-water state, frozen pre-erosion. The mask
-        // must not be re-derived from the evolving surface (see
-        // erosion::erode_stream_power).
+        // must not be re-derived from the evolving surface (ADR 0004; see
+        // the frozen-mask notes on sediment's erosion sweep).
         let flooded: Vec<bool> = h_route
             .iter()
             .zip(h.iter())
@@ -181,13 +185,18 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             fluvial_min_cells,
             cfg.sea_level_m,
         );
-        // Detachment takes sediment cover first, then bedrock; deposition
-        // adds to the cover.
+        // Cover ledger, net form: detachment consumes the step's fresh
+        // deposit first — in the solver's column geometry the deposit is
+        // the TOP of the lifted surface elev = ht + dep — then old cover,
+        // then (implicitly) bedrock. The split form max(s − d, 0) + p
+        // would charge to bedrock material the solve actually took out of
+        // the same step's deposit and report that deposit as surviving
+        // cover (review of ADR 0006).
         sediment_m
             .par_iter_mut()
             .zip(solved.detached_m.par_iter())
             .zip(solved.deposited_m.par_iter())
-            .for_each(|((s, &d), &p)| *s = (*s - d).max(0.0) + p);
+            .for_each(|((s, &d), &p)| *s = (*s + p - d).max(0.0));
         run_det += solved.detached_m3;
         run_dep += solved.deposited_m3;
         run_exp += solved.exported_m3;
@@ -213,9 +222,13 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     let is_base = ocean_mask(&grid, &h, cfg.sea_level_m);
     let mut h_route = h.clone();
     flow::priority_flood_eps(&grid, &mut h_route, &is_base, cfg.epsilon_fill_m);
-    run_pond_merge_m3 +=
-        flow::merge_shallow_depressions(&grid, &mut h, &h_route, sediment::MIN_LAKE_DEPTH_M)
-            * cfg.cell_area_m2();
+    run_pond_merge_m3 += flow::merge_shallow_depressions(
+        &grid,
+        &mut h,
+        &mut sediment_m,
+        &h_route,
+        sediment::MIN_LAKE_DEPTH_M,
+    ) * cfg.cell_area_m2();
     let water_depth_m: Vec<f64> = h_route.iter().zip(h.iter()).map(|(r, t)| r - t).collect();
     let precip = climate::compute_precipitation(cfg, &grid, &h_route, wind);
     let temperature = climate::compute_temperature(cfg, &grid, &h_route);

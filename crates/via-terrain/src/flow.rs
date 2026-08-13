@@ -69,10 +69,14 @@ pub fn priority_flood_eps(grid: &Grid, h: &mut [f64], is_seed: &[bool], eps: f64
 ///
 /// Returns the total raised depth (m summed over merged cells): the merge
 /// is a declared mass source (sub-grid fill), and the run meters it so the
-/// fake stays quantified rather than silent.
+/// fake stays quantified rather than silent. The fill is *claimed* as
+/// instant sedimentation, so it credits the sediment cover — otherwise
+/// the raised material would masquerade as bedrock in the two-surface
+/// bookkeeping (review of ADR 0006).
 pub fn merge_shallow_depressions(
     grid: &Grid,
     h_true: &mut [f64],
+    sediment_m: &mut [f64],
     h_route: &[f64],
     min_lake_depth_m: f64,
 ) -> f64 {
@@ -104,7 +108,9 @@ pub fn merge_shallow_depressions(
         }
         if max_depth < min_lake_depth_m {
             for &c in &component {
-                merged_depth_m += h_route[c as usize] - h_true[c as usize];
+                let d = h_route[c as usize] - h_true[c as usize];
+                merged_depth_m += d;
+                sediment_m[c as usize] += d;
                 h_true[c as usize] = h_route[c as usize];
             }
         }

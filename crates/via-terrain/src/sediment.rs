@@ -266,11 +266,21 @@ pub fn solve_implicit(
             break;
         }
     }
+    // Convergence of the undamped pair iteration is parameter-dependent:
+    // the dep→det feedback gain grows with G·min(1, 1/Q̃) at the fluvial
+    // threshold and with K·dt·√Q̃ near 1. The defaults sit far inside the
+    // convergent regime, but configs that pass validation can leave it —
+    // so the abort diagnoses the parameters instead of claiming an
+    // internal defect.
     assert!(
         converged,
-        "erosion–deposition Gauss–Seidel failed to converge in {GS_MAX_ITER} \
-         iterations (G = {g}, dt = {dt}); the fixed point should take a \
-         handful of sweeps — this is a defect, not a tuning problem"
+        "erosion–deposition Gauss–Seidel did not reach tol = {GS_TOL_M} m \
+         within {GS_MAX_ITER} iterations. The coupling has left (or is \
+         crawling at the edge of) the scheme's convergent regime; the usual \
+         causes are a large G with a low fluvial threshold (trap cells at \
+         Q̃ ≤ G) or K·dt·√Q̃ near 1 (here G = {g}, K·dt = {:.3e}). Reduce G, \
+         raise fluvial_min_area_km2, or reduce dt.",
+        k_spl * dt
     );
     let (detached_m3, deposited_m3, exported_m3) = budget;
     SolveResult {

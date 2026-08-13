@@ -41,11 +41,12 @@ structure, the two sweeps M3 already had, **iterated until they agree**:
   elev_i = ht_i + D_i. Base cells are pinned; flooded cells do not
   incise; rivers grade to water surfaces (all as before, ADR 0004).
   Detachment E_i = elev_i − h_i ≥ 0.
-- **Sweep B (flux routing, donors-first):** M3's bookkeeping sweep,
-  unchanged in its rules — dry fluvial cells keep the min(G/Q̃, 1)
-  fraction of incoming flux, flooded cells trap up to the water level,
-  hillslope cells pass through, base cells export — but it no longer
-  mutates heights; it just produces the next D field and the budget.
+- **Sweep B (flux routing, donors-first):** M3's bookkeeping sweep with
+  one rule removed (the donor-floor cap — see *What changes*): dry
+  fluvial cells keep the min(G/Q̃, 1) fraction of incoming flux, flooded
+  cells trap up to the water level, hillslope cells pass through, base
+  cells export. It no longer mutates heights; it just produces the next
+  D field and the budget.
 - **Assemble** h_i = ht_i + D_i − E_i and iterate until
   max |Δh| between iterations ≤ 1e-6 m (hard cap 100 iterations, then
   panic — a solver that stops converging is a defect, not a warning).

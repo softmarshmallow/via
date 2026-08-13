@@ -11,7 +11,7 @@ expression: gates
     "heights_cm": "b032beb9101f3fd2de04dcd6252b17219ebb3f8b245e9f259aed40943dd28ce6",
     "precip": "c1e4fcb2dd44481885565c4b802d974e21bfde9db7afe65ade5198b766db7d53",
     "receivers": "9f760609be8bce596cb7b513c11301a6e115745480fc57c6b51ae24d4b826d78",
-    "sediment": "483d756cb67c62f3e67d74ec90723d513c225780e20a39c61da66731d48fbe10",
+    "sediment": "812ede0f0f0cf75473ccece929728e7f7f532fe60c1e29fc87d432eaee0c7b2e",
     "strahler": "9f79459e0c2941c455211e96acf2d3af4f6cd4d954b8af073473ee15adb7cae5",
     "temperature": "1c319fd4b6bf2d55383e0cd6eb69b7ee20478b6e6429def67dcc4415a1aa2e31",
     "uplift": "4f97fb1e07b04d99608c0ebe7a32fa647987be1092e0d126fa46780b5ae73a5f",
@@ -87,7 +87,7 @@ expression: gates
     "pass": true,
     "value": 0.0
   },
-  "sediment_mean_land_m": 0.2759616798,
+  "sediment_mean_land_m": 0.2527509738,
   "slope_area_flat_cells_excluded": 0,
   "slope_area_n_cells": 26,
   "slope_area_r2": 0.7129829639,
