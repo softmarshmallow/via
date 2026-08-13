@@ -26,6 +26,14 @@ fn bitwise_identical_across_thread_counts() {
     let a = pool1.install(|| run(&cfg, &mut |_, _| {}));
     let b = pool4.install(|| run(&cfg, &mut |_, _| {}));
 
+    // Tripwire: the hybrid channelized (SFD) routing path must actually be
+    // exercised, or this test silently stops covering it (ADR 0005).
+    let fluvial_min = (cfg.fluvial_min_area_km2 * 1.0e6) / cfg.cell_area_m2();
+    assert!(
+        a.discharge_cells.iter().cloned().fold(0.0, f64::max) >= fluvial_min,
+        "no channelized cells in the determinism scenario; pick a new config"
+    );
+
     // Full-precision heights, bit for bit.
     let bits_a: Vec<u64> = a.heights_m.iter().map(|v| v.to_bits()).collect();
     let bits_b: Vec<u64> = b.heights_m.iter().map(|v| v.to_bits()).collect();

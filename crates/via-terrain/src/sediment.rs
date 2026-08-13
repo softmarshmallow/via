@@ -10,7 +10,7 @@
 //! bookkeeping system: detached = deposited + exported, and the mass-closure
 //! gate holds it to numerical precision.
 
-use crate::flow::DonorGraph;
+use crate::flow::MfdGraph;
 use crate::grid::Grid;
 
 /// Water depth (m) above which a cell counts as flooded for the physics.
@@ -52,9 +52,7 @@ pub fn route_sediment(
     grid: &Grid,
     h: &mut [f64],
     sediment_m: &mut [f64],
-    receivers: &[u32],
-    stack: &[u32],
-    donors: &DonorGraph,
+    mfd: &MfdGraph,
     discharge_cells: &[f64],
     is_base: &[bool],
     flooded: &[bool],
@@ -70,17 +68,17 @@ pub fn route_sediment(
     let mut deposited = vec![0.0f64; n];
     let (mut total_det, mut total_dep, mut total_exp) = (0.0f64, 0.0f64, 0.0f64);
 
-    // Reverse stack order = donors before receivers: when a cell is
-    // processed, its incoming flux is complete and its donors' heights are
-    // final for this step.
-    for &i in stack.iter().rev() {
+    // Descending topological order = donors before receivers: when a cell
+    // is processed, its incoming flux is complete and its donors' heights
+    // are final for this step.
+    for &i in mfd.order.iter().rev() {
         let iu = i as usize;
         let phi = flux_in[iu];
         let det_vol = detached_m[iu] * area;
         total_det += det_vol;
 
         if is_base[iu] {
-            // Base level is a self-receiver: everything arriving leaves the
+            // Base level has no out-edges: everything arriving leaves the
             // system. (Base cells are skipped by the fluvial solve, so
             // det_vol is 0 here; sea_level is kept in the signature for the
             // day marine deposition arrives in M6.)
@@ -89,7 +87,6 @@ pub fn route_sediment(
             continue;
         }
 
-        let r = receivers[iu] as usize;
         let dep_vol = if flooded[iu] {
             // Submerged (per the step's frozen mask — see
             // erosion::erode_stream_power on why it must be static): trap
@@ -99,9 +96,9 @@ pub fn route_sediment(
             phi.min(((water_level[iu] - h[iu]) * area).max(0.0))
         } else if discharge_cells[iu] >= fluvial_min_cells {
             // Dry channel: keep the G-fraction of the incoming flux,
-            // capped so the cell stays below its lowest donor.
+            // capped so the cell stays below its lowest MFD donor.
             let mut donor_floor = f64::INFINITY;
-            for &d in donors.donors(i) {
+            for &d in mfd.donors(i) {
                 donor_floor = donor_floor.min(h[d as usize]);
             }
             let headroom = ((donor_floor - DONOR_MARGIN_M) - h[iu]).max(0.0) * area;
@@ -117,7 +114,11 @@ pub fn route_sediment(
             deposited[iu] = dh;
             total_dep += dep_vol;
         }
-        flux_in[r] += phi - dep_vol + det_vol;
+        // Outflux splits along the MFD weights.
+        let out = phi - dep_vol + det_vol;
+        for (t, w, _) in mfd.edges(i) {
+            flux_in[t as usize] += out * w;
+        }
     }
 
     SedimentBudget {
@@ -153,11 +154,9 @@ mod tests {
             })
             .collect();
         flow::priority_flood_eps(&grid, &mut h, &is_base, 1e-6);
-        let receivers = flow::compute_receivers(&grid, &h, &is_base);
-        let donors = DonorGraph::build(&receivers);
-        let stack = flow::build_stack(&receivers, &donors);
+        let mfd = MfdGraph::build(&grid, &h, &is_base, 1.1);
         let weights = vec![1.0f64; n];
-        let discharge = flow::accumulate_discharge(&receivers, &stack, &weights);
+        let discharge = flow::accumulate_discharge_mfd(&mfd, &weights);
 
         let flooded = vec![false; n];
         let water_level = h.clone();
@@ -172,9 +171,7 @@ mod tests {
             &grid,
             &mut h,
             &mut sed,
-            &receivers,
-            &stack,
-            &donors,
+            &mfd,
             &discharge,
             &is_base,
             &flooded,

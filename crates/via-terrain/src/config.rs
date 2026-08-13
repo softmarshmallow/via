@@ -25,6 +25,10 @@ pub struct TerrainConfig {
     pub g_deposition: f64,
     /// Hillslope diffusivity κ in m²/yr.
     pub kappa: f64,
+    /// MFD partition exponent p (Freeman 1991): flow to each downslope
+    /// neighbour ∝ slope^p. Discretization parameter, not forcing
+    /// (ADR 0005); 1.1 is Freeman's calibrated value.
+    pub mfd_exponent: f64,
     /// Peak tectonic uplift rate in m/yr; the uplift field scales this.
     pub uplift_max_m_per_yr: f64,
     pub sea_level_m: f64,
@@ -82,11 +86,17 @@ impl Default for TerrainConfig {
             k_spl: 5.0e-6,
             g_deposition: 1.0,
             kappa: 0.05,
+            mfd_exponent: 1.1,
             uplift_max_m_per_yr: 5.0e-4,
             sea_level_m: 0.0,
             base_depth_m: -30.0,
             epsilon_fill_m: 1.0e-6,
-            river_min_area_km2: 1.0,
+            // Extraction threshold recalibrated for the MFD discharge
+            // field (ADR 0005): the smoother hybrid flux crosses a given
+            // threshold at more marginal heads, inflating first-order
+            // stream counts; 1.5 km² selects a network comparable to the
+            // 1.0 km² D8 one.
+            river_min_area_km2: 1.5,
             fluvial_min_area_km2: 0.5,
             precip_mean_m_per_yr: 1.2,
             t_sea_level_c: 15.0,
@@ -140,8 +150,14 @@ impl TerrainConfig {
         if !(self.g_deposition.is_finite() && self.g_deposition >= 0.0) {
             return bad("g_deposition must be finite and non-negative");
         }
-        if !(self.epsilon_fill_m.is_finite() && self.epsilon_fill_m > 0.0) {
-            return bad("epsilon_fill_m must be finite and positive");
+        if !(self.mfd_exponent.is_finite() && self.mfd_exponent > 0.0) {
+            return bad("mfd_exponent must be finite and positive");
+        }
+        if !(self.epsilon_fill_m.is_finite() && self.epsilon_fill_m >= 1.0e-9) {
+            // Below ~1e-9, hc + ε rounds back to hc on kilometre-scale
+            // terrain and priority-flood stops guaranteeing strict
+            // descent — stranding cells with no downslope neighbour.
+            return bad("epsilon_fill_m must be finite and at least 1e-9");
         }
         if !(self.base_depth_m.is_finite() && self.base_depth_m < self.sea_level_m) {
             return bad("base_depth_m must be below sea_level_m");

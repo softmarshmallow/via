@@ -112,6 +112,223 @@ pub fn merge_shallow_depressions(
     merged_depth_m
 }
 
+/// Weighted multiple-flow-direction graph (Freeman 1991; ADR 0005): every
+/// cell sends flow to each strictly lower D8 neighbour of the routing
+/// surface, weighted ∝ slope^p. CSR edges, donor lists, a topological
+/// order by routed height, and the max-weight channel tree, in one place.
+pub struct MfdGraph {
+    off: Vec<u32>,
+    to: Vec<u32>,
+    weight: Vec<f64>,
+    /// Along-edge distance in metres (parallel to `to`).
+    dist_m: Vec<f64>,
+    donor_off: Vec<u32>,
+    donor_list: Vec<u32>,
+    /// Cell indices sorted by (routed height, index) ascending: every
+    /// edge target appears before its source (receivers-first).
+    pub order: Vec<u32>,
+    /// Max-weight (= steepest; ties to lower index) receiver per cell,
+    /// self for base cells: the channel tree for statistics, extraction,
+    /// and the `receivers` artifact contract.
+    pub tree_receivers: Vec<u32>,
+}
+
+impl MfdGraph {
+    /// Pure Freeman MFD: every cell spreads.
+    pub fn build(grid: &Grid, h_route: &[f64], is_base: &[bool], exponent: f64) -> Self {
+        Self::build_inner(grid, h_route, is_base, exponent, None)
+    }
+
+    /// Hybrid routing (ADR 0005, amended): flow **converges once
+    /// channelized** (Holmgren 1994's area-dependent convergence, taken to
+    /// its binary limit at our existing fluvial threshold). Dry cells with
+    /// `discharge ≥ channel_min` keep only their steepest edge; hillslopes
+    /// and flooded cells spread. Pure MFD alone braids valley floors into
+    /// flat multi-thread sheets — measured: ε-flat channel cells 21 → 1228,
+    /// Horton Rb 3.2 → 5.9 at island8k.
+    pub fn build_hybrid(
+        grid: &Grid,
+        h_route: &[f64],
+        is_base: &[bool],
+        exponent: f64,
+        discharge: &[f64],
+        channel_min: f64,
+        flooded: &[bool],
+    ) -> Self {
+        Self::build_inner(
+            grid,
+            h_route,
+            is_base,
+            exponent,
+            Some((discharge, channel_min, flooded)),
+        )
+    }
+
+    fn build_inner(
+        grid: &Grid,
+        h_route: &[f64],
+        is_base: &[bool],
+        exponent: f64,
+        channels: Option<(&[f64], f64, &[bool])>,
+    ) -> Self {
+        let n = grid.n();
+        // Per-cell edge collection: pure function of the routed surface
+        // (and, for the hybrid, the first-pass discharge), parallel-safe.
+        let cell_edges: Vec<Vec<(u32, f64, f64)>> = (0..n as u32)
+            .into_par_iter()
+            .map(|i| {
+                if is_base[i as usize] {
+                    return Vec::new();
+                }
+                let hi = h_route[i as usize];
+                let mut edges: Vec<(u32, f64, f64)> = Vec::new();
+                grid.for_neighbors(i, |nb, fac| {
+                    let drop = hi - h_route[nb as usize];
+                    if drop > 0.0 {
+                        let dist = fac * grid.dx;
+                        edges.push((nb, (drop / dist).powf(exponent), dist));
+                    }
+                });
+                // A loud assert, not debug-only: a stranded cell would be a
+                // silent flux sink in release (discharge and sediment
+                // vanish, mass closure quietly holds because the sweep
+                // never sees the loss). Reachable if epsilon_fill_m is so
+                // small that hc + ε rounds back to hc on high terrain —
+                // config validation bounds ε away from that, and this is
+                // the backstop (CONTRIBUTING: fail loudly).
+                assert!(
+                    !edges.is_empty(),
+                    "non-base cell {i} has no downslope neighbour on the routed surface \
+                     (epsilon_fill_m too small for the terrain's height range?)"
+                );
+                let channelized = channels.is_some_and(|(q, q_min, flooded)| {
+                    q[i as usize] >= q_min && !flooded[i as usize]
+                });
+                if channelized {
+                    // Convergent: single steepest edge (max weight; ties to
+                    // the lower index, the project-wide tie policy).
+                    let mut best = 0usize;
+                    for k in 1..edges.len() {
+                        if edges[k].1 > edges[best].1
+                            || (edges[k].1 == edges[best].1 && edges[k].0 < edges[best].0)
+                        {
+                            best = k;
+                        }
+                    }
+                    let mut e = edges[best];
+                    e.1 = 1.0;
+                    return vec![e];
+                }
+                let sum: f64 = edges.iter().map(|e| e.1).sum();
+                debug_assert!(sum > 0.0, "cell {i} has zero total edge weight");
+                for e in &mut edges {
+                    e.1 /= sum;
+                }
+                edges
+            })
+            .collect();
+
+        let mut off = Vec::with_capacity(n + 1);
+        off.push(0u32);
+        let mut to = Vec::new();
+        let mut weight = Vec::new();
+        let mut dist_m = Vec::new();
+        for edges in &cell_edges {
+            for &(t, w, d) in edges {
+                to.push(t);
+                weight.push(w);
+                dist_m.push(d);
+            }
+            off.push(to.len() as u32);
+        }
+
+        // Donor CSR (reverse adjacency), ascending source order.
+        let mut donor_counts = vec![0u32; n + 1];
+        for &t in &to {
+            donor_counts[t as usize + 1] += 1;
+        }
+        for i in 1..=n {
+            donor_counts[i] += donor_counts[i - 1];
+        }
+        let donor_off = donor_counts;
+        let mut cursor = donor_off.clone();
+        let mut donor_list = vec![0u32; to.len()];
+        for (src, edges) in cell_edges.iter().enumerate() {
+            for &(t, _, _) in edges {
+                donor_list[cursor[t as usize] as usize] = src as u32;
+                cursor[t as usize] += 1;
+            }
+        }
+
+        // Topological order: every edge points to strictly lower routed
+        // height, so (height, index) ascending is receivers-first. The
+        // sort is a total order, hence deterministic under par_sort.
+        let mut order: Vec<u32> = (0..n as u32).collect();
+        order.par_sort_unstable_by_key(|&i| (f64_key(h_route[i as usize]), i));
+
+        // Channel tree: max weight, ties to the lower index (same policy
+        // as the M1 D8 receivers).
+        let tree_receivers: Vec<u32> = (0..n as u32)
+            .into_par_iter()
+            .map(|i| {
+                let iu = i as usize;
+                let (s, e) = (off[iu] as usize, off[iu + 1] as usize);
+                let mut best = i;
+                let mut best_w = 0.0f64;
+                for k in s..e {
+                    if weight[k] > best_w || (weight[k] == best_w && best != i && to[k] < best) {
+                        best_w = weight[k];
+                        best = to[k];
+                    }
+                }
+                best
+            })
+            .collect();
+
+        Self {
+            off,
+            to,
+            weight,
+            dist_m,
+            donor_off,
+            donor_list,
+            order,
+            tree_receivers,
+        }
+    }
+
+    /// Out-edges of `c`: (target, weight, distance in m).
+    #[inline]
+    pub fn edges(&self, c: u32) -> impl Iterator<Item = (u32, f64, f64)> + '_ {
+        let (s, e) = (
+            self.off[c as usize] as usize,
+            self.off[c as usize + 1] as usize,
+        );
+        (s..e).map(move |k| (self.to[k], self.weight[k], self.dist_m[k]))
+    }
+
+    /// MFD donors of `c` (cells with an edge into `c`).
+    #[inline]
+    pub fn donors(&self, c: u32) -> &[u32] {
+        &self.donor_list
+            [self.donor_off[c as usize] as usize..self.donor_off[c as usize + 1] as usize]
+    }
+}
+
+/// MFD discharge: each cell's weight plus all upstream flux, split along
+/// the out-edges. Sequential over the descending topological order
+/// (donors complete before their receivers); deterministic.
+pub fn accumulate_discharge_mfd(g: &MfdGraph, weight: &[f64]) -> Vec<f64> {
+    let mut q = weight.to_vec();
+    for &c in g.order.iter().rev() {
+        let qc = q[c as usize];
+        for (t, w, _) in g.edges(c) {
+            q[t as usize] += qc * w;
+        }
+    }
+    q
+}
+
 /// D8 steepest-descent receivers on `h`. Base cells receive themselves.
 /// Ties (bit-equal gradients) break toward the lower neighbour index.
 pub fn compute_receivers(grid: &Grid, h: &[f64], is_base: &[bool]) -> Vec<u32> {

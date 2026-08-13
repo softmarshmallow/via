@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use crate::climate::Wind;
 use crate::config::TerrainConfig;
-use crate::flow::DonorGraph;
+use crate::flow::{DonorGraph, MfdGraph};
 use crate::grid::Grid;
 use crate::sediment::FLOOD_EPS_M;
 
@@ -121,13 +121,22 @@ pub struct GateInputs<'a> {
     pub cfg: &'a TerrainConfig,
     pub h: &'a [f64],
     pub uplift: &'a [f64],
+    /// The channel tree (max-weight receivers); tree statistics live here.
     pub receivers: &'a [u32],
+    /// The full MFD graph — the residual's fluvial term must sum what
+    /// erosion actually applied over all out-edges (ADR 0005).
+    pub mfd: &'a MfdGraph,
     pub stack: &'a [u32],
     pub donors: &'a DonorGraph,
     pub area_cells: &'a [u64],
-    /// Precipitation-weighted accumulation in equivalent cells; the flow
-    /// metric erosion actually used.
+    /// Precipitation-weighted MFD accumulation in equivalent cells; the
+    /// flow metric erosion actually used. Physics gates regress on this.
     pub discharge_cells: &'a [f64],
+    /// The same weights accumulated along the channel tree — monotone
+    /// downstream, so river-membership thresholds are downstream-closed.
+    /// Extraction-flavoured gates (Hack subbasin membership) use this
+    /// (ADR 0005).
+    pub tree_discharge_cells: &'a [f64],
     pub precip: &'a [f64],
     pub wind: Wind,
     pub strahler: &'a [u32],
@@ -296,11 +305,29 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
     // the deposition rate comes from the diagnostic replay on the final
     // surface, so all three sinks/sources are measured the same way.
     let mut residuals: Vec<f64> = Vec::with_capacity(fluvial_idx.len());
-    for (k, &(a, s, u)) in fluvial.iter().enumerate() {
+    for (k, &(a, _s, u)) in fluvial.iter().enumerate() {
         if u > 0.0 {
-            let fluvial_term = inp.cfg.k_spl * a.sqrt() * s;
-            let diff_term = inp.cfg.kappa * laplacian(fluvial_idx[k]);
-            let dep_term = inp.deposition_rate_m_per_yr[fluvial_idx[k]];
+            let idx = fluvial_idx[k];
+            // The fluvial term as erosion applied it: K·√Q·Σ wᵢ·Sᵢ over
+            // the MFD out-edges, each graded to the surface it meets.
+            let mut s_weighted = 0.0f64;
+            for (r, w, dist) in inp.mfd.edges(idx as u32) {
+                let ru = r as usize;
+                let hr = if !inp.land[ru] {
+                    inp.h[ru].max(sea)
+                } else if inp.water_depth[ru] > FLOOD_EPS_M {
+                    inp.h[ru] + inp.water_depth[ru]
+                } else {
+                    inp.h[ru]
+                };
+                let s_edge = (inp.h[idx] - hr) / dist;
+                if s_edge > 0.0 {
+                    s_weighted += w * s_edge;
+                }
+            }
+            let fluvial_term = inp.cfg.k_spl * a.sqrt() * s_weighted;
+            let diff_term = inp.cfg.kappa * laplacian(idx);
+            let dep_term = inp.deposition_rate_m_per_yr[idx];
             residuals.push(((fluvial_term - diff_term - dep_term) / u - 1.0).abs());
         }
     }
@@ -314,7 +341,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
     let river_min_cells = inp.cfg.river_min_cells() as f64;
     let mut hack_all: Vec<(f64, f64)> = Vec::new(); // (A km², L km)
     for i in 0..n {
-        if !inp.land[i] || inp.discharge_cells[i] < river_min_cells {
+        if !inp.land[i] || inp.tree_discharge_cells[i] < river_min_cells {
             continue;
         }
         let l_km = inp.mainstream_m[i] / 1000.0;

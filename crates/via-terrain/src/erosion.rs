@@ -21,11 +21,13 @@ pub fn apply_uplift(h: &mut [f64], uplift: &[f64], dt: f64, floor_m: f64) {
         });
 }
 
-/// Braun & Willett (2013) implicit stream-power solve with n = 1, m = ½:
-/// walking the stack (receivers first), each cell's new elevation is the
-/// closed-form solution of
-///   h⁺ = (h + F·h_rcv⁺) / (1 + F),   F = K·√(A)·dt / L,
-/// which relaxes h toward its (already-updated) receiver.
+/// Braun & Willett (2013) implicit stream-power solve with n = 1, m = ½,
+/// generalized over the MFD DAG (ADR 0005): walking the topological order
+/// (receivers first), each cell's new elevation is the closed form
+///   h⁺ = (h + Σᵢ cᵢ·hrᵢ⁺) / (1 + Σᵢ cᵢ),   cᵢ = K·√Q·dt·wᵢ / distᵢ,
+/// which relaxes h toward the weight-blend of its (already-updated)
+/// receivers. One out-edge reduces this exactly to the single-receiver
+/// update.
 ///
 /// Standing water (ADR 0004): `flooded` and `water_level` are frozen from
 /// the pre-erosion state of the step. The mask MUST be static — deciding
@@ -45,8 +47,7 @@ pub fn apply_uplift(h: &mut [f64], uplift: &[f64], dt: f64, floor_m: f64) {
 pub fn erode_stream_power(
     grid: &Grid,
     h: &mut [f64],
-    receivers: &[u32],
-    stack: &[u32],
+    mfd: &crate::flow::MfdGraph,
     discharge_cells: &[f64],
     is_base: &[bool],
     flooded: &[bool],
@@ -56,29 +57,32 @@ pub fn erode_stream_power(
     sea_level: f64,
 ) -> Vec<f64> {
     let mut detached = vec![0.0f64; h.len()];
-    for &i in stack {
+    for &i in &mfd.order {
         let iu = i as usize;
-        let r = receivers[iu];
-        if r == i {
+        if is_base[iu] || flooded[iu] {
             continue;
         }
-        if flooded[iu] {
-            continue;
-        }
-        let ru = r as usize;
-        let sqrt_a_m = grid.dx * discharge_cells[iu].sqrt();
-        let dist = grid.step_dist_m(i, r);
-        let f = k_spl * sqrt_a_m * dt / dist;
-        let hr = if is_base[ru] {
-            h[ru].max(sea_level)
-        } else if flooded[ru] {
-            water_level[ru]
-        } else {
-            h[ru]
-        };
+        let sqrt_q_m = grid.dx * discharge_cells[iu].sqrt();
         let hi = h[iu];
-        if hi > hr {
-            let hn = (hi + f * hr) / (1.0 + f);
+        let mut num = hi;
+        let mut den = 1.0f64;
+        for (r, w, dist) in mfd.edges(i) {
+            let ru = r as usize;
+            let hr = if is_base[ru] {
+                h[ru].max(sea_level)
+            } else if flooded[ru] {
+                water_level[ru]
+            } else {
+                h[ru]
+            };
+            if hi > hr {
+                let c = k_spl * sqrt_q_m * dt * w / dist;
+                num += c * hr;
+                den += c;
+            }
+        }
+        if den > 1.0 {
+            let hn = num / den;
             detached[iu] = hi - hn;
             h[iu] = hn;
         }

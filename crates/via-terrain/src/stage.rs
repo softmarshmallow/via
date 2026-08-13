@@ -148,15 +148,25 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         // terrain↔precipitation loop.
         let precip = climate::compute_precipitation(cfg, &grid, &h_route, wind);
         let weights = weights_of(&precip);
-        let receivers = flow::compute_receivers(&grid, &h_route, &is_base);
-        let donors = DonorGraph::build(&receivers);
-        let stack = flow::build_stack(&receivers, &donors);
-        let discharge = flow::accumulate_discharge(&receivers, &stack, &weights);
+        // Two-pass routing: the pure-MFD pass finds where water
+        // concentrates, the hybrid pass converges those channels while
+        // hillslopes and standing water keep spreading (ADR 0005).
+        let mfd0 = flow::MfdGraph::build(&grid, &h_route, &is_base, cfg.mfd_exponent);
+        let q0 = flow::accumulate_discharge_mfd(&mfd0, &weights);
+        let mfd = flow::MfdGraph::build_hybrid(
+            &grid,
+            &h_route,
+            &is_base,
+            cfg.mfd_exponent,
+            &q0,
+            fluvial_min_cells,
+            &flooded,
+        );
+        let discharge = flow::accumulate_discharge_mfd(&mfd, &weights);
         let detached = erosion::erode_stream_power(
             &grid,
             &mut h,
-            &receivers,
-            &stack,
+            &mfd,
             &discharge,
             &is_base,
             &flooded,
@@ -174,9 +184,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             &grid,
             &mut h,
             &mut sediment_m,
-            &receivers,
-            &stack,
-            &donors,
+            &mfd,
             &discharge,
             &is_base,
             &flooded,
@@ -217,18 +225,45 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     let precip = climate::compute_precipitation(cfg, &grid, &h_route, wind);
     let temperature = climate::compute_temperature(cfg, &grid, &h_route);
     let weights = weights_of(&precip);
-    let receivers = flow::compute_receivers(&grid, &h_route, &is_base);
+    let flooded_final: Vec<bool> = water_depth_m
+        .iter()
+        .map(|&wd| wd > sediment::FLOOD_EPS_M)
+        .collect();
+    let mfd0 = flow::MfdGraph::build(&grid, &h_route, &is_base, cfg.mfd_exponent);
+    let q0 = flow::accumulate_discharge_mfd(&mfd0, &weights);
+    let mfd = flow::MfdGraph::build_hybrid(
+        &grid,
+        &h_route,
+        &is_base,
+        cfg.mfd_exponent,
+        &q0,
+        fluvial_min_cells,
+        &flooded_final,
+    );
+    let discharge_cells = flow::accumulate_discharge_mfd(&mfd, &weights);
+    // The channel tree (max-weight receiver): statistics, extraction, and
+    // the `receivers` artifact contract (self-receiver = ocean) all live
+    // on the tree; the MFD field carries the water (ADR 0005).
+    let receivers = mfd.tree_receivers.clone();
     let donors = DonorGraph::build(&receivers);
     let stack = flow::build_stack(&receivers, &donors);
     let area_cells = flow::accumulate_area(&receivers, &stack);
-    let discharge_cells = flow::accumulate_discharge(&receivers, &stack, &weights);
     let land: Vec<bool> = is_base.iter().map(|&b| !b).collect();
+    // River extraction thresholds against the TREE-accumulated flux, not
+    // the MFD field: MFD flux is not monotone along the tree (spreading
+    // cells pass only their max-weight share down it), so thresholding it
+    // breaks Strahler streams mid-channel and re-births them downstream
+    // as phantom order-1 heads (measured: 27 breaks at island8k, 6 at
+    // research, contaminating the Horton population). Tree flux is
+    // monotone by construction, restoring the downstream-closure
+    // invariant the extraction and gates machinery assumes (ADR 0005).
+    let tree_discharge = flow::accumulate_discharge(&receivers, &stack, &weights);
     let strahler = extract::strahler_orders(
         &receivers,
         &stack,
         &donors,
         &land,
-        &discharge_cells,
+        &tree_discharge,
         cfg.river_min_cells() as f64,
     );
     let basin = extract::label_basins(&receivers, &stack);
@@ -239,20 +274,16 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     // copies: the per-cell deposition rate the residual gate needs. The
     // real state is not touched.
     let deposition_rate_m_per_yr: Vec<f64> = {
-        let flooded: Vec<bool> = water_depth_m
-            .iter()
-            .map(|&wd| wd > sediment::FLOOD_EPS_M)
-            .collect();
+        let flooded = &flooded_final;
         let mut h_diag = h.clone();
         let mut sed_diag = sediment_m.clone();
         let detached = erosion::erode_stream_power(
             &grid,
             &mut h_diag,
-            &receivers,
-            &stack,
+            &mfd,
             &discharge_cells,
             &is_base,
-            &flooded,
+            flooded,
             &h_route,
             cfg.k_spl,
             cfg.dt_years,
@@ -262,12 +293,10 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             &grid,
             &mut h_diag,
             &mut sed_diag,
-            &receivers,
-            &stack,
-            &donors,
+            &mfd,
             &discharge_cells,
             &is_base,
-            &flooded,
+            flooded,
             &h_route,
             &detached,
             cfg.g_deposition,
@@ -287,10 +316,12 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         h: &h,
         uplift: &uplift,
         receivers: &receivers,
+        mfd: &mfd,
         stack: &stack,
         donors: &donors,
         area_cells: &area_cells,
         discharge_cells: &discharge_cells,
+        tree_discharge_cells: &tree_discharge,
         precip: &precip,
         wind,
         strahler: &strahler,

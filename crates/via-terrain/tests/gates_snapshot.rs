@@ -5,10 +5,13 @@ use via_terrain::{run, TerrainConfig};
 
 /// The fitted gate values pass through libm transcendentals whose last ulp
 /// may differ across platforms; rounding to 10 significant digits keeps the
-/// snapshot portable while still catching real drift. The kernel itself
-/// carries one libm call (the climate EMA's `exp`, a per-run constant);
-/// perturbing it by ±1 ulp was verified not to change any artifact hash —
-/// integer routing decisions and f32/cm quantization absorb it.
+/// snapshot portable while still catching real drift. Since M3.5 the
+/// kernel itself calls libm per edge (`powf` in the MFD weights), so
+/// cross-PLATFORM bitwise identity of artifact hashes is no longer
+/// claimed — the determinism contract is per-platform (thread-count
+/// invariance, tests/determinism.rs) plus this rounded snapshot. The
+/// M2-era ±1 ulp probe (climate `exp`, a per-run constant) predates the
+/// per-edge call and no longer covers the kernel.
 fn round_floats(v: &mut serde_json::Value) {
     match v {
         serde_json::Value::Number(n) => {
