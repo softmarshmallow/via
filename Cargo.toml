@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/via-artifact",
+    "crates/via-ecology",
+    "crates/via-suitability",
+    "crates/via-terrain",
+    "crates/via-viz",
+    "crates/via",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+rayon = "1.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+blake3 = "1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+insta = { version = "1", features = ["json"] }
+
+via-artifact = { path = "crates/via-artifact" }
+via-ecology = { path = "crates/via-ecology" }
+via-suitability = { path = "crates/via-suitability" }
+via-terrain = { path = "crates/via-terrain" }
+via-viz = { path = "crates/via-viz" }
+
+[profile.release]
+debug = true
+
+[profile.dev]
+opt-level = 2
