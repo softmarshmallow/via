@@ -18,6 +18,8 @@ Early project. This file records the decisions that are **settled**, so they are
 
 **Fixed-point coordinates.** Integer centimetres internally; floats at the boundaries only.
 
+**No AI inside the engine.** Every stage is a deterministic, citable process model — no learned models in the simulation loop, no AI-generated data as a pipeline input or artifact. A model that cannot cite its process cannot be assigned an epistemic tier (ADR 0003), and learned weights break the determinism contract's explainability. AI is welcome *outside* the boundary: analysis tooling, studying the recorded limitations in docs/faq/, and downstream consumers of exported artifacts.
+
 ## Working
 
 - `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test` clean before a PR.
@@ -30,3 +32,4 @@ Early project. This file records the decisions that are **settled**, so they are
 Epoch model, export target. Raise a discussion before building on an assumption about any of these.
 
 Artifact format and crate layout were settled in [ADR 0001](docs/adr/0001-crate-layout-and-artifact-format.md).
+Recurring design questions and known limitations are tracked in [docs/faq/](docs/faq/README.md).

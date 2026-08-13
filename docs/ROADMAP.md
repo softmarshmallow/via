@@ -103,3 +103,14 @@ via module's claim; via ships mixture-weight spectra per biome at most.
   inflation at 200 m cells).
 - Geomorphons (Jasiewicz & Stepinski 2013) as a descriptive landform grammar,
   any time — useful for QA and downstream consumers alike.
+- **River-corridor meander stage** (kinematic centerline migration, Howard
+  & Knutson 1984 lineage): a downstream stage over extracted river
+  corridors, licensed by timescale separation (meanders 10²–10⁴ yr vs
+  terrain 10⁶⁺). Oxbow lakes, cutoffs, scroll bars, and levees emerge into
+  the existing water-depth/sediment spectra. Natural slot: after M6,
+  before M7 sharpens it. (FAQ 0005.)
+- **Evaporative lake water balance**: terminal/endorheic lakes and salt
+  flats — today every lake spills to the sea because routed water never
+  evaporates. Core routing upgrade. (FAQ 0004.)
+- Irregular (Voronoi) mesh — the complete cure for residual grid flavor in
+  channel courses (ADR 0005 keeps it deferred to the M7 era).
