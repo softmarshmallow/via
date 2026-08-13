@@ -64,11 +64,20 @@ the 1e-9 core gate is unchanged.
 
 ## What changes
 
-- **The dt limit dies.** The splitting oscillation was between the two
-  sweeps; iterating them to a fixed point removes it. The research
-  preset returns to its M2 calibration (dt = 1e5 yr, 400 steps),
-  validated by gates, in a separate commit from the scheme migration so
-  each is auditable alone.
+- **The catastrophic dt failure dies; a milder dt limit survives.**
+  The explicit splitting oscillation (ADR 0004: dt = 1e5 diverged to
+  20 km peaks) is gone — at dt = 1e5 the fixed point converges (14
+  iterations) and fails gates gracefully instead (θ 0.397, residual
+  0.367). But the hoped-for dt restoration **failed its validation**:
+  a matched 30 Myr study (dt 1e4 / 2e4 / 5e4 → mean sediment blanket
+  1.37 / 2.62 / 6.04 m, residual median 0.047 / 0.089 / 0.200, lake
+  cells 40 / 87 / 96) shows no dt-convergence plateau. The binding
+  limit was never the oscillation alone: routing, climate, and the
+  flooded mask are frozen per step, so the standing blanket scales
+  with the per-step deposit lump — a first-order splitting error of
+  the *outer* loop that no in-step solver can remove. The research
+  preset keeps dt = 1e4 / 3000 steps. The future cure is a
+  within-step topology refresh (ledgered), not a bigger solver.
 - **The donor-floor cap (`DONOR_MARGIN_M`) is dropped.** It protected a
   single mutating pass that no longer exists. If converged deposition
   fills a reach above a donor, that is real aggradation; the next step's
@@ -102,7 +111,12 @@ the 1e-9 core gate is unchanged.
 ## Consequences
 
 - Per-step cost rises (typically a handful of sweep pairs instead of
-  one), repaid ~10× by the dt restoration at research scale.
+  one) and is **not** repaid by a larger dt — the restoration failed
+  validation (above). Net wall cost: +33% research, +26% island8k.
+  The migration stands on its other merits: the correct simultaneous
+  in-step solution (residual median 0.053 → 0.047 at unchanged dt),
+  graceful degradation where the old scheme exploded, and the M4
+  K-contrast vehicle.
 - **Measured at migration** (both scales, dt unchanged, all core gates
   pass): worst-case Gauss–Seidel count 6 (island8k) / 7 (research);
   wall time +26% / +33%. Dropping the donor-floor cap releases real

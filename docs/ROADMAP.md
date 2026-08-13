@@ -101,6 +101,12 @@ via module's claim; via ships mixture-weight spectra per biome at most.
   progradation.
 - Research-preset dt/κ retune (residual currently carries mild splitting
   inflation at 200 m cells).
+- **Within-step topology refresh**: re-route / re-flood between solver
+  iterations. ADR 0006's dt study measured a first-order outer-loop
+  splitting error (the sediment blanket scales with the per-step deposit
+  lump because routing, climate, and the flooded mask are frozen per
+  step); refreshing topology inside the step is the cure the implicit
+  solver alone cannot provide. Expensive — graph rebuild per iteration.
 - Geomorphons (Jasiewicz & Stepinski 2013) as a descriptive landform grammar,
   any time — useful for QA and downstream consumers alike.
 - **River-corridor meander stage** (kinematic centerline migration, Howard

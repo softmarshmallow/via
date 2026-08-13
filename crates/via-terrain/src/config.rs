@@ -71,10 +71,15 @@ impl Default for TerrainConfig {
             seed: 42,
             size: 512,
             cell_size_m: 200.0,
-            // The explicit deposition pass bounds dt: G·U·dt must stay
-            // small against valley relief or the erode/deposit splitting
-            // oscillates (ADR 0004). 1e5 was stable for pure detachment;
-            // with G = 1 it diverges.
+            // dt is bounded by per-step topology freezing, not by the
+            // solver: routing, climate, and the flooded mask are frozen
+            // within a step, so the standing sediment blanket scales with
+            // the per-step deposit lump (measured at 30 Myr: mean blanket
+            // 1.4 / 2.6 / 6.0 m at dt 1e4 / 2e4 / 5e4 — no convergence
+            // plateau; ADR 0006). The implicit solve removed the explosive
+            // splitting oscillation of ADR 0004, so larger dt now degrades
+            // gracefully instead of diverging — but the research preset
+            // keeps dt at its accuracy limit.
             dt_years: 1.0e4,
             steps: 3000,
             // K keeps its M2 calibration: deposition acts only on the

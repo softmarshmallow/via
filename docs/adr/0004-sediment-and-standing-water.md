@@ -1,6 +1,9 @@
 # ADR 0004 — Sediment and standing water (M3)
 
-Status: accepted (2026-08-13)
+Status: accepted (2026-08-13); numerics amended by ADR 0006 (the
+explicit deposition sweep and its dt limit and donor-floor cap are
+replaced by the implicit Gauss–Seidel fixed point — the physics
+contract here is unchanged)
 Scope: replaces the two known fakes in the terrain substrate — ε-fill
 plains (detachment-limited SPL never deposits) and the absence of lakes
 (depressions were erased into flat fills). After M3 the surface is
