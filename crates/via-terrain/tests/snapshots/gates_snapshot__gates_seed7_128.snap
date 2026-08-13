@@ -9,6 +9,8 @@ expression: gates
     "basin": "2c66fec9f3cfbeb1c17dbf7921bd50600da365ad86dcb249045de4bd07d7e17c",
     "discharge": "69baf5a7439853bedd6a35e1d866592b41ed03c995748574c0fbd88886cb1dbf",
     "heights_cm": "b032beb9101f3fd2de04dcd6252b17219ebb3f8b245e9f259aed40943dd28ce6",
+    "karst_potential": "b151b9ea8d0113c36464d779652548b2bc7f53ca9a7e1dcb9d6877ad5aa53512",
+    "lithology": "67a29cc36dd93cc41b3b48efaf4f6820b1c35813aa689329369cdb78f57ebf81",
     "precip": "c1e4fcb2dd44481885565c4b802d974e21bfde9db7afe65ade5198b766db7d53",
     "receivers": "9f760609be8bce596cb7b513c11301a6e115745480fc57c6b51ae24d4b826d78",
     "sediment": "812ede0f0f0cf75473ccece929728e7f7f532fe60c1e29fc87d432eaee0c7b2e",
@@ -89,6 +91,7 @@ expression: gates
   },
   "sediment_mean_land_m": 0.2527509738,
   "slope_area_flat_cells_excluded": 0,
+  "slope_area_modal_unit": 0,
   "slope_area_n_cells": 26,
   "slope_area_r2": 0.7129829639,
   "slope_area_theta": {
@@ -105,6 +108,8 @@ expression: gates
     "pass": true,
     "value": 0.2528037759
   },
+  "unit_spl_consistency": null,
+  "unit_spl_units": 1,
   "wind": [
     0,
     1

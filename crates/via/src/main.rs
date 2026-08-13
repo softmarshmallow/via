@@ -200,6 +200,40 @@ fn run_terrain(args: TerrainArgs) -> Result<()> {
         ],
     )
     .save(render_dir.join("water_depth.png"))?;
+    // M4 panels (ADR 0007), only when the column is non-trivial: exposed
+    // unit (categorical — every cell sits exactly on an integer stop) and
+    // the karst-potential spectrum when any unit is soluble.
+    if cfg.lithology.units.len() > 1 {
+        const LITH_COLORS: [[u8; 3]; 8] = [
+            [225, 213, 189],
+            [166, 118, 90],
+            [116, 158, 189],
+            [186, 179, 100],
+            [140, 102, 152],
+            [104, 152, 112],
+            [204, 140, 158],
+            [96, 112, 132],
+        ];
+        let unit_f: Vec<f64> = out.lithology_unit.iter().map(|&u| u as f64).collect();
+        let stops: Vec<(f64, [u8; 3])> = (0..cfg.lithology.units.len())
+            .map(|k| (k as f64, LITH_COLORS[k % LITH_COLORS.len()]))
+            .collect();
+        via_viz::render_scalar(&inp, &unit_f, &stops).save(render_dir.join("lithology.png"))?;
+    }
+    let karst_max = out.karst_potential.iter().copied().fold(0.0f64, f64::max);
+    if karst_max > 0.0 {
+        via_viz::render_scalar(
+            &inp,
+            &out.karst_potential,
+            &[
+                (0.0, [238, 236, 230]),
+                (karst_max * 0.02, [200, 190, 214]),
+                (karst_max * 0.2, [150, 120, 180]),
+                (karst_max, [84, 44, 130]),
+            ],
+        )
+        .save(render_dir.join("karst_potential.png"))?;
+    }
     println!(
         "  simulation {:.1}s, render {:.1}s → {}",
         sim_ms as f64 / 1000.0,
@@ -305,6 +339,19 @@ fn run_terrain(args: TerrainArgs) -> Result<()> {
             &format!("   (wind [{}, {}])", g.wind.0, g.wind.1),
         )
     );
+    if let Some(gate) = &g.unit_spl_consistency {
+        println!(
+            "{}",
+            gate_line(
+                "unit SPL consistency",
+                gate,
+                &format!(
+                    "   ({} units; θ fit on unit {})",
+                    g.unit_spl_units, g.slope_area_modal_unit
+                ),
+            )
+        );
+    }
     println!(
         "  land fraction          {:>10.4}\n  max elevation          {:>8.1} m\n  interior water cells   {:>7}",
         g.land_fraction, g.max_elevation_m, g.interior_water_cells

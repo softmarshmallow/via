@@ -51,6 +51,9 @@ pub struct GatesReport {
     pub slope_area_theta: Gate,
     pub slope_area_r2: f64,
     pub slope_area_n_cells: u64,
+    /// The exposed unit the regression was restricted to (ADR 0007);
+    /// 0 on homogeneous substrates.
+    pub slope_area_modal_unit: u32,
     /// Fluvial cells excluded from the regression as ε-fill flats
     /// (S below the slope floor), as on real DEMs.
     pub slope_area_flat_cells_excluded: u64,
@@ -95,6 +98,14 @@ pub struct GatesReport {
     /// slope: floodplains should lie flatter than the channels feeding them.
     /// None when the run built no floodplains to measure.
     pub floodplain_slope_ratio: Option<Gate>,
+    /// max/min across exposed units of the per-unit median steady-state
+    /// balance (K√Q·S − κ∇²h − D)/U — unit-independent near 1 when each
+    /// unit obeys the incision law it was evolved under (ADR 0007,
+    /// advisory). None when fewer than two units carry enough fluvial
+    /// cells.
+    pub unit_spl_consistency: Option<Gate>,
+    /// Units that qualified for the consistency measurement.
+    pub unit_spl_units: u32,
     pub wind: (i32, i32),
     pub land_fraction: f64,
     pub max_elevation_m: f64,
@@ -152,6 +163,13 @@ pub struct GateInputs<'a> {
     /// Deposition rate (m/yr) from the diagnostic replay of one step on the
     /// final surface; the residual balance needs it.
     pub deposition_rate_m_per_yr: &'a [f64],
+    /// Per-cell erodibility on the final surface (ADR 0007): the residual
+    /// must test each cell against the K it actually eroded with.
+    pub k_cell: &'a [f64],
+    /// Per-cell hillslope diffusivity on the final surface.
+    pub kappa_cell: &'a [f64],
+    /// Exposed stratigraphic unit per cell on the final surface.
+    pub exposed_unit: &'a [u32],
     pub run_detached_m3: f64,
     pub run_deposited_m3: f64,
     pub run_exported_m3: f64,
@@ -271,11 +289,29 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         .filter(|&u| u > 0.0)
         .collect();
     let u_median = median(&mut uplifts);
+    // With layered K a single log-log regression across units measures
+    // the column, not the incision law: the fit restricts to the modal
+    // exposed unit (ADR 0007). Homogeneous runs have one unit and the
+    // restriction is a no-op — bitwise-identical samples.
+    let mut unit_counts: BTreeMap<u32, u64> = BTreeMap::new();
+    for &idx in &fluvial_idx {
+        *unit_counts.entry(inp.exposed_unit[idx]).or_insert(0) += 1;
+    }
+    let modal_unit = unit_counts
+        .iter()
+        .max_by_key(|&(u, &c)| (c, std::cmp::Reverse(*u)))
+        .map(|(&u, _)| u)
+        .unwrap_or(0);
     let sa_points: Vec<(f64, f64)> = match u_median {
         Some(um) => fluvial
             .iter()
-            .filter(|&&(_, _, u)| u >= UPLIFT_BAND.0 * um && u <= UPLIFT_BAND.1 * um)
-            .map(|&(a, s, _)| (a.log10(), s.log10()))
+            .zip(fluvial_idx.iter())
+            .filter(|&(&(_, _, u), &idx)| {
+                u >= UPLIFT_BAND.0 * um
+                    && u <= UPLIFT_BAND.1 * um
+                    && inp.exposed_unit[idx] == modal_unit
+            })
+            .map(|(&(a, s, _), _)| (a.log10(), s.log10()))
             .collect(),
         None => Vec::new(),
     };
@@ -305,6 +341,10 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
     // the deposition rate comes from the diagnostic replay on the final
     // surface, so all three sinks/sources are measured the same way.
     let mut residuals: Vec<f64> = Vec::with_capacity(fluvial_idx.len());
+    // Per-unit steady-state balances for the advisory consistency gate
+    // (ADR 0007): each unit's median of (K√Q·S − κ∇²h − D)/U should be a
+    // unit-independent constant near 1.
+    let mut unit_balance: BTreeMap<u32, Vec<f64>> = BTreeMap::new();
     for (k, &(a, _s, u)) in fluvial.iter().enumerate() {
         if u > 0.0 {
             let idx = fluvial_idx[k];
@@ -325,13 +365,43 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
                     s_weighted += w * s_edge;
                 }
             }
-            let fluvial_term = inp.cfg.k_spl * a.sqrt() * s_weighted;
-            let diff_term = inp.cfg.kappa * laplacian(idx);
+            let fluvial_term = inp.k_cell[idx] * a.sqrt() * s_weighted;
+            let diff_term = inp.kappa_cell[idx] * laplacian(idx);
             let dep_term = inp.deposition_rate_m_per_yr[idx];
-            residuals.push(((fluvial_term - diff_term - dep_term) / u - 1.0).abs());
+            let balance = (fluvial_term - diff_term - dep_term) / u;
+            residuals.push((balance - 1.0).abs());
+            unit_balance
+                .entry(inp.exposed_unit[idx])
+                .or_default()
+                .push(balance);
         }
     }
     let spl_residual = median(&mut residuals).unwrap_or(f64::NAN);
+
+    // Advisory unit consistency: reported only when at least two units
+    // carry enough fluvial cells to give a stable median. Transient
+    // knickzones crossing contacts legitimately deviate — that is why it
+    // is advisory (ADR 0007).
+    const UNIT_MIN_CELLS: usize = 50;
+    let mut unit_medians: Vec<f64> = Vec::new();
+    for v in unit_balance.values_mut() {
+        if v.len() >= UNIT_MIN_CELLS {
+            if let Some(m) = median(v) {
+                unit_medians.push(m);
+            }
+        }
+    }
+    let unit_spl_units = unit_medians.len() as u32;
+    let unit_spl_consistency = if unit_medians.len() >= 2 {
+        let mx = unit_medians
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+        let mn = unit_medians.iter().copied().fold(f64::INFINITY, f64::min);
+        (mn > 0.0).then(|| Gate::new(mx / mn, 1.0, 2.0, true))
+    } else {
+        None
+    };
 
     // --- Hack's law over subbasins ---------------------------------------
     // Every river cell defines a subbasin; fitting across all of them spans
@@ -639,6 +709,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         slope_area_theta: Gate::new(theta, 0.40, 0.60, false),
         slope_area_r2: sa_r2,
         slope_area_n_cells: sa_n,
+        slope_area_modal_unit: modal_unit,
         slope_area_flat_cells_excluded: flat_excluded,
         // Core, not advisory: this is the tripwire for operator-splitting
         // violations (ADR 0002) — a config whose dt breaks the κ∇²h·dt ≲
@@ -663,6 +734,8 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         lake_level_spread_m: Gate::new(lake_spread, 0.0, 0.05, false),
         lake_cells,
         floodplain_slope_ratio,
+        unit_spl_consistency,
+        unit_spl_units,
         wind: (inp.wind.dx, inp.wind.dy),
         land_fraction,
         max_elevation_m: h_max,

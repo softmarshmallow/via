@@ -18,6 +18,7 @@ use crate::fields;
 use crate::flow::{self, DonorGraph};
 use crate::gates::{self, GateSamples, GatesReport};
 use crate::grid::Grid;
+use crate::lithology::Stratigraphy;
 use crate::sediment;
 
 pub struct TerrainOutput {
@@ -37,6 +38,10 @@ pub struct TerrainOutput {
     pub water_depth_m: Vec<f64>,
     /// Sediment thickness (m); bedrock = heights − sediment.
     pub sediment_m: Vec<f64>,
+    /// Exposed stratigraphic unit index on the final surface (ADR 0007).
+    pub lithology_unit: Vec<u32>,
+    /// Solubility of the exposed unit × discharge — the karst spectrum.
+    pub karst_potential: Vec<f64>,
     pub wind: (i32, i32),
     pub strahler: Vec<u32>,
     pub basin: Vec<u32>,
@@ -107,6 +112,25 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     let mut h = fields::initial_heights(cfg, &grid);
     let mut sediment_m = vec![0.0f64; grid.n()];
     let mut h_prev = vec![0.0f64; grid.n()];
+    // Lithology (ADR 0007): static structural field, exact applied-uplift
+    // bookkeeping for the material-frame lookup, and the uniform-κ fast
+    // path that keeps homogeneous runs on the pre-M4 code path bitwise.
+    let strat = Stratigraphy::build(&cfg.lithology, &grid);
+    let mut cum_uplift = vec![0.0f64; grid.n()];
+    let uniform_kappa = cfg.lithology.uniform_kappa_mult();
+    let k_cell_of = |exposed: &[u32], sediment_m: &[f64]| -> Vec<f64> {
+        exposed
+            .par_iter()
+            .zip(sediment_m.par_iter())
+            .map(|(&u, &s)| {
+                if s > cfg.lithology.sediment_cover_min_m {
+                    cfg.k_spl * cfg.lithology.sediment_k_mult
+                } else {
+                    cfg.k_spl * strat.k_mult(u)
+                }
+            })
+            .collect()
+    };
     let mut convergence = Vec::with_capacity(cfg.steps as usize);
     // Whole-run sediment budget; the mass-closure gate audits these. The
     // shallow-pond merge is a declared mass source and is metered alongside.
@@ -128,7 +152,13 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
 
     for step in 0..cfg.steps {
         h_prev.copy_from_slice(&h);
-        erosion::apply_uplift(&mut h, &uplift, cfg.dt_years, cfg.base_depth_m);
+        erosion::apply_uplift(
+            &mut h,
+            &uplift,
+            cfg.dt_years,
+            cfg.base_depth_m,
+            &mut cum_uplift,
+        );
         enforce_border(&grid, &mut h, &mut sediment_m, cfg.base_depth_m);
         let is_base = ocean_mask(&grid, &h, cfg.sea_level_m);
         // Flow is routed on the flooded copy; the true surface keeps its
@@ -171,6 +201,10 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             &flooded,
         );
         let discharge = flow::accumulate_discharge_mfd(&mfd, &weights);
+        // Frozen per-step lithology exposure (ADR 0007), looked up on the
+        // post-uplift starting surface — same timing as the flooded mask.
+        let exposed = strat.exposure(&h, &sediment_m, &cum_uplift);
+        let k_cell = k_cell_of(&exposed, &sediment_m);
         let solved = sediment::solve_implicit(
             &grid,
             &mut h,
@@ -179,7 +213,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             &is_base,
             &flooded,
             &h_route,
-            cfg.k_spl,
+            &k_cell,
             cfg.g_deposition,
             cfg.dt_years,
             fluvial_min_cells,
@@ -202,9 +236,19 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         run_exp += solved.exported_m3;
         gs_iter_max = gs_iter_max.max(solved.iterations);
         // Hillslope diffusion moves colluvium: falling cells shed sediment
-        // first, rising cells gain it.
+        // first, rising cells gain it. Uniform κ takes the pre-M4 path
+        // unchanged (bitwise); per-unit κ takes the flux form (ADR 0007).
         let h_before_diff = h.clone();
-        erosion::diffuse(&grid, &mut h, &is_base, cfg.kappa, cfg.dt_years);
+        match uniform_kappa {
+            Some(m) => erosion::diffuse(&grid, &mut h, &is_base, cfg.kappa * m, cfg.dt_years),
+            None => {
+                let kappa_cell: Vec<f64> = exposed
+                    .par_iter()
+                    .map(|&u| cfg.kappa * strat.kappa_mult(u))
+                    .collect();
+                erosion::diffuse_variable(&grid, &mut h, &is_base, &kappa_cell, cfg.dt_years);
+            }
+        }
         sediment_m
             .par_iter_mut()
             .zip(h.par_iter())
@@ -278,6 +322,21 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     let dist_m = extract::flow_distance_m(&grid, &receivers, &stack);
     let mainstream_m = extract::mainstream_length_m(&receivers, &stack, &dist_m);
 
+    // Final-surface lithology: the exposed-unit artifact, the karst
+    // spectrum, and the per-cell K/κ the replay and gates evaluate
+    // against (ADR 0007).
+    let exposed_final = strat.exposure(&h, &sediment_m, &cum_uplift);
+    let karst_potential: Vec<f64> = exposed_final
+        .par_iter()
+        .zip(discharge_cells.par_iter())
+        .map(|(&u, &q)| strat.solubility(u) * q)
+        .collect();
+    let k_cell_final = k_cell_of(&exposed_final, &sediment_m);
+    let kappa_cell_final: Vec<f64> = exposed_final
+        .par_iter()
+        .map(|&u| cfg.kappa * strat.kappa_mult(u))
+        .collect();
+
     // Diagnostic replay of one step's coupled solve on a scratch copy:
     // the per-cell deposition rate the residual gate needs. The real
     // state is not touched.
@@ -291,7 +350,7 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
             &is_base,
             &flooded_final,
             &h_route,
-            cfg.k_spl,
+            &k_cell_final,
             cfg.g_deposition,
             cfg.dt_years,
             fluvial_min_cells,
@@ -326,6 +385,9 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         water_depth: &water_depth_m,
         sediment_m: &sediment_m,
         deposition_rate_m_per_yr: &deposition_rate_m_per_yr,
+        k_cell: &k_cell_final,
+        kappa_cell: &kappa_cell_final,
+        exposed_unit: &exposed_final,
         run_detached_m3: run_det,
         run_deposited_m3: run_dep,
         run_exported_m3: run_exp,
@@ -344,6 +406,8 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         temperature_c: temperature,
         water_depth_m,
         sediment_m,
+        lithology_unit: exposed_final,
+        karst_potential,
         wind: (wind.dx, wind.dy),
         strahler,
         basin,
@@ -426,6 +490,19 @@ pub fn raster_sediment(o: &TerrainOutput) -> Raster<f32> {
     f32_raster(o, &o.sediment_m)
 }
 
+pub fn raster_lithology(o: &TerrainOutput) -> Raster<u32> {
+    Raster::from_data(
+        o.grid.w,
+        o.grid.h,
+        cell_size_cm(&o.cfg),
+        o.lithology_unit.clone(),
+    )
+}
+
+pub fn raster_karst(o: &TerrainOutput) -> Raster<f32> {
+    f32_raster(o, &o.karst_potential)
+}
+
 /// blake3 of every artifact raster — the determinism witness recorded in
 /// both gates.json and the manifest.
 pub fn artifact_hashes(o: &TerrainOutput) -> BTreeMap<String, String> {
@@ -441,6 +518,8 @@ pub fn artifact_hashes(o: &TerrainOutput) -> BTreeMap<String, String> {
     m.insert("discharge".into(), raster_discharge(o).blake3_hex());
     m.insert("water_depth".into(), raster_water_depth(o).blake3_hex());
     m.insert("sediment".into(), raster_sediment(o).blake3_hex());
+    m.insert("lithology".into(), raster_lithology(o).blake3_hex());
+    m.insert("karst_potential".into(), raster_karst(o).blake3_hex());
     m
 }
 
@@ -491,6 +570,12 @@ pub fn write_run(dir: &Path, o: &TerrainOutput) -> io::Result<RunManifest> {
         let r = raster_sediment(o);
         r.write_file(&dir.join("sediment.vrast"))?;
         put("sediment", "sediment.vrast", r.blake3_hex());
+        let r = raster_lithology(o);
+        r.write_file(&dir.join("lithology.vrast"))?;
+        put("lithology", "lithology.vrast", r.blake3_hex());
+        let r = raster_karst(o);
+        r.write_file(&dir.join("karst_potential.vrast"))?;
+        put("karst_potential", "karst_potential.vrast", r.blake3_hex());
     }
 
     let gates_json = serde_json::to_string_pretty(&o.gates)

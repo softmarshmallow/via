@@ -1,5 +1,130 @@
 use serde::{Deserialize, Serialize};
 
+/// A rock unit in the stratigraphic column (ADR 0007): mechanical
+/// parameters plus an index — never a named rock type (ADR 0003).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RockUnit {
+    /// Unit thickness (m). The last (bottom) unit ignores this and
+    /// extends downward without bound.
+    pub thickness_m: f64,
+    /// Erodibility multiplier on k_spl where this unit is exposed.
+    pub k_mult: f64,
+    /// Hillslope diffusivity multiplier on kappa.
+    pub kappa_mult: f64,
+    /// Solubility in [0, 1]; karst_potential = solubility × discharge.
+    pub solubility: f64,
+}
+
+impl Default for RockUnit {
+    fn default() -> Self {
+        Self {
+            thickness_m: 500.0,
+            k_mult: 1.0,
+            kappa_mult: 1.0,
+            solubility: 0.0,
+        }
+    }
+}
+
+/// A sinusoidal fold train displacing the column (tier-2 forcing).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FoldTrain {
+    pub amplitude_m: f64,
+    pub wavelength_m: f64,
+    /// Direction along which the displacement varies, degrees from +x
+    /// toward +y.
+    pub azimuth_deg: f64,
+    pub phase_rad: f64,
+}
+
+impl Default for FoldTrain {
+    fn default() -> Self {
+        Self {
+            amplitude_m: 0.0,
+            wavelength_m: 10_000.0,
+            azimuth_deg: 0.0,
+            phase_rad: 0.0,
+        }
+    }
+}
+
+/// A fault: vertical throw across a line trace. The discontinuity stays
+/// sharp — its surface expression must emerge from differential erosion.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Fault {
+    /// A point on the trace, metres from the grid centre.
+    pub x_m: f64,
+    pub y_m: f64,
+    /// Trace direction, degrees from +x toward +y.
+    pub azimuth_deg: f64,
+    /// Throw (m) added to the column on the trace's left side (the side
+    /// toward +90° from the azimuth).
+    pub throw_m: f64,
+}
+
+impl Default for Fault {
+    fn default() -> Self {
+        Self {
+            x_m: 0.0,
+            y_m: 0.0,
+            azimuth_deg: 0.0,
+            throw_m: 0.0,
+        }
+    }
+}
+
+/// Lithology & structure (ADR 0007): a deformed layer-cake, declared as
+/// tier-2 forcing like the uplift field. The default is a single neutral
+/// unit — behaviorally identical to the pre-M4 homogeneous substrate.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LithologyConfig {
+    /// Elevation (m) of the top of unit 0 in undeformed column space.
+    pub datum_m: f64,
+    /// Units listed top-down from the datum. The top unit also extends
+    /// upward without bound.
+    pub units: Vec<RockUnit>,
+    /// Regional dip: column displacement gains dip[0]·x + dip[1]·y
+    /// (x, y metres from the grid centre; components are gradients,
+    /// m per m).
+    pub dip: [f64; 2],
+    pub folds: Vec<FoldTrain>,
+    pub faults: Vec<Fault>,
+    /// K multiplier where the frozen sediment cover exceeds
+    /// `sediment_cover_min_m` (Davy & Lague K contrast). 1 = neutral.
+    pub sediment_k_mult: f64,
+    pub sediment_cover_min_m: f64,
+}
+
+impl Default for LithologyConfig {
+    fn default() -> Self {
+        Self {
+            datum_m: 0.0,
+            units: vec![RockUnit::default()],
+            dip: [0.0, 0.0],
+            folds: Vec::new(),
+            faults: Vec::new(),
+            sediment_k_mult: 1.0,
+            sediment_cover_min_m: 1.0,
+        }
+    }
+}
+
+impl LithologyConfig {
+    /// Some(shared multiplier) when every unit diffuses alike — the
+    /// uniform-κ fast path that keeps homogeneous runs bitwise identical.
+    pub fn uniform_kappa_mult(&self) -> Option<f64> {
+        let first = self.units.first().map(|u| u.kappa_mult)?;
+        self.units
+            .iter()
+            .all(|u| u.kappa_mult == first)
+            .then_some(first)
+    }
+}
+
 /// Terrain stage configuration. Every field is a physical quantity or a
 /// derivation threshold — nothing here names a landform.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -63,6 +188,9 @@ pub struct TerrainConfig {
     /// exponential moving average of the terrain so air columns ride over
     /// gullies instead of dipping into each one.
     pub airflow_smooth_m: f64,
+    /// Stratigraphic column and structure (ADR 0007); the default single
+    /// neutral unit reproduces the homogeneous substrate exactly.
+    pub lithology: LithologyConfig,
 }
 
 impl Default for TerrainConfig {
@@ -111,6 +239,7 @@ impl Default for TerrainConfig {
             convective_rainout_per_cell: 0.0015,
             orographic_rainout_per_100m: 0.055,
             airflow_smooth_m: 600.0,
+            lithology: LithologyConfig::default(),
         }
     }
 }
@@ -202,6 +331,72 @@ impl TerrainConfig {
         }
         if !(self.airflow_smooth_m.is_finite() && self.airflow_smooth_m > 0.0) {
             return bad("airflow_smooth_m must be finite and positive");
+        }
+        let lith = &self.lithology;
+        if lith.units.is_empty() {
+            return bad("lithology.units must hold at least one unit");
+        }
+        if lith.units.len() > 64 {
+            return bad("lithology.units above 64 units is not supported");
+        }
+        for (k, u) in lith.units.iter().enumerate() {
+            // The last unit's thickness is unused (unbounded basement),
+            // but a nonsense value is still a config error worth naming.
+            if !(u.thickness_m.is_finite() && u.thickness_m > 0.0) {
+                return bad(&format!(
+                    "lithology.units[{k}].thickness_m must be finite and positive"
+                ));
+            }
+            if !(u.k_mult.is_finite() && u.k_mult > 0.0) {
+                return bad(&format!(
+                    "lithology.units[{k}].k_mult must be finite and positive"
+                ));
+            }
+            if !(u.kappa_mult.is_finite() && u.kappa_mult >= 0.0) {
+                return bad(&format!(
+                    "lithology.units[{k}].kappa_mult must be finite and non-negative"
+                ));
+            }
+            if !(u.solubility.is_finite() && (0.0..=1.0).contains(&u.solubility)) {
+                return bad(&format!(
+                    "lithology.units[{k}].solubility must lie in [0, 1]"
+                ));
+            }
+        }
+        if !(lith.datum_m.is_finite() && lith.dip[0].is_finite() && lith.dip[1].is_finite()) {
+            return bad("lithology datum and dip must be finite");
+        }
+        for (k, f) in lith.folds.iter().enumerate() {
+            if !(f.amplitude_m.is_finite() && f.amplitude_m >= 0.0) {
+                return bad(&format!(
+                    "lithology.folds[{k}].amplitude_m must be finite and non-negative"
+                ));
+            }
+            if !(f.wavelength_m.is_finite() && f.wavelength_m > 0.0) {
+                return bad(&format!(
+                    "lithology.folds[{k}].wavelength_m must be finite and positive"
+                ));
+            }
+            if !(f.azimuth_deg.is_finite() && f.phase_rad.is_finite()) {
+                return bad(&format!(
+                    "lithology.folds[{k}] azimuth and phase must be finite"
+                ));
+            }
+        }
+        for (k, f) in lith.faults.iter().enumerate() {
+            if !(f.x_m.is_finite()
+                && f.y_m.is_finite()
+                && f.azimuth_deg.is_finite()
+                && f.throw_m.is_finite())
+            {
+                return bad(&format!("lithology.faults[{k}] parameters must be finite"));
+            }
+        }
+        if !(lith.sediment_k_mult.is_finite() && lith.sediment_k_mult > 0.0) {
+            return bad("lithology.sediment_k_mult must be finite and positive");
+        }
+        if !(lith.sediment_cover_min_m.is_finite() && lith.sediment_cover_min_m >= 0.0) {
+            return bad("lithology.sediment_cover_min_m must be finite and non-negative");
         }
         Ok(())
     }

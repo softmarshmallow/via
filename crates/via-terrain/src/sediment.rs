@@ -85,7 +85,7 @@ fn erosion_sweep(
     is_base: &[bool],
     flooded: &[bool],
     water_level: &[f64],
-    k_spl: f64,
+    k_cell: &[f64],
     dt: f64,
     sea_level: f64,
 ) {
@@ -118,7 +118,7 @@ fn erosion_sweep(
                 h_out[ru]
             };
             if elev > hr {
-                let c = k_spl * sqrt_q_m * dt * w / dist;
+                let c = k_cell[iu] * sqrt_q_m * dt * w / dist;
                 num += c * hr;
                 den += c;
             }
@@ -204,7 +204,7 @@ pub fn solve_implicit(
     is_base: &[bool],
     flooded: &[bool],
     water_level: &[f64],
-    k_spl: f64,
+    k_cell: &[f64],
     g: f64,
     dt: f64,
     fluvial_min_cells: f64,
@@ -232,7 +232,7 @@ pub fn solve_implicit(
             is_base,
             flooded,
             water_level,
-            k_spl,
+            k_cell,
             dt,
             sea_level,
         );
@@ -278,9 +278,9 @@ pub fn solve_implicit(
          within {GS_MAX_ITER} iterations. The coupling has left (or is \
          crawling at the edge of) the scheme's convergent regime; the usual \
          causes are a large G with a low fluvial threshold (trap cells at \
-         Q̃ ≤ G) or K·dt·√Q̃ near 1 (here G = {g}, K·dt = {:.3e}). Reduce G, \
-         raise fluvial_min_area_km2, or reduce dt.",
-        k_spl * dt
+         Q̃ ≤ G) or K·dt·√Q̃ near 1 (here G = {g}, max K·dt = {:.3e}). Reduce \
+         G, raise fluvial_min_area_km2, or reduce dt.",
+        k_cell.iter().copied().fold(0.0f64, f64::max) * dt
     );
     let (detached_m3, deposited_m3, exported_m3) = budget;
     SolveResult {
@@ -352,7 +352,7 @@ mod tests {
             &t.is_base,
             &flooded,
             &water_level,
-            1e-3,
+            &vec![1e-3; n],
             1.0,
             100.0,
             0.0,
@@ -389,7 +389,7 @@ mod tests {
             &t.is_base,
             &flooded,
             &water_level,
-            1e-3,
+            &vec![1e-3; n],
             0.0,
             100.0,
             0.0,
@@ -425,7 +425,7 @@ mod tests {
             &t.is_base,
             &flooded,
             &water_level,
-            1e-2,
+            &vec![1e-2; n],
             1.0,
             1000.0,
             0.0,

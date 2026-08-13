@@ -14,6 +14,7 @@ pub mod fields;
 pub mod flow;
 pub mod gates;
 pub mod grid;
+pub mod lithology;
 pub mod noise;
 pub mod sediment;
 pub mod stage;

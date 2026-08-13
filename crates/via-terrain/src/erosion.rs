@@ -11,15 +11,28 @@ use crate::grid::Grid;
 /// deepen linearly forever, and hillslope diffusion then drags every
 /// subsidence-coast cell down each step — a permanent churn band that
 /// poisons convergence at any resolution.
-pub fn apply_uplift(h: &mut [f64], uplift: &[f64], dt: f64, floor_m: f64) {
+///
+/// `cum_applied_m` accumulates the uplift actually applied per cell —
+/// exact bookkeeping for the material-frame lithology lookup (ADR 0007):
+/// where the floor clamps, U·t would overstate the advection.
+pub fn apply_uplift(
+    h: &mut [f64],
+    uplift: &[f64],
+    dt: f64,
+    floor_m: f64,
+    cum_applied_m: &mut [f64],
+) {
     h.par_iter_mut()
         .zip(uplift.par_iter())
-        .for_each(|(hi, &u)| {
+        .zip(cum_applied_m.par_iter_mut())
+        .for_each(|((hi, &u), cum)| {
+            let before = *hi;
             if u >= 0.0 {
                 *hi += u * dt;
             } else if *hi > floor_m {
                 *hi = (*hi + u * dt).max(floor_m);
             }
+            *cum += *hi - before;
         });
 }
 
@@ -49,6 +62,46 @@ pub fn diffuse(grid: &Grid, h: &mut [f64], is_base: &[bool], kappa: f64, dt: f64
                 }
             }
             *out = c + a * lap;
+        });
+    }
+}
+
+/// Explicit diffusion with per-cell κ (ADR 0007): the flux form
+/// ∇·(κ∇h) with the symmetric edge coefficient κᵢⱼ = ½(κᵢ + κⱼ), so
+/// every exchange is pairwise antisymmetric and mass is conserved
+/// exactly (up to the same Dirichlet base / Neumann edge behavior as
+/// the uniform path). Subcycled to the max-κ stability limit.
+///
+/// Callers with uniform κ must use [`diffuse`]: this function computes
+/// the same physics but not the same floating-point expressions, and
+/// the homogeneous path is bitwise-frozen by the determinism contract.
+pub fn diffuse_variable(grid: &Grid, h: &mut [f64], is_base: &[bool], kappa_cell: &[f64], dt: f64) {
+    let kmax = kappa_cell.iter().copied().fold(0.0f64, f64::max);
+    let alpha_max = kmax * dt / (grid.dx * grid.dx);
+    if alpha_max == 0.0 {
+        return;
+    }
+    let cycles = (alpha_max / 0.24).ceil().max(1.0) as u32;
+    let a = dt / cycles as f64 / (grid.dx * grid.dx);
+    let (w, hh) = (grid.w as i64, grid.h as i64);
+    for _ in 0..cycles {
+        let src = h.to_vec();
+        h.par_iter_mut().enumerate().for_each(|(i, out)| {
+            if is_base[i] {
+                return;
+            }
+            let x = (i as u32 % grid.w) as i64;
+            let y = (i as u32 / grid.w) as i64;
+            let c = src[i];
+            let ki = kappa_cell[i];
+            let mut flux = 0.0;
+            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+                if nx >= 0 && ny >= 0 && nx < w && ny < hh {
+                    let j = (ny * w + nx) as usize;
+                    flux += 0.5 * (ki + kappa_cell[j]) * (src[j] - c);
+                }
+            }
+            *out = c + a * flux;
         });
     }
 }
