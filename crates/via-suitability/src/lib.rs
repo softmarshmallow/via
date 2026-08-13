@@ -1,0 +1,420 @@
+//! Suitability stage, first slice: generic affordance fields (slope,
+//! freshwater distance, coast distance, elevation) and contiguous patches
+//! passing config thresholds. The stage knows nothing about what a patch is
+//! *for* — the config's `label` names the gate, and the semantics live in
+//! the experiment that supplies the config.
+//!
+//! Reads terrain artifacts from a run directory (stages communicate through
+//! artifacts, never by calling each other) and writes its own artifacts and
+//! stats beside them. Everything here is sequential and deterministic.
+
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BinaryHeap, VecDeque};
+use std::io;
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+
+use via_artifact::manifest::RunManifest;
+use via_artifact::raster::Raster;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SuitabilityConfig {
+    /// Name of the gate this config defines (e.g. "village_site"). Pure
+    /// labeling; the stage attaches no meaning to it.
+    pub label: String,
+    /// Maximum steepest-descent slope (rise/run).
+    pub max_slope: f64,
+    pub min_elevation_m: f64,
+    pub max_elevation_m: f64,
+    /// Maximum along-ground distance to fresh water (m) — river cells or
+    /// standing water at least `freshwater_min_depth_m` deep.
+    pub max_freshwater_dist_m: f64,
+    /// Standing-water depth (m) at or above which a cell counts as a
+    /// freshwater source (a threshold over the terrain water-depth
+    /// spectrum, declared here per ADR 0003).
+    pub freshwater_min_depth_m: f64,
+    /// Maximum standing-water depth (m) a cell may carry and still be a
+    /// candidate — ponded ground is not buildable land.
+    pub max_standing_water_m: f64,
+    /// Minimum contiguous patch area (hectares).
+    pub min_patch_area_ha: f64,
+    pub max_patches_reported: u32,
+}
+
+impl Default for SuitabilityConfig {
+    fn default() -> Self {
+        Self {
+            label: "site".to_string(),
+            max_slope: 0.105,
+            min_elevation_m: 2.0,
+            max_elevation_m: 80.0,
+            max_freshwater_dist_m: 400.0,
+            freshwater_min_depth_m: 0.30,
+            max_standing_water_m: 0.05,
+            min_patch_area_ha: 12.0,
+            max_patches_reported: 8,
+        }
+    }
+}
+
+impl SuitabilityConfig {
+    pub fn from_json_file(path: &Path) -> Result<Self, String> {
+        let bytes = std::fs::read(path)
+            .map_err(|e| format!("cannot read config {}: {e}", path.display()))?;
+        serde_json::from_slice(&bytes)
+            .map_err(|e| format!("cannot parse config {}: {e}", path.display()))
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PatchInfo {
+    pub rank: u32,
+    pub cells: u64,
+    pub area_ha: f64,
+    /// Patch centroid in cell coordinates.
+    pub centroid_x: f64,
+    pub centroid_y: f64,
+    pub mean_slope: f64,
+    pub mean_elevation_m: f64,
+    pub min_freshwater_dist_m: f64,
+    pub min_coast_dist_m: f64,
+}
+
+pub struct SuitabilityOutput {
+    pub w: u32,
+    pub h: u32,
+    pub dx: f64,
+    pub sea_level_m: f64,
+    pub slope: Vec<f64>,
+    pub freshwater_dist_m: Vec<f64>,
+    pub coast_dist_m: Vec<f64>,
+    pub suitable: Vec<bool>,
+    /// 0 = not in a reported patch; otherwise the patch rank (1 = largest).
+    pub patch_rank: Vec<u32>,
+    pub patches: Vec<PatchInfo>,
+    pub gate_pass: bool,
+}
+
+#[inline]
+fn f64_key(x: f64) -> u64 {
+    let b = x.to_bits();
+    if b >> 63 == 1 {
+        !b
+    } else {
+        b ^ (1u64 << 63)
+    }
+}
+
+/// Visit in-bounds D8 neighbours of `i` in fixed scan order.
+#[inline]
+fn for_neighbors8(w: u32, h: u32, i: u32, mut f: impl FnMut(u32, f64)) {
+    const D8: [(i32, i32, f64); 8] = [
+        (-1, -1, std::f64::consts::SQRT_2),
+        (0, -1, 1.0),
+        (1, -1, std::f64::consts::SQRT_2),
+        (-1, 0, 1.0),
+        (1, 0, 1.0),
+        (-1, 1, std::f64::consts::SQRT_2),
+        (0, 1, 1.0),
+        (1, 1, std::f64::consts::SQRT_2),
+    ];
+    let (x, y) = ((i % w) as i64, (i / w) as i64);
+    for &(dx, dy, fac) in &D8 {
+        let (nx, ny) = (x + dx as i64, y + dy as i64);
+        if nx >= 0 && ny >= 0 && nx < w as i64 && ny < h as i64 {
+            f((ny * w as i64 + nx) as u32, fac);
+        }
+    }
+}
+
+/// Multi-source Dijkstra over the D8 grid metric. Heap ties break on cell
+/// index; deterministic.
+fn dijkstra_dist_m(w: u32, h: u32, dx: f64, is_source: &[bool]) -> Vec<f64> {
+    let n = w as usize * h as usize;
+    let mut dist = vec![f64::INFINITY; n];
+    let mut heap: BinaryHeap<Reverse<(u64, u32)>> = BinaryHeap::new();
+    for i in 0..n {
+        if is_source[i] {
+            dist[i] = 0.0;
+            heap.push(Reverse((f64_key(0.0), i as u32)));
+        }
+    }
+    while let Some(Reverse((k, i))) = heap.pop() {
+        if k > f64_key(dist[i as usize]) {
+            continue;
+        }
+        let di = dist[i as usize];
+        for_neighbors8(w, h, i, |nb, fac| {
+            let nd = di + fac * dx;
+            if nd < dist[nb as usize] {
+                dist[nb as usize] = nd;
+                heap.push(Reverse((f64_key(nd), nb)));
+            }
+        });
+    }
+    dist
+}
+
+/// Steepest-descent slope per cell (0 for ocean cells), measured over the
+/// **effective surface** — terrain plus standing water. Since M3 the
+/// heights artifact carries true lake bathymetry; a shore cell must see
+/// its neighbour's water surface, not the drop through the water column,
+/// and lake beds read the flat surface like the ocean does.
+fn slope_field(w: u32, h: u32, dx: f64, eff_heights_m: &[f64], land: &[bool]) -> Vec<f64> {
+    let n = w as usize * h as usize;
+    let mut slope = vec![0.0f64; n];
+    for i in 0..n as u32 {
+        if !land[i as usize] {
+            continue;
+        }
+        let hi = eff_heights_m[i as usize];
+        let mut best = 0.0f64;
+        for_neighbors8(w, h, i, |nb, fac| {
+            let s = (hi - eff_heights_m[nb as usize]) / (fac * dx);
+            if s > best {
+                best = s;
+            }
+        });
+        slope[i as usize] = best;
+    }
+    slope
+}
+
+/// 4-connected components over `suitable`, in scan order (deterministic).
+/// Returns each patch's member cells; patches ≥ `min_cells` only.
+fn extract_patches(w: u32, h: u32, suitable: &[bool], min_cells: u64) -> Vec<Vec<u32>> {
+    let n = w as usize * h as usize;
+    let mut seen = vec![false; n];
+    let mut patches = Vec::new();
+    for start in 0..n as u32 {
+        if !suitable[start as usize] || seen[start as usize] {
+            continue;
+        }
+        let mut cells = Vec::new();
+        let mut queue = VecDeque::new();
+        seen[start as usize] = true;
+        queue.push_back(start);
+        while let Some(c) = queue.pop_front() {
+            cells.push(c);
+            let (x, y) = ((c % w) as i64, (c / w) as i64);
+            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+                if nx >= 0 && ny >= 0 && nx < w as i64 && ny < h as i64 {
+                    let nb = (ny * w as i64 + nx) as u32;
+                    if suitable[nb as usize] && !seen[nb as usize] {
+                        seen[nb as usize] = true;
+                        queue.push_back(nb);
+                    }
+                }
+            }
+        }
+        if cells.len() as u64 >= min_cells {
+            patches.push(cells);
+        }
+    }
+    // Largest first; scan order (first cell index) breaks ties.
+    patches.sort_by_key(|p| (Reverse(p.len()), p[0]));
+    patches
+}
+
+/// The artifact grids of a run directory must agree; a mismatch means a
+/// stale or mixed directory and the stage fails loudly with a diagnosis.
+fn ensure_grid<T>(name: &str, r: &Raster<T>, base: &Raster<i32>) -> io::Result<()> {
+    if (r.width, r.height, r.cell_size_cm) != (base.width, base.height, base.cell_size_cm) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "artifact {name}.vrast grid {}×{} @ {} cm does not match heights_cm \
+                 {}×{} @ {} cm — stale or mixed run directory?",
+                r.width, r.height, r.cell_size_cm, base.width, base.height, base.cell_size_cm
+            ),
+        ));
+    }
+    Ok(())
+}
+
+/// Run the stage against a terrain run directory.
+pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOutput> {
+    let heights = Raster::<i32>::read_file(&run_dir.join("heights_cm.vrast"))?;
+    let receivers = Raster::<u32>::read_file(&run_dir.join("receivers.vrast"))?;
+    let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
+    let water_depth = Raster::<f32>::read_file(&run_dir.join("water_depth.vrast"))?;
+    ensure_grid("receivers", &receivers, &heights)?;
+    ensure_grid("strahler", &strahler, &heights)?;
+    ensure_grid("water_depth", &water_depth, &heights)?;
+    let manifest = RunManifest::load(&run_dir.join("manifest.json"))?;
+    let sea = manifest
+        .config
+        .get("sea_level_m")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let (w, h) = (heights.width, heights.height);
+    let dx = heights.cell_size_cm as f64 / 100.0;
+    let n = w as usize * h as usize;
+
+    let heights_m: Vec<f64> = heights.data.iter().map(|&cm| cm as f64 / 100.0).collect();
+    // The stage's authoritative base-level mask: self-receiver = ocean (the
+    // pit gate guarantees no land self-receivers).
+    let land: Vec<bool> = receivers
+        .data
+        .iter()
+        .enumerate()
+        .map(|(i, &r)| r as usize != i)
+        .collect();
+    // Effective surface: terrain + standing water (slopes must not measure
+    // through lake water columns).
+    let eff_heights_m: Vec<f64> = heights_m
+        .iter()
+        .zip(water_depth.data.iter())
+        .map(|(&hm, &wd)| hm + wd as f64)
+        .collect();
+    let slope = slope_field(w, h, dx, &eff_heights_m, &land);
+    // Fresh water = rivers or standing water deep enough (lakes); ocean is
+    // the coast field, not a freshwater source.
+    let is_freshwater: Vec<bool> = strahler
+        .data
+        .iter()
+        .zip(water_depth.data.iter())
+        .enumerate()
+        .map(|(i, (&o, &wd))| land[i] && (o > 0 || wd as f64 >= cfg.freshwater_min_depth_m))
+        .collect();
+    let is_ocean: Vec<bool> = land.iter().map(|&l| !l).collect();
+    let freshwater_dist_m = dijkstra_dist_m(w, h, dx, &is_freshwater);
+    let coast_dist_m = dijkstra_dist_m(w, h, dx, &is_ocean);
+
+    let suitable: Vec<bool> = (0..n)
+        .map(|i| {
+            land[i]
+                && (water_depth.data[i] as f64) <= cfg.max_standing_water_m
+                && slope[i] <= cfg.max_slope
+                && heights_m[i] >= sea + cfg.min_elevation_m
+                && heights_m[i] <= sea + cfg.max_elevation_m
+                && freshwater_dist_m[i] <= cfg.max_freshwater_dist_m
+        })
+        .collect();
+
+    let cell_area_ha = dx * dx / 10_000.0;
+    let min_cells = (cfg.min_patch_area_ha / cell_area_ha).ceil() as u64;
+    let mut patch_lists = extract_patches(w, h, &suitable, min_cells);
+    patch_lists.truncate(cfg.max_patches_reported as usize);
+
+    let mut patch_rank = vec![0u32; n];
+    let mut patches = Vec::new();
+    for (k, cells) in patch_lists.iter().enumerate() {
+        let rank = k as u32 + 1;
+        let (mut sx, mut sy, mut ssl, mut sel) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+        let (mut min_fw, mut min_co) = (f64::INFINITY, f64::INFINITY);
+        for &c in cells {
+            patch_rank[c as usize] = rank;
+            sx += (c % w) as f64;
+            sy += (c / w) as f64;
+            ssl += slope[c as usize];
+            sel += heights_m[c as usize];
+            min_fw = min_fw.min(freshwater_dist_m[c as usize]);
+            min_co = min_co.min(coast_dist_m[c as usize]);
+        }
+        let m = cells.len() as f64;
+        patches.push(PatchInfo {
+            rank,
+            cells: cells.len() as u64,
+            area_ha: m * cell_area_ha,
+            centroid_x: sx / m,
+            centroid_y: sy / m,
+            mean_slope: ssl / m,
+            mean_elevation_m: sel / m,
+            min_freshwater_dist_m: min_fw,
+            min_coast_dist_m: min_co,
+        });
+    }
+
+    let gate_pass = !patches.is_empty();
+    Ok(SuitabilityOutput {
+        w,
+        h,
+        dx,
+        sea_level_m: sea,
+        slope,
+        freshwater_dist_m,
+        coast_dist_m,
+        suitable,
+        patch_rank,
+        patches,
+        gate_pass,
+    })
+}
+
+/// Write the stage's artifacts and stats record into the run directory.
+pub fn write_outputs(
+    run_dir: &Path,
+    cfg: &SuitabilityConfig,
+    out: &SuitabilityOutput,
+) -> io::Result<()> {
+    let cell_cm = (out.dx * 100.0).round() as u32;
+    let mut hashes = BTreeMap::new();
+
+    let slope_f32: Vec<f32> = out.slope.iter().map(|&v| v as f32).collect();
+    let r = Raster::from_data(out.w, out.h, cell_cm, slope_f32);
+    r.write_file(&run_dir.join("slope.vrast"))?;
+    hashes.insert("slope".to_string(), r.blake3_hex());
+
+    let fw_f32: Vec<f32> = out
+        .freshwater_dist_m
+        .iter()
+        .map(|&v| if v.is_finite() { v as f32 } else { f32::MAX })
+        .collect();
+    let r = Raster::from_data(out.w, out.h, cell_cm, fw_f32);
+    r.write_file(&run_dir.join("freshwater_dist.vrast"))?;
+    hashes.insert("freshwater_dist".to_string(), r.blake3_hex());
+
+    let r = Raster::from_data(out.w, out.h, cell_cm, out.patch_rank.clone());
+    r.write_file(&run_dir.join("suitability_patches.vrast"))?;
+    hashes.insert("suitability_patches".to_string(), r.blake3_hex());
+
+    let report = serde_json::json!({
+        "stage": "suitability",
+        "config": cfg,
+        "gate": { "label": cfg.label, "pass": out.gate_pass },
+        "patches": out.patches,
+        "artifact_blake3": hashes,
+    });
+    std::fs::write(
+        run_dir.join("suitability.json"),
+        serde_json::to_string_pretty(&report)? + "\n",
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dijkstra_distances_are_grid_metric() {
+        // 5×5, single source at the corner.
+        let mut src = vec![false; 25];
+        src[0] = true;
+        let d = dijkstra_dist_m(5, 5, 10.0, &src);
+        assert_eq!(d[0], 0.0);
+        assert_eq!(d[4], 40.0); // 4 straight steps
+        assert!((d[24] - 4.0 * 10.0 * std::f64::consts::SQRT_2).abs() < 1e-9); // diagonal
+        assert!((d[5 + 2] - (10.0 * std::f64::consts::SQRT_2 + 10.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn patches_are_ranked_by_size_deterministically() {
+        // Two patches: a 2×2 block and a 1×3 strip, min 2 cells.
+        let w = 6;
+        let mut suitable = vec![false; 36];
+        for &(x, y) in &[(0u32, 0u32), (1, 0), (0, 1), (1, 1)] {
+            suitable[(y * w + x) as usize] = true;
+        }
+        for &(x, y) in &[(4u32, 4u32), (5, 4), (4, 5)] {
+            suitable[(y * w + x) as usize] = true;
+        }
+        let patches = extract_patches(w, 6, &suitable, 2);
+        assert_eq!(patches.len(), 2);
+        assert_eq!(patches[0].len(), 4);
+        assert_eq!(patches[1].len(), 3);
+        assert_eq!(patches[0][0], 0); // scan order within the patch
+    }
+}

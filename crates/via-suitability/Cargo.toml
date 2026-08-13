@@ -1,0 +1,11 @@
+[package]
+name = "via-suitability"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Stage 2 (first slice): affordance fields and threshold-defined site patches over terrain artifacts."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+via-artifact = { workspace = true }
