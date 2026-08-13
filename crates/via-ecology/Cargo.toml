@@ -1,0 +1,11 @@
+[package]
+name = "via-ecology"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Ecology stage: biome classification and vegetation attributes derived from terrain + climate artifacts."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+via-artifact = { workspace = true }
