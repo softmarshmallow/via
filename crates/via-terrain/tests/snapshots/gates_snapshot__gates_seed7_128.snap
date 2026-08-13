@@ -1,0 +1,112 @@
+---
+source: crates/via-terrain/tests/gates_snapshot.rs
+assertion_line: 38
+expression: gates
+---
+{
+  "artifact_blake3": {
+    "area_cells": "5aa5deb683cf559db3c8a538d49897f848ed3beea5192c7275ebe575589e461a",
+    "basin": "14de7274b047f10b7eb66729aaec1d025334f40812602f724208ea9ab4b22c96",
+    "discharge": "5c4f02f6cba0e60fbd42cebdd6e27c044ae3605f80a5dfa336951d28f5144afc",
+    "heights_cm": "19eb2a1637d409c8bb243b02980f0e953df738acdc1f40e60d64a65855eb07dc",
+    "precip": "3b72a69c55ee990d8b124f7b993833335f07a93910463b940e2e745ec88f04b8",
+    "receivers": "e2e9730a72032abd6597ad8f73ca2871d563a5fd03252a5151eda5b85ddfbf9f",
+    "sediment": "cf9524467ac91540fcb5a95718bc88d43610adee4b8a62c74d890f9ac50e09b1",
+    "strahler": "ea839a2908e368d0e4dbf96bcf0182728b50333f1fd2236fe99fbe5eae41ca8b",
+    "temperature": "b9986d342391236e19e8ae23dea555aa96e3fab1b6ab0b6252f51ce4728da1ee",
+    "uplift": "4f97fb1e07b04d99608c0ebe7a32fa647987be1092e0d126fa46780b5ae73a5f",
+    "water_depth": "b151b9ea8d0113c36464d779652548b2bc7f53ca9a7e1dcb9d6877ad5aa53512"
+  },
+  "drainage_completeness": {
+    "advisory": false,
+    "hi": 1.0,
+    "lo": 1.0,
+    "pass": true,
+    "value": 1.0
+  },
+  "floodplain_slope_ratio": {
+    "advisory": true,
+    "hi": 1.0,
+    "lo": 0.0,
+    "pass": true,
+    "value": 0.06471391936
+  },
+  "hack_exponent": {
+    "advisory": false,
+    "hi": 0.7,
+    "lo": 0.45,
+    "pass": false,
+    "value": 0.4037670717
+  },
+  "hack_n_basins": 61,
+  "hack_r2": 0.7538063144,
+  "horton_bifurcation": null,
+  "horton_length_ratio": null,
+  "hypsometric_integral": {
+    "advisory": true,
+    "hi": 0.6,
+    "lo": 0.35,
+    "pass": false,
+    "value": 0.2510358797
+  },
+  "interior_water_cells": 0,
+  "lake_cells": 0,
+  "lake_level_spread_m": {
+    "advisory": false,
+    "hi": 0.05,
+    "lo": 0.0,
+    "pass": true,
+    "value": 0.0
+  },
+  "land_fraction": 0.1196289062,
+  "max_elevation_m": 139.6832413,
+  "overall_pass": false,
+  "pit_cells": {
+    "advisory": false,
+    "hi": 0.0,
+    "lo": 0.0,
+    "pass": true,
+    "value": 0.0
+  },
+  "pond_merge_m3": 231305.3737,
+  "rain_shadow_ratio": {
+    "advisory": true,
+    "hi": 100.0,
+    "lo": 1.05,
+    "pass": true,
+    "value": 1.089023182
+  },
+  "relief_m": 139.6832413,
+  "sediment_deposited_m3": 95726863.63,
+  "sediment_detached_m3": 1642238243.0,
+  "sediment_exported_m3": 1546511379.0,
+  "sediment_mass_closure": {
+    "advisory": false,
+    "hi": 0.000000001,
+    "lo": 0.0,
+    "pass": true,
+    "value": 0.0000000000000004355371339
+  },
+  "sediment_mean_land_m": 0.2965190598,
+  "slope_area_flat_cells_excluded": 0,
+  "slope_area_n_cells": 44,
+  "slope_area_r2": 0.05216424758,
+  "slope_area_theta": {
+    "advisory": false,
+    "hi": 0.6,
+    "lo": 0.4,
+    "pass": false,
+    "value": 0.1516414704
+  },
+  "spl_residual_median": {
+    "advisory": false,
+    "hi": 0.35,
+    "lo": 0.0,
+    "pass": true,
+    "value": 0.3391982792
+  },
+  "wind": [
+    0,
+    1
+  ]
+}

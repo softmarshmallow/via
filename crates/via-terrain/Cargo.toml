@@ -1,0 +1,16 @@
+[package]
+name = "via-terrain"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Stage 1: stream-power landscape evolution → heightfield, drainage, rivers, basins, gates."
+
+[dependencies]
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+via-artifact = { workspace = true }
+
+[dev-dependencies]
+blake3 = { workspace = true }
+insta = { workspace = true }
