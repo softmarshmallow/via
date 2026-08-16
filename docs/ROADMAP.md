@@ -4,7 +4,8 @@ Status: living document. Records the agreed layer order, the method each
 layer follows, and the gate that can falsify it. Humanity stages (suitability
 refinement, settlements, corridors, networks, epochs) are deliberately parked
 until the natural substrate is deep enough; see README for the full causal
-chain.
+chain. A literature research corpus for that side exists at
+docs/research/humanity — research only, nothing there is adopted.
 
 ## Standing doctrine (see ADR 0003)
 
