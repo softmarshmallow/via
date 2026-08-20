@@ -52,6 +52,22 @@ pre-decision:
 | [0009](0009-gate-candidates.md) | Falsifiable gate candidates with empirical ranges and sources |
 | [0010](0010-era-parameters.md) | The era-parameter table: numbers that would make era a config |
 | [0011](0011-open-questions.md) | Load-bearing questions the survey did not answer |
+| [0012](0012-benchmark-specification.md) | The benchmark instrument: characters, reference populations, protocol, statistics |
+
+## Validation
+
+Two spikes (`spikes/settlements`, `spikes/townfabric`, both
+uncommitted) tested parts of this corpus against real towns and failed
+in ways that changed the project's method, not just its parameters.
+The outcome is recorded in **[ADR 0008](../../adr/0008-validation-doctrine.md)**
+(proposed) — gates versus benchmarks, reference populations rather
+than quoted bands, ensembles rather than single runs, no invented
+composite scores — and the instrument that follows from it is
+specified in **[0012](0012-benchmark-specification.md)**. Where this
+corpus's [0009](0009-gate-candidates.md) proposed scoring against
+literature bands, ADR 0008 supersedes it: real towns measured under a
+fixed protocol fall outside several of those bands, so the bands are
+context, not targets.
 
 ## The corpus's leading hypothesis (not a decision)
 
