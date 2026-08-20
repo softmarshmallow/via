@@ -1,0 +1,118 @@
+{
+  "land": {
+    "carrying_capacity_per_km2": 120.0,
+    "navigable_min_cells": 20000.0
+  },
+  "sites": {
+    "thin_radius_m": 1500.0,
+    "catchment_radius_m": 3000.0,
+    "max_sites": 1200,
+    "min_site_quality": 0.25
+  },
+  "demand_block_cells": 8,
+  "eras": [
+    {
+      "name": "medieval",
+      "travel": {
+        "land_speed_kmh": 4.5,
+        "slope_penalty_k": 3.5,
+        "grade_cap": 0.6,
+        "water_speed_kmh": 6.0,
+        "transship_hours": 4.0,
+        "river_crossing_hours": 1.0
+      },
+      "dynamics": {
+        "alpha": 1.0,
+        "beta_per_hour": 0.9,
+        "epsilon": 0.3,
+        "viability_floor": 200.0,
+        "max_iter": 20000,
+        "tol": 1e-07
+      },
+      "network": {
+        "reuse_mult": 0.35,
+        "links_per_center": 2.0,
+        "detour_tolerance": 1.35,
+        "min_flow_frac": 0.0001
+      }
+    },
+    {
+      "name": "frontier",
+      "travel": {
+        "land_speed_kmh": 12.0,
+        "slope_penalty_k": 9.0,
+        "grade_cap": 0.09,
+        "water_speed_kmh": 16.0,
+        "transship_hours": 2.0,
+        "river_crossing_hours": 0.5
+      },
+      "dynamics": {
+        "alpha": 1.05,
+        "beta_per_hour": 0.9,
+        "epsilon": 0.3,
+        "viability_floor": 200.0,
+        "max_iter": 20000,
+        "tol": 1e-07
+      },
+      "network": {
+        "reuse_mult": 0.3,
+        "links_per_center": 2.0,
+        "detour_tolerance": 1.35,
+        "min_flow_frac": 0.0001
+      }
+    },
+    {
+      "name": "modern",
+      "travel": {
+        "land_speed_kmh": 45.0,
+        "slope_penalty_k": 3.0,
+        "grade_cap": 0.14,
+        "water_speed_kmh": 25.0,
+        "transship_hours": 1.0,
+        "river_crossing_hours": 0.05
+      },
+      "dynamics": {
+        "alpha": 1.15,
+        "beta_per_hour": 0.9,
+        "epsilon": 0.3,
+        "viability_floor": 200.0,
+        "max_iter": 20000,
+        "tol": 1e-07,
+        "w_congestion": 3000.0,
+        "congestion_exp": 2.0
+      },
+      "network": {
+        "reuse_mult": 0.25,
+        "links_per_center": 2.0,
+        "detour_tolerance": 1.35,
+        "min_flow_frac": 0.0001
+      }
+    },
+    {
+      "name": "modern-no-dispersion",
+      "travel": {
+        "land_speed_kmh": 45.0,
+        "slope_penalty_k": 3.0,
+        "grade_cap": 0.14,
+        "water_speed_kmh": 25.0,
+        "transship_hours": 1.0,
+        "river_crossing_hours": 0.05
+      },
+      "dynamics": {
+        "alpha": 1.15,
+        "beta_per_hour": 0.9,
+        "epsilon": 0.3,
+        "viability_floor": 200.0,
+        "max_iter": 20000,
+        "tol": 1e-07
+      },
+      "network": {
+        "reuse_mult": 0.25,
+        "links_per_center": 2.0,
+        "detour_tolerance": 1.35,
+        "min_flow_frac": 0.0001
+      }
+    }
+  ],
+  "delineation_km": 5.0
+}

@@ -7,6 +7,9 @@ members = [
     "crates/via-terrain",
     "crates/via-viz",
     "crates/via",
+    # Research spikes: throwaway experiments, never gated, never depended on.
+    "spikes/settlements",
+    "spikes/townfabric",
 ]
 
 [workspace.package]
