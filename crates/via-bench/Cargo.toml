@@ -1,0 +1,15 @@
+[package]
+name = "via-bench"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[dependencies]
+via-artifact = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+blake3 = { workspace = true }
+image = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }

@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/via-artifact",
+    "crates/via-bench",
     "crates/via-ecology",
     "crates/via-suitability",
     "crates/via-terrain",

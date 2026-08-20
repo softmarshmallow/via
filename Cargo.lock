@@ -606,6 +606,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "via-bench"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "blake3",
+ "clap",
+ "image",
+ "serde",
+ "serde_json",
+ "via-artifact",
+]
+
+[[package]]
 name = "via-ecology"
 version = "0.1.0"
 dependencies = [

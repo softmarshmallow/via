@@ -285,6 +285,28 @@ is legal advice.
   case-study towns only (Decision 5), carry the report's argument
   without the exposure.
 
+## Addendum (2026-08-20) — the sixth pilot town
+
+Per Decision 2, the informal-class pilot case, designated here before
+any fetch or measurement of it:
+
+| Town | Class (0012 §5.4) | Centre |
+| --- | --- | --- |
+| Kibera (Nairobi, Kenya) | contemporary informal | -1.3113, 36.7890 |
+
+The centre is OSM's Kibera place node (Lindi ward). Origin
+documentation: an informal settlement by documented origin — begun on
+an early-20th-century colonial land allocation to Nubian soldiers and
+densified without formal planning thereafter; among the most
+extensively documented informal settlements in the urban literature.
+Chosen on instrument grounds: Kibera is the best-mapped informal
+settlement in OSM (the Map Kibera project, 2009 onward), so the pilot
+exercises informal-fabric geometry — the import kernel's hardest case
+— without confounding it with missing data. The poor-coverage failure
+mode is a separate concern, exercised by the coverage-verification
+procedure the freeze must define (0012 §9.1). Fitted partition, like
+the other five.
+
 ## References
 
 - ADR 0008 (validation doctrine: D6 calibration/validation, D8
