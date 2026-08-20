@@ -60,6 +60,11 @@ files + hashes are the simplest thing that supports caching and resuming).
 Every terrain run emits `gates.json`. Hard gates (all must pass for
 `overall_pass`; a gate that cannot be evaluated for lack of data is a fail):
 
+*(Amended 2026-08-20: under ADR 0008 D1 the band-scored characters
+below — θ, Hack h, Horton R_b — are benchmarks, not gates. They remain
+evaluated here as a recorded exception until ADR 0008's
+reference-population upgrade is scheduled.)*
+
 - **Slope–area concavity θ** ∈ [0.40, 0.60], with fit R² reported. The
   regression runs over fluvial cells (A ≥ 0.5 km²) *restricted to a ±25%
   band around the median uplift rate* — the θ ≈ m/n prediction assumes

@@ -1,11 +1,17 @@
 # Research 0012 — Benchmark specification: settlement systems and urban fabric
 
-Status: research corpus — pre-decision, pre-implementation. This
-document specifies an *instrument*, not a result, and adopts no
-mechanism. It is written to satisfy ADR 0008 (validation doctrine),
-which requires that characters come from citable sources, that
-references be populations, and that protocols be frozen and restated
-with every number.
+Status: **adopted as the project's validation instrument by ADR 0010
+(2026-08-20)**, with three deferrals named there: the §9.4 scale
+mismatch (resolved at protocol freeze, together with the radius),
+acceptance thresholds (none declared), and the disc radius and
+adopted character list (fixed at protocol freeze). ADR 0010
+Decision 2 also records one exception to §5.4: the pilot towns —
+five measured before the rule existed, one designated by committed
+addendum before fetch — are pinned to the fitted partition. This document specifies an *instrument*, not a result,
+and adopts no mechanism. It is written to
+satisfy ADR 0008 (validation doctrine), which requires that
+characters come from citable sources, that references be populations,
+and that protocols be frozen and restated with every number.
 
 Nothing here has been run. Every band, count and definition below is
 quoted from the source named beside it.
@@ -209,6 +215,9 @@ evidence; building characters from them are used as context only.
 - **Pre-registration.** The list of reference towns and their study
   centres is written down *before* any of them is measured, so that
   cases cannot be selected after seeing which ones flatter the model.
+  *(One recorded exception: the pilot towns of ADR 0010 Decision 2 —
+  five measured before this rule existed, one designated by committed
+  addendum before fetch — all pinned to the fitted partition.)*
 - **Size.** A minimum of 20 towns per class for distributional
   characters; fewer than 10 makes dispersion meaningless. The spike
   used one per class, which is the principal reason its conclusions

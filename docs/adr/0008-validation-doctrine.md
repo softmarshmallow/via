@@ -1,8 +1,8 @@
 # ADR 0008 — Validation doctrine: gates, benchmarks, and reference populations
 
-Status: **proposed**. Nothing in this document is adopted until reviewed.
-It revises project doctrine (README research commitments, ADR 0003
-epistemic tiers) in light of a documented failure, and it applies to
+Status: accepted (2026-08-20)
+Scope: revises project doctrine (README research commitments, ADR 0003
+epistemic tiers) in light of a documented failure, and applies to
 every stage, including the ones already built.
 
 ## Context: how the existing doctrine failed
@@ -14,7 +14,7 @@ literature** — slope–area θ ∈ [0.40, 0.60], Hack h ∈ [0.45, 0.70],
 Horton R_b ∈ [3, 5] on the nature side; street meshedness
 "organic 0.15–0.26, planned grids 0.26–0.35" on the human side.
 
-A spike on the human side (`spikes/townfabric`, uncommitted) tested
+A spike on the human side (`spikes/townfabric`, commit 07a95b8) tested
 that practice against real towns and it broke in five distinct ways.
 Each is recorded here because each generalises:
 
@@ -164,6 +164,9 @@ Every reported number carries: protocol identifier, code revision,
 reference-data snapshot date, seed set. Reference extracts from
 third-party sources are stored outside version control with their
 licence recorded, and are never redistributed from this repository.
+The store this rule presupposes — its layout, its manifest, and the
+rulings on data measured before the rule existed — is fixed in
+ADR 0010.
 
 ## Consequences
 
@@ -178,7 +181,10 @@ licence recorded, and are never redistributed from this repository.
   ranges — is recorded as an open item, not scheduled here. No
   terrain result is withdrawn: the bands are broad, well established,
   and were measured under a stated protocol, but their epistemic
-  status is now correctly named.
+  status is now correctly named. Until that upgrade, θ, Hack and R_b
+  stay in `gates.json` and CI where they run today — a recorded
+  exception to D1's benchmarks-belong-in-a-report rule, kept because
+  dropping them would trade a mislabelled check for no check.
 - Any future claim of the form "the model reproduces X" requires: a
   population, a protocol, an ensemble, a held-out case, and a
   per-character table.
@@ -223,5 +229,5 @@ licence recorded, and are never redistributed from this repository.
   Springer. doi:10.1007/978-3-031-25825-1_20.
 - ADR 0003 (epistemic tiers); docs/research/humanity/0009 (candidate
   gates, superseded as a scoring proposal by this ADR); 0011 (open
-  questions, of which #9 single-seed-vs-ensemble and #10 delineation
-  are resolved here as D5 and D4).
+  questions, of which single-seed-vs-ensemble and delineation are
+  resolved here as D5 and D4).

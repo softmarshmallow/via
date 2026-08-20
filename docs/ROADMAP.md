@@ -5,7 +5,9 @@ layer follows, and the gate that can falsify it. Humanity stages (suitability
 refinement, settlements, corridors, networks, epochs) are deliberately parked
 until the natural substrate is deep enough; see README for the full causal
 chain. A literature research corpus for that side exists at
-docs/research/humanity — research only, nothing there is adopted.
+docs/research/humanity — research only, with one exception: the
+benchmark specification (0012) is adopted as the validation
+instrument by ADR 0010.
 
 ## Standing doctrine (see ADR 0003)
 
@@ -26,9 +28,10 @@ docs/research/humanity — research only, nothing there is adopted.
 ### M1 — Terrain (DONE)
 Stream-power LEM: ∂h/∂t = U − K√Q·S + κ∇²h, Braun & Willett 2013 implicit
 solve, priority-flood+ε (Barnes 2014), D8, signed uplift forcing.
-Gates: slope–area θ ∈ [0.40, 0.60], Hack h ∈ [0.45, 0.70] over subbasins,
-Horton Rb ∈ [3, 5] in largest basin, pits = 0, completeness = 1, SPL
-residual ≤ 0.35 (core; operator-splitting tripwire). ADR 0001.
+Gates: pits = 0, completeness = 1, SPL residual ≤ 0.35 (core;
+operator-splitting tripwire). Band-scored benchmarks (ADR 0008):
+slope–area θ ∈ [0.40, 0.60], Hack h ∈ [0.45, 0.70] over subbasins,
+Horton Rb ∈ [3, 5] in largest basin. ADR 0001.
 
 ### M2 — Climate & ecology (DONE)
 Climate inside the terrain stage (forcing + transport): seed-derived wind,
@@ -62,9 +65,10 @@ up in the material frame. Emergent (strata512): escarpments, knickzones,
 ridge-and-valley corrugation, exhumation rings with the geologic-map
 V-rule. Karst potential = solubility × discharge (a spectrum; cave
 geometry is downstream content, not via's claim). Shipped gates: the SPL
-residual evaluates each cell against its own K and κ; the slope–area fit
-restricts to the modal erodibility class; advisory unit SPL consistency
-(max/min of per-unit median balance). ADR 0007.
+residual evaluates each cell against its own K and κ; advisory unit SPL
+consistency (max/min of per-unit median balance). The slope–area fit — a
+band-scored benchmark under ADR 0008 — restricts to the modal
+erodibility class. ADR 0007.
 
 ### M5 — Soil, regolith & microclimate
 Regolith production (Heimsath et al. 1997 exponential decline with depth),

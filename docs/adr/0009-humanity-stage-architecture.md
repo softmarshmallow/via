@@ -1,9 +1,10 @@
 # ADR 0009 — Where settlement and road-network solving lives
 
-Status: **proposed**. Nothing here is implemented. This ADR answers a
-structural question that the spikes exposed: the human side has no
-home, so it grew as two monolithic throwaway binaries that violated
-the project's own declared chain.
+Status: accepted (2026-08-20)
+Scope: answers a structural question the spikes exposed — the human
+side had no home, so it grew as two monolithic throwaway binaries that
+violated the project's own declared chain. Nothing here is implemented
+yet; this ADR fixes where each piece lives when it is.
 
 ## Context
 
@@ -60,6 +61,10 @@ morphology), and the benchmark reference changes (GHS-UCDB → OSM
 morphometrics). A boundary that three separate considerations agree on
 is the right boundary.
 
+One further crate sits outside this table because it is not a chain
+level: `via-bench`, the benchmark's measurement half, defined in
+Decision 4.
+
 ## Decision 2 — The two-scale coupling contract
 
 docs/research/humanity/0011 records "no literature template exists for
@@ -89,8 +94,8 @@ ADR 0001 defined `.vrast` for rasters and rejected GeoTIFF. Morphology
 emits geometry, not fields: a street graph, block polygons, plot
 polygons, building footprints. A raster cannot carry them.
 
-Proposal: a **line-delimited GeoJSON** artifact (`.vgeo`), one feature
-per line, with:
+The format: a **line-delimited GeoJSON** artifact (`.vgeo`), one
+feature per line, with:
 
 - coordinates quantised to **integer centimetres** in the local metric
   frame before serialisation, satisfying the fixed-point rule and
@@ -105,23 +110,50 @@ which read GeoJSON natively. A bespoke binary would force us to write
 and maintain a bridge whose only purpose is to be read by the
 instrument that judges us.
 
+The per-feature schema — field names by feature type, the feature
+ordering rule, the local metric frame's definition — is fixed before
+the first crate emits a `.vgeo`, not here.
+
 ## Decision 4 — Where the benchmark lives
 
-Two halves, deliberately separated:
+Three parts, deliberately separated:
 
-- **Measurement of our own output** stays in Rust, inside the stage
-  crates, deterministic and hashed. It is part of the artifact
-  contract.
-- **Comparison against reference populations** lives in an analysis
-  sidecar under `analysis/`, in Python, because that is where `osmnx`,
-  `momepy` and the GHSL/Dataverse readers are. CONTRIBUTING permits
-  exactly this: "a throwaway script run *against* an exported
-  artifact, never a dependency of this project". The sidecar may never
-  be imported by a crate, and no gate may depend on it.
+- **Benchmark measurement lives in one dedicated crate, `via-bench`.**
+  It computes the benchmark characters on *both* sides of every
+  comparison it mediates — reference towns imported from OSM
+  extracts, and generated fabric — through one code path;
+  comparisons against published populations (GHS-UCDB, Boeing) are a
+  different channel, governed by 0012 §9.4. That is the same-code
+  rule the spike's validation record established: when real and
+  synthetic fabric are measured by different implementations, the
+  comparison measures the implementations, not the towns, which is
+  how the spike's first retraction happened. `via-bench` is not a
+  chain stage; like `via-viz`, it is never a dependency of a stage
+  crate. It exists before any stage does, because the benchmark is
+  built first and reference towns belong to no stage.
+- **Stage crates keep their gates.** Internal consistency checks (ADR
+  0008 D1) stay inside the stage they check, deterministic and
+  hashed, part of the artifact contract. Stages do not compute
+  benchmark characters.
+- **Population statistics and reporting** live in an analysis sidecar
+  under `analysis/`, in Python, because that is where `osmnx`,
+  `momepy` and the GHSL/Dataverse readers are. The sidecar consumes
+  the per-town character tables `via-bench` emits, and the published
+  populations (GHS-UCDB, Boeing), and produces the validation
+  report's statistics and figures. It is also the independent check
+  on `via-bench` itself: on a pilot set of towns, characters computed
+  by `via-bench` are cross-validated against `osmnx`/`momepy` at a
+  declared tolerance, so definition drift between our implementation
+  and the published ones is caught rather than shipped. The sidecar
+  is a standing, version-pinned tool — CONTRIBUTING's Python rule, as
+  amended, permits exactly this — and the quarantine is absolute: it
+  may never be imported by a crate, and no gate may depend on it.
 
 Reference extracts are stored outside version control, with licence
 and snapshot date recorded (OpenStreetMap data is ODbL; GHSL and the
-Boeing dataset carry their own terms).
+Boeing dataset carry their own terms). The store's layout and
+manifest, and the rulings on the towns measured before the store
+existed, are fixed in ADR 0010.
 
 ## Decision 5 — Spikes are not stages
 
@@ -148,17 +180,28 @@ code is superseded by this ADR rather than promoted by it.
   benchmark, the literature and the unit of work all agree on.
 - **Four crates split further** (`via-flows`, `via-epochs`): an
   artifact boundary inside a fixed-point loop.
-- **Promoting either spike into `crates/`.** Their generators are
-  known-invalid (spikes/townfabric/VALIDATION.md); the parts worth
-  keeping are the measurement protocol and the reference corpus, both
-  of which are specifications, not code.
+- **Promoting either spike's generator into `crates/`.** The
+  generators are known-invalid (spikes/townfabric/VALIDATION.md).
+  This rejection does not extend to the townfabric measurement kernel
+  — OSM import, planar graph, statistic battery: that code measured
+  every defect the validation record reports — including, once
+  characters were added under ADR 0008 D10, the two first caught by
+  eye — and reimplementing it from prose would re-open exactly the
+  definition-drift failures it exists to prevent. It is ported into
+  `via-bench` with tests added, against the protocol and defect list
+  VALIDATION.md records and research 0012 as the specification it
+  must satisfy — never against VALIDATION.md's numbers, which
+  ADR 0010 rules historical — and cross-validated against
+  `osmnx`/`momepy` (Decision 4). Ported, not depended on in place:
+  `spikes/` remains outside the dependency graph (Decision 5).
 - **A bespoke binary vector format.** It would be marginally smaller
   and would isolate us from the tools that must read our output.
 
 ## References
 
 - ADR 0001 (crate layout and artifact format); ADR 0003 (epistemic
-  tiers); ADR 0008 (validation doctrine).
+  tiers); ADR 0008 (validation doctrine); ADR 0010 (benchmark
+  instrument adoption and the reference corpus).
 - docs/research/humanity/0011 (open questions — the two-scale coupling
   contract is Decision 2 here); 0012 (benchmark specification).
 - README, "The causal chain".

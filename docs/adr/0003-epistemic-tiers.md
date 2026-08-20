@@ -69,3 +69,6 @@ JSON summary.
 - `via-ecology` docs must mark Whittaker classes as *standard* and the
   vegetation attribute formulas as *heuristic*.
 - Existing gate set is untouched: gates measure tier-1 statistics only.
+  *(Note, 2026-08-20: ADR 0008 D1 re-labels the band-scored members of
+  that set — θ, Hack, Horton R_b — as benchmarks; the tier rule stands,
+  the instrument names changed.)*

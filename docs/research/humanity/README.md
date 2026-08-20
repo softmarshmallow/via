@@ -1,10 +1,14 @@
 # docs/research/humanity — the human side, research corpus
 
-Status: **research corpus — pre-decision.** Nothing in this directory
-is adopted. No ADR references these documents as normative; adopting
-any mechanism, gate, or parameter recorded here requires its own ADR
-with its own review. This directory exists so that the eventual
-decisions are made against surveyed literature rather than intuition.
+Status: **research corpus — pre-decision.** Adopting any mechanism,
+gate, or parameter recorded here requires its own ADR with its own
+review. One document has been adopted this way:
+[0012](0012-benchmark-specification.md), the benchmark specification,
+adopted as the project's validation instrument by
+[ADR 0010](../../adr/0010-benchmark-instrument-and-reference-corpus.md).
+Everything else remains pre-decision. This directory exists so that
+the eventual decisions are made against surveyed literature rather
+than intuition.
 
 ## Scope
 
@@ -56,11 +60,11 @@ pre-decision:
 
 ## Validation
 
-Two spikes (`spikes/settlements`, `spikes/townfabric`, both
-uncommitted) tested parts of this corpus against real towns and failed
+Two spikes (`spikes/settlements`, `spikes/townfabric`, commits 5c770b5
+and 07a95b8) tested parts of this corpus against real towns and failed
 in ways that changed the project's method, not just its parameters.
 The outcome is recorded in **[ADR 0008](../../adr/0008-validation-doctrine.md)**
-(proposed) — gates versus benchmarks, reference populations rather
+— gates versus benchmarks, reference populations rather
 than quoted bands, ensembles rather than single runs, no invented
 composite scores — and the instrument that follows from it is
 specified in **[0012](0012-benchmark-specification.md)**. Where this
