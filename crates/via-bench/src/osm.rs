@@ -167,7 +167,13 @@ pub fn load(
                     graph.insert_segment(pair[0], pair[1], class, protocol.snap_m);
                 }
             }
-        } else if tags["building"].is_string() {
+        } else if tags["building"].is_string() && tags["building"] != "no" {
+            // A building is a *closed* way (protocol: Elements); an
+            // unclosed ring or an explicit building=no is not a footprint.
+            // The sidecar applies the same two rules.
+            if refs.first() != refs.last() {
+                continue;
+            }
             let mut poly = pts.clone();
             if dist(poly[0], *poly.last().unwrap()) < 0.5 {
                 poly.pop();

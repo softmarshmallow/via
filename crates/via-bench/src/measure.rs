@@ -108,6 +108,11 @@ pub struct Fabric {
     /// Share of buildings within 25 m of a street. Labelled invention,
     /// same motivation: beyond this there is no plausible frontage.
     pub street_fronting_share: f64,
+    /// True when the disc held fewer footprints than the protocol's
+    /// `min_footprints` floor: the building characters above and below are
+    /// then NaN by rule (a declared convention, ADR 0008 D8), and only the
+    /// count itself is reported.
+    pub below_footprint_floor: bool,
     /// Footprint area / block area.
     pub gsi: f64,
     /// Mean storeys over buildings that carry a storey tag, and the share
@@ -120,6 +125,14 @@ pub struct Fabric {
     pub parcels: Option<usize>,
     pub parcel_area_median_m2: Option<f64>,
     pub frontage_median_m: Option<f64>,
+}
+
+fn floor_gate(below_floor: bool, f: impl FnOnce() -> f64) -> f64 {
+    if below_floor {
+        f64::NAN
+    } else {
+        f()
+    }
 }
 
 fn quantile(v: &mut [f64], q: f64) -> f64 {
@@ -180,7 +193,15 @@ fn node_betweenness(s: &Simple) -> Vec<f64> {
         dist_v[src] = 0.0;
         sigma[src] = 1.0;
         heap.push(Reverse((0u64, src)));
-        let key = |x: f64| -> u64 { (x * 1024.0) as u64 };
+        // Exact monotone heap key: for non-negative finite floats, the IEEE
+        // bit pattern preserves order. The spike quantized here
+        // (`(x * 1024.0) as u64`, ~1 mm resolution), which let a node whose
+        // distance improved by more than the 1e-9 tie epsilon but less than
+        // a quantization step be settled twice, double-counting its
+        // betweenness — the review reproduced bc_max 1.33 on sub-millimetre
+        // parallel chains, and the pilot's Abilene grid (dense ties) missed
+        // the formula-level cross-validation tolerance exactly this way.
+        let key = |x: f64| -> u64 { x.to_bits() };
         while let Some(Reverse((k, v))) = heap.pop() {
             if k > key(dist_v[v]) {
                 continue;
@@ -342,6 +363,7 @@ pub fn measure(
     buildings: &[Building],
     parcels: Option<&[Parcel]>,
     study_radius: Option<f64>,
+    min_footprints: usize,
 ) -> Fabric {
     // Topology, street lengths, bearings and betweenness are all computed
     // on the simplified graph — junctions and whole streets — because that
@@ -538,6 +560,10 @@ pub fn measure(
     let parcels: Option<Vec<&Parcel>> =
         parcels.map(|ps| ps.iter().filter(|p| inside(p.centroid)).collect());
 
+    // The footprint floor (protocol Elements; ADR 0008 D8 convention):
+    // below it, building characters are noise and are reported as NaN.
+    let below_footprint_floor = buildings.len() < min_footprints;
+
     let (parcel_n, parcel_area, frontage) = match parcels.as_deref() {
         Some(p) if !p.is_empty() => {
             let mut a: Vec<f64> = p.iter().map(|x| x.area_m2).collect();
@@ -588,18 +614,25 @@ pub fn measure(
         block_minor_axis_median_m: quantile(&mut minor, 0.5),
         block_major_axis_median_m: quantile(&mut major, 0.5),
         buildings: buildings.len(),
-        footprint_area_median_m2: quantile(&mut foot_areas.clone(), 0.5),
-        footprint_area_p90_m2: quantile(&mut foot_areas, 0.9),
-        bldg_street_dist_median_m: quantile(&mut sd.clone(), 0.5),
-        street_wall_share: wall / nb,
-        street_fronting_share: fronting / nb,
-        gsi: if block_total > 0.0 {
-            foot_total / block_total
-        } else {
-            f64::NAN
-        },
-        storeys_mean_tagged,
-        storeys_tagged_share,
+        footprint_area_median_m2: floor_gate(below_footprint_floor, || {
+            quantile(&mut foot_areas.clone(), 0.5)
+        }),
+        footprint_area_p90_m2: floor_gate(below_footprint_floor, || quantile(&mut foot_areas, 0.9)),
+        bldg_street_dist_median_m: floor_gate(below_footprint_floor, || {
+            quantile(&mut sd.clone(), 0.5)
+        }),
+        street_wall_share: floor_gate(below_footprint_floor, || wall / nb),
+        street_fronting_share: floor_gate(below_footprint_floor, || fronting / nb),
+        below_footprint_floor,
+        gsi: floor_gate(below_footprint_floor, || {
+            if block_total > 0.0 {
+                foot_total / block_total
+            } else {
+                f64::NAN
+            }
+        }),
+        storeys_mean_tagged: floor_gate(below_footprint_floor, || storeys_mean_tagged),
+        storeys_tagged_share: floor_gate(below_footprint_floor, || storeys_tagged_share),
         parcels: parcel_n,
         parcel_area_median_m2: parcel_area,
         frontage_median_m: frontage,
@@ -646,7 +679,7 @@ mod tests {
         // the 8 corner-adjacent pairs merged pairwise into 4 corner
         // chains: 40 - 8 + 4 = 36.
         let g = lattice(5, 100.0);
-        let f = measure("grid", &g, &[], &[], None, None);
+        let f = measure("grid", &g, &[], &[], None, None, 0);
         assert_eq!(f.nodes, 21);
         assert_eq!(f.edges, 36);
         let expect_m = (36.0 - 21.0 + 1.0) / (2.0 * 21.0 - 5.0);
@@ -665,7 +698,7 @@ mod tests {
         // the origin are interior (centre + 4 at distance 100); chains
         // count only with both endpoints interior — the 4 spokes.
         let g = lattice(5, 100.0);
-        let f = measure("clip", &g, &[], &[], None, Some(120.0));
+        let f = measure("clip", &g, &[], &[], None, Some(120.0), 0);
         assert_eq!(f.nodes, 5);
         assert_eq!(f.edges, 4);
         // Those interior nodes keep their full-graph degree 4: a street
@@ -687,7 +720,7 @@ mod tests {
         g.insert_segment([0.0, 0.0], [0.0, 80.0], Class::Street, 0.5);
         // A T with one stub: nodes at (-100,0),(100,0),(0,0),(0,80);
         // degrees 1,1,3,1.
-        let f = measure("tee", &g, &[], &[], None, None);
+        let f = measure("tee", &g, &[], &[], None, None, 0);
         assert_eq!(f.nodes, 4);
         assert_eq!(f.edges, 3);
         assert!((f.dead_end_share - 0.75).abs() < 1e-12);
@@ -702,7 +735,7 @@ mod tests {
         let mut g = Graph::new(40.0);
         g.insert_segment([-100.0, 0.0], [-20.0, 0.0], Class::Street, 0.5);
         g.insert_segment([20.0, 0.0], [100.0, 0.0], Class::Street, 0.5);
-        let f = measure("frag", &g, &[], &[], None, None);
+        let f = measure("frag", &g, &[], &[], None, None, 0);
         assert_eq!(f.interior_components, 2);
     }
 
@@ -743,8 +776,8 @@ mod tests {
         // And the Gini over a bridged pair of grids exceeds the Gini of a
         // plain grid, where movement is spread evenly.
         let plain = lattice(5, 100.0);
-        let f_bridge = measure("bridge", &g, &[], &[], None, None);
-        let f_plain = measure("plain", &plain, &[], &[], None, None);
+        let f_bridge = measure("bridge", &g, &[], &[], None, None, 0);
+        let f_plain = measure("plain", &plain, &[], &[], None, None, 0);
         assert!(f_bridge.bc_gini > f_plain.bc_gini);
     }
 
@@ -772,14 +805,63 @@ mod tests {
                 floor_area_m2: 100.0,
             },
         ];
-        let f = measure("st", &g, &[], &buildings, None, None);
+        let f = measure("st", &g, &[], &buildings, None, None, 0);
         assert_eq!(f.buildings, 2);
+        assert!(!f.below_footprint_floor);
         assert!((f.storeys_mean_tagged - 2.0).abs() < 1e-12);
         assert!((f.storeys_tagged_share - 0.5).abs() < 1e-12);
         // Both squares front the street: nearest corner is 5 m from the
         // centreline.
         assert!((f.bldg_street_dist_median_m - 5.0).abs() < 1e-9);
         assert!((f.street_wall_share - 1.0).abs() < 1e-12);
+
+        // Below the declared footprint floor, building characters are NaN
+        // by rule and only the count survives.
+        let g2 = measure("st-floor", &g, &[], &buildings, None, None, 30);
+        assert!(g2.below_footprint_floor);
+        assert_eq!(g2.buildings, 2);
+        assert!(g2.footprint_area_median_m2.is_nan());
+        assert!(g2.street_wall_share.is_nan());
+        assert!(g2.gsi.is_nan());
+    }
+
+    #[test]
+    fn betweenness_survives_sub_millimetre_ties() {
+        // Two parallel routes between S and A whose lengths differ by less
+        // than a millimetre: under the spike's quantized heap key the
+        // improved entry shared the stale entry's key, the node settled
+        // twice, and betweenness double-counted (bc_max read 1.33 — an
+        // impossible value for a normalized centrality).
+        let build = |delta: f64| -> Vec<f64> {
+            let mut g = Graph::new(40.0);
+            // W - S ... A - T, with two S-A routes: an up-detour and a
+            // down-detour whose total lengths differ by exactly delta.
+            // The detour nodes are degree-2 and dissolve, leaving two
+            // parallel S-A chains. Geometry stays far from every other
+            // edge so no T-touch fires.
+            g.insert_segment([-200.0, 0.0], [-100.0, 0.0], Class::Street, 0.5);
+            g.insert_segment([100.0, 0.0], [200.0, 0.0], Class::Street, 0.5);
+            let h1 = 60.0f64;
+            let leg = (10_000.0f64 + h1 * h1).sqrt();
+            let h2 = ((leg + delta * 0.5).powi(2) - 10_000.0).sqrt();
+            // The longer route is inserted first so Dijkstra relaxes it
+            // first and the shorter one arrives as an improvement — the
+            // configuration that double-settled under the quantized key.
+            g.insert_segment([-100.0, 0.0], [0.0, -h2], Class::Street, 0.5);
+            g.insert_segment([0.0, -h2], [100.0, 0.0], Class::Street, 0.5);
+            g.insert_segment([-100.0, 0.0], [0.0, h1], Class::Street, 0.5);
+            g.insert_segment([0.0, h1], [100.0, 0.0], Class::Street, 0.5);
+            node_betweenness(&g.simplify())
+        };
+        for delta in [5.0e-4, 5.0e-3, 1.0] {
+            let bc = build(delta);
+            for &b in &bc {
+                assert!(
+                    (0.0..=1.0 + 1e-12).contains(&b),
+                    "normalized betweenness out of range: {b} (delta {delta})"
+                );
+            }
+        }
     }
 
     #[test]
@@ -793,8 +875,8 @@ mod tests {
     #[test]
     fn measurement_is_deterministic() {
         let g = lattice(4, 80.0);
-        let a = serde_json::to_string(&measure("d", &g, &[], &[], None, Some(150.0))).unwrap();
-        let b = serde_json::to_string(&measure("d", &g, &[], &[], None, Some(150.0))).unwrap();
+        let a = serde_json::to_string(&measure("d", &g, &[], &[], None, Some(150.0), 0)).unwrap();
+        let b = serde_json::to_string(&measure("d", &g, &[], &[], None, Some(150.0), 0)).unwrap();
         assert_eq!(a, b);
     }
 }

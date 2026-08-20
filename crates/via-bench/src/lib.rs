@@ -60,6 +60,11 @@ pub struct Protocol {
     pub block_area_max_m2: f64,
     /// Building footprints below this area are not fabric.
     pub building_min_area_m2: f64,
+    /// Building characters are computed only when the disc holds at least
+    /// this many footprints — a declared convention (ADR 0008 D8): below
+    /// it, medians are noise (the spike's 7-footprint abilene-res disc is
+    /// the cautionary case). The count itself is always reported.
+    pub min_footprints: usize,
 }
 
 impl Default for Protocol {
@@ -72,6 +77,7 @@ impl Default for Protocol {
             block_area_min_m2: 300.0,
             block_area_max_m2: 90_000.0,
             building_min_area_m2: 8.0,
+            min_footprints: 30,
         }
     }
 }

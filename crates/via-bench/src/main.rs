@@ -80,6 +80,9 @@ struct NullArgs {
     /// dla: particle count.
     #[arg(long, default_value_t = 400)]
     particles: usize,
+    /// Protocol identifier stamped into the provenance record.
+    #[arg(long, default_value = "v1")]
+    protocol_id: String,
 }
 
 fn main() -> Result<()> {
@@ -119,6 +122,7 @@ fn run_reference(a: RefArgs) -> Result<()> {
             &r.buildings,
             None,
             Some(protocol.radius_m),
+            protocol.min_footprints,
         );
         println!(
             "{:<12} {:<12} {:>5} nodes {:>5} edges  M {:.3}  deadend {:>4.1}%  blocks {:>4}  \
@@ -199,7 +203,29 @@ fn render_panels(a: &RefArgs, r: &osm::Reference) -> Result<()> {
 
 fn run_null(a: NullArgs) -> Result<()> {
     std::fs::create_dir_all(&a.out)?;
-    let extent = a.radius * Protocol::default().buffer;
+    // The full protocol in force — recorded in the provenance block below,
+    // never left implicit (ADR 0008 D11).
+    let protocol = Protocol {
+        id: a.protocol_id.clone(),
+        radius_m: a.radius,
+        ..Protocol::default()
+    };
+    let extent = protocol.radius_m * protocol.buffer;
+    // Every generator parameter that determines the numbers, recorded so a
+    // null artifact is reproducible from its own record.
+    const DLA_ATTACH_M: f64 = 30.0;
+    const DLA_STEP_M: f64 = 20.0;
+    let params = match a.model.as_str() {
+        "grid" => serde_json::json!({"spacing_m": a.spacing, "extent_m": extent}),
+        "random" => serde_json::json!({
+            "nodes": a.nodes, "target_edge_node_ratio": a.target_enr, "extent_m": extent,
+        }),
+        "dla" => serde_json::json!({
+            "particles": a.particles, "attach_m": DLA_ATTACH_M,
+            "step_m": DLA_STEP_M, "extent_m": extent,
+        }),
+        other => anyhow::bail!("unknown null model {other}"),
+    };
     let stage = format!("bench-null-{}", a.model);
     let mut runs: Vec<serde_json::Value> = Vec::new();
     for i in 0..a.seeds {
@@ -207,7 +233,7 @@ fn run_null(a: NullArgs) -> Result<()> {
         let g: Graph = match a.model.as_str() {
             "grid" => null::grid(a.spacing, extent),
             "random" => null::random_planar(a.nodes, a.target_enr, extent, seed_v),
-            "dla" => null::dla(a.particles, 30.0, 20.0, extent, seed_v),
+            "dla" => null::dla(a.particles, DLA_ATTACH_M, DLA_STEP_M, extent, seed_v),
             other => anyhow::bail!("unknown null model {other}"),
         };
         let blocks: Vec<_> = g
@@ -215,8 +241,7 @@ fn run_null(a: NullArgs) -> Result<()> {
             .into_iter()
             .filter(|f| {
                 let ar = via_bench::geom::polygon_area(f).abs();
-                let p = Protocol::default();
-                (p.block_area_min_m2..=p.block_area_max_m2).contains(&ar)
+                (protocol.block_area_min_m2..=protocol.block_area_max_m2).contains(&ar)
             })
             .collect();
         let fab = measure::measure(
@@ -225,7 +250,8 @@ fn run_null(a: NullArgs) -> Result<()> {
             &blocks,
             &[],
             None,
-            Some(a.radius),
+            Some(protocol.radius_m),
+            0,
         );
         println!(
             "null {:<7} seed {:>2}  {:>5} nodes  M {:.3}  deadend {:>4.1}%",
@@ -250,11 +276,12 @@ fn run_null(a: NullArgs) -> Result<()> {
         a.out.join(format!("null-{}.json", a.model)),
         serde_json::to_string_pretty(&serde_json::json!({
             "model": a.model,
+            "params": params,
             "seeds": a.seeds,
             "global_seed": a.global_seed,
             "seed_stage": stage,
             "code_revision": via_bench::code_revision(),
-            "protocol_radius_m": a.radius,
+            "protocol": protocol,
             "per_seed": runs,
             "ensemble": agg,
         }))? + "\n",

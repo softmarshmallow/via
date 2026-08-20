@@ -114,7 +114,11 @@ impl Canvas {
         }
     }
 
-    /// Streets, drawn at the width their class carries.
+    /// Streets, drawn at the width their class carries. Declared render
+    /// change vs the spike's reference panels: widths are 12/8/5 m
+    /// (the spike's synthetic-graph constants) rather than the 16/8/4 m
+    /// its reference driver used — cosmetic only, no measured number
+    /// depends on it.
     pub fn draw_streets(&mut self, g: &Graph) {
         let width_of = |c: Class| -> f64 {
             match c {
@@ -212,7 +216,10 @@ impl Canvas {
 
 /// The building-densest point: centre of the `half_m` window holding the
 /// most building centroids, scanned on a 25 m lattice. Deterministic
-/// (ties resolve to the first in scan order).
+/// (ties resolve to the first in scan order). Declared change vs the
+/// spike, which evaluated building centroids as candidate centres: the
+/// lattice scan is insensitive to building enumeration order. Render-only
+/// — it moves the zoom window, never a number.
 pub fn densest_point(buildings: &[Building], half_m: f64) -> P2 {
     if buildings.is_empty() {
         return [0.0, 0.0];

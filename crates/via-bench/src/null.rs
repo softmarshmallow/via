@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn grid_is_meshed_dla_is_tree() {
         let g = grid(100.0, 435.0);
-        let f = measure("grid", &g, &[], &[], None, Some(300.0));
+        let f = measure("grid", &g, &[], &[], None, Some(300.0), 0);
         assert!(f.meshedness > 0.2, "grid meshedness {}", f.meshedness);
         assert!(f.dead_end_share < 0.05);
 
@@ -161,7 +161,7 @@ mod tests {
             435.0,
             seed::derive(42, "bench-null-dla", 0),
         );
-        let ft = measure("dla", &t, &[], &[], None, Some(300.0));
+        let ft = measure("dla", &t, &[], &[], None, Some(300.0), 0);
         // A tree: meshedness ~0 (attachment can close the odd loop through
         // snapping, so allow a whisker), dead ends everywhere.
         assert!(ft.meshedness < 0.05, "dla meshedness {}", ft.meshedness);

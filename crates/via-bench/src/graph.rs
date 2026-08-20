@@ -105,13 +105,32 @@ impl Graph {
         self.incident[b].push(i);
     }
 
+    /// Split edge `e` at exactly point `p` — no snapping — returning the
+    /// new node. Used by the T-touch pre-pass, whose postcondition needs a
+    /// node at the projection itself.
+    fn split_edge_exact(&mut self, e: usize, p: P2) -> usize {
+        let i = self.nodes.len();
+        self.nodes.push(p);
+        self.incident.push(Vec::new());
+        self.bins.entry(self.key(p)).or_default().push(i);
+        self.split_at_node(e, i);
+        i
+    }
+
     /// Split edge `e` at point `p`, returning the node there.
     fn split_edge(&mut self, e: usize, p: P2, snap_r: f64) -> usize {
-        let (a, b, class) = (self.edges[e].a, self.edges[e].b, self.edges[e].class);
+        let (a, b) = (self.edges[e].a, self.edges[e].b);
         let n = self.add_node(p, snap_r);
         if n == a || n == b {
             return n;
         }
+        self.split_at_node(e, n);
+        n
+    }
+
+    /// Rewire edge `e` = a→b into a→n plus n→b.
+    fn split_at_node(&mut self, e: usize, n: usize) {
+        let (b, class) = (self.edges[e].b, self.edges[e].class);
         // Rewrite the edge as a→n and add n→b.
         self.edges[e].b = n;
         self.incident[b].retain(|&x| x != e);
@@ -120,8 +139,6 @@ impl Graph {
         self.edges.push(Edge { a: n, b, class });
         self.incident[n].push(i);
         self.incident[b].push(i);
-        let _ = a;
-        n
     }
 
     /// Insert a segment, splitting it and every edge it crosses. Returns
@@ -138,8 +155,17 @@ impl Graph {
     pub fn insert_segment(&mut self, p: P2, q: P2, class: Class, snap_r: f64) -> (usize, usize) {
         // Endpoint-on-edge: split the closest edge whose interior lies
         // within the snap radius of p or q, so the endpoint snap below
-        // lands on a real junction node.
+        // lands on a real junction node. The postcondition that matters:
+        // after this pass, some node within snap_r of the endpoint lies on
+        // the touched edge. Splitting via the snapping split_edge is not
+        // enough — when an existing node sits near the projection but out
+        // of the endpoint's own reach, the split snaps to it, the endpoint
+        // cannot, and the ghost this pass exists to prevent survives (the
+        // review reproduced exactly that).
         for end in [p, q] {
+            if self.find_node(end, snap_r).is_some() {
+                continue; // the endpoint will snap to a real node anyway
+            }
             let mut best: Option<(f64, usize, P2)> = None;
             for e in 0..self.edges.len() {
                 let (a, b) = (self.nodes[self.edges[e].a], self.nodes[self.edges[e].b]);
@@ -154,10 +180,15 @@ impl Graph {
                 }
             }
             if let Some((_, e, c)) = best {
-                // Only split when no node is already close enough to snap
-                // to — otherwise add_node would take that node anyway.
-                if self.find_node(end, snap_r).is_none() {
-                    self.split_edge(e, c, snap_r);
+                match self.find_node(c, snap_r) {
+                    // A node near the projection that the endpoint can also
+                    // reach: the endpoint snap will take it; nothing to do.
+                    Some(m) if dist(self.nodes[m], end) <= snap_r => {}
+                    // Otherwise the node must sit exactly at the
+                    // projection, unsnapped, so the endpoint can reach it.
+                    _ => {
+                        self.split_edge_exact(e, c);
+                    }
                 }
             }
         }
@@ -462,6 +493,35 @@ mod tests {
         let expected = 10.0 + (100.0f64 + 25.0).sqrt() + 10.0;
         assert!((s.chains[0].len - expected).abs() < 1e-9);
         assert_eq!(s.chains[0].pts.len(), 4);
+    }
+
+    #[test]
+    fn t_touch_survives_nearby_offset_node() {
+        // The review's repro: street E from (0,0) to (100,0) with a
+        // junction M at (50,0); a new street starts at (44.2, 4.0) — within
+        // the 6 m snap of E's interior, but 7.05 m from M. The snapping
+        // split used to collapse onto M and leave the new street's start as
+        // a disconnected ghost; the exact split keeps the T.
+        let mut g = Graph::new(40.0);
+        g.insert_segment([0.0, 0.0], [100.0, 0.0], Class::Street, 6.0);
+        g.insert_segment([50.0, 0.0], [50.0, 40.0], Class::Street, 6.0);
+        g.insert_segment([44.2, 4.0], [44.2, 60.0], Class::Street, 6.0);
+        let s = g.simplify();
+        // Every node reachable: one component, no degree-1 node at the
+        // probe start except the probe's own far end.
+        let f = crate::measure::measure("t", &g, &[], &[], None, None, 0);
+        assert_eq!(f.interior_components, 1, "T-touch must connect");
+        let start = g.find_node([44.2, 4.0], 6.0).expect("start node");
+        assert!(
+            g.degree(start) >= 2 || {
+                // start snapped onto the split node on E, which then has
+                // degree >= 3
+                let onto = g.find_node([44.2, 0.0], 1.0);
+                onto.map(|n| g.degree(n) >= 3).unwrap_or(false)
+            },
+            "the T-junction must exist"
+        );
+        let _ = s;
     }
 
     #[test]
