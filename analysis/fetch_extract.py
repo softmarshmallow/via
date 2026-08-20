@@ -17,7 +17,14 @@ and this script is its fetch half:
   runs/ tree and ``--archive-dir`` — verified by hash, because "loss is
   designed against, not just detected";
 - an existing extract file is never overwritten: a re-fetch is a new
-  extract with its own date, filename, and manifest record.
+  extract with its own date, filename, and manifest record;
+- the record's partition is never authored here (ADR 0010 Decision 4:
+  "it derives from the pre-registration document; for the pilot towns,
+  from Decision 2"): the six pilot towns are always ``fitted``, any
+  other town is looked up in ``reference/pre-registration.md``, and a
+  town in neither is an error — it must be pre-registered before it is
+  fetched. ``--partition`` survives only as an optional cross-check that
+  must match the derived value.
 
 The query shape matches the spike precedent (spikes/townfabric/VALIDATION.md):
 highway and building ways within ``around:<radius>`` of the study centre,
@@ -55,6 +62,73 @@ QUERY_TEMPLATE = (
     'way["building"](around:{radius},{lat},{lon}););'
     "(._;>;);out body;"
 )
+
+# The six pilot towns (ADR 0010 Decision 2 plus its addendum), pinned to
+# the fitted partition permanently — they can never be held out.
+PILOT_TOWNS = frozenset(
+    {"alnwick", "lavenham", "monpazier", "abilene", "levittown", "kibera"}
+)
+
+# The pre-registration document ADR 0010 Decision 4 derives every
+# non-pilot partition from (0012 §5.4), relative to the repo root.
+PRE_REGISTRATION = "reference/pre-registration.md"
+
+
+def parse_pre_registration(text: str) -> dict[str, str]:
+    """Leniently parse partition assignments out of pre-registration.md.
+
+    Any markdown table whose header row contains Town and Partition
+    columns (case-insensitive, any column order, other columns ignored)
+    contributes rows; town names are matched case-insensitively.
+    """
+    partitions: dict[str, str] = {}
+    cols: tuple[int, int] | None = None
+    for line in text.splitlines():
+        if "|" not in line:
+            cols = None  # a table ends at the first non-table line
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        lowered = [c.lower() for c in cells]
+        if "town" in lowered and "partition" in lowered:
+            cols = (lowered.index("town"), lowered.index("partition"))
+            continue
+        if cols is None:
+            continue
+        if all(set(c) <= set("-: ") for c in cells):
+            continue  # the |---|---| separator row
+        town_i, part_i = cols
+        if len(cells) <= max(town_i, part_i):
+            continue
+        town, partition = cells[town_i].lower(), cells[part_i]
+        if town and partition:
+            partitions.setdefault(town, partition)
+    return partitions
+
+
+def derive_partition(town: str, prereg_path: Path) -> str:
+    """Derive the partition; raise LookupError for an unregistered town.
+
+    ADR 0010 Decision 4: the partition "is not authored here: it derives
+    from the pre-registration document (for the pilot towns, from
+    Decision 2), and a mismatch is a defect."
+    """
+    key = town.strip().lower()
+    if key in PILOT_TOWNS:
+        return "fitted"
+    if prereg_path.exists():
+        partitions = parse_pre_registration(prereg_path.read_text(encoding="utf-8"))
+        if key in partitions:
+            return partitions[key]
+        raise LookupError(
+            f'town "{town}" is not a pilot town and is not listed in '
+            f"{prereg_path} — pre-register it (add it to the Town | Class | "
+            "Centre | Partition table) before fetching (ADR 0010 Decision 4)"
+        )
+    raise LookupError(
+        f'town "{town}" is not a pilot town and no pre-registration document '
+        f"exists at {prereg_path} — a non-pilot town must be pre-registered "
+        "before it is fetched (ADR 0010 Decision 4)"
+    )
 
 
 def repo_path(p: str) -> Path:
@@ -119,11 +193,31 @@ def main() -> int:
         "on it is published)",
     )
     ap.add_argument(
-        "--partition", default="fitted",
-        help='partition per the pre-registration document (default "fitted", '
-        "the pilot towns' permanent assignment under ADR 0010 Decision 2)",
+        "--partition", default=None,
+        help="optional cross-check ONLY — the partition is DERIVED (pilot "
+        'towns are always "fitted" per ADR 0010 Decision 2; other towns '
+        f"come from {PRE_REGISTRATION}), and when this flag is given it "
+        "must match the derived value; a mismatch is an error, so a typo "
+        "cannot author a partition (ADR 0010 Decision 4)",
     )
     args = ap.parse_args()
+
+    # Derive the partition BEFORE any network traffic: an unregistered
+    # town must fail without fetching anything.
+    try:
+        partition = derive_partition(args.town, repo_path(PRE_REGISTRATION))
+    except LookupError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    if args.partition is not None and args.partition != partition:
+        print(
+            f'error: --partition "{args.partition}" contradicts the derived '
+            f'partition "{partition}" for town "{args.town}" — the flag is '
+            "only a cross-check; fix the flag or the pre-registration "
+            "document (ADR 0010 Decision 4: a mismatch is a defect)",
+            file=sys.stderr,
+        )
+        return 1
 
     if args.date is None:
         attic = dt.datetime.now(dt.timezone.utc).replace(
@@ -215,7 +309,7 @@ def main() -> int:
         else str(out_file),
         "blake3": digest,
         "licence": "ODbL",
-        "partition": args.partition,
+        "partition": partition,
     }
     manifest = repo_path(args.manifest)
     manifest.parent.mkdir(parents=True, exist_ok=True)

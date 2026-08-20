@@ -25,9 +25,14 @@ frozen in spikes/townfabric/VALIDATION.md:
 - P5  local equirectangular projection about the study centre;
 - P6  the output records extract hash and software versions.
 
-No pass/fail judgment is made: per-character tolerances are declared in
-the protocol freeze document (ADR 0010 Decision 3). This script only
-reports positions and distances.
+By default no pass/fail judgment is made: per-character tolerances are
+declared in the protocol freeze document (ADR 0010 Decision 3), and this
+script only reports positions and distances. With ``--envelopes`` the
+declared Tier B envelopes are applied: the file maps character name to
+``{"kind": "rel"|"abs", "max": number}``, each mapped character is
+checked against its envelope (rel checks rel_diff, abs checks abs_diff),
+violations are printed and exit code 2 is returned if any character
+exceeds its envelope. Characters absent from the map stay informational.
 
 Usage (from the repo root):
 
@@ -342,6 +347,63 @@ def fmt(value) -> str:
     return f"{value:.6g}"
 
 
+def load_envelopes(path: Path) -> dict:
+    """Load and validate a character -> {"kind", "max"} envelope map."""
+    doc = json.loads(path.read_bytes())
+    if not isinstance(doc, dict):
+        raise ValueError("envelope file must be a JSON object mapping "
+                         'character -> {"kind": "rel"|"abs", "max": number}')
+    for name, spec in doc.items():
+        if (
+            not isinstance(spec, dict)
+            or spec.get("kind") not in ("rel", "abs")
+            or isinstance(spec.get("max"), bool)
+            or not isinstance(spec.get("max"), (int, float))
+        ):
+            raise ValueError(
+                f'envelope for "{name}" must be '
+                '{"kind": "rel"|"abs", "max": number}'
+            )
+    return doc
+
+
+def check_envelopes(table: dict, envelopes: dict) -> tuple[dict, list[str]]:
+    """Evaluate each enveloped character; return (results, violation texts).
+
+    A character that is enveloped but missing from the comparison, or
+    whose required diff is not computable, is a violation: an envelope
+    that cannot be evaluated is not passed.
+    """
+    results: dict = {}
+    violations: list[str] = []
+    for name in sorted(envelopes):
+        spec = envelopes[name]
+        diff_key = "rel_diff" if spec["kind"] == "rel" else "abs_diff"
+        row = table.get(name)
+        value = None
+        if row is None:
+            ok = False
+            violations.append(f"{name}: enveloped but not in the comparison")
+        elif row[diff_key] is None:
+            ok = False
+            violations.append(
+                f"{name}: {diff_key} not computable "
+                f"(ours={fmt(row['ours'])}, bench={fmt(row['bench'])})"
+            )
+        else:
+            value = row[diff_key]
+            ok = value <= spec["max"]
+            if not ok:
+                violations.append(
+                    f"{name}: {diff_key} {fmt(value)} exceeds envelope "
+                    f"max {spec['max']:g} ({spec['kind']})"
+                )
+        results[name] = {
+            "kind": spec["kind"], "max": spec["max"], "value": value, "ok": ok,
+        }
+    return results, violations
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Cross-validate via-bench against an independent "
@@ -359,7 +421,22 @@ def main() -> int:
     ap.add_argument("--street-set", choices=["carriageway", "all_ways"],
                     default="carriageway", help="P4 element set (default carriageway)")
     ap.add_argument("--out", required=True, help="comparison JSON output path")
+    ap.add_argument("--envelopes", default=None,
+                    help="JSON file mapping character -> "
+                    '{"kind": "rel"|"abs", "max": number} (the Tier B '
+                    "envelopes of the protocol freeze); when given, mapped "
+                    "characters are checked and any violation exits 2. "
+                    "Characters not in the map stay informational.")
     args = ap.parse_args()
+
+    envelopes = None
+    if args.envelopes is not None:
+        env_path = repo_path(args.envelopes)
+        try:
+            envelopes = load_envelopes(env_path)
+        except (ValueError, json.JSONDecodeError, OSError) as exc:
+            print(f"error: bad envelope file {env_path}: {exc}", file=sys.stderr)
+            return 1
 
     lat0, lon0 = (float(part) for part in args.centre.split(","))
     r_buf = args.radius * args.buffer
@@ -435,6 +512,12 @@ def main() -> int:
         "comparison": table,
     }
 
+    env_results: dict = {}
+    env_violations: list[str] = []
+    if envelopes is not None:
+        env_results, env_violations = check_envelopes(table, envelopes)
+        result["envelopes"] = {"file": str(args.envelopes), "results": env_results}
+
     out_path = repo_path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n")
@@ -452,12 +535,27 @@ def main() -> int:
             f"{key:<{name_w}}  {fmt(row['ours']):>12}  {fmt(row['bench']):>12}  "
             f"{fmt(row['abs_diff']):>12}  {fmt(row['rel_diff']):>10}"
         )
-    print(
-        "\nNo pass/fail is implied: per-character tolerances are declared in "
-        "the protocol freeze document (ADR 0010 Decision 3)."
-    )
+    if envelopes is None:
+        print(
+            "\nNo pass/fail is implied: per-character tolerances are declared in "
+            "the protocol freeze document (ADR 0010 Decision 3)."
+        )
+    else:
+        if env_violations:
+            print(f"\nENVELOPE VIOLATIONS ({len(env_violations)}):")
+            for violation in env_violations:
+                print(f"  {violation}")
+        else:
+            print(
+                f"\nAll {len(envelopes)} enveloped characters are within "
+                "their envelopes."
+            )
+        print(
+            f"Pass/fail per the envelopes in {args.envelopes}; characters "
+            "outside the map are informational."
+        )
     print(f"comparison written to {out_path}")
-    return 0
+    return 2 if env_violations else 0
 
 
 if __name__ == "__main__":

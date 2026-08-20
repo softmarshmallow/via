@@ -436,9 +436,15 @@ impl Graph {
                 }
                 let ci = chains.len();
                 incident[ca].push(ci);
-                if cb != ca {
-                    incident[cb].push(ci);
-                }
+                // Always push the far end — for a self-loop chain that is
+                // the same junction, which therefore counts the loop
+                // twice, the multigraph convention networkx and osmnx use
+                // (and what this graph's own raw edges already do). The
+                // spike pushed once, so a self-loop contributed +1 to
+                // degree and shifted the degree shares on any town with a
+                // looping lane; the Tier A cross-validation caught it on
+                // Alnwick's deg3_share.
+                incident[cb].push(ci);
                 chains.push(Chain {
                     a: ca,
                     b: cb,
@@ -522,6 +528,29 @@ mod tests {
             "the T-junction must exist"
         );
         let _ = s;
+    }
+
+    #[test]
+    fn self_loop_counts_twice_toward_degree() {
+        // A stub W-J plus a loop J-A-B-J whose interior vertices dissolve:
+        // J's simplified degree is 3 (one stub + both ends of the loop).
+        let mut g = Graph::new(40.0);
+        g.insert_segment([-100.0, 0.0], [0.0, 0.0], Class::Street, 0.5);
+        g.insert_segment([0.0, 0.0], [60.0, 40.0], Class::Street, 0.5);
+        g.insert_segment([60.0, 40.0], [60.0, -40.0], Class::Street, 0.5);
+        g.insert_segment([60.0, -40.0], [0.0, 0.0], Class::Street, 0.5);
+        let s = g.simplify();
+        assert_eq!(s.nodes.len(), 2);
+        let j = s
+            .nodes
+            .iter()
+            .position(|p| dist(*p, [0.0, 0.0]) < 1.0)
+            .unwrap();
+        assert_eq!(s.degree(j), 3, "self-loop must contribute 2");
+        let f = crate::measure::measure("loop", &g, &[], &[], None, None, 0);
+        assert!((f.deg3_share - 0.5).abs() < 1e-12);
+        assert!((f.dead_end_share - 0.5).abs() < 1e-12);
+        assert!((f.self_loop_proportion - 0.5).abs() < 1e-12);
     }
 
     #[test]
