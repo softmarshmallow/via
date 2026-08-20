@@ -121,8 +121,8 @@ def derive_partition(town: str, prereg_path: Path) -> str:
             return partitions[key]
         raise LookupError(
             f'town "{town}" is not a pilot town and is not listed in '
-            f"{prereg_path} — pre-register it (add it to the Town | Class | "
-            "Centre | Partition table) before fetching (ADR 0010 Decision 4)"
+            f"{prereg_path} — pre-register it (add a row with Town and "
+            "Partition columns) before fetching (ADR 0010 Decision 4)"
         )
     raise LookupError(
         f'town "{town}" is not a pilot town and no pre-registration document '
