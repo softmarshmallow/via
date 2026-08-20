@@ -1,5 +1,9 @@
 # Measurement protocol v1
 
+**Superseded by [protocol-v1.1](protocol-v1.1.md) (2026-08-20),**
+whose amendment record explains why; this file stands unchanged as
+the v1 record.
+
 Identifier: **v1** — the protocol identifier every number measured
 under this document carries (ADR 0008 D4/D11; ADR 0010 Decision 3).
 Frozen 2026-08-20, after the six-town pilot. **This file is immutable:

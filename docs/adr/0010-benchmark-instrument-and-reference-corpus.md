@@ -166,11 +166,15 @@ The pilot exists to change the protocol; this decision bounds how.
   instrument grounds.
 - **The frozen protocol is a file**: `reference/protocol-<id>.md`,
   one immutable document per identifier. Any amendment is a new
-  identifier. Manifest records, character tables and every reported
-  number cite the identifier — this is the "protocol identifier"
-  ADR 0008 D11 requires, defined at last. 0012 §3 specifies the
-  protocol's shape and its measured sensitivities; the binding
-  instance is the identified freeze document.
+  identifier. Measurement records, character tables and every
+  reported number cite the identifier — this is the "protocol
+  identifier" ADR 0008 D11 requires, defined at last. 0012 §3
+  specifies the protocol's shape and its measured sensitivities; the
+  binding instance is the identified freeze document. *(Note,
+  2026-08-20: acquisition records in `reference/extracts.jsonl`
+  carry no protocol identifier — an extract is raw data, measured
+  under possibly several protocols; the identifier attaches to
+  measurements, as Decision 4's field list already implied.)*
 - **Cross-validation is a check, not a mirror.** Pilot disagreement
   between `via-bench` and `osmnx`/`momepy` beyond a small
   per-character envelope — each envelope justified on numerical

@@ -1,0 +1,18 @@
+{
+  "buildings": { "kind": "abs", "max": 0 },
+  "circuity_avg": { "kind": "rel", "max": 0.05 },
+  "dead_end_share": { "kind": "abs", "max": 0.13 },
+  "deg3_share": { "kind": "abs", "max": 0.13 },
+  "deg4_share": { "kind": "abs", "max": 0.13 },
+  "edge_node_ratio": { "kind": "rel", "max": 0.1 },
+  "edges": { "kind": "rel", "max": 0.15 },
+  "footprint_area_median_m2": { "kind": "rel", "max": 0.01 },
+  "footprint_area_p90_m2": { "kind": "rel", "max": 0.1 },
+  "k_avg": { "kind": "rel", "max": 0.1 },
+  "nodes": { "kind": "rel", "max": 0.15 },
+  "orientation_entropy": { "kind": "rel", "max": 0.08 },
+  "segment_len_median_m": { "kind": "rel", "max": 0.17 },
+  "segment_len_p90_m": { "kind": "rel", "max": 0.1 },
+  "self_loop_proportion": { "kind": "abs", "max": 0.02 },
+  "street_km": { "kind": "rel", "max": 0.07 }
+}
