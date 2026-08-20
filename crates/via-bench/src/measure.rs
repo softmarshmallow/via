@@ -174,14 +174,22 @@ fn node_betweenness(s: &Simple) -> Vec<f64> {
     if n < 3 {
         return bc;
     }
+    // Simple-graph adjacency: parallel chains between the same pair
+    // collapse to the shortest, matching the networkx convention the
+    // Tier A check compares against.
     let mut adj: Vec<Vec<(usize, f64)>> = vec![Vec::new(); n];
     for ch in &s.chains {
         if ch.a == ch.b {
             continue;
         }
         let w = ch.len.max(1.0e-6);
-        adj[ch.a].push((ch.b, w));
-        adj[ch.b].push((ch.a, w));
+        for (x, y) in [(ch.a, ch.b), (ch.b, ch.a)] {
+            if let Some(e) = adj[x].iter_mut().find(|(t, _)| *t == y) {
+                e.1 = e.1.min(w);
+            } else {
+                adj[x].push((y, w));
+            }
+        }
     }
     for src in 0..n {
         // Dijkstra with predecessor lists.
@@ -202,6 +210,12 @@ fn node_betweenness(s: &Simple) -> Vec<f64> {
         // parallel chains, and the pilot's Abilene grid (dense ties) missed
         // the formula-level cross-validation tolerance exactly this way.
         let key = |x: f64| -> u64 { x.to_bits() };
+        // Exact float comparisons throughout — the networkx convention.
+        // The spike's 1e-9 tie epsilon counted near-ties as shortest
+        // paths that networkx does not, shifting the betweenness
+        // *distribution* (bc_gini) on grids full of float-residue
+        // near-ties while leaving bc_max exact; the Tier A check caught
+        // it on Abilene.
         while let Some(Reverse((k, v))) = heap.pop() {
             if k > key(dist_v[v]) {
                 continue;
@@ -209,13 +223,13 @@ fn node_betweenness(s: &Simple) -> Vec<f64> {
             order.push(v);
             for &(w, len) in &adj[v] {
                 let nd = dist_v[v] + len;
-                if nd < dist_v[w] - 1.0e-9 {
+                if nd < dist_v[w] {
                     dist_v[w] = nd;
                     sigma[w] = sigma[v];
                     preds[w].clear();
                     preds[w].push(v);
                     heap.push(Reverse((key(nd), w)));
-                } else if (nd - dist_v[w]).abs() <= 1.0e-9 && dist_v[w].is_finite() {
+                } else if nd == dist_v[w] && dist_v[w].is_finite() {
                     sigma[w] += sigma[v];
                     preds[w].push(v);
                 }
