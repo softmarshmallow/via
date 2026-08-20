@@ -148,7 +148,14 @@ def main() -> int:
         )
         return 1
 
-    resp = requests.post(args.endpoint, data={"data": query}, timeout=240)
+    # overpass-api.de returns 406 for the default python-requests
+    # User-Agent; identify the tool per the endpoint's usage policy.
+    resp = requests.post(
+        args.endpoint,
+        data={"data": query},
+        timeout=240,
+        headers={"User-Agent": "via-benchmark/0.1 (reference corpus pilot)"},
+    )
     resp.raise_for_status()
     body = resp.content
     doc = json.loads(body)

@@ -56,6 +56,12 @@ pub struct Fabric {
     pub deg4_share: f64,
     /// Interior chains whose two endpoints are the same junction.
     pub self_loop_proportion: f64,
+    /// Connected components of the interior subgraph (interior nodes,
+    /// chains with both endpoints interior). Meshedness assumes a
+    /// connected graph and goes negative on fragments — the pilot's
+    /// Kibera carriageway disc read −0.037 exactly this way — so the
+    /// component count travels with it.
+    pub interior_components: usize,
     /// Shannon entropy of street bearings (Boeing 2019; nats).
     pub orientation_entropy: f64,
     /// φ = 1 − ((H − ln 4)/(ln 36 − ln 4))²: 1 for a perfect grid, → 0 as
@@ -419,6 +425,33 @@ pub fn measure(
     let (h_grid, h_max) = (4.0f64.ln(), (BINS as f64).ln());
     let orientation_order = 1.0 - ((entropy - h_grid) / (h_max - h_grid)).powi(2);
 
+    // Components of the interior subgraph, by union-find over interior
+    // chains; interior nodes untouched by any interior chain count as
+    // their own components.
+    let mut parent: Vec<usize> = (0..simple.nodes.len()).collect();
+    fn find(parent: &mut [usize], mut x: usize) -> usize {
+        while parent[x] != x {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        x
+    }
+    for (ci, ch) in simple.chains.iter().enumerate() {
+        if chain_in[ci] {
+            let (ra, rb) = (find(&mut parent, ch.a), find(&mut parent, ch.b));
+            if ra != rb {
+                parent[ra.max(rb)] = ra.min(rb);
+            }
+        }
+    }
+    let mut roots: Vec<usize> = (0..simple.nodes.len())
+        .filter(|&i| node_in[i])
+        .map(|i| find(&mut parent, i))
+        .collect();
+    roots.sort_unstable();
+    roots.dedup();
+    let interior_components = roots.len();
+
     // Betweenness on the whole buffered graph (0012 P2: routes through the
     // edge must exist), tallied over interior nodes.
     let bc = node_betweenness(&simple);
@@ -534,6 +567,7 @@ pub fn measure(
         } else {
             f64::NAN
         },
+        interior_components,
         orientation_entropy: entropy,
         orientation_order,
         circuity_avg: if circ_den > 0.0 {
@@ -658,8 +692,18 @@ mod tests {
         assert_eq!(f.edges, 3);
         assert!((f.dead_end_share - 0.75).abs() < 1e-12);
         assert!((f.deg3_share - 0.25).abs() < 1e-12);
-        // A tree has meshedness 0.
+        // A tree has meshedness 0, and one connected piece.
         assert!(f.meshedness.abs() < 1e-12);
+        assert_eq!(f.interior_components, 1);
+    }
+
+    #[test]
+    fn fragments_are_counted() {
+        let mut g = Graph::new(40.0);
+        g.insert_segment([-100.0, 0.0], [-20.0, 0.0], Class::Street, 0.5);
+        g.insert_segment([20.0, 0.0], [100.0, 0.0], Class::Street, 0.5);
+        let f = measure("frag", &g, &[], &[], None, None);
+        assert_eq!(f.interior_components, 2);
     }
 
     #[test]
