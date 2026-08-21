@@ -1,6 +1,7 @@
 # ADR 0012 — Corridors: currency, modes, network extraction, and gates
 
-Status: proposed (2026-08-22; amended the same day after the
+Status: accepted (2026-08-22, under the user's delegated authority;
+proposed and amended the same day after the
 three-track adversarial review — corner-cut crossing rule,
 per-component trunk patching, per-node-class hours rasters with
 recompute gates, k_Q degeneracy declaration, u32 domain guard,
