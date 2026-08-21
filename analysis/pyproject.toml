@@ -12,6 +12,7 @@ dependencies = [
     "scipy>=1.13",
     "blake3>=1",
     "requests>=2.32",
+    "pillow>=12.3.0",
 ]
 
 [tool.uv]
