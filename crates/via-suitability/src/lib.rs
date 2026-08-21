@@ -30,6 +30,7 @@ mod fords;
 mod harbours;
 mod navigability;
 mod passes;
+pub mod qa;
 
 pub use confluence::ConfluenceSite;
 pub use fords::FordFields;

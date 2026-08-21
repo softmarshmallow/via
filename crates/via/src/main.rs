@@ -523,6 +523,49 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
     via_viz::render_suitability(&inp, &out.suitable, &out.patch_rank)
         .save(dir.join(format!("render/suitability.{}.png", cfg.label)))?;
 
+    // Affordance and harbour panels, with the two QA diagnostics
+    // (ADR 0008 D10 visual channel — never gates, never in the summary).
+    use via_artifact::raster::Raster;
+    let area_cells = Raster::<u64>::read_file(&dir.join("area_cells.vrast"))?;
+    let surface_m: Vec<f64> = rr
+        .heights_m
+        .iter()
+        .zip(rr.water_depth.iter())
+        .zip(rr.land.iter())
+        .map(|((&hm, &wd), &l)| if l { hm + wd } else { rr.sea })
+        .collect();
+    let qa_cols =
+        via_suitability::qa::basin_boundary_cols(rr.w, rr.h, &rr.heights_m, &rr.basin, &rr.land);
+    let qa_cp = via_suitability::qa::filet_change_points(
+        rr.w,
+        rr.h,
+        &via_suitability::qa::StemInputs {
+            receivers: &rr.receivers,
+            strahler: &rr.strahler,
+            area_cells: &area_cells.data,
+            land: &rr.land,
+            surface_m: &surface_m,
+        },
+        10,
+    );
+    let confluence_cells: Vec<u32> = out.confluences.iter().map(|s| s.cell).collect();
+    let pass_cells: Vec<u32> = out.passes.iter().map(|s| s.cell).collect();
+    let head_cells: Vec<u32> = out.heads_of_navigation.iter().map(|s| s.cell).collect();
+    via_viz::render_affordances(
+        &inp,
+        &via_viz::AffordanceOverlay {
+            crossability: &out.ford.crossability,
+            confluence_cells: &confluence_cells,
+            pass_cells: &pass_cells,
+            head_cells: &head_cells,
+            qa_col_cells: &qa_cols,
+            qa_change_point_cells: &qa_cp,
+        },
+    )
+    .save(dir.join(format!("render/suitability.{}.affordances.png", cfg.label)))?;
+    via_viz::render_harbour(&inp, &out.harbour.fetch_m, &out.harbour.sediment)
+        .save(dir.join(format!("render/suitability.{}.harbour.png", cfg.label)))?;
+
     println!("SUITABILITY — criterion '{}'", cfg.label);
     println!("  rank   area_ha   centroid_cell   mean_slope   elev_m   fw_dist_m   coast_m");
     for p in &out.patches {
@@ -552,6 +595,29 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
         out.passes.len(),
         cfg.min_pass_persistence_m,
         out.heads_of_navigation.len()
+    );
+    // QA correspondence: saddles within one cell (Chebyshev) of a
+    // basin-boundary col — a diagnostic, not an invariant.
+    let col_set: std::collections::HashSet<(i64, i64)> = qa_cols
+        .iter()
+        .map(|&c| ((c % rr.w) as i64, (c / rr.w) as i64))
+        .collect();
+    let near = out
+        .passes
+        .iter()
+        .filter(|s| {
+            (-1..=1).any(|oy: i64| {
+                (-1..=1).any(|ox: i64| col_set.contains(&(s.x as i64 + ox, s.y as i64 + oy)))
+            })
+        })
+        .count();
+    println!(
+        "  QA (visual channel): {} basin-boundary col(s), {}/{} pass site(s) within \
+         1 cell of one; {} Filet change-point(s)",
+        qa_cols.len(),
+        near,
+        out.passes.len(),
+        qa_cp.len()
     );
     println!(
         "CRITERION {}: {}   ({} patch(es) ≥ {} ha)",

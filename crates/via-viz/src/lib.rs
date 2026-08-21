@@ -283,6 +283,145 @@ pub fn render_suitability(inp: &VizInput, suitable: &[bool], patch_rank: &[u32])
     img
 }
 
+/// Marker cells for the affordance panel; all in flat cell indices.
+pub struct AffordanceOverlay<'a> {
+    /// Crossability spectrum (m²/s) — tints river cells, log-scaled.
+    pub crossability: &'a [f32],
+    pub confluence_cells: &'a [u32],
+    pub pass_cells: &'a [u32],
+    pub head_cells: &'a [u32],
+    /// QA: basin-boundary col cells (dark red) — diagnostic only.
+    pub qa_col_cells: &'a [u32],
+    /// QA: Filet change-point cells (cyan) — diagnostic only.
+    pub qa_change_point_cells: &'a [u32],
+}
+
+fn mark_cells(img: &mut RgbImage, w: u32, cells: &[u32], color: [u8; 3], alpha: f64) {
+    for &c in cells {
+        let (x, y) = ((c % w) as i32, (c / w) as i32);
+        for oy in -1..=1 {
+            for ox in -1..=1 {
+                draw::blend(img, x + ox, y + oy, color, alpha);
+            }
+        }
+    }
+}
+
+/// Affordance panel: relief base, river cells tinted by crossability
+/// (log ramp, green = fordable → dark red = extreme), sites marked —
+/// confluences white, passes orange, heads of navigation magenta — and
+/// the two QA overlays (basin-boundary cols dark red, change-points
+/// cyan).
+pub fn render_affordances(inp: &VizInput, ov: &AffordanceOverlay) -> RgbImage {
+    let mut img = render_relief(inp);
+    let max_ln = ov
+        .crossability
+        .iter()
+        .zip(inp.strahler.iter())
+        .filter(|(_, &s)| s > 0)
+        .map(|(&c, _)| (1.0 + c as f64).ln())
+        .fold(0.0f64, f64::max);
+    if max_ln > 0.0 {
+        for i in 0..(inp.w as usize * inp.h as usize) {
+            if inp.strahler[i] == 0 || ov.crossability[i] <= 0.0 {
+                continue;
+            }
+            let v = (1.0 + ov.crossability[i] as f64).ln() / max_ln;
+            let color = palette::ramp(
+                &[
+                    (0.0, [96, 200, 96]),
+                    (0.5, [230, 190, 60]),
+                    (1.0, [150, 30, 30]),
+                ],
+                v,
+            );
+            let (x, y) = ((i as u32 % inp.w) as i32, (i as u32 / inp.w) as i32);
+            draw::blend(&mut img, x, y, color, 0.9);
+        }
+    }
+    mark_cells(&mut img, inp.w, ov.qa_col_cells, [120, 20, 20], 0.55);
+    mark_cells(
+        &mut img,
+        inp.w,
+        ov.qa_change_point_cells,
+        [40, 220, 220],
+        0.7,
+    );
+    mark_cells(&mut img, inp.w, ov.confluence_cells, [255, 255, 255], 0.85);
+    mark_cells(&mut img, inp.w, ov.pass_cells, [255, 150, 30], 0.95);
+    mark_cells(&mut img, inp.w, ov.head_cells, [230, 40, 200], 0.95);
+    img
+}
+
+/// Harbour panel: land as dim relief tint; open ocean dark; coastal
+/// water colored by wave fetch (log ramp: bright green sheltered →
+/// deep blue exposed); sediment-supply penalty overlaid in red.
+pub fn render_harbour(inp: &VizInput, fetch_m: &[f32], sediment: &[f32]) -> RgbImage {
+    let n = inp.w as usize * inp.h as usize;
+    let max_sed_ln = sediment
+        .iter()
+        .map(|&s| (1.0 + s as f64).ln())
+        .fold(0.0f64, f64::max);
+    let shade = hillshade(inp.w, inp.h, inp.dx, inp.heights_m);
+    let mut img = RgbImage::new(inp.w, inp.h);
+    for (i, &sh) in shade.iter().enumerate().take(n) {
+        let (x, y) = (i as u32 % inp.w, i as u32 / inp.w);
+        let rgb = if inp.land[i] {
+            let base = palette::land_tint(inp.heights_m[i] - inp.sea_level);
+            palette::scale(base, 0.30 + 0.25 * sh as f64)
+        } else {
+            [16, 22, 44]
+        };
+        img.put_pixel(x, y, Rgb(rgb));
+    }
+    // Coastal-water fetch, dilated to a 3×3 stamp so the one-cell ring
+    // reads at map scale; absolute log10(km) stops so shelter structure
+    // is not squashed by the cap.
+    for (i, &f) in fetch_m.iter().enumerate() {
+        if f <= 0.0 {
+            continue;
+        }
+        let v = (1.0 + f as f64 / 1000.0).log10();
+        let color = palette::ramp(
+            &[
+                (0.3, [120, 240, 160]),
+                (1.0, [235, 205, 70]),
+                (1.6, [70, 140, 200]),
+                (2.2, [15, 35, 105]),
+            ],
+            v,
+        );
+        let (x, y) = ((i as u32 % inp.w) as i32, (i as u32 / inp.w) as i32);
+        for oy in -1..=1 {
+            for ox in -1..=1 {
+                let (nx, ny) = (x + ox, y + oy);
+                if nx >= 0 && ny >= 0 && nx < inp.w as i32 && ny < inp.h as i32 {
+                    let ni = (ny as u32 * inp.w + nx as u32) as usize;
+                    if !inp.land[ni] {
+                        draw::blend(
+                            &mut img,
+                            nx,
+                            ny,
+                            color,
+                            if ox == 0 && oy == 0 { 0.95 } else { 0.5 },
+                        );
+                    }
+                }
+            }
+        }
+    }
+    if max_sed_ln > 0.0 {
+        for (i, &sed) in sediment.iter().enumerate() {
+            if sed > 0.0 {
+                let a = 0.55 * (1.0 + sed as f64).ln() / max_sed_ln;
+                let (x, y) = ((i as u32 % inp.w) as i32, (i as u32 / inp.w) as i32);
+                draw::blend(&mut img, x, y, [220, 60, 30], a);
+            }
+        }
+    }
+    img
+}
+
 /// 2×2 composite with white margins: relief | accumulation / basins | shade.
 pub fn compose_sheet(panels: &[&RgbImage; 4], margin: u32) -> RgbImage {
     let w = panels[0].width();
