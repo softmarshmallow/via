@@ -1,14 +1,15 @@
 //! Embed the git revision so every emitted number can carry it (ADR 0008
 //! D11: protocol identifier, code revision, snapshot date, seed set).
 //!
-//! The rerun triggers watch the files that actually change on a commit:
-//! `.git/HEAD` only moves on checkout, so watching it alone replays a
-//! stale revision after an ordinary same-branch commit (the review
-//! reproduced provenance JSONs carrying the previous commit's hash plus a
-//! stale `+dirty` flag). We resolve the git dir (worktree-safe) and watch
-//! HEAD, the current branch ref, packed-refs, and the index.
+//! The script re-runs on EVERY build (the nonexistent rerun-if-changed
+//! path below). Two staleness bugs forced this: watching `.git/HEAD`
+//! alone replayed a stale revision after a same-branch commit, and
+//! watching HEAD/index/packed-refs still replayed a stale `+dirty` flag
+//! when untracked files appeared or disappeared — nothing in .git moves
+//! on that transition (the corpus run reproduced it). A `git status`
+//! per build costs ~10 ms, and rustc only recompiles when the stamp's
+//! value actually changes.
 
-use std::path::PathBuf;
 use std::process::Command;
 
 fn git(args: &[&str]) -> Option<String> {
@@ -28,19 +29,8 @@ fn main() {
     let rev = if dirty { format!("{rev}+dirty") } else { rev };
     println!("cargo:rustc-env=VIA_BENCH_GIT_REV={rev}");
 
-    if let Some(git_dir) = git(&["rev-parse", "--absolute-git-dir"]) {
-        let git_dir = PathBuf::from(git_dir);
-        println!("cargo:rerun-if-changed={}", git_dir.join("HEAD").display());
-        println!("cargo:rerun-if-changed={}", git_dir.join("index").display());
-        println!(
-            "cargo:rerun-if-changed={}",
-            git_dir.join("packed-refs").display()
-        );
-        if let Some(head) = git(&["symbolic-ref", "-q", "HEAD"]) {
-            println!(
-                "cargo:rerun-if-changed={}",
-                git_dir.join(head.trim_start_matches('/')).display()
-            );
-        }
-    }
+    // A path that never exists: Cargo treats it as always-changed, so
+    // this script re-runs on every build and the stamp can never go
+    // stale, whatever mutated the working tree.
+    println!("cargo:rerun-if-changed=.force-git-rev-rerun");
 }
