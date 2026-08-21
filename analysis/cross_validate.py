@@ -34,6 +34,14 @@ checked against its envelope (rel checks rel_diff, abs checks abs_diff),
 violations are printed and exit code 2 is returned if any character
 exceeds its envelope. Characters absent from the map stay informational.
 
+Block characters (blocks, area median/p90, compactness, elongation,
+corners) are additionally re-measured here from the polygonized faces of
+the independent graph. Protocol v1.1's Level 2 table names them as a gap
+("no independent implementation in the sidecar"); this closes the
+implementation gap but the frozen envelope table has no row for them, so
+their comparison rows carry ``"level": "informational"`` and are never
+envelope-checked and never affect the exit code.
+
 Usage (from the repo root):
 
     uv run --project analysis python analysis/cross_validate.py \
@@ -53,10 +61,14 @@ import sys
 from pathlib import Path
 
 import blake3
+import geopandas as gpd
+import momepy
 import networkx as nx
+import numpy as np
 import osmnx as ox
 import shapely
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Polygon
+from shapely.ops import polygonize
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -71,6 +83,11 @@ ALL_WAYS = CARRIAGEWAY | {"footway", "path", "steps", "cycleway"}
 EXCLUDED_SERVICE = {"driveway", "parking_aisle"}
 
 MIN_BUILDING_AREA_M2 = 8.0
+
+# Protocol Elements: a block is a bounded face of the street graph with
+# area in [300, 90,000] m². One range, both sides.
+BLOCK_AREA_MIN_M2 = 300.0
+BLOCK_AREA_MAX_M2 = 90_000.0
 
 
 def repo_path(p: str) -> Path:
@@ -112,6 +129,17 @@ def percentile(values: list[float], q: float) -> float | None:
     lo = math.floor(h)
     hi = math.ceil(h)
     return vals[lo] + (vals[hi] - vals[lo]) * (h - lo)
+
+
+def nearest_rank(values: list[float], q: float) -> float | None:
+    """Nearest-rank quantile, the protocol's declared convention (Elements):
+    sort ascending, take index round((n−1)·q). Rounding is half away from
+    zero to match Rust's f64::round — Python's round() is half-to-even and
+    would pick a different rank whenever (n−1)·q lands exactly on .5."""
+    if not values:
+        return None
+    vals = sorted(values)
+    return vals[int(math.floor((len(vals) - 1) * q + 0.5))]
 
 
 def gini(values: list[float]) -> float | None:
@@ -305,6 +333,91 @@ def measure_buildings(
     }
 
 
+def block_corners(ring_coords) -> int:
+    """Corner count, matching via-bench's convention exactly
+    (crates/via-bench/src/measure.rs): walk the ring cyclically without its
+    closing duplicate vertex; at each vertex take the unsigned angle between
+    the incoming and outgoing unit direction vectors (the deviation from
+    straight ahead, acos of their dot product); count it as a corner when
+    that turn exceeds 25°. Reflex turns count identically (the angle is
+    unsigned), and near-zero steps are skipped as in the Rust."""
+    pts = list(ring_coords)
+    if pts[0] == pts[-1]:
+        pts = pts[:-1]
+    n = len(pts)
+    count = 0
+    for i in range(n):
+        p, q, r = pts[(i - 1) % n], pts[i], pts[(i + 1) % n]
+        ux, uy = q[0] - p[0], q[1] - p[1]
+        vx, vy = r[0] - q[0], r[1] - q[1]
+        lu, lv = math.hypot(ux, uy), math.hypot(vx, vy)
+        if lu < 1e-12 or lv < 1e-12:
+            continue
+        cos = (ux * vx + uy * vy) / (lu * lv)
+        turn = math.degrees(math.acos(max(-1.0, min(1.0, cos))))
+        if turn > 25.0:
+            count += 1
+    return count
+
+
+def measure_blocks(G: nx.MultiDiGraph, radius: float) -> dict:
+    """Block characters from the polygonized faces of the buffered graph.
+
+    Faces come from shapely.ops.polygonize over the projected straight
+    segments of the unsimplified graph (the same construction independence
+    as the rest of this script: crossings without a shared OSM node are not
+    face boundaries here, where via-bench's snap-and-split splits them).
+    A face is a block when its area is in [300, 90,000] m² (protocol
+    Elements); the tally is by centroid inside the study disc — the
+    Elements wording "centroid inside the buffer" is the participation
+    rule, and via-bench's measure() tallies blocks, like buildings, by
+    centroid inside the disc (P1: statistics describe the disc).
+
+    Conventions matched to via-bench: faces are taken as their exterior
+    ring only (via-bench faces are simple rings, never with holes);
+    quantiles are nearest-rank; corners as in block_corners(). One
+    convention is deliberately not matched: elongation here is momepy's
+    (minor/major side of shapely's exact minimum rotated rectangle,
+    Fleischmann et al.), where via-bench's obb() samples 90 orientations —
+    an approximation of the same rectangle, so tiny differences are
+    inherent and part of what this comparison reports.
+    """
+    pos = {n: (d["x"], d["y"]) for n, d in G.nodes(data=True)}
+    segments = {(u, v) if u <= v else (v, u) for u, v in G.edges() if u != v}
+    lines = [LineString([pos[u], pos[v]]) for u, v in segments]
+
+    faces: list[Polygon] = []
+    for face in polygonize(lines):
+        shell = Polygon(face.exterior)
+        if not (BLOCK_AREA_MIN_M2 <= shell.area <= BLOCK_AREA_MAX_M2):
+            continue
+        centroid = shell.centroid
+        if math.hypot(centroid.x, centroid.y) <= radius:
+            faces.append(shell)
+
+    areas = [f.area for f in faces]
+    compactness = [
+        4.0 * math.pi * f.area / (f.exterior.length ** 2) for f in faces
+    ]
+    corners = [float(block_corners(f.exterior.coords)) for f in faces]
+    if faces:
+        # np.errstate: GEOS's oriented_envelope raises spurious floating-
+        # point flags through the numpy ufunc machinery even on a plain
+        # rectangle; the values are sound.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            elongation = list(momepy.elongation(gpd.GeoSeries(faces)))
+    else:
+        elongation = []
+    return {
+        "blocks": len(faces),
+        "block_area_median_m2": nearest_rank(areas, 0.5),
+        "block_area_p90_m2": nearest_rank(areas, 0.9),
+        "block_compactness_median": nearest_rank(compactness, 0.5),
+        "block_corners_median": nearest_rank(corners, 0.5),
+        "block_elongation_median": nearest_rank(elongation, 0.5),
+    }
+
+
 def find_street_set_block(doc, street_set: str):
     """Depth-first search for a dict stored under the street-set key."""
     if isinstance(doc, dict):
@@ -465,6 +578,10 @@ def main() -> int:
 
     ours = measure_streets(G_und, args.radius)
     ours.update(measure_buildings(nodes_xy, ways, args.radius, r_buf))
+    # Block characters, from the unsimplified buffered graph's faces.
+    # Informational only: the frozen envelope table has no row for them
+    # (protocol v1.1 named them a gap), so they are reported, never checked.
+    block_chars = measure_blocks(G, args.radius)
 
     bench_path = repo_path(args.bench_json)
     bench_doc = json.loads(bench_path.read_bytes())
@@ -477,6 +594,9 @@ def main() -> int:
         return 1
 
     table = compare(ours, bench_block)
+    for key, row in compare(block_chars, bench_block).items():
+        row["level"] = "informational"
+        table[key] = row
 
     result = {
         "protocol": {
@@ -488,6 +608,9 @@ def main() -> int:
             "simplification": "osmnx.simplify_graph, degree-2 dissolution (P3)",
             "interior_rule": "elements tallied within the study radius; an edge "
             "counts when both endpoint nodes are interior (P2)",
+            "block_rule": "polygonized faces of the unsimplified buffered "
+            "graph, area in [300, 90000] m², tallied by centroid inside the "
+            "study disc; informational only — no envelope at any level",
         },
         "provenance": {
             "extract": str(args.extract),
@@ -498,6 +621,7 @@ def main() -> int:
                 "osmnx": ox.__version__,
                 "networkx": nx.__version__,
                 "shapely": shapely.__version__,
+                "momepy": momepy.__version__,
             },
         },
         "diagnostics": {
@@ -515,7 +639,15 @@ def main() -> int:
     env_results: dict = {}
     env_violations: list[str] = []
     if envelopes is not None:
-        env_results, env_violations = check_envelopes(table, envelopes)
+        # Informational rows are never envelope-checked: an envelope file
+        # naming one surfaces as "enveloped but not in the comparison"
+        # rather than being evaluated against a frozen table with no row
+        # for it.
+        checkable = {
+            k: row for k, row in table.items()
+            if row.get("level") != "informational"
+        }
+        env_results, env_violations = check_envelopes(checkable, envelopes)
         result["envelopes"] = {"file": str(args.envelopes), "results": env_results}
 
     out_path = repo_path(args.out)
@@ -531,9 +663,10 @@ def main() -> int:
     print(header)
     print("-" * len(header))
     for key, row in rows:
+        marker = "  informational" if row.get("level") == "informational" else ""
         print(
             f"{key:<{name_w}}  {fmt(row['ours']):>12}  {fmt(row['bench']):>12}  "
-            f"{fmt(row['abs_diff']):>12}  {fmt(row['rel_diff']):>10}"
+            f"{fmt(row['abs_diff']):>12}  {fmt(row['rel_diff']):>10}{marker}"
         )
     if envelopes is None:
         print(
