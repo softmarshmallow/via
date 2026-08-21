@@ -51,12 +51,19 @@ def water_note(ford_pct: float, nav_pct: float, summary: dict) -> str:
             "Rivers are crossable in their upper reaches and impassable lower "
             "down, so fords become genuine route-controlling sites."
         )
-    nav = (
-        f" No reach is navigable ({nav_pct:.1f}%): these channels are too steep, "
-        "which is the physically correct answer for mountainous terrain."
-        if nav_pct < 0.5
-        else f" {nav_pct:.1f}% of channel cells are navigable."
-    )
+    deg = summary.get("degeneracy", {})
+    total = deg.get("river_cells", 0)
+    n_nav = round(nav_pct / 100.0 * total)
+    if n_nav == 0:
+        nav = (
+            " No reach is navigable: these channels are too steep, which is the "
+            "physically correct answer for mountainous terrain."
+        )
+    else:
+        nav = (
+            f" {n_nav:,} channel cells ({nav_pct:.2f}%) are navigable — the "
+            "lower reaches where slope and depth both admit a boat."
+        )
     return (
         f"Water regime under {scale}: {ford_pct:.1f}% of channel cells are "
         f"fordable. {regime}{nav}"
@@ -109,7 +116,7 @@ def main():
                 "Trunk network",
                 [
                     ([(30, 20, 15)], f"trunk route, land leg ({n_edges} edges)"),
-                    ([(20, 60, 160)], "trunk route, water leg"),
+                    ([(170, 40, 230)], "trunk route, water leg — a boat journey"),
                     ([(40, 220, 220)], f"junction, degree 3 or more ({n_junctions})"),
                 ],
             ),

@@ -477,8 +477,10 @@ pub fn render_corridors(inp: &VizInput, ov: &CorridorOverlay) -> RgbImage {
         }
     }
     for &c in ov.trunk_water_cells {
+        // Violet, not blue: a water leg runs *along* a river, so it must
+        // not share the relief pass's river colour.
         let (x, y) = ((c % inp.w) as i32, (c / inp.w) as i32);
-        draw::blend(&mut img, x, y, [20, 60, 160], 0.9);
+        draw::blend(&mut img, x, y, [170, 40, 230], 0.95);
     }
     for &c in ov.trunk_land_cells {
         let (x, y) = ((c % inp.w) as i32, (c / inp.w) as i32);

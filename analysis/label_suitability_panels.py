@@ -71,7 +71,10 @@ def swatch(draw, x, y, colors):
 
 def build(src: Path, out: Path, title, subtitle, entries, footnotes):
     img = Image.open(src).convert("RGB")
-    img = img.resize((img.width * 2, img.height * 2), Image.NEAREST)
+    # Small maps are upscaled so the 1-cell markers read; large ones are
+    # already legible and upscaling would dwarf the legend panel.
+    if img.width < 800:
+        img = img.resize((img.width * 2, img.height * 2), Image.NEAREST)
     canvas = Image.new("RGB", (img.width + PANEL_W, img.height), BG)
     canvas.paste(img, (0, 0))
     d = ImageDraw.Draw(canvas)
