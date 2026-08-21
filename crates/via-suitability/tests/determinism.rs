@@ -10,8 +10,9 @@ use via_artifact::{Raster, RunManifest};
 use via_suitability::SuitabilityConfig;
 
 /// An 8×8 synthetic island: ocean border ring (self-receivers), land
-/// interior rising toward the centre, a west-flowing river along row 4,
-/// and one lake cell. Just enough terrain-artifact surface for the stage.
+/// interior rising toward the centre, a west-flowing river along row 4
+/// joined by a tributary from the north at (3,4), and one lake cell.
+/// Just enough terrain-artifact surface for the stage.
 fn write_synthetic_terrain(dir: &Path) {
     std::fs::create_dir_all(dir).unwrap();
     let (w, h) = (8u32, 8u32);
@@ -23,6 +24,7 @@ fn write_synthetic_terrain(dir: &Path) {
     let mut receivers: Vec<u32> = (0..n as u32).collect(); // self-receiver = ocean
     let mut strahler = vec![0u32; n];
     let mut water = vec![0.0f32; n];
+    let mut area = vec![1u64; n];
 
     for y in 1..h - 1 {
         for x in 1..w - 1 {
@@ -35,6 +37,11 @@ fn write_synthetic_terrain(dir: &Path) {
     for x in 1..6 {
         strahler[idx(x, 4)] = 1;
     }
+    // Tributary joining the main stem: (3,3) drains south into (3,4).
+    receivers[idx(3, 3)] = idx(3, 4) as u32;
+    strahler[idx(3, 3)] = 1;
+    area[idx(4, 4)] = 6; // main-stem donor drainage at the junction
+    area[idx(3, 3)] = 2; // tributary donor drainage
     water[idx(5, 2)] = 0.5;
 
     Raster::from_data(w, h, cell_cm, heights)
@@ -48,6 +55,9 @@ fn write_synthetic_terrain(dir: &Path) {
         .unwrap();
     Raster::from_data(w, h, cell_cm, water)
         .write_file(&dir.join("water_depth.vrast"))
+        .unwrap();
+    Raster::from_data(w, h, cell_cm, area)
+        .write_file(&dir.join("area_cells.vrast"))
         .unwrap();
     // Written in the version-1 single-stage shape deliberately: the stage
     // must migrate legacy run directories transparently.
@@ -117,6 +127,18 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
         std::fs::read(d2.join(&summary_name)).unwrap(),
         "summaries differ across identical runs"
     );
+
+    // The tributary junction is reported as a confluence site with the
+    // exact Benda symmetry ratio, and the definition gate passed.
+    let sites = summary["affordances"]["confluences"]["sites"]
+        .as_array()
+        .unwrap();
+    assert_eq!(sites.len(), 1);
+    assert_eq!(sites[0]["x"], 3);
+    assert_eq!(sites[0]["y"], 4);
+    assert_eq!(sites[0]["river_donors"], 2);
+    assert!((sites[0]["symmetry_ratio"].as_f64().unwrap() - 2.0 / 6.0).abs() < 1e-12);
+    assert_eq!(summary["checks"]["confluence_definition"], true);
 
     // The stage registered itself in the (now version-2) manifest, hashes
     // agree with the summary's, and the terrain record survived migration.

@@ -20,6 +20,10 @@ use serde::{Deserialize, Serialize};
 use via_artifact::manifest::{ArtifactEntry, RunManifest, StageRecord};
 use via_artifact::raster::Raster;
 
+mod confluence;
+
+pub use confluence::ConfluenceSite;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SuitabilityConfig {
@@ -100,6 +104,11 @@ pub struct SuitabilityOutput {
     /// Whether any patch met the config thresholds — the config's selection
     /// criterion (ADR 0011 D2: curation, not a gate).
     pub criterion_met: bool,
+    /// Confluence sites in ascending cell order (ADR 0011 D3/D4).
+    pub confluences: Vec<ConfluenceSite>,
+    /// The terrain channelization threshold, restated beside any reported
+    /// confluence count (ADR 0011 D4); absent if the terrain config lacks it.
+    pub river_min_area_km2: Option<f64>,
 }
 
 /// Output filenames are namespaced by the config label; restrict the label
@@ -141,7 +150,7 @@ fn f64_key(x: f64) -> u64 {
 
 /// Visit in-bounds D8 neighbours of `i` in fixed scan order.
 #[inline]
-fn for_neighbors8(w: u32, h: u32, i: u32, mut f: impl FnMut(u32, f64)) {
+pub(crate) fn for_neighbors8(w: u32, h: u32, i: u32, mut f: impl FnMut(u32, f64)) {
     const D8: [(i32, i32, f64); 8] = [
         (-1, -1, std::f64::consts::SQRT_2),
         (0, -1, 1.0),
@@ -273,15 +282,21 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
     let receivers = Raster::<u32>::read_file(&run_dir.join("receivers.vrast"))?;
     let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
     let water_depth = Raster::<f32>::read_file(&run_dir.join("water_depth.vrast"))?;
+    let area_cells = Raster::<u64>::read_file(&run_dir.join("area_cells.vrast"))?;
     ensure_grid("receivers", &receivers, &heights)?;
     ensure_grid("strahler", &strahler, &heights)?;
     ensure_grid("water_depth", &water_depth, &heights)?;
+    ensure_grid("area_cells", &area_cells, &heights)?;
     let manifest = RunManifest::load(&run_dir.join("manifest.json"))?;
     let sea = manifest
         .stage_config("terrain")
         .and_then(|c| c.get("sea_level_m"))
         .and_then(|v| v.as_f64())
         .unwrap_or(0.0);
+    let river_min_area_km2 = manifest
+        .stage_config("terrain")
+        .and_then(|c| c.get("river_min_area_km2"))
+        .and_then(|v| v.as_f64());
     let (w, h) = (heights.width, heights.height);
     let dx = heights.cell_size_cm as f64 / 100.0;
     let n = w as usize * h as usize;
@@ -362,6 +377,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
     }
 
     let criterion_met = !patches.is_empty();
+    let confluences = confluence::detect(w, h, &receivers.data, &strahler.data, &area_cells.data);
     Ok(SuitabilityOutput {
         w,
         h,
@@ -374,6 +390,8 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         patch_rank,
         patches,
         criterion_met,
+        confluences,
+        river_min_area_km2,
     })
 }
 
@@ -411,6 +429,26 @@ pub fn write_outputs(
     r.write_file(&path("patch_rank"))?;
     hashes.insert("patch_rank".to_string(), r.blake3_hex());
 
+    // ADR 0011 D6 gates: definitional invariants recomputed from the
+    // artifacts on disk, by a different traversal than the detector's.
+    // Binary; unevaluable or failed is a hard error (ADR 0001 QA contract).
+    let receivers = Raster::<u32>::read_file(&run_dir.join("receivers.vrast"))?;
+    let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
+    let confluence_ok = confluence::verify_definition(
+        out.w,
+        out.h,
+        &receivers.data,
+        &strahler.data,
+        &out.confluences,
+    );
+    if !confluence_ok {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "confluence-definition gate failed: emitted sites do not match \
+             the receivers/strahler artifacts",
+        ));
+    }
+
     let report = serde_json::json!({
         "stage": "suitability",
         "config": cfg,
@@ -421,11 +459,24 @@ pub fn write_outputs(
             "freshwater_dist": "standard: shortest along-ground distance in the D8 grid metric (multi-source Dijkstra) to the declared freshwater set — river cells (strahler > 0) or standing water >= freshwater_min_depth_m",
             "coast_dist": "standard: shortest along-ground distance in the D8 grid metric (multi-source Dijkstra) to ocean cells (self-receivers)",
             "patch_rank": "heuristic (ADR 0003): 4-connected components of the config-thresholded suitability predicate, ranked by area",
+            "confluences": "standard: junction = river cell with >= 2 river donors on the receivers tree (Strahler 1957 frame); symmetry ratio = smaller/larger donor drainage from area_cells (Benda et al. 2004); two largest donors when a D8 cell has more than two is a declared adaptation",
         },
         // ADR 0011 D2: curation, not a gate — the criterion's semantics live
         // in the experiment config that names it.
         "selection": { "criterion": cfg.label, "satisfied": out.criterion_met },
         "patches": out.patches,
+        // Site records in fixed, documented order (ascending cell index).
+        // The channelization threshold that parameterizes the confluence
+        // count is restated beside it (ADR 0011 D4).
+        "affordances": {
+            "confluences": {
+                "river_min_area_km2": out.river_min_area_km2,
+                "sites": out.confluences,
+            },
+        },
+        // ADR 0011 D6 artifact-contract checks; all must hold or the stage
+        // errors before writing this summary.
+        "checks": { "confluence_definition": confluence_ok },
         "artifact_blake3": hashes,
     });
     std::fs::write(
