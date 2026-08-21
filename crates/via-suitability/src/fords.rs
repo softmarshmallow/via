@@ -50,6 +50,17 @@ pub struct FordParams {
     /// (Fig. 1: 5 bedrock, 9 boulder, 21 cobble, 59 gravel); via's
     /// default 20 is a declared choice near the cobble-bed fit.
     pub finnegan_alpha: f64,
+    /// Channel-forming discharge as a multiple of mean annual flow
+    /// (ADR 0011 D4 as amended). Declared forcing: no published
+    /// Qbf/Qmean exists; two independent derivations bracket it at
+    /// 1.6–4.6 with median ≈ 3 (research 0015 §2).
+    pub bankfull_ratio: f64,
+    /// Crossing flow as a fraction of mean annual flow — the declared
+    /// exceedance percentile at which fords and navigation are judged,
+    /// per the low-water-crossing convention (research 0015 §4). The
+    /// default 0.62 is the median-flow ratio of the one-parameter
+    /// flow-duration family in IH Report 108 Table 5.2.
+    pub ford_flow_fraction: f64,
     /// Reach length, in cells along the receivers path, for the
     /// reach-averaged slope. Declared parameter.
     pub slope_reach_cells: u32,
@@ -137,15 +148,21 @@ pub fn compute(
         if strahler[ii] == 0 || !land[ii] {
             continue; // dry land or ocean: nothing to cross here
         }
-        let q = p.k_q_m3s_per_unit * discharge[ii] as f64;
-        if q <= 0.0 {
+        let q_mean = p.k_q_m3s_per_unit * discharge[ii] as f64;
+        if q_mean <= 0.0 {
             continue;
         }
         let s = reach_slope(w, i, surface_m, receivers, land, dx, p);
         channel_slope[ii] = s;
-        let width = c_w * (p.manning_n * q).powf(3.0 / 8.0) * s.powf(-3.0 / 16.0);
-        let depth = (p.manning_n * (q / width) / s.sqrt()).powf(3.0 / 5.0);
-        let velocity = q / (width * depth);
+        // Two flows (ADR 0011 D4 as amended): the channel's width is set
+        // by the channel-forming discharge, while the depth and velocity
+        // a traveller or a boat actually meets are those of the declared
+        // crossing flow running inside that channel.
+        let q_bankfull = q_mean * p.bankfull_ratio;
+        let q_crossing = q_mean * p.ford_flow_fraction;
+        let width = c_w * (p.manning_n * q_bankfull).powf(3.0 / 8.0) * s.powf(-3.0 / 16.0);
+        let depth = (p.manning_n * (q_crossing / width) / s.sqrt()).powf(3.0 / 5.0);
+        let velocity = q_crossing / (width * depth);
         width_m[ii] = width as f32;
         depth_m[ii] = depth as f32;
         velocity_ms[ii] = velocity as f32;
@@ -211,6 +228,8 @@ mod tests {
     fn params() -> FordParams {
         FordParams {
             k_q_m3s_per_unit: 1.0,
+            bankfull_ratio: 1.0,
+            ford_flow_fraction: 1.0,
             manning_n: 0.035,
             finnegan_alpha: 20.0,
             slope_reach_cells: 5,

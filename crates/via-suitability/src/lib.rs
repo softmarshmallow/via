@@ -25,6 +25,9 @@ use serde::{Deserialize, Serialize};
 use via_artifact::manifest::{ArtifactEntry, RunManifest, StageRecord};
 use via_artifact::raster::Raster;
 
+/// Julian year in seconds — the unit conversion in the k_Q derivation.
+const SECONDS_PER_YEAR: f64 = 365.25 * 24.0 * 3600.0;
+
 mod confluence;
 mod fords;
 mod harbours;
@@ -66,11 +69,28 @@ pub struct SuitabilityConfig {
     /// the published pruning floor (Kirmse & de Ferranti 2017, ~30 m).
     pub min_pass_persistence_m: f64,
     /// k_Q: m³/s per relative discharge unit — the single
-    /// relative-to-absolute scale (ADR 0011 D1, Tier-2 forcing; the
-    /// lumped-calibration practice of Whipple & Tucker 1999). Pure
-    /// declared forcing, unverifiable from inside via; the default is a
-    /// placeholder scale and experiments must declare their own.
-    pub k_q_m3s_per_unit: f64,
+    /// relative-to-absolute scale (ADR 0011 D1). **Derived by default**
+    /// (`None`) from the terrain's own hydrology as
+    /// `A_cell × P_mean × runoff_ratio / seconds_per_year`, since via's
+    /// discharge counts mean-precipitation-equivalent cells. Set it
+    /// explicitly to override, in which case it is declared forcing.
+    pub k_q_m3s_per_unit: Option<f64>,
+    /// Runoff ratio C — the fraction of precipitation reaching the
+    /// channel. Default 0.35, cited to Dai & Trenberth (2002) J.
+    /// Hydrometeorology 3(6):660–687, who state it as a ratio; the
+    /// published spread across global water budgets is 0.33–0.42. It is
+    /// the precipitation-weighted global mean, which is the statistic
+    /// matching via's precipitation-weighted accumulation.
+    pub runoff_ratio: f64,
+    /// Channel-forming discharge as a multiple of mean annual flow.
+    /// Declared forcing: no published Qbf/Qmean exists; derivations
+    /// bracket it at 1.6–4.6, median ≈ 3 (research 0015 §2).
+    pub bankfull_ratio: f64,
+    /// Crossing flow as a fraction of mean annual flow — the declared
+    /// exceedance percentile at which fords and navigation are judged
+    /// (research 0015 §4). Default 0.62, the median-flow ratio of the
+    /// flow-duration family in IH Report 108 Table 5.2.
+    pub ford_flow_fraction: f64,
     /// Manning roughness n (Chow 1959, natural streams ~0.030–0.050).
     /// One declared value; a per-lithology lookup would be a named
     /// heuristic (0013 §Fords) and is not implemented.
@@ -98,12 +118,12 @@ pub struct SuitabilityConfig {
     /// for keelless barges (via Appel et al. 2024); metric values are
     /// conditional on k_Q.
     pub nav_min_depth_m: f64,
-    /// Langbein's f (WSP 1539-W eq. 15/Fig. 8): the shallow-water to
-    /// deep-water vessel-resistance ratio at the paper's draft = 0.7·D
-    /// convention — NOT the bed's Darcy–Weisbach factor. f ≥ 1 by
-    /// definition; the default 2.5 sits mid the 2–4 range read from
-    /// Fig. 8 and is flagged pending exact digitization of the curve.
-    pub langbein_f: f64,
+    /// Upper Froude number of Langbein's Figure 8 (WSP 1539-W). Above
+    /// it the figure is silent, so the reach is declared unnavigable by
+    /// domain rather than assigned an extrapolated resistance ratio.
+    /// f itself is no longer config: it is read from the digitized
+    /// curve at each reach's own Froude number (ADR 0011 D4 amended).
+    pub langbein_max_froude: f64,
     /// Wave-fetch angular sectors (Burrows et al. 2008 uses 16; 32 is
     /// the later data products' choice — a declared adaptation).
     pub harbour_fetch_sectors: u32,
@@ -135,7 +155,10 @@ impl Default for SuitabilityConfig {
             min_patch_area_ha: 12.0,
             max_patches_reported: 8,
             min_pass_persistence_m: 30.0,
-            k_q_m3s_per_unit: 1.0,
+            k_q_m3s_per_unit: None,
+            runoff_ratio: 0.35,
+            bankfull_ratio: 3.0,
+            ford_flow_fraction: 0.62,
             manning_n: 0.035,
             finnegan_alpha: 20.0,
             slope_reach_cells: 5,
@@ -143,7 +166,7 @@ impl Default for SuitabilityConfig {
             nav_max_ts: 0.002,
             nav_max_slope: 0.0047,
             nav_min_depth_m: 0.5,
-            langbein_f: 2.5,
+            langbein_max_froude: 0.9,
             harbour_fetch_sectors: 16,
             harbour_fetch_cap_m: 200_000.0,
             harbour_depth_dead_m: 1.0,
@@ -167,14 +190,16 @@ impl SuitabilityConfig {
         validate_label(&self.label)?;
         let must_be_positive = [
             ("freshwater_min_depth_m", self.freshwater_min_depth_m),
-            ("k_q_m3s_per_unit", self.k_q_m3s_per_unit),
+            ("runoff_ratio", self.runoff_ratio),
+            ("bankfull_ratio", self.bankfull_ratio),
+            ("ford_flow_fraction", self.ford_flow_fraction),
             ("manning_n", self.manning_n),
             ("finnegan_alpha", self.finnegan_alpha),
             ("min_channel_slope", self.min_channel_slope),
             ("nav_max_ts", self.nav_max_ts),
             ("nav_max_slope", self.nav_max_slope),
             ("nav_min_depth_m", self.nav_min_depth_m),
-            ("langbein_f", self.langbein_f),
+            ("langbein_max_froude", self.langbein_max_froude),
             ("harbour_fetch_cap_m", self.harbour_fetch_cap_m),
             ("harbour_sediment_radius_m", self.harbour_sediment_radius_m),
         ];
@@ -229,6 +254,9 @@ pub struct SuitabilityOutput {
     pub h: u32,
     pub dx: f64,
     pub sea_level_m: f64,
+    /// The k_Q actually used: derived from the terrain's hydrology
+    /// unless the config overrode it (ADR 0011 D1 as amended).
+    pub k_q_m3s_per_unit: f64,
     pub slope: Vec<f64>,
     pub freshwater_dist_m: Vec<f64>,
     pub coast_dist_m: Vec<f64>,
@@ -482,6 +510,27 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         .and_then(|v| v.as_f64());
     let (w, h) = (heights.width, heights.height);
     let dx = heights.cell_size_cm as f64 / 100.0;
+    // k_Q: derived from the terrain's own hydrology unless overridden
+    // (ADR 0011 D1 as amended). via's discharge counts
+    // mean-precipitation-equivalent upslope cells, so one unit carries
+    // one cell's area of the land-mean annual precipitation, of which
+    // the runoff ratio reaches the channel.
+    let k_q = match cfg.k_q_m3s_per_unit {
+        Some(k) => k,
+        None => {
+            let p_mean = terrain_cfg
+                .get("precip_mean_m_per_yr")
+                .and_then(|v| v.as_f64())
+                .ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "terrain stage config has no precip_mean_m_per_yr, so k_Q \
+                         cannot be derived — set k_q_m3s_per_unit explicitly",
+                    )
+                })?;
+            dx * dx * p_mean * cfg.runoff_ratio / SECONDS_PER_YEAR
+        }
+    };
     let n = w as usize * h as usize;
     validate_receivers(&receivers.data)?;
 
@@ -590,9 +639,11 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         &water_depth.data,
         &discharge.data,
         &fords::FordParams {
-            k_q_m3s_per_unit: cfg.k_q_m3s_per_unit,
+            k_q_m3s_per_unit: k_q,
             manning_n: cfg.manning_n,
             finnegan_alpha: cfg.finnegan_alpha,
+            bankfull_ratio: cfg.bankfull_ratio,
+            ford_flow_fraction: cfg.ford_flow_fraction,
             slope_reach_cells: cfg.slope_reach_cells,
             min_channel_slope: cfg.min_channel_slope,
         },
@@ -606,7 +657,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
             max_ts: cfg.nav_max_ts,
             max_slope: cfg.nav_max_slope,
             min_depth_m: cfg.nav_min_depth_m,
-            langbein_f: cfg.langbein_f,
+            max_froude: cfg.langbein_max_froude,
         },
     );
     let heads_of_navigation = navigability::head_of_navigation(
@@ -641,6 +692,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         h,
         dx,
         sea_level_m: sea,
+        k_q_m3s_per_unit: k_q,
         slope,
         freshwater_dist_m,
         coast_dist_m,
@@ -812,7 +864,7 @@ pub fn write_outputs(
             "ford_depth": "standard links, via assembly (ADR 0011 D4): Manning (1891) wide-channel closure d = (n (Q/W) / sqrt(S))^(3/5) on channel cells; the terrain still-water depth on standing water",
             "ford_velocity": "standard links, via assembly (ADR 0011 D4): continuity v = Q/(W d), identical to Manning v = (1/n) d^(2/3) sqrt(S) by construction; zero on standing water",
             "crossability": "standard: D x V product, the flume-verified stability currency (Cox, Shand & Blacka 2010; AIDR Guideline 7-3), computed from the emitted f32 factors so the identity is exact; still-water depth alone on standing water; the published bands are consumer config, none baked (ADR 0011 D4 as amended, D5)",
-            "navigability_ts": "standard links, via assembly: Langbein (1962) Ts = V^2(f+0.6)/(1600 D^(4/3)), imperial-unit constants (the 1600 embeds the paper's n = 0.03) — SI inputs converted; f is Langbein's shallow-water vessel-resistance ratio (Fig. 8 at draft = 0.7D), shipped as the declared config constant langbein_f, flagged pending exact digitization; 0 on still water; f32::MAX outside the water domain",
+            "navigability_ts": "standard links, via assembly: Langbein (1962) Ts = V^2(f+0.6)/(1600 D^(4/3)), imperial-unit constants (the 1600 embeds the paper's n = 0.03) — SI inputs converted; f is Langbein's shallow-water vessel-resistance ratio read from his Fig. 8 at draft = 0.7D, digitized and validated against his Fig. 11 to ~15% (research 0015); reaches above the figure's Froude domain are declared unnavigable rather than extrapolated; 0 on still water; f32::MAX outside the water domain",
             "navigable": "standard anchors, via conjunction (ADR 0011 D4): Langbein Ts <= nav_max_ts (0.002 published), Magirl & Olsen (2009) slope band S <= nav_max_slope (dimensionless, as-is), pre-modern depth anchor d >= nav_min_depth_m (Eckoldt 0.3-0.7 m via Appel et al. 2024); no published source defines the combined predicate — the conjunction is via's, stated as such; still water by depth alone; depth values conditional on k_Q",
             "head_of_navigation": "heuristic (ADR 0003): via's compositional definition, fixed by ADR 0011 D6 — cells of the mouth-connected navigable set (connected downstream to a river mouth along the receivers tree) with no donor in that set; the concept is literature (Renner 1927), the operationalization is via's",
             "harbour_fetch": "standard: Burrows, Harvey & Robb (2008) wave-fetch index — mean distance to nearest land over harbour_fetch_sectors angular sectors (paper: 16), capped at harbour_fetch_cap_m (paper: 200 km, wave transition gF/U^2 < 22000), neighbour-averaging smoothing (focal cell included — declared reading); declared adaptations: coastal-water focal cells, unit-step point-sampled rays in place of the three-scale hierarchical search, off-grid reads open ocean; wind-free F is the honest form (no wind rose exists)",
@@ -839,7 +891,11 @@ pub fn write_outputs(
             // k_Q is conditional on this declared, unverifiable forcing
             // constant — restated wherever such numbers appear.
             "fords": {
-                "k_q_m3s_per_unit": cfg.k_q_m3s_per_unit,
+                "k_q_m3s_per_unit": out.k_q_m3s_per_unit,
+                "k_q_derived": cfg.k_q_m3s_per_unit.is_none(),
+                "runoff_ratio": cfg.runoff_ratio,
+                "bankfull_ratio": cfg.bankfull_ratio,
+                "ford_flow_fraction": cfg.ford_flow_fraction,
                 "metric_values_conditional_on_k_q": true,
             },
             "navigability": {

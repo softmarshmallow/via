@@ -11,7 +11,7 @@
 //! Darcy–Weisbach friction factor (a first landing wrongly used the
 //! Darcy conversion from Manning n, understating Ts ~4–7×; caught in
 //! review against the primary source). f ships as the declared config
-//! constant `langbein_f`, flagged pending exact digitization of the
+//! curve of his Figure 8, digitized and validated against his own
 //! figure. Published anchor: Ts > 0.002 usually considered unnavigable.
 //!
 //! The banded predicate combines that anchor with the Magirl & Olsen
@@ -56,10 +56,39 @@ pub struct NavParams {
     pub max_slope: f64,
     /// Pre-modern depth anchor, m (Eckoldt 0.3–0.7 band).
     pub min_depth_m: f64,
-    /// Langbein's shallow-water vessel-resistance ratio (Fig. 8 at
-    /// draft = 0.7·D); ≥ 1, declared config.
-    pub langbein_f: f64,
+    /// Upper Froude number of Langbein's Figure 8. Above it the figure
+    /// says nothing, so the reach is declared unnavigable by domain
+    /// rather than assigned an extrapolated f (ADR 0011 D4 as amended).
+    pub max_froude: f64,
 }
+
+/// Langbein (1962) Figure 8, digitized at the paper's draft convention
+/// d/D = 0.7 and validated against his Figure 11 to ~15% (research 0015
+/// §3): the shallow-water vessel-resistance ratio f against the Froude
+/// number F = V/√(gD). Linear interpolation between the tabulated
+/// curves; below the first curve the shallow-water effect has vanished
+/// and f → 1 (deep-water resistance).
+const LANGBEIN_FIG8: [(f64, f64); 4] = [(0.25, 1.21), (0.50, 2.48), (0.75, 4.71), (0.90, 7.8)];
+
+pub fn langbein_f(froude: f64) -> f64 {
+    if froude <= LANGBEIN_FIG8[0].0 {
+        // The F = 0.25 curve merges with the f = 1 axis at low draft
+        // ratios; interpolate down to unity rather than clamping, so a
+        // still reach is not charged a shallow-water penalty.
+        let (f0, v0) = LANGBEIN_FIG8[0];
+        return 1.0 + (v0 - 1.0) * (froude / f0);
+    }
+    for pair in LANGBEIN_FIG8.windows(2) {
+        let ((x0, y0), (x1, y1)) = (pair[0], pair[1]);
+        if froude <= x1 {
+            return y0 + (y1 - y0) * (froude - x0) / (x1 - x0);
+        }
+    }
+    LANGBEIN_FIG8[LANGBEIN_FIG8.len() - 1].1
+}
+
+/// Standard gravity, m/s² — for the Froude number the f lookup keys on.
+const G: f64 = 9.806_65;
 
 /// One head-of-navigation site, in ascending cell order (ADR 0011 D3).
 #[derive(Clone, Debug, Serialize)]
@@ -103,9 +132,16 @@ pub fn compute(
         if d <= 0.0 {
             continue;
         }
-        // Langbein eq. 15 in imperial units; f is the declared
-        // vessel-resistance ratio (see module doc).
-        let f = p.langbein_f;
+        // Langbein eq. 15 in imperial units, with f read from his
+        // Figure 8 at the reach's own Froude number (see module doc).
+        // Beyond the figure's domain the reach is a rapid: declare it
+        // unnavigable rather than extrapolate the curve.
+        let froude = v / (G * d).sqrt();
+        if froude > p.max_froude {
+            ts[i] = f32::MAX;
+            continue;
+        }
+        let f = langbein_f(froude);
         let v_ft = v * FT_PER_M;
         let d_ft = d * FT_PER_M;
         let t = v_ft * v_ft * (f + 0.6) / (1600.0 * d_ft.powf(4.0 / 3.0));
@@ -293,7 +329,7 @@ mod tests {
             max_ts: 0.002,
             max_slope: 0.0047,
             min_depth_m: 0.5,
-            langbein_f: 2.5,
+            max_froude: 0.9,
         }
     }
 

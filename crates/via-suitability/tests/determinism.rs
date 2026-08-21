@@ -77,7 +77,7 @@ fn write_synthetic_terrain(dir: &Path) {
     let v1 = serde_json::json!({
         "stage": "terrain",
         "seed": 0,
-        "config": { "sea_level_m": 0.0 },
+        "config": { "sea_level_m": 0.0, "precip_mean_m_per_yr": 1.2 },
         "crate_versions": {},
         "artifacts": {}
     });

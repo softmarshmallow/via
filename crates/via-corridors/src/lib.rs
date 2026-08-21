@@ -56,8 +56,15 @@ pub struct CorridorsConfig {
     /// Wading delay per entered or crossed channel cell (declared
     /// forcing; Livingood Table 10.1 crossing bands).
     pub ford_delay_hours: f64,
-    /// Cox/AIDR people-stability caps (0013): D·V working limit,
-    /// still-water depth limit, velocity limit — independent.
+    /// People-stability caps, independent, applied to the crossing-flow
+    /// depth and velocity (ADR 0012 D3 as amended on research 0015).
+    /// Defaults are the traveller envelope — the bounded Ontario form
+    /// (D·V ≤ 0.4 m²/s, d ≤ 0.8 m, v ≤ 1.7 m/s) with the depth cap set
+    /// by the pedestrian ford standard the USFS Trail Notebook and
+    /// Motayed et al. (1982) converge on (0.4–0.6 m at typical flow).
+    /// The Cox/AIDR flood-stability bands (0.8/1.2/3.0) describe
+    /// trained staff with a rod, cleats and a tag line, and are the
+    /// wrong end of the literature for a loaded traveller.
     pub ford_max_dv_m2s: f64,
     pub ford_max_depth_m: f64,
     pub ford_max_velocity_ms: f64,
@@ -84,9 +91,9 @@ impl Default for CorridorsConfig {
             coastal_exposure_cap_m: None,
             transship_hours: 0.25,
             ford_delay_hours: 0.25,
-            ford_max_dv_m2s: 0.8,
-            ford_max_depth_m: 1.2,
-            ford_max_velocity_ms: 3.0,
+            ford_max_dv_m2s: 0.4,
+            ford_max_depth_m: 0.6,
+            ford_max_velocity_ms: 1.7,
             herzog_clamp: 0.45,
             ls_crit_up: 0.28,
             ls_crit_down: -0.22,
