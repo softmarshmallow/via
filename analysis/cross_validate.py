@@ -20,7 +20,10 @@ frozen in spikes/townfabric/VALIDATION.md:
       statistics tally only interior elements (an edge counts when both
       its endpoint nodes are interior);
 - P3  degree-2 vertices dissolved — here by osmnx's simplify_graph, which
-      is the independent implementation this cross-check needs;
+      is the independent implementation this cross-check needs, plus a
+      pass dropping endpoint-free ring components (osmnx's simplifier
+      only dissolves from endpoints; P3's "nodes are junctions and dead
+      ends" leaves a junction-free cycle no nodes at all);
 - P4  two street sets, reported separately (carriageway / all_ways);
 - P5  local equirectangular projection about the study centre;
 - P6  the output records extract hash and software versions.
@@ -118,17 +121,6 @@ def is_street(tags: dict, street_set: str) -> bool:
     if tags.get("service") in EXCLUDED_SERVICE:
         return False
     return True
-
-
-def percentile(values: list[float], q: float) -> float | None:
-    """Linear-interpolation percentile (numpy's default method)."""
-    if not values:
-        return None
-    vals = sorted(values)
-    h = (len(vals) - 1) * q
-    lo = math.floor(h)
-    hi = math.ceil(h)
-    return vals[lo] + (vals[hi] - vals[lo]) * (h - lo)
 
 
 def nearest_rank(values: list[float], q: float) -> float | None:
@@ -246,8 +238,13 @@ def measure_streets(G_und: nx.MultiGraph, radius: float) -> dict:
     out["deg4_share"] = sum(1 for n in interior if degree[n] == 4) / v_count
 
     lengths = [length for _, _, length in edges]
-    out["segment_len_median_m"] = percentile(lengths, 0.5)
-    out["segment_len_p90_m"] = percentile(lengths, 0.9)
+    # Nearest-rank, the protocol's pinned convention (Elements) — pinned
+    # exactly because interpolation methods move p90 by up to ~9%; a
+    # cross-validator using a different quantile method measures the
+    # method, not the construction (corpus review finding: every
+    # footprint-median envelope "violation" was this convention gap).
+    out["segment_len_median_m"] = nearest_rank(lengths, 0.5)
+    out["segment_len_p90_m"] = nearest_rank(lengths, 0.9)
 
     # Circuity over interior edges; self-loops are excluded because their
     # straight-line endpoint distance is zero (osmnx does the same).
@@ -328,8 +325,8 @@ def measure_buildings(
             interior_areas.append(poly.area)
     return {
         "buildings": len(interior_areas),
-        "footprint_area_median_m2": percentile(interior_areas, 0.5),
-        "footprint_area_p90_m2": percentile(interior_areas, 0.9),
+        "footprint_area_median_m2": nearest_rank(interior_areas, 0.5),
+        "footprint_area_p90_m2": nearest_rank(interior_areas, 0.9),
     }
 
 
@@ -480,12 +477,24 @@ def load_envelopes(path: Path) -> dict:
     return doc
 
 
-def check_envelopes(table: dict, envelopes: dict) -> tuple[dict, list[str]]:
+def check_envelopes(
+    table: dict, envelopes: dict, suppressed: frozenset[str] = frozenset()
+) -> tuple[dict, list[str]]:
     """Evaluate each enveloped character; return (results, violation texts).
 
-    A character that is enveloped but missing from the comparison, or
-    whose required diff is not computable, is a violation: an envelope
-    that cannot be evaluated is not passed.
+    Fail-closed with two named exceptions (corpus review finding: the
+    fail-closed rule was flagging protocol behaviour as divergence):
+
+    - a character in ``suppressed`` — nulled by via-bench under a
+      protocol rule (the 30-footprint floor) — is **not evaluable**,
+      not violated: the null IS the protocol working;
+    - a diff where BOTH sides are null (a character undefined on a
+      degenerate graph, e.g. circuity on an edgeless interior) is not
+      evaluable either — the degeneracy itself is cross-validated.
+
+    Everything else that cannot be computed remains a violation: an
+    envelope that silently cannot be evaluated is not passed. Not-
+    evaluable entries carry ``ok: None`` and never affect the exit code.
     """
     results: dict = {}
     violations: list[str] = []
@@ -495,14 +504,19 @@ def check_envelopes(table: dict, envelopes: dict) -> tuple[dict, list[str]]:
         row = table.get(name)
         value = None
         if row is None:
-            ok = False
+            ok: bool | None = False
             violations.append(f"{name}: enveloped but not in the comparison")
         elif row[diff_key] is None:
-            ok = False
-            violations.append(
-                f"{name}: {diff_key} not computable "
-                f"(ours={fmt(row['ours'])}, bench={fmt(row['bench'])})"
-            )
+            if name in suppressed:
+                ok = None  # suppressed by protocol rule (floor)
+            elif row["ours"] is None and row["bench"] is None:
+                ok = None  # undefined on this graph, both sides agree
+            else:
+                ok = False
+                violations.append(
+                    f"{name}: {diff_key} not computable "
+                    f"(ours={fmt(row['ours'])}, bench={fmt(row['bench'])})"
+                )
         else:
             value = row[diff_key]
             ok = value <= spec["max"]
@@ -576,6 +590,21 @@ def main() -> int:
     G_simp = ox.simplify_graph(G, remove_rings=False)
     G_und = ox.convert.to_undirected(G_simp)
 
+    # P3 declares "nodes are junctions and dead ends" — but osmnx's
+    # simplify_graph only dissolves paths that start at an endpoint, so
+    # an endpoint-free ring component (a closed area=yes plaza outline)
+    # survives as raw degree-2 polygon vertices and pollutes every node
+    # and segment statistic (corpus review finding: 135 of chefchaouen's
+    # 161 interior "simplified" nodes were plaza-ring vertices).
+    # via-bench's simplify() drops junction-free cycles; deliver the
+    # same declared construction here.
+    for comp in list(nx.connected_components(G_und)):
+        if all(G_und.degree(n) == 2 for n in comp):
+            G_und.remove_nodes_from(comp)
+    if G_und.number_of_nodes() == 0:
+        print("error: no street fabric after dissolution", file=sys.stderr)
+        return 1
+
     ours = measure_streets(G_und, args.radius)
     ours.update(measure_buildings(nodes_xy, ways, args.radius, r_buf))
     # Block characters, from the unsimplified buffered graph's faces.
@@ -647,7 +676,21 @@ def main() -> int:
             k: row for k, row in table.items()
             if row.get("level") != "informational"
         }
-        env_results, env_violations = check_envelopes(checkable, envelopes)
+        # Characters via-bench nulls by the 30-footprint floor rule are
+        # not evaluable, not violated (see check_envelopes).
+        suppressed = frozenset(
+            (
+                "footprint_area_median_m2", "footprint_area_p90_m2",
+                "bldg_street_dist_median_m", "street_wall_share",
+                "street_fronting_share", "gsi", "storeys_mean_tagged",
+                "storeys_tagged_share",
+            )
+            if bench_block.get("below_footprint_floor")
+            else ()
+        )
+        env_results, env_violations = check_envelopes(
+            checkable, envelopes, suppressed
+        )
         result["envelopes"] = {"file": str(args.envelopes), "results": env_results}
 
     out_path = repo_path(args.out)
