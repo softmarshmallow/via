@@ -305,17 +305,84 @@ literature treats fords **only as topological waypoints**, with no
 depth/velocity criterion: via is not departing from a standard,
 because none exists.
 
-**What flow should a ford be judged at?** The primaries point away
-from flood flow entirely. Ring, S.L. (1987), *TRR* 1106:309–318
-[primary] frames low-water crossing design as a **flow-duration
-exceedance choice**: "A decision to use an exceedence probability of
-10 percent would mean that water would flow over the road an average
-of about 37 days a year… The selection of a design discharge of Q₂%
-would mean that water would flow over the road an average of one week
-of the year." Clarkin et al. (2006) [primary] separate structural
-survival (Q50/Q100) from "keep most traffic out of the water"
-(Q½ or Q2). The USFS Notebook's "low to moderate flows… during most of
-the use season" is the pedestrian equivalent.
+### What flow is a ford judged at? A named convention exists
+
+The low-water-crossing engineering literature has a settled answer,
+and it is **not** a low-flow statistic: passability is expressed as
+**Q_e, the discharge equalled or exceeded e percent of the time on the
+annual flow-duration curve, where e is the acceptable percentage of
+the year the crossing may be closed.** Structural survival is a
+separate flood-recurrence question. The lineage is Iowa DOT → Iowa
+State → FHWA-CFL.
+
+- Rossmiller, Lohnes, Ring, Phillips & Barnett (1983), *Design Manual
+  for Low Water Stream Crossings*, Iowa DOT HR-247 [primary] — the
+  origin: Q_e = aA^b, "**e is the exceedance probability in
+  percent**", with the interpretation stated directly: "If the LWSC is
+  designed for Q25%, the crossing will be closed on the average of
+  three months each year. **If the LWSC is designed for Q2%, the
+  crossing will be closed on the average of seven days each year.**"
+  Valid only for e in 1–50%; "No attempt should be made to
+  extrapolate the curve beyond the 50 percent exceedance."
+- Ring, S.L. (1987), *TRR* 1106:309–318 [primary, subscripts read from
+  a page image]: "**A decision to use an exceedence probability of 10
+  percent would mean that water would flow over the road an average of
+  about 37 days a year… The selection of a design discharge of Q₂%
+  would mean that water would flow over the road an average of one
+  week of the year.**"
+- Lohnes, Gu, McDonald & Jha (2001), Iowa CTRE 01-78 [primary]:
+  "**The acceptable closing percent of time per year (e) can be called
+  as the design exceedence probability.**"
+- McEnroe et al. (2017), FHWA-KS-16-19 [primary]: "an LWSC should be
+  impassable **fewer than 10 times in an average year** and the
+  duration of impassable conditions should not exceed 3 days"; vents
+  sized to "**pass a discharge that is exceeded no more than 5% of the
+  time**".
+- Bhattarai et al. (2016), FHWA-ICT-16-020 [primary]: "the LWC should
+  be designed such that it is **functional at least 95% of the time in
+  a year**", with crossing components at 10–25-year flow and vents at
+  the 0.5–1-year event.
+- Clarkin et al. (2006) [primary] states the two-approach split:
+  flow-duration data for "typical annual delay time", flood-frequency
+  data for "total structure capacity".
+
+**Explicit negative finding:** no source in this literature uses Q90,
+Q95, 7Q10, mean annual low flow, or summer low flow as the ford
+passability flow — those are drought statistics. The sweep also
+flagged a fabricated claim to the contrary circulating in an
+AI-generated encyclopedia; it contradicts every primary above.
+
+Passability depth thresholds converge across national standards, all
+stated against a *typical* rather than flood flow: 6 in (150 mm) in
+the US lineage; 150 mm in TRL Overseas Road Note 9 ("**for most of the
+year the maximum depth of water over the carriageway should be less
+than 150mm**") [primary]; 200 mm with velocity < 2 m/s in IRC:SP:82-2008
+(India) [primary, page-image verified]; 100 mm supercritical / 150 mm
+subcritical in the Kenyan and SANRAL manuals [primary]; 200 mm for
+cars and 500 mm for heavy vehicles in Main Roads Western Australia's
+Floodway Design Guide, which names the concept "**trafficable
+discharge**" and designs to a serviceability ARI plus a maximum
+closure period [primary]. IRC:SP:82-2008 Table 3.1 sets the
+interruption budget directly: **6 permitted interruptions per year**,
+of 2–6 h (highways) or 6–12 h (village roads).
+
+For via the mapping is clean: fords should be judged at a **declared
+exceedance percentile of the flow-duration curve**, not at mean annual
+flow, and §5's one-parameter FDC family is the instrument for getting
+there from a mean-flow model. The USFS Notebook's "low to moderate
+flows… during most of the use season" is the pedestrian statement of
+the same idea, and Motayed et al. (1982) [primary] supply the
+pre-modern-relevant fordability threshold directly: vented structures
+are preferred "where **day-to-day flow exceeds fordable depth,
+normally 4-6 in or 10-15 cm**".
+
+**Provenance correction:** the widely repeated "FHWA 6 inches during
+the high-design flow" does **not** originate in Motayed et al. (1982)
+— that report's numbers are 4–6 in at *normal daily flow* and 1 ft at
+the *2-year* flow for ADT < 100. The 6-inch design limit enters via
+Looschen & Coy (1982, unpublished Iowa DOT) → Lohnes (2001) → Gu
+(2003/05), and is "FHWA" only because Gu published under an FHWA-CFL
+number.
 
 ## 5 — Seasonality: mean annual flow is a wet-season picture
 
@@ -395,5 +462,9 @@ enough to be un-fordable in their lower reaches.
    whether supercritical reaches are declared unnavigable by domain
    rather than extrapolated.
 5. Whether ford caps move from the occupational to the recreational
-   envelope (§4), and at what flow fords are judged (§4, §5).
-6. What seasonality limitation is recorded (§5).
+   envelope (§4).
+6. Whether fords are judged at a **declared exceedance percentile**
+   rather than at mean annual flow (§4), and which percentile — the
+   engineering convention is an explicit "acceptable days closed per
+   year" choice, and via has the FDC instrument (§5) to realize it.
+7. What seasonality limitation is recorded (§5).
