@@ -148,6 +148,16 @@ and forcing one would misdescribe the stage. The ruling is split:
   parameters, constrained by Decision 2's stability bound and by
   convergence, and they carry no claim about the world. A result that
   moves when `ε` changes within the stable range is a bug.
+- **The *shape* of `O_i` across nodes is Tier-3, and only its total is
+  Tier-2.** The bullets above cover `ΣO_i`; the per-node weighting
+  that distributes it (Decision 4) is a suitability composite, and
+  ADR 0003 names suitability scoring as the canonical Tier-3 example.
+  A Tier-1 mechanism reading Tier-3 inputs is legitimate — corridors'
+  `c_ij` enters the same way — but it has to be said out loud,
+  because it is exactly why Decision 10's first limitation bites:
+  when Osawa shows the engine yields equal-sized centres on
+  homogeneous space, the dispersion via actually produces is coming
+  through *this* input, at Tier-3, under a declared weighting.
 - **Delineation and the derived role scalars are Tier-3
   interpretation**, carrying `standard | heuristic` labels exactly as
   ADR 0011 requires.
@@ -630,3 +640,14 @@ declared choice — and the market-access field read from ADR 0012's
   null that is fitted on the same field.
 - **Doubly-constrained IPF balancing.** Unnecessary for a
   singly-constrained model (Decision 2).
+- **The multi-good extension** (Hsu 2012; Mori, Akamatsu, Takayama &
+  Osawa 2023), even though Context finding 3 names it as the *only*
+  published route to an endogenous size hierarchy. Two reasons, and
+  the second is the real one: it is a substantially different model
+  from the one the three balancing-condition primaries describe, so
+  adopting it would forfeit the agreement Decision 2 rests on; and
+  **it would not deliver what it appears to promise** — neither paper
+  predicts the exponent, which inherits the tail index of an assumed
+  input distribution. Via would be choosing that input, so the
+  hierarchy would still be forced, just less visibly. Recorded as the
+  extension to revisit if the single-good stage is judged too flat.
