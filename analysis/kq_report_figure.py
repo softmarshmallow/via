@@ -63,6 +63,10 @@ def main() -> int:
     ap.add_argument("--runs", nargs="*", type=Path, default=None)
     ap.add_argument("--out", type=Path, default=Path("analysis/out/kq_report.png"))
     ap.add_argument("--protocol", default="kq-cal-v1")
+    ap.add_argument("--outlets", type=Path, default=None,
+                    help="JSON [[area_km2, q_m3s], ...] of outlet points")
+    ap.add_argument("--via-fit", nargs=2, type=float, default=None,
+                    metavar=("A", "B"), help="fitted Q = A * area^B")
     args = ap.parse_args()
 
     rows = json.loads(args.json_path.read_text())
@@ -107,26 +111,33 @@ def main() -> int:
     ax.grid(alpha=0.3, lw=0.5)
     ax.legend(fontsize=7, loc="lower left")
 
-    # --- B: channel size, and the discharge-convention correction ----
+    # --- B: validation against real gauged rivers --------------------
     ax = axes[1]
-    at_derived = [r for r in rows if r["is_derived"]]
-    if at_derived:
-        areas = [r["outlet_area_km2"] for r in at_derived]
-        widths = [r["outlet_width_m"] for r in at_derived]
-        bankfull = [w * QBF_OVER_QMEAN**WIDTH_EXPONENT for w in widths]
-        ax.scatter(areas, widths, s=46, color="#2c7fb8", zorder=3,
-                   label="as computed (mean annual Q)")
-        ax.scatter(areas, bankfull, s=46, color="#d95f0e", marker="^", zorder=3,
-                   label=f"× bankfull conversion (Q$_{{bf}}$/Q$_{{mean}}$≈{QBF_OVER_QMEAN:g})")
-        for a, w1, w2 in zip(areas, widths, bankfull):
-            ax.plot([a, a], [w1, w2], color="gray", lw=0.8, alpha=0.6, zorder=2)
+    if args.outlets and args.outlets.exists():
+        pts = json.loads(args.outlets.read_text())
+        ax.scatter(
+            [p[0] for p in pts], [p[1] for p in pts],
+            s=7, color="#2c7fb8", alpha=0.45, zorder=3,
+            label=f"via outlets, {len(pts)} across 5 worlds",
+        )
+    grid = [5.0 * (1.35**i) for i in range(20)]
+    ax.plot(grid, [0.0214 * a**0.965 for a in grid], color="crimson", lw=2.0,
+            zorder=4, label="438 USGS reference gauges\nQ = 0.0214·A$^{0.965}$")
+    ax.fill_between(grid, [0.0214 * a**0.965 * 0.57 for a in grid],
+                    [0.0214 * a**0.965 * 1.80 for a in grid],
+                    color="crimson", alpha=0.10, zorder=1,
+                    label="their p5–p95 spread")
+    if args.via_fit:
+        a0, b0 = args.via_fit
+        ax.plot(grid, [a0 * a**b0 for a in grid], color="#1a1a1a", lw=1.6, ls="--",
+                zorder=5, label=f"via fit: Q = {a0:.4f}·A$^{{{b0:.3f}}}$")
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("drainage area at the largest outlet  (km²)")
-    ax.set_ylabel("channel width  (m)")
-    ax.set_title("B · Outlet channel size at the derived k_Q", fontsize=10)
+    ax.set_xlabel("drainage area at the outlet  (km²)")
+    ax.set_ylabel("mean annual discharge  (m³/s)")
+    ax.set_title("B · Calibrated discharge vs real gauged rivers", fontsize=10)
     ax.grid(alpha=0.3, lw=0.5, which="both")
-    ax.legend(fontsize=7.5, loc="upper left")
+    ax.legend(fontsize=7, loc="upper left")
 
     # --- C: why nothing is navigable ---------------------------------
     ax = axes[2]
