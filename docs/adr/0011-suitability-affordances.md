@@ -4,7 +4,11 @@ Status: accepted (2026-08-22, under the user's delegated authority —
 "you know what to do"; proposed 2026-08-21 and amended the same day
 after the implementation chunk's adversarial review — Finnegan α
 provenance, Langbein's f, stability-band placement, depth-window
-ramp, D6 clause enumeration, recorded deferrals)
+ramp, D6 clause enumeration, recorded deferrals; amended again
+2026-08-22 on research 0015 — k_Q derived from the terrain's own
+hydrology with C = 0.35 the single cited coefficient, the ford chain
+split into a channel-forming and a crossing flow, and Langbein's f
+closed as a digitized curve with an enforced validity domain)
 Scope: the stage decisions ADR 0009 left open for `via-suitability` —
 what epistemic tier the stage occupies, how the named affordances
 (harbours, fords, confluences, passes) are represented, and what its
@@ -72,8 +76,57 @@ confirms that reading for the affordance extension:
   single relative-to-absolute discharge scale (m³/s per discharge
   unit) — the lumped-calibration practice of the stream-power
   literature (Whipple & Tucker 1999, via 0013). It is the one "how
-  big are rivers in this world" knob; it is unverifiable from inside
-  via, and everything metric downstream of it inherits that.
+  big are rivers in this world" knob, and everything metric
+  downstream of it inherits its status.
+
+  **Amended 2026-08-22 (research 0015): k_Q is derived, not free.**
+  The terrain stage weights flow accumulation by
+  `max(precip/precip_mean_m_per_yr, 0.05)`, so `discharge` counts
+  mean-precipitation-equivalent upslope cells. One unit therefore
+  carries one cell's area of the land-mean annual precipitation, and
+
+      k_Q = A_cell × P_mean × C / seconds_per_year
+
+  where every term but **C, the runoff ratio**, is already declared in
+  the terrain config. C is adopted as **0.35**, cited to Dai &
+  Trenberth (2002) *J. Hydrometeorology* 3(6):660–687, who state it as
+  a ratio ("~35% of terrestrial precipitation"); the published spread
+  across fourteen global water budgets is 0.33–0.42, clustering there.
+  The pairing is exact rather than approximate: 0.35 is a
+  *precipitation-weighted* mean of local runoff ratio, and via's
+  accumulation is precipitation-weighted by the same construction, so
+  Q = Σ_i (A_cell·P_i·C)/T is mass-consistent by inspection.
+
+  This demotes k_Q from an unverifiable knob to **one cited
+  coefficient plus one declared mapping**, and the mapping is the part
+  that remains Tier-2: the claim that a generated dimensionless
+  climate lands on absolute mm/yr and m² is a declaration, not a
+  derivation, as is the assumption that the generated world's
+  precipitation distribution is Earth-like enough for Earth's global
+  statistic to transfer. Two consequences are declared with it: a
+  uniform C runs arid basins wet and hyper-humid basins dry (true
+  local C spans ~0.8 to ~0.04 across the Budyko curve), and it forces
+  Q ∝ A exactly — which is the *correct* exponent for mean annual flow
+  (USGS regional regressions give b = 0.96–1.02 across six humid
+  states), so any sub-linearity via shows comes from its own
+  orographic gradients. The 0.05 rain-shadow floor is recorded as a
+  small positive bias (measured: 0.04% on the reference run). An
+  explicit k_Q override stays available for worlds that want a
+  different scale, and remains declared forcing when used.
+
+  Per-cell climate-derived C (Budyko) is **deferred, with reasons on
+  record in 0015 §1**: it would require via to invent a PET field, and
+  every temperature-only route either needs a latitude the world does
+  not declare (Oudin), misbehaves on isothermal per-cell means
+  (Thornthwaite), or is a declared convention rather than a citation
+  (Hamon with a fixed day length) — replacing one declared number with
+  four, evaluated at 200 m cells against a framework its authors
+  verify only above 1,000 km². The recorded upgrade path is Zhang,
+  Dawes & Walker's reduced form, which needs precipitation and a
+  forest fraction and no PET, and which belongs inside the terrain
+  stage's `weights_of` — where it changes the stream-power field and
+  therefore the landscape, so it is a gated change, never a
+  display-layer conversion.
 - The stage remains optional and ignorable by a research consumer;
   patch/affordance semantics continue to live in the experiment
   config that names them, not in the crate.
@@ -188,6 +241,62 @@ source):
   constants with provenance in the consuming stage (Decision 5's
   contract carries the spectrum, not classes) — never baked, and this
   stage emits the continuous product alone.
+
+  **Amended 2026-08-22 (research 0015): the chain carries two flows.**
+  The sweep established that Finnegan *derives* his relation in
+  bankfull terms (W and D are defined bank-full; Q = UA must fill that
+  section) but *calibrates* it against mean annual discharge, so the
+  fitted constant in his regression absorbs both the geometry factors
+  and the bankfull-to-mean ratio. Using the closed α-and-n form to
+  produce an absolute width — which is what via does — is therefore a
+  mode the paper never tested, and feeding mean annual Q into it
+  under-predicts. The chain is corrected to state its flows
+  explicitly:
+  - **Channel geometry** (width, and the depth and velocity that
+    define the section) is computed at a **channel-forming discharge**,
+    Q_bf = `bankfull_ratio` × Q_mean, with the ratio config-declared,
+    default **3.0**. No published Qbf/Qmean exists; two independent
+    derivations bracket it at 1.6–4.6 (pairing Wolman & Leopold 1957
+    Table 1 against Leopold & Maddock 1953 Appendix A at four
+    matching gauges: median 3.0; and a UK flow-duration curve: 3–6).
+    Emmett (1975) USGS PP 870-A states mean annual ≈ 25% of bankfull
+    for snowmelt Idaho basins, with his own caution that the ratio
+    "cannot be used indiscriminately". Bankfull recurrence is 1–2 yr
+    on the annual maximum series, "closer to 1 than 2" (Wolman &
+    Leopold 1957), median 1.4–1.64 yr in temperate settings (Liu et
+    al. 2026; Ahilan et al. 2013) — but Williams (1978) establishes
+    that no common recurrence exists, so the ADR adopts the *ratio*
+    and not a recurrence interval.
+  - **Crossing conditions** (the depth and velocity a traveller
+    actually meets, hence the emitted crossability spectrum) are
+    computed at a **declared exceedance percentile of the
+    flow-duration curve**, not at bankfull and not at mean annual.
+    This is the settled convention of the low-water-crossing
+    literature, where the passability flow is Q_e with e the
+    acceptable percentage of the year the crossing is closed
+    (Rossmiller et al. 1983; Ring 1987; Lohnes et al. 2001, Iowa's
+    default Q₂% ≈ seven days a year). Config `ford_flow_fraction`
+    expresses the chosen percentile as a fraction of mean annual
+    flow, default **0.62** — the median-flow ratio for a UK-average
+    river from the one-parameter flow-duration family of Gustard,
+    Bullock & Dixon (1992), IH Report 108 Table 5.2. Mean annual flow
+    is itself exceeded only ~25–30% of the time (Leopold & Maddock
+    1953; Langbein 1962), so judging fords at it would model a
+    wetter-than-typical world three-quarters of the year — the
+    limitation this correction removes.
+
+  Both factors are declared forcing with the provenance above, and
+  both are restated wherever a metric number is reported. **The α
+  caveat is recorded rather than resolved:** Finnegan's Figure 1 has
+  no discharge axis at all, so none of his α values carries a stated
+  flow convention; the gravel α = 59 is traceable to Leopold &
+  Maddock's Appendix A, explicitly "at stage corresponding to mean
+  annual discharge" (refitting that appendix gives 66.3 against the 59
+  plotted), but the bedrock/boulder/cobble values 5/9/21 come from
+  unattributed Cascades field surveys — and via's default α = 20 sits
+  with those, not with gravel. This is the chain's largest
+  unverifiable exposure, larger than the discharge convention itself,
+  and is declared as such.
 - **Confluences** — definitional on the inverted receivers tree: a
   strahler > 0 cell with ≥ 2 river donors (Strahler 1957; Shreve
   1966/1967 frame). Zero new parameters; the already-declared
@@ -232,6 +341,36 @@ source):
   (2025) change-point instrument — the one calibration-free method
   0013 found — is adopted as a consistency cross-check, not a second
   authority.
+
+  **Amended 2026-08-22 (research 0015): the f flag is closed, and the
+  criterion gains a validity domain.** Figure 8 has been digitized and
+  validated end-to-end against the paper's own Figure 11 (two named
+  cases reproduce Ts to ~15%, inside a 1962 log-scale figure's reading
+  precision). At Langbein's draft convention d/D = 0.7, f is 1.21,
+  2.48, 4.71 and ≈7.8 at F = 0.25, 0.50, 0.75 and 0.90, where
+  F = V/√(gD) — so f **stops being a declared constant** and becomes a
+  lookup on the primary's own curve, interpolated per cell from the
+  emitted depth and velocity. The shipped constant 2.5 corresponded to
+  a fast vessel; typical navigable rivers sit at F ≈ 0.17, hence
+  f ≈ 1.1–1.4.
+
+  Figure 8 stops at **F = 0.90**, and that bound is now enforced
+  rather than extrapolated: a reach whose Froude number exceeds the
+  figure's domain is **declared unnavigable by domain**, with the
+  reason recorded, instead of being assigned an extrapolated f. This
+  is not a corner case for via — measured on the reference world the
+  median channel Froude number is 1.25 (supercritical), which is
+  structural rather than a k_Q artifact (F ∝ Q^(1/16)) and follows
+  from steepness: the Manning algebra puts the transition near S ≈ 3%
+  and the reference island's channels have median slope 5.4%, 73%
+  steeper than that. The consequence is that these worlds correctly
+  report no navigable water — they are mountain torrents — and that
+  exercising the water modes needs a larger, flatter domain with
+  lowland reaches. Langbein's own reading corrections are recorded for
+  a future refinement: his criterion belongs at the **shallow
+  controlling section** (riffle or crossover), not the gaged mean
+  section — a 13× swing on his Mississippi example — with channel
+  depth ≈ 1.25× and channel velocity ≈ 1.15× the section means.
 
 Movement-cost values (the Llobera & Sluckin critical gradients, the
 Herzog refit coefficients, Santee's downhill correction) are **not**

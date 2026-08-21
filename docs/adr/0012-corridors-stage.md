@@ -13,7 +13,10 @@ exemption, Knight-intermediate enterability, either-corner
 admissibility, standing-water wading delay, reverse-settle-order
 accumulation, physical-scale config bounds, sentinel-safe casts,
 loud failure on malformed site records, and the measured behaviour
-of the energy min form)
+of the energy min form; amended again 2026-08-22 on research 0015 —
+ford caps moved from the occupational flood-stability envelope to the
+traveller envelope, and applied to the crossing-flow depth and
+velocity of the amended ADR 0011 chain)
 Scope: the stage decisions for `via-corridors` (ADR 0009 D1: unit of
 work "route, cost surface") — the movement-cost adoption ADR 0011
 deferred here, the multimodal mode set for the first (pre-modern)
@@ -234,20 +237,44 @@ config-declared with provenance:
   rule; the ADR 0011 crossability spectrum is the piercing
   instrument). A land move entering — or, per the straddle rule,
   crossing — a river cell (strahler > 0) is admissible iff the
-  cell's emitted crossability, depth, and velocity pass the Cox/AIDR
-  people-stability caps — config, defaults `ford_max_dv = 0.8` m²/s
-  (the recommended working limit for trained or well-equipped
-  persons), `ford_max_depth_m = 1.2`, `ford_max_velocity_ms = 3.0`
-  (independent caps; all Cox, Shand & Blacka 2010 / Guideline 7-3
-  via 0013) — and charges `ford_delay_hours` (default 0.25; declared
-  forcing, provenance Livingood 2012 Table 10.1, whose flow-banded
-  crossing delays run 0–30 min). The delay is charged **per entering
-  or crossing move**, so a multi-cell channel charges once per cell
-  of width (cell-size-dependent by construction, declared) and
-  walking *along* a channel pays it every step — intended, it prices
-  riverbed travel out (the riverbed-LCP artifact Herzog warns of).
-  Above the caps the cell is land-impassable — a cited stability
-  limit, not an authored mask.
+  cell's emitted crossability, depth, and velocity pass declared
+  people-stability caps. **Amended 2026-08-22 (research 0015): the
+  caps move from the occupational to the traveller envelope.** The
+  originally shipped values (D·V ≤ 0.8 m²/s, depth ≤ 1.2 m, velocity
+  ≤ 3.0 m/s) are the Cox, Shand & Blacka (2010) *flood-stability*
+  bands, and 0015 §4 establishes that this family describes **trained
+  staff with a wading rod, cleats and a tag line** — the Ontario
+  guidance says so in terms, calling the product rule "an upper limit
+  for adult male occupants" and recommending something lower. The
+  recreational/traveller tradition sits at roughly half: knee depth at
+  walking pace (~0.45–0.5 m) from three independent national sources,
+  and an explicit two-dimensional envelope from the New Zealand NEMS
+  standard whose no-precautions corner is v < 0.5 m/s with d < 0.5 m.
+  Via therefore defaults to the **bounded form** of the Ontario rule —
+  `ford_max_dv = 0.4` m²/s, `ford_max_depth_m = 0.6`,
+  `ford_max_velocity_ms = 1.7` — with the depth cap set by the
+  pedestrian ford standard that two independent traditions converge
+  on: the USFS Trail Construction and Maintenance Notebook's "no
+  deeper than 400 to 600 millimetres… during most of the use season",
+  and Motayed et al. (1982)'s fordable depth of "4-6 in or 10-15 cm"
+  for day-to-day flow. (Grayson's much-repeated 60 cm is *not* cited
+  as support: 0015 records that it carries no citation in its own
+  paper.) A mounted or pack profile would raise the depth cap toward
+  1 m — the USFS horse-ford figure, matching the US Army's foot
+  fording limit — and is left to consumer config. Caps are
+  independent, as in the source. And they are applied to the
+  crossing-flow depth and velocity of the amended ADR 0011 ford chain,
+  not to bankfull values — the low-water-crossing literature's whole
+  design idea is that passability is judged at a declared exceedance
+  percentile while the structure survives a flood. Above the caps the
+  cell is land-impassable — a cited stability limit, not an authored
+  mask. An admissible crossing charges `ford_delay_hours` (default
+  0.25; declared forcing, provenance Livingood 2012 Table 10.1, whose
+  flow-banded crossing delays run 0–30 min), **per entering or
+  crossing move**, so a multi-cell channel charges once per cell of
+  width (cell-size-dependent by construction, declared) and walking
+  *along* a channel pays it every step — intended, it prices riverbed
+  travel out (the riverbed-LCP artifact Herzog warns of).
 - **Small craft** on water nodes: admissible on the ADR 0011
   navigable-predicate cells (rivers and still water); water moves are
   **8-neighbour** (channels are one cell wide; 16-neighbour is a
