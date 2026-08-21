@@ -9,7 +9,7 @@ use clap::Parser;
 
 use via_bench::graph::Graph;
 use via_bench::osm::StreetSet;
-use via_bench::{ensemble, measure, null, osm, render, Protocol};
+use via_bench::{corpus, ensemble, measure, null, osm, render, Protocol};
 
 #[derive(Parser)]
 #[command(
@@ -22,6 +22,10 @@ enum Cmd {
     Reference(RefArgs),
     /// Generate and measure a null model ensemble (ADR 0008 D9).
     Null(NullArgs),
+    /// Aggregate the measured corpus: fitted-partition per-class
+    /// populations, per-character figures, contact sheets, and null
+    /// context tables (ADR 0008 D6/D9; ADR 0010 Decision 5).
+    Corpus(CorpusArgs),
 }
 
 #[derive(clap::Args)]
@@ -92,11 +96,94 @@ struct NullArgs {
     protocol_id: String,
 }
 
+#[derive(clap::Args)]
+struct CorpusArgs {
+    /// Directory holding <town>-fabric.json and <town>-town.png.
+    #[arg(long, default_value = "runs/reference/corpus-v1.1")]
+    measured: PathBuf,
+    /// Provenance manifest keying the corpus (town, class, partition).
+    #[arg(long, default_value = "reference/extracts.jsonl")]
+    manifest: PathBuf,
+    #[arg(long, default_value = "runs/reference/report-v0")]
+    out: PathBuf,
+    /// Null ensemble directory: <class-slug>/null-<model>.json. When
+    /// given, per-class null context tables are emitted.
+    #[arg(long)]
+    nulls: Option<PathBuf>,
+    /// Every fabric JSON must carry this protocol id.
+    #[arg(long, default_value = "v1.1")]
+    protocol_id: String,
+}
+
 fn main() -> Result<()> {
     match Cmd::parse() {
         Cmd::Reference(a) => run_reference(a),
         Cmd::Null(a) => run_null(a),
+        Cmd::Corpus(a) => run_corpus(a),
     }
+}
+
+fn run_corpus(a: CorpusArgs) -> Result<()> {
+    let (rows, revisions) = corpus::load(&a.manifest, &a.measured, &a.protocol_id)?;
+    std::fs::create_dir_all(&a.out)?;
+
+    let pops = corpus::populations(&rows, &a.protocol_id, &revisions);
+    std::fs::write(
+        a.out.join("populations.json"),
+        serde_json::to_string_pretty(&pops)? + "\n",
+    )?;
+    for (_, slug, _) in corpus::CLASSES {
+        let c = &pops["classes"][slug];
+        println!(
+            "{:<10} fitted {:>2}  held-out {:>2}  operative {}",
+            slug, c["n_fitted"], c["n_held_out"], c["operative_set"]
+        );
+    }
+
+    let figs = corpus::figures(&rows, &a.out.join("figures"))?;
+    println!(
+        "{} character figures -> {}",
+        figs.len(),
+        a.out.join("figures").display()
+    );
+
+    let sheets_dir = a.out.join("sheets");
+    std::fs::create_dir_all(&sheets_dir)?;
+    for (class, slug, _) in corpus::CLASSES {
+        if let Some(c) = corpus::sheet(&rows, &a.measured, class, slug)? {
+            c.img.save(sheets_dir.join(format!("{slug}.png")))?;
+        }
+    }
+    println!("contact sheets -> {}", sheets_dir.display());
+
+    if let Some(nulls_dir) = &a.nulls {
+        let mut doc = String::from(
+            "# Null-model context tables (ADR 0008 D9)\n\nFitted-partition \
+             populations vs matched null ensembles; every number carries \
+             protocol v1.1.\nContains information from OpenStreetMap, \
+             (c) OpenStreetMap contributors, ODbL.\n",
+        );
+        for (class, slug, operative) in corpus::CLASSES {
+            let mut nulls: Vec<(String, serde_json::Value)> = Vec::new();
+            for model in ["grid", "random", "dla"] {
+                let p = nulls_dir.join(slug).join(format!("null-{model}.json"));
+                if p.exists() {
+                    nulls.push((
+                        model.to_string(),
+                        serde_json::from_str(&std::fs::read_to_string(p)?)?,
+                    ));
+                }
+            }
+            if nulls.is_empty() {
+                continue;
+            }
+            doc.push_str(&format!("\n## {class} ({})\n\n", operative));
+            doc.push_str(&corpus::null_table(&rows, class, operative, &nulls));
+        }
+        std::fs::write(a.out.join("null-tables.md"), doc)?;
+        println!("null tables -> {}", a.out.join("null-tables.md").display());
+    }
+    Ok(())
 }
 
 fn parse_centre(s: &str) -> Result<(f64, f64)> {

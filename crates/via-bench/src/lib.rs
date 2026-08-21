@@ -19,6 +19,7 @@
 //! Not a chain stage: like `via-viz`, this crate is never a dependency of
 //! a stage crate.
 
+pub mod corpus;
 pub mod ensemble;
 pub mod font;
 pub mod geom;

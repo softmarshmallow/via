@@ -135,7 +135,9 @@ fn floor_gate(below_floor: bool, f: impl FnOnce() -> f64) -> f64 {
     }
 }
 
-fn quantile(v: &mut [f64], q: f64) -> f64 {
+/// Nearest-rank quantile (the protocol's declared convention): sort
+/// ascending, take index `round((n−1)·q)`.
+pub(crate) fn quantile(v: &mut [f64], q: f64) -> f64 {
     if v.is_empty() {
         return f64::NAN;
     }
