@@ -15,7 +15,14 @@ expectation, and the ADR 0008 D9 attribution tightened. Amended again
 after checking the upstream cross-references: only ADR 0012 D1
 deferred anything to this stage, and what it deferred is validation,
 not a realism claim — the earlier draft's "ADR 0011 D2 and ADR 0012
-D1 both defer their realism claim" was wrong on both counts.
+D1 both defer their realism claim" was wrong on both counts. Amended a
+third time after an end-to-end internal-consistency read: `α` and `β`
+were wrongly filed as Tier-2 budget forcing, which would have declared
+the pattern the Tier-1 gate is meant to test and collapsed Decision 1;
+they are calibrated parameters of the mechanism. Also: `α > 1` is no
+longer asserted, and the `δ/κ` size-floor gate is scoped to
+convergence, since it is an equilibrium floor and would have fired on
+correct runs mid-solve.
 
 Scope: the stage decisions for `via-settlement` (ADR 0009 D1: unit of
 work "settlement, corridor link") — which allocation engine, what
@@ -113,8 +120,22 @@ and forcing one would misdescribe the stage. The ruling is split:
   numerically. It may carry statistical gates (ADR 0003's
   "gates measure tier-1 statistics only" is satisfied).
 - **The budget, and every parameter that scales it, is Tier-2
-  forcing** — `ΣO_i`, κ, δ, ε, α, β, the shock magnitudes and the
-  epoch schedule. Decision 3 states why this is not a shortcut.
+  forcing** — `ΣO_i`, κ, δ, the shock magnitudes and the epoch
+  schedule. Decision 3 states why this is not a shortcut.
+- **`α` and `β` are not in that bucket, and the distinction is what
+  keeps the Tier-1 claim honest.** Osawa's gloss is precise: "O and κ
+  change only the **scale** of h". `α` (returns to scale) and `β`
+  (distance decay) set the *pattern* — they are parameters of the
+  Tier-1 mechanism, and under ADR 0008 D6 they are **calibrated by
+  measured sweep against reference data, with calibration separated
+  from validation**, never declared and never hand-tuned. Filing them
+  as forcing would declare the very shape the statistical gate is
+  supposed to test, and the Tier-1 ruling above would collapse into
+  decoration.
+- **`ε` and `dt` are numerical, not physical.** They are integration
+  parameters, constrained by Decision 2's stability bound and by
+  convergence, and they carry no claim about the world. A result that
+  moves when `ε` changes within the stable range is a bug.
 - **Delineation and the derived role scalars are Tier-3
   interpretation**, carrying `standard | heuristic` labels exactly as
   ADR 0011 requires.
@@ -135,8 +156,12 @@ Adopted, in the form the three primaries agree on:
 `c_ij` is the corridor time in hours (ADR 0012 D5's edge records and
 `hours_to_trunk`), never re-derived here — the settlement stage does
 not reimplement the movement model. `O_i` is the origin mass at node
-`i` (Decision 4). `α > 1` is the returns-to-scale term, `β` the
-distance-decay.
+`i` (Decision 4). `α` is the returns-to-scale term and `β` the
+distance decay; **their values are calibrated, not asserted here**
+(Decision 1). The regime note matters for reading results but is not
+a constraint the ADR imposes: `α > 1` drives agglomeration, `α ≤ 1`
+disperses, and which side the calibration lands on is a finding
+rather than a setting.
 
 **`δ > 0` is required, not optional.** Research 0016 records both
 reasons: at `δ = 0` the Gibbs measure is unnormalisable, and dead
@@ -380,8 +405,9 @@ fixes the algorithm so the stage and the benchmark cannot drift.
   n = 15, ±31.6% at n = 20. **The floor is n = 15 after the largest
   settlement is excluded**; below it the character is *not reported*,
   and the run says it was withheld and why rather than quietly
-  printing a number. Publishing an exponent at ±45% would be the same
-  error this ADR rejects Clauset's `x_min` for. Note that even at the
+  printing a number. Publishing an exponent at the ±44.7% of `n = 10`
+  would be the same error this ADR rejects Clauset's `x_min` for.
+  Note that even at the
   floor the interval is wide enough that ζ will rarely separate two
   candidate mechanisms — which is a fact about via's `n`, not about
   the estimator, and belongs in the summary next to the number.
@@ -436,7 +462,11 @@ compute's in-memory state — the ADR 0011/0012 precedent.
    below tolerance at convergence. This is Decision 2's balancing
    condition; if it fails, the engine is not Harris–Wilson.
 2. **Flow conservation** — `Σ_j T_ij = O_i` for every `i`.
-3. **Size floor** — every surviving settlement has `W_j ≥ δ/κ`.
+3. **Size floor** — **at convergence**, every surviving settlement has
+   `W_j ≥ δ/κ`. The scope matters: `δ/κ` is the *equilibrium* floor,
+   so a transient `W_j` below it during the solve is expected, not a
+   violation, and a gate that checked every step would fire on
+   correct runs.
 4. **Convergence** — fixed-point residual below tolerance, and the
    `ε · max_j D_j < 2` bound (Decision 2) held at every step.
 5. **Attachment integrity** — every emitted attachment references an
