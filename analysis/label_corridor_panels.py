@@ -19,6 +19,50 @@ from pathlib import Path
 from label_suitability_panels import build
 
 
+def water_note(ford_pct: float, nav_pct: float, summary: dict) -> str:
+    """Describe the water regime the run actually landed in.
+
+    The two ends read very differently and each is worth naming: an
+    uncalibrated scale makes every river an impassable wall, while a
+    realistic one on a small steep world makes every river a crossable
+    brook. Both are honest outputs; neither is a defect.
+    """
+    kq = summary.get("config", {}).get("k_q_m3s_per_unit")
+    scale = (
+        "the derived k_Q (from the terrain's own precipitation and cell area)"
+        if kq is None
+        else f"an overridden k_Q of {kq:g}"
+    )
+    if ford_pct >= 95:
+        regime = (
+            "Rivers here are crossable almost everywhere, so they shape routes "
+            "through accumulated wading delay rather than by forcing detours to "
+            "fords. Ford-seeking as a corridor mechanism needs rivers large "
+            "enough to be impassable in their lower reaches."
+        )
+    elif ford_pct <= 5:
+        regime = (
+            "Rivers here are effectively walls, so cross-river movement detours "
+            "via headwater ridges or the coast. On an uncalibrated scale that "
+            "shape is an artifact of the constant, not terrain truth."
+        )
+    else:
+        regime = (
+            "Rivers are crossable in their upper reaches and impassable lower "
+            "down, so fords become genuine route-controlling sites."
+        )
+    nav = (
+        f" No reach is navigable ({nav_pct:.1f}%): these channels are too steep, "
+        "which is the physically correct answer for mountainous terrain."
+        if nav_pct < 0.5
+        else f" {nav_pct:.1f}% of channel cells are navigable."
+    )
+    return (
+        f"Water regime under {scale}: {ford_pct:.1f}% of channel cells are "
+        f"fordable. {regime}{nav}"
+    )
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dir", type=Path)
@@ -79,17 +123,14 @@ def main():
             ),
         ],
         [
-            f"k_Q degeneracy, declared: {ford_pct:.1f}% of channel cells are "
-            f"fordable and {nav_pct:.1f}% navigable at the k_Q placeholder, so "
-            "rivers act as walls — cross-river movement detours via headwater "
-            "ridges or the coast. That shape is the declared consequence of "
-            "one uncalibrated forcing constant, not terrain truth.",
+            water_note(ford_pct, nav_pct, summary),
             "Density shows only the top 20% of traversed cells (White & "
             "Barber's 80/20 rendering default); the raster ships raw.",
             f"reuse discount alpha = {cfg['reuse_alpha']:g}; ford caps "
             f"D*V <= {cfg['ford_max_dv_m2s']:g} m^2/s, depth <= "
             f"{cfg['ford_max_depth_m']:g} m, velocity <= "
-            f"{cfg['ford_max_velocity_ms']:g} m/s (Cox/AIDR).",
+            f"{cfg['ford_max_velocity_ms']:g} m/s — the traveller envelope, "
+            "judged at the declared crossing flow.",
         ],
     )
 
@@ -114,9 +155,9 @@ def main():
             ),
         ],
         [
-            "Every water-derived time is conditional on the declared k_Q "
-            "scale; at the placeholder the rivers are impassable walls, "
-            "which stretches interior times.",
+            "Every water-derived time is conditional on the k_Q scale in "
+            "force; k_Q sets how big rivers are, and therefore whether they "
+            "speed travel as routes or slow it as obstacles.",
             "Sentinel cells (no land node) are not drawn.",
         ],
     )
