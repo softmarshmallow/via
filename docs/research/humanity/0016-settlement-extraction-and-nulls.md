@@ -504,6 +504,149 @@ This is recorded rather than quietly deleted because the failure mode
 is the one this corpus exists to prevent, and because a fabricated
 verification ledger is more dangerous than an absent one.
 
+*Two of the retracted targets have since been re-run directly — see
+the next section. Nothing below is recovered from the retracted text;
+it was read from the sources.*
+
+### Refilled from sources actually opened (2026-08-22)
+
+Two of the retracted targets have been re-run without delegation. The
+PDFs below were fetched, converted with `pdftotext -layout`, and read
+directly; every figure carries the page it was read from. **Editions
+matter here:** Jedwab & Vollrath is the *published* AEJ article, so
+its page numbers are the journal's. Jedwab, Johnson & Koyama is the
+**open working paper IIEP-WP-2020-14 (4 August 2020)**, not the
+published *JEL* 60(1):132–178 — the AEA copy is paywalled and was not
+opened, so JJK page numbers below are the working paper's and must
+never be cited as the journal's.
+
+**A. Pre-industrial urban natural increase — measured, and contested
+in sign.** Jedwab & Vollrath (2019), *AEJ: Macroeconomics*
+11(1):223–275. Figure 3 (p. 232) reports unweighted means over 392
+city-period observations, per 1,000 people:
+
+| era | N | CBR | CDR | CRNI |
+| --- | --- | --- | --- | --- |
+| pre-1800s | 38 | 38.1 | 36.1 | **2.0** |
+| 1820s–1850s | 33 | 35.6 | 30.4 | 5.2 |
+| 1880s | 69 | 34.0 | 28.0 | 5.9 |
+| 1900s | 89 | 28.0 | 22.1 | 5.9 |
+| 1960s | 63 | 33.2 | 10.9 | 22.3 |
+| 2000s | 100 | 17.4 | 6.5 | 11.0 |
+
+The cities in panels A–D are the 100 largest as of 1900 per Chandler
+(1987); panels E–F are the 100 largest projected for 2030 (Fig. 3
+notes, p. 232). On p. 233: "the cities all lie near the 45-degree
+line, indicating that they experienced almost no natural increase
+(2.0, i.e., 0.2 percent per year)", and for the nineteenth-century
+panels, "City natural increase was still low on average at 5.0–6.1 per
+1,000 people (0.5–0.6 percent per year)."
+
+**The sign is contested, and the disagreement is load-bearing.** JJK
+(WP p. 23) write that "rates of natural increase were typically
+negative in urban areas until the 19th century (see discussions in
+Voigtländer and Voth, 2013b; Jedwab and Vollrath, 2019)" — *citing the
+very paper that measures +2.0 per 1,000*. The reconciliation is JV's
+own footnote 9, p. 233: "All the points in panel A represent 'normal'
+periods, but each city was at times afflicted by severe shocks to
+mortality. For example, during the Black Death, cities had death rates
+of 250–750 (i.e., 25–75 percent)."
+
+So there is no single pre-industrial urban natural-increase rate.
+There is a **normal-period rate of roughly +2 per 1,000 per year** and
+a **shock process**, and it is their composition over centuries that
+the demographic literature calls negative. A stage that forces one
+mean rate either loses the shocks or double-counts them.
+
+**B. The urban–rural differential is the mechanism, not urban
+decline.** JV p. 231: "Historically, in-migration was the dominant
+source of new city dwellers as the rates of natural increase were low
+in urban areas, typically because of high urban death rates." And
+p. 233, on the industrial-era cities: "Their growth, which averaged 3
+percent per year in the nineteenth century, mostly occurred through
+in-migration (Williamson 1990; Jedwab, Christiaensen, and Gindelsky
+2017)." On the rural side, p. 236: "Rural natural increase was already
+high before the twentieth century (panel C), due to high rural CBRs
+(panel A) and low rural CDRs (panel B)."
+
+The pre-1800 *rural* CRNI is plotted in Figure 4 panel C (p. 235) but
+is **NOT STATED numerically anywhere in the text**, and no value is
+recorded here — reading it off the panel is exactly the move this
+dossier forbids. What is stated, for the 167-observation
+developing-country subsample (p. 236): urban CDRs fell "from 30 in the
+1900s to 15 in the 1960s" and urban CRNI rose "from 7.5 in the 1900s
+to 25 in the 1960s". And p. 237: "Forty was the urban CDR of developed
+countries before the Industrial Revolution (e.g., England in 1750)."
+
+**C. The Black Death as a shock magnitude.** JJK, IIEP-WP-2020-14.
+WP p. 5: "Mortality was exceptionally high. Studies suggest an overall
+mortality rate of between 40-60% (Benedictow, 2005). The more
+conservative estimate of 40% is consistent with the
+population-weighted average mortality found for 274 localities by
+Jedwab, Johnson and Koyama (2019b)." Table 1 (WP p. 48), "Overall
+Mortality by Country, Western Europe, Provisional Estimates":
+
+| region | 1300 pop. (m) | mortality % | low–high |
+| --- | --- | --- | --- |
+| England & Scotland | 6 | 55 | 45–62.5 |
+| Scandinavia | 1.9 | 55 | 50–60 |
+| France | 16 | 50 | 30–60 |
+| Italy | 12.5 | 50 | 40–55 |
+| Spain | 5.5 | 50 | 30–62.5 |
+| Netherlands | 0.8 | 32.5 | 30–35 |
+| Poland | 2 | 25 | 25 |
+| Belgium | 1.4 | 22.5 | 20–25 |
+| Germany | 13 | 22.5 | 20–25 |
+| Austria, Czechia & Hungary | 10 | 20 | 15 |
+| **Western Europe** | **72.8** | **38.75** | — |
+| 274 localities (pop.-weighted) | — | **38.90** | — |
+
+Portugal and Switzerland have no estimate and were "assumed a
+mortality rate of 40%" in the average (Table 1 notes). WP p. 6 adds
+that "Mortality rates were lower in the Low Countries, Central Europe,
+and Portugal (20-35%)", and WP p. 40 states the aggregate: "If 40% of
+Europe's population died of the plague between 1347-1352, this makes
+it proportionally the largest single demographic shock in European
+history."
+
+**Three structural facts about the shock matter more than its size.**
+First, it did not discriminate by settlement type — WP p. 21: "similar
+death rates were recorded on average in urban and in rural areas."
+Second, and decisively for via, it did not discriminate by site
+quality: the Figure 3 notes (WP p. 49) state that for 165 cities
+existing in 1300, "mortality rates were uncorrelated with various city
+characteristics proxying for physical geography, economic geography,
+human capital and institutions." **A mortality shock in via must
+therefore not be conditioned on the suitability field** — any
+correlation between shock magnitude and site quality would be an
+artefact with no support in the record. Third, recovery is fast in
+aggregate but strongly path-dependent — WP p. 21: "By 1500, on
+average, cities had recovered to their pre-plague population levels",
+while WP p. 22 records "Barcelona (mortality of 36%), Florence (60%),
+Lübeck (30%) and Venice (60%) recovered their pre-plague population
+levels in just 5, 30, 10 and 25 years respectively", against cities
+like Narbonne and Winchester that "shrank to insignificance"
+(WP p. 21). WP p. 22 attributes the recovery to migration, not local
+natural increase.
+
+**D. What these two papers do not contain.** Neither supplies an
+**aggregate pre-industrial population growth series** — the actual
+forcing quantity the settlement stage needs. That remains unread and
+must come from the Maddison Project, McEvedy & Jones (1978), or
+Broadberry et al. Wrigley (1967) and Woods (2003) remain library
+requests with no numbers taken from them. No figure in this section
+may be attributed to the published *JEL* article.
+
+**E. What this changes for the adopting ADR.** The budget stays
+Tier-2 forcing — nothing here lets the engine generate it. But four
+mechanism constraints now have citations behind them: urban natural
+increase is a normal-period rate plus a shock process rather than a
+mean; growth in urban *share* is a migration flow, on which JV
+(pp. 231, 233) and JJK (WP p. 22) independently agree; mortality
+shocks are unconditioned on site quality; and post-shock recovery is
+path-dependent, so the stage needs hysteresis rather than a return to
+a fixed point.
+
 ### Integrator discipline — and a misreading to correct
 
 **The continuous Harris–Wilson dynamic cannot be chaotic.** Ellam et
@@ -584,16 +727,24 @@ engine is not entitled to be graded on passing it.**
 
 ## Open gaps
 
-- **The largest gap is now the retracted material (§6).** Nothing is
-  known about the demographic forcing series, the urban-graveyard
-  magnitude, or the rural-supply ceiling beyond four citations and one
-  abstract. Closing it means opening Jedwab & Vollrath (2019) and
-  Jedwab, Johnson & Koyama (2022) — both with located open PDFs —
-  plus Davenport's open-access work and whatever transcriptions of
-  Bairoch and de Vries can be obtained, and treating Wrigley (1967)
-  and Woods (2003) as library requests rather than reconstructions.
-  **Until then the settlement ADR must declare the budget as forcing
-  without published numbers behind it, and say so.**
+- **The retracted material (§6) is partly refilled, and the remainder
+  is now a named gap rather than a void.** Read directly on
+  2026-08-22: Jedwab & Vollrath (2019) published AEJ article, and
+  Jedwab, Johnson & Koyama working paper IIEP-WP-2020-14. Between them
+  they close the urban-graveyard magnitude and the plague-shock
+  magnitude. **Still open: the aggregate pre-industrial population
+  growth series** — the forcing quantity itself — which needs the
+  Maddison Project, McEvedy & Jones (1978), or Broadberry et al., none
+  of them opened. Also still unread: the published *JEL* 60(1):132–178
+  (paywalled), Wrigley (1967), Woods (2003), Davenport's open-access
+  work, and any Bairoch/de Vries transcription. **The settlement ADR
+  may now cite mechanism constraints, but must still declare the
+  budget magnitude as forcing without a published series behind it,
+  and say so.**
+- The pre-1800 *rural* rate of natural increase is plotted in Jedwab &
+  Vollrath Figure 4 panel C but stated nowhere in their text. It is
+  deliberately not recorded, because the only way to obtain it from
+  the paper is to read a value off a scatter panel.
 - Clark & Evans (1954), Donnelly (1978), Ripley (1977) and Dacey
   (1962) were **not** read in the original; the first two are verified
   through three agreeing renderings each, the latter two are
