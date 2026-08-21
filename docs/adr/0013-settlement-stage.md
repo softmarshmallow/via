@@ -11,7 +11,11 @@ scope, the founding/survival separation stated (survival is the
 engine's `δ/κ` floor, not a second mechanism), realized spacing added
 as a character with Bracton's 6⅔ miles held as forcing rather than a
 target, the Black Death market-thinning added as a sign-and-shape
-expectation, and the ADR 0008 D9 attribution tightened.
+expectation, and the ADR 0008 D9 attribution tightened. Amended again
+after checking the upstream cross-references: only ADR 0012 D1
+deferred anything to this stage, and what it deferred is validation,
+not a realism claim — the earlier draft's "ADR 0011 D2 and ADR 0012
+D1 both defer their realism claim" was wrong on both counts.
 
 Scope: the stage decisions for `via-settlement` (ADR 0009 D1: unit of
 work "settlement, corridor link") — which allocation engine, what
@@ -36,12 +40,23 @@ citation.
 ## Context
 
 This is the stage the project's thesis actually rests on. Terrain,
-suitability and corridors are all upstream instruments; ADR 0011 D2
-and ADR 0012 D1 both defer their realism claim to "downstream
-settlement-system statistics once settlements exist", so the debt of
-two stages falls due here. It is also the first humanity stage with
-an external benchmark channel: research 0012 defines settlement-system
-characters, and GHS-UCDB exists to be compared against.
+suitability and corridors are all upstream instruments, and **exactly
+one of them has deferred anything to here.** ADR 0012 D1 states it
+outright: "Validation is indirect and downstream: settlement-system
+statistics once settlements exist." ADR 0011 is a different case and
+should not be described as a deferral — a Tier-3 stage that "claims
+no mechanism and solves no equations" never had a realism claim to
+postpone. So one debt falls due here, not two, and it is a *validation*
+debt rather than a realism one.
+
+That distinction matters for what follows: if this stage's
+settlement-system statistics come out badly, they impeach the
+corridor model, which asked to be judged this way. They say nothing
+either way about suitability, which never made a claim to impeach.
+
+It is also the first humanity stage with an external benchmark
+channel: research 0012 defines settlement-system characters (its
+Tier A), and GHS-UCDB exists to be compared against.
 
 Research 0016 returns four findings that constrain this ADR before it
 starts, and three of them are negative:
@@ -462,9 +477,9 @@ to Decision 5), and the market-access field read from ADR 0012's
 
 - `via-settlement` enters the workspace as the fourth stage crate,
   and the first that can hold a statistical gate.
-- The realism debt deferred by ADR 0011 D2 and ADR 0012 D1 becomes
-  collectable — and Decision 10 states in advance which parts of it
-  this stage cannot pay.
+- The validation debt deferred by ADR 0012 D1 becomes collectable —
+  and Decision 10 states in advance which parts of it this stage
+  cannot pay. ADR 0011 is not a creditor here (Context).
 - Research 0016's retrieval targets become the checklist for
   upgrading the budget from declared forcing to citation: the
   Maddison Project, McEvedy & Jones (1978), Broadberry et al.,
