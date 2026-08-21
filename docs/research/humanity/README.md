@@ -47,6 +47,14 @@ tiering or adoption judgments:
 | [0006](0006-founding-and-planning.md) | Founding & planning regimes: planted towns, survey lattices, plats, zoning |
 | [0007](0007-simulation-precedents.md) | Validated simulation precedents: archaeology ABMs, SIMPOP, validation doctrine |
 
+Commissioned dossiers — targeted sweeps answering a question the
+corpus was found not to answer, compiled for a specific adopting
+decision (they span literatures and note doctrine fit in place):
+
+| Doc | Content |
+| --- | --- |
+| [0013](0013-affordance-detection.md) | Affordance detection & movement cost: citable schemes over via's terrain artifacts (commissioned for ADR 0011) |
+
 Cross-cutting screens — synthesis over the dossiers, still
 pre-decision:
 
@@ -90,8 +98,10 @@ hypothesis future ADRs must test, not a settled conclusion.
 ## Method
 
 Compiled August 2026 by a structured multi-track literature survey
-(seven parallel tracks, one per dossier) followed by an adversarial
-doctrine screen against ADR 0003. Citations were verified against
+(seven parallel tracks, one per field dossier) followed by an
+adversarial doctrine screen against ADR 0003. Commissioned dossiers
+are added by separately run sweeps under the same verification rules
+(0013: five parallel tracks, 2026-08, for ADR 0011). Citations were verified against
 sources at survey time; items the survey could not verify are flagged
 as such in place. Errors that surface later should be corrected in
 place with a note, as the FAQ ledger does.
