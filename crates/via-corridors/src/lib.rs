@@ -120,9 +120,16 @@ impl CorridorsConfig {
     pub fn validate(&self) -> io::Result<()> {
         validate_label(&self.label)?;
         validate_label(&self.suitability_label)?;
+        // Physical-scale bounds, not just positivity: costs spanning
+        // more than ~10 orders of magnitude would let a move's cost
+        // vanish in f64 addition against an accumulated distance,
+        // which breaks the strict ordering the solver and the density
+        // accumulation rest on.
         let pos = |name: &str, v: f64| -> io::Result<()> {
-            if !(v.is_finite() && v > 0.0) {
-                return Err(bad(format!("{name} must be finite and > 0, got {v}")));
+            if !(v.is_finite() && (1.0e-6..=1.0e6).contains(&v)) {
+                return Err(bad(format!(
+                    "{name} must be finite and within [1e-6, 1e6], got {v}"
+                )));
             }
             Ok(())
         };
@@ -144,9 +151,9 @@ impl CorridorsConfig {
             pos("coastal_exposure_cap_m", cap)?;
         }
         pos("transship_hours", self.transship_hours)?;
-        if !(self.ford_delay_hours.is_finite() && self.ford_delay_hours >= 0.0) {
+        if !(self.ford_delay_hours.is_finite() && (0.0..=1.0e6).contains(&self.ford_delay_hours)) {
             return Err(bad(format!(
-                "ford_delay_hours must be finite and >= 0, got {}",
+                "ford_delay_hours must be finite and within [0, 1e6], got {}",
                 self.ford_delay_hours
             )));
         }
@@ -183,6 +190,11 @@ pub fn raster_filename(label: &str, name: &str) -> String {
 pub fn summary_filename(label: &str) -> String {
     format!("corridors.{label}.json")
 }
+
+/// Largest value a reachable cell may carry in an hours raster: the
+/// f32 immediately below `f32::MAX`, which is the unreachable/no-node
+/// sentinel.
+const REACHABLE_MAX_HOURS: f32 = f32::from_bits(f32::MAX.to_bits() - 1);
 
 const RASTER_NAMES: [&str; 5] = [
     "corridor_density",
@@ -288,24 +300,51 @@ fn load_inputs(run_dir: &Path, cfg: &CorridorsConfig) -> io::Result<Inputs> {
         .map_err(|e| bad(format!("{}: {e}", summary_path.display())))?;
     let summary: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| bad(format!("{}: {e}", summary_path.display())))?;
-    let cells_of = |v: &serde_json::Value| -> Vec<u32> {
-        v.as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|s| s.get("cell").and_then(|c| c.as_u64()).map(|c| c as u32))
-                    .collect()
-            })
-            .unwrap_or_default()
-    };
-    let pass_cells = cells_of(&summary["affordances"]["passes"]["sites"]);
-    let head_cells = cells_of(&summary["affordances"]["navigability"]["head_of_navigation_sites"]);
-    for &c in pass_cells.iter().chain(head_cells.iter()) {
-        if c as usize >= n {
-            return Err(bad(format!(
-                "site cell {c} out of range (corrupt summary?)"
-            )));
+    // Every step is a hard error: a summary whose site arrays are
+    // missing, renamed, or malformed would otherwise yield an empty
+    // node set and a trunk network that passes every gate while
+    // silently omitting passes or heads (ADR 0012 D6: unevaluable is
+    // fail).
+    let cells_of = |path: &[&str]| -> io::Result<Vec<u32>> {
+        let mut node = &summary;
+        for key in path {
+            node = node.get(key).ok_or_else(|| {
+                bad(format!(
+                    "{}: missing {} (stale or foreign suitability summary?)",
+                    summary_path.display(),
+                    path.join(".")
+                ))
+            })?;
         }
-    }
+        let arr = node.as_array().ok_or_else(|| {
+            bad(format!(
+                "{}: {} is not an array",
+                summary_path.display(),
+                path.join(".")
+            ))
+        })?;
+        arr.iter()
+            .map(|s| {
+                let cell = s.get("cell").and_then(|c| c.as_u64()).ok_or_else(|| {
+                    bad(format!(
+                        "{}: a {} entry has no numeric `cell`",
+                        summary_path.display(),
+                        path.join(".")
+                    ))
+                })?;
+                if cell as usize >= n {
+                    return Err(bad(format!(
+                        "{}: {} cell {cell} out of range for {n} cells",
+                        summary_path.display(),
+                        path.join(".")
+                    )));
+                }
+                Ok(cell as u32)
+            })
+            .collect()
+    };
+    let pass_cells = cells_of(&["affordances", "passes", "sites"])?;
+    let head_cells = cells_of(&["affordances", "navigability", "head_of_navigation_sites"])?;
 
     Ok(Inputs {
         w: heights.width,
@@ -402,7 +441,12 @@ fn compute(inp: &Inputs, cfg: &CorridorsConfig) -> io::Result<CorridorsOutput> {
                 };
                 let d = sol.dist[node];
                 if exists && d.is_finite() {
-                    d as f32
+                    // Keep every real value strictly below the
+                    // sentinel: an f64 beyond f32 range would
+                    // otherwise cast to +inf and escape it, and a
+                    // value in the top rounding window would collide
+                    // with it.
+                    (d as f32).min(REACHABLE_MAX_HOURS)
                 } else {
                     f32::MAX
                 }
@@ -582,6 +626,27 @@ pub fn write_outputs(
         |name: &str| -> io::Result<Vec<u32>> { Ok(Raster::<u32>::read_file(&path(name))?.data) };
     let read_f32 =
         |name: &str| -> io::Result<Vec<f32>> { Ok(Raster::<f32>::read_file(&path(name))?.data) };
+    // Grid agreement: every emitted raster, read back, carries the
+    // geometry of the terrain heights it was derived from.
+    {
+        let heights: Raster<i32> = Raster::read_file(&run_dir.join("heights_cm.vrast"))?;
+        for name in RASTER_NAMES {
+            let (w, h, cell) = match name {
+                "corridor_density" | "trunk" => {
+                    let r = Raster::<u32>::read_file(&path(name))?;
+                    (r.width, r.height, r.cell_size_cm)
+                }
+                _ => {
+                    let r = Raster::<f32>::read_file(&path(name))?;
+                    (r.width, r.height, r.cell_size_cm)
+                }
+            };
+            gate(
+                "grid_agreement",
+                (w, h, cell) == (heights.width, heights.height, heights.cell_size_cm),
+            )?;
+        }
+    }
     gate(
         "density_definition",
         read_u32("corridor_density")? == recomputed.density,
@@ -715,6 +780,7 @@ pub fn write_outputs(
     );
     let mut checks: BTreeMap<&'static str, bool> = BTreeMap::new();
     for name in [
+        "grid_agreement",
         "density_definition",
         "trunk_definition",
         "hours_to_sea_definition",

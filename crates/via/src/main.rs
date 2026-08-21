@@ -837,8 +837,12 @@ fn run_corridors(args: CorridorsArgs) -> Result<()> {
         out.trunk.junctions.len()
     );
     println!(
-        "  degeneracy (k_Q-conditional): ford-passable channel fraction {:.3}, navigable channel fraction {:.3}",
-        out.degeneracy.ford_passable_channel_fraction, out.degeneracy.navigable_channel_fraction
+        "  degeneracy (k_Q-conditional): {} of {} channel cells fordable, {} navigable",
+        (out.degeneracy.ford_passable_channel_fraction * out.degeneracy.river_cells as f64).round()
+            as u64,
+        out.degeneracy.river_cells,
+        (out.degeneracy.navigable_channel_fraction * out.degeneracy.river_cells as f64).round()
+            as u64,
     );
     println!(
         "  moves: {} land, {} water, {} switch",

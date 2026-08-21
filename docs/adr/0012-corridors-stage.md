@@ -1,12 +1,19 @@
 # ADR 0012 — Corridors: currency, modes, network extraction, and gates
 
 Status: accepted (2026-08-22, under the user's delegated authority;
-proposed and amended the same day after the
-three-track adversarial review — corner-cut crossing rule,
-per-component trunk patching, per-node-class hours rasters with
-recompute gates, k_Q degeneracy declaration, u32 domain guard,
-contract additions (hours_to_trunk, junction records, per-step
-modes), min-form energy envelope, provenance and citation repairs)
+proposed and amended the same day after the three-track design review
+— corner-cut crossing rule, per-component trunk patching,
+per-node-class hours rasters with recompute gates, k_Q degeneracy
+declaration, u32 domain guard, contract additions (hours_to_trunk,
+junction records, per-step modes), min-form energy envelope,
+provenance and citation repairs — then amended again the same day
+after the two-track implementation review: the watercourse
+formulation of the straddle rule and its drainage-chain water
+exemption, Knight-intermediate enterability, either-corner
+admissibility, standing-water wading delay, reverse-settle-order
+accumulation, physical-scale config bounds, sentinel-safe casts,
+loud failure on malformed site records, and the measured behaviour
+of the energy min form)
 Scope: the stage decisions for `via-corridors` (ADR 0009 D1: unit of
 work "route, cost surface") — the movement-cost adoption ADR 0011
 deferred here, the multimodal mode set for the first (pre-modern)
@@ -126,13 +133,25 @@ settlement stage — not by the era-0 route skeleton.
   polynomial, C(s_c)·|s|/s_c) with the **L&S published critical
   gradients +0.28/−0.22 m/m frozen as the ray constants** — min
   because the frozen constants come from a different polynomial
-  (L&S's own quartic), so the ray can cross the sextic on the uphill
-  limb (+0.28 to +0.38) and taking the min restores the
-  cheaper-strategy semantics the construction encodes. The constants
-  are not recomputed from the sextic: 0014 records via's verification
-  that Eq. 20 on the sextic is single-rooted uphill (+0.3814) but
-  multi-rooted downhill (−0.41/−0.33/−0.14, fit oscillation), so
-  recomputation would need an arbitrary root-selection rule. Envelope
+  (L&S's own quartic), so the ray is not guaranteed to be the cheaper
+  strategy at every gradient and the min is what makes the
+  construction mean "take the cheaper of straight-walking and
+  switchbacking" regardless. Measured on the adopted pair
+  (implementation review, 2026-08-22): the ray binds only
+  **downhill** (−0.22 to −0.54) and in a thin uphill sliver
+  (0.450–0.453); across the whole uphill limb 0.28–0.45 the sextic
+  itself is cheaper (11.34 vs 11.51 J/kg/m at s = 0.30; 16.69 vs
+  16.88 at 0.44), so the min silently keeps the polynomial there.
+  Beyond the ray/polynomial crossover the field is *constant* at the
+  clamp value (17.379 J/kg/m up, 3.521 down) — a flat asymptote for
+  arbitrarily steep ground, recorded here as a known artifact of
+  pairing a clamped fit with a frozen ray; it is bounded, positive,
+  and never a solve currency (time, which does diverge with slope,
+  decides every route). The constants are not recomputed from the
+  sextic: 0014 records via's verification that Eq. 20 on the sextic
+  is single-rooted uphill (+0.3814) but multi-rooted downhill
+  (−0.41/−0.33/−0.14, fit oscillation), so recomputation would need
+  an arbitrary root-selection rule. Envelope
   constants from their primary, traversal polynomial from its
   primary, the pairing declared: standard links, via assembly. This
   **freezes the deferred movement-cost values** (ADR 0011 D4/D7):
@@ -169,29 +188,48 @@ config-declared with provenance:
 - **Foot** on land nodes per Decision 2. Land nodes exist on dry land
   (`receivers[i] ≠ i`, `water_depth = 0`) **and on standing-water
   cells passing the wading caps below** (crossability there equals
-  depth by the ADR 0011 identity) — otherwise an ankle-deep pond
-  would be a harder barrier than a torrent. Grid geometry per Herzog:
+  depth by the ADR 0011 identity, and the wading delay below is
+  charged for entering one) — otherwise an ankle-deep pond would be a
+  harder barrier than a torrent. Grid geometry per Herzog:
   **16-neighbour land moves (Queen + Knight)**, Knight's moves
   subdivided into two submoves paying interpolated costs, bringing
   worst-case route displacement from 20% to 11% of path length
   (IA36; A/B-moves recorded as the upgrade if 11% ever shows in QA).
+  A Knight move's segment traverses the interiors of exactly two
+  intermediate cells, and **both must be enterable in their own
+  right** — the strict reading of Herzog's "cannot skip barriers",
+  adopted in place of a straddle-pair test for the submoves, since a
+  Knight step passes *through* those cells rather than between them.
   Costs strictly positive; deterministic tie-breaks (cost, then node
   index).
-- **No corner-cutting.** A diagonal move — and each Knight submove —
-  additionally *straddles* the two corner cells {(x1,y2), (x2,y1)}.
-  Declared straddle rule: if both straddled cells are river cells,
-  the move is a crossing — the cheaper straddled cell must pass the
-  wading caps and the wading delay is charged; if both straddled
-  cells are otherwise land-inadmissible (ocean, or standing water
-  failing the caps), the move is inadmissible. Without this rule a
-  diagonal between two dry cells jumps a diagonally-stepping channel
-  while entering no river cell — the review probe counted 2,705 such
-  sites on the reference run (m4c-research-s42), where they would
-  have been the *only* crossings. This is the barrier half of
-  Herzog's subdivision requirement ("cannot skip barriers"), stated
-  as via's explicit rule. Water moves mirror it: a diagonal water
-  move whose straddled cells are both land is inadmissible (a boat
-  does not squeeze between touching corners of a spit).
+- **No corner-cutting.** A diagonal land move *straddles* the two
+  corner cells {(x1,y2), (x2,y1)}. Declared straddle rule: the corner
+  pair **carries a watercourse** when either the two corners are
+  consecutive on the drainage chain below a channel cell — the thread
+  itself then runs diagonally through the shared corner, which is how
+  a river reaches the sea at its mouth — or both corners are water of
+  any kind (channel, standing, or ocean), so no dry ground separates
+  them. A move over a watercourse pair is a **crossing**: admissible
+  only if a corner passes the wading caps, and the wading delay is
+  charged. A move whose corners are both un-enterable is inadmissible.
+  Everything else passes free. Without this rule a diagonal between
+  two dry cells jumps a diagonally-stepping channel while entering no
+  river cell — the review probe counted 2,705 such sites on the
+  reference run (m4c-research-s42), where they would have been the
+  *only* crossings. This is the barrier half of Herzog's subdivision
+  requirement ("cannot skip barriers"), stated as via's explicit
+  rule. The admissibility test is *either* corner rather than a
+  distinguished "cheaper" one: the crossing price is a flat delay, so
+  the corners differ only in whether they are passable at all.
+  Water moves mirror it: a diagonal water move whose straddled cells
+  are both dry land is inadmissible (a boat does not squeeze between
+  touching corners of a spit) — **except when the two water cells are
+  themselves consecutive on the drainage chain**, where the channel
+  demonstrably runs through the corner and the sub-cell geometry the
+  raster cannot resolve is the channel's own. Without that exemption
+  every diagonally-stepping channel would be unnavigable and the
+  river-mode machinery would be structurally dead (2,699 such steps
+  on the reference run at calibrated k_Q).
 - **River crossings** — rivers are barriers pierced by fords (Herzog's
   rule; the ADR 0011 crossability spectrum is the piercing
   instrument). A land move entering — or, per the straddle rule,
@@ -307,14 +345,20 @@ with no composite:
   size-relative lattice default. Scaling is declared, not silent:
   the solve is Θ((N/spacing²) · N log N) plus O(N) accumulation per
   source over the predecessor DAG (subtree counts, the intended
-  implementation — never per-target path walks), and the definition
-  gate doubles it; `validate()` **rejects configs whose directed
-  pair count exceeds u32::MAX** (the silent-wrap cliff sits ~16×
-  above an 8192²/spacing-16 lattice). Path counting is integer, so
-  parallel accumulation over sources is order-independent and the
-  stage stays bit-deterministic given overflow-freedom (recorded
-  deviation from the suitability ADR's "stays sequential" wording,
-  with this justification). **Boundary bias is a known,
+  implementation — never per-target path walks; the DAG is walked in
+  **reverse settle order**, which is children-before-parents by
+  construction and therefore correct even where rounding makes a
+  child's accumulated distance equal its parent's, a case a
+  distance sort gets wrong), and the definition gate doubles it. The
+  configuration is **rejected when the directed pair count would
+  exceed u32::MAX** (the silent-wrap cliff sits ~16× above an
+  8192²/spacing-16 lattice); the check lives with lattice resolution
+  rather than in `validate()` because it needs the grid dimensions,
+  and it runs before any artifact is written or gate evaluated.
+  Path counting is integer, so parallel accumulation over sources is
+  order-independent and the stage stays bit-deterministic given
+  overflow-freedom (recorded deviation from the suitability ADR's
+  "stays sequential" wording, with this justification). **Boundary bias is a known,
   undocumented-in-the-literature artifact**: density is suppressed
   near study-area edges; it ships as a rendering halo in the D10
   visual channel only — not a gate, not a summary field.
@@ -378,8 +422,9 @@ manifest registration exactly as ADR 0011; one `StageRecord` keyed
   **projected per node class** — a single min-projected raster would
   make any per-cell consistency check ill-posed across the
   transshipment seam; `f32::MAX` = no node or unreachable, the
-  suitability sentinel. Settlement's market-access reading is the
-  land raster.
+  suitability sentinel, and every reachable value is held strictly
+  below it so a saturating cast can never impersonate the sentinel.
+  Settlement's market-access reading is the land raster.
 - `hours_to_trunk.vrast` (f32) — land-node accumulated time to the
   nearest trunk-path cell (sources: every cell traversed by any
   trunk edge, in its traversal mode, at zero), so the settlement
@@ -400,8 +445,10 @@ manifest registration exactly as ADR 0011; one `StageRecord` keyed
   steps as edges); a junction is a vertex of degree ≥ 3 or a trunk
   endpoint — mechanically derived, no authored weight — recorded as
   (cell, x/y, degree, incident edge ids); the component partition;
-  `metric_values_conditional_on_k_q: true` on every water-derived
-  quantity; `checks`; `artifact_blake3`.
+  `metric_values_conditional_on_k_q: true`, declared once at the top
+  level and governing every water-derived quantity in the document
+  (times, ford admissibility, navigability) rather than repeated per
+  field; `checks`; `artifact_blake3`.
 - **No `.vgeo`.** Cell-path records serve every internal consumer;
   no external tool needs to read corridors; the deferred per-feature
   schema obligation stays with morphology (ADR 0009 D3, the ADR 0011
@@ -421,8 +468,17 @@ and `hours_to_trunk` (attachment cost). Era-0 edges all carry class
 
 All binary, all D1 internal-consistency, unevaluable is fail;
 enforced as in-stage hard errors and as cargo tests (the repo's CI
-channel, as ADR 0011); every recomputation reads the artifacts back
-from disk:
+channel, as ADR 0011). Every gate re-reads the stage's *inputs* from
+disk — terrain rasters, suitability rasters, and the suitability
+summary's site records, none of them carried over from the compute
+pass — and compares emitted rasters byte-for-byte after reading them
+back. The site-record structures are compared recompute-against-
+memory rather than against the summary file, because the summary is
+written after the gates; their inputs are disk-read all the same.
+Malformed inputs are a hard error, never a silent default: a
+suitability summary missing a site array, or carrying an entry
+without a numeric cell, fails rather than yielding an empty node set
+that every gate would then happily certify.
 
 - **Determinism**: byte-identical artifacts and hashes on re-run.
   Parallel FETE accumulation is admissible only because counts are
@@ -441,9 +497,11 @@ from disk:
   fixpoint formulation is demoted to a QA diagnostic with a stated
   ulp tolerance, never a gate.
 - **Density bounds**: every cell ≤ the directed lattice-pair count;
-  every lattice source cell **reachable from at least one other
-  source** carries ≥ 1 (an isolated source on a private component
-  legitimately carries 0).
+  every lattice source cell that **shares a reachable component with
+  at least one other source** carries ≥ 1 (an isolated source on a
+  private component legitimately carries 0 — reachability is tested
+  outward from the source, which is equivalent here because a source
+  lies on every path it originates).
 - **Trunk identities**: every edge's stored path is connected under
   the declared move set with every step admissible **including the
   straddle rule on diagonal and Knight submoves**; recomputed
@@ -454,11 +512,15 @@ from disk:
   receivers/strahler); `trunk.vrast` equals the traversal counts
   derived from the stored paths; junction records equal the union-
   graph recomputation.
-- **Preconditions**: config `validate()` (positivity, finiteness,
-  domains, the directed-pair-count u32 guard,
-  `deny_unknown_fields`), receiver range validation, and
-  input-artifact validity run before any gate; corrupt inputs fail
-  loudly.
+- **Preconditions**: config `validate()` (finiteness,
+  `deny_unknown_fields`, declared domains, and **physical-scale
+  bounds** — every cost-bearing knob within [1e-6, 1e6], not merely
+  positive, so that no move's cost can vanish against an accumulated
+  distance in f64 addition and break the strict ordering the solver
+  and the density accumulation rest on), the directed-pair-count u32
+  guard at lattice resolution, receiver range validation, and
+  input-artifact validity all run before any artifact is written or
+  gate evaluated; corrupt inputs fail loudly.
 
 QA diagnostics (D10 visual channel, never in CI or the summary):
 the boundary-bias halo on density; time-optimal vs energy-optimal

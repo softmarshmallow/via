@@ -13,6 +13,13 @@ pub const NO_PRED: u32 = u32::MAX;
 pub struct Solution {
     pub dist: Vec<f64>,
     pub pred: Vec<u32>,
+    /// Nodes in the order they were settled. A node's predecessor is
+    /// always settled strictly earlier (predecessors are assigned only
+    /// while expanding an already-settled node), so the reverse of this
+    /// order is a children-before-parents traversal of the predecessor
+    /// tree — valid even where rounding makes a child's distance equal
+    /// its parent's, which a distance sort would get wrong.
+    pub settle_order: Vec<u32>,
 }
 
 /// Total-order key for f64 costs (all costs are finite and >= 0).
@@ -43,6 +50,7 @@ pub fn dijkstra(
     let mut dist = vec![f64::INFINITY; n];
     let mut pred = vec![NO_PRED; n];
     let mut settled = vec![false; n];
+    let mut settle_order: Vec<u32> = Vec::new();
     let mut heap: BinaryHeap<Reverse<(Key, u32)>> = BinaryHeap::new();
     for &(s, d0) in sources {
         if d0 < dist[s as usize] {
@@ -56,6 +64,7 @@ pub fn dijkstra(
             continue;
         }
         settled[ui] = true;
+        settle_order.push(u);
         if early_exit == Some(u) {
             break;
         }
@@ -73,5 +82,9 @@ pub fn dijkstra(
             }
         });
     }
-    Solution { dist, pred }
+    Solution {
+        dist,
+        pred,
+        settle_order,
+    }
 }

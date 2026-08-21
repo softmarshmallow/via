@@ -46,27 +46,22 @@ pub fn density(model: &MoveModel, sources: &[u32]) -> Vec<u32> {
         .map(|&s| {
             let sol = dijkstra(model, &[(s, 0.0)], None, None);
             let n_nodes = model.n_nodes();
-            // Subtree counts: seed 1 at each reachable target land
-            // node (other lattice sources), push counts down the
-            // predecessor chain in decreasing-distance order.
+            // Subtree counts: seed 1 at each reachable target land node
+            // (the other lattice sources), then push counts down the
+            // predecessor chain in reverse settle order — children
+            // before parents by construction, so no distance
+            // comparison, and no assumption that a child's distance
+            // strictly exceeds its parent's, is needed.
             let mut cnt = vec![0u32; n_nodes];
-            let mut order: Vec<u32> = (0..n_nodes as u32)
-                .filter(|&v| sol.dist[v as usize].is_finite())
-                .collect();
-            order.sort_by(|&a, &b| {
-                sol.dist[b as usize]
-                    .total_cmp(&sol.dist[a as usize])
-                    .then(b.cmp(&a))
-            });
-            for &v in &order {
+            for &v in &sol.settle_order {
                 let vi = v as usize;
                 let cell = model.cell_of(v) as usize;
-                if !model.is_water_node(v) && source_set[cell] && v != s && cell as u32 == v {
+                if !model.is_water_node(v) && source_set[cell] && v != s {
                     cnt[vi] += 1;
                 }
             }
             let mut local = vec![0u32; n_cells];
-            for &v in &order {
+            for &v in sol.settle_order.iter().rev() {
                 let vi = v as usize;
                 if cnt[vi] == 0 {
                     continue;

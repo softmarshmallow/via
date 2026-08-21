@@ -272,21 +272,30 @@ impl<'a> MoveModel<'a> {
         Some(self.walk_hours(self.heights_m[ia], self.heights_m[ja], d) + extra)
     }
 
-    /// The straddle rule for a diagonal land move (ADR 0012 D3): both
-    /// corners river ⇒ a crossing through the cheaper corner (its caps
-    /// must hold — realized as that corner carrying a land node — and
-    /// the wading delay is charged); both corners without land nodes
-    /// ⇒ inadmissible; otherwise free passage.
+    /// The straddle rule for a diagonal land move (ADR 0012 D3): when
+    /// the corner pair carries a watercourse, the move is a crossing —
+    /// admissible only if a corner passes the wading caps (it then
+    /// carries a land node), and the wading delay is charged; when
+    /// neither corner is enterable the move is inadmissible; otherwise
+    /// passage is free.
+    ///
+    /// A corner pair carries a watercourse in either of two ways: the
+    /// corners are consecutive on the drainage chain below a channel
+    /// cell — the thread itself runs diagonally through the shared
+    /// corner, which is how a river reaches the sea at a mouth — or
+    /// both corners are water of any kind (channel, standing, ocean),
+    /// so the segment cannot pass between them on dry ground.
     fn straddle(&self, i: u32, j: u32) -> Option<Straddle> {
         let (x1, y1) = (i % self.w, i / self.w);
         let (x2, y2) = (j % self.w, j / self.w);
         let c1 = (y1 * self.w + x2) as usize;
         let c2 = (y2 * self.w + x1) as usize;
-        let river1 = self.strahler[c1] > 0 && !self.ocean[c1] && self.water_depth[c1] == 0.0;
-        let river2 = self.strahler[c2] > 0 && !self.ocean[c2] && self.water_depth[c2] == 0.0;
-        if river1 && river2 {
-            // Cheaper corner = the one with a land node (caps hold);
-            // if neither passes, the channel is uncrossable here.
+        let chain_link = (self.receivers[c1] as usize == c2 && self.strahler[c1] > 0)
+            || (self.receivers[c2] as usize == c1 && self.strahler[c2] > 0);
+        // Wet = wading required (channel or standing water) or no land
+        // node at all (ocean, or water failing the caps).
+        let wet = |c: usize| self.ford_entry[c] || !self.land_node[c];
+        if chain_link || (wet(c1) && wet(c2)) {
             if self.land_node[c1] || self.land_node[c2] {
                 Some(Straddle::Crossing)
             } else {
@@ -570,5 +579,136 @@ pub(crate) fn for_neighbors8(w: u32, h: u32, i: u32, mut f: impl FnMut(u32, f64)
             };
             f(ny as u32 * w + nx as u32, fac);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::CorridorsConfig;
+
+    /// A flat 4×4 test world. Cell (2,2) is ocean; (1,1) is a fordable
+    /// channel cell draining diagonally into it (a river mouth);
+    /// (0,2) and (1,3) hold wadeable standing water; everything else
+    /// is dry ground. Heights are flat so every diagonal costs the
+    /// same walking time and delays are the only difference.
+    struct World {
+        heights: Vec<f64>,
+        receivers: Vec<u32>,
+        strahler: Vec<u32>,
+        water_depth: Vec<f64>,
+        navigable: Vec<u32>,
+        crossability: Vec<f32>,
+        ford_depth: Vec<f32>,
+        ford_velocity: Vec<f32>,
+        fetch: Vec<f32>,
+    }
+
+    const W: u32 = 4;
+    const fn idx(x: u32, y: u32) -> u32 {
+        y * W + x
+    }
+
+    fn world() -> World {
+        let n = 16usize;
+        let mut w = World {
+            heights: vec![1.0; n],
+            receivers: (0..n as u32).collect(),
+            strahler: vec![0; n],
+            water_depth: vec![0.0; n],
+            navigable: vec![0; n],
+            crossability: vec![0.0; n],
+            ford_depth: vec![0.0; n],
+            ford_velocity: vec![0.0; n],
+            fetch: vec![0.0; n],
+        };
+        // Ocean at (2,2): self-receiver, below sea level.
+        w.heights[idx(2, 2) as usize] = -5.0;
+        // Every other cell drains somewhere (non-self ⇒ land).
+        for i in 0..n as u32 {
+            if i != idx(2, 2) {
+                w.receivers[i as usize] = if i == 0 { 1 } else { i - 1 };
+            }
+        }
+        // The mouth: (1,1) is a channel cell draining diagonally into
+        // the ocean cell, shallow enough to ford.
+        w.strahler[idx(1, 1) as usize] = 1;
+        w.receivers[idx(1, 1) as usize] = idx(2, 2);
+        w.crossability[idx(1, 1) as usize] = 0.2;
+        w.ford_depth[idx(1, 1) as usize] = 0.3;
+        w.ford_velocity[idx(1, 1) as usize] = 0.6;
+        // Wadeable standing water on the (0,2)/(1,3) corner pair.
+        w.water_depth[idx(0, 2) as usize] = 0.5;
+        w.water_depth[idx(1, 3) as usize] = 0.5;
+        w
+    }
+
+    fn model_of<'a>(w: &'a World, cfg: &CorridorsConfig) -> MoveModel<'a> {
+        MoveModel::build(
+            &ModelInputs {
+                w: W,
+                h: 4,
+                dx: 16.0,
+                heights_m: &w.heights,
+                receivers: &w.receivers,
+                strahler: &w.strahler,
+                water_depth: &w.water_depth,
+                navigable: &w.navigable,
+                crossability: &w.crossability,
+                ford_depth: &w.ford_depth,
+                ford_velocity: &w.ford_velocity,
+                harbour_fetch: &w.fetch,
+            },
+            cfg,
+        )
+    }
+
+    /// A diagonal land move may not slip between the two corner cells
+    /// of a watercourse without paying the ford gate — including where
+    /// the channel runs diagonally into the sea at its mouth, and
+    /// where the corners hold standing water rather than a channel.
+    #[test]
+    fn diagonal_moves_cannot_corner_cut_a_watercourse() {
+        let world = world();
+        let cfg = CorridorsConfig::default();
+        let model = model_of(&world, &cfg);
+        let delay = cfg.ford_delay_hours;
+
+        // Control: a diagonal whose corners are both dry ground.
+        let control = model
+            .move_cost(idx(2, 0), idx(3, 1))
+            .expect("dry diagonal admissible");
+
+        // Across the river mouth: corners are the channel cell and its
+        // ocean receiver, so the thread runs through the shared corner.
+        let mouth = model
+            .move_cost(idx(2, 1), idx(1, 2))
+            .expect("fordable mouth crossing admissible");
+        assert!(
+            (mouth - control - delay).abs() < 1e-12,
+            "mouth diagonal charged {mouth} h, expected control {control} + delay {delay}"
+        );
+
+        // Across standing water: both corners are wadeable ponds.
+        let ponds = model
+            .move_cost(idx(0, 3), idx(1, 2))
+            .expect("wadeable pond crossing admissible");
+        assert!(
+            (ponds - control - delay).abs() < 1e-12,
+            "pond diagonal charged {ponds} h, expected control {control} + delay {delay}"
+        );
+
+        // With the caps tightened below the channel's hazard, the same
+        // mouth diagonal becomes inadmissible rather than free.
+        let strict = CorridorsConfig {
+            ford_max_dv_m2s: 0.01,
+            ..CorridorsConfig::default()
+        };
+        let strict_model = model_of(&world, &strict);
+        assert_eq!(
+            strict_model.move_cost(idx(2, 1), idx(1, 2)),
+            None,
+            "an unfordable mouth must block the diagonal, not pass it free"
+        );
     }
 }
