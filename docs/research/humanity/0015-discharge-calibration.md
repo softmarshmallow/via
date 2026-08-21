@@ -50,11 +50,101 @@ placeholder the reference island's largest basin (479 km²) carried
 humid-temperate range. **The placeholder is the sole reason every
 channel on the reference world reads as an impassable wall.**
 
-*(Runoff-ratio literature — global water-balance values, the Budyko
-framework for deriving C from climate, and PET-from-temperature
-schemes — is the subject of a sweep still outstanding at the time of
-writing; this section records the derivation and via's measurements,
-and the coefficient's provenance is completed there.)*
+### The coefficient C
+
+**Dai, A. & Trenberth, K.E. (2002)**, "Estimates of Freshwater
+Discharge from Continents", *Journal of Hydrometeorology* 3(6):660–687
+[primary, full text] state the ratio themselves rather than leaving it
+to the reader: global continental discharge is **37,288 ± 662 km³/yr,
+~35% of terrestrial precipitation**. Corroborated by Trenberth et al.
+(2007), *JHM* 8(4):758–769 [primary]: land P 112.6 ×10³ km³/yr against
+total runoff 40.0 ×10³, i.e. **0.355**. A chronological review of every
+published global water budget (*Surveys in Geophysics* 42:1075–1107,
+Table 6 [primary]) puts the whole published spread at **0.33–0.42,
+clustering hard at 0.35** across fourteen studies from Manabe (1969) to
+Abbott et al. (2019).
+
+**The non-obvious part, and the reason this is a match rather than an
+approximation.** Dai & Trenberth's 0.35 is Σ(R)/Σ(P) — a
+*precipitation-weighted* mean of local runoff ratio, dominated by wet
+regions; the area-weighted mean over Earth's land is materially lower.
+via's `discharge_cells` is *itself* precipitation-weighted by
+construction (each cell contributes P_i/P_mean), so the
+precipitation-weighted global statistic is the correctly-paired one.
+Expanding the formula makes this explicit: Q = Σ_i (A_cell·P_i·C)/T,
+which is mass-consistent by inspection.
+
+Regional structure, for the limitation that follows — FAO (2003),
+*Review of World Water Resources by Country*, Water Reports 23, Table 2
+[primary]: humid temperate Europe and North America run C ≈ 0.50–0.53,
+arid Africa, Oceania and Central Asia C ≈ 0.19–0.21. A uniform C
+therefore **over-produces discharge in arid cells and under-produces
+it in wet ones**; the Budyko curve (below) puts true local C at ~0.8
+where PET/P = 0.2 and ~0.04 where PET/P = 3.
+
+**A uniform C forces Q ∝ A exactly** — and that is the *right*
+exponent, not a defect: USGS regional regressions for mean annual flow
+in humid regions land at **b = 0.96–1.02** (Pennsylvania 1.008,
+Connecticut 0.975, north Georgia 0.993, Alabama 0.996, Maine 0.960,
+Georgia/Carolinas 0.991) [all primary]. Sub-linear exponents in the
+literature (0.72–0.83) belong to **flood peaks**, where hydrograph
+attenuation applies, not to mean annual flow. Any sub-linearity via
+produces will come from its own orographic precipitation gradients —
+a clean, testable prediction. **Negative finding worth recording:
+Leopold & Maddock (1953) contains no Q-vs-A relation at all** — its
+abscissa is always mean annual discharge — so citing PP 252 for a
+drainage-area exponent, a common error, is doubly wrong.
+
+**Validation targets** from 438 minimally-disturbed USGS reference
+gauges in the East Highlands and Northeast (1.6–8,265 km², ≥20 yr)
+[primary, NWIS read directly]: `Q[m³/s] = 0.0214·A[km²]^0.965`
+(R² 0.942); runoff depth median **585 mm/yr** (p10–p90 357–846);
+runoff ratio median **0.47**, range 0.30–0.65. A 56-year-independent
+cross-check: Thomas & Benson (1970) USGS WSP 1975 fit the Potomac at
+`A^1.01·P^1.58`; the 2026 fit on those 438 gauges gives
+`A^0.985·P^1.592`.
+
+**Why not Budyko per cell.** The framework is well-attested — Fu (1981)
+via Zhang et al. (2004) WRR 40:W02502 [primary], ω = 2.63 overall
+(2.84 forest / 2.55 grass, observed range 1.7–5.0); Zhang, Dawes &
+Walker's two-parameter form with w = 2.0 forest / 0.5 grass [primary
+via CRC TR 99/12]; Choudhury (1999) with α scale-dependent, 2.6 at
+~1 km² falling to 1.8 above 10⁶ km². All four variants agree within
+0.03 in E/P, so the choice of variant matters far less than the choice
+of PET. But adopting it would require via to invent a PET field, and
+every temperature-only route fails here for a specific, verified
+reason: **Oudin et al. (2005)** [primary, accepted manuscript] — the
+best-validated option, which actually *beats* Penman in rainfall-runoff
+use — computes extraterrestrial radiation from **latitude and Julian
+day only**, and via's world declares no latitude; **Thornthwaite
+(1948)** misbehaves on via's isothermal per-cell means, being
+non-monotonic below ~7 °C and divergent above 26.5 °C; **Hamon
+(1963)** degrades gracefully (set the day-length term to 1 and it
+becomes a clean monotonic function of temperature) but that is a
+declared convention, not a citation. Budyko would therefore replace one
+declared number with four — and be applied at 200 m cells against a
+framework its own author verified only above 1,000 km² and for
+averaging periods much longer than a year. Donohue et al. (2007)
+[primary] state the violation directly: "at A_c ≤ 1000 km² and
+τ ≤ 1–5 years the inherent assumptions can be violated."
+
+**Recorded upgrade path**, if per-cell variation is later wanted:
+Zhang, Dawes & Walker's *reduced* form (Ez = 1410 mm, w = 2.0 forest;
+Ez = 1100 mm, w = 0.5 herbaceous) needs only precipitation and a
+forest fraction and **no PET at all**. It belongs inside `weights_of`
+as `weight_i = P_i·C_i/P_mean` — which changes the accumulation field
+that also drives stream power in the erosion and sediment stages, so
+it is a gated, declared change to the landscape itself, never a
+display-layer conversion.
+
+**Sanity of the resulting scale.** At the reference config
+(P_mean 1.2 m/yr, C = 0.35 → k_Q = 5.32 × 10⁻⁴, runoff depth
+420 mm/yr) the formula lands within a factor of ~1.15 of three real
+gauges spanning two decades of drainage area: Blockhouse Creek, PA
+(98 km², 1.68 m³/s), Cowpasture River, VA (1,195 km², 15.35 m³/s), and
+the Juniata at Newport, PA (8,657 km², 122.85 m³/s) [NWIS, primary].
+That is inside the ±1.5× band the sweep identifies as
+USGS-regional-regression-grade.
 
 ## 2 — Which discharge statistic does each formula want?
 
@@ -432,8 +522,17 @@ enough to be un-fordable in their lower reaches.
 
 ## Open gaps
 
-- The runoff-ratio literature (§1) — outstanding at time of writing.
 - Qbf/Qmean has no published value; §2's brackets are derivations.
+- No per-Köppen-zone runoff-coefficient table was obtained — McMahon
+  et al. (2007), *J. Hydrology* 347:243–259 (1,221 unimpacted global
+  rivers) is closed access. The highest-value remaining retrieval if C
+  is ever keyed to climate class rather than to PET/P.
+- Baumgartner & Reichel's commonly quoted 746/480/266 mm triple is
+  **not** verified; only their runoff total is (via Dai & Trenberth
+  and FAO, which agree).
+- Budyko (1974), L'vovich (1979), Fu (1981), Choudhury (1999),
+  Thornthwaite (1948) and Hamon (1961) were all read only through
+  peer-reviewed restatements that print the equations verbatim.
 - Finnegan's bedrock/boulder/cobble α flow convention is **unstated in
   the paper and unverifiable** — and via's default α = 20 sits there.
 - Chow (1959) stage-dependence of *n* not verified from the primary;
@@ -451,7 +550,13 @@ enough to be un-fordable in their lower reaches.
 ## What an adopting ADR must decide
 
 1. Whether k_Q becomes derived (§1) with C as the single declared
-   coefficient, and whether C is a global constant or climate-derived.
+   coefficient, and whether C is a global constant (the sweep's
+   recommendation: **C = 0.35**, Dai & Trenberth 2002, matched to via's
+   precipitation-weighted accumulation) or climate-derived (deferred,
+   with the Zhang reduced form as the recorded upgrade path). Either
+   way the ADR must declare that mapping a generated dimensionless
+   climate onto absolute mm/yr and m² is itself a declaration, and
+   record the 0.05 weight floor as a small positive bias.
 2. Which discharge statistic the chain carries, and — if mean annual —
    whether the Finnegan closed form is used in regression mode or
    with an explicit bankfull conversion (§2). The two are not
