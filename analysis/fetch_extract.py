@@ -244,20 +244,49 @@ def main() -> int:
 
     # overpass-api.de returns 406 for the default python-requests
     # User-Agent; identify the tool per the endpoint's usage policy.
-    resp = requests.post(
-        args.endpoint,
-        data={"data": query},
-        timeout=240,
-        headers={"User-Agent": "via-benchmark/0.1 (reference corpus pilot)"},
-    )
-    resp.raise_for_status()
+    # Exit codes a driver can dispatch on: 3 = the query is too heavy for
+    # the server (504, or a remark below) and a smaller radius is the fix;
+    # 4 = transient (429 rate limit, network) and waiting is the fix.
+    try:
+        resp = requests.post(
+            args.endpoint,
+            data={"data": query},
+            timeout=240,
+            headers={"User-Agent": "via-benchmark/0.1 (reference corpus)"},
+        )
+        resp.raise_for_status()
+    except requests.exceptions.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else 0
+        print(f"error: HTTP {status} from Overpass", file=sys.stderr)
+        return 3 if status == 504 else 4 if status == 429 else 1
+    except requests.exceptions.RequestException as exc:
+        print(f"error: request failed: {exc}", file=sys.stderr)
+        return 4
     body = resp.content
-    doc = json.loads(body)
+    try:
+        doc = json.loads(body)
+    except json.JSONDecodeError:
+        print(
+            "error: response body is not JSON (server busy page?) — transient",
+            file=sys.stderr,
+        )
+        return 4
 
     osm3s = doc.get("osm3s", {})
     generator = doc.get("generator", osm3s.get("generator", ""))
     osm_base = osm3s.get("timestamp_osm_base", "")
     n_elements = len(doc.get("elements", []))
+    # Overpass reports an aborted query (timeout, memory) as a "remark"
+    # inside an HTTP 200 response; such a body is a PARTIAL extract and
+    # recording it would poison the manifest with a truncated snapshot.
+    remark = doc.get("remark", "")
+    if remark:
+        print(
+            f"error: Overpass remark indicates an incomplete result — "
+            f'refusing to record: "{remark}"',
+            file=sys.stderr,
+        )
+        return 3
     if not osm_base:
         print(
             "error: response carries no osm3s.timestamp_osm_base — refusing to "
