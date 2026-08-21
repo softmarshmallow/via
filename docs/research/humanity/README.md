@@ -54,6 +54,7 @@ decision (they span literatures and note doctrine fit in place):
 | Doc | Content |
 | --- | --- |
 | [0013](0013-affordance-detection.md) | Affordance detection & movement cost: citable schemes over via's terrain artifacts (commissioned for ADR 0011) |
+| [0014](0014-ml-generation-path.md) | The ML path: learned generation of settlement fabric — I/O and modality definition, training data and ODbL, architectures, prior work, schedule and budget (commissioned for the ML spike decision) |
 
 Cross-cutting screens — synthesis over the dossiers, still
 pre-decision:
