@@ -26,7 +26,15 @@ correct runs mid-solve. The same read found the stage's biggest
 unclosed hole: nothing specified how node `W_j` becomes the population
 *grid* GHSL consumes, and that rule governs whether anything
 delineates at all — now named in Decision 5 and in Decision 10 as a
-swept declared choice.
+swept declared choice. A fourth amendment finished the read over
+Decisions 6, 8 and 9: the rank-turbulence character was demoted to an
+internal diagnostic (its published value is computed over 500 cities
+and the metric is bounded by rank count, so via's tens cannot be
+scored against it); the flow-conservation gate became a tolerance
+rather than a float equality; the stability-bound gate was split into
+a runtime assertion plus a recorded per-run maximum, since a per-step
+quantity cannot be re-read from disk; and the delineation-determinism
+gate moved to `via-bench`, which is the crate that actually runs it.
 
 Scope: the stage decisions for `via-settlement` (ADR 0009 D1: unit of
 work "settlement, corridor link") — which allocation engine, what
@@ -401,8 +409,21 @@ fixes the algorithm so the stage and the benchmark cannot drift.
   thing from Harris–Wilson's α and β — rename on sight**, and the
   time scaling is **dt^(1/α), not dt^(1/2)**.
 - Their **rank-turbulence metric `d`** (mean absolute rank shift per
-  year) is adopted as a dynamics character: France 1876–2015 over 500
-  cities gives 6.0, their model 6.1, Gabaix's 8.0.
+  year) is adopted, but **as an internal diagnostic only, not as a
+  benchmark character** — and the reason is the same `n` argument
+  Decision 7 applies to ζ. Their published values (France 1876–2015:
+  6.0; their model 6.1; Gabaix 8.0) are computed **over 500 cities**.
+  `d` is mechanically bounded by how many ranks exist to move
+  through, so a `d` computed over via's tens of settlements is not
+  the same quantity and cannot be scored against 6.0. It would be the
+  precise error this ADR refuses elsewhere: comparing two numbers that
+  share a name and not a definition. **The metric is therefore used
+  via-against-via — across parameter settings and seeds — and becomes
+  an external character only if the reference is recomputed on a
+  matched-`n` top-`n` subsample**, which needs the underlying French
+  series and is recorded as a retrieval target, not assumed.
+  It also requires dated epochs to have a time base at all; ADR 0012
+  D7's declared availability dates supply one.
 - **The shock has a qualitative validation target that costs
   nothing to check.** Research 0006 records English market charters
   proliferating through 1200–1349 and then thinning after the Black
@@ -490,21 +511,39 @@ compute's in-memory state — the ADR 0011/0012 precedent.
 1. **Mass conservation** — `|Σκ_j W_j − (ΣO_i + δM)| / (ΣO_i + δM)`
    below tolerance at convergence. This is Decision 2's balancing
    condition; if it fails, the engine is not Harris–Wilson.
-2. **Flow conservation** — `Σ_j T_ij = O_i` for every `i`.
+2. **Flow conservation** — `|Σ_j T_ij − O_i| / O_i` below tolerance
+   for every `i`. Stated as a tolerance, not an equality: `A_i`
+   normalises a sum of floats, so exact equality is unachievable and
+   a gate demanding it would be unevaluable — which this preamble
+   counts as failure.
 3. **Size floor** — **at convergence**, every surviving settlement has
    `W_j ≥ δ/κ`. The scope matters: `δ/κ` is the *equilibrium* floor,
    so a transient `W_j` below it during the solve is expected, not a
    violation, and a gate that checked every step would fire on
    correct runs.
 4. **Convergence** — fixed-point residual below tolerance, and the
-   `ε · max_j D_j < 2` bound (Decision 2) held at every step.
+   Decision 2 stability bound respected. **The bound needs splitting
+   to be checkable at all**, because a per-step quantity cannot be
+   re-read from disk after the run: the per-step `ε · max_j D_j < 2`
+   is a **runtime assertion** (hard error on violation), and the
+   stage records `max` of that quantity **over all steps** in the
+   summary; the *gate* re-reads that recorded maximum from disk and
+   checks it. Without the recorded maximum the gate would be
+   unevaluable, and the preamble makes unevaluable a failure.
 5. **Attachment integrity** — every emitted attachment references an
    existing ADR 0012 trunk edge; its bearing is re-derivable from the
    recorded path geometry; its route cost equals the edge's recorded
    time.
-6. **Delineation determinism** — the Decision 5 majority pass is
-   idempotent and reproduces bit-identically under the declared
-   tie-break.
+6. **Population-raster determinism** — the emitted population field
+   reproduces bit-identically from the settlement records and the
+   declared spreading-rule parameters. This is the stage's gate; note
+   that **delineation itself is not gated here, because the stage
+   does not run it.** Per Decision 5 and ADR 0009 D4 the delineation
+   executes in `via-bench`, so its determinism gate — the majority
+   pass idempotent and bit-identical under the declared tie-break —
+   is a `via-bench` gate, listed in Decision 5 only because this ADR
+   fixes the algorithm. Putting it in the stage's list would have
+   gated a computation the stage never performs.
 7. **Artifact contract** — every emitted record recomputed from disk.
 
 No composite score, in any gate or acceptance claim (ADR 0008 D7).
