@@ -21,9 +21,11 @@ use via_artifact::manifest::{ArtifactEntry, RunManifest, StageRecord};
 use via_artifact::raster::Raster;
 
 mod confluence;
+mod fords;
 mod passes;
 
 pub use confluence::ConfluenceSite;
+pub use fords::FordFields;
 pub use passes::SaddleSite;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -53,6 +55,26 @@ pub struct SuitabilityConfig {
     /// Minimum saddle persistence (m) for a pass site to be reported —
     /// the published pruning floor (Kirmse & de Ferranti 2017, ~30 m).
     pub min_pass_persistence_m: f64,
+    /// k_Q: m³/s per relative discharge unit — the single
+    /// relative-to-absolute scale (ADR 0011 D1, Tier-2 forcing; the
+    /// lumped-calibration practice of Whipple & Tucker 1999). Pure
+    /// declared forcing, unverifiable from inside via; the default is a
+    /// placeholder scale and experiments must declare their own.
+    pub k_q_m3s_per_unit: f64,
+    /// Manning roughness n (Chow 1959, natural streams ~0.030–0.050).
+    /// One declared value; a per-lithology lookup would be a named
+    /// heuristic (0013 §Fords) and is not implemented.
+    pub manning_n: f64,
+    /// Finnegan et al. (2005) width-to-depth ratio α (the paper's ≈ 20).
+    pub finnegan_alpha: f64,
+    /// Reach length, in cells along the receivers path, for the
+    /// reach-averaged channel slope (0013 §Fords: single-cell slopes are
+    /// noisy at cm quantization). Declared parameter.
+    pub slope_reach_cells: u32,
+    /// Numerical channel-slope floor (declared): Finnegan carries
+    /// S^(−3/16) and Manning √S, so a flat routed reach must not divide
+    /// by zero.
+    pub min_channel_slope: f64,
 }
 
 impl Default for SuitabilityConfig {
@@ -68,6 +90,11 @@ impl Default for SuitabilityConfig {
             min_patch_area_ha: 12.0,
             max_patches_reported: 8,
             min_pass_persistence_m: 30.0,
+            k_q_m3s_per_unit: 1.0,
+            manning_n: 0.035,
+            finnegan_alpha: 20.0,
+            slope_reach_cells: 5,
+            min_channel_slope: 1.0e-5,
         }
     }
 }
@@ -114,6 +141,8 @@ pub struct SuitabilityOutput {
     pub confluences: Vec<ConfluenceSite>,
     /// Pass (saddle) sites in ascending cell order (ADR 0011 D3/D4).
     pub passes: Vec<SaddleSite>,
+    /// Ford hydraulic spectra (width, depth, velocity, crossability).
+    pub ford: FordFields,
     /// The terrain channelization threshold, restated beside any reported
     /// confluence count (ADR 0011 D4); absent if the terrain config lacks it.
     pub river_min_area_km2: Option<f64>,
@@ -291,10 +320,12 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
     let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
     let water_depth = Raster::<f32>::read_file(&run_dir.join("water_depth.vrast"))?;
     let area_cells = Raster::<u64>::read_file(&run_dir.join("area_cells.vrast"))?;
+    let discharge = Raster::<f32>::read_file(&run_dir.join("discharge.vrast"))?;
     ensure_grid("receivers", &receivers, &heights)?;
     ensure_grid("strahler", &strahler, &heights)?;
     ensure_grid("water_depth", &water_depth, &heights)?;
     ensure_grid("area_cells", &area_cells, &heights)?;
+    ensure_grid("discharge", &discharge, &heights)?;
     let manifest = RunManifest::load(&run_dir.join("manifest.json"))?;
     let sea = manifest
         .stage_config("terrain")
@@ -387,6 +418,32 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
     let criterion_met = !patches.is_empty();
     let confluences = confluence::detect(w, h, &receivers.data, &strahler.data, &area_cells.data);
     let saddle_sites = passes::detect(w, h, &heights.data, &land, cfg.min_pass_persistence_m);
+    // Water surface for channel slopes: effective heights on land, sea
+    // level on ocean — a mouth reach drops to the sea, not through
+    // bathymetry.
+    let surface_m: Vec<f64> = eff_heights_m
+        .iter()
+        .zip(land.iter())
+        .map(|(&e, &l)| if l { e } else { sea })
+        .collect();
+    let ford = fords::compute(
+        w,
+        h,
+        dx,
+        &surface_m,
+        &receivers.data,
+        &land,
+        &strahler.data,
+        &water_depth.data,
+        &discharge.data,
+        &fords::FordParams {
+            k_q_m3s_per_unit: cfg.k_q_m3s_per_unit,
+            manning_n: cfg.manning_n,
+            finnegan_alpha: cfg.finnegan_alpha,
+            slope_reach_cells: cfg.slope_reach_cells,
+            min_channel_slope: cfg.min_channel_slope,
+        },
+    );
     Ok(SuitabilityOutput {
         w,
         h,
@@ -401,6 +458,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         criterion_met,
         confluences,
         passes: saddle_sites,
+        ford,
         river_min_area_km2,
     })
 }
@@ -439,11 +497,29 @@ pub fn write_outputs(
     r.write_file(&path("patch_rank"))?;
     hashes.insert("patch_rank".to_string(), r.blake3_hex());
 
+    for (name, data) in [
+        ("ford_width", &out.ford.width_m),
+        ("ford_depth", &out.ford.depth_m),
+        ("ford_velocity", &out.ford.velocity_ms),
+        ("crossability", &out.ford.crossability),
+    ] {
+        let r = Raster::from_data(out.w, out.h, cell_cm, data.clone());
+        r.write_file(&path(name))?;
+        hashes.insert(name.to_string(), r.blake3_hex());
+    }
+
     // ADR 0011 D6 gates: definitional invariants recomputed from the
     // artifacts on disk, by a different traversal than the detector's.
     // Binary; unevaluable or failed is a hard error (ADR 0001 QA contract).
     let receivers = Raster::<u32>::read_file(&run_dir.join("receivers.vrast"))?;
     let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
+    let water_depth = Raster::<f32>::read_file(&run_dir.join("water_depth.vrast"))?;
+    let land_mask: Vec<bool> = receivers
+        .data
+        .iter()
+        .enumerate()
+        .map(|(i, &r)| r as usize != i)
+        .collect();
     let confluence_ok = confluence::verify_definition(
         out.w,
         out.h,
@@ -456,6 +532,16 @@ pub fn write_outputs(
             io::ErrorKind::InvalidData,
             "confluence-definition gate failed: emitted sites do not match \
              the receivers/strahler artifacts",
+        ));
+    }
+    let spectrum_ok =
+        fords::verify_identities(&land_mask, &strahler.data, &water_depth.data, &out.ford);
+    if !spectrum_ok {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "spectrum-identity gate failed: crossability does not equal the \
+             f32 product of its emitted factors (or the still-water depth) \
+             on some cell",
         ));
     }
 
@@ -471,6 +557,10 @@ pub fn write_outputs(
             "patch_rank": "heuristic (ADR 0003): 4-connected components of the config-thresholded suitability predicate, ranked by area",
             "confluences": "standard: junction = river cell with >= 2 river donors on the receivers tree (Strahler 1957 frame); symmetry ratio = smaller/larger donor drainage from area_cells (Benda et al. 2004); two largest donors when a D8 cell has more than two is a declared adaptation",
             "passes": "standard: Morse saddles by superlevel-set union-find sweep over height-sorted cells, persistence = paired peak - saddle (Edelsbrunner et al. 2002; Kirmse & de Ferranti 2017 instantiation and ~30 m pruning floor); Peucker-Douglas (1975) 8-ring recorded per site as diagnostic (Takahashi et al. 1995 predict grid inconsistency); declared adaptations: land-cell domain, out-of-grid neighbours count lower, equal-height ties by ascending cell index, multi-merge cells record the largest dying persistence",
+            "ford_width": "standard: Finnegan et al. (2005) W = [alpha(alpha+2)^(2/3)]^(3/8) (nQ)^(3/8) S^(-3/16); Q = k_Q x relative discharge (declared forcing, Whipple & Tucker 1999 lumped-calibration practice); reach-averaged water-surface slope over a declared reach; n from Chow (1959)",
+            "ford_depth": "standard: Manning (1891) wide-channel closure d = (n (Q/W) / sqrt(S))^(3/5) on channel cells; the terrain still-water depth on standing water",
+            "ford_velocity": "standard: continuity v = Q/(W d), identical to Manning v = (1/n) d^(2/3) sqrt(S) by construction; zero on standing water",
+            "crossability": "standard: D x V product, the flume-verified stability currency (Cox, Shand & Blacka 2010; AIDR Guideline 7-3), computed from the emitted f32 factors so the identity is exact; still-water depth alone on standing water; the published bands are consumer config — none baked (ADR 0011 D2/D4)",
         },
         // ADR 0011 D2: curation, not a gate — the criterion's semantics live
         // in the experiment config that names it.
@@ -488,10 +578,20 @@ pub fn write_outputs(
                 "min_persistence_m": cfg.min_pass_persistence_m,
                 "sites": out.passes,
             },
+            // ADR 0011 Consequences: every metric number downstream of
+            // k_Q is conditional on this declared, unverifiable forcing
+            // constant — restated wherever such numbers appear.
+            "fords": {
+                "k_q_m3s_per_unit": cfg.k_q_m3s_per_unit,
+                "metric_values_conditional_on_k_q": true,
+            },
         },
         // ADR 0011 D6 artifact-contract checks; all must hold or the stage
         // errors before writing this summary.
-        "checks": { "confluence_definition": confluence_ok },
+        "checks": {
+            "confluence_definition": confluence_ok,
+            "spectrum_identities": spectrum_ok,
+        },
         "artifact_blake3": hashes,
     });
     std::fs::write(

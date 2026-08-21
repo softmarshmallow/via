@@ -43,6 +43,12 @@ fn write_synthetic_terrain(dir: &Path) {
     area[idx(4, 4)] = 6; // main-stem donor drainage at the junction
     area[idx(3, 3)] = 2; // tributary donor drainage
     water[idx(5, 2)] = 0.5;
+    let mut discharge = vec![0.05f32; n];
+    for i in 0..n {
+        if strahler[i] > 0 {
+            discharge[i] = 100.0;
+        }
+    }
 
     Raster::from_data(w, h, cell_cm, heights)
         .write_file(&dir.join("heights_cm.vrast"))
@@ -58,6 +64,9 @@ fn write_synthetic_terrain(dir: &Path) {
         .unwrap();
     Raster::from_data(w, h, cell_cm, area)
         .write_file(&dir.join("area_cells.vrast"))
+        .unwrap();
+    Raster::from_data(w, h, cell_cm, discharge)
+        .write_file(&dir.join("discharge.vrast"))
         .unwrap();
     // Written in the version-1 single-stage shape deliberately: the stage
     // must migrate legacy run directories transparently.
@@ -102,9 +111,18 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
         serde_json::from_slice(&std::fs::read(d1.join(&summary_name)).unwrap()).unwrap();
     assert_eq!(summary["selection"]["criterion"], "test_site");
     let hashes = summary["artifact_blake3"].as_object().unwrap();
-    assert_eq!(hashes.len(), 4);
+    assert_eq!(hashes.len(), 8);
 
-    for name in ["slope", "freshwater_dist", "coast_dist", "patch_rank"] {
+    for name in [
+        "slope",
+        "freshwater_dist",
+        "coast_dist",
+        "patch_rank",
+        "ford_width",
+        "ford_depth",
+        "ford_velocity",
+        "crossability",
+    ] {
         let file = via_suitability::raster_filename("test_site", name);
         let b1 = std::fs::read(d1.join(&file)).unwrap();
         let b2 = std::fs::read(d2.join(&file)).unwrap();
@@ -139,12 +157,21 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
     assert_eq!(sites[0]["river_donors"], 2);
     assert!((sites[0]["symmetry_ratio"].as_f64().unwrap() - 2.0 / 6.0).abs() < 1e-12);
     assert_eq!(summary["checks"]["confluence_definition"], true);
+    assert_eq!(summary["checks"]["spectrum_identities"], true);
+
+    // The lake cell carries still-water crossability equal to its depth.
+    let cross = Raster::<f32>::read_file(&d1.join(via_suitability::raster_filename(
+        "test_site",
+        "crossability",
+    )))
+    .unwrap();
+    assert_eq!(cross.data[(2 * 8 + 5) as usize], 0.5);
 
     // The stage registered itself in the (now version-2) manifest, hashes
     // agree with the summary's, and the terrain record survived migration.
     let m = RunManifest::load(&d1.join("manifest.json")).unwrap();
     let rec = m.stage("suitability.test_site").expect("stage registered");
-    assert_eq!(rec.artifacts.len(), 4);
+    assert_eq!(rec.artifacts.len(), 8);
     for (name, entry) in &rec.artifacts {
         assert_eq!(hashes[name].as_str().unwrap(), entry.blake3);
         assert_eq!(
