@@ -78,7 +78,10 @@ def parse_sample(text: str) -> list[dict]:
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         lowered = [c.lower() for c in cells]
         if "town" in lowered and "centre" in lowered:
-            cols = {name: lowered.index(name) for name in ("town", "centre", "partition")}
+            cols = {
+                name: lowered.index(name)
+                for name in ("town", "centre", "partition", "coverage")
+            }
             continue
         if cols is None or all(set(c) <= set("-: ") for c in cells):
             continue
@@ -94,6 +97,7 @@ def parse_sample(text: str) -> list[dict]:
                 "lat": float(cm.group(1)),
                 "lon": float(cm.group(2)),
                 "partition": cells[cols["partition"]],
+                "coverage": cells[cols["coverage"]],
             }
         )
     return towns
