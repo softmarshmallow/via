@@ -5,7 +5,13 @@ authority for the spike branch, but held at *proposed* rather than
 accepted because ADR 0011 and ADR 0012 were each ratified only after
 a multi-track adversarial design review, and no such review has been
 run against this text. The review is the ratification precondition,
-not the delegation.
+not the delegation. Amended the same day after a self-check of the
+ADR's cross-references against the corpus: research 0006 added to
+scope, the founding/survival separation stated (survival is the
+engine's `δ/κ` floor, not a second mechanism), realized spacing added
+as a character with Bracton's 6⅔ miles held as forcing rather than a
+target, the Black Death market-thinning added as a sign-and-shape
+expectation, and the ADR 0008 D9 attribution tightened.
 
 Scope: the stage decisions for `via-settlement` (ADR 0009 D1: unit of
 work "settlement, corridor link") — which allocation engine, what
@@ -14,9 +20,9 @@ are cut out for comparison against GHS-UCDB, the shock and epoch
 structure, the artifacts, the gates, and — the part this stage owes
 most carefully — an explicit statement of what it is *not* entitled
 to claim. Mechanisms are adopted from research 0001 (settlement
-systems), 0004 (land-use economics), 0005 (transport eras), 0012
-(benchmark specification), and 0016 (the dossier commissioned for
-this decision).
+systems), 0004 (land-use economics), 0005 (transport eras), 0006
+(founding and planning), 0012 (benchmark specification), and 0016
+(the dossier commissioned for this decision).
 
 ## Context
 
@@ -209,11 +215,31 @@ combined by a **declared** weighting, labelled `heuristic`, with **no
 composite score emitted** (ADR 0008 D7, and the ADR 0011 precedent of
 refusing to bake one). The weighting is config, exposed, and swept.
 
-The founding literature (Britnell, Beresford) enters as **forcing**,
-not mechanism: which sites are founded and when is declared; only
-site-selection, spacing, and survival are gated. Research 0006's
-planned-foundation material is not a growth mechanism and is not used
-as one.
+**Founding is a forcing event; survival is the engine's own.**
+Research 0006 separates these cleanly and this ADR adopts the
+separation. Britnell (1981) documents the market charter as the
+economic founding act — crown-licensed for a fee, distinct from and
+often preceding physical planning, proliferating 1200–1349 and
+thinning after the Black Death as unviable markets failed. So *which*
+sites are founded and *when* is a declared event stream (Tier-2), and
+Beresford's plantation package is not a growth mechanism and is not
+used as one.
+
+What is **not** separately modelled is survival, because the engine
+already supplies it. Research 0006's rule — a chartered site survives
+iff its catchment captures demand above a viability threshold, and
+failures revert to village status — is exactly Decision 2's dynamic:
+`D_j` *is* the catchment demand over the corridor-cost field, and
+the `δ/κ` floor *is* the viability threshold. Adding a second
+survival test would double-count. This is recorded because the
+coincidence is easy to miss and expensive to discover later.
+
+**Era enters through the cost field, not through a re-tuned spacing
+constant.** Research 0006 notes the spacing parameter "scales with
+transport speed" (~10 km medieval foot/cart half-day; 8–11 miles for
+Plains rail depots). In via that scaling is automatic, because `c_ij`
+is corridor time in hours and the era's speeds already live in ADR
+0012's mode set. No era-indexed spacing parameter is introduced.
 
 ## Decision 5 — Delineation is fixed here, and executed in `via-bench`
 
@@ -299,6 +325,16 @@ fixes the algorithm so the stage and the benchmark cannot drift.
 - Their **rank-turbulence metric `d`** (mean absolute rank shift per
   year) is adopted as a dynamics character: France 1876–2015 over 500
   cities gives 6.0, their model 6.1, Gabaix's 8.0.
+- **The shock has a qualitative validation target that costs
+  nothing to check.** Research 0006 records English market charters
+  proliferating through 1200–1349 and then thinning after the Black
+  Death "as unviable markets failed" (Kent: under 20 markets in 1200
+  to over 80 by 1350). A shock applied to via should therefore
+  produce **net loss of small centres below `δ/κ` while the surviving
+  hierarchy re-concentrates** — the marginal-site die-off, not a
+  uniform rescaling of every settlement. This is a *sign-and-shape*
+  expectation, not a band: no count is claimed, and it is reported in
+  the D10 visual channel rather than gated.
 - Verbavatz's anti-Zipf result is absorbed into the validation
   doctrine rather than argued with: "Zipf's law does not hold in
   general due to finite-time effects", so an upper-tail power-law fit
@@ -326,15 +362,27 @@ fixes the algorithm so the stage and the benchmark cannot drift.
   coastline window at all. Use G / K / pcf with Kaplan–Meier `cdf`
   edge correction. **The 2.15 ceiling is removed** — Philo & Philo
   (2022) measure 2.23, 2.27 and 2.97, approaching it from above.
+- **Realized spacing is a character; the legal rule is not a target.**
+  Britnell (1981) records Bracton's doctrine that a new market was
+  injurious within 6⅔ miles of an existing one — one-third of a
+  20-mile day's round trip — which is an explicit, citable spacing
+  rule and enters via as **declared forcing**. But Britnell is equally
+  explicit that "in practice spacing was set by competitive failure
+  rather than the rule alone", so **the realized spacing distribution
+  is the emergent quantity that gets gated, and hitting 6⅔ miles is
+  not the pass condition.** Confusing the two would turn a forcing
+  parameter into a fake validation.
 - **Envelopes are global, not pointwise**, with M = 19 for an exact
   5% level, declared per character.
 - **The null ladder has three rungs**: CSR → **inhomogeneous Poisson
   fitted as the single-parameter offset model `log λ(u) = θ + log Z(u)`**
   ("suitability alone, no interaction" — this is the load-bearing
-  rung) → the generator itself. ADR 0008 D9's equifinality guard is
-  satisfied only if the generator beats rung 2, and rung 2 uses the
-  same suitability field the generator consumes, which is exactly
-  what makes it a fair adversary.
+  rung) → the generator itself. ADR 0008 D9 requires "at least one
+  character that a null model demonstrably fails"; **this ADR
+  discharges that by naming rung 2 as the null that must fail**, which
+  is stronger than D9 asks, because rung 2 consumes the same
+  suitability field the generator does and is therefore the only
+  adversary that isolates the interaction mechanism from the terrain.
 - **The window** is defined on the land mask, with inland water, the
   coastal ribbon and unusable terrain **inside** it. No source
   addresses this and it changes every CSR benchmark, so it is a
