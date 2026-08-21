@@ -538,7 +538,12 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
             p.min_coast_dist_m
         );
     }
-    println!("\n  {} confluence site(s)", out.confluences.len());
+    println!(
+        "\n  {} confluence site(s), {} pass site(s) ≥ {} m persistence",
+        out.confluences.len(),
+        out.passes.len(),
+        cfg.min_pass_persistence_m
+    );
     println!(
         "CRITERION {}: {}   ({} patch(es) ≥ {} ha)",
         cfg.label,

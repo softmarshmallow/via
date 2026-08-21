@@ -21,8 +21,10 @@ use via_artifact::manifest::{ArtifactEntry, RunManifest, StageRecord};
 use via_artifact::raster::Raster;
 
 mod confluence;
+mod passes;
 
 pub use confluence::ConfluenceSite;
+pub use passes::SaddleSite;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -48,6 +50,9 @@ pub struct SuitabilityConfig {
     /// Minimum contiguous patch area (hectares).
     pub min_patch_area_ha: f64,
     pub max_patches_reported: u32,
+    /// Minimum saddle persistence (m) for a pass site to be reported —
+    /// the published pruning floor (Kirmse & de Ferranti 2017, ~30 m).
+    pub min_pass_persistence_m: f64,
 }
 
 impl Default for SuitabilityConfig {
@@ -62,6 +67,7 @@ impl Default for SuitabilityConfig {
             max_standing_water_m: 0.05,
             min_patch_area_ha: 12.0,
             max_patches_reported: 8,
+            min_pass_persistence_m: 30.0,
         }
     }
 }
@@ -106,6 +112,8 @@ pub struct SuitabilityOutput {
     pub criterion_met: bool,
     /// Confluence sites in ascending cell order (ADR 0011 D3/D4).
     pub confluences: Vec<ConfluenceSite>,
+    /// Pass (saddle) sites in ascending cell order (ADR 0011 D3/D4).
+    pub passes: Vec<SaddleSite>,
     /// The terrain channelization threshold, restated beside any reported
     /// confluence count (ADR 0011 D4); absent if the terrain config lacks it.
     pub river_min_area_km2: Option<f64>,
@@ -378,6 +386,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
 
     let criterion_met = !patches.is_empty();
     let confluences = confluence::detect(w, h, &receivers.data, &strahler.data, &area_cells.data);
+    let saddle_sites = passes::detect(w, h, &heights.data, &land, cfg.min_pass_persistence_m);
     Ok(SuitabilityOutput {
         w,
         h,
@@ -391,6 +400,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         patches,
         criterion_met,
         confluences,
+        passes: saddle_sites,
         river_min_area_km2,
     })
 }
@@ -460,6 +470,7 @@ pub fn write_outputs(
             "coast_dist": "standard: shortest along-ground distance in the D8 grid metric (multi-source Dijkstra) to ocean cells (self-receivers)",
             "patch_rank": "heuristic (ADR 0003): 4-connected components of the config-thresholded suitability predicate, ranked by area",
             "confluences": "standard: junction = river cell with >= 2 river donors on the receivers tree (Strahler 1957 frame); symmetry ratio = smaller/larger donor drainage from area_cells (Benda et al. 2004); two largest donors when a D8 cell has more than two is a declared adaptation",
+            "passes": "standard: Morse saddles by superlevel-set union-find sweep over height-sorted cells, persistence = paired peak - saddle (Edelsbrunner et al. 2002; Kirmse & de Ferranti 2017 instantiation and ~30 m pruning floor); Peucker-Douglas (1975) 8-ring recorded per site as diagnostic (Takahashi et al. 1995 predict grid inconsistency); declared adaptations: land-cell domain, out-of-grid neighbours count lower, equal-height ties by ascending cell index, multi-merge cells record the largest dying persistence",
         },
         // ADR 0011 D2: curation, not a gate — the criterion's semantics live
         // in the experiment config that names it.
@@ -472,6 +483,10 @@ pub fn write_outputs(
             "confluences": {
                 "river_min_area_km2": out.river_min_area_km2,
                 "sites": out.confluences,
+            },
+            "passes": {
+                "min_persistence_m": cfg.min_pass_persistence_m,
+                "sites": out.passes,
             },
         },
         // ADR 0011 D6 artifact-contract checks; all must hold or the stage
