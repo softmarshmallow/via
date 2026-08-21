@@ -19,10 +19,19 @@ supplies its population budget, where settlements may sit, how they
 are cut out for comparison against GHS-UCDB, the shock and epoch
 structure, the artifacts, the gates, and — the part this stage owes
 most carefully — an explicit statement of what it is *not* entitled
-to claim. Mechanisms are adopted from research 0001 (settlement
-systems), 0004 (land-use economics), 0005 (transport eras), 0006
-(founding and planning), 0012 (benchmark specification), and 0016
-(the dossier commissioned for this decision).
+to claim. Mechanisms are adopted from research 0006 (founding and
+planning), 0012 (benchmark specification), and 0016 (the dossier
+commissioned for this decision).
+
+**Research 0001 (settlement systems), 0004 (land-use economics) and
+0005 (transport eras) are deliberately *not* drawn on here**, though
+an earlier draft of this scope line claimed they were. Their
+mechanisms — von Thünen hinterland rings, freight catchments with the
+Masschaele price vectors, Louf's `R = B − C` — all require
+settlements that already have sizes and markets, so they activate in
+the demand-driven-growth chunk that follows this one, not at
+introduction. Listing them here would have been a decorative
+citation.
 
 ## Context
 
