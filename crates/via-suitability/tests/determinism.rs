@@ -1,9 +1,9 @@
 //! ADR 0011 Decision 6 determinism gate: byte-identical artifacts and
-//! hashes on re-run. Until the multi-stage manifest schema evolution lands,
-//! the stage summary's recorded hashes are the determinism witness, so the
-//! test also pins summary hash == disk bytes for every artifact.
+//! hashes on re-run. The run manifest is the determinism witness (the
+//! multi-stage schema evolution recorded in ADR 0011 Consequences), so the
+//! test pins summary hash == manifest hash == disk bytes for every
+//! artifact, and covers the v1-manifest migration path.
 
-use std::collections::BTreeMap;
 use std::path::Path;
 
 use via_artifact::{Raster, RunManifest};
@@ -49,14 +49,19 @@ fn write_synthetic_terrain(dir: &Path) {
     Raster::from_data(w, h, cell_cm, water)
         .write_file(&dir.join("water_depth.vrast"))
         .unwrap();
-    RunManifest {
-        stage: "terrain".to_string(),
-        seed: 0,
-        config: serde_json::json!({ "sea_level_m": 0.0 }),
-        crate_versions: BTreeMap::new(),
-        artifacts: BTreeMap::new(),
-    }
-    .save(&dir.join("manifest.json"))
+    // Written in the version-1 single-stage shape deliberately: the stage
+    // must migrate legacy run directories transparently.
+    let v1 = serde_json::json!({
+        "stage": "terrain",
+        "seed": 0,
+        "config": { "sea_level_m": 0.0 },
+        "crate_versions": {},
+        "artifacts": {}
+    });
+    std::fs::write(
+        dir.join("manifest.json"),
+        serde_json::to_string_pretty(&v1).unwrap() + "\n",
+    )
     .unwrap();
 }
 
@@ -111,6 +116,23 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
         std::fs::read(d1.join(&summary_name)).unwrap(),
         std::fs::read(d2.join(&summary_name)).unwrap(),
         "summaries differ across identical runs"
+    );
+
+    // The stage registered itself in the (now version-2) manifest, hashes
+    // agree with the summary's, and the terrain record survived migration.
+    let m = RunManifest::load(&d1.join("manifest.json")).unwrap();
+    let rec = m.stage("suitability.test_site").expect("stage registered");
+    assert_eq!(rec.artifacts.len(), 4);
+    for (name, entry) in &rec.artifacts {
+        assert_eq!(hashes[name].as_str().unwrap(), entry.blake3);
+        assert_eq!(
+            entry.file,
+            via_suitability::raster_filename("test_site", name)
+        );
+    }
+    assert!(
+        m.stage("terrain").is_some(),
+        "terrain record lost in migration"
     );
     std::fs::remove_dir_all(&base).ok();
 }

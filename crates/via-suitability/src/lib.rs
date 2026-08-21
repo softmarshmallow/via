@@ -17,7 +17,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use via_artifact::manifest::RunManifest;
+use via_artifact::manifest::{ArtifactEntry, RunManifest, StageRecord};
 use via_artifact::raster::Raster;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -278,8 +278,8 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
     ensure_grid("water_depth", &water_depth, &heights)?;
     let manifest = RunManifest::load(&run_dir.join("manifest.json"))?;
     let sea = manifest
-        .config
-        .get("sea_level_m")
+        .stage_config("terrain")
+        .and_then(|c| c.get("sea_level_m"))
         .and_then(|v| v.as_f64())
         .unwrap_or(0.0);
     let (w, h) = (heights.width, heights.height);
@@ -431,7 +431,40 @@ pub fn write_outputs(
     std::fs::write(
         run_dir.join(summary_filename(&cfg.label)),
         serde_json::to_string_pretty(&report)? + "\n",
-    )
+    )?;
+
+    // Register this stage instance in the run manifest under its output
+    // namespace (ADR 0011 Consequences: downstream artifacts belong in the
+    // manifest; rasters only, like the terrain stage — summaries are not
+    // artifacts).
+    let manifest_path = run_dir.join("manifest.json");
+    let mut manifest = RunManifest::load(&manifest_path)?;
+    let artifacts = hashes
+        .iter()
+        .map(|(name, hash)| {
+            (
+                name.clone(),
+                ArtifactEntry {
+                    file: raster_filename(&cfg.label, name),
+                    blake3: hash.clone(),
+                },
+            )
+        })
+        .collect();
+    let mut crate_versions = BTreeMap::new();
+    crate_versions.insert(
+        "via-suitability".to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
+    );
+    manifest.stages.insert(
+        format!("suitability.{}", cfg.label),
+        StageRecord {
+            config: serde_json::to_value(cfg)?,
+            crate_versions,
+            artifacts,
+        },
+    );
+    manifest.save(&manifest_path)
 }
 
 #[cfg(test)]

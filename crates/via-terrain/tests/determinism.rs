@@ -211,7 +211,7 @@ fn write_run_roundtrip_matches_embedded_hashes() {
 
     // The hashes embedded in gates.json, the manifest hashes, and the bytes
     // on disk must all agree.
-    for (name, entry) in &manifest.artifacts {
+    for (name, entry) in &manifest.stages["terrain"].artifacts {
         let bytes = std::fs::read(dir.join(&entry.file)).unwrap();
         let disk_hash = blake3::hash(&bytes).to_hex().to_string();
         assert_eq!(

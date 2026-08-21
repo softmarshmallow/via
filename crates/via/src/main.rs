@@ -451,14 +451,13 @@ impl RunRasters {
             }
         }
         let manifest = via_artifact::RunManifest::load(&dir.join("manifest.json"))?;
-        let sea = manifest
-            .config
-            .get("sea_level_m")
+        let tcfg = manifest.stage_config("terrain");
+        let sea = tcfg
+            .and_then(|c| c.get("sea_level_m"))
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
-        let river_min_km2 = manifest
-            .config
-            .get("river_min_area_km2")
+        let river_min_km2 = tcfg
+            .and_then(|c| c.get("river_min_area_km2"))
             .and_then(|v| v.as_f64())
             .unwrap_or(1.0);
         let dx = heights.cell_size_cm as f64 / 100.0;

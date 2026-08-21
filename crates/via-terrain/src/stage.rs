@@ -7,7 +7,7 @@ use std::path::Path;
 
 use rayon::prelude::*;
 
-use via_artifact::manifest::{ArtifactEntry, RunManifest};
+use via_artifact::manifest::{ArtifactEntry, RunManifest, StageRecord};
 use via_artifact::raster::Raster;
 
 use crate::climate;
@@ -599,14 +599,16 @@ pub fn write_run(dir: &Path, o: &TerrainOutput) -> io::Result<RunManifest> {
         "via-terrain".to_string(),
         env!("CARGO_PKG_VERSION").to_string(),
     );
-    let manifest = RunManifest {
-        stage: "terrain".to_string(),
-        seed: o.cfg.seed,
-        config: serde_json::to_value(&o.cfg)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
-        crate_versions,
-        artifacts,
-    };
+    let mut manifest = RunManifest::new(o.cfg.seed);
+    manifest.stages.insert(
+        "terrain".to_string(),
+        StageRecord {
+            config: serde_json::to_value(&o.cfg)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
+            crate_versions,
+            artifacts,
+        },
+    );
     manifest.save(&dir.join("manifest.json"))?;
     Ok(manifest)
 }

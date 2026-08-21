@@ -77,8 +77,8 @@ impl Patch {
             .collect();
         let manifest = via_artifact::manifest::RunManifest::load(&run_dir.join("manifest.json"))?;
         let sea_level_m = manifest
-            .config
-            .get("sea_level_m")
+            .stage_config("terrain")
+            .and_then(|c| c.get("sea_level_m"))
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
         // River segments within reach of the patch, in local metres.

@@ -24,6 +24,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use via_artifact::manifest::{ArtifactEntry, RunManifest, StageRecord};
 use via_artifact::raster::Raster;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -393,7 +394,39 @@ pub fn write_outputs(run_dir: &Path, cfg: &EcologyConfig, out: &EcologyOutput) -
     std::fs::write(
         run_dir.join("ecology.json"),
         serde_json::to_string_pretty(&report)? + "\n",
-    )
+    )?;
+
+    // Register the stage in the run manifest (ADR 0011 Consequences:
+    // downstream artifacts belong in the manifest; rasters only, like the
+    // terrain stage — summaries are not artifacts).
+    let manifest_path = run_dir.join("manifest.json");
+    let mut manifest = RunManifest::load(&manifest_path)?;
+    let artifacts = hashes
+        .iter()
+        .map(|(name, hash)| {
+            (
+                name.clone(),
+                ArtifactEntry {
+                    file: format!("{name}.vrast"),
+                    blake3: hash.clone(),
+                },
+            )
+        })
+        .collect();
+    let mut crate_versions = BTreeMap::new();
+    crate_versions.insert(
+        "via-ecology".to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
+    );
+    manifest.stages.insert(
+        "ecology".to_string(),
+        StageRecord {
+            config: serde_json::to_value(cfg)?,
+            crate_versions,
+            artifacts,
+        },
+    );
+    manifest.save(&manifest_path)
 }
 
 #[cfg(test)]

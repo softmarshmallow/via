@@ -166,8 +166,8 @@ pub fn load(run_dir: &Path, cfg: &LandConfig) -> io::Result<Land> {
 
     let manifest = RunManifest::load(&run_dir.join("manifest.json"))?;
     let sea_level_m = manifest
-        .config
-        .get("sea_level_m")
+        .stage_config("terrain")
+        .and_then(|c| c.get("sea_level_m"))
         .and_then(|v| v.as_f64())
         .unwrap_or(0.0);
 
