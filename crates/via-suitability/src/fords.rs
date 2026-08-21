@@ -31,6 +31,9 @@ pub struct FordFields {
     /// D·V (m²/s) on river cells; still-water depth (m) on standing
     /// water; 0 elsewhere.
     pub crossability: Vec<f32>,
+    /// Reach-averaged channel slope on river cells (0 elsewhere). Kept
+    /// for the navigability predicate; not an emitted artifact.
+    pub channel_slope: Vec<f64>,
 }
 
 /// Config surface of the chain; every value declared with provenance in
@@ -111,6 +114,7 @@ pub fn compute(
     let mut depth_m = vec![0.0f32; n_cells];
     let mut velocity_ms = vec![0.0f32; n_cells];
     let mut crossability = vec![0.0f32; n_cells];
+    let mut channel_slope = vec![0.0f64; n_cells];
 
     // Finnegan's closed-form coefficient [α(α+2)^(2/3)]^(3/8).
     let alpha = p.finnegan_alpha;
@@ -133,6 +137,7 @@ pub fn compute(
             continue;
         }
         let s = reach_slope(w, i, surface_m, receivers, land, dx, p);
+        channel_slope[ii] = s;
         let width = c_w * (p.manning_n * q).powf(3.0 / 8.0) * s.powf(-3.0 / 16.0);
         let depth = (p.manning_n * (q / width) / s.sqrt()).powf(3.0 / 5.0);
         let velocity = q / (width * depth);
@@ -148,6 +153,7 @@ pub fn compute(
         depth_m,
         velocity_ms,
         crossability,
+        channel_slope,
     }
 }
 

@@ -539,10 +539,12 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
         );
     }
     println!(
-        "\n  {} confluence site(s), {} pass site(s) ≥ {} m persistence",
+        "\n  {} confluence site(s), {} pass site(s) ≥ {} m persistence, \
+         {} head(s) of navigation",
         out.confluences.len(),
         out.passes.len(),
-        cfg.min_pass_persistence_m
+        cfg.min_pass_persistence_m,
+        out.heads_of_navigation.len()
     );
     println!(
         "CRITERION {}: {}   ({} patch(es) ≥ {} ha)",

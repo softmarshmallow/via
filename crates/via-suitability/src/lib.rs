@@ -22,10 +22,12 @@ use via_artifact::raster::Raster;
 
 mod confluence;
 mod fords;
+mod navigability;
 mod passes;
 
 pub use confluence::ConfluenceSite;
 pub use fords::FordFields;
+pub use navigability::{HeadOfNavSite, NavigabilityFields};
 pub use passes::SaddleSite;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -75,6 +77,16 @@ pub struct SuitabilityConfig {
     /// S^(−3/16) and Manning √S, so a flat routed reach must not divide
     /// by zero.
     pub min_channel_slope: f64,
+    /// Langbein (1962) navigability anchor: Ts above this is
+    /// unnavigable (published 0.002; Mississippi ≈ 0.00015).
+    pub nav_max_ts: f64,
+    /// Magirl & Olsen (2009) slope band: probably not navigable above
+    /// this (0.0047; 0.0019–0.0047 is their indeterminate band).
+    pub nav_max_slope: f64,
+    /// Pre-modern navigable-depth anchor (m): Eckoldt's 0.3–0.7 m band
+    /// for keelless barges (via Appel et al. 2024); metric values are
+    /// conditional on k_Q.
+    pub nav_min_depth_m: f64,
 }
 
 impl Default for SuitabilityConfig {
@@ -95,6 +107,9 @@ impl Default for SuitabilityConfig {
             finnegan_alpha: 20.0,
             slope_reach_cells: 5,
             min_channel_slope: 1.0e-5,
+            nav_max_ts: 0.002,
+            nav_max_slope: 0.0047,
+            nav_min_depth_m: 0.5,
         }
     }
 }
@@ -143,6 +158,10 @@ pub struct SuitabilityOutput {
     pub passes: Vec<SaddleSite>,
     /// Ford hydraulic spectra (width, depth, velocity, crossability).
     pub ford: FordFields,
+    /// Navigability spectrum and banded predicate.
+    pub nav: NavigabilityFields,
+    /// Head-of-navigation sites in ascending cell order (ADR 0011 D3/D6).
+    pub heads_of_navigation: Vec<HeadOfNavSite>,
     /// The terrain channelization threshold, restated beside any reported
     /// confluence count (ADR 0011 D4); absent if the terrain config lacks it.
     pub river_min_area_km2: Option<f64>,
@@ -444,6 +463,27 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
             min_channel_slope: cfg.min_channel_slope,
         },
     );
+    let nav = navigability::compute(
+        &land,
+        &strahler.data,
+        &water_depth.data,
+        &ford,
+        &navigability::NavParams {
+            max_ts: cfg.nav_max_ts,
+            max_slope: cfg.nav_max_slope,
+            min_depth_m: cfg.nav_min_depth_m,
+            manning_n: cfg.manning_n,
+        },
+    );
+    let heads_of_navigation = navigability::head_of_navigation(
+        w,
+        h,
+        &receivers.data,
+        &land,
+        &water_depth.data,
+        &nav,
+        &ford,
+    );
     Ok(SuitabilityOutput {
         w,
         h,
@@ -459,6 +499,8 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         confluences,
         passes: saddle_sites,
         ford,
+        nav,
+        heads_of_navigation,
         river_min_area_km2,
     })
 }
@@ -502,11 +544,15 @@ pub fn write_outputs(
         ("ford_depth", &out.ford.depth_m),
         ("ford_velocity", &out.ford.velocity_ms),
         ("crossability", &out.ford.crossability),
+        ("navigability_ts", &out.nav.ts),
     ] {
         let r = Raster::from_data(out.w, out.h, cell_cm, data.clone());
         r.write_file(&path(name))?;
         hashes.insert(name.to_string(), r.blake3_hex());
     }
+    let r = Raster::from_data(out.w, out.h, cell_cm, out.nav.navigable.clone());
+    r.write_file(&path("navigable"))?;
+    hashes.insert("navigable".to_string(), r.blake3_hex());
 
     // ADR 0011 D6 gates: definitional invariants recomputed from the
     // artifacts on disk, by a different traversal than the detector's.
@@ -544,6 +590,22 @@ pub fn write_outputs(
              on some cell",
         ));
     }
+    // Head-of-navigation gate: the predicate is read back from the file
+    // just written — the emitted artifact, not the in-memory copy.
+    let navigable_disk = Raster::<u32>::read_file(&path("navigable"))?;
+    let heads_ok = navigability::verify_heads(
+        &receivers.data,
+        &land_mask,
+        &navigable_disk.data,
+        &out.heads_of_navigation,
+    );
+    if !heads_ok {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "head-of-navigation gate failed: emitted sites are not exactly \
+             the mouth-connected navigable cells without a donor in the set",
+        ));
+    }
 
     let report = serde_json::json!({
         "stage": "suitability",
@@ -561,6 +623,9 @@ pub fn write_outputs(
             "ford_depth": "standard: Manning (1891) wide-channel closure d = (n (Q/W) / sqrt(S))^(3/5) on channel cells; the terrain still-water depth on standing water",
             "ford_velocity": "standard: continuity v = Q/(W d), identical to Manning v = (1/n) d^(2/3) sqrt(S) by construction; zero on standing water",
             "crossability": "standard: D x V product, the flume-verified stability currency (Cox, Shand & Blacka 2010; AIDR Guideline 7-3), computed from the emitted f32 factors so the identity is exact; still-water depth alone on standing water; the published bands are consumer config — none baked (ADR 0011 D2/D4)",
+            "navigability_ts": "standard: Langbein (1962) minimum specific tractive force Ts = V^2(f+0.6)/(1600 D^(4/3)), imperial-unit constants — SI inputs converted; f from Manning n via Darcy-Weisbach f = 8gn^2/R^(1/3) (R ~ d, the ford chain's friction assumption); 0 on still water; f32::MAX outside the water domain",
+            "navigable": "standard: banded predicate — Langbein anchor Ts <= nav_max_ts (0.002 published), Magirl & Olsen (2009) slope band S <= nav_max_slope (dimensionless, as-is), pre-modern depth anchor d >= nav_min_depth_m (Eckoldt 0.3-0.7 m via Appel et al. 2024); still water by depth alone; depth values conditional on k_Q",
+            "head_of_navigation": "standard: compositional (ADR 0011 D6) — cells of the mouth-connected navigable set (connected downstream to a river mouth along the receivers tree) with no donor in that set",
         },
         // ADR 0011 D2: curation, not a gate — the criterion's semantics live
         // in the experiment config that names it.
@@ -585,12 +650,20 @@ pub fn write_outputs(
                 "k_q_m3s_per_unit": cfg.k_q_m3s_per_unit,
                 "metric_values_conditional_on_k_q": true,
             },
+            "navigability": {
+                "nav_max_ts": cfg.nav_max_ts,
+                "nav_max_slope": cfg.nav_max_slope,
+                "nav_min_depth_m": cfg.nav_min_depth_m,
+                "metric_values_conditional_on_k_q": true,
+                "head_of_navigation_sites": out.heads_of_navigation,
+            },
         },
         // ADR 0011 D6 artifact-contract checks; all must hold or the stage
         // errors before writing this summary.
         "checks": {
             "confluence_definition": confluence_ok,
             "spectrum_identities": spectrum_ok,
+            "head_of_navigation_definition": heads_ok,
         },
         "artifact_blake3": hashes,
     });
