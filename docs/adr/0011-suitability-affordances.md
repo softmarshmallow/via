@@ -1,9 +1,10 @@
 # ADR 0011 — Suitability affordances: tier, representation, and gates
 
-Status: proposed (2026-08-21; amended the same day after the
-implementation chunk's adversarial review — Finnegan α provenance,
-Langbein's f, stability-band placement, depth-window ramp, D6 clause
-enumeration, recorded deferrals)
+Status: accepted (2026-08-22, under the user's delegated authority —
+"you know what to do"; proposed 2026-08-21 and amended the same day
+after the implementation chunk's adversarial review — Finnegan α
+provenance, Langbein's f, stability-band placement, depth-window
+ramp, D6 clause enumeration, recorded deferrals)
 Scope: the stage decisions ADR 0009 left open for `via-suitability` —
 what epistemic tier the stage occupies, how the named affordances
 (harbours, fords, confluences, passes) are represented, and what its
