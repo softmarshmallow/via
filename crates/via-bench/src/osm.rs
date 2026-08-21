@@ -146,28 +146,36 @@ pub fn load(
         }
 
         if let Some(kind) = tags["highway"].as_str() {
-            if !set.keeps(kind) {
-                continue;
-            }
-            // 0012 P4's exclusion list, verbatim.
-            if matches!(
-                tags["service"].as_str(),
-                Some("driveway") | Some("parking_aisle")
-            ) {
-                continue;
-            }
-            let class = class_of(kind);
-            for pair in pts.windows(2) {
-                // Clip where both endpoints are outside the buffer, so the
-                // boundary is the same for real and synthetic fabric.
-                if len(pair[0]) > import_m && len(pair[1]) > import_m {
-                    continue;
+            // 0012 P4: the set membership and the service exclusion list,
+            // verbatim. An excluded way is not street fabric, but it may
+            // still be a building below.
+            let admitted = set.keeps(kind)
+                && !matches!(
+                    tags["service"].as_str(),
+                    Some("driveway") | Some("parking_aisle")
+                );
+            if admitted {
+                let class = class_of(kind);
+                for pair in pts.windows(2) {
+                    // Clip where both endpoints are outside the buffer, so
+                    // the boundary is the same for real and synthetic
+                    // fabric.
+                    if len(pair[0]) > import_m && len(pair[1]) > import_m {
+                        continue;
+                    }
+                    if dist(pair[0], pair[1]) > 0.5 {
+                        graph.insert_segment(pair[0], pair[1], class, protocol.snap_m);
+                    }
                 }
-                if dist(pair[0], pair[1]) > 0.5 {
-                    graph.insert_segment(pair[0], pair[1], class, protocol.snap_m);
-                }
             }
-        } else if tags["building"].is_string() && tags["building"] != "no" {
+        }
+        // NOT an else-branch: protocol Elements qualifies a building only
+        // by its building tag, closure, area, and centroid — a way tagged
+        // both highway and building satisfies both element definitions.
+        // (Corpus review finding: dinan way 682988676, building=yes +
+        // highway=elevator, was silently consumed by the street branch
+        // above and never counted as a footprint.)
+        if tags["building"].is_string() && tags["building"] != "no" {
             // A building is a *closed* way (protocol: Elements); an
             // unclosed ring or an explicit building=no is not a footprint.
             // The sidecar applies the same two rules.
@@ -261,6 +269,11 @@ mod tests {
                 {"type": "node", "id": 29, "lat": 0.0051, "lon": 0.0},
                 {"type": "node", "id": 30, "lat": 0.0051, "lon": 0.0001},
                 {"type": "node", "id": 31, "lat": 0.005, "lon": 0.0001},
+                // Building D: dual-tagged, ~11x11 m at (0.0015, -0.0005).
+                {"type": "node", "id": 32, "lat": 0.00145, "lon": -0.00055},
+                {"type": "node", "id": 33, "lat": 0.00155, "lon": -0.00055},
+                {"type": "node", "id": 34, "lat": 0.00155, "lon": -0.00045},
+                {"type": "node", "id": 35, "lat": 0.00145, "lon": -0.00045},
                 {"type": "way", "id": 100, "nodes": [1, 2],
                  "tags": {"highway": "residential"}},
                 {"type": "way", "id": 101, "nodes": [3, 4],
@@ -277,6 +290,11 @@ mod tests {
                  "tags": {"building": "house"}},
                 {"type": "way", "id": 202, "nodes": [28, 29, 30, 31, 28],
                  "tags": {"building": "yes"}},
+                // Building D: dual-tagged building + highway (the dinan
+                // way 682988676 pattern) — a building by Elements, and not
+                // street fabric in any P4 set (elevator).
+                {"type": "way", "id": 203, "nodes": [32, 33, 34, 35, 32],
+                 "tags": {"building": "yes", "highway": "elevator"}},
             ]
         })
     }
@@ -304,9 +322,24 @@ mod tests {
     #[test]
     fn buildings_filtered_and_tagged() {
         let r = load_fixture(StreetSet::Carriageway);
-        // Building C is outside the buffer; A and B survive.
-        assert_eq!(r.buildings.len(), 2);
+        // Building C is outside the buffer; A, B and the dual-tagged D
+        // survive.
+        assert_eq!(r.buildings.len(), 3);
         let tagged: Vec<bool> = r.buildings.iter().map(|b| b.storeys.is_finite()).collect();
         assert_eq!(tagged.iter().filter(|&&t| t).count(), 1);
+    }
+
+    /// Elements qualifies a building only by its building tag, closure,
+    /// area and centroid: a way tagged both building and highway is a
+    /// building regardless of the highway branch (dinan way 682988676),
+    /// and one whose highway kind is in no street set adds no street
+    /// fabric.
+    #[test]
+    fn dual_tagged_way_is_a_building_not_a_street() {
+        let all = load_fixture(StreetSet::AllWays);
+        assert_eq!(all.buildings.len(), 3);
+        // elevator is in neither P4 set: edge count unchanged from the
+        // street_sets test (4 split residentials + alley + footway).
+        assert_eq!(all.graph.edges.len(), 6);
     }
 }
