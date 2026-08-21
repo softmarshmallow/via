@@ -502,9 +502,12 @@ Minetti, A.E., Moia, C., Roi, G.S., Susta, D. & Ferretti, G. (2002)
 slopes', Journal of Applied Physiology 93(3):1039–1046 (verified:
 full paper read); Llobera, M. & Sluckin, T.J. (2007) 'Zigzagging:
 theoretical insights on climbing strategies', Journal of Theoretical
-Biology 249(2):206–217 (verified via PubMed metadata; **paper body
-not read — the critical-angle values below are from secondary
-summaries and are unconfirmed**).
+Biology 249(2):206–217 (verified 2026-08-21 against the primary's
+abstract, introduction, and its own Figures 5–6, which Elsevier
+serves openly; the body prose stays paywalled, so the numeric values
+rest on the figures plus an exact reconstruction — solving the
+paper's Eq. 20 on its cost function reproduces the figure crossings
+to three decimals).
 
 Minetti's walking cost per kilogram per metre, fitted over measured
 gradients i ∈ [−0.45, +0.45] (R² = 0.999):
@@ -519,13 +522,25 @@ LCP pitfall). Subjects were ten elite mountain athletes: the curve
 Llobera & Sluckin turn the unsourceable "maximum foot grade" into a
 metabolic phase transition: minimizing cost per distance-made-good,
 direct ascent is optimal below a critical slope and switchbacking at
-a fixed effective gradient above it (reported ≈16° up / ≈12.4° down
-— secondary-source numbers, pending primary confirmation). The
-implementable form is a cost envelope: below s_crit charge Cw(s);
-above it charge traversal at s_crit with length inflated by
-|s|/s_crit — continuous, anisotropic, finite everywhere, no binary
-passability mask. Their optimum mountain-path gradient (0.20–0.30 in
-Minetti's data) is consistent.
+a fixed effective gradient above it. *Verification 2026-08-21
+(primary):* the paper works in **gradients, not degrees** — its
+Figure 6 marks the critical crossings at **+0.28 m/m upslope and
+−0.22 m/m downslope** (atan: 15.6°, commonly rounded to 16°, and
+12.4° — so the secondary-source degree values were conversions);
+the criterion is its Eq. 20, M(s_w) − s_w·M′(s_w) = 0, minimized
+over the **Minetti et al. (1995) quartic fit to Margaria's data**
+(m(s) = 2.635 + 17.37s + 42.37s² − 21.43s³ + 14.93s⁴ J/kg/m), not
+the 2002 quintic — solving Eq. 20 on that quartic gives +0.2795 and
+−0.2199, matching the figure; note the downhill transition comes at
+a *gentler* slope than uphill. The paper's own "the walkers try to
+retain this optimal slope" supports the implementable form: a cost
+envelope — below s_crit charge Cw(s); above it charge traversal at
+s_crit with length inflated by |s|/s_crit — continuous, anisotropic,
+finite everywhere, no binary passability mask. A corridors ADR
+adopting the values should restate them as gradients and may
+recompute s_crit from whichever cost function it adopts (Eq. 20 is
+cost-function-generic). Their optimum mountain-path gradient
+(0.20–0.30 in Minetti's data) is consistent.
 
 ### Time currency: Tobler, with its provenance stated
 
@@ -554,9 +569,23 @@ Physiology 43(4):577–581 (verified, PubMed/journal record): the only
 verified scheme with load as a parameter — M = 1.5W +
 2.0(W+L)(L/W)² + η(W+L)(1.5V² + 0.35VG) — but it predicts energy at
 a *given* speed, was derived at 0–12% grades, and goes negative
-downhill without the Santee correction (USARIEM T01-11 —
-**unverified**, existence known only from secondary sources). Cite
-it for the (L/W)² load term and the terrain-factor η concept only.
+downhill without the Santee correction. *Correction 2026-08-21
+(primaries read):* the survey's "USARIEM T01-11" attribution was
+wrong — the downhill **correction factor** lives in USARIEM
+**TN03-3** (Santee et al. 2003, ADA415788, executive summary read
+from the recovered scan): CF = η·[G(W+L)V/3.5 − (W+L)(G+6)²/W +
+(25 − V²)], applied as M = Pandolf − CF for grades G < 0 (G in
+percent, V in m/s); the last term is (25 − V²) — the "(25V²)"
+printed in Potter et al. 2013 and Richmond et al. 2018 is a
+propagated typo (Richmond, Potter & Santee 2015 eq. 7 agrees with
+the primary). Validity: derived at 1.34 m/s (grades −12…+12%, loads
+to 18.1 kg), field-valid at 1.12 m/s to 27 kg, **not acceptable at
+0.89 m/s**. T01-11 (ADA390501, full scan read) carries the separate
+component slope model — W_N = 2.4(m_t·g·h/s)·0.3^(α/7.65) downhill,
+VO₂ nadir at −8% grade — peer-reviewed home Santee et al. (2001)
+Aviat Space Environ Med 72(6):562–566, fixed-speed 1.34 m/s only.
+Cite Pandolf for the (L/W)² load term and the terrain-factor η
+concept.
 
 USDA Forest Service (2008) Trail Fundamentals / FSH 2309.18 §23.1
 design matrices (verified: training-package PDF read verbatim; the
@@ -578,12 +607,22 @@ years (1935 ruling 15% ≈ modern TC4).
 
 Herzog, I. (2013) in Bevan & Lake (eds.), 'Computational Approaches
 to Archaeological Spaces', pp. 179–211 (chapter verified
-bibliographically, not read; its 6th-degree Minetti refit is known
-only via the movecost package docs, which also wrongly symmetrize
-it with abs() — **do not adopt those coefficients without the
-chapter**); Herzog, I. (2014) Archeologia e Calcolatori 25:223–239
-(verified: full PDF read); Herzog, I. (2014) Internet Archaeology 36
-(verified, DOI).
+bibliographically, not read); Herzog, I. (2014) Archeologia e
+Calcolatori 25:223–239 (verified: full PDF read); Herzog, I. (2014)
+Internet Archaeology 36 (verified, DOI). *Verification 2026-08-21:*
+the 6th-degree Minetti refit no longer depends on the paywalled
+chapter — it is printed in full in the open-access **IA36 §5.1.4.3**
+(read verbatim): Cost(s) = 1337.8·s⁶ + 278.19·s⁵ − 517.39·s⁴ −
+78.199·s³ + 93.419·s² + 19.825·s + 1.64, on Minetti's J/kg/m scale
+(the article's "kilo-joule" is a label slip — the constant term is
+Minetti's measured level-walking 1.64 J/kg/m). The primary prints it
+with **no abs()** — the odd-power terms carry the up/down asymmetry
+— confirming that the movecost package's abs()-symmetrized variant
+is wrong. The article gives no explicit clamp advice (the ±0.45 fit
+range is the de facto validity; a clamp remains via's inference,
+benign since this even-degree fit rises at both extremes), and her
+closing judgment: "probably only the bi-directional version is
+adequate for LCP calculations."
 
 The selection doctrine any corridor ADR must satisfy: raw
 slope-as-cost is indefensible; Tobler's two failure modes are
@@ -627,9 +666,14 @@ from foot/pack tolerance.
   for the 0.3–0.7 m band — not matched to the 1980 monograph or
   1984 IJNA entries listed here; the chain is unresolved until the
   1985 work is identified.
-- Pending-verification flags: Llobera & Sluckin's critical-angle
-  values; Santee/USARIEM T01-11; Eckoldt's primary formula; Herzog
-  2013 chapter coefficients; ECMT 92/2 and Freycinet primary texts;
-  Hiscock 1996 (MNCR exposure classes); WEMo (Malhotra & Fonseca
-  2007); Kirmse & de Ferranti end page; Shankman & Hart pages;
-  Scarf 2007 details; Naismith 1892 and Langmuir 1984 originals.
+- Pending-verification flags: Eckoldt's primary formula; ECMT 92/2
+  and Freycinet primary texts; Hiscock 1996 (MNCR exposure classes);
+  WEMo (Malhotra & Fonseca 2007); Kirmse & de Ferranti end page;
+  Shankman & Hart pages; Scarf 2007 details; Naismith 1892 and
+  Langmuir 1984 originals. *Closed 2026-08-21 (see the correction
+  notes in place):* Llobera & Sluckin critical gradients (primary
+  figures + Eq. 20 reconstruction; only the body prose sentence
+  remains unquoted), the Santee downhill correction (TN03-3 primary;
+  T01-11 attribution corrected), and the Herzog 6th-degree refit
+  (printed in the open-access IA36 §5.1.4.3 — the 2013 chapter is no
+  longer load-bearing).

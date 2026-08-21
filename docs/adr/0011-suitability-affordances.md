@@ -232,11 +232,12 @@ source):
   0013 found — is adopted as a consistency cross-check, not a second
   authority.
 
-Values 0013 flags as pending primary confirmation (the Llobera &
-Sluckin critical angles, the Herzog 2013 refit coefficients, Santee's
-downhill correction) are **not** frozen by this ADR; they belong to
-the corridor stage's cost functions, whose adoption is that stage's
-ADR (Decision 5), and they carry their flags until closed.
+Movement-cost values (the Llobera & Sluckin critical gradients, the
+Herzog refit coefficients, Santee's downhill correction) are **not**
+frozen by this ADR; they belong to the corridor stage's cost
+functions, whose adoption is that stage's ADR (Decision 5). Their
+0013 pending-verification flags were closed against primary sources
+on 2026-08-21 — see the correction notes in place there.
 
 ## Decision 5 — The suitability → corridors contract
 
@@ -315,8 +316,9 @@ visual-inspection channel (ADR 0008 D10), never in CI.
 - **Pack/foot maximum grade** — resolved by citation, adoption
   deferred: the "maximum practical grade" is not an engineering
   constant but a metabolic phase transition (Llobera & Sluckin 2007
-  switchback onset; numeric values flagged pending primary
-  confirmation), with federal trail-engineering standards (USFS
+  switchback onset; critical gradients +0.28/−0.22 m/m,
+  primary-confirmed 2026-08-21 per 0013's correction note), with
+  federal trail-engineering standards (USFS
   1935; FSH 2309.18; Hancock et al. 2007) as declared-forcing
   corroboration — 0013 §Movement cost. The corridors ADR freezes
   the values.
