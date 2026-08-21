@@ -127,10 +127,11 @@ paper Llobera, Fábrega-Álvarez & Parcero-Oubiña (2011), *JAS* 38(4):
 restricted): it names the "focal mobility network" and demonstrates
 it on synthetic surfaces and Galician hillforts. Herzog (A&C 25,
 primary) endorses the method where origins are known and destinations
-are not, and notes the drainage readout of an ACS "may become trapped
-in localised plateaux or pits" — back-link retracing from actual
-Dijkstra runs is mandatory; naive steepest-descent on the ACS provably
-misses the LCP (her Fig. 1 counterexample).
+are not. Separately, IA36 §3 (primary) warns — Herzog after Smith et
+al. (2007, 146) — that steepest-descent paths on an ACS "may become
+trapped in localised plateaux or pits": back-link retracing from
+actual Dijkstra runs is mandatory; naive drainage readout of the ACS
+provably misses the LCP (IA36's own Figure 1 counterexample).
 
 Endpoint status: half-honest — destinations eliminated, origins
 required. Origins that are themselves terrain-derived (affordance
@@ -194,7 +195,9 @@ constant" (classified/ordinal cost layers change the network);
 anisotropic costs may be symmetrized by averaging both directions
 when a symmetric cost-distance is needed; Tobler returns a **speed**
 and must be inverted to time (Surface-Evans's 4.8 km/h average
-"indicates that the Tobler function was not applied correctly");
+"indicates that the Tobler function was not applied correctly"), and
+her §5.1.4.2 puts Tobler's critical slope "in the range of 25 to
+30%" [primary];
 "Focusing only on slope, LCPs will often run in riverbeds. It might
 be necessary to model rivers as barriers and to identify the fords"
 — which is exactly the piercing role of via's ford/crossability
@@ -234,8 +237,10 @@ the paper gives no tie-breaking rule; an implementation must fix one.
 Molinero, C. & Hernando, A. (2020), "A model for the generation of
 road networks", arXiv:2001.08180 [algorithm section read; **never
 journal-published** — cite as preprint]. Same mechanism as Stahlberg
-(α = on-road/off-road speed ratio; shortest paths with weights α·l on
-built edges; built edges tagged) with the order fixed deterministically:
+(α = the ratio of off-road to on-road travel speed, < 1 — the paper's
+worked example: α = 0.1 for 90 vs 9 km/h; shortest paths with weights
+α·l on built edges; built edges tagged) with the order fixed
+deterministically:
 "Order all the pairs of vertices by the number of trips that there is
 going to exist between them (N_ij), in decreasing order" — gravity
 demand ordering. With populations unavailable (uniform masses),
@@ -262,8 +267,10 @@ doi:10.1016/j.jasrep.2017.07.024 [abstract] — comparison run on
 **cost-distances, not Euclidean**; "the Gabriel graph and proximal
 point networks with a high number of neighbours proved to be the best
 representation … with the Gabriel graph being slightly better due to
-a smaller number of links needed"; Delaunay rejected for "unrealistic
-long links." Caution from Herzog (A&C 25, reporting White's Papaguería
+a smaller number of links needed"; Delaunay rejected for including
+unrealistically long links (paraphrase — the abstract carries the
+Gabriel quote verbatim; the Delaunay wording is via secondary echoes
+of the paywalled full text). Caution from Herzog (A&C 25, reporting White's Papaguería
 n-nearest variant): nearest-neighbour graphs can leave "several
 unconnected components" — a connectivity check is required after any
 pruning.
@@ -305,8 +312,8 @@ waypoints will strongly concentrate movement because they provide
 easy access through difficult terrain, like fords, bridges and stairs
 … we can either treat them as additional nodes to be connected, or
 add them as attractors to the cost surfaces using a distance decay
-function." Their standing caveat: validation best practice for
-generated networks "is still largely lacking."
+function." Their standing caveat: best practices for assessing the
+realism of (re)constructed networks "are still largely lacking."
 
 ## Multimodal land+water cost (the pre-modern era)
 
@@ -378,7 +385,8 @@ speed of the current," admissible on waterways ≥ 100 cfs; "probably
 any value between 3.5 and 5 km/hr could be defended, with a range
 between 4 and 4.5 km/hr as the most likely." Upstream ≈ 2× downstream
 time (Little 1987: 59); historic corroboration 16–45 km/day up,
-45–110 down (Champlain, Marquette/Joliet et al.). **The only
+19–110 down (Roullet's 19.25 km/day is the slow bound; Champlain and
+Marquette/Joliet et al. sit above it). **The only
 quantified land↔water interface penalty found in the sweep**: his
 Table 10.1 water-crossing delays banded by flow — <10 cfs: 0; 10–100:
 3 s; 100–1,000: 5 min; 1,000–10,000: 10 min; >10,000: 30 min — with

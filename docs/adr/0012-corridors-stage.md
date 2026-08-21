@@ -1,6 +1,11 @@
 # ADR 0012 — Corridors: currency, modes, network extraction, and gates
 
-Status: proposed (2026-08-22)
+Status: proposed (2026-08-22; amended the same day after the
+three-track adversarial review — corner-cut crossing rule,
+per-component trunk patching, per-node-class hours rasters with
+recompute gates, k_Q degeneracy declaration, u32 domain guard,
+contract additions (hours_to_trunk, junction records, per-step
+modes), min-form energy envelope, provenance and citation repairs)
 Scope: the stage decisions for `via-corridors` (ADR 0009 D1: unit of
 work "route, cost surface") — the movement-cost adoption ADR 0011
 deferred here, the multimodal mode set for the first (pre-modern)
@@ -48,64 +53,98 @@ statistics once settlements exist, and the Strano
 densification/exploration battery is the recorded future instrument
 if a direct street/route-network claim is ever made (it would owe
 new characters under ADR 0008 D2/D3 first). Every output is labeled
-standard or heuristic in the stage summary (via-ecology's duty). All
-water-mode times inherit `k_Q` conditionality through the terrain
-discharge chain (velocities, navigability), and the summary restates
-`metric_values_conditional_on_k_q` wherever they appear.
+standard or heuristic in the stage summary (via-ecology's duty).
+
+Constant regimes, stated once for the whole ADR: coefficients
+interior to an adopted published formula (Tobler's 6, 3.5, 0.05; the
+Herzog polynomial) are cited-and-fixed in source, ADR 0003's
+"standard" reading; every via-chosen value — clamps, envelope
+constants, caps, speeds, penalties, spacings, α — lives in config
+with provenance and passes `validate()` (the climate.rs precedent;
+ADR 0011 D1). All water-mode quantities inherit `k_Q` conditionality
+through the terrain discharge chain (velocities, navigability), and
+the summary restates `metric_values_conditional_on_k_q` wherever
+they appear — with the degeneracy consequences declared in
+Decision 3.
 
 ## Decision 2 — Currency: time for the solve, energy as a spectrum
 
 0013's selection doctrine makes currency "an explicit declared
-choice." Via declares **time (hours) as the corridor-solve currency**,
-because it is the only citable cross-mode currency: 0014 documents
-the absence of any boat-propulsion energy cost commensurable with
-walking metabolic cost, and every multimodal precedent (ORBIS,
-Livingood 2012, Filet & Rossi 2025) solves in time. Freight-price
-vectors (Masschaele 8:4:1; the Edict's 1:5:10:52) are *within-era
-cargo economics*, adopted later by the freight-catchment mechanism at
-the settlement stage — not by the era-0 route skeleton.
+choice." Via declares **time (hours) as the corridor-solve
+currency**: 0014 documents the absence of any boat-propulsion energy
+cost commensurable with walking metabolic cost, so per the dossier a
+joint currency must be time or a declared price vector — and time is
+the only *citable* cross-mode currency (Livingood 2012 solves in
+time; ORBIS solves its cheapest-route channel on the Edict price
+vector and its fastest-route channel in time). Freight-price vectors
+(Masschaele 8:4:1; the Edict's 1:5:10:52) are within-era cargo
+economics, adopted later by the freight-catchment mechanism at the
+settlement stage — not by the era-0 route skeleton.
 
 - **Land time** — Tobler (1993): W = 6·e^(−3.5·|S + 0.05|) km/h, S =
   dh/dx (dimensionless gradient — Herzog's two misuse traps are
   honored: gradient units, and the function returns a speed that must
-  be inverted to time). Base function, on-path form, unmodified — the
-  ×0.6 off-path and ×1.25 horseback multipliers are not applied (the
-  latter is asserted without data; 0013). Label: standard, with the
-  provenance caveat that NCGIA 93-1 is a technical report (empirical
-  basis Imhof 1950).
+  be inverted to time). The base on-path function is used unmodified,
+  which is Livingood's own precedent ("Foot = Tobler unmodified",
+  0014) in a landscape that has no paths yet; the ×0.6 off-path
+  multiplier is exposed as config `offpath_factor` (default 1.0,
+  declared — note a global land factor is LCP-neutral on land but
+  shifts the land:water mode share, which is exactly the ratio 0014
+  records as outcome-deciding); the ×1.25 horseback multiplier is
+  not applied (asserted without data; 0013). Label: standard, with
+  the provenance caveat that NCGIA 93-1 is a technical report
+  (empirical basis Imhof 1950).
 - **Switchback envelope on time** — the Llobera & Sluckin (2007)
   Eq. 20 criterion, M(s) − s·M′(s) = 0, applied to Tobler's own time
   function has closed-form roots **s_crit = ±1/3.5 ≈ ±0.2857** (on
   the smooth branches, T ∝ e^(±3.5(s+0.05)) gives T − sT′ =
-  T(1 ∓ 3.5s)): beyond ±0.2857 the cell is traversed at the critical
-  gradient with horizontal length inflated by |s|/s_crit — continuous
-  at the seam by construction, anisotropy-free by symmetry of the
-  roots, and corroborated by Herzog's statement that Tobler's
-  critical slope is 25–30% (IA36). This keeps steep terrain finite
-  and switchback-priced instead of exponentially divergent — no
-  binary passability mask, per the 0008 refusal. Label: standard
-  criterion (L&S) on a standard function (Tobler); the closed-form
-  derivation is recorded above and is checkable by hand.
+  T(1 ∓ 3.5s); the +0.05 offset cancels as a constant factor, and the
+  kink at −0.05 lies between the roots): beyond ±0.2857 the cell is
+  traversed at the critical gradient with horizontal length inflated
+  by |s|/s_crit — tangent (C¹) at the seams by construction, and
+  corroborated by Herzog's statement that Tobler's critical slope is
+  in the range 25–30% (IA36 §5.1.4.2, verified in 0014). This keeps
+  steep terrain finite and switchback-priced instead of exponentially
+  divergent — the continuous alternative to a binary passability
+  mask, the virtue 0013 records for the L&S envelope. Enveloping
+  beats clamping here: clamped-Tobler descent of a 100% grade would
+  cost 0.38 h per horizontal km against the envelope's 1.33 h,
+  cheap enough to reroute scarp crossings past real passes. All
+  per-distance costs in this ADR are applied per horizontal metre;
+  the ≤ 4% along-slope length discrepancy inside the envelope range
+  is absorbed as declared.
 - **Energy spectrum (land only, not the solve currency)** — the
   Herzog IA36 §5.1.4.3 sixth-degree refit of Minetti 2002,
   Cost(s) = 1337.8·s⁶ + 278.19·s⁵ − 517.39·s⁴ − 78.199·s³ +
-  93.419·s² + 19.825·s + 1.64 J/kg/m, no abs(), clamped to the
-  ±0.45 fit range (via's inference, benign — the even-degree fit
-  rises at both extremes), with the **L&S published critical
-  gradients +0.28/−0.22 m/m frozen as its envelope constants**. The
-  values are not recomputed from the sextic: 0014 records via's
-  verification that Eq. 20 is multi-rooted on the sextic's downhill
-  limb (fit oscillation at −0.41/−0.33/−0.14), so recomputation would
-  require an arbitrary root-selection rule. Envelope constants from
-  the primary, traversal polynomial from its primary, the pairing
-  declared: standard links, via assembly. This **freezes the deferred
-  movement-cost values** (ADR 0011 D4/D7): L&S gradients as stated;
-  Herzog refit as stated; Pandolf/Santee (load parameter, downhill
-  correction) recorded as the load-bearing extension when a pack
-  model is needed, with Santee's TN03-3 validity limits (1.12–1.34
-  m/s, ≤ 27 kg) carried from 0013. The energy spectrum ships per
-  trunk edge (Decision 5); a time-vs-energy corridor divergence
-  panel is a QA diagnostic (D10), never a gate.
+  93.419·s² + 19.825·s + 1.64, in J/kg/m — the primary prints
+  "kilo-joule" per kg per metre, a label slip corrected by 0013's
+  note (the constant term is Minetti's measured level-walking
+  1.64 J/kg/m); no abs(); clamped to the ±0.45 fit range (via's
+  inference, benign — the even-degree fit rises at both extremes).
+  The envelope takes the **min form**: cost(s) = min(clamped
+  polynomial, C(s_c)·|s|/s_c) with the **L&S published critical
+  gradients +0.28/−0.22 m/m frozen as the ray constants** — min
+  because the frozen constants come from a different polynomial
+  (L&S's own quartic), so the ray can cross the sextic on the uphill
+  limb (+0.28 to +0.38) and taking the min restores the
+  cheaper-strategy semantics the construction encodes. The constants
+  are not recomputed from the sextic: 0014 records via's verification
+  that Eq. 20 on the sextic is single-rooted uphill (+0.3814) but
+  multi-rooted downhill (−0.41/−0.33/−0.14, fit oscillation), so
+  recomputation would need an arbitrary root-selection rule. Envelope
+  constants from their primary, traversal polynomial from its
+  primary, the pairing declared: standard links, via assembly. This
+  **freezes the deferred movement-cost values** (ADR 0011 D4/D7):
+  L&S gradients as stated; Herzog refit as stated; Pandolf/Santee
+  (load parameter, downhill correction) recorded as the load-bearing
+  extension when a pack model is needed, with Santee's TN03-3
+  validity carried from 0013 as pairs — derived at 1.34 m/s with
+  loads to 18.1 kg, field-valid at 1.12 m/s to 27 kg, not acceptable
+  at 0.89 m/s. Per 0013's caveat, the sextic's curve *shape* is the
+  citable content (ten elite mountain athletes); absolute J/kg
+  magnitudes carry that caveat in the summary. The energy spectrum
+  ships per trunk edge (Decision 5); a time-vs-energy corridor
+  divergence panel is a QA diagnostic (D10), never a gate.
 - **Maximum practical grade** (research 0011's open question) —
   resolved: for foot/pack it is not a cap but the metabolic
   switchback transition above (L&S); the USFS 1935 ruling grade
@@ -122,72 +161,121 @@ the settlement stage — not by the era-0 route skeleton.
 
 The first corridor era is pre-wheel land movement plus small-craft
 water movement — the base layer every later era palimpsests onto.
-The multimodal graph is node-split: each cell has a land node (dry
-land: `receivers[i] ≠ i` and `water_depth = 0`) and/or a water node
-(admissible water), with switch edges between them. Movement rules,
-each config-declared with provenance:
+The multimodal graph is node-split: each cell has a land node and/or
+a water node, with switch edges between them. Movement rules, each
+config-declared with provenance:
 
-- **Foot** on land nodes per Decision 2. Grid geometry per Herzog:
-  **16-neighbour moves (Queen + Knight)**, Knight's moves subdivided
-  into two submoves paying interpolated costs, bringing worst-case
-  route displacement from 20% to 11% of path length (IA36; A/B-moves
-  recorded as the upgrade if 11% ever shows in QA). Costs strictly
-  positive; deterministic tie-breaks (cost, then node index).
+- **Foot** on land nodes per Decision 2. Land nodes exist on dry land
+  (`receivers[i] ≠ i`, `water_depth = 0`) **and on standing-water
+  cells passing the wading caps below** (crossability there equals
+  depth by the ADR 0011 identity) — otherwise an ankle-deep pond
+  would be a harder barrier than a torrent. Grid geometry per Herzog:
+  **16-neighbour land moves (Queen + Knight)**, Knight's moves
+  subdivided into two submoves paying interpolated costs, bringing
+  worst-case route displacement from 20% to 11% of path length
+  (IA36; A/B-moves recorded as the upgrade if 11% ever shows in QA).
+  Costs strictly positive; deterministic tie-breaks (cost, then node
+  index).
+- **No corner-cutting.** A diagonal move — and each Knight submove —
+  additionally *straddles* the two corner cells {(x1,y2), (x2,y1)}.
+  Declared straddle rule: if both straddled cells are river cells,
+  the move is a crossing — the cheaper straddled cell must pass the
+  wading caps and the wading delay is charged; if both straddled
+  cells are otherwise land-inadmissible (ocean, or standing water
+  failing the caps), the move is inadmissible. Without this rule a
+  diagonal between two dry cells jumps a diagonally-stepping channel
+  while entering no river cell — the review probe counted 2,705 such
+  sites on the reference run (m4c-research-s42), where they would
+  have been the *only* crossings. This is the barrier half of
+  Herzog's subdivision requirement ("cannot skip barriers"), stated
+  as via's explicit rule. Water moves mirror it: a diagonal water
+  move whose straddled cells are both land is inadmissible (a boat
+  does not squeeze between touching corners of a spit).
 - **River crossings** — rivers are barriers pierced by fords (Herzog's
   rule; the ADR 0011 crossability spectrum is the piercing
-  instrument). A land move entering a river cell (strahler > 0) is
-  admissible iff the cell's emitted crossability, depth, and velocity
-  pass the Cox/AIDR people-stability caps — config, defaults
-  `ford_max_dv = 0.8` m²/s (the recommended working limit for trained
-  or well-equipped persons), `ford_max_depth_m = 1.2`,
-  `ford_max_velocity_ms = 3.0` (independent caps; all Cox, Shand &
-  Blacka 2010 / Guideline 7-3 via 0013) — and charges a wading delay
-  `ford_delay_hours` (default 0.25; declared forcing, provenance
-  Livingood 2012 Table 10.1, whose flow-banded crossing delays run
-  0–30 min). Above the caps the cell is land-impassable — a cited
-  stability limit, not an authored mask. All three caps read emitted
-  spectra, so ford admissibility is k_Q-conditional; the summary says
-  so.
+  instrument). A land move entering — or, per the straddle rule,
+  crossing — a river cell (strahler > 0) is admissible iff the
+  cell's emitted crossability, depth, and velocity pass the Cox/AIDR
+  people-stability caps — config, defaults `ford_max_dv = 0.8` m²/s
+  (the recommended working limit for trained or well-equipped
+  persons), `ford_max_depth_m = 1.2`, `ford_max_velocity_ms = 3.0`
+  (independent caps; all Cox, Shand & Blacka 2010 / Guideline 7-3
+  via 0013) — and charges `ford_delay_hours` (default 0.25; declared
+  forcing, provenance Livingood 2012 Table 10.1, whose flow-banded
+  crossing delays run 0–30 min). The delay is charged **per entering
+  or crossing move**, so a multi-cell channel charges once per cell
+  of width (cell-size-dependent by construction, declared) and
+  walking *along* a channel pays it every step — intended, it prices
+  riverbed travel out (the riverbed-LCP artifact Herzog warns of).
+  Above the caps the cell is land-impassable — a cited stability
+  limit, not an authored mask.
 - **Small craft** on water nodes: admissible on the ADR 0011
-  navigable-predicate cells (rivers and still water); speed =
+  navigable-predicate cells (rivers and still water); water moves are
+  **8-neighbour** (channels are one cell wide; 16-neighbour is a
+  land-mode geometry and would only add corner-cut exposure); speed =
   `canoe_speed_kmh` (default 4.0; Livingood 2012: "probably any value
-  between 3.5 and 5 km/hr could be defended") **plus the cell's
-  emitted ford_velocity downstream, minus it upstream** (his "plus or
-  minus the speed of the current"; ORBIS's 65/15 km-per-day civilian
-  asymmetry is the corroborating anchor). An upstream edge whose net
-  speed is ≤ 0 is inadmissible — towing is a later-era mode. Still
-  water: base speed both directions. Label: standard values, via
-  assembly (via gates admissibility on its own navigability predicate
-  instead of Livingood's 100 cfs threshold, which is a declared
-  substitution — a fixed-flow threshold would be k_Q-conditional
-  anyway).
+  between 3.5 and 5 km/hr could be defended") **plus the mean of the
+  two cells' emitted ford_velocity downstream, minus it upstream**
+  (his "plus or minus the speed of the current"; ORBIS's 65/15
+  km-per-day civilian asymmetry is the corroborating anchor). An
+  upstream edge whose net speed is ≤ 0 is inadmissible — towing is a
+  later-era mode. Still water: base speed both directions. Label:
+  standard values, via assembly (via gates admissibility on its own
+  navigability predicate instead of Livingood's 100 cfs threshold —
+  a declared substitution; a fixed-flow threshold would be
+  k_Q-conditional anyway). The continuous navigability_ts spectrum
+  is deliberately **not consumed at era 0** — the banded predicate
+  suffices for small craft; the spectrum's recorded future consumer
+  is era-graded admissibility for larger vessel classes.
 - **Coastal water** (config `coastal_mode`, default on): admissible on
   the coastal-water ribbon (ocean cells with a land D8 neighbour —
-  the fetch domain) at `coastal_speed_kmh` (default 4.0). **Declared
-  forcing, flagged**: no citable era-0 coastal speed exists without a
-  wind climatology (ORBIS's sea legs are wind-driven sail; the
-  wind-weighted family is already the recorded harbour upgrade path).
-  Cabotage parity with the canoe base is the declaration, not a
-  finding. `coastal_exposure_cap_m` (default off) optionally closes
-  high-fetch cells to era-0 craft, reading the emitted fetch
-  spectrum.
-- **Mode switches**: a land↔water edge between adjacent (or
-  co-located) admissible nodes costs `transship_hours` (default 0.25;
-  declared forcing — 0014 documents the literature gap: ORBIS prices
-  transshipment at zero, Livingood's half-crossing table is the only
-  quantified precedent, Page 2026 is paywalled). Affordance *value*
-  stays emergent, per ADR 0011 D3: heads of navigation and river
-  mouths acquire centrality because switches happen there, never by
-  authored weight. Harbour-component-weighted switch penalties are
-  recorded as the ship-era rule (the D5 harbour contract is consumed
-  by this stage's later eras, not era 0 — small craft land anywhere).
+  the fetch domain; per-landmass by construction, which Decision 4's
+  component rule handles) at `coastal_speed_kmh` (default 4.0).
+  **Declared forcing, flagged**: no citable era-0 coastal speed
+  exists without a wind climatology (ORBIS's sea legs are wind-driven
+  sail; the wind-weighted family is already the recorded harbour
+  upgrade path). Cabotage parity with the canoe base is the
+  declaration, not a finding. `coastal_exposure_cap_m` (default off)
+  optionally closes high-fetch cells to era-0 craft, reading the
+  emitted fetch spectrum.
+- **Mode switches**: a land↔water edge between the two nodes of a
+  cell, or between adjacent admissible nodes of opposite classes,
+  costs `transship_hours` (default 0.25; declared forcing — 0014
+  documents the literature gap: ORBIS prices transshipment at zero,
+  Livingood's half-crossing table is the only quantified precedent,
+  Page 2026 is paywalled). Affordance *value* stays emergent, per
+  ADR 0011 D3: heads of navigation and river mouths acquire
+  centrality because switches happen there, never by authored
+  weight. Harbour-component-weighted switch penalties are recorded
+  as the ship-era rule (the D5 harbour contract is consumed by this
+  stage's later eras, not era 0 — small craft land anywhere).
 
-The ADR 0011 D5 contract is thereby consumed: heights/receivers
-(cost geometry), crossability + ford fields (piercing), navigability
-predicate + ford_velocity (water admissibility and asymmetry), site
-sets (Decision 4 nodes), fetch (optional exposure cap), with
-harbour depth-window/sediment deferred to ship eras and slope/
-freshwater_dist/coast_dist available to consumers unchanged.
+**Declared degeneracy at the k_Q placeholder.** Under the shipped
+`k_q_m3s_per_unit = 1.0` placeholder and the default caps, the
+reference run (m4c-research-s42, suitability defaults) has **100% of
+its 8,464 channel cells land-impassable** (median D·V 7.96 m²/s) and
+**4 navigable channel cells — the mouths themselves**: the ford and
+river-highway machinery is provably inert, and the emergent network
+shape (headwater detours, coastal hugging) is in large part an
+artifact of one uncalibrated forcing constant. This is honest
+conditionality only when stated: the summary carries a mandatory
+**degeneracy panel** (ford-passable channel fraction, navigable
+channel fraction, per-mode admissible-edge counts), and **k_Q
+calibration — or a declared reference k_Q with provenance — is a
+prerequisite for any corridor-derived number being quoted as
+evidence**, the same status the order ensemble has for trunk
+numbers (Decision 4).
+
+The ADR 0011 D5 contract is thereby consumed or explicitly
+dispatched: heights/receivers (cost geometry), crossability + ford
+fields (piercing), navigability predicate + ford_velocity (water
+admissibility and asymmetry), the saddle and head-of-navigation site
+sets (Decision 4 nodes), fetch (optional exposure cap) — while the
+navigability spectrum (above), the confluence sites with their
+symmetry ratio (rejected as endpoints, Decision 4 — their value
+emerges in traffic), the harbour depth-window/sediment components
+(ship eras), and slope/freshwater_dist/coast_dist (available to
+consumers unchanged) are declared rather than silently dropped.
 
 ## Decision 4 — Network extraction: an endpoint-honest density spectrum and a site-anchored trunk graph
 
@@ -195,47 +283,78 @@ Two representations, both adopted from 0014, shipping side by side
 with no composite:
 
 - **Corridor density (FETE)** — White & Barber (2012): a uniform
-  lattice (config `lattice_spacing_cells`, default 16) of sources on
-  dry-land nodes; least-cost paths between all directed lattice pairs
-  over the full multimodal graph; **per-cell traversal counts**
-  accumulated into a u32 raster. Endpoint-honest (the lattice is the
-  declared endpoint structure; spacing is the efficiency knob, with
-  the paper's robustness finding that high-traffic routes persist
-  across spacings). The raster ships raw — spectra over taxonomy; the
+  lattice of sources on dry-land nodes (config
+  `lattice_spacing_cells`; default = grid side / 32, i.e. 16 on the
+  512² reference — size-relative so the default never silently
+  under-samples or explodes); least-cost paths between all directed
+  lattice pairs over the full multimodal graph; **per-cell traversal
+  counts** accumulated into a u32 raster. Counts are directed:
+  A→B and B→A both count, the paper's own procedure — a consumer
+  reading undirected flow halves it. Endpoint-honest (the lattice is
+  the declared endpoint structure; spacing is the efficiency knob,
+  with the paper's robustness finding — established on a land-only
+  graph, flagged as such — that high-traffic routes persist across
+  spacings). The raster ships raw — spectra over taxonomy; the
   Pareto 80/20 threshold is recorded as the cited rendering default
   (a tunable quantile, not a law — 0014 notes the power-law claim is
   asserted, not fitted). Water legs participate, so river highways
-  and portages appear in density mechanically. Path counting is
-  integer, so parallel accumulation over sources is order-independent
-  and the stage stays bit-deterministic (recorded deviation from the
-  suitability ADR's "stays sequential" wording, with this
-  justification). **Boundary bias is a known, undocumented-in-the-
-  literature artifact**: density is suppressed near study-area edges;
-  it ships as a QA note and rendering halo, never a gate (0014).
+  and portages can appear in density mechanically — at calibrated
+  k_Q, per Decision 3's degeneracy declaration. Label: standard
+  mechanism (White & Barber 2012), via cost model and multimodal
+  graph — declared adaptations: 16-neighbour land moves (Herzog),
+  water participation (the paper flags water off-limits), the
+  size-relative lattice default. Scaling is declared, not silent:
+  the solve is Θ((N/spacing²) · N log N) plus O(N) accumulation per
+  source over the predecessor DAG (subtree counts, the intended
+  implementation — never per-target path walks), and the definition
+  gate doubles it; `validate()` **rejects configs whose directed
+  pair count exceeds u32::MAX** (the silent-wrap cliff sits ~16×
+  above an 8192²/spacing-16 lattice). Path counting is integer, so
+  parallel accumulation over sources is order-independent and the
+  stage stays bit-deterministic given overflow-freedom (recorded
+  deviation from the suitability ADR's "stays sequential" wording,
+  with this justification). **Boundary bias is a known,
+  undocumented-in-the-literature artifact**: density is suppressed
+  near study-area edges; it ships as a rendering halo in the D10
+  visual channel only — not a gate, not a summary field.
 - **Gateway trunk network (Stahlberg)** — node set = the terrain's
   own gateways, all recomputable from shipped artifacts: **passes**
   (ADR 0011 saddle sites), **heads of navigation**, and **river
   mouths** (river cells whose receiver is ocean). Confluences are
   deliberately not trunk endpoints — they are water-water junctions
-  whose value emerges in traffic (density; water legs), per ADR 0011
-  D3. Pair set K = the **Gabriel graph in cost-distance space**
-  (Groenhuijzen & Verhagen 2017: empirically the best archaeological
-  site-graph; symmetrized cost-distances per Herzog, averaged over
-  both directions), followed by a connectivity check (Herzog's
-  warning on fragmenting prunes; if K leaves components, the
-  cheapest inter-component pairs are added — declared rule). Insertion
-  order = **ascending symmetrized cost-distance** — Molinero &
-  Hernando's decreasing-demand rule under uniform masses (no
-  populations exist yet; gravity with equal masses degenerates to
-  ascending distance), which keeps the order deterministic and
-  authored-weight-free. Each connection is routed by least-cost path
-  with **built edges discounted by `reuse_alpha`** (default 0.45, the
-  midpoint of Stahlberg's fitted [0.4, 0.5]; single-region fit,
-  portability flagged) — the path-dependence mechanism, and the
-  archaeology-citable form of corridor consolidation. Label: standard
-  links (Stahlberg mechanism, G&V pruning, Molinero ordering), via
-  assembly — 0014's negative finding that no published pipeline
-  combines them is restated in the summary provenance.
+  whose value emerges in traffic, per ADR 0011 D3; on the reference
+  run they would add 461 endpoints (m4c-research-s42, suitability
+  defaults) and swamp K with river-parallel land edges. Pair set K =
+  the **Gabriel graph in cost-distance space** (Groenhuijzen &
+  Verhagen 2017, abstract-verified: empirically the best-performing
+  archaeological site-graph in the one published comparison, run on
+  cost-distances; symmetrized per Herzog, averaged over both
+  directions). **Pairs with no admissible path are exempt from
+  everything that follows**: the trunk graph is built per reachable
+  component (the coastal ribbon is per-landmass, so multi-landmass
+  maps legitimately partition), the summary records the component
+  partition of the node set, and connecting landmasses is a future
+  declared mode (open-water crossing), never a patch rule. Within a
+  reachable component, if the Gabriel prune leaves sub-components
+  (Herzog's fragmentation warning), a Kruskal-style patch applies:
+  while more than one sub-component remains, add the globally
+  cheapest cross-component pair by symmetrized cost-distance, ties
+  by node-index pair. Insertion order = **ascending symmetrized
+  cost-distance, ties by node-index pair** — Molinero & Hernando's
+  decreasing-demand rule under uniform masses (no populations exist
+  yet; gravity with equal masses degenerates to ascending distance),
+  deterministic and authored-weight-free. Each connection is routed
+  by least-cost path with **built land edges' time multiplied by
+  `reuse_alpha`** (default 0.45, the midpoint of Stahlberg's fitted
+  [0.4, 0.5]; single-region fit, portability flagged) — Stahlberg's
+  multiplicative rule exactly; water and switch edges are never
+  discounted (you do not build a river — a declared rule, no
+  precedent either way per 0014). A trunk path may pass through a
+  third site; the edge is left intact (junctions capture it,
+  Decision 5). Label: standard links (Stahlberg mechanism, G&V
+  pruning, Molinero ordering), via assembly — 0014's negative
+  finding that no published pipeline combines them is restated in
+  the summary provenance.
 
 The order-sensitivity of sequential insertion is real (Stahlberg's
 inferred-order machinery exists because order matters); the recorded
@@ -249,20 +368,39 @@ The stage writes, namespaced `corridors.<label>.*` (label rules and
 manifest registration exactly as ADR 0011; one `StageRecord` keyed
 `corridors.<label>`):
 
-- `corridor_density.vrast` (u32) — FETE traversal counts.
+- `corridor_density.vrast` (u32) — FETE directed traversal counts.
 - `trunk.vrast` (u32) — per cell, the number of trunk edges whose
   path traverses it.
-- `hours_to_sea.vrast` (f32) — multimodal accumulated time from the
-  tidewater source set (coastal-water nodes and ocean-adjacent land
-  nodes at zero); `f32::MAX` = unreachable, the suitability sentinel.
+- `hours_to_sea_land.vrast` and `hours_to_sea_water.vrast` (f32) —
+  multimodal accumulated time from the tidewater source set
+  (coastal-water nodes and ocean-adjacent land nodes at zero),
+  **projected per node class** — a single min-projected raster would
+  make any per-cell consistency check ill-posed across the
+  transshipment seam; `f32::MAX` = no node or unreachable, the
+  suitability sentinel. Settlement's market-access reading is the
+  land raster.
+- `hours_to_trunk.vrast` (f32) — land-node accumulated time to the
+  nearest trunk-path cell (sources: every cell traversed by any
+  trunk edge, in its traversal mode, at zero), so the settlement
+  stage never reimplements the movement model to compute attachment
+  cost.
 - Summary JSON `corridors.<label>.json`: config echo; provenance
-  labels per output; the trunk **node records** (site class, cell,
-  x/y) and **edge records** in fixed order (endpoint node indices,
-  time cost in each direction, land-leg energy in J/kg — water-leg
-  energy has no citable form, 0014, and is null with the absence
-  stated —, path length in metres, and the full path as a cell-index
-  list); `metric_values_conditional_on_k_q: true` on every water-
-  derived quantity; `checks`; `artifact_blake3`.
+  labels per output; the degeneracy panel (Decision 3); the trunk
+  **node records** (site class, cell, x/y, component id) and **edge
+  records** in fixed order (endpoint node indices, undiscounted
+  traversal time in each direction — the α-state solve costs are
+  internal to construction and not artifact fields —, land-leg
+  energy in J/kg per direction (water-leg energy has no citable
+  form, 0014, and is null with the absence stated), path length in
+  metres, and the path as a list of **(cell, mode) steps** — mode ∈
+  {land, water}, switches implied by mode change — so consumers can
+  site ports without re-deriving modes); **junction records**: build
+  the union graph of trunk paths (cells as vertices, consecutive
+  steps as edges); a junction is a vertex of degree ≥ 3 or a trunk
+  endpoint — mechanically derived, no authored weight — recorded as
+  (cell, x/y, degree, incident edge ids); the component partition;
+  `metric_values_conditional_on_k_q: true` on every water-derived
+  quantity; `checks`; `artifact_blake3`.
 - **No `.vgeo`.** Cell-path records serve every internal consumer;
   no external tool needs to read corridors; the deferred per-feature
   schema obligation stays with morphology (ADR 0009 D3, the ADR 0011
@@ -270,51 +408,61 @@ manifest registration exactly as ADR 0011; one `StageRecord` keyed
 
 Contract onward (ADR 0009 D2 spirit — content fixed here, field-level
 schema fixed with the implementation): `via-settlement` consumes the
-trunk node/edge records (a settlement attached to a corridor derives
-its D2 attachment — bearing from the path geometry at the attachment
-cell, class from the edge's era layer, route cost from the recorded
-time — by construction), the corridor-density spectrum (seed
-covariate), and `hours_to_sea` (market-access proto-field). Era-0
-edges all carry class `foot_trail`; the class enum grows with era
-layers (Decision 7).
+trunk node/edge/junction records (a settlement attached to a corridor
+derives its D2 attachment — bearing from the path geometry at the
+attachment cell, class from the edge's era layer, route cost from the
+recorded time — by construction), the corridor-density spectrum
+(seed covariate), `hours_to_sea_land` (market-access proto-field),
+and `hours_to_trunk` (attachment cost). Era-0 edges all carry class
+`foot_trail`; the class enum grows with era layers (Decision 7).
 
 ## Decision 6 — The gates
 
-All binary, all D1 internal-consistency, unevaluable is fail; every
-recomputation reads the artifacts back from disk (the ADR 0011
-discipline):
+All binary, all D1 internal-consistency, unevaluable is fail;
+enforced as in-stage hard errors and as cargo tests (the repo's CI
+channel, as ADR 0011); every recomputation reads the artifacts back
+from disk:
 
 - **Determinism**: byte-identical artifacts and hashes on re-run.
   Parallel FETE accumulation is admissible only because counts are
-  integers summed per source raster in fixed order; everything else
-  stays sequential. Hashes witness same-platform reruns (libm scope,
-  as ADR 0011).
+  integers (commutative addition) and the config guard excludes
+  overflow; everything else stays sequential. Hashes witness
+  same-platform reruns (libm scope, as ADR 0011).
 - **Grid agreement**: every raster matches heights_cm's geometry.
-- **Density definition**: `corridor_density` equals a full recompute
-  from the disk-read inputs (terrain + suitability rasters + config)
-  — the stage pays the 2× cost; a cheaper witness would not verify
-  the definition.
+- **Definition gates by full recompute**: `corridor_density`, both
+  `hours_to_sea_*` rasters, and `hours_to_trunk` each equal a full
+  re-solve from the disk-read inputs (terrain + suitability rasters
+  + config) through the same code path — byte-identical. The stage
+  pays the 2× cost; a cheaper witness would not verify the
+  definition, and edge-relaxation fixpoint checks are structurally
+  false-positive-prone here (mode mixing across the transshipment
+  seam; f64→f32 rounding at exact-equality relaxations), so the
+  fixpoint formulation is demoted to a QA diagnostic with a stated
+  ulp tolerance, never a gate.
 - **Density bounds**: every cell ≤ the directed lattice-pair count;
-  lattice source cells carry ≥ 1.
+  every lattice source cell **reachable from at least one other
+  source** carries ≥ 1 (an isolated source on a private component
+  legitimately carries 0).
 - **Trunk identities**: every edge's stored path is connected under
-  the declared move set with every step admissible; recomputed
-  direction costs along the stored path equal the stored costs
-  (exact f32, same code path); endpoints equal the declared node set
-  (recomputed from disk artifacts — saddle sites from the summary,
-  heads from the predicate raster, mouths from receivers/strahler);
-  `trunk.vrast` equals the traversal counts derived from the stored
-  paths.
-- **Bellman optimality**: `hours_to_sea` is a fixpoint — no admissible
-  edge (j → i) has hours[j] + cost(j,i) < hours[i], recomputed from
-  disk; source cells are exactly the declared tidewater set at 0.
+  the declared move set with every step admissible **including the
+  straddle rule on diagonal and Knight submoves**; recomputed
+  undiscounted direction costs along the stored path equal the
+  stored costs (exact f32, same code path); endpoints equal the
+  declared node set (recomputed from disk — saddle sites from the
+  suitability summary, heads from the predicate raster, mouths from
+  receivers/strahler); `trunk.vrast` equals the traversal counts
+  derived from the stored paths; junction records equal the union-
+  graph recomputation.
 - **Preconditions**: config `validate()` (positivity, finiteness,
-  domains, `deny_unknown_fields`), receiver range validation, and
+  domains, the directed-pair-count u32 guard,
+  `deny_unknown_fields`), receiver range validation, and
   input-artifact validity run before any gate; corrupt inputs fail
   loudly.
 
 QA diagnostics (D10 visual channel, never in CI or the summary):
 the boundary-bias halo on density; time-optimal vs energy-optimal
-trunk divergence; density/trunk overlay against the affordance panel.
+trunk divergence; density/trunk overlay against the affordance
+panel; the demoted Bellman fixpoint check with ulp tolerance.
 
 ## Decision 7 — Era structure and dispatch of the bearing open questions
 
@@ -350,7 +498,8 @@ trunk divergence; density/trunk overlay against the affordance panel.
   literature absences (Filet & Rossi 2025 and Page 2026 are the
   flagged retrievals that could replace them); FETE boundary bias is
   characterized visually, not corrected; k_Q conditionality pervades
-  every water-derived number.
+  every water-derived number, with the placeholder's degeneracy
+  declared in Decision 3.
 
 ## Consequences
 
@@ -362,22 +511,27 @@ trunk divergence; density/trunk overlay against the affordance panel.
   gradients, Herzog refit, and the Pandolf/Santee load extension are
   frozen with their primaries; the multi-rooted-sextic finding is on
   record in 0014.
+- **The k_Q calibration experiment is promoted from "recorded idea"
+  to prerequisite**: no corridor-derived number is evidence before a
+  declared reference k_Q exists (Decision 3).
 - `via-corridors` enters the workspace as a stage crate (serde +
   via-artifact only; via-viz gains a corridor panel; the CLI a
   `corridors` subcommand over an existing run dir).
 - The stage introduces the workspace's first weighted-graph solver
-  (16-neighbour, node-split, predecessor-tracked); via-suitability's
-  private distance Dijkstra is unrelated and stays private.
+  (16-neighbour land / 8-neighbour water, node-split,
+  predecessor-tracked, straddle-checked); via-suitability's private
+  distance Dijkstra is unrelated and stays private.
 - Deferred by this ADR, recorded: A/B-moves (7×7 neighbourhood) if QA
   shows grid artifacts; MADO accumulations from affordance sites as
   an additional QA/render channel; circuit-theory redundancy audit
   (isotropic, symmetrized) as a possible future diagnostic; the
   Helbing self-consistent-field solve as a spike candidate for
-  emergent bundling; wind climatology for sea legs.
-- Runtime honesty: the density definition gate doubles the FETE cost
-  by design; the reference grid pays minutes, not hours. If grid
-  sizes grow past feasibility, the lattice spacing is the declared
-  knob — never silent sampling.
+  emergent bundling; wind climatology for sea legs; inter-landmass
+  crossings as a declared open-water mode.
+- Runtime honesty: the definition gates double the solve cost by
+  design; the reference grid pays minutes, not hours, and the
+  scaling law plus the size-relative lattice default are stated in
+  Decision 4 — never silent sampling.
 
 ## Rejected
 
@@ -402,14 +556,22 @@ trunk divergence; density/trunk overlay against the affordance panel.
   Density and trunk ship separately; any combination is consumer
   config (the ADR 0011 no-composite precedent).
 - **Confluences as trunk endpoints.** Water-water junctions; their
-  gateway value emerges in traffic. Adding 461 endpoints would also
-  swamp K with river-parallel land edges.
+  gateway value emerges in traffic; and the endpoint count (461 on
+  the reference run) would swamp K with river-parallel land edges.
 - **`.vgeo` for corridor routes.** Wrong beneficiary of the deferred
   schema obligation (ADR 0011 precedent); cell-path records suffice.
+- **A min-projected single hours raster.** Mode mixing across the
+  transshipment seam makes every per-cell consistency statement
+  ill-posed; per-node-class rasters cost one file and keep the
+  artifact checkable.
+- **An inter-landmass connectivity patch.** Forcing a trunk edge
+  across open ocean would fabricate a mode the era doesn't have and
+  brick the trunk-identity gate; partition honestly instead.
 - **A hard-coded haul limit, walking-city radius, or era style.**
   0008 refusals; all such figures must emerge or remain config.
-- **8-neighbour-only movement.** Herzog's 20% worst-case route
-  displacement is disqualifying for a stage whose output *is* routes.
+- **8-neighbour-only land movement.** Herzog's 20% worst-case route
+  displacement is disqualifying for a stage whose output *is*
+  routes.
 
 ## References
 
