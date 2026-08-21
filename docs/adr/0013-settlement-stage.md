@@ -372,8 +372,21 @@ fixes the algorithm so the stage and the benchmark cannot drift.
   and the summary states it — the character may simply not
   discriminate at via's n, and that has to be visible rather than
   discovered later. Clauset's `x_min` needs `n_tail ≳ 1000`, which via
-  will not have, so **a fixed threshold is declared instead**. Two
-  conventions are fixed here rather than left to the implementation:
+  will not have, so **a fixed threshold is declared instead**.
+  **A minimum `n` for reporting ζ at all is declared here, because
+  Decision 5's fallback exists precisely because `n` can collapse.**
+  Since `SE = √(2/n)·ζ̂`, the relative width is fixed by `n` alone:
+  ±63.2% at n = 5, ±44.7% at n = 10, ±40.8% at n = 12, ±36.5% at
+  n = 15, ±31.6% at n = 20. **The floor is n = 15 after the largest
+  settlement is excluded**; below it the character is *not reported*,
+  and the run says it was withheld and why rather than quietly
+  printing a number. Publishing an exponent at ±45% would be the same
+  error this ADR rejects Clauset's `x_min` for. Note that even at the
+  floor the interval is wide enough that ζ will rarely separate two
+  candidate mechanisms — which is a fact about via's `n`, not about
+  the estimator, and belongs in the summary next to the number.
+  Two further conventions are fixed here rather than left to the
+  implementation:
   **the largest settlement is excluded from the fit** (Rybski's
   Dragon King handling, and via's primacy character reports it
   separately), and **every reported ζ is accompanied by the occupied
