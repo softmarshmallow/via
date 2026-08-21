@@ -9,3 +9,6 @@ description = "Stage 2 (first slice): affordance fields and threshold-defined si
 serde = { workspace = true }
 serde_json = { workspace = true }
 via-artifact = { workspace = true }
+
+[dev-dependencies]
+blake3 = { workspace = true }

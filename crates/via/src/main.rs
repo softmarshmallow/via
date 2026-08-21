@@ -522,9 +522,9 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
     let inp = rr.viz();
     std::fs::create_dir_all(dir.join("render"))?;
     via_viz::render_suitability(&inp, &out.suitable, &out.patch_rank)
-        .save(dir.join("render/suitability.png"))?;
+        .save(dir.join(format!("render/suitability.{}.png", cfg.label)))?;
 
-    println!("SUITABILITY — gate '{}'", cfg.label);
+    println!("SUITABILITY — criterion '{}'", cfg.label);
     println!("  rank   area_ha   centroid_cell   mean_slope   elev_m   fw_dist_m   coast_m");
     for p in &out.patches {
         println!(
@@ -540,9 +540,13 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
         );
     }
     println!(
-        "\nGATE {}: {}   ({} patch(es) ≥ {} ha)",
+        "\nCRITERION {}: {}   ({} patch(es) ≥ {} ha)",
         cfg.label,
-        if out.gate_pass { "PASS" } else { "FAIL" },
+        if out.criterion_met {
+            "SATISFIED"
+        } else {
+            "NOT SATISFIED"
+        },
         out.patches.len(),
         cfg.min_patch_area_ha
     );

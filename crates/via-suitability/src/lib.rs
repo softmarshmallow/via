@@ -1,8 +1,10 @@
 //! Suitability stage, first slice: generic affordance fields (slope,
 //! freshwater distance, coast distance, elevation) and contiguous patches
 //! passing config thresholds. The stage knows nothing about what a patch is
-//! *for* — the config's `label` names the gate, and the semantics live in
-//! the experiment that supplies the config.
+//! *for* — the config's `label` names the selection criterion (ADR 0011:
+//! curation, not a gate), and the semantics live in the experiment that
+//! supplies the config. Output filenames are namespaced by the label so
+//! multiple configs can share a run directory.
 //!
 //! Reads terrain artifacts from a run directory (stages communicate through
 //! artifacts, never by calling each other) and writes its own artifacts and
@@ -21,8 +23,9 @@ use via_artifact::raster::Raster;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SuitabilityConfig {
-    /// Name of the gate this config defines (e.g. "village_site"). Pure
-    /// labeling; the stage attaches no meaning to it.
+    /// Name of the selection criterion this config defines (e.g.
+    /// "village_site"). Pure labeling; the stage attaches no meaning to it.
+    /// Output filenames are namespaced by it, so it must match `[a-z0-9_-]+`.
     pub label: String,
     /// Maximum steepest-descent slope (rise/run).
     pub max_slope: f64,
@@ -94,7 +97,36 @@ pub struct SuitabilityOutput {
     /// 0 = not in a reported patch; otherwise the patch rank (1 = largest).
     pub patch_rank: Vec<u32>,
     pub patches: Vec<PatchInfo>,
-    pub gate_pass: bool,
+    /// Whether any patch met the config thresholds — the config's selection
+    /// criterion (ADR 0011 D2: curation, not a gate).
+    pub criterion_met: bool,
+}
+
+/// Output filenames are namespaced by the config label; restrict the label
+/// so it can never escape the run directory or collide across configs.
+fn validate_label(label: &str) -> io::Result<()> {
+    let ok = !label.is_empty()
+        && label
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-');
+    if ok {
+        Ok(())
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("config label {label:?} must be non-empty and match [a-z0-9_-]+"),
+        ))
+    }
+}
+
+/// Namespaced raster filename: `suitability.<label>.<name>.vrast`.
+pub fn raster_filename(label: &str, name: &str) -> String {
+    format!("suitability.{label}.{name}.vrast")
+}
+
+/// Namespaced stage-summary filename: `suitability.<label>.json`.
+pub fn summary_filename(label: &str) -> String {
+    format!("suitability.{label}.json")
 }
 
 #[inline]
@@ -236,6 +268,7 @@ fn ensure_grid<T>(name: &str, r: &Raster<T>, base: &Raster<i32>) -> io::Result<(
 
 /// Run the stage against a terrain run directory.
 pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOutput> {
+    validate_label(&cfg.label)?;
     let heights = Raster::<i32>::read_file(&run_dir.join("heights_cm.vrast"))?;
     let receivers = Raster::<u32>::read_file(&run_dir.join("receivers.vrast"))?;
     let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
@@ -328,7 +361,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         });
     }
 
-    let gate_pass = !patches.is_empty();
+    let criterion_met = !patches.is_empty();
     Ok(SuitabilityOutput {
         w,
         h,
@@ -340,7 +373,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         suitable,
         patch_rank,
         patches,
-        gate_pass,
+        criterion_met,
     })
 }
 
@@ -350,36 +383,53 @@ pub fn write_outputs(
     cfg: &SuitabilityConfig,
     out: &SuitabilityOutput,
 ) -> io::Result<()> {
+    validate_label(&cfg.label)?;
     let cell_cm = (out.dx * 100.0).round() as u32;
     let mut hashes = BTreeMap::new();
+    let path = |name: &str| run_dir.join(raster_filename(&cfg.label, name));
+    // Distance fields: unreachable cells carry the f32::MAX sentinel.
+    let dist_f32 = |src: &[f64]| -> Vec<f32> {
+        src.iter()
+            .map(|&v| if v.is_finite() { v as f32 } else { f32::MAX })
+            .collect()
+    };
 
     let slope_f32: Vec<f32> = out.slope.iter().map(|&v| v as f32).collect();
     let r = Raster::from_data(out.w, out.h, cell_cm, slope_f32);
-    r.write_file(&run_dir.join("slope.vrast"))?;
+    r.write_file(&path("slope"))?;
     hashes.insert("slope".to_string(), r.blake3_hex());
 
-    let fw_f32: Vec<f32> = out
-        .freshwater_dist_m
-        .iter()
-        .map(|&v| if v.is_finite() { v as f32 } else { f32::MAX })
-        .collect();
-    let r = Raster::from_data(out.w, out.h, cell_cm, fw_f32);
-    r.write_file(&run_dir.join("freshwater_dist.vrast"))?;
+    let r = Raster::from_data(out.w, out.h, cell_cm, dist_f32(&out.freshwater_dist_m));
+    r.write_file(&path("freshwater_dist"))?;
     hashes.insert("freshwater_dist".to_string(), r.blake3_hex());
 
+    let r = Raster::from_data(out.w, out.h, cell_cm, dist_f32(&out.coast_dist_m));
+    r.write_file(&path("coast_dist"))?;
+    hashes.insert("coast_dist".to_string(), r.blake3_hex());
+
     let r = Raster::from_data(out.w, out.h, cell_cm, out.patch_rank.clone());
-    r.write_file(&run_dir.join("suitability_patches.vrast"))?;
-    hashes.insert("suitability_patches".to_string(), r.blake3_hex());
+    r.write_file(&path("patch_rank"))?;
+    hashes.insert("patch_rank".to_string(), r.blake3_hex());
 
     let report = serde_json::json!({
         "stage": "suitability",
         "config": cfg,
-        "gate": { "label": cfg.label, "pass": out.gate_pass },
+        // ADR 0003 (via ADR 0011 D1): every output declares standard vs
+        // heuristic; keys match `artifact_blake3`.
+        "provenance": {
+            "slope": "standard: steepest-descent slope, D8 convention (O'Callaghan & Mark 1984), on the effective surface (terrain + standing water)",
+            "freshwater_dist": "standard: shortest along-ground distance in the D8 grid metric (multi-source Dijkstra) to the declared freshwater set — river cells (strahler > 0) or standing water >= freshwater_min_depth_m",
+            "coast_dist": "standard: shortest along-ground distance in the D8 grid metric (multi-source Dijkstra) to ocean cells (self-receivers)",
+            "patch_rank": "heuristic (ADR 0003): 4-connected components of the config-thresholded suitability predicate, ranked by area",
+        },
+        // ADR 0011 D2: curation, not a gate — the criterion's semantics live
+        // in the experiment config that names it.
+        "selection": { "criterion": cfg.label, "satisfied": out.criterion_met },
         "patches": out.patches,
         "artifact_blake3": hashes,
     });
     std::fs::write(
-        run_dir.join("suitability.json"),
+        run_dir.join(summary_filename(&cfg.label)),
         serde_json::to_string_pretty(&report)? + "\n",
     )
 }
@@ -416,5 +466,23 @@ mod tests {
         assert_eq!(patches[0].len(), 4);
         assert_eq!(patches[1].len(), 3);
         assert_eq!(patches[0][0], 0); // scan order within the patch
+    }
+
+    #[test]
+    fn labels_are_confined_to_safe_filename_characters() {
+        for ok in ["village_site", "site-2", "a"] {
+            assert!(validate_label(ok).is_ok(), "{ok:?} should be accepted");
+        }
+        for bad in ["", "Village", "a b", "a/b", "../x", "sité"] {
+            assert!(validate_label(bad).is_err(), "{bad:?} should be rejected");
+        }
+        assert_eq!(
+            raster_filename("village_site", "slope"),
+            "suitability.village_site.slope.vrast"
+        );
+        assert_eq!(
+            summary_filename("village_site"),
+            "suitability.village_site.json"
+        );
     }
 }
