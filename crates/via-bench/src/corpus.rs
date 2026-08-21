@@ -247,7 +247,11 @@ pub fn character_figure(rows: &[TownRow], key: &str, label: &str) -> Canvas {
             .collect();
         let vals = finite_values(&fitted, operative, key);
         all.extend(&vals);
-        per_class.push((slug.to_string(), vals));
+        // Each row draws its class's operative set; the one class whose
+        // operative set differs (informal, all_ways) is tagged so the
+        // mixed-set axis is never read as one street set.
+        let tag = if operative == "all_ways" { " AW" } else { "" };
+        per_class.push((format!("{slug}{tag}"), vals));
     }
     if all.is_empty() {
         c.label(left as i32, top as i32, "NO FINITE VALUES", 2);
