@@ -115,10 +115,19 @@ Growth; Cesaretti et al. 2016 — no compiled c_w series exists, 0011)
   ring-road graph structure
 
 **Mortality–density gradient / sanitation regime**
-(Bairoch 1988; Wrigley 1967; Jedwab, Johnson & Koyama 2021 RSUE —
+(Bairoch 1988; Wrigley 1967; Jedwab, Johnson & Koyama, RSUE 94, 2022 —
 gradient slope uncertain, expose in config)
-- medieval: natural growth negative above ~5k (waterborne disease,
-  no sewerage); size = migration-fed equilibrium; bulk 5–20k
+- medieval: natural growth negative; size = migration-fed equilibrium;
+  bulk 5–20k. **Corrected 2026-08-22 (research 0016): the size
+  threshold previously stated here (~5k) was via's own invention — no
+  published d(W) or threshold exists, and Davenport (2020) records
+  market towns of 2,000–3,000 with infant mortality 209–270 per 1,000
+  against under 100 rural. The citable substitute is de Vries (1984)
+  Table 10.1's own modelling assumption — natural decrease 5 per
+  1,000/yr for cities >= 10,000, neither source nor sink for
+  5,000–10,000 — adopted as an assumption he published, not as data.
+  The sign itself is contested: Jedwab & Vollrath (2019) measure +2
+  per 1,000 across 392 pre-1800 city-periods against Wrigley's −10.**
 - frontier 19c: transitional; sanitation engineering diffuses
   post-1850s (declared date forcing)
 - modern: d(ρ) flat, b − d > 0; size decoupled from local

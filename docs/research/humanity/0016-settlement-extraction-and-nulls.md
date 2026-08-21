@@ -402,11 +402,237 @@ failing to find a standard, because none exists. Its own frozen,
 versioned, threshold-free protocol would, if published, be *ahead of*
 surveyed practice rather than behind it.
 
-## Open gaps
+## 6 — The macro budget: the engine cannot supply it
 
-- The macro-closure sweep (what supplies the population budget, and
-  the integrator discipline for a dynamic with documented
-  period-doubling) was still outstanding when this was written.
+The corpus asks what supplies the total regional population budget
+that Harris–Wilson allocates. The literature's answer is unambiguous
+and slightly deflationary: **Harris–Wilson cannot, by construction.**
+
+Three independent primaries state the balancing condition. Osawa,
+Akamatsu & Takayama (2017) [primary], their Eq. 6: "Σ O_i − Σ κ_i h_i
+= 0 … **This conservation equation, which constrains the total number
+of firms at any equilibrium, is equivalent to the 'balancing
+condition' of Harris and Wilson (1978)**." Ellam et al. (2018)
+[primary], Eq. 25: κ = (1/K)(Σ O_i + δM), with "the deterministic
+model converges to an equilibrium with a total size of K units."
+Zachos, Girolami & Damoulas (2024) [primary] give the same κ formula.
+And Osawa's own gloss on what the budget does: "**O and κ change only
+the scale of h**" — the budget sets the scale of the solution, never
+its pattern.
+
+**So the total settled mass is `ΣO_i/κ`, exogenous by construction.
+The macro closure must be declared forcing; there is no endogenous
+option inside this model family.**
+
+### The named lead reframes the question rather than closing it
+
+Verbavatz & Barthélemy (2020), "The growth equation of cities",
+*Nature* 587:397–401 [primary, accepted manuscript; the SI, which
+holds the fitted r and σ, could not be obtained]. Their result:
+
+    ∂_t S_i = η_i S_i + D·S_i^β·ζ_i
+
+with η_i a Gaussian of mean r, and ζ_i a **Lévy-stable** noise of
+index α — "Itô's convention seems here to be the more appropriate."
+Fitted α: France 1.43 ± 0.07, US 1.76 ± 0.07, UK 1.32 ± 0.26, Canada
+1.69 ± 0.12. Degree scaling N(i) ~ S_i^γ with γ ≈ 0.5 (France, US).
+
+Their central claim is a genuine correction to the field: prior work
+"derived a stochastic differential equation with **multiplicative
+Gaussian noise, which we show here to be incorrect**"; growth "is
+dominated by **rare events, namely large interurban migratory shocks,
+rather than by the average growth rate**." And an anti-Zipf result the
+project's validation doctrine should absorb: "**Zipf's law does not
+hold in general due to finite-time effects**", so a power-law fit to
+the upper tail "may be mistaken for a Pareto-tail with a spurious
+exponent that changes with the definition of the upper-tail."
+
+But η_i — the out-of-system growth, mean r — is **exogenous input**,
+exactly as O_i is. **The paper reframes the closure problem; it does
+not solve it.** What it does supply, and this is worth having, is a
+citable *fluctuation law* for era-to-era churn in the hierarchy
+without a Gibrat engine, plus a ready-made dynamics gate: their
+rank-turbulence metric d (mean absolute rank shift per year) is 6.0
+for France 1876–2015 over 500 cities, against 6.1 for their model and
+8.0 for Gabaix's.
+
+Two hazards on import. **Their α and β mean the opposite kind of thing
+from Harris–Wilson's α and β** — rename on sight. And the Lévy time
+scaling is dt^(1/α), not dt^(1/2); getting that wrong silently
+rescales every shock.
+
+### Declarable forcing: what the demographic record actually supports
+
+Growth rates, derived from primaries read in this sweep (McEvedy &
+Jones 1978 full OCR; de Vries 1984 tables; Maddison Project Database
+2023; Broadberry et al. 2015 via Broadberry 2024; Malanima 2010):
+
+| window | %/yr | source |
+|---|---|---|
+| 1000–1300 | +0.27 | McEvedy |
+| 1290–1348 | +0.02 | Broadberry (England, pre-plague stagnation) |
+| 1348–1351 | **−45.9% in three years** | Broadberry (England) |
+| 1348–1450 | −0.91 | Broadberry (England, −60.5% cumulative) |
+| 1500–1600 | +0.24 | de Vries 0.236; McEvedy 0.223; Maddison 0.253 |
+| 1600–1650 | −0.09 | de Vries |
+| 1700–1750 | +0.30 | de Vries 0.292; Malanima 0.323 |
+| 1750–1800 | +0.53 | de Vries 0.529; Malanima 0.551 |
+
+**Single-number fallback: 0.20 %/yr, band [0.15, 0.25]** (McEvedy
+1000–1700 = 0.172; de Vries 1500–1800 = 0.230; Maddison W. Europe
+1500–1700 = 0.181) — a doubling time of ~347 years. Broadberry et
+al.'s own plausibility rule is worth adopting as a sanity gate:
+sustained growth above ~0.6 %/yr for a century is outside anything
+pre-1750 Europe did.
+
+**A caution on apparent breadth:** there are effectively two urban
+databases (Bairoch 1988; de Vries 1984) and one aggregate tradition
+(McEvedy → Maddison → Clio-Infra). Clio-Infra's population series is
+**byte-identical to Maddison** for 1500/1600/1700 — using both is
+double-counting. Maddison has no 1300, 1400, 1750 or 1800 benchmark
+and so **cannot represent a medieval crisis at all**.
+
+**The Black Death has no defensible single number.** Izdebski et al.
+(2022), *Nature Ecology & Evolution* 6:297–306, published a paper
+specifically to kill that practice: across 1,634 pollen samples in 19
+countries, roughly 9 of 21 regions show sharp agricultural decline
+while Ireland, Iberia and central/eastern Europe show uninterrupted
+growth. If a crisis is modelled it should be a **spatial field keyed
+to density and connectivity**, not a scalar. And note that Jedwab,
+Johnson & Koyama (2022) *JEL* state twice that plague death rates were
+similar in urban and rural areas — **the Black Death is not evidence
+for the urban graveyard effect**.
+
+### The graveyard, and the closure that is actually interesting
+
+The mechanism: pre-modern cities ran a burial surplus and required
+net in-migration merely to hold size. Wrigley (1967) on London
+[proxy, via de Vries's verbatim restatement, arithmetic independently
+checked]: mean population ~537,500, natural decrease 10 per 1,000/yr,
+requiring **~8,000 net migrants per year**, or "one-sixth of all
+English births". de Vries (1984) Table 9.4a [primary] gives the
+cleanest gradient — Netherlands 1811, natural increase per 1,000:
+Amsterdam **−11.8**, N. Holland −2.1, S. Holland −0.1, Friesland
+**+5.4** — and the striking detail that **the birth rate is flat
+across the whole gradient (30–34) while mortality swings 24.7 → 45.4**.
+
+**But the sign is contested.** Jedwab & Vollrath (2019), *AEJ:Macro*
+[primary], assembled 392 city-period observations and find pre-1800
+cities averaging **+2.0 per 1,000 — slightly positive** — though on a
+sample conditioned on later success. The full published spread runs
+**−10 (Wrigley) to +2 (Jedwab & Vollrath)**, with de Vries's own
+modelling default at −5 and East Asia showing no urban penalty at all.
+**Sample ν ∈ [0.003, 0.010] rather than hard-coding it.**
+
+**Correction the corpus owes:** `0010-era-parameters.md` asserts
+"medieval: natural growth negative above ~5k". **No published
+threshold exists**, and Davenport (2020) [primary] records market
+towns of 2,000–3,000 people with infant mortality of 209–270 per
+1,000 against under 100 in remote rural parishes. The 5k figure is an
+invention and must be relabelled or replaced by de Vries's own
+two-tier assumption (≥10,000: ν = 0.005; 5,000–10,000: ν = 0), which
+is at least citable *as an assumption he published*.
+
+**The genuinely mechanistic piece.** The binding constraint is not the
+city's death rate but whether the countryside can *produce* the
+migrants:
+
+    migrants_needed = (g + ν)·W_urban
+    rural_births_needed = migrants_needed / 0.667   (survival to age 20)
+    ⇒ steady-state ceiling:  u_max = r_rural / (ν + r_rural)
+
+*(The closed form is algebra on de Vries's identity, not something he
+prints.)* It reproduces his empirics: northern Europe 1600–50 had
+rural natural increase of 0.01 %/yr, giving u_max ≈ 2%, and he
+independently finds that at ~6% urban "urban growth siphoned off
+nearly all the rural surplus" while rural population fell 1.4 million
+in that half-century. **Binding migration on hinterland surplus rather
+than city appetite yields a 5–15% urbanisation ceiling for free, and
+lifts it automatically when rural mortality falls.** That is the
+closest thing to an endogenous element the closure admits.
+
+### Integrator discipline — and a misreading to correct
+
+**The continuous Harris–Wilson dynamic cannot be chaotic.** Ellam et
+al. [primary]: "With the change of variables X_j = ln W_j, the Harris
+and Wilson model in (4) can be expressed as a **gradient flow**." A
+gradient flow on a confining potential has dV/dt ≤ 0 — no limit
+cycles, no strange attractors.
+
+But Wilson (2008) writes the update as a *difference* equation,
+ΔZ_j = ε(D_j − Z_j)Z_j, which is the logistic map with r = 1 + εD_j.
+Using May (1976) [primary, Table I verified]: period-2 at a = 3.0,
+chaos at a_c = 3.5700. **So the stability condition is ε·D_j < 2 for
+the fixed point and < 2.57 for chaos onset** *(the mapping is via's
+algebra on Wilson's equation and May's thresholds; label it as such)*.
+Practically: **any period-doubling or chaos observed in a
+Harris–Wilson run is a numerical artefact of too large a step, not a
+property of the model.** Assert ε·max(D_j) < 0.5 at runtime.
+
+**And the corpus misreads Osawa et al.** Their "period-doubling
+cascade" is **spatial, in parameter space** — Definition 1: "every
+bifurcation exactly halves the number of market centers, doubling the
+spacing between neighboring ones" as transport cost falls. It is not
+temporal chaos.
+
+Published settings, for a defensible default: ε = 1 with dt = 0.01 by
+Euler–Maruyama (Zachos et al.), or ε = 0.01 "so that the model does
+not converge too rapidly" with convergence at Σ(D_j − W_j)² < 1e-5 and
+a 10,000-iteration cap (Peeples & Brughmans). **IPF is not needed at
+all for a singly-constrained model** — A_i is closed-form — and Zachos
+et al. warn that the doubly-constrained form is "unidentifiable" and
+that IPF is "sensitive to initialisation".
+
+**δ > 0 is not optional.** Without it the Gibbs measure is
+unnormalisable (Ellam) *and* abandoned zones are absorbing — Osawa:
+once abandoned, a zone "will never obtain a new retailer regardless of
+the extent of transport costs". With it, the minimum settlement size
+at equilibrium is δ/κ. Two independent lines converge on the same
+device.
+
+### Two findings that reshape what the stage may claim
+
+**Single-good Harris–Wilson on homogeneous space produces
+equal-sized centres, not a size distribution.** Osawa et al., in their
+concluding remarks: "it does not enable different sized regions to
+emerge. To endogenously produce various sized agglomerations, we
+should extend our framework to include multiple types of agents". Their
+equilibria are literally lattices of identical masses. **Therefore all
+size dispersion in a Harris–Wilson settlement model comes from
+heterogeneity the modeller supplies — in O_i, in c_ij, or from
+multiple goods.** For a world-generation project this is arguably the
+good news: the terrain *is* the heterogeneity. But it must be
+declared, because the rank-size distribution measured will be a joint
+product of via's own cost and demand fields, not a prediction of the
+engine.
+
+**No published mechanism derives a Zipf exponent from spatial
+interaction alone.** Wilson (2008) [primary] says so himself, as an
+open problem: "There is a **mathematical challenge**: to find a way of
+explicitly connecting the {Z_j} size distributions that arise in the
+BLV models to the statistical distributions used as measures of
+network structure in the scale-free literature." Nothing since closes
+it. The candidates that *do* produce a power law non-circularly — Hsu
+(2012) [abstract only] and Mori, Akamatsu, Takayama & Osawa (2023)
+[primary] — derive it from heterogeneity in scale economies across
+goods, and neither predicts the exponent; it inherits the tail index
+of an assumed or measured input distribution. Mori et al. are candid:
+their result "may be **loosely related**" to Hsu's.
+
+**The consequence for the project is worth stating plainly: the Zipf
+gate stays non-circular, which is what the doctrine wanted — but the
+engine is not entitled to be graded on passing it.**
+
+### Citation corrections the corpus owes
+
+- Osawa, M., Akamatsu, T. & **Takayama, Y.** (2017), *Journal of
+  Regional Science* **57(3):442–466** — not Kogure, not issue 5.
+- Jedwab, Johnson & Koyama, *RSUE* **94 (2022)**, not 2021.
+- Marsili & Zhang's pairwise-interaction route to Zipf is, by their own
+  statement, a micro-foundation *for* multiplicative noise — circular
+  for this project's purposes.
+
+## Open gaps
 - Clark & Evans (1954), Donnelly (1978), Ripley (1977) and Dacey
   (1962) were **not** read in the original; the first two are verified
   through three agreeing renderings each, the latter two are
