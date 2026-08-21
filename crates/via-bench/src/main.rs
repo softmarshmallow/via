@@ -45,6 +45,13 @@ struct RefArgs {
     /// Protocol identifier; pilot-0 until the freeze (ADR 0010 D3).
     #[arg(long, default_value = "pilot-0")]
     protocol_id: String,
+    /// Which street set the panels draw: carriageway | all_ways.
+    /// Measurement always covers both sets (P4); this flag only picks
+    /// the rendered one, so a class whose operative set is all_ways
+    /// (contemporary informal) can be inspected on its operative
+    /// fabric (ADR 0008 D10).
+    #[arg(long, default_value = "carriageway")]
+    render_set: String,
     /// Metres per pixel in the town panel.
     #[arg(long, default_value_t = 0.85)]
     panel_m_per_px: f64,
@@ -100,6 +107,11 @@ fn parse_centre(s: &str) -> Result<(f64, f64)> {
 }
 
 fn run_reference(a: RefArgs) -> Result<()> {
+    anyhow::ensure!(
+        a.render_set == "carriageway" || a.render_set == "all_ways",
+        "--render-set must be carriageway or all_ways, got {:?}",
+        a.render_set
+    );
     let (lat, lon) = parse_centre(&a.centre)?;
     let protocol = Protocol {
         id: a.protocol_id.clone(),
@@ -144,8 +156,8 @@ fn run_reference(a: RefArgs) -> Result<()> {
         );
         fabrics.insert(set.label().to_string(), serde_json::to_value(&fab)?);
 
-        if set == StreetSet::Carriageway {
-            render_panels(&a, &r)?;
+        if set.label() == a.render_set {
+            render_panels(&a, &r, set)?;
         }
     }
 
@@ -173,7 +185,13 @@ fn run_reference(a: RefArgs) -> Result<()> {
     Ok(())
 }
 
-fn render_panels(a: &RefArgs, r: &osm::Reference) -> Result<()> {
+fn render_panels(a: &RefArgs, r: &osm::Reference, set: StreetSet) -> Result<()> {
+    // The carriageway label stays bare so pilot panels remain
+    // comparable; only the non-default set is called out.
+    let set_tag = match set {
+        StreetSet::Carriageway => String::new(),
+        StreetSet::AllWays => ", ALL WAYS".to_string(),
+    };
     let side = (2.0 * a.radius / a.panel_m_per_px) as u32;
     let mut c = render::Canvas::new(side, side, 1.0 / a.panel_m_per_px, [0.0, 0.0]);
     c.draw_blocks(&r.blocks);
@@ -181,7 +199,12 @@ fn render_panels(a: &RefArgs, r: &osm::Reference) -> Result<()> {
     c.draw_buildings(&r.buildings);
     let focus = render::densest_point(&r.buildings, a.zoom_half_m);
     c.mark_window(focus, a.zoom_half_m);
-    c.label(10, 8, &format!("{} (REAL)", a.name.to_uppercase()), 3);
+    c.label(
+        10,
+        8,
+        &format!("{} (REAL{})", a.name.to_uppercase(), set_tag),
+        3,
+    );
     c.scale_bar(200.0, "200 M");
     c.img.save(a.out.join(format!("{}-town.png", a.name)))?;
 
@@ -193,7 +216,7 @@ fn render_panels(a: &RefArgs, r: &osm::Reference) -> Result<()> {
     z.label(
         10,
         8,
-        &format!("{} (REAL) - LOT LEVEL", a.name.to_uppercase()),
+        &format!("{} (REAL{}) - LOT LEVEL", a.name.to_uppercase(), set_tag),
         3,
     );
     z.scale_bar(50.0, "50 M");
