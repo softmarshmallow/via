@@ -22,13 +22,19 @@ Usage: uv run --project analysis python analysis/report_coverage.py \
 
 import argparse
 import json
-import statistics
+import math
 import sys
 
 from fetch_corpus import CLASSES, parse_sample
 from fetch_extract import PRE_REGISTRATION, repo_path
 
 INFORMAL_CLASS = "contemporary informal"
+
+
+def nearest_rank(values: list[float], q: float) -> float:
+    """The protocol's pinned quantile convention (v1.1 Elements)."""
+    vals = sorted(values)
+    return vals[int(math.floor((len(vals) - 1) * q + 0.5))]
 
 
 def main() -> int:
@@ -38,6 +44,13 @@ def main() -> int:
 
     towns = parse_sample(repo_path(PRE_REGISTRATION).read_text(encoding="utf-8"))
     measured = repo_path(args.measured)
+
+    # D6: published coverage OUTCOMES cover the fitted partition only.
+    # Held-out towns' registration-time flags are already public in the
+    # pre-registration document, but their measured footprint counts and
+    # floor outcomes stay in the store and appear here only as a count.
+    held_out = [t for t in towns if t["partition"] == "held-out"]
+    towns = [t for t in towns if t["partition"] == "fitted"]
 
     rows = []
     for t in towns:
@@ -61,7 +74,7 @@ def main() -> int:
             }
         )
 
-    print("### Coverage flags vs the measured floor\n")
+    print("### Coverage flags vs the measured floor (fitted partition)\n")
     print("| coverage flag | towns | below floor | footprints median | min |")
     print("| --- | --- | --- | --- | --- |")
     for flag in sorted({r["flag"] for r in rows}):
@@ -69,8 +82,19 @@ def main() -> int:
         counts = [r["buildings"] for r in grp]
         print(
             f"| {flag} | {len(grp)} | {sum(1 for r in grp if r['below'])} | "
-            f"{statistics.median(counts):.0f} | {min(counts)} |"
+            f"{nearest_rank(counts, 0.5):.0f} | {min(counts)} |"
         )
+    ho_below = 0
+    for t in held_out:
+        path = measured / f"{t['town']}-fabric.json"
+        if path.exists():
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            op = "all_ways" if t["town_class"] == INFORMAL_CLASS else "carriageway"
+            ho_below += bool(doc["fabric"][op]["below_footprint_floor"])
+    print(
+        f"\nHeld-out towns: {len(held_out)} measured; floor outcomes recorded "
+        f"in the store, reported here only as a count — {ho_below} below floor."
+    )
 
     below = [r for r in rows if r["below"]]
     print("\n### Towns below the 30-footprint floor (building characters suppressed)\n")
