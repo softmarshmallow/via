@@ -22,11 +22,13 @@ use via_artifact::raster::Raster;
 
 mod confluence;
 mod fords;
+mod harbours;
 mod navigability;
 mod passes;
 
 pub use confluence::ConfluenceSite;
 pub use fords::FordFields;
+pub use harbours::HarbourFields;
 pub use navigability::{HeadOfNavSite, NavigabilityFields};
 pub use passes::SaddleSite;
 
@@ -87,6 +89,22 @@ pub struct SuitabilityConfig {
     /// for keelless barges (via Appel et al. 2024); metric values are
     /// conditional on k_Q.
     pub nav_min_depth_m: f64,
+    /// Wave-fetch angular sectors (Burrows et al. 2008 uses 16; 32 is
+    /// the later data products' choice — a declared adaptation).
+    pub harbour_fetch_sectors: u32,
+    /// Fetch cap in metres (200 km — the wave transition point
+    /// gF/U² < 22,000, Burrows et al. 2008).
+    pub harbour_fetch_cap_m: f64,
+    /// Water column at which a harbour is dead, m (~1 m, Salomon et al.
+    /// 2016).
+    pub harbour_depth_dead_m: f64,
+    /// Water column serving large ships, m (~4.5 m, Boetto 2010); the
+    /// depth-window ramp saturates here. The linear ramp between the
+    /// anchors is a declared interpolation.
+    pub harbour_depth_full_m: f64,
+    /// Radius of the sediment-supply penalty around river outlets, m
+    /// (declared heuristic scale; motivated by Marriner & Morhange 2007).
+    pub harbour_sediment_radius_m: f64,
 }
 
 impl Default for SuitabilityConfig {
@@ -110,6 +128,11 @@ impl Default for SuitabilityConfig {
             nav_max_ts: 0.002,
             nav_max_slope: 0.0047,
             nav_min_depth_m: 0.5,
+            harbour_fetch_sectors: 16,
+            harbour_fetch_cap_m: 200_000.0,
+            harbour_depth_dead_m: 1.0,
+            harbour_depth_full_m: 4.5,
+            harbour_sediment_radius_m: 10_000.0,
         }
     }
 }
@@ -162,6 +185,8 @@ pub struct SuitabilityOutput {
     pub nav: NavigabilityFields,
     /// Head-of-navigation sites in ascending cell order (ADR 0011 D3/D6).
     pub heads_of_navigation: Vec<HeadOfNavSite>,
+    /// Harbour component spectra (fetch, depth window, sediment).
+    pub harbour: HarbourFields,
     /// The terrain channelization threshold, restated beside any reported
     /// confluence count (ADR 0011 D4); absent if the terrain config lacks it.
     pub river_min_area_km2: Option<f64>,
@@ -484,6 +509,24 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         &nav,
         &ford,
     );
+    let harbour = harbours::compute(
+        w,
+        h,
+        dx,
+        &heights_m,
+        sea,
+        &land,
+        &receivers.data,
+        &strahler.data,
+        &discharge.data,
+        &harbours::HarbourParams {
+            sectors: cfg.harbour_fetch_sectors,
+            cap_m: cfg.harbour_fetch_cap_m,
+            depth_dead_m: cfg.harbour_depth_dead_m,
+            depth_full_m: cfg.harbour_depth_full_m,
+            sediment_radius_m: cfg.harbour_sediment_radius_m,
+        },
+    );
     Ok(SuitabilityOutput {
         w,
         h,
@@ -501,6 +544,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         ford,
         nav,
         heads_of_navigation,
+        harbour,
         river_min_area_km2,
     })
 }
@@ -545,6 +589,9 @@ pub fn write_outputs(
         ("ford_velocity", &out.ford.velocity_ms),
         ("crossability", &out.ford.crossability),
         ("navigability_ts", &out.nav.ts),
+        ("harbour_fetch", &out.harbour.fetch_m),
+        ("harbour_depth_window", &out.harbour.depth_window),
+        ("harbour_sediment", &out.harbour.sediment),
     ] {
         let r = Raster::from_data(out.w, out.h, cell_cm, data.clone());
         r.write_file(&path(name))?;
@@ -606,6 +653,15 @@ pub fn write_outputs(
              the mouth-connected navigable cells without a donor in the set",
         ));
     }
+    // Fetch-bounds gate, evaluated on the emitted raster.
+    let fetch_disk = Raster::<f32>::read_file(&path("harbour_fetch"))?;
+    let fetch_ok = harbours::verify_fetch_bounds(&fetch_disk.data, cfg.harbour_fetch_cap_m);
+    if !fetch_ok {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "fetch-bounds gate failed: a fetch value lies outside [0, cap]",
+        ));
+    }
 
     let report = serde_json::json!({
         "stage": "suitability",
@@ -626,6 +682,9 @@ pub fn write_outputs(
             "navigability_ts": "standard: Langbein (1962) minimum specific tractive force Ts = V^2(f+0.6)/(1600 D^(4/3)), imperial-unit constants — SI inputs converted; f from Manning n via Darcy-Weisbach f = 8gn^2/R^(1/3) (R ~ d, the ford chain's friction assumption); 0 on still water; f32::MAX outside the water domain",
             "navigable": "standard: banded predicate — Langbein anchor Ts <= nav_max_ts (0.002 published), Magirl & Olsen (2009) slope band S <= nav_max_slope (dimensionless, as-is), pre-modern depth anchor d >= nav_min_depth_m (Eckoldt 0.3-0.7 m via Appel et al. 2024); still water by depth alone; depth values conditional on k_Q",
             "head_of_navigation": "standard: compositional (ADR 0011 D6) — cells of the mouth-connected navigable set (connected downstream to a river mouth along the receivers tree) with no donor in that set",
+            "harbour_fetch": "standard: Burrows, Harvey & Robb (2008) wave-fetch index — mean distance to nearest land over 16 angular sectors, 200 km cap (wave transition gF/U^2 < 22000), neighbour-averaging smoothing; declared adaptations: coastal-water focal cells, exact ray march in place of the three-scale hierarchical search, off-grid reads open ocean; wind-free F is the honest form (no wind rose exists)",
+            "harbour_depth_window": "heuristic (ADR 0003): linear ramp between published anchors — dead at ~1 m water column (Salomon et al. 2016), saturating at large-ship draught ~4.5 m (Boetto 2010); ordinary merchantmen (~1-3.5 m) fall on the rising limb; the ramp joining the anchors is a declared interpolation; ocean depth = sea_level - heights",
+            "harbour_sediment": "heuristic (ADR 0003): sediment-supply penalty near river outlets — sum over mouths within a declared radius of discharge/distance, relative units, a ranking only (motivated by Marriner & Morhange 2007); no composite harbour score is emitted (ADR 0011 Rejected)",
         },
         // ADR 0011 D2: curation, not a gate — the criterion's semantics live
         // in the experiment config that names it.
@@ -657,6 +716,14 @@ pub fn write_outputs(
                 "metric_values_conditional_on_k_q": true,
                 "head_of_navigation_sites": out.heads_of_navigation,
             },
+            "harbours": {
+                "fetch_sectors": cfg.harbour_fetch_sectors,
+                "fetch_cap_m": cfg.harbour_fetch_cap_m,
+                "depth_dead_m": cfg.harbour_depth_dead_m,
+                "depth_full_m": cfg.harbour_depth_full_m,
+                "sediment_radius_m": cfg.harbour_sediment_radius_m,
+                "composite": "none emitted — combination is consumer config (ADR 0011 D4)",
+            },
         },
         // ADR 0011 D6 artifact-contract checks; all must hold or the stage
         // errors before writing this summary.
@@ -664,6 +731,7 @@ pub fn write_outputs(
             "confluence_definition": confluence_ok,
             "spectrum_identities": spectrum_ok,
             "head_of_navigation_definition": heads_ok,
+            "fetch_bounds": fetch_ok,
         },
         "artifact_blake3": hashes,
     });

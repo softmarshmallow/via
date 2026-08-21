@@ -111,7 +111,7 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
         serde_json::from_slice(&std::fs::read(d1.join(&summary_name)).unwrap()).unwrap();
     assert_eq!(summary["selection"]["criterion"], "test_site");
     let hashes = summary["artifact_blake3"].as_object().unwrap();
-    assert_eq!(hashes.len(), 10);
+    assert_eq!(hashes.len(), 13);
 
     for name in [
         "slope",
@@ -124,6 +124,9 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
         "crossability",
         "navigability_ts",
         "navigable",
+        "harbour_fetch",
+        "harbour_depth_window",
+        "harbour_sediment",
     ] {
         let file = via_suitability::raster_filename("test_site", name);
         let b1 = std::fs::read(d1.join(&file)).unwrap();
@@ -161,6 +164,7 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
     assert_eq!(summary["checks"]["confluence_definition"], true);
     assert_eq!(summary["checks"]["spectrum_identities"], true);
     assert_eq!(summary["checks"]["head_of_navigation_definition"], true);
+    assert_eq!(summary["checks"]["fetch_bounds"], true);
 
     // The lake cell carries still-water crossability equal to its depth.
     let cross = Raster::<f32>::read_file(&d1.join(via_suitability::raster_filename(
@@ -174,7 +178,7 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
     // agree with the summary's, and the terrain record survived migration.
     let m = RunManifest::load(&d1.join("manifest.json")).unwrap();
     let rec = m.stage("suitability.test_site").expect("stage registered");
-    assert_eq!(rec.artifacts.len(), 10);
+    assert_eq!(rec.artifacts.len(), 13);
     for (name, entry) in &rec.artifacts {
         assert_eq!(hashes[name].as_str().unwrap(), entry.blake3);
         assert_eq!(
