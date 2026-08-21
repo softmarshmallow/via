@@ -8,7 +8,12 @@
 //!
 //! Reads terrain artifacts from a run directory (stages communicate through
 //! artifacts, never by calling each other) and writes its own artifacts and
-//! stats beside them. Everything here is sequential and deterministic.
+//! stats beside them. Everything here is sequential and deterministic —
+//! per platform: `powf`/`sin`/`cos` go through libm, so the recorded
+//! hashes witness same-machine reruns, not cross-platform reproduction
+//! (the via-terrain gates-snapshot note applies here too). Manifest
+//! registration is load-modify-save and assumes one stage process per
+//! run directory at a time.
 
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap, VecDeque};
@@ -33,7 +38,7 @@ pub use navigability::{HeadOfNavSite, NavigabilityFields};
 pub use passes::SaddleSite;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct SuitabilityConfig {
     /// Name of the selection criterion this config defines (e.g.
     /// "village_site"). Pure labeling; the stage attaches no meaning to it.
@@ -69,7 +74,10 @@ pub struct SuitabilityConfig {
     /// One declared value; a per-lithology lookup would be a named
     /// heuristic (0013 §Fords) and is not implemented.
     pub manning_n: f64,
-    /// Finnegan et al. (2005) width-to-depth ratio α (the paper's ≈ 20).
+    /// Finnegan et al. (2005) width-to-depth ratio α. The paper fits α
+    /// by substrate (Fig. 1: 5 bedrock, 9 boulder, 21 cobble, 59
+    /// gravel); via's default 20 is a declared choice near the
+    /// cobble-bed fit.
     pub finnegan_alpha: f64,
     /// Reach length, in cells along the receivers path, for the
     /// reach-averaged channel slope (0013 §Fords: single-cell slopes are
@@ -89,6 +97,12 @@ pub struct SuitabilityConfig {
     /// for keelless barges (via Appel et al. 2024); metric values are
     /// conditional on k_Q.
     pub nav_min_depth_m: f64,
+    /// Langbein's f (WSP 1539-W eq. 15/Fig. 8): the shallow-water to
+    /// deep-water vessel-resistance ratio at the paper's draft = 0.7·D
+    /// convention — NOT the bed's Darcy–Weisbach factor. f ≥ 1 by
+    /// definition; the default 2.5 sits mid the 2–4 range read from
+    /// Fig. 8 and is flagged pending exact digitization of the curve.
+    pub langbein_f: f64,
     /// Wave-fetch angular sectors (Burrows et al. 2008 uses 16; 32 is
     /// the later data products' choice — a declared adaptation).
     pub harbour_fetch_sectors: u32,
@@ -128,6 +142,7 @@ impl Default for SuitabilityConfig {
             nav_max_ts: 0.002,
             nav_max_slope: 0.0047,
             nav_min_depth_m: 0.5,
+            langbein_f: 2.5,
             harbour_fetch_sectors: 16,
             harbour_fetch_cap_m: 200_000.0,
             harbour_depth_dead_m: 1.0,
@@ -143,6 +158,54 @@ impl SuitabilityConfig {
             .map_err(|e| format!("cannot read config {}: {e}", path.display()))?;
         serde_json::from_slice(&bytes)
             .map_err(|e| format!("cannot parse config {}: {e}", path.display()))
+    }
+
+    /// Numeric sanity: the stage fails loudly rather than emitting
+    /// NaN/inf artifacts under a degenerate config.
+    pub fn validate(&self) -> io::Result<()> {
+        validate_label(&self.label)?;
+        let must_be_positive = [
+            ("freshwater_min_depth_m", self.freshwater_min_depth_m),
+            ("k_q_m3s_per_unit", self.k_q_m3s_per_unit),
+            ("manning_n", self.manning_n),
+            ("finnegan_alpha", self.finnegan_alpha),
+            ("min_channel_slope", self.min_channel_slope),
+            ("nav_max_ts", self.nav_max_ts),
+            ("nav_max_slope", self.nav_max_slope),
+            ("nav_min_depth_m", self.nav_min_depth_m),
+            ("langbein_f", self.langbein_f),
+            ("harbour_fetch_cap_m", self.harbour_fetch_cap_m),
+            ("harbour_sediment_radius_m", self.harbour_sediment_radius_m),
+        ];
+        for (name, v) in must_be_positive {
+            if !(v > 0.0 && v.is_finite()) {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("config {name} must be finite and > 0 (got {v})"),
+                ));
+            }
+        }
+        if self.min_pass_persistence_m < 0.0 || !self.min_pass_persistence_m.is_finite() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "config min_pass_persistence_m must be finite and >= 0",
+            ));
+        }
+        if self.harbour_fetch_sectors == 0 || self.slope_reach_cells == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "config harbour_fetch_sectors and slope_reach_cells must be >= 1",
+            ));
+        }
+        if !(self.harbour_depth_full_m > self.harbour_depth_dead_m
+            && self.harbour_depth_dead_m >= 0.0)
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "config requires harbour_depth_full_m > harbour_depth_dead_m >= 0",
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -252,8 +315,15 @@ pub(crate) fn for_neighbors8(w: u32, h: u32, i: u32, mut f: impl FnMut(u32, f64)
 }
 
 /// Multi-source Dijkstra over the D8 grid metric. Heap ties break on cell
-/// index; deterministic.
-fn dijkstra_dist_m(w: u32, h: u32, dx: f64, is_source: &[bool]) -> Vec<f64> {
+/// index; deterministic. With `passable`, paths may only traverse cells
+/// where it is true (sources are always seeded).
+fn dijkstra_dist_m(
+    w: u32,
+    h: u32,
+    dx: f64,
+    is_source: &[bool],
+    passable: Option<&[bool]>,
+) -> Vec<f64> {
     let n = w as usize * h as usize;
     let mut dist = vec![f64::INFINITY; n];
     let mut heap: BinaryHeap<Reverse<(u64, u32)>> = BinaryHeap::new();
@@ -269,6 +339,11 @@ fn dijkstra_dist_m(w: u32, h: u32, dx: f64, is_source: &[bool]) -> Vec<f64> {
         }
         let di = dist[i as usize];
         for_neighbors8(w, h, i, |nb, fac| {
+            if let Some(p) = passable {
+                if !p[nb as usize] {
+                    return;
+                }
+            }
             let nd = di + fac * dx;
             if nd < dist[nb as usize] {
                 dist[nb as usize] = nd;
@@ -277,6 +352,23 @@ fn dijkstra_dist_m(w: u32, h: u32, dx: f64, is_source: &[bool]) -> Vec<f64> {
         });
     }
     dist
+}
+
+/// Receiver values must index into the grid; anything else is a corrupt
+/// artifact and the stage fails loudly instead of panicking mid-gate.
+fn validate_receivers(receivers: &[u32]) -> io::Result<()> {
+    let n = receivers.len();
+    if let Some((i, &r)) = receivers
+        .iter()
+        .enumerate()
+        .find(|&(_, &r)| r as usize >= n)
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("receivers.vrast: cell {i} points to {r}, outside the {n}-cell grid"),
+        ));
+    }
+    Ok(())
 }
 
 /// Steepest-descent slope per cell (0 for ocean cells), measured over the
@@ -358,7 +450,7 @@ fn ensure_grid<T>(name: &str, r: &Raster<T>, base: &Raster<i32>) -> io::Result<(
 
 /// Run the stage against a terrain run directory.
 pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOutput> {
-    validate_label(&cfg.label)?;
+    cfg.validate()?;
     let heights = Raster::<i32>::read_file(&run_dir.join("heights_cm.vrast"))?;
     let receivers = Raster::<u32>::read_file(&run_dir.join("receivers.vrast"))?;
     let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
@@ -371,18 +463,26 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
     ensure_grid("area_cells", &area_cells, &heights)?;
     ensure_grid("discharge", &discharge, &heights)?;
     let manifest = RunManifest::load(&run_dir.join("manifest.json"))?;
-    let sea = manifest
-        .stage_config("terrain")
-        .and_then(|c| c.get("sea_level_m"))
+    // A run directory without a terrain record is stale or foreign; a
+    // silently defaulted sea level would shift every depth-derived field.
+    let terrain_cfg = manifest.stage_config("terrain").ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "manifest.json has no terrain stage record — stale or foreign \
+             run directory?",
+        )
+    })?;
+    let sea = terrain_cfg
+        .get("sea_level_m")
         .and_then(|v| v.as_f64())
         .unwrap_or(0.0);
-    let river_min_area_km2 = manifest
-        .stage_config("terrain")
-        .and_then(|c| c.get("river_min_area_km2"))
+    let river_min_area_km2 = terrain_cfg
+        .get("river_min_area_km2")
         .and_then(|v| v.as_f64());
     let (w, h) = (heights.width, heights.height);
     let dx = heights.cell_size_cm as f64 / 100.0;
     let n = w as usize * h as usize;
+    validate_receivers(&receivers.data)?;
 
     let heights_m: Vec<f64> = heights.data.iter().map(|&cm| cm as f64 / 100.0).collect();
     // The stage's authoritative base-level mask: self-receiver = ocean (the
@@ -394,13 +494,16 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         .map(|(i, &r)| r as usize != i)
         .collect();
     // Effective surface: terrain + standing water (slopes must not measure
-    // through lake water columns).
-    let eff_heights_m: Vec<f64> = heights_m
+    // through lake water columns). On ocean cells water_depth is 0 and
+    // heights carry bathymetry, so the water surface must substitute sea
+    // level there — a shore cell sees the sea surface, not the seabed.
+    let surface_m: Vec<f64> = heights_m
         .iter()
         .zip(water_depth.data.iter())
-        .map(|(&hm, &wd)| hm + wd as f64)
+        .zip(land.iter())
+        .map(|((&hm, &wd), &l)| if l { hm + wd as f64 } else { sea })
         .collect();
-    let slope = slope_field(w, h, dx, &eff_heights_m, &land);
+    let slope = slope_field(w, h, dx, &surface_m, &land);
     // Fresh water = rivers or standing water deep enough (lakes); ocean is
     // the coast field, not a freshwater source.
     let is_freshwater: Vec<bool> = strahler
@@ -411,8 +514,11 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         .map(|(i, (&o, &wd))| land[i] && (o > 0 || wd as f64 >= cfg.freshwater_min_depth_m))
         .collect();
     let is_ocean: Vec<bool> = land.iter().map(|&l| !l).collect();
-    let freshwater_dist_m = dijkstra_dist_m(w, h, dx, &is_freshwater);
-    let coast_dist_m = dijkstra_dist_m(w, h, dx, &is_ocean);
+    // Freshwater distance is along-ground: paths may not cross ocean
+    // cells (a river across a bay is not reachable on foot). Coast
+    // distance is unmasked — ocean is its source set.
+    let freshwater_dist_m = dijkstra_dist_m(w, h, dx, &is_freshwater, Some(&land));
+    let coast_dist_m = dijkstra_dist_m(w, h, dx, &is_ocean, None);
 
     let suitable: Vec<bool> = (0..n)
         .map(|i| {
@@ -428,6 +534,9 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
     let cell_area_ha = dx * dx / 10_000.0;
     let min_cells = (cfg.min_patch_area_ha / cell_area_ha).ceil() as u64;
     let mut patch_lists = extract_patches(w, h, &suitable, min_cells);
+    // The criterion asks whether any qualifying patch exists — decided
+    // before the reporting cap truncates the list.
+    let criterion_met = !patch_lists.is_empty();
     patch_lists.truncate(cfg.max_patches_reported as usize);
 
     let mut patch_rank = vec![0u32; n];
@@ -459,17 +568,16 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
         });
     }
 
-    let criterion_met = !patches.is_empty();
     let confluences = confluence::detect(w, h, &receivers.data, &strahler.data, &area_cells.data);
-    let saddle_sites = passes::detect(w, h, &heights.data, &land, cfg.min_pass_persistence_m);
-    // Water surface for channel slopes: effective heights on land, sea
-    // level on ocean — a mouth reach drops to the sea, not through
-    // bathymetry.
-    let surface_m: Vec<f64> = eff_heights_m
+    // Pass domain is dry land: lake cells carry true bathymetry since M3,
+    // and a col at the bottom of a lake is not a land-movement pass (the
+    // same argument that excludes ocean bathymetry).
+    let dry_land: Vec<bool> = land
         .iter()
-        .zip(land.iter())
-        .map(|(&e, &l)| if l { e } else { sea })
+        .zip(water_depth.data.iter())
+        .map(|(&l, &wd)| l && wd == 0.0)
         .collect();
+    let saddle_sites = passes::detect(w, h, &heights.data, &dry_land, cfg.min_pass_persistence_m);
     let ford = fords::compute(
         w,
         h,
@@ -497,7 +605,7 @@ pub fn run(run_dir: &Path, cfg: &SuitabilityConfig) -> io::Result<SuitabilityOut
             max_ts: cfg.nav_max_ts,
             max_slope: cfg.nav_max_slope,
             min_depth_m: cfg.nav_min_depth_m,
-            manning_n: cfg.manning_n,
+            langbein_f: cfg.langbein_f,
         },
     );
     let heads_of_navigation = navigability::head_of_navigation(
@@ -555,7 +663,7 @@ pub fn write_outputs(
     cfg: &SuitabilityConfig,
     out: &SuitabilityOutput,
 ) -> io::Result<()> {
-    validate_label(&cfg.label)?;
+    cfg.validate()?;
     let cell_cm = (out.dx * 100.0).round() as u32;
     let mut hashes = BTreeMap::new();
     let path = |name: &str| run_dir.join(raster_filename(&cfg.label, name));
@@ -602,11 +710,15 @@ pub fn write_outputs(
     hashes.insert("navigable".to_string(), r.blake3_hex());
 
     // ADR 0011 D6 gates: definitional invariants recomputed from the
-    // artifacts on disk, by a different traversal than the detector's.
-    // Binary; unevaluable or failed is a hard error (ADR 0001 QA contract).
+    // artifacts on disk — the terrain inputs AND the stage's own emitted
+    // rasters, read back from the files just written — by different
+    // traversals than the detectors'. Binary; unevaluable or failed is a
+    // hard error (ADR 0001 QA contract).
     let receivers = Raster::<u32>::read_file(&run_dir.join("receivers.vrast"))?;
     let strahler = Raster::<u32>::read_file(&run_dir.join("strahler.vrast"))?;
     let water_depth = Raster::<f32>::read_file(&run_dir.join("water_depth.vrast"))?;
+    let area_cells = Raster::<u64>::read_file(&run_dir.join("area_cells.vrast"))?;
+    validate_receivers(&receivers.data)?;
     let land_mask: Vec<bool> = receivers
         .data
         .iter()
@@ -618,17 +730,31 @@ pub fn write_outputs(
         out.h,
         &receivers.data,
         &strahler.data,
+        &area_cells.data,
         &out.confluences,
     );
     if !confluence_ok {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "confluence-definition gate failed: emitted sites do not match \
-             the receivers/strahler artifacts",
+             the receivers/strahler/area_cells artifacts",
         ));
     }
-    let spectrum_ok =
-        fords::verify_identities(&land_mask, &strahler.data, &water_depth.data, &out.ford);
+    let ford_width = Raster::<f32>::read_file(&path("ford_width"))?;
+    let ford_depth = Raster::<f32>::read_file(&path("ford_depth"))?;
+    let ford_velocity = Raster::<f32>::read_file(&path("ford_velocity"))?;
+    let crossability = Raster::<f32>::read_file(&path("crossability"))?;
+    let spectrum_ok = fords::verify_identities(
+        &land_mask,
+        &strahler.data,
+        &water_depth.data,
+        &fords::FordDiskFields {
+            width_m: &ford_width.data,
+            depth_m: &ford_depth.data,
+            velocity_ms: &ford_velocity.data,
+            crossability: &crossability.data,
+        },
+    );
     if !spectrum_ok {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -637,23 +763,29 @@ pub fn write_outputs(
              on some cell",
         ));
     }
-    // Head-of-navigation gate: the predicate is read back from the file
-    // just written — the emitted artifact, not the in-memory copy.
     let navigable_disk = Raster::<u32>::read_file(&path("navigable"))?;
+    let ts_disk = Raster::<f32>::read_file(&path("navigability_ts"))?;
     let heads_ok = navigability::verify_heads(
+        out.w,
         &receivers.data,
         &land_mask,
         &navigable_disk.data,
+        &navigability::HeadCheckFields {
+            water_depth: &water_depth.data,
+            ford_depth: &ford_depth.data,
+            ford_velocity: &ford_velocity.data,
+            ts: &ts_disk.data,
+        },
         &out.heads_of_navigation,
     );
     if !heads_ok {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "head-of-navigation gate failed: emitted sites are not exactly \
-             the mouth-connected navigable cells without a donor in the set",
+             the mouth-connected navigable cells without a donor in the \
+             set, with payloads matching the emitted rasters",
         ));
     }
-    // Fetch-bounds gate, evaluated on the emitted raster.
     let fetch_disk = Raster::<f32>::read_file(&path("harbour_fetch"))?;
     let fetch_ok = harbours::verify_fetch_bounds(&fetch_disk.data, cfg.harbour_fetch_cap_m);
     if !fetch_ok {
@@ -669,21 +801,21 @@ pub fn write_outputs(
         // ADR 0003 (via ADR 0011 D1): every output declares standard vs
         // heuristic; keys match `artifact_blake3`.
         "provenance": {
-            "slope": "standard: steepest-descent slope, D8 convention (O'Callaghan & Mark 1984), on the effective surface (terrain + standing water)",
-            "freshwater_dist": "standard: shortest along-ground distance in the D8 grid metric (multi-source Dijkstra) to the declared freshwater set — river cells (strahler > 0) or standing water >= freshwater_min_depth_m",
-            "coast_dist": "standard: shortest along-ground distance in the D8 grid metric (multi-source Dijkstra) to ocean cells (self-receivers)",
+            "slope": "heuristic (ADR 0003): steepest downward gradient to a D8 neighbour (the flow-direction stencil of O'Callaghan & Mark 1984, applied to slope — via's measurement, not a published slope scheme); computed on the effective surface (terrain + standing water on land, sea level on ocean) — declared adaptations so shore and lake cells never measure through a water column",
+            "freshwater_dist": "heuristic (ADR 0003): shortest-path distance in the planar D8 grid metric (multi-source Dijkstra), restricted to land cells, to the config-declared freshwater set — river cells (strahler > 0) or standing water >= freshwater_min_depth_m; unreachable = f32::MAX sentinel; relief is not accounted",
+            "coast_dist": "heuristic (ADR 0003): shortest-path distance in the planar D8 grid metric (multi-source Dijkstra) to ocean cells (self-receivers); unreachable = f32::MAX sentinel",
             "patch_rank": "heuristic (ADR 0003): 4-connected components of the config-thresholded suitability predicate, ranked by area",
             "confluences": "standard: junction = river cell with >= 2 river donors on the receivers tree (Strahler 1957 frame); symmetry ratio = smaller/larger donor drainage from area_cells (Benda et al. 2004); two largest donors when a D8 cell has more than two is a declared adaptation",
-            "passes": "standard: Morse saddles by superlevel-set union-find sweep over height-sorted cells, persistence = paired peak - saddle (Edelsbrunner et al. 2002; Kirmse & de Ferranti 2017 instantiation and ~30 m pruning floor); Peucker-Douglas (1975) 8-ring recorded per site as diagnostic (Takahashi et al. 1995 predict grid inconsistency); declared adaptations: land-cell domain, out-of-grid neighbours count lower, equal-height ties by ascending cell index, multi-merge cells record the largest dying persistence",
-            "ford_width": "standard: Finnegan et al. (2005) W = [alpha(alpha+2)^(2/3)]^(3/8) (nQ)^(3/8) S^(-3/16); Q = k_Q x relative discharge (declared forcing, Whipple & Tucker 1999 lumped-calibration practice); reach-averaged water-surface slope over a declared reach; n from Chow (1959)",
-            "ford_depth": "standard: Manning (1891) wide-channel closure d = (n (Q/W) / sqrt(S))^(3/5) on channel cells; the terrain still-water depth on standing water",
-            "ford_velocity": "standard: continuity v = Q/(W d), identical to Manning v = (1/n) d^(2/3) sqrt(S) by construction; zero on standing water",
-            "crossability": "standard: D x V product, the flume-verified stability currency (Cox, Shand & Blacka 2010; AIDR Guideline 7-3), computed from the emitted f32 factors so the identity is exact; still-water depth alone on standing water; the published bands are consumer config — none baked (ADR 0011 D2/D4)",
-            "navigability_ts": "standard: Langbein (1962) minimum specific tractive force Ts = V^2(f+0.6)/(1600 D^(4/3)), imperial-unit constants — SI inputs converted; f from Manning n via Darcy-Weisbach f = 8gn^2/R^(1/3) (R ~ d, the ford chain's friction assumption); 0 on still water; f32::MAX outside the water domain",
-            "navigable": "standard: banded predicate — Langbein anchor Ts <= nav_max_ts (0.002 published), Magirl & Olsen (2009) slope band S <= nav_max_slope (dimensionless, as-is), pre-modern depth anchor d >= nav_min_depth_m (Eckoldt 0.3-0.7 m via Appel et al. 2024); still water by depth alone; depth values conditional on k_Q",
-            "head_of_navigation": "standard: compositional (ADR 0011 D6) — cells of the mouth-connected navigable set (connected downstream to a river mouth along the receivers tree) with no donor in that set",
-            "harbour_fetch": "standard: Burrows, Harvey & Robb (2008) wave-fetch index — mean distance to nearest land over 16 angular sectors, 200 km cap (wave transition gF/U^2 < 22000), neighbour-averaging smoothing; declared adaptations: coastal-water focal cells, exact ray march in place of the three-scale hierarchical search, off-grid reads open ocean; wind-free F is the honest form (no wind rose exists)",
-            "harbour_depth_window": "heuristic (ADR 0003): linear ramp between published anchors — dead at ~1 m water column (Salomon et al. 2016), saturating at large-ship draught ~4.5 m (Boetto 2010); ordinary merchantmen (~1-3.5 m) fall on the rising limb; the ramp joining the anchors is a declared interpolation; ocean depth = sea_level - heights",
+            "passes": "standard: Morse saddles by superlevel-set union-find sweep over height-sorted cells, persistence = paired peak - saddle (Edelsbrunner et al. 2002; Kirmse & de Ferranti 2017 instantiation and ~30 m pruning floor); Peucker-Douglas (1975) 8-ring recorded per site as diagnostic (Takahashi et al. 1995 predict grid inconsistency); declared adaptations: dry-land domain (ocean and standing-water bathymetry excluded — a submerged col is not a land-movement pass), out-of-grid neighbours count lower, equal-height ties by ascending cell index, multi-merge cells record the largest dying persistence",
+            "ford_width": "standard links, via assembly (ADR 0011 D4): Finnegan et al. (2005) W = [alpha(alpha+2)^(2/3)]^(3/8) (nQ)^(3/8) S^(-3/16), alpha config-declared (the paper fits 5-59 by substrate; via defaults 20 near the cobble-bed 21); Q = k_Q x relative discharge (declared forcing, Whipple & Tucker 1999 lumped-calibration practice); reach-averaged water-surface slope over a declared reach; n from Chow (1959)",
+            "ford_depth": "standard links, via assembly (ADR 0011 D4): Manning (1891) wide-channel closure d = (n (Q/W) / sqrt(S))^(3/5) on channel cells; the terrain still-water depth on standing water",
+            "ford_velocity": "standard links, via assembly (ADR 0011 D4): continuity v = Q/(W d), identical to Manning v = (1/n) d^(2/3) sqrt(S) by construction; zero on standing water",
+            "crossability": "standard: D x V product, the flume-verified stability currency (Cox, Shand & Blacka 2010; AIDR Guideline 7-3), computed from the emitted f32 factors so the identity is exact; still-water depth alone on standing water; the published bands are consumer config, none baked (ADR 0011 D4 as amended, D5)",
+            "navigability_ts": "standard links, via assembly: Langbein (1962) Ts = V^2(f+0.6)/(1600 D^(4/3)), imperial-unit constants (the 1600 embeds the paper's n = 0.03) — SI inputs converted; f is Langbein's shallow-water vessel-resistance ratio (Fig. 8 at draft = 0.7D), shipped as the declared config constant langbein_f, flagged pending exact digitization; 0 on still water; f32::MAX outside the water domain",
+            "navigable": "standard anchors, via conjunction (ADR 0011 D4): Langbein Ts <= nav_max_ts (0.002 published), Magirl & Olsen (2009) slope band S <= nav_max_slope (dimensionless, as-is), pre-modern depth anchor d >= nav_min_depth_m (Eckoldt 0.3-0.7 m via Appel et al. 2024); no published source defines the combined predicate — the conjunction is via's, stated as such; still water by depth alone; depth values conditional on k_Q",
+            "head_of_navigation": "heuristic (ADR 0003): via's compositional definition, fixed by ADR 0011 D6 — cells of the mouth-connected navigable set (connected downstream to a river mouth along the receivers tree) with no donor in that set; the concept is literature (Renner 1927), the operationalization is via's",
+            "harbour_fetch": "standard: Burrows, Harvey & Robb (2008) wave-fetch index — mean distance to nearest land over harbour_fetch_sectors angular sectors (paper: 16), capped at harbour_fetch_cap_m (paper: 200 km, wave transition gF/U^2 < 22000), neighbour-averaging smoothing (focal cell included — declared reading); declared adaptations: coastal-water focal cells, unit-step point-sampled rays in place of the three-scale hierarchical search, off-grid reads open ocean; wind-free F is the honest form (no wind rose exists)",
+            "harbour_depth_window": "heuristic (ADR 0003): two-knot linear ramp between published anchors — dead at ~1 m water column (Salomon et al. 2016) to saturation at large-ship draught ~4.5 m (Boetto 2010); the ADR's three-item anchor list is realized as this two-knot ramp (a declared simplification; ordinary merchantmen ~1-3.5 m fall on the rising limb, unanchored by config); ocean depth = sea_level - heights",
             "harbour_sediment": "heuristic (ADR 0003): sediment-supply penalty near river outlets — sum over mouths within a declared radius of discharge/distance, relative units, a ranking only (motivated by Marriner & Morhange 2007); no composite harbour score is emitted (ADR 0011 Rejected)",
         },
         // ADR 0011 D2: curation, not a gate — the criterion's semantics live
@@ -783,7 +915,7 @@ mod tests {
         // 5×5, single source at the corner.
         let mut src = vec![false; 25];
         src[0] = true;
-        let d = dijkstra_dist_m(5, 5, 10.0, &src);
+        let d = dijkstra_dist_m(5, 5, 10.0, &src, None);
         assert_eq!(d[0], 0.0);
         assert_eq!(d[4], 40.0); // 4 straight steps
         assert!((d[24] - 4.0 * 10.0 * std::f64::consts::SQRT_2).abs() < 1e-9); // diagonal
@@ -806,6 +938,15 @@ mod tests {
         assert_eq!(patches[0].len(), 4);
         assert_eq!(patches[1].len(), 3);
         assert_eq!(patches[0][0], 0); // scan order within the patch
+    }
+
+    #[test]
+    fn unknown_config_keys_are_rejected() {
+        // A typo'd key (e.g. for k_Q) must fail loudly, not silently run
+        // the placeholder forcing.
+        let r: Result<SuitabilityConfig, _> =
+            serde_json::from_str(r#"{ "k_q_m3s_per_unit_typo": 2.0 }"#);
+        assert!(r.is_err());
     }
 
     #[test]

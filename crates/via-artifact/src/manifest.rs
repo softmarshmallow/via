@@ -80,7 +80,20 @@ impl RunManifest {
         let value: serde_json::Value = serde_json::from_slice(&bytes)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         if value.get("stages").is_some() {
-            serde_json::from_value(value).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            let m: RunManifest = serde_json::from_value(value)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            // The manifest is the determinism witness: an unknown version
+            // is a refusal, not a shrug.
+            if m.manifest_version != MANIFEST_VERSION {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "unsupported manifest_version {} (this build reads {MANIFEST_VERSION})",
+                        m.manifest_version
+                    ),
+                ));
+            }
+            Ok(m)
         } else {
             let v1: RunManifestV1 = serde_json::from_value(value)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
@@ -141,6 +154,12 @@ mod tests {
         let back = RunManifest::load(&path).unwrap();
         assert_eq!(back.manifest_version, MANIFEST_VERSION);
         assert_eq!(back.stage("terrain").unwrap().artifacts.len(), 1);
+
+        // An unknown version is refused, not migrated or rewritten.
+        let mut v99 = serde_json::to_value(&back).unwrap();
+        v99["manifest_version"] = serde_json::json!(99);
+        std::fs::write(&path, serde_json::to_string_pretty(&v99).unwrap()).unwrap();
+        assert!(RunManifest::load(&path).is_err());
         std::fs::remove_dir_all(&dir).ok();
     }
 }

@@ -37,6 +37,10 @@ fn write_synthetic_terrain(dir: &Path) {
     for x in 1..6 {
         strahler[idx(x, 4)] = 1;
     }
+    // A secondary summit at (6,2): the col to the main cone sits at
+    // (5,3) (1202 cm), so the cone's peak (1802 cm) dies there with
+    // persistence 6.0 m — one pass site above a low test floor.
+    heights[idx(6, 2)] = 2000;
     // Tributary joining the main stem: (3,3) drains south into (3,4).
     receivers[idx(3, 3)] = idx(3, 4) as u32;
     strahler[idx(3, 3)] = 1;
@@ -98,6 +102,7 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
         max_elevation_m: 100.0,
         max_freshwater_dist_m: 1.0e9,
         min_patch_area_ha: 0.05,
+        min_pass_persistence_m: 2.0,
         ..Default::default()
     };
     for d in [&d1, &d2] {
@@ -165,6 +170,25 @@ fn rerun_is_byte_identical_and_summary_hashes_match_disk() {
     assert_eq!(summary["checks"]["spectrum_identities"], true);
     assert_eq!(summary["checks"]["head_of_navigation_definition"], true);
     assert_eq!(summary["checks"]["fetch_bounds"], true);
+
+    // The col between the cone and the secondary summit is the one pass
+    // site above the floor: persistence = 18.02 − 12.02 = 6.0 m.
+    let pass_sites = summary["affordances"]["passes"]["sites"]
+        .as_array()
+        .unwrap();
+    assert_eq!(pass_sites.len(), 1);
+    assert_eq!(pass_sites[0]["x"], 5);
+    assert_eq!(pass_sites[0]["y"], 3);
+    assert!((pass_sites[0]["persistence_m"].as_f64().unwrap() - 6.0).abs() < 1e-9);
+
+    // Shore slope is measured to the sea surface, never through the
+    // ocean water column: at (1,4), 9.02 m beside the sea, the slope is
+    // 9.02/16 = 0.56375 (through-column would read 0.87625).
+    let slope =
+        Raster::<f32>::read_file(&d1.join(via_suitability::raster_filename("test_site", "slope")))
+            .unwrap();
+    let s = slope.data[(4 * 8 + 1) as usize] as f64;
+    assert!((s - 0.563_75).abs() < 1e-4, "shore slope {s}");
 
     // The lake cell carries still-water crossability equal to its depth.
     let cross = Raster::<f32>::read_file(&d1.join(via_suitability::raster_filename(

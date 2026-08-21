@@ -3,11 +3,14 @@
 //! lumped-calibration practice of the stream-power literature, Whipple &
 //! Tucker 1999 — pure declared forcing, unverifiable from inside via);
 //! channel width follows Finnegan et al. (2005),
-//! W = [α(α+2)^(2/3)]^(3/8) · (nQ)^(3/8) · S^(−3/16); Manning (1891)
-//! closes depth and velocity in the wide-channel form (R ≈ d):
-//! d = (n·(Q/W)/√S)^(3/5), v = Q/(W·d), with n from the Chow (1959)
-//! tables. Slope is reach-averaged along the receivers path over the
-//! water surface (single-cell slopes are noisy at cm quantization).
+//! W = [α(α+2)^(2/3)]^(3/8) · (nQ)^(3/8) · S^(−3/16), with α fit by
+//! substrate in the paper (via defaults 20, a declared choice near the
+//! cobble-bed 21); Manning (1891) closes depth and velocity in the
+//! wide-channel form (R ≈ d): d = (n·(Q/W)/√S)^(3/5), v = Q/(W·d),
+//! with n from the Chow (1959) tables. Slope is reach-averaged along
+//! the receivers path over the water surface (single-cell slopes are
+//! noisy at cm quantization). Each link is cited; the chain's assembly
+//! is via's, stated as such (ADR 0011 D4).
 //!
 //! Crossability is the flume-verified D·V product (Cox, Shand & Blacka
 //! 2010; AIDR Guideline 7-3), kept continuous — no bands are baked; the
@@ -43,7 +46,9 @@ pub struct FordParams {
     pub k_q_m3s_per_unit: f64,
     /// Manning roughness n (Chow 1959 natural streams ~0.030–0.050).
     pub manning_n: f64,
-    /// Finnegan width-to-depth ratio α (paper's ≈ 20).
+    /// Finnegan width-to-depth ratio α. The paper fits α by substrate
+    /// (Fig. 1: 5 bedrock, 9 boulder, 21 cobble, 59 gravel); via's
+    /// default 20 is a declared choice near the cobble-bed fit.
     pub finnegan_alpha: f64,
     /// Reach length, in cells along the receivers path, for the
     /// reach-averaged slope. Declared parameter.
@@ -157,16 +162,26 @@ pub fn compute(
     }
 }
 
-/// ADR 0011 D6 spectrum-identity gate, evaluated on the emitted rasters:
-/// on channel cells crossability == depth × velocity exactly in f32; on
-/// standing-water land cells crossability == depth == the terrain
-/// water_depth artifact; everywhere else all four fields are zero.
-/// Branch membership is recomputed from the terrain artifacts.
+/// The four ford rasters as read back from disk — the emitted artifacts
+/// the identity gate is evaluated on, never the in-memory copies.
+pub struct FordDiskFields<'a> {
+    pub width_m: &'a [f32],
+    pub depth_m: &'a [f32],
+    pub velocity_ms: &'a [f32],
+    pub crossability: &'a [f32],
+}
+
+/// ADR 0011 D6 spectrum-identity gate, evaluated on the emitted rasters
+/// (the caller reads them back from disk): on channel cells crossability
+/// == depth × velocity exactly in f32; on standing-water land cells
+/// crossability == depth == the terrain water_depth artifact; everywhere
+/// else all four fields are zero. Branch membership is recomputed from
+/// the terrain artifacts.
 pub fn verify_identities(
     land: &[bool],
     strahler: &[u32],
     water_depth: &[f32],
-    fields: &FordFields,
+    fields: &FordDiskFields,
 ) -> bool {
     let n = land.len();
     for i in 0..n {
@@ -268,7 +283,17 @@ mod tests {
         assert!((v - v_manning).abs() / v_manning < 1e-5);
         // The composite is the exact f32 product of the emitted factors.
         assert_eq!(f.crossability[i], f.depth_m[i] * f.velocity_ms[i]);
-        assert!(verify_identities(&land, &strahler, &water, &f));
+        assert!(verify_identities(
+            &land,
+            &strahler,
+            &water,
+            &FordDiskFields {
+                width_m: &f.width_m,
+                depth_m: &f.depth_m,
+                velocity_ms: &f.velocity_ms,
+                crossability: &f.crossability,
+            },
+        ));
     }
 
     #[test]
@@ -307,7 +332,17 @@ mod tests {
         assert_eq!(f.crossability[i], 1.5);
         assert_eq!(f.depth_m[i], 1.5);
         assert_eq!(f.velocity_ms[i], 0.0);
-        assert!(verify_identities(&land, &strahler, &water, &f));
+        assert!(verify_identities(
+            &land,
+            &strahler,
+            &water,
+            &FordDiskFields {
+                width_m: &f.width_m,
+                depth_m: &f.depth_m,
+                velocity_ms: &f.velocity_ms,
+                crossability: &f.crossability,
+            },
+        ));
         // Dry non-river land stays zero.
         assert_eq!(f.crossability[2], 0.0);
     }
@@ -329,6 +364,16 @@ mod tests {
         );
         let i = (w + 3) as usize;
         f.crossability[i] += 0.25;
-        assert!(!verify_identities(&land, &strahler, &water, &f));
+        assert!(!verify_identities(
+            &land,
+            &strahler,
+            &water,
+            &FordDiskFields {
+                width_m: &f.width_m,
+                depth_m: &f.depth_m,
+                velocity_ms: &f.velocity_ms,
+                crossability: &f.crossability,
+            },
+        ));
     }
 }

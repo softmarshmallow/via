@@ -82,15 +82,19 @@ pub fn detect(
 }
 
 /// ADR 0011 D6 confluence-definition gate: every emitted site has ≥ 2
-/// river donors and no non-emitted river cell does. Donor counts are
-/// recomputed here by a full receiver sweep — a different traversal than
-/// `detect`'s neighbour scan — with river membership read from the emitted
-/// strahler artifact. Binary; any mismatch fails.
+/// river donors and no non-emitted river cell does, and every site's
+/// recorded payload (donor count, donor drainage areas, symmetry ratio,
+/// strahler order) equals the value recomputed from the artifacts.
+/// Donor counts and areas are recomputed here by a full receiver sweep —
+/// a different traversal than `detect`'s neighbour scan — with river
+/// membership read from the emitted strahler artifact. Binary; any
+/// mismatch fails.
 pub fn verify_definition(
     w: u32,
     h: u32,
     receivers: &[u32],
     strahler: &[u32],
+    area_cells: &[u64],
     sites: &[ConfluenceSite],
 ) -> bool {
     let n = w as usize * h as usize;
@@ -109,9 +113,29 @@ pub fn verify_definition(
     if emitted != expected {
         return false;
     }
-    sites
-        .iter()
-        .all(|s| s.river_donors == donor_count[s.cell as usize])
+    // Payloads: recollect river-donor areas per site by a second sweep.
+    let mut donor_areas: std::collections::BTreeMap<u32, Vec<u64>> =
+        expected.iter().map(|&c| (c, Vec::new())).collect();
+    for i in 0..n {
+        let r = receivers[i];
+        if r as usize != i && strahler[i] > 0 {
+            if let Some(v) = donor_areas.get_mut(&r) {
+                v.push(area_cells[i]);
+            }
+        }
+    }
+    sites.iter().all(|s| {
+        let mut areas = donor_areas.remove(&s.cell).unwrap_or_default();
+        areas.sort_unstable_by(|a, b| b.cmp(a));
+        areas.len() as u32 == s.river_donors
+            && s.x == s.cell % w
+            && s.y == s.cell / w
+            && s.strahler == strahler[s.cell as usize]
+            && areas.first() == Some(&s.donor_area_cells_larger)
+            && areas.get(1) == Some(&s.donor_area_cells_smaller)
+            && s.symmetry_ratio
+                == s.donor_area_cells_smaller as f64 / s.donor_area_cells_larger as f64
+    })
 }
 
 #[cfg(test)]
@@ -156,14 +180,16 @@ mod tests {
         assert_eq!(s.donor_area_cells_larger, 10);
         assert_eq!(s.donor_area_cells_smaller, 4);
         assert!((s.symmetry_ratio - 0.4).abs() < 1e-12);
-        assert!(verify_definition(w, h, &receivers, &strahler, &sites));
+        assert!(verify_definition(
+            w, h, &receivers, &strahler, &area, &sites
+        ));
     }
 
     #[test]
     fn verification_rejects_missing_and_spurious_sites() {
         let (w, h, receivers, strahler, area) = fixture();
         let sites = detect(w, h, &receivers, &strahler, &area);
-        assert!(!verify_definition(w, h, &receivers, &strahler, &[]));
+        assert!(!verify_definition(w, h, &receivers, &strahler, &area, &[]));
         let mut spurious = sites.clone();
         spurious.push(ConfluenceSite {
             cell: 0,
@@ -175,6 +201,8 @@ mod tests {
             donor_area_cells_smaller: 1,
             symmetry_ratio: 1.0,
         });
-        assert!(!verify_definition(w, h, &receivers, &strahler, &spurious));
+        assert!(!verify_definition(
+            w, h, &receivers, &strahler, &area, &spurious
+        ));
     }
 }

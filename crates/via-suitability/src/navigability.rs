@@ -3,11 +3,16 @@
 //!
 //! The continuous spectrum is Langbein's (1962) minimum specific
 //! tractive force Ts = V²(f+0.6)/(1600·D^(4/3)) — V in ft/s, D in ft:
-//! Ts is dimensionless but the 1600 is unit-bearing, so SI inputs are
-//! converted before use. The friction factor f comes from Manning n via
-//! the standard Darcy–Weisbach relation f = 8·g·n²/R^(1/3) (R ≈ d,
-//! wide channel — the same friction assumption the ford chain makes).
-//! Published anchor: Ts > 0.002 usually considered unnavigable.
+//! Ts is dimensionless but the 1600 is unit-bearing (it embeds imperial
+//! Manning with the paper's n = 0.03), so SI inputs are converted
+//! before use. Langbein's f is the shallow-water to deep-water
+//! vessel-resistance ratio of his Fig. 8, evaluated at the paper's
+//! draft = 0.7·D convention — f ≥ 1, a hull property, NOT the bed's
+//! Darcy–Weisbach friction factor (a first landing wrongly used the
+//! Darcy conversion from Manning n, understating Ts ~4–7×; caught in
+//! review against the primary source). f ships as the declared config
+//! constant `langbein_f`, flagged pending exact digitization of the
+//! figure. Published anchor: Ts > 0.002 usually considered unnavigable.
 //!
 //! The banded predicate combines that anchor with the Magirl & Olsen
 //! (2009) slope bands (dimensionless, applied as-is: probably not
@@ -24,15 +29,15 @@
 //! unnavigable reach is not a head of navigation.
 //!
 //! The Filet et al. (2025) change-point cross-check adopted by ADR 0011
-//! is a QA diagnostic, not part of this stage's emitted contract; it is
-//! not implemented here (recorded as an open item of the chunk).
+//! is not implemented here; its deferral to the chunk's
+//! QA/visualization slice is recorded in ADR 0011's Consequences,
+//! alongside the basin-boundary col diagnostic.
 
 use serde::Serialize;
 
 use crate::fords::FordFields;
 
 const FT_PER_M: f64 = 3.280_839_895;
-const G_SI: f64 = 9.81;
 
 /// Per-cell navigability fields. Outside the water domain (dry land,
 /// ocean) Ts carries the f32::MAX sentinel and the predicate is 0.
@@ -51,8 +56,9 @@ pub struct NavParams {
     pub max_slope: f64,
     /// Pre-modern depth anchor, m (Eckoldt 0.3–0.7 band).
     pub min_depth_m: f64,
-    /// Manning n, shared with the ford chain (friction consistency).
-    pub manning_n: f64,
+    /// Langbein's shallow-water vessel-resistance ratio (Fig. 8 at
+    /// draft = 0.7·D); ≥ 1, declared config.
+    pub langbein_f: f64,
 }
 
 /// One head-of-navigation site, in ascending cell order (ADR 0011 D3).
@@ -97,9 +103,9 @@ pub fn compute(
         if d <= 0.0 {
             continue;
         }
-        // Darcy–Weisbach f from Manning n (R ≈ d, SI), then Langbein in
-        // imperial units.
-        let f = 8.0 * G_SI * p.manning_n * p.manning_n / d.powf(1.0 / 3.0);
+        // Langbein eq. 15 in imperial units; f is the declared
+        // vessel-resistance ratio (see module doc).
+        let f = p.langbein_f;
         let v_ft = v * FT_PER_M;
         let d_ft = d * FT_PER_M;
         let t = v_ft * v_ft * (f + 0.6) / (1600.0 * d_ft.powf(4.0 / 3.0));
@@ -187,15 +193,28 @@ pub fn head_of_navigation(
     sites
 }
 
+/// The emitted rasters a head-of-navigation site's payload is checked
+/// against (read back from disk by the caller).
+pub struct HeadCheckFields<'a> {
+    pub water_depth: &'a [f32],
+    pub ford_depth: &'a [f32],
+    pub ford_velocity: &'a [f32],
+    pub ts: &'a [f32],
+}
+
 /// ADR 0011 D6 head-of-navigation gate: recompute the mouth-connected
 /// navigable set from the emitted predicate and the receivers artifact —
 /// by downstream walks with memoization, a different traversal than the
 /// upstream BFS — and require the emitted sites to be exactly the cells
-/// of that set with no donor in it.
+/// of that set with no donor in it, carrying payloads that match the
+/// emitted rasters. A cyclic receivers artifact fails the gate rather
+/// than hanging it (unevaluable is fail).
 pub fn verify_heads(
+    w: u32,
     receivers: &[u32],
     land: &[bool],
     navigable: &[u32],
+    fields: &HeadCheckFields,
     sites: &[HeadOfNavSite],
 ) -> bool {
     let n = land.len();
@@ -218,6 +237,9 @@ pub fn verify_heads(
                 break 2u8;
             }
             path.push(c);
+            if path.len() > n {
+                return false; // cyclic receivers artifact: corrupt
+            }
             let r = receivers[ci];
             if !land[r as usize] {
                 break 1u8; // reached a mouth
@@ -243,7 +265,23 @@ pub fn verify_heads(
         .filter(|&c| state[c as usize] == 1 && !donor_in_set[c as usize])
         .collect();
     let emitted: Vec<u32> = sites.iter().map(|s| s.cell).collect();
-    emitted == expected
+    if emitted != expected {
+        return false;
+    }
+    // Site payloads must match the emitted rasters.
+    sites.iter().all(|s| {
+        let ci = s.cell as usize;
+        let depth = if fields.water_depth[ci] > 0.0 {
+            fields.water_depth[ci]
+        } else {
+            fields.ford_depth[ci]
+        };
+        s.x == s.cell % w
+            && s.y == s.cell / w
+            && s.depth_m == depth
+            && s.velocity_ms == fields.ford_velocity[ci]
+            && s.ts == fields.ts[ci]
+    })
 }
 
 #[cfg(test)]
@@ -255,7 +293,7 @@ mod tests {
             max_ts: 0.002,
             max_slope: 0.0047,
             min_depth_m: 0.5,
-            manning_n: 0.035,
+            langbein_f: 2.5,
         }
     }
 
@@ -312,7 +350,20 @@ mod tests {
         let heads = head_of_navigation(w, h, &receivers, &land, &water, &nav, &ford);
         assert_eq!(heads.len(), 1);
         assert_eq!((heads[0].x, heads[0].y), (7, 1));
-        assert!(verify_heads(&receivers, &land, &nav.navigable, &heads));
+        let fields = HeadCheckFields {
+            water_depth: &water,
+            ford_depth: &ford.depth_m,
+            ford_velocity: &ford.velocity_ms,
+            ts: &nav.ts,
+        };
+        assert!(verify_heads(
+            w,
+            &receivers,
+            &land,
+            &nav.navigable,
+            &fields,
+            &heads
+        ));
     }
 
     #[test]
@@ -330,7 +381,20 @@ mod tests {
         // x=5..7 is isolated and contributes no head.
         assert_eq!(heads.len(), 1);
         assert_eq!((heads[0].x, heads[0].y), (3, 1));
-        assert!(verify_heads(&receivers, &land, &nav.navigable, &heads));
+        let fields = HeadCheckFields {
+            water_depth: &water,
+            ford_depth: &ford.depth_m,
+            ford_velocity: &ford.velocity_ms,
+            ts: &nav.ts,
+        };
+        assert!(verify_heads(
+            w,
+            &receivers,
+            &land,
+            &nav.navigable,
+            &fields,
+            &heads
+        ));
     }
 
     #[test]
@@ -348,7 +412,20 @@ mod tests {
             velocity_ms: 0.8,
             ts: 0.001,
         });
-        assert!(!verify_heads(&receivers, &land, &nav.navigable, &heads));
+        let fields = HeadCheckFields {
+            water_depth: &water,
+            ford_depth: &ford.depth_m,
+            ford_velocity: &ford.velocity_ms,
+            ts: &nav.ts,
+        };
+        assert!(!verify_heads(
+            w,
+            &receivers,
+            &land,
+            &nav.navigable,
+            &fields,
+            &heads
+        ));
     }
 
     #[test]

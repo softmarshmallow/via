@@ -9,9 +9,10 @@
 //!   F = mean per-sector fetch, then the paper's neighbour-averaging
 //!   smoothing step. Declared adaptations: the focal cells are coastal
 //!   *water* cells (ocean cells with a land D8 neighbour); rays are
-//!   marched exactly at cell resolution instead of the paper's
-//!   three-scale hierarchical search (an accuracy-conservative
-//!   substitution — the search approximates exactly this ray); a ray
+//!   unit-step point-sampled at cell resolution instead of the paper's
+//!   three-scale hierarchical search (a declared substitution; corner
+//!   clips between samples can overshoot a thin promontory by a cell,
+//!   and the reported distance is the sample index times dx); a ray
 //!   leaving the grid reads open ocean (the border ring is ocean by
 //!   construction). The wind-weighted family degenerates to F under a
 //!   uniform rose, which is why F is the honest form here.
@@ -108,8 +109,10 @@ pub fn compute(
         coastal[i as usize] = has_land_nb;
     }
 
-    // Fetch: exact ray march per sector, then the neighbour-averaging
-    // smoothing step over the coastal-water domain.
+    // Fetch: unit-step point-sampled ray per sector, then the
+    // neighbour-averaging smoothing step over the coastal-water domain
+    // (the focal cell is included in the average — a declared reading of
+    // the paper's ambiguous wording).
     let mut raw_fetch = vec![0.0f64; n];
     for i in 0..n as u32 {
         let ii = i as usize;
@@ -198,9 +201,12 @@ pub fn compute(
 /// ADR 0011 D6 gate: fetch values lie in [0, cap]. Evaluated on the
 /// emitted raster.
 pub fn verify_fetch_bounds(fetch_m: &[f32], cap_m: f64) -> bool {
+    // Compare in f32: the cast is monotone, so a mean <= cap in f64
+    // never reads as above the cap after both sides round.
+    let cap = cap_m as f32;
     fetch_m
         .iter()
-        .all(|&f| f.is_finite() && f >= 0.0 && f as f64 <= cap_m)
+        .all(|&f| f.is_finite() && f >= 0.0 && f <= cap)
 }
 
 #[cfg(test)]

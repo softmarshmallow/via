@@ -212,7 +212,11 @@ and everything downstream inherits it. It is pure declared forcing,
 unverifiable from inside via.
 
 For width, Finnegan et al. derive W ∝ Q^(3/8) · S^(−3/16) · n^(3/8)
-(width-to-depth ratio α ≈ 20) — built for exactly via's situation
+at fixed width-to-depth ratio α — *correction (2026-08-21): the paper
+does not recommend α ≈ 20; its Fig. 1 fits α by substrate (5 bedrock,
+9 boulder, 21 cobble, 59 gravel), so a working value is a declared
+config choice, not the paper's number* — built for exactly via's
+situation
 (model-derived Q and S, no measured channels) and reducing to the
 Leopold–Maddock scaling on typical concave profiles. Manning
 (v = (1/n)·R^(2/3)·S^(1/2); wide-channel R ≈ d) then closes depth
@@ -420,12 +424,21 @@ Three citable instruments, one calibration caveat:
   is humid-Washington-specific — adopted-with-provenance only.
 - **A continuous spectrum underneath** (Langbein): minimum specific
   tractive force Ts = V²(f+0.6)/(1600·D^{4/3}) — V in ft/s, D in ft:
-  Ts is dimensionless but the 1600 is unit-bearing, convert before
-  use — with the published anchor "rivers requiring Ts > 0.002 are
-  usually considered unnavigable" (Mississippi ≈ 0.00015, San Juan
+  Ts is dimensionless but the 1600 is unit-bearing (it also embeds
+  the paper's n = 0.03), convert before use — with the published
+  anchor "rivers requiring Ts > 0.002 are usually considered
+  unnavigable" (Mississippi ≈ 0.00015, San Juan
   ≈ 0.02) — an ideal spectra-over-taxonomy citizen, derived for
   powered craft (the 0.002 anchor is a proxy for pre-modern
-  rowing/towing).
+  rowing/towing). *Correction (2026-08-21, implementation review
+  against the primary source):* this survey left f undefined; it is
+  **the ratio of a vessel's shallow-water to deep-water resistance**
+  (the paper's Fig. 8, a hull property ≥ 1, applied at Langbein's
+  draft = 0.7·D convention) — not a bed-friction factor. A first
+  implementation wrongly derived f from Manning n via Darcy–Weisbach
+  (~0.08), understating Ts roughly 4–7×; the honest form is a
+  declared constant read from Fig. 8, flagged pending exact
+  digitization of the curve.
 - **A calibration-free cross-check** (Filet et al. 2025): detect the
   "plain section" of each river's longitudinal profile by
   change-point detection on reach slopes; validated against 18

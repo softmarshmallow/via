@@ -538,10 +538,17 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
             p.min_coast_dist_m
         );
     }
+    // ADR 0011 D4: the channelization threshold is restated with any
+    // reported confluence count.
+    let river_min = match out.river_min_area_km2 {
+        Some(v) => format!("{v} km²"),
+        None => "undeclared".to_string(),
+    };
     println!(
-        "\n  {} confluence site(s), {} pass site(s) ≥ {} m persistence, \
-         {} head(s) of navigation",
+        "\n  {} confluence site(s) (river threshold {}), {} pass site(s) ≥ {} m \
+         persistence, {} head(s) of navigation",
         out.confluences.len(),
+        river_min,
         out.passes.len(),
         cfg.min_pass_persistence_m,
         out.heads_of_navigation.len()

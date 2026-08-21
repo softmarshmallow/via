@@ -1,6 +1,9 @@
 # ADR 0011 — Suitability affordances: tier, representation, and gates
 
-Status: proposed (2026-08-21)
+Status: proposed (2026-08-21; amended the same day after the
+implementation chunk's adversarial review — Finnegan α provenance,
+Langbein's f, stability-band placement, depth-window ramp, D6 clause
+enumeration, recorded deferrals)
 Scope: the stage decisions ADR 0009 left open for `via-suitability` —
 what epistemic tier the stage occupies, how the named affordances
 (harbours, fords, confluences, passes) are represented, and what its
@@ -155,9 +158,14 @@ source):
   (1975) 8-ring operator, topological consistency per Takahashi et
   al. (1995), persistence attached by a height-sorted union-find
   sweep (Edelsbrunner et al. 2002; instantiation Kirmse & de
-  Ferranti 2017). Label: standard. Config: minimum persistence
+  Ferranti 2017). The sweep decides the site set; the ring operator
+  is recorded per site as the Takahashi-consistency diagnostic (the
+  raw operator is inconsistent on grids — that is the correction
+  Takahashi supplies). Label: standard. Config: minimum persistence
   (default 30 m, Kirmse & de Ferranti), declared deterministic
-  tie-break for equal integer-cm heights. The basin-boundary-minima
+  tie-break for equal integer-cm heights; domain is dry land (ocean
+  and standing-water bathymetry excluded — a submerged col is not a
+  land-movement pass). The basin-boundary-minima
   cross-check is a QA diagnostic, not a gate (Decision 6). The per-cell fuzzy "passness"
   field (Fisher–Wood–Cheng 2004) is admitted as standard but
   deferred until a consumer needs a field rather than sites.
@@ -165,7 +173,10 @@ source):
   finding: the published 10-class reduction has no saddle class.
   Pass *value as a crossing* is left emergent in the corridor solve.
 - **Fords** — the hydraulic chain: `k_Q` (Decision 1) → channel
-  width per Finnegan et al. (2005), W ∝ Q^(3/8)·S^(−3/16)·n^(3/8) →
+  width per Finnegan et al. (2005), W ∝ Q^(3/8)·S^(−3/16)·n^(3/8)
+  (width-to-depth ratio α is config: the paper fits α by substrate —
+  5 bedrock to 59 gravel, its Fig. 1 — rather than recommending one
+  value; via defaults 20, a declared choice near the cobble-bed 21) →
   depth
   and velocity per Manning (1891; n from the Chow 1959 tables; the
   lithology→n lookup is labeled heuristic) on reach-averaged slope →
@@ -173,7 +184,9 @@ source):
   alone on standing water. Label: standard (each link cited; the
   chain's assembly is via's, stated as such). The people-stability
   bands (Cox, Shand & Blacka 2010; AIDR Guideline 7-3) are config
-  constants with provenance, not baked classes.
+  constants with provenance in the consuming stage (Decision 5's
+  contract carries the spectrum, not classes) — never baked, and this
+  stage emits the continuous product alone.
 - **Confluences** — definitional on the inverted receivers tree: a
   strahler > 0 cell with ≥ 2 river donors (Strahler 1957; Shreve
   1966/1967 frame). Zero new parameters; the already-declared
@@ -188,10 +201,11 @@ source):
   hierarchical search; standard, with the coastal-water focal-cell
   adaptation declared — a higher sector count for narrow mouths at
   16 m cells would be a declared adaptation, as the paper uses 16),
-  a depth-window ramp (config anchors: dead at ~1 m of water
-  column, ordinary merchantman draughts ~1–3.5 m, large ships to
-  ~4.5 m — Boetto 2010, Salomon et al. 2016; the ramp joining the
-  anchors is a declared interpolation), and a sediment-supply
+  a depth-window ramp (config anchors: dead at ~1 m of water column
+  rising to saturation at the large-ship draught ~4.5 m — Boetto
+  2010, Salomon et al. 2016; the two-knot linear ramp joining them is
+  a declared interpolation, with the ordinary merchantman band
+  ~1–3.5 m lying on the rising limb), and a sediment-supply
   penalty near river outlets ranked on
   relative discharge (heuristic; motivated by Marriner & Morhange
   2007). **No baked composite**: no published harbour index exists,
@@ -202,7 +216,11 @@ source):
   admissibility the corridor stage needs: Langbein (1962) specific
   tractive force as the continuous spectrum (published anchor
   Ts > 0.002 unnavigable; the formula's constants are
-  imperial-unit-bearing — 0013 carries the conversion note), the
+  imperial-unit-bearing — 0013 carries the conversion note; Langbein's
+  f is the shallow-water vessel-resistance ratio of his Fig. 8 at the
+  paper's draft = 0.7·D convention, shipped as a declared config
+  constant flagged pending exact digitization — it is not a
+  bed-friction factor, per the dossier's correction note), the
   Magirl & Olsen (2009) slope bands applied as-is (dimensionless),
   depth via the `k_Q` chain against the pre-modern anchor (Eckoldt
   0.3–0.7 m via Appel et al. 2024). Head-of-navigation sites are
@@ -263,10 +281,23 @@ fail (ADR 0001 QA contract):
   rasters, and on standing-water cells it equals the emitted depth
   field — the stage computes the composite from the rounded factors
   so the identity is exact, which also pins the composite to the
-  factor artifacts shipped beside it; fetch values lie in [0, cap];
+  factor artifacts shipped beside it; on standing water the emitted
+  velocity is zero and the emitted depth equals the terrain
+  water-depth artifact; all four ford fields are zero outside the
+  water domains; fetch values lie in [0, cap];
   head-of-navigation sites are exactly the cells of the
   mouth-connected navigable set that have no donor in that set,
   recomputed from the emitted predicate and the receivers artifact.
+- **Site-record integrity**: every payload field an emitted site
+  carries (coordinates, donor counts and drainage areas, symmetry
+  ratios, strahler orders, depths, velocities, Ts) equals the value
+  recomputed from the artifacts on disk — sites carry only
+  recomputable measurements, so the whole record is checkable.
+- **Artifact validity preconditions**: receiver values are validated
+  against the grid and the config against its declared domains before
+  any gate runs; a corrupt artifact or degenerate config fails
+  loudly rather than panicking, hanging, or emitting NaN (unevaluable
+  is fail).
 
 No advisory checks at introduction; none of the above says anything
 about realism, by construction (Decision 2). One check is
@@ -313,6 +344,16 @@ visual-inspection channel (ADR 0008 D10), never in CI.
   a manifest schema evolution, since RunManifest is single-stage
   today (one `stage`, one `config`); until it lands, the stage's own
   hashed summary is the determinism witness (Decision 6).
+- Deferrals recorded by the implementation chunk, to be paid in its
+  QA/visualization slice: the Filet et al. (2025) change-point
+  consistency cross-check and the basin-boundary col diagnostic (both
+  QA-channel items under ADR 0008 D10; neither is a gate). The
+  per-lithology Manning n lookup remains a recorded extension
+  (Decision 4 labels it heuristic). Fetch rays are unit-step
+  point-sampled — a declared substitution for the paper's
+  three-scale hierarchical search. Artifact hashes witness
+  same-platform reruns only (libm transcendentals), the same scope
+  as the terrain stage's snapshot channel.
 - The corridor stage inherits a written consumption contract
   (Decision 5) and two deferred adoptions (cost functions; cross-era
   normalization) with their literature already surveyed.
