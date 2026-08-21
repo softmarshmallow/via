@@ -590,6 +590,7 @@ dependencies = [
  "clap",
  "serde_json",
  "via-artifact",
+ "via-corridors",
  "via-ecology",
  "via-suitability",
  "via-terrain",
@@ -616,6 +617,18 @@ dependencies = [
  "serde",
  "serde_json",
  "via-artifact",
+]
+
+[[package]]
+name = "via-corridors"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "rayon",
+ "serde",
+ "serde_json",
+ "via-artifact",
+ "via-suitability",
 ]
 
 [[package]]

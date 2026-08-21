@@ -24,6 +24,18 @@ enum Cmd {
     Suitability(SuitabilityArgs),
     /// Run the ecology stage against an existing terrain run directory.
     Ecology(EcologyArgs),
+    /// Run the corridors stage against a run directory that already
+    /// carries terrain and suitability artifacts.
+    Corridors(CorridorsArgs),
+}
+
+#[derive(Args)]
+struct CorridorsArgs {
+    /// Run directory (terrain + suitability artifacts + manifest.json).
+    run_dir: PathBuf,
+    /// Path to a CorridorsConfig JSON; defaults apply if omitted.
+    #[arg(long)]
+    config: Option<PathBuf>,
 }
 
 #[derive(Args)]
@@ -738,5 +750,105 @@ fn main() -> Result<()> {
         Cmd::Terrain(args) => run_terrain(args),
         Cmd::Suitability(args) => run_suitability(args),
         Cmd::Ecology(args) => run_ecology(args),
+        Cmd::Corridors(args) => run_corridors(args),
     }
+}
+
+fn run_corridors(args: CorridorsArgs) -> Result<()> {
+    let cfg = match &args.config {
+        Some(p) => via_corridors::CorridorsConfig::from_json_file(p).map_err(anyhow::Error::msg)?,
+        None => via_corridors::CorridorsConfig::default(),
+    };
+    let dir = &args.run_dir;
+    let t0 = Instant::now();
+    let out = via_corridors::run(dir, &cfg)?;
+    via_corridors::write_outputs(dir, &cfg, &out)?;
+    let elapsed = t0.elapsed();
+
+    // Renders: the corridor panel plus a time-to-sea isochrone map.
+    let rr = RunRasters::load(dir)?;
+    std::fs::create_dir_all(dir.join("render"))?;
+    let mut trunk_land: Vec<u32> = Vec::new();
+    let mut trunk_water: Vec<u32> = Vec::new();
+    for e in &out.trunk.edges {
+        for &(cell, mode) in &e.path {
+            match mode {
+                via_corridors::trunk::StepMode::Land => trunk_land.push(cell),
+                via_corridors::trunk::StepMode::Water => trunk_water.push(cell),
+            }
+        }
+    }
+    let class_cells = |class: via_corridors::trunk::SiteClass| -> Vec<u32> {
+        out.trunk
+            .nodes
+            .iter()
+            .filter(|n| n.class == class)
+            .map(|n| n.cell)
+            .collect()
+    };
+    let junction_cells: Vec<u32> = out.trunk.junctions.iter().map(|j| j.cell).collect();
+    let ov = via_viz::CorridorOverlay {
+        density: &out.density,
+        density_render_quantile: 0.8,
+        trunk_land_cells: &trunk_land,
+        trunk_water_cells: &trunk_water,
+        pass_cells: &class_cells(via_corridors::trunk::SiteClass::Pass),
+        head_cells: &class_cells(via_corridors::trunk::SiteClass::HeadOfNavigation),
+        mouth_cells: &class_cells(via_corridors::trunk::SiteClass::RiverMouth),
+        junction_cells: &junction_cells,
+    };
+    let panel = via_viz::render_corridors(&rr.viz(), &ov);
+    let panel_path = dir.join(format!("render/corridors.{}.png", cfg.label));
+    panel.save(&panel_path)?;
+
+    let hours: Vec<f64> = out
+        .hours_to_sea_land
+        .iter()
+        .map(|&v| if v == f32::MAX { f64::NAN } else { v as f64 })
+        .collect();
+    let iso = via_viz::render_scalar(
+        &rr.viz(),
+        &hours,
+        &[
+            (0.0, [40, 140, 60]),
+            (6.0, [190, 210, 70]),
+            (12.0, [235, 170, 50]),
+            (24.0, [200, 80, 40]),
+            (48.0, [120, 30, 80]),
+            (96.0, [40, 20, 60]),
+        ],
+    );
+    let iso_path = dir.join(format!("render/corridors.{}.hours_to_sea.png", cfg.label));
+    iso.save(&iso_path)?;
+
+    // Console report.
+    println!("corridors stage: label '{}', {:.1?}", cfg.label, elapsed);
+    println!(
+        "  lattice: spacing {} cells, {} sources",
+        out.lattice_spacing,
+        out.sources.len()
+    );
+    let anchored = out.trunk.nodes.iter().filter(|n| n.anchored).count();
+    println!(
+        "  trunk: {} nodes ({} anchored), {} edges, {} junctions",
+        out.trunk.nodes.len(),
+        anchored,
+        out.trunk.edges.len(),
+        out.trunk.junctions.len()
+    );
+    println!(
+        "  degeneracy (k_Q-conditional): ford-passable channel fraction {:.3}, navigable channel fraction {:.3}",
+        out.degeneracy.ford_passable_channel_fraction, out.degeneracy.navigable_channel_fraction
+    );
+    println!(
+        "  moves: {} land, {} water, {} switch",
+        out.degeneracy.land_moves, out.degeneracy.water_moves, out.degeneracy.switch_moves
+    );
+    println!(
+        "  renders: {} , {}",
+        panel_path.display(),
+        iso_path.display()
+    );
+    println!("  all gates passed (hard errors otherwise)");
+    Ok(())
 }

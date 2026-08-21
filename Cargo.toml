@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/via-artifact",
     "crates/via-bench",
+    "crates/via-corridors",
     "crates/via-ecology",
     "crates/via-suitability",
     "crates/via-terrain",
@@ -29,6 +30,7 @@ anyhow = "1"
 insta = { version = "1", features = ["json"] }
 
 via-artifact = { path = "crates/via-artifact" }
+via-corridors = { path = "crates/via-corridors" }
 via-ecology = { path = "crates/via-ecology" }
 via-suitability = { path = "crates/via-suitability" }
 via-terrain = { path = "crates/via-terrain" }

@@ -422,6 +422,75 @@ pub fn render_harbour(inp: &VizInput, fetch_m: &[f32], sediment: &[f32]) -> RgbI
     img
 }
 
+/// Marker cells for the corridor panel; all in flat cell indices.
+pub struct CorridorOverlay<'a> {
+    /// FETE directed traversal counts (log-tinted where positive).
+    pub density: &'a [u32],
+    /// Quantile of positive density below which cells are not drawn —
+    /// White & Barber's Pareto 80/20 rendering default (a presentation
+    /// threshold only; the artifact ships raw).
+    pub density_render_quantile: f64,
+    /// Trunk path cells, split by traversal mode.
+    pub trunk_land_cells: &'a [u32],
+    pub trunk_water_cells: &'a [u32],
+    pub pass_cells: &'a [u32],
+    pub head_cells: &'a [u32],
+    pub mouth_cells: &'a [u32],
+    pub junction_cells: &'a [u32],
+}
+
+/// Corridor panel: relief base, FETE density as a log heat overlay
+/// (pale straw → orange → crimson), trunk routes drawn dark (land
+/// legs near-black, water legs deep blue), gateway nodes marked —
+/// passes orange, heads of navigation magenta, river mouths white —
+/// and trunk junctions cyan.
+pub fn render_corridors(inp: &VizInput, ov: &CorridorOverlay) -> RgbImage {
+    let mut img = render_relief(inp);
+    let mut positive: Vec<u32> = ov.density.iter().copied().filter(|&d| d > 0).collect();
+    positive.sort_unstable();
+    let floor = if positive.is_empty() {
+        u32::MAX
+    } else {
+        let q = ov.density_render_quantile.clamp(0.0, 1.0);
+        let k = ((positive.len() as f64 - 1.0) * q).round() as usize;
+        positive[k].max(1)
+    };
+    let max_d = positive.last().copied().unwrap_or(0);
+    if max_d > floor {
+        let lo = (floor as f64).ln();
+        let hi = (max_d as f64).ln();
+        for (i, &d) in ov.density.iter().enumerate() {
+            if d < floor {
+                continue;
+            }
+            let v = ((d as f64).ln() - lo) / (hi - lo);
+            let color = palette::ramp(
+                &[
+                    (0.0, [255, 230, 90]),
+                    (0.5, [255, 110, 20]),
+                    (1.0, [225, 0, 70]),
+                ],
+                v,
+            );
+            let (x, y) = ((i as u32 % inp.w) as i32, (i as u32 / inp.w) as i32);
+            draw::blend(&mut img, x, y, color, 0.55 + 0.45 * v);
+        }
+    }
+    for &c in ov.trunk_water_cells {
+        let (x, y) = ((c % inp.w) as i32, (c / inp.w) as i32);
+        draw::blend(&mut img, x, y, [20, 60, 160], 0.9);
+    }
+    for &c in ov.trunk_land_cells {
+        let (x, y) = ((c % inp.w) as i32, (c / inp.w) as i32);
+        draw::blend(&mut img, x, y, [30, 20, 15], 0.9);
+    }
+    mark_cells(&mut img, inp.w, ov.junction_cells, [40, 220, 220], 0.8);
+    mark_cells(&mut img, inp.w, ov.pass_cells, [255, 150, 30], 0.95);
+    mark_cells(&mut img, inp.w, ov.head_cells, [230, 40, 200], 0.95);
+    mark_cells(&mut img, inp.w, ov.mouth_cells, [255, 255, 255], 0.9);
+    img
+}
+
 /// 2×2 composite with white margins: relief | accumulation / basins | shade.
 pub fn compose_sheet(panels: &[&RgbImage; 4], margin: u32) -> RgbImage {
     let w = panels[0].width();
