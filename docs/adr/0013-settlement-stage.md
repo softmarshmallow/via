@@ -36,6 +36,27 @@ a runtime assertion plus a recorded per-run maximum, since a per-step
 quantity cannot be re-read from disk; and the delineation-determinism
 gate moved to `via-bench`, which is the crate that actually runs it.
 
+**Amended a fifth time on the five-track adversarial review (26
+agents; 40 raw findings, 10 verified against two adversarial lenses
+each, 4 confirmed, 6 refuted, 30 below the severity cut and NOT
+examined). The review's verdict on the text as it then stood was
+DO-NOT-RATIFY, and all three blocking findings are fixed here:**
+(1) the adopted dynamic had lost its `W_j` prefactor, making it a
+linear relaxation that contradicted both the gradient-flow claim and
+the logistic reduction Decision 2 derives from it — the multiplicative
+form is restored and `x = ln W` named as the integrated coordinate;
+(2) the stability bound omitted `dt`, was stated on unnormalised
+population units under which it would hard-error on every run, and had
+been loosened from research 0016's recommended `0.5` margin to the
+marginal-stability value `2` by an earlier amendment of mine — the
+normalisation is now declared, the bound is on `ε·dt`, and the margin
+is restored; (3) `c_ij` pointed at two artifacts that cannot yield a
+pairwise cost — it is now a declared cost field, junction seeding is
+deferred behind a named ADR 0012 amendment, and `c_ii` and
+cross-component pairs have stated rules. **The 30 unexamined findings
+are not cleared, and this ADR should not be ratified as if they
+were.**
+
 Scope: the stage decisions for `via-settlement` (ADR 0009 D1: unit of
 work "settlement, corridor link") — which allocation engine, what
 supplies its population budget, where settlements may sit, how they
@@ -145,9 +166,15 @@ and forcing one would misdescribe the stage. The ruling is split:
   supposed to test, and the Tier-1 ruling above would collapse into
   decoration.
 - **`ε` and `dt` are numerical, not physical.** They are integration
-  parameters, constrained by Decision 2's stability bound and by
-  convergence, and they carry no claim about the world. A result that
-  moves when `ε` changes within the stable range is a bug.
+  parameters, jointly constrained by Decision 2's stability bound —
+  which is stated on the product `ε·dt`, since constraining either
+  alone leaves the other free to diverge — and by convergence. They
+  carry no claim about the world, and a result that moves when `ε`
+  changes within the stable range is a bug.
+- **`K`, the epoch's total settled mass, is Tier-2 forcing and is the
+  normalisation the solve runs in** (Decision 2). It is the same
+  quantity as `ΣO_i/κ`; naming it separately matters because every
+  published `ε` and convergence tolerance assumes shares, not people.
 - **The *shape* of `O_i` across nodes is Tier-3, and only its total is
   Tier-2.** The bullets above cover `ΣO_i`; the per-node weighting
   that distributes it (Decision 4) is a suitability composite, and
@@ -173,12 +200,31 @@ Adopted, in the form the three primaries agree on:
     T_ij = A_i · O_i · W_j^α · exp(−β c_ij)
     A_i  = 1 / Σ_k W_k^α · exp(−β c_ik)
     D_j  = Σ_i T_ij
-    dW_j/dt = ε · (D_j − κ W_j + δ)
+    dW_j/dt = ε · W_j · (D_j − κ W_j + δ)
 
-`c_ij` is the corridor time in hours (ADR 0012 D5's edge records and
-`hours_to_trunk`), never re-derived here — the settlement stage does
-not reimplement the movement model. `O_i` is the origin mass at node
-`i` (Decision 4). `α` is the returns-to-scale term and `β` the
+**The `W_j` prefactor on the last line is load-bearing and an earlier
+draft of this ADR omitted it.** Without it the dynamic is a linear
+relaxation, not the Boltzmann–Lotka–Volterra dynamic the name refers
+to, and three things this ADR asserts become false at once: Ellam's
+gradient flow in `x = ln W` requires it (`d(ln W_j)/dt = ε(D_j −
+κW_j + δ)` is exactly the multiplicative form divided by `W_j`);
+Wilson's quadratic difference reduction cannot be obtained from an
+equation linear in `W`; and `W = 0` stops being a fixed point, which
+removes the very absorbing-state that Decision 2's `δ > 0` argument
+exists to defeat. The additive form is what research 0001 line 129
+records, and that rendering is wrong; it is corrected here rather
+than inherited.
+
+**The state is integrated in `x = ln W`, not in `W`.** This is the
+coordinate Ellam's gradient flow is stated in, and it is the reason
+the floor works: as `W → 0` the log-space drift tends to
+`ε(D_j + δ) > 0`, so a shrinking centre is pushed back up instead of
+crossing zero. Integrating in `W` would need an explicit positivity
+clamp, and a negative `W_j` makes `W_j^α` NaN for non-integer `α`,
+which Decision 8's "unevaluable is fail" preamble turns into a gate
+failure. Emitted populations are `exp(x_j)`.
+
+`O_i` is the origin mass at node `i` (Decision 4). `α` is the returns-to-scale term and `β` the
 distance decay; **their values are calibrated, not asserted here**
 (Decision 1). The regime note matters for reading results but is not
 a constraint the ADR imposes: `α > 1` drives agglomeration, `α ≤ 1`
@@ -187,8 +233,23 @@ rather than a setting.
 
 **`δ > 0` is required, not optional.** Research 0016 records both
 reasons: at `δ = 0` the Gibbs measure is unnormalisable, and dead
-zones become absorbing states. The minimum settlement size is `δ/κ`,
-and it is a derived quantity, not a separate threshold to tune.
+zones become absorbing states — Osawa's "once abandoned, a zone will
+never obtain a new retailer regardless of the extent of transport
+costs". The minimum settlement size is `δ/κ`, read off the interior
+equilibrium `D_j − κW_j + δ = 0` as `D_j → 0`; it is a derived
+quantity, not a separate threshold to tune.
+
+**Units and normalisation, declared — because nothing downstream is
+well-posed without them.** The stage solves on **shares**: `Σ_j W_j =
+K` with `K` the epoch's declared total settled mass, and `κ =
+(Σ_i O_i + δM)/K` (Ellam Eq. 25, where `M` is the number of seed
+sites). `O_i` is expressed in the same share units, so `Σ_i O_i = K`
+by construction and `D_j` is dimensionless-per-unit-mass. This is
+what makes `ε` a pure rate and the stability bound below dimensionally
+meaningful; solving on absolute head-counts instead would leave `ε·D_j`
+carrying population units and every published `ε` value inapplicable.
+Absolute populations are recovered once, at emission, by multiplying
+the converged shares by `K`.
 
 **IPF/Furness balancing is not needed** for a singly-constrained
 model — `A_i` closes in one pass. It is recorded here only because
@@ -201,17 +262,56 @@ continuous Harris–Wilson dynamic is a gradient flow in `x = ln W`
 observed in via would be a discretisation artefact, and is treated as
 a bug rather than a finding.
 
-The bound comes from the scalar reduction `ΔZ_j = ε(D_j − Z_j)Z_j`,
-which is the logistic map with `r = 1 + ε D_j` — **the mapping is
-via's, not a published result**, and is declared as such. Using May
-(1976) Table I (period-2 at `a = 3.0`, chaos at `a_c = 3.5700`), the
-stability condition is **`ε · D_j < 2` for the fixed point and
-`< 2.57` for chaos onset**. `ε · max_j D_j < 2` is asserted at
-runtime. Published settings for a defensible default: `ε = 1` with
-`dt = 0.01` under Euler–Maruyama (Zachos et al.), or `ε = 0.01`
-"so that the model does not converge too rapidly" with convergence at
-`Σ(D_j − W_j)² < 1e-5` and a 10,000-iteration cap (Peeples &
-Brughmans).
+**The stability bound, derived in the coordinate actually
+integrated.** Explicit Euler on `x = ln W` gives `x_{n+1} = x_n +
+ε·dt·(D_j − κ e^{x_n} + δ)`. Linearising at the interior fixed point,
+where `κW* = D_j + δ`, the multiplier is `1 − ε·dt·(D_j + δ)`, so the
+fixed point is stable exactly when
+
+    0 < ε · dt · (D_j + δ) < 2
+
+and **`ε · dt · max_j (D_j + δ) < 0.5` is asserted at runtime** — the
+margin research 0016 recommends, not the marginal-stability point.
+Three things about this bound were wrong in an earlier draft and are
+corrected here.
+
+*`dt` belongs in it.* In any explicit scheme the step multiplier is
+`ε·dt`. A bound on `ε` alone leaves `dt` free, so `dt = 100` would
+pass an assertion on `ε·max_j D_j` and diverge — while Decision 1
+claims both are "constrained by Decision 2's stability bound".
+
+*The bound is on the shares of the declared normalisation above*, not
+on absolute head-counts. With `D_j` in people, `ε·D_j` carries
+population units, every published `ε` is inapplicable, and at
+`D_j ~ 1e3–1e5` the assertion would hard-error on every run.
+
+*2 is not a safe bound, and 0.5 was not an invention.* Research 0016
+derives `ε·D_j < 2` (fixed point) and `< 2.57` (chaos onset) from
+Wilson's difference equation, then separately recommends "Assert
+ε·max(D_j) < 0.5 at runtime". A previous amendment to this ADR read
+the derived marginal value as superseding the recommended margin and
+raised the assertion to 2 — which places the run arbitrarily close to
+the period-doubling boundary that this decision elsewhere calls "a
+bug rather than a finding". The margin is restored.
+
+**Wilson's logistic reduction is retained only as what it is.**
+`ΔZ_j = ε(D_j − Z_j)Z_j` is the logistic map with `r = 1 + εD_j`, and
+research 0016 pairs it with May (1976) Table I (period-2 at `a = 3.0`,
+chaos at `a_c = 3.5700`) — **via's own algebra on Wilson's equation
+and May's thresholds, declared as such, and valid only in Wilson's
+normalised-share case `κ = 1, δ = 0`.** Via does not integrate that
+map: the log-coordinate Euler step above is of the exponential
+(Ricker) family, whose bifurcation constants differ and **are not
+imported here**, which is the second reason the assertion carries a
+margin rather than sitting on a named threshold.
+
+Published settings, for orientation rather than adoption: `ε = 1`
+with `dt = 0.01` under Euler–Maruyama (Zachos et al.), or `ε = 0.01`
+"so that the model does not converge too rapidly" (Peeples &
+Brughmans). Their convergence test `Σ(D_j − W_j)² < 1e-5` is an
+equilibrium residual **only when `κ = 1` and `δ = 0`**; via's residual
+is stated on the actual equilibrium condition, `max_j |D_j − κW_j + δ|`
+in the declared share units, with a 10,000-iteration cap.
 
 Osawa's "period-doubling" is **spatial and in parameter space, not
 temporal** — the corpus previously misread it, and the misreading is
@@ -273,12 +373,62 @@ was not read; no page number here may be attributed to the journal.**
 
 ## Decision 4 — Settlements sit at corridor nodes; `O_i` is seeded from suitability
 
-Seed sites are the trunk **node** and **junction** records of ADR 0012
-D5 — passes, heads of navigation, river mouths, and the mechanically
-derived degree-≥3 junctions. This is the causal chain of ADR 0009
-taken literally: corridors exist before settlements, so settlements
-attach to the network rather than the network being drawn between
-settlements.
+Seed sites are the trunk **node** records of ADR 0012 D5 — passes,
+heads of navigation and river mouths. This is the causal chain of ADR
+0009 taken literally: corridors exist before settlements, so
+settlements attach to the network rather than the network being drawn
+between settlements.
+
+**Junctions are excluded at era 0, and the reason is a contract gap,
+not a design preference.** An earlier draft seeded them too. But ADR
+0012 D5 emits junction records as `(cell, x/y, degree, incident edge
+ids)` with **no traversal time of any kind** — verified against
+`runs/big-s102/corridors.site.json`, whose 1465 junction records carry
+exactly `cell, x, y, degree, edges`. A junction sits in the *interior*
+of an edge path, and edge records store their path as untimed
+`(cell, mode)` steps, so no cost from a junction to anywhere is
+recoverable without re-deriving the movement model — which Decision 2
+forbids. **Seeding junctions therefore requires an upstream amendment:
+ADR 0012 D5 must emit cumulative time along each edge path (per step,
+or at minimum per junction cell).** That amendment is named here as a
+prerequisite for junction seeding and is not assumed by this ADR.
+Until it lands, the seed set is the 1198 trunk nodes, not the 2663
+nodes-plus-junctions.
+
+### The cost field `c_ij`, declared explicitly
+
+Decision 2 says `c_ij` is never re-derived here. That obligation is
+only dischargeable if the cost field is *stated*, because neither
+artifact ADR 0012 names supplies a pairwise cost on its own:
+`hours_to_trunk` is identically zero at every seed by construction —
+its sources are "every cell traversed by any trunk edge … at zero"
+and seeds are trunk cells — and edge records give end-to-end hours
+only for Gabriel-graph adjacencies. So:
+
+- **`c_ij` (i ≠ j) is the shortest-path time over the trunk graph**,
+  vertices = trunk nodes, arc weights = the recorded directional
+  `hours_ab` / `hours_ba`. Directionality is preserved; `c_ij` is not
+  assumed symmetric, and the asymmetry is real (water legs and slope).
+  This composes recorded times only — it re-derives nothing.
+- **`c_ii` is an intrazonal convention, declared Tier-2 forcing with
+  no literature template in the corpus.** It is `c_ii = γ · min_{k≠i}
+  c_ik` with `γ` in config and swept, because `c_ii` controls
+  self-containment: at `c_ii = 0`, `exp(−β·0) = 1` makes every origin
+  its own strongest destination and manufactures precisely the size
+  dispersion Decision 10 forbids the stage from claiming. The sweep's
+  effect on the size distribution is reported, never a single value.
+- **Cross-component pairs have no path, and are not given a large
+  finite cost.** The solve is **per component**: an unreachable pair
+  would otherwise leave `A_i = 1 / Σ_k W_k^α exp(−β c_ik)` dividing by
+  zero and propagating NaN into every gate. Nodes with component
+  `−1` (unanchored) are excluded from the solve, and both the
+  component partition and the excluded count are recorded in the
+  summary. On `runs/big-s102` that is 1188 / 6 / 4 — a dominant
+  component, a small second one, and four unanchored nodes.
+
+Because `c_ij` is now a defined field rather than a pointer, Decision
+8 gate 5 checks route cost against **that** field, not against a
+single edge's recorded time.
 
 `O_i` is seeded from the suitability spectra at the node's cell —
 patch rank, freshwater distance, crossability, harbour components —
@@ -520,7 +670,10 @@ compute's in-memory state — the ADR 0011/0012 precedent.
 
 1. **Mass conservation** — `|Σκ_j W_j − (ΣO_i + δM)| / (ΣO_i + δM)`
    below tolerance at convergence. This is Decision 2's balancing
-   condition; if it fails, the engine is not Harris–Wilson.
+   condition; if it fails, the engine is not Harris–Wilson. It is
+   unaffected by the multiplicative correction to the dynamic: summing
+   the interior equilibrium `D_j − κW_j + δ = 0` over `j` and using
+   `Σ_j D_j = Σ_i O_i` returns the same identity.
 2. **Flow conservation** — `|Σ_j T_ij − O_i| / O_i` below tolerance
    for every `i`. Stated as a tolerance, not an equality: `A_i`
    normalises a sum of floats, so exact equality is unachievable and
@@ -531,19 +684,21 @@ compute's in-memory state — the ADR 0011/0012 precedent.
    so a transient `W_j` below it during the solve is expected, not a
    violation, and a gate that checked every step would fire on
    correct runs.
-4. **Convergence** — fixed-point residual below tolerance, and the
-   Decision 2 stability bound respected. **The bound needs splitting
-   to be checkable at all**, because a per-step quantity cannot be
-   re-read from disk after the run: the per-step `ε · max_j D_j < 2`
-   is a **runtime assertion** (hard error on violation), and the
-   stage records `max` of that quantity **over all steps** in the
-   summary; the *gate* re-reads that recorded maximum from disk and
-   checks it. Without the recorded maximum the gate would be
-   unevaluable, and the preamble makes unevaluable a failure.
+4. **Convergence** — the residual `max_j |D_j − κW_j + δ|` below
+   tolerance in the declared share units, and the Decision 2 stability
+   bound respected. **The bound needs splitting to be checkable at
+   all**, because a per-step quantity cannot be re-read from disk
+   after the run: the per-step `ε · dt · max_j (D_j + δ) < 0.5` is a
+   **runtime assertion** (hard error on violation), and the stage
+   records `max` of that quantity **over all steps** in the summary;
+   the *gate* re-reads that recorded maximum from disk and checks it.
+   Without the recorded maximum the gate would be unevaluable, and the
+   preamble makes unevaluable a failure.
 5. **Attachment integrity** — every emitted attachment references an
    existing ADR 0012 trunk edge; its bearing is re-derivable from the
-   recorded path geometry; its route cost equals the edge's recorded
-   time.
+   recorded path geometry; its route cost equals the Decision 4 cost
+   field `c_ij` evaluated on that attachment, which for a single-edge
+   attachment reduces to the edge's recorded directional time.
 6. **Population-raster determinism** — the emitted population field
    reproduces bit-identically from the settlement records and the
    declared spreading-rule parameters. This is the stage's gate; note
