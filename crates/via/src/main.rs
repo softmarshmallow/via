@@ -27,6 +27,9 @@ enum Cmd {
     /// Run the corridors stage against a run directory that already
     /// carries terrain and suitability artifacts.
     Corridors(CorridorsArgs),
+    /// Run the settlement stage against a run directory that already
+    /// carries terrain, suitability and corridors artifacts.
+    Settlement(SettlementArgs),
 }
 
 #[derive(Args)]
@@ -34,6 +37,15 @@ struct CorridorsArgs {
     /// Run directory (terrain + suitability artifacts + manifest.json).
     run_dir: PathBuf,
     /// Path to a CorridorsConfig JSON; defaults apply if omitted.
+    #[arg(long)]
+    config: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct SettlementArgs {
+    /// Run directory (terrain + suitability + corridors artifacts).
+    run_dir: PathBuf,
+    /// Path to a SettlementConfig JSON; defaults apply if omitted.
     #[arg(long)]
     config: Option<PathBuf>,
 }
@@ -751,7 +763,78 @@ fn main() -> Result<()> {
         Cmd::Suitability(args) => run_suitability(args),
         Cmd::Ecology(args) => run_ecology(args),
         Cmd::Corridors(args) => run_corridors(args),
+        Cmd::Settlement(args) => run_settlement(args),
     }
+}
+
+fn run_settlement(args: SettlementArgs) -> Result<()> {
+    let cfg = match &args.config {
+        Some(p) => {
+            let t = std::fs::read_to_string(p)?;
+            serde_json::from_str::<via_settlement::SettlementConfig>(&t)?
+        }
+        None => via_settlement::SettlementConfig::default(),
+    };
+    let dir = &args.run_dir;
+    let t0 = Instant::now();
+    let inp = via_settlement::load_inputs(dir, &cfg)?;
+    let out = via_settlement::compute(&inp, &cfg)?;
+    let elapsed = t0.elapsed();
+
+    let above: usize = out.settlements.iter().filter(|s| !s.at_floor).count();
+    let solved: usize = out.components.iter().filter(|c| c.solved).count();
+    let unconverged: usize = out
+        .components
+        .iter()
+        .filter(|c| c.solved && !c.converged)
+        .count();
+    println!("settlement stage: label '{}', {:.1?}", cfg.label, elapsed);
+    println!(
+        "  cost field: {} vertices ({} trunk-node cells, {} junction-only), {} arcs",
+        out.vertices, out.node_cells, out.junction_only_cells, out.arcs
+    );
+    println!(
+        "  components: {} solved, {} vertices excluded (below min_component or zero mass)",
+        solved, out.excluded_vertices
+    );
+    if unconverged > 0 {
+        println!(
+            "  WARNING: {unconverged} component(s) hit the iteration cap — treat as not converged"
+        );
+    }
+    println!(
+        "  settlements: {} placed, {} above the delta/kappa floor",
+        out.settlements.len(),
+        above
+    );
+    let mut shares: Vec<f64> = out.settlements.iter().map(|s| s.share).collect();
+    shares.sort_by(|a, b| b.total_cmp(a));
+    if let Some(&top) = shares.first() {
+        let sum: f64 = shares.iter().sum();
+        println!(
+            "  largest share {:.4} of {:.4} total; top-10 hold {:.1}%",
+            top,
+            sum,
+            100.0 * shares.iter().take(10).sum::<f64>() / sum
+        );
+    }
+    let json = serde_json::json!({
+        "stage": "settlement",
+        "config": cfg,
+        "cost_field": {
+            "vertices": out.vertices,
+            "node_cells": out.node_cells,
+            "junction_only_cells": out.junction_only_cells,
+            "arcs": out.arcs,
+            "excluded_vertices": out.excluded_vertices,
+        },
+        "components": out.components,
+        "settlements": out.settlements,
+    });
+    let path = dir.join(via_settlement::summary_filename(&cfg.label));
+    std::fs::write(&path, serde_json::to_string_pretty(&json)?)?;
+    println!("  summary: {}", path.display());
+    Ok(())
 }
 
 fn run_corridors(args: CorridorsArgs) -> Result<()> {

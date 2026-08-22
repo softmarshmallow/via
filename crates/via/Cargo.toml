@@ -12,6 +12,7 @@ serde_json = { workspace = true }
 via-artifact = { workspace = true }
 via-ecology = { workspace = true }
 via-corridors = { workspace = true }
+via-settlement = { workspace = true }
 via-suitability = { workspace = true }
 via-terrain = { workspace = true }
 via-viz = { workspace = true }

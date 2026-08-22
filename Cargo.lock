@@ -592,6 +592,7 @@ dependencies = [
  "via-artifact",
  "via-corridors",
  "via-ecology",
+ "via-settlement",
  "via-suitability",
  "via-terrain",
  "via-viz",

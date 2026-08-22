@@ -141,6 +141,102 @@ pub fn solve(o: &[f64], kernel: &[f64], p: &HwParams) -> HwSolution {
     }
 }
 
+/// Find the interior equilibrium by damped successive substitution:
+/// `W ← (1−λ)W + λ (D(W) + δ)/κ`.
+///
+/// **This is a solver, not the model.** The model is the BLV flow in
+/// `solve`; this routine only locates its fixed point. That is
+/// legitimate precisely because ADR 0013 gate 4 states the residual on
+/// the *equilibrium condition* `max_j |D_j − κW_j + δ|`, which is
+/// solver-independent — any method that drives it below tolerance has
+/// found the same equilibrium.
+///
+/// The reason it is needed: time-stepping the log flow has a slowest
+/// mode of rate `ε·dt·δ` at starved sites (see `solve`), and at a `δ`
+/// small enough that floors hold only a minor share of the budget,
+/// that rate implies of order a million iterations. The damped
+/// substitution converges at `|1 − λ|` per step, with no `δ`
+/// dependence at all. Transients — epochs, shocks, anything where the
+/// path matters rather than the endpoint — still use `solve`.
+pub fn solve_equilibrium(o: &[f64], kernel: &[f64], p: &HwParams, lambda: f64) -> HwSolution {
+    let n = o.len();
+    assert_eq!(kernel.len(), n * n, "kernel must be n×n row-major");
+    assert!(p.delta > 0.0, "delta must be > 0 (ADR 0013 Decision 2)");
+    assert!(
+        lambda > 0.0 && lambda <= 1.0,
+        "relaxation must be in (0, 1]"
+    );
+
+    let m = n as f64;
+    let o_sum: f64 = o.iter().sum();
+    let kappa = (o_sum + p.delta * m) / p.k_total;
+
+    let mut w: Vec<f64> = vec![p.k_total / m; n];
+    let mut wa = vec![0.0f64; n];
+    let mut d = vec![0.0f64; n];
+    let mut acc = vec![0.0f64; n];
+
+    let mut iters = 0;
+    let mut converged = false;
+    let mut residual = f64::INFINITY;
+
+    while iters < p.max_iters {
+        for j in 0..n {
+            wa[j] = w[j].powf(p.alpha);
+        }
+        acc.iter_mut().for_each(|v| *v = 0.0);
+        for i in 0..n {
+            let row = &kernel[i * n..(i + 1) * n];
+            let mut s = 0.0;
+            for j in 0..n {
+                s += row[j] * wa[j];
+            }
+            if !s.is_finite() || s <= 0.0 {
+                continue;
+            }
+            let aio = o[i] / s;
+            for j in 0..n {
+                acc[j] += aio * row[j];
+            }
+        }
+        let mut res = 0.0f64;
+        for j in 0..n {
+            d[j] = wa[j] * acc[j];
+            res = res.max((d[j] - kappa * w[j] + p.delta).abs());
+        }
+        residual = res;
+        iters += 1;
+        if res <= p.tol {
+            converged = true;
+            break;
+        }
+        for j in 0..n {
+            let target = (d[j] + p.delta) / kappa;
+            w[j] = (1.0 - lambda) * w[j] + lambda * target;
+            // The floor is structural, not a clamp: `target` is never
+            // below δ/κ because `d[j] >= 0`. Guard only against a
+            // denormal creeping in, which would make `W^α` lose the
+            // interior branch.
+            if !w[j].is_finite() || w[j] <= 0.0 {
+                w[j] = p.delta / kappa;
+            }
+        }
+    }
+
+    HwSolution {
+        w,
+        d,
+        kappa,
+        iters,
+        converged,
+        residual,
+        // Not a time-stepped run: the stability bound does not apply,
+        // and reporting a fabricated multiplier would be worse than
+        // reporting none.
+        max_step_multiplier: 0.0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,6 +278,39 @@ mod tests {
         assert!(
             ((lhs - rhs) / rhs).abs() < 1e-9,
             "mass not conserved: {lhs} vs {rhs}"
+        );
+    }
+
+    /// The two solvers must land on the same equilibrium — that is
+    /// the whole justification for using the fast one to find it.
+    #[test]
+    fn flow_and_fixed_point_agree_on_the_equilibrium() {
+        let p = HwParams {
+            epsilon: 0.4,
+            dt: 1.0,
+            delta: 0.01,
+            tol: 1e-11,
+            ..params()
+        };
+        let c = 2.0f64;
+        let k = vec![1.0, (-p.beta * c).exp(), (-p.beta * c).exp(), 1.0];
+        let o = vec![0.7, 0.3];
+        let a = solve(&o, &k, &p);
+        let b = solve_equilibrium(&o, &k, &p, 0.5);
+        assert!(a.converged && b.converged);
+        for j in 0..2 {
+            assert!(
+                (a.w[j] - b.w[j]).abs() / a.w[j] < 1e-6,
+                "solvers disagree at {j}: {} vs {}",
+                a.w[j],
+                b.w[j]
+            );
+        }
+        assert!(
+            b.iters < a.iters,
+            "fixed point should be the faster route: {} vs {}",
+            b.iters,
+            a.iters
         );
     }
 
