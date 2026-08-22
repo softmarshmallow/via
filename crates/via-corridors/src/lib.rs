@@ -748,6 +748,36 @@ pub fn write_outputs(
                 prev = Some((cell, mode));
             }
             gate("trunk_path_cost", hours == e.hours_ab || e.path.len() <= 1)?;
+            // Cumulative arrays must be usable as a per-step cost
+            // field: right length, monotone, endpoints exact. A
+            // consumer splicing a junction into the graph reads these
+            // directly, so a silent inconsistency here would corrupt
+            // every downstream c_ij (ADR 0013 D4).
+            gate("trunk_cum_hours_len", e.cum_hours_ab.len() == e.path.len())?;
+            gate(
+                "trunk_cum_hours_ab_ends",
+                e.cum_hours_ab.first().copied() == Some(0.0)
+                    && e.cum_hours_ab.last().copied() == Some(e.hours_ab),
+            )?;
+            gate(
+                "trunk_cum_hours_ab_monotone",
+                e.cum_hours_ab.windows(2).all(|w| w[1] >= w[0]),
+            )?;
+            gate(
+                "trunk_cum_hours_ba_present",
+                e.cum_hours_ba.is_some() == e.hours_ba.is_some(),
+            )?;
+            if let (Some(cba), Some(hba)) = (&e.cum_hours_ba, e.hours_ba) {
+                gate("trunk_cum_hours_ba_len", cba.len() == e.path.len())?;
+                gate(
+                    "trunk_cum_hours_ba_ends",
+                    cba.first().copied() == Some(hba) && cba.last().copied() == Some(0.0),
+                )?;
+                gate(
+                    "trunk_cum_hours_ba_monotone",
+                    cba.windows(2).all(|w| w[1] <= w[0]),
+                )?;
+            }
         }
     }
 

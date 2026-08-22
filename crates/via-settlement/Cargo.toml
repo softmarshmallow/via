@@ -1,0 +1,15 @@
+[package]
+name = "via-settlement"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Stage 4: settlement systems — Harris-Wilson allocation over the corridor cost field (ADR 0013)."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+via-artifact = { workspace = true }
+via-corridors = { workspace = true }
+
+[dev-dependencies]
+blake3 = { workspace = true }

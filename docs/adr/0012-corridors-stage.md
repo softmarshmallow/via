@@ -16,7 +16,11 @@ loud failure on malformed site records, and the measured behaviour
 of the energy min form; amended again 2026-08-22 on research 0015 —
 ford caps moved from the occupational flood-stability envelope to the
 traveller envelope, and applied to the crossing-flow depth and
-velocity of the amended ADR 0011 chain)
+velocity of the amended ADR 0011 chain; amended again 2026-08-22
+on the ADR 0013 adversarial review — edge records now carry
+per-step cumulative times in both directions, because without
+them a path-interior cell such as a junction has no cost to
+anything and the settlement stage could not build its cost field)
 Scope: the stage decisions for `via-corridors` (ADR 0009 D1: unit of
 work "route, cost surface") — the movement-cost adoption ADR 0011
 deferred here, the multimodal mode set for the first (pre-modern)
@@ -465,9 +469,20 @@ manifest registration exactly as ADR 0011; one `StageRecord` keyed
   internal to construction and not artifact fields —, land-leg
   energy in J/kg per direction (water-leg energy has no citable
   form, 0014, and is null with the absence stated), path length in
-  metres, and the path as a list of **(cell, mode) steps** — mode ∈
+  metres, the path as a list of **(cell, mode) steps** — mode ∈
   {land, water}, switches implied by mode change — so consumers can
-  site ports without re-deriving modes); **junction records**: build
+  site ports without re-deriving modes, **and, amended 2026-08-22,
+  `cum_hours_ab` / `cum_hours_ba`: cumulative time from each endpoint
+  to every path index, one entry per step.** That amendment exists
+  because the original record made a cell *interior* to a path
+  uncostable: a consumer could read a junction's position but not its
+  time to anything, and recovering it meant re-deriving the movement
+  model, which D5 forbids. `cum_hours_ab[0] = 0`, its last entry is
+  `hours_ab`, `cum_hours_ba` mirrors it from `b` and is `None`
+  exactly when `hours_ba` is; four contract gates check length,
+  endpoints, monotonicity and presence. The ADR 0013 settlement stage
+  named this as the prerequisite for seeding junctions);
+  **junction records**: build
   the union graph of trunk paths (cells as vertices, consecutive
   steps as edges); a junction is a vertex of degree ≥ 3 or a trunk
   endpoint — mechanically derived, no authored weight — recorded as

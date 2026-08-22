@@ -51,11 +51,19 @@ been loosened from research 0016's recommended `0.5` margin to the
 marginal-stability value `2` by an earlier amendment of mine — the
 normalisation is now declared, the bound is on `ε·dt`, and the margin
 is restored; (3) `c_ij` pointed at two artifacts that cannot yield a
-pairwise cost — it is now a declared cost field, junction seeding is
-deferred behind a named ADR 0012 amendment, and `c_ii` and
+pairwise cost — it is now a declared cost field, and `c_ii` and
 cross-component pairs have stated rules. **The 30 unexamined findings
 are not cleared, and this ADR should not be ratified as if they
 were.**
+
+**Sixth amendment, same day:** the junction deferral B3 forced has
+been lifted, because its prerequisite was built rather than left
+pending. ADR 0012 D5 now emits `cum_hours_ab` / `cum_hours_ba` under
+four contract gates, so junctions are exact vertices of the cost
+field. Measured on `runs/big-s102`, that is 1469 distinct seed cells
+rather than 1195 — 274 junction-only cells, since 1191 junctions
+already sit on a trunk node — which matters because `n` is what
+decides whether the Decision 7 rank-size character can discriminate.
 
 Scope: the stage decisions for `via-settlement` (ADR 0009 D1: unit of
 work "settlement, corridor link") — which allocation engine, what
@@ -380,21 +388,36 @@ heads of navigation and river mouths. This is the causal chain of ADR
 settlements attach to the network rather than the network being drawn
 between settlements.
 
-**Junctions are excluded at era 0, and the reason is a contract gap,
-not a design preference.** An earlier draft seeded them too. But ADR
-0012 D5 emits junction records as `(cell, x/y, degree, incident edge
-ids)` with **no traversal time of any kind** — verified against
-`runs/big-s102/corridors.site.json`, whose 1465 junction records carry
-exactly `cell, x, y, degree, edges`. A junction sits in the *interior*
-of an edge path, and edge records store their path as untimed
-`(cell, mode)` steps, so no cost from a junction to anywhere is
-recoverable without re-deriving the movement model — which Decision 2
-forbids. **Seeding junctions therefore requires an upstream amendment:
-ADR 0012 D5 must emit cumulative time along each edge path (per step,
-or at minimum per junction cell).** That amendment is named here as a
-prerequisite for junction seeding and is not assumed by this ADR.
-Until it lands, the seed set is the 1198 trunk nodes, not the 2663
-nodes-plus-junctions.
+**Junctions are seeded too — but only because the contract gap that
+blocked them has since been closed.** The adversarial review found
+that ADR 0012 D5 emitted junction records as `(cell, x/y, degree,
+incident edge ids)` with **no traversal time of any kind**, and edge
+paths as untimed `(cell, mode)` steps. A junction sits in the
+*interior* of an edge path, so its cost to anything was unrecoverable
+without re-deriving the movement model — which Decision 2 forbids.
+The seed set was therefore cut to trunk nodes alone.
+
+**ADR 0012 D5 has since been amended** to carry `cum_hours_ab` and
+`cum_hours_ba`, cumulative time from each endpoint to every path
+index, under four contract gates. A junction at path index `k` now
+has exact costs `cum_hours_ab[k]` to `a` and `hours_ab −
+cum_hours_ab[k]` onward to `b`, with the reverse mirrored — composed
+from recorded times, re-deriving nothing. **Junctions are therefore
+graph vertices of the Decision 4 cost field, not just seeds**, which
+is the honest reading: a corridor fork is a real place on the network
+whether or not anyone settles there.
+
+**The gain is real but smaller than a naive count suggests, and the
+measured number is the one that goes in.** On `runs/big-s102` the
+1198 trunk nodes occupy 1195 distinct cells, the 1465 junctions
+occupy 1465, and **1191 of those coincide** — a junction is usually
+*at* a gateway, not between two. Splicing therefore yields **1469
+distinct vertices, not 2663**: 1195 node cells plus 274 junction-only
+cells, joined by 3362 arcs. Adding the two counts would have
+double-counted the overlap almost entirely, and the seed count is
+load-bearing — `n` is the binding constraint on whether the Decision 7
+rank-size character can discriminate at all, its floor being `n = 15`
+after exclusions.
 
 ### The cost field `c_ij`, declared explicitly
 
@@ -407,10 +430,13 @@ and seeds are trunk cells — and edge records give end-to-end hours
 only for Gabriel-graph adjacencies. So:
 
 - **`c_ij` (i ≠ j) is the shortest-path time over the trunk graph**,
-  vertices = trunk nodes, arc weights = the recorded directional
-  `hours_ab` / `hours_ba`. Directionality is preserved; `c_ij` is not
-  assumed symmetric, and the asymmetry is real (water legs and slope).
-  This composes recorded times only — it re-derives nothing.
+  whose vertices are the trunk nodes **and the junction cells spliced
+  into their edge paths**, with arc weights taken from the recorded
+  directional `hours_ab` / `hours_ba` and, for the two arcs either
+  side of a spliced junction, from `cum_hours_ab` / `cum_hours_ba` at
+  that index. Directionality is preserved; `c_ij` is not assumed
+  symmetric, and the asymmetry is real (water legs and slope). This
+  composes recorded times only — it re-derives nothing.
 - **`c_ii` is an intrazonal convention, declared Tier-2 forcing with
   no literature template in the corpus.** It is `c_ii = γ · min_{k≠i}
   c_ik` with `γ` in config and swept, because `c_ii` controls

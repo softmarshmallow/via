@@ -65,6 +65,19 @@ pub struct TrunkEdge {
     /// The path as (cell, mode) steps; a mode change at the same or
     /// adjacent cell implies a transshipment switch.
     pub path: Vec<(u32, StepMode)>,
+    /// Cumulative forward time from `a` to each `path` index, in
+    /// hours. Same length as `path`; `[0] == 0.0` and the last entry
+    /// equals `hours_ab`. This is what lets a consumer treat a cell
+    /// *interior* to the path — a junction — as a graph vertex with a
+    /// real cost to each endpoint, without re-deriving the movement
+    /// model (ADR 0012 D5, amended; ADR 0013 D4 names it as the
+    /// prerequisite for junction seeding).
+    pub cum_hours_ab: Vec<f64>,
+    /// Cumulative reverse time from `b` back to each `path` index.
+    /// Same length as `path`; the last entry is `0.0` and `[0]`
+    /// equals `hours_ba`. None exactly when `hours_ba` is None, so
+    /// the asymmetry of the cost field is preserved per step.
+    pub cum_hours_ba: Option<Vec<f64>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -308,18 +321,23 @@ pub fn build(model: &MoveModel, mut nodes: Vec<TrunkNode>, reuse_alpha: f64) -> 
         node_path.reverse();
         // Undiscounted costs, energies, length; register built edges.
         let mut hours_ab = 0.0;
-        let mut hours_ba: Option<f64> = Some(0.0);
+        let mut rev_admissible = true;
         let mut e_ab = 0.0;
         let mut e_ba = 0.0;
         let mut water_legs = false;
         let mut length_m = 0.0;
+        let mut cum_hours_ab: Vec<f64> = Vec::with_capacity(node_path.len());
+        cum_hours_ab.push(0.0);
+        let mut rev_steps: Vec<Option<f64>> = Vec::with_capacity(node_path.len());
         for w2 in node_path.windows(2) {
             let (u, v) = (w2[0], w2[1]);
             hours_ab += model.move_cost(u, v).expect("forward step admissible");
-            hours_ba = match (hours_ba, model.move_cost(v, u)) {
-                (Some(acc), Some(c)) => Some(acc + c),
-                _ => None,
-            };
+            cum_hours_ab.push(hours_ab);
+            let rev = model.move_cost(v, u);
+            if rev.is_none() {
+                rev_admissible = false;
+            }
+            rev_steps.push(rev);
             let (cu, cv) = (model.cell_of(u), model.cell_of(v));
             let land_edge = !model.is_water_node(u) && !model.is_water_node(v);
             if cu != cv {
@@ -336,6 +354,26 @@ pub fn build(model: &MoveModel, mut nodes: Vec<TrunkNode>, reuse_alpha: f64) -> 
                 water_legs = true;
             }
         }
+        // Reverse cumulative: b back to each index, built only where
+        // every reverse step is admissible. **This array is the
+        // primitive and `hours_ba` is read off its first entry.**
+        // Accumulating the total separately in path order summed the
+        // same floats in the opposite order, so the two disagreed in
+        // the last bits and the endpoint gate — correctly — failed.
+        // Deriving one from the other removes the disagreement rather
+        // than tolerating it.
+        let cum_hours_ba: Option<Vec<f64>> = if rev_admissible {
+            let mut v = vec![0.0; node_path.len()];
+            let mut acc = 0.0;
+            for k in (0..node_path.len().saturating_sub(1)).rev() {
+                acc += rev_steps[k].expect("rev_admissible implies every reverse step is Some");
+                v[k] = acc;
+            }
+            Some(v)
+        } else {
+            None
+        };
+        let hours_ba: Option<f64> = cum_hours_ba.as_ref().map(|v| v[0]);
         let path: Vec<(u32, StepMode)> = node_path
             .iter()
             .map(|&p| {
@@ -366,6 +404,8 @@ pub fn build(model: &MoveModel, mut nodes: Vec<TrunkNode>, reuse_alpha: f64) -> 
             water_legs,
             length_m,
             path,
+            cum_hours_ab,
+            cum_hours_ba,
         });
     }
 

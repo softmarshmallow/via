@@ -641,6 +641,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "via-settlement"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "serde",
+ "serde_json",
+ "via-artifact",
+ "via-corridors",
+]
+
+[[package]]
 name = "via-spike-settlements"
 version = "0.1.0"
 dependencies = [
