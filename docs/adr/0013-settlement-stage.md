@@ -314,6 +314,21 @@ map: the log-coordinate Euler step above is of the exponential
 imported here**, which is the second reason the assertion carries a
 margin rather than sitting on a named threshold.
 
+**The slowest mode is the floor, and it sets the iteration budget.**
+Linearising the log-coordinate map at a *starved* site — one with no
+demand — gives multiplier `1 − ε·dt·δ`, so the approach to `δ/κ` has
+rate `ε·dt·δ`, independent of `α`, `β` and every other site. This is
+a measured property of the implementation, not a literature claim:
+at `δ = 1e-4` with `ε·dt = 0.05` the rate is `5e-6` per step and a
+starved site needs millions of iterations to settle, which no sane
+cap allows. **So the iteration cap must be set against `ε·dt·δ`, and
+`δ` cannot be made arbitrarily small "to keep the floor out of the
+way" — shrinking it does not remove the floor, it makes the solve
+unable to reach it.** The cap, `δ`, and the stability margin are one
+joint choice, and the summary reports the slow-mode rate next to the
+iteration count so a run that hit the cap is visible as such rather
+than being read as converged.
+
 Published settings, for orientation rather than adoption: `ε = 1`
 with `dt = 0.01` under Euler–Maruyama (Zachos et al.), or `ε = 0.01`
 "so that the model does not converge too rapidly" (Peeples &

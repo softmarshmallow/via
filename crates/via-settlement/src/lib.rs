@@ -6,3 +6,4 @@
 //! and cannot supply it.
 
 pub mod cost;
+pub mod hw;
