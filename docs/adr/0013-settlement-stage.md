@@ -224,7 +224,8 @@ clamp, and a negative `W_j` makes `W_j^α` NaN for non-integer `α`,
 which Decision 8's "unevaluable is fail" preamble turns into a gate
 failure. Emitted populations are `exp(x_j)`.
 
-`O_i` is the origin mass at node `i` (Decision 4). `α` is the returns-to-scale term and `β` the
+`O_i` is the origin mass at node `i` (Decision 4). `α` is the
+returns-to-scale term and `β` the
 distance decay; **their values are calibrated, not asserted here**
 (Decision 1). The regime note matters for reading results but is not
 a constraint the ADR imposes: `α > 1` drives agglomeration, `α ≤ 1`
