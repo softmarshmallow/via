@@ -11,16 +11,24 @@ docs/research/humanity (see README).
   how settlement-layer mass W_j maps onto intra-city demand fields
   (platting rate, massing demand, movement budget). This interface
   is via's own design problem and needs its own ADR treatment.
+  *Resolved (2026-08-20): ADR 0009 Decision 2 specifies the
+  contract.*
 - **Single-seed vs ensemble gating.** Every published band is
   cross-sectional or ensemble-mean; a bitwise-deterministic single
   run passing a distributional gate is a different claim. A declared
   protocol (n-seed ensemble per gate? widened bands?) is required
   before any gate is scored.
+  *Resolved (2026-08-20): ADR 0008 D5 — ensembles of at least five
+  seeds, reported as distributions, never a single value.*
 - **City/settlement delineation algorithm.** Rank-size, scaling, and
   density gates all shift with delineation (ζ 0.90 vs 1.17 from
   delineation alone). The survey says "fix one" but chose none
   (candidate: CCA with a declared threshold) — must be frozen before
   gate numbers mean anything.
+  *Partly resolved (2026-08-20): ADR 0008 D4 requires the protocol
+  statement, and the reference side is fixed by 0012 §4.1's
+  GHS-UCDB delineation (adopted by ADR 0010). The generated-side
+  delineation algorithm remains open.*
 - **Era transitions.** All sources give era SNAPSHOTS; whether
   parameters move as continuous paths or dated switches — and what
   happens mid-transition (e.g. the 1857–1885 height regime) — is

@@ -8,5 +8,5 @@ pub mod manifest;
 pub mod raster;
 pub mod seed;
 
-pub use manifest::{ArtifactEntry, RunManifest};
+pub use manifest::{ArtifactEntry, RunManifest, StageRecord};
 pub use raster::{Raster, Scalar};

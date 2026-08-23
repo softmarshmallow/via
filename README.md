@@ -64,13 +64,13 @@ Each community treats the others' output as an exogenous given. **via** is about
 - Do bridges and tunnels emerge from cost minimization alone at plausible frequencies and locations — the chord through the ridge appearing only when an era's traffic justifies it?
 - Does network topology track the topology of the habitable set without archetype rules — the coastal ring on an annular island, the mesh on a habitable disc, the ribbon in a valley — and does it *fail* correctly (open horseshoes where a cliff coast interrupts)?
 - Can epochal growth produce a legible fossil record — demoted arterials, station streets, concentric grain changes — distinguishable by a reader from single-pass output?
-- Which statistics separate real places from generated ones (orientation entropy, block-size and detour distributions, rank-size fit, space-syntax measures), and can they serve as gates rather than post-hoc evaluation?
+- Which statistics separate real places from generated ones (orientation entropy, block-size and detour distributions, rank-size fit, space-syntax measures)? [ADR 0008](docs/adr/0008-validation-doctrine.md) fixed what they can be: benchmarks against measured reference populations — a distinct instrument from gates, never in CI.
 
 ## Status
 
 Early. The **natural substrate** — the part of the chain upstream of people — is built and gated; nothing downstream of suitability has started. Nothing here is final except the thesis.
 
-Complete, with every core statistical gate passing at both calibration scales (102 km / 200 m and 8.2 km / 16 m):
+Complete, with every core check — gates and band-scored benchmarks alike ([ADR 0008](docs/adr/0008-validation-doctrine.md)) — passing at both calibration scales (102 km / 200 m and 8.2 km / 16 m):
 
 - **Terrain** — stream-power landscape evolution, implicit O(n) solve, priority-flood depression handling ([ADR 0001](docs/adr/0001-crate-layout-and-artifact-format.md))
 - **Climate & ecology** — orographic precipitation and lapse-rate temperature as forcing, erosion on precipitation-weighted discharge, Whittaker biome classes and vegetation spectra ([ADR 0002](docs/adr/0002-climate-coupling-and-ecology-stage.md))
@@ -160,7 +160,7 @@ The working doctrine is recorded in [ADR 0003](docs/adr/0003-epistemic-tiers.md)
 - Taaffe, E. J., Morrill, R. L., Gould, P. R. (1963). *Transport Expansion in Underdeveloped Countries.* Geographical Review. — The four-stage model of network evolution, from scattered ports to trunk consolidation; epochs, observed in the field.
 - Porta, S., Crucitti, P., Latora, V. (2006). *The Network Analysis of Urban Streets: A Primal Approach.* Environment & Planning B. — How to measure street networks without dual-graph artifacts.
 - Boeing, G. (2017). *OSMnx: New Methods for Acquiring, Constructing, Analyzing, and Visualizing Complex Street Networks.* CEUS. — The tool for pulling real networks as empirical baselines; open source.
-- Boeing, G. (2019). *Urban Spatial Order: Street Network Orientation, Configuration, and Entropy.* Applied Network Science. — Orientation entropy across 100 cities; one of via's proposed gates, already normed against reality.
+- Boeing, G. (2019). *Urban Spatial Order: Street Network Orientation, Configuration, and Entropy.* Applied Network Science. — Orientation entropy across 100 cities; one of via's benchmark characters (ADR 0008; adopted in research 0012), already normed against reality.
 - Batty, M., Longley, P. (1994). *Fractal Cities.* Academic Press. — Fractal dimension of urban form and growth; freely available online.
 - Batty, M. (2013). *The New Science of Cities.* MIT Press. — Flows before places, networks before land use; the manifesto form of via's ordering.
 - Tero, A., Takagi, S., Saigusa, T., et al. (2010). *Rules for Biologically Inspired Adaptive Network Design.* Science. — Physarum re-deriving the Tokyo rail network; cost–efficiency–resilience trade-offs without a planner.

@@ -12,6 +12,10 @@ gate below: all published bands are cross-sectional or ensemble
 statistics, while via runs are single deterministic seeds — the
 scoring protocol (n-seed ensembles vs widened bands) is an open
 question (0011) that must be settled before any gate is scored.
+*(Note, 2026-08-20: superseded as a scoring proposal by ADR 0008 —
+scoring is per-character against reference populations, and the
+ensemble question is resolved by its D5. Retained as the
+empirical-range compilation.)*
 
 ## Core candidates
 

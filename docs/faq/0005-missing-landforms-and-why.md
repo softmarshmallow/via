@@ -15,7 +15,8 @@ seeds is exactly zero.
 Nature's taxonomy is the **union of process domains** — fluvial,
 hillslope, glacial, coastal, aeolian, karst… A model containing N
 processes emergently produces the taxonomy of those N domains with the
-right statistics (that is what the gates verify), and cannot produce the
+right statistics (gates verify the equations; the statistical
+benchmarks verify the statistics — ADR 0008), and cannot produce the
 rest. "Following the science" means growing the union — which is what
 the milestone layers are — never sampling harder inside one domain, and
 never painting landforms whose process we lack.

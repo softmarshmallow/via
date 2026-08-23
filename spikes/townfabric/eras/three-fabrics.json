@@ -1,0 +1,174 @@
+{
+  "extent_m": 700.0,
+  "river_min_strahler": 4,
+  "lake_min_depth_m": 0.5,
+  "seed": 42,
+  "panel_m_per_px": 0.5,
+  "zoom_m_per_px": 0.2,
+  "zoom_half_m": 90.0,
+  "towns": [
+    {
+      "name": "medieval organic",
+      "corridor_bearings_deg": [
+        8.0,
+        96.0,
+        145.0
+      ],
+      "growth": {
+        "p_organized": 0.35,
+        "omega": 0.3,
+        "reject_radius_m": 34.0,
+        "f_ext": 0.0,
+        "k_ext": 2.0,
+        "candidates": 24,
+        "reach_m": 110.0,
+        "extra_links": 3,
+        "max_bridge_m": 40.0,
+        "max_build_slope": 0.25,
+        "snap_m": 6.0,
+        "plat": null,
+        "packing": 0.55,
+        "frontier_slack": 1.2,
+        "densify_per_round": 3
+      },
+      "parcels": {
+        "frontage_module_m": 9.0,
+        "plot_depth_m": 45.0,
+        "street_reserve_m": 2.5,
+        "min_block_area_m2": 300.0,
+        "max_block_area_m2": 200000.0,
+        "front_setback_m": 0.0,
+        "side_setback_m": 0.0,
+        "building_depth_m": 13.0,
+        "building_depth_var": 0.35,
+        "climax_coverage": 0.55,
+        "edge_coverage": 0.18,
+        "rear_max_frac": 0.5,
+        "storeys_core": 3.0,
+        "storeys_edge": 1.5,
+        "storeys_cap": 5.0,
+        "reserve_from_class": 1.0
+      },
+      "households": 780,
+      "max_steps": 9000,
+      "hierarchy": {
+        "main_share": 0.15,
+        "street_share": 0.45,
+        "width_main_m": 24.0,
+        "width_street_m": 12.0,
+        "width_lane_m": 4.0
+      }
+    },
+    {
+      "name": "frontier plat",
+      "corridor_bearings_deg": [
+        8.0,
+        96.0
+      ],
+      "growth": {
+        "p_organized": 0.8,
+        "omega": 0.18,
+        "reject_radius_m": 60.0,
+        "f_ext": 0.05,
+        "k_ext": 2.0,
+        "candidates": 24,
+        "reach_m": 110.0,
+        "extra_links": 3,
+        "max_bridge_m": 90.0,
+        "max_build_slope": 0.2,
+        "snap_m": 7.0,
+        "plat": {
+          "block_long_m": 180.0,
+          "block_cross_m": 90.0,
+          "bearing_deg": 12.0,
+          "radius_m": 520.0
+        },
+        "packing": 0.55,
+        "frontier_slack": 1.2,
+        "densify_per_round": 6
+      },
+      "parcels": {
+        "frontage_module_m": 7.6,
+        "plot_depth_m": 38.0,
+        "street_reserve_m": 10.0,
+        "min_block_area_m2": 400.0,
+        "max_block_area_m2": 200000.0,
+        "front_setback_m": 1.5,
+        "side_setback_m": 1.0,
+        "building_depth_m": 15.0,
+        "building_depth_var": 0.45,
+        "climax_coverage": 0.5,
+        "edge_coverage": 0.15,
+        "rear_max_frac": 0.55,
+        "storeys_core": 2.2,
+        "storeys_edge": 1.0,
+        "storeys_cap": 3.0,
+        "reserve_from_class": 1.0
+      },
+      "households": 780,
+      "max_steps": 9000,
+      "hierarchy": {
+        "main_share": 0.15,
+        "street_share": 0.6,
+        "width_main_m": 30.0,
+        "width_street_m": 20.0,
+        "width_lane_m": 6.0
+      }
+    },
+    {
+      "name": "modern suburb",
+      "corridor_bearings_deg": [
+        8.0,
+        96.0
+      ],
+      "growth": {
+        "p_organized": 0.7,
+        "omega": 0.3,
+        "reject_radius_m": 46.0,
+        "f_ext": 0.35,
+        "k_ext": 2.2,
+        "candidates": 24,
+        "reach_m": 110.0,
+        "extra_links": 2,
+        "max_bridge_m": 200.0,
+        "max_build_slope": 0.18,
+        "snap_m": 9.0,
+        "plat": {
+          "block_long_m": 240.0,
+          "block_cross_m": 130.0,
+          "bearing_deg": 30.0,
+          "radius_m": 330.0
+        },
+        "packing": 0.55,
+        "frontier_slack": 1.2,
+        "densify_per_round": 6
+      },
+      "parcels": {
+        "frontage_module_m": 20.0,
+        "plot_depth_m": 32.0,
+        "street_reserve_m": 8.0,
+        "front_setback_m": 8.0,
+        "side_setback_m": 3.0,
+        "building_depth_m": 12.0,
+        "building_depth_var": 0.3,
+        "climax_coverage": 0.32,
+        "edge_coverage": 0.18,
+        "rear_max_frac": 0.45,
+        "storeys_core": 1.8,
+        "storeys_edge": 1.4,
+        "storeys_cap": 2.0,
+        "reserve_from_class": 1.0
+      },
+      "households": 780,
+      "max_steps": 9000,
+      "hierarchy": {
+        "main_share": 0.12,
+        "street_share": 0.45,
+        "width_main_m": 24.0,
+        "width_street_m": 16.0,
+        "width_lane_m": 11.0
+      }
+    }
+  ],
+  "study_radius_m": 300.0
+}

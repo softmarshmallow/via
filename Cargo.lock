@@ -590,7 +590,9 @@ dependencies = [
  "clap",
  "serde_json",
  "via-artifact",
+ "via-corridors",
  "via-ecology",
+ "via-settlement",
  "via-suitability",
  "via-terrain",
  "via-viz",
@@ -606,6 +608,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "via-bench"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "blake3",
+ "clap",
+ "image",
+ "serde",
+ "serde_json",
+ "via-artifact",
+]
+
+[[package]]
+name = "via-corridors"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "rayon",
+ "serde",
+ "serde_json",
+ "via-artifact",
+ "via-suitability",
+]
+
+[[package]]
 name = "via-ecology"
 version = "0.1.0"
 dependencies = [
@@ -615,9 +642,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "via-settlement"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "serde",
+ "serde_json",
+ "via-artifact",
+ "via-corridors",
+]
+
+[[package]]
+name = "via-spike-settlements"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "image",
+ "rayon",
+ "serde",
+ "serde_json",
+ "via-artifact",
+ "via-viz",
+]
+
+[[package]]
+name = "via-spike-townfabric"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "image",
+ "rayon",
+ "serde",
+ "serde_json",
+ "via-artifact",
+]
+
+[[package]]
 name = "via-suitability"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "serde",
  "serde_json",
  "via-artifact",

@@ -1,10 +1,14 @@
 # docs/research/humanity — the human side, research corpus
 
-Status: **research corpus — pre-decision.** Nothing in this directory
-is adopted. No ADR references these documents as normative; adopting
-any mechanism, gate, or parameter recorded here requires its own ADR
-with its own review. This directory exists so that the eventual
-decisions are made against surveyed literature rather than intuition.
+Status: **research corpus — pre-decision.** Adopting any mechanism,
+gate, or parameter recorded here requires its own ADR with its own
+review. One document has been adopted this way:
+[0012](0012-benchmark-specification.md), the benchmark specification,
+adopted as the project's validation instrument by
+[ADR 0010](../../adr/0010-benchmark-instrument-and-reference-corpus.md).
+Everything else remains pre-decision. This directory exists so that
+the eventual decisions are made against surveyed literature rather
+than intuition.
 
 ## Scope
 
@@ -43,6 +47,14 @@ tiering or adoption judgments:
 | [0006](0006-founding-and-planning.md) | Founding & planning regimes: planted towns, survey lattices, plats, zoning |
 | [0007](0007-simulation-precedents.md) | Validated simulation precedents: archaeology ABMs, SIMPOP, validation doctrine |
 
+Commissioned dossiers — targeted sweeps answering a question the
+corpus was found not to answer, compiled for a specific adopting
+decision (they span literatures and note doctrine fit in place):
+
+| Doc | Content |
+| --- | --- |
+| [0013](0013-affordance-detection.md) | Affordance detection & movement cost: citable schemes over via's terrain artifacts (commissioned for ADR 0011) |
+
 Cross-cutting screens — synthesis over the dossiers, still
 pre-decision:
 
@@ -52,6 +64,22 @@ pre-decision:
 | [0009](0009-gate-candidates.md) | Falsifiable gate candidates with empirical ranges and sources |
 | [0010](0010-era-parameters.md) | The era-parameter table: numbers that would make era a config |
 | [0011](0011-open-questions.md) | Load-bearing questions the survey did not answer |
+| [0012](0012-benchmark-specification.md) | The benchmark instrument: characters, reference populations, protocol, statistics |
+
+## Validation
+
+Two spikes (`spikes/settlements`, `spikes/townfabric`, commits 5c770b5
+and 07a95b8) tested parts of this corpus against real towns and failed
+in ways that changed the project's method, not just its parameters.
+The outcome is recorded in **[ADR 0008](../../adr/0008-validation-doctrine.md)**
+— gates versus benchmarks, reference populations rather
+than quoted bands, ensembles rather than single runs, no invented
+composite scores — and the instrument that follows from it is
+specified in **[0012](0012-benchmark-specification.md)**. Where this
+corpus's [0009](0009-gate-candidates.md) proposed scoring against
+literature bands, ADR 0008 supersedes it: real towns measured under a
+fixed protocol fall outside several of those bands, so the bands are
+context, not targets.
 
 ## The corpus's leading hypothesis (not a decision)
 
@@ -70,8 +98,10 @@ hypothesis future ADRs must test, not a settled conclusion.
 ## Method
 
 Compiled August 2026 by a structured multi-track literature survey
-(seven parallel tracks, one per dossier) followed by an adversarial
-doctrine screen against ADR 0003. Citations were verified against
+(seven parallel tracks, one per field dossier) followed by an
+adversarial doctrine screen against ADR 0003. Commissioned dossiers
+are added by separately run sweeps under the same verification rules
+(0013: five parallel tracks, 2026-08, for ADR 0011). Citations were verified against
 sources at survey time; items the survey could not verify are flagged
 as such in place. Errors that surface later should be corrected in
 place with a note, as the FAQ ledger does.

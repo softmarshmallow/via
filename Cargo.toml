@@ -2,11 +2,17 @@
 resolver = "2"
 members = [
     "crates/via-artifact",
+    "crates/via-bench",
+    "crates/via-corridors",
     "crates/via-ecology",
+    "crates/via-settlement",
     "crates/via-suitability",
     "crates/via-terrain",
     "crates/via-viz",
     "crates/via",
+    # Research spikes: throwaway experiments, never gated, never depended on.
+    "spikes/settlements",
+    "spikes/townfabric",
 ]
 
 [workspace.package]
@@ -25,7 +31,9 @@ anyhow = "1"
 insta = { version = "1", features = ["json"] }
 
 via-artifact = { path = "crates/via-artifact" }
+via-corridors = { path = "crates/via-corridors" }
 via-ecology = { path = "crates/via-ecology" }
+via-settlement = { path = "crates/via-settlement" }
 via-suitability = { path = "crates/via-suitability" }
 via-terrain = { path = "crates/via-terrain" }
 via-viz = { path = "crates/via-viz" }

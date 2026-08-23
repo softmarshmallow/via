@@ -1,0 +1,22 @@
+[project]
+name = "via-analysis"
+version = "0.1.0"
+description = "Analysis sidecar: reference-corpus fetch with provenance, and the osmnx/momepy cross-validation of via-bench (ADR 0009 Decision 4, ADR 0010)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "osmnx>=2,<3",
+    "networkx>=3",
+    "shapely>=2",
+    "geopandas>=1",
+    "momepy>=0.8",
+    "scipy>=1.13",
+    "blake3>=1",
+    "requests>=2.32",
+    "pillow>=12.3.0",
+    "matplotlib>=3.9",
+]
+
+[tool.uv]
+# Scripts only — nothing here is a package, and nothing may ever import it
+# (the quarantine, ADR 0009 Decision 4).
+package = false

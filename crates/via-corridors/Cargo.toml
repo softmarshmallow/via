@@ -1,0 +1,16 @@
+[package]
+name = "via-corridors"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Stage 3: era-0 multimodal corridor network — cost surfaces, FETE density, gateway trunk graph (ADR 0012)."
+
+[dependencies]
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+via-artifact = { workspace = true }
+
+[dev-dependencies]
+blake3 = { workspace = true }
+via-suitability = { workspace = true }

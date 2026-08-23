@@ -24,6 +24,30 @@ enum Cmd {
     Suitability(SuitabilityArgs),
     /// Run the ecology stage against an existing terrain run directory.
     Ecology(EcologyArgs),
+    /// Run the corridors stage against a run directory that already
+    /// carries terrain and suitability artifacts.
+    Corridors(CorridorsArgs),
+    /// Run the settlement stage against a run directory that already
+    /// carries terrain, suitability and corridors artifacts.
+    Settlement(SettlementArgs),
+}
+
+#[derive(Args)]
+struct CorridorsArgs {
+    /// Run directory (terrain + suitability artifacts + manifest.json).
+    run_dir: PathBuf,
+    /// Path to a CorridorsConfig JSON; defaults apply if omitted.
+    #[arg(long)]
+    config: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct SettlementArgs {
+    /// Run directory (terrain + suitability + corridors artifacts).
+    run_dir: PathBuf,
+    /// Path to a SettlementConfig JSON; defaults apply if omitted.
+    #[arg(long)]
+    config: Option<PathBuf>,
 }
 
 #[derive(Args)]
@@ -451,14 +475,13 @@ impl RunRasters {
             }
         }
         let manifest = via_artifact::RunManifest::load(&dir.join("manifest.json"))?;
-        let sea = manifest
-            .config
-            .get("sea_level_m")
+        let tcfg = manifest.stage_config("terrain");
+        let sea = tcfg
+            .and_then(|c| c.get("sea_level_m"))
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
-        let river_min_km2 = manifest
-            .config
-            .get("river_min_area_km2")
+        let river_min_km2 = tcfg
+            .and_then(|c| c.get("river_min_area_km2"))
             .and_then(|v| v.as_f64())
             .unwrap_or(1.0);
         let dx = heights.cell_size_cm as f64 / 100.0;
@@ -522,9 +545,52 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
     let inp = rr.viz();
     std::fs::create_dir_all(dir.join("render"))?;
     via_viz::render_suitability(&inp, &out.suitable, &out.patch_rank)
-        .save(dir.join("render/suitability.png"))?;
+        .save(dir.join(format!("render/suitability.{}.png", cfg.label)))?;
 
-    println!("SUITABILITY — gate '{}'", cfg.label);
+    // Affordance and harbour panels, with the two QA diagnostics
+    // (ADR 0008 D10 visual channel — never gates, never in the summary).
+    use via_artifact::raster::Raster;
+    let area_cells = Raster::<u64>::read_file(&dir.join("area_cells.vrast"))?;
+    let surface_m: Vec<f64> = rr
+        .heights_m
+        .iter()
+        .zip(rr.water_depth.iter())
+        .zip(rr.land.iter())
+        .map(|((&hm, &wd), &l)| if l { hm + wd } else { rr.sea })
+        .collect();
+    let qa_cols =
+        via_suitability::qa::basin_boundary_cols(rr.w, rr.h, &rr.heights_m, &rr.basin, &rr.land);
+    let qa_cp = via_suitability::qa::filet_change_points(
+        rr.w,
+        rr.h,
+        &via_suitability::qa::StemInputs {
+            receivers: &rr.receivers,
+            strahler: &rr.strahler,
+            area_cells: &area_cells.data,
+            land: &rr.land,
+            surface_m: &surface_m,
+        },
+        10,
+    );
+    let confluence_cells: Vec<u32> = out.confluences.iter().map(|s| s.cell).collect();
+    let pass_cells: Vec<u32> = out.passes.iter().map(|s| s.cell).collect();
+    let head_cells: Vec<u32> = out.heads_of_navigation.iter().map(|s| s.cell).collect();
+    via_viz::render_affordances(
+        &inp,
+        &via_viz::AffordanceOverlay {
+            crossability: &out.ford.crossability,
+            confluence_cells: &confluence_cells,
+            pass_cells: &pass_cells,
+            head_cells: &head_cells,
+            qa_col_cells: &qa_cols,
+            qa_change_point_cells: &qa_cp,
+        },
+    )
+    .save(dir.join(format!("render/suitability.{}.affordances.png", cfg.label)))?;
+    via_viz::render_harbour(&inp, &out.harbour.fetch_m, &out.harbour.sediment)
+        .save(dir.join(format!("render/suitability.{}.harbour.png", cfg.label)))?;
+
+    println!("SUITABILITY — criterion '{}'", cfg.label);
     println!("  rank   area_ha   centroid_cell   mean_slope   elev_m   fw_dist_m   coast_m");
     for p in &out.patches {
         println!(
@@ -539,10 +605,52 @@ fn run_suitability(args: SuitabilityArgs) -> Result<()> {
             p.min_coast_dist_m
         );
     }
+    // ADR 0011 D4: the channelization threshold is restated with any
+    // reported confluence count.
+    let river_min = match out.river_min_area_km2 {
+        Some(v) => format!("{v} km²"),
+        None => "undeclared".to_string(),
+    };
     println!(
-        "\nGATE {}: {}   ({} patch(es) ≥ {} ha)",
+        "\n  {} confluence site(s) (river threshold {}), {} pass site(s) ≥ {} m \
+         persistence, {} head(s) of navigation",
+        out.confluences.len(),
+        river_min,
+        out.passes.len(),
+        cfg.min_pass_persistence_m,
+        out.heads_of_navigation.len()
+    );
+    // QA correspondence: saddles within one cell (Chebyshev) of a
+    // basin-boundary col — a diagnostic, not an invariant.
+    let col_set: std::collections::HashSet<(i64, i64)> = qa_cols
+        .iter()
+        .map(|&c| ((c % rr.w) as i64, (c / rr.w) as i64))
+        .collect();
+    let near = out
+        .passes
+        .iter()
+        .filter(|s| {
+            (-1..=1).any(|oy: i64| {
+                (-1..=1).any(|ox: i64| col_set.contains(&(s.x as i64 + ox, s.y as i64 + oy)))
+            })
+        })
+        .count();
+    println!(
+        "  QA (visual channel): {} basin-boundary col(s), {}/{} pass site(s) within \
+         1 cell of one; {} Filet change-point(s)",
+        qa_cols.len(),
+        near,
+        out.passes.len(),
+        qa_cp.len()
+    );
+    println!(
+        "CRITERION {}: {}   ({} patch(es) ≥ {} ha)",
         cfg.label,
-        if out.gate_pass { "PASS" } else { "FAIL" },
+        if out.criterion_met {
+            "SATISFIED"
+        } else {
+            "NOT SATISFIED"
+        },
         out.patches.len(),
         cfg.min_patch_area_ha
     );
@@ -654,5 +762,192 @@ fn main() -> Result<()> {
         Cmd::Terrain(args) => run_terrain(args),
         Cmd::Suitability(args) => run_suitability(args),
         Cmd::Ecology(args) => run_ecology(args),
+        Cmd::Corridors(args) => run_corridors(args),
+        Cmd::Settlement(args) => run_settlement(args),
     }
+}
+
+fn run_settlement(args: SettlementArgs) -> Result<()> {
+    let cfg = match &args.config {
+        Some(p) => {
+            let t = std::fs::read_to_string(p)?;
+            serde_json::from_str::<via_settlement::SettlementConfig>(&t)?
+        }
+        None => via_settlement::SettlementConfig::default(),
+    };
+    let dir = &args.run_dir;
+    let t0 = Instant::now();
+    let inp = via_settlement::load_inputs(dir, &cfg)?;
+    let out = via_settlement::compute(&inp, &cfg)?;
+    let elapsed = t0.elapsed();
+
+    let above: usize = out.settlements.iter().filter(|s| !s.at_floor).count();
+    let solved: usize = out.components.iter().filter(|c| c.solved).count();
+    let unconverged: usize = out
+        .components
+        .iter()
+        .filter(|c| c.solved && !c.converged)
+        .count();
+    println!("settlement stage: label '{}', {:.1?}", cfg.label, elapsed);
+    println!(
+        "  cost field: {} vertices ({} trunk-node cells, {} junction-only), {} arcs",
+        out.vertices, out.node_cells, out.junction_only_cells, out.arcs
+    );
+    println!(
+        "  components: {} solved, {} vertices excluded (below min_component or zero mass)",
+        solved, out.excluded_vertices
+    );
+    if unconverged > 0 {
+        println!(
+            "  WARNING: {unconverged} component(s) hit the iteration cap — treat as not converged"
+        );
+    }
+    println!(
+        "  settlements: {} placed, {} above the delta/kappa floor",
+        out.settlements.len(),
+        above
+    );
+    let mut shares: Vec<f64> = out.settlements.iter().map(|s| s.share).collect();
+    shares.sort_by(|a, b| b.total_cmp(a));
+    if let Some(&top) = shares.first() {
+        let sum: f64 = shares.iter().sum();
+        println!(
+            "  largest share {:.4} of {:.4} total; top-10 hold {:.1}%",
+            top,
+            sum,
+            100.0 * shares.iter().take(10).sum::<f64>() / sum
+        );
+    }
+    // Rung 2 of the null ladder, emitted alongside so the comparison
+    // is always available and never a separate, forgettable step.
+    // NB the binding is deliberately not called `null`: inside
+    // `serde_json::json!` a bare `null` is the JSON literal, so the
+    // field would have serialised as null and the null model would
+    // have vanished silently.
+    let null_rung2 = via_settlement::null_suitability_only(&inp, &cfg)?;
+    println!(
+        "  null rung 2 (suitability only, no interaction): {} vertices",
+        null_rung2.len()
+    );
+    let json = serde_json::json!({
+        "stage": "settlement",
+        "null_rung2_suitability_only": null_rung2,
+        "config": cfg,
+        "cost_field": {
+            "vertices": out.vertices,
+            "node_cells": out.node_cells,
+            "junction_only_cells": out.junction_only_cells,
+            "arcs": out.arcs,
+            "excluded_vertices": out.excluded_vertices,
+        },
+        "components": out.components,
+        "settlements": out.settlements,
+    });
+    let path = dir.join(via_settlement::summary_filename(&cfg.label));
+    std::fs::write(&path, serde_json::to_string_pretty(&json)?)?;
+    println!("  summary: {}", path.display());
+    Ok(())
+}
+
+fn run_corridors(args: CorridorsArgs) -> Result<()> {
+    let cfg = match &args.config {
+        Some(p) => via_corridors::CorridorsConfig::from_json_file(p).map_err(anyhow::Error::msg)?,
+        None => via_corridors::CorridorsConfig::default(),
+    };
+    let dir = &args.run_dir;
+    let t0 = Instant::now();
+    let out = via_corridors::run(dir, &cfg)?;
+    via_corridors::write_outputs(dir, &cfg, &out)?;
+    let elapsed = t0.elapsed();
+
+    // Renders: the corridor panel plus a time-to-sea isochrone map.
+    let rr = RunRasters::load(dir)?;
+    std::fs::create_dir_all(dir.join("render"))?;
+    let mut trunk_land: Vec<u32> = Vec::new();
+    let mut trunk_water: Vec<u32> = Vec::new();
+    for e in &out.trunk.edges {
+        for &(cell, mode) in &e.path {
+            match mode {
+                via_corridors::trunk::StepMode::Land => trunk_land.push(cell),
+                via_corridors::trunk::StepMode::Water => trunk_water.push(cell),
+            }
+        }
+    }
+    let class_cells = |class: via_corridors::trunk::SiteClass| -> Vec<u32> {
+        out.trunk
+            .nodes
+            .iter()
+            .filter(|n| n.class == class)
+            .map(|n| n.cell)
+            .collect()
+    };
+    let junction_cells: Vec<u32> = out.trunk.junctions.iter().map(|j| j.cell).collect();
+    let ov = via_viz::CorridorOverlay {
+        density: &out.density,
+        density_render_quantile: 0.8,
+        trunk_land_cells: &trunk_land,
+        trunk_water_cells: &trunk_water,
+        pass_cells: &class_cells(via_corridors::trunk::SiteClass::Pass),
+        head_cells: &class_cells(via_corridors::trunk::SiteClass::HeadOfNavigation),
+        mouth_cells: &class_cells(via_corridors::trunk::SiteClass::RiverMouth),
+        junction_cells: &junction_cells,
+    };
+    let panel = via_viz::render_corridors(&rr.viz(), &ov);
+    let panel_path = dir.join(format!("render/corridors.{}.png", cfg.label));
+    panel.save(&panel_path)?;
+
+    let hours: Vec<f64> = out
+        .hours_to_sea_land
+        .iter()
+        .map(|&v| if v == f32::MAX { f64::NAN } else { v as f64 })
+        .collect();
+    let iso = via_viz::render_scalar(
+        &rr.viz(),
+        &hours,
+        &[
+            (0.0, [40, 140, 60]),
+            (6.0, [190, 210, 70]),
+            (12.0, [235, 170, 50]),
+            (24.0, [200, 80, 40]),
+            (48.0, [120, 30, 80]),
+            (96.0, [40, 20, 60]),
+        ],
+    );
+    let iso_path = dir.join(format!("render/corridors.{}.hours_to_sea.png", cfg.label));
+    iso.save(&iso_path)?;
+
+    // Console report.
+    println!("corridors stage: label '{}', {:.1?}", cfg.label, elapsed);
+    println!(
+        "  lattice: spacing {} cells, {} sources",
+        out.lattice_spacing,
+        out.sources.len()
+    );
+    let anchored = out.trunk.nodes.iter().filter(|n| n.anchored).count();
+    println!(
+        "  trunk: {} nodes ({} anchored), {} edges, {} junctions",
+        out.trunk.nodes.len(),
+        anchored,
+        out.trunk.edges.len(),
+        out.trunk.junctions.len()
+    );
+    println!(
+        "  degeneracy (k_Q-conditional): {} of {} channel cells fordable, {} navigable",
+        (out.degeneracy.ford_passable_channel_fraction * out.degeneracy.river_cells as f64).round()
+            as u64,
+        out.degeneracy.river_cells,
+        (out.degeneracy.navigable_channel_fraction * out.degeneracy.river_cells as f64).round()
+            as u64,
+    );
+    println!(
+        "  moves: {} land, {} water, {} switch",
+        out.degeneracy.land_moves, out.degeneracy.water_moves, out.degeneracy.switch_moves
+    );
+    println!(
+        "  renders: {} , {}",
+        panel_path.display(),
+        iso_path.display()
+    );
+    println!("  all gates passed (hard errors otherwise)");
+    Ok(())
 }

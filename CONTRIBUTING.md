@@ -4,7 +4,7 @@ Early project. This file records the decisions that are **settled**, so they are
 
 ## Locked
 
-**Rust, whole hog.** Pipeline, gates, metrics, renderers — one Cargo workspace, one language. Not a Rust core with a Python rim. When a Python-only library is genuinely needed, it is a throwaway script run *against* an exported artifact, never a dependency of this project.
+**Rust, whole hog.** Pipeline, gates, metrics, renderers — one Cargo workspace, one language. Not a Rust core with a Python rim. When a Python-only library is genuinely needed, it runs *against* exported artifacts, never as a dependency of this project. Two forms are permitted: throwaway scripts, and the standing, version-pinned analysis sidecar under `analysis/` ([ADR 0009](docs/adr/0009-humanity-stage-architecture.md), [ADR 0010](docs/adr/0010-benchmark-instrument-and-reference-corpus.md)) — never imported by a crate, no gate depends on it. The engine cannot tell whether the sidecar exists. *(Amended 2026-08-20; previously Python was throwaway-only.)*
 
 **CPU, not GPU.** The workload is graphs, priority queues, and computational geometry — irregular and branchy. Parallelism is `rayon` across cores. GPU work is permitted for optional detail passes and rendering, never inside the simulation's decision loop.
 
