@@ -386,3 +386,58 @@ pub fn compute(inp: &Inputs, cfg: &SettlementConfig) -> io::Result<SettlementOut
         junction_only_cells: cf.len() - node_cells,
     })
 }
+
+/// Rung 2 of the ADR 0013 Decision 7 null ladder: **suitability alone,
+/// no interaction.**
+///
+/// The generator and this null consume the *same* origin-mass field
+/// and the *same* seed set; the only difference is that the null skips
+/// the spatial-interaction term entirely and allocates the budget in
+/// proportion to `O_i`. That is what makes it the fair adversary — a
+/// difference between the two can only come from `c_ij`.
+///
+/// It is deliberately not a point-process simulation: via's settlement
+/// *positions* are fixed by the corridor network, so the thing that
+/// varies between generator and null is which vertices carry mass, and
+/// that is what this compares.
+pub fn null_suitability_only(inp: &Inputs, cfg: &SettlementConfig) -> io::Result<Vec<Settlement>> {
+    let cf = CostField::build(&inp.nodes, &inp.edges, &inp.junctions);
+    let comp = graph::components(&cf);
+    let raw: Vec<f64> = cf
+        .cells
+        .iter()
+        .map(|&c| origin_mass(inp, cfg, c as usize))
+        .collect();
+    let raw_total: f64 = raw.iter().sum();
+    if !raw_total.is_finite() || raw_total <= 0.0 {
+        return Err(bad("origin mass is zero at every trunk vertex".into()));
+    }
+    let ncomp = comp.iter().copied().max().unwrap_or(-1) + 1;
+    let mut out = Vec::new();
+    for cid in 0..ncomp {
+        let verts: Vec<u32> = (0..cf.len() as u32)
+            .filter(|&v| comp[v as usize] == cid)
+            .collect();
+        let cmass: f64 = verts.iter().map(|&v| raw[v as usize]).sum();
+        if verts.len() < cfg.min_component || !cmass.is_finite() || cmass <= 0.0 {
+            continue;
+        }
+        for &v in &verts {
+            let cell = cf.cells[v as usize];
+            out.push(Settlement {
+                vertex: v,
+                cell,
+                x: cell % inp.w,
+                y: cell / inp.w,
+                class: cf.node_of_vertex[v as usize].map(|ni| inp.nodes[ni as usize].class),
+                component: cid,
+                share: raw[v as usize] / raw_total,
+                demand: f64::NAN,
+                at_floor: false,
+                attachments: Vec::new(),
+            });
+        }
+    }
+    out.sort_by(|a, b| a.cell.cmp(&b.cell));
+    Ok(out)
+}

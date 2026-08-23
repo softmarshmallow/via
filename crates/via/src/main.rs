@@ -818,8 +818,20 @@ fn run_settlement(args: SettlementArgs) -> Result<()> {
             100.0 * shares.iter().take(10).sum::<f64>() / sum
         );
     }
+    // Rung 2 of the null ladder, emitted alongside so the comparison
+    // is always available and never a separate, forgettable step.
+    // NB the binding is deliberately not called `null`: inside
+    // `serde_json::json!` a bare `null` is the JSON literal, so the
+    // field would have serialised as null and the null model would
+    // have vanished silently.
+    let null_rung2 = via_settlement::null_suitability_only(&inp, &cfg)?;
+    println!(
+        "  null rung 2 (suitability only, no interaction): {} vertices",
+        null_rung2.len()
+    );
     let json = serde_json::json!({
         "stage": "settlement",
+        "null_rung2_suitability_only": null_rung2,
         "config": cfg,
         "cost_field": {
             "vertices": out.vertices,
