@@ -20,4 +20,4 @@ pub mod stage;
 
 pub use config::TerrainConfig;
 pub use grid::Grid;
-pub use stage::{run, write_run, TerrainOutput};
+pub use stage::{run, run_given, write_run, Given, TerrainOutput};

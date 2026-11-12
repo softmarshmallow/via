@@ -90,18 +90,80 @@ fn ocean_mask(grid: &Grid, h: &[f64], sea: f64) -> Vec<bool> {
     ocean
 }
 
+/// Boundary conditions supplied from outside the stage. All optional; the
+/// default (`Given::default()`) reproduces the stage's own fields exactly.
+#[derive(Clone, Debug, Default)]
+pub struct Given {
+    /// Replaces the generated initial surface (m), row-major, one per cell.
+    pub initial_m: Option<Vec<f64>>,
+    /// Replaces the generated uplift field (m/yr).
+    pub uplift_m_per_yr: Option<Vec<f64>>,
+    /// Held cells: a finite value pins the cell at that elevation (m) and
+    /// makes it base level; NaN leaves the cell free. Applied after the
+    /// border ring, so a held border cell overrides the ring.
+    pub held_m: Option<Vec<f64>>,
+}
+
+/// Pin held cells to their level; sediment parked there has left the system.
+fn enforce_held(h: &mut [f64], sediment_m: &mut [f64], held: Option<&[f64]>) {
+    if let Some(held) = held {
+        for (i, &lvl) in held.iter().enumerate() {
+            if lvl.is_finite() {
+                h[i] = lvl;
+                sediment_m[i] = 0.0;
+            }
+        }
+    }
+}
+
+/// Ocean plus held cells: everything the flow may end at.
+fn base_mask(grid: &Grid, h: &[f64], sea: f64, held: Option<&[f64]>) -> Vec<bool> {
+    let mut base = ocean_mask(grid, h, sea);
+    if let Some(held) = held {
+        for (b, &lvl) in base.iter_mut().zip(held.iter()) {
+            *b |= lvl.is_finite();
+        }
+    }
+    base
+}
+
 /// Run the terrain stage. `progress(step, max_dh_m)` is called once per step.
 ///
 /// Panics on an invalid config; callers with a user in front of them should
 /// call [`TerrainConfig::validate`] first and report the message.
 pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOutput {
+    run_given(cfg, &Given::default(), progress)
+}
+
+/// [`run`] under supplied boundary conditions (see [`Given`]).
+pub fn run_given(
+    cfg: &TerrainConfig,
+    given: &Given,
+    progress: &mut dyn FnMut(u32, f64),
+) -> TerrainOutput {
     if let Err(msg) = cfg.validate() {
         panic!("{msg}");
     }
     let grid = Grid::new(cfg.size, cfg.cell_size_m);
-    let uplift = fields::build_uplift(cfg, &grid);
+    for (name, f) in [
+        ("initial_m", &given.initial_m),
+        ("uplift_m_per_yr", &given.uplift_m_per_yr),
+        ("held_m", &given.held_m),
+    ] {
+        if let Some(f) = f {
+            assert_eq!(f.len(), grid.n(), "given.{name}: one value per cell");
+        }
+    }
+    let held = given.held_m.as_deref();
+    let uplift = match &given.uplift_m_per_yr {
+        Some(u) => u.clone(),
+        None => fields::build_uplift(cfg, &grid),
+    };
     let wind = climate::prevailing_wind(cfg);
-    let mut h = fields::initial_heights(cfg, &grid);
+    let mut h = match &given.initial_m {
+        Some(h0) => h0.clone(),
+        None => fields::initial_heights(cfg, &grid),
+    };
     let mut sediment_m = vec![0.0f64; grid.n()];
     let mut h_prev = vec![0.0f64; grid.n()];
     let mut convergence = Vec::with_capacity(cfg.steps as usize);
@@ -126,7 +188,8 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
         h_prev.copy_from_slice(&h);
         erosion::apply_uplift(&mut h, &uplift, cfg.dt_years, cfg.base_depth_m);
         enforce_border(&grid, &mut h, &mut sediment_m, cfg.base_depth_m);
-        let is_base = ocean_mask(&grid, &h, cfg.sea_level_m);
+        enforce_held(&mut h, &mut sediment_m, held);
+        let is_base = base_mask(&grid, &h, cfg.sea_level_m, held);
         // Flow is routed on the flooded copy; the true surface keeps its
         // deep depressions, which stand as lakes. Shallow ponding is
         // sub-grid noise and merges back into the terrain (ADR 0004).
@@ -215,7 +278,8 @@ pub fn run(cfg: &TerrainConfig, progress: &mut dyn FnMut(u32, f64)) -> TerrainOu
     // Canonical routing on the final surface — this is what the artifacts
     // describe, so it is recomputed once, after the last diffusion pass.
     enforce_border(&grid, &mut h, &mut sediment_m, cfg.base_depth_m);
-    let is_base = ocean_mask(&grid, &h, cfg.sea_level_m);
+    enforce_held(&mut h, &mut sediment_m, held);
+    let is_base = base_mask(&grid, &h, cfg.sea_level_m, held);
     let mut h_route = h.clone();
     flow::priority_flood_eps(&grid, &mut h_route, &is_base, cfg.epsilon_fill_m);
     run_pond_merge_m3 +=

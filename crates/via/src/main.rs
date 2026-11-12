@@ -65,6 +65,33 @@ struct TerrainArgs {
     /// Output run directory (default: runs/terrain-s<seed>-<size>).
     #[arg(long)]
     out: Option<PathBuf>,
+    /// Initial surface (m): raw little-endian f32, size×size, row-major.
+    #[arg(long)]
+    initial: Option<PathBuf>,
+    /// Uplift field (m/yr), same layout as --initial.
+    #[arg(long)]
+    uplift: Option<PathBuf>,
+    /// Held cells, same layout: a finite value pins the cell at that level
+    /// (m) as base level; NaN leaves it free.
+    #[arg(long)]
+    held: Option<PathBuf>,
+}
+
+/// Read a raw little-endian f32 field of exactly `n` cells.
+fn read_f32_field(path: &std::path::Path, n: usize) -> Result<Vec<f64>> {
+    let bytes = std::fs::read(path)
+        .map_err(|e| anyhow::anyhow!("cannot read {}: {e}", path.display()))?;
+    anyhow::ensure!(
+        bytes.len() == n * 4,
+        "{}: expected {} bytes ({n} f32 cells), found {}",
+        path.display(),
+        n * 4,
+        bytes.len()
+    );
+    Ok(bytes
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]) as f64)
+        .collect())
 }
 
 fn gate_line(name: &str, g: &Gate, extra: &str) -> String {
@@ -122,7 +149,14 @@ fn run_terrain(args: TerrainArgs) -> Result<()> {
             let _ = std::io::stdout().flush();
         }
     };
-    let out = via_terrain::run(&cfg, &mut progress);
+    let n = (cfg.size as usize) * (cfg.size as usize);
+    let field = |p: &Option<PathBuf>| p.as_deref().map(|p| read_f32_field(p, n)).transpose();
+    let given = via_terrain::Given {
+        initial_m: field(&args.initial)?,
+        uplift_m_per_yr: field(&args.uplift)?,
+        held_m: field(&args.held)?,
+    };
+    let out = via_terrain::run_given(&cfg, &given, &mut progress);
     let sim_ms = t0.elapsed().as_millis();
 
     stage::write_run(&out_dir, &out)?;
