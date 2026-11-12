@@ -1,0 +1,55 @@
+# Review layer: viewpoints for looking at the world. Not part of the game.
+include = ["../../../kinds/review.toml"]
+
+# ---- bookmarks
+[[feature]]
+id = "bm_gate"
+kind = "bookmark"
+at = [160.0, 12.0]
+look = [160.0, 60.0]
+eye = 1.8
+look_height = 6.0
+note = "Arriving at the gate."
+[[feature]]
+id = "bm_garth"
+kind = "bookmark"
+at = [161.0, 84.0]
+look = [161.0, 113.0]
+eye = 1.8
+look_height = 5.0
+note = "In the cloister garth."
+[[feature]]
+id = "bm_court"
+kind = "bookmark"
+at = [150.0, 158.0]
+look = [165.0, 232.0]
+eye = 1.8
+look_height = 14.0
+fov = 70.0
+note = "The main court, the hall above it."
+[[feature]]
+id = "bm_lane"
+kind = "bookmark"
+at = [76.0, 78.0]
+look = [66.0, 150.0]
+eye = 1.8
+look_height = 6.0
+note = "Up the dormitory lane."
+[[feature]]
+id = "bm_aerial"
+kind = "bookmark"
+at = [300.0, -40.0]
+look = [160.0, 160.0]
+eye = 150.0
+look_height = 8.0
+fov = 50.0
+note = "The whole college from the south-east."
+[[feature]]
+id = "bm_people"
+kind = "bookmark"
+at = [164.0, 152.0]
+look = [136.0, 176.0]
+eye = 6.0
+look_height = 1.0
+fov = 65.0
+note = "The west lawn with the students around it, the chaplain by the chapel beyond."

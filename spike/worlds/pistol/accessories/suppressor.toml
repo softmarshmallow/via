@@ -1,0 +1,18 @@
+# Accessory: a muzzle device. It attaches to `muzzle_mount`.
+[[feature]]
+id = "can"
+kind = "add_rod"
+hx = 6.5
+r = 1.6
+cx = "= muzzle_mount.x + hx"
+cy = "= mid_y"
+cz = "= muzzle_mount.z"
+
+[[feature]]
+id = "can_bore"
+kind = "cut_rod"
+hx = "= can.hx + 0.3"
+r = "= bore / 2 + 0.05"
+cx = "= can.cx"
+cy = "= mid_y"
+cz = "= can.cz"

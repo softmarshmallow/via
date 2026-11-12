@@ -1,0 +1,106 @@
+# City: a district of a larger map, 1.6 km across, laid out the way a city grows.
+# A river first. Freeways and arterials are drawn by hand around it. Everything finer is worked out
+# from them by the project's own steps: each district cut into wards by the arterials, local streets in
+# each district's own pattern, bridges where an arterial meets the river, ramps where one meets a
+# freeway, and lots that fill the blocks. The kit is a proof kit of boxes.
+
+include = ["../../kinds/terrain.toml", "../../kinds/ways.toml", "../../kinds/town.toml", "../../kinds/review.toml"]
+
+[world]
+name = "City"
+extent = [0.0, 0.0, 1600.0, 1600.0]
+resolution = 1.25
+chunk = 160
+seed = 77
+pack = "../../packs/primitive.toml"
+
+[export]
+fields = ["water", "grass"]
+feature_attrs = true        # the steps read each way's width
+
+[look]
+sun_azimuth = 215.0
+sun_elevation = 34.0
+haze = 0.5
+sky = "summer"
+
+# ---- what a larger map may give this city. Alone, the defaults stand: the whole map, fully urban.
+[given.limits]              # the land the city may fill. Streets and lots stop at it; exits carry on past it
+type = "region"
+[given.urban]               # 0..1, how built up: towers and full blocks at 1, houses on lanes lower down, nothing at 0
+type = "field"
+default = 1.0
+
+[given.districts]           # the districts to lay out: where each is and its character. Alone: the five in layers/districts.toml
+type = "features"
+kind = "district"
+[given.squares]             # open places the streets centre on and the lots keep off. Alone: none
+type = "features"
+kind = "square"
+
+[kind.seed]                 # a point that makes the face it stands in a park: read by the road step, nothing else
+[kind.interchange]          # where a freeway and an arterial exchange traffic: read by the road step
+
+[[layer]]
+id = "districts"
+file = "layers/districts.toml"
+[[layer]]
+id = "arterials"
+file = "layers/arterials.toml"
+[[layer]]
+id = "landmarks"
+file = "layers/landmarks.toml"
+[[layer]]
+id = "dress"
+file = "layers/dress.toml"
+
+[[step]]                    # districts, local streets, river bridges and interchange ramps, from the arterials
+id = "network"
+at = "generate"
+after = "arterials"
+run = ["python", "tools/network.py"]
+[step.params]
+local_width = 8.0
+local_sidewalk = 2.5
+ramp_length = 128.0
+loop_radius = 42.0
+
+[[step]]                    # fills every block's frontage with lots
+id = "lots"
+at = "generate"
+after = "landmarks"
+run = ["python", "tools/lots.py"]
+
+# ------------------------------------------------------------------------------------------------ land
+
+[field.height]
+unit = "m"
+base = "14 + 0.004 * y + 1.8 * fbm(520, 3, seed=2) + 0.3 * fbm(80, 2, seed=3)"
+
+[field.water]
+unit = "m"
+base = -100.0
+
+[field.clear]
+base = 0.0
+
+[field.green]                # the road step replaces this with 1 inside parks
+base = 0.0
+
+[field.grass]
+tags = ["vegetation"]
+base = "0.6"
+
+[field.ground]
+type = "material"
+layers = [{ paint = "grass" }]
+
+[[feature]]
+id = "river"
+kind = "lake"
+authority = "anchored"
+depth = 5.0
+shore = 10.0
+rim = 20.0
+max_bank = 9.0
+region = [[1235.3, 1293.2], [1154.7, 1040.3], [1095.7, 794.6], [1075.6, 494.6], [1015.7, 244.4], [995.9, -12.8], [924.1, -7.2], [944.4, 255.6], [1004.3, 505.4], [1024.4, 805.4], [1085.0, 1058.4], [1165.1, 1308.9], [1224.7, 1616.8], [1295.3, 1603.2]]

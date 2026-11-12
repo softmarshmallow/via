@@ -1,0 +1,91 @@
+# Hamlet layer: what is built. It stands on the land layer and may shape the ground under itself.
+
+[kind.pad.defaults]          # override a shared kind's default for this world; do not redefine the kind
+skirt = 3.0
+
+# ---- placed by hand, each by the thing it belongs to, so it follows when that thing moves
+[[instance]]
+id = "cottage_a"
+asset = "town.house_low"
+kind = "pad"                 # the instance lends its footprint to the pad kind: the ground is levelled for it
+on = { feature = "lane_west", t = 0.22, offset = 12.0 }
+
+[[instance]]
+id = "cottage_b"
+asset = "town.house_low"
+kind = "pad"
+on = { feature = "lane_west", t = 0.30, offset = -12.0 }
+
+[[instance]]
+id = "church"
+asset = "town.church"
+kind = "pad"
+on = { feature = "church_path", t = 1.0, offset = 0.0 }
+face = 180.0
+
+[[instance]]
+id = "steeple"
+asset = "town.steeple"
+beside = "church"            # relative to another instance
+offset = [0.0, 13.6]
+
+[[instance]]
+id = "mill"
+asset = "barn"
+kind = "pad"
+at = [124.0, 140.0]
+yaw = 20.0
+mill_wheel = true            # your own data on an instance passes through to the build
+
+[[instance]]
+id = "farm"
+asset = "barn"
+kind = "pad"
+on = { feature = "lane_east", t = 0.32, offset = -14.0 }
+
+[[instance]]
+id = "inn"                   # it stands on the green's own level, so it asks for no ground of its own
+asset = "town.inn"
+on = { feature = "green", t = 0.62, offset = -7.0 }
+face = "in"
+
+# ---- a row of one kit, standing along the lane; the pieces come from the pack by role
+[[kitrun]]
+id = "east_row"
+along = "lane_east"
+side = "left"
+at = 0.42
+bays = 5
+setback = 4.0
+bay = "@building/row/bay"    # a place in the pack's taxonomy, not an asset: whatever the pack files there
+end = "town.end"
+
+# ---- a group placed as one thing
+[set.well_corner]
+items = [
+    { name = "well", asset = "town.well" },
+    { name = "bench", asset = "bench.stone", offset = [3.0, 0.5], turn = 90.0 },
+]
+[[instance]]
+id = "square"
+set = "well_corner"
+at = [96.0, 92.0]
+
+# ---- one asset repeated along a feature
+[[run]]
+id = "lamps"
+on = "lane_west"
+from = 0.15
+to = 0.95
+count = 5
+offset = 3.0
+asset = "lamp"
+
+[[run]]
+id = "stalls"
+on = "green"                 # along a region's outline
+from = 0.04
+to = 0.22
+count = 3
+offset = -4.0
+asset = "stall"

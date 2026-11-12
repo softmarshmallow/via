@@ -1,0 +1,132 @@
+# Monastery: a walled compound on a terrace above a gorge, a tarn, a switchback road and a stone bridge.
+#
+#   uv run python -m worldc worlds/monastery/world.toml --lint reach
+#   uv run python -m worldc worlds/monastery/world.toml --variant winter --lint reach
+#   uv run python -m worldc worlds/monastery/world.toml --overlay worlds/monastery/changes/guesthouse.toml --lint reach
+
+include = ["../../kinds/terrain.toml", "../../kinds/ways.toml", "../../kinds/review.toml", "kinds.toml"]
+
+[world]
+name = "Monastery"
+extent = [0.0, 0.0, 320.0, 320.0]
+resolution = 0.5
+chunk = 64
+seed = 14
+pack = "../../packs/primitive.toml"
+
+[params]
+tarn_y = 245.0           # the tarn's floor tilts about this line, so its north shore is the headwall
+treeline = 70.0          # m: woods below, bare rock above
+crops = 1.0              # 0 in winter: nothing stands in the garden plots
+
+[export]
+fields = ["water", "grass", "crop", "forest"]
+
+[look]
+sun_azimuth = 200.0
+sun_elevation = 40.0
+haze = 0.35
+sky = "summer"
+
+[[layer]]
+id = "land"
+file = "layers/land.toml"
+[[layer]]
+id = "compound"
+file = "layers/compound.toml"
+[[layer]]
+id = "dress"
+file = "layers/dress.toml"
+
+# ---- steps
+[[step]]
+id = "gardens"
+at = "generate"
+after = "land"           # it reads the court's outline and lays plots below its downhill edge
+run = ["python", "tools/gardens.py"]
+[step.params]
+host = "court"
+count = 3
+per_row = 2
+depth_m = 9.0
+gap_m = 5.0
+inset_m = 12.0
+clear_m = 9.0
+
+[[step]]
+id = "way"
+at = "lint"
+run = ["python", "tools/pilgrim_way.py"]
+[step.params]
+chain = ["road_up", "bridge", "approach", "court_walk"]
+max_gap_m = 2.5          # world.json keeps every eighth path sample (2 m), so an end may be 2 m short
+max_step_m = 1.0
+lamp_run = "lamps"
+min_lamps = 4
+
+# ---- fields
+[field.height]
+unit = "m"
+base = """
+  20 + 0.22 * y
+  + 45 * smoothstep(252, 312, y)
+  + 4 * smoothstep(0, 130, dist('stream_line'))
+  + 5 * fbm(110, 3, seed=1) + 0.5 * fbm(20, 3, seed=2)
+"""
+layers = [               # a cirque for the tarn to find
+    { value = "tarn_floor - 3.0 * (1 - smoothstep(0, 24, hollow)) - 0.09 * (y - tarn_y)", mask = "1 - smoothstep(18, 40, hollow)" },
+]
+[field.height.let]
+hollow = "dist('tarn_site') + 6 * fbm(30, 2, seed=3)"
+tarn_floor = "76.0"
+
+[field.water]
+unit = "m"
+base = -100.0
+
+[field.clear]
+base = 0.0
+
+[field.forest]           # declared here, not in the dress layer: the ground material reads it, and the
+tags = ["vegetation"]    # build handed to the gardens step holds only the land layer and this file
+base = """
+  smoothstep(-0.25, 0.2, fbm(60, 3, seed=5))
+  * (1 - smoothstep(28, 35, slope('height')))
+  * (1 - smoothstep(treeline - 8, treeline, f('height') + 3 * fbm(25, 2, seed=9)))
+"""
+
+[field.grass]
+tags = ["vegetation"]
+base = "(1 - 0.7 * f('forest')) * (1 - smoothstep(treeline, treeline + 8, f('height')))"
+
+[field.crop]             # this project's own: raised by garden plots, read by the crop scatter
+base = 0.0
+
+[field.ground]
+type = "material"
+layers = [
+    { paint = "grass" },
+    { paint = "forest", mask = "f('forest')" },
+    { paint = "scree", mask = "smoothstep(26, 34, slope('height'))" },
+    { paint = "rock", mask = "smoothstep(treeline - 2, treeline + 8, f('height') + 3 * fbm(25, 2, seed=9))" },
+]
+
+[profile.on_foot]
+max_slope_deg = 35.0
+max_wade_m = 0.4
+
+# ---- winter: the second state
+[variant.winter.look]
+sky = "winter"
+sun_elevation = 18.0
+haze = 0.6
+[variant.winter.params]
+crops = 0.0
+[variant.winter.kind.gorge.defaults]
+flow = 0.0               # the stream is frozen dry
+[variant.winter.field.ground]
+layers = [
+    { paint = "snow" },
+    { paint = "scree", mask = "smoothstep(30, 38, slope('height'))" },
+    { paint = "rock", mask = "smoothstep(40, 48, slope('height'))" },
+]

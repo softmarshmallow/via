@@ -1,0 +1,48 @@
+# Districts layer: the city's own plan, used when it is built alone. A larger map that gives the
+# city its districts replaces every one of these. Earlier districts win where two overlap.
+
+[[feature]]
+id = "downtown"
+kind = "district"
+ellipse = { center = [850.0, 620.0], size = [520.0, 380.0] }
+pattern = "grid"
+block = 92.0
+buildings = ["@building/city/tower", "@building/city/mid"]
+floors = [6, 45]
+
+[[feature]]
+id = "old_town"
+kind = "district"
+ellipse = { center = [520.0, 1120.0], size = [400.0, 320.0] }
+pattern = "organic"
+bearing = 36.0
+block = 46.0
+buildings = ["@building/city/row", "@building/city/mid"]
+floors = [3, 6]
+
+[[feature]]
+id = "midtown"               # a belt round downtown: wherever is within 260 m of it
+kind = "district"
+where = "dist('downtown') < 260"
+pattern = "grid"
+block = 60.0
+buildings = ["@building/city/mid"]
+floors = [6, 12]
+
+[[feature]]
+id = "docks"
+kind = "district"
+where = "y < 330"
+pattern = "grid"
+block = 76.0
+buildings = ["@building/city/shed"]
+floors = [3, 4]
+
+[[feature]]
+id = "rows"                  # everything else
+kind = "district"
+where = "x > -1e9"
+pattern = "grid"
+block = 46.0
+buildings = ["@building/city/row"]
+floors = [3, 4]

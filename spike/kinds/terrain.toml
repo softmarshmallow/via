@@ -1,0 +1,165 @@
+# Terrain kinds: what a feature does to the ground, the water and what grows on it.
+# A world includes this file and sets attributes on its own features; it does not redefine a kind.
+# To change a default for a whole world, write only that table: `[kind.road.defaults]` with `width = 4.0`.
+#
+# A kind is what a feature does to fields. Inside an effect: d is the distance outside the shape, sd the
+# signed distance (negative inside a region, positive left of a path), t the fraction along a path,
+# v the field as it stands, `profile` the field along the path after grading, `base` its mean under the
+# shape. The feature's numeric attributes are names too.
+#
+# An effect on a field the world does not declare is never applied, and a kind no feature uses brings no
+# ground material, so a simple world can include all of this. Effects apply in the order the kinds are
+# written here (after authority: derived, shaped, anchored), so the order below is part of the result.
+#
+# Attributes a feature may set, with the defaults below:
+#   guide    none. A line or region other things refer to.
+#   cliff    drop (m), face (m, horizontal run of the face), back (m, how far the lifted ground runs back)
+#   lake     level (m; unset: fill to the rim), depth, shore, rim, max_bank (all m)
+#   stack    radius, top (m)
+#   pad      margin, skirt, max_cut (m)
+#   road     width, shoulder (m), grade (m of averaging), max_grade (percent)
+#   terrace  bank, max_cut (m)
+#   lawn     none
+# Any feature may also set `authority` (derived, shaped, anchored) and `over` (anchors it wins against).
+
+[kind.guide]             # a line other things refer to; it does nothing by itself
+[kind.guide.map]
+color = [0.5, 0.6, 0.7]
+width = 1
+
+[kind.cliff]
+reach = 96
+[kind.cliff.defaults]
+drop = 15.0
+face = 3.0               # horizontal run of the face
+back = 70.0              # how far behind the edge the lifted ground returns to the hillside
+[kind.cliff.let]
+edge = "sd + 5 * fbm(26, 3, seed=31)"
+[[kind.cliff.effect]]
+field = "height"
+value = "v + drop * smoothstep(-face / 2, face / 2, edge) * (1 - smoothstep(0, back, edge)) * smoothstep(0, 0.14, t) * (1 - smoothstep(0.86, 1, t))"
+mask = "1 - smoothstep(back, back + 14, d)"
+[kind.cliff.map]
+color = [0.25, 0.22, 0.2]
+width = 2
+
+[kind.lake]              # one vocabulary, two authorities: anchored digs its bed, derived takes the ground as it is
+reach = 44
+measure = "water"
+[kind.lake.defaults]
+level = -1e9             # unset: an anchored lake fills to its rim, a derived one brings its own level
+depth = 3.5
+shore = 13.0
+rim = 26.0
+max_bank = 2.5           # the most a lake may cut or raise its surroundings before it reads as a dam
+[[kind.lake.effect]]     # dig the bed below the mean ground; lift the low rim so the water is held
+field = "height"
+max_change = "max_bank"
+check_where = "sd > 0"         # the bed may be dug freely; only the banks are limited
+value = "where(sd < 0, base - depth * smoothstep(0, shore, -sd), max(v, base + 0.35 * smoothstep(0, 7, sd)))"
+mask = "1 - smoothstep(rim * 0.45, rim, d)"
+[[kind.lake.effect]]     # fill to just under the lowest point of the finished rim
+field = "water"
+value = "where(level > -1e8, level, under('height', 'edge_min') - 0.3)"
+mask = "1 - smoothstep(1, 3, d)"
+[[kind.lake.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(0, 3, d)"
+
+[kind.stack]             # a pillar of rock standing in the sea: a point, a radius, a height
+reach = 40
+[kind.stack.defaults]
+radius = 12.0
+top = 40.0
+[kind.stack.let]
+out = "d + 0.55 * radius * fbm(2.4 * radius, 2, seed=61) + 0.22 * radius * fbm(0.7 * radius, 2, seed=63)"
+[[kind.stack.effect]]
+field = "height"
+value = "max(v, (top + 2.0 * fbm(9, 2, seed=62)) * (1 - smoothstep(radius - 3.5, radius + 1.5, out)))"
+mask = "1 - smoothstep(radius + 2, radius + 10, d)"
+
+[kind.pad]               # level ground under a footprint
+authority = "anchored"   # a hand-placed building: the ground conforms to it
+reach = 26
+[kind.pad.defaults]
+margin = 1.5
+skirt = 6.0
+max_cut = 2.5
+trodden = 1.0            # 1 paints worn ground round the walls; 0 leaves the ground as it is (a paved court)
+[[kind.pad.effect]]
+field = "height"
+value = "base"
+mask = "1 - smoothstep(0, skirt, d)"
+max_change = "max_cut"
+[[kind.pad.effect]]      # trodden ground round the walls
+field = "ground"
+paint = "path"
+mask = "trodden * (1 - smoothstep(0.3, 2.4, d + 0.8 * fbm(5, 2, seed=42)))"
+[[kind.pad.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(1, 4, d)"
+[[kind.pad.effect]]      # assets that `avoid` the clear field stay off it
+field = "clear"
+value = 1.0
+mask = "1 - smoothstep(0, 2, d)"
+
+[kind.road]              # a graded way: levels its own long profile, so it ramps across steps
+reach = 34
+[kind.road.defaults]
+width = 5.0
+shoulder = 7.0
+grade = 30.0             # metres over which the long profile is averaged
+max_grade = 20.0         # percent
+[[kind.road.effect]]
+field = "height"
+value = "profile"
+mask = "1 - smoothstep(width / 2 + 0.5, width / 2 + shoulder, d)"
+[[kind.road.effect]]
+field = "ground"
+paint = "path"
+mask = "1 - smoothstep(width / 2 - 0.7, width / 2 + 0.5, d + 0.7 * fbm(6, 2, seed=41))"
+[[kind.road.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(width / 2 + 0.5, width / 2 + 3.5, d)"
+[[kind.road.effect]]
+field = "clear"
+value = 1.0
+mask = "1 - smoothstep(width / 2, width / 2 + 2, d)"
+[kind.road.map]
+color = [0.90, 0.82, 0.62]
+width = 3
+
+# A terrace is a level court cut into the hill: anchored, paved, with a short steep bank at its edge.
+[kind.terrace]
+authority = "anchored"
+reach = 30
+[kind.terrace.defaults]
+bank = 4.0
+max_cut = 4.5
+[[kind.terrace.effect]]
+field = "height"
+value = "base"
+mask = "1 - smoothstep(0, bank, d)"
+max_change = "max_cut"
+[[kind.terrace.effect]]
+field = "ground"
+paint = "paving"
+mask = "1 - smoothstep(-0.5, 0.8, sd + 0.5 * fbm(5, 2, seed=40))"
+[[kind.terrace.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(-1, 1.5, sd)"
+
+[kind.lawn]              # grass let back into a court
+authority = "anchored"   # smaller than the court it lies in, so it is applied after the paving
+[[kind.lawn.effect]]
+field = "ground"
+paint = "grass"
+mask = "1 - smoothstep(-0.4, 0.4, sd)"
+[[kind.lawn.effect]]
+field = "grass"
+value = 1.0
+mask = "1 - smoothstep(-0.4, 0.4, sd)"

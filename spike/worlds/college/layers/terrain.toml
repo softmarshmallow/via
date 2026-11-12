@@ -1,0 +1,102 @@
+# Terrain layer: the hill, its courts and its ways. Everything else stands on this.
+include = ["../../../kinds/terrain.toml", "../../../kinds/review.toml"]
+
+[field.height]
+unit = "m"
+base = "1.5 + 0.068 * y + 0.012 * (x - 160) + 1.4 * fbm(90, 3, seed=1) + 0.3 * fbm(18, 2, seed=2)"
+
+[field.trees]
+tags = ["vegetation"]
+base = "smoothstep(0.0, 0.3, fbm(60, 3, seed=11)) * (1 - smoothstep(18, 26, slope('height')))"
+
+[field.grass]
+tags = ["vegetation"]
+base = "(1 - smoothstep(24, 32, slope('height')))"
+
+[field.clear]
+base = 0.0
+
+[field.ground]
+type = "material"
+layers = [
+    { paint = "grass" },
+    { paint = "meadow", mask = "0.7 * smoothstep(-0.1, 0.25, fbm(70, 3, seed=12))" },
+    { paint = "rock", mask = "smoothstep(30, 40, slope('height'))" },
+]
+
+# Courts are `terrace` and `lawn` features and ways are `road` features, all from the shared library.
+# The college's ways are lanes and flights of steps, narrower than the library's road and graded
+# over a longer run, so this layer overrides those defaults and nothing else.
+[kind.road.defaults]
+width = 4.0
+grade = 44.0
+max_grade = 24.0
+
+# ---- courts
+[[feature]]
+id = "garden_court"
+kind = "terrace"
+region = [[112.0, 62.0], [208.0, 62.0], [208.0, 124.0], [112.0, 124.0]]
+[[feature]]
+id = "main_court"
+kind = "terrace"
+region = [[108.0, 142.0], [240.0, 136.0], [240.0, 208.0], [116.0, 202.0]]
+[[feature]]
+id = "hall_terrace"
+kind = "terrace"
+region = [[122.0, 216.0], [208.0, 216.0], [208.0, 262.0], [122.0, 262.0]]
+[[feature]]                  # the gatehouse and lodge share one level
+id = "gate_court"
+kind = "terrace"
+bank = 3.0
+region = [[136.0, 32.0], [170.0, 32.0], [170.0, 48.0], [136.0, 48.0]]
+[[feature]]
+id = "garth_lawn"
+kind = "lawn"
+region = [[146.0, 80.0], [176.0, 80.0], [176.0, 110.0], [146.0, 110.0]]
+[[feature]]
+id = "garth"
+kind = "poi"
+at = [161.0, 95.0]
+
+# ---- ways
+[[feature]]
+id = "approach"
+kind = "road"
+path = [[160.0, -6.0], [160.0, 40.0], [160.0, 64.0]]
+[[feature]]
+id = "court_steps"           # garden court up to the main court
+kind = "road"
+width = 5.0
+grade = 20.0
+max_grade = 45.0
+joins = ["approach"]
+path = [[160.0, 64.0], [136.0, 70.0], [130.0, 122.0], [134.0, 146.0]]
+[[feature]]
+id = "hall_steps"            # main court up to the hall
+kind = "road"
+width = 8.0
+grade = 14.0
+max_grade = 45.0
+path = [[165.0, 200.0], [165.0, 220.0]]
+[[feature]]
+id = "dorm_lane"
+kind = "road"
+width = 3.0
+grade = 30.0
+max_grade = 30.0
+joins = ["approach"]
+path = [[160.0, 52.0], [100.0, 56.0], [76.0, 74.0], [72.0, 120.0], [74.0, 176.0], [110.0, 170.0]]
+[[feature]]
+id = "east_way"
+kind = "road"
+width = 3.0
+grade = 24.0
+max_grade = 30.0
+joins = ["approach"]
+path = [[160.0, 52.0], [222.0, 58.0], [250.0, 86.0], [246.0, 132.0], [214.0, 160.0]]
+[[feature]]
+id = "arrival"
+kind = "poi"
+at = [160.0, 4.0]
+

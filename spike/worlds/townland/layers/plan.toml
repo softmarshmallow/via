@@ -1,0 +1,107 @@
+# Plan layer: the skeleton. Places, and main ways by where they go. No way has a line.
+# It is above the terrain step, so a place can stand on the river as the model left it.
+
+# ---- where ways leave the map: spots that are truly meant
+[[feature]]
+id = "west_gate"
+kind = "guide"
+at = [12.0, 640.0]
+[[feature]]
+id = "north_gate"
+kind = "guide"
+at = [640.0, 1588.0]
+[[feature]]
+id = "east_gate"
+kind = "guide"
+at = [1588.0, 1040.0]
+[[feature]]
+id = "shore_gate"
+kind = "guide"
+at = [1588.0, 330.0]
+[[feature]]
+id = "strand_gate"
+kind = "guide"
+at = [12.0, 300.0]
+
+# ---- places on the river, wherever it runs
+[[feature]]
+id = "old_bridge"
+kind = "crossing"
+on = { feature = "river_course", t = 0.52 }
+[[feature]]
+id = "quay_bridge"
+kind = "crossing"
+on = { feature = "river_course", t = 0.84 }
+[[feature]]
+id = "market"                # the old heart, a little back from the old bridge
+kind = "guide"
+on = { feature = "river_course", t = 0.50, offset = -120.0 }
+[[feature]]
+id = "quay"
+kind = "guide"
+on = { feature = "river_course", t = 0.86, offset = -90.0 }
+[[feature]]
+id = "cathedral"             # on the shoulder of the tor: a spot that is meant
+kind = "guide"
+at = [760.0, 1040.0]
+
+[[feature]]
+id = "market_square"
+kind = "square"
+where = "dist('market') < 30"
+landmark = "town.well"
+[[feature]]
+id = "cathedral_square"
+kind = "square"
+where = "dist('cathedral') < 34"
+landmark = "town.church"
+
+# ---- main ways, by where they go. The skeleton step finds each course; earlier ones are there to be joined.
+[[feature]]
+id = "high_street"
+kind = "main_way"
+starts_at = "west_gate"
+ends_at = "east_gate"
+via = ["market", "old_bridge"]
+path = []
+
+[[feature]]
+id = "north_road"
+kind = "main_way"
+starts_at = "north_gate"
+ends_at = "market"
+path = []
+
+[[feature]]
+id = "strand"                # along the shore, over the quay bridge
+kind = "main_way"
+starts_at = "strand_gate"
+ends_at = "shore_gate"
+via = ["quay", "quay_bridge"]
+path = []
+
+[[feature]]
+id = "quay_road"
+kind = "main_way"
+starts_at = "market"
+ends_at = "quay"
+width = 10.0
+path = []
+
+[[feature]]
+id = "church_way"
+kind = "main_way"
+starts_at = "cathedral"
+ends_at = "market"
+width = 9.0
+sidewalk = 3.0
+path = []
+
+[[feature]]
+id = "back_lane"             # the east bank, old bridge to the shore road
+kind = "main_way"
+starts_at = "old_bridge"
+ends_at = "quay_bridge"
+width = 9.0
+sidewalk = 3.0
+path = []

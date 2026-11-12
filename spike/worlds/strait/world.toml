@@ -1,0 +1,93 @@
+# Strait: two islands built apart, joined here. This file owns the sea and the bridge, and nothing else.
+#
+#   a/world.toml, b/world.toml   the islands, each a world that compiles alone
+#   changes/move_b.toml          the far island moved 40 m; the bridge is not edited
+#
+#   uv run python -m worldc worlds/strait/world.toml
+#   uv run python -m worldc worlds/strait/world.toml --overlay worlds/strait/changes/move_b.toml --out strait_moved
+
+include = ["../../kinds/terrain.toml", "../../kinds/ways.toml", "../../kinds/review.toml"]
+
+[world]
+name = "Strait"
+extent = [0.0, 0.0, 704.0, 352.0]
+resolution = 1.0
+chunk = 64
+seed = 5
+pack = "../../packs/primitive.toml"
+
+[params]
+sea = 0.0
+
+[look]
+horizon = "sea"
+
+# ---- the islands. `at` is all the master says about where; everything they hold comes along.
+[[part]]
+id = "a"
+file = "a/world.toml"
+at = [24.0, 64.0]
+apron = 24.0
+expects = "sea"              # its edge is meant to be under water
+blend = "w"                  # the default falloff, written out
+
+[[part]]
+id = "b"
+file = "b/world.toml"
+at = [440.0, 56.0]
+apron = 26.0                 # at 40 the bridge's end stood in blended ground, 1.5 m under water; the compiler said so
+expects = "sea"
+blend = "smoothstep(4, apron, d) ** 2"     # this project's own falloff: the sea bed holds longer, the shore comes in late
+
+# ---- the one thing the master owns: a bridge from where A's road ends to where B's begins
+[[feature]]
+id = "strait_bridge"
+kind = "bridge"
+authority = "anchored"
+width = 6.0
+rise = 7.0
+ramp = 100.0
+clear = 4.0
+over = ["channel"]
+starts_at = "a.quay_road.end"
+ends_at = "b.landing.start"
+
+[[feature]]
+id = "channel"               # the water ships use: the bridge must clear it
+kind = "waterway"
+path = [[340.0, -10.0], [345.0, 362.0]]
+
+[field.height]
+unit = "m"
+base = "-5.5 + 0.8 * fbm(60, 3, seed=3)"
+
+[field.water]
+unit = "m"
+base = "sea"
+
+[field.clear]
+base = 0.0
+
+[field.forest]               # declared so the islands' own values are carried in
+tags = ["vegetation"]
+base = 0.0
+
+[field.ground]
+type = "material"
+layers = [{ paint = "sand" }]
+
+[[feature]]
+id = "bm_strait"
+kind = "bookmark"
+at = [345.0, 6.0]
+look = [345.0, 170.0]
+eye = 140.0
+note = "Both islands and the bridge."
+
+[[feature]]
+id = "bm_deck"
+kind = "bookmark"
+on = { feature = "strait_bridge", t = 0.05 }
+look = { feature = "strait_bridge", t = 0.6 }
+eye = 3.0
+note = "Leaving the home island."

@@ -1,0 +1,117 @@
+# Dress layer: growth, small things, review views, and what must stay true.
+
+[[scatter]]
+id = "woods"
+spacing = 7.0
+density = "f('forest')"
+assets = [{ id = "tree.conifer", weight = 3 }, { id = "tree.broadleaf", weight = 1 }]
+scale = [0.8, 1.3]
+seed = 1
+
+[[scatter]]
+id = "crops"
+spacing = 2.5
+density = "crops * f('crop')"
+assets = [{ id = "bush" }]
+scale = [0.4, 0.6]
+seed = 2
+
+[[scatter]]
+id = "talus"                 # boulders on the bare rock above the treeline
+spacing = 14.0
+density = "0.5 * smoothstep(treeline, treeline + 10, f('height')) * (1 - smoothstep(30, 40, slope('height')))"
+assets = [{ id = "rock.boulder", weight = 3 }, { id = "rock.large", weight = 1 }]
+scale = [0.6, 1.4]
+seed = 3
+
+[[feature]]
+id = "hall_door"
+kind = "poi"
+label = "Main hall"
+on = { feature = "court_walk", t = 1.0 }
+
+[[feature]]
+id = "tarn_shore"
+kind = "poi"
+label = "The tarn"
+on = { feature = "stream", t = 0.0 }
+
+# ---- review views
+[[feature]]
+id = "bm_over"
+kind = "bookmark"
+at = [300.0, 20.0]
+look = [140.0, 200.0]
+eye = 110.0
+note = "The whole mountainside from the south-east."
+
+[[feature]]
+id = "bm_arrive"
+kind = "bookmark"
+on = { feature = "road_up", t = 0.04 }
+look = { feature = "road_up", t = 0.2 }
+eye = 1.8
+note = "Where the road enters the map."
+
+[[feature]]
+id = "bm_bridge"
+kind = "bookmark"
+on = { feature = "bridge", t = 0.0, offset = -9.0 }
+look = { feature = "approach", t = 0.5 }
+eye = 4.0
+note = "The stone bridge over the gorge, the gate beyond."
+
+[[feature]]
+id = "bm_gate"
+kind = "bookmark"
+on = { feature = "approach", t = 0.15 }
+look = { feature = "approach", t = 1.0 }
+eye = 1.8
+note = "The last stretch: lamps, gate, bell tower."
+
+[[feature]]
+id = "bm_court"
+kind = "bookmark"
+on = { feature = "court_walk", t = 0.08 }
+look = { feature = "court_walk", t = 1.0 }
+eye = 1.8
+note = "Inside the gate: well, cells, hall."
+
+[[feature]]
+id = "bm_gardens"
+kind = "bookmark"
+on = { feature = "court", t = 0.70, offset = 55.0 }
+look = { feature = "court_walk", t = 0.5 }
+eye = 22.0
+look_height = 8.0
+note = "The garden terraces below the south wall."
+
+[[feature]]
+id = "bm_tarn"
+kind = "bookmark"
+on = { feature = "stream", t = 0.10, offset = 14.0 }
+look = { feature = "stream_line", t = 0.25 }
+eye = 14.0
+look_height = 3.0
+note = "Up the gorge to the tarn and the headwall."
+
+# ---- what must stay true. The reach lint reads the ground only and does not see decks, so the brief's
+# one sentence is written as two ground legs; tools/pilgrim_way.py checks that the bridge joins them.
+[[expect]]
+by = "on_foot"
+from = "road_entry"
+to = ["bridge_foot_east", "hut_a", "hut_b", "hut_c"]
+why = "the road climbs from the map edge to the bridge"
+
+[[expect]]
+by = "on_foot"
+from = "bridge_foot_west"
+to = ["hall", "wellcourt.well", "bell_tower"]
+why = "from the bridge a walker reaches the hall and the well through the gate"
+
+[[expect]]
+by = "on_foot"
+from = "road_entry"
+to = ["hall"]
+reach = false
+why = "the gorge cannot be crossed on the ground: the bridge is the only way"

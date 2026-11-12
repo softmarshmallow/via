@@ -1,0 +1,235 @@
+# Ways: lines people, vehicles, trains and boats move along.
+#
+# This file is a starting vocabulary, not the framework's. The framework owns three things: a path
+# feature with a kind, the order in which the zones of a cross-section are laid (`order` on an
+# effect), and decks (a way that leaves the ground). Which ways exist, how wide they are and what
+# they are called is this file's business, and a project replaces or extends it freely.
+#
+# A way's cross-section is its kind's effects, read from the outside in: the pavement first, the
+# roadway on top of it. `order` makes that hold across features too, so where two streets meet,
+# both pavements are laid before either roadway.
+#
+# Attributes a feature may set, with the defaults below:
+#   street    width (roadway, kerb to kerb), sidewalk (each side), kerb, shoulder, grade, max_grade
+#   motorway  width, verge, shoulder, grade, max_grade
+#   railway   width (the ballast bed), shoulder, grade, max_grade
+#   waterway  none: it is drawn on the map and does nothing to the ground
+#   freeway, bridge, rail_bridge, ramp   width, rise, ramp, clear (m), max_grade, `over = [...]`: what it must
+#             clear, and `from_on` / `to_on`: the way an end rests on instead of the ground
+#   exit      a point where a way leaves this world, placed `on` the end of that way. It does nothing
+#             here. A world that places this one as a part must answer it: start or end a path there.
+#             `class` and `width` are for whoever answers; the compiler passes them on unread.
+#   fade      width, track (what it narrows to), shoulder: a way that leads nowhere. It narrows to a
+#             track and dies out along its length. With `onward = <m>` it needs no path of its own.
+#   lot       none: the ground a row of buildings stands on
+#   park      none
+
+[kind.street]
+reach = 40
+[kind.street.defaults]
+width = 9.0
+sidewalk = 3.0
+kerb = 0.15
+shoulder = 6.0
+grade = 40.0
+max_grade = 12.0
+[[kind.street.effect]]     # one graded corridor, the pavement a kerb's height above the roadway
+field = "height"
+value = "profile + kerb * smoothstep(width / 2 - 0.4, width / 2 + 0.4, d)"
+mask = "1 - smoothstep(width / 2 + sidewalk + 0.5, width / 2 + sidewalk + shoulder, d)"
+[[kind.street.effect]]
+field = "ground"
+paint = "paving"
+order = 0
+mask = "1 - smoothstep(width / 2 + sidewalk - 0.5, width / 2 + sidewalk + 0.5, d)"
+[[kind.street.effect]]
+field = "ground"
+paint = "asphalt"
+order = 1
+mask = "1 - smoothstep(width / 2 - 0.5, width / 2 + 0.5, d)"
+[[kind.street.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(width / 2 + sidewalk, width / 2 + sidewalk + 2, d)"
+[[kind.street.effect]]
+field = "clear"
+value = 1.0
+mask = "1 - smoothstep(width / 2 + sidewalk, width / 2 + sidewalk + 1, d)"
+[kind.street.map]
+color = [0.96, 0.95, 0.90]
+width = 3
+
+[kind.motorway]
+reach = 60
+[kind.motorway.defaults]
+width = 18.0
+verge = 4.0
+shoulder = 12.0
+grade = 80.0
+max_grade = 6.0
+[[kind.motorway.effect]]
+field = "height"
+value = "profile"
+mask = "1 - smoothstep(width / 2 + verge, width / 2 + verge + shoulder, d)"
+[[kind.motorway.effect]]
+field = "ground"
+paint = "asphalt"
+order = 1
+mask = "1 - smoothstep(width / 2 - 0.5, width / 2 + 0.5, d)"
+[[kind.motorway.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(width / 2, width / 2 + 2, d)"
+[[kind.motorway.effect]]
+field = "clear"
+value = 1.0
+mask = "1 - smoothstep(width / 2 + verge, width / 2 + verge + 2, d)"
+[kind.motorway.map]
+color = [0.98, 0.78, 0.36]
+width = 5
+
+[kind.railway]
+reach = 40
+[kind.railway.defaults]
+width = 5.0
+shoulder = 8.0
+grade = 120.0
+max_grade = 3.0
+[[kind.railway.effect]]
+field = "height"
+value = "profile + 0.4 * (1 - smoothstep(width / 2 - 0.5, width / 2 + 1.5, d))"
+mask = "1 - smoothstep(width / 2 + 1.5, width / 2 + shoulder, d)"
+[[kind.railway.effect]]
+field = "ground"
+paint = "scree"
+order = 2                  # a track is laid over whatever street it crosses
+mask = "1 - smoothstep(width / 2 - 0.5, width / 2 + 0.8, d)"
+[[kind.railway.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(width / 2, width / 2 + 3, d)"
+[[kind.railway.effect]]
+field = "clear"
+value = 1.0
+mask = "1 - smoothstep(width / 2 + 2, width / 2 + 4, d)"
+[kind.railway.map]
+color = [0.25, 0.25, 0.28]
+width = 2
+
+[kind.waterway]            # a route on the water: on the map, not on the ground
+[kind.waterway.map]
+color = [0.30, 0.52, 0.85]
+width = 2
+
+[kind.bridge]
+reach = 20
+deck = { surface = "concrete", thickness = 1.2, parapet = 1.1, pier_every = 32.0 }
+[kind.bridge.defaults]
+width = 12.0
+rise = 0.0
+clear = 4.5
+max_grade = 14.0
+[[kind.bridge.effect]]     # nothing grows under a deck, or up through one that lies near the ground
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(width / 2 + 0.5, width / 2 + 2.5, d)"
+[kind.bridge.map]
+color = [0.80, 0.80, 0.84]
+width = 4
+
+[kind.freeway]             # a limited-access road on a viaduct: reached only by ramps
+deck = { surface = "concrete", thickness = 1.4, parapet = 1.1, pier_every = 36.0 }
+[kind.freeway.defaults]
+width = 20.0
+rise = 8.0
+clear = 4.5
+max_grade = 12.0
+[kind.freeway.map]
+color = [0.98, 0.86, 0.45]
+width = 7
+
+[kind.ramp]                # a deck that carries a way from one level to another; an end may rest on another way
+deck = { surface = "concrete", thickness = 0.9, parapet = 1.0, pier_every = 22.0 }
+[kind.ramp.defaults]
+width = 7.0
+rise = 0.0
+clear = 4.5
+max_grade = 8.0
+[kind.ramp.map]
+color = [0.98, 0.78, 0.36]
+width = 3
+
+[kind.rail_bridge]
+deck = { surface = "steel", thickness = 1.6, parapet = 2.2, pier_every = 24.0 }
+[kind.rail_bridge.defaults]
+width = 6.0
+rise = 0.0
+clear = 4.5
+max_grade = 3.0
+[kind.rail_bridge.map]
+color = [0.25, 0.25, 0.28]
+width = 3
+
+[kind.lot]                 # the ground under a row of buildings: cleared, and nothing done to its height
+[[kind.lot.effect]]
+field = "ground"
+paint = "paving"
+order = 0
+mask = "1 - smoothstep(-1.0, 0.5, sd)"
+[[kind.lot.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(0, 2, d)"
+[[kind.lot.effect]]
+field = "clear"
+value = 1.0
+mask = "1 - smoothstep(0, 1, d)"
+
+[kind.park]
+[[kind.park.effect]]
+field = "ground"
+paint = "meadow"
+order = 0
+mask = "1 - smoothstep(-2, 2, sd)"
+[kind.park.map]
+color = [0.55, 0.75, 0.45]
+width = 1
+
+# ---- the edge of a world built apart
+
+[kind.exit]                # `exit` is the compiler's flag; the word "way" is not in the compiler
+exit = true
+[kind.exit.map]
+color = [0.85, 0.25, 0.20]
+width = 2
+
+[kind.fade]                # the answer to an exit that leads nowhere: road, then track, then grass
+reach = 34
+[kind.fade.defaults]
+width = 9.0
+track = 2.4
+shoulder = 7.0
+grade = 40.0
+max_grade = 16.0
+[kind.fade.let]
+half = "mix(width / 2, track / 2, smoothstep(0.0, 0.55, t))"
+left = "1 - smoothstep(0.6, 0.98, t)"        # how much of a way is left at this point along it
+[[kind.fade.effect]]
+field = "height"
+value = "profile"
+mask = "(1 - smoothstep(half + 0.5, half + shoulder, d)) * left"
+[[kind.fade.effect]]
+field = "ground"
+paint = "path"
+mask = "(1 - smoothstep(half - 0.7, half + 0.5, d + 0.9 * fbm(6, 2, seed=43) * smoothstep(0.2, 0.6, t))) * left"
+[[kind.fade.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "(1 - smoothstep(half + 0.5, half + 3.0, d)) * left"
+[[kind.fade.effect]]
+field = "clear"
+value = 1.0
+mask = "(1 - smoothstep(half, half + 2, d)) * left"
+[kind.fade.map]
+color = [0.90, 0.82, 0.62]
+width = 2

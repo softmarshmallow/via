@@ -1,0 +1,374 @@
+# Market: a small town on a slope. A first pass at the dogfood district from the city study.
+# Streets come first. Rows of houses are kit runs that stand `along` a street, so they follow it
+# when it moves. The kit is a proof kit: boxes with roofs, every row piece one 5 m module wide.
+
+include = ["../../kinds/terrain.toml", "../../kinds/review.toml"]
+
+[world]
+name = "Market"
+extent = [0.0, 0.0, 256.0, 256.0]
+resolution = 0.5
+chunk = 64
+seed = 41
+pack = "../../packs/primitive.toml"
+
+[export]
+fields = ["water", "grass"]
+
+[look]
+sun_azimuth = 205.0
+sun_elevation = 36.0
+haze = 0.4
+sky = "summer"
+
+[kind.pad.defaults]
+skirt = 3.0
+max_cut = 3.0
+
+[kind.road.defaults]
+shoulder = 4.0
+
+# ------------------------------------------------------------------------------------------------ land
+
+[field.height]
+unit = "m"
+base = "16 + 0.055 * y + 0.018 * x + 3.0 * fbm(140, 3, seed=2) + 0.5 * fbm(28, 3, seed=3)"
+
+[field.water]
+unit = "m"
+base = -100.0
+
+[field.clear]
+base = 0.0
+
+[field.forest]
+tags = ["vegetation"]
+base = "smoothstep(0.05, 0.4, fbm(70, 3, seed=5)) * smoothstep(40, 75, town)"
+[field.forest.let]
+town = "min(min(dist('main_street'), dist('mill_street')), min(dist('church_street'), dist('back_lane')))"
+
+[field.grass]
+tags = ["vegetation"]
+base = "1 - 0.7 * f('forest')"
+
+[field.ground]
+type = "material"
+layers = [
+    { paint = "grass" },
+    { paint = "meadow", mask = "smoothstep(-0.1, 0.25, fbm(60, 3, seed=7))" },
+    { paint = "forest", mask = "0.85 * smoothstep(0.35, 0.8, f('forest'))" },
+]
+
+# ------------------------------------------------------------------------------------------------ streets
+
+[[feature]]
+id = "main_street"
+kind = "road"
+width = 7.0
+path = [[-10.0, 52.0], [60.0, 62.0], [118.0, 86.0], [160.0, 134.0], [174.0, 200.0], [178.0, 266.0]]
+
+[[feature]]
+id = "mill_street"          # leaves the main street below the bend and climbs north-west
+kind = "road"
+width = 5.0
+joins = ["main_street"]
+path = [[92.0, 73.0], [80.0, 120.0], [66.0, 180.0], [58.0, 266.0]]
+
+[[feature]]
+id = "church_street"        # east from the top of the bend
+kind = "road"
+width = 5.0
+joins = ["main_street"]
+path = [[163.0, 142.0], [205.0, 136.0], [266.0, 128.0]]
+
+[[feature]]
+id = "back_lane"            # closes the block between the mill street and the main street
+kind = "road"
+width = 3.5
+joins = ["mill_street", "main_street"]
+path = [[70.0, 164.0], [120.0, 178.0], [173.0, 196.0]]
+
+[[feature]]
+id = "market_square"        # a paved court in the crook of the bend
+kind = "terrace"
+max_cut = 3.5
+region = [[104.0, 92.0], [142.0, 118.0], [128.0, 160.0], [78.0, 142.0]]
+
+# ------------------------------------------------------------------------------------------------ rows
+# `at` is where a row starts, as a fraction of its street; `bays` is how many modules it holds.
+
+[[kitrun]]
+id = "row_south_a"
+along = "main_street"
+side = "right"
+at = 0.06
+bays = 6
+setback = 5.0
+bay = [{ id = "town.shop", weight = 3 }, { id = "town.shop_tall", weight = 1 }]
+end = "town.end"
+
+[[kitrun]]
+id = "row_south_b"
+along = "main_street"
+side = "right"
+at = 0.20
+bays = 7
+setback = 5.0
+bay = [{ id = "town.shop", weight = 2 }, { id = "town.shop_tall", weight = 2 }]
+end = "town.end"
+
+[[kitrun]]
+id = "row_north_a"
+along = "main_street"
+side = "left"
+at = 0.05
+bays = 5
+setback = 5.0
+bay = [{ id = "town.shop", weight = 3 }, { id = "town.house", weight = 1 }]
+end = "town.end"
+
+[[kitrun]]
+id = "row_bend"
+along = "main_street"
+side = "right"
+at = 0.40
+bays = 5
+setback = 5.0
+bay = [{ id = "town.shop_tall", weight = 2 }, { id = "town.shop", weight = 2 }]
+end = "town.end"
+
+[[kitrun]]
+id = "row_upper_east"
+along = "main_street"
+side = "right"
+at = 0.62
+bays = 6
+setback = 5.0
+bay = [{ id = "town.house", weight = 2 }, { id = "town.shop", weight = 1 }]
+
+[[kitrun]]
+id = "row_upper_west"
+along = "main_street"
+side = "left"
+at = 0.63
+bays = 5
+setback = 5.0
+bay = [{ id = "town.house", weight = 2 }, { id = "town.house_low", weight = 1 }]
+
+[[kitrun]]
+id = "row_mill_a"
+along = "mill_street"
+side = "left"
+at = 0.12
+bays = 5
+setback = 4.0
+bay = [{ id = "town.house", weight = 1 }, { id = "town.house_low", weight = 2 }]
+
+[[kitrun]]
+id = "row_mill_b"
+along = "mill_street"
+side = "left"
+at = 0.52
+bays = 6
+setback = 4.0
+bay = [{ id = "town.house", weight = 1 }, { id = "town.house_low", weight = 2 }]
+
+[[kitrun]]
+id = "row_mill_c"
+along = "mill_street"
+side = "right"
+at = 0.58
+bays = 4
+setback = 4.0
+bay = [{ id = "town.house_low", weight = 1 }]
+
+[[kitrun]]
+id = "row_church"
+along = "church_street"
+side = "left"
+at = 0.50
+bays = 6
+setback = 4.0
+bay = [{ id = "town.house", weight = 2 }, { id = "town.house_low", weight = 1 }]
+
+[[kitrun]]
+id = "row_top_west"
+along = "main_street"
+side = "left"
+at = 0.82
+bays = 5
+setback = 5.0
+bay = [{ id = "town.house", weight = 1 }, { id = "town.house_low", weight = 1 }]
+
+[[kitrun]]
+id = "row_top_east"
+along = "main_street"
+side = "right"
+at = 0.84
+bays = 4
+setback = 5.0
+bay = [{ id = "town.house", weight = 1 }, { id = "town.house_low", weight = 1 }]
+
+[[kitrun]]
+id = "row_church_south"
+along = "church_street"
+side = "right"
+at = 0.62
+bays = 5
+setback = 4.0
+bay = [{ id = "town.house_low", weight = 2 }, { id = "town.house", weight = 1 }]
+
+[[kitrun]]
+id = "row_lane_north"
+along = "back_lane"
+side = "left"
+at = 0.22
+bays = 6
+setback = 3.0
+bay = [{ id = "town.house_low", weight = 1 }]
+
+[[kitrun]]
+id = "row_mill_top"
+along = "mill_street"
+side = "right"
+at = 0.80
+bays = 4
+setback = 4.0
+bay = [{ id = "town.house_low", weight = 2 }, { id = "town.house", weight = 1 }]
+
+# ------------------------------------------------------------------------------------------------ landmarks, by hand
+
+[[instance]]
+id = "inn"
+asset = "town.inn"              # stands on the square's own level, so it asks for no ground of its own
+on = { feature = "market_square", t = 0.86, offset = -6.5 }
+face = "in"
+
+[[instance]]
+id = "hall"
+asset = "town.hall"
+on = { feature = "market_square", t = 0.585, offset = -10.5 }
+face = "in"
+
+[[instance]]
+id = "church"
+asset = "town.church"
+kind = "pad"
+on = { feature = "church_street", t = 0.30, offset = -17.0 }
+face = "toward"
+
+[[instance]]
+id = "steeple"
+asset = "town.steeple"
+beside = "church"
+offset = [0.0, 13.6]
+
+[[instance]]
+id = "well"
+asset = "town.well"
+at = [116.0, 124.0]
+
+# ------------------------------------------------------------------------------------------------ what the streets and the square carry
+
+[[run]]
+id = "lamps_main_l"
+on = "main_street"
+from = 0.04
+to = 0.96
+count = 11
+offset = 4.3
+asset = "lamp"
+
+[[run]]
+id = "lamps_main_r"
+on = "main_street"
+from = 0.08
+to = 0.92
+count = 10
+offset = -4.3
+asset = "lamp"
+
+[[run]]
+id = "lamps_mill"
+on = "mill_street"
+from = 0.1
+to = 0.9
+count = 6
+offset = 3.2
+asset = "lamp"
+
+[[run]]
+id = "stalls"
+on = "market_square"
+from = 0.03
+to = 0.21
+count = 4
+offset = -5.0
+asset = "stall"
+
+[[instance]]
+id = "cart"
+asset = "cart"
+at = [122.0, 116.0]
+yaw = 30.0
+
+[[run]]
+id = "benches"
+on = "market_square"
+from = 0.27
+to = 0.42
+count = 3
+offset = -3.0
+asset = "bench.stone"
+
+# ------------------------------------------------------------------------------------------------ country
+
+[[scatter]]
+id = "woods"
+spacing = 7.0
+density = "f('forest')"
+assets = [{ id = "tree.broadleaf", weight = 4 }, { id = "tree.conifer", weight = 1 }]
+scale = [0.8, 1.35]
+seed = 1
+
+[[scatter]]
+id = "garden_trees"
+spacing = 14.0
+density = "0.35 * (1 - f('clear')) * (1 - f('forest'))"
+assets = [{ id = "tree.broadleaf" }]
+scale = [0.6, 0.95]
+seed = 2
+
+# ------------------------------------------------------------------------------------------------ views
+
+[[feature]]
+id = "bm_arrive"
+kind = "bookmark"
+on = { feature = "main_street", t = 0.09 }
+look = { feature = "main_street", t = 0.22 }
+eye = 1.8
+note = "Arriving on the main street: rows either side."
+
+[[feature]]
+id = "bm_square"
+kind = "bookmark"
+at = [128.0, 114.0]
+look = [100.0, 146.0]
+eye = 1.8
+note = "The market square from the main street."
+
+[[feature]]
+id = "bm_bend"
+kind = "bookmark"
+on = { feature = "main_street", t = 0.52 }
+look = { feature = "main_street", t = 0.75 }
+eye = 1.8
+note = "Up the hill past the bend."
+
+[[feature]]
+id = "bm_over"
+kind = "bookmark"
+at = [230.0, 40.0]
+look = [120.0, 130.0]
+eye = 45.0
+note = "The whole town from the south-east."

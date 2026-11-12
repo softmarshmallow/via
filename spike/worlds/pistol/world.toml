@@ -1,0 +1,283 @@
+# Pistol: a stress test. A well-known service pistol, modelled from its published overall
+# dimensions and nothing else. One unit is one centimetre.
+#
+# No part has a hand-placed coordinate. The published numbers are parameters; proportions that no
+# source gives are parameters marked as estimates; every part's size and place is a formula over
+# those and over other parts. Change one number and the whole object re-settles.
+#
+#   uv run python -m worldc worlds/pistol/world.toml
+#   uv run python -m worldc worlds/pistol/world.toml --variant racked
+#   uv run python -m worldc worlds/pistol/world.toml --overlay worlds/pistol/accessories/optic.toml \
+#       --overlay worlds/pistol/accessories/suppressor.toml --overlay worlds/pistol/accessories/light.toml
+
+include = ["../../kinds/review.toml", "kinds.toml"]
+
+[world]
+name = "Pistol"
+extent = [-24.0, -30.0, 70.0, 42.0]
+resolution = 0.5
+chunk = 16
+seed = 1
+pack = "../../packs/primitive.toml"
+
+[look]
+sun_azimuth = 200.0
+sun_elevation = 48.0
+haze = 0.1
+
+[params]
+# ---- published (M1911A1; sources differ on length by up to 9 mm, the longest is used)
+overall_length = 21.9
+barrel_length = 12.7
+sight_radius = 16.5
+height = 14.0
+width = 3.3
+bore = 1.143
+# ---- estimated by eye: no source consulted gives these
+grip_angle = 18.0            # degrees back from square
+slide_h = "= 0.19 * height"
+frame_h = "= 0.10 * height"
+slide_w = "= 0.70 * width"
+tang = "= 0.055 * overall_length"     # how far the frame's tail stands behind the slide
+crown = 0.15                 # how far the barrel stands in front of the slide
+sight_h = 0.5
+# ---- where the whole object sits in its box, stated once
+muzzle_x = 28.0
+mid_y = 6.0
+base_z = 3.0
+# ---- the mechanism's state
+travel = 0.0                 # how far the slide is drawn back
+
+[field.height]
+unit = "m"
+base = 0.0
+
+[field.ground]
+type = "material"
+layers = [{ paint = "paving" }]
+
+[field.solid]
+type = "volume"
+cell = 0.125
+base = "ground"
+
+[[feature]]                  # the box of space it is modelled in: an object, not land
+id = "bench"
+kind = "bench"
+free = true
+z = [1.0, 22.0]
+region = [[0.0, 0.0], [44.0, 0.0], [44.0, 12.0], [0.0, 12.0]]
+
+# ------------------------------------------------------------------------------------------------ the slide and what rides on it
+[[feature]]
+id = "slide"
+kind = "add_block"
+hx = "= (overall_length - tang - crown) / 2"
+hy = "= slide_w / 2"
+hz = "= slide_h / 2"
+cx = "= muzzle_x - crown - hx - travel"
+cy = "= mid_y"
+cz = "= base_z + height - sight_h - hz"
+
+[[feature]]
+id = "front_sight"
+kind = "add_block"
+hx = 0.35
+hy = 0.12
+hz = "= sight_h / 2"
+cx = "= slide.front - 0.9"
+cy = "= mid_y"
+cz = "= slide.top + hz"
+
+[[feature]]
+id = "rear_sight"
+kind = "add_block"
+hx = 0.4
+hy = "= slide.hy * 0.7"
+hz = "= sight_h / 2"
+cx = "= front_sight.cx - sight_radius"       # the published distance between the sights
+cy = "= mid_y"
+cz = "= slide.top + hz"
+
+[[feature]]
+id = "sight_notch"
+kind = "cut_block"
+hx = 0.6
+hy = 0.16
+hz = 0.2
+cx = "= rear_sight.cx"
+cy = "= mid_y"
+cz = "= rear_sight.top - 0.1"
+
+[[feature]]
+id = "ejection_port"
+kind = "cut_block"
+hx = 1.7
+hy = "= slide.hy * 0.6"
+hz = 0.6
+cx = "= slide.cx - 0.6"
+cy = "= mid_y + slide.hy * 0.5"
+cz = "= slide.top - 0.45"
+
+[[feature]]
+id = "serrations"
+kind = "cut_grooves"
+hx = 1.3
+hz = "= slide.hz * 0.8"
+inner = "= slide.hy - 0.1"
+pitch = 0.45
+cx = "= slide.back + 1.8"
+cy = "= mid_y"
+cz = "= slide.cz"
+
+# ------------------------------------------------------------------------------------------------ the frame and what is fixed to it
+[[feature]]
+id = "frame"
+kind = "add_block"
+hx = "= (overall_length - tang - crown) * 0.45"
+hy = "= slide_w / 2"
+hz = "= frame_h / 2"
+cx = "= muzzle_x - overall_length + tang + hx"   # its back is where the slide's back is at rest
+cy = "= mid_y"
+cz = "= slide.bottom - hz"
+
+[[feature]]
+id = "tail"                  # the frame's tail, which the published length includes
+kind = "add_block"
+hx = "= tang / 2 + 0.4"
+hy = "= slide_w * 0.3"
+hz = 0.5
+cx = "= muzzle_x - overall_length + hx"
+cy = "= mid_y"
+cz = "= frame.bottom + 0.3"
+
+[[feature]]
+id = "hammer"
+kind = "add_block"
+hx = 0.4
+hy = 0.3
+hz = 0.65
+lean = -0.5
+cx = "= frame.back - 0.15"
+cy = "= mid_y"
+cz = "= frame.top + 0.75"
+
+[[feature]]
+id = "grip"
+kind = "add_block"
+lean = "= tan(radians(grip_angle))"
+hx = "= 0.105 * overall_length"
+hy = "= slide_w * 0.45"
+hz = "= (frame.bottom - base_z) / 2"
+cx = "= muzzle_x - overall_length + 0.3 + hx + lean * hz"   # its heel stays inside the published length
+cy = "= mid_y"
+cz = "= base_z + hz"
+
+[[feature]]
+id = "grip_panels"           # these carry the published width
+kind = "add_block"
+lean = "= grip.lean"
+hx = "= grip.hx * 0.82"
+hy = "= width / 2"
+hz = "= grip.hz * 0.78"
+cx = "= grip.cx"
+cy = "= mid_y"
+cz = "= grip.cz - 0.2"
+
+[[feature]]
+id = "base_plate"
+kind = "add_block"
+hx = "= grip.hx + 0.15"
+hy = "= grip.hy"
+hz = 0.18
+cx = "= grip.cx - grip.lean * grip.hz"
+cy = "= mid_y"
+cz = "= base_z + hz"
+
+[[feature]]
+id = "trigger_guard"
+kind = "add_ring"
+r = "= 0.085 * overall_length"
+th = 0.28
+hy = 0.5
+cx = "= grip.cx + grip.lean * grip.hz + grip.hx + r - 0.25"    # just ahead of the grip, where it meets the frame
+cy = "= mid_y"
+cz = "= frame.bottom - r * 0.55"
+
+[[feature]]
+id = "trigger"
+kind = "add_block"
+hx = 0.3
+hy = 0.3
+hz = 1.0
+lean = 0.2
+cx = "= trigger_guard.cx - 0.5"
+cy = "= mid_y"
+cz = "= trigger_guard.cz + 0.35"
+
+# ------------------------------------------------------------------------------------------------ the barrel
+[[feature]]
+id = "barrel"
+kind = "add_rod"
+hx = "= barrel_length / 2"                   # the published barrel length
+r = "= bore / 2 + 0.2"
+cx = "= muzzle_x - hx"
+cy = "= mid_y"
+cz = "= slide.cz - 0.15"
+
+[[feature]]
+id = "bore"
+kind = "cut_rod"
+hx = "= barrel.hx + 0.3"
+r = "= bore / 2"                             # the published calibre
+cx = "= barrel.cx + 0.5"
+cy = "= mid_y"
+cz = "= barrel.cz"
+
+# ------------------------------------------------------------------------------------------------ where accessories attach
+# A mount is a named place worked out from the parts. It makes nothing; accessories refer to it.
+[[feature]]
+id = "optic_mount"
+kind = "mount"
+x = "= rear_sight.cx + 2.6"
+z = "= slide.top"
+
+[[feature]]
+id = "muzzle_mount"
+kind = "mount"
+x = "= muzzle_x"
+z = "= barrel.cz"
+
+[[feature]]
+id = "rail_mount"
+kind = "mount"
+x = "= frame.front - 2.4"
+z = "= frame.bottom"
+
+# ------------------------------------------------------------------------------------------------ views, and a check
+[[feature]]
+id = "bm_quarter"
+kind = "bookmark"
+at = [50.0, -12.0]
+look = [18.0, 6.0]
+eye = 22.0
+look_height = 11.0
+note = "Three-quarter view."
+
+[[feature]]
+id = "bm_side"
+kind = "bookmark"
+at = [18.0, -22.0]
+look = [18.0, 6.0]
+eye = 11.0
+look_height = 10.5
+note = "From the side."
+
+[[step]]                     # measures the built object against the published numbers
+id = "measure"
+at = "lint"
+run = ["python", "tools/measure.py"]
+
+# ---- the mechanism in another state: one number, and everything that rides on the slide follows
+[variant.racked.params]
+travel = 4.0

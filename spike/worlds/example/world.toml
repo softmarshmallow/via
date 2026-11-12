@@ -1,0 +1,104 @@
+# Example: a village in a hollow, with a tarn, a beck, a crag, a green, farm plots and an orchard. The canonical project: one of everything a user writes.
+#
+#   world.toml        this file: the frame, the fields, who owns which layer, the steps
+#   kinds.toml        this project's own kinds, beside the shared libraries
+#   layers/           land, hamlet, dress: three documents of one world, lowest first
+#   tools/            the project's own code, joined to the build as steps
+#   changes/          a proposed change, kept apart as an overlay
+#
+#   uv run python -m worldc worlds/example/world.toml --lint reach
+#   uv run python -m worldc worlds/example/world.toml --variant winter
+#   uv run python -m worldc worlds/example/world.toml --overlay worlds/example/changes/third_cottage.toml
+
+include = ["../../kinds/terrain.toml", "../../kinds/ways.toml", "../../kinds/review.toml", "kinds.toml"]
+
+[world]
+name = "Example"
+extent = [0.0, 0.0, 256.0, 256.0]      # metres: x east, y north
+resolution = 0.5                        # metres between posts
+chunk = 64
+seed = 9
+pack = "../../packs/primitive.toml"     # asset IDs are bound here; the world never names a file
+
+[params]                                # names any expression may use
+treeline = 62.0
+
+[export]
+fields = ["water", "grass", "danger"]   # fields a loader or a step may read from the build
+
+[look]
+sun_azimuth = 210.0
+sun_elevation = 36.0
+haze = 0.4
+sky = "summer"
+
+# ---- layers: who owns what. A layer may refer to its own things and to lower layers', never higher.
+[[layer]]
+id = "land"
+file = "layers/land.toml"
+[[layer]]
+id = "hamlet"
+file = "layers/hamlet.toml"
+[[layer]]
+id = "dress"
+file = "layers/dress.toml"
+
+# ---- steps: the project's own code. Each is a command; `python` is the compiler's interpreter.
+[[step]]
+id = "moisture"
+at = "generate"                         # writes a layer
+after = "land"                          # it is handed the build of the layers up to this one
+run = ["python", "tools/moisture.py"]
+[step.params]
+reach_m = 40.0
+
+[[step]]
+id = "homes"
+at = "lint"                             # reads the finished build, writes diagnostics
+run = ["python", "tools/homes_near_lane.py"]
+[step.params]
+max_m = 30.0
+
+# ---- fields: a value at every point. `base` is an expression; features then apply their kinds' effects.
+[field.height]
+unit = "m"                              # a unit makes it measurable: only then can two anchors conflict
+base = "30 + 0.08 * y + 6 * fbm(120, 3, seed=1) + 0.6 * fbm(22, 3, seed=2)"
+layers = [                              # a hollow for the tarn to find
+    { value = "44 - 3.0 * (1 - smoothstep(0, 26, hollow))", mask = "1 - smoothstep(18, 44, hollow)" },
+]
+[field.height.let]
+hollow = "dist('tarn_site') + 8 * fbm(30, 2, seed=3)"
+
+[field.water]
+unit = "m"
+base = -100.0                           # dry everywhere until a feature says otherwise
+
+[field.clear]                           # raised by roads and platforms; assets that `avoid` it stay off
+base = 0.0
+
+[field.danger]                          # a field of this project's own; see kinds.toml
+base = 0.0
+
+[field.ground]
+type = "material"
+layers = [
+    { paint = "grass" },
+    { paint = "meadow", mask = "smoothstep(-0.1, 0.25, fbm(60, 3, seed=7))" },
+    { paint = "scree", mask = "smoothstep(27, 34, slope('height'))" },
+]
+
+[profile.on_foot]                       # who the reach lint walks as
+max_slope_deg = 35.0
+max_wade_m = 0.4
+
+# ---- a variant: a named change merged over all of the above
+[variant.winter.look]
+sky = "winter"
+sun_elevation = 20.0
+[variant.winter.params]
+treeline = 40.0
+[variant.winter.field.ground]           # a list is replaced whole, so the variant restates the ground
+layers = [
+    { paint = "snow" },
+    { paint = "scree", mask = "smoothstep(27, 34, slope('height'))" },
+]

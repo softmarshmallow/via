@@ -1,0 +1,11 @@
+# A level change: one more sea stack east of the headland, and the cave's marker moved.
+[[feature]]
+id = "stack_new"
+kind = "stack"
+at = [392.0, 96.0]
+radius = 11.0
+top = 20.0
+
+[[feature]]
+id = "cave_mouth"
+at = [230.0, 168.0]

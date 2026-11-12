@@ -1,0 +1,140 @@
+# Townland: a town on land that an erosion model shaped, with its main ways found over that land.
+#
+# The author states, and nothing more:
+#   the land      the sea to the south, ground rising north, two hills, a river that comes in from the north and runs to a haven
+#   the skeleton  gates, a market, a cathedral, two crossings, and six main ways by where they go
+#   the districts four regions written as conditions, each with a character
+# The Rust terrain stage settles the land (the step from `basin`). The town library then finds each main
+# way's course, lays local streets in each district's pattern along the main way nearest it, and fills
+# the frontages (the tools from `city`). Nobody writes a street, a block, a lot or a bend.
+#
+#   cargo build --release -p via            (once, from the repository root)
+#   uv run python -m worldc worlds/townland/world.toml
+#   uv run python -m worldc worlds/townland/world.toml --overlay worlds/townland/changes/move_tor.toml --out townland_moved
+
+include = ["../../kinds/terrain.toml", "../../kinds/ways.toml", "../../kinds/town.toml", "../../kinds/review.toml", "../basin/kinds.toml"]
+
+[world]
+name = "Townland"
+extent = [0.0, 0.0, 1600.0, 1600.0]
+resolution = 2.0
+chunk = 200
+seed = 12
+pack = "../../packs/primitive.toml"
+
+[params]
+sea = 0.0
+
+[export]
+fields = ["water", "grass", "wet", "damp", "urban"]
+feature_attrs = true
+
+[look]
+sun_azimuth = 215.0
+sun_elevation = 34.0
+haze = 0.4
+sky = "summer"
+
+[[layer]]
+id = "land"                  # the stated land: read by the terrain step
+file = "layers/land.toml"
+[[layer]]
+id = "plan"                  # the skeleton: places and main ways by where they go
+file = "layers/plan.toml"
+[[layer]]
+id = "town"                  # the districts, which may measure from the main ways' found courses
+file = "layers/town.toml"
+[[layer]]
+id = "marks"                 # landmarks placed by hand; the lot tool keeps off them
+file = "layers/marks.toml"
+[[layer]]
+id = "dress"
+file = "layers/dress.toml"
+
+[field.height]               # the starting surface: high ground stated loosely. The model works from here.
+unit = "m"
+base = """
+  -7 + 0.032 * y + 0.006 * x
+  + 26 * (1 - smoothstep(60, 300, dist('tor') + 40 * fbm(200, 2, seed=1)))
+  + 17 * (1 - smoothstep(50, 250, dist('knoll') + 40 * fbm(180, 2, seed=2)))
+  + (6 * fbm(380, 3, seed=3) + 2.5 * fbm(130, 2, seed=4)) * smoothstep(250, 600, y)
+"""
+
+[field.water]
+unit = "m"
+base = -100.0
+
+[field.clear]
+base = 0.0
+
+[field.green]
+base = 0.0
+
+[field.ground]
+type = "material"
+layers = [ { paint = "grass" } ]
+
+[[step]]                     # the land, simulated under the stated facts
+id = "terrain"
+at = "generate"
+after = "land"
+run = ["python", "../basin/tools/terrain.py"]
+inputs = ["../../../target/release/via"]
+[step.params]
+engine = "../../../target/release/via"
+cell = 12.5
+margin = 16
+steps = 140
+dt_years = 1000.0
+erodibility = 8.0e-6
+diffusivity = 0.008
+deposition = 1.0
+incise = 1.5
+hold_cells = 3
+min_fall = 0.003
+valley = 80.0
+max_bank = 3.0
+level_within = 1.5
+follow_within = 50.0
+max_cut = 14.0
+min_catchment = 0.05
+detail = 0.25
+
+[[step]]                     # the main ways' courses, found over that land
+id = "skeleton"
+at = "generate"
+after = "plan"
+run = ["python", "../../kinds/tools/main_ways.py"]
+[step.params]
+watercourses = ["river_course"]
+water_half = 8.0
+easy_grade = 0.035
+max_grade = 0.10
+ease = 34.0
+
+[[step]]                     # local streets, each district in its pattern, along the main way nearest it
+id = "network"
+at = "generate"
+after = "town"
+run = ["python", "../city/tools/network.py"]
+[step.params]
+limits = "town_limits"
+close_ways = false
+local_width = 8.0
+local_sidewalk = 2.5
+ramp_length = 128.0
+loop_radius = 42.0
+join_within = 60.0          # a street that ends on nothing joins the next street within this, or is cut back
+
+[[step]]
+id = "lots"
+at = "generate"
+after = "marks"
+run = ["python", "../city/tools/lots.py"]
+[step.params]
+limits = "town_limits"
+
+[[step]]                     # how the streets are shaped, as numbers
+id = "street_form"
+at = "lint"
+run = ["python", "../../kinds/tools/street_form.py"]

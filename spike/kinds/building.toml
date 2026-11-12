@@ -1,0 +1,40 @@
+# Building kinds: interiors. Rooms stand on a `[[level]]` the world declares; openings sit `on` a room's
+# outline; a stair joins two rooms on different levels. None of these touches a field: the interior
+# producer reads them and builds walls, floors, openings and lights.
+#
+# Attributes a feature may set, with the defaults below:
+#   room        wall (m, wall thickness)
+#   tower_room  wall (m): the same thing with a thick wall and no kit module
+#   door        width, head (m)
+#   window      width, sill, head (m)
+#   stair       none. The feature names its rooms with `from` and `to`.
+#   lamp        h (m above the floor; unset, the `h` of the kind's `light` table)
+
+[kind.room]              # a region on a level; the producer walls it in
+encloses = true
+module_m = 1.0           # the wall pieces a kit would bring
+[kind.room.defaults]
+wall = 0.4
+[kind.tower_room]
+encloses = true
+[kind.tower_room.defaults]
+wall = 0.8
+[kind.door]
+opening = "door"
+[kind.door.defaults]
+width = 1.0
+head = 2.1
+[kind.window]
+opening = "window"
+[kind.window.defaults]
+width = 0.9
+sill = 1.0
+head = 2.0
+[kind.stair]
+link = "stair"
+[kind.lamp]
+[kind.lamp.light]
+color = [1.0, 0.76, 0.48]
+range = 7.5
+energy = 1.8
+h = 2.3

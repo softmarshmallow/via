@@ -1,0 +1,28 @@
+# Stated facts about the land. These kinds do nothing to a field themselves: the terrain step reads
+# their features and holds the model to them. The compiler knows none of these names.
+
+[kind.stated_lake]           # "a lake exists here, at this level"
+authority = "anchored"
+[kind.stated_lake.defaults]
+depth = 4.0                  # of the bed below the surface, away from the shore
+shore = 30.0                 # run of the shelving shore, m
+[kind.stated_lake.map]
+color = [0.30, 0.52, 0.80]
+width = 2
+
+[kind.stated_river]          # "a river runs from here to there"
+authority = "anchored"
+# width      metres across the water; or [at its source, at its mouth], and it grows between them
+# estuary    how many times wider it is where it meets the sea, reached over the last `estuary_run` metres
+# bends      how far it swings to each side, in widths, about every twelve widths; 0 keeps to the found course
+# A river whose `starts_at` names an `exit` on the map's edge comes from beyond the map.
+[kind.stated_river.defaults]
+width = 9.0
+depth = 1.2
+bank = 14.0
+estuary = 1.0
+estuary_run = 160.0
+bends = 0.0
+[kind.stated_river.map]
+color = [0.30, 0.52, 0.80]
+width = 3

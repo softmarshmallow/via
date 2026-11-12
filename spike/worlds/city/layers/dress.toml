@@ -1,0 +1,57 @@
+# Dress layer: above the lots step.
+
+[[scatter]]
+id = "park_trees"
+spacing = 11.0
+density = "0.55 * f('green') * (1 - f('clear'))"
+assets = [{ id = "tree.broadleaf", weight = 4 }, { id = "tree.great", weight = 1 }]
+scale = [0.9, 1.6]
+seed = 1
+
+[[feature]]
+id = "bm_over"
+kind = "bookmark"
+at = [1560.0, 60.0]
+look = [760.0, 760.0]
+eye = 260.0
+note = "The city from the south-east."
+
+[[feature]]
+id = "bm_tee"
+kind = "bookmark"
+at = [640.0, 860.0]
+look = [500.0, 990.0]
+eye = 60.0
+note = "The freeway T and the grand avenue interchange."
+
+[[feature]]
+id = "bm_loop"
+kind = "bookmark"
+at = [1452.0, 548.0]
+look = [1330.0, 690.0]
+eye = 55.0
+note = "The east avenue interchange with its loop ramp."
+
+[[feature]]
+id = "bm_downtown"
+kind = "bookmark"
+at = [705.0, 470.0]
+look = [860.0, 640.0]
+eye = 2.0
+note = "Into downtown from the grand avenue."
+
+[[feature]]
+id = "bm_old_town"
+kind = "bookmark"
+at = [420.0, 1010.0]
+look = [520.0, 1130.0]
+eye = 45.0
+note = "The old town's turned grid against the freeway."
+
+[[feature]]
+id = "bm_river"
+kind = "bookmark"
+at = [1010.0, 640.0]
+look = [1075.0, 860.0]
+eye = 14.0
+note = "Up the river to the crosstown viaduct."

@@ -1,0 +1,11 @@
+# Two statements the land cannot honour: a lake 24 m above the ground it sits in, and a river
+# that runs from the shore up to the hills. The build says so, with where, and what would hold.
+[[feature]]
+id = "tarn"
+level = 96.0
+
+[[feature]]
+id = "river"
+starts_at = "haven"
+ends_at = "spring"
+path = [[1750.0, 1200.0], [1900.0, 2100.0]]

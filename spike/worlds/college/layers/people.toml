@@ -1,0 +1,75 @@
+# People layer: who is where, and where they must be able to go. The map does not own what an NPC
+# is or does; `role`, `schedule` and `home` travel to the game untouched. What is checked here is
+# that each one stands on real ground and can walk its rounds.
+
+[[instance]]
+id = "porter"
+asset = "npc.marker"
+beside = "gatehouse"
+offset = [3.5, 4.0]
+role = "porter"
+schedule = "day"
+home = "lodge"
+
+[[instance]]
+id = "baker"
+asset = "npc.marker"
+beside = "stall_a"
+offset = [0.0, -1.6]
+role = "baker"
+schedule = "dawn_to_noon"
+home = "house_a"
+
+[[instance]]
+id = "chaplain"
+asset = "npc.marker"
+beside = "chapel"
+offset = [0.0, 10.0]
+role = "chaplain"
+schedule = "day"
+
+[[instance]]
+id = "gardener"
+asset = "npc.marker"
+at = [157.0, 97.0]
+role = "gardener"
+schedule = "day"
+
+[[instance]]
+id = "night_watch"
+asset = "npc.marker"
+on = { feature = "dorm_lane", t = 0.35 }
+role = "watch"
+schedule = "night"
+route = "dorm_lane"
+
+[[run]]                      # students idling around the west lawn
+id = "students"
+asset = "npc.marker"
+on = "court_lawn_west"
+from = 0.05
+to = 0.95
+count = 5
+offset = 3.0
+role = "student"
+
+[[expect]]
+from = "porter"
+to = ["lodge", "hall"]
+by = "on_foot"
+why = "the porter's rounds"
+[[expect]]
+from = "baker"
+to = ["house_a"]
+by = "on_foot"
+why = "the baker walks home"
+[[expect]]
+from = "chaplain"
+to = ["bell_tower"]
+by = "on_foot"
+why = "the chaplain rings the bell"
+[[expect]]
+from = "night_watch"
+to = ["dorm_low.0", "dorm_high.0", "gatehouse"]
+by = "on_foot"
+why = "the watch's patrol"

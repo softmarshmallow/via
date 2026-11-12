@@ -1,0 +1,44 @@
+# This project's own kinds. A kind is what a feature does to fields: data, not code.
+# Inside an effect: v is the field so far, d the distance outside the shape, sd the signed distance,
+# t the fraction along a path, and a feature's numeric attributes are names.
+
+[kind.gully]                 # a stream bed cut along a path: a flat bed, then banks
+reach = 16
+[kind.gully.defaults]
+depth = 3.6
+bed = 4.0                    # half width of the flat bed
+bank = 5.0                   # run of each bank
+width = 4.0                  # what a bridge over it must clear
+[[kind.gully.effect]]
+field = "height"
+value = "v - depth * (1 - smoothstep(bed, bed + bank, d))"
+mask = "1 - smoothstep(bed + bank, bed + bank + 4, d)"
+max_change = "depth + 0.5"   # more than this and the compiler says so
+[[kind.gully.effect]]
+field = "ground"
+paint = "shore"
+mask = "1 - smoothstep(bed * 0.5, bed, d)"
+[kind.gully.map]
+color = [0.35, 0.55, 0.80]
+width = 2
+
+[kind.spawn_zone]            # raises this project's `danger` field; its other attributes pass through
+reach = 20
+[[kind.spawn_zone.effect]]
+field = "danger"
+value = 1.0
+mask = "1 - smoothstep(-6, 6, sd)"
+
+[kind.plot]                  # a tilled field: its own ground, nothing grows wild on it, the land is left as it lies
+reach = 6
+[[kind.plot.effect]]
+field = "ground"
+paint = "dry_grass"
+mask = "1 - smoothstep(-1.5, 0.5, sd + 0.6 * fbm(4, 2, seed=8))"
+[[kind.plot.effect]]
+field = "#vegetation"
+value = 0.0
+mask = "1 - smoothstep(-1, 2, sd)"
+[kind.plot.map]
+color = [0.80, 0.72, 0.42]
+width = 1

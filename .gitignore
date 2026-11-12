@@ -1,2 +1,12 @@
 /target
 /runs
+/spike/local/
+/spike/out/
+/spike/build/
+/spike/viewer/.godot/
+/spike/.venv/
+__pycache__/
+.DS_Store
+/spike/worlds/*/gen/
+/spike/worlds/relief/inputs/
+/spike/worlds/zoo_*/
