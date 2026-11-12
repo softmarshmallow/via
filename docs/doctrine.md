@@ -177,4 +177,5 @@ Decisions not to do something, with the reason.
 | Sky, clouds, the frame's look (11) | Not ours | The engine's side of the door (12). Time of day and sun direction are carried as facts. |
 | Re-creating an existing project's map exactly (44) | After the first cut | Porting is low priority for the stated users. |
 | Image-model styling of the player map | Not ours | The user's, outside the build. We hand over the map as data. |
+| Testing on Linux and Windows (the cross-system half of R26) | Until the owner asks | The owner's call (2026-11-13): no need to test them now. The code stays portable (via-num, no platform paths), and the CI file is kept, unrun; same bytes is checked on macOS only. |
 | A maintained engine plugin beyond the Godot loader | After the first cut | One loader done well first. |
