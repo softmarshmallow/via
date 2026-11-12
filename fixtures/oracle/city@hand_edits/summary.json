@@ -1,0 +1,42 @@
+{
+ "world": "city",
+ "overlay": "spike/worlds/city/changes/hand_edits.toml",
+ "command": "cd spike && uv run python -m worldc worlds/city/world.toml --overlay worlds/city/changes/hand_edits.toml --out oracle_city_hand_edits",
+ "exit": 1,
+ "errors": 1,
+ "warnings": 12,
+ "infos": 3,
+ "compile_seconds": 113.7,
+ "wall_seconds": 114.41,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "city.mid_a": 25,
+  "city.mid_b": 28,
+  "city.mid_c": 25,
+  "city.row_a": 57,
+  "city.row_b": 55,
+  "city.shed_a": 18,
+  "city.shed_b": 18,
+  "city.tower_a": 4,
+  "city.tower_b": 4,
+  "city.tower_c": 5,
+  "town.well": 2,
+  "tree.broadleaf": 25,
+  "tree.great": 21
+ },
+ "features_per_kind": {
+  "bookmark": 6,
+  "bridge": 5,
+  "district": 5,
+  "exit": 9,
+  "freeway": 2,
+  "guide": 1,
+  "interchange": 4,
+  "lake": 1,
+  "park": 6,
+  "ramp": 18,
+  "seed": 6,
+  "street": 160,
+  "ward": 50
+ }
+}

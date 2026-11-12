@@ -1,0 +1,28 @@
+{
+ "world": "glade",
+ "variant": "by_cause",
+ "command": "cd spike && uv run python -m worldc worlds/glade/world.toml --variant by_cause --out oracle_glade_variant_by_cause",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 3,
+ "infos": 4,
+ "compile_seconds": 0.4,
+ "wall_seconds": 1.04,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "barn": 1,
+  "bush": 9,
+  "house.small": 1,
+  "log": 6,
+  "rock.boulder": 3,
+  "rock.large": 3,
+  "tree.broadleaf": 9,
+  "tree.conifer": 8,
+  "tree.great": 8
+ },
+ "features_per_kind": {
+  "beck": 1,
+  "bookmark": 4,
+  "road": 1
+ }
+}

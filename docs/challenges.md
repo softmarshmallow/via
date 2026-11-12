@@ -20,13 +20,15 @@ Worlds live in `spike/worlds/`. Evidence and lessons are in `spike/FINDINGS.md`.
 
 | # | Request | Why it is owed |
 |---|---|---|
-| 11 | Sky, clouds and distant landscape | Discussed as a boundary question. Nothing built beyond a `look` table. |
 | 16 | Warn when a large object has no collision | An idea for a lint. Not built. |
 | 30 | A step that uses outside data (weather, a spreadsheet) | Claimed possible by construction. No step reads anything external. |
 | 32 | The asset contract: front, pivot, module, connectors | Studied and proposed. The pack is unchanged. |
 | 33 | The town's change scenarios | The town is built. A revised kit piece and a moved street were never run. |
-| 41 | Unreal | Named as a target from the first message. Nothing exists. |
+| 41 | Unreal | Named as a target from the first message. Nothing exists. Set aside until after the first cut (R27, doctrine section 7). |
 | 42 | Streaming and per-chunk loading | Budgets per chunk exist. Nothing loads or unloads. |
+
+Row 11 (sky, clouds and distant landscape) left this table on 2026-11-13: ruled not ours (R27,
+doctrine section 7). Time of day and sun direction are carried as facts.
 
 ## The list
 
@@ -57,7 +59,7 @@ Worlds live in `spike/worlds/`. Evidence and lessons are in `spike/FINDINGS.md`.
 | 23 | Walking must not teleport | viewer | Held | loader | Found late because the cause was a key binding |
 | 24 | A player map, drawn from data, styled by an image model | `coast` map, in the viewer | Partly | core for data, user for style | No trustworthy measure of drift |
 | 25 | Treat the spike as the product and clean it | `SPEC.md`, `check.py` | Held | | Section 12 is appended, not merged |
-| 26 | Decide the language and setup | design page | Not final | | Rust core is a direction only |
+| 26 | Decide the language and setup | design page, `docs/doctrine.md` | Held | | decided: Rust core R19, setup R20 |
 | 27 | TOML, YAML or a third | measured excerpt | Held | core | Strings hide expressions; no null; no shared constants |
 | 28 | The user's own code, in Python | `massif`, `city` lots | Partly | core lifecycle, user code | Only at layer boundaries; nothing inside a layer |
 | 29 | Do not rerun what has not changed | `massif` | Partly | core | Covers inputs, not outputs; hidden inputs go stale |
@@ -107,3 +109,22 @@ Worlds live in `spike/worlds/`. Evidence and lessons are in `spike/FINDINGS.md`.
   building once.
 - **"Partly" is the common result.** That is the useful finding: each names a specific thing the
   rewrite must decide to do or to leave out.
+
+## Rows by milestone
+
+Which milestone in `docs/plan.md` closes each row. A row listed under two milestones is closed in
+part by the first and wholly by the second.
+
+| Milestone | Rows |
+|---|---|
+| M0 | 25, 26, 27, 37 |
+| M1 | 1, 3, 19, 49 (points only) |
+| M2 | 2, 5, 6, 16, 21, 28, 29, 30, 31, 32, 40, 45, 50, 58 |
+| M3 | 13, 34, 35, 36, 38, 39, 43, 49, 51 (first part), 59, 60, 61, 62, 63 |
+| M4 | 12, 22, 52, 54, 55, 56, 57 |
+| M5 | 7, 8, 14, 15, 18, 20, 33, 46, 47, 48 |
+| M6 | 4, 23, 24 (the map as data; its styling is set aside), 42, 53 |
+| M7 | 51 |
+| Set aside (doctrine section 7) | 11 (not ours), 41 (until after the first cut), 44 (until after the first cut) |
+| Already held, no milestone | 17 |
+| None yet | 9, 10 (open: reference photos and concept images are in no milestone; the owner decides at the M0 sheet whether `coast` in M5 takes them or they are set aside) |

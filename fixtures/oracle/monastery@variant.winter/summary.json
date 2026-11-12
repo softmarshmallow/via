@@ -1,0 +1,39 @@
+{
+ "world": "monastery",
+ "variant": "winter",
+ "command": "cd spike && uv run python -m worldc worlds/monastery/world.toml --lint reach --variant winter --out oracle_monastery_variant_winter",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 1,
+ "infos": 6,
+ "compile_seconds": 1.9,
+ "wall_seconds": 2.51,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "bench.stone": 1,
+  "college.bell_tower": 1,
+  "college.chapel": 1,
+  "college.gatehouse": 1,
+  "hedge": 6,
+  "house.small": 2,
+  "lamp": 1,
+  "rock.boulder": 6,
+  "rock.large": 4,
+  "town.house_low": 1,
+  "town.well": 1,
+  "tree.broadleaf": 16,
+  "tree.conifer": 17
+ },
+ "features_per_kind": {
+  "bookmark": 7,
+  "flagged_walk": 1,
+  "garden_terrace": 6,
+  "gorge": 1,
+  "guide": 5,
+  "lake": 1,
+  "poi": 2,
+  "road": 2,
+  "stone_bridge": 1,
+  "terrace": 1
+ }
+}

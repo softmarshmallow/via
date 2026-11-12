@@ -1,0 +1,29 @@
+[
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "bunks",
+  "where": [
+   33.5,
+   37.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "passage",
+  "where": [
+   26.8,
+   32.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "porch",
+  "where": [
+   38.7,
+   31.5
+  ]
+ }
+]

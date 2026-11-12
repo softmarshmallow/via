@@ -1,0 +1,122 @@
+[
+ {
+  "severity": "error",
+  "code": "seam.change_exceeds",
+  "subject": "barn",
+  "where": [
+   213.5,
+   263.0
+  ]
+ },
+ {
+  "severity": "error",
+  "code": "seam.change_exceeds",
+  "subject": "cottage_a",
+  "where": [
+   196.0,
+   222.0
+  ]
+ },
+ {
+  "severity": "error",
+  "code": "seam.change_exceeds",
+  "subject": "cottage_b",
+  "where": [
+   220.0,
+   247.0
+  ]
+ },
+ {
+  "severity": "info",
+  "code": "authority.conforms",
+  "subject": "tarn",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "wolf_ground",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "cliff_fall",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "deadwood",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "high_conifers",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "scree_rocks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "underbrush",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_cliff",
+  "where": [
+   167.8,
+   342.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_overlook",
+  "where": [
+   438.4,
+   187.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_road_south",
+  "where": [
+   198.8,
+   62.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "east_trail",
+  "where": [
+   401.3,
+   231.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.junction",
+  "subject": "east_trail",
+  "where": [
+   262.0,
+   262.0
+  ]
+ }
+]

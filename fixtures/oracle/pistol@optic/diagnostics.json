@@ -1,0 +1,14 @@
+[
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "measure",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "measure:off_spec",
+  "subject": "height",
+  "where": null
+ }
+]

@@ -1,0 +1,22 @@
+{
+ "world": "sidearm",
+ "command": "cd spike && uv run python -m worldc worlds/sidearm/world.toml --out oracle_sidearm",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 2,
+ "infos": 0,
+ "compile_seconds": 0.9,
+ "wall_seconds": 1.57,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {},
+ "features_per_kind": {
+  "add_block": 7,
+  "add_ring": 1,
+  "add_rod": 1,
+  "bench": 1,
+  "bookmark": 2,
+  "cut_block": 2,
+  "cut_grooves": 1,
+  "cut_rod": 1
+ }
+}

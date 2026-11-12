@@ -1,0 +1,101 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "park_trees",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "lots",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "network",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "harbor_fwy",
+  "where": [
+   500.0,
+   120.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "ix_central_ne",
+  "where": [
+   518.4,
+   777.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "ix_central_nw",
+  "where": [
+   518.4,
+   824.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "ix_central_se",
+  "where": [
+   482.8,
+   757.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "ix_central_sw",
+  "where": [
+   481.2,
+   818.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "ix_harbor_ne",
+  "where": [
+   517.4,
+   378.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "ix_harbor_se",
+  "where": [
+   484.2,
+   352.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "ix_harbor_sw",
+  "where": [
+   481.5,
+   440.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_965.0",
+  "where": [
+   1032.5,
+   102.4
+  ]
+ }
+]

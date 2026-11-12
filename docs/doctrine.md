@@ -107,11 +107,20 @@ then have to write. If the result is no longer or harder to change, X goes.
 | R17 | 2026-11-13 | Where a build is judged | From eye height, at the places where two kinds meet (a way and water, a street and an edge, a deck and a bank). A map view accepts the plan only. Every demonstration carries ground-level views at its meetings, and a fault seen there is a fault in a kind or a tool, not in the viewer's taste. Found in `townland`: accepted from the air, wrong on foot. | 4, 8 |
 | R18 | 2026-11-13 | Who owns the place where two things meet | A named thing, never whichever of the two got there first. A crossing owns its deck and its two ends, and ways arrive at those ends; a waterfront owns the bank, and streets end on it; a river that comes from beyond the map enters at a declared exit, like a road. A meeting nobody owns shows as a stub, a doubled deck or a blunt end. Shown in `townland`: dead ends 39% to 15%, three overlapping decks to one. Owed in core: a path written as "along another feature", and a region condition that silently keeps only its largest piece must report what it dropped. | 3, 5, 8, 9 |
 | R19 | 2026-11-13 | Language of the core | Rust. Replaces the second half of R2. Accepted costs: we write the planar network with faces, robust offsetting and the array evaluator ourselves; ordered maps and fixed reduction order everywhere for principle 7. Conditions: (a) steps and libraries stay Python through a thin SDK over a declared interface; (b) no private door: our own libraries (streets, lots, terrain, rivers) are built only on what a user's step can reach, so the user's ceiling is ours; (c) a step exchanges whole fields and feature lists, never a per-point callback; (d) the network with faces is built first. The user never sees the core's language: they write TOML, formulas and Python. | 5, 7, 10 |
+| R20 | 2026-11-13 | Setup | One Rust binary, `via`. `spec/` (chapters, schemas, test vectors, conformance cases) is normative; conformance runs through the command line only. The Python SDK is pure Python and never links the engine: the engine starts a worker process and they speak JSON-RPC on stdio. Fields and large tables never travel as JSON: they are write-once files named by digest, mapped by both sides. Windows is a target from the first day. Follows the reference in `docs/references.md` ("Engine and SDK setup"), whose two recorded failures (Windows, bytes across systems) are designed for. | 7, 8, 12 |
+| R21 | 2026-11-13 | Order of a field's rows across layers | By authority across the whole world; layers break ties and decide what a step may read (the layers at or below it). A step returns rows and features, never a whole field, so nothing below it is applied twice. Layer-first order was proposed as cheaper and rejected: a derived lake in a lower layer would stop giving way to an anchored thing above it. Cost accepted: one evaluation per distinct view a step reads. | 3, 4 |
+| R22 | 2026-11-13 | Lifecycle points | `generate`, `lint`, `export`. `effect` and `place` are dropped: a generate step at a layer covers both. One request, two transports: a worker (may call the engine) and a plain command (files only). | 10 |
+| R23 | 2026-11-13 | Engine calls from a step | Always a batch: columns in, columns out. A loop that would need thousands of calls (faces, cells along a frontage, a route over a cost field) becomes an engine operation with no domain noun. | 5, 10; R19b, R19c |
+| R24 | 2026-11-13 | Geometry numbers | Integer millimetres in the core; decimal metres in text. Exact predicates, no tolerance tuning. | 7 |
+| R25 | 2026-11-13 | The one surfaces model | A surface is a bounded field with the role `surface`, owned by a feature: terrain over the extent, a deck over its strip, a floor at a level, the floors a volume yields. Where two surfaces meet is a pair of mounts. No new noun. Placement, grounding, reach and export all ask the same four questions of it. | 5, 10 |
+| R26 | 2026-11-13 | Same text, same bytes | On macOS, Linux and Windows, for one engine version. All maths goes through one module; no non-finite value enters a build. A user's step is recorded, not promised. | 7 |
+| R27 | 2026-11-13 | The first cut | Everything the spike showed, rebuilt as final examples in the v1 vocabulary on the new core; nothing of the spike's core or words carries over. What is left out is in section 7. Milestones in `docs/plan.md`. | 4, 13 |
 
 ## 6. Queued for ruling
 
 Found by the lead engineer reading the example world against the principles. Each has a
-recommendation. None is applied yet.
+recommendation. Applied as recommended on 2026-11-13 as the v1 vocabulary (`spec/vocabulary.md`);
+kept here as the record of why.
 
 **Words with more than one meaning (9)**
 
@@ -153,4 +162,13 @@ recommendation. None is applied yet.
 
 ## 7. Set aside
 
-Decisions not to do something, with the reason. Empty.
+Decisions not to do something, with the reason.
+
+| What | Until | Reason |
+|---|---|---|
+| Unreal (challenge 41) | After the first cut | The owner's call (2026-11-13). The build-directory chapter keeps an Unreal mapping table on paper and a second reader (glTF) so the format does not set around Godot. |
+| Worlds past a few kilometres (tiled storage) | After the first cut | The stated users build a few kilometres. Fields are evaluated by window from the start, so tiling can be added without changing results. |
+| Sky, clouds, the frame's look (11) | Not ours | The engine's side of the door (12). Time of day and sun direction are carried as facts. |
+| Re-creating an existing project's map exactly (44) | After the first cut | Porting is low priority for the stated users. |
+| Image-model styling of the player map | Not ours | The user's, outside the build. We hand over the map as data. |
+| A maintained engine plugin beyond the Godot loader | After the first cut | One loader done well first. |

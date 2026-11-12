@@ -1,0 +1,34 @@
+{
+ "world": "market",
+ "command": "cd spike && uv run python -m worldc worlds/market/world.toml --out oracle_market",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 2,
+ "infos": 2,
+ "compile_seconds": 1.6,
+ "wall_seconds": 2.24,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "bench.stone": 1,
+  "cart": 1,
+  "lamp": 8,
+  "stall": 2,
+  "town.church": 1,
+  "town.end": 5,
+  "town.hall": 1,
+  "town.house": 7,
+  "town.house_low": 9,
+  "town.inn": 1,
+  "town.shop": 5,
+  "town.shop_tall": 2,
+  "town.steeple": 1,
+  "town.well": 1,
+  "tree.broadleaf": 16,
+  "tree.conifer": 2
+ },
+ "features_per_kind": {
+  "bookmark": 4,
+  "road": 4,
+  "terrace": 1
+ }
+}

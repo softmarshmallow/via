@@ -1,0 +1,24 @@
+{
+ "world": "massif",
+ "command": "cd spike && uv run python -m worldc worlds/massif/world.toml --out oracle_massif",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 2,
+ "infos": 5,
+ "compile_seconds": 1.5,
+ "wall_seconds": 2.18,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "barn": 1,
+  "house.small": 2,
+  "rock.boulder": 9,
+  "rock.large": 6,
+  "tree.broadleaf": 36,
+  "tree.conifer": 32
+ },
+ "features_per_kind": {
+  "bookmark": 2,
+  "guide": 1,
+  "road": 1
+ }
+}

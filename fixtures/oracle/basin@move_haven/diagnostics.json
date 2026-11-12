@@ -1,0 +1,50 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "brush",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "stones",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "facts_hold",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "terrain",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_haven",
+  "where": [
+   1770.3,
+   713.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_bank",
+  "where": [
+   1791.4,
+   1592.6
+  ]
+ }
+]

@@ -17,8 +17,8 @@ Each answer carries one mark:
 - **Open**: we have no answer yet. The answer is left blank on purpose.
 - **Not ours**: we do not intend to own this. The answer says who does.
 
-Count at the time of writing, of 126 questions: 65 shown (27 of them only partly), 4 decided,
-44 open, 13 not ours.
+Count on 2026-11-13, of 125 questions: 67 shown (27 of them only partly), 9 decided, 34 open,
+15 not ours.
 
 ## Is it for me?
 
@@ -89,7 +89,8 @@ at structure: roads, districts, terrain, placement. Shown for that at 1.6 km, wi
 Open. There is no tiling, so tens of kilometres would not compile.
 
 **Is it ready for production?**
-Shown, as a no. Everything so far is a throwaway spike in Python. The real thing is not started.
+Shown, as a no. Everything so far is a throwaway spike in Python. The real thing is being written:
+a Rust engine (R19), at milestone M0 of `docs/plan.md`.
 
 ## Writing a world
 
@@ -103,7 +104,8 @@ Seven such changes were run on one world. (`vale`)
 
 **Do I have to learn a language?**
 Decided. To read, not to write: the agent writes it. TOML for structure, plus small expressions inside strings, such as
-`"1 - smoothstep(0, 8, dist('lane'))"`. The expression language itself is not yet defined.
+`"1 - smoothstep(0, 8, dist('lane'))"`. The expression language is decided in shape (R6: a small
+language of our own with a closed list of functions); its reference page is not yet written.
 
 **Can I place one exact thing by hand?**
 Shown. `[[instance]]` with `at` and `yaw`, or `on` another feature so it follows that feature.
@@ -127,7 +129,8 @@ Shown. The compiler reports coded diagnostics that name the thing and the place,
 road steeper than its limit or two buildings claiming different ground. There are 88 codes.
 
 **Can it tell me my world is boring or makes no sense?**
-Open. A uniform city grid compiled without one complaint.
+Shown, partly. A uniform city grid compiled without one complaint. A street-form measure now
+reports how boxy a town is beside the build, and the eye still decides (R15, `townland`).
 
 ## Assets
 
@@ -170,7 +173,8 @@ Not ours. They stay where you keep them.
 Shown, as a spike viewer. A proper loader is not written.
 
 **Does it work with Unreal?**
-Open.
+Decided: not in the first cut (R27, doctrine section 7). Godot comes first; the build directory
+keeps an Unreal mapping on paper.
 
 **Unity? My own engine?**
 Not ours for now. Godot and Unreal are the two engines considered; others can follow.
@@ -212,7 +216,9 @@ Shown. The ground under it is re-levelled, and overlaps with neighbours are repo
 Open.
 
 **I generated a forest, then moved three trees by hand. If I regenerate, do I lose that?**
-Open.
+Decided, and shown for points. A hand edit is kept as intent at a place (a pin or a clear), not
+against a generated id (R3). In `example` it held through six rule changes. Paths and painted
+fields are open.
 
 **Can I have a winter version, or a damaged version, of the same map?**
 Shown. A variant is a named change merged over the world. (`vale`, `example`)
@@ -251,7 +257,8 @@ Shown. You can define new kinds as data, add fields, attach your own data to any
 the build with your own script. (`example`, `city`)
 
 **In what language?**
-Decided. Any, through a file contract. A Python helper exists; Python is the intended SDK.
+Decided. Python, through a thin SDK (R2, R19); a plain command that reads and writes files also
+joins the build, in any language (R22). The engine is Rust (R19); you never write Rust.
 
 **My terrain comes from my own procedural logic (say, a sea floor). Can I bind it, and is `via` still useful?**
 Shown for the binding. Your script joins the build as a step and hands back the height and any
@@ -298,13 +305,13 @@ Shown, partly. You control where and how thick through fields, never tree by tre
 - *What you build clears it by itself:* roads and platforms empty every field tagged vegetation,
   and an asset can declare fields it avoids.
 - *Your own script* can supply a field, such as wetness from distance to water.
-Open: clumps. A scatter is a jittered grid thinned by density, so clumping comes only from noise
-you put in the field. Also open: undergrowth that follows the trees, a reusable "biome" that
-bundles fields and scatters, and keeping a hand-moved tree when the scatter runs again.
+Shown: clumps and growth by cause, the default to teach (R5, `glade`). Open: undergrowth that
+follows the trees and a reusable "biome" that bundles fields and scatters. Decided: a hand-moved
+tree is kept as a pin when the scatter runs again (R3).
 
 **Rivers and lakes?**
 Shown. A lake can be given a shape, or left to fill the ground and find its own shore. A flowing
-river along a slope is not handled.
+river, stated by its ends over simulated land, is shown partly (`basin`, `townland`).
 
 **Caves and overhangs?**
 Shown, partly. (`coast`)
@@ -366,7 +373,8 @@ Shown, partly. You state who walks and where they must reach. It reads the groun
 Not ours, for weather that happens: rain, falling snow, wind, changing light are the engine's.
 What we can give it: a world in another state, as a variant (a winter map with snow on the ground
 and bare fields, `vale`, `example`); and fields a weather system can read, such as wetness or
-where snow would lie. A `look` table passes sun and sky hints through; who owns it is open.
+where snow would lie. Sun and sky hints are the engine's side of the door, passed through outside
+the world file (doctrine section 6).
 
 ## Using it with an AI agent
 
@@ -420,8 +428,8 @@ means we have not faced the question.
 | S | Is this meant to replace our world editor, sit in front of it, or run beside it? | Open | Today the text is the only source of truth and nothing reads an editor's changes back. |
 | B | Someone moves a rock by hand in the engine editor. What happens on the next rebuild? | Open | It is lost. There is no way yet to keep an edit made outside the text. |
 | S | How does a level artist nudge a rock 30 cm in a text file? | Open | By asking the agent, or editing one number. Whether that is acceptable to an artist is untested. |
-| B | Can I lock an area as finished while the rest keeps regenerating? | Open |  |
-| B | I change one line. How do I see what changed before I accept it? | Open | You get new diagnostics and re-rendered views. Nothing lists which objects moved. |
+| B | Can I lock an area as finished while the rest keeps regenerating? | Decided | Yes. A lock is a replayed record, and a rule change reports what it would have done there (R4). |
+| B | I change one line. How do I see what changed before I accept it? | Shown, partly | You get new diagnostics and re-rendered views, and `example` writes a change report of what moved (`changes.json`). In the rewrite it is part of milestone one. |
 | S | I upgrade the tool mid-project. Does my shipped world move? | Open |  |
 | B | Does it work without an AI agent? | Shown | Yes. The inputs are plain text files and the compiler contains no model. The agent is a convenience for writing them. |
 | S | Is there AI inside the build itself? | Shown | No. The build is a deterministic program. A model was only ever used to write documents, and once to restyle a map picture. |
@@ -447,7 +455,7 @@ means we have not faced the question.
 | S | What does it cost me to find out it does not work for us? | Open | A loader for Godot or Unreal has to exist first. Today there is a prototype Godot viewer and nothing for Unreal. |
 | B | Is there a ready importer for my engine? If not, how hard is it to write? | Open | It should be ours to supply for Godot and Unreal. Only a prototype Godot viewer exists. |
 | B | How much work is it to bind a bought pack of a few hundred meshes? | Open | One short entry per mesh by hand today; sizes are measured from the file. Nothing generates a pack from a folder. |
-| B | What machine do I need? Windows, Mac, Linux? | Open | Only tried on a Mac. |
+| B | What machine do I need? Windows, Mac, Linux? | Decided | All three are targets from the first day (R20, R26). Only a Mac has been tried so far. |
 | B | Is there a complete example I can open in ten minutes? | Shown, partly | There is an example village and a viewer, but nothing is packaged for download. |
 | B | What are the generated meshes, and are they game-ready? | Shown, partly | Bridge decks, walls, floors, stairs and cave rock. Flat shaded, no texture coordinates: stand-ins. |
 | B | Will everything look samey? | Open | It looks like the assets and the rules you give it. Our own worlds are grey boxes. |

@@ -1,0 +1,47 @@
+[
+ {
+  "severity": "info",
+  "code": "authority.conforms",
+  "subject": "tarn",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "fallen_rock",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "orchard_trees",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "homes",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "moisture",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_bridge",
+  "where": [
+   148.0,
+   99.1
+  ]
+ }
+]

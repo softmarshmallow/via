@@ -1,0 +1,113 @@
+[
+ {
+  "severity": "info",
+  "code": "authority.conforms",
+  "subject": "tarn",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "wolf_ground",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "cliff_fall",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "deadwood",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "high_conifers",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "scree_rocks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "underbrush",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_east_cliff",
+  "where": [
+   388.8,
+   232.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_overlook",
+  "where": [
+   425.8,
+   188.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_cliff",
+  "where": [
+   167.8,
+   342.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_east_cliff",
+  "where": [
+   379.7,
+   235.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_overlook",
+  "where": [
+   438.4,
+   187.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_road_south",
+  "where": [
+   205.3,
+   59.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "east_trail",
+  "where": [
+   393.5,
+   236.7
+  ]
+ }
+]

@@ -1,0 +1,41 @@
+{
+ "report": {
+  "water": []
+ },
+ "budgets": {
+  "chunk_m": 16.0,
+  "total": {
+   "instances": 0,
+   "source_tris": 0
+  },
+  "chunks": 0
+ },
+ "bookmarks": [
+  {
+   "id": "bm_quarter",
+   "eye": [
+    50.0,
+    -12.0,
+    22.0
+   ],
+   "look": [
+    18.0,
+    6.0,
+    11.0
+   ]
+  },
+  {
+   "id": "bm_side",
+   "eye": [
+    18.0,
+    -22.0,
+    11.0
+   ],
+   "look": [
+    18.0,
+    6.0,
+    10.5
+   ]
+  }
+ ]
+}

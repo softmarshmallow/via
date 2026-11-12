@@ -1,0 +1,24 @@
+{
+ "against": "monastery",
+ "added": [
+  "guesthouse"
+ ],
+ "removed": [],
+ "moved": [],
+ "swapped": [],
+ "by": {
+  "hand": {
+   "added": 1,
+   "removed": 0,
+   "moved": 0,
+   "swapped": 0
+  }
+ },
+ "within": [
+  162.75,
+  206.0,
+  162.75,
+  206.0
+ ],
+ "unchanged": 756
+}

@@ -1,0 +1,27 @@
+{
+ "world": "glade",
+ "command": "cd spike && uv run python -m worldc worlds/glade/world.toml --out oracle_glade",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 3,
+ "infos": 4,
+ "compile_seconds": 0.2,
+ "wall_seconds": 0.85,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "barn": 1,
+  "bush": 9,
+  "house.small": 1,
+  "log": 9,
+  "rock.boulder": 9,
+  "rock.large": 9,
+  "tree.broadleaf": 8,
+  "tree.conifer": 8,
+  "tree.great": 7
+ },
+ "features_per_kind": {
+  "beck": 1,
+  "bookmark": 4,
+  "road": 1
+ }
+}

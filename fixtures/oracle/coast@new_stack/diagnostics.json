@@ -1,0 +1,311 @@
+[
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.bunk_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.bunk_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.bunks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.front_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.kitchen",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.kitchen_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_bunks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_kitchen",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_lantern",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_living",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_store",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_watch",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lantern_room",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.living",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.living_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.passage",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.passage_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.porch",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.porch_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.stair_1",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.stair_2",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.stair_3",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.store",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.tower_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.tower_inner_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.watch",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.watch_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "shore_rocks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.chapel",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.gatehouse",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.house_a",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.house_b",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "store",
+  "where": [
+   529.5,
+   141.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_stacks",
+  "where": [
+   159.4,
+   97.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "station.bm_outside",
+  "where": [
+   564.8,
+   133.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_station",
+  "where": [
+   547.2,
+   157.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_court",
+  "where": [
+   515.0,
+   445.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_garth",
+  "where": [
+   517.0,
+   375.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_gate",
+  "where": [
+   516.0,
+   308.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_market",
+  "where": [
+   537.9,
+   325.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "feature.outside",
+  "subject": "bm_aerial",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "feature.outside",
+  "subject": "college.bm_aerial",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "station.bunks",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "station.passage",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "station.porch",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "point_road",
+  "where": [
+   498.8,
+   267.3
+  ]
+ }
+]

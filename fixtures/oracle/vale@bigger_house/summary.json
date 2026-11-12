@@ -1,0 +1,33 @@
+{
+ "world": "vale",
+ "overlay": "spike/worlds/vale/changes/bigger_house.toml",
+ "command": "cd spike && uv run python -m worldc worlds/vale/world.toml --overlay worlds/vale/changes/bigger_house.toml --out oracle_vale_bigger_house",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 4,
+ "infos": 8,
+ "compile_seconds": 6.9,
+ "wall_seconds": 7.52,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "barn": 2,
+  "bush": 63,
+  "house.large": 1,
+  "house.small": 2,
+  "log": 49,
+  "rock.boulder": 37,
+  "rock.large": 4,
+  "tree.broadleaf": 55,
+  "tree.conifer": 58,
+  "tree.great": 44
+ },
+ "features_per_kind": {
+  "bookmark": 8,
+  "cliff": 1,
+  "guide": 2,
+  "lake": 2,
+  "poi": 2,
+  "road": 2,
+  "spawn_zone": 1
+ }
+}

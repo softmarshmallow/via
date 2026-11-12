@@ -1,35 +1,49 @@
 # Contributing
 
-Early project. This file records the decisions that are **settled**, so they are not relitigated. Research commitments live in the [README](README.md); this is engineering only. Anything not listed here is open.
+This file records how work is done in the rewrite and the engineering rules that hold. The goal,
+principles and rulings are in [`docs/doctrine.md`](docs/doctrine.md); where this file and the
+doctrine disagree, the doctrine wins and this file is fixed.
 
-## Locked
+The earlier rule "Rust, whole hog, not a Rust core with a Python rim" is superseded by R19 and R20:
+a Rust core, with steps and libraries in Python through a thin SDK in its own process.
 
-**Rust, whole hog.** Pipeline, gates, metrics, renderers — one Cargo workspace, one language. Not a Rust core with a Python rim. When a Python-only library is genuinely needed, it is a throwaway script run *against* an exported artifact, never a dependency of this project.
+## How work is done
 
-**CPU, not GPU.** The workload is graphs, priority queues, and computational geometry — irregular and branchy. Parallelism is `rayon` across cores. GPU work is permitted for optional detail passes and rendering, never inside the simulation's decision loop.
+Every milestone in [`docs/plan.md`](docs/plan.md) runs in this order.
 
-**Determinism is a hard requirement.** Same seed → bitwise-identical output, on any core count. Seeds derive from `global_seed + stage + tile`; no global RNG. No iteration over `HashMap` where order reaches output. No float accumulation whose order varies with thread scheduling. A nondeterminism bug is a P0.
+1. **Chapter first.** The mechanism is written as a chapter in `spec/`, with a tiny example. A
+   mechanism taken from literature or another tool names its source; one of our own says so.
+2. **Conformance cases next.** Cases and vectors are written and fail before any code exists.
+3. **Code last,** until they pass.
+4. **The doctrine decides details.** A question nobody has time to review is answered from
+   `docs/doctrine.md`. A new answer is written there as a ruling. Challenge a ruling there; do not
+   work round it.
+5. **Every request is recorded** as a row in `docs/challenges.md`, whether it fits or not
+   (principle 13). Leaving one out is a decision written down with its reason.
 
-**Stages communicate through artifacts.** Every stage reads typed artifacts and writes typed artifacts plus a stats record. Stages do not call each other. This is what makes caching, resuming, and swapping implementations possible.
+## Rules that still hold
 
-**The chain is one-directional.** Terrain → hydrology → suitability → corridors → settlements → flows → network → morphology. No stage mutates its inputs. A stage that cannot work with what it was given fails loudly rather than repairing it.
+- **Same text, same bytes** (R26). On macOS, Linux and Windows, for one engine version, at any
+  thread count. Seeds are named and derived, never global. No iteration over an unordered map
+  where the order reaches output. No reduction whose order follows thread scheduling. A
+  nondeterminism bug is the highest priority.
+- **CPU first.** The work is graphs, queues and geometry: irregular and branchy. Parallelism is
+  across cores. A GPU may serve optional detail passes and rendering, never a decision in a build.
+- **No AI inside the build.** No learned model runs in a build, and no model-made data is an input
+  or an output of one. AI is welcome outside: writing documents, analysis, review.
+- **Checks before a commit:** `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace`.
+- **Commit style:** `type(scope): summary`.
 
-**Nothing authored that can be derived.** Classes, hierarchies, and sizes are measurements over simulated state, never typed-in labels. Where the simulation cannot satisfy a constraint, the discrepancy goes in the stats record — never silently absorbed.
+## New rules for the rewrite
 
-**Fixed-point coordinates.** Integer centimetres internally; floats at the boundaries only.
-
-**No AI inside the engine.** Every stage is a deterministic, citable process model — no learned models in the simulation loop, no AI-generated data as a pipeline input or artifact. A model that cannot cite its process cannot be assigned an epistemic tier (ADR 0003), and learned weights break the determinism contract's explainability. AI is welcome *outside* the boundary: analysis tooling, studying the recorded limitations in docs/faq/, and downstream consumers of exported artifacts.
-
-## Working
-
-- `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test` clean before a PR.
-- Snapshot tests (`insta`) guard determinism. Review snapshot diffs; never blind-accept.
-- Benchmark (`criterion`) any change to a hot loop and include the numbers in the PR.
-- Commits: `type(scope): summary`.
-
-## Open
-
-Epoch model, export target. Raise a discussion before building on an assumption about any of these.
-
-Artifact format and crate layout were settled in [ADR 0001](docs/adr/0001-crate-layout-and-artifact-format.md).
-Recurring design questions and known limitations are tracked in [docs/faq/](docs/faq/README.md).
+- **No domain noun in core crates** (principle 5). Road, lake, room and their kin live in `lib/`
+  as data. A deny-list test enforces it.
+- **Library code imports only the SDK** (R19b). Our libraries reach the engine by the same door a
+  user's step does. A test enforces it.
+- **All maths goes through `via-num`** (R26), the one module that fixes how numbers are computed
+  on every system. A test enforces it.
+- **No non-finite value in a build** (R26). A NaN or an infinity is an error that names the
+  formula, the place and the fix, never a stored value.
+- **Never commit private material.** It lives only in the gitignored `spike/local/` folder and is
+  never exported into fixtures. Search the tracked files for the private names before every
+  commit.

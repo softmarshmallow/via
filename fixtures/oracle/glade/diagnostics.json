@@ -1,0 +1,53 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "bushes",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "logs",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "stones",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "trees",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_stream",
+  "where": [
+   141.8,
+   103.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_stream",
+  "where": [
+   134.9,
+   87.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_wood",
+  "where": [
+   45.0,
+   128.2
+  ]
+ }
+]

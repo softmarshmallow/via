@@ -1,0 +1,47 @@
+[
+ {
+  "severity": "info",
+  "code": "authority.conforms",
+  "subject": "tarn",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "crops",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "talus",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "gardens",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "way",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_gate",
+  "where": [
+   157.0,
+   196.0
+  ]
+ }
+]

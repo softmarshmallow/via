@@ -1,0 +1,92 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "garden_trees",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "orchard_trees",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "chapel",
+  "where": [
+   107.0,
+   159.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "gatehouse",
+  "where": [
+   171.0,
+   35.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "house_a",
+  "where": [
+   172.5,
+   34.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "house_b",
+  "where": [
+   189.0,
+   35.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_court",
+  "where": [
+   155.0,
+   167.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_garth",
+  "where": [
+   157.0,
+   97.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_gate",
+  "where": [
+   156.0,
+   30.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_market",
+  "where": [
+   177.9,
+   47.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "feature.outside",
+  "subject": "bm_aerial",
+  "where": null
+ }
+]

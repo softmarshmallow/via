@@ -1,0 +1,23 @@
+[
+ {
+  "severity": "info",
+  "code": "authority.conforms",
+  "subject": "tarn",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_track",
+  "where": [
+   57.7,
+   54.6
+  ]
+ }
+]

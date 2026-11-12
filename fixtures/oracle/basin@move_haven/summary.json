@@ -1,0 +1,26 @@
+{
+ "world": "basin",
+ "overlay": "spike/worlds/basin/changes/move_haven.toml",
+ "command": "cd spike && uv run python -m worldc worlds/basin/world.toml --overlay worlds/basin/changes/move_haven.toml --out oracle_basin_move_haven",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 2,
+ "infos": 5,
+ "compile_seconds": 7.5,
+ "wall_seconds": 8.17,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "bush": 152,
+  "rock.boulder": 124,
+  "rock.large": 101,
+  "tree.broadleaf": 145,
+  "tree.conifer": 145,
+  "tree.great": 128
+ },
+ "features_per_kind": {
+  "bookmark": 6,
+  "guide": 4,
+  "stated_lake": 1,
+  "stated_river": 1
+ }
+}

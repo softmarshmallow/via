@@ -1,0 +1,39 @@
+{
+ "world": "townland",
+ "overlay": "spike/worlds/townland/changes/move_tor.toml",
+ "command": "cd spike && uv run python -m worldc worlds/townland/world.toml --overlay worlds/townland/changes/move_tor.toml --out oracle_townland_move_tor",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 201,
+ "infos": 8,
+ "compile_seconds": 69.5,
+ "wall_seconds": 70.14,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "city.mid_b": 8,
+  "city.row_a": 34,
+  "city.row_b": 18,
+  "city.shed_a": 6,
+  "town.church": 1,
+  "town.well": 1,
+  "tree.broadleaf": 57,
+  "tree.conifer": 45,
+  "tree.great": 34
+ },
+ "features_per_kind": {
+  "axis": 6,
+  "bookmark": 10,
+  "bridge": 2,
+  "crossing": 2,
+  "district": 4,
+  "exit": 1,
+  "guide": 14,
+  "lot": 2,
+  "main_way": 6,
+  "square": 2,
+  "stated_river": 1,
+  "street": 103,
+  "ward": 28,
+  "waterfront": 1
+ }
+}

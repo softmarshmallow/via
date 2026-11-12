@@ -1,0 +1,26 @@
+{
+ "world": "strait",
+ "command": "cd spike && uv run python -m worldc worlds/strait/world.toml --out oracle_strait",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 0,
+ "infos": 0,
+ "compile_seconds": 0.5,
+ "wall_seconds": 1.13,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "barn": 2,
+  "town.church": 1,
+  "town.house_low": 2,
+  "tree.broadleaf": 5,
+  "tree.conifer": 5
+ },
+ "features_per_kind": {
+  "bookmark": 3,
+  "bridge": 1,
+  "guide": 2,
+  "poi": 1,
+  "road": 2,
+  "waterway": 1
+ }
+}

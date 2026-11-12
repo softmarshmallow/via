@@ -1,0 +1,26 @@
+{
+ "world": "basin",
+ "overlay": "spike/worlds/basin/changes/cannot_hold.toml",
+ "command": "cd spike && uv run python -m worldc worlds/basin/world.toml --overlay worlds/basin/changes/cannot_hold.toml --out oracle_basin_cannot_hold",
+ "exit": 1,
+ "errors": 6,
+ "warnings": 1,
+ "infos": 5,
+ "compile_seconds": 7.2,
+ "wall_seconds": 7.89,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "bush": 148,
+  "rock.boulder": 127,
+  "rock.large": 106,
+  "tree.broadleaf": 140,
+  "tree.conifer": 139,
+  "tree.great": 121
+ },
+ "features_per_kind": {
+  "bookmark": 3,
+  "guide": 2,
+  "stated_lake": 1,
+  "stated_river": 1
+ }
+}

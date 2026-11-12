@@ -1,0 +1,41 @@
+{
+ "report": {
+  "water": [
+   {
+    "id": "tarn",
+    "authority": "derived",
+    "level_m": 33.85,
+    "area_m2": 842,
+    "shore_m": 156,
+    "shoreline_development": 1.52,
+    "islands": 0,
+    "max_depth_m": 3.36,
+    "mean_depth_m": 1.31,
+    "shallow_share": 0.43
+   }
+  ]
+ },
+ "budgets": {
+  "chunk_m": 64.0,
+  "total": {
+   "instances": 688,
+   "source_tris": 83820
+  },
+  "chunks": 15
+ },
+ "bookmarks": [
+  {
+   "id": "bm_track",
+   "eye": [
+    39.75434218681827,
+    55.351050711466286,
+    47.47433252315111
+   ],
+   "look": [
+    106.47175237429803,
+    70.59048727053133,
+    38.8024485821994
+   ]
+  }
+ ]
+}

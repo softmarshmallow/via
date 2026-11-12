@@ -1,0 +1,59 @@
+{
+ "against": "strait",
+ "added": [],
+ "removed": [],
+ "moved": [
+  "b.farm",
+  "b.cottage",
+  "b.woods:336",
+  "b.woods:367",
+  "b.woods:368",
+  "b.woods:370",
+  "b.woods:371",
+  "b.woods:402",
+  "b.woods:427",
+  "b.woods:430",
+  "b.woods:431",
+  "b.woods:433",
+  "b.woods:434",
+  "b.woods:437",
+  "b.woods:470",
+  "b.woods:500",
+  "b.woods:501",
+  "b.woods:554",
+  "b.woods:561",
+  "b.woods:562",
+  "b.woods:595",
+  "b.woods:657",
+  "b.woods:400",
+  "b.woods:401",
+  "b.woods:403",
+  "b.woods:404",
+  "b.woods:432",
+  "b.woods:435",
+  "b.woods:436",
+  "b.woods:468"
+ ],
+ "swapped": [],
+ "by": {
+  "hand": {
+   "added": 0,
+   "removed": 0,
+   "moved": 2,
+   "swapped": 0
+  },
+  "woods": {
+   "added": 0,
+   "removed": 0,
+   "moved": 28,
+   "swapped": 0
+  }
+ },
+ "within": [
+  553.79,
+  156.25,
+  638.12,
+  220.86
+ ],
+ "unchanged": 22
+}

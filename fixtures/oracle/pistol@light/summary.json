@@ -1,0 +1,17 @@
+{
+ "world": "pistol",
+ "overlay": "spike/worlds/pistol/accessories/light.toml",
+ "command": "cd spike && uv run python -m worldc worlds/pistol/world.toml --overlay worlds/pistol/accessories/light.toml --out oracle_pistol_light",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 0,
+ "infos": 1,
+ "compile_seconds": 1.1,
+ "wall_seconds": 1.73,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {},
+ "features_per_kind": {
+  "bench": 1,
+  "bookmark": 2
+ }
+}

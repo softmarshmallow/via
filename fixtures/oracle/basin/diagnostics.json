@@ -1,0 +1,32 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "brush",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "stones",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "facts_hold",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "terrain",
+  "where": null
+ }
+]

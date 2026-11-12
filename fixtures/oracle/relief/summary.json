@@ -1,0 +1,21 @@
+{
+ "world": "relief",
+ "command": "cd spike && uv run python -m worldc worlds/relief/world.toml --out oracle_relief",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 1,
+ "infos": 2,
+ "compile_seconds": 0.3,
+ "wall_seconds": 0.96,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "house.small": 1,
+  "tree.broadleaf": 15,
+  "tree.conifer": 15
+ },
+ "features_per_kind": {
+  "bookmark": 1,
+  "lake": 1,
+  "road": 1
+ }
+}

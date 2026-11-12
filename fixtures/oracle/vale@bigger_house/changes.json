@@ -1,0 +1,19 @@
+{
+ "against": "vale",
+ "added": [],
+ "removed": [],
+ "moved": [],
+ "swapped": [
+  "cottage_b"
+ ],
+ "by": {
+  "hand": {
+   "added": 0,
+   "removed": 0,
+   "moved": 0,
+   "swapped": 1
+  }
+ },
+ "within": null,
+ "unchanged": 4789
+}

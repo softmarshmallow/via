@@ -1,0 +1,1859 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "town_trees",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "lots",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "network",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "skeleton",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "street_form",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "terrain",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "street_form:street_form",
+  "subject": "streets",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_bridge",
+  "where": [
+   1046.3,
+   779.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_on_bridge",
+  "where": [
+   1070.2,
+   820.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "bm_tor",
+  "where": [
+   857.2,
+   1044.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_tor",
+  "where": [
+   818.2,
+   1087.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_14",
+  "where": [
+   1077.1,
+   898.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_16",
+  "where": [
+   1115.5,
+   946.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_17",
+  "where": [
+   1152.1,
+   1125.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_36",
+  "where": [
+   973.4,
+   918.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_37",
+  "where": [
+   917.2,
+   929.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_38",
+  "where": [
+   865.2,
+   949.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_39",
+  "where": [
+   1049.2,
+   1166.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_4",
+  "where": [
+   862.5,
+   1148.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_40",
+  "where": [
+   1081.1,
+   981.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_41",
+  "where": [
+   1032.7,
+   940.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_55",
+  "where": [
+   950.5,
+   629.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_7",
+  "where": [
+   1055.2,
+   778.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_74",
+  "where": [
+   1125.9,
+   450.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_75",
+  "where": [
+   1025.2,
+   687.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_87",
+  "where": [
+   804.6,
+   999.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_88",
+  "where": [
+   852.4,
+   980.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "st_89",
+  "where": [
+   806.1,
+   1039.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_105.0",
+  "where": [
+   1075.0,
+   1158.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_106.0",
+  "where": [
+   1105.8,
+   1049.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1185.0",
+  "where": [
+   1041.8,
+   610.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1186.0",
+  "where": [
+   1037.9,
+   619.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1187.0",
+  "where": [
+   1032.4,
+   632.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1188.0",
+  "where": [
+   1009.7,
+   685.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1190.0",
+  "where": [
+   1037.4,
+   414.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1191.0",
+  "where": [
+   1032.0,
+   427.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1192.0",
+  "where": [
+   1021.8,
+   451.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1193.0",
+  "where": [
+   906.7,
+   753.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1194.0",
+  "where": [
+   896.8,
+   755.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1195.0",
+  "where": [
+   883.2,
+   758.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1218.0",
+  "where": [
+   934.1,
+   781.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1219.0",
+  "where": [
+   916.9,
+   781.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1220.0",
+  "where": [
+   903.3,
+   784.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1221.0",
+  "where": [
+   893.4,
+   786.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1222.0",
+  "where": [
+   883.6,
+   788.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1324.0",
+  "where": [
+   801.4,
+   1058.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1325.0",
+  "where": [
+   795.2,
+   1068.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1328.0",
+  "where": [
+   726.7,
+   1069.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1330.0",
+  "where": [
+   717.2,
+   1025.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1332.0",
+  "where": [
+   750.9,
+   995.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1333.0",
+  "where": [
+   833.6,
+   1054.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1334.0",
+  "where": [
+   830.8,
+   1066.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1335.0",
+  "where": [
+   824.3,
+   1078.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1336.0",
+  "where": [
+   818.2,
+   1087.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1337.0",
+  "where": [
+   809.4,
+   1096.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1347.0",
+  "where": [
+   686.8,
+   1024.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1348.0",
+  "where": [
+   689.3,
+   1013.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1349.0",
+  "where": [
+   696.0,
+   1001.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1350.0",
+  "where": [
+   701.9,
+   992.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1351.0",
+  "where": [
+   738.4,
+   968.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1352.0",
+  "where": [
+   748.9,
+   965.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1355.0",
+  "where": [
+   824.1,
+   1000.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1356.0",
+  "where": [
+   830.2,
+   1012.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1357.0",
+  "where": [
+   833.6,
+   1024.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1358.0",
+  "where": [
+   854.1,
+   1054.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1359.0",
+  "where": [
+   851.1,
+   1066.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1360.0",
+  "where": [
+   847.2,
+   1078.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1361.0",
+  "where": [
+   841.6,
+   1088.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1362.0",
+  "where": [
+   834.4,
+   1099.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1363.0",
+  "where": [
+   824.1,
+   1110.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1364.0",
+  "where": [
+   795.7,
+   1127.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1388.0",
+  "where": [
+   838.3,
+   985.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1389.0",
+  "where": [
+   845.1,
+   997.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1390.0",
+  "where": [
+   849.8,
+   1007.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1391.0",
+  "where": [
+   852.8,
+   1019.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1404.0",
+  "where": [
+   709.4,
+   925.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1412.0",
+  "where": [
+   798.2,
+   920.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1413.0",
+  "where": [
+   808.9,
+   924.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1415.0",
+  "where": [
+   708.8,
+   980.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1416.0",
+  "where": [
+   767.6,
+   996.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1417.0",
+  "where": [
+   816.6,
+   912.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_1418.0",
+  "where": [
+   823.6,
+   899.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_148.0",
+  "where": [
+   652.3,
+   864.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_149.0",
+  "where": [
+   643.4,
+   860.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_15.0",
+  "where": [
+   782.8,
+   885.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_16.0",
+  "where": [
+   796.7,
+   884.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_17.0",
+  "where": [
+   810.7,
+   883.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_18.0",
+  "where": [
+   824.6,
+   882.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_186.0",
+  "where": [
+   711.1,
+   446.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_187.0",
+  "where": [
+   797.3,
+   1014.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_188.0",
+  "where": [
+   816.1,
+   988.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_189.0",
+  "where": [
+   824.2,
+   978.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_19.0",
+  "where": [
+   873.2,
+   878.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_190.0",
+  "where": [
+   849.4,
+   950.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_191.0",
+  "where": [
+   880.0,
+   928.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_192.0",
+  "where": [
+   860.3,
+   900.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_193.0",
+  "where": [
+   1027.4,
+   808.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_194.0",
+  "where": [
+   999.5,
+   808.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_195.0",
+  "where": [
+   975.4,
+   809.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_196.0",
+  "where": [
+   947.4,
+   809.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_197.0",
+  "where": [
+   919.4,
+   809.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_198.0",
+  "where": [
+   894.0,
+   811.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_199.0",
+  "where": [
+   872.1,
+   817.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_200.0",
+  "where": [
+   861.5,
+   819.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_201.0",
+  "where": [
+   847.0,
+   823.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_202.0",
+  "where": [
+   837.3,
+   826.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_203.0",
+  "where": [
+   823.9,
+   830.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_204.0",
+  "where": [
+   802.9,
+   837.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_205.0",
+  "where": [
+   790.8,
+   840.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_206.0",
+  "where": [
+   777.1,
+   843.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_207.0",
+  "where": [
+   763.4,
+   846.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_211.0",
+  "where": [
+   632.9,
+   853.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_212.0",
+  "where": [
+   622.6,
+   846.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_214.0",
+  "where": [
+   874.3,
+   1092.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_215.0",
+  "where": [
+   902.8,
+   1125.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_221.0",
+  "where": [
+   1026.0,
+   1201.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_222.0",
+  "where": [
+   1036.7,
+   1201.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_223.0",
+  "where": [
+   899.2,
+   1044.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_228.0",
+  "where": [
+   1102.6,
+   710.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_263.0",
+  "where": [
+   871.0,
+   1162.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_275.0",
+  "where": [
+   838.5,
+   1148.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_277.0",
+  "where": [
+   857.3,
+   1131.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_279.0",
+  "where": [
+   874.5,
+   1111.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_289.0",
+  "where": [
+   939.3,
+   546.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_29.0",
+  "where": [
+   982.7,
+   848.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_290.0",
+  "where": [
+   969.0,
+   489.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_291.0",
+  "where": [
+   986.9,
+   456.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_292.0",
+  "where": [
+   930.6,
+   481.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_293.0",
+  "where": [
+   944.6,
+   447.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_296.0",
+  "where": [
+   821.3,
+   519.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_307.0",
+  "where": [
+   919.4,
+   748.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_308.0",
+  "where": [
+   954.1,
+   776.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_309.0",
+  "where": [
+   973.9,
+   785.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_310.0",
+  "where": [
+   1003.6,
+   786.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_311.0",
+  "where": [
+   1031.5,
+   784.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_312.0",
+  "where": [
+   1099.7,
+   877.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_316.0",
+  "where": [
+   1192.0,
+   1012.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_317.0",
+  "where": [
+   1171.6,
+   1082.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_318.0",
+  "where": [
+   1161.6,
+   1146.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_342.0",
+  "where": [
+   1080.2,
+   711.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_343.0",
+  "where": [
+   1066.9,
+   705.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_344.0",
+  "where": [
+   1057.3,
+   701.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_345.0",
+  "where": [
+   1043.5,
+   700.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_346.0",
+  "where": [
+   998.8,
+   704.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_347.0",
+  "where": [
+   981.3,
+   696.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_348.0",
+  "where": [
+   978.1,
+   684.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_349.0",
+  "where": [
+   975.5,
+   675.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_350.0",
+  "where": [
+   972.9,
+   665.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_390.0",
+  "where": [
+   673.7,
+   924.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_439.0",
+  "where": [
+   1093.4,
+   906.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_457.0",
+  "where": [
+   949.7,
+   1207.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_488.0",
+  "where": [
+   988.6,
+   1233.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_489.0",
+  "where": [
+   998.9,
+   1224.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_489.1",
+  "where": [
+   1006.2,
+   1217.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_541.0",
+  "where": [
+   1023.1,
+   1223.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_542.0",
+  "where": [
+   899.5,
+   1150.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_645.0",
+  "where": [
+   965.5,
+   955.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_647.0",
+  "where": [
+   1042.0,
+   1014.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_648.0",
+  "where": [
+   1075.5,
+   1039.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_649.0",
+  "where": [
+   994.5,
+   920.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_650.0",
+  "where": [
+   1038.0,
+   970.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_651.0",
+  "where": [
+   913.8,
+   958.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_653.0",
+  "where": [
+   1049.0,
+   1084.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_654.0",
+  "where": [
+   1083.8,
+   1096.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_655.0",
+  "where": [
+   944.8,
+   931.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_657.0",
+  "where": [
+   1054.9,
+   1138.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_658.0",
+  "where": [
+   1003.9,
+   1147.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_669.0",
+  "where": [
+   676.0,
+   435.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_76.0",
+  "where": [
+   1065.7,
+   1248.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_77.0",
+  "where": [
+   1071.4,
+   1238.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_78.0",
+  "where": [
+   1078.7,
+   1226.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_786.0",
+  "where": [
+   1068.8,
+   395.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_787.0",
+  "where": [
+   1078.0,
+   399.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_788.0",
+  "where": [
+   1087.3,
+   403.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_789.0",
+  "where": [
+   1100.1,
+   408.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_789.1",
+  "where": [
+   1109.3,
+   412.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_79.0",
+  "where": [
+   1086.0,
+   1215.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_79.1",
+  "where": [
+   1091.2,
+   1206.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_790.0",
+  "where": [
+   1122.1,
+   418.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_80.0",
+  "where": [
+   1102.5,
+   1193.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_806.0",
+  "where": [
+   1102.6,
+   377.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_807.0",
+  "where": [
+   1111.8,
+   381.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_81.0",
+  "where": [
+   1115.0,
+   1172.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_82.0",
+  "where": [
+   1146.0,
+   1101.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_83.0",
+  "where": [
+   1149.2,
+   1073.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_84.0",
+  "where": [
+   1127.8,
+   984.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_873.0",
+  "where": [
+   1066.4,
+   644.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_879.0",
+  "where": [
+   1136.4,
+   674.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_927.0",
+  "where": [
+   988.8,
+   661.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_927.1",
+  "where": [
+   998.0,
+   665.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_927.2",
+  "where": [
+   1007.2,
+   669.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_927.3",
+  "where": [
+   1016.4,
+   673.2
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_928.0",
+  "where": [
+   1040.2,
+   683.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_943.0",
+  "where": [
+   925.0,
+   601.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_944.0",
+  "where": [
+   937.9,
+   607.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_945.0",
+  "where": [
+   950.8,
+   612.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_946.0",
+  "where": [
+   960.0,
+   616.7
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_947.0",
+  "where": [
+   969.2,
+   620.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_948.0",
+  "where": [
+   978.4,
+   624.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_949.0",
+  "where": [
+   991.3,
+   630.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_950.0",
+  "where": [
+   1004.2,
+   635.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_951.0",
+  "where": [
+   1017.1,
+   640.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_952.0",
+  "where": [
+   1026.3,
+   644.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_953.0",
+  "where": [
+   1053.9,
+   656.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_954.0",
+  "where": [
+   1066.8,
+   662.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_955.0",
+  "where": [
+   1079.6,
+   667.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_956.0",
+  "where": [
+   1088.9,
+   671.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "lots_957.0",
+  "where": [
+   1101.8,
+   676.9
+  ]
+ }
+]

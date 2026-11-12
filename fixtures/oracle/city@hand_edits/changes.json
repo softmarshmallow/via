@@ -1,0 +1,31 @@
+{
+ "against": "city",
+ "added": [
+  "kiosk_on_street",
+  "kiosk"
+ ],
+ "removed": [],
+ "moved": [],
+ "swapped": [],
+ "by": {
+  "hand": {
+   "added": 1,
+   "removed": 0,
+   "moved": 0,
+   "swapped": 0
+  },
+  "pin": {
+   "added": 1,
+   "removed": 0,
+   "moved": 0,
+   "swapped": 0
+  }
+ },
+ "within": [
+  219.2,
+  102.4,
+  1032.5,
+  1024.62
+ ],
+ "unchanged": 3797
+}

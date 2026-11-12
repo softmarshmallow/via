@@ -1,0 +1,50 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "fallen_rock",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "homes",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "massif",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "step.ran",
+  "subject": "weather",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "homes:far_from_road",
+  "subject": "high_barn",
+  "where": [
+   150.0,
+   150.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "lane",
+  "where": [
+   275.6,
+   138.6
+  ]
+ }
+]

@@ -1,0 +1,26 @@
+{
+ "against": "coast",
+ "added": [
+  "woods:1454",
+  "woods:1355",
+  "woods:1455"
+ ],
+ "removed": [],
+ "moved": [],
+ "swapped": [],
+ "by": {
+  "woods": {
+   "added": 3,
+   "removed": 0,
+   "moved": 0,
+   "swapped": 0
+  }
+ },
+ "within": [
+  382.71,
+  92.32,
+  386.17,
+  100.09
+ ],
+ "unchanged": 1871
+}

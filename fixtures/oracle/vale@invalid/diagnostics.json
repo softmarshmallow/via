@@ -1,0 +1,110 @@
+[
+ {
+  "severity": "error",
+  "code": "asset.unknown",
+  "subject": "statue",
+  "where": null
+ },
+ {
+  "severity": "error",
+  "code": "field.cycle",
+  "subject": "forest",
+  "where": null
+ },
+ {
+  "severity": "error",
+  "code": "place.overlap",
+  "subject": "barn",
+  "where": [
+   242.3,
+   255.8
+  ]
+ },
+ {
+  "severity": "error",
+  "code": "seam.change_exceeds",
+  "subject": "hut_on_scarp",
+  "where": [
+   150.0,
+   361.5
+  ]
+ },
+ {
+  "severity": "info",
+  "code": "authority.conforms",
+  "subject": "tarn",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "hunting_ground",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "wolf_ground",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "cliff_fall",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "deadwood",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "high_conifers",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "scree_rocks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "underbrush",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "feature.outside",
+  "subject": "hunting_ground",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "place.avoid",
+  "subject": "crate_on_road",
+  "where": [
+   230.0,
+   155.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "east_trail",
+  "where": [
+   401.3,
+   231.7
+  ]
+ }
+]

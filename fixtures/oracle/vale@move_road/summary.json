@@ -1,0 +1,32 @@
+{
+ "world": "vale",
+ "overlay": "spike/worlds/vale/changes/move_road.toml",
+ "command": "cd spike && uv run python -m worldc worlds/vale/world.toml --overlay worlds/vale/changes/move_road.toml --out oracle_vale_move_road",
+ "exit": 1,
+ "errors": 3,
+ "warnings": 5,
+ "infos": 8,
+ "compile_seconds": 7.0,
+ "wall_seconds": 7.69,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "barn": 2,
+  "bush": 63,
+  "house.small": 2,
+  "log": 49,
+  "rock.boulder": 38,
+  "rock.large": 4,
+  "tree.broadleaf": 55,
+  "tree.conifer": 58,
+  "tree.great": 45
+ },
+ "features_per_kind": {
+  "bookmark": 8,
+  "cliff": 1,
+  "guide": 2,
+  "lake": 2,
+  "poi": 2,
+  "road": 2,
+  "spawn_zone": 1
+ }
+}

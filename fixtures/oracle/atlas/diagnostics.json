@@ -1,0 +1,587 @@
+[
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.bank_mid",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.bank_north",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.bank_top",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.fair",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.hill_park",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.ix_central",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.ix_east",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.ix_grand",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.ix_harbor",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "city.riverside",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "example.barley",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "example.beck",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "example.fallow",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "example.wolf_ground",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "glade.stream",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.bridge",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.court_walk",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.garden_0_0",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.garden_0_1",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.garden_1_0",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.garden_1_1",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.garden_2_0",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.garden_2_1",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "monastery.stream",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.bunk_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.bunk_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.bunks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.front_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.kitchen",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.kitchen_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_bunks",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_kitchen",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_lantern",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_living",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_store",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lamp_watch",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.lantern_room",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.living",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.living_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.passage",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.passage_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.porch",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.porch_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.stair_1",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.stair_2",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.stair_3",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.store",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.tower_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.tower_inner_door",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.watch",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "station.watch_window",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "vale.wolf_ground",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "copses",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.chapel",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.gatehouse",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.house_a",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.house_b",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.blocked",
+  "subject": "glade.bm_stream",
+  "where": [
+   2932.2,
+   1124.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_old_town",
+  "where": [
+   1152.3,
+   1496.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_court",
+  "where": [
+   2245.0,
+   607.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_garth",
+  "where": [
+   2247.0,
+   537.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_gate",
+  "where": [
+   2246.0,
+   470.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_market",
+  "where": [
+   2267.9,
+   487.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "example.bm_bridge",
+  "where": [
+   2588.0,
+   1059.1
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "glade.bm_stream",
+  "where": [
+   2933.2,
+   1118.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "glade.bm_wood",
+  "where": [
+   2841.2,
+   1158.9
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "market.bm_bend",
+  "where": [
+   2214.3,
+   982.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "market.bm_square",
+  "where": [
+   2178.9,
+   979.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "monastery.bm_gate",
+  "where": [
+   1797.0,
+   2246.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "relief.bm_track",
+  "where": [
+   2097.7,
+   1294.6
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "vale.bm_cliff",
+  "where": [
+   2647.8,
+   1762.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "vale.bm_overlook",
+  "where": [
+   2918.4,
+   1607.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "vale.bm_road_south",
+  "where": [
+   2685.3,
+   1479.5
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.inside",
+  "subject": "bm_old_town",
+  "where": [
+   1150.0,
+   1500.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.harbor_fwy",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.ix_central_ne",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.ix_central_nw",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.ix_central_se",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.ix_central_sw",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.ix_harbor_ne",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.ix_harbor_se",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "deck.grade",
+  "subject": "city.ix_harbor_sw",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "feature.outside",
+  "subject": "college.bm_aerial",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "station.bunks",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "station.passage",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "kit.remainder",
+  "subject": "station.porch",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "massif.lane",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "seam.grade",
+  "subject": "vale.east_trail",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "seam.relief",
+  "subject": "city.lots_707.0",
+  "where": null
+ }
+]

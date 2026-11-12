@@ -1,0 +1,32 @@
+[
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "garden_trees",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "woods",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_bend",
+  "where": [
+   154.3,
+   132.4
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "bm_square",
+  "where": [
+   118.9,
+   129.6
+  ]
+ }
+]

@@ -1,0 +1,95 @@
+[
+ {
+  "severity": "info",
+  "code": "kind.passthrough",
+  "subject": "wild.beck",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "fringe_brush",
+  "where": null
+ },
+ {
+  "severity": "info",
+  "code": "scatter.count",
+  "subject": "fringe_trees",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.chapel",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.gatehouse",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.house_a",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "authority.squeezed",
+  "subject": "college.house_b",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_court",
+  "where": [
+   405.0,
+   437.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_garth",
+  "where": [
+   407.0,
+   367.0
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_gate",
+  "where": [
+   406.0,
+   300.8
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "bookmark.crowded",
+  "subject": "college.bm_market",
+  "where": [
+   427.9,
+   317.3
+  ]
+ },
+ {
+  "severity": "warning",
+  "code": "feature.outside",
+  "subject": "college.bm_aerial",
+  "where": null
+ },
+ {
+  "severity": "warning",
+  "code": "part.overruled",
+  "subject": "west_walk",
+  "where": [
+   311.5,
+   349.0
+  ]
+ }
+]

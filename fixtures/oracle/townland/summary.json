@@ -1,0 +1,38 @@
+{
+ "world": "townland",
+ "command": "cd spike && uv run python -m worldc worlds/townland/world.toml --out oracle_townland",
+ "exit": 0,
+ "errors": 0,
+ "warnings": 205,
+ "infos": 8,
+ "compile_seconds": 60.0,
+ "wall_seconds": 60.68,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "city.mid_b": 8,
+  "city.row_a": 34,
+  "city.row_b": 19,
+  "city.shed_a": 8,
+  "town.church": 1,
+  "town.well": 1,
+  "tree.broadleaf": 57,
+  "tree.conifer": 47,
+  "tree.great": 38
+ },
+ "features_per_kind": {
+  "axis": 6,
+  "bookmark": 10,
+  "bridge": 2,
+  "crossing": 2,
+  "district": 4,
+  "exit": 1,
+  "guide": 14,
+  "lot": 2,
+  "main_way": 6,
+  "square": 2,
+  "stated_river": 1,
+  "street": 98,
+  "ward": 28,
+  "waterfront": 1
+ }
+}

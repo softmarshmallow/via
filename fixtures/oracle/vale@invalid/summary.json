@@ -1,0 +1,28 @@
+{
+ "world": "vale",
+ "overlay": "spike/worlds/vale/changes/invalid.toml",
+ "command": "cd spike && uv run python -m worldc worlds/vale/world.toml --overlay worlds/vale/changes/invalid.toml --out oracle_vale_invalid",
+ "exit": 1,
+ "errors": 4,
+ "warnings": 3,
+ "infos": 9,
+ "compile_seconds": 6.8,
+ "wall_seconds": 7.42,
+ "machine": "macOS arm64, one run",
+ "instances_per_asset": {
+  "barn": 2,
+  "house.small": 5,
+  "rock.boulder": 38,
+  "rock.large": 4,
+  "tree.conifer": 19
+ },
+ "features_per_kind": {
+  "bookmark": 8,
+  "cliff": 1,
+  "guide": 2,
+  "lake": 2,
+  "poi": 2,
+  "road": 2,
+  "spawn_zone": 2
+ }
+}

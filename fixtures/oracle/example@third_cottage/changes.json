@@ -1,0 +1,24 @@
+{
+ "against": "example",
+ "added": [
+  "cottage_c"
+ ],
+ "removed": [],
+ "moved": [],
+ "swapped": [],
+ "by": {
+  "hand": {
+   "added": 1,
+   "removed": 0,
+   "moved": 0,
+   "swapped": 0
+  }
+ },
+ "within": [
+  248.16,
+  118.44,
+  248.16,
+  118.44
+ ],
+ "unchanged": 348
+}
