@@ -1,0 +1,315 @@
+# The function table, machine copy (R33). Source: spec/formulas.md section 8, whose table is
+# normative; a workspace check holds the two equal and generates from this file the
+# evaluator's dispatch (crates/via-expr), the reference page (docs/reference/) and the SDK's
+# function list. One table per function, keyed by its name; `order` is its place in section 8,
+# which the reference page follows. Text is copied from the chapter's columns as written.
+
+format = "via-functions-1"
+
+[function.abs]
+order = 1
+section = "8.1"
+signatures = ["abs(a)"]
+parameters = "number"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Absolute value."
+milestone = 1
+
+[function.sqrt]
+order = 2
+section = "8.1"
+signatures = ["sqrt(a)"]
+parameters = "number"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Square root. `a < 0` is non-finite (section 9)."
+milestone = 1
+
+[function.pow]
+order = 3
+section = "8.1"
+signatures = ["pow(a, b)"]
+parameters = "number, number"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "`a` to the power `b`."
+milestone = 1
+
+[function.exp]
+order = 4
+section = "8.1"
+signatures = ["exp(a)"]
+parameters = "number"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "e to the power `a`."
+milestone = 1
+
+[function.floor]
+order = 5
+section = "8.1"
+signatures = ["floor(a)"]
+parameters = "number"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Largest whole number not above `a`."
+milestone = 1
+
+[function.sin]
+order = 6
+section = "8.1"
+signatures = ["sin(a)"]
+parameters = "number, degrees"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Trigonometry in degrees, by the reduction below."
+milestone = 1
+source = "Ours, after `numbers.md` 2"
+
+[function.cos]
+order = 7
+section = "8.1"
+signatures = ["cos(a)"]
+parameters = "number, degrees"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Trigonometry in degrees, by the reduction below."
+milestone = 1
+source = "Ours, after `numbers.md` 2"
+
+[function.tan]
+order = 8
+section = "8.1"
+signatures = ["tan(a)"]
+parameters = "number, degrees"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Trigonometry in degrees, by the reduction below."
+milestone = 1
+source = "Ours, after `numbers.md` 2"
+
+[function.min]
+order = 9
+section = "8.1"
+signatures = ["min(a, b, ...)"]
+parameters = "two or more numbers"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Folded left to right by the binary rule of `numbers.md` 8, rule 4: `min(a, b, c) = min(min(a, b), c)`."
+milestone = 1
+
+[function.max]
+order = 10
+section = "8.1"
+signatures = ["max(a, b, ...)"]
+parameters = "two or more numbers"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "Folded left to right by the binary rule of `numbers.md` 8, rule 4: `min(a, b, c) = min(min(a, b), c)`."
+milestone = 1
+
+[function.clamp]
+order = 11
+section = "8.1"
+signatures = ["clamp(a, lo, hi)"]
+parameters = "number ×3"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "`min(max(a, lo), hi)`. `lo > hi` at a post is `formula.range`."
+milestone = 1
+
+[function.mix]
+order = 12
+section = "8.1"
+signatures = ["mix(a, b, s)"]
+parameters = "number ×3"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "`(1 - s) * a + s * b`, in that order. Exact at `s = 0` and `s = 1`; the same form as `fields.md` 1.2 and 5.1."
+milestone = 1
+source = "GLSL `mix` (Khronos GLSL 4.60, section 8.3)"
+
+[function.smoothstep]
+order = 13
+section = "8.1"
+signatures = ["smoothstep(e0, e1, a)"]
+parameters = "number ×3"
+result = "number"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "With `s = clamp((a - e0) / (e1 - e0), 0, 1)`: `s * s * (3 - 2 * s)`. `e0 >= e1` at a post is `formula.range`."
+milestone = 1
+source = "GLSL `smoothstep` (Khronos GLSL 4.60, section 8.3)"
+
+[function.if]
+order = 14
+section = "8.1"
+signatures = ["if(c, a, b)"]
+parameters = "yes/no, then two of one type"
+result = "that type"
+rate = "none"
+halo = "none"
+where = "any"
+meaning = "`a` where `c` is yes, else `b`. Both are computed; the branch not taken is not checked (section 9)."
+milestone = 1
+
+[function.fbm]
+order = 15
+section = "8.2"
+signatures = ["fbm(wavelength, octaves = 4, seed = <owner>, gain = 0.5, lacunarity = 2)"]
+parameters = "number (m, > 0); a whole number 1 to 12; seed selector; number, 0 < gain <= 1; number > 1; all at most per feature"
+result = "number in -1 to 1"
+rate = "per post"
+halo = "none"
+where = "any"
+meaning = "Below."
+milestone = 1
+source = "Fractional Brownian motion (Musgrave, in Ebert et al., *Texturing and Modeling*, 1994) over gradient noise (Perlin, 2002)"
+
+[function.ridged]
+order = 16
+section = "8.2"
+signatures = ["ridged(...)"]
+parameters = "as `fbm`"
+result = "number in 0 to 1"
+rate = "per post"
+halo = "none"
+where = "any"
+meaning = "Below."
+milestone = 2
+source = "Ridged multifractal (Musgrave, 1994), without its weight feedback"
+
+[function.f]
+order = 17
+section = "8.3"
+signatures = ["f(field)"]
+parameters = "field selector"
+result = "number"
+rate = "per post"
+halo = "none at a post; 1 post at a point (6.9)"
+where = "any"
+meaning = "The field's value at the point, in the view of 6.6. A `weights` field is `formula.type`. Reading the field being built is a cycle; inside it, use `v`."
+milestone = 1
+
+[function.slope]
+order = 18
+section = "8.3"
+signatures = ["slope(field)"]
+parameters = "field selector"
+result = "number, degrees, 0 to 90"
+rate = "per post"
+halo = "1 post"
+where = "any"
+meaning = "Below."
+milestone = 1
+
+[function.dist]
+order = 19
+section = "8.4"
+signatures = ["dist(shape, cap)"]
+parameters = "shape selector; number (m, > 0) at most per feature"
+result = "number"
+rate = "per post"
+halo = "geometry within `cap`"
+where = "any"
+meaning = "The least `d` (`numbers.md` 5.5) over the selection, at most `cap`."
+milestone = 1
+
+[function.sdist]
+order = 20
+section = "8.4"
+signatures = ["sdist(shape, cap)"]
+parameters = "as `dist`"
+result = "number"
+rate = "per post"
+halo = "geometry within `cap`"
+where = "any"
+meaning = "`sd` of `numbers.md` 5.5, in `-cap` to `cap`. Regions: the greatest `sd` among them, so positive inside their union. One path: its `sd`. Points: minus `dist`. A selection mixing regions, paths and points is `formula.shape`; several paths is `formula.selector_count`."
+milestone = 1
+
+[function.near]
+order = 21
+section = "8.4"
+signatures = ["near(shape, radius)"]
+parameters = "shape selector; number (m, > 0) at most per feature"
+result = "number"
+rate = "per post"
+halo = "geometry within `radius`"
+where = "any"
+meaning = "`1 - smoothstep(0, radius, dist(shape, radius))`."
+milestone = 1
+
+[function.inside]
+order = 22
+section = "8.4"
+signatures = ["inside(shape)"]
+parameters = "shape selector of regions"
+result = "yes/no"
+rate = "per post"
+halo = "geometry within the window"
+where = "any"
+meaning = "Yes where the point is in a region of the selection, its outline included (exact winding, `numbers.md` 5.5). A path or point is `formula.shape`."
+milestone = 1
+
+[function.along]
+order = 23
+section = "8.4"
+signatures = ["along(shape)"]
+parameters = "shape selector naming one feature"
+result = "number"
+rate = "per post"
+halo = "the whole feature"
+where = "any"
+meaning = "`t` of that feature at the point (`numbers.md` 5.5): 0 on a point."
+milestone = 1
+
+[function.under]
+order = 24
+section = "8.5"
+signatures = ["under(stat)", "under(field, stat)"]
+parameters = "statistic selector; or field and statistic"
+result = "number"
+rate = "per feature"
+halo = "the feature's footprint"
+where = "kind effect, kind `let`"
+meaning = "A measure of a scalar field over the feature's samples: the entry's field before this entry (one argument), or a named field in the view of 6.6."
+milestone = 1
+milestone_detail = "1; `'edge_min'` 2"
+
+[function.smoothed_along]
+order = 25
+section = "8.5"
+signatures = ["smoothed_along(length)"]
+parameters = "number (m, > 0), at most per feature"
+result = "number"
+rate = "per post"
+halo = "the whole feature"
+where = "kind effect on a scalar field, kind `let`"
+meaning = "Paths only: the entry's field before this entry, smoothed along the path, read at the point's `t`. A region or point is `formula.shape`."
+milestone = 1

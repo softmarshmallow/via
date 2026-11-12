@@ -1,0 +1,3288 @@
+# The diagnostic code registry (spec/diagnostics.md section 2; R1: flat TOML keyed by code).
+# Every key but `explain` is derived from the chapters' Diagnostics tables by section 2's
+# rules; `cargo run -p via-diag --example gen_reference -- --sync` rewrites them and keeps
+# `explain`. `explain` is hand-written: what the code means, what to change, one bad and one
+# fixed example, in neutral names (the deny-list of spec/vocabulary.md 7 applies).
+
+[asset.bad_footprint]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "A declared footprint is not a simple polygon of at least three distinct points, counter-clockwise."
+explain = """
+A declared footprint is not a simple polygon of at least three distinct points, counter-clockwise.
+To fix: Reverse the points, or remove the repeated one.
+"""
+
+[asset.declared_measured]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "An asset's own table writes a fact its source measures or fixes (2.2)."
+explain = """
+An asset's own table writes a fact its source measures or fixes (2.2).
+To fix: Remove the key; for a model, via pack list shows the measured value.
+"""
+
+[asset.detail_bounds]
+severity = "warning"
+chapter = "assets"
+milestone = 2
+summary = "A lower-detail copy reaches outside the main model's plan bounds."
+explain = """
+A lower-detail copy reaches outside the main model's plan bounds.
+To fix: Re-export the copy inside the main model.
+"""
+
+[asset.detail_duplicate]
+severity = "error"
+chapter = "assets"
+milestone = 2
+summary = "`detail` names `file`, or one path twice."
+explain = """
+detail names file, or one path twice.
+To fix: Remove the repeat.
+"""
+
+[asset.detail_pivot]
+severity = "warning"
+chapter = "assets"
+milestone = 2
+summary = "A lower-detail copy's pivot differs from the main model's by more than 1 mm."
+explain = """
+A lower-detail copy's pivot differs from the main model's by more than 1 mm.
+To fix: Re-export the copy with the main model's origin.
+"""
+
+[asset.empty]
+severity = "error"
+chapter = "assets"
+milestone = 2
+summary = "A model has no scene or no triangles."
+explain = """
+A model has no scene or no triangles.
+To fix: Export the mesh into the default scene.
+"""
+
+[asset.empty_selection]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "A selection or list filter names a declared taxon, or a tag, with no asset."
+data = ["nearest"]
+explain = """
+A selection or list filter names a declared taxon, or a tag, with no asset.
+To fix: The nearest taxon or tag that has assets.
+"""
+
+[asset.pivot_moved]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "A model's origin is not where its pivot rule puts the pivot; the build moved it by `origin`."
+explain = """
+A model's origin is not where its pivot rule puts the pivot; the build moved it by origin.
+To fix: Write pivot = "origin" to keep the model's own origin.
+"""
+
+[asset.point_footprint]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "A measured footprint has zero area; the asset has a point footprint."
+explain = """
+A measured footprint has zero area; the asset has a point footprint.
+To fix: Declare footprint if it should claim ground.
+"""
+
+[asset.refiled]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "An asset's `taxon` or `tags` differ from the facts file."
+explain = """
+An asset's taxon or tags differ from the facts file.
+To fix: Review what selections now pick, then accept.
+"""
+
+[asset.remodelled]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "An asset's files, triangles, colour or params changed and its placement facts did not."
+explain = """
+An asset's files, triangles, colour or params changed and its placement facts did not.
+To fix: None needed; accept to record it.
+"""
+
+[asset.revised]
+severity = "warning"
+chapter = "assets"
+milestone = 2
+summary = "An asset's placement facts differ from the facts file; names every instance in the build."
+explain = """
+An asset's placement facts differ from the facts file; names every instance in the build.
+To fix: Review the change report, then run via pack accept PACK.
+"""
+
+[asset.source]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "An asset has no source marker, or more than one, or lacks a key its source requires (`size`, `triangles`; 2.2)."
+explain = """
+An asset has no source marker, or more than one, or lacks a key its source requires (size, triangles; 2.2).
+To fix: Write exactly one of file, primitive, engine = true, or the named key.
+"""
+
+[asset.stand_in_stale]
+severity = "error"
+chapter = "assets"
+milestone = 2
+summary = "With `--stand-ins`, the facts file is missing a used asset or disagrees with the pack."
+explain = """
+With --stand-ins, the facts file is missing a used asset or disagrees with the pack.
+To fix: Run via pack accept PACK with the files present.
+"""
+
+[asset.unaccepted]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "An asset the build uses is missing from the facts file."
+explain = """
+An asset the build uses is missing from the facts file.
+To fix: Run via pack accept PACK.
+"""
+
+[asset.unknown]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "A world names an asset id the pack lacks."
+data = ["nearest"]
+explain = """
+A world names an asset id the pack lacks.
+To fix: The nearest id.
+"""
+
+[asset.unknown_primitive]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "`primitive` names no shape of section 6."
+data = ["nearest"]
+explain = """
+primitive names no shape of section 6.
+To fix: The nearest shape word.
+"""
+
+[asset.untextured]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "No material of a model has a base colour texture."
+explain = """
+No material of a model has a base colour texture.
+To fix: Bind the texture in the model if it should have one.
+"""
+
+[authority.attribute_twice]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "An attribute declared in both `defaults` and `requires`."
+explain = """
+An attribute declared in both defaults and requires.
+"""
+
+[authority.conflict]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "Two anchored features disagree where both masks are 1; subject the later; values, post, counts."
+explain = """
+Two anchored features disagree where both masks are 1; subject the later; values, post, counts.
+"""
+
+[authority.ground_requires]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "An instance grounds with a kind that has `requires`; the instance's `ground` line and the kind's `requires` line."
+explain = """
+An instance grounds with a kind that has requires; the instance's ground line and the kind's requires line.
+"""
+
+[authority.hidden]
+severity = "info"
+chapter = "authority"
+milestone = 1
+summary = "An entry left no trace: later entries with mask 1 cover all of it; once per feature and field."
+explain = """
+An entry left no trace: later entries with mask 1 cover all of it; once per feature and field.
+"""
+
+[authority.max_change]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "An entry moves a value more than `max_change`; post of the largest move, amount, limit, `v` and `value`."
+explain = """
+An entry moves a value more than max_change; post of the largest move, amount, limit, v and value.
+"""
+
+[authority.names_undeclared]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "An attribute in a kind's `names` is in neither `defaults` nor `requires`; nearest declared attribute."
+data = ["nearest"]
+explain = """
+An attribute in a kind's names is in neither defaults nor requires; nearest declared attribute.
+"""
+
+[authority.no_field]
+severity = "info"
+chapter = "authority"
+milestone = 1
+summary = "A well-formed selector matches no field, and the kind has a feature; once per kind and effect."
+explain = """
+A well-formed selector matches no field, and the kind has a feature; once per kind and effect.
+"""
+
+[authority.no_kind]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "`authority` on a guide."
+explain = """
+authority on a guide.
+"""
+
+[authority.order_cycle]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "Nesting on one field forms a cycle; the field, every feature, each link and which side it puts later."
+explain = """
+Nesting on one field forms a cycle; the field, every feature, each link and which side it puts later.
+"""
+
+[authority.range]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "`radius` at or below 0; the key, value and range."
+explain = """
+radius at or below 0; the key, value and range.
+"""
+
+[authority.requires]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "A feature lacks an attribute its kind requires; names both lines."
+explain = """
+A feature lacks an attribute its kind requires; names both lines.
+"""
+
+[authority.selector]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "An effect's `field` is not `role:<role>` or `tag:<tag>`, or names an unknown role; both forms, nearest role, the role of a field named bare."
+data = ["nearest"]
+explain = """
+An effect's field is not role:<role> or tag:<tag>, or names an unknown role; both forms, nearest role, the role of a field named bare.
+"""
+
+[authority.squeezed]
+severity = "warning"
+chapter = "authority"
+milestone = 1
+summary = "Two anchored features disagree only where a mask is below 1; as above."
+explain = """
+Two anchored features disagree only where a mask is below 1; as above.
+"""
+
+[authority.step_anchored]
+severity = "error"
+chapter = "authority"
+milestone = 2
+summary = "A step returned an anchored feature. M2."
+explain = """
+A step returned an anchored feature. M2.
+"""
+
+[authority.step_view]
+severity = "error"
+chapter = "authority"
+milestone = 2
+summary = "A step returned rows on a field whose full view it read, or a row sorting before a row of its head view. M2."
+explain = """
+A step returned rows on a field whose full view it read, or a row sorting before a row of its head view. M2.
+"""
+
+[authority.unchecked]
+severity = "error"
+chapter = "authority"
+milestone = 2
+summary = "A generate step that read stated features and returned rows or features is named by no lint step's `checks`. M2, (open: queued by R31)."
+explain = """
+A generate step that read stated features and returned rows or features is named by no lint step's checks. M2, (open: queued by R31).
+"""
+
+[authority.unknown]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "`authority` is not `derived`, `shaped` or `anchored`; nearest tier."
+data = ["nearest"]
+explain = """
+authority is not derived, shaped or anchored; nearest tier.
+"""
+
+[authority.unknown_kind]
+severity = "error"
+chapter = "authority"
+milestone = 1
+summary = "A feature's `kind` or an instance's `ground` names no kind in the world's kind namespace; nearest kind."
+data = ["nearest"]
+explain = """
+A feature's kind or an instance's ground names no kind in the world's kind namespace; nearest kind.
+"""
+
+[build.against_not_build]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "`--against` names a folder with no manifest of a known `format`. Hint: name a complete build directory."
+explain = """
+--against names a folder with no manifest of a known format. Hint: name a complete build directory.
+"""
+
+[build.baseline_missing]
+severity = "warning"
+chapter = "build"
+milestone = 1
+summary = "`.previous` names a build the store no longer holds; the change report has no baseline. Hint: rebuild the earlier text, or pass `--against`."
+explain = """
+.previous names a build the store no longer holds; the change report has no baseline. Hint: rebuild the earlier text, or pass --against.
+"""
+
+[build.chunk_not_multiple]
+severity = "error"
+chapter = "build"
+milestone = 6
+summary = "`chunk` is not a whole multiple of `resolution`; the hint gives the nearest that are. (M6.)"
+explain = """
+chunk is not a whole multiple of resolution; the hint gives the nearest that are. (M6.)
+"""
+
+[build.dir_busy]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "The build directory could not be replaced because a file in it is open; names the file. Hint: close the program holding it, or build to another `--out`."
+covered_by = "workspace"
+explain = """
+The build directory could not be replaced because a file in it is open; names the file. Hint: close the program holding it, or build to another --out.
+"""
+
+[build.internal]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3."
+covered_by = "workspace"
+explain = """
+A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3.
+"""
+
+[build.no_facts]
+severity = "error"
+chapter = "build"
+milestone = 2
+summary = "`--stand-ins` was asked for and the pack has no facts file. Hint: run `via pack accept`. (M2.)"
+explain = """
+--stand-ins was asked for and the pack has no facts file. Hint: run via pack accept. (M2.)
+"""
+
+[build.not_a_build]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "`--out`, `<out>.partial` or `<out>.old` is a file, a non-empty folder `via` did not write, or the world file's own folder; nothing was deleted. Hint: name an empty or new folder."
+explain = """
+--out, <out>.partial or <out>.old is a file, a non-empty folder via did not write, or the world file's own folder; nothing was deleted. Hint: name an empty or new folder.
+"""
+
+[build.pack_root_far]
+severity = "warning"
+chapter = "build"
+milestone = 1
+summary = "No relative path leads from the build directory to the pack's root (another drive); `pack_root` is `null`. Hint: build onto the pack's drive, or tell the loader where the pack is."
+explain = """
+No relative path leads from the build directory to the pack's root (another drive); pack_root is null. Hint: build onto the pack's drive, or tell the loader where the pack is.
+"""
+
+[build.store_inside]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "The store resolves inside the build directory, which every build replaces. Hint: drop `--store`, or name a folder outside `--out`."
+explain = """
+The store resolves inside the build directory, which every build replaces. Hint: drop --store, or name a folder outside --out.
+"""
+
+[build.write_failed]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A file or rename could not be written; names the path and the system's error. Hint: free space, or fix the folder's permissions."
+explain = """
+A file or rename could not be written; names the path and the system's error. Hint: free space, or fix the folder's permissions.
+"""
+
+[check.absolute_path]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A JSON or text file the build writes holds an absolute path; gives the key path."
+explain = """
+A JSON or text file the build writes holds an absolute path; gives the key path.
+"""
+
+[check.chunk_rows]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "Chunks' `[first, count]` ranges leave a gap or overlap, or a row lies outside its chunk; gives the chunk and row."
+explain = """
+Chunks' [first, count] ranges leave a gap or overlap, or a row lies outside its chunk; gives the chunk and row.
+"""
+
+[check.digest]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A listed file's `bytes` or `digest` differs from its record; gives both."
+explain = """
+A listed file's bytes or digest differs from its record; gives both.
+"""
+
+[check.face]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A `face` outside `[0, 360000)`; gives the row."
+explain = """
+A face outside [0, 360000); gives the row.
+"""
+
+[check.format]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "No `manifest.json`, not canonical, or an unknown `format`."
+explain = """
+No manifest.json, not canonical, or an unknown format.
+"""
+
+[check.header]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "An array file's header is outside the subset of 3.2, or its size does not match it; gives the offset."
+explain = """
+An array file's header is outside the subset of 3.2, or its size does not match it; gives the offset.
+"""
+
+[check.id]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "`id` is missing or differs from the digest recomputed by section 12; gives both."
+explain = """
+id is missing or differs from the digest recomputed by section 12; gives both.
+"""
+
+[check.missing]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A listed file is absent."
+explain = """
+A listed file is absent.
+"""
+
+[check.names]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "`names.txt` has other than `count` lines, a repeated name, or a character outside section 8's alphabet; gives the line."
+explain = """
+names.txt has other than count lines, a repeated name, or a character outside section 8's alphabet; gives the line.
+"""
+
+[check.not_canonical]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A JSON file the build writes is not canonical; gives the byte offset of the first difference."
+explain = """
+A JSON file the build writes is not canonical; gives the byte offset of the first difference.
+"""
+
+[check.shape]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "An array file's `descr` or `shape` differs from what the manifest says it holds; gives both."
+explain = """
+An array file's descr or shape differs from what the manifest says it holds; gives both.
+"""
+
+[check.unlisted]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A file is present that no list names."
+explain = """
+A file is present that no list names.
+"""
+
+[check.value]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A float that is not finite or is `-0`; gives the file and the index."
+explain = """
+A float that is not finite or is -0; gives the file and the index.
+"""
+
+[check.weights_sum]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A post's weights sum to neither 255 nor 0; gives the chunk and post."
+explain = """
+A post's weights sum to neither 255 nor 0; gives the chunk and post.
+"""
+
+[cli.no_world]
+severity = "error"
+chapter = "diagnostics"
+milestone = 1
+summary = "`via explain` only: the world file given does not exist or is not a file. Exit 2. Every other command reports `doc.file_missing` (`documents.md`)."
+explain = """
+`via explain` was given a world file that does not exist or is not a file. Exit status 2. Every
+other command reports a missing world as doc.file_missing.
+Give the path of an existing world file.
+Bad:   via explain step.a.b missing.toml
+Fixed: via explain step.a.b world.toml
+"""
+
+[cli.unknown_code]
+severity = "error"
+chapter = "diagnostics"
+milestone = 1
+summary = "`via explain` or `--fail-on` was given an unknown code; the nearest code. Exit 2."
+data = ["nearest"]
+explain = """
+`via explain` or `--fail-on` was given a code that is not registered, and is not a step code of
+the last build. Exit status 2. `data.nearest` holds the nearest code.
+Write the code as `via explain` lists it.
+Bad:   via explain formula.unknwn_name
+Fixed: via explain formula.unknown_name
+"""
+
+[cli.usage]
+severity = "error"
+chapter = "diagnostics"
+milestone = 1
+summary = "An unknown flag, a missing argument or a bad value; the argument and the nearest flag. Exit 2."
+data = ["nearest"]
+explain = """
+The command line is wrong: an unknown flag, a missing argument, a bad value, or a --fail-on code
+that is not a warning. `argument` is the index of the argument at fault, counting from 1 after
+the program name. No build is attempted and the exit status is 2.
+Write the flag as `via help` lists it; the hint gives the nearest one.
+Bad:   via build world.toml --frobnicate
+Fixed: via build world.toml
+"""
+
+[diag.internal]
+severity = "error"
+chapter = "diagnostics"
+milestone = 1
+summary = "The engine stopped on a defect of ours; the operation; `data.message` (the panic's text), `data.repro` (the reproduction's digest). Exit 3."
+data = ["message", "repro"]
+covered_by = "workspace"
+explain = """
+The engine stopped on a defect of its own, not of the text: a panic, or a diagnostic whose place
+could not be found. The build exits with status 3. `data.message` holds the panic's text and
+`data.repro` the digest of the reproduction folder written beside the build directory.
+Report it with that folder; no change to the text is needed or expected to help.
+Bad:   (none: this is never the text's fault)
+Fixed: (none)
+"""
+
+[diag.malformed]
+severity = "error"
+chapter = "diagnostics"
+milestone = 1
+summary = "A step's diagnostic was malformed (section 6); `data.message`, `data.missing`."
+data = ["message", "missing"]
+explain = """
+A step sent a diagnostic the engine could not keep: no hint, an empty message, a subject this
+world does not have, a code not of the form [a-z][a-z0-9_]*, data that is not a table of plain
+values, a position outside the extent, or one code with two severities. `data.message` holds the
+step's message and `data.missing` what was wrong.
+Change the step so every diagnostic it sends is complete.
+Bad:   step.diag.emit(code="too_steep", subject="feature.a", message="too steep")
+Fixed: step.diag.emit(code="too_steep", subject="feature.a", message="slope 0.4 over 0.3", hint="lower the slope")
+"""
+
+[diag.skipped]
+severity = "info"
+chapter = "diagnostics"
+milestone = 1
+summary = "A failed node's dependents were not built, or export steps did not run; `count`, `data.first` (the first ten by address), `data.stage`."
+data = ["first", "stage"]
+explain = """
+A node failed, so every node that reads it, directly or through others, was not built. This
+record is the one thing said about them: `count` is how many things were skipped and
+`data.first` names the first ten. With `data.stage = "export"`, export steps did not run because
+the build had an error.
+Fix the error on the subject; what was skipped is built again with it.
+Bad:   value = "= 2 * hieght"   (an error; everything reading value is skipped)
+Fixed: value = "= 2 * height"
+"""
+
+[doc.change_adds_near]
+severity = "warning"
+chapter = "documents"
+milestone = 1
+summary = "A change adds an entity whose id is near an existing one."
+explain = """
+A change adds an entity whose id is near an existing one.
+"""
+
+[doc.change_conflict]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "Two requested changes write or remove one key path; both changes and spans."
+explain = """
+Two requested changes write or remove one key path; both changes and spans.
+"""
+
+[doc.change_empty]
+severity = "warning"
+chapter = "documents"
+milestone = 1
+summary = "A change body that writes nothing."
+explain = """
+A change body writes nothing, so requesting it changes nothing.
+Write what the change should set, or delete it.
+Bad:   [change.a]
+Fixed: [change.a.feature.b]
+       width = 4
+"""
+
+[doc.change_fixed]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A change writes `include` or `name`."
+explain = """
+A change writes include or name.
+"""
+
+[doc.change_nested]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "`[change]` in a kinds file, pack, change file or change body."
+explain = """
+[change] in a kinds file, pack, change file or change body.
+"""
+
+[doc.dangling]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A name whose target a change removed; the holding table and the change."
+explain = """
+A name whose target a change removed; the holding table and the change.
+"""
+
+[doc.file_missing]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A file not found: world, layer, change file, library folder."
+explain = """
+A file was not found: the world, a layer, a change file or a library folder.
+Correct the path, relative to the world file's folder, or create the file.
+Bad:   file = "layers/mian.toml"
+Fixed: file = "layers/main.toml"
+"""
+
+[doc.file_unreadable]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A file found but not readable."
+explain = """
+A file found but not readable.
+"""
+
+[doc.idle_change]
+severity = "warning"
+chapter = "documents"
+milestone = 1
+summary = "An unrequested inline change has a fault; `data.code` holds its code."
+data = ["code"]
+explain = """
+An unrequested inline change has a fault; data.code holds its code.
+"""
+
+[doc.include_cycle]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "Libraries that include each other; the loop."
+explain = """
+Libraries that include each other; the loop.
+"""
+
+[doc.include_missing]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A library name found in no root; roots searched, by place not path; nearest name."
+data = ["nearest"]
+explain = """
+A library name found in no root; roots searched, by place not path; nearest name.
+"""
+
+[doc.include_shadowed]
+severity = "info"
+chapter = "documents"
+milestone = 1
+summary = "A library name found in several roots; the one used."
+explain = """
+A library name found in several roots; the one used.
+"""
+
+[doc.kind_outside_library]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "`[kind]` in a world or layer file, or a kind a change adds."
+explain = """
+[kind] in a world or layer file, or a kind a change adds.
+"""
+
+[doc.layer_file_twice]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "Two layers name one file, or a layer names the world file."
+explain = """
+Two layers name one file, or a layer names the world file.
+"""
+
+[doc.layer_rank]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "Two layers with one rank, `world`'s included."
+explain = """
+Two layers with one rank, world's included.
+"""
+
+[doc.missing_key]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A required key is absent; the table, the key and what it takes."
+explain = """
+A required key is absent; the record names the table, the key and what it takes, at the span
+that creates the table.
+Add the key.
+Bad:   [field.height]
+Fixed: [field.height]
+       type = "scalar"
+"""
+
+[doc.not_yet]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A word of a later milestone; names the milestone."
+explain = """
+The text uses a word of a later milestone; the message names the milestone.
+Remove it for now, or use the form this milestone has.
+Bad:   (a key from a later milestone)
+Fixed: (the same table without it)
+"""
+
+[doc.path_case]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A path whose case differs from the name on disk."
+explain = """
+A path whose case differs from the name on disk.
+"""
+
+[doc.path_form]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "An absolute path, a `\\`, a part not portable, or a change file not ending in `.toml`."
+explain = """
+An absolute path, a \\, a part not portable, or a change file not ending in .toml.
+"""
+
+[doc.placement_twice]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "One table holds two placement keys; names both."
+explain = """
+One table holds two placement keys; names both.
+"""
+
+[doc.remove_above_entity]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "`remove` or `unset` at a change body's root or on a top table."
+explain = """
+remove or unset at a change body's root or on a top table.
+"""
+
+[doc.remove_missing]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "`remove` or `unset` names nothing in the base."
+explain = """
+remove or unset names nothing in the base.
+"""
+
+[doc.remove_outside_change]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "`remove` or `unset` outside a change body."
+explain = """
+remove or unset outside a change body.
+"""
+
+[doc.remove_with_keys]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "`remove = true` beside other keys, or a key both written and unset."
+explain = """
+remove = true beside other keys, or a key both written and unset.
+"""
+
+[doc.reserved_attribute]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A kind declares an attribute named as a reserved feature key."
+explain = """
+A kind declares an attribute named as a reserved feature key.
+"""
+
+[doc.syntax]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "Not TOML 1.0.0, not UTF-8, or a `[[x]]` header; position from the parser."
+explain = """
+The file is not TOML 1.0.0, not UTF-8, or uses an array-of-tables header. Files are flat and keyed
+by id: [collection.id], never [[collection]].
+Correct the text at the position given; for [[x]], write one [x.<id>] per item.
+Bad:   [[feature]]
+       id = "a"
+Fixed: [feature.a]
+"""
+
+[doc.too_deep]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "Tables and lists nested over 64 deep (section 1); the file is read no further."
+explain = """
+Tables and lists nest over 64 deep; the file is read no further.
+Flatten the structure.
+Bad:   value = [[[[ ... ]]]]   (65 levels)
+Fixed: value = [1, 2]
+"""
+
+[doc.type]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A value of the wrong form for its key, or a TOML date or time."
+explain = """
+A value has the wrong form for its key (a string where a number is taken), or is a TOML date or
+time, which no key takes.
+Write the form the key takes.
+Bad:   width = "6"
+Fixed: width = 6
+"""
+
+[doc.unknown_change]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A requested change that does not exist; the nearest name."
+data = ["nearest"]
+explain = """
+A requested change does not exist. `data.nearest` holds the nearest change name.
+Request a change that the world or a change file declares.
+Bad:   via build world.toml --change tset
+Fixed: via build world.toml --change test
+"""
+
+[doc.unknown_key]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A key or table not listed for its place; the nearest listed word, or a removed word's fixed hint (section 7)."
+data = ["nearest"]
+explain = """
+A key or table is not listed for its place. `data.nearest` holds the nearest listed word; a word
+removed from the language has a fixed hint instead.
+Write the key as listed, or remove it.
+Bad:   [feature.a]
+       widht = 6
+Fixed: [feature.a]
+       width = 6
+"""
+
+[doc.upward_ref]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A named reference to something in a higher layer; both entities, layers, owners."
+explain = """
+A named reference to something in a higher layer; both entities, layers, owners.
+"""
+
+[doc.world_key_in_layer]
+severity = "error"
+chapter = "documents"
+milestone = 1
+summary = "A world-file-only key or `[layer]` in a layer."
+explain = """
+A world-file-only key or [layer] in a layer.
+"""
+
+[field.base_and_file]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A field with both `base` and `file`."
+explain = """
+A field with both base and file.
+To fix: Keep one.
+"""
+
+[field.effect_cut]
+severity = "warning"
+chapter = "fields"
+milestone = 1
+summary = "An effect's mask is above 0.02 on its ring; the effect, the feature and the first post."
+explain = """
+An effect's mask is above 0.02 on its ring; the effect, the feature and the first post.
+To fix: Raise radius, or fade mask to 0 by it.
+"""
+
+[field.file_coarse]
+severity = "warning"
+chapter = "fields"
+milestone = 1
+summary = "A level step above 0.1 m on a field in `m`; the step."
+explain = """
+A level step above 0.1 m on a field in m; the step.
+To fix: Use 16-bit, or a narrower range.
+"""
+
+[field.file_format]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "An unsupported format, depth or palette; an array file whose `shape` is not 2-D or whose `descr` is not `<f4`; a raster with a dimension under 2."
+explain = """
+An unsupported format, depth or palette; an array file whose shape is not 2-D or whose descr is not <f4; a raster with a dimension under 2.
+To fix: Save as 8- or 16-bit grey PNG, or an array file.
+"""
+
+[field.file_key]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A file key without `file`, one that does not apply, an unknown `channel` or `filter`, or a channel the picture lacks."
+explain = """
+A file key without file, one that does not apply, an unknown channel or filter, or a channel the picture lacks.
+To fix: The keys that apply; for luma, name one channel.
+"""
+
+[field.file_nonfinite]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A non-finite sample; its row and column."
+explain = """
+A non-finite sample; its row and column.
+To fix: Repair the file.
+"""
+
+[field.file_offworld]
+severity = "warning"
+chapter = "fields"
+milestone = 1
+summary = "A raster `extent` wholly outside the world's."
+explain = """
+A raster extent wholly outside the world's.
+To fix: Correct extent.
+"""
+
+[field.file_outside]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "`file` without `outside`."
+explain = """
+file without outside.
+To fix: Add outside, the value beyond the raster.
+"""
+
+[field.file_profile]
+severity = "info"
+chapter = "fields"
+milestone = 1
+summary = "A PNG's gamma, colour profile or `tRNS` was not applied."
+explain = """
+A PNG's gamma, colour profile or tRNS was not applied.
+To fix: None needed; levels are read as stored.
+"""
+
+[field.file_range]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "`range` with `lo == hi`."
+explain = """
+range with lo == hi.
+To fix: A constant is a base.
+"""
+
+[field.file_too_large]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "More samples than the post-count limit; the header's size."
+explain = """
+More samples than the post-count limit; the header's size.
+To fix: Crop or downsample the raster.
+"""
+
+[field.role_missing]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "No `surface` field, and something asked for ground; names the first that asked."
+explain = """
+No surface field, and something asked for ground; names the first that asked.
+To fix: Add a field with role = "surface".
+"""
+
+[field.role_range]
+severity = "warning"
+chapter = "fields"
+milestone = 1
+summary = "A `keep_out` value outside 0 to 1, clamped; the field and its first post."
+explain = """
+A keep_out value outside 0 to 1, clamped; the field and its first post.
+To fix: Wrap the row or base in clamp(..., 0, 1).
+"""
+
+[field.role_twice]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A second `material` field; names both."
+explain = """
+A second material field; names both.
+To fix: Remove role from one; it is handed over as data.
+"""
+
+[field.role_type]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A role on a field of the wrong type."
+explain = """
+A role on a field of the wrong type.
+To fix: The role's type, e.g. type = "weights".
+"""
+
+[field.role_unit]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A role on a field with another unit."
+explain = """
+A role on a field with another unit.
+To fix: Remove unit, or write the role's.
+"""
+
+[field.role_unknown]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A role that is not `surface`, `material` or `keep_out`."
+data = ["nearest"]
+explain = """
+A role that is not surface, material or keep_out.
+To fix: Nearest role; a library word belongs in tags.
+"""
+
+[field.row_key]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "`paint` on a scalar entry, or `value` on a weights entry; names the row or effect and the field."
+explain = """
+paint on a scalar entry, or value on a weights entry; names the row or effect and the field.
+To fix: Use the key of the field's type, or narrow the effect's selector.
+"""
+
+[field.row_missing]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A scalar row or entry with no `value`, or a weights one with no `paint`; names the row or effect."
+explain = """
+A scalar row or entry with no value, or a weights one with no paint; names the row or effect.
+To fix: Add the key.
+"""
+
+[field.step_base]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare."
+explain = """
+A step's document sets base, file, role, type, unit or tags on a field it did not declare.
+To fix: Return rows on the field instead.
+"""
+
+[field.step_layer]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A step's row on a field of a higher layer."
+explain = """
+A step's row on a field of a higher layer.
+To fix: Move the step up, or the field down.
+"""
+
+[field.type_unknown]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A `type` not on the list."
+data = ["nearest"]
+explain = """
+A type not on the list.
+To fix: Nearest type; for material: type = "weights", role = "material".
+"""
+
+[field.unit_unknown]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A `unit` not on the list."
+data = ["nearest"]
+explain = """
+A unit not on the list.
+To fix: Nearest unit.
+"""
+
+[field.unpainted]
+severity = "warning"
+chapter = "fields"
+milestone = 1
+summary = "Posts of the `material` field with weights summing below 1; the first and the count."
+explain = """
+Posts of the material field with weights summing below 1; the first and the count.
+To fix: Add a first row with no mask.
+"""
+
+[field.weights_base]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "`base` or `file` on a `weights` field."
+explain = """
+base or file on a weights field.
+To fix: Read the raster as a scalar field and use it as a row's mask.
+"""
+
+[field.weights_unit]
+severity = "error"
+chapter = "fields"
+milestone = 1
+summary = "A unit other than `ratio` on a `weights` field."
+explain = """
+A unit other than ratio on a weights field.
+To fix: Remove unit.
+"""
+
+[formula.arguments]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "Wrong count, an unknown or repeated named argument, or a positional one after a named one."
+explain = """
+A call has the wrong number of arguments, an unknown or repeated named argument, or a positional
+argument after a named one.
+Give the arguments the function's entry in the table lists, positional first.
+Bad:   value = "= clamp(a, 0)"
+Fixed: value = "= clamp(a, 0, 1)"
+"""
+
+[formula.cap]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "`dist` or `sdist` without a cap and without a `radius` to default to."
+explain = """
+dist or sdist has no cap, and there is no radius to default to.
+Give the cap.
+Bad:   value = "= dist('tag:edge')"
+Fixed: value = "= dist('tag:edge', 40)"
+"""
+
+[formula.character]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A character outside the language; names it; for upper case, \"names are lower case\"."
+explain = """
+The formula holds a character outside the language. Names are lower case.
+Remove the character, or write the name in lower case.
+Bad:   value = "= 2 * Height"
+Fixed: value = "= 2 * height"
+"""
+
+[formula.empty_selection]
+severity = "warning"
+chapter = "formulas"
+milestone = 1
+summary = "A `kind:` selection is empty at its stratum; says the value used. Once per formula and stratum."
+explain = """
+A kind: selection is empty at its stratum, so the function used its value for nothing. Reported
+once per formula and stratum; the message says the value used.
+Add a feature of that kind below this layer, or drop the term.
+Bad:   value = "= dist('kind:k', 10)"   (no feature of kind k here)
+Fixed: value = "= 1"
+"""
+
+[formula.not_finite]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A live operation gave a non-finite value; names the operation, operands, post and feature."
+explain = """
+An operation gave an infinity or NaN; the record names the operation, its operands, the post and
+the feature. No non-finite value is ever stored.
+Guard the operation (a divisor away from 0, a root of a non-negative value).
+Bad:   value = "= 1 / a"   (a is 0 at one post)
+Fixed: value = "= 1 / max(a, 0.001)"
+"""
+
+[formula.operator]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "An operator of another language, or `=` for `==`; names ours."
+explain = """
+The formula uses an operator of another language, or `=` where `==` compares.
+Use the operator the hint names.
+Bad:   value = "= if(a = 1, 2, 3)"
+Fixed: value = "= if(a == 1, 2, 3)"
+"""
+
+[formula.outside_field]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A field read at a point beyond the extent."
+explain = """
+A field was read at a point beyond the world's extent.
+Read inside the extent, or clamp the point.
+Bad:   (a read of a field at a point beyond the extent)
+Fixed: (the same read at a point inside it)
+"""
+
+[formula.range]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A value outside its key's or parameter's range, at a named post or feature."
+explain = """
+A value is outside its key's or parameter's range at a named post or feature.
+Bound the value, or change the inputs that push it out.
+Bad:   radius = "= a - 10"   (a is 4 at one feature)
+Fixed: radius = "= max(a - 10, 1)"
+"""
+
+[formula.rate]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A sub-expression's rate is above what the key or parameter allows; names it."
+explain = """
+A sub-expression varies faster than the key or parameter allows (a value per post where only
+one per feature is taken). The record names the sub-expression.
+Reduce it to the allowed rate (a mean over the feature, say), or move it to a key that takes it.
+Bad:   radius = "= f('height')"   (varies by post; radius takes one value per feature)
+Fixed: radius = "= 4"
+"""
+
+[formula.seed]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A seed that is not a name."
+explain = """
+A noise call's seed is not a name.
+Write a name.
+Bad:   value = "= fbm(60, 3, seed = 7)"
+Fixed: value = "= fbm(60, 3, seed = 'base')"
+"""
+
+[formula.seed_shared]
+severity = "warning"
+chapter = "formulas"
+milestone = 1
+summary = "Two noise calls of one owner use one stream."
+explain = """
+Two noise calls of one owner use one stream, so they move together.
+Give each call its own seed name.
+Bad:   value = "= fbm(60, 3) + fbm(20, 2)"
+Fixed: value = "= fbm(60, 3, seed = 'a') + fbm(20, 2, seed = 'b')"
+"""
+
+[formula.selector]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A selector names nothing, is of the wrong class, or uses `role:`."
+explain = """
+A selector names nothing, names a thing of the wrong class, or uses role:.
+Select by tag: or by a name that exists.
+Bad:   value = "= dist('role:surface', 10)"
+Fixed: value = "= dist('tag:edge', 10)"
+"""
+
+[formula.selector_count]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A selection holds more things than the function takes, or none where it needs one."
+explain = """
+A selection holds more things than the function takes, or none where it needs one.
+Narrow the selector to what the function takes.
+Bad:   value = "= sdist('tag:paths', 10)"   (several paths; sdist takes one)
+Fixed: value = "= sdist('tag:one_path', 10)"
+"""
+
+[formula.shadow]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A `let` or attribute name equals a built-in or keyword, a `let` name equals a field's, or one name is declared twice in one scope."
+explain = """
+A let or attribute name equals a built-in or keyword, a let name equals a field's, or one name is
+declared twice in one scope.
+Rename one of the two.
+Bad:   [let] x = "= 2"
+Fixed: [let] x_scale = "= 2"
+"""
+
+[formula.shape]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A function given a feature of a shape it cannot take."
+explain = """
+A function was given a feature of a shape it cannot take (a point where a region is needed).
+Select features of the shape the function takes.
+Bad:   value = "= inside('tag:points')"
+Fixed: value = "= inside('tag:areas')"
+"""
+
+[formula.syntax]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "The text does not parse; names the span and what was expected (section 2's table)."
+explain = """
+The formula text does not parse; the record points at the span and says what was expected there.
+Complete or correct the expression at that span.
+Bad:   value = "= 2 * (height + 1"
+Fixed: value = "= 2 * (height + 1)"
+"""
+
+[formula.too_deep]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "Nesting over 64 deep."
+explain = """
+The formula nests over 64 deep, so it is not read further.
+Name inner parts in [let].
+Bad:   value = "= ((((((... a ...))))))"   (65 levels)
+Fixed: [let] inner = "= (a)"   and   value = "= (inner)"
+"""
+
+[formula.too_long]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "The formula text is over 4096 bytes."
+explain = """
+The formula text is over 4096 bytes.
+Split it: name parts in [let] and read them by name.
+Bad:   value = "= a + a + a + ... (5000 bytes)"
+Fixed: [let] part = "= a + a"   and   value = "= part + part"
+"""
+
+[formula.type]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A number where yes/no is needed, or the reverse; a selector out of place; a text, array or table attribute read; a formula for a bool or text attribute; a `weights` field read by `f`."
+explain = """
+A value of the wrong type: a number where yes/no is needed or the reverse, a selector out of
+place, or an attribute that is not a number read as one.
+Compare to get yes/no, or use if() to get a number.
+Bad:   value = "= if(a, 1, 0)"   (a is a number)
+Fixed: value = "= if(a > 0, 1, 0)"
+"""
+
+[formula.unknown_function]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A call names no function in the table; the alias table below, else the nearest function."
+data = ["nearest"]
+explain = """
+A call names no function in the table. Some names from other languages have a fixed answer
+(clip is clamp, lerp is mix); otherwise `data.nearest` holds the nearest function.
+Call a function of the table, or the one the hint names.
+Bad:   value = "= clip(a, 0, 1)"
+Fixed: value = "= clamp(a, 0, 1)"
+"""
+
+[formula.unknown_name]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A name is not visible here; nearest name, and where it does exist."
+data = ["nearest"]
+explain = """
+A formula read a name that is not a field, a let name or an attribute of its owner.
+`data.nearest` holds the nearest visible name, and `related` points at its declaration.
+Write the name as declared, or declare it in [let].
+Bad:   value = "= 2 * hieght"
+Fixed: value = "= 2 * height"
+"""
+
+[formula.unmarked]
+severity = "error"
+chapter = "formulas"
+milestone = 1
+summary = "A formula key holds a string that does not start with `=`, or any string starts with spaces before `=`."
+explain = """
+A key that takes a formula holds a string that does not start with `=`, or has spaces before it.
+Only a string starting with `=` is read as a formula.
+Start the string with `=`.
+Bad:   value = " = 2 * height"
+Fixed: value = "= 2 * height"
+"""
+
+[geom.bad_parameter]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "An operation parameter outside its range; names it and its value."
+explain = """
+An operation parameter outside its range; names it and its value.
+To fix: The range.
+"""
+
+[geom.cell_merged]
+severity = "info"
+chapter = "geometry"
+milestone = 1
+summary = "A cell was merged into its neighbour, or bordered several stations."
+explain = """
+A cell was merged into its neighbour, or bordered several stations.
+"""
+
+[geom.cell_none]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "A stretch of frontage is shorter than one cell."
+explain = """
+A stretch of frontage is shorter than one cell.
+To fix: Shorten cell_length.
+"""
+
+[geom.cell_small]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "A short cell had no neighbour to merge into; kept."
+explain = """
+A short cell had no neighbour to merge into; kept.
+To fix: Lower the minimum, or lengthen the frontage.
+"""
+
+[geom.dead_end]
+severity = "info"
+chapter = "geometry"
+milestone = 1
+summary = "A network has junctions of degree 1; the count."
+explain = """
+A network has junctions of degree 1; the count.
+"""
+
+[geom.degenerate]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A path with fewer than two distinct points, or a ring with fewer than three or no area."
+explain = """
+A path with fewer than two distinct points, or a ring with fewer than three or no area.
+To fix: Add points or remove the feature.
+"""
+
+[geom.duplicate_source]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "One batch holds two inputs with one source id."
+explain = """
+One batch holds two inputs with one source id.
+To fix: Give each input its own source.
+"""
+
+[geom.face_needs_on]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A `face` word without `on`."
+explain = """
+A face word without on.
+To fix: Use a bearing in degrees.
+"""
+
+[geom.face_side]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "`face = \"toward\"` or `\"away\"` with `offset = 0`, or on a ref with no length."
+explain = """
+face = "toward" or "away" with offset = 0, or on a ref with no length.
+To fix: Give an offset, or use along or a bearing.
+"""
+
+[geom.face_unknown]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A `face` word that is not `along`, `toward` or `away`."
+data = ["nearest"]
+explain = """
+A face word that is not along, toward or away.
+To fix: The nearest word.
+"""
+
+[geom.follow_broken]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A path along another feature breaks into pieces; each gap and the widest offset that holds."
+explain = """
+A path along another feature breaks into pieces; each gap and the widest offset that holds.
+To fix: Use at most that offset, or a shorter span.
+"""
+
+[geom.internal]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A guarantee check failed inside the kernel (Euler, closure, validity). A defect of ours; exit 3."
+data = ["repro"]
+covered_by = "workspace"
+explain = """
+A guarantee check failed inside the kernel (Euler, closure, validity). A defect of ours; exit 3.
+To fix: Report it with the reproduction folder data.repro names.
+"""
+
+[geom.many_rings]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "`on`, `follows`, `interpolate` or `substring` on a region of more than one ring, which has no `t`."
+explain = """
+on, follows, interpolate or substring on a region of more than one ring, which has no t.
+To fix: Place on one piece's outline, or use at.
+"""
+
+[geom.mask_dropped]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "A masked piece had no area on the lattice and was dropped."
+explain = """
+A masked piece had no area on the lattice and was dropped.
+"""
+
+[geom.mask_empty]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "A mask is above 0 nowhere; the formula's text and its range of values."
+explain = """
+A mask is above 0 nowhere; the formula's text and its range of values.
+To fix: Check the condition against the range.
+"""
+
+[geom.mask_tiny]
+severity = "info"
+chapter = "geometry"
+milestone = 1
+summary = "A masked region has pieces smaller than one grid cell; the count and positions; kept."
+explain = """
+A masked region has pieces smaller than one grid cell; the count and positions; kept.
+"""
+
+[geom.meet_shape]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "`starts_at` or `ends_at` names a whole path or a region."
+explain = """
+starts_at or ends_at names a whole path or a region.
+To fix: Name an end, or place a point feature on it.
+"""
+
+[geom.no_area]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "A network encloses no area."
+explain = """
+A network encloses no area.
+To fix: Close the linework, or add a clip.
+"""
+
+[geom.no_length]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "`t`, `offset` or `follows` on a point, a zero-length thing or an empty region. (A run's is `run.no_length`, `rules.md` 5.)"
+explain = """
+t, offset or follows on a point, a zero-length thing or an empty region. (A run's is run.no_length, rules.md 5.)
+To fix: Use at, or place on a path or region.
+"""
+
+[geom.offset_empty]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "An inset left nothing."
+explain = """
+An inset left nothing.
+To fix: Use a smaller distance.
+"""
+
+[geom.offset_split]
+severity = "info"
+chapter = "geometry"
+milestone = 1
+summary = "An inset split a piece; the count."
+explain = """
+An inset split a piece; the count.
+"""
+
+[geom.overlap]
+severity = "info"
+chapter = "geometry"
+milestone = 1
+summary = "Two sources, or one with itself, run along one another; the stretch and the ids."
+explain = """
+Two sources, or one with itself, run along one another; the stretch and the ids.
+"""
+
+[geom.range]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A point the kernel computed (offset, cut, stroke, join) is outside ±(2^31 - 1) mm."
+explain = """
+A point the kernel computed (offset, cut, stroke, join) is outside ±(2^31 - 1) mm.
+To fix: Move the shape nearer the origin or reduce the distance.
+"""
+
+[geom.repeated_point]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "A point repeats the one before it; it is removed."
+explain = """
+A point repeats the one before it; it is removed.
+To fix: Delete the repeat.
+"""
+
+[geom.self_crossing]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A written ring crosses itself, visits a point twice or doubles back; the first fault."
+explain = """
+A written ring crosses itself, visits a point twice or doubles back; the first fault.
+To fix: Reorder the points or split the region.
+"""
+
+[geom.smooth_not_path]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "`smooth` on a feature without `path`."
+explain = """
+smooth on a feature without path.
+To fix: Remove smooth.
+"""
+
+[geom.span_order]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A `span` on a path whose `from` is not less than its `to`."
+explain = """
+A span on a path whose from is not less than its to.
+To fix: Swap the two, or reverse the path.
+"""
+
+[geom.t_range]
+severity = "error"
+chapter = "geometry"
+milestone = 1
+summary = "A `t` or a `span` end outside 0 to 1, or `nan`."
+explain = """
+A t or a span end outside 0 to 1, or nan.
+To fix: Write a fraction from 0 to 1.
+"""
+
+[geom.unowned_crossing]
+severity = "warning"
+chapter = "geometry"
+milestone = 1
+summary = "Two paths with kinds cross or touch with no owner of the meeting (2.7); names both."
+explain = """
+Two paths with kinds cross or touch with no owner of the meeting (2.7); names both.
+To fix: End one on the other or on a named owner.
+"""
+
+[graph.build_file_restored]
+severity = "info"
+chapter = "graph"
+milestone = 1
+summary = "A build file differed from its record and was written again. Run diagnostic."
+explain = """
+A build file differed from its record and was written again. Run diagnostic.
+"""
+
+[graph.busy]
+severity = "error"
+chapter = "graph"
+milestone = 1
+summary = "Another build holds this build directory's lock. Run diagnostic."
+covered_by = "workspace"
+explain = """
+Another build holds this build directory's lock. Run diagnostic.
+"""
+
+[graph.cycle]
+severity = "error"
+chapter = "graph"
+milestone = 1
+summary = "References form a loop; names one loop in source order, each member with the key that makes its edge."
+explain = """
+References form a loop; names one loop in source order, each member with the key that makes its edge.
+"""
+
+[graph.for_each_empty]
+severity = "info"
+chapter = "graph"
+milestone = 3
+summary = "A `for_each` selector matched nothing in the step's view; the step did not run. (M3)"
+explain = """
+A for_each selector matched nothing in the step's view; the step did not run. (M3)
+"""
+
+[graph.input_missing]
+severity = "error"
+chapter = "graph"
+milestone = 1
+summary = "A step's declared input (`inputs`, `protocol.md` 1) does not exist; names the path. The step does not run (5.1)."
+explain = """
+A step's declared input (inputs, protocol.md 1) does not exist; names the path. The step does not run (5.1).
+"""
+
+[graph.read_outside]
+severity = "error"
+chapter = "graph"
+milestone = 2
+summary = "A worker asked for something outside its stratum; names it and the lowest layer that could read it. (M2)"
+explain = """
+A worker asked for something outside its stratum; names it and the lowest layer that could read it. (M2)
+"""
+
+[graph.step_unstable]
+severity = "warning"
+chapter = "graph"
+milestone = 1
+summary = "Under `--rerun-step`, a step gave another value for a matching trace; names both digests. Run diagnostic."
+explain = """
+Under --rerun-step, a step gave another value for a matching trace; names both digests. Run diagnostic.
+"""
+
+[graph.store_corrupt]
+severity = "warning"
+chapter = "graph"
+milestone = 1
+summary = "A store entry did not match its name or could not be read; it was dropped and its node ran again. Run diagnostic."
+explain = """
+A store entry did not match its name or could not be read; it was dropped and its node ran again. Run diagnostic.
+"""
+
+[graph.store_unavailable]
+severity = "warning"
+chapter = "graph"
+milestone = 1
+summary = "The store cannot be written; this build keeps nothing more. Run diagnostic."
+covered_by = "workspace"
+explain = """
+The store cannot be written; this build keeps nothing more. Run diagnostic.
+"""
+
+[identity.bad_id]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "An id breaks `[a-z][a-z0-9_]*` or is longer than 48 bytes."
+explain = """
+An id breaks [a-z][a-z0-9_]* or is longer than 48 bytes. The hint gives the repaired id:
+lower-cased, each invalid character replaced by _, x in front if it does not start with a letter.
+Write the repaired id.
+Bad:   [feature.Mill-A]
+Fixed: [feature.mill_a]
+"""
+
+[identity.bad_key]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A step returned a key that breaks 2.2, or an unknown class; says which rule."
+explain = """
+A step returned a key that breaks 2.2, or an unknown class; says which rule.
+To fix: The repaired key, as for bad_id, or the class list.
+"""
+
+[identity.clear_empty]
+severity = "warning"
+chapter = "identity"
+milestone = 1
+summary = "A clear removed nothing (4.3)."
+explain = """
+A clear removed nothing (4.3).
+To fix: The nearest instance of a by producer and its distance; delete the clear if it is no longer wanted.
+"""
+
+[identity.duplicate_id]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "Two tables in one namespace share an id; names both, with file and line, across layers too."
+explain = """
+Two tables in one namespace share an id, in one file or across layers. The record names both.
+Rename one, or merge them in one layer.
+Bad:   [feature.a]  in world.toml   and   [feature.a]  in layers/b.toml
+Fixed: [feature.a]  and  [feature.a2]
+"""
+
+[identity.key_collision]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "One step gave two things one key; names both positions."
+explain = """
+One step gave two things one key; names both positions.
+To fix: Build the key from place, with the SDK's naming calls.
+"""
+
+[identity.key_in_text]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A produced name is written in a key that takes a name."
+explain = """
+A produced name is written in a key that takes a name.
+To fix: { of, class, near } at the thing's current position.
+"""
+
+[identity.lock_asset_missing]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A recorded item's asset is no longer bound by the pack."
+explain = """
+A recorded item's asset is no longer bound by the pack.
+To fix: Bind the asset again, or re-record with via lock.
+"""
+
+[identity.lock_differs]
+severity = "info"
+chapter = "identity"
+milestone = 1
+summary = "What the producers would now do inside a lock, and live names dropped for a recorded one, as counts."
+explain = """
+What the producers would now do inside a lock, and live names dropped for a recorded one, as counts.
+To fix: Re-record with via lock, or leave it.
+"""
+
+[identity.lock_ground_moved]
+severity = "warning"
+chapter = "identity"
+milestone = 1
+summary = "Recorded items stand on ground that moved; count and largest change."
+explain = """
+Recorded items stand on ground that moved; count and largest change.
+To fix: Re-record with via lock, or edit the ground's cause.
+"""
+
+[identity.lock_pin_clash]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A recorded item overlaps a pin; names both."
+explain = """
+A recorded item overlaps a pin; names both.
+To fix: Move the pin, or re-record with via lock.
+"""
+
+[identity.lock_rerecorded]
+severity = "info"
+chapter = "identity"
+milestone = 1
+summary = "A record was replaced; counts of the difference."
+explain = """
+A record was replaced; counts of the difference.
+To fix: None needed; review the record's diff.
+"""
+
+[identity.lock_unrecorded]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A lock has no record."
+explain = """
+A lock has no record.
+To fix: via lock <world> <id>.
+"""
+
+[identity.near_none]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A maker has no candidate of the class asked for; lists every selection left with nothing."
+explain = """
+A maker has no candidate of the class asked for; lists every selection left with nothing.
+To fix: The nearest candidate of any class of that maker and its distance, or that the maker made nothing.
+"""
+
+[identity.no_place]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A selection's `class` is `field` or `row`, which have no place (2.4)."
+explain = """
+A selection's class is field or row, which have no place (2.4).
+To fix: Read a field by name or 'tag:<tag>' in a formula; select a feature or instance by place.
+"""
+
+[identity.no_previous]
+severity = "info"
+chapter = "identity"
+milestone = 1
+summary = "No baseline to report changes against."
+explain = """
+No baseline to report changes against.
+To fix: None needed; the next build has one.
+"""
+
+[identity.not_a_producer]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "`by` names a set, or a maker that places no instances (a network, a cells table, a `where` feature)."
+explain = """
+by names a set, or a maker that places no instances (a network, a cells table, a where feature).
+To fix: Name the producers that place on it.
+"""
+
+[identity.of_ambiguous]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "`of` names a maker with several classes and no `class`."
+explain = """
+of names a maker with several classes and no class.
+To fix: The classes, with a count of each near near.
+"""
+
+[identity.on_both]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "`on` has both `ref` and `of`."
+explain = """
+on has both ref and of.
+To fix: Keep ref for an authored thing, of for a produced one.
+"""
+
+[identity.pin_in_clear]
+severity = "warning"
+chapter = "identity"
+milestone = 1
+summary = "A pin stands inside a clear; names both."
+explain = """
+A pin stands inside a clear; names both.
+To fix: Leave it if the pin is what the spot is for; otherwise move the pin.
+"""
+
+[identity.pin_in_keep_out]
+severity = "warning"
+chapter = "identity"
+milestone = 1
+summary = "A pin stands where `keep_out` is above 0; names the field."
+explain = """
+A pin stands where keep_out is above 0; names the field.
+To fix: Move the pin, or accept it here.
+"""
+
+[identity.pin_overlap]
+severity = "warning"
+chapter = "identity"
+milestone = 1
+summary = "A pin overlaps an instance of a producer outside its `by`; names both."
+explain = """
+A pin overlaps an instance of a producer outside its by; names both.
+To fix: Add that producer to by, or move the pin.
+"""
+
+[identity.pin_removed]
+severity = "info"
+chapter = "identity"
+milestone = 1
+summary = "What a pin removed: count and names."
+explain = """
+What a pin removed: count and names.
+To fix: Narrow by to keep them.
+"""
+
+[identity.pins_overlap]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "Two pins' footprints overlap; names both."
+explain = """
+Two pins' footprints overlap; names both.
+To fix: Move one; the overlap's size is given.
+"""
+
+[identity.reselected]
+severity = "warning"
+chapter = "identity"
+milestone = 1
+summary = "A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (`build.md` 11.1)."
+explain = """
+A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (build.md 11.1).
+To fix: Move near onto the thing meant, or select a feature that does not split (section 3).
+"""
+
+[identity.reserved]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r53, `surfaces.md` 1)."
+data = ["nearest"]
+explain = """
+An id is world, or a mount, set item or kind surface is named start, end or ground.
+Choose another name; the hint gives the nearest free one.
+Bad:   [feature.world]
+Fixed: [feature.world_a]
+"""
+
+[identity.unknown_lock]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "`via lock` was given an id that is no lock."
+data = ["nearest"]
+explain = """
+via lock was given an id that is no lock.
+To fix: The nearest lock id.
+"""
+
+[identity.unknown_maker]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "`of` names nothing."
+data = ["nearest"]
+explain = """
+of names nothing.
+To fix: The nearest maker id.
+"""
+
+[identity.unknown_place]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "A part of a place name names nothing."
+data = ["nearest"]
+explain = """
+A part of a place name names nothing. `data.nearest` holds the nearest match.
+Write the place name as declared.
+Bad:   at = "a.ned"
+Fixed: at = "a.end"
+"""
+
+[identity.unknown_producer]
+severity = "error"
+chapter = "identity"
+milestone = 1
+summary = "`by` names nothing."
+data = ["nearest"]
+explain = """
+by names nothing.
+To fix: The nearest producer id.
+"""
+
+[load.bad_file]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "An array file's header, size or shape is wrong, or a listed file is missing."
+covered_by = "reader"
+explain = """
+An array file's header, size or shape is wrong, or a listed file is missing.
+"""
+
+[load.bad_target]
+severity = "warning"
+chapter = "build"
+milestone = 1
+summary = "An output feature's camera target (a name attribute) is missing, is not the resolved form `{ \"at\", \"name\" }` of 9.1, or lies within 1 mm of the eye in plan, or its eye height is missing or not a finite number (15.1); names the feature and the attribute. That feature gets no camera. Hint: check that its kind lists the attribute in `names` (`authority.md` 1.2) and gives the eye height a default."
+covered_by = "reader"
+explain = """
+An output feature's camera target (a name attribute) is missing, is not the resolved form { "at", "name" } of 9.1, or lies within 1 mm of the eye in plan, or its eye height is missing or not a finite number (15.1); names the feature and the attribute. That feature gets no camera. Hint: check that its kind lists the attribute in names (authority.md 1.2) and gives the eye height a default.
+"""
+
+[load.fields_not_drawn]
+severity = "info"
+chapter = "build"
+milestone = 1
+summary = "The fields the loader neither drew nor kept, by name."
+covered_by = "reader"
+explain = """
+The fields the loader neither drew nor kept, by name.
+"""
+
+[load.format]
+severity = "error"
+chapter = "build"
+milestone = 1
+summary = "A loader found no manifest, or a `format` it does not read; names `diagnostics.json` when present."
+covered_by = "reader"
+explain = """
+A loader found no manifest, or a format it does not read; names diagnostics.json when present.
+"""
+
+[load.too_many_materials]
+severity = "warning"
+chapter = "build"
+milestone = 1
+summary = "A chunk names more materials than this loader draws; names the chunk and its materials (`fields.md` 7.1)."
+covered_by = "reader"
+explain = """
+A chunk names more materials than this loader draws; names the chunk and its materials (fields.md 7.1).
+"""
+
+[num.empty_reduction]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "A mean, minimum or maximum over a feature with no samples. Names the feature."
+explain = """
+A mean, minimum or maximum over a feature with no samples. Names the feature.
+"""
+
+[num.extent_empty]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "`extent` has `x1 <= x0` or `y1 <= y0`. Any other wrong form is `doc.type`."
+explain = """
+The extent has x1 <= x0 or y1 <= y0, so the world has no area.
+Write the corners as [x0, y0, x1, y1] with x1 > x0 and y1 > y0.
+Bad:   extent = [100, 0, 0, 100]
+Fixed: extent = [0, 0, 100, 100]
+"""
+
+[num.extent_not_multiple]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "The extent's width or height is not a whole multiple of `resolution`. The hint keeps `x0`, `y0` and gives `x1`, `y1` rounded down and up, and the nearest resolutions that divide both widths."
+explain = """
+The extent's width or height is not a whole multiple of the resolution. The hint keeps x0 and y0
+and gives x1 and y1 rounded down and up, and the nearest resolutions that divide both widths.
+Write one of them.
+Bad:   extent = [0, 0, 100.25, 100]   with resolution = 0.5
+Fixed: extent = [0, 0, 100.5, 100]
+"""
+
+[num.not_finite]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "A number in text is `inf` or `nan`."
+explain = """
+A number in the text is inf or nan, which no key takes.
+Write a finite number.
+Bad:   value = nan
+Fixed: value = 0
+"""
+
+[num.not_finite_result]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "A step or a stored feature value would store an infinite or NaN value. Names the step or feature and the row or position. A formula's is `formula.not_finite`."
+explain = """
+A step or a stored feature value would store an infinite or NaN value. Names the step or feature and the row or position. A formula's is formula.not_finite.
+"""
+
+[num.out_of_range]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "A number in text out of range: a length beyond plus or minus `2^31 - 1` mm, a facing beyond 64 bits, a double whose nearest value is infinite. Computed positions out of range are `geom.range`."
+explain = """
+A number is out of range: a length beyond plus or minus 2^31 - 1 mm, a facing beyond 64 bits, a
+double too large to hold.
+Write a number in range.
+Bad:   width = 3000000
+Fixed: width = 3000
+"""
+
+[num.overflow]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "A checked integer operation overflowed. Names the subject and the position."
+explain = """
+A checked integer operation overflowed. Names the subject and the position.
+"""
+
+[num.resolution]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "`resolution` is below 1 mm."
+explain = """
+The resolution is below 1 mm.
+Write a post spacing of at least 0.001.
+Bad:   resolution = 0.0001
+Fixed: resolution = 0.5
+"""
+
+[num.seed_range]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "The world `seed` is negative."
+explain = """
+The world seed is negative.
+Write a seed of 0 or more.
+Bad:   seed = -1
+Fixed: seed = 1
+"""
+
+[num.seed_type]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "A seed of the wrong form: a world seed not an integer; a scatter seed not a name, or a name that breaks the id grammar. The hint suggests a name, or the lower-cased form."
+explain = """
+A seed has the wrong form: a world seed that is not an integer, or a scatter seed that is not a
+name or breaks the id grammar.
+Write the form the hint suggests.
+Bad:   seed = "Base"   (on a scatter)
+Fixed: seed = "base"
+"""
+
+[num.too_many_posts]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "`nx * ny` exceeds the post limit. Names `nx`, `ny` and the limit."
+explain = """
+The grid would hold more posts than the limit; the record names nx, ny and the limit.
+Use a coarser resolution or a smaller extent.
+Bad:   extent = [0, 0, 100000, 100000]   with resolution = 0.5
+Fixed: extent = [0, 0, 100000, 100000]   with resolution = 8
+"""
+
+[num.too_precise]
+severity = "error"
+chapter = "numbers"
+milestone = 1
+summary = "A length is not a whole number of millimetres, or a facing not a whole number of millidegrees. The hint names the two nearest values that are."
+explain = """
+A length is not a whole number of millimetres, or a facing not a whole number of millidegrees.
+The hint gives the two nearest values that are.
+Write one of them.
+Bad:   width = 1.0005
+Fixed: width = 1.001
+"""
+
+[pack.accept_refused]
+severity = "error"
+chapter = "assets"
+milestone = 2
+summary = "`via pack accept` found errors; nothing written."
+explain = """
+via pack accept found errors; nothing written.
+To fix: Fix the listed errors, then accept again.
+"""
+
+[pack.bad_axes]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "`front` or `up` is not one of the six signed axes, or both name one axis."
+explain = """
+front or up is not one of the six signed axes, or both name one axis.
+To fix: A pair on two axes, for example front = "-y", up = "+z".
+"""
+
+[pack.bad_facts]
+severity = "error"
+chapter = "assets"
+milestone = 2
+summary = "The facts file is not readable, or not in 4.1's form."
+explain = """
+The facts file is not readable, or not in 4.1's form.
+To fix: Delete it and run via pack accept PACK.
+"""
+
+[pack.bad_model]
+severity = "error"
+chapter = "assets"
+milestone = 2
+summary = "A model is not readable glTF 2.0, holds a non-finite number or a bad index count, or uses an extension v0 does not read."
+explain = """
+A model is not readable glTF 2.0, holds a non-finite number or a bad index count, or uses an extension v0 does not read.
+To fix: Re-export without the named extension, or fix the pointed part.
+"""
+
+[pack.material_repeat]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "A material has `file` without `repeat`, or `repeat` without `file`."
+explain = """
+A material has file without repeat, or repeat without file.
+To fix: Write both, or neither.
+"""
+
+[pack.missing_file]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "`root`, a file the pack names, or a URI a model references, does not exist. M1 checks `root` and a material's `file`; M2 adds models, `detail` copies and their URIs."
+data = ["nearest"]
+explain = """
+root, a file the pack names, or a URI a model references, does not exist. M1 checks root and a material's file; M2 adds models, detail copies and their URIs.
+To fix: The nearest file name in that folder.
+"""
+
+[pack.not_found]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "The `pack` string names no file; the roots searched, by place."
+data = ["nearest"]
+explain = """
+The pack string names no file; the roots searched, by place.
+To fix: The nearest pack name, or write a path.
+"""
+
+[pack.outside_root]
+severity = "error"
+chapter = "assets"
+milestone = 2
+summary = "A file reached outside `root`: an absolute URI, a `..` out of it, a scheme other than `data:`, a symbolic link."
+explain = """
+A file reached outside root: an absolute URI, a .. out of it, a scheme other than data:, a symbolic link.
+To fix: Move the file under root, or move root.
+"""
+
+[pack.range]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "A pack number out of range: `size` or `repeat` not above 0, `triangles`, `max_relief` below 0, a `colour` part outside 0 to 1."
+explain = """
+A pack number out of range: size or repeat not above 0, triangles, max_relief below 0, a colour part outside 0 to 1.
+To fix: The allowed range.
+"""
+
+[pack.shadowed]
+severity = "info"
+chapter = "assets"
+milestone = 1
+summary = "A pack name found in several roots."
+explain = """
+A pack name found in several roots.
+To fix: The one used; write a path to choose another.
+"""
+
+[pack.stale_facts]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "The facts file holds ids the pack no longer has."
+explain = """
+The facts file holds ids the pack no longer has.
+To fix: Run via pack accept PACK to drop them.
+"""
+
+[pack.unaccepted]
+severity = "info"
+chapter = "assets"
+milestone = 2
+summary = "The pack has model assets and no facts file; revisions cannot be reported."
+explain = """
+The pack has model assets and no facts file; revisions cannot be reported.
+To fix: Run via pack accept PACK.
+"""
+
+[pack.unknown_material]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "A `paint` names a material the pack lacks."
+data = ["nearest"]
+explain = """
+A paint names a material the pack lacks.
+To fix: The nearest material, or add [material.<name>].
+"""
+
+[pack.unknown_taxon]
+severity = "error"
+chapter = "assets"
+milestone = 1
+summary = "An asset's `taxon`, a selection or a `--taxon` filter names an undeclared taxon."
+data = ["nearest"]
+explain = """
+An asset's taxon, a selection or a --taxon filter names an undeclared taxon.
+To fix: The nearest declared path, or declare [taxon."<path>"].
+"""
+
+[place.asset_or_set]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "A placement writes both `asset` and `set`, or neither."
+explain = """
+A placement writes both asset and set, or neither.
+To fix: Keep one of asset, set.
+"""
+
+[place.crowded]
+severity = "warning"
+chapter = "rules"
+milestone = 1
+summary = "Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both."
+explain = """
+Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both.
+To fix: Change one producer's on or span, or add a clear or pin in the higher layer with by naming the lower producer.
+"""
+
+[place.gave_way]
+severity = "info"
+chapter = "rules"
+milestone = 1
+summary = "A producer's candidates dropped by overlap and by relief, as counts, with their box."
+explain = """
+A producer's candidates dropped by overlap and by relief, as counts, with their box.
+To fix: Widen the space or change the hand instances it gives way to; nothing if intended.
+"""
+
+[place.keep_out]
+severity = "warning"
+chapter = "rules"
+milestone = 1
+summary = "An instance stands where `keep_out` is above 0; names the field and the position."
+explain = """
+An instance stands where keep_out is above 0; names the field and the position.
+To fix: Move it, or change the kind whose effect writes keep_out there.
+"""
+
+[place.margin_alone]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "`margin` without `ground`."
+explain = """
+margin without ground.
+To fix: Add ground = "<kind>", or remove margin.
+"""
+
+[place.no_footprint]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "`ground` on an asset with no footprint."
+explain = """
+ground on an asset with no footprint.
+To fix: Declare the asset's footprint, or remove ground.
+"""
+
+[place.no_position]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "An instance or pin has neither `at` nor `on`; a run has no `on`."
+explain = """
+An instance or pin has neither at nor on; a run has no on.
+To fix: Write at or on.
+"""
+
+[place.on_form]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "`span` in an instance's `on`, or `t` in a run's `on`. (`t` or `offset` on a thing with no length is `geom.no_length`.)"
+explain = """
+span in an instance's on, or t in a run's on. (t or offset on a thing with no length is geom.no_length.)
+To fix: Write t on an instance, span on a run.
+"""
+
+[place.outside]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "A hand instance or set item whose origin is outside the extent; not placed (8.4)."
+explain = """
+A hand instance or set item whose origin is outside the extent; not placed (8.4).
+To fix: Move it inside the extent, or widen the extent.
+"""
+
+[place.overlap]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "Two hand instances' footprints overlap; names both."
+explain = """
+Two hand instances' footprints overlap; names both.
+To fix: Move one; the overlap's size is given.
+"""
+
+[place.range]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "On an instance, run or set item: `scale` not above 0, `tint` below 0, `margin` below 0, or a `[lo, hi]` pair (only a scatter draws)."
+explain = """
+On an instance, run or set item: scale not above 0, tint below 0, margin below 0, or a [lo, hi] pair (only a scatter draws).
+To fix: The key and its allowed range.
+"""
+
+[place.relief]
+severity = "warning"
+chapter = "rules"
+milestone = 1
+summary = "Relief under an instance exceeds its asset's `max_relief`; gives both numbers and the position."
+explain = """
+Relief under an instance exceeds its asset's max_relief; gives both numbers and the position.
+To fix: Move it, give it ground with a kind that levels, or choose an asset with a larger max_relief.
+"""
+
+[protocol.absolute_path]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "`command` holds an absolute path."
+explain = """
+command holds an absolute path.
+"""
+
+[protocol.blob_digest]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A blob's bytes do not match its name."
+explain = """
+A blob's bytes do not match its name.
+"""
+
+[protocol.blob_header]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2)."
+explain = """
+A column blob whose header or size does not match the dtype and shape its message gives. A non-finite sample is num.not_finite_result (4.2).
+"""
+
+[protocol.code_folder]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "The code folder is or holds the world's folder; move the script into its own folder."
+explain = """
+The code folder is or holds the world's folder; move the script into its own folder.
+"""
+
+[protocol.column_mixed]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "One attribute has two types across the selected kinds; names both kinds."
+explain = """
+One attribute has two types across the selected kinds; names both kinds.
+"""
+
+[protocol.crashed]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "The worker exited during a call."
+explain = """
+The worker exited during a call.
+"""
+
+[protocol.deadline]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "No answer by the deadline; which phase, `data.phase` (`initialize`, `step.call` or `cancel`), and the deadline in seconds, `data.deadline`."
+data = ["phase", "deadline"]
+explain = """
+No answer by the deadline; which phase, and the deadline.
+"""
+
+[protocol.explain_differs]
+severity = "warning"
+chapter = "protocol"
+milestone = 1
+summary = "A step sent two `explain` texts for one code."
+explain = """
+A step sent two explain texts for one code.
+"""
+
+[protocol.failed]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A plain command exited non-zero; `data.exit`."
+data = ["exit"]
+explain = """
+A plain command exited non-zero; data.exit.
+"""
+
+[protocol.field_file]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field`."
+explain = """
+A returned field file is outside 4.2's .npy subset, or has the wrong descr or shape for its field; the hint is step.out.field.
+"""
+
+[protocol.framing]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor."
+explain = """
+A frame was not Content-Length and JSON; likely output written to the protocol descriptor.
+"""
+
+[protocol.input_undeclared]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "`input.open` named a path not in `inputs`."
+explain = """
+input.open named a path not in inputs.
+"""
+
+[protocol.key_shadows]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A returned key equals a name the step can see."
+explain = """
+A returned key equals a name the step can see.
+"""
+
+[protocol.message_too_large]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A frame over 16 MiB, `data.bytes` long; send the data as a blob."
+data = ["bytes"]
+explain = """
+A frame over 16 MiB; send the data as a blob.
+"""
+
+[protocol.no_entry]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "The script has no top-level function named after `when`."
+explain = """
+The script has no top-level function named after when.
+"""
+
+[protocol.no_explain]
+severity = "warning"
+chapter = "protocol"
+milestone = 1
+summary = "A step sent a code with no `explain` text."
+explain = """
+A step sent a code with no explain text.
+"""
+
+[protocol.no_output]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A generate step returned no document."
+explain = """
+A generate step returned no document.
+"""
+
+[protocol.no_program]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "`command[0]` is no configured program and no file, or is a `.bat`/`.cmd`; the hint gives `via config program`."
+explain = """
+command[0] is no configured program and no file, or is a .bat/.cmd; the hint gives via config program.
+"""
+
+[protocol.output_file]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A returned `file` leaves `out` or names nothing."
+explain = """
+A returned file leaves out or names nothing.
+"""
+
+[protocol.output_json]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A plain command's `out/diagnostics.json` is not a list of diagnostic objects."
+explain = """
+A plain command's out/diagnostics.json is not a list of diagnostic objects.
+"""
+
+[protocol.output_table]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A returned document holds a table or key a step may not return, or a lint or export returned one."
+explain = """
+A returned document holds a table or key a step may not return, or a lint or export returned one.
+"""
+
+[protocol.output_twice]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A worker returned a document and wrote `document.toml`."
+explain = """
+A worker returned a document and wrote document.toml.
+"""
+
+[protocol.raised]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "The step raised an exception it did not catch; `data.exception`."
+data = ["exception"]
+explain = """
+The step raised an exception it did not catch; data.exception.
+"""
+
+[protocol.slow_exit]
+severity = "info"
+chapter = "protocol"
+milestone = 1
+summary = "A worker had to be killed after `shutdown`."
+explain = """
+A worker had to be killed after shutdown.
+"""
+
+[protocol.start]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "The process could not be started; `data.kind` (6.2)."
+data = ["kind"]
+explain = """
+The process could not be started; data.kind (6.2).
+"""
+
+[protocol.unknown_library]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A `lib:` element names a library not in `include`; the nearest name."
+data = ["nearest"]
+explain = """
+A lib: element names a library not in include; the nearest name.
+"""
+
+[protocol.untrusted]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "A generate step is not trusted and has no committed result; the hint is `via trust`."
+explain = """
+A generate step is not trusted and has no committed result; the hint is via trust.
+"""
+
+[protocol.untrusted_result]
+severity = "info"
+chapter = "protocol"
+milestone = 2
+summary = "An untrusted step was built from its committed result, which matched (M2)."
+explain = """
+An untrusted step was built from its committed result, which matched (M2).
+"""
+
+[protocol.untrusted_skipped]
+severity = "warning"
+chapter = "protocol"
+milestone = 1
+summary = "An untrusted lint or export step was skipped."
+explain = """
+An untrusted lint or export step was skipped.
+"""
+
+[protocol.untrusted_stale]
+severity = "error"
+chapter = "protocol"
+milestone = 2
+summary = "A committed result's static key or a read of its trace differs from the current build; names the first difference (M2)."
+explain = """
+A committed result's static key or a read of its trace differs from the current build; names the first difference (M2).
+"""
+
+[protocol.version]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "The worker speaks another protocol version; both versions, `data.engine` and `data.worker`."
+data = ["engine", "worker"]
+explain = """
+The worker speaks another protocol version; both versions.
+"""
+
+[protocol.when_unserved]
+severity = "error"
+chapter = "protocol"
+milestone = 1
+summary = "The worker's `capabilities.when` lacks the step's `when`, `data.when`."
+data = ["when"]
+explain = """
+The worker's capabilities.when lacks the step's when.
+"""
+
+[run.count]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "`count` below 1, or below 2 with `ends = \"both\"` on an open stretch."
+explain = """
+count below 1, or below 2 with ends = "both" on an open stretch.
+To fix: The least allowed count.
+"""
+
+[run.count_or_spacing]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "A run writes both `count` and `spacing`, or neither."
+explain = """
+A run writes both count and spacing, or neither.
+To fix: Keep one.
+"""
+
+[run.no_length]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "The run's `on` names a thing with no length, or its stretch is zero millimetres."
+explain = """
+The run's on names a thing with no length, or its stretch is zero millimetres.
+To fix: Name a path or region, or widen span.
+"""
+
+[run.outside]
+severity = "warning"
+chapter = "rules"
+milestone = 1
+summary = "Members fell outside the extent and were not made; gives the count."
+explain = """
+Members fell outside the extent and were not made; gives the count.
+To fix: Narrow span to the part inside the extent.
+"""
+
+[scatter.clump]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "`clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer."
+explain = """
+clump breaks 7.3: both forms, no radius, a value out of range, or around naming a non-producer.
+To fix: The key to remove or change.
+"""
+
+[scatter.empty]
+severity = "warning"
+chapter = "rules"
+milestone = 1
+summary = "A scatter placed nothing; names the stage that removed the last candidate."
+explain = """
+A scatter placed nothing; names the stage that removed the last candidate.
+To fix: The key behind that stage (density, within, keep_out, a hand edit).
+"""
+
+[scatter.keep_out_twice]
+severity = "info"
+chapter = "rules"
+milestone = 1
+summary = "`density` reads a `keep_out` field, which the scatter already applies."
+explain = """
+density reads a keep_out field, which the scatter already applies.
+To fix: Remove the keep_out factor from density.
+"""
+
+[scatter.range]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "A `[lo, hi]` with `lo > hi`, a `scale` not above 0, a `tint` below 0, a `jitter` outside 0 to 1, a `spacing` not above 0, or a `weight` not above 0."
+explain = """
+A [lo, hi] with lo > hi, a scale not above 0, a tint below 0, a jitter outside 0 to 1, a spacing not above 0, or a weight not above 0.
+To fix: The key and its allowed range.
+"""
+
+[scatter.within]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "`within` names a path or a point."
+explain = """
+within names a path or a point.
+To fix: Name a region feature, a footprint feature, or select an area, cell, rest or piece.
+"""
+
+[set.empty]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "A set has no items."
+explain = """
+A set has no items.
+To fix: Add [set.<id>.item.<name>], or remove the set.
+"""
+
+[set.unknown]
+severity = "error"
+chapter = "rules"
+milestone = 1
+summary = "`set` names no set."
+data = ["nearest"]
+explain = """
+set names no set.
+To fix: The nearest set id.
+"""
+
+[set.unused]
+severity = "info"
+chapter = "rules"
+milestone = 1
+summary = "A set nothing places."
+explain = """
+A set nothing places.
+To fix: Place it with an instance or run, or remove it.
+"""
+
+[surface.apart]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "Two paired mounts lie at different plan points; gives both."
+explain = """
+Two paired mounts lie at different plan points; gives both.
+"""
+
+[surface.bound]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "Its `bound` is not above 0 or not finite; gives the value."
+explain = """
+Its bound is not above 0 or not finite; gives the value.
+"""
+
+[surface.clipped]
+severity = "info"
+chapter = "surfaces"
+milestone = 3
+summary = "Its bound reaches beyond the extent; the share lost."
+explain = """
+Its bound reaches beyond the extent; the share lost.
+"""
+
+[surface.connector]
+severity = "error"
+chapter = "surfaces"
+milestone = 5
+summary = "Different connectors; names both."
+explain = """
+Different connectors; names both.
+"""
+
+[surface.empty_region]
+severity = "error"
+chapter = "surfaces"
+milestone = 1
+summary = "A region given to `relief` has zero area."
+explain = """
+A region given to relief has zero area.
+"""
+
+[surface.facing]
+severity = "error"
+chapter = "surfaces"
+milestone = 5
+summary = "Two paired mounts do not face opposite ways; both bearings."
+explain = """
+Two paired mounts do not face opposite ways; both bearings.
+"""
+
+[surface.fold]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "Its strip overlaps itself; position and the largest bound that holds."
+explain = """
+Its strip overlaps itself; position and the largest bound that holds.
+"""
+
+[surface.gap]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: \"make the two sides equal: change <a> or <b>, or add an effect of <owner> that sets the ground to <z>\"."
+explain = """
+The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: "make the two sides equal: change <a> or <b>, or add an effect of <owner> that sets the ground to <z>".
+"""
+
+[surface.ground_off_terrain]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "`ground` on an instance that stands on a kind surface."
+explain = """
+ground on an instance that stands on a kind surface.
+"""
+
+[surface.host_missing]
+severity = "error"
+chapter = "surfaces"
+milestone = 1
+summary = "What it is placed `on`, or the owner of the mount it is placed on, was not placed (4.1)."
+explain = """
+What it is placed on, or the owner of the mount it is placed on, was not placed (4.1).
+"""
+
+[surface.meets_self]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "`meets` names the mount itself."
+explain = """
+meets names the mount itself.
+"""
+
+[surface.meets_twice]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "The mount is in two `meets` pairs; names both others."
+explain = """
+The mount is in two meets pairs; names both others.
+"""
+
+[surface.mount_face]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "A face word on a kind mount. Hint: a number, 0 along travel, 180 against."
+explain = """
+A face word on a kind mount. Hint: a number, 0 along travel, 180 against.
+"""
+
+[surface.name_clash]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "A surface and a mount share a name."
+explain = """
+A surface and a mount share a name.
+"""
+
+[surface.off_bound]
+severity = "warning"
+chapter = "surfaces"
+milestone = 3
+summary = "Part of its footprint lies outside its surface's bound; the share."
+explain = """
+Part of its footprint lies outside its surface's bound; the share.
+"""
+
+[surface.outside]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code."
+explain = """
+Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is place.outside (rules.md 8.4), never this code.
+"""
+
+[surface.owner_shape]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "A surface on a point kind, a path owner without `bound`, or a region owner with one."
+explain = """
+A surface on a point kind, a path owner without bound, or a region owner with one.
+"""
+
+[surface.through]
+severity = "warning"
+chapter = "surfaces"
+milestone = 3
+summary = "Its height reaches through another surface above its origin; names it."
+explain = """
+Its height reaches through another surface above its origin; names it.
+"""
+
+[surface.too_early]
+severity = "error"
+chapter = "surfaces"
+milestone = 2
+summary = "`meetings()` called at `generate`."
+explain = """
+meetings() called at generate.
+"""
+
+[surface.two_terrains]
+severity = "error"
+chapter = "surfaces"
+milestone = 1
+summary = "Two surface fields at the top level. Hint: make one a kind's surface."
+explain = """
+Two surface fields at the top level. Hint: make one a kind's surface.
+"""
+
+[surface.unknown_mount]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "`meets` names a mount the kind lacks; lists the kind's mounts."
+explain = """
+meets names a mount the kind lacks; lists the kind's mounts.
+"""
+
+[surface.unknown_surface]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "`surface` names a surface the kind lacks; lists the kind's surfaces."
+explain = """
+surface names a surface the kind lacks; lists the kind's surfaces.
+"""
+
+[surface.unmet]
+severity = "warning"
+chapter = "surfaces"
+milestone = 5
+summary = "A mount with a connector is answered by nothing (R18: a stub). Hint: \"end a path whose kind has connector <c> here: `ends_at = \\\"<place>\\\"`\"."
+explain = """
+A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: ends_at = \\"<place>\\"".
+"""
+
+[surface.which]
+severity = "error"
+chapter = "surfaces"
+milestone = 3
+summary = "`on` a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it `on` a mount."
+explain = """
+on a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it on a mount.
+"""

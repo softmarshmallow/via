@@ -1,0 +1,8 @@
+format    = "via-case-1"
+summary   = "via help exits 0; build.md case 40 (build.md 14, diagnostics.md 7)."
+milestone = 0
+actions   = ["help"]
+
+[action.help]
+via  = ["help"]
+exit = 0

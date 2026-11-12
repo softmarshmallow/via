@@ -732,6 +732,8 @@ owns what it does. A form that chapter has not settled is marked (open). Exit st
 | `via eval WORLD --field F [--window i0,j0,i1,j1] [--tile N] --out FILE` | Evaluates one scalar field in the build's own view, over one window or the whole extent, and writes it as an array file. Below. | `numbers.md` 6 | M1 |
 | `via vectors FILE` | Computes every vector of a vector file with the binary's own numerics and prints what it got. Below. | `numbers.md` 10 | M1 |
 | `via kernel OP --in FILE --out FILE` | Runs one geometry operation on the shapes in a file; a test command, no build uses it. | `geometry.md` 7 | M1 |
+| `via --version` | Prints the engine version and exits 0. | this chapter | M0 |
+| `via help` | Prints the commands and exits 0. | this chapter | M0 |
 
 The glTF reader is not a `via` command: it lives under `engines/gltf/` (15.3).
 
@@ -1158,6 +1160,8 @@ numpy or the standard library, never through the SDK. Every case is also checked
     `--window 3,5,10,8` and `--window 128,128,256,256`; each file equals the same cut of the whole,
     bit for bit, and of `fields/height.npy`. `--window 0,0,0,1` and `--window 0,0,600,1`: `cli.usage`,
     exit 2.
+39. **Version** (M0). `via --version`; exit 0.
+40. **Help** (M0). `via help`; exit 0.
 
 Stable names across a change are `identity.md`'s cases, not repeated here.
 

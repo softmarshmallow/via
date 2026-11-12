@@ -1,0 +1,14 @@
+[package]
+name = "via-geom"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The geometry kernel: lattice geometry, noding, networks, areas and cells."
+
+[dependencies]
+via-num = { workspace = true }
+via-diag = { workspace = true }
+
+[lints]
+workspace = true

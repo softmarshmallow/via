@@ -244,11 +244,11 @@ outside the world; each lane's step past the ford lies inside it, over the beck.
 `spec/vectors/geometry/ford_frame.json`, a `via kernel project` input with its expected output
 (section 7), written with the runner.
 
-**A smoothed frame: (open).** Decided before M1 track A by this vector, read against the effects
+**A smoothed frame: (open).** Decided in M1 track A by this vector (R33), read against the effects
 the water and ways libraries declare for the beck and the lane: if any of them reads `t` at a
 radius where the vector's jump exceeds one metre, or reads `sd` (not through `abs`) past a lane's
-end, a smoothed frame is specified here before track A starts. Otherwise v1 keeps the nearest-point
-frame and E1 stays accepted with the note above.
+end, a smoothed frame is specified here before any track A effect reads the frame. Otherwise v1
+keeps the nearest-point frame and E1 stays accepted with the note above.
 
 ### 2.7 Ends and meetings (R18)
 
@@ -366,7 +366,7 @@ over the centroid, which can lie outside a bent region, and over polylabel (Agaf
 result depends on its queue order and stopping rule.
 
 How a network is declared in text, and so how its naming points are chosen, is (open): decided in
-M3 with the user syntax for areas and cells (vocabulary 5).
+M3 with the user syntax for areas and cells (vocabulary 5, R33).
 
 | Guarantee | Statement |
 |---|---|

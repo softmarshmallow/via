@@ -1,0 +1,741 @@
+# The vocabulary, machine copy (R33). Source: spec/vocabulary.md, which is normative; the
+# deny-list test (vocabulary.md 7) reads [deny] and [allow] from here, and a workspace check
+# holds this file equal to the chapter. Machine files of protocol.md 6 (config.toml,
+# trust.toml) are not listed (R33).
+
+format = "via-vocabulary-1"
+
+# Section 7. A hit is a whole word or its plural in s or es; a two-word entry matches two words
+# in a row. Identifiers split at `_`, `::` and lower-to-upper case changes; string literals at
+# every character that is not a letter; comments are not read.
+[deny]
+words = [
+    "road",
+    "lane",
+    "street",
+    "main way",
+    "crossing",
+    "ford",
+    "bridge",
+    "deck",
+    "river",
+    "beck",
+    "lake",
+    "water",
+    "shore",
+    "district",
+    "square",
+    "axis",
+    "ward",
+    "lot",
+    "block",
+    "building",
+    "storey",
+    "room",
+    "door",
+    "window",
+    "stair",
+    "wall",
+    "roof",
+    "pad",
+    "tree",
+    "plant",
+    "bookmark",
+    "poi",
+    "waterfront",
+    "expect",
+    "profile",
+    "reach",
+    "headroom",
+]
+crates = ["via-num", "via-diag", "via-doc", "via-expr", "via-geom", "via-raster", "via-graph", "via-model", "via-proto", "via-cli", "via-step"]
+excluded = ["via-terrain"]
+
+# Section 7: words the test passes, allowed in the core in this sense only; review checks it.
+[allow.window]
+sense = "An evaluation window over a field (doctrine section 7)."
+
+[allow.axis]
+sense = "A coordinate axis."
+
+[allow.block]
+sense = "Blocking input and output; a block of code."
+
+[allow.wall]
+sense = "Wall-clock time."
+
+[allow.square]
+sense = "Squaring a number."
+
+[allow.tree]
+sense = "`BTreeMap` (R19's ordered maps); a spatial index tree."
+
+[allow.expect]
+sense = "Rust's `expect` on `Option` and `Result`."
+
+[allow.pad]
+sense = "Padding bytes or text."
+
+[allow.lane]
+sense = "A lane of a vector instruction."
+
+[allow.reach]
+sense = "Reachability in a graph."
+
+[allow.crossing]
+sense = "Where two segments or paths cross (geometry), as in `geom.self_crossing`, `geom.unowned_crossing`."
+
+[allow.profile]
+sense = "A picture's colour profile, `field.file_profile`; a Cargo build profile."
+
+# Section 3: every v1 key and table, in the chapter's order. `takes` is the defining row's
+# Takes column; `sections` lists every table of section 3 the key appears in.
+[key."name"]
+takes = "string"
+chapter = "documents"
+sections = ["Document"]
+
+[key."extent"]
+takes = "4 lengths"
+chapter = "numbers"
+sections = ["Document", "Fields"]
+
+[key."resolution"]
+takes = "length"
+chapter = "numbers"
+sections = ["Document"]
+
+[key."seed"]
+takes = "integer (world), string (rule)"
+chapter = "numbers"
+sections = ["Document", "Rules"]
+
+[key."include"]
+takes = "list of strings"
+chapter = "documents"
+sections = ["Document"]
+
+[key."pack"]
+takes = "string"
+chapter = "assets"
+sections = ["Document"]
+
+[key."[layer.<id>]"]
+takes = "table"
+chapter = "documents"
+sections = ["Document"]
+
+[key."file"]
+takes = "string"
+chapter = "documents"
+sections = ["Document", "Fields"]
+
+[key."owner"]
+takes = "string"
+chapter = "documents"
+sections = ["Document"]
+
+[key."rank"]
+takes = "integer"
+chapter = "documents"
+sections = ["Document"]
+
+[key."[let]"]
+takes = "table of formulas"
+chapter = "formulas"
+sections = ["Document"]
+
+[key."remove"]
+takes = "bool"
+chapter = "documents"
+sections = ["Document"]
+
+[key."unset"]
+takes = "list of strings"
+chapter = "documents"
+sections = ["Document"]
+
+[key."chunk"]
+takes = "length"
+chapter = "build"
+sections = ["Document"]
+
+[key."[budget]"]
+takes = "table"
+chapter = "build"
+sections = ["Document"]
+
+[key."[field.<name>]"]
+takes = "table"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."role"]
+takes = "string"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."type"]
+takes = "string"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."base"]
+takes = "formula"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."channel"]
+takes = "string"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."range"]
+takes = "2 numbers"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."outside"]
+takes = "number"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."filter"]
+takes = "string"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."unit"]
+takes = "string"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."[field.<name>.then.<id>]"]
+takes = "table"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."value"]
+takes = "formula"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."mask"]
+takes = "formula"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."paint"]
+takes = "name"
+chapter = "fields"
+sections = ["Fields"]
+
+[key."order"]
+takes = "integer"
+chapter = "authority"
+sections = ["Fields"]
+
+[key."taxon"]
+takes = "string"
+chapter = "assets"
+sections = ["Fields"]
+
+[key."tags"]
+takes = "list of strings"
+chapter = "assets"
+sections = ["Fields"]
+
+[key."[feature.<id>]"]
+takes = "table"
+chapter = "geometry"
+sections = ["Features"]
+
+[key."kind"]
+takes = "name"
+chapter = "authority"
+sections = ["Features"]
+
+[key."authority"]
+takes = "string"
+chapter = "authority"
+sections = ["Features", "Kinds, effects, kind surfaces and kind mounts"]
+
+[key."at"]
+takes = "point"
+chapter = "geometry"
+sections = ["Features", "Placement"]
+
+[key."on"]
+takes = "inline table"
+chapter = "geometry"
+sections = ["Features", "Placement"]
+
+[key."path"]
+takes = "list of points"
+chapter = "geometry"
+sections = ["Features"]
+
+[key."region"]
+takes = "list of points"
+chapter = "geometry"
+sections = ["Features"]
+
+[key."where"]
+takes = "formula"
+chapter = "geometry"
+sections = ["Features"]
+
+[key."smooth"]
+takes = "bool"
+chapter = "geometry"
+sections = ["Features"]
+
+[key."starts_at"]
+takes = "name"
+chapter = "geometry"
+sections = ["Features"]
+
+[key."ends_at"]
+takes = "name"
+chapter = "geometry"
+sections = ["Features"]
+
+[key."[kind.<name>]"]
+takes = "table"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."defaults"]
+takes = "table"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."requires"]
+takes = "list of strings"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."radius"]
+takes = "length"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."exit"]
+takes = "bool"
+chapter = "documents"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."output"]
+takes = "string"
+chapter = "build"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."names"]
+takes = "list of strings"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."[kind.<k>.effect.<id>]"]
+takes = "table"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."field"]
+takes = "string"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."max_change"]
+takes = "formula"
+chapter = "authority"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."[kind.<k>.surface.<name>]"]
+takes = "table"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."bound"]
+takes = "formula"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."[kind.<k>.mount.<name>]"]
+takes = "table"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."surface"]
+takes = "name"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."meets"]
+takes = "name"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."connector"]
+takes = "string"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."ref"]
+takes = "name"
+chapter = "geometry"
+sections = ["Placement"]
+
+[key."of"]
+takes = "name"
+chapter = "identity"
+sections = ["Placement"]
+
+[key."class"]
+takes = "string"
+chapter = "identity"
+sections = ["Placement"]
+
+[key."near"]
+takes = "point"
+chapter = "identity"
+sections = ["Placement"]
+
+[key."t"]
+takes = "number"
+chapter = "geometry"
+sections = ["Placement"]
+
+[key."span"]
+takes = "2 numbers"
+chapter = "rules"
+sections = ["Placement"]
+
+[key."offset"]
+takes = "length"
+chapter = "geometry"
+sections = ["Placement"]
+
+[key."face"]
+takes = "number or string"
+chapter = "geometry"
+sections = ["Placement"]
+
+[key."[instance.<id>]"]
+takes = "table"
+chapter = "rules"
+sections = ["Instances and sets"]
+
+[key."asset"]
+takes = "name"
+chapter = "assets"
+sections = ["Instances and sets"]
+
+[key."set"]
+takes = "name"
+chapter = "rules"
+sections = ["Instances and sets"]
+
+[key."[set.<id>]"]
+takes = "table"
+chapter = "rules"
+sections = ["Instances and sets"]
+
+[key."scale"]
+takes = "number, or 2 numbers on a scatter"
+chapter = "rules"
+sections = ["Instances and sets"]
+
+[key."tint"]
+takes = "number, or 2 numbers on a scatter"
+chapter = "rules"
+sections = ["Instances and sets"]
+
+[key."ground"]
+takes = "name"
+chapter = "rules"
+sections = ["Instances and sets"]
+
+[key."margin"]
+takes = "length"
+chapter = "rules"
+sections = ["Instances and sets"]
+
+[key."[run.<id>]"]
+takes = "table"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."count"]
+takes = "integer"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."spacing"]
+takes = "length"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."ends"]
+takes = "string"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."[scatter.<id>]"]
+takes = "table"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."jitter"]
+takes = "number"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."assets"]
+takes = "list"
+chapter = "assets"
+sections = ["Rules"]
+
+[key."id"]
+takes = "name"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."weight"]
+takes = "number"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."density"]
+takes = "formula"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."clump"]
+takes = "inline table"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."members"]
+takes = "integer, or 2 integers"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."shrink"]
+takes = "number"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."around"]
+takes = "name"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."within"]
+takes = "name or `{ of, class, near }`"
+chapter = "rules"
+sections = ["Rules"]
+
+[key."[change.<name>]"]
+takes = "table"
+chapter = "documents"
+sections = ["Hand edits"]
+
+[key."[pin.<id>]"]
+takes = "table"
+chapter = "identity"
+sections = ["Hand edits"]
+
+[key."[clear.<id>]"]
+takes = "table"
+chapter = "identity"
+sections = ["Hand edits"]
+
+[key."[lock.<id>]"]
+takes = "table"
+chapter = "identity"
+sections = ["Hand edits"]
+
+[key."by"]
+takes = "list of names"
+chapter = "identity"
+sections = ["Hand edits"]
+
+[key."[import.<id>]"]
+takes = "table"
+chapter = "documents"
+sections = ["Imports and composition"]
+
+[key."changes"]
+takes = "list of names"
+chapter = "documents"
+sections = ["Imports and composition"]
+
+[key."footprint"]
+takes = "name or list of points"
+chapter = "assets"
+sections = ["Imports and composition"]
+
+[key."blend"]
+takes = "formula"
+chapter = "documents"
+sections = ["Imports and composition"]
+
+[key."give"]
+takes = "table of names"
+chapter = "documents"
+sections = ["Imports and composition"]
+
+[key."[given.<name>]"]
+takes = "table"
+chapter = "documents"
+sections = ["Imports and composition"]
+
+[key."accepts"]
+takes = "string"
+chapter = "documents"
+sections = ["Imports and composition"]
+
+[key."after"]
+takes = "string"
+chapter = "graph"
+sections = ["Imports and composition"]
+
+[key."[step.<id>]"]
+takes = "table"
+chapter = "protocol"
+sections = ["Steps"]
+
+[key."when"]
+takes = "string"
+chapter = "protocol"
+sections = ["Steps"]
+
+[key."command"]
+takes = "list of strings"
+chapter = "protocol"
+sections = ["Steps"]
+
+[key."worker"]
+takes = "bool"
+chapter = "protocol"
+sections = ["Steps"]
+
+[key."params"]
+takes = "table"
+chapter = "protocol"
+sections = ["Steps"]
+
+[key."inputs"]
+takes = "list of strings"
+chapter = "graph"
+sections = ["Steps"]
+
+[key."for_each"]
+takes = "selector"
+chapter = "graph"
+sections = ["Steps"]
+
+[key."root"]
+takes = "string"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."[defaults]"]
+takes = "table"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."[taxon.\"<path>\"]"]
+takes = "table"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."[asset.<id>]"]
+takes = "table"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."engine"]
+takes = "bool"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."primitive"]
+takes = "string"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."detail"]
+takes = "list of strings"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."size"]
+takes = "3 lengths"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."triangles"]
+takes = "integer"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."front"]
+takes = "string"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."up"]
+takes = "string"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."pivot"]
+takes = "string"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."solidity"]
+takes = "string"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."sink"]
+takes = "number"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."max_relief"]
+takes = "number"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."colour"]
+takes = "3 numbers"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."repeat"]
+takes = "number"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."[asset.<id>.mount.<name>]"]
+takes = "table"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."[material.<name>]"]
+takes = "table"
+chapter = "assets"
+sections = ["Pack"]
+
+# Section 4: owed key words whose syntax a later chapter fixes; `chapter` names it.
+[owed."follows"]
+chapter = "geometry"
+
+[owed."passes"]
+chapter = "(library)"
+
+[owed."hosts"]
+chapter = "surfaces"

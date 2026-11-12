@@ -1,0 +1,33 @@
+[package]
+name = "via-step"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Steps written in Rust, speaking via-step-1 through via-proto."
+
+[dependencies]
+via-proto = { workspace = true }
+libc = "0.2"
+serde_json = { version = "1.0", features = ["float_roundtrip"] }
+
+# take_stdio on Windows: the standard handles moved aside for the protocol (protocol.md 3.1).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_Threading",
+] }
+
+# The probe's Rust step: the same field out and back as the Python one, by the same door (R19b).
+[[bin]]
+name = "via-step-probe"
+path = "src/bin/probe.rs"
+
+[dev-dependencies]
+tempfile = "3.27"
+
+[lints]
+workspace = true

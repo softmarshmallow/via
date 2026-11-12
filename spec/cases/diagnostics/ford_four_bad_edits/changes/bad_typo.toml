@@ -1,0 +1,2 @@
+[scatter.trees]
+density = "= smoothstep(0.1, 0.5, fbm(60, 3)) * smoothstep(0, 20, xx)"

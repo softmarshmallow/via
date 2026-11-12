@@ -237,7 +237,7 @@ key not written is not compared. Messages and hints are never compared (`diagnos
 | `occurrences` | The number of its `occurrences`. |
 | `data` | A table: each member written equals the record's `data` member. Members not written are not compared. |
 | `related` | A list of tables `{ file, line }`: each is among the record's `related`. |
-| `chain` | A list of tables `{ through, name, file, line }`: the record's `chain`, exactly. |
+| `chain` | A list of tables `{ through, name, file, line }`: as long as the record's `chain`, in its order, and each entry includes the members written (3.4 `includes`), so an unwritten `owner` is not compared. |
 | `failed_on` | Its `failed_on`. |
 | `records` | How many records match this expectation. Default 1. `diagnostics.md`'s "ten `place.relief` records" is `records = 10`. |
 | `from` | `world` (default) or `run`. |
@@ -386,10 +386,10 @@ process starts from an empty environment plus:
 
 | Variable | Value |
 |---|---|
-| `PATH` | The runner's own (and `SYSTEMROOT` on Windows). |
+| `PATH` | The runner's own. On Windows also the runner's `SYSTEMROOT`, `WINDIR`, `COMSPEC` and `PATHEXT`: machine settings, not the user's, without which Windows and many Python packages a worker imports fail. |
 | `VIA_LIB` | `{repo}/lib` (`documents.md` 4.1), so `via build examples/ford/world.toml` runs as written. A case's own `--lib` roots are searched first. |
 | `VIA_CONFIG_DIR` | `{work}/.config`, empty at the start. So no case reads the machine's real `config.toml` or `trust.toml` (`protocol.md` 6.3). |
-| `HOME`, `USERPROFILE`, `XDG_CONFIG_HOME`, `APPDATA`, `TMPDIR`, `TMP`, `TEMP` | Folders under `{work}/.home`. |
+| `HOME`, `USERPROFILE`, `XDG_CONFIG_HOME`, `APPDATA`, `TMPDIR`, `TMP`, `TEMP`, and `LOCALAPPDATA` on Windows | Folders under `{work}/.home`. |
 | `USER`, `USERNAME` | `via-test-<token>`, unique per run, for U5. |
 | `NO_COLOR` | `1`. Terminal output is never compared but for the summary line (`diagnostics.md` 7). |
 | the action's `env` | As written. |
@@ -406,17 +406,17 @@ one. In the Linux container the runner sets a unique host name as well.
 
 The runner writes one record per run, `<os>-<arch>.json`, canonical JSON: for every case and every
 `via` action, the exit status, the build `id`, the digest of each file of `files`, and each
-diagnostic record of `diagnostics.json` less `message`, `hint` and `data.log_tail` (`protocol.md`
-6.2 and Conformance), never the digest of the whole file. `compare A B` checks two records agree on
+diagnostic record of `diagnostics.json` less `message` and `hint` (`diagnostics.md` 1.3), never the
+digest of the whole file. `compare A B` checks two records agree on
 every case without `one_system`. A system with no record makes U7 pending for every case, with the reason; Windows stays so until hosted
 runners are allowed (`docs/plan.md`, "Comes back to you later").
 
 ## 6. Running
 
 - **Location and language.** The runner is Python, using the standard library and numpy only (this
-  is `build.md`'s "read with numpy or the standard library, never through the SDK"). Where it lives
-  in the repository is (open): decided by the lead with the workspace skeleton, M0 step 5. It is
-  not under `spec/`, because it is a tool, not part of the contract.
+  is `build.md`'s "read with numpy or the standard library, never through the SDK"). It lives in
+  `tools/conformance/` (R33). It is not under `spec/`, because it is a tool, not part of the
+  contract.
 - **Command.** `run --via PATH --milestone N [--chapter C] [--case ID] [--jobs N] [--record DIR]`,
   and `compare A B`. Cases run in bytewise order of chapter, then case id; `--jobs` runs cases side
   by side, never the actions of one case.
@@ -445,4 +445,3 @@ The case form does not depend on these; each is an ordinary `via` action once it
 | Open | Owner, decided by |
 |---|---|
 | The test switch that stops a build after its first rename (`build.md` case 24) | `build.md`, with the case. |
-| Where the runner lives | The lead, M0 step 5 (section 6). |

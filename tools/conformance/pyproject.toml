@@ -1,0 +1,21 @@
+[project]
+name = "via-conformance"
+version = "0.1.0"
+description = "The conformance runner of spec/conformance.md: drives the via binary through its command line only (R20)."
+requires-python = ">=3.12,<3.13"
+# numpy is the one third-party package spec/conformance.md section 6 allows: build files are read
+# "with Python's standard library and numpy", never through the SDK.
+dependencies = ["numpy>=2.3,<2.4"]
+
+[project.scripts]
+via-conformance = "via_conformance.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.25,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["via_conformance"]
+
+[tool.uv]
+package = true

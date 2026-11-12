@@ -323,7 +323,7 @@ One grammar for features, instances, sets, rules and hand edits.
 | `[scatter.<id>]` | table | A density turned into instances: `assets`, `spacing`, `jitter`, `density`, `within`, `scale`, `tint`, `clump`, `seed`. | rules |
 | `jitter` | number | On a scatter: the share of the lattice cell a candidate may move across, 0 to 1. Default 0.8. Read exactly in millionths (`numbers.md` 3.3). | rules |
 | `assets` | list | Choices, each an asset id, `@<taxon path>` or `{ id, weight }`. A value, replaced whole. | assets |
-| `id`, `weight` | name, number | In an `assets` choice: an asset id or `@<taxon path>`, and its weight (default 1), read exactly in millionths (`numbers.md` 3.3, `rules.md` 7.4). | rules |
+| `id`, `weight` | name; number | In an `assets` choice: an asset id or `@<taxon path>`, and its weight (default 1), read exactly in millionths (`numbers.md` 3.3, `rules.md` 7.4). | rules |
 | `density` | formula | 0 to 1 at each point. | rules |
 | `clump` | inline table | How instances gather by cause (R5). One of two forms: `members`, `radius`, `shrink`; or `around`, `radius` (`rules.md` 7.3). A value, replaced whole. | rules |
 | `members` | integer, or 2 integers | In `clump`: how many members each parent gets, 0 or more; a pair is drawn. | rules |
@@ -454,7 +454,7 @@ chapter named decides it, for M1 track A unless said.
 | Word | Meaning | Chapter |
 |---|---|---|
 | `follows` | A path written along another feature (R18): `follows = { ref, span, offset }`, decided in `geometry.md` 4; M1, `span` included. | geometry |
-| network | Paths noded where they cross, with the areas between them (R13). A maker. How one is declared, for example from a `kind:` selection: (open). | geometry |
+| network | Paths noded where they cross, with the areas between them (R13). A maker. How one is declared, for example from a `kind:` selection: (open), decided in M3 with the user syntax for areas and cells (R33). | geometry |
 | area | A region bounded by a network's paths, named `<maker>#<place key>`, class `area`. Not `face`, which is orientation. | geometry |
 | cell | One part of a region divided along a frontage (R13, R23), named `<maker>#<place key>`, class `cell`; what lies deeper than a cell's depth is class `rest`. The place key of a name is not a cell. | geometry |
 | mount on a kind | `[kind.<k>.mount.<name>]` (Kinds): a place every feature of the kind has, such as a deck's two ends, so two surfaces meet at a pair of mounts (R25, `surfaces.md` 3.1). | surfaces |
@@ -559,12 +559,15 @@ The test (plan, "How every milestone runs"):
 - Covers `via-num`, `via-diag`, `via-doc`, `via-expr`, `via-geom`, `via-raster`, `via-graph`,
   `via-model`, `via-proto`, `via-cli` and `via-step`. It excludes `via-terrain`, the erosion
   library, which is library tier (R14).
-- Reads identifiers and string literals, not comments. Identifiers split at `_`, `::` and each
-  lower-to-upper case change; string literals split at every character that is not a letter. Words
+- Reads identifiers and string literals, not comments. Identifiers split at `_`, `::`, each
+  lower-to-upper case change, before the last capital of a run of capitals that a lower-case
+  letter follows (`HTTPRoad` is `http road`, `BTreeMap` is `b tree map`), and around digits, which
+  are dropped (`road2` is `road`), so no noun hides behind an acronym or a number; string literals
+  split at every character that is not a letter. Words
   are lowercased. A hit is a whole word, or its plural in `s` or `es`; a two-word entry matches two
   words in a row.
-- The machine-readable list is `spec/vocabulary.toml`, written with the code checks (M0 step 5).
-  Until then this section is its source.
+- The machine-readable list is `spec/vocabulary.toml` (R33), which also lists every key of
+  section 3. This section stays its source; the code checks hold the two equal.
 
 Allowed in the core in one sense only. The test passes them; review checks the sense.
 

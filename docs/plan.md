@@ -322,7 +322,10 @@ edits; never for raster bytes, scatter positions, or found courses (compare meas
 4. Write the chapters M1 needs: documents and merge; numbers and the lattice; formulas and the
    function table; fields and roles; kinds, authority and order; the graph; surfaces; the kernel and
    names by place; build directory v0; diagnostics; the step protocol.
-5. Workspace skeleton, the conformance runner, the three code checks.
+5. Workspace skeleton, the conformance runner, the three code checks. Owed from `conformance.md` 7
+   at M0's close, before M1's cases are written: every Conformance row of every chapter has a case
+   folder whose `milestone` equals the row's (xtask holds the rest of section 7: manifests read, no
+   copy from `spike/`, code coverage by `xtask check --milestone N`).
 6. The hello-step probe and the null digest: macOS, and Linux in a container.
 7. Export the oracle data and the kernel fixtures from the spike.
 8. M0 sheet to you; then M1's shared base, then its two tracks.

@@ -1,0 +1,720 @@
+# Test vectors of spec/numbers.md section 10, machine-readable. The chapter's tables are the source;
+# this file is their copy in the form section 10 gives, in the order of its tables. Doubles and words
+# are bit patterns (`0x` and 16 upper-case hex digits); the bits are normative. Decimals read by
+# section 3 are strings of their text, never TOML floats. Integers are millimetres, millidegrees or
+# keys. A rejection is `{ code = "<code>" }`.
+#
+# Read by via-num's tests (crates/via-num/tests/vectors.rs), by `via vectors` (build.md 14) and by
+# the SDK's tests. Computed with libm 0.2.16, default-features = false, force-soft-floats.
+# `point_at`, `measure` and `samples` are evaluated by via-geom; the rest by via-num, whose null
+# digest over them is recorded in spec/vectors/num/null_digest.txt.
+
+# SplitMix64 and streams.
+
+[vector.splitmix64_0]
+fn = "splitmix64"
+args = ["0x0000000000000000"]
+expected = "0xE220A8397B1DCDAF"
+
+[vector.splitmix64_1]
+fn = "splitmix64"
+args = ["0x0000000000000001"]
+expected = "0x910A2DEC89025CC1"
+
+[vector.splitmix64_root_seed_0]
+fn = "splitmix64"
+args = ["0x5851F42D4C957F2D"]
+expected = "0xBA8894FA3BE59747"
+
+[vector.stream_rule_alpha]
+fn = "stream"
+args = [0, ["rule", "alpha"]]
+expected = "0x7A0B95CDDB5BE11D"
+
+[vector.stream_rule_alpha_seed_1]
+fn = "stream"
+args = [1, ["rule", "alpha"]]
+expected = "0x60D5960CEFC51AC5"
+
+[vector.stream_rule_alph]
+fn = "stream"
+args = [0, ["rule", "alph"]]
+expected = "0x9AFDD40726496466"
+
+[vector.stream_rule_alpha_underscore]
+fn = "stream"
+args = [0, ["rule", "alpha_"]]
+expected = "0x08E4899C9F655CAB"
+
+[vector.stream_rule_ab_c]
+fn = "stream"
+args = [0, ["rule", "ab", "c"]]
+expected = "0x9F0B7FFF365137DE"
+
+[vector.stream_rule_a_bc]
+fn = "stream"
+args = [0, ["rule", "a", "bc"]]
+expected = "0x2971A02DF9563DEE"
+
+[vector.stream_rule_alpha_keep]
+fn = "stream"
+args = [0, ["rule", "alpha", "keep"]]
+expected = "0xEEEB12673BDC4403"
+
+[vector.stream_rule_alpha_jitter_x]
+fn = "stream"
+args = [0, ["rule", "alpha", "jitter_x"]]
+expected = "0xE72578E3B18692E7"
+
+[vector.stream_noise_seed_hills]
+fn = "stream"
+args = [0, ["noise", "seed", "hills"]]
+expected = "0xB2257365AD2F65DB"
+
+[vector.stream_noise_field_height_base]
+fn = "stream"
+args = [0, ["noise", "field", "height", "base"]]
+expected = "0x2B7A1CEA060EDEB6"
+
+[vector.stream_step_relief]
+fn = "stream"
+args = [0, ["step", "relief"]]
+expected = "0xDC461A972B032DF7"
+
+[vector.stream_step_relief_beta]
+fn = "stream"
+args = [0, ["step", "relief", "beta"]]
+expected = "0xE4531D06F5242E11"
+
+# Draws, with s = stream(0, ["rule", "alpha", "keep"]).
+
+[vector.draw_0_0]
+fn = "draw"
+args = ["0xEEEB12673BDC4403", [0, 0]]
+expected = "0xBDEB160205197BBA"
+
+[vector.unit_draw_0_0]
+fn = "unit"
+args = ["0xBDEB160205197BBA"]
+expected = "0x3FE7BD62C040A32F"
+
+[vector.draw_1_0]
+fn = "draw"
+args = ["0xEEEB12673BDC4403", [1, 0]]
+expected = "0x84C4866B3F1AE2B7"
+
+[vector.unit_draw_1_0]
+fn = "unit"
+args = ["0x84C4866B3F1AE2B7"]
+expected = "0x3FE09890CD67E35C"
+
+[vector.draw_0_1]
+fn = "draw"
+args = ["0xEEEB12673BDC4403", [0, 1]]
+expected = "0x4879AD2673908BEA"
+
+[vector.unit_draw_0_1]
+fn = "unit"
+args = ["0x4879AD2673908BEA"]
+expected = "0x3FD21E6B499CE422"
+
+[vector.draw_minus_1_0]
+fn = "draw"
+args = ["0xEEEB12673BDC4403", [-1, 0]]
+expected = "0x98B64AE0AC14CF31"
+
+[vector.unit_draw_minus_1_0]
+fn = "unit"
+args = ["0x98B64AE0AC14CF31"]
+expected = "0x3FE316C95C158299"
+
+[vector.draw_3_4]
+fn = "draw"
+args = ["0xEEEB12673BDC4403", [3, 4]]
+expected = "0x6238B13CAA1192AB"
+
+[vector.unit_draw_3_4]
+fn = "unit"
+args = ["0x6238B13CAA1192AB"]
+expected = "0x3FD88E2C4F2A8464"
+
+[vector.draw_3_4_0]
+fn = "draw"
+args = ["0xEEEB12673BDC4403", [3, 4, 0]]
+expected = "0x094A1D9690ADDC3D"
+
+[vector.unit_draw_3_4_0]
+fn = "unit"
+args = ["0x094A1D9690ADDC3D"]
+expected = "0x3FA2943B2D215BB0"
+
+[vector.unit_0]
+fn = "unit"
+args = ["0x0000000000000000"]
+expected = "0x0000000000000000"
+
+[vector.unit_max]
+fn = "unit"
+args = ["0xFFFFFFFFFFFFFFFF"]
+expected = "0x3FEFFFFFFFFFFFFF"
+
+# Facings: [sin, cos] of millidegrees.
+
+[vector.facing_0]
+fn = "facing"
+args = [0]
+expected = ["0x0000000000000000", "0x3FF0000000000000"]
+
+[vector.facing_30000]
+fn = "facing"
+args = [30000]
+expected = ["0x3FE0000000000000", "0x3FEBB67AE8584CAA"]
+
+[vector.facing_45000]
+fn = "facing"
+args = [45000]
+expected = ["0x3FE6A09E667F3BCD", "0x3FE6A09E667F3BCC"]
+
+[vector.facing_90000]
+fn = "facing"
+args = [90000]
+expected = ["0x3FF0000000000000", "0x0000000000000000"]
+
+[vector.facing_120000]
+fn = "facing"
+args = [120000]
+expected = ["0x3FEBB67AE8584CAA", "0xBFE0000000000000"]
+
+[vector.facing_180000]
+fn = "facing"
+args = [180000]
+expected = ["0x0000000000000000", "0xBFF0000000000000"]
+
+[vector.facing_minus_90000]
+fn = "facing"
+args = [-90000]
+expected = ["0xBFF0000000000000", "0x0000000000000000"]
+
+[vector.facing_359999]
+fn = "facing"
+args = [359999]
+expected = ["0xBEF24D15211548FF", "0x3FEFFFFFFFEB111D"]
+
+# Bearings: direction (dx, dy) to millidegrees.
+
+[vector.bearing_0_1]
+fn = "bearing"
+args = [0, 1]
+expected = 0
+
+[vector.bearing_1_0]
+fn = "bearing"
+args = [1, 0]
+expected = 90000
+
+[vector.bearing_0_minus_1]
+fn = "bearing"
+args = [0, -1]
+expected = 180000
+
+[vector.bearing_minus_1_0]
+fn = "bearing"
+args = [-1, 0]
+expected = 270000
+
+[vector.bearing_1_1]
+fn = "bearing"
+args = [1, 1]
+expected = 45000
+
+[vector.bearing_3_4]
+fn = "bearing"
+args = [3, 4]
+expected = 36870
+
+[vector.bearing_3000_4000]
+fn = "bearing"
+args = [3000, 4000]
+expected = 36870
+
+[vector.bearing_1_2]
+fn = "bearing"
+args = [1, 2]
+expected = 26565
+
+[vector.bearing_minus_5_minus_12]
+fn = "bearing"
+args = [-5, -12]
+expected = 202620
+
+[vector.bearing_1000_minus_1]
+fn = "bearing"
+args = [1000, -1]
+expected = 90057
+
+# Placed frames (5.1), origin (0, 0): frames = [[origin, facing, scale]], then the local point.
+
+[vector.frame_forward_east]
+fn = "frame"
+args = [[[[0, 0], 90000, "1"]], [0, 10000]]
+expected = [10000, 0]
+
+[vector.frame_right_east]
+fn = "frame"
+args = [[[[0, 0], 90000, "1"]], [10000, 0]]
+expected = [0, -10000]
+
+[vector.frame_right_30]
+fn = "frame"
+args = [[[[0, 0], 30000, "1"]], [10000, 0]]
+expected = [8660, -5000]
+
+[vector.frame_forward_30]
+fn = "frame"
+args = [[[[0, 0], 30000, "1"]], [0, 10000]]
+expected = [5000, 8660]
+
+[vector.frame_3_4_at_45]
+fn = "frame"
+args = [[[[0, 0], 45000, "1"]], [3, 4]]
+expected = [5, 1]
+
+[vector.frame_12345]
+fn = "frame"
+args = [[[[0, 0], 12345, "1"]], [1234, 5678]]
+expected = [2419, 5283]
+
+[vector.frame_right_30_scale_1_5]
+fn = "frame"
+args = [[[[0, 0], 30000, "1.5"]], [10000, 0]]
+expected = [12990, -7500]
+
+[vector.frame_12345_scale_0_8]
+fn = "frame"
+args = [[[[0, 0], 12345, "0.8"]], [1234, 5678]]
+expected = [1936, 4226]
+
+[vector.frame_scale_2]
+fn = "frame"
+args = [[[[0, 0], 0, "2"]], [1000, 2000]]
+expected = [2000, 4000]
+
+# Nested frames (5.4): an instance at (8500, 2000) facing 90000; in it a frame at (1000, 2000),
+# facing 30000, scale 1.5, whose origin is (10500, 1000).
+
+[vector.frame_nested_origin]
+fn = "frame"
+args = [[[[8500, 2000], 90000, "1"]], [1000, 2000]]
+expected = [10500, 1000]
+
+[vector.frame_nested_point]
+fn = "frame"
+args = [[[[8500, 2000], 90000, "1"], [[1000, 2000], 30000, "1.5"]], [2000, 0]]
+expected = [9000, -1598]
+
+# Points at t (5.5): [path, t, offset] to [point, along]. Evaluated by via-geom.
+# Path A is [(0, 0), (8000, 0), (8000, 8000)]; path B is [(0, 0), (1000, 3000), (5000, 2000)].
+
+[vector.point_at_a_0_3]
+fn = "point_at"
+args = [[[0, 0], [8000, 0], [8000, 8000]], "0.3", 0]
+expected = [[4800, 0], 90000]
+
+[vector.point_at_a_0_25_left]
+fn = "point_at"
+args = [[[0, 0], [8000, 0], [8000, 8000]], "0.25", 2000]
+expected = [[4000, 2000], 90000]
+
+[vector.point_at_a_vertex]
+fn = "point_at"
+args = [[[0, 0], [8000, 0], [8000, 8000]], "0.5", 0]
+expected = [[8000, 0], 0]
+
+[vector.point_at_a_vertex_offset]
+fn = "point_at"
+args = [[[0, 0], [8000, 0], [8000, 8000]], "0.5", 1000]
+expected = [[7000, 0], 0]
+
+[vector.point_at_a_end]
+fn = "point_at"
+args = [[[0, 0], [8000, 0], [8000, 8000]], "1", 0]
+expected = [[8000, 8000], 0]
+
+[vector.point_at_a_start_right]
+fn = "point_at"
+args = [[[0, 0], [8000, 0], [8000, 8000]], "0", -1000]
+expected = [[0, -1000], 90000]
+
+[vector.point_at_ties_to_even]
+fn = "point_at"
+args = [[[0, 0], [1001, 0]], "0.5", 0]
+expected = [[500, 0], 90000]
+
+[vector.point_at_3_4_5]
+fn = "point_at"
+args = [[[0, 0], [3000, 4000]], "0.5", 1000]
+expected = [[700, 2600], 36870]
+
+[vector.point_at_b_0_3]
+fn = "point_at"
+args = [[[0, 0], [1000, 3000], [5000, 2000]], "0.3", 1500]
+expected = [[-732, 2548], 18435]
+
+[vector.point_at_b_0_7]
+fn = "point_at"
+args = [[[0, 0], [1000, 3000], [5000, 2000]], "0.7", -2000]
+expected = [[2395, 590], 104036]
+
+# Measures (5.5): [shape, points, point] to [t, d, sd]. Evaluated by via-geom.
+
+[vector.measure_a_segment_0]
+fn = "measure"
+args = ["path", [[0, 0], [8000, 0], [8000, 8000]], [3000, 2000]]
+expected = ["0x3FC8000000000000", "0x4000000000000000", "0x4000000000000000"]
+
+[vector.measure_a_tie]
+fn = "measure"
+args = ["path", [[0, 0], [8000, 0], [8000, 8000]], [4000, 4000]]
+expected = ["0x3FD0000000000000", "0x4010000000000000", "0x4010000000000000"]
+
+[vector.measure_a_outer_vertex]
+fn = "measure"
+args = ["path", [[0, 0], [8000, 0], [8000, 8000]], [9000, -1000]]
+expected = ["0x3FE0000000000000", "0x3FF6A09E667F3BCD", "0xBFF6A09E667F3BCD"]
+
+[vector.measure_a_on_vertex]
+fn = "measure"
+args = ["path", [[0, 0], [8000, 0], [8000, 8000]], [8000, 0]]
+expected = ["0x3FE0000000000000", "0x0000000000000000", "0x0000000000000000"]
+
+[vector.measure_a_before_start]
+fn = "measure"
+args = ["path", [[0, 0], [8000, 0], [8000, 8000]], [-1000, 0]]
+expected = ["0x0000000000000000", "0x3FF0000000000000", "0x3FF0000000000000"]
+
+[vector.measure_a_beyond_end]
+fn = "measure"
+args = ["path", [[0, 0], [8000, 0], [8000, 8000]], [9000, 9000]]
+expected = ["0x3FF0000000000000", "0x3FF6A09E667F3BCD", "0xBFF6A09E667F3BCD"]
+
+[vector.measure_sharp_turn]
+fn = "measure"
+args = ["path", [[0, 0], [100000, 0], [99000, 1000]], [101000, 500]]
+expected = ["0x3FEF8DC35F9B8A74", "0x3FF1E3779B97F4A8", "0xBFF1E3779B97F4A8"]
+
+[vector.measure_b_segment_1]
+fn = "measure"
+args = ["path", [[0, 0], [1000, 3000], [5000, 2000]], [2500, 1000]]
+expected = ["0x3FE6698AC70B5FD8", "0x3FF93944BB2B2E47", "0xBFF93944BB2B2E47"]
+
+[vector.measure_square_inside]
+fn = "measure"
+args = ["region", [[0, 0], [10000, 0], [10000, 10000], [0, 10000]], [5000, 2000]]
+expected = ["0x3FC0000000000000", "0x0000000000000000", "0x4000000000000000"]
+
+[vector.measure_square_outside]
+fn = "measure"
+args = ["region", [[0, 0], [10000, 0], [10000, 10000], [0, 10000]], [5000, -2000]]
+expected = ["0x3FC0000000000000", "0x4000000000000000", "0xC000000000000000"]
+
+[vector.measure_square_first_point]
+fn = "measure"
+args = ["region", [[0, 0], [10000, 0], [10000, 10000], [0, 10000]], [-1000, -1000]]
+expected = ["0x0000000000000000", "0x3FF6A09E667F3BCD", "0xBFF6A09E667F3BCD"]
+
+[vector.measure_square_clockwise]
+fn = "measure"
+args = ["region", [[0, 0], [0, 10000], [10000, 10000], [10000, 0]], [5000, 2000]]
+expected = ["0x3FC0000000000000", "0x0000000000000000", "0x4000000000000000"]
+
+[vector.measure_point]
+fn = "measure"
+args = ["point", [[0, 0]], [3000, 4000]]
+expected = ["0x0000000000000000", "0x4014000000000000", "0xC014000000000000"]
+
+# Path samples (6): [path, r] with r in millimetres. Evaluated by via-geom.
+
+[vector.samples_a_2000]
+fn = "samples"
+args = [[[0, 0], [8000, 0], [8000, 8000]], 2000]
+expected = [[0, 0], [2000, 0], [4000, 0], [6000, 0], [8000, 0], [8000, 2000], [8000, 4000], [8000, 6000], [8000, 8000]]
+
+# Lengths (3.1): text to millimetres, or a rejection. Normalised text: `1_000.25` arrives as
+# `1000.25` (documents.md).
+
+[vector.length_12_5]
+fn = "length"
+args = ["12.5"]
+expected = 12500
+
+[vector.length_3]
+fn = "length"
+args = ["3"]
+expected = 3000
+
+[vector.length_0_001]
+fn = "length"
+args = ["0.001"]
+expected = 1
+
+[vector.length_1_005]
+fn = "length"
+args = ["1.005"]
+expected = 1005
+
+[vector.length_trailing_zero]
+fn = "length"
+args = ["1.2340"]
+expected = 1234
+
+[vector.length_1000_25]
+fn = "length"
+args = ["1000.25"]
+expected = 1000250
+
+[vector.length_2_5e_minus_3]
+fn = "length"
+args = ["2.5e-3"]
+expected = { code = "num.too_precise" }
+
+[vector.length_1e3]
+fn = "length"
+args = ["1e3"]
+expected = 1000000
+
+[vector.length_0_0005]
+fn = "length"
+args = ["0.0005"]
+expected = { code = "num.too_precise" }
+
+[vector.length_no_float]
+fn = "length"
+args = ["2.0000000000000001"]
+expected = { code = "num.too_precise" }
+
+[vector.length_no_float_small]
+fn = "length"
+args = ["0.0010000000000000001"]
+expected = { code = "num.too_precise" }
+
+[vector.length_minus_zero]
+fn = "length"
+args = ["-0.0"]
+expected = 0
+
+[vector.length_zero_tiny_exponent]
+fn = "length"
+args = ["0e-500"]
+expected = 0
+
+[vector.length_zero_huge_exponent]
+fn = "length"
+args = ["0.0e999"]
+expected = 0
+
+[vector.length_1e400]
+fn = "length"
+args = ["1e400"]
+expected = { code = "num.out_of_range" }
+
+[vector.length_just_out]
+fn = "length"
+args = ["2147483.648"]
+expected = { code = "num.out_of_range" }
+
+[vector.length_max]
+fn = "length"
+args = ["2147483.647"]
+expected = 2147483647
+
+[vector.length_min]
+fn = "length"
+args = ["-2147483.647"]
+expected = -2147483647
+
+[vector.length_inf]
+fn = "length"
+args = ["inf"]
+expected = { code = "num.not_finite" }
+
+[vector.length_nan]
+fn = "length"
+args = ["-nan"]
+expected = { code = "num.not_finite" }
+
+# Text and order (3.4, 4, 8).
+
+[vector.metres_12345]
+fn = "metres"
+args = [12345]
+expected = "0x4028B0A3D70A3D71"
+
+[vector.sum_in_order]
+fn = "sum"
+args = [["0x3FB999999999999A", "0x3FC999999999999A", "0x3FD3333333333333"]]
+expected = "0x3FE3333333333334"
+
+[vector.sum_reversed]
+fn = "sum"
+args = [["0x3FD3333333333333", "0x3FC999999999999A", "0x3FB999999999999A"]]
+expected = "0x3FE3333333333333"
+
+[vector.sum_cancel]
+fn = "sum"
+args = [["0x3FF0000000000000", "0x54B249AD2594C37D", "0x3FF0000000000000", "0xD4B249AD2594C37D"]]
+expected = "0x0000000000000000"
+
+[vector.min_neg_pos]
+fn = "min"
+args = ["0x8000000000000000", "0x0000000000000000"]
+expected = "0x8000000000000000"
+
+[vector.min_pos_neg]
+fn = "min"
+args = ["0x0000000000000000", "0x8000000000000000"]
+expected = "0x8000000000000000"
+
+[vector.max_neg_pos]
+fn = "max"
+args = ["0x8000000000000000", "0x0000000000000000"]
+expected = "0x0000000000000000"
+
+[vector.max_pos_neg]
+fn = "max"
+args = ["0x0000000000000000", "0x8000000000000000"]
+expected = "0x0000000000000000"
+
+[vector.write_3]
+fn = "write"
+args = ["0x4008000000000000"]
+expected = "3"
+
+[vector.write_0_1]
+fn = "write"
+args = ["0x3FB999999999999A"]
+expected = "0.1"
+
+[vector.write_1e21]
+fn = "write"
+args = ["0x444B1AE4D6E2EF50"]
+expected = "1e+21"
+
+[vector.write_1e_minus_7]
+fn = "write"
+args = ["0x3E7AD7F29ABCAF48"]
+expected = "1e-7"
+
+[vector.write_smallest]
+fn = "write"
+args = ["0x0000000000000001"]
+expected = "5e-324"
+
+[vector.write_1_23e_minus_18]
+fn = "write"
+args = ["0x3C36B082C2148B8E"]
+expected = "1.23e-18"
+
+[vector.write_length_1005]
+fn = "write_length"
+args = [1005]
+expected = "1.005"
+
+[vector.write_length_3000]
+fn = "write_length"
+args = [3000]
+expected = "3"
+
+[vector.write_length_minus_250]
+fn = "write_length"
+args = [-250]
+expected = "-0.25"
+
+[vector.write_length_0]
+fn = "write_length"
+args = [0]
+expected = "0"
+
+# Worked example (11): the scatter with no seed, its keep stream and first draw.
+
+[vector.worked_keep_stream]
+fn = "stream"
+args = [0, ["rule", "trees", "keep"]]
+expected = "0x31B2A8C62E0994BD"
+
+[vector.worked_keep_draw]
+fn = "draw"
+args = ["0x31B2A8C62E0994BD", [0, 0]]
+expected = "0x6F75A37A63D07B78"
+
+[vector.worked_keep_unit]
+fn = "unit"
+args = ["0x6F75A37A63D07B78"]
+expected = "0x3FDBDD68DE98F41E"
+
+# Noise (formulas.md 8.2), s = stream(0, ["noise", "seed", "hills"]). A gradient index is the draw's
+# top four bits and is checked from it.
+
+[vector.noise_draw_0_0_0]
+fn = "draw"
+args = ["0xB2257365AD2F65DB", [0, 0, 0]]
+expected = "0x4B53AD8575D91FE2"
+
+[vector.noise_draw_1_0_0]
+fn = "draw"
+args = ["0xB2257365AD2F65DB", [1, 0, 0]]
+expected = "0x8A012828A633CA3F"
+
+[vector.noise_draw_0_1_0]
+fn = "draw"
+args = ["0xB2257365AD2F65DB", [0, 1, 0]]
+expected = "0xF1B145B81005BEF1"
+
+[vector.noise_draw_minus_1_0_0]
+fn = "draw"
+args = ["0xB2257365AD2F65DB", [-1, 0, 0]]
+expected = "0x3A665A82041D210B"
+
+[vector.noise_draw_0_0_1]
+fn = "draw"
+args = ["0xB2257365AD2F65DB", [0, 0, 1]]
+expected = "0x286CF8A0063C878F"
+
+[vector.noise_centre]
+fn = "noise"
+args = ["0xB2257365AD2F65DB", 0, "0.5", "0.5"]
+expected = "0x3FD8000000000000"
+
+[vector.noise_quarter]
+fn = "noise"
+args = ["0xB2257365AD2F65DB", 0, "0.25", "0.75"]
+expected = "0x3FABDF2000000000"
+
+[vector.noise_west]
+fn = "noise"
+args = ["0xB2257365AD2F65DB", 0, "-0.5", "0.5"]
+expected = "0xBFD0000000000000"
+
+[vector.noise_octave_1]
+fn = "noise"
+args = ["0xB2257365AD2F65DB", 1, "0.5", "0.5"]
+expected = "0x0000000000000000"
+
+[vector.noise_corner]
+fn = "noise"
+args = ["0xB2257365AD2F65DB", 0, "3", "2"]
+expected = "0x0000000000000000"
+
+[vector.stream_noise_seed_a]
+fn = "stream"
+args = [0, ["noise", "seed", "a"]]
+expected = "0x28499B517E36090E"
+
+[vector.stream_noise_field_trees_base]
+fn = "stream"
+args = [0, ["noise", "field", "trees", "base"]]
+expected = "0xD7218EDC7B009158"
+
+[vector.stream_noise_scatter_trees_density]
+fn = "stream"
+args = [0, ["noise", "scatter", "trees", "density"]]
+expected = "0x4A7DFA81BAFF877F"

@@ -481,9 +481,10 @@ Its rules:
     order never does. A field's entries take R29's order (`authority.md` 4); any other tie no key
     settles breaks by place name, bytewise (`vocabulary.md` section 2.2).
 
-The SDK exposes the formula function list (R7) with the same definitions. Python's own `math`
-calls the platform's library, so a step that wants the engine's bits calls the engine in a batch
-(R23) rather than reimplementing a function.
+The SDK exposes the formula function list (R7) through `expr.eval` (`protocol.md` 8): the engine
+computes, the SDK computes none of it itself. Python's own `math` calls the platform's library, so
+a step that wants the engine's bits calls the engine in a batch (R23) rather than reimplementing a
+function.
 
 ## 9. Same text, same bytes (R26)
 
@@ -520,13 +521,14 @@ Windows is a target from the first day, and is unproven until runs on hosted mac
 Doubles are written as their 64-bit patterns in hexadecimal, with the decimal for reading only; the
 bits are normative. Positions are in millimetres. The machine-readable copy is
 `spec/vectors/numbers.toml`, written with the conformance runner (M0 step 5); until then these
-tables are its source. Tests in `via-num` and in the SDK read that file and embed no literals, so the
-deny-list test (`vocabulary.md` section 7) never meets a stream name. Computed with `libm` 0.2.16,
+tables are its source. Tests in `via-num` read that file and embed no literals, so the deny-list
+test (`vocabulary.md` section 7) never meets a stream name. The SDK does not read it: it computes
+nothing (`protocol.md` 8), and a step's seed arrives in the request already derived. Computed with `libm` 0.2.16,
 `default-features = false`, `force-soft-floats`.
 
 **The vector file.** One table per vector, keyed by its id (`vocabulary.md` 2.1), in the order of
 the tables below: `[vector.<id>]` with three keys, `fn`, `args` (an array) and `expected`. `via
-vectors` (`build.md` 14) and the SDK tests read it; `spec/vectors/identity.toml` (`identity.md` 10)
+vectors` (`build.md` 14) and the `via-num` tests read it; `spec/vectors/identity.toml` (`identity.md` 10)
 and the noise vectors of `formulas.md` 8.2 use the same form. Values are written so: a 64-bit word
 or a double's bits as a string, `0x` and 16 upper-case hex digits; an integer (millimetres,
 millidegrees, a key, an index) as a TOML integer; a decimal read by section 3 (`t`, a scale, a
@@ -755,8 +757,9 @@ Each case runs through the command line (R20). Every case also checks that a cle
 incremental one (`docs/plan.md`); for a case that must exit 1, that means the same
 `diagnostics.json` bytes, clean and incremental. A field over a window is
 `via eval WORLD --field F [--window i0,j0,i1,j1] --out FILE`, and the vectors computed by the
-binary are `via vectors FILE`, both as `build.md` 14 gives them. The SDK checks the same vector
-file in its own tests; those are SDK tests, not conformance cases.
+binary are `via vectors FILE`, both as `build.md` 14 gives them. The `via-num` unit tests check
+the same vector file; those are crate tests, not conformance cases. The SDK computes nothing, so
+it has no vector tests.
 
 | Case | Input | Action | Must hold |
 |---|---|---|---|

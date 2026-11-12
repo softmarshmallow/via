@@ -1,0 +1,8 @@
+format    = "via-case-1"
+summary   = "via --version exits 0; build.md case 39 (build.md 14, diagnostics.md 7)."
+milestone = 0
+actions   = ["version"]
+
+[action.version]
+via  = ["--version"]
+exit = 0

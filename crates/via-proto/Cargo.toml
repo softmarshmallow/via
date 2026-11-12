@@ -1,0 +1,34 @@
+[package]
+name = "via-proto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The engine side of the step protocol via-step-1."
+
+# The M0 probe (spec/protocol.md, What arrives when) runs outside the parser, so it needs nothing of
+# via-model or via-num yet. Its diagnostics are via-diag's record, located at the step's header by a
+# resolver of its own (src/diag.rs). The other downward edges come back with the M2 code.
+[dependencies]
+via-diag = { workspace = true }
+blake3 = "1.8"
+libc = "0.2"
+memmap2 = "0.9"
+serde_json = { version = "1.0", features = ["float_roundtrip"] }
+toml = "1.1"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+tempfile = "3.27"
+
+[lints]
+workspace = true

@@ -242,7 +242,8 @@ The registry generates three things, and nothing else lists codes:
 1. The code constants in `via-diag`, so the engine cannot raise an unregistered core code.
 2. `via explain CODE`: prints the code, severity, chapter, summary and `explain`. With `--json`,
    the registry row as JSON. `via explain` with no code lists every code by group.
-3. The reference page of every code, and the SDK's list of core codes.
+3. The reference page of every code, generated into `docs/reference/` (R33), and the SDK's list of
+   core codes.
 
 Each chapter's Diagnostics table is the source the registry is written from, and the only one: every
 key but `explain` is fixed by the code's row and the rules below, so two registries written from the
@@ -342,8 +343,9 @@ These apply in this order: once, then aggregation, then order.
 **Once.** A record whose canonical JSON equals one already raised in the build is dropped. A node
 evaluated in two views (R21) reports once. (TODO lesson: a step's diagnostics printed twice.)
 
-**Aggregation.** Records with a `position`, whose subject is a producer (a rule or a step, with no
-key path), and that agree on code, subject, location and `related` (none), are one record. So 166
+**Aggregation.** Records with a `position`, whose subject is a producer (a run, a scatter or a
+step, with no key path), with no `related`, and that agree on code, subject, location, `chain`
+(which follows from the location) and `failed_on`, are one record. So 166
 instances one step placed on steep ground are one warning with `count = 166`, not 166 (TODO:
 `townland`). Records without a position, with a key path, or with `related` are never folded, so
 two clashes or two cycles stay two records.
@@ -384,7 +386,8 @@ not of the world. The terminal prints at most ten records per code, then one lin
 A step sends diagnostics by `diag.emit` (`protocol.md` 3.3). Each holds `severity`, `code` (the `<name>` part of `step.<id>.<name>`),
 `subject`, `message`, `hint`, and optionally `position` (f64 metres), `related`, `data`, and
 `explain`, the text `via explain` prints for that code (`protocol.md` 3.3: sent with the first
-`diag.emit` of a code; `protocol.no_explain` and `protocol.explain_differs` are that chapter's).
+`diag.emit` of a code in each call, so each call of a `for_each` step sends it;
+`protocol.no_explain` and `protocol.explain_differs` are that chapter's).
 
 - The engine records the code `step.<id>.<name>`, where `<id>` is the step's id. Since the prefix is
   always added, a step can never raise a core code or another step's.
@@ -405,7 +408,8 @@ A step sends diagnostics by `diag.emit` (`protocol.md` 3.3). Each holds `severit
 step, location the step's header, with `data.message` (the step's message) and `data.missing`
 (what was wrong), when any of these holds:
 
-- the hint is missing, empty or only whitespace; the message is missing or empty;
+- the hint is missing, empty or only whitespace; the message is missing, empty or only whitespace;
+- the severity is not `error`, `warning` or `info`;
 - the subject, or a `related` subject, resolves to nothing in this world;
 - the `code` does not match `[a-z][a-z0-9_]*`;
 - `data` is not a table, or a value in it is not a string, number, boolean or list of those;
@@ -486,7 +490,8 @@ what they hold:
 `format` names this chapter's version. `status` is as the table says. `counts` counts the records
 the document holds, not
 occurrences; a `failed_on` record counts under `warning` and under `failed_on`. `lints` lists every
-lint step: `{ step, ran, error, warning, info }`, counting its records; a skipped lint has
+lint step: `{ step, ran, error, warning, info }`, counting its records (its own `step.<id>.*` codes
+and every record whose subject is the step, its `diag.malformed` and `protocol.*` ones included); a skipped lint has
 `ran = false`. With exit status 2 there is no build directory, and the document goes to standard
 output (`--json`) and to the `--diagnostics` file only (`build.md` 14).
 
@@ -665,7 +670,6 @@ Each case runs through the command line (R20): input; action; what must hold.
 - Machine-applicable edits in a record (a replacement for a span, as rustc's suggestions): decided
   by M1's fresh-agent test, if agents misapply hints.
 - Five occurrences and ten printed records per code: decided by M1's fresh-agent test.
-- Where the reference page is generated to: decided with the workspace skeleton (M0 step 5).
 - A watch mode streaming records as JSON lines (blackbox, agents): after M1.
 - This chapter answers the machine-readable part of the TODO "agent loop surface". Bookmarks and
   review renders go to the review library and `build.md` at M1 (the sheet tool).

@@ -172,7 +172,7 @@ Reading less is what a worker is for.
 
 | Method | Kind | Params | Result |
 |---|---|---|---|
-| `initialize` | request | `protocol` (`"via-step-1"`), `engine` (`name`, `version`), `objects`, `capabilities` (`methods`: the worker-to-engine methods offered) | `protocol`, `sdk` (`name`, `version`), `capabilities` (`when`: the points it serves) |
+| `initialize` | request | `protocol` (`"via-step-1"`), `engine` (`name`, `version`), `objects`, `capabilities` (`methods`: the worker-to-engine methods offered) | `protocol`, `sdk` (`name`, `version`), `capabilities` (`when`: the points it can dispatch) |
 | `step.call` | request | The request (section 2), without `data` | `document` (TOML text, or `{ "blob": <digest> }` for a large one), or `null` for lint and export |
 | `$/cancelRequest` | notification | `id` of the `step.call` to stop | none |
 | `shutdown` | request | none | `null` |
@@ -185,9 +185,13 @@ word with one meaning (R9).
   sends `quit`, stops the worker and reports `protocol.version`, naming both versions. A worker that
   receives another version answers `initialize` with error -32001 and exits. There is no
   negotiation; capabilities describe what is offered, never versions.
-- A worker whose `capabilities.when` lacks the step's `when` is `protocol.when_unserved`. A script
-  with no top-level function named after `when` is `protocol.no_entry`, raised by the SDK as error
-  -32601 to `step.call`.
+- `capabilities.when` lists the points the worker program can dispatch, not the functions one
+  script defines: `viasdk` and `via-step` dispatch all three and always list all three. A worker
+  whose list lacks the step's `when` is `protocol.when_unserved`, reported at `initialize`; only a
+  worker program built for fewer points raises it. A script with no top-level function named after
+  `when` (for `via-step`, a step whose `when()` lacks it) is `protocol.no_entry`, raised by the
+  worker as error -32601 to `step.call` with `data.code` `"protocol.no_entry"`. One condition, one
+  code: the program's reach is `when_unserved`, the script's entry is `no_entry`.
 - A cancelled call is answered with error -32800 (as LSP's `RequestCancelled`). Its output is
   discarded.
 - A worker takes one `step.call` at a time. It serves every call of its step in one build (every
@@ -578,8 +582,8 @@ CI and for conformance. It holds two files, both written only by the command lin
 | `config.toml` | `[program.<name>]` | `path`: the program's absolute path on this machine. |
 | `trust.toml` | `[trusted.<trust digest>]` | `step`, `world`, `code_folder`, `files`: what `via trust` showed, kept for review only. Trust is the digest alone. |
 
-These are files of the machine, not of a world. Whether the vocabulary lists them is (open),
-decided by the lead before M1 code.
+These are files of the machine, not of a world. This chapter documents them; the vocabulary does
+not list them (R33).
 
 **Commands.** Owed to `build.md` 14's table:
 
@@ -767,12 +771,12 @@ Not specified until the milestone that needs them. Each is decided by the case n
 | `protocol.untrusted_stale` | error | A committed result's static key or a read of its trace differs from the current build; names the first difference (M2). |
 | `protocol.untrusted_skipped` | warning | An untrusted lint or export step was skipped. |
 | `protocol.start` | error | The process could not be started; `data.kind` (6.2). |
-| `protocol.version` | error | The worker speaks another protocol version; both versions. |
-| `protocol.when_unserved` | error | The worker's `capabilities.when` lacks the step's `when`. |
+| `protocol.version` | error | The worker speaks another protocol version; both versions, `data.engine` and `data.worker`. |
+| `protocol.when_unserved` | error | The worker's `capabilities.when` lacks the step's `when`, `data.when`. |
 | `protocol.no_entry` | error | The script has no top-level function named after `when`. |
 | `protocol.framing` | error | A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor. |
-| `protocol.message_too_large` | error | A frame over 16 MiB; send the data as a blob. |
-| `protocol.deadline` | error | No answer by the deadline; which phase, and the deadline. |
+| `protocol.message_too_large` | error | A frame over 16 MiB, `data.bytes` long; send the data as a blob. |
+| `protocol.deadline` | error | No answer by the deadline; which phase, `data.phase` (`initialize`, `step.call` or `cancel`), and the deadline in seconds, `data.deadline`. |
 | `protocol.crashed` | error | The worker exited during a call. |
 | `protocol.raised` | error | The step raised an exception it did not catch; `data.exception`. |
 | `protocol.failed` | error | A plain command exited non-zero; `data.exit`. |
@@ -875,7 +879,6 @@ by code, severity, subject, location and `data`.
 |---|---|
 | Whether a lint step's report files belong in the build directory. | R15's first library lint in M1, with `build.md`. |
 | How a library offers a lint without each world restating its `[step]`. | `lib/review`'s first lint, M1. |
-| The machine files' keys in the vocabulary. | The lead, before M1 code. |
 | The deadlines' values. | The M0 probe and M2's `basin` (a 3.5 s model). |
 | Whether a plain command may declare what it reads, to be handed less. | The first plain step whose request is too large to write; not before M2. |
 | Shipping `viasdk` outside the engine (PyPI), and whether a project's virtual environment may serve as a named program. M1's route is decided (8.1). | M2 packaging, with the trust rule unchanged. |

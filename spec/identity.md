@@ -22,7 +22,7 @@ the same change.
 - A **maker** is anything whose output is named `<maker>#<key>`: a producer (a rule or a step,
   vocabulary section 1), a network, a cells table, or a feature written with `where`. "Producer"
   keeps its narrower meaning: a maker that places instances, so the only thing a hand edit's `by`
-  may name. How a network and a cells table are declared: `geometry.md` (open there).
+  may name. How a network and a cells table are declared: `geometry.md` (open there, decided in M3, R33).
 - A set item is `<instance>.<item>`. An item of a set placed by a producer is
   `<producer>#<key>.<item>`.
 - A produced name from inside an import is reported as `<import>.<produced name>`:

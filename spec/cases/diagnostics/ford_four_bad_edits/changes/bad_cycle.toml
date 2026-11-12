@@ -1,0 +1,4 @@
+[field.loop_a]
+base = "= f('loop_b')"
+[field.loop_b]
+base = "= f('loop_a')"

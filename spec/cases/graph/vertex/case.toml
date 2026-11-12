@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "One vertex of the beck moved: ran equals ford_vertex.ran, the beck's nodes, then those of downstream."
+milestone = 1
+actions   = ["program", "trust", "base", "vertex"]
+pending   = "the ran fixture expected/ran.txt (graph.md's ford_vertex.ran) is recorded with examples/ford in M1"
+
+# graph.md's `vertex` row, the plan's ford row changes/vertex.toml ("Must follow"). Its "Must
+# hold" is fields/change_windows.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/vertex.toml"]
+exit = 0
+
+[action.base]
+via  = ["build", "world.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.vertex]
+via  = ["build", "world.toml", "--change", "changes/vertex.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.vertex.nodes]
+ran_file = "expected/ran.txt"

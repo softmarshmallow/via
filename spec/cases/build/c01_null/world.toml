@@ -1,0 +1,7 @@
+name       = "null"
+extent     = [0, 0, 2, 2]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= 0"

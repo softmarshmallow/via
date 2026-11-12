@@ -1,0 +1,53 @@
+format    = "via-case-1"
+summary   = "ford with four independent bad edits: authority.conflict, formula.unknown_name, graph.cycle, asset.unknown, all four in one run, exit 1."
+milestone = 1
+actions   = ["program", "trust", "bad"]
+
+# diagnostics.md's Conformance item and the plan's ford row "The four bad_* files together".
+# Each record's subject, location and hint are checked by U2 on every record; the values below
+# are those the chapters fix. authority.conflict's subject is "the later" of two anchored features
+# (authority.md), which the chapters do not order for a footprint against a path, so only its file
+# is written; its position is asserted by no key (conformance.md 3.5 compares a written position
+# exactly and has no "present" form).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/bad_anchor.toml", "--change", "changes/bad_typo.toml", "--change", "changes/bad_cycle.toml", "--change", "changes/bad_asset.toml"]
+exit = 0
+
+[action.bad]
+via         = ["build", "world.toml", "--change", "changes/bad_anchor.toml", "--change", "changes/bad_typo.toml", "--change", "changes/bad_cycle.toml", "--change", "changes/bad_asset.toml", "--out", "build/ford"]
+out         = "build/ford"
+exit        = 1
+diagnostics = "includes"
+
+[action.bad.diag.conflict]
+code = "authority.conflict"
+
+[action.bad.diag.typo]
+code    = "formula.unknown_name"
+subject = "scatter.trees.density"
+file    = "changes/bad_typo.toml"
+line    = 2
+column  = 67
+bytes   = [82, 84]
+data    = { name = "xx", nearest = "x" }
+
+[action.bad.diag.cycle]
+code    = "graph.cycle"
+subject = "field.loop_a"
+file    = "changes/bad_cycle.toml"
+line    = 2
+
+[action.bad.diag.asset]
+code = "asset.unknown"
+file = "changes/bad_asset.toml"
+line = 2
+data = { nearest = "shed_gable" }
+
+[action.bad.file.nothing_else]
+path    = "build/ford"
+listing = ["diagnostics.json", ".previous"]

@@ -9,3 +9,7 @@ description = "Typed artifact store: rasters, run manifests, seeding, content ha
 serde = { workspace = true }
 serde_json = { workspace = true }
 blake3 = { workspace = true }
+
+# Exempt from the workspace float-method lint until the M2 port to via-num (R26).
+[lints.clippy]
+disallowed_methods = "allow"

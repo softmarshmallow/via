@@ -1,0 +1,28 @@
+# Conformance runner
+
+The runner of `spec/conformance.md`. It reads every case under `spec/cases/<chapter>/<case>/` and
+drives the `via` binary through its command line only (R20). It uses Python's standard library and
+numpy, nothing else, and never the SDK.
+
+```
+cd tools/conformance
+uv run python -m via_conformance run --milestone 0                 # target/debug/via
+uv run python -m via_conformance run --via PATH --milestone 1 --chapter build --case c21_failed_build
+uv run python -m via_conformance run --milestone 1 --record runs/  # writes <os>-<arch>.json (U7)
+uv run python -m via_conformance compare runs/macos-aarch64.json runs/linux-x86_64.json
+uv run python -m via_conformance list                              # parse every case, count per milestone
+uv run python -m via_conformance.fixtures --check                  # ford case folders match the documents
+uv run python -m unittest discover -s tests                        # the runner's self-tests
+```
+
+- **Outcomes** are `pass`, `fail`, `pending` and `error` (`conformance.md` 6). A failed case's
+  working folder is kept and its path printed.
+- **Checks added to every case** (U1 to U7, `conformance.md` 5) need no line in a `case.toml`.
+  U2 reads `spec/diagnostics.toml`; while it does not exist, every core code fails U2.
+- **The ford world** is carried in each ford case's folder, derived byte for byte from
+  `docs/plan.md` and `spec/assets.md` 6.2 by `via_conformance/fixtures.py`. Edit the documents,
+  then run `python -m via_conformance.fixtures` to rewrite the copies.
+- **Self-tests** drive `tests/fake_via.py`, a fake binary that is honest by default and breaks one
+  rule on request (`FAKE_VIA=threads`, `incremental`, `abspath`, ...), so each check is seen both
+  to pass and to fail. A `--via` ending in `.py` runs under the runner's own Python, so the
+  fake binary needs no `#!` line and the self-tests run on Windows too.

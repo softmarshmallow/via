@@ -1,0 +1,15 @@
+[package]
+name = "via-model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The world model: kinds and authority, rules, surfaces, assets and names by place."
+
+[dependencies]
+via-num = { workspace = true }
+via-diag = { workspace = true }
+via-graph = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,115 @@
+format    = "via-case-1"
+summary   = "ford, then ford with downstream into one directory: changes.json lists every entry the plan's downstream row names, each with its cause."
+milestone = 1
+actions   = ["program", "trust", "base", "downstream"]
+
+# build.md case 37 and the plan's ford row `downstream` ("Must follow, and be reported").
+# Entries are sorted by table, then name (build.md 11.2): the seven written features that follow the
+# ford (beck is the one untouched, as build.md 11.2's example summary counts: ~6, changed 3,
+# 1 untouched), then the fields clearing, height, water, the cottage's footprint, the cottage, and
+# the trees. Every entry's one cause is the one edited statement, feature.ford.on, written in
+# world.toml line 74. The positions of entries past the cottage are the trees', not asserted here.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.base]
+via  = ["build", "world.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.downstream]
+via  = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.downstream.file.at_ford]
+path     = "build/ford/changes.json"
+pointer  = "/entries/0"
+includes = { name = "at_ford", table = "feature", what = ["moved", "changed"], keys = ["attrs.toward"] }
+
+[action.downstream.file.ford]
+path     = "build/ford/changes.json"
+pointer  = "/entries/1"
+includes = { name = "ford", table = "feature" }
+
+[action.downstream.file.in_trees]
+path     = "build/ford/changes.json"
+pointer  = "/entries/2"
+includes = { name = "in_trees", table = "feature" }
+
+[action.downstream.file.lane_east]
+path     = "build/ford/changes.json"
+pointer  = "/entries/3"
+includes = { name = "lane_east", table = "feature" }
+
+[action.downstream.file.lane_west]
+path     = "build/ford/changes.json"
+pointer  = "/entries/4"
+includes = { name = "lane_west", table = "feature" }
+
+[action.downstream.file.on_bank]
+path     = "build/ford/changes.json"
+pointer  = "/entries/5"
+includes = { name = "on_bank", table = "feature" }
+
+[action.downstream.file.to_door]
+path     = "build/ford/changes.json"
+pointer  = "/entries/6"
+includes = { name = "to_door", table = "feature" }
+
+[action.downstream.file.clearing]
+path     = "build/ford/changes.json"
+pointer  = "/entries/7"
+includes = { name = "clearing", table = "field", what = ["changed"] }
+
+[action.downstream.file.height]
+path     = "build/ford/changes.json"
+pointer  = "/entries/8"
+includes = { name = "height", table = "field", what = ["changed"], keys = ["samples"] }
+
+[action.downstream.file.water]
+path     = "build/ford/changes.json"
+pointer  = "/entries/9"
+includes = { name = "water", table = "field", what = ["changed"] }
+
+[action.downstream.file.footprint]
+path     = "build/ford/changes.json"
+pointer  = "/entries/10"
+includes = { name = "cottage", table = "footprint" }
+
+[action.downstream.file.cottage]
+path     = "build/ford/changes.json"
+pointer  = "/entries/11"
+includes = { name = "cottage", table = "instance" }
+
+# Each with its cause: for the first twelve entries, the one cause feature.ford.on at its line.
+[action.downstream.file.cause_at_ford]
+path     = "build/ford/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "feature.ford.on", file = "world.toml", in = "this", line = 74, via = ["shape:ford/v:build", "attr:at_ford"] }
+
+[action.downstream.file.cause_height]
+path     = "build/ford/changes.json"
+pointer  = "/entries/8/causes/0"
+includes = { cause = "feature.ford.on", file = "world.toml", in = "this", line = 74 }
+
+[action.downstream.file.cause_ford]
+path     = "build/ford/changes.json"
+pointer  = "/entries/1/causes/0"
+includes = { cause = "feature.ford.on", file = "world.toml", in = "this", line = 74 }
+
+[action.downstream.file.cause_cottage]
+path     = "build/ford/changes.json"
+pointer  = "/entries/11/causes/0"
+includes = { cause = "feature.ford.on", file = "world.toml", in = "this", line = 74 }
+
+[action.downstream.file.format]
+path    = "build/ford/changes.json"
+pointer = "/format"
+value   = "via-changes-0"

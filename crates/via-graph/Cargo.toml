@@ -1,0 +1,18 @@
+[package]
+name = "via-graph"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The build graph: nodes, edges, content keys and the store."
+
+[dependencies]
+via-num = { workspace = true }
+via-diag = { workspace = true }
+via-doc = { workspace = true }
+via-expr = { workspace = true }
+via-geom = { workspace = true }
+via-raster = { workspace = true }
+
+[lints]
+workspace = true

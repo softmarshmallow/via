@@ -1,0 +1,14 @@
+[package]
+name = "via-doc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Documents: reading world files with source spans and merging layers, includes and changes."
+
+[dependencies]
+via-num = { workspace = true }
+via-diag = { workspace = true }
+
+[lints]
+workspace = true

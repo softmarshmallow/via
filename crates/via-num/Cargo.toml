@@ -1,0 +1,19 @@
+[package]
+name = "via-num"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The one maths module: every float operation that is not exact everywhere, with the same bits on every system."
+
+[dependencies]
+# numbers.md 8 rule 2: every transcendental from libm, soft floats, no arch fast paths. The pin is
+# exact because a libm change can move bits; changing it is an engine version change (numbers.md 9).
+libm = { version = "=0.2.16", default-features = false, features = ["force-soft-floats"] }
+# The vector file (numbers.md 10) is read in file order, so the map keeps insertion order.
+toml = { version = "1.2", features = ["preserve_order"] }
+# The null digest over the evaluated vectors (one hex line compared across systems).
+blake3 = { version = "1.8", default-features = false }
+
+[lints]
+workspace = true

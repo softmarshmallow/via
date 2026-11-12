@@ -1,0 +1,71 @@
+format    = "via-case-1"
+summary   = "A formula typo in ford: one error at the typo, no file but diagnostics.json and .previous; the next good build reports against the first."
+milestone = 1
+actions   = ["program", "trust", "good", "typo", "fixed"]
+
+# build.md case 21, as conformance.md 3.6 writes it, with the case's last clause added as `fixed`.
+# The ford world is this folder's world.toml and changes/, derived from docs/plan.md by
+# tools/conformance (python -m via_conformance.fixtures).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/bad_typo.toml"]
+exit = 0
+
+[action.good]
+via  = ["build", "world.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.typo]
+via  = ["build", "world.toml", "--change", "changes/bad_typo.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 1
+
+[action.typo.diag.skipped]
+code    = "diag.skipped"
+subject = "scatter.trees"
+file    = "world.toml"
+line    = 64
+column  = 1
+bytes   = [1711, 1726]
+count   = 1
+data    = { first = ["step.checks"] }
+
+[action.typo.diag.typo]
+code    = "formula.unknown_name"
+subject = "scatter.trees.density"
+file    = "changes/bad_typo.toml"
+line    = 2
+column  = 67
+bytes   = [82, 84]
+data    = { name = "xx", nearest = "x" }
+chain   = [{ through = "change", name = "bad_typo", file = "changes/bad_typo.toml", line = 2 }]
+
+[action.typo.file.nothing_else]
+path    = "build/ford"
+listing = ["diagnostics.json", ".previous"]
+
+# The next good build: the same world as `good`, so the same id, and its change report is against
+# a baseline (a summary row exists only with one, build.md 11.2) with no entry.
+[action.fixed]
+via  = ["build", "world.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.fixed.same.world]
+action = "good"
+what   = "id"
+
+[action.fixed.file.no_entries]
+path    = "build/ford/changes.json"
+pointer = "/entries"
+value   = []
+
+[action.fixed.file.has_baseline]
+path    = "build/ford/changes.json"
+pointer = "/summary/0/table"
+value   = "feature"

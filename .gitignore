@@ -10,3 +10,15 @@ __pycache__/
 /spike/worlds/*/gen/
 /spike/worlds/relief/inputs/
 /spike/worlds/zoo_*/
+
+# Python environments of the conformance runner and the SDK (uv).
+tools/conformance/.venv/
+sdk/python/.venv/
+
+# Build outputs beside a world file: the store (graph.md 3.2, build.md 13: `.via/store/`) and the
+# default build directory (build.md 14: `--out` defaults to `build/<name>` beside the world file).
+# Anchored to where world files live, so a spec folder named after the build chapter
+# (spec/vectors/build/) stays tracked.
+.via/
+/examples/**/build/
+/spec/vectors/*/**/build/

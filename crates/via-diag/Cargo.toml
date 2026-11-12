@@ -1,0 +1,28 @@
+[package]
+name = "via-diag"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Diagnostics: the located record, the code registry and diagnostics.json."
+
+[dependencies]
+# Numbers as text (spec/numbers.md 3.4): doubles as ECMAScript prints them and lengths as exact
+# metres. The one maths module owns that rule (numbers.md 8), so this crate keeps no copy of it.
+via-num = { workspace = true }
+
+[dev-dependencies]
+# Reads spec/diagnostics.toml in the generator and the staleness tests only; the engine itself
+# holds the registry as the generated table in src/generated.rs, so it parses no TOML at run time.
+toml = "1.1"
+
+[[example]]
+name = "gen_reference"
+
+# `cargo run -p xtask -- check` runs this generator with --check to prove the committed
+# src/generated.rs and docs/reference/diagnostics.md fresh.
+[package.metadata.via]
+fresh = ["example:gen_reference"]
+
+[lints]
+workspace = true

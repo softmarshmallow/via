@@ -1,0 +1,14 @@
+[package]
+name = "via-expr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Formulas: parsing, checking and evaluating the formula language from the function table."
+
+[dependencies]
+via-num = { workspace = true }
+via-diag = { workspace = true }
+
+[lints]
+workspace = true

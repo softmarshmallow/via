@@ -1,0 +1,147 @@
+# Written at M0 for later; not pushed (docs/plan.md, "Comes back to you later": hosted runners).
+#
+# R26: same text, same bytes on macOS, Linux and Windows. Each system runs the checks of
+# CONTRIBUTING.md and the conformance runner, which writes one record per system
+# (`<os>-<arch>.json`, spec/conformance.md 5.3); the last job compares the records, the null
+# case's digest among them, across the whole matrix.
+name: ci
+
+on:
+  push:
+    branches: [main, rewrite]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  # No incremental artefacts in CI, so a build is a function of the source alone.
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  check:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Runner labels as GitHub names them in 2026: macos-13 is retired, so Intel macOS is
+        # macos-15-intel. ubuntu-24.04-arm and windows-11-arm are given free only to public
+        # repositories; while this repository is private those two entries need larger (paid)
+        # arm runners, or they wait for a runner that never comes and their records are missing,
+        # which across-systems then reports.
+        include:
+          - { runner: macos-latest, os: macos, arch: aarch64 }
+          - { runner: macos-15-intel, os: macos, arch: x86_64 }
+          - { runner: ubuntu-latest, os: linux, arch: x86_64 }
+          - { runner: ubuntu-24.04-arm, os: linux, arch: aarch64 }
+          - { runner: windows-latest, os: windows, arch: x86_64 }
+          - { runner: windows-11-arm, os: windows, arch: aarch64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      # rust-toolchain.toml pins the channel and components; rustup reads it on first use.
+      - name: Toolchain
+        run: rustup show active-toolchain
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Build the engine
+        run: cargo build --release -p via-cli
+
+      - uses: astral-sh/setup-uv@v6
+
+      # The SDK's uv environment that crates/via-proto/src/probe.rs (venv_python) looks for:
+      # sdk/python/.venv, Python 3.12, numpy. Made here so the probe tests below, which are
+      # ignored without it, run on every system, Windows's process code among them.
+      - name: SDK environment
+        shell: bash
+        run: |
+          uv venv sdk/python/.venv --python 3.12
+          uv pip install --python sdk/python/.venv numpy
+
+      # The probe drives a real Python worker through the engine: spawn, kill on deadline,
+      # kill mid-call, drop. Only here are the Windows paths (Job Object, suspended start,
+      # binary stdio, MoveFileExW) exercised.
+      - name: Probe tests
+        run: cargo test -p via-proto -- --include-ignored
+
+      - name: SDK unit tests
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = windows ]; then
+            py=sdk/python/.venv/Scripts/python.exe
+          else
+            py=sdk/python/.venv/bin/python
+          fi
+          "$py" -m unittest discover -s sdk/python/tests
+
+      - name: Conformance runner self-tests
+        shell: bash
+        working-directory: tools/conformance
+        run: uv run python -m unittest discover -s tests
+
+      # CONTRIBUTING.md's repository checks, the Python import check among them (it runs
+      # through uv, installed above). The local pattern file is not in the repository.
+      - name: Repository checks
+        run: cargo run -p xtask -- check --no-local-patterns
+
+      # spec/conformance.md 6: Python, standard library and numpy only, run against the built
+      # binary. The record goes to `records/<os>-<arch>.json`.
+      - name: Conformance
+        shell: bash
+        run: >
+          uv run --project tools/conformance python -m via_conformance run
+          --via target/release/via${{ matrix.os == 'windows' && '.exe' || '' }}
+          --milestone 0
+          --record records
+
+      - name: Keep the record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: record-${{ matrix.os }}-${{ matrix.arch }}
+          path: records/
+          if-no-files-found: error
+
+  across-systems:
+    name: same bytes across systems
+    needs: check
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: record-*
+          path: records
+          merge-multiple: true
+      # `compare A B` (spec/conformance.md 5.3) checks two records agree on every case not marked
+      # `one_system`: exit status, build id, each file's digest and each diagnostic. Every record
+      # is compared with the first, so one differing system names itself.
+      - name: Compare records
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls records
+          shopt -s nullglob
+          files=(records/*.json)
+          if [ "${#files[@]}" -lt 2 ]; then
+            echo "fewer than two records: nothing to compare" >&2
+            exit 1
+          fi
+          first="${files[0]}"
+          status=0
+          for other in "${files[@]:1}"; do
+            uv run --project tools/conformance python -m via_conformance compare "$first" "$other" || status=1
+          done
+          exit $status

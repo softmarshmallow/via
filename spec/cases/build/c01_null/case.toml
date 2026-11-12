@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "The null world builds to the recorded manifest and id, and passes via check."
+milestone = 0
+actions   = ["build", "check"]
+pending   = "expected/manifest.json and expected/id.txt are recorded by M0 step 6 (build.md 12, the null vector)"
+
+[action.build]
+via  = ["build", "world.toml"]
+out  = "build/null"
+exit = 0
+
+[action.build.file.manifest]
+path   = "build/null/manifest.json"
+equals = "expected/manifest.json"
+ignore = ["/run", "/locations"]
+
+[action.build.file.id]
+path       = "build/null/manifest.json"
+pointer    = "/id"
+value_file = "expected/id.txt"
+
+[action.check]
+via  = ["check", "build/null"]
+exit = 0

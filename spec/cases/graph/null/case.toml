@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = "ford built twice: the second run runs no node and every byte is the same (the plan's ford row Nothing)."
+milestone = 1
+actions   = ["program", "trust", "first", "second"]
+
+# graph.md's `null` row and the plan's ford row "Nothing": no node runs; every byte the same, at 1
+# or 8 threads (U6 rebuilds each build clean at 1 thread), on every system (U7).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.second]
+via       = ["build", "world.toml", "--out", "build/ford"]
+out       = "build/ford"
+exit      = 0
+untouched = ["build/ford"]
+
+[action.second.nodes]
+ran = []
+
+[action.second.same.files]
+action = "first"
+what   = "files"
+
+[action.second.same.id]
+action = "first"
+what   = "id"
+
+[action.second.same.diagnostics]
+action = "first"
+what   = "diagnostics"

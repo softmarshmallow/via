@@ -722,8 +722,9 @@ source. From it are generated:
    and one can be moved to the other (R7). A plain-command step cannot call the engine.
 
 A function added without a row, or a row without a vector in `spec/vectors/`, fails the code checks
-(plan, "How every milestone runs"). The data file's name and form are (open): written with the code
-checks at M0 step 5, as `vocabulary.toml` is.
+(plan, "How every milestone runs"). The data file is `spec/functions.toml` (R33): one
+`[function.<name>]` table per function, in the order of section 8, holding its columns; the code
+checks hold it equal to section 8. The reference page is generated into `docs/reference/` (R33).
 
 ## Diagnostics
 

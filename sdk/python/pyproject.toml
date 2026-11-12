@@ -1,0 +1,21 @@
+[project]
+name = "viasdk"
+# The SDK's major version is the protocol's: viasdk 1.x speaks via-step-1 and nothing else.
+# Read from viasdk/__init__.py so the two never disagree.
+dynamic = ["version"]
+description = "The Python side of via's step protocol (via-step-1): pure Python, never links the engine."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+# Pure Python, with NumPy as its one dependency (protocol.md 8). It is imported only where fields
+# are touched, so a missing NumPy is the script's own error (8.1), not the launcher's.
+dependencies = ["numpy>=1.26"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "viasdk/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["viasdk"]

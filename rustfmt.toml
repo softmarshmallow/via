@@ -1,0 +1,2 @@
+# Defaults throughout; the edition is stated so `rustfmt` run on a single file agrees with cargo.
+edition = "2021"

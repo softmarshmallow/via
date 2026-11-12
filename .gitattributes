@@ -1,0 +1,40 @@
+# R26: same text, same bytes on macOS, Linux and Windows. Without this, a Windows checkout with
+# core.autocrlf=true (GitHub's Windows runners, many contributors) writes text files with CRLF:
+# the byte-for-byte freshness tests (via-diag's generated table, the conformance fixtures) fail,
+# and case files reach the engine as different bytes than on the other systems. Every text file
+# is checked out with LF everywhere; binary types are named so git never converts them.
+* text=auto eol=lf
+
+# Arrays, pictures, models and archives: never converted, never diffed as text.
+*.npy binary
+*.npz binary
+*.f32 binary
+*.f64 binary
+*.bin binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.exr binary
+*.tif binary
+*.tiff binary
+*.ico binary
+*.pdf binary
+*.glb binary
+*.gltf text eol=lf
+*.zip binary
+*.gz binary
+*.zst binary
+*.tar binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.wasm binary
+*.pyc binary
+
+# Windows scripts are the one place CRLF is the native form; none exist yet, and if one is added
+# it keeps CRLF so cmd.exe reads it.
+*.bat text eol=crlf
+*.cmd text eol=crlf

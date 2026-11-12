@@ -1,0 +1,16 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Repository checks: the deny-list, maths through via-num, the function table, case coverage."
+publish = false
+
+[dependencies]
+# The vocabulary is TOML (R1, R33); cargo metadata and the import script speak JSON.
+toml = "1.1"
+serde_json = "1.0"
+
+[lints]
+workspace = true

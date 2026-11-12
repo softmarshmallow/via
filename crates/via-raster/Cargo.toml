@@ -1,0 +1,14 @@
+[package]
+name = "via-raster"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Fields on the post lattice: bases, rows and effects by window, raster files, searches over posts."
+
+[dependencies]
+via-num = { workspace = true }
+via-diag = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,34 +1,59 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/via-artifact",
-    "crates/via-ecology",
-    "crates/via-suitability",
+    # The engine (docs/plan.md, "Shape"). Dependencies point downward only:
+    # num, diag -> doc, expr, geom, raster -> graph -> model -> proto -> cli; step -> proto.
+    "crates/via-num",
+    "crates/via-diag",
+    "crates/via-doc",
+    "crates/via-expr",
+    "crates/via-geom",
+    "crates/via-raster",
+    "crates/via-graph",
+    "crates/via-model",
+    "crates/via-proto",
+    "crates/via-cli",
+    "crates/via-step",
+    # Repository checks (deny-list, maths through via-num, the function table).
+    "crates/xtask",
+    # Carried over: the erosion library and its file format, ported to via-num in M2.
     "crates/via-terrain",
-    "crates/via-viz",
-    "crates/via",
+    "crates/via-artifact",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.92"
 license = "MIT"
 
 [workspace.dependencies]
+# Used by the carried-over erosion library only, until its M2 port.
 rayon = "1.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 blake3 = "1"
-image = { version = "0.25", default-features = false, features = ["png"] }
-clap = { version = "4", features = ["derive"] }
-anyhow = "1"
 insta = { version = "1", features = ["json"] }
 
+via-num = { path = "crates/via-num" }
+via-diag = { path = "crates/via-diag" }
+via-doc = { path = "crates/via-doc" }
+via-expr = { path = "crates/via-expr" }
+via-geom = { path = "crates/via-geom" }
+via-raster = { path = "crates/via-raster" }
+via-graph = { path = "crates/via-graph" }
+via-model = { path = "crates/via-model" }
+via-proto = { path = "crates/via-proto" }
 via-artifact = { path = "crates/via-artifact" }
-via-ecology = { path = "crates/via-ecology" }
-via-suitability = { path = "crates/via-suitability" }
 via-terrain = { path = "crates/via-terrain" }
-via-viz = { path = "crates/via-viz" }
+
+# Applied by every new crate with `[lints] workspace = true`. via-terrain and via-artifact do not
+# opt in, and allow disallowed_methods themselves, until their M2 port to via-num.
+[workspace.lints.clippy]
+# R26 and numbers.md 8: every float operation beyond the allow-list goes through via-num. The list
+# itself is clippy.toml. via-num opts in too: it computes through libm, not these methods, and any
+# use it does need is a local `#[allow]` with its reason.
+disallowed_methods = "deny"
 
 [profile.release]
 debug = true
