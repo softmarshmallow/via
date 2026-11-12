@@ -10,10 +10,11 @@ Words are from `spec/vocabulary.md`. Posts, post order, windows, halos, `d` and 
 `authority.md` (section 4); formulas, their marker and their field reads are `formulas.md`; node
 keys and the store are `graph.md`; the array file is `build.md` 3.2.
 
-**Milestones.** Sections 1 to 3, 4 for an array file, 5, 6.1, 6.3, 6.4 and 7.1 are M1. A PNG base
+**Milestones.** Sections 1 to 3, 4 for an array file, 5, 6.1, 6.3 and 7.1 are M1. A PNG base
 (4.1), the `cubic` filter, step views (6.2) and what a step returns (section 7) are M2 (`relief`,
-`massif`, `basin`): M1's only step is a lint, which returns no rows. Their cases are in the M2
-block of the conformance table, so the M1 runner does not owe them.
+`massif`, `basin`): M1's only step is a lint, which returns no rows. The last writer (6.4) is M3:
+in M1 every meeting is a path end on the terrain, so `surface.gap` is always 0. Their cases are in
+the M2 and M3 blocks of the conformance table, so the M1 runner does not owe them.
 
 ## 1. What a field is
 
@@ -67,11 +68,11 @@ value; the reader that asks for one reports the error its own chapter names.
 
 With `r` the resolution in millimetres and `nx` posts along `x`:
 
-1. `a = x - x0`, an integer. The cell is `i = min(floor(a / r), nx - 2)`, in integer arithmetic.
-   A point on an edge two cells share therefore uses the cell to its east (or north). Only a point
-   on the last column (or row) is clamped, and uses the cell to its west (or south). The value is
-   the same either way, since the interpolant is continuous; the gradient is not, and `sample`
-   (`surfaces.md` 2.2) takes its cell by this same rule.
+1. `a = x - x0`, an integer. The grid cell is `i = min(floor(a / r), nx - 2)`, in integer
+   arithmetic. A point on an edge two grid cells share therefore uses the grid cell to its east (or
+   north). Only a point on the last column (or row) is clamped, and uses the grid cell to its west
+   (or south). The value is the same either way, since the interpolant is continuous; the gradient
+   is not, and `sample` (`surfaces.md` 2.2) takes its grid cell by this same rule.
 2. The fraction is `fx = (a - i * r) as double / r as double`: one correctly rounded division,
    0 to 1, exactly 1 only on the last column. Likewise `j` and `fy`.
 3. With `p00` the post `(i, j)`, `p10` its east neighbour, `p01` its north one and `p11` the
@@ -83,7 +84,7 @@ With `r` the resolution in millimetres and `nx` posts along `x`:
 Each line is exact when its fraction is 0 or 1, so a point on a post reads that post's value bit
 for bit. The mapping and order are ours; bilinear interpolation is the textbook rule.
 
-**A formula at a point** (a scatter's `density` at a candidate, `rules.md` 7.2) is evaluated at the
+**A formula at a point** (a scatter's `density` at a candidate, `rules.md` 7.1) is evaluated at the
 point itself: `x` and `y` are its coordinates (`numbers.md` 4, millimetres divided by 1000), and
 each field it reads through `f` gives that field's value at the point by the rule above. It is
 never the interpolation of the formula's own values at posts. A function whose halo is in posts
@@ -98,9 +99,9 @@ core reads roles only; it never gives a tag a meaning.
 
 | Role | Type | `unit` | How the core reads it | How many |
 |---|---|---|---|---|
-| `surface` | `scalar` | `m` | The ground under every `at` and `on`; terrain export (`surfaces.md`). | Exactly one unbounded in M1, required once anything asks for ground (below). A second is `surface.two_terrains` (`surfaces.md`). |
+| `surface` | `scalar` | `m` | The ground under every `at` and `on`; terrain export (`surfaces.md`). | Exactly one, at the top level: the terrain. Required once anything asks for ground (below). A second is `surface.two_terrains` (`surfaces.md`). |
 | `material` | `weights` | `ratio` | Material weights handed to the loader as the engine's terrain layers. Every `paint` names a pack `[material.<name>]` (`assets.md` 2.6). | At most one. Optional: a world without one hands over no material. |
-| `keep_out` | `scalar` | `ratio` | A scatter multiplies its density by `1 - keep_out` (`rules.md` 7.2). A hand placement, run member, step instance or set item where it is above 0 is `place.keep_out`, warning (`rules.md` 8.3); a pin there is a warning naming both (`vocabulary.md`, hand edits). | Any number. Read as one (below). |
+| `keep_out` | `scalar` | `ratio` | A scatter multiplies its density by `1 - keep_out` (`rules.md` 7.1). A hand placement, run member, step instance or set item where it is above 0 is `place.keep_out`, warning (`rules.md` 8.3); a pin there is a warning naming both (`vocabulary.md`, hand edits). | Any number. Read as one (below). |
 
 - **Units on roles.** A role field may leave `unit` out. An absent unit is then the role's unit,
   everywhere: in the build's index, in `field.file_coarse`, and for every other reader. Any other
@@ -185,10 +186,9 @@ should paint a material is read as a `scalar` field and used as a row's `mask`.
 
 ## 4. A base from a file
 
-A field's `file` is a path relative to the document that names it, and a declared input of the
-graph (principle 7, `graph.md`). Whether principle 6 ("a world never names a file") admits it is
-(open): `vocabulary.md` reads the principle as forbidding asset files only, and the doctrine does
-not yet say so. A doctrine ruling on principles 6 and 7 decides it.
+A field's `file` is a path relative to the document that names it. It is a declared outside input
+of the graph under principle 7 (`graph.md`), not an asset, so principle 6 does not forbid it (R30).
+A field read from a file is built and ordered like any other (R29).
 
 ### 4.1 Formats
 
@@ -208,8 +208,8 @@ author's float raster are one format.
   stored. Gamma, colour profiles and a `tRNS` chunk are not applied: levels are read as stored, and
   `field.file_profile` (info) names what was ignored.
 - **Refused.** Any other format, a palette PNG, a 1-, 2- or 4-bit PNG, or a raster with either
-  dimension under 2 samples is `field.file_format`. A missing or unreadable file is
-  `field.file_missing`, naming the resolved path.
+  dimension under 2 samples is `field.file_format`. The path is found as any `file` in text
+  (`documents.md` 7.2): `doc.file_missing`, `doc.path_case` or `doc.file_unreadable`.
 - **Size.** A raster is checked from its header before its samples are read. More samples than the
   post-count limit of `numbers.md` is `field.file_too_large`. The limit is (open) until the M0
   probe sets it (`numbers.md`, Open).
@@ -243,14 +243,14 @@ Samples of a raster are posts of its own grid: its `W` columns run from `x0` to 
 For a post at `X` millimetres, inside the raster's extent (edges included), with `D = x1 - x0`:
 
 1. `N = (X - x0) * (W - 1)`, an exact integer (128-bit).
-2. **`linear`.** Cell `c = min(floor(N / D), W - 2)` in integer arithmetic; fraction
+2. **`linear`.** Grid cell `c = min(floor(N / D), W - 2)` in integer arithmetic; fraction
    `(N - c * D) as double / D as double`. Likewise along `y`. The value is 1.2's three lines over
    the four samples around, each first mapped by `range`.
 3. **`nearest`.** Sample `floor((2 * N + D) / (2 * D))`: the nearest, a tie going to the higher
    index (east or north). Ours.
 4. **`cubic`** (M2). Keys cubic convolution with `a = -0.5` (Keys, 1981) over the 4 by 4 samples
-   around the cell of step 2, weights from the fraction in doubles, summed west to east for each
-   row, then the four rows south to north. A sample index past the raster's edge reads the edge
+   around the grid cell of step 2, weights from the fraction in doubles, summed west to east for
+   each row, then the four rows south to north. A sample index past the raster's edge reads the edge
    sample. The result may overshoot `range`; it is not clamped. Its weights are 1, 0, 0, 0 at a
    fraction of 0, so it too reads a sample exactly.
 
@@ -324,7 +324,10 @@ An effect with a `radius` (its own, else its kind's) does nothing at a post wher
 arise there.
 
 - The effect's window is the smallest rectangle of posts that covers the shape grown by `radius`,
-  cut at the extent. Its formulas are evaluated at the posts of that window with `d <= radius`.
+  cut at the extent: with the shape's plan bounding box `[xmin, ymin, xmax, ymax]`, extent origin
+  `(x0, y0)` and resolution `r`, `i0 = max(0, floor((xmin - radius - x0) / r))`,
+  `i1 = min(nx, ceil((xmax + radius - x0) / r) + 1)`, and `j0`, `j1` alike (`numbers.md` 6). Its
+  formulas are evaluated at the posts of that window with `d <= radius`.
 - **The ring** is the posts with `radius - r < d <= radius`, `r` the resolution, leaving out every
   post on the extent's edge (`i = 0`, `i = nx - 1`, `j = 0`, `j = ny - 1`). A mask above 0.02 at a
   ring post is `field.effect_cut` (warning), at the first such post in post order: the effect stops
@@ -360,7 +363,7 @@ returns.
 
 | Reader | View | Defined in |
 |---|---|---|
-| The build | Every entry. | |
+| The build, and a lint or export (they read the finished build) | Every entry. | R29 |
 | A step at layer L reading with `view = "head"` (M2) | Its head view: the base; the head entries of layers below L; the `then` rows written in layer L's text. | `authority.md` 4.4 |
 | A step at layer L reading with `view = "full"`, the default (M2) | Its full view: every entry from layers at or below L, except what steps at L return. | `authority.md` 4.4 |
 | `v`, `under(stat)`, `smoothed_along` inside an entry | The entries before this one, in the view being resolved. | `formulas.md` 6.4, 6.5, 8.5 |
@@ -375,12 +378,14 @@ returns.
 ### 6.3 Windows and halos
 
 A window of a field equals the same cut of the whole field (`numbers.md` 6). Applying entries needs
-no halo: every entry is evaluated at one post from values at that post (R7), shapes are resolved
-over the whole extent (6.1), and a bounded effect contributes nothing beyond its radius. A raster's
-filter reads the raster, never a neighbouring window.
+no halo of its own: an entry is evaluated at one post (R7), shapes are resolved over the whole
+extent (6.1), and a bounded effect contributes nothing beyond its radius. A raster's filter reads
+the raster, never a neighbouring window.
 
-A formula that calls a neighbour function (`slope`, `under`, `smoothed_along`) grows the window of the
-field it reads by that function's halo (`formulas.md` 8, `numbers.md` 6). A reader that needs
+The one exception is R28: a formula may call a shipped function that reads a field around the point
+(`slope`, `under`, `smoothed_along`) because that function declares its halo and cap. Such a call
+grows the window of the field it reads by that halo, never past the cap (`formulas.md` 8.6,
+`numbers.md` 6). An open-ended neighbourhood is a step. A reader that needs
 neighbours (a step computing slope, a lint, export normals) asks for its window with a halo; the
 core resolves the grown window, cut at the extent, and never invents posts beyond it. How a step
 asks is `protocol.md`.
@@ -390,13 +395,13 @@ plane for any other.
 
 ### 6.4 The last writer at a point
 
-A diagnostic that must say what set a field's value at a point (M1: `surface.gap`, `surfaces.md`
+A diagnostic that must say what set a field's value at a point (M3: `surface.gap`, `surfaces.md`
 3.4) asks for the field's **last writer** there. This section is how the core finds it.
 
 - **Rule.** At a post, the last writer is the last entry, in the field's order (`authority.md` 4)
   in the build's view, whose `m` is above 0 at that post. `m` is the mask in doubles, before
   narrowing. An effect beyond its radius (5.3) applies nothing there, so it is never a writer. At a
-  point, the posts are the four of the cell 1.2 picks, and the last writer is the latest in the
+  point, the posts are the four of the grid cell 1.2 picks, and the last writer is the latest in the
   field's order over those four. Where no entry has `m` above 0 at any of them, the writer is the
   field's base: its `base` key, or its `file` key.
 - **Named as.** A row by its id, file and line; an effect by its kind effect's span and the feature
@@ -415,26 +420,29 @@ A diagnostic that must say what set a field's value at a point (M1: `surface.gap
 
 ## 7. What a step returns (M2)
 
-Reading R19(c) and R21 together: a step exchanges whole fields as data, but enters a field's order
-only as rows, so it may return a whole field only as a new field that its own rows read. This
-reading is ours; the lead is asked to record it in the doctrine.
+A step exchanges whole fields as data (R19c) but returns rows and features, never a whole field
+(R21), and its rows are rows like any other in the field's order (R29). Whether it may declare a
+new field of its own is (open: needs ruling): R21 as written forbids it; `protocol.md` 5 asks the
+lead to amend R21 so that a new field the step declares is allowed and a field that already exists
+never is. The lead decides before M2; until then the rows, example and cases marked so below hang on it.
 
 In the document it returns (`protocol.md` 5) a step may write:
 
 | May | May not |
 |---|---|
 | `then` rows on any field in its stratum, with `value` and `mask` formulas. They take the step's layer rank in the head (`authority.md` 4.1). | A row on a field of a higher layer: `field.step_layer`. |
-| A new field of its own, `base` or `file`, for its rows to read. Its `role` follows 2.1 like any field: a `keep_out` is legal; a second terrain is `surface.two_terrains`; a second `material` is `field.role_twice`. | `base`, `file`, `role`, `type`, `unit` or `tags` on a field declared outside its document: `field.step_base`. |
+| (open: needs ruling, R21) A new field of its own, `base` or `file`, for its rows to read. Its `role` follows 2.1 like any field: a `keep_out` is legal; a second terrain is `surface.two_terrains`; a second `material` is `field.role_twice`. | `base`, `file`, `role`, `type`, `unit` or `tags` on a field declared outside its document: `field.step_base`. |
 | Features, whose kinds write fields by their effects. | |
 
 A returned row's id is named `<step>#<id>` by the build (`identity.md` 2.4), so it cannot collide
 with a row the world wrote.
 
-Example: an erosion step at layer 1 reads `height` with `view = "head"` (the base, layer 0's `then`
+Example (open: needs ruling, R21, for `[field.eroded]`): an erosion step at layer 1 reads `height` with `view = "head"` (the base, layer 0's `then`
 rows and layer 1's written `then` rows), returns `[field.eroded]` with `file` set to its output, and
-`[field.height.then.erosion]` with `value = "= f('eroded')"`. That row sorts after every `then`
-row it read and before every effect (`authority.md` 4.1), so a world `then` row cannot overwrite it, and every effect of
-every layer, anchored grooves included, is applied once, on top of it. The facts an erosion must
+`[field.height.then.erosion]` with `value = "= f('eroded')"`. That row sits in the head, before
+every effect (`authority.md` 4.1). It must sort after every row it read, else
+`authority.step_view` (`authority.md` 4.4); rows outside its view may sit before or after it. Every
+effect of every layer, anchored grooves included, is applied once, on top of it. The facts an erosion must
 honour reach it as features (`authority.md` 7), not as effects in the field it reads.
 
 Fields travel as array files named by digest, never as JSON (R20). A stored array file is checked
@@ -514,7 +522,6 @@ Reading `f('height')` inside `cover` resolves `height` first, with its one row. 
 | `field.weights_base` | error | `base` or `file` on a `weights` field. | Read the raster as a scalar field and use it as a row's `mask`. |
 | `field.row_missing` | error | A scalar row or entry with no `value`, or a weights one with no `paint`; names the row or effect. | Add the key. |
 | `field.row_key` | error | `paint` on a scalar entry, or `value` on a weights entry; names the row or effect and the field. | Use the key of the field's type, or narrow the effect's selector. |
-| `field.file_missing` | error | The file is missing or unreadable; the resolved path. | Check the path, relative to the document. |
 | `field.file_format` | error | An unsupported format, depth or palette; an array file whose `shape` is not 2-D or whose `descr` is not `<f4`; a raster with a dimension under 2. | Save as 8- or 16-bit grey PNG, or an array file. |
 | `field.file_too_large` | error | More samples than the post-count limit; the header's size. | Crop or downsample the raster. |
 | `field.file_key` | error | A file key without `file`, one that does not apply, an unknown `channel` or `filter`, or a channel the picture lacks. | The keys that apply; for `luma`, name one channel. |
@@ -526,10 +533,11 @@ Reading `f('height')` inside `cover` resolves `height` first, with its one row. 
 | `field.file_profile` | info | A PNG's gamma, colour profile or `tRNS` was not applied. | None needed; levels are read as stored. |
 | `field.unpainted` | warning | Posts of the `material` field with weights summing below 1; the first and the count. | Add a first row with no mask. |
 | `field.effect_cut` | warning | An effect's mask is above 0.02 on its ring; the effect, the feature and the first post. | Raise `radius`, or fade `mask` to 0 by it. |
-| `field.step_base` | error | A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare. | Return a new field and a row that reads it. |
+| `field.step_base` | error | A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare. | Return rows on the field instead. |
 | `field.step_layer` | error | A step's row on a field of a higher layer. | Move the step up, or the field down. |
 
-Codes of other chapters used here: `doc.unknown_key`, `doc.not_yet`, `doc.upward_ref`,
+Codes of other chapters used here: `doc.unknown_key`, `doc.not_yet`, `doc.file_missing`,
+`doc.path_case`, `doc.file_unreadable`, `doc.upward_ref`,
 `num.extent_empty`, `num.not_finite_result`, `formula.range`, `authority.no_field`,
 `authority.step_view`, `surface.two_terrains`, `pack.unknown_material`, `graph.cycle`,
 `graph.store_corrupt`, `load.too_many_materials`.
@@ -580,9 +588,7 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 | world edge | radius 6 on a point at (4, 4), extent `[0, 0, 8, 8]`, mask 1 | no `field.effect_cut`: every ring post lies on the extent's edge |
 | edge equals cut | base `"= 2 * x"`; effect radius 3 on a point at (8, 4), `value = 1`, `mask = "= 1 - smoothstep(0, 2, d)"`, 0 on the ring; built once with extent `[0, 0, 8, 8]` and once with `[0, 0, 16, 8]` | every post of the first equals the second's post at the same place, bit for bit; no `field.effect_cut` in either |
 | no material | an instance, a `surface` field, no `material` field | builds, exit 0; the build's index lists no `material` field and no material is handed over; no `field.unpainted` |
-| cell on an edge | `height` base `"= x * x"`; `sample` (`surfaces.md` 2.2) at (2, 0) and at (8, 0) | at (2, 0) the cell is 2 to 3, `gx = 5`; at (8, 0), the last column, the cell is 7 to 8, `gx = 15` |
-| last writer | core test, not `via build`. `height` base 0; row `a` `value = 1`, mask 1; row `b` `value = 2`, `mask = "= smoothstep(4, 5, x)"`; an effect `value = 5`, radius 1, on a point at (0, 7) | at (2.5, 2.5) and (3.5, 2.5) the writer is `a`; at (4, 2.5), an edge two cells share, and at (4.5, 2.5) it is `b`; at (0.5, 6.5) it is the effect; the replay's values equal the build's bit for bit |
-| last writer, base | core test. `height` base 3, no rows | at (2.5, 2.5) the writer is the `base` key's line |
+| grid cell on an edge | `height` base `"= x * x"`; `sample` (`surfaces.md` 2.2) at (2, 0) and at (8, 0) | at (2, 0) the grid cell is 2 to 3, `gx = 5`; at (8, 0), the last column, the grid cell is 7 to 8, `gx = 15` |
 | array file base | `file` a 9 by 9 array file, `outside = 0` | every post equals its sample bit for bit |
 | corner alignment | write `height` to an array file; a second world reads it with `file`, each filter | every post equal, bit for bit |
 | half resolution | a 5 by 5 array file over the extent | posts (2i, 2j) equal sample (i, j) bit for bit |
@@ -593,14 +599,24 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 | file key | `range` without `file`; `channel` on an array file; `filter = "smooth"` | `field.file_key` each |
 | offworld | raster `extent = [100, 100, 110, 110]` | `field.file_offworld`; every post `outside` |
 | array file format | `planes.npy`, `shape = (2, 9, 9)`; `double.npy`, `descr = "<f8"` | `field.file_format` each |
-| missing | `file = "none.npy"` | `field.file_missing` with the resolved path |
+| missing | `file = "none.npy"` | `doc.file_missing` with the resolved path |
 | too large | a header asking for more samples than the post-count limit | `field.file_too_large`, before any sample is read |
 | non-finite | array file with one NaN | `field.file_nonfinite` at its row and column |
 | both | `base` and `file` | `field.base_and_file` |
 | narrowing overflow | base `"= 1e39"` | `num.not_finite_result` naming the field and post (0, 0) |
 | window = cut | — | `numbers.md`'s `window_equals_whole`; no case here |
-| memo | `height` read by three formulas | the run report (`graph.md` 6.2) holds one `height` node per window with status `ran` |
+| memo | `height` read by three formulas | the run report (`graph.md` 6.3) holds one `height` node per window with status `ran` |
 | volume | `type = "volume"` | `doc.not_yet` naming M5 |
+| change windows | `ford`, built; then built with `--change downstream`; then with `--change changes/vertex.toml` (`docs/plan.md`) | each changed build passes the named check `changed_within_windows` against the first, on `height`, `clearing` and `water` |
+
+**`changed_within_windows`** (asked of `conformance.md` 3.4). Arguments: `before` and `after`, two
+build directories; `fields`, field names; `kinds`, the kinds files the world reads; `world`, the world
+file. A feature or footprint **moved** if it is in one build's `features.json` only, or its plan
+shape (`at`, `points` or `pieces`, `x` and `y` only, never `z`) differs. Its radius is the largest
+`radius` of its kind's effects, each its own else the kind's, read from `kinds`; an effect with
+none gives the whole extent. Each moved shape, old and new, gives the window of 5.3 for that
+radius, with the world's `extent` and `resolution`. Holds when every post of each field whose value
+in `fields/<name>.npy` differs between the builds lies in the union of those windows.
 
 **M2**
 
@@ -622,13 +638,26 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 | too small | a 1 by 4 PNG | `field.file_format` |
 | palette | palette PNG | `field.file_format` |
 | cubic | a 4 by 4 array file with one spike, `filter = "cubic"`, resolution half the raster's | values below 0 next to the spike, not clamped; edge posts read the edge sample repeated (vector in the fixture) |
-| step view | base 10; a layer-0 kind effect `value = "= v + 2"`; a layer-1 step reads `height` with `view = "head"`, writes it as field `seen`, returns `value = "= f('seen')"` | 12, not 14: the effect is applied once |
+| step view | (open: needs ruling, R21, for field `seen`) base 10; a layer-0 kind effect `value = "= v + 2"`; a layer-1 step reads `height` with `view = "head"`, writes it as field `seen`, returns `value = "= f('seen')"` | 12, not 14: the effect is applied once |
 | step two rows | a layer-1 step returns rows `p` (order 1) and `q` (order -1) on `height` | both read the same head view; `q` applies before `p` |
 | step full view | the step of "step view" reads `height` with `view = "full"` and returns rows on `height` | `authority.step_view` |
 | step neutral | step reads `height`, returns a row `value = "= v"` | equal to the build without the step |
 | step base | step returns `base` on `height`; `tags` on `height` | `field.step_base` each |
 | step layer | a layer-0 step returns a row on a field declared in layer 1 | `field.step_layer` |
-| step keep_out | step returns a new field with `role = "keep_out"` | builds; a scatter reads it |
+| step keep_out | (open: needs ruling, R21) step returns a new field with `role = "keep_out"` | builds; a scatter reads it |
+
+**M3**
+
+| Case | Input | Must hold |
+|---|---|---|
+| last writer, seen | `surfaces.md`'s `bridge_gap`, with the terrain under the deck's west head set by row `a` (mask 1) and then row `b` (`mask = "= smoothstep(4, 5, x)"`, above 0 there) | `surface.gap` names `b` by id, file and line as the terrain's last writer (6.4) |
+
+The last-writer rule itself is a repository test of the core, not conformance (R20, `conformance.md`
+7): `height` base 0; row `a` `value = 1`, mask 1; row `b` `value = 2`, `mask = "= smoothstep(4, 5,
+x)"`; an effect `value = 5`, radius 1, on a point at (0, 7). At (2.5, 2.5) and (3.5, 2.5) the writer
+is `a`; at (4, 2.5), an edge two grid cells share, and at (4.5, 2.5) it is `b`; at (0.5, 6.5) it is the
+effect; the replay's values equal the build's bit for bit. With base 3 and no rows, the writer at
+(2.5, 2.5) is the `base` key's line.
 
 ## Changed from the spike
 
@@ -651,7 +680,6 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 
 ## Open
 
-- **Principle 6 and a field's `file`.** See section 4. Decided by a doctrine ruling.
 - **Float pictures beyond our array file** (EXR, float TIFF). Decided by the first world that needs
   one; challenge 31, `relief` in M2.
 - **A picture painting a material directly**, without a scalar field between. Decided by `relief`

@@ -93,12 +93,12 @@ Each produced thing has a **class**, a word from this closed list. `class` selec
 | `instance` | a run's instance | `r<station>` | none | none | `fence#r7` |
 | `junction` | a network junction (`geometry.md` 3.2) | `j<digest>_<ordinal>` | set of (source, role) pairs | lowest `t` along the bytewise-lowest source | `streets#j82df4d89dc3cb626_0` |
 | `edge` | a network edge | `e<digest>_<ordinal>` | its two junction keys, sorted bytewise; set of its sources | lowest `t` along the bytewise-lowest source | `streets#eedaa5ba9984d5e26_0` |
-| `area` | a network area | `a<digest>_<ordinal>` | `bounds`: set of (source, side) pairs | `point`, `x` then `y` | `streets#a43c6f2eb9128ebc7_0` |
+| `area` | a network area | `a<digest>_<ordinal>` | `sides`: set of (source, side) pairs | `point`, `x` then `y` | `streets#a43c6f2eb9128ebc7_0` |
 | `cell` | a cell | `c<digest>_<station>` | source, side, stretch anchor, stretch ordinal | station within the stretch | `lots#c5a52c2461d4ce6d7_3` |
 | `rest` | what lies deeper than a cell's depth | `b<digest>_<ordinal>` | the divided region's name | `point`, `x` then `y` | `lots#b97d328fbf7300eb3_0` |
 | `piece` | a piece of a `where` region | `p<i>_<j>_<ordinal>` | none | `point`, `x` then `y` | `meadow#p2_5_0` |
 | `feature` | a step's returned feature | the step's key (2.4) | as the step builds it | as the step builds it | `village#lot_c5a52c2461d4ce6d7_3` |
-| `field` | a step's returned field | the step's key (2.4) | none | none | `erosion#eroded` |
+| `field` | a step's returned field (open: needs ruling, R21; `fields.md` 7) | the step's key (2.4) | none | none | `erosion#eroded` |
 | `row` | a step's returned `then` row | the step's key (2.4) | none | none | `erosion#erosion` |
 
 Each class in more detail:
@@ -128,8 +128,8 @@ Each class in more detail:
   one of them in its set. The ordinal separates edges with the same junctions and sources (a loop).
 - **Clip outline.** The outline of a network's `clip` region (`geometry.md` 3.2) is the source named
   `#clip`, a name no id or produced name can be.
-- **Area.** Its parts are `geometry.md` 3.2's `bounds`, already in the set order above. The outside
-  of a network is not an area and has no name (`geometry.md` bounds areas only).
+- **Area.** Its parts are `geometry.md` 3.2's `sides`, already in the set order above. The outside
+  of a network is not an area and has no name (`geometry.md` 3.2 returns enclosed areas only).
 - **Cell.** A **frontage** is one source on one side, as `geometry.md` 3.6 returns it. Along it,
   cells are cut per **stretch** between corners. A stretch is keyed by its **anchor**, the key of
   the last junction at or before its start along the source's travel (the empty name if none), and
@@ -160,7 +160,7 @@ the core forms `<step>#<key>`:
 |---|---|---|
 | a feature | `feature`, or a class of 2.3 the step states (a `cell` it built as the core would) | a place key the step builds (the SDK's naming calls, below) |
 | an instance | `instance` | likewise |
-| a field (`fields.md` 7) | `field` | the step's own word, such as `eroded`: one thing, not one of many places |
+| a field (open: needs ruling, R21; `fields.md` 7) | `field` | the step's own word, such as `eroded`: one thing, not one of many places |
 | a `then` row on a field (`fields.md` 7, `authority.md` 4.1) | `row` | the step's own word, such as `erosion` |
 
 A returned item with no class stated is `instance` if it is an instance, `field` if it is a field,
@@ -170,16 +170,15 @@ A returned item with no class stated is `instance` if it is an instance, `field`
 
 A field and a row have no place, so they carry no digest and no ordinal, and they are not
 selectable: `class = "field"` or `class = "row"` in a selection is `identity.no_place`. A higher
-layer reads a returned field by its produced name in a formula, `f('<step>#<key>')` (`protocol.md`
-5, `formulas.md` 7). This is the one place a produced name is written in text, and it does not
-break R3: a formula reads a value, it holds no hand edit, and the key is the step's fixed word, not
-a key built from place. A `then` row's produced name orders the head (`authority.md` 4.1) and is
+layer reads a returned field through `f('tag:<tag>')`, using a tag the step sets on its field
+(`fields.md` 7, `formulas.md` 7). A returned field's produced name appears only where vocabulary
+2.1 allows (section 3). A `then` row's produced name orders the head (`authority.md` 4.1) and is
 reported; it is never written.
 
 The SDK will offer each class of 2.3 that has a place as one batch call (R23), with the same results as the engine,
 so a library names a lot exactly as the core names a cell (R19b: no private door). Those calls are
 owed by the first milestone with a generate step that returns features (M2 at the earliest,
-`plan.md`); M1 owes only the digest vectors (section 10), run by both the engine and the SDK.
+`plan.md`); M1 owes only the digest vectors (section 10; case 45).
 
 A step that numbers its output with a counter is not caught by the core; the change report shows
 the cost as removals and additions where moves were expected. A user's step is recorded, not
@@ -199,7 +198,7 @@ An author points at a produced thing by a point near it, never by its name:
 
 ```toml
 [instance.bench]
-asset = "bench.plain"
+asset = "bench_plain"
 on = { of = "streets", class = "edge", near = [131.5, 88.0], t = 0.5, offset = 3 }
 ```
 
@@ -234,18 +233,20 @@ on = { of = "streets", class = "edge", near = [131.5, 88.0], t = 0.5, offset = 3
 - The selecting thing depends on the maker in the graph (`graph.md`).
 - Every build records what each selection resolved to. When it resolves to another name than in the
   baseline, `identity.reselected` names both. This is how a selection that slid to a neighbour is
-  seen (principle 4).
-- `within` (vocabulary, Rules) takes a region feature's id, or `{ of, class, near }` resolving to an
-  `area`, `cell`, `rest` or `piece`. A produced name is not accepted there. This closes the item
+  seen (principle 4). It depends on the baseline, so it is a run diagnostic, never in
+  `diagnostics.json` (`build.md` 11.1, R26).
+- `within` (vocabulary, Rules) takes a region feature's id or a footprint feature's place name
+  `<instance>.ground` (`rules.md` 2.1), or `{ of, class, near }` resolving to an `area`, `cell`,
+  `rest` or `piece`. A produced name is not accepted there. This closes the item
   vocabulary and the earlier draft left open for M3.
 
 **Produced names are never written in text** (R3). A value containing `#` in any key that takes a
 name or a list of names, in world text, layers, change files or libraries, is
 `identity.key_in_text`, whose hint gives the `{ of, class, near }` form at the thing's current
 position. That covers `ref`, `within`, `starts_at`, `ends_at`, `follows`, `by`, `of`,
-`clump.around` and `give`. Produced names appear only where nothing is placed: diagnostics, the
-change report, lock records (4.4), the command line, the messages between the engine and a step
-(`protocol.md`), and a formula reading a step's returned field (2.4). A step's own parameters are
+`clump.around`, `give` and formula selectors (`formulas.md` 7). Produced names appear only where
+nothing is placed: diagnostics, the change report, lock records (4.4), the command line and the
+messages between the engine and a step (`protocol.md`). A step's own parameters are
 opaque to the core and not checked; a step that turns one into a placement is held by its record
 (R26), not by this rule.
 
@@ -265,9 +266,11 @@ vocabulary, Hand edits.
   instances reads the held output, except a hand edit's own selection (section 3), which reads the
   unheld output. So a clear `on = { of = "trees", near }` speaking to `trees` is no cycle: the
   clear reads the run stage, and the held stage reads the clear.
-- **Views.** A reader in layer `L` reads a producer's output held by the hand edits in layers up to
-  `L` only; the build's own output carries them all. This is R21's rule for a step's view, applied
-  to instances; its cost (one evaluation per distinct view) is R21's accepted cost.
+- **Views.** A generate step in layer `L`, and every node in its view, reads a producer's output
+  held by the hand edits in layers up to `L` only; the build's own output carries them all. This is
+  R21's rule for a step's view, applied to instances; its cost (one evaluation per distinct view) is
+  R21's accepted cost. A lint or export step reads the build's own output, with every hand edit
+  (R29, `graph.md` 4).
 - **Steps.** A step's run stage does not read hand edits, so editing a pin or clear re-applies the
   held stage and does not re-run the step. A step that wants to lay out around hand edits declares
   it (a flag owed to `protocol.md`); it is then handed the hand edits visible from its layer, they
@@ -281,7 +284,7 @@ Hand edits apply to each producer's output in this order:
 |---|---|---|
 | 1 | lock | Inside its `region`, the output is replaced by the lock's record (4.4). |
 | 2 | clear | Removes every instance whose origin is inside its place (4.3), recorded items included. |
-| 3 | pin | Places its instance; removes every instance whose footprint overlaps the pin's, except recorded items: an overlap with one is `identity.lock_pin_clash` (4.4). |
+| 3 | pin | Places its instance once, as a written thing (4.2); removes every instance whose footprint overlaps the pin's, except recorded items: an overlap with one is `identity.lock_pin_clash` (4.4). |
 
 The order is ours. A clear inside a lock refines it: "keep this wood as it is, but empty this spot".
 A pin comes last because it is the most specific statement.
@@ -296,17 +299,19 @@ so a clear removes what it covers and nothing else moves.
 
 ### 4.2 Pin
 
+- A pin's instance is named by the pin's id (world namespace) and is a written thing: table
+  `instance`, summary maker `null`, cause `pin.<id>`. It is placed once whatever `by` lists and is in
+  no producer's held output; `by` says only whose instances it removes.
 - Every instance a pin removes is listed by one `identity.pin_removed` (info) per pin: the count and
-  the names. With the default `by`, a pin inside a cell's building removes the building, and this is
-  the message that says so (R13).
+  the names. A pin that removes nothing raises none. With the default `by`, a pin inside a cell's
+  building removes the building, and this is the message that says so (R13).
 - An overlap with an instance of a producer outside `by` is `identity.pin_overlap` (warning, naming
   both). Two pins overlapping are `identity.pins_overlap` (error).
 - Where `keep_out` is above 0: `identity.pin_in_keep_out` (warning).
-- Inside a clear: `identity.pin_in_clear` (warning, not error). A clear speaks only to the produced
-  instances of its `by`; a pin is a hand placement and is in no `by`, so the two statements do not
-  contradict each other and principle 3's "clash" does not apply. "Empty this spot, then put the
-  well in it" is a natural edit. The warning is for the other reading, a pin dropped into a spot
-  meant to stay empty. This reading is raised for a ruling (section 9).
+- Inside a clear: `identity.pin_in_clear` (warning, not error; R31). The pin, applied later, wins
+  and the warning says so. A clear speaks only to the produced instances of its `by`; a pin is in
+  no `by`, so the two do not clash (principle 3). "Empty this spot, then put the well in it" is a
+  natural edit; the warning is for a pin dropped into a spot meant to stay empty.
 
 A pin `on` something follows it: "this bench, beside that door" is `on = { ref = "door_mark" }` or
 `on = { of, class, near }` with `t` and `offset`. The pin moves with the thing; its intent is the
@@ -325,18 +330,12 @@ relation.
   here widens the vocabulary row for `[clear]` (section 9).
 - A point on an outline is inside, as in `geometry.md`'s point-in-ring test. All tests are exact,
   in integer millimetres.
-- A clear that removes nothing raises one of two codes, each with one severity (`diagnostics.md` 2):
-
-  | Code | Severity | When |
-  |---|---|---|
-  | `identity.clear_empty` | warning | Any empty clear not covered by the next row: no baseline; the clear is new; its table's text differs from the baseline's; or it removed something in the baseline. |
-  | `identity.clear_still_empty` | info | The clear's table text is the same as in the baseline, and the baseline's `diagnostics.json` holds `identity.clear_empty` or `identity.clear_still_empty` for it. |
-
-  The warning is the message the spike lacked: its clear on a generated building did nothing and
-  said nothing (R13). A clear that emptied because the ground under it changed is news, so it is a
-  warning too. The info keeps a clear held as a precaution from being noise on every build
-  (principle 8). "Same text" compares the parsed table key by key, as the change report's
-  causes do (section 5), not bytes, so moving the table in its file changes nothing.
+- A clear that removes nothing is `identity.clear_empty` (warning), on every build, whatever the
+  baseline: the same text gives the same `diagnostics.json` (principle 7, R26). It is the message
+  the spike lacked: its clear on a generated building did nothing and said nothing (R13). A clear
+  kept as a precaution warns until it is deleted; whether an unchanged empty clear should be quieter
+  is (open): decided by the first fresh-agent run of M1, and only by a rule that reads text, not
+  the baseline.
 
 ### 4.4 Lock
 
@@ -363,7 +362,7 @@ name, sorted bytewise:
 
 ```toml
 ["trees#s7000_12_n3"]
-asset           = "tree.oak_a"
+asset           = "tree_oak"
 at              = [87.412, -19.006]   # exact millimetres, numbers.md 3.4
 face            = 212.5               # exact millidegrees, numbers.md 3.2
 scale           = 1.08                # shortest round-trip decimal, numbers.md 3.4
@@ -420,7 +419,7 @@ fixes how things are matched and what an entry says. Without a baseline the repo
   | removed | The name is in the baseline only. |
   | moved | Same name; its position differs in integer millimetres, or its facing differs. |
   | swapped | Same name, another asset. |
-  | changed | Same name; another value that is not position, facing or asset: scale, tint, kind, an attribute, or a fact of its asset that differs from the baseline's resolved facts (bounds, footprint, origin, sink; `assets.md` 7). |
+  | changed | Same name; another value that is not position, facing or asset: scale, tint, kind, an attribute, or any resolved fact `build.md` 7 records for its asset that differs from the baseline's (`size` for a primitive or engine-made one, `bounds`, `footprint`, `origin`, `sink`, `max_relief`, `solidity`, mounts; `assets.md` 7). |
 
   An entry that moved and swapped is listed once, carrying both, and is counted under each. An
   entry whose cause includes a differing asset fact carries `facts`, each differing fact old and
@@ -437,11 +436,14 @@ fixes how things are matched and what an entry says. Without a baseline the repo
   | `world.<key>` | A top-level key: `world.seed`, `world.extent`. |
   | `<table>.<id>.<key>` | An edited key, with its file and line: `scatter.trees.spacing`. A hand edit is a cause like any key: `clear.well_spot.on`. |
   | `<table>.<id>` | A table added (file and line in this build) or removed (file and line in the baseline). |
-  | `asset.<asset>.<fact>` | An asset fact that differs from the baseline's, the form of `<table>.<id>.<key>` (`assets.md` 7): `asset.cottage.bounds`. Reached through `pack` when a change writes it. |
+  | `asset.<asset>.<fact>` | An asset fact that differs from the baseline's, written with the asset id, never the instance id (`assets.md` 7): `asset.house_low.bounds`. Given beside `world.pack` when a change writes it. |
   | `file:<path>` | A declared outside file (a field's `file`, a step's `inputs`), with its old and new digests. |
   | `step:<id>` | A step whose recorded command or code digest changed (R26). |
-  | `select:<change>` | A change selected in one build and not the other. |
+  | `select:<change>` | A change selected in one build and not the other, only where no statement it wrote explains the difference. |
 
+  A change selected in one build and not the other is otherwise never a cause in itself: its causes
+  are the statements it wrote, in the forms above, with file and line in the change file
+  (`feature.ford.on`, `world.pack`).
   Each cause carries `via`: the references the change followed to reach this thing, as the
   shortest chain in the graph, ties by node id (`graph.md` 6.4).
 - **Summary.** One line per maker, in one fixed form, with the bounding box of what changed:
@@ -488,7 +490,7 @@ assets  = ["@plant/tree"]
 spacing = 7
 
 [pin.old_oak]
-asset = "tree.oak_old"
+asset = "oak_old"
 at    = [40.0, 22.5]
 
 [clear.well_spot]
@@ -506,34 +508,27 @@ stands and the well spot stays empty; the report lists neither, because their te
 
 This chapter needs these edits elsewhere, made by the lead in the same change:
 
-- `vocabulary.md`: add `of`, `class` and the class words (`instance`, `junction`, `edge`, `area`,
-  `cell`, `rest`, `piece`, `feature`, `field`, `row`), `near`, maker, junction, frontage, stretch,
-  anchor, ordinal,
-  lattice index, the lock record keys (`asset`, `at`, `face`, `scale`, `tint`, `recorded_height`)
-  and its path. `within` takes a region feature id or `{ of, class, near }`. `[clear]` takes `on`
-  a region without `radius`. Swapped is "another asset", and the change report gains `changed`,
-  which covers a differing asset fact. `start`, `end` and `ground` are reserved for mounts, set
-  items and kind surfaces.
-  Section 8 gains "edge: a network edge, beside the world's edge of R9 and R10; the network's is
-  always 'edge', the world's always 'the world's edge'". An id is at most 48 bytes.
 - `rules.md` 7.1: "spacing re-lays everything" now also holds for names.
-- `numbers.md` 7.2: add the user `["name", <class>]` to the table of who draws.
-- `documents.md`: cite `identity.bad_id` and `identity.duplicate_id` in place of `doc.bad_id` and
-  `doc.duplicate_id`, as `diagnostics.md` recommends (the chapter that defines ids keeps them).
 - `protocol.md`: a returned item's `class` (now with `field` and `row`, 2.4), and a step's flag for
-  reading hand edits (4.1). Its owed row for 2.4 is met here.
-- `assets.md` 7: the cottage in the "Pack swapped" row and its M1 case is `changed` (with `facts`),
-  not moved; its `ground` footprint feature is `moved` (section 5).
-- `geometry.md` 3.2: `identity.md` keys areas by `bounds` only in M1; `naming` is (open) here
+  reading hand edits (4.1). Sections 5 and 9: a higher layer reads a returned field by
+  `'tag:<tag>'`, not `f('<step>#<key>')` (2.4, `formulas.md` 7).
+- `build.md` 11.1: add `identity.reselected` to the run diagnostics (section 3).
+- `geometry.md` 3.2: `identity.md` keys areas by `sides` only in M1; `naming` is (open) here
   (Open). The command-line form for kernel conformance carries the instance fixtures and hand
   edits of conformance 47 to 49.
-- Doctrine: a ruling on whether a pin inside a clear is a clash (4.2). Recommended: no; a warning.
 
 ## 10. Test vectors
 
 Computed with the `stream` of `numbers.md` 7.2, whose own vectors it reproduces. The machine-readable
 copy is `spec/vectors/identity.toml`, written with the conformance runner (M0 step 5); until then
-this table is its source. Both the engine and the SDK run it. Parts are written as types of 2.2.
+this table is its source. Both the engine and the SDK run it.
+
+In the file, `digest`'s `args` (`numbers.md` 10) are `[class, [part, ...]]`. Each part is one
+type of 2.2, written as `{ name = "..." }` (`""` is the empty name), `{ int = n }`,
+`{ side = "left" | "right" }`, `{ role = "start" | "end" | "pass" }`, `{ pair = [p, q] }` or
+`{ set = [p, ...] }`, where `p` and `q` are parts. A set's members may be given in any order;
+`digest` sorts them. The first row is
+`["junction", [{ set = [{ pair = [{ name = "lane" }, { role = "start" }] }] }]]`.
 
 | Class | Parts | Digest |
 |---|---|---|
@@ -565,23 +560,22 @@ table, and `position` is the item's place.
 | `identity.duplicate_id` | error | Two tables in one namespace share an id; names both, with file and line, across layers too. | Rename one, or merge them in one layer. |
 | `identity.unknown_place` | error | A part of a place name names nothing. | The nearest match. |
 | `identity.unknown_producer` | error | `by` names nothing. | The nearest producer id. |
-| `identity.not_a_producer` | error | `by` names a maker that places no instances (a network, a cells table, a `where` feature). | Name the producers that place on it. |
+| `identity.not_a_producer` | error | `by` names a set, or a maker that places no instances (a network, a cells table, a `where` feature). | Name the producers that place on it. |
 | `identity.unknown_maker` | error | `of` names nothing. | The nearest maker id. |
 | `identity.on_both` | error | `on` has both `ref` and `of`. | Keep `ref` for an authored thing, `of` for a produced one. |
 | `identity.bad_key` | error | A step returned a key that breaks 2.2, or an unknown class; says which rule. | The repaired key, as for `bad_id`, or the class list. |
 | `identity.key_collision` | error | One step gave two things one key; names both positions. | Build the key from place, with the SDK's naming calls. |
 | `identity.key_in_text` | error | A produced name is written in a key that takes a name. | `{ of, class, near }` at the thing's current position. |
 | `identity.of_ambiguous` | error | `of` names a maker with several classes and no `class`. | The classes, with a count of each near `near`. |
-| `identity.no_place` | error | A selection's `class` is `field` or `row`, which have no place (2.4). | Read a field by name in a formula; select a feature or instance by place. |
+| `identity.no_place` | error | A selection's `class` is `field` or `row`, which have no place (2.4). | Read a field by name or `'tag:<tag>'` in a formula; select a feature or instance by place. |
 | `identity.near_none` | error | A maker has no candidate of the class asked for; lists every selection left with nothing. | The nearest candidate of any class of that maker and its distance, or that the maker made nothing. |
-| `identity.reselected` | warning | A selection resolved to another name than in the baseline; names both and the distance moved. | Move `near` onto the thing meant, or select a feature that does not split (section 3). |
+| `identity.reselected` | warning | A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (`build.md` 11.1). | Move `near` onto the thing meant, or select a feature that does not split (section 3). |
 | `identity.pin_removed` | info | What a pin removed: count and names. | Narrow `by` to keep them. |
 | `identity.pin_overlap` | warning | A pin overlaps an instance of a producer outside its `by`; names both. | Add that producer to `by`, or move the pin. |
 | `identity.pin_in_clear` | warning | A pin stands inside a clear; names both. | Leave it if the pin is what the spot is for; otherwise move the pin. |
 | `identity.pin_in_keep_out` | warning | A pin stands where `keep_out` is above 0; names the field. | Move the pin, or accept it here. |
 | `identity.pins_overlap` | error | Two pins' footprints overlap; names both. | Move one; the overlap's size is given. |
-| `identity.clear_empty` | warning | A clear removed nothing, and it is new, edited, removed something in the baseline, or there is no baseline (4.3). | The nearest instance of a `by` producer and its distance. |
-| `identity.clear_still_empty` | info | An unchanged clear removed nothing, as in the baseline (4.3). | The nearest instance of a `by` producer and its distance; delete the clear if it is no longer wanted. |
+| `identity.clear_empty` | warning | A clear removed nothing (4.3). | The nearest instance of a `by` producer and its distance; delete the clear if it is no longer wanted. |
 | `identity.unknown_lock` | error | `via lock` was given an id that is no lock. | The nearest lock id. |
 | `identity.lock_unrecorded` | error | A lock has no record. | `via lock <world> <id>`. |
 | `identity.lock_rerecorded` | info | A record was replaced; counts of the difference. | None needed; review the record's diff. |
@@ -618,11 +612,12 @@ carries its subject and the file and line of the text at fault.
 10. (M1) two pins `on = { of = "stones", near }`, where `stones` has density 0; one
     `identity.near_none` at `stones` listing both pins, exit 1.
 11. (M1) a pin `on = { of = "trees", near }`; thin `density` so the selected tree goes; build;
-    `identity.reselected` names both trees, exit 0.
+    `identity.reselected` names both trees in the run report, not in `diagnostics.json`, exit 0. The
+    same world built in a fresh directory gives the same `diagnostics.json`.
 12. (M3) `of = "streets"` with no `class`; `identity.of_ambiguous` listing `junction`, `edge`,
     `area`, exit 1. `class = "field"`; `identity.no_place`, exit 1.
 13. (M3) a bench `on = { of = "streets", class = "edge", near }`; move its street far away; the
-    bench lands on the next street and `identity.reselected` names both, exit 0.
+    bench lands on the next street and `identity.reselected` names both in the run report, exit 0.
 14. (M3) a scatter `within = { of = "streets", class = "area", near }`; builds; trees only in that
     area.
 
@@ -636,14 +631,13 @@ carries its subject and the file and line of the text at fault.
 18. (M1) two overlapping pins; `identity.pins_overlap`, exit 1.
 19. (M1) a pin inside a clear; `identity.pin_in_clear`, exit 0. A pin where `keep_out` is 0.5;
     `identity.pin_in_keep_out`, exit 0.
-20. (M1) a new clear on empty ground; build; `identity.clear_empty` (warning), exit 0. Build again
-    unchanged; `identity.clear_still_empty` (info) and no `identity.clear_empty`. Widen its
-    `radius` and stay empty; `identity.clear_empty` again. A clear that removes one tree; build;
-    thin `density` so the tree goes, the clear's text unchanged; build; `identity.clear_empty`, not
-    `identity.clear_still_empty`.
+20. (M1) a clear on empty ground; build; `identity.clear_empty` (warning), exit 0. Build again
+    unchanged; `identity.clear_empty` again, and `diagnostics.json` is byte-identical to a build of
+    the same text in a fresh directory. A clear that removes one tree; thin `density` so the tree
+    goes; build; `identity.clear_empty`.
 21. (M1) a pin in layer 1 and a scatter in layer 2 with `by` naming it; `documents.md`'s upward
     reference error. A pin in layer 2 speaking to a layer-1 scatter read by a layer-1 lint; the
-    lint sees the scatter without the pin's removals.
+    lint sees the scatter with the pin's removals applied (R29).
 22. (M2) a generate step returning instances; edit a pin speaking to it; the step does not re-run
     (run report), and the held output changes.
 23. (M3) a clear `on = { of = "lots", class = "cell", near }` with no radius over the grid of case
@@ -693,25 +687,28 @@ carries its subject and the file and line of the text at fault.
 **Report**
 
 41. (M1) Order: the same world with tables shuffled; the same names and the same report.
-42. (M1) Null: build twice; the report is empty and every maker's summary is `+0 -0 ~0 swapped 0
-    changed 0`.
+42. (M1) Null: build into `build/a`, then build the same text with `--against build/a` (which
+    disables the null build, `build.md` 13); its `changes.json` has `entries: []` and every summary
+    row zero.
 43. (M1) First build in a fresh directory; `identity.no_previous`; build again; no such message.
 44. (M1) Scale range of a scatter changed; every surviving name is `changed` only, cause
     `scatter.trees.scale`. World seed changed; causes read `world.seed`.
-45. (M1) Digest vectors: section 10's table, run by the engine and the SDK; equal.
+45. (M1) Digest vectors: section 10's table through `via vectors` (`digest`, `numbers.md` 10), bit
+    for bit. The SDK reads the same `spec/vectors/identity.toml` in its own tests, which are not
+    conformance.
 46. (M1) Pack swapped: ford with `lib/packs/primitive.toml`, then a change writing `pack` to a
     second primitive pack whose house has a larger `size`, under the same `base_centre` origin. The
     cottage's entry is `changed` only, carrying `facts` with old and new `bounds`, `size` and
-    `footprint`, cause `asset.cottage.size` reached through `pack`; its `ground` footprint feature
-    is `moved`, larger, with the same cause.
+    `footprint`, causes `asset.house_low.size` (the asset id, `assets.md` 7) and `world.pack`, in
+    bytewise order (`build.md` 11.2);
+    its `ground` footprint feature is `moved`, larger, with the same causes.
 
 **Kernel cases** (M1, Track A's gate)
 
-These run through `geometry.md`'s command-line form for kernel conformance (open there; decided
-with the runner, M0 step 5), not through a world, since a network and cells have no user syntax
-before M3. The form takes the kernel fixtures, a list of fixture instances (name, origin,
-footprint) standing for one producer `homes`, and hand edits written as in section 4, and returns
-names, held instances and diagnostics. The hand edits are applied by the same code as in a build
+These run as `via kernel names` (`geometry.md` 7.3), with its inputs the members of `geometry.md`
+7.1, not through a world, since a network and cells have no user syntax before M3. The inputs are
+the kernel fixtures, fixture instances standing for one producer `homes`, and hand edits written as
+in section 4; the output is names, held instances and diagnostics. The hand edits are applied by the same code as in a build
 (4.1). They close the plan's Track A items "names do not change when a distant edge moves", "a
 clear removes exactly one cell's building" and "a pin inside one is reported"; cases 23 to 25 then
 check the same through a world in M3.
@@ -723,7 +720,7 @@ check the same through a world in M3.
 48. Clear one cell: `cross`'s first cells case (10 cells), with one `homes` instance per cell at the
     cell's representative point and the cell as its footprint. A clear `on` the cell at station 2
     of the `cross_ns` side, with no radius; the held output lacks exactly that cell's instance and
-    keeps the other nine, names unchanged. A clear `on` the `rest` region; `identity.clear_empty` (no baseline, so the warning).
+    keeps the other nine, names unchanged. A clear `on` the `rest` region; `identity.clear_empty`.
 49. Pin in a cell: the same 10 instances; a pin whose footprint lies inside the station 2 cell's
     instance. With the default `by`: that instance is removed and `identity.pin_removed` names it,
     count 1. With `by` naming another producer: nothing is removed and `identity.pin_overlap` names
@@ -746,7 +743,7 @@ check the same through a world in M3.
 - Whether a clear may remove a produced feature: decided with M3's `quay`, if a case asks to remove
   one generated street.
 - Naming an area after a feature inside it (a district, a square): decided with M3's `quay` and
-  the districts library. M1 names areas by their bounds only.
+  the districts library. M1 names areas by their `sides` only.
 - The coarse lattice side for pieces (32 m): decided by M1's masked-region fixtures.
 - Edits to things that are not points (a path's vertex, a hand-painted field): decided in M3, with
   the first case that needs one (TODO, "From spiking the four", item 2).

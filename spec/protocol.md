@@ -4,8 +4,8 @@ A step is the project's own code, run at a declared point with declared inputs. 
 how a step is declared, how the engine runs it, what crosses between them and how, what a step may
 return, and when a step is allowed to run at all.
 
-Words are from `vocabulary.md`. Authority: `docs/doctrine.md`, chiefly R7, R19, R20, R21, R22, R23
-and R26. "(open)" marks what is undecided, with what decides it. The setup follows the reference in
+Words are from `vocabulary.md`. Authority: `docs/doctrine.md`, chiefly R7 (as amended by R28), R19, R20,
+R21 with R29, R22, R23 and R26. "(open)" marks what is undecided, with what decides it. The setup follows the reference in
 `docs/references.md` ("Engine and SDK setup"): one engine binary, an SDK that never links it, user
 code in its own process. Its two recorded failures, Windows process handling and bytes that differ
 across systems, are what sections 6 and 4 are written against.
@@ -15,8 +15,8 @@ What arrives when:
 | Milestone | Part of this chapter |
 |---|---|
 | M0 | A throwaway probe of 3.1, 4.1 and 6.2: a 6.5 MB field out and back, a call back, a killed worker (`plan.md`). It runs from a test harness outside the parser and is not the M2 implementation. |
-| M1 | Declaring a step, plain commands (2), field files and columns (4), returned documents (5), running a process (6), trust (7), and one lint step as a plain command through the SDK's launcher (8). `worker = true` is `doc.not_yet`. |
-| M2 | The worker (3) and its SDK side; committed step results (7.1). |
+| M1 | Declaring a step, plain commands (2), field files and columns (4), running a process (6), trust (7), and one lint step as a plain command through the SDK's launcher (8). Of section 5, only `diagnostics.json`: M1's only step is a lint, which returns no document (`fields.md`, Milestones). `worker = true` is `doc.not_yet`. |
+| M2 | Returned documents (5), with `fields.md` 7; the worker (3) and its SDK side; committed step results (7.1). |
 | M3 | `for_each`. |
 | Later | The forward pointers of section 10. |
 
@@ -31,7 +31,7 @@ key on a step.
 | `command` | list of strings | yes | The program and its arguments (section 6.1). Never a shell string. |
 | `worker` | bool | no, `false` | `true`: the step speaks this protocol on stdio and may call the engine (section 3). `false`: a plain command (section 2). |
 | `params` | table | no, `{}` | Handed to the step unread. Any keys (`documents.md` section 7). |
-| `inputs` | list of strings | no, `[]` | Outside files or folders, relative to the declaring document. A folder is digested as the sorted list of its files (`graph.md` 5.1). A path that does not exist is `protocol.input_missing`. Their change re-runs the step. |
+| `inputs` | list of strings | no, `[]` | Outside files or folders, relative to the declaring document. A folder is digested as the sorted list of its files (`graph.md` 5.1). A path that does not exist is `graph.input_missing` (`graph.md` 5.1). Their change re-runs the step. |
 | `for_each` | selector | no | One call per selected item (`graph.md` 5.3). The item reaches the step in its request. |
 
 The word `worker` is kept (vocabulary left it open): it names what the process is, and a bool
@@ -48,12 +48,9 @@ declaring layer, or `world` for a change file.
 - not the outputs of steps in its own layer or above, and not any statement that reads one of
   those, directly or through others.
 
-So two steps in one layer do not see each other's outputs. A lint or an export step declared in
-layer L also reads the layers at or below L, as R21 rules for every step, in the view
-`<L>.built` that `graph.md` 4 defines: the statements of the layers at or below L and the outputs
-of the generate steps in those layers, same-layer ones included, since generation is over when it
-runs. A lint or export in the top layer therefore reads the whole build. Whether it runs after an
-error is decided per node by `diagnostics.md` 4 (1.1).
+So two steps in one layer do not see each other's outputs. A lint or an export step reads the
+finished build, view `build` (R29, `graph.md` 4), whatever layer declares it. Whether it runs after
+an error is `diagnostics.md` 4 (1.1).
 
 **Libraries.** Steps are declared in a world or a layer only. A kinds file does not declare steps: a
 step's layer decides what it reads and the rank of what it returns (R21, `documents.md` 5.1), and a
@@ -69,8 +66,8 @@ lint in M1.
 | `when` | Runs | Reads | Returns |
 |---|---|---|---|
 | `generate` | At its layer's place in the graph (`graph.md`), once per item under `for_each`. | Its stratum (above); a field in the view `fields.md` 6.2 gives. | A document (section 5), field files, diagnostics. |
-| `lint` | After the generate steps of its layers. A lint whose reads reach a failed or skipped node is `skipped`; one that reads none runs and reports (`diagnostics.md` 4). | View `<L>.built` (section 1, `graph.md` 4). | Diagnostics. Other files it writes are kept in the store and named in the run report, not in the build directory (open, below). No document. |
-| `export` | After lints, and only when the build has no error (`diagnostics.md` 4, stage 5). | View `<L>.built`. | Files under `export/<step id>/` (`build.md` 11.4). No document. |
+| `lint` | After every generate step. A lint that reads a failed or skipped node is `skipped` (`diagnostics.md` 4); a plain lint is handed the whole build, so any failed node skips it (`graph.md` 4). | The finished build, view `build` (R29, `graph.md` 4). | Diagnostics. Other files it writes are kept in the store and named in the run report, not in the build directory (open, below). No document. |
+| `export` | After lints, and only when the build has no error (`diagnostics.md` 4, stage 5). | The finished build, view `build`. | Files under `export/<step id>/` (`build.md` 11.4). No document. |
 
 `effect` and `place` do not exist (R22): a generate step at a layer covers both.
 
@@ -120,19 +117,23 @@ environment variable `VIA_STEP` set to that path (section 6.3 places the call fo
 input is the null device. It makes no engine calls. It reads only what `data` hands it and its
 declared `inputs`, by path:
 
-| `data` member | Holds |
+| `data` member | JSON form |
 |---|---|
-| `fields` | Every field in its view, over the whole grid, as 3.3's `build.field` gives each type, keyed by name, with `role` and `tags`. |
-| `features` | Every feature in its view as one feature list (4.3), every attribute included (R19b: no private door). |
-| `instances` | Every instance in its view, as `build.instances` gives them. |
-| `inputs` | Each declared input: its path as written, its absolute path and its digest. |
+| `fields` | An object keyed by field name, one entry per field in its view. Each entry: `type` (`"scalar"` or `"weights"`), `role` (string or `null`), `tags` (strings, sorted bytewise), `unit` (string or `null`), `blob` (the field file's digest, 4.2), `path` (its absolute path, `<objects>/ab/<digest>`, 4.1), and `i0`, `j0`, `i1`, `j1` (integers: the whole grid, `0`, `0`, `nx`, `ny`). A `weights` entry adds `materials` (names, in id order, one per plane). A bounded field (M3) adds 3.3's `cover` and `posts`. |
+| `features` | One feature list (4.3): an object keyed by column name, each member a column in 4.3's form. Every feature in its view, every attribute included (R19b: no private door). Footprint features are features: each is a region row named `<instance>.ground` (`rules.md` 2.1), with its kind, authority, layer and pieces, as a `kind:` selection holds it. |
+| `instances` | One table (4.3): an object keyed by column name, holding 3.3's `build.instances` columns `name` to `tint`. A footprint is read from `features`, never from this table. |
+| `inputs` | A list, sorted by `path` bytewise, of objects `{"path": <as written>, "absolute": <absolute path>, "digest": <64 hex>}`. |
 
-Its view is section 1's: its stratum for a generate step, `<L>.built` for a lint or export. Every
+Vector, a lint handed `height` over a 3 by 2 grid, no features, instances (so no footprint features) or inputs:
+`{"features": {"authority": {"dtype": "str", "values": []}, "coords": {"dtype": "i32", "shape": [0, 2], "values": []}, …}, "fields": {"height": {"blob": "<digest>", "i0": 0, "i1": 3, "j0": 0, "j1": 2, "path": "/…/objects/ab/<digest>", "role": "surface", "tags": [], "type": "scalar", "unit": "m"}}, "inputs": [], "instances": {"asset": {"dtype": "str", "values": []}, …}}`.
+The full bytes are owed to `spec/vectors/protocol/data/`, with case 18.
+
+Its view is section 1's: its stratum for a generate step, the finished build for a lint or export. Every
 blob in `data` is named by digest, so the request, less its absolute paths, names everything the
 command is handed; that is why it is the command's static key and its trace is empty (4.4).
 
 It writes into `out` (section 5) and exits. Exit status 0 is success; any other is
-`protocol.failed`, with the log tail (6.2). Its standard output and error are both its log. A plain
+`protocol.failed` (6.2). Its standard output and error are both its log. A plain
 command is handed everything in its view, so it runs again when anything in its view changes.
 Reading less is what a worker is for.
 
@@ -201,8 +202,8 @@ Every call is valid only while a `step.call` is pending, and carries `call`, tha
 Every call is a batch: columns in, columns out (R23). A loop that would make thousands of calls is
 an engine operation instead, with no domain noun.
 
-**Stratum.** The engine answers only from the step's stratum (section 1); for a lint or export
-worker, from its view `<L>.built`, which adds its own layer's step outputs. A read by name of anything
+**Stratum.** The engine answers a generate step only from its stratum (section 1); a lint or export
+worker, from the whole finished build (view `build`, R29). A read by name of anything
 outside it (a feature of a higher layer, a feature another step of the same layer returns, a field
 declared in a higher layer) is refused with `graph.read_outside`, naming the thing and the lowest
 layer a step would need to stand in to read it (`graph.md` 4). On the wire it is error -32003 with
@@ -247,7 +248,7 @@ the read methods above.
 
 | Method | Kind | Params |
 |---|---|---|
-| `diag.emit` | request | Columns `severity`, `code` (the part after `step.<id>.`), `subject`, `message`, `hint`, and optionally `position` (f64 metres, `(n, 2)`), `related` and `data` (each a str column holding one canonical JSON text per row, `""` for none), `explain`. The members are `diagnostics.md` section 1's record. |
+| `diag.emit` | request | Columns `severity`, `code` (the part after `step.<id>.`), `subject`, `message`, `hint`, and optionally `position` (f64 metres, `(n, 2)`), `related` and `data` (each a str column holding one canonical JSON text per row, `""` for none: `related` a list of `{"note", "subject"}`, `data` an object), `explain`. The members are `diagnostics.md` section 1's record. |
 
 `explain` is how a step declares the text `via explain step.<id>.<code>` prints (the vocabulary left
 this open): the first `diag.emit` of a code in a call carries it, the step result keeps it (4.4),
@@ -264,7 +265,7 @@ is `protocol.no_explain` (warning); two texts for one code is `protocol.explain_
 | -32003 | `graph.read_outside`: the name lies outside the step's stratum. |
 | -32004 | A non-finite number in a column (R26). |
 | -32005 | A call outside a pending `step.call`, or for another call. |
-| -32010 | The step raised an exception it did not catch. Sent by the SDK as the answer to `step.call`, with `data.traceback`. Reported as `protocol.raised`. The worker stays up for the next call. |
+| -32010 | The step raised an exception it did not catch. Sent by the SDK as the answer to `step.call`, with `data.exception` and `data.traceback`. Reported as `protocol.raised`; the engine writes the traceback to the log (6.2). The worker stays up for the next call. |
 | -32800 | Cancelled. |
 
 An error returned to the worker is not by itself a diagnostic; the SDK raises it as an exception.
@@ -279,7 +280,8 @@ Fields and large tables never travel as JSON (R20). They travel as blobs.
   named by the BLAKE3 digest (O'Connor, Aumasson, Neves and Wilcox-O'Hearn, 2020) of its whole
   content, as 64 lower-case hexadecimal digits.
 - Either side writes a blob to `<objects>/tmp/<any unique name>`, then moves it to
-  `<objects>/<digest>` by a move that never replaces: `link` then `unlink` on macOS and Linux,
+  `<objects>/ab/<digest>` (`graph.md` 3.2; `ab` the digest's first two hex digits; `tmp/` is the one
+  flat entry) by a move that never replaces: `link` then `unlink` on macOS and Linux,
   `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING` on Windows. If the name exists, the move fails
   and the new copy is deleted; the old one is kept. A blob is never replaced, appended to or deleted
   while a build runs. This keeps Windows working: a mapped file there cannot be replaced or deleted.
@@ -321,8 +323,10 @@ included.
   the message (4.3). `bool` is one byte, 0 or 1.
 - **No non-finite value and no negative zero** enter a build (R26, `numbers.md` 8). The SDK writes
   `-0.0` as `+0.0` before it digests a blob. The engine reads every `-0.0` a step sends as `+0.0`, so
-  a plain command in another language need not; a NaN or an infinity is `protocol.blob_header` in a
-  file and error -32004 in a call.
+  a plain command in another language need not. A NaN or an infinity in a returned field file or
+  column blob is `num.not_finite_result` (`numbers.md` 8 rule 7), naming the step and the post or
+  row; in a call it is error -32004. A diagnostic's columns (`diag.emit`, `diagnostics.json`) are
+  exempt: a non-finite `position` there replaces the record by `diag.malformed` (`diagnostics.md` 6).
 
 ### 4.3 Columns, tables and feature lists
 
@@ -330,7 +334,7 @@ A column in a message is one of:
 
 ```json
 {"dtype": "f64", "values": [0.5, 1.25]}
-{"dtype": "i32", "shape": [4096, 2], "blob": "9f2c…", "path": "/…/objects/9f2c…"}
+{"dtype": "i32", "shape": [4096, 2], "blob": "9f2c…", "path": "/…/objects/9f/9f2c…"}
 {"dtype": "str", "values": ["beck", "ford"]}
 {"dtype": "str", "blob": "<utf-8 bytes>", "offsets": "<i64 blob, n + 1 entries>"}
 ```
@@ -422,7 +426,7 @@ same code may not. Reads the protocol cannot see (a file not in `inputs`, the cl
 are not prevented and go stale unseen. The protocol has no sandbox; the trace is honest about what
 passed through it and no more.
 
-## 5. What a step returns
+## 5. What a step returns (M2; `diagnostics.json` M1)
 
 A generate step writes into `out`:
 
@@ -430,7 +434,15 @@ A generate step writes into `out`:
 |---|---|
 | `document.toml` | Its document, TOML text. A worker may instead return the text in `step.call`'s result; returning both is `protocol.output_twice`. A generate step that returns neither is `protocol.no_output`; one with nothing to return writes an empty document. |
 | field files it names | Field files (4.2), named by `file` relative to `out`. One outside 4.2's subset, or whose `descr` is not `<f4`, or whose `shape` is not the grid's `(ny, nx)` (or `(planes, ny, nx)` for weights), is `protocol.field_file`. |
-| `diagnostics.json` | Plain command only: a JSON list of objects with the members of `diag.emit`. Not a list of such objects: `protocol.output_json`. |
+| `diagnostics.json` | Plain command only: a JSON list of objects, one per diagnostic (below). Not a JSON list of objects: `protocol.output_json`. No file, or `[]`: no diagnostics. |
+
+Each object of `diagnostics.json` is one row of `diag.emit`, written as JSON: `severity`, `code`,
+`subject`, `message` and `hint` as strings; and where given, `position` as `[x, y]` in metres,
+`related` as a list of `{"note", "subject"}`, `data` as an object, and `explain` as a string. As
+with `diag.emit`, the first object of each code carries `explain`, or the code is
+`protocol.no_explain`. Each object is then checked as `diagnostics.md` 6 checks a step diagnostic;
+a member not listed, or of another JSON type, is `diag.malformed` there. Vector:
+`[{"code": "steep", "data": {"slope": 0.62}, "explain": "The bank is steeper than a ford allows.", "hint": "Lower the bank or move the ford.", "message": "Slope 0.62 exceeds 0.5.", "position": [64, 181.5], "severity": "warning", "subject": "feature.ford"}]`.
 
 After the call the engine stores every file in `out` as an object. A lint or export step writes no
 `document.toml` (`protocol.output_table`).
@@ -445,7 +457,7 @@ The document may hold only these tables, and never a top-level key:
 
 | May | Rule |
 |---|---|
-| `[field.<n>]` of its own | `file` (with the keys `fields.md` 4.2 requires) or `base`. Not on a field it did not declare (`field.step_base`). |
+| (open: needs ruling, R21) `[field.<n>]` of its own | `file` (with the keys `fields.md` 4.2 requires) or `base`. Not on a field it did not declare (`field.step_base`). |
 | `[field.<n>.then.<id>]` | A row on a field in its stratum (`fields.md` section 7). On a field of a higher layer: `field.step_layer`. On a field outside its stratum by any other way: `graph.read_outside`. |
 | `[feature.<key>]`, `[instance.<key>]` | Features and instances. |
 | `[set.<key>]`, `[run.<key>]`, `[scatter.<key>]` | What a library form lowers to (`rules.md` section 10). |
@@ -453,10 +465,11 @@ The document may hold only these tables, and never a top-level key:
 Anything else (`[step]`, `[layer]`, `[pin]`, `[clear]`, `[lock]`, `[import]`, `[given]`,
 `[change]`, `[kind]`, `[let]`, `remove`, `unset`) is `protocol.output_table`.
 
-- **A field of its own.** R21 says a step returns rows and features, never a whole field. A new
-  field by `file` is an exception, ruled in `fields.md` 7: nothing below the step is applied to it,
-  so nothing is applied twice. It is not R21 as written; the lead is asked to amend R21 ("never a
-  whole field that already exists; a new field of its own by `file`").
+- **A field of its own** (open: needs ruling, R21). R21 says a step returns rows and features,
+  never a whole field. A new field by `file` would be an exception: nothing below the step is
+  applied to it, so nothing is applied twice. `fields.md` 7 holds it open; the lead rules before M2,
+  and is asked to amend R21 ("never a whole field that already exists; a new field of its own by
+  `file`"). Until then the table's first row, section 9 and cases 4 and 17 hang on it.
 - **A row on a lower field.** `documents.md` 5 settles vocabulary 2.5's open question for
   hand-written text: a layer may not write keys on a table declared in a lower layer. A returned
   `then` row is a new row under such a table, so a step does what a layer may not. This is a second
@@ -464,8 +477,9 @@ Anything else (`[step]`, `[layer]`, `[pin]`, `[clear]`, `[lock]`, `[import]`, `[
 - **Names.** Every table the document returns is named `<step>#<key>` in the build (`identity.md`
   2.4): a field, a row, a feature, an instance, a rule. Inside the document, a name resolves first
   to the document's own keys, then to the stratum, so a returned row reads its own field as
-  `f('<key>')`. Outside it, a formula in a higher layer reads it as `f('<step>#<key>')`; the field
-  selector of `formulas.md` 7 is owed this form. A key equal to a name the step can see is
+  `f('<key>')`. Outside it, a formula in a higher layer reads a returned field by a tag the step
+  sets on it (`tags` on a field of its own, `fields.md` 7), as `f('tag:<tag>')`; `'<step>#<key>'`
+  in a formula is `identity.key_in_text` (R3, `formulas.md` 7). A key equal to a name the step can see is
   `protocol.key_shadows`. Under `for_each`, keys must already differ between items (`identity.md`
   2.5).
 - **Rank.** Everything returned has the rank of the step's layer, and refers downward only
@@ -474,8 +488,9 @@ Anything else (`[step]`, `[layer]`, `[pin]`, `[clear]`, `[lock]`, `[import]`, `[
 - **Values.** Number rules are the text's: `num.not_finite`, `num.too_precise` at the line in
   `document.toml`. The SDK writes lattice values exactly from millimetres.
 - **Holds.** The core applies holds to what is returned, after the call (`identity.md` 4.1).
-- **Effects.** Returned rows take their place in R21's order; nothing below the step is applied to
-  them twice (`fields.md` 6.2).
+- **Order.** Returned rows sit in the field's head (`authority.md` 4.1): `order`, then layer rank
+  (the step's layer), then produced name `<step>#<id>`, bytewise (R29); never by their place in
+  `document.toml`. A field of its own by `file` (open, above) is its base, before every row.
 
 On an error in the document, nothing from it is applied, the build stops after generation
 (`diagnostics.md` section 4), and no result is kept for reuse.
@@ -521,16 +536,17 @@ The environment is the engine's, with:
 | `shutdown` and `quit` to process exit | 2 s | Killed; `protocol.slow_exit` (info). |
 
 The deadlines are ours, defaults until measured (open, below). A worker that exits while a call is
-pending is `protocol.crashed`, with its exit status. A process that cannot be started is
-`protocol.start`.
+pending is `protocol.crashed`. A process that cannot be started is `protocol.start`.
 
 **The log.** A step's standard error (and a plain command's standard output) is its log, decoded as
-UTF-8 with each invalid byte replaced by U+FFFD. The log is kept in the store and named by digest in
-the run report (`build.md` 11.3); it is not part of the build. `protocol.failed`, `protocol.crashed`
-and `protocol.raised` carry its last 40 lines in `data.log_tail`, with every absolute path under the
-world's folder written relative to it and every other absolute path cut to `…/<file name>`, so
-`diagnostics.json` holds no absolute path (`build.md` conformance 5). `message` and `data.log_tail`
-are not compared between systems.
+UTF-8 with each invalid byte replaced by U+FFFD. A process that cannot be started has as its log the
+system's reason. The log is kept in the store and named by digest in the run report's `steps[].log`
+(`graph.md` 6.3, `build.md` 11.3); it is not part of the build, and the terminal prints its last 40
+lines under the diagnostic. These diagnostics are world diagnostics, so `diagnostics.json` holds only
+facts that are the same on every system (R26, `build.md` rule 6): `protocol.failed` has `data.exit`,
+the exit status; `protocol.start` has `data.kind`, `not_found`, `denied` or `other`;
+`protocol.raised` has `data.exception`, the exception's type name; `protocol.crashed` has none. The
+message is made from these facts only. No log text, traceback or digest of a log enters it.
 
 **No signals.** The protocol never uses a signal to ask a step anything: a worker is asked to stop
 by `$/cancelRequest` or `shutdown`, and otherwise its whole process tree is killed at once.
@@ -607,8 +623,7 @@ changes whether a step can run, never what a build contains.
 
 ### 7.1 Committed step results (M2)
 
-A forward pointer, tied to `graph.md`'s open question "a step's trace as text in the repository",
-which `basin` decides in M2.
+A forward pointer; what writes it is open (Open, below), decided by `basin` in M2.
 
 - A committed step result is the folder `gen/<step id>/` (`gen/<step id>/<item>/` under `for_each`)
   beside the declaring document: `document.toml`, the files it names, and `result.json`, canonical
@@ -620,7 +635,7 @@ which `basin` decides in M2.
   `protocol.untrusted_result` (info), and its bytes equal a trusted build's.
 - On any difference it is `protocol.untrusted_stale`, naming the first part of the key or the first
   read that differs; the hint is `via trust`, or to commit a fresh result from a trusted machine.
-- The command that writes `gen/` is (open), decided with `graph.md`'s question.
+- The command that writes `gen/` is (open, below).
 
 ## 8. The SDK, `viasdk`
 
@@ -630,7 +645,7 @@ Pure Python, 3.11 or later, with NumPy as its one dependency. It never links or 
 
 | Part | What it is |
 |---|---|
-| `python -m viasdk <script>`, plain command (M1) | With `VIA_STEP` set and no `worker`: gets `step` as `viasdk.request()` does, puts the script's folder on the path, imports the script and calls its top-level function named after `when`: `generate(step)`, `lint(step)` or `export(step)`. When the function returns, it writes what `step.out` and `step.error(...)` and the like hold into `out` (section 5) and exits 0. A missing function, or an exception the script does not catch, is written to standard error with its traceback and exits 1, which the engine reports as `protocol.failed` with the log tail. It speaks no protocol. |
+| `python -m viasdk <script>`, plain command (M1) | With `VIA_STEP` set and no `worker`: gets `step` as `viasdk.request()` does, puts the script's folder on the path, imports the script and calls its top-level function named after `when`: `generate(step)`, `lint(step)` or `export(step)`. When the function returns, it writes what `step.out` and `step.error(...)` and the like hold into `out` (section 5) and exits 0. A missing function, or an exception the script does not catch, is written to standard error with its traceback and exits 1, which the engine reports as `protocol.failed`. It speaks no protocol. |
 | `python -m viasdk <script>`, worker (M2) | With `worker = true`: as 3.1. Takes the standard descriptors, answers `initialize`, imports the script and calls the same function for each `step.call`. A missing function is `protocol.no_entry`; an exception, `protocol.raised`. |
 | `viasdk.request()` | For a plain command: reads `VIA_STEP` and gives the same `step` object. Reads are answered from `data`; computes raise `viasdk.NotAWorker`. A script with its own `main` may call it directly instead of using the launcher. (M1) |
 | `step.params`, `step.grid`, `step.for_each_item`, `step.seed` | From the request. |
@@ -642,7 +657,9 @@ Pure Python, 3.11 or later, with NumPy as its one dependency. It never links or 
 | `step.out` | A document builder: `feature(key, kind, ...)`, `instance(key, asset, ...)`, `row(field, id, value=None, mask=None, paint=None, order=None)`, `field(name, array)`. It writes `document.toml` with lattice values exact from millimetres, and each field as a field file in `out` with `-0.0` written as `+0.0`. It writes text and fields and holds nothing else (R7). |
 
 The function list `expr.eval` takes is generated from the function table (`formulas.md` section 11),
-so a formula and a worker give the same bytes and one can be moved to the other (R7). A plain
+neighbourhood functions included (`formulas.md` 8.6, R28): over a window, `expr.eval` reads each
+function's declared halo as a formula does. So a formula and a worker give the same bytes and one
+can be moved to the other (R7). A plain
 command has no function list: it reads files only (R22), and the SDK computes nothing itself. So
 R7's "one can be moved to the other" holds for workers; the lead is asked whether R7 means that.
 The SDK's version is recorded in each step result and never checked; the protocol version is (3.2).
@@ -669,14 +686,15 @@ Before the first Python step of a build it writes them, once, to `<store>/sdk/<d
   lists it once.
 - **What the user still installs.** Python 3.11 or later, named once with `via config program`,
   and NumPy in that interpreter. A missing NumPy is the script's import error, so
-  `protocol.failed` with the log tail.
+  `protocol.failed`, its message in the log.
 
 Shipping `viasdk` to PyPI, and whether a project's virtual environment may serve as a named program,
 are M2 packaging (Open).
 
 ## 9. Worked example
 
-A generate step in the layer `shaping` softens the ground by a row it computes (M2).
+A generate step in the layer `shaping` softens the ground by a row it computes (M2; open: needs
+ruling, R21, for the returned field `soft`, section 5).
 
 ```toml
 [step.soften]
@@ -694,7 +712,7 @@ def generate(step):
     (h,) = step.fields(["height"], view="head")        # whole grid; it returns a row on height
     p = np.pad(h, 1, mode="edge")                      # a scalar field is (rows, columns)
     soft = (p[:-2, 1:-1] + p[2:, 1:-1] + p[1:-1, :-2] + p[1:-1, 2:]) / 4
-    step.out.field("soft", soft.astype(np.float32))
+    step.out.field("soft", soft.astype(np.float32), tags=["soft"])
     s = step.params["strength"]
     step.out.row("height", "soften", value=f"= mix(v, f('soft'), {s})")
 ```
@@ -702,8 +720,8 @@ def generate(step):
 The row reads its own field as `f('soft')` (section 5, Names) and the value before it as `v`; it
 does not read `f('height')`, which inside a row of `height` is a cycle (`formulas.md` 8.3). It reads
 `height` in its head view, since it returns a row on it (`authority.md` 4.4). In the build the
-field is `soften#soft` and the row `soften#soften`; a formula in a higher layer reads the field as
-`f('soften#soft')`. The engine evaluates the row in R21's order like any other.
+field is `soften#soft` and the row `soften#soften`; a formula in a higher layer reads the field by
+its tag, `f('tag:soft')`. The row sits in `height`'s head at `shaping`'s rank (`authority.md` 4.1).
 
 On the wire (frames abbreviated; `Content-Length` counts bytes):
 
@@ -713,7 +731,7 @@ worker → {"jsonrpc":"2.0","id":1,"result":{"protocol":"via-step-1","sdk":{"nam
 engine → {"jsonrpc":"2.0","id":2,"method":"step.call","params":{"step":"soften","when":"generate",…}}
 worker → {"jsonrpc":"2.0","id":1,"method":"build.field","params":{"call":2,"fields":["height"],"view":"head"}}
 engine → {"jsonrpc":"2.0","id":1,"result":{"height":{"blob":"4be1…","i0":0,"j0":0,"i1":513,"j1":513,…}}}
-worker → {"jsonrpc":"2.0","id":2,"result":{"document":"[field.soft]\nfile = \"soft.npy\"\noutside = 0\n…"}}
+worker → {"jsonrpc":"2.0","id":2,"result":{"document":"[field.soft]\nfile = \"soft.npy\"\ntags = [\"soft\"]\noutside = 0\n…"}}
 ```
 
 The trace holds one read: `build.field` of `height`, head view, whole grid, answer `4be1…`. Editing
@@ -729,7 +747,7 @@ Not specified until the milestone that needs them. Each is decided by the case n
 | `build.holds`: pins, clears and locks that speak to a step (`identity.md` 4.1), and `data.holds` | M3 | The first step that returns instances under a pin (`quay`). |
 | `pack.query`: assets as columns (`assets.md` 5), and `data.pack` | M3 | Lots choosing assets by facts (`quay`, `city`). |
 | `name.place`: a place key computed by class (`identity.md` 2.3, 2.4), shapes in, keys out, so a library names a lot as the core names a cell (R19b); and the document key that carries a returned item's class | M2, at the first generate step that returns features | `identity.md` 2.4's owed calls; R13's "ids do not shift". |
-| `raster.op`: a closed list of array operations (slope, sample at points, distance), held as a table like the function table | M2 | `basin` and M1's lint steps, if a formula through `expr.eval` will not do. |
+| `raster.op`: a closed list of array operations (slope, sample at points, distance), held as a table like the function table | M2 | `basin` and M1's lint steps, if a formula through `expr.eval`, with R28's `slope` and `dist`, will not do. |
 | `geom.op` and `handle.release`: operations of `geometry.md` 3 and questions of `surfaces.md` 2, with results kept in the engine | M3 | The street and lot libraries (R13, R23). |
 | `progress`: a notification shown on the terminal and kept nowhere | M2 | `basin`'s 3.5 s model. |
 | More than one `step.call` at a time per worker | after M2 | A step whose calls are measured to wait on each other. |
@@ -748,21 +766,20 @@ Not specified until the milestone that needs them. Each is decided by the case n
 | `protocol.untrusted_result` | info | An untrusted step was built from its committed result, which matched (M2). |
 | `protocol.untrusted_stale` | error | A committed result's static key or a read of its trace differs from the current build; names the first difference (M2). |
 | `protocol.untrusted_skipped` | warning | An untrusted lint or export step was skipped. |
-| `protocol.start` | error | The process could not be started; the system's reason. |
+| `protocol.start` | error | The process could not be started; `data.kind` (6.2). |
 | `protocol.version` | error | The worker speaks another protocol version; both versions. |
 | `protocol.when_unserved` | error | The worker's `capabilities.when` lacks the step's `when`. |
 | `protocol.no_entry` | error | The script has no top-level function named after `when`. |
 | `protocol.framing` | error | A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor. |
 | `protocol.message_too_large` | error | A frame over 16 MiB; send the data as a blob. |
 | `protocol.deadline` | error | No answer by the deadline; which phase, and the deadline. |
-| `protocol.crashed` | error | The worker exited during a call; status and `data.log_tail`. |
-| `protocol.raised` | error | The step raised an exception it did not catch; `data.traceback` and `data.log_tail`. |
-| `protocol.failed` | error | A plain command exited non-zero; status and `data.log_tail`. |
+| `protocol.crashed` | error | The worker exited during a call. |
+| `protocol.raised` | error | The step raised an exception it did not catch; `data.exception`. |
+| `protocol.failed` | error | A plain command exited non-zero; `data.exit`. |
 | `protocol.slow_exit` | info | A worker had to be killed after `shutdown`. |
-| `protocol.input_missing` | error | A path in `inputs` does not exist; names it as written. |
 | `protocol.input_undeclared` | error | `input.open` named a path not in `inputs`. |
 | `protocol.blob_digest` | error | A blob's bytes do not match its name. |
-| `protocol.blob_header` | error | A float blob or field file holding NaN or infinity, or a column blob whose size does not match the `dtype` and `shape` its message gives. |
+| `protocol.blob_header` | error | A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2). |
 | `protocol.column_mixed` | error | One attribute has two types across the selected kinds; names both kinds. |
 | `protocol.no_output` | error | A generate step returned no document. |
 | `protocol.output_twice` | error | A worker returned a document and wrote `document.toml`. |
@@ -774,41 +791,41 @@ Not specified until the milestone that needs them. Each is decided by the case n
 | `protocol.no_explain` | warning | A step sent a code with no `explain` text. |
 | `protocol.explain_differs` | warning | A step sent two `explain` texts for one code. |
 
-Codes of other chapters used here: `graph.read_outside`,
+Codes of other chapters used here: `graph.read_outside`, `graph.input_missing`,
 `graph.step_unstable`, `graph.store_corrupt`, `field.step_base`, `field.step_layer`,
-`authority.step_view`, `num.not_finite`, `num.too_precise`, `doc.type`, `doc.not_yet`,
+`authority.step_view`, `num.not_finite`, `num.not_finite_result`, `num.too_precise`, `doc.type`, `doc.not_yet`,
 `identity.key_collision`.
 
 ## Conformance
 
-Each case runs through the command line (R20), with `VIA_CONFIG_DIR` set to a fixture folder; the
+Each case runs through the command line (R20), with `VIA_CONFIG_DIR` set as `conformance.md` 5.2 sets it (an empty `{work}/.config`; programs and trust are the case's own actions); the
 M0 probe alone runs from its own harness. Worlds and scripts live in `spec/vectors/protocol/<case>/`,
 written with the cases. A case that asserts no process remains uses a fixture that writes its own
 process id and its children's to `out/pids`; the runner checks after the build that none is alive.
 Every case on macOS, Linux and Windows gives the same build `id` and the same diagnostics, compared
-by code, severity, subject, location and `data` less `log_tail`.
+by code, severity, subject, location and `data`.
 
 | # | M | Input; action | Must hold |
 |---|---|---|---|
 | 0 | M0 | The probe: a 6.5 MB f32 field file out of a worker and back, a call back, a worker killed mid-call | Bytes equal; the call back answered; no process remains. |
-| 1 | M1 | A plain-command generate step returning one feature; build | The feature is `<step>#<key>` with its step's rank. |
-| 2 | M1 | Same, built again unchanged, then in another folder and on another machine with the store copied | The step does not run; its result is reused. |
-| 3 | M1 | A plain command; a byte of one of its `inputs` changed; then a file added to a folder named in `inputs`; then an input deleted | Step ran; step ran; `protocol.input_missing`. |
-| 4 | M1 | `extent = [0, 0, 1280, 1280]`, `resolution = 1`; a plain step returns field `wave` from `i + 0.5 * j` as f32 and the row `[field.height.then.w]` with `value = "= f('wave')"` | `height`'s bytes equal those of the same world with the row `value = "= x + 0.5 * y"`. |
-| 5 | M1 | A plain command exiting 3 | `protocol.failed` with `data.log_tail`, no absolute path in it. |
-| 6 | M1 | A step not in `trust.toml`, no `gen/` | `protocol.untrusted`, exit status 1, the program never started. |
+| 1 | M2 | A plain-command generate step returning one feature; build | The feature is `<step>#<key>` with its step's rank. |
+| 2 | M1 | A plain lint, built again unchanged, then in another folder and on another machine with the store copied | The step does not run; its result is reused. |
+| 3 | M1 | A plain lint; a byte of one of its `inputs` changed; then a file added to a folder named in `inputs`; then an input deleted | Step ran; step ran; `graph.input_missing`. |
+| 4 | M2 (open: needs ruling, R21) | `extent = [0, 0, 1280, 1280]`, `resolution = 1`; a plain step returns field `wave` from `i + 0.5 * j` as f32 and the row `[field.height.then.w]` with `value = "= f('wave')"` | `height`'s bytes equal those of the same world with the row `value = "= x + 0.5 * y"`. |
+| 5 | M1 | A plain command exiting 3 | `protocol.failed` with `data.exit = 3`; `diagnostics.json` byte-identical on every system. |
+| 6 | M1 | A plain lint not in `trust.toml`, no `gen/` | `protocol.untrusted_skipped`, exit status 0, the program never started. |
 | 7 | M1 | `via trust WORLD --yes`; build twice | Both builds trusted: no `__pycache__` or dot-file changes the digest. |
-| 8 | M1 | Same; then one file in the code folder edited | `protocol.untrusted`. |
+| 8 | M1 | Same; then one file in the code folder edited | `protocol.untrusted_skipped`. |
 | 9 | M1 | The code folder checked out with CRLF line ends | Same trust digest as with LF. |
 | 10 | M1 | `command = ["python", ...]`, no configured program, `python` on `PATH` | `protocol.no_program`. |
 | 11 | M1 | A `numpy.py` beside the world that writes a file when imported | The file is never written. |
-| 12 | M1 | A step added by an inline change in layer `shaping`, and one by a change file | Ranks of `shaping` and `world`. |
-| 13 | M1 | A returned document with `[pin.x]` | `protocol.output_table` at its line in `document.toml`. |
-| 14 | M1 | A returned row on a field of a higher layer | `field.step_layer`, at its line. |
-| 15 | M1 | A returned `file = "../x.npy"`; then a returned `.npy` of `<f8`, written by `numpy.save`; then one of `<f4` with shape `(ny - 1, nx)` | `protocol.output_file`; then `protocol.field_file`; then `protocol.field_file`. |
-| 16 | M1 | A field file written big-endian (`>f4`), in Fortran order, as `.npy` version 2.0, or with a wrong magic; then one written by `numpy.save` from a C-order `float32` array of the grid's shape | `protocol.field_file` for each; then the build accepts it. |
-| 17 | M1 | A plain step returning a field holding `-0.0` | The build holds the bytes of `+0.0`. |
-| 18 | M1 | A plain step handed the four features of 4.3's vector | Its columns equal the vector. |
+| 12 | M2 | A step added by an inline change in layer `shaping`, and one by a change file | Ranks of `shaping` and `world`. |
+| 13 | M2 | A returned document with `[pin.x]` | `protocol.output_table` at its line in `document.toml`. |
+| 14 | M2 | A returned row on a field of a higher layer | `field.step_layer`, at its line. |
+| 15 | M2 | A returned `file = "../x.npy"`; then a returned `.npy` of `<f8`, written by `numpy.save`; then one of `<f4` with shape `(ny - 1, nx)` | `protocol.output_file`; then `protocol.field_file`; then `protocol.field_file`. |
+| 16 | M2 | A field file written big-endian (`>f4`), in Fortran order, as `.npy` version 2.0, or with a wrong magic; then one written by `numpy.save` from a C-order `float32` array of the grid's shape | `protocol.field_file` for each; then the build accepts it. |
+| 17 | M2 (open: needs ruling, R21) | A plain step returning a field holding `-0.0` | The build holds the bytes of `+0.0`. |
+| 18 | M1 | A plain lint handed the four features of 4.3's vector; then 2.2's `data` vector | Its columns equal the vector; its `data` equals the vector's bytes, less absolute paths. |
 | 19 | M1 | Each row of 2.1's table in `params` | The request's `params` text equals the table. |
 | 20 | M1 | A plain lint step with a diagnostic and `explain`; `via explain step.<id>.<code> WORLD` | Prints the text, runs no program. |
 | 21 | M2 | A worker reading `height` in a layer; edit a layer above it; then add a `then` row below it | Not re-run; then re-run. |
@@ -822,7 +839,7 @@ by code, severity, subject, location and `data` less `log_tail`.
 | 29 | M2 | A worker with a child, killed by the engine (deadline) | No child remains, on every system. |
 | 30 | M2 | A worker with a child; the engine itself killed | The worker is gone on every system; a child that stayed in its group is gone on Windows (others: open). |
 | 31 | M2 | A worker killed by the fixture mid-call | `protocol.crashed`. |
-| 32 | M2 | A step raising `ValueError` | `protocol.raised` with `data.traceback`. |
+| 32 | M2 | A step raising `ValueError` | `protocol.raised` with `data.exception = "ValueError"`; the traceback in the log. |
 | 33 | M2 | A worker reading through `input.open` a file not in `inputs` | `protocol.input_undeclared`. |
 | 34 | M2 | A worker reading by name a feature of a higher layer | `graph.read_outside` naming that layer, and no other diagnostic. |
 | 35 | M2 | Two workers in one layer; one reads the other's returned feature by name | `graph.read_outside`. |
@@ -831,8 +848,9 @@ by code, severity, subject, location and `data` less `log_tail`.
 | 38 | M2 | A committed `gen/<id>/` for an untrusted step; build; then edit a param | `protocol.untrusted_result` and the trusted build's `id`; then `protocol.untrusted_stale`. |
 | 39 | M3 | `for_each` over three districts; one moved | Exactly one call ran; seeds equal `numbers.md`'s vectors. |
 | 40 | M1 | `command = ["python", "-m", "viasdk", "lib:review/checks.py"]`, no `worker`, a configured Python with no `viasdk` installed in it | The launcher runs `lint(step)`; its diagnostics are in the build. |
-| 41 | M1 | Same, with a script that has no `lint` function; then one that raises | `protocol.failed` both times, the log tail naming the missing function, then the traceback. |
-| 42 | M1 | A plain lint in layer 1 beside a failed generate step in layer 2; then one in layer 2 reading the failed step's field | The first runs and reports; the second is `skipped`. |
+| 41 | M1 | Same, with a script that has no `lint` function; then one that raises | `protocol.failed` both times, the log naming the missing function, then holding the traceback. |
+| 42 | M1 | A world of two layers; a failed `attr` node in layer 2; a plain lint in layer 1 and one in layer 2 | Both `skipped`: each reads the finished build (R29, `graph.md` case "lint gate"). |
+| 43 | M2 | A plain generate step not in `trust.toml`, no `gen/`; then trusted, and one file in its code folder edited | `protocol.untrusted`, exit status 1, the program never started; both times. |
 
 ## Changed from the spike
 
@@ -866,6 +884,7 @@ by code, severity, subject, location and `data` less `log_tail`.
 | Waivers for lint findings (`diagnostics.md`, Severity). | The first library lint whose finding a world must accept at one place; M3. |
 | A fresh process per call. | The first case where carried state matters. |
 | A step in a frame other than the world's. | Imports, M4. |
+| The command that writes `gen/`, and whether a trace is kept as text in the repository (7.1). | `basin`, M2. |
 
 ## Owed by other chapters
 
@@ -878,7 +897,7 @@ Asked of the lead, so the chapters agree:
 | `graph.md` 5.1 | The canonical form of 4.4; the CRLF and ignore rules of section 7 for command files; with `--sdk`, the SDK folder's digest in every step's static key (8.1). |
 | `build.md` 14 | `via trust`, `via config program`, `--step-deadline`, `--sdk DIR`; step logs, call folders and `<store>/sdk/` in the store. |
 | `vocabulary.md` | `message` in the diagnostic's members; `item` noted in Colliding names (the request says `for_each_item`). |
-| `diagnostics.md` 6 | `code` in place of `name` for a step diagnostic's tail. |
-| `formulas.md` 7 | `'<step>#<key>'` in the field selector class. |
-| `identity.md` 2.4 | Fields and `then` rows named `<step>#<key>`, as features are. |
+| `diagnostics.md` 6 | `code` in place of `name` for a step diagnostic's tail. A `diagnostics.json` member not listed in section 5, or of another JSON type, is `diag.malformed`. |
+| `graph.md` Conformance | Cases "step reuse" and "step rerun" use a plain generate step in M1; generate steps are M2 here and in `fields.md`. |
+| `conformance.md` 5.3 | Compare each record less `message` and `hint` only: `data.log_tail` is gone (6.2). |
 | `numbers.md` 10 | Vectors for `stream(seed, ["step", id])` and `stream(seed, ["step", id, item])`. |

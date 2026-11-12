@@ -5,19 +5,12 @@ holds. This chapter fixes the keys of a kind and an effect, the three tiers, the
 every entry reaches a field, what happens when two firm statements meet, and what a step may not
 move.
 
-Authority: `docs/doctrine.md` (principles 3, 5, 10; R7, R14, R18, R21). Words: `spec/vocabulary.md`.
-What one entry does to a field is `fields.md`; the names a formula sees are `formulas.md`; distance,
-`d`, `sd` and `t` are `numbers.md`; ids and place names are `identity.md`.
+Authority: `docs/doctrine.md` (principles 3, 5, 10; R7 as amended by R28, R14, R18, R21, R29,
+R31). Words: `spec/vocabulary.md`. What one entry does to a field is `fields.md`; the names a
+formula sees are `formulas.md`; distance, `d`, `sd` and `t` are `numbers.md`; ids and place names
+are `identity.md`.
 
 Formulas are written `"= ..."` (`formulas.md`).
-
-Two readings here need a doctrine ruling before they are final. Each is marked **(pending ruling)**
-where it is used:
-
-| Reading | Ruling it amends | Where |
-|---|---|---|
-| Nesting and `order` come before layer rank among one tier's entries. | R21 ("layers break ties") | 4.2 |
-| A lint step names the generate steps it checks; an unchecked one is an error. | R14 (how "every stated fact is checked" is enforced) | 7 |
 
 ## 1. Kinds
 
@@ -30,7 +23,7 @@ nothing else; a library's own steps read every attribute (R19b).
 | `authority` | The tier of the kind's features unless a feature writes its own. Default `derived`. | this |
 | `defaults` | Declares attributes and their values. A table: a change merges it key by key (`documents.md`, merging). | this |
 | `requires` | Declares attributes every feature must write. | this |
-| `radius` | Bounds every effect of the kind that has no `radius` of its own. | `fields.md` 5.3 |
+| `radius` | A `length`, > 0 (`numbers.md` 3.1). Bounds every effect of the kind that has no `radius` of its own. | `fields.md` 5.3 |
 | `let` | Named formulas its effects read. | `formulas.md` |
 | `names` | Lists the attributes whose values are place names (1.2). | this |
 | `[kind.<k>.effect.<id>]` | One effect (section 2). | this |
@@ -41,6 +34,9 @@ A kind may also own a bounded surface and mounts (R25). Those tables are `surfac
 `vocabulary.md` once that chapter adds them, and none is in M1.
 
 A feature without `kind` is a guide: a shape that does nothing. It has no effects and no tier.
+
+A feature's `kind`, or an instance's `ground` (`rules.md` 2.1), that names no kind in the world's
+kind namespace (`documents.md` 3) is `authority.unknown_kind` (error), with the nearest kind as hint.
 
 ### 1.1 Attributes
 
@@ -91,8 +87,9 @@ toward = "ford"
 - A formula that reads a name attribute is `formula.type`: a name is not a number.
 - It is written to `features.json` resolved (`build.md` 9.1): `{ "name": "<place name>", "at": [x,
   y, z] }`. `at` is the point the name gives: a point feature's `at`; an end's or a mount's point;
-  for a path, its point at `t = 0.5` (`geometry.md` 3.8); for a region, its representative point
-  (`geometry.md` 3.2). `z` as `build.md` 9.1 gives it; a mount's own height for a mount. The choice
+  for an instance or set item, its pivot (`build.md` 8), `z` its pivot height after `sink`; for a
+  path, its point at `t = 0.5` (`geometry.md` 3.8); for a region, its representative point
+  (`geometry.md` 3.2). Otherwise `z` as `build.md` 9.1 gives it; a mount's own height for a mount. The choice
   of point for a path or a region is ours. A loader reads `at` and never resolves names itself.
 
 The lead is asked to add `names` to `vocabulary.md`'s kind keys, the row "name attribute" to
@@ -125,7 +122,7 @@ pair is one entry on each field it writes (section 4), applied by `fields.md` 5.
 | `value` | formula | Scalar fields: the value the entry moves toward. |
 | `mask` | formula | The entry's weight at a post, 0 to 1. Default 1. |
 | `paint` | name | Weights fields: the material the entry adds weight to. |
-| `radius` | number, > 0 | Beyond this distance from the feature the entry does nothing (`fields.md` 5.3). Default: the kind's. |
+| `radius` | `length`, > 0, read by `numbers.md` 3.1 | Beyond this distance from the feature the entry does nothing (`fields.md` 5.3). Default: the kind's. |
 | `max_change` | formula (per feature), >= 0 | Scalar fields: the most the entry may move a value at any post (2.2). |
 | `order` | integer | Its place among the entries of one tier that nesting leaves free (4.2). Default 0. |
 
@@ -159,13 +156,16 @@ The full list, with rates, is `formulas.md` 6.5 and 8.5. In short:
 - `v` reads the field at this entry's place in the order. It is a value at the post, so R7 allows
   it. Everything in this chapter that depends on reading an earlier entry (nesting, 4.3; the way out
   of a clash, section 5) uses `v` only.
-- `under` and the path measure read neighbours, which R7 gives to steps. `formulas.md` 8.5 keeps
-  them as per-feature reductions; the lead is asked for a ruling that amends R7 to allow them, or
-  moves them to a library step. Nothing here depends on them.
+- `under` and the path measure read neighbours. R28 allows them in a formula, since each declares
+  its halo and cap (`formulas.md` 8.5, 8.6). They read the field at the entry's place in the order,
+  which no step could.
 - Measures run over the feature's posts inside the extent, never over one window, so a window of a
   field still equals the same cut of the whole (`numbers.md` 6). A measure over no posts (a
-  feature wholly outside the extent; an `'edge_min'` band past the edge) is an error whose code
-  `formulas.md` registers.
+  feature wholly outside the extent; an `'edge_min'` band past the edge) is `num.empty_reduction`,
+  registered by `numbers.md` 6 (`formulas.md` 8.5).
+- A per-feature value (`under`, the path measure, `max_change`) is worked out only when at least one
+  post of the effect's window lies within `radius` (`fields.md` 5.3). Otherwise the entry touches no
+  post, nothing is evaluated, and no error arises.
 - Reading another field makes a dependency between fields. A cycle across fields is `graph.cycle`.
 
 ### 2.2 `max_change`
@@ -243,14 +243,16 @@ Entries are applied in doubles and narrowed to a 32-bit float once, after the la
 The **head** is the field's own derived beginning: every `then` row, written in text or returned by
 a step (`fields.md` 7). It comes before every effect, in this order:
 
-1. layer rank, lowest first. A step's rows take the rank of the step's layer;
-2. source: the rows written in text, then the rows each step returns, steps by id;
-3. `order`, lowest first;
-4. the row's place name: its id for a text row, its produced name for a step's row (`<step>#<id>`,
-   `identity.md` 2.4). Two `for_each` calls that return one produced name are `graph.md`'s error.
+1. `order`, lowest first;
+2. layer rank, lowest first. A step's rows take the rank of the step's layer;
+3. the row's place name, bytewise: its id for a text row, its produced name for a step's row
+   (`<step>#<id>`, `identity.md` 2.4). Two `for_each` calls that return one produced name are
+   `graph.md`'s error.
 
-Rank and source come first so that a step's view is known before it runs (4.4). This placement of
-the head is ours.
+This is R29 with no nesting, since rows have no shapes: a step's rows are rows like any other, one
+order, no second pass. A field's `file` takes the place of `base` (`fields.md` 3); the field it
+gives is built and ordered like any other. That a step's rows cannot sort before a row it read is
+checked after it runs (4.4).
 
 ### 4.2 Effects
 
@@ -271,12 +273,9 @@ one), choosing at each point, among the entries whose predecessors are placed, t
 free, and a library's `order` cannot break a nesting: a pad on a lane comes after the lane's
 roadway whatever their `order`.
 
-**(pending ruling)** R21 says "by authority across the whole world; layers break ties". This
-chapter reads the ties as those left after nesting and `order`. Nesting first is R18: what stands
-on a thing refines it, and an owner holds against what arrives, whatever the layers or the numbers
-libraries chose. `order` before layer rank is challenge 36, which crosses layers. Authority stays
-first, so R21's case holds: a derived lake in a lower layer gives way to an anchored thing above it.
-The lead is asked to record this reading as an amendment to R21, citing challenge 36 and R18.
+This is R29: within one tier, nesting, then `order`, then layer rank, then id bytewise; document
+order never decides. Authority stays first, so R21's case holds: a derived lake in a lower layer
+gives way to an anchored thing above it.
 
 ### 4.3 Nesting
 
@@ -287,12 +286,12 @@ formed per field, among those features only. One side comes later:
 |---|---|---|---|
 | B stands on A | B's `on.ref` names A, an end of A, or a mount of A; or B is the footprint of an instance placed `on` A | B | B refines A: a pad on a lane. |
 | B follows A | B's `follows.ref` names A | B | B is written along A and refines it (R18). |
-| B arrives at A | B's `starts_at` or `ends_at` names A, an end of A, or a mount of A | **A** | R18: the owner of a meeting holds it against what arrives (section 6). |
+| B arrives at A | B's `starts_at` or `ends_at` names an end of A, a mount of A, or A when A is a point feature or an instance; or names the instance, or its mount, whose footprint A is | **A** | R18: the owner of a meeting holds it against what arrives (section 6). |
 | B lies inside A | Every point of B's shape is inside or on A's region, and B's area is smaller | B | The smaller is applied later: a pad on a terrace. |
 
 - The first three are written; containment is found. Containment is not tested for a pair that a
-  written relation already links, so a lane that ends at a waterfront region and lies inside it
-  comes before the waterfront, as arrival says.
+  written relation already links, so a lane that ends at a mount of a quay and lies inside the
+  quay's region comes before the quay, as arrival says.
 - Containment is exact on the integer lattice (R24); areas are compared in square millimetres.
   Paths and points have no area and lie inside a region that contains them. Shapes are known before
   the order is formed (2.3), `where` regions included: a shape reads head views only, which hold no
@@ -300,8 +299,8 @@ formed per field, among those features only. One side comes later:
 - Across tiers there is no nesting; authority decides alone.
 - A cycle in the relation is `authority.order_cycle`, naming the field, every feature in the cycle,
   the key that made each link and which side that link puts later. The hint: state the meeting once.
-  A cycle needs written links that disagree: two paths that each end at the other, or a feature
-  that both stands on and arrives at another. A ford `on` a beck with lanes arriving at the ford is
+  A cycle needs written links that disagree: two paths that each start at the other's end, or a
+  feature that both follows and arrives at another. A ford `on` a beck with lanes arriving at the ford is
   not one: the beck comes first, then the lanes, then the ford.
 
 Entries whose windows (`fields.md` 5.3) do not overlap commute, so an implementation may test
@@ -321,9 +320,11 @@ rows such a step returns, or the entries of features it returns.
 - The step names the view in each read: `view = "head"` or `"full"` on `build.field`, default
   `"full"`. The lead is asked to add this parameter to `protocol.md` 3.3, the node keys
   `v:<layer>.head` and `v:<layer>.full` to `graph.md` 4, and this table to `fields.md` 6.2.
-- By 4.1, a step's rows sit after every entry of its head view and before every effect. So no entry
-  it read is applied again on top of its rows (R21: "nothing below it is applied twice"). Rows of
-  another step at L may sit before its rows; they are outside its view and it never read them.
+- By 4.1, a step's rows sit before every effect. A step that returns a row sorting before a row of
+  its head view is `authority.step_view`, naming both rows: the row it read would be applied again
+  on top of its own. The hint: give the returned rows an `order` above every row read. So no entry
+  it read is applied again (R21: "nothing below it is applied twice"). Rows outside its view may
+  sit before or after its rows; it never read them.
 - A step that read a field's full view and returns rows on it is `authority.step_view`: those rows
   would sit before effects the step already saw. The hint: read the head view, or return features.
 - A step that read a field's full view may return features whose kinds write that field. Their
@@ -338,10 +339,12 @@ produced by a rule or a step.
   instance (or of the rule or step that produced it), and the instance's place name.
 - Its shape is plan only: the footprint at a plan position, read from no field. So it nests like
   any region (4.3), and its own placement on a feature is a "stands on" link.
-- A rule reads fields to decide where things go: `density`, a `within` region written as `where`,
-  an `on` feature whose shape reads a field. Those reads see the build's view. A field read that
-  way which takes entries from the rule's own footprints is a cycle, `graph.cycle` (`rules.md`
-  3.4); there is no view that leaves them out.
+- A rule's own formulas, such as a scatter's or run's `density`, read fields in the build's view. A
+  field read that way which takes entries from the rule's own footprints is a cycle, `graph.cycle`
+  (`rules.md` 3.4).
+- A shape a rule stands on or is confined to (an `on` feature, a `within` region written as
+  `where`) reads the head view (2.3), which holds no effect, so footprint entries never feed back
+  into it.
 - How high a placed thing stands reads the final surface, its own footprint included (`rules.md` 6,
   8.2). That is not a cycle: height never moves a plan position. The `keep_out` test reads the view
   of `rules.md` 8.3.
@@ -403,8 +406,10 @@ Where two things meet, a named thing owns the meeting, never whichever got there
 chapter's terms:
 
 - The owner is a feature whose kind's entries shape the place (a ford, a crossing, a waterfront).
-- What meets it names it: a path with `starts_at` or `ends_at` (the owner, its end or its mount), a
-  thing placed with `on`. A path meets another thing at its ends or by `follows`, nowhere else
+- What meets it names it: a path with `starts_at` or `ends_at` (its end, its mount, or the owner
+  itself when it is a point feature or an instance), a
+  thing placed with `on`. Every meeting is a pair of mounts; a path that ends at a place meets that
+  place's default mount (R31, `surfaces.md` 3.3). A path meets another thing at its ends or by `follows`, nowhere else
   (`geometry.md`).
 - Within one tier, the owner comes after the paths that arrive at it (4.3). So at equal strength
   the owner holds at the meeting. An owner written weaker than what arrives does not hold there;
@@ -434,10 +439,10 @@ A simulation is a way of deriving, so it obeys authority. The contract on the st
    (`identity.md`), so it cannot rewrite a stated one.
 4. **Facts checked after.** The stated values hold in the field by the order. Whether the step's
    result honours them (a lake that is not a dam, a river that keeps to its line) is a library's
-   knowledge, so the check is a lint step, whose codes are `step.<id>.<name>`, each saying where and
-   what would hold instead (principle 8). **(pending ruling)** So that R14 holds whatever a library
-   writes, a lint step lists the generate steps it checks in a key `checks` (new; the lead is asked
-   to add it to `vocabulary.md` Steps). A generate step that read stated features (by its read
+   knowledge, so the check is a lint step, which reads the finished build (R29), whose codes are
+   `step.<id>.<name>`, each saying where and what would hold instead (principle 8). So that R14
+   holds whatever a library writes, a lint step lists the generate steps it checks in a key
+   `checks` (open: queued for M2 by R31, decided with `basin`). A generate step that read stated features (by its read
    trace, `protocol.md` 4.4) and returned rows or features, which no lint step names, is
    `authority.unchecked` (error), naming the step and its `when` line. The hint: add a lint step
    that checks it.
@@ -557,14 +562,15 @@ would not change.
 | `authority.range` | error | `radius` at or below 0; the key, value and range. |
 | `authority.max_change` | error | An entry moves a value more than `max_change`; post of the largest move, amount, limit, `v` and `value`. |
 | `authority.unknown` | error | `authority` is not `derived`, `shaped` or `anchored`; nearest tier. |
+| `authority.unknown_kind` | error | A feature's `kind` or an instance's `ground` names no kind in the world's kind namespace; nearest kind. |
 | `authority.no_kind` | error | `authority` on a guide. |
 | `authority.order_cycle` | error | Nesting on one field forms a cycle; the field, every feature, each link and which side it puts later. |
 | `authority.conflict` | error | Two anchored features disagree where both masks are 1; subject the later; values, post, counts. |
 | `authority.squeezed` | warning | Two anchored features disagree only where a mask is below 1; as above. |
 | `authority.hidden` | info | An entry left no trace: later entries with mask 1 cover all of it; once per feature and field. |
-| `authority.step_view` | error | A step returned rows on a field whose full view it read. M2. |
+| `authority.step_view` | error | A step returned rows on a field whose full view it read, or a row sorting before a row of its head view. M2. |
 | `authority.step_anchored` | error | A step returned an anchored feature. M2. |
-| `authority.unchecked` | error | A generate step that read stated features and returned rows or features is named by no lint step's `checks`. M2, (pending ruling). |
+| `authority.unchecked` | error | A generate step that read stated features and returned rows or features is named by no lint step's `checks`. M2, (open: queued by R31). |
 
 ## Conformance
 
@@ -589,8 +595,8 @@ Six entries fit a 32-bit float exactly.
 | follows | M1 | A shaped path that `follows` a shaped beck, its id sorting first | build | The path's digit after the beck's. |
 | owner_holds | M1 | Two shaped lanes ending at a shaped ford, ids sorting after the ford | build | The ford's digit after both lanes'. |
 | ford_meeting | M1 | A shaped ford `on` a shaped beck, two shaped lanes arriving at the ford | build | Digits: beck, then lanes, then ford; no `authority.order_cycle`. |
-| arrive_inside | M1 | A shaped lane ending at a shaped region that contains it | build | The region's digit after the lane's; no cycle. |
-| order_cycle | M1 | Two paths, each ending at the other | build | `authority.order_cycle` naming both and each link's direction; exit 1. |
+| arrive_inside | M1 | A shaped lane ending at an instance `yard` grounded with a shaped kind whose footprint contains the lane | build | The footprint's digit after the lane's; no cycle. |
+| order_cycle | M1 | Two shaped paths `a` and `b`, `a` starting at `b.end` and `b` at `a.end` | build | `authority.order_cycle` naming both and each link's direction; exit 1. |
 | ford_on_anchored | M1 | An anchored ford asking `value = "= v"` on an anchored beck whose bank mask fades | build | No diagnostic. |
 | pond_lake | M1 | Section 9 as written | build | Pond interior the 32-bit float nearest 31.8; no authority diagnostic. |
 | pond_lake_firm | M1 | Section 9 with `firm` | build | `authority.squeezed`, subject `pond`, 133 posts, (71, 37); exit 0. |
@@ -619,12 +625,14 @@ Six entries fit a 32-bit float exactly.
 | name_moved | M1 | As `name_attr`, a change moving the ford | build | The change report lists `at_ford` with the ford's move as cause. |
 | name_upward | M1 | A bookmark in layer 0 whose name attribute names a feature in layer 1 | build | `doc.upward_ref`. |
 | names_undeclared | M1 | A kind with `names = ["toward"]` and no `toward` in `defaults` or `requires` | build | `authority.names_undeclared`. |
-| measure_outside | M1 | A region wholly outside the extent whose effect reads `under('mean')` | build | The `formulas.md` error for a measure over no posts. |
+| measure_outside | M1 | Extent `[0, 0, 16, 16]`, resolution 1; a region `[-4, 4, -1, 8]` (no post inside the extent) whose effect, `radius` 3, reads `under('mean')` | build | `num.empty_reduction` naming the region: its window meets the extent within `radius`. |
 | requires | M1 | A pond without `water_height` | build | `authority.requires` naming `water_height` and the kind's line. |
 | guide_tier | M1 | A guide with `authority = "anchored"` | build | `authority.no_kind`. |
+| unknown_kind | M1 | A feature with `kind = "pnod"`, and an instance with `ground = "pnod"`, in section 9's library | build | `authority.unknown_kind` at each line, hint `pond`; exit 1. |
 | window | M1 | Section 9 `wide` | evaluate `height` whole and by windows, one cut through the overlap (as `numbers.md`'s window_equals_whole) | The window equals the same cut of the whole; diagnostics equal the whole build's. |
 | step_head | M2 | A generate step that reads `height`'s head view and returns a row; an anchored pond below it | build | The pond's value holds over the row; a clean build equals the incremental one. |
 | step_view | M2 | A step that reads `height`'s full view and returns a row on it | build | `authority.step_view`. |
+| step_order | M2 | A step that reads `height`'s head view, holding a text row with `order` 1, and returns a row with `order` 0 | build | `authority.step_view` naming both rows. |
 | step_features | M2 | A step that reads `height`'s full view and returns a feature whose kind writes `height` | build | No diagnostic; the feature's entry in its tier's place. |
 | step_anchored | M2 | A step that returns an anchored feature | build | `authority.step_anchored`. |
 | unchecked | M2 | A generate step that reads anchored features and returns rows, with no lint step naming it | build | `authority.unchecked`. |
@@ -662,4 +670,5 @@ Six entries fit a 32-bit float exactly.
 | Whether a step may pass an author's anchored tier to the features it lowers (a library rule written as a step). | `protocol.md`, by M3 (the kit run as a building library rule; `city`). |
 | Whether a derived feature is made by a step or by an engine operation. | M2, `vale` and `basin`. |
 | Whether effects on `volume` fields obey the tiers. | M5, `coast`. |
+| The lint key `checks` and `authority.unchecked` (section 7). | Queued for M2 by R31; `basin`. |
 | Whether a parent may overrule ground an import anchored (the spike only warned). | M4, `documents.md`, `border`. |

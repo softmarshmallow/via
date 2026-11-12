@@ -43,7 +43,7 @@ south, 270 west. There is no other angle convention in text; the word yaw is not
   `atan2` is `libm`'s (section 8). `K` is one double constant, `180000.0 / PI` computed as one
   correctly rounded division, with `PI = 0x400921FB54442D18`; its bits are in section 10. `round` is
   to the nearest integer, ties to even. The argument order is `(dx, dy)`: a bearing measures from
-  north. A zero direction never reaches this: a path has no zero-length segment (`geometry.md` 2.1,
+  north. A zero direction never reaches this: a path has no zero-length segment (`geometry.md` 2.2,
   `geom.repeated_point`), `t` on a thing of no length is `geom.no_length`, and `toward` or `away`
   with `offset = 0` is `geom.face_side`.
 - Two facings are equal when their millidegrees are equal. The change report's "moved in facing"
@@ -272,7 +272,7 @@ path features alike (`formulas.md` 4.2).
 - **The segment holding `t`.** With `s = t * L` (one double multiplication), the segment is the one
   with `Ck <= s < Ck+1`, compared as doubles; ties go to the later segment, so a vertex is held by
   its outgoing segment. `t = 1` is held by the last segment. A path has no zero-length segment
-  (`geometry.md` 2.1), so no segment is skipped.
+  (`geometry.md` 2.2), so no segment is skipped.
 - **The point at `t`, with `offset`.** On segment `k`, with `o` the offset in millimetres (a length):
 
   ```
@@ -308,10 +308,10 @@ path features alike (`formulas.md` 4.2).
   `cross(a, p - v)`. A zero sign gives `+d`. The vertex rule is ours; the sum of the two cross
   products, used in an earlier draft, gives the wrong side at sharp turns (vector in section 10).
 - **The side of a region.** Inside, outline included, by the exact winding test (`geometry.md`
-  2.1); holes are outside. No side test along the outline is used.
-- **Several rings.** A region from `where` may have several pieces and holes (`geometry.md` 2.1).
-  `d` and `sd` are defined on it as above, measured to every ring. `t` is measured on the first
-  piece's shell only, as `geometry.md` 2.6 decides.
+  1, Predicates); holes are outside. No side test along the outline is used.
+- **Several rings.** A region from `where` may have several pieces and holes (`geometry.md` 2.2).
+  `t` is undefined on a region of more than one ring (`geometry.md` 2.6: `geom.many_rings`; in a
+  formula, `formula.shape`); `d` and `sd` measure to every ring.
 
 ## 6. Windows and halos
 
@@ -327,7 +327,8 @@ What the rule requires of every operation:
 
 - A value at a post depends on the post's position, never on the window's origin, size or the
   order windows are done in. Noise is evaluated at world (or import frame) coordinates.
-- An operation that reads neighbours declares its **halo**: how many posts around it it reads. To
+- An operation that reads neighbours declares its **halo**: how many posts around it it reads, or,
+  for a distance, its cap (R28; `formulas.md` 8.6). A read with no bound is a step. To
   fill a window, its inputs are evaluated over the window grown by the halo, clipped to the grid. At
   the grid's edge, the operation's own edge rule applies, and it is the same rule whole or windowed.
   This is the halo, or ghost-cell, scheme of stencil codes.
@@ -469,14 +470,16 @@ Its rules:
    wraps, and says so.
 7. **No non-finite value enters a build.** A double that is infinite or NaN is never stored in a
    field, an attribute, a position or a build file. `via-num`'s functions return a checked value. A
-   formula's non-finite result is `formula.not_finite` (`formulas.md` 9). Any other (a step's
-   returned field, checked on arrival, or a stored feature value) is `num.not_finite_result`, naming
-   the step or feature and the position. One condition, one code, as `diagnostics.md` recommends.
+   formula's non-finite result is `formula.not_finite` (`formulas.md` 9). A non-finite literal in a
+   returned `document.toml` is `num.not_finite` (`protocol.md` 5). Any other (a step's column blob
+   or returned field file (`protocol.md` 4.2), or a stored feature value) is
+   `num.not_finite_result`, naming the step or feature and the row or position. One condition, one code, as `diagnostics.md` recommends.
 8. **No negative zero is stored.** A zero leaving `via-num` into a stored value is `+0`.
 9. **Narrowing.** Where a stored type is narrower than a double (`fields.md` decides), the double is
    rounded to nearest, ties to even, once, on store.
-10. **Ordered everything.** No hash map's iteration order reaches a result (R19). Ties no key
-    settles break by id, bytewise (`vocabulary.md` section 2.2).
+10. **Ordered everything.** No hash map's iteration order reaches a result (R19), and document
+    order never does. A field's entries take R29's order (`authority.md` 4); any other tie no key
+    settles breaks by place name, bytewise (`vocabulary.md` section 2.2).
 
 The SDK exposes the formula function list (R7) with the same definitions. Python's own `math`
 calls the platform's library, so a step that wants the engine's bits calls the engine in a batch
@@ -520,6 +523,40 @@ bits are normative. Positions are in millimetres. The machine-readable copy is
 tables are its source. Tests in `via-num` and in the SDK read that file and embed no literals, so the
 deny-list test (`vocabulary.md` section 7) never meets a stream name. Computed with `libm` 0.2.16,
 `default-features = false`, `force-soft-floats`.
+
+**The vector file.** One table per vector, keyed by its id (`vocabulary.md` 2.1), in the order of
+the tables below: `[vector.<id>]` with three keys, `fn`, `args` (an array) and `expected`. `via
+vectors` (`build.md` 14) and the SDK tests read it; `spec/vectors/identity.toml` (`identity.md` 10)
+and the noise vectors of `formulas.md` 8.2 use the same form. Values are written so: a 64-bit word
+or a double's bits as a string, `0x` and 16 upper-case hex digits; an integer (millimetres,
+millidegrees, a key, an index) as a TOML integer; a decimal read by section 3 (`t`, a scale, a
+length's text) as a string of its text, never a TOML float; a point as `[x, y]`; a path or region
+as an array of points; a list of parts as an array of strings; several results as an array, in
+the order of the table's columns; a rejection as `{ code = "<code>" }`. `fn` is one of:
+
+| `fn` | `args` | `expected` |
+|---|---|---|
+| `splitmix64` | `[word]` | word |
+| `stream` | `[seed, parts]` | word |
+| `draw` | `[stream, keys]` | word |
+| `unit` | `[word]` | double |
+| `facing` | `[millidegrees]` | `[sin, cos]` |
+| `bearing` | `[dx, dy]` | millidegrees |
+| `frame` | `[frames, point]`, `frames` an array of `[origin, facing, scale]` from the root outward | point (5.1, 5.4) |
+| `point_at` | `[path, t, offset]` | `[point, along]` (5.5) |
+| `measure` | `[shape, points, point]`, `shape` one of `"point"`, `"path"`, `"region"` | `[t, d, sd]` |
+| `samples` | `[path, r]` | array of points (6) |
+| `length` | `[text]` | millimetres, or a rejection (3.1) |
+| `metres` | `[millimetres]` | double (4) |
+| `sum` | `[doubles]` | double, in order (8) |
+| `min`, `max` | `[double, double]` | double (8) |
+| `write`, `write_length` | `[double]`, `[millimetres]` | text (3.4) |
+| `noise` | `[stream, octave, px, py]` | double (`formulas.md` 8.2) |
+| `digest` | `[class, parts]` | 16 lower-case hex digits (`identity.md` 10) |
+
+A row given as a reason only (`1.005` read through a double; the Before rounding column) is not a
+vector. A gradient index of `formulas.md` 8.2 is the `draw` word's top four bits and is checked
+from it. How `digest` writes its parts is (open), decided in `identity.md` 10 with the file.
 
 **Constants.** `PI` is `0x400921FB54442D18`. `PI / 180000.0` is `0x3EF24D1521193474`.
 `K = 180000.0 / PI` is `0x40EBF9F8F1C56B6C` (57295.77951308232).
@@ -710,17 +747,16 @@ Codes this chapter introduces. All are errors. `diagnostics.md` holds the list a
 | `num.seed_type` | error | A seed of the wrong form: a world seed not an integer; a scatter seed not a name, or a name that breaks the id grammar. The hint suggests a name, or the lower-cased form. |
 | `num.overflow` | error | A checked integer operation overflowed. Names the subject and the position. |
 | `num.empty_reduction` | error | A mean, minimum or maximum over a feature with no samples. Names the feature. |
-| `num.not_finite_result` | error | A step or a stored feature value would store an infinite or NaN value. Names the step or feature and the position. A formula's is `formula.not_finite`. |
+| `num.not_finite_result` | error | A step or a stored feature value would store an infinite or NaN value. Names the step or feature and the row or position. A formula's is `formula.not_finite`. |
 
 ## Conformance
 
 Each case runs through the command line (R20). Every case also checks that a clean build equals the
 incremental one (`docs/plan.md`); for a case that must exit 1, that means the same
-`diagnostics.json` bytes, clean and incremental. Two command forms are not yet in `build.md` 14: a
-field evaluated over a chosen window (written below as `via eval WORLD --field F --window
-i0,j0,i1,j1`) and the vectors computed by the binary (written as `via vectors FILE`). Both are
-(open), decided with the runner in M0 step 5. The SDK checks the same vector file in its own tests;
-those are SDK tests, not conformance cases.
+`diagnostics.json` bytes, clean and incremental. A field over a window is
+`via eval WORLD --field F [--window i0,j0,i1,j1] --out FILE`, and the vectors computed by the
+binary are `via vectors FILE`, both as `build.md` 14 gives them. The SDK checks the same vector
+file in its own tests; those are SDK tests, not conformance cases.
 
 | Case | Input | Action | Must hold |
 |---|---|---|---|
@@ -755,7 +791,7 @@ those are SDK tests, not conformance cases.
 | systems | ford on macOS, Linux (and Windows once allowed) | build | Same digest. |
 | empty_reduction | `under('mean')` on a region with no post inside | build | `num.empty_reduction` naming the feature. |
 | non_finite_formula | A field `base = "= 1 / (x - x)"` | build | `formula.not_finite` naming the formula and a position, never a NaN in the field. |
-| non_finite_step | A step returning a field with one NaN | build | `num.not_finite_result` naming the step and the post. |
+| non_finite_step | An M2 worker whose call carries an f64 column blob holding one NaN | build | Error -32004 and `num.not_finite_result` naming the step and the row. M2. |
 | no_neg_zero | A formula giving `-0` | build, read the field file | The bytes of `+0`. |
 
 ## Changed from the spike
@@ -783,6 +819,4 @@ those are SDK tests, not conformance cases.
   needs two copies of one place that differ.
 - **The post limit.** `2^26` is provisional. Decided by the M0 probe: the largest grid that builds
   within the budget the plan sets for ford.
-- **The command forms of `via eval` and `via vectors`.** Decided with the runner in M0 step 5, in
-  `build.md`.
 - **Windows bytes.** Decided by the first run on hosted runners, once a push is allowed.

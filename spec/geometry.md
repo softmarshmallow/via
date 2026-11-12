@@ -167,9 +167,13 @@ normal of the segment that holds `t`. On a region the left normal points inward 
 Placement). The result is rounded to the lattice. A point placed inside near a narrow part or a
 concave corner can land outside the region; it is placed as stated and nothing is reported.
 
-The slots of `on`: `ref` is always needed; `t` is needed on a path or a region; `offset` defaults to 0.
-A missing slot is `doc.missing_key`, naming `on` and the slot, with the hint to write the whole table
-(a change that writes only `t` is this case, `documents.md` 6.2; one condition, one code). `t` or `offset` on a ref with no length (a
+The slots of `on`: exactly one of `ref` or `of` is needed (both is `identity.on_both`; neither is
+`doc.missing_key` naming `ref`); on a path or a region, `t` is needed where a thing is placed at a
+point (a feature, an instance, a pin; a run takes `span`, `rules.md` 5). A clear's `on` takes an
+optional `t` on a path and no `t` on a region (`identity.md` 4.3); `offset` is a `length`
+(`numbers.md` 3.1) and defaults to 0. A missing slot is `doc.missing_key`, naming `on` and the slot,
+with the hint to write the whole table (a change that writes only `t` is this case, `documents.md`
+6.2; one condition, one code). `t` or `offset` on a ref with no length (a
 point feature, an instance, a mount, a path end, a set item) is `geom.no_length`. A slot `on` does not
 take is `doc.unknown_key`. A `t` outside `[0, 1]`, or `nan`, is `geom.t_range`.
 
@@ -182,7 +186,9 @@ take is `doc.unknown_key`. A `t` outside `[0, 1]`, or `nan`, is `geom.t_range`.
 | `away` | The reverse of `toward`. | `geom.face_side`. |
 
 `toward` and `away` with `offset = 0` have no direction: `geom.face_side`. A word without `on` is
-`geom.face_needs_on`. Any other word is `geom.face_unknown`, with the nearest word as hint.
+`geom.face_needs_on`. Any other word is `geom.face_unknown`, with the nearest word as hint. A path
+end has a facing for these words only: `face` written as a number on it is a bearing, not added to
+its facing (`rules.md` 3.3).
 
 **Where the frame jumps (limitation E1).** The frame is the nearest point, with the lower `t` on a
 tie (`numbers.md` 5.5). So it is not smooth everywhere. The **medial axis** of a line is the set of
@@ -247,13 +253,14 @@ frame and E1 stays accepted with the note above.
 ### 2.7 Ends and meetings (R18)
 
 A path meets another thing at its ends or by `follows`, nowhere else. `starts_at` and `ends_at` name
-what the end meets; the point each kind of name gives:
+what the end meets. Every meeting is a pair of mounts (R31): the path end is one, and a name that is
+not a mount means that place's default mount. The point each kind of name gives:
 
 | `starts_at` or `ends_at` names | The end is at |
 |---|---|
-| a point feature | Its point. |
-| a path end (`beck.end`) | That end's point. |
-| an instance or a set item | Its origin. |
+| a point feature | Its default mount: its point. |
+| a path end (`beck.end`) | Its default mount: that end's point. |
+| an instance or a set item | Its default mount: its origin. |
 | a mount | Its plan point (`surfaces.md` 3.1). |
 | a whole path or a region | `geom.meet_shape` (error): it has no one point. The hint: name an end, or place a point feature on it with `on`. |
 
@@ -280,8 +287,8 @@ in and columns out (`protocol.md`); the conformance runner calls it through `via
 it came from, its **source**. Two inputs of one batch with one source id is `geom.duplicate_source`.
 Every operation is deterministic: the same inputs give the same bytes at any thread count (R26).
 
-A kernel diagnostic carries the source id and a position. The caller maps the source id to subject,
-file and line (`diagnostics.md`).
+A kernel diagnostic carries the source id and a position. A step's caller maps the source id to
+subject, file and line (`diagnostics.md`); `via kernel` writes it as 7.1 says.
 
 A parameter outside its stated range (a width or depth not above 0, a mitre limit below 1, a
 minimum above what it bounds) is `geom.bad_parameter`, naming the parameter and its value.
@@ -335,17 +342,17 @@ possibly with holes. For each area the kernel returns:
 | Output | What it is |
 |---|---|
 | `region` | The area as a region (one piece, canonical). |
-| `bounds` | Every `(source, side)` of the edges on the area's shell, side `left` or `right` of that source's travel, sorted by source then side. A ring source's inside is its left. |
+| `sides` | Every `(source, side)` of the edges on the area's shell, side `left` or `right` of that source's travel, sorted by source then side. A ring source's inside is its left. |
 | `edges` | The shell's edges in order, counter-clockwise, from its start vertex. |
 | `holes` | For each hole ring, its edges: the outline of a component inside the area. |
 | `spurs` | Edges with this area on both sides: dead ends and bridges to an inner component. |
 | `point` | Its representative point (below). |
 | `naming` | The ids of the naming points strictly inside it, sorted. |
 
-`bounds` come from the shell only. A spur or a component inside the area (a dead-end path, a pond's
-outline) is listed in `spurs` or `holes` and never changes `bounds`, so adding one does not rename
-the area (R13). A new junction on the shell splits an edge but leaves `bounds` the same.
-`identity.md` 2.3 names an area by `bounds` only in M1. `naming` is returned for M3: whether an
+`sides` come from the shell only. A spur or a component inside the area (a dead-end path, a pond's
+outline) is listed in `spurs` or `holes` and never changes `sides`, so adding one does not rename
+the area (R13). A new junction on the shell splits an edge but leaves `sides` the same.
+`identity.md` 2.3 names an area by `sides` only in M1. `naming` is returned for M3: whether an
 area may be named after a feature inside it is (open), decided with M3's `quay` and the districts
 library (`identity.md`, Open).
 
@@ -604,7 +611,7 @@ follows = { ref = "beck", span = [0.2, 0.7], offset = -9 }
 |---|---|---|
 | `ref` | name | The path or region it runs along, named whole. |
 | `span` | 2 numbers | `[from, to]` along `ref`. Default `[0, 1]`. On a path `0 <= from < to <= 1`; on a region `from > to` wraps through `t = 0` and `from = to` is the whole outline (3.5). |
-| `offset` | number | Metres to the left of `ref`'s travel; inward on a region. Default 0. |
+| `offset` | length | Metres to the left of `ref`'s travel, read by `numbers.md` 3.1; inward on a region. Default 0. |
 
 `span` inside `follows` is accepted from M1, although `span` on a run waits for M3 (vocabulary 5).
 The feature is a path, in `ref`'s direction. It moves when `ref` moves (`graph.md`). `follows`
@@ -635,7 +642,7 @@ round a corner, 2 on each path). The network has 4 areas and 1 component: `9 - 1
 `5 - 8 + 4 = 1`. Each area's twice-area is `2 × 50 000 mm × 50 000 mm = 5 000 000 000`; the four sum
 to the frame's `20 000 000 000`, exactly.
 
-| Area, in order (start vertex) | Representative point | `bounds` |
+| Area, in order (start vertex) | Representative point | `sides` |
 |---|---|---|
 | [0, 0] | [25, 25] | `cross_ew` right, `cross_ns` left, `frame_a` left |
 | [0, 50] | [25, 75] | `cross_ew` left, `cross_ns` left, `frame_a` left |
@@ -643,13 +650,13 @@ to the frame's `20 000 000 000`, exactly.
 | [50, 50] | [75, 75] | `cross_ew` left, `cross_ns` right, `frame_a` left |
 
 Moving `cross_ns`'s top end to `[60, 100]` moves the crossing to `[55, 50]`: all four regions and
-representative points change, and all four `bounds` lists stay the same.
+representative points change, and all four `sides` lists stay the same.
 
 Adding a ring `pond_a`, `[[10, 10], [20, 10], [20, 20], [10, 20]]`, inside the first area: 13
 vertices, 16 segments, 6 junctions (the ring's own at `[10, 10]`), 9 edges, 5 areas, 2 components;
 `13 - 16 + 5 = 2` and `6 - 9 + 5 = 2`. The first area gains a hole and its twice-area falls to
 `4 800 000 000`; the ring's area is `200 000 000`. The sum stays `20 000 000 000`, the frame's alone,
-since the ring's component is not top-level. The first area's `bounds` are unchanged.
+since the ring's component is not top-level. The first area's `sides` are unchanged.
 
 ## 6. Bake-off: crates or ours
 
@@ -688,7 +695,7 @@ rounded (`numbers.md` 3.1).
 |---|---|---|
 | `linework_a` | `streets.geojson`, as paths with source ids. | Noding, network, Euler, closure, order-freedom, cells. |
 | `course_a` | `river.geojson`, one path. | Stroke both sides with round joins and caps. |
-| `cross` | Section 5. | Euler, closure, bounds, cells. |
+| `cross` | Section 5. | Euler, closure, sides, cells. |
 | `cross_pond` | Section 5 with `pond_a`. | Closure with a component inside an area. |
 | `near` | Segments 1 mm apart, a vertex 1 mm off a segment, a crossing at a non-lattice point, a crossing on a hot pixel's edge. | Snap rounding, idempotence, the bound, the pixel convention. |
 | `overlap` | Two paths sharing a stretch, one reversed; a path that doubles back on itself. | Shared segments naming both; `geom.overlap`, self-pairs included. |
@@ -752,21 +759,25 @@ The input object:
 | `instances`, `footprints`, `edits` | Fixture instances, asset footprints and hand edits (7.3). | `names` |
 
 The output object holds `@format` (`"via-kernel-1"`), `op`, the OP's result members, and
-`diagnostics`: every record, in the form and order of `diagnostics.md`'s `--json` document, with the
-source id as subject. On an error the result members are absent and `diagnostics` is still written.
+`diagnostics`: every record, in the form and order of `diagnostics.md`'s `--json` document. A
+source id is not an entity address, so each record, and each of its `related` entries, has subject
+`cli`, the `argument` location (`diagnostics.md` 1.2, 7) giving the index of the input file's path
+after `--in`, `position` in millimetres where there is one, and the source id in `data.source` (no
+member when the record has no source). On an error the result members are absent and `diagnostics`
+is still written.
 
 ### 7.2 Operations
 
 | OP | Section | `params` and other input | Result members |
 |---|---|---|---|
 | `read` | 2.3, 2.4 | One shape, `path` or `ring`, as written; `params.smooth` (default false). | `shape`: the shape as stored. |
-| `node` | 3.1 | `shapes`. | `vertices`; `segments`, each `{ "ends", "provenance" }`, an entry `{ "source", "segment", "t": [a, b], "reversed" }`. |
-| `network` | 3.2 | `shapes`, `grid`; `params.clip` (a source id among `shapes`), `params.naming` (point sources). | `vertices`, `segments` as `node`; `junctions` (points); `edges`, each `{ "ends", "path" }`; `areas`, each with the members of 3.2's table; `components` (a count). |
+| `noding` | 3.1 | `shapes`. | `vertices`; `segments`, each `{ "ends", "provenance" }`, an entry `{ "source", "segment", "t": [a, b], "reversed" }`. |
+| `network` | 3.2 | `shapes`, `grid`; `params.clip` (a source id among `shapes`), `params.naming` (point sources). | `vertices`, `segments` as `noding`; `junctions` (points); `edges`, each `{ "ends", "path" }`; `areas`, each with the members of 3.2's table; `components` (a count). |
 | `boolean` | 3.3 | Regions in `shapes`; `params.op`: `union`, `intersection` or `difference` (the first shape less the rest). | `region`. |
 | `offset` | 3.4 | Regions; `params.distance`, `join`, `limit`. | `results`: one `region` per input. |
 | `stroke` | 3.4 | Paths; `params.left`, `right`, `join`, `cap`, `limit`. | `results`: one `region` per input. |
 | `follow` | 3.5 | One path or one-ring region; `params.span` (two doubles), `params.offset`. | `path`. |
-| `cells` | 3.6 | `shapes` and `grid` as `network`; the region as `params.area`, an area's start vertex, or `params.region`, a region source; `params.frontage`, a list of `{ "source", "edge": [a, b], "side" }` (the edge by its two end junctions, least first; the side of that source's travel, as in `bounds`) or `"outline"`; `params.cell_length`, `band_depth`, `min_cell_length`, `min_cell_area`. | `cells`, each `{ "region", "frontage", "station", "span", "point" }`; `rest`. |
+| `cells` | 3.6 | `shapes` and `grid` as `network`; the region as `params.area`, an area's start vertex, or `params.region`, a region source; `params.frontage`, a list of `{ "source", "edge": [a, b], "side" }` (the edge by its two end junctions, least first; the side of that source's travel, as in `sides`) or `"outline"`; `params.cell_length`, `band_depth`, `min_cell_length`, `min_cell_area`. | `cells`, each `{ "region", "frontage", "station", "span", "point" }`; `rest`. |
 | `mask` | 3.7 | `grid`, `values`, `formula`; `params.window` (`[i0, j0, i1, j1]`, default the whole grid). | `region`. |
 | `project` | 3.8 | One shape; `points`. | `results`: per point `{ "t", "d", "sd", "nearest" }`, `d` and `sd` in metres, `nearest` in millimetres. |
 | `interpolate` | 3.8 | One path or one-ring region; `t`. | `results`: per `t` `{ "point", "bearing" }`. |
@@ -821,7 +832,7 @@ reproduces it. This closes the contents left (open) in `diagnostics.md` 7.
 ## Diagnostics
 
 Each code carries the source id and a position where there is one; the caller adds subject, file
-and line (section 3, `diagnostics.md`).
+and line (section 3, `diagnostics.md`), and `via kernel` writes them as 7.1 says.
 
 | Code | Severity | Meaning | Hint |
 |---|---|---|---|
@@ -829,7 +840,7 @@ and line (section 3, `diagnostics.md`).
 | `geom.repeated_point` | warning | A point repeats the one before it; it is removed. | Delete the repeat. |
 | `geom.degenerate` | error | A path with fewer than two distinct points, or a ring with fewer than three or no area. | Add points or remove the feature. |
 | `geom.self_crossing` | error | A written ring crosses itself, visits a point twice or doubles back; the first fault. | Reorder the points or split the region. |
-| `geom.no_length` | error | `t`, `offset`, `span` or `follows` on a point, a zero-length thing or an empty region. | Use `at`, or place on a path or region. |
+| `geom.no_length` | error | `t`, `offset` or `follows` on a point, a zero-length thing or an empty region. (A run's is `run.no_length`, `rules.md` 5.) | Use `at`, or place on a path or region. |
 | `geom.t_range` | error | A `t` or a `span` end outside 0 to 1, or `nan`. | Write a fraction from 0 to 1. |
 | `geom.span_order` | error | A `span` on a path whose `from` is not less than its `to`. | Swap the two, or reverse the path. |
 | `geom.many_rings` | error | `on`, `follows`, `interpolate` or `substring` on a region of more than one ring, which has no `t`. | Place on one piece's outline, or use `at`. |
@@ -874,9 +885,9 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 - `ford_frame` (2.6); project; every row of the table, bit for bit.
 
 - `cross`; network; 9 vertices, 12 segments, 5 junctions, 8 edges, 4 areas, Euler at both levels,
-  closure exact, areas, points and bounds as in section 5.
-- `cross_pond`; network; counts and twice-areas as in section 5; the first area's `bounds` unchanged.
-- `cross` with a path `spur_a` from `[0, 25]` to `[20, 25]`; network; the first area's `bounds`
+  closure exact, areas, points and sides as in section 5.
+- `cross_pond`; network; counts and twice-areas as in section 5; the first area's `sides` unchanged.
+- `cross` with a path `spur_a` from `[0, 25]` to `[20, 25]`; network; the first area's `sides`
   unchanged, `spur_a` in its `spurs`; `geom.dead_end` with count 1.
 - `cross` with a path `east_a` from `[100, 80]` to `[130, 80]`; move its end to `[130, 95]`; network;
   the first area is unchanged, byte for byte.
@@ -926,6 +937,11 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
   station 3 of its edge side.
 - Same as the first cells case; move `cross_ew`'s west end to `[0, 52]`; only the cells of the
   `cross_ew` edge side and of the `cross_ns` edge side change.
+- `linework_a`'s network; cells on each area in turn, frontage every `(source, side)` in its
+  `sides` (each edge side on its shell, facing it), `cell_length` 20 m, `band_depth` 30 m,
+  `min_cell_length` 8 m, `min_cell_area` 100 m²; Fronts holds (the gate's "every cell touches a
+  street"): every cell borders a frontage edge along at least `min_cell_length`, or carries
+  `geom.cell_small`; closure exact per area; areas too short for a cell give `geom.cell_none`.
 - A frontage of 6 m with `cell_length` 10 m; cells; none, and `geom.cell_none`.
 - `cross`'s first area, frontage `(cross_ns edge [50, 0]-[50, 50], left)` only, `cell_length` 50 m,
   `band_depth` 10 m, `min_cell_area` 600 m²; cells; one cell of 500 m², kept, `geom.cell_small`.

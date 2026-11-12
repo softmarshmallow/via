@@ -128,7 +128,10 @@ step's table. `position` then says where in the world.
 
 **Chain.** Where the value at fault was written over, or supplied, the span is the last writer's
 text, and `chain` lists how the value got there, in reading order, the last writer last. Each entry
-is `{ through, name, file, line }`:
+is `{ through, name, file, line }`; a `layer` entry also has `owner`, the layer's `owner` (string),
+so the record says who answers for the text (`documents.md` 5). Every diagnostic whose value was
+written in a layer file carries that layer's entry, even when nothing wrote over it. The world
+file's own text is the layer `world`, which has no owner and no entry.
 
 | `through` | `name` holds | `file`, `line` |
 |---|---|---|
@@ -141,7 +144,7 @@ Imports add `import` (M4). A value written in layer `roads` and written over by 
 `downstream`:
 
 ```json
-"chain": [{"file":"layers/roads.toml","line":9,"name":"roads","through":"layer"},
+"chain": [{"file":"layers/roads.toml","line":9,"name":"roads","owner":"roads team","through":"layer"},
           {"file":"world.toml","line":60,"name":"downstream","through":"change"}]
 ```
 
@@ -223,7 +226,7 @@ Fixed: value = "= 2 * height"
 | Key | Meaning |
 |---|---|
 | `severity` | The code's one severity. |
-| `chapter` | The chapter that defines the condition. |
+| `chapter` | The chapter whose table holds the code's row. |
 | `milestone` | The milestone that first raises it (`docs/plan.md`). |
 | `summary` | One line: the chapter table's text. |
 | `data` | The names of the code's `data` fields. |
@@ -241,8 +244,20 @@ The registry generates three things, and nothing else lists codes:
    the registry row as JSON. `via explain` with no code lists every code by group.
 3. The reference page of every code, and the SDK's list of core codes.
 
-Each chapter's Diagnostics table is the source the registry is written from, in one format:
-columns `Code | Severity | Says`.
+Each chapter's Diagnostics table is the source the registry is written from, and the only one: every
+key but `explain` is fixed by the code's row and the rules below, so two registries written from the
+same chapters are the same. A table starts with columns `Code | Severity`; the summary is the
+column headed `Says`, `Meaning` or `Raised when`. `Subject`, `Kind` and `Hint` columns are allowed;
+only `data` reads `Hint`.
+
+| Key | Taken from the row |
+|---|---|
+| `milestone` | The `M` or `From` column (`1`, `M1`). Without one, a `(Mn)` in the summary. Without either, 1. |
+| `data` | Every `data.<name>` the summary and hint name, in order, then `nearest` if they give a nearest name (1.4). None: no `data`. |
+| `worst` | The summary's `worst first by data.<name>`, a field of `data`. None: no `worst`. |
+| `covered_by` | Not from the row: `reader` for `load.*`; `workspace` for `internal` codes and those the workspace checks below name; else `conformance`. |
+
+A code whose record carries a field its row does not name is a registry defect.
 
 `via explain step.<id>.<name> WORLD` prints the `explain` text the step sent with that name in the
 last build of `WORLD` (`protocol.md` 3.3); it runs nothing and does not merge the world, so a
@@ -284,7 +299,7 @@ practice (TODO lesson: budgets).
 
 | Stage | What it checks | An error there |
 |---|---|---|
-| 1. Reading | `documents.md` 8, steps 1 to 6: syntax, keys, includes, layers, changes, the merge, place names, direction. | Each step reports all it finds; the build stops after the first step with an error (`documents.md` 8). |
+| 1. Reading | `documents.md` 8, steps 1 to 7: syntax, keys, includes, layers, changes, the merge, place names, direction. | Each step reports all it finds; the build stops after the first step with an error (`documents.md` 8). |
 | 2. Static checks | Each formula's names, types and rates (`formulas.md`, "before anything runs"); asset ids and taxa against the pack (`assets.md`). | Fails the node of the statement that holds it. The build goes on. |
 | 3. Graph construction | Cycles (`graph.md` 2.1). | Every member of a cycle fails, as one group, under one `graph.cycle`. The build goes on. |
 | 4. Graph run | Fields, shapes, placement, rules and their checks, authority clashes, generate and lint steps. | The node that raises it fails. The build goes on. |
@@ -293,12 +308,12 @@ practice (TODO lesson: budgets).
 **Skipped nodes.** In stages 2 to 4, every node that depends on a failed node, directly or through
 others, is `skipped` (`graph.md` 3.4; `skipped` is the one word): it does not run and raises nothing
 of its own. Every other node runs. A lint step is a node like any other (`graph.md` 4): a lint whose
-reads reach a failed or skipped node is skipped and its findings are dropped; a lint that reads none still runs and reports. In M1 a lint
-is a plain command handed all of its layer's view (`protocol.md` 1, `graph.md` 4), so a failed node
-in that view skips every lint that sees it. A lint that reads only part of the build, and so runs
-beside a failure, needs the worker's traced reads (M2). (open) whether a worker lint is skipped
-before it starts or when a traced read reaches a failed node; decided with `protocol.md` 3 in M2.
-So one run
+reads reach a failed or skipped node is skipped and its findings are dropped; a lint that reads none still runs and reports. A lint
+reads the finished build (R29), view `build`, whatever layer declares it (`graph.md` 4). In M1 a lint is a plain command
+handed that whole view (`protocol.md` 2.2, `graph.md` 4), so a failed node in it skips every lint
+that sees it. A lint that reads only part of the build, and so runs beside a failure, needs the
+worker's traced reads (M2): when a read reaches a failed or skipped node, the call is cancelled and
+the lint is skipped (`graph.md` 4). So one run
 reports every independent error, and no error is reported again as its consequences. Results of
 nodes that ran are kept by content (`graph.md`), so the next build does not run them again.
 
@@ -425,24 +440,23 @@ at 0.
 - A panicked node fails like any other: its dependents are `skipped` and independent nodes still run.
 - Every build profile sets `panic = "unwind"`. The panic hook is silent: it prints nothing, and its
   text goes into `data.message`.
-- Documents and formulas have depth limits, each with its own code (to be added to `documents.md`
-  and `formulas.md`), so deep nesting never overflows the stack.
+- Documents and formulas have depth limits, `doc.too_deep` and `formula.too_deep`, so deep nesting
+  never overflows the stack.
 - The one exception: running out of memory ends the process with no diagnostic.
 - The inputs of the failing operation are written for a reproduction to `<directory>.repro/<digest>/`,
   beside the build directory, where `<digest>` is the failing node's key. `data.repro` holds
   `<digest>`, never a path. That folder is not part of the build: no loader reads it, and `via build`
-  never deletes it (`build.md` 13). Its contents: (open), decided with `geom.internal`.
+  never deletes it (`build.md` 13). Its contents: `geometry.md` 7.4.
 
 **The terminal** (standard error) prints each record as:
 
 ```
-error[formula.unknown_name] scatter.trees.density: no field, let or attribute named `slpoe`
-  --> world.toml:41:46
-  related: world.toml:12:1 field.slope: declared here
-  hint: write `slope`
+error[formula.unknown_name] scatter.trees.density: no field, let or attribute named `xx`
+  --> changes/bad_typo.toml:2:67
+  hint: write `x`
 ```
 
-with `chain`, `position`, `count` and `occurrences` on further indented lines when present. The
+with `related`, `chain`, `position`, `count` and `occurrences` on further indented lines when present. The
 layout follows the Rust compiler's (rustc). Last comes the summary: one line per lint step, then
 `E errors, W warnings, I infos`, with `(N failed by --fail-on)` when there are any. Control
 characters in user text are escaped. Colour is off when `NO_COLOR` is set or standard error is not
@@ -450,9 +464,9 @@ a terminal. Conformance compares no terminal output but the summary line.
 
 **World and run diagnostics** (`build.md` 11.1). A world diagnostic is about the text: every node's
 (`graph.md` 3.4), the reading steps' and the checks'. A run diagnostic is about this run of the
-engine, not the world: `identity.no_previous`, `graph.build_file_restored`, `graph.store_corrupt`,
-`graph.store_unavailable`, `graph.step_unstable`, `graph.busy`, and the `build.*` codes `build.md`
-11.1 marks as run codes. Run diagnostics are never in `diagnostics.json`, so the same text gives the
+engine, not the world; the codes are those `build.md` 11.1 lists as run codes, the one list
+(`identity.no_previous`, `identity.reselected`, five `graph.*` codes, most `build.*` codes). Run
+diagnostics are never in `diagnostics.json`, so the same text gives the
 same file.
 
 **JSON for agents.** `diagnostics.json` and `via build --json` (to standard output, which then holds
@@ -474,42 +488,41 @@ the document holds, not
 occurrences; a `failed_on` record counts under `warning` and under `failed_on`. `lints` lists every
 lint step: `{ step, ran, error, warning, info }`, counting its records; a skipped lint has
 `ran = false`. With exit status 2 there is no build directory, and the document goes to standard
-output only.
+output (`--json`) and to the `--diagnostics` file only (`build.md` 14).
 
 ## 8. Worked examples
 
-`ford`, with a field `slope` declared at line 12 and a typo in the scatter's density. Offsets before
-line 38 are illustrative; those from line 38 on follow from the text shown.
+`ford` as written in `docs/plan.md`, with `changes/bad_typo.toml`, taken to be exactly the two
+lines of its body:
 
 ```toml
-[scatter.trees]                     # world.toml line 38, byte 1240
-assets  = ["@plant/tree"]
-spacing = 7
-density = "= 0.8 * (1 - smoothstep(0.2, 0.5, slpoe))"
+[scatter.trees]
+density = "= smoothstep(0.1, 0.5, fbm(60, 3)) * smoothstep(0, 20, xx)"
 ```
 
-(The comment is not in the file.) `via build examples/ford/world.toml --json` exits 1 and prints,
-among others:
+In `examples/ford`, `via build world.toml --change changes/bad_typo.toml --json` exits 1 and
+prints, among others:
 
 ```json
 {
-  "bytes": [1339, 1344], "code": "formula.unknown_name", "column": 46,
-  "data": {"name": "slpoe", "nearest": "slope"},
-  "file": "world.toml", "hint": "write `slope`", "line": 41,
-  "message": "no field, let or attribute named `slpoe`",
-  "related": [{"bytes": [210, 223], "column": 1, "file": "world.toml", "line": 12,
-               "note": "declared here", "subject": "field.slope"}],
+  "bytes": [82, 84],
+  "chain": [{"file": "changes/bad_typo.toml", "line": 2, "name": "bad_typo", "through": "change"}],
+  "code": "formula.unknown_name", "column": 67,
+  "data": {"name": "xx", "nearest": "x"},
+  "file": "changes/bad_typo.toml", "hint": "write `x`", "line": 2,
+  "message": "no field, let or attribute named `xx`",
   "severity": "error", "subject": "scatter.trees.density"
 }
 ```
 
-The static check fails `rule:trees` (section 4, stage 2). A lint step `measures` reads the trees,
-so it is skipped. One `diag.skipped` follows: subject `scatter.trees`, `world.toml` line 38, column
-1, bytes `[1240, 1255]`, `count` 1, `data.first = ["step.measures"]`. So the lint does not also
-complain that no trees stand. From M2, a lint that reads only the lanes still runs and reports. No instance file is
-written.
+`x` is a built-in, so there is no `related`. The static check fails `rule:trees` (section 4,
+stage 2). The lint step `checks` reads the trees, so it is skipped. One `diag.skipped` follows:
+subject `scatter.trees`, `world.toml` line 64, column 1, bytes `[1711, 1726]` (its header in the
+base text, section 1.2), `count` 1, `data.first = ["step.checks"]`. So the lint does not also
+complain that no trees stand. From M2, a lint that reads only the lanes still runs and reports. No
+instance file is written.
 
-A generate step `infill` returns 166 instances on ground steeper than their asset allows. Placing a
+Not ford, and M2: a generate step `infill` returns 166 instances on ground steeper than their asset allows. Placing a
 step's instances is checked by `rules.md` 8.2, so they give one warning, not 166:
 
 ```json
@@ -531,11 +544,11 @@ second example are illustrative.
 
 | Code | Severity | Says |
 |---|---|---|
-| `diag.skipped` | info | A failed node's dependents were not built, or export steps did not run; `count` and the first ten by address. |
+| `diag.skipped` | info | A failed node's dependents were not built, or export steps did not run; `count`, `data.first` (the first ten by address), `data.stage`. |
 | `diag.malformed` | error | A step's diagnostic was malformed (section 6); `data.message`, `data.missing`. |
-| `diag.internal` | error | The engine stopped on a defect of ours; the operation, and the reproduction's digest. Exit 3. |
+| `diag.internal` | error | The engine stopped on a defect of ours; the operation; `data.message` (the panic's text), `data.repro` (the reproduction's digest). Exit 3. |
 | `cli.usage` | error | An unknown flag, a missing argument or a bad value; the argument and the nearest flag. Exit 2. |
-| `cli.no_world` | error | The world file given does not exist or is not a file. Exit 2. |
+| `cli.no_world` | error | `via explain` only: the world file given does not exist or is not a file. Exit 2. Every other command reports `doc.file_missing` (`documents.md`). |
 | `cli.unknown_code` | error | `via explain` or `--fail-on` was given an unknown code; the nearest code. Exit 2. |
 
 ### Code groups of M1
@@ -557,7 +570,7 @@ Each group's codes are in its chapter's Diagnostics table.
 | `graph` | `graph.md` | Cycles, missing inputs, the store, the change report. |
 | `build` | `build.md` | The build directory and what is handed to the loader. |
 | `check` | `build.md` | What `via check` finds wrong in a build directory: manifest, digests, array headers, names, canonical JSON. |
-| `load` | `build.md` | What a loader (the Godot loader) finds wrong. `covered_by = "reader"` where `via build` cannot raise it. |
+| `load` | `build.md` | What a loader (the Godot loader) finds wrong. `covered_by = "reader"` (section 2). |
 | `protocol` | `protocol.md` | A step's run: start, crash, timeout, bad reply. |
 | `diag`, `cli` | this chapter | Above. |
 | `step` | none | A step's own codes, `step.<id>.<name>`. |
@@ -568,10 +581,11 @@ Each case runs through the command line (R20): input; action; what must hold.
 
 - Every case of every chapter; build; each diagnostic has a registered code (section 2), a subject,
   a location and a non-empty hint. A core code's severity equals the registry's. A step code has one
-  severity in the build. `failed_on` appears only on a code `--fail-on` named. For an exit-2 case
-  the runner reads the record from `--json` on standard output.
-- `ford` with a formula typo; build; exit 1, `formula.unknown_name` at the typo's line and column,
-  `data.nearest` set, `related` at the declaration, no output file but `diagnostics.json`.
+  severity in the build. `failed_on` appears only on a code `--fail-on` named. The runner reads
+  every record, exit 2 included, from the `--diagnostics` file (`build.md` 14, `conformance.md` 3.5).
+- `ford` with `changes/bad_typo.toml`; build; exit 1, `formula.unknown_name` at `xx` (section 8),
+  `data.nearest = "x"`, no `related` (a built-in has no declaration), no output file but
+  `diagnostics.json`.
 - `ford` with four independent bad edits: the cottage anchored in the beck, a formula typo, a cycle,
   and an unknown asset on another instance; build; exit 1, all four in one run:
   `authority.conflict`, `formula.unknown_name`, `graph.cycle`, `asset.unknown`. Each has code,
@@ -579,14 +593,14 @@ Each case runs through the command line (R20): input; action; what must hold.
 - (M2) A formula typo in a scatter that one lint step reads and another does not; build; one
   `diag.skipped` with `count` 1 naming the first lint; no record from it; the second lint's findings
   present; `lints` shows the first with `ran = false`.
-- A generate step returning 166 instances on steep ground; build; one `place.relief`, subject the
+- (M2) A generate step returning 166 instances on steep ground; build; one `place.relief`, subject the
   step, `count = 166`, five `occurrences`, largest relief first, names `<step>#<key>`.
 - Ten hand instances on steep ground; build; ten `place.relief` records.
-- A world with an export step and an error; build; exit 1, one `diag.skipped` with subject `world`
+- (M6) A world with an export step and an error; build; exit 1, one `diag.skipped` with subject `world`
   and `data.stage = "export"`.
 - The same world at 1 and 8 threads, clean and incremental; build; `diagnostics.json` byte-identical.
-- `ford` with an error; move the declaration `related` points at down one line, nothing else
-  changed; build incrementally and clean; both `diagnostics.json` identical, `related` at the new
+- `ford` with `changes/bad_anchor.toml`; insert one blank line above the table `related` points at,
+  nothing else changed; build incrementally and clean; both `diagnostics.json` identical, `related` at the new
   line.
 - A world with errors in three files; move tables within each file; build; with location fields
   removed, the records are the same multiset; each location names the moved text.
@@ -605,7 +619,7 @@ Each case runs through the command line (R20): input; action; what must hold.
 - A lint step that sends one `code` as warning and as error; build; one `diag.malformed`, no record
   of that code.
 - A lint step that finds nothing; build; the summary and `lints` list it with zero counts.
-- A generate step that reports one finding at two views (R21); build; one record.
+- (M2) A generate step that reports one finding at two views (R21); build; one record.
 - `via build --frobnicate`; exit 2, `cli.usage` with `argument = 2`; no build directory touched.
 - `via explain formula.unknwn_name`; exit 2, `cli.unknown_code`, nearest `formula.unknown_name`.
 - `via explain formula.unknown_name --json`; exit 0; the registry row.
@@ -651,10 +665,7 @@ Each case runs through the command line (R20): input; action; what must hold.
 - Machine-applicable edits in a record (a replacement for a span, as rustc's suggestions): decided
   by M1's fresh-agent test, if agents misapply hints.
 - Five occurrences and ten printed records per code: decided by M1's fresh-agent test.
-- The contents of a reproduction folder (section 7): decided with `geom.internal` in `geometry.md`.
 - Where the reference page is generated to: decided with the workspace skeleton (M0 step 5).
-- When a worker lint whose reads reach a failed node is skipped, before it starts or at the read
-  (section 4): decided with `protocol.md` 3 in M2.
 - A watch mode streaming records as JSON lines (blackbox, agents): after M1.
 - This chapter answers the machine-readable part of the TODO "agent loop surface". Bookmarks and
   review renders go to the review library and `build.md` at M1 (the sheet tool).

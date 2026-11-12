@@ -209,6 +209,8 @@ never named bare: `fbm` alone is `formula.unknown_name`, unless a `let` or attri
 | `[kind.<k>.let]` value | number or yes/no | per post | | 6.5 |
 | feature `where` | yes/no, or number (the region is where it is above 0) | per post | | 6.6 |
 | scatter `density` | number | per post | 0 to 1 | 6.8 |
+| kind surface `base` | number, metres | per post, read at any point asked (6.9) | | M3; names in `surfaces.md` 1.1 |
+| kind surface `bound` | number, metres | per feature | | M3; names in `surfaces.md` 1.1; not above 0 or not finite is `surface.bound` |
 | attribute, kind `defaults` | number | per feature | | 6.7 |
 | import `blend` | number | per post | 0 to 1 | M4; (open) names decided in `documents.md` |
 | volume `base`, effect on a volume | number | per voxel | | M5 (open) |
@@ -271,8 +273,9 @@ Section 6.2, plus the feature's own attributes. A `where` may read fields and ot
 including another `where` region. Reading its own feature, directly or through others, is a cycle
 (`graph.md`). What becomes of the condition's pieces is `geometry.md`.
 
-In a `where`, `f` and `slope` read a field's **head view** (`authority.md` 4.4): its base and its
-head entries (`authority.md` 4.1), never an effect. This follows the doctrine's build order, "fields from their
+In a `where`, `f` and `slope` read a field's **head view** (`authority.md` 2.3): its base and its
+head (`authority.md` 4.1), every `then` row of every layer, rows a step returned included, never an
+effect. This is not a step's head view (`authority.md` 4.4). This follows the doctrine's build order, "fields from their
 bases, then features". It also keeps regions from being cycles: the order of effects depends on
 region shapes (nesting, `authority.md` 4.3), so a region that read the finished field would depend
 on itself whenever any region of its tier wrote that field. A feature whose `where` reads a field
@@ -311,8 +314,8 @@ neighbours (R7, `rules.md` 7.2).
 
 ### 6.9 A formula at a point that is not a post
 
-A scatter's density is evaluated at a candidate's point (`rules.md` 7.1), a bounded surface at the
-point asked (`surfaces.md`), and `expr.eval` at any points a step sends. A post is one such point;
+A scatter's density is evaluated at a candidate's point (`rules.md` 7.1), a kind surface's `base` at
+the point asked (`surfaces.md` 1.1), and `expr.eval` at any points a step sends. A post is one such point;
 nothing below changes a value at a post.
 
 | Name or function | At a point `p` |
@@ -324,8 +327,9 @@ nothing below changes a value at a post.
 | `slope` | By the same rule, from the slope at the four posts around `p` (`fields.md` 1.2). |
 | `v`, `under`, `smoothed_along` | As at a post: `v` exists only in rows, which are evaluated at posts; the others are per feature or read at `t`. |
 
-A point beyond the extent of the field read, or beyond a bounded field's bound (R25), gives no
-value: `formula.outside_field`, handled as section 9 handles a non-finite value.
+A point beyond the extent gives no field value: `formula.outside_field`, handled as section 9
+handles a non-finite value. A kind surface is not a field: no selector matches it and `f` never
+reads it (`surfaces.md` 1, rule 5); reading a field from a surface formula is `surfaces.md` Open 9.
 
 ## 7. Selectors
 
@@ -347,8 +351,7 @@ says what class of thing it accepts. The forms are those of `vocabulary.md` sect
 - **No produced names.** Produced names are never written in text (R3, `identity.md` 3), and a
   formula is text. A selector containing `#` is `identity.key_in_text`. A formula reaches produced
   things by what they are: features a producer made by `'kind:<name>'`, and a field a step returns
-  by a tag it gives that field (`'tag:<tag>'`; a step may set `tags` on a field of its own,
-  `fields.md` 7). So `protocol.md` 5's `f('<step>#<key>')` is owed a change to that form, and the
+  by a tag it gives that field (`'tag:<tag>'`) (open: needs ruling, R21; `fields.md` 7). The
   field class takes no produced name. (`identity.md` 3's list of keys that raise
   `identity.key_in_text` is owed "formula selectors".)
 - `'role:<role>'` in a formula is `formula.selector`, with the hint to tag the field and use
@@ -433,6 +436,7 @@ a whole number, is `formula.range`.
 | A feature's `where` | `["noise", "feature", <feature id>, "where"]` |
 | A kind effect key, a kind `let`, for one feature | `["noise", "feature", <feature id>, "effect", <effect id>, <key>]`, `[..., "let", <name>]` |
 | A scatter's density | `["noise", "scatter", <id>, "density"]` |
+| A kind surface's `base`, for one feature | `["noise", "feature", <feature id>, "surface", <name>, "base"]` |
 
   The second part is a class or `"seed"`, so a default stream never meets an explicit one, and a
   field and a scatter of one name differ. A noise call inside a `let` takes the `let`'s parts, so a
@@ -514,7 +518,7 @@ Stream vectors, `numbers.md` 7.2 with world seed 0:
 
 **Slope.** At post `(i, j)`, with `r` the spacing in metres and `h` the field's values:
 `gx = (h[i+1, j] - h[i-1, j]) / (2 * r)` and `gy` likewise along `j`. Where a neighbour lies beyond
-the extent, or beyond a bounded field's bound, the difference is one-sided: `(h[i+1, j] - h[i, j]) / r`
+the extent, the difference is one-sided: `(h[i+1, j] - h[i, j]) / r`
 or `(h[i, j] - h[i-1, j]) / r`. With no neighbour on either side, there is no value
 (`formula.outside_field`). Then `slope = atan(sqrt(gx * gx + gy * gy)) * (180 / pi)`, with `atan`
 from `via-num` and `180 / pi` the double division. Central differences are the usual stencil; the
@@ -562,7 +566,7 @@ beyond `cap` is returned as `cap`.
 outline included, in post order; a point's one point. So a path shorter than `r` has two samples,
 its ends. Each sample's value is the field's at that lattice point, by `fields.md` 1.2.
 
-- A sample beyond the field's extent or bound is `formula.outside_field`.
+- A sample beyond the extent is `formula.outside_field`.
 - A feature with no samples (a region with no post inside) is `num.empty_reduction`, naming the
   feature (`numbers.md` 6). There is no fallback to its written points: the engine says it and
   invents no value (principle 8). The author makes the region larger or the spacing finer.
@@ -590,33 +594,21 @@ without dividing, in 128 bits). The 1.5-post band is the spike's; the exact test
 Two passes of a moving mean are the spike's (`profile`); the shrinking ends and the reading at `t`
 are ours. The name is a mechanism's: `profile` is a library word (`vocabulary.md` 7).
 
-### 8.6 Reading beyond the point (R7)
+### 8.6 Reading beyond the point (R7, R28)
 
-R7 draws the line: a formula is a value at a point from other values at that point; anything that
-needs neighbours is a step. Each function that reads more than one post is argued here on its own.
+R7 as amended by R28: a formula is a value at a point from other values at that point, and may also
+call a function of this table that reads around the point when the function declares its halo and
+cap, so the engine still sees every input and evaluates by window. An open-ended neighbourhood or an
+algorithm stays a step.
 
-| Function | What it reads | Against R7 |
+| Function | What it reads | Halo and cap |
 |---|---|---|
-| `d`, `sd`, `t`, `dist`, `sdist`, `near`, `inside`, `along` | A feature's geometry. No field value but the point's own. | Within it. A feature's local frame is a value at every point (`numbers.md` 5.5); these read it at the point. Without them, "not on the lane" (`rules.md` 7.2) needs a field written by each kind for each reader: more words for one meaning (principle 10). |
-| `slope` | A field at the posts around the point. | Outside it, as written. |
-| `under` | A field over the feature. | Outside it, as written. |
-| `smoothed_along` | A field along the path. | Outside it, as written. |
+| `d`, `sd`, `t`, `dist`, `sdist`, `near`, `inside`, `along` | A feature's geometry. No field value but the point's own. | Geometry within the cap (`dist`, `sdist`) or the feature's own extent. |
+| `slope` | A field at the posts around the point. | One post. |
+| `under` | A field over the feature. | The feature's footprint. |
+| `smoothed_along` | A field along the path. | The whole path, bounded by its length. |
 
-The last three rest on a proposed amendment to R7, for the lead to rule: "A formula may also read
-neighbours through a function of the engine's table that declares its halo. Anything else that
-needs neighbours is a step." The case for it rests on R7's own reasons, not on convenience:
-
-- R7 keeps formulas because the engine sees their inputs, so it can cache, rebuild part of a world
-  and report errors in place. A declared halo keeps all three.
-- `under(stat)` and `smoothed_along` read the field *at the entry's place in the order*
-  (`authority.md` 2.1). That is what makes nesting agree (`authority.md` 4.3). A step cannot read
-  there: its rows sit in the head (`authority.md` 4.1, 4.4). As steps, they could not be written at
-  all without changing R21.
-- None names a domain noun (principle 5).
-
-(open) Until the lead rules, `slope`, `under` and `smoothed_along` stand provisionally. If the
-amendment is refused, each leaves the table and becomes a library step, and `authority.md` 2.1 loses
-its nesting case.
+A function that cannot state its halo and cap does not enter this table.
 
 That is twenty-five functions, against R6's "about twenty"; the count is open to review. Nothing
 else is callable.
@@ -758,7 +750,7 @@ checks at M0 step 5, as `vocabulary.toml` is.
 | `formula.seed_shared` | warning | Two noise calls of one owner use one stream. |
 | `formula.range` | error | A value outside its key's or parameter's range, at a named post or feature. |
 | `formula.not_finite` | error | A live operation gave a non-finite value; names the operation, operands, post and feature. |
-| `formula.outside_field` | error | A field read at a point beyond its extent or bound. |
+| `formula.outside_field` | error | A field read at a point beyond the extent. |
 
 `formula.unknown_function` hints from a fixed table first, since `diagnostics.md` 1.4's distance
 would not find them:
@@ -786,8 +778,8 @@ hint says the key takes no formula (`documents.md` 7). Volume names before M5 us
 
 Each case: input, command, what must hold. Every case runs through the command line (R20):
 `via build WORLD`, reading the build's field files and `diagnostics.json`. A "tiny world" has an
-extent of 2 by 2 posts. Window size is set by `--window N` (posts per side), a test flag that
-`build.md` 14 must add (open, there); it changes no byte. Field files hold 32-bit floats, so a
+extent of 2 by 2 posts. Windowed evaluation is tested by `via eval WORLD --field F --tile N --out
+FILE` (`build.md` 14); it changes no byte. Field files hold 32-bit floats, so a
 formula's double is compared after narrowing (`numbers.md` 8, rule 9).
 
 Text phase:
@@ -848,7 +840,8 @@ Values:
     `base = "= fbm(80, 3)"` and a scatter `trees` with the same density term → different values.
 28. A base `"= fbm(80, 3) + fbm(40, 2)"` → `formula.seed_shared`. A base and a `then` row each
     with `fbm(80, 3)` → no warning, different patterns.
-29. The stream vectors of 8.2 → engine and SDK both compute them, bit for bit.
+29. The stream vectors of 8.2 → `via vectors` gives them bit for bit; the SDK's own tests read the
+    same file (not conformance).
 30. `sin(180)`, `cos(90)`, `sin(360)` → 0; `sin(90)`, `sin(450)` → 1; `cos(180)`, `sin(-90)` → -1;
     `tan(90)` → `formula.not_finite` at `tan`.
 31. `min(3, 1, 2)` → 1; `1 / min(0, -0)` → `formula.not_finite` at `/`, operand `-0`.
@@ -862,10 +855,12 @@ Values:
     (`numbers.md` 6, its case `empty_reduction`); no value. On a 2.3 m path at spacing 1 → the mean of samples at 0, 1, 2 and 2.3 m.
 36. `smoothed_along(4)` on a 10 m path at spacing 1 over `base = "= x"` → the values of the
     vector table written with the code (M1).
-37. `f('deck')` at a post beyond the deck's bound → `formula.outside_field`. In the branch of an
-    `if` not taken there → no diagnostic.
-38. A chain of 40 `let`s, each reading the one before twice → builds; each `let` evaluated once per
-    post (run report).
+37. (M2) A step calls `expr.eval` with `"= f('height')"` at a point 1 m beyond the extent →
+    `formula.outside_field`; the call fails (`protocol.md` 3.4). In the branch of an `if` not taken
+    there → no diagnostic.
+38. A chain of 40 `let`s, each reading the one before twice → builds; the field equals the vector
+    table written with the code, bit for bit (M1). That each `let` is evaluated once per post is a
+    repository test of `via-expr`, not conformance (R20).
 39. `lane_east.width = "= lane_west.width + 0.5"` → 4.0. Two attribute formulas reading each other
     → the graph's cycle report with the chain.
 40. A density reading `f('height')` → at each candidate, the value of `fields.md` 1.2 (6.9).
@@ -880,32 +875,35 @@ Failure:
     `exp`. `"= x > 1 or sqrt(x - 100) > 0"` → at `sqrt`.
 44. A density `"= 1.2"` → `formula.range`, hint `clamp`. A mask `"= 1.5"` → `formula.range`.
     `clamp(x, 1, 0)` and `smoothstep(1, 1, x)` → `formula.range`.
-45. Case 41's world built with `--window 1` and `--window 16`, and with `--threads 1` and
-    `--threads 8` → one `diagnostics.json`, byte for byte.
-46. `slope('height')` and `dist('beck', 30)` built with `--window 1` and `--window 16` → equal
-    bytes.
+45. Case 41's field by `via eval` with `--tile 1` and `--tile 16`, and case 41's world by `via
+    build` with `--threads 1` and `--threads 8` → each pair's `--diagnostics` documents equal, byte
+    for byte.
+46. `slope('height')` and `dist('beck', 30)` by `via eval` with `--tile 1` and `--tile 16` → equal
+    `--out` files and `--diagnostics` documents, byte for byte.
 47. A `let` holding `sqrt(-1)` read by two formulas → one location, the `let`'s, and the readers in
     `related`.
 
 Whole and generated:
 
-48. The function table → generate → the reference page and the SDK list hold every row; the code
-    check fails when a row is removed from the evaluator alone.
-49. `ford` at `--threads 1` and `--threads 8`, on macOS and Linux → one digest. On Windows: pending
+48. `ford` at `--threads 1` and `--threads 8`, on macOS and Linux → one digest. On Windows: pending
     until hosted runs are allowed (plan, "Comes back to you later").
-50. (M2) A step calls `expr.eval` with `"= fbm(60, 3, seed = 'a')"` at a field's posts → the column,
+49. (M2) A step calls `expr.eval` with `"= fbm(60, 3, seed = 'a')"` at a field's posts → the column,
     narrowed by `numbers.md` 8, rule 9, equals that field's bytes.
 
 Owed by the limitation ledger (`docs/design/limitations.md`), M1:
 
-51. (S11.K.4) A kind of paths with `[let] w2 = "= sqrt(width - 10)"`, a feature of that kind with
+50. (S11.K.4) A kind of paths with `[let] w2 = "= sqrt(width - 10)"`, a feature of that kind with
     `width = 3`, and an effect on the 2D field `height` reading `w2` → `formula.not_finite` at `sqrt`,
     located at the `let`'s span, naming the feature; exit 1; no `height` written. The effect is not
     skipped and no other value stands in.
-52. (S11.K.11) `along('pond')` in a field base, the pond a square region → at a post on the outline,
+51. (S11.K.11) `along('pond')` in a field base, the pond a square region → at a post on the outline,
     the outline fraction `t` of `numbers.md` 5.5 at that post; at a post off the outline, `t` of the
     nearest outline point. `along('well')`, a point feature → 0 at every post.
-53. The noise vectors of 8.2 → the engine computes them, bit for bit.
+52. The noise vectors of 8.2 → the engine computes them, bit for bit.
+
+**Workspace check** (repository test, not conformance): the reference page and the SDK function
+list, generated from the function table, hold every row; the check fails when a row is removed from
+the evaluator alone.
 
 Change propagation for a formula attribute (`lane_west.width` changed, only its readers re-run) is
 `graph.md`'s case.
@@ -941,12 +939,10 @@ Change propagation for a formula attribute (`lane_west.width` changed, only its 
 
 | Question | Decided by |
 |---|---|
-| The amendment to R7 that `slope`, `under` and `smoothed_along` rest on (8.6). | The lead, before M1's shared base. |
 | A function reading one material's weight. | The first world that needs one: M1 `ford` or M2 `glade`. |
 | Volume formulas: `z`, per-voxel rate, 3D noise, names for a column. | M5, with `type = "volume"`. |
 | Formulas for positions (`at`, `path`) and facing. | M5, challenge 47's owed rotation. |
 | `blend`'s names on an import. | `documents.md`, for M4. |
 | Whether a per-post world `let` read by several fields is stored once as an unnamed field. Results are equal either way. | M1 build timings on `ford`. |
 | Whether `smoothed_along` and `'edge_min'` stay in the table or move to a library step. | M1: the approach-grade lint on `ford`; M2's lake shores. |
-| The `--window` test flag. | `build.md` 14, with the conformance runner. |
 | The function table's data file. | M0 step 5, with the code checks. |

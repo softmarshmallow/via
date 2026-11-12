@@ -20,7 +20,7 @@ A statement's **digest** is the digest (3.1) of its canonical JSON (`documents.m
 table path (family and id) and, for a statement of a layer, that layer's rank. It holds no file,
 line or other source position. Kinds and packs have no rank (`documents.md` 5.1). So moving a table
 within its file, or to another file of the same rank, changes no digest; moving it to a layer of
-another rank does, since rank breaks ties in row order (R21).
+another rank does, since layer rank is one of the keys of row order (R29).
 
 A `let` makes no node. It is inlined where it is read (`formulas.md` 5): its digest enters the key
 of every node whose formula reads it, as a statement that node is made from (3.1, item 3).
@@ -49,7 +49,7 @@ arrive along its edges; the graph crate hands a node its inputs and nothing else
 | `op` | `op:<operation>/<digest>` | an engine operation (R23): a network with its areas, cells along a frontage, a route over a cost field | its geometry and place keys | yes |
 | `step` | `step:<id>`, and `step:<id>/i:<item>` under `for_each` | a step; one call per item | its returned document, field files and diagnostics, and its trace (5.1) | yes |
 | `facts` | `facts:<asset id>` | each model asset the build uses (M2, `assets.md` 4) | the comparison of the facts file's entry with the asset's measured facts and its pack statement, and its diagnostics | digest only |
-| `mesh` | `mesh:<owner>` | each generated mesh (`surfaces.md`) | the mesh | yes |
+| `mesh` | `mesh:<owner>` | each generated mesh: a kind surface or a triangulated region (`surfaces.md` 5, `build.md` 10); the terrain is written as a field, not a mesh | the mesh | yes |
 | `write` | `write:<build file>` | each file of the build directory (`build.md` 2) | the file's bytes | yes |
 
 - **Paths** in `source` and `input` ids are relative to the world file's folder and use `/`. A file
@@ -58,8 +58,9 @@ arrive along its edges; the graph crate hands a node its inputs and nothing else
 - **Selectors** are written in their canonical form as `documents.md`'s canonical JSON prints them.
 - **Views.** `<view>` is `build` for the build's own view; `<layer>` for the view of a generate step
   declared in that layer (section 4); `<layer>.head` and `<layer>.full` for a field that step reads
-  in its head or full view (`authority.md` 4.4); `<layer>.built` for a lint or export step declared
-  in that layer (section 4); `build-nofootprint` for the build's view less the entries of every
+  in its head or full view (`authority.md` 4.4); `head` for the build's head view of a field: its
+  base and every `then` row of every layer, no effect (`authority.md` 2.3), which a `shape` reads
+  (a `where` region, a derived feature); `build-nofootprint` for the build's view less the entries of every
   footprint feature, which the `keep_out` test reads (`rules.md` 8.3, `fields.md` 6.2). Nodes in a
   view other than `build` are made only when something reads them.
 - **Windows.** `<window>` is `<i0>.<j0>.<i1>.<j1>` in posts, with `i1` and `j1` excluded, as
@@ -88,17 +89,18 @@ spans; the engine reads `merge` to build the graph.
 | Reference | Written as | Edge from the reader to |
 |---|---|---|
 | placement | `on.ref`, `starts_at`, `ends_at`, `follows` | the named thing's `shape`, `instance`, `held` or `edit` |
+| name attribute | an attribute listed in its kind's `names` (`authority.md` 1.2) | from the feature's `attr` to the named thing's `shape`, `instance`, `held` or `edit` |
 | ends | `starts_at` / `ends_at` naming a path's end or an exit | that path's `shape` |
 | selection by place | `{ of, near }` (`identity.md` 3) | the maker's `held`, `op` or `step`; a hand edit's own selection reads the maker's `rule` or `step` (`identity.md` 4.1) |
-| step output | a name `<step>#<key>` (`identity.md` 2.4) | that step's `step:<id>` node, or its `held` node for an instance |
-| mount | a place name through an instance (`cottage.door`) | the instance's `instance` or `held`, and its `height` |
-| formula read | a field, attribute, feature or selector a formula names (`formulas.md` reports the names) | the field's nodes in the reader's view over every chunk the reader's window, grown by the function's halo (`slope`: 1 post), meets; `attr`; `distance`; `select` |
+| step output | a `kind:` selector over features a step returned (`formulas.md` 7); a `tag:` selector resolving to a field a step declared is (open: needs ruling, R21; `fields.md` 7); never a produced name in text (R3) | that step's `step:<id>` node, or its `held` node for an instance |
+| mount | a place name through an instance (`cottage.door`); a path's `starts_at` or `ends_at` naming the instance itself meets its default mount (R31) | the instance's `instance` or `held`, and its `height` |
+| formula read | a field, attribute, feature or selector a formula names (`formulas.md` reports the names) | the field's nodes in the reader's view (in a `shape`, view `head`) over every chunk the reader's window, grown by the function's halo (`slope`: 1 post), meets; `attr`; `distance`; `select` |
 | measure | `under`, `smoothed_along` | the `measure` node. Its own edges: `under(field, stat)` reads that field's nodes over every chunk the feature meets; `under(stat)` and `smoothed_along` read the written field's entries before this effect, computed inside the node and never kept, so its edges are those a `field` node over those chunks would have for those entries only |
 | effect | a kind's effect with `field = "role:..."` or `"tag:..."` | from each written `field` node to the feature's `distance` over that chunk and its `attr`, for each feature whose effect window (`fields.md` 5.3) meets the chunk |
 | field rows from a step | rows a step returned | from each `field` node of that field to the `step` |
 | ground | `ground` on an instance | from `footprint` to the instance's `instance` or `held`; the footprint's kind's effects then read the `footprint` as a feature |
 | standing | every placed instance (R25, `rules.md` 6, 8) | from `height` to the instance's plan, to `select:role:surface` and the surface fields' nodes under its footprint, and to `select:role:keep_out` and the `keep_out` fields' nodes under its footprint in view `build-nofootprint` (`rules.md` 8.3) |
-| scatter | any scatter (`rules.md` 3.4, 7) | `select:role:surface`, `select:role:keep_out` and those fields' nodes; every solid `instance`, pin `edit` and non-scattered `held`; `within`'s `shape`; `clump.around`'s `held` |
+| scatter | any scatter (`rules.md` 3.4, 7) | `select:role:surface`, `select:role:keep_out` and those fields' nodes; the `instance` of every hand instance whose solidity is not `none`, in its layer or below, that does not stand on its output; and every non-scattered `held` in its layer or below; `within`'s `shape`; `clump.around`'s `held` |
 | hand edits | a producer's `by` (`identity.md` 4.1) | from `held` to the producer's `rule` or `step`, and to each `edit` whose `by` names it |
 | set | `set` on an instance or run | the set and its items |
 | step, declared | `inputs`, `for_each` | `input`, `select` |
@@ -107,7 +109,7 @@ spans; the engine reads `merge` to build the graph.
 | give (M4) | `give = { <name> = "<ours>" }` | section 9 |
 
 An edge's **label** names the key that made it and, where one reader has several edges from one key,
-the statement it reads through: `on.ref`, `base reads b`, `effect lane_a.grade`. A label is part of
+the statement it reads through: `on.ref`, `base reads b`, `effect lane_a.bed`. A label is part of
 the reader's key (3.1), so two edges to one node are two inputs.
 
 Direction between layers is checked by `documents.md` 5.1 on these same edges. The doctrine's build
@@ -119,10 +121,14 @@ the order these edges usually give. The engine enforces no phase.
 The graph is known in two stages.
 
 - **The reference graph** is known once `merge` has run, before any other node. Its vertices are the
-  node ids with `/v:`, `/w:` and `/i:` removed, plus one vertex per `let` name. Its edges are the
-  references of the table above between those vertices. Which features' effects write which field
-  is known from kinds and roles; a `<step>#…` name is an edge to the step. A step has no edges to
-  its recorded reads.
+  node ids with `/v:`, `/w:` and `/i:` removed, except that a field's `head` view is a vertex of
+  its own, plus one vertex per `let` name. Its edges are the references of the table above between
+  those vertices. A head vertex has only the edges of the field's base and `then` rows, each field
+  they read again by its head vertex (`authority.md` 2.3). Which features' effects write which field
+  is known from kinds and roles. A `kind:` selector read above a generate step's layer is an edge
+  to that step, which may return what it matches (section 4); a `tag:` selector likewise is
+  (open: needs ruling, R21). A step has no edges to its
+  recorded reads.
 - **The node graph** is expanded as the values it depends on become known: a field's chunk nodes
   and their edges once the `shape` values of the features that write it are known, `for_each`
   calls once their `select` is known, edges to a step's output once the step has run. This is a
@@ -133,13 +139,12 @@ Edges are in the key (3.1), so an edge added or removed changes the reader's key
 moves into a chunk adds an edge to that chunk's node, and one that moves out removes one.
 
 Every cycle among nodes is a cycle in the reference graph, since each node edge is a reference edge
-with view, window and item removed. Two kinds of read are not, and neither can close a cycle: a
-step's recorded reads, because a step reads only its view (section 4), and `under(stat)`,
-`smoothed_along` and `v`, because they read the entries before their own. A reference cycle that chunks
+with view, window and item removed. Three kinds of read cannot close a cycle through an effect: a
+step's recorded reads, because a step reads only its view (section 4); `under(stat)`,
+`smoothed_along` and `v`, because they read the entries before their own; and a shape's read of a
+head view, because no effect is in it. A loop through a head vertex's base or `then` rows is still
+`graph.cycle`. A reference cycle that chunks
 alone would break is still a cycle: what the text means may not depend on where chunks fall.
-
-A name `<step>#<key>` that the step did not return is `identity.unknown_place`, raised by the
-reader once the step has run.
 
 ### 2.2 One cycle report
 
@@ -254,7 +259,7 @@ Every key holds four versions. A new value of any one changes every key, so noth
 
 | Version | What it names | Where it is fixed |
 |---|---|---|
-| document language | the meaning of the text: keys, forms, merge rules | `documents.md` (its name is (open) there) |
+| document language | the meaning of the text: keys, forms, merge rules | `documents.md` 2.3: `via-doc-1` |
 | protocol | the step request and reply, `via-step-1` | `protocol.md` |
 | build format | the layout and encoding of build files and store values | `build.md` |
 | numerics epoch | an integer, raised by any engine change that may change the bytes of any value for the same inputs | here |
@@ -318,22 +323,17 @@ A worker that asks for anything outside its stratum (a feature of a higher layer
 `graph.read_outside`, naming the thing and the lowest layer a step would need to stand in to read
 it (M2).
 
-A lint or export step declared in layer L reads the layers at or below L, as R21 rules for every
-step. It runs after generation, so nothing of L is still being made: its view `<L>.built` holds the
-statements of the layers at or below L and the outputs of the generate steps in those layers,
-same-layer ones included. A lint in layer 1 therefore sees a layer-1 scatter without a layer-2
-pin's removals (`identity.md` conformance 21). A lint or export in the top layer reads view entries
-equal to the build's, so its nodes share keys with the build's and cost nothing. Which of them run
-after an error is `diagnostics.md` 4: a lint that reads a failed node is `skipped`; export steps and
-`write` nodes are `skipped` when the build has any error.
+A lint or export step reads the finished build (R29), whatever layer declares it. It runs after
+every generate step, and every node it reads is in view `build`, so its reads share keys with the
+build's nodes and cost nothing. Which of them run after an error is `diagnostics.md` 4: a lint that
+reads a failed node is `skipped`; export steps and `write` nodes are `skipped` when the build has any
+error.
 
-A plain command is handed its whole view (`protocol.md` 2.2), so it reads every field, feature and
-instance its view holds. Two plain lints in one layer are therefore skipped together by any failed
-node of that view; a plain lint in a lower layer, whose view does not hold the failed node, runs.
-Telling apart two lints of one layer by what each reads needs workers, whose reads are traced (M2):
-a worker lint learns its reads only by running, so when a read it asks reaches a failed or skipped
-node, the read is not answered, the call is cancelled, and the lint is `skipped` with its findings
-dropped.
+A plain command is handed its whole view (`protocol.md` 2.2), so a plain lint reads every field,
+feature and instance of the build, and any failed node skips every plain lint. Telling lints apart
+by what each reads needs workers, whose reads are traced (M2): a worker lint learns its reads only
+by running, so when a read it asks reaches a failed or skipped node, the read is not answered, the
+call is cancelled, and the lint is `skipped` with its findings dropped.
 
 **When a step starts.** A plain command (M1) starts once every value in its request is computed. A
 worker (M2) starts once its stratum's statements are known; each read it makes is computed when
@@ -413,25 +413,30 @@ others are `reused`. Status never depends on which thread got there first.
 **The build key** is the digest of: the four versions; the requested changes; each `source` and
 `input` path with its digest; each lookup the build made (`documents.md` 4: the name, the path
 found, and each candidate before it that was absent); each step's trust digest; and `--lib`,
-`--stand-ins` and `--fail-on`. A folder input's digest covers its listing, so a new file in it
+`--stand-ins` and `--fail-on`. Roots and lookups enter by place and source path only: each root as
+`beside`, `--lib <n>`, `VIA_LIB <n>` or `shipped`, each path as its `lib:<id>/` or world-relative
+source path (`documents.md` 2.1). No absolute path enters the key. A folder input's digest covers its listing, so a new file in it
 changes the key. Which files are read is decided by the text of the files read before them, so
 equal digests for every recorded read mean the same reads.
 
 **The build record**, kept in the store under the build key, holds: the four versions (3.3); every
-node's id, key and value digest; the build's diagnostics as emitted; the digest of each build file; and whether every step
+node's id, key and value digest; the build's world diagnostics as emitted; the digest of each build file; and whether every step
 completed. Statement digests are in `merge`'s value and per-chunk field digests are the `field`
 nodes' value digests, so the change report (6.4) needs nothing more. The build key is written to
 the manifest as `run.key` (`build.md` 4). `.previous` (`build.md` 11.2) names the last complete build
 by its `id` and manifest digest; this chapter neither reads nor writes it.
 
 **An unchanged rebuild runs nothing.** When the build key equals `run.key` in the build directory's
-current manifest (`build.md` 13), the build record for it is in the store, and that record says
-every step completed, no node is touched: the
-run report lists every node of the record as `reused`, and the diagnostics are the record's. A
+current manifest (`build.md` 13), the build record for it is in the store, that record says
+every step completed, and no `--against` is given, no node is touched: the
+run report lists every node of the record as `reused`, and the world diagnostics are the record's.
+Run diagnostics (`build.md` 11.1) are never recorded or replayed; each run computes its own, and
+on a null build there are normally none, since `.previous` names the recorded build. A
 build file whose bytes differ from the record (edited by hand, damaged) is written again from the
 store's object, with `graph.build_file_restored`. If the object is missing, the null build does not
 apply and the build runs as usual. After a build in which a step did not complete, it never
-applies.
+applies. With `--against`, nodes are reused as usual, but `write:changes.json` runs against the
+named baseline.
 
 Files are always hashed from their bytes. (open) Whether a size-and-time shortcut is allowed.
 
@@ -592,7 +597,7 @@ see the part before it gives". All of this is `doc.not_yet` in M1.
 name       = "brook"
 extent     = [0, 0, 128, 128]
 resolution = 1
-include    = ["land", "ways"]
+include    = ["land", "water", "ways"]
 pack       = "primitive"
 
 [field.height]
@@ -618,16 +623,17 @@ on = { ref = "beck", t = 0.8 }
 ```
 
 At resolution 1 the default chunk is 64 m (`build.md` 5), so the 129 by 129 posts make four chunks:
-`w:0.0.65.65`, `w:64.0.129.65`, `w:0.64.65.129` and `w:64.64.129.129`. Say each of the three kinds
-has one bounded effect on `role:surface`. The node graph, in part:
+`w:0.0.65.65`, `w:64.0.129.65`, `w:0.64.65.129` and `w:64.64.129.129`. Only the effects on
+`role:surface` are drawn: `beck.bed`, `ford.approach` and `lane.bed` (`docs/plan.md`). The node
+graph, in part:
 
 ```
 shape:ford/v:build    -> shape:beck/v:build                    on.ref
 shape:lane/v:build    -> shape:ford/v:build                    ends_at
 distance:<f>/v:build/w:<chunk> -> shape:<f>/v:build            for f in beck, ford, lane
 field:height/v:build/w:<chunk> -> distance:beck/v:build/w:<chunk>, attr:beck   effect beck.bed
-field:height/v:build/w:<chunk> -> distance:ford/v:build/w:<chunk>, attr:ford   effect ford.bar
-field:height/v:build/w:<chunk> -> distance:lane/v:build/w:<chunk>, attr:lane   effect lane.grade
+field:height/v:build/w:<chunk> -> distance:ford/v:build/w:<chunk>, attr:ford   effect ford.approach
+field:height/v:build/w:<chunk> -> distance:lane/v:build/w:<chunk>, attr:lane   effect lane.bed
 write:fields/height.npy -> field:height/v:build/w:<each chunk>
 ```
 
@@ -665,8 +671,6 @@ error[graph.cycle] feature.ford: references form a loop of 2 statements
 | `graph.for_each_empty` | info | A `for_each` selector matched nothing in the step's view; the step did not run. (M3) |
 | `graph.build_file_restored` | info | A build file differed from its record and was written again. Run diagnostic. |
 
-`identity.unknown_place` covers a `<step>#<key>` the step did not return.
-
 ## Conformance
 
 Every case is also built with a fresh store into a fresh directory, and at 1 and 8 threads, and
@@ -676,40 +680,40 @@ one id per line, under `spec/vectors/graph/`, written with `examples/ford/` in M
 
 | Case | M | Input | Action | Must hold |
 |---|---|---|---|---|
-| key vector | M0 | the vector of 3.1 | encode | the bytes and digest recorded |
+| key vector | M0 | the vector of 3.1 | repository test of `via-graph`, not conformance (R20, as `fields.md` 6.4's last-writer test) | the bytes and digest recorded |
 | null | M1 | `ford` | build twice | second run: no node `ran` or `recomputed`; same bytes |
 | threads | M1 | `ford` | build at 1 and at 8 threads, each clean | same bytes; same `ran` set |
 | empty store | M1 | `ford`, store deleted, build directory kept | build | every node `ran`; same bytes as before |
 | shuffle | M1 | tables and keys reordered, comments added | rebuild | `ran` is exactly the changed `source` nodes, `merge`, `write:diagnostics.json` and `write:manifest.json` (it lists source digests); diagnostics show the new lines |
 | early cutoff | M1 | a world `let` read by `height`'s base, from `2 * 3` to `6` | rebuild | `ran` is `source:world.toml`, `merge`, every `field:height/v:build` chunk, `write:diagnostics.json` and `write:manifest.json`; `write:fields/height.npy` `reused` |
-| downstream | M1 | `ford` | `--change downstream` | `ran` equals `ford_downstream.ran` |
+| downstream | M1 | `ford` | `--change downstream --out build/ford` (the clean build's directory) | `ran` equals `ford_downstream.ran` |
 | vertex | M1 | one vertex of the beck moved | rebuild | `ran` equals `ford_vertex.ran`: the beck's nodes, then those of `downstream` |
 | why | M1 | the `downstream` case | read the run report | every `ran` node names a cause; `shape:ford/v:build`'s is "statements" |
 | toggle | M1 | `ford` | build with `downstream`, without, with | third and fourth runs: nothing `ran` |
-| cycle two | M1 | ford `on` lane, lane `ends_at` ford | build | one `graph.cycle`; loop starts at line 18; exit 1 |
-| cycle order | M1 | three fields reading in a ring, declared in reverse, `ford`'s four chunks | build | one `graph.cycle`, first member the first in source order |
+| cycle two | M1 | `ford` with `feature.ford` `on.ref = "lane_west"`, against `lane_west.ends_at = "ford"` | build | one `graph.cycle`; loop starts at `world.toml:25:8` (`feature.ford` `on.ref`), then line 30 (`lane_west.ends_at`); exit 1 |
+| cycle order | M1 | three fields reading in a ring, declared in reverse, `ford`'s sixteen chunks (4 by 4) | build | one `graph.cycle`, first member the first in source order |
 | cycle rest | M1 | a cycle and an unrelated feature | build; fix the cycle; build | first: the unrelated feature's nodes `ran` and are in the store; the directory holds `diagnostics.json` and `.previous` only. Second: those nodes `reused` |
 | warning replay | M1 | a world with one warning | build twice | second: same `diagnostics.json`, nothing ran |
 | error replay | M1 | a formula typo | build twice | second: same error, nothing ran, exit 1 |
 | run report | M1 | `ford` | build; `--change downstream` | each report is canonical JSON with `format` `"via-run-0"` and every member of 6.3; `nodes` lists every node once, in id order; `totals` counts equal the statuses; every `ran` node has a cause, every other `null` |
-| lint gate | M1 | a world of two layers; a formula typo in an attribute of a layer-2 feature whose effect writes `height`; a plain lint in layer 2 and one in layer 1 | build | the layer-2 lint `skipped` (its view `<2>.built` holds the failed `attr` node); the layer-1 lint ran; no `write:` node ran but `write:diagnostics.json`; exit 1 |
-| lint stratum | M1 | a lint in layer 1 reading `height`; a `height`-writing feature of layer 2 moves | rebuild | its nodes in view `<layer>.built` are `reused`; the lint is `reused` |
-| step reuse | M1 | a plain generate step at layer 1; a `height`-writing feature of layer 2 moves | rebuild | `step:` node `reused` |
-| step rerun | M1 | the same; a `height`-writing feature of layer 1 moves | rebuild | `step:` node `ran` |
-| step slots | M1 | a step under `downstream` | alternate with and without, four times | from the third build, the step never runs |
-| same layer | M1 | a step and a bookmark `on` its output in one layer | build | builds; the step's request holds no bookmark |
-| same views | M1 | a step that returns no row on `height`, at a layer above which no entry of `height` lies | build | each chunk of its view and of `v:build` share a key; one `ran`, one `reused` |
-| inputs | M1 | a byte changed in a step's `inputs` file; then the file deleted | rebuild each | step ran; then `graph.input_missing` |
-| folder input | M1 | a file added to a step's `inputs` folder | rebuild | the null build does not apply; step ran |
-| script | M1 | a sibling module in the step's code folder edited | rebuild | step ran without the module in `inputs` |
-| rerun | M1 | a step that writes the time | build; build with `--rerun-step` | second: `graph.step_unstable` in the run report, not in `diagnostics.json` |
+| lint gate | M1 | a world of two layers; a formula typo in an attribute of a layer-2 feature whose effect writes `height`; a plain lint in layer 2 and one in layer 1 | build | both lints `skipped` (each reads the finished build, which holds the failed `attr` node, R29); no `write:` node ran but `write:diagnostics.json`; exit 1 |
+| lint reads the build | M1 | a lint in layer 1 reading `height`; a `height`-writing feature of layer 2 moves | rebuild | the lint runs again, its request naming the moved `height` (R29); an unchanged rebuild reuses it |
+| step slots | M1 | `ford`'s plain lint `checks` | alternate with and without `downstream`, four times | from the third build, the lint never runs |
+| inputs | M1 | a byte changed in the plain lint's `inputs` file; then the file deleted | rebuild each | the lint ran; then `graph.input_missing` |
+| folder input | M1 | a file added to the plain lint's `inputs` folder | rebuild | the null build does not apply; the lint ran |
+| script | M1 | a sibling module in the plain lint's code folder edited | rebuild | the lint ran without the module in `inputs` |
+| rerun | M1 | a plain lint that writes the time beside its diagnostics | build; build with `--rerun-step` | second: `graph.step_unstable` in the run report, not in `diagnostics.json` |
 | corrupt | M1 | a byte flipped in the stored object of a `height` chunk the change does not touch | build `--change downstream` | `graph.store_corrupt` in the run report; that chunk ran; same bytes as clean |
 | restored | M1 | one build file edited by hand | rebuild | `graph.build_file_restored`; file equal to clean; nothing ran |
 | epoch | M1 | the engine with `VIA_TEST_EPOCH_OFFSET=1`, read by test builds only | rebuild | every node `ran`; manifest `files` equal |
 | epoch guard | M1 | the examples' recorded `files` maps | build each | equal, or the epoch was raised |
-| failed step | M1 | a step that exits 1 | build twice | `protocol.failed` both times; its readers `skipped`; it ran twice |
+| failed step | M1 | a plain lint that exits 1 | build twice | `protocol.failed` both times; its readers `skipped`; it ran twice |
 | busy | M1 | the runner holds `<directory>.lock` | build | `graph.busy`, exit 1 |
 | killed | M1 | a build killed mid-run | build | builds; no `graph.busy` |
+| step reuse | M2 | a plain generate step at layer 1; a `height`-writing feature of layer 2 moves | rebuild | `step:` node `reused` |
+| step rerun | M2 | the same; a `height`-writing feature of layer 1 moves | rebuild | `step:` node `ran` |
+| same layer | M2 | a generate step and a bookmark `on` its output in one layer | build | builds; the step's request holds no bookmark |
+| same views | M2 | a generate step that returns no row on `height`, at a layer above which no entry of `height` lies | build | each chunk of its view and of `v:build` share a key; one `ran`, one `reused` |
 | step trace | M2 | a worker reads `height` in one window; a feature outside it moves, then one inside | rebuild each | first `reused` after its trace replays; then `ran`, a new trace added |
 | lint gate, traced | M2 | one layer; a formula typo in an attribute of a feature whose effect writes `height`; a worker lint reading `height`, one reading only the features of an unrelated kind | build | the first lint `skipped`, its findings dropped; the second ran and reports |
 | outside | M2 | a worker at layer 1 asks for a feature of layer 2 | build | `graph.read_outside` naming layer 2 |

@@ -60,7 +60,7 @@ Until each owner updates its Conformance section to point here, this table wins:
 | `graph.md` | ran-set fixtures "under `spec/vectors/graph/`" | The case's `expected/ran.txt`. `keys.toml` stays a vector. |
 | `protocol.md` | `spec/vectors/protocol/<case>/` | `spec/cases/protocol/<case>/`. The M0 probe keeps its own harness, as `protocol.md` says. |
 | `rules.md` | `spec/cases/rules/<case>/` | Unchanged. |
-| `surfaces.md` | `spec/vectors/surfaces/<case>/`, one shared `lib.toml` | `spec/cases/surfaces/<case>/`; `lib.toml`, shared, is `spec/vectors/surfaces/lib.toml`. |
+| `surfaces.md` | `spec/vectors/surfaces/<case>/`, one shared test library | `spec/cases/surfaces/<case>/`. The library root `spec/vectors/surfaces/lib/` (library `surfaces_test`, a folder with `kinds.toml`, `documents.md` 4) stays; a case copies it as a folder and passes `--lib` to it. |
 | `assets.md`, `formulas.md`, `geometry.md`, `identity.md`, `numbers.md` | vector files under `spec/vectors/` | Unchanged: they are vectors, not cases. |
 
 The sentence each chapter's Conformance section gains: "Cases are stored and run as
@@ -95,7 +95,7 @@ id order, then the case's own files are laid over them, so a case file replaces 
 
 | Key | Type | Required | Meaning |
 |---|---|---|---|
-| `from` | string | yes | A path relative to the repository root: `examples/ford`, `lib/ways`, `spec/vectors/surfaces/lib.toml`. |
+| `from` | string | yes | A path relative to the repository root: `examples/ford`, `lib/ways`, `spec/vectors/surfaces/lib`. |
 | `to` | string | no | A path relative to the working folder. Default: the same as `from`. `"."` copies a folder's contents into the working folder's root. |
 
 A case never copies from `spike/`. Private material is never a case input.
@@ -203,20 +203,24 @@ check not listed is a case error. Rows are added with the cases that need them.
 | `weights_sum_at_most` | `path`, `limit` | Every post of a weights file sums to at most `limit`. | `fields.md` "weights sum" |
 | `weights_sum_255_or_0` | `path` | Every post of a weights chunk sums to 255 or 0. | `build.md` cases 17, 18 |
 | `no_absolute_path` | (none) | Section 5's U5, on demand inside a sequence. | `build.md` case 7 |
+| `changed_within_windows` | `before`, `after` (build directories), `fields`, `kinds`, `world` | Every differing post of each named field lies in the union of the 5.3 windows of every moved feature or footprint, old shape and new, as `fields.md` defines it. | `fields.md` "change windows"; plan, ford rows `downstream`, `vertex` |
+| `no_origin_inside` | `build` (a build directory); `at` and `radius`, or `points` (a closed polygon); `prefix` (optional) | No row of `instances/x.npy`, `y.npy` whose name in `names.txt` starts with `prefix` has its origin at distance `<= radius` from `at`, or inside `points` (`identity.md` 4.3). | plan, ford row `hand`; `identity.md` 31; `rules.md` r38 |
+| `changes_by_prefix` | `path` (a `changes.json`), `prefix`, `what`; `names` (optional, a `names.txt`) | At least one entry's `name` starts with `prefix`, and every such entry's `what` equals `what`. With `names`: every line of it starting with `prefix` is such an entry. | plan, ford rows `hand`, `denser`; `identity.md` 31 |
 
 ### 3.5 Expected diagnostics
 
 Where the records come from:
 
-- **World diagnostics** come from `<out>/diagnostics.json` when the action wrote a build directory,
-  and otherwise from the `--json` document on standard output (`via check`, `via explain`, `via pack
-  check`, and every exit status 2, as `diagnostics.md` Conformance says).
-- **Run diagnostics** (`diagnostics.md` 7) come from the `--json` document less the world
-  diagnostics. The runner adds `--json` to every command that takes it, unless the action already
-  gives it. An expectation for a run diagnostic says `from = "run"`.
-- `via merge`, `via pack list` and `via query` print their result on standard output, so where their
-  diagnostics reach the runner is (open): decided in `build.md` 14 with the runner. Recommended: one
-  flag on every command, `--diagnostics FILE`, writing `diagnostics.md` 7's document to `FILE`.
+- The runner passes `--diagnostics {work}/.diag/<action id>.json` to every `via` action and reads
+  both kinds of record from that document, on every exit status, 2 included (`build.md` 14). It
+  never adds `--json`: on `via merge`, `via pack list` and `via vectors` that is `cli.usage`.
+- **Run diagnostics** are the records whose codes `build.md` 11.1 lists as run codes, the ones
+  never in `diagnostics.json`. An expectation for one says `from = "run"`.
+- **World diagnostics** are all the others.
+
+Records whose code starts `step.` (a lint's measures, R15) are left-over records allowed in every
+mode, unless the action writes an expectation with a `step.` code; then they are compared by the
+action's mode like any other world record.
 
 An expectation is a table. Only `code` is required. Every other key, when written, is compared; a
 key not written is not compared. Messages and hints are never compared (`diagnostics.md` 1.3).
@@ -244,7 +248,7 @@ action's `diagnostics` mode:
 
 | Mode | Holds when |
 |---|---|
-| `exact` | The assignment exists and no world diagnostic is left over. The default, so an unexpected warning fails the case. |
+| `exact` | The assignment exists and no world diagnostic is left over, `step.` codes aside (above). The default, so an unexpected warning fails the case. |
 | `includes` | The assignment exists. Left-over records are allowed. |
 | `any` | No expectation is compared; only section 5's checks run. For the fuzz corpus. |
 
@@ -281,41 +285,52 @@ via  = ["check", "build/null"]
 exit = 0
 ```
 
-`diagnostics.md`'s formula typo in `ford` (the line and column are illustrative until `ford` is
-written):
+`build.md` case 21, the failed build, with `ford`'s change `changes/bad_typo.toml` (`docs/plan.md`):
 
 ```toml
 format    = "via-case-1"
-summary   = "A formula typo in ford: one error at the typo, no file but diagnostics.json."
+summary   = "A formula typo in ford: one error at the typo, no file but diagnostics.json and .previous."
 milestone = 1
-actions   = ["typo", "build"]
+actions   = ["program", "trust", "good", "typo"]
 
 [copy.ford]
 from = "examples/ford"
 to   = "."
 
-[action.typo]
-replace = "world.toml"
-find    = "smoothstep(0.2, 0.5, slope)"
-with    = "smoothstep(0.2, 0.5, slpoe)"
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
 
-[action.build]
-via  = ["build", "world.toml"]
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/bad_typo.toml"]
+exit = 0
+
+[action.good]
+via  = ["build", "world.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+
+[action.typo]
+via  = ["build", "world.toml", "--change", "changes/bad_typo.toml", "--out", "build/ford"]
 out  = "build/ford"
 exit = 1
 
-[action.build.diag.typo]
+[action.typo.diag.skipped]
+code    = "diag.skipped"
+subject = "scatter.trees"
+count   = 1
+data    = { first = ["step.checks"] }
+
+[action.typo.diag.typo]
 code    = "formula.unknown_name"
 subject = "scatter.trees.density"
-file    = "world.toml"
-line    = 41
-column  = 46
-data    = { name = "slpoe", nearest = "slope" }
-related = [{ file = "world.toml", line = 12 }]
+file    = "changes/bad_typo.toml"
+line    = 2
+data    = { name = "xx", nearest = "x" }
 
-[action.build.file.nothing_else]
+[action.typo.file.nothing_else]
 path    = "build/ford"
-listing = ["diagnostics.json"]
+listing = ["diagnostics.json", ".previous"]
 ```
 
 ## 4. Milestones and pending cases
@@ -338,9 +353,9 @@ These checks need no line in `case.toml`. Each comes from the chapter named.
 |---|---|---|---|
 | U1 | The exit status is the action's `exit`. | every `via` action | `diagnostics.md` 7 |
 | U2 | Every diagnostic has a registered code, a subject, a location and a non-empty hint; a core code's severity equals the registry's; a step code has one severity in the build; `failed_on` appears only on a code `--fail-on` named. | every `via` action | `diagnostics.md` Conformance |
-| U3 | With exit status 2, nothing under the working folder is created, deleted or changed. | every `via` action | `diagnostics.md` 7 |
+| U3 | With exit status 2, nothing under the working folder is created, deleted or changed, but the `--diagnostics` file (3.5). | every `via` action | `diagnostics.md` 7 |
 | U4 | `via check <out>` exits 0. | every `build` or `lock` action that exits 0 | `build.md` case 8 |
-| U5 | No JSON or text file the action wrote holds a path starting `/`, `\`, `//` or a drive letter, the working folder's path, the test user name, or the host name; no `..` but in `locations` and in source paths the text wrote so. | every `via` action | `build.md` case 7 |
+| U5 | No JSON or text file in the build directory (`out`), `<out>.run.json` or the `--diagnostics` file holds a path starting `/`, `\`, `//` or a drive letter, the working folder's path, the test user name, or the host name; no `..` but in `locations` and in source paths the text wrote so. `.config`, `.home` and the store are exempt: `config.toml` and `trust.toml` hold absolute paths by design (`protocol.md` 6.3), and `via config program` and `via trust` are checked by their own cases. | every `via` action | `build.md` case 7 |
 | U6 | Clean equals incremental, and 1 thread equals 8 (5.1). | every `build` or `lock` action, unless `no_rerun` | `graph.md` 7, 8; plan |
 | U7 | The same results on every system (5.3). | every case, unless `one_system` | R26 |
 
@@ -349,7 +364,11 @@ These checks need no line in `case.toml`. Each comes from the chapter named.
 - The runner adds `--threads 8` to every `build` and `lock` action that does not give `--threads`.
 - After such an action, it copies the working folder's inputs as they stand (not the build
   directories, the run reports or the store) into a fresh sibling folder with the same layout, and
-  runs the same arguments there with `--threads 1`: a fresh store into a fresh directory.
+  runs the same arguments there with `--threads 1`: a fresh store into a fresh directory. A build
+  directory the action reads, named by `--against` or holding a `file` input, is an input and is
+  copied too, as it stands. The
+  re-run keeps the same environment (5.2), so the same `VIA_CONFIG_DIR`, programs and trust;
+  `.config`, `.home` and `.diag` are never copied and never compared.
 - It then compares: the same exit status; `diagnostics.json` byte-identical; and, when the action
   exited 0, the same `id` and every file of the manifest's `files` byte-identical. `changes.json`,
   `.previous` and the run report are left out: they depend on the baseline or the run
@@ -368,11 +387,17 @@ process starts from an empty environment plus:
 | Variable | Value |
 |---|---|
 | `PATH` | The runner's own (and `SYSTEMROOT` on Windows). |
-| `VIA_CONFIG_DIR` | `{work}/.config`, empty at the start. So no case reads the machine's real `config.toml` or `trust.toml` (`protocol.md` 6.3). A case that needs a program or trust records it with `via config program` or `via trust --yes` as actions. |
+| `VIA_LIB` | `{repo}/lib` (`documents.md` 4.1), so `via build examples/ford/world.toml` runs as written. A case's own `--lib` roots are searched first. |
+| `VIA_CONFIG_DIR` | `{work}/.config`, empty at the start. So no case reads the machine's real `config.toml` or `trust.toml` (`protocol.md` 6.3). |
 | `HOME`, `USERPROFILE`, `XDG_CONFIG_HOME`, `APPDATA`, `TMPDIR`, `TMP`, `TEMP` | Folders under `{work}/.home`. |
 | `USER`, `USERNAME` | `via-test-<token>`, unique per run, for U5. |
 | `NO_COLOR` | `1`. Terminal output is never compared but for the summary line (`diagnostics.md` 7). |
 | the action's `env` | As written. |
+
+The runner never trusts a world or records a program itself: those are the case's own actions
+(`documents.md` 4.1). A `ford` case runs `via config program python {python}`, then `via trust
+world.toml --yes`, with each change it requests, before it builds (3.6). The cases that test trust
+itself (`protocol.md` cases 6 to 8, 38) write their own.
 
 The host name cannot be changed without privileges on every system, so U5 searches for the real
 one. In the Linux container the runner sets a unique host name as well.
@@ -380,10 +405,10 @@ one. In the Linux container the runner sets a unique host name as well.
 ### 5.3 Across systems
 
 The runner writes one record per run, `<os>-<arch>.json`, canonical JSON: for every case and every
-`via` action, the exit status, the build `id`, the digest of `diagnostics.json` and of each file of
-`files`, and each diagnostic record less `message`, `hint` and `data.log_tail` (`protocol.md`
-Conformance). `compare A B` checks two records agree on every case without `one_system`. A system
-with no record makes U7 pending for every case, with the reason; Windows stays so until hosted
+`via` action, the exit status, the build `id`, the digest of each file of `files`, and each
+diagnostic record of `diagnostics.json` less `message`, `hint` and `data.log_tail` (`protocol.md`
+6.2 and Conformance), never the digest of the whole file. `compare A B` checks two records agree on
+every case without `one_system`. A system with no record makes U7 pending for every case, with the reason; Windows stays so until hosted
 runners are allowed (`docs/plan.md`, "Comes back to you later").
 
 ## 6. Running
@@ -419,8 +444,5 @@ The case form does not depend on these; each is an ordinary `via` action once it
 
 | Open | Owner, decided by |
 |---|---|
-| `via eval`, `via vectors`, and `--window` on `build` | `numbers.md`, `build.md` 14, with the runner in M0 step 5. |
-| The command-line form for kernel cases, and the byte form of its lists | `geometry.md` 2.5 and 3, with the runner in M0 step 5. |
-| How `merge`, `pack list` and `query` hand their diagnostics to the runner | `build.md` 14 (section 3.5 above). |
 | The test switch that stops a build after its first rename (`build.md` case 24) | `build.md`, with the case. |
 | Where the runner lives | The lead, M0 step 5 (section 6). |

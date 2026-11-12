@@ -11,9 +11,9 @@ What lands when (plan, "Order notes": the surfaces chapter is M1, connectors M5)
 
 | Milestone | What of this chapter |
 |---|---|
-| M1 | The terrain only. The four questions on the terrain. Meetings of path ends with places on the terrain (`ford`). `surface.two_terrains`, `surface.gap`, `surface.empty_region`, `surface.host_missing`. Kind surfaces and kind mounts are `doc.not_yet`. |
+| M1 | The terrain only. The four questions on the terrain. Meetings of path ends with places on the terrain (`ford`). `surface.two_terrains`, `surface.empty_region`, `surface.host_missing`. Kind surfaces and kind mounts are `doc.not_yet`. |
 | M2 | The four questions through the SDK, in a step's view (2.6). |
-| M3 | Kind surfaces, kind mounts, `meets`, the place, height and namespace checks. Assumes Open 2. |
+| M3 | Kind surfaces, kind mounts, `meets`, the place, height (`surface.gap`: in M1 every meeting is a path end on the terrain, so the gap is always 0, `fields.md`) and namespace checks. Assumes Open 2. |
 | M5 | `connector`, facing, `turn`, `surface.unmet`; asset mounts with connectors; floors and stairs. |
 
 ## 1. What a surface is
@@ -27,13 +27,12 @@ it. No new noun (R25). "Owner" in this chapter is prose only, never a key: `owne
 
 | Surface | Owner | Bound | Height comes from | How it is evaluated |
 |---|---|---|---|---|
-| terrain | none: a world field | the extent | the field's `base`, `then` rows and kind effects (`fields.md`, `authority.md`) | sampled at the posts, interpolated between them as `fields.md` defines |
+| terrain | the world (R31): a world field | the extent | the field's `base`, `then` rows and kind effects (`fields.md`, `authority.md`) | sampled at the posts, interpolated between them as `fields.md` defines |
 | a kind surface on a path feature (a deck, a ramp) | the feature | the strip of 1.2 | the surface's `base` formula (1.1) | from the formula, at the point asked |
 | a kind surface on a region feature (a floor, a platform) | the feature | the region | as above | as above |
 | the floors a volume yields | (open): item 6 | (open) | (open) | (open) |
 
-The terrain has no owning feature. R25 reads "owned by a feature: terrain over the extent"; that
-wording is loose, and section 8 asks the lead to correct it.
+The terrain is owned by the world, not by a feature (R31).
 
 Rules:
 
@@ -54,8 +53,8 @@ Rules:
    `base` keeps its field meaning, the value before any row; a kind surface has no rows, so its base
    is its value. It has no `then` rows. The surface is the place `<feature>.<name>`.
 3. **One namespace.** A kind's mounts and surfaces share one namespace, so `<feature>.<name>` names
-   exactly one. A surface and a mount with one name is `surface.name_clash`. `start` and `end` are
-   reserved for surfaces as for mounts (`identity.reserved`).
+   exactly one. A surface and a mount with one name is `surface.name_clash`. `start`, `end` and
+   `ground` are reserved for surfaces as for mounts (`identity.reserved`).
 4. **Owner shape.** A path owner needs `bound`; a region owner must not have one (the region is the
    bound); a point owner cannot own a surface. Any other combination is `surface.owner_shape`. A
    bound that varies along `t` is (open), item 3.
@@ -97,7 +96,9 @@ is the source.
 ### 1.2 The bound of a path owner
 
 - The bound is `stroke(path, bound, bound, join = round, cap = butt)` (`geometry.md` 3.4): an exact
-  region on the millimetre lattice (R24).
+  region on the millimetre lattice (R24). `bound` is converted to millimetres once,
+  `round_half_even(bound * 1000)`, by `numbers.md` 3.1's rule for computed positions; a result of 0
+  is `surface.bound`.
 - A point is inside when the exact polygon test on the lattice puts it inside or on the edge. The
   polygon decides, not `d`: on a round join the chords stray up to 5 mm, so the formula may see `d`
   up to 5 mm above `bound`.
@@ -149,9 +150,10 @@ The height and gradient of one surface.
 
 **Terrain.** `z` is `fields.md`'s bilinear interpolant. The gradient is that interpolant's, exactly:
 
-- The cell is `i = floor((x - x0) / r)`, `j = floor((y - y0) / r)`, in integer millimetres, so a
-  point on a line between two cells takes the cell to its east, then to its north. On the extent's
-  east or north edge there is none, so it takes the cell to the west or south (`i = n - 1`). Ours.
+- The cell is `fields.md` 1.2's, the one definition: `i = min(floor((x - x0) / r), nx - 2)`, and
+  `j` likewise with `y0` and `ny`, in integer millimetres. So a point on a line between two cells
+  takes the cell to its east, then to its north, and a point on the extent's east or north edge
+  takes the last cell.
 - With `u = (x - x_i) / r`, `v = (y - y_j) / r` (integer millimetre differences, one f64 division
   each, `r` in millimetres) and the four posts `z00`, `z10`, `z01`, `z11` read as f64, and `R` the
   resolution in metres:
@@ -204,12 +206,12 @@ Every meeting in the caller's view (2.6). Takes no input; it reads the meetings 
 
 | Column | Type | Meaning |
 |---|---|---|
-| `a`, `b` | string | The two places, in the order 3.3 gives. |
+| `a`, `b` | string | The two mounts, in the order 3.3 gives. |
 | `x`, `y` | i64 mm | The meeting's plan point (`a`'s). |
 | `z_a`, `z_b` | f64 | Each side's height. |
 | `gap` | i64 mm | `abs(round_mm(z_a) - round_mm(z_b))`. |
 | `face_a`, `face_b` | i64 millidegrees, or null | Each side's world bearing; null where a side has no face. |
-| `turn` | i64 millidegrees, or null | 3.4. Null for two mounts, or where the place has no face. |
+| `turn` | i64 millidegrees, or null | 3.4. Null for a `meets` pair, or where the place has no face. |
 | `connector_a`, `connector_b` | string, or null | Each side's connector. |
 
 Rows are ordered by `a`, then `b`, bytewise.
@@ -230,8 +232,9 @@ Rows are ordered by `a`, then `b`, bytewise.
   below, the terrain as that view settles it (`fields.md` 6.2, one evaluation per distinct view). A
   kind surface whose owner lies above the step's layer is absent, as a name above it is absent
   from `build.features` (`protocol.md` 3.3).
-- `meetings()` is available at `lint` and `export` only. Meetings are checked after grounding, so
-  at `generate` it is `surface.too_early` (error), naming the step.
+- `meetings()` is available at `lint` and `export` only, which read the finished build (R29).
+  Meetings are checked after grounding, so at `generate` it is `surface.too_early` (error), naming
+  the step.
 - The build itself asks every question over the whole world.
 
 ### 2.7 A formula that fails at a point
@@ -280,24 +283,31 @@ connector = "<word>"      # (new, M5) what joint it is; free word, compared only
 
 `[asset.<id>.mount.<name>]` has `at` and `face` in the asset's frame (`assets.md`). Its plan point is
 `at` through the instance's transform. It lies on the surface its instance stands on (4.1), and its
-height is `sample` of that surface there. It has no `surface` key and, until M5, no connector: a
+height is `sample` of that surface there. Its `at` and `face` are pack facts, so a pack swap may move
+it (R30): its meetings are checked again and what follows is reported. It has no `surface` key and,
+until M5, no connector: a
 door's "no path reaches it" check is a library lint until then (section 8, challenge 48).
 
 ### 3.3 Meetings
 
-A meeting is a pair of places. There are two ways to make one, and no other:
+A meeting is a pair of mounts (R31). There are two ways to make one, and no other:
 
 | Pair | Made by | `a`, `b` |
 |---|---|---|
 | Two mounts of one owner | `meets` | the two mounts, ordered bytewise |
-| A path end and a place | `starts_at` or `ends_at` (`vocabulary.md`) | `<path>.start` or `<path>.end`, and the place |
+| A path end and a place | `starts_at` or `ends_at` (`vocabulary.md`) | `<path>.start` or `<path>.end`, and the place's default mount |
+
+- **Default mount.** A path end is a mount of its path. A mount or a path end is its own default
+  mount; a point feature's is its point on the terrain, with no face and no connector; an
+  instance's or a set item's is its origin, on the surface it stands on (4.1), with no face and no
+  connector; a place inside an import's is that of the thing it names (M4).
 
 - A path end lies on its path's own kind surface when its kind owns exactly one, on the terrain when
   it owns none, and is `surface.which` (error) when it owns two or more. So a ramp whose end rests on
   another feature's deck is a path ending at a mount of that feature: a meeting between two owners,
   with no new key.
-- The place may be a mount of any feature, a mount of an instance, a path end, a point feature, or a
-  place inside an import (R8, M4). A point feature lies on the terrain, with no face and no
+- The place may be a mount of any feature, a mount of an instance, a path end, a point feature, an
+  instance or a set item, or a place inside an import (R8, M4). A point feature lies on the terrain, with no face and no
   connector.
 - Two surfaces never meet anywhere else. Bounds that touch or overlap make no meeting. A path meets
   anything at its ends only (`vocabulary.md`, `starts_at`), so a path never meets a surface along
@@ -308,7 +318,7 @@ A meeting is a pair of places. There are two ways to make one, and no other:
 | Check | Rule | Fails as | From |
 |---|---|---|---|
 | Same place | Both sides have one plan point on the lattice. A path end is put there by construction; two mounts must be written so. | `surface.apart` | M3 |
-| Same height | `gap = 0`. | `surface.gap` | M1 |
+| Same height | `gap = 0`. | `surface.gap` | M3 |
 | Same joint | Where both sides have a connector, they are equal. A path end takes its kind's `connector` **(new)**. | `surface.connector` | M5 |
 | Direction | Two mounts with faces face opposite ways: `(face_a - face_b)` mod 360 000 is 180 000 millidegrees. | `surface.facing` | M5 |
 | Answered | A mount with a connector is the place of at least one path end, or meets a mount with the same connector. A `meets` pair whose other side has no connector does not count. | `surface.unmet` | M5 |
@@ -321,9 +331,8 @@ A meeting is a pair of places. There are two ways to make one, and no other:
   item 4.
 - **What sets each height**, for `surface.gap`: for a kind surface, its `base` key (file and line);
   for the terrain, the last row or effect in R21 order with mask above 0 at any of the four posts
-  around the point, else the field's `base`. This is `vocabulary.md`'s "the text that wrote the
-  value last". It needs the engine to keep a last writer per post, a cost `fields.md` must carry
-  (section 8).
+  around the point, else the field's `base`, found by `fields.md` 6.4 (recomputed on demand, never
+  stored).
 
 ### 3.5 A path interrupted by another owner's surface
 
@@ -409,8 +418,9 @@ checks. For surfaces it reads:
 4. **Grounding.** Every `z` from the final surfaces; then relief.
 5. **Meetings, then checks.**
 
-A footprint whose position depends on a field its own feature writes is `graph.md`'s cycle (`rules.md`
-3.4, case r24). Scatter density reads fields, so scatters come after step 2 and carry no `ground`.
+A footprint whose position depends on that footprint's own shape, or on a `then` row that reads it,
+is `graph.cycle`. Its kind's effects on a field a shape reads are no cycle: shapes read the head view,
+which holds no effect (`authority.md` 2.3). Scatter density reads fields, so scatters come after step 2 and carry no `ground`.
 
 ## 5. Ours and the engine's
 
@@ -434,11 +444,12 @@ Kinds here are library text (principle 5); their attributes are illustrative. Fo
 ```toml
 [field.height]
 role = "surface"
-base = "= 20 + 0.06 * y + 5 * fbm(110, 3)"
+base = "= 20 + 0.06 * y + 5 * fbm(110, 3, seed = 'hills')"
 
 [kind.pad.effect.level]                   # library text
-field = "role:surface"
-value = "= under('mean')"
+field  = "role:surface"
+value  = "= under('mean')"
+radius = 3
 
 [instance.cottage]
 asset  = "house_low"
@@ -522,7 +533,7 @@ path      = [[256, 172]]
 
 - `surfaces_at` at the middle of the river gives two rows: `height` (the bed) and
   `mill_bridge.deck` at 24.5. The headroom lint reads both.
-- **The levelled patch.** `t` is clamped at the path's ends (`geometry.md` 2.5), so the mask is 1
+- **The levelled patch.** `t` is clamped at the path's ends (`numbers.md` 5.5, `geometry.md` 2.6), so the mask is 1
   for `t <= 0.05` (the first metre of the deck) and behind the west end. With the `d` factor, each
   end gets the ground at `deck_z` within 3 m of the deck's line and of the end point, fading out by
   6 m: a strip under the deck's first metre plus a half-disc behind the bank end. Likewise at the
@@ -567,8 +578,11 @@ the floors a volume yields (item 6) are decided in M5.
 via query WORLD surfaces_at|sample|relief|meetings --in FILE --out FILE
 ```
 
-- It builds `WORLD` (or reuses the store) and answers over the whole world. `meetings` takes no
-  `--in`.
+- Flags besides `--in` and `--out`, as `build.md` 14 defines them: `--change`, `--lib`, `--store`,
+  `--sdk`, `--diagnostics`.
+- It builds `WORLD` with its changes (reusing the store) and answers over the whole world. It runs
+  generate steps but no lint or export step. It writes no build directory, run report or
+  `.previous`. `meetings` takes no `--in`.
 - Both files are canonical JSON (`documents.md` 8): one object whose keys are column names, each a
   list. `surface` in `sample` and `relief` is a key holding one string; `regions` in `relief` is a
   list of rings, each a list of `[x, y]` in integer millimetres.
@@ -577,7 +591,8 @@ via query WORLD surfaces_at|sample|relief|meetings --in FILE --out FILE
   writes them; `inside` true or false; `surface`, `a`, `b`, `connector_a`, `connector_b` strings. A
   missing value is JSON `null`.
 - Comparison: integers, strings and booleans exactly; doubles bit for bit (R26).
-- Exit 0 with output, or 1 with `diagnostics.json` (2.7).
+- Exit 0 with `--out` written, or 1 with its diagnostics on standard error and in the
+  `--diagnostics` file (`build.md` 14; 2.7 here); no `--out` file is written.
 
 ## Diagnostics
 
@@ -606,7 +621,7 @@ has a place.
 | `surface.off_bound` | warning | the instance | Part of its footprint lies outside its surface's bound; the share. | M3 |
 | `surface.ground_off_terrain` | error | the instance | `ground` on an instance that stands on a kind surface. | M3 |
 | `surface.apart` | error | the meeting's `a`; `b` in `related` | Two paired mounts lie at different plan points; gives both. | M3 |
-| `surface.gap` | error | the meeting's `a`; `b` in `related` | The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: "make the two sides equal: change <a> or <b>, or add an effect of <owner> that sets the ground to <z>". | M1 |
+| `surface.gap` | error | the meeting's `a`; `b` in `related` | The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: "make the two sides equal: change <a> or <b>, or add an effect of <owner> that sets the ground to <z>". | M3 |
 | `surface.connector` | error | the meeting's `a`; `b` in `related` | Different connectors; names both. | M5 |
 | `surface.facing` | error | the meeting's `a`; `b` in `related` | Two paired mounts do not face opposite ways; both bearings. | M5 |
 | `surface.unmet` | warning | the mount | A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: `ends_at = \"<place>\"`". | M5 |
@@ -617,8 +632,9 @@ Each case runs through the command line (R20), with `via query` for the question
 Every case also checks that a clean build equals the incremental one (`graph.md`). Each case's
 world, inputs and expected output live under `spec/vectors/surfaces/<case>/`. The cases share one
 test library, the folder `spec/vectors/surfaces/lib/surfaces_test/`, whose `kinds.toml`
-(`documents.md` 4) holds the `lane`, `crossing` and `pad` kinds of section 6. Each case's world has
-`include = ["surfaces_test"]` and runs with `--lib spec/vectors/surfaces/lib` (`build.md`). The
+(`documents.md` 4) holds the `lane`, `crossing` and `pad` kinds of section 6. M1 cases run on
+`ford` or a world of their own; each M3 case's world has `include = ["surfaces_test"]` and runs
+with `--lib spec/vectors/surfaces/lib` (`build.md`). The
 folder's contents are (open): written with the code checks (plan, M0 step 5).
 
 | Case | Milestone | Input | Action | Must hold |
@@ -687,9 +703,9 @@ folder's contents are (open): written with the code checks (plan, M0 step 5).
 1. **Key words.** `[kind.<k>.surface.<name>]`, `bound`, on a mount `surface`, `meets`, `connector`
    (also on a kind), and the questions `surfaces_at`, `sample`, `meetings`. Decided by the lead
    adding them, or other words, to the vocabulary before any code reads them.
-2. **Milestone.** `vocabulary.md` section 5 puts kind mounts in M5, but `docs/plan.md` puts rows 34,
-   38 and 63 (bridges, a loop ramp, a deck that meets the ground) in M3. Decided by the lead before
-   M3 starts; this chapter assumes M3, which also changes `vocabulary.md` section 5.
+2. **Milestone.** `vocabulary.md` section 5 puts kind surfaces and mounts in M3, as `docs/plan.md`
+   rows 34, 38 and 63 (bridges, a loop ramp, a deck that meets the ground) need, once the lead
+   accepts this point. Decided by the lead before M3 starts; this chapter assumes M3.
 3. **A bound that varies along `t`** (a ramp that widens). Decided by challenge 38, the loop ramp.
 4. **An allowed step at a meeting** (a kerb). Decided by the first case that needs one, in M3 or M5;
    until then a meeting is exact.
@@ -716,13 +732,14 @@ For the lead; this chapter does not edit other files.
 
 | Chapter | Edit |
 |---|---|
-| `docs/doctrine.md` R25 | Three corrections, one proposed wording. (a) "owned by a feature: terrain over the extent" is loose: the terrain has no owning feature. (b) "Where two surfaces meet is a pair of mounts" misses the second kind of meeting in 3.3, a path end at a place, which is every meeting `ford` has in M1. (c) A kind surface is a bounded field that no selector, row, effect or `f()` reaches (1, rule 5); R25 should say so, or "field" invites the reading that it does. Proposed: "A surface is a bounded field with the role `surface`. The terrain is the one world surface, over the extent. Every other surface is declared on a kind and owned by each feature of it (a deck over its strip, a floor at a level, the floors a volume yields); it is reached only through its owner: no selector, row, effect or field read touches it. Two surfaces meet only at a meeting: a pair of mounts of one owner, or a path end at a place. No new noun. Placement, grounding, reach and export all ask the same four questions of it." |
+| `docs/doctrine.md` R25 | R31 settled the owner and the meetings. Still asked: a kind surface is a bounded field that no selector, row, effect or `f()` reaches (1, rule 5); R25 should say so, or "field" invites the reading that it does. |
+| `vocabulary.md` (R31) | "Default mount" as 3.3 defines it. |
 | `vocabulary.md` | Add the keys and questions of Open 1. Widen `base` to a kind surface. Selectors (`role:`, `tag:`) match world fields only. A kind mount's `face` is a number relative to travel; the "word without `on`" rule does not reach it. Change report: kind surfaces and mounts move with their owner and are not entries. Section 5: a second top-level surface is `surface.two_terrains`, not `doc.not_yet`; kind surfaces and mounts M3 (Open 2). 2.1: after a feature, a mount or a surface of its kind, one namespace. |
 | `identity.md` | Kind surfaces are places; `start` and `end` are reserved for them too. |
-| `fields.md` | The surface role row: a second surface field is `surface.two_terrains`. Keep a last writer per post for diagnostics (3.4). |
+| `fields.md` | The surface role row: a second surface field is `surface.two_terrains`. |
 | `formulas.md` | Rows in 6.1 for surface `base` (rate per point) and `bound` (per feature), as 1.1. |
 | `rules.md` | 8.2: measure relief with `surfaces.md`'s `relief()`, not the vertex, midpoint and origin samples; `place.relief` reads `max_relief`. |
 | `assets.md` | "Sink and relief": `surfaces.md` measures, `rules.md` owns `place.relief`. |
 | `geometry.md` | None needed: kind mount faces are numbers, so the word list is unchanged. |
-| `build.md` | Section 14: `via query` (section 7). |
+| `build.md` | Section 14: `via query`'s row and the owner-flags line list its flags as section 7 does (`--in`, `--out`, `--change`, `--lib`, `--store`, `--sdk`, `--diagnostics`); it writes no build directory. |
 | `docs/challenges.md` | Row 48: asset mounts have no connector until M5, so "no path reaches its door" is a library lint until then. |

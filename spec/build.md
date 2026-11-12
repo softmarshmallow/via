@@ -304,7 +304,7 @@ The core knows no water (principle 5). A library that hands water to a loader wr
 surface height field, with a `tag` the library documents (`fields.md` 2.2), whose value where dry
 is the ground's height itself, so depth is `water - ground` and never below 0. The build writes it
 like any other field. Drawing it is a loader option, named by that tag (15.1, `water`); `ford`'s
-viewer sets it. The spike's `water` raster held 0 where dry, which meant "below sea" in a valley and
+sheet passes `--option water=tag:water_level` (15.1). The spike's `water` raster held 0 where dry, which meant "below sea" in a valley and
 "no water" on a hill. Whether a library's water is a bounded field (6.3) is that library's choice.
 
 ## 7. Assets and materials
@@ -388,7 +388,8 @@ produced, guides included, sorted by name:
 resolved, as `{ "at": [x, y, z], "name": "<place name>" }`: `name` as the text wrote it, `at` the
 point `authority.md` 1.2 gives for it, in the units of `at` above. The core resolves it; a reader
 reads `at` and never resolves a name itself. The review library's bookmark `toward = "ford"` is
-written `"toward":{"at":[153.628,115.489,26.5],"name":"ford"}`.
+written `"toward":{"at":[153.63,115.48,…],"name":"ford"}`: the ford's lattice point by `numbers.md`
+5.5, (153630, 115480) mm, its height left out here.
 
 `footprints` holds one entry per footprint feature, sorted by `instance`: `instance` (its instance's
 name), `kind`, `authority`, `layer`, `pieces` and `attrs`, as above.
@@ -409,9 +410,9 @@ library documents what its output's features hold; a loader reads the outputs it
 the rest.
 
 Bookmarks are such an output: the review library's `bookmark` kind declares `output = "bookmark"`
-and documents its attributes: `toward`, the place looked at, a name attribute (9.1); and an eye
-height (1.7 m by default). The eye height's key name is that library's, documented in `lib/review`
-in M1. Turning a bookmark into a camera is the Godot loader's work (15.1). The spike's
+and documents its attributes: `toward`, the place looked at, a name attribute (9.1); and
+`eye_height`, a number of metres, 1.7 by the kind's default in `lib/review`, so `attrs` always holds
+it for that kind. Turning a bookmark into a camera is the Godot loader's work (15.1). The spike's
 compiler knew the words `bookmark` and `poi`; v0's core knows neither.
 
 What the spike's `[look]` held that is a fact of the world (time of day, sun direction: doctrine
@@ -420,9 +421,10 @@ section 7) reaches a loader the same way, as a library output's attributes, pass
 
 ### 9.3 Meetings
 
-`meets.json` is `{ "meets": [ ... ] }`: one row per meeting of two surfaces, the columns and order
-of `surfaces.md` 3.3. In M1 its rows are path ends meeting places on the terrain (`ford`); kind
-mounts add rows from M3. A loader joins navigation only there.
+`meets.json` is `{ "meets": [ ... ] }`: one row per meeting, the columns and order of `surfaces.md`
+2.4. Every meeting is a pair of mounts (R31); a path that ends at a place meets that place's default
+mount. In M1 its rows are path ends meeting places on the terrain, the world's surface (`ford`);
+kind mounts add rows from M3. A loader joins navigation only there.
 
 ### 9.4 The player map (M6)
 
@@ -457,8 +459,8 @@ Two kinds of diagnostic, kept apart so the same text gives the same `diagnostics
 
 | Kind | Codes | Where |
 |---|---|---|
-| World | Every node's diagnostics (`graph.md` 3.4), the reading steps' (`documents.md` 8), and the checks'. | `diagnostics.json`; the terminal; `--json`. |
-| Run | `identity.no_previous`, `graph.build_file_restored`, `graph.store_corrupt`, `graph.store_unavailable`, `graph.step_unstable`, `graph.busy`, and every `build.*` code of this chapter except `build.chunk_not_multiple` and `build.internal`. | The run report (11.3); the terminal; `--json`. Never `diagnostics.json`. |
+| World | Every node's diagnostics (`graph.md` 3.4), the reading steps' (`documents.md` 8), and the checks'. | `diagnostics.json`; the terminal; `--json`; `--diagnostics`. |
+| Run | `identity.no_previous`, `identity.reselected`, `graph.build_file_restored`, `graph.store_corrupt`, `graph.store_unavailable`, `graph.step_unstable`, `graph.busy`, and every `build.*` code of this chapter except `build.chunk_not_multiple` and `build.internal`. | The run report (11.3); the terminal; `--json`; `--diagnostics`. Never `diagnostics.json`. |
 
 - `diagnostics.json` is `diagnostics.md` 7's document, with world diagnostics only. Its `status`
   is the exit status the world diagnostics alone give.
@@ -470,7 +472,7 @@ Two kinds of diagnostic, kept apart so the same text gives the same `diagnostics
 - It is written whenever a build directory is known. When the world's `name` cannot be read (a
   syntax error, no `name`), the default `--out` falls back to `build/<world file stem>` beside the
   world file (section 14). When no directory can be written (`graph.busy`, `build.not_a_build`,
-  `build.store_inside`), the diagnostics go to the terminal and `--json` only.
+  `build.store_inside`), the diagnostics go to the terminal, `--json` and `--diagnostics` only.
 
 ### 11.2 `changes.json` and `.previous`
 
@@ -554,7 +556,7 @@ There is one row for each maker and table with a thing in either build, entries 
 against an identical baseline lists every row with zeros (`identity.md` case 42). Rows are sorted by
 `maker`, `null` first, then by `table`.
 
-**Example.** `ford`, then `ford` with `downstream`. Two of the entries and the whole summary are
+**Example.** `ford`, then `ford` with `downstream`, both with `--out build/ford`. Two of the entries and the whole summary are
 shown, spread over lines for reading; the file is one canonical line. The numbers are illustrative;
 the M1 build records the real report as a vector.
 
@@ -565,14 +567,14 @@ the M1 build records the real report as a vector.
     {"after": {"at": [144.833, 56.394, 22.75], "box": [144.833, 56.394, 144.833, 56.394],
                "values": {"attrs.toward": {"at": [155.734, 51.606, 22.25], "name": "ford"}}},
      "before": {"at": [142.874, 115.805, 27.375], "box": [142.874, 115.805, 142.874, 115.805],
-                "values": {"attrs.toward": {"at": [153.628, 115.489, 26.5], "name": "ford"}}},
+                "values": {"attrs.toward": {"at": [153.63, 115.48, 26.5], "name": "ford"}}},
      "causes": [{"cause": "feature.ford.on", "digests": null, "file": "world.toml", "in": "this",
-                 "line": 83, "via": ["shape:ford/v:build", "attr:at_ford"]}],
+                 "line": 74, "via": ["shape:ford/v:build", "attr:at_ford"]}],
      "facts": [], "keys": ["attrs.toward"], "name": "at_ford", "region": null,
      "table": "feature", "what": ["moved", "changed"]},
     {"after": null, "before": null,
      "causes": [{"cause": "feature.ford.on", "digests": null, "file": "world.toml", "in": "this",
-                 "line": 83, "via": ["shape:ford/v:build", "field:height/v:build/w:256.0.385.129"]}],
+                 "line": 74, "via": ["shape:ford/v:build", "field:height/v:build/w:256.0.385.129"]}],
      "facts": [], "keys": ["samples"], "name": "height",
      "region": {"box": [141, 35, 164.5, 125], "most": 1.25, "posts": 3517,
                 "windows": [{"chunk": [2, 0], "window": [282, 70, 330, 129]},
@@ -608,18 +610,21 @@ attribute, not through `lane_west`. In the summary, `at_ford` and `to_door` coun
 - Without a baseline, `against` is `null`. When `.previous` names none, `identity.no_previous`
   (info) says so; when it names one the store no longer holds (the store deleted, or another
   `--store`), `build.baseline_missing` (warning) says so.
+- **Across change sets.** The default `--out` differs per change set (section 14), so a change
+  report from one change set to another needs a shared `--out` or `--against`.
 - Not written when the build has an error (`diagnostics.md` 4).
 
 ### 11.3 The run report
 
-`graph.md` 6.2 fixes its contents. It is written beside the directory, as `<directory>.run.json`
+`graph.md` 6.3 fixes its contents. It is written beside the directory, as `<directory>.run.json`
 (`build/ford.run.json`), never in it, because times differ between runs (`numbers.md` 9). It adds
 `threads`, the operating system and architecture, the run diagnostics (11.1), and for each step the
 record R26 asks for: its command, exit status, and the digests of what it read and returned.
 
 ### 11.4 Export steps (M6)
 
-An export step (R22) writes only under `export/<step id>/` (`protocol.md` hands it the folder). Its
+An export step (R22) reads the finished build (R29) and writes only under `export/<step id>/`
+(`protocol.md` hands it the folder). Its
 files are listed in `files` with digests and are in the `id`: what the step wrote is part of what a
 reader is handed.
 
@@ -678,7 +683,7 @@ to either without a new `format` or `epoch` fails `graph.md`'s epoch guard.
   `<directory>.old`, the new one into place, the old one deleted. A reader never sees half a build.
 - **An unchanged rebuild writes nothing.** When the build key equals `run.key`, every file of
   `files` and `run.reports` matches its record, and no `--against` is given, no node is touched
-  (`graph.md` 6.1) and the directory is left as it is, `changes.json` included. When a file
+  (`graph.md` 6.2) and the directory is left as it is, `changes.json` included. When a file
   differs, the whole directory is written again by the swap above, the files copied from the store
   into the partial folder, with `graph.build_file_restored` naming each file that differed. No file
   is patched in place.
@@ -724,15 +729,28 @@ owns what it does. A form that chapter has not settled is marked (open). Exit st
 | `via query WORLD Q --in FILE --out FILE` | Answers one of the surface questions (`surfaces_at`, `sample`, `relief`, `meetings`) over the whole world. | `surfaces.md` 7 | M1 |
 | `via trust WORLD` | Lists the world's steps and their trust digests, and records trust. | `protocol.md` 6.3, 7 | M1 |
 | `via config program NAME PATH` | Records a named program's path in the user's `config.toml`. | `protocol.md` 6.1, 6.3 | M1 |
-| `via eval WORLD --field F [--window i0,j0,i1,j1] --out FILE` | Evaluates one scalar field in the build's own view, over one window or the whole extent, and writes it as an array file. Below. | `numbers.md` 6 | M1 |
+| `via eval WORLD --field F [--window i0,j0,i1,j1] [--tile N] --out FILE` | Evaluates one scalar field in the build's own view, over one window or the whole extent, and writes it as an array file. Below. | `numbers.md` 6 | M1 |
 | `via vectors FILE` | Computes every vector of a vector file with the binary's own numerics and prints what it got. Below. | `numbers.md` 10 | M1 |
+| `via kernel OP --in FILE --out FILE` | Runs one geometry operation on the shapes in a file; a test command, no build uses it. | `geometry.md` 7 | M1 |
 
 The glTF reader is not a `via` command: it lives under `engines/gltf/` (15.3).
 
 Flags of commands other than `build`, `merge`, `lock`, `check`, `eval` and `vectors` are their
 owner's and are listed there: `via pack list`'s `--taxon` and `--tag` (`assets.md` 8.2), `via trust`'s `--change`,
 `--yes` and `--json` (`protocol.md` 6.3), `via query`'s `--in` and `--out` (`surfaces.md` 7),
-`via explain`'s `--json` (`diagnostics.md` 2).
+`via explain`'s `--json` (`diagnostics.md` 2), `via kernel`'s `--in` and `--out` (`geometry.md` 7).
+`--diagnostics` is on every command.
+
+**Where diagnostics go.** Every command prints its records to standard error (`diagnostics.md` 7).
+`--diagnostics FILE` also writes `diagnostics.md` 7's `--json` document to `FILE`: world and run
+diagnostics, `status` the process's exit status, written on every exit status, 2 included. It is
+honoured wherever it appears among the arguments, as `--json` is. It is the one channel for a
+command whose standard output is its result: `via merge`, `via pack list` and `via vectors`, on
+which `--json` is `cli.usage`, naming it, with the hint `--diagnostics`. `via merge` has no build
+directory and writes no `diagnostics.json`. A `FILE` inside `--out` is `cli.usage`: the build
+directory is replaced whole. A `FILE` that cannot be written is `build.write_failed`, on standard
+error only. The conformance runner passes `--diagnostics` to every `via` action and reads both
+kinds of record from it (`conformance.md` 3.5).
 
 Flags, on `build`, `merge` and `lock` where they apply:
 
@@ -742,7 +760,7 @@ Flags, on `build`, `merge` and `lock` where they apply:
 | `--lowered` | On `merge`: prints the document after forms are lowered (`rules.md` 10). (open): whether `merge` prints this, or the lowered statements are read from the graph, is decided with `rules.md`'s first form in M3. |
 | `--rerun-step ID` | On `build`: runs that step even when its trace matches, and compares (`graph.md` 5.2). Repeatable. Not in the build key: it changes no output unless the step is unstable, which `graph.step_unstable` reports. |
 | `--step-deadline SECONDS` | On `build`: how long a step call may run before it is cancelled; default 600 (`protocol.md` 6.2). Not in the build key. |
-| `--window N` | On `build`, a test flag (`formulas.md` Conformance): every `field` and `distance` node is evaluated in windows of `N` by `N` posts, `N` at least 1, tiled from the extent's south-west post, the last in each direction narrower, each with its halo (`numbers.md` 6). The build reads no value from the store (it writes to it as usual) and skips the unchanged check of section 13, so every field is computed in windows. It changes no byte: it is in no key, not in `run.flags` and in no build file. It shares its name with `via eval`'s `--window`, which takes four numbers; the two commands parse it apart. |
+| `--sdk DIR` | On `build`, `lock`, `eval`, `query`, `merge` and `trust`: a working copy of the SDK in place of the carried one; its digest is in every step's static key and trust digest (`protocol.md` 8.1). |
 | `--change C` | Request a change. Repeatable; order changes nothing (changes commute). `C` holding a `.` or `/` is a change file's path, otherwise a change name: ids hold neither (`vocabulary.md` 2.1), so the two never mix. |
 | `--out DIR` | The build directory. Default: `build/<name>` beside the world file, with `+<change>` appended for each requested change, sorted (a file by its stem). When `name` cannot be read, `<name>` is the world file's stem. |
 | `--lib DIR` | A library root (`documents.md` 4), searched in the order given. Repeatable. |
@@ -751,10 +769,12 @@ Flags, on `build`, `merge` and `lock` where they apply:
 | `--against DIR` | The change report's baseline (11.2). |
 | `--stand-ins` | (M2.) Build every model asset as its accepted stand-in (`assets.md` 9). Needs the facts file; without it, `build.no_facts` (error). In the build key and `run.flags`. |
 | `--fail-on CODE` | Makes this warning code an error for this run (exit 1). Repeatable. For unattended checks, such as `--fail-on asset.revised` (M2, `assets.md` 4). In the build key and `run.flags`. A name that is not a registered code is `cli.unknown_code` (exit 2), naming the nearest code. A registered code that is not a warning is `cli.usage` (exit 2), naming the nearest warning code. A step code is accepted as written (`diagnostics.md` 3). A world cannot do this (`diagnostics.md` 3). |
-| `--json`, `--info` | `diagnostics.md` 7, with 11.1. |
+| `--json`, `--info` | `diagnostics.md` 7, with 11.1. `--json` is refused where standard output is the result (above). |
+| `--diagnostics FILE` | On every command: above. |
 
-**`via eval WORLD --field F [--window i0,j0,i1,j1] --out FILE`** takes `--change` and `--lib` as
-`build` does, and no other flag.
+**`via eval WORLD --field F [--window i0,j0,i1,j1] [--tile N] --out FILE`** takes `--change`,
+`--lib`, `--sdk`, `--json` and `--diagnostics` as `build` does, and no other flag. It is the one
+way to test windowed evaluation (principle 10).
 
 - `--window` is a window of `numbers.md` 6 in posts: `i0`, `j0` included, `i1`, `j1` excluded, as
   in `graph.md`'s node ids. Without it, the whole extent. An empty window, or one not inside the
@@ -762,8 +782,14 @@ Flags, on `build`, `merge` and `lock` where they apply:
 - It writes `FILE` as an array file (3.2): `<f4`, shape `(j1 - j0, i1 - i0)`, row 0 the window's
   south row. Its bytes are what the build would write for those posts.
 - It uses no store and writes no build directory, run report or `.previous`: every node it needs
-  is computed, so a cached value cannot hide a difference. It is evaluated as one window with its
-  halo, never cut by chunks.
+  is computed, so a cached value cannot hide a difference. Without `--tile` it is evaluated as one
+  window with its halo, never cut by chunks.
+- `--tile N`, `N` at least 1: every `field` and `distance` node it computes is evaluated in windows
+  of `N` by `N` posts, tiled from the window's south-west post, the last in each direction
+  narrower, each with its halo (`numbers.md` 6). It changes no byte of `FILE` or of the
+  diagnostics. `formulas.md` cases 45 and 46 compare `--tile 1` with `--tile 16`.
+- Its world diagnostics are those of the nodes it computed, by `formulas.md`'s rule of one record
+  per formula and owner, whatever the windows; `--diagnostics` writes them.
 - `F` must be a scalar field; a `weights` field, or a name that is no field, is `cli.usage`, naming
   the nearest scalar field. A world with an error gives the build's diagnostics, exit 1, and no
   `FILE`.
@@ -836,9 +862,9 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | An instance name | The node name where the instance has a node. `.` becomes `-`, since a Godot node name may not hold `.`; names never hold `-`, so the mapping reverses. `#` and `_` are kept. Names in `names.txt` keep each `MultiMesh` row findable. |
 | Re-import (M6) | Nodes are matched by name: a name in both builds keeps its node and its editor-set properties the loader does not own; a name gone removes its node. |
 | A feature | Nothing by default. With `features`: a `Path3D` with a `Curve3D` for a path, a `Marker3D` for a point, a `Polygon` in metadata for a region; `attrs` as metadata. |
-| The review library's `bookmark` output | A `Camera3D` under a `bookmarks` node, named after the bookmark (as an instance name, below): the eye at the feature's `at` raised by the eye height, looking at `toward`'s `at` (9.1), with +Z of the world up. The loader reads `at` and never resolves a name. A `toward` that is missing or not of the form `{ "at", "name" }`, or whose `at` lies within 1 mm of the eye in plan, is `load.bad_target`; that bookmark is not made. The sheet tool renders each (below). Other outputs: not read. |
+| The review library's `bookmark` output | A `Camera3D` under a `bookmarks` node, named after the bookmark (as an instance name, below): the eye at the feature's `at` raised by `attrs.eye_height` metres (9.2), looking at `toward`'s `at` (9.1), with +Z of the world up. The loader reads `at` and never resolves a name. A `toward` that is missing or not of the form `{ "at", "name" }`, or whose `at` lies within 1 mm of the eye in plan, or an `eye_height` that is missing or not a finite number, is `load.bad_target`; that bookmark is not made, and no default is guessed. The sheet tool renders each (below). Other outputs: not read. |
 | A generated mesh (M3) | A `MeshInstance3D` from its `.glb`; with `collides`, a `StaticBody3D` with a `ConcavePolygonShape3D`. |
-| A meeting | A `NavigationLink3D` between its two places. |
+| A meeting | A `NavigationLink3D` between its two mounts. |
 | `diagnostics.json`, `changes.json` | Not read. The viewer may show them; the scene never holds them. |
 
 **The place a bookmark looks at** is resolved by the core (`authority.md` 1.2) and written as
@@ -853,9 +879,14 @@ them out on one sheet. It is the loader's code run by Godot, not a `via` command
 
 ```
 godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- \
-      --before DIR [--after DIR] --out DIR [--pack DIR]
+      --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...]
 ```
 
+- `--option` sets one loader option of the table above, repeatable; a list's items are separated
+  by `,`, `features` takes `true` or `false`. `diagnostics` is not taken: the tool writes its own
+  (below). An unknown name or a bad value is exit 2. `ford`'s viewer settings are exactly
+  `--option water=tag:water_level`, the tag the water library documents; the Godot loader suite and
+  the milestone sheet pass it.
 - `--before` and `--after` are build directories (`build/ford` and `build/ford+downstream`).
   `--pack` names the pack's root when a manifest's `pack_root` is `null`. `--out` is written whole,
   like a build (section 13); a non-empty folder the tool did not write is refused.
@@ -1012,14 +1043,14 @@ Kind: W a world diagnostic, R a run diagnostic (11.1).
 | `load.bad_file` | error | | An array file's header, size or shape is wrong, or a listed file is missing. |
 | `load.too_many_materials` | warning | | A chunk names more materials than this loader draws; names the chunk and its materials (`fields.md` 7.1). |
 | `load.fields_not_drawn` | info | | The fields the loader neither drew nor kept, by name. |
-| `load.bad_target` | warning | | A bookmark's `toward` is missing, is not the resolved form `{ "at", "name" }` of 9.1, or lies within 1 mm of the eye in plan (15.1); names the bookmark. That bookmark is not made. Hint: check that the bookmark's kind lists `toward` in `names` (`authority.md` 1.2). |
+| `load.bad_target` | warning | | An output feature's camera target (a name attribute) is missing, is not the resolved form `{ "at", "name" }` of 9.1, or lies within 1 mm of the eye in plan, or its eye height is missing or not a finite number (15.1); names the feature and the attribute. That feature gets no camera. Hint: check that its kind lists the attribute in `names` (`authority.md` 1.2) and gives the eye height a default. |
 
 Every `check.*` hint is to build again; `via check` never repairs. `load.*` codes are raised by
 readers, not by `via build`, and are registered like the others (`diagnostics.md`), so a reader's
 message has a code, a subject (the file or chunk) and a hint. `graph.busy`,
 `graph.build_file_restored`, `graph.store_corrupt`, `graph.store_unavailable`,
-`graph.step_unstable`, `identity.no_previous`, `cli.usage` and `cli.unknown_code` are other
-chapters' codes used here.
+`graph.step_unstable`, `identity.no_previous`, `identity.reselected`, `cli.usage` and
+`cli.unknown_code` are other chapters' codes used here.
 
 ## Conformance
 
@@ -1083,7 +1114,8 @@ numpy or the standard library, never through the SDK. Every case is also checked
     untouched.
 24. **Killed between renames.** `ford` built, then rebuilt with a test switch that stops the process
     after the first rename; build again; the build completes, and no `.partial` or `.old` remains.
-25. **Baseline gone.** `ford` built, the store deleted, rebuilt with `downstream`; `changes.json`
+25. **Baseline gone.** `ford` built with `--out build/ford`, the store deleted, rebuilt with
+    `--change downstream --out build/ford`; `changes.json`
     has `against: null`; `build.baseline_missing` in the run report.
 26. **Change names and files.** `--change downstream` and `--change changes/downstream.toml` with the
     same body; build each; same `id`; `run.changes` differs.
@@ -1092,7 +1124,9 @@ numpy or the standard library, never through the SDK. Every case is also checked
     the cottage's pivot.
 28. **Reserved names.** A field named `nul`; build on each system; the manifest names
     `fields/nul-.npy`, which exists.
-29. **Flags in the key.** `ford` built, then with `--fail-on` of a warning the world raises: exit 1,
+29. **Flags in the key.** `ford` with a change adding `[clear.in_beck]`, `on = { ref = "beck", t = 0.3 }`,
+    `radius = 1`, `by = ["trees"]` (on the bed, where the beck keeps every tree off), gives
+    `identity.clear_empty` (warning); built, then with `--fail-on identity.clear_empty`: exit 1,
     and not "unchanged"; then without: exit 0. (M2:) the same with `--stand-ins`: the second build
     runs, and `assets.*.stand_in` is `true`.
 30. **Fail on, unknown.** `--fail-on formula.unknwn_name`; exit 2, `cli.unknown_code`, nearest code
@@ -1114,7 +1148,8 @@ numpy or the standard library, never through the SDK. Every case is also checked
     names; build; the manifest's `fields` lists `height`, `clearing`, `water` and `moisture`, each
     file exists and `via check` passes. Loader options are not world text, so nothing in the build
     depends on them.
-37. **Change report** (M1). `ford`, then `ford` with `downstream`; `changes.json` has the members of
+37. **Change report** (M1). `ford`, then `ford` with `downstream`, both with `--out build/ford`;
+    `changes.json` has the members of
     11.2 and no others; every entry the plan's `downstream` row names is present with its `table`;
     `at_ford`'s `what` is `["moved", "changed"]` with `keys` `["attrs.toward"]`; `height` has a
     `region` with at least one window and `causes` holding `feature.ford.on` with its file and line;
@@ -1133,7 +1168,7 @@ Stable names across a change are `identity.md`'s cases, not repeated here.
 |---|---|
 | SDK | Values the SDK reads from `fields/height.npy` equal numpy's. |
 | Deny-list | The core crates hold no string `bookmark` or `water` (`vocabulary.md` 7). |
-| Godot loader | `ford`, unattended, with `diagnostics` set: one `MultiMeshInstance3D` per chunk entry's asset, holding its `count`; the sheet tool with `--before` `ford` and `--after` `ford+downstream`: four PNGs per side, 1280 by 720, none all one colour, and `sheet.png` 1280 by 1584; at `at_ford`, pixels of the water material in the frame; `load.fields_not_drawn` lists every field neither drawn nor kept; a bookmark whose `toward` is plain text gives `load.bad_target` and no camera. |
+| Godot loader | `ford`, unattended, with `diagnostics` set: one `MultiMeshInstance3D` per chunk entry's asset, holding its `count`; the sheet tool with `--before` `ford`, `--after` `ford+downstream` and `ford`'s `--option` (15.1): four PNGs per side, 1280 by 720, none all one colour, and `sheet.png` 1280 by 1584; at `at_ford`, pixels of the water material in the frame; `load.fields_not_drawn` lists every field neither drawn nor kept; a bookmark whose `toward` is plain text gives `load.bad_target` and no camera. |
 | glTF reader | Khronos validator reports no error; instance nodes equal `instances.count`; a source check finds no import outside Python's standard library and nothing from `engines/godot/`. |
 
 ## Answers
@@ -1154,22 +1189,29 @@ TODO lines and challenge rows this chapter closes or defers.
 
 Owed to other chapters:
 
-- `graph.md`: say "chunk" for "tile"; add `run.flags` to the build key (6.1); follow section 5's
+- `graph.md`: say "chunk" for "tile"; add `run.flags` to the build key (6.2); follow section 5's
   overlapping windows in its worked example; close its open item on tile size here.
 - `fields.md`: say "chunk"; word its field-file check as a `shape` that is not 2-D or a `descr`
   other than `<f4`.
 - `protocol.md` 4.2: allow a three-dimensional shape; fix the header's padding as 3.2 does.
 - `diagnostics.md` 7 and `identity.md` 5: world and run diagnostics are split (11.1);
-  `identity.no_previous` is a run diagnostic.
+  `identity.no_previous` and `identity.reselected` are run diagnostics. `diagnostics.md` 7 and
+  `graph.md` 3.4 point to 11.1 instead of restating the run list.
 - `vocabulary.md`: the asset words `assets.md` 1.1 lists. The review library (`lib/review`, M1):
-  document `toward` and the eye height's key; the retired `look` is not reused.
+  document `toward`, and `eye_height` with its default 1.7 (9.2); the retired `look` is not reused.
 - `authority.md` 1.2: adopted here (9.1, 15.1). It is asked to name an instance's point, its pivot
   (section 8), since `ford`'s `to_door` looks at `cottage`.
 - `identity.md` 5: its report is written as 11.2 fixes, including `causes: null` when the
   baseline's record is gone, summary rows for written things (`<table> (written)`), and `via` as one
   chain from the node that reads the statement.
-- `numbers.md` and `formulas.md`: the forms of `via eval`, `via vectors` and `--window` are fixed
-  (14); their (open) marks on them can go.
+- `numbers.md` and `formulas.md`: the forms of `via eval` and `via vectors` are fixed (14); their
+  (open) marks on them can go. `formulas.md` cases 45 and 46 run `via eval --tile 1` and
+  `--tile 16` with `--diagnostics`; the `--window N` build flag is gone.
+- `conformance.md` 3.5, `diagnostics.md` 7 and `documents.md` 8: diagnostics of every command,
+  `merge`, `pack list` and `query` included, reach the runner by `--diagnostics FILE` (14), which
+  closes `conformance.md`'s (open) item; `--json` is refused where standard output is the result;
+  `via merge` writes no `diagnostics.json`.
+- `geometry.md` 7 and `protocol.md` 8.1: `via kernel` and `--sdk` are listed (14).
 
 ## Changed from the spike
 

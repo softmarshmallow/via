@@ -66,7 +66,7 @@ asset fact for a distance kept around a footprint (`assets.md` 2.4).
 | `scale` | number | no | `1` | Uniform scale of the asset, or of the set's frame. Greater than 0. |
 | `tint` | number | no | `1` | Multiplier on the asset's colour. 0 or greater. |
 | `ground` | name | no | none | A kind. The footprint, grown by `margin`, is also a region feature of that kind (2.1). |
-| `margin` | number | no | `0` | How far `ground` grows the footprint, metres. 0 or greater. Only with `ground`. |
+| `margin` | length | no | `0` | How far `ground` grows the footprint. 0 or greater. Only with `ground`. A length is read exactly to millimetres (`numbers.md` 3.1). |
 
 Exactly one of `asset` and `set`, and exactly one of `at` and `on`. An instance has an asset, never
 a kind: it lends its footprint to a kind through `ground`. `authority` is not an instance key
@@ -86,11 +86,14 @@ ground under a house. The feature, its **footprint feature**:
 - for an instance of a set, is one region per item footprint, unioned; every piece is kept;
 - takes its kind's `authority` (`authority.md`);
 - is named `<instance>.ground`, or `<producer>#<key>.ground` for a produced instance. It is a place:
-  it is in every `kind:<k>` selection, `within` may name it (so dress lowers, 10.2), a `for_each`
-  item carries the name, and the change report lists it by it. Its diagnostic subject is the key
+  it is in every `kind:<k>` selection, `within` may name it (so dress lowers, section 10), a `for_each`
+  item carries the name. The change report and `features.json` key it by its instance's name, in
+  the table `footprint` (`identity.md` 5, `build.md` 9.1). Its diagnostic subject is the key
   path `instance.<id>.ground`, located at the `ground` key's line; for a produced one, the
   producer's address, with `<producer>#<key>.ground` in `occurrences` (`diagnostics.md` 1.1, 5);
-- moves when the instance moves, so a moved cottage moves its pad and everything the pad shaped.
+- moves when the instance moves, so a moved cottage moves its pad and everything the pad shaped;
+  and follows the asset's footprint, so a pack swap that grows the footprint grows the pad, which
+  settles and is reported (R30).
 
 `ground` on an asset with a point footprint is `place.no_footprint`. `ground` naming no kind is the
 unknown-kind error of `authority.md`. `margin` without `ground` is `place.margin_alone`.
@@ -155,8 +158,8 @@ for what it names, and moves when that moves.
 **Plan and height are two nodes.** An instance's placement is a plan node (origin, facing, frame)
 and a height node (its `z`). The footprint feature hangs from the plan node; the height node reads
 the final surface. So a padded house writes the surface through its pad and stands on the result,
-with no cycle: plan, then pad, then surface, then height. `graph.md`'s one `place` node with "plan
-and height" is split this way (owed there).
+with no cycle: plan, then pad, then surface, then height. These are `graph.md`'s `instance` (or
+`held`) and `height` nodes.
 
 | Reference | Edge from | Edge to |
 |---|---|---|
@@ -173,11 +176,14 @@ and height" is split this way (owed there).
 
 A cycle is `graph.md`'s cycle error, naming every edge in it. Two that the rules above make:
 
-- An instance `on` a feature whose `where` reads a field the instance's own `ground` writes.
+- An instance `on` a feature whose shape reads the instance's own footprint feature, as a `where`
+  reading `inside('cottage.ground')` under the cottage. A feature that only reads a field the
+  footprint's kind writes is no cycle: those entries are effects, outside the head view
+  (`authority.md` 2.3).
 - A step in a scatter's layer, or below it, that reads the scatter's output and places instances
   whose solidity is not `none`: the scatter gives way to the step, and the step reads the scatter.
   The hint names three ways out: make the step's assets `solidity = "none"`, move the step to a
-  layer above the scatter, or run it at `lint`.
+  layer above the scatter, or run it at `lint`, which reads the finished build (R29).
 
 **Giving way reads down only.** A producer gives way to things in its own layer or below, as every
 reference does (doctrine, layer: "may refer downward only"; `identity.md` 4.1 for hand edits). A
@@ -221,13 +227,13 @@ Rules:
 | `asset` or `set` | name | one | | What each member places. |
 | `on` | `{ ref, span, offset }` or `{ of, class, near, span, offset }` | yes | `span = [0, 1]`, `offset = 0` | The stretch. What it names must have a length (3.2). |
 | `count` | integer | one of `count`, `spacing` | | How many members. A literal, never a formula. |
-| `spacing` | number | one of `count`, `spacing` | | Wanted distance between neighbours along the line, metres. Greater than 0. |
+| `spacing` | length | one of `count`, `spacing` | | Wanted distance between neighbours along the line. Greater than 0. |
 | `ends` | word | no | `"half"` | `"half"`: a half step free at each end. `"both"`: a member at each end. |
 | `face` | number or word | no | `"along"` | As 3.3, per member. |
 | `scale`, `tint`, `ground`, `margin` | as on an instance | no | as on an instance | Copied to every member. A pair is `place.range`: a run draws nothing. |
 
 A run draws nothing at random, so it takes no `seed`: `seed` on a run or a set is
-`doc.unknown_key`. `numbers.md` 7.1 lists `run` and `set` as taking one; that row is owed a change.
+`doc.unknown_key` (`numbers.md` 7.1).
 
 ### 5.1 Where members stand
 
@@ -247,7 +253,7 @@ All lengths are integer millimetres (R24, `numbers.md`).
 `round` is half away from zero, done in integers: `round(L' / sp) = floor((2L' + sp) / (2sp))`.
 With `spacing`, the step is stretched or shrunk so the members fill the stretch evenly; the run
 never leaves a remainder. A library that needs one exact step (a kit of fixed modules) checks the
-fit itself (10.1).
+fit itself (section 10).
 
 On a region with `span = [0, 1]` the outline is closed: `"both"` places `n = count` (or
 `max(1, round(L' / sp))`) members at `s_k = a + floor(k * L' / n)`, so the first point is not used
@@ -258,8 +264,8 @@ segments' cumulative lengths `c_0 = 0 < c_1 < ... < c_m` (doubles, as `numbers.m
 segment holding `s` is the `k` with `c_k <= s < c_(k+1)`, or the last segment when `s >= c_m`.
 The point is `p_k + (p_(k+1) - p_k) * min(1, (s - c_k) / (c_(k+1) - c_k))`, moved `offset` along
 that segment's left normal, rounded to the lattice once (ties to even). A member on a vertex is
-held by the outgoing segment, as `geometry.md` 2 holds `t`. This operation is ours; it is owed to
-`geometry.md` 2 and `numbers.md` 5 as "the point at arc length", beside the point at `t`.
+held by the outgoing segment, as `geometry.md` 2 holds `t`. This is `numbers.md` 5.5's point at
+arc length, with `s` in whole millimetres.
 
 Members are named `<run>#r<k>` (`identity.md` 2.3). A member whose origin falls outside the extent
 is not made, with one `run.outside` warning for the run.
@@ -281,8 +287,8 @@ questions (R25), in the height node (3.4). This chapter fixes only:
 | Key | Takes | Required | Default | Meaning |
 |---|---|---|---|---|
 | `assets` | list | yes | | Choices: an asset id, `@<taxon path>`, or `{ id, weight }` (7.4). |
-| `spacing` | number | yes | | Side of a lattice cell, metres. Greater than 0. One candidate per cell. |
-| `jitter` | number | no | `0.8` | Share of the cell the candidate may move across, 0 to 1. 0 puts it at the cell's centre. Read exactly (7.1). |
+| `spacing` | length | yes | | Side of a lattice cell. Greater than 0. One candidate per lattice cell. |
+| `jitter` | number | no | `0.8` | Share of the lattice cell the candidate may move across, 0 to 1. 0 puts it at the lattice cell's centre. Read exactly (7.1). |
 | `density` | formula | no | `1` | The chance a candidate is kept, at its point. 0 to 1. |
 | `within` | name or `{ of, class, near }` | no | the extent | The region the scatter is confined to: a region feature, a footprint feature (2.1), or a selected area, cell, rest or piece (`identity.md` 3). |
 | `scale`, `tint` | number or `[lo, hi]` | no | `1` | A number fixes it; a pair draws each instance's value (the pair rule, 1.1). `lo <= hi`. |
@@ -294,24 +300,24 @@ A scatter takes no `face`: facing is drawn (7.1). See section 15.
 ### 7.1 The lattice and the keep test
 
 The lattice is anchored at the origin of the frame the scatter is written in (`identity.md` 2.3),
-never at the extent's corner or the region's: cell `(i, j)` covers `[i*s, (i+1)*s)` by
+never at the extent's corner or the region's: lattice cell `(i, j)` covers `[i*s, (i+1)*s)` by
 `[j*s, (j+1)*s)` in millimetres, with `s` the spacing. Moving the extent or the region therefore
-moves no candidate; it only adds or removes cells. This anchoring is ours.
+moves no candidate; it only adds or removes lattice cells. This anchoring is ours.
 
-**Which cells.** With `[x0, x1] x [y0, y1]` the bounding box of the extent intersected with that of
+**Which lattice cells.** With `[x0, x1] x [y0, y1]` the bounding box of the extent intersected with that of
 `within`, `i` runs from `floor(x0 / s)` to `floor(x1 / s)` inclusive, and `j` likewise, by integer
-floor division. Cells are visited in any order; nothing depends on it.
+floor division. Lattice cells are visited in any order; nothing depends on it.
 
 **Jitter is read exactly**, as a geometry number is (`numbers.md` 3.1), to an integer `Jm` in
 millionths: `0.8` is `800000`. More than six decimals is `num.too_precise`. Weights (7.4) are read
-the same way. Both are exceptions to `numbers.md` 3.3, owed a line there.
+the same way (`numbers.md` 3.3).
 
-For each cell:
+For each lattice cell:
 
 1. **Candidate.** `w = floor(s * Jm / 10^6)` mm. Per axis,
    `x = i*s + floor((s - w) / 2) + ((r * w) >> 64)`, with `r` the draw `jitter_x` (likewise `y` with
    `jitter_y`), all in 128-bit integers, every division a floor. A jitter of 0.8 keeps the candidate
-   between 10% and 90% of the cell, as the spike did.
+   between 10% and 90% of the lattice cell, as the spike did.
 2. **Confine.** Kept only if its origin lies in the extent and in `within`. Both are closed: a point
    on the edge is inside, by `geometry.md`'s exact point-in-ring test.
 3. **Keep.** Kept when `unit(u) < p`, with `u` the draw `keep` and
@@ -329,7 +335,7 @@ For each cell:
    reported through `identity.md`, not counted in `place.gave_way`.
 
 **Draws.** Each purpose has its own stream, `stream(world seed, ["rule", <seed name>, <purpose>])`
-(`numbers.md` 7.2; the purpose part is owed a line there). A parent's draw is `draw(stream, [i, j])`;
+(`numbers.md` 7.2). A parent's draw is `draw(stream, [i, j])`;
 a clump member's is `draw(stream, [i, j, m])`, `m` its member index. `u` is the draw; products are
 in 128-bit integers; doubles go through `via-num`.
 
@@ -349,8 +355,8 @@ Draws never move: no edit changes a draw except an edit to the world `seed`, the
 `spacing` (which makes a new lattice and renames every instance, `identity.md` 2.3). So:
 
 - lowering `density` only removes instances; it never moves or adds one;
-- changing `assets` swaps assets in place, and changing `scale` or `tint` rescales or recolours in
-  place, except where giving way now decides differently (a larger footprint, a lower
+- changing `assets`, or a pack swap (R30), swaps assets in place, and changing `scale` or `tint`
+  rescales or recolours in place, except where giving way now decides differently (a larger footprint, a lower
   `max_relief`); those are counted in `place.gave_way`;
 - changing `spacing` or `seed` re-lays everything, which is expected. Hand edits hold by place
   (R3), not by name.
@@ -360,12 +366,14 @@ Draws never move: no edit changes a draw except an edit to the world `seed`, the
 R5: placement by cause is the default to teach. Most causes are written in `density`, as a formula
 over fields and distances (`formulas.md`): a band along a bank, stones by slope, nothing on the
 lane. `keep_out` carries every "not here" that kinds write. Clumps and growth beside another scatter
-are the two causes a formula at one point cannot say, because they read neighbours.
+are the two causes a formula cannot say. R7, as amended by R28, lets a formula read around a point
+only through a shipped function with a declared halo and cap (`formulas.md` 8.6), and those read
+fields and features; a clump reads other candidates' draws and a producer's instances.
 
-R7 puts what reads neighbours in a step. `clump` is the exception, kept in core because R5 makes
-placement by cause the default to teach, so it must work with no code, and because it reads only
-draws and a named producer's output, both of which the graph already holds (principle 10: one key,
-no new mechanism). Whether it should move to a library step once the SDK can draw the same streams
+R7 puts such reads in a step. `clump` is the exception, kept in core because R5 makes placement by
+cause the default to teach, so it must work with no code, and because it reads only draws and a
+named producer's output within `radius`, both of which the graph already holds (principle 10: one
+key, no new mechanism). Whether it should move to a library step once the SDK can draw the same streams
 is (open), section 15.
 
 ### 7.3 `clump` (M2)
@@ -375,8 +383,8 @@ and `around()` (`glade`, `spike/FINDINGS.md`, "Placement by cause").
 
 | Form | Keys | What it does |
 |---|---|---|
-| members | `members` (integer or `[lo, hi]` integers, 0 or more), `radius` (metres, > 0), `shrink` (0 to < 1, default 0) | Each kept candidate is a parent. It gets `members` members (drawn, inclusive), each at a point in the disc of `radius` around the parent's candidate (7.1, draws), with the parent's asset, its own facing, its own tint, and its own scale draw times `1 - shrink`. A member is kept when its origin is in the extent and `within` (closed) and its `member_keep` draw passes; density is not applied again. Members then give way as 7.5 says. |
-| around | `around` (a producer id), `radius` (metres, > 0) | `near = max(0, 1 - d / radius)`, where `d` is the distance from the candidate to the nearest origin among the named producer's held output. Growth beside what is already there. |
+| members | `members` (integer or `[lo, hi]` integers, 0 or more), `radius` (length, > 0), `shrink` (0 to < 1, default 0) | Each kept candidate is a parent. It gets `members` members (drawn, inclusive), each at a point in the disc of `radius` around the parent's candidate (7.1, draws), with the parent's asset, its own facing, its own tint, and its own scale draw times `1 - shrink`. A member is kept when its origin is in the extent and `within` (closed) and its `member_keep` draw passes; density is not applied again. Members then give way as 7.5 says. |
+| around | `around` (a producer id), `radius` (length, > 0) | `near = max(0, 1 - d / radius)`, where `d` is the distance from the candidate to the nearest origin among the named producer's held output. Growth beside what is already there. |
 
 - Members are drawn from the parent's candidate after the keep test (step 3), whatever happens to
   the parent later: a parent that gives way or is cleared does not take its members with it.
@@ -420,7 +428,8 @@ A scatter is derived (principle 3). After choosing, a candidate or clump member 
 - `relief(surface, footprint)` (`surfaces.md` 2.3), `high - low`, exceeds its asset's `max_relief`.
 
 Scattered instances are not tested against each other (section 15). Each producer reports what gave
-way in one `place.gave_way` info: counts by cause (overlap, relief) and their bounding box.
+way in one `place.gave_way` info: counts by cause (overlap, relief) and their bounding box. A
+producer from which nothing gave way raises no `place.gave_way`.
 
 **Which producer places first.** Hand instances first. Then runs and steps, each giving way to hand
 instances as above (8.1). Then scatters, giving way to both. Runs and steps do not give way to each
@@ -469,7 +478,7 @@ A hand instance, run member, step instance or set item stands in `keep_out` when
 0 at any post inside its footprint or at its origin. That is `place.keep_out`, warning, naming the
 field and the position.
 
-The test reads `keep_out` in one view without the rows of any footprint feature (2.1): one extra
+The test reads `keep_out` in one view without the entries (the kind's effects) of any footprint feature (`fields.md` 6.2, `graph.md` view `build-nofootprint`): one extra
 evaluation per world (R21's accepted cost), not one per instance. So no pad reports its own house,
 and two houses whose pads touch or overlap do not report each other. A thing placed on another
 house's pad, beyond its footprint, is therefore not reported; the overlap test covers the house
@@ -582,7 +591,7 @@ What follows, with world `seed = 0`:
 - The fence: `Lmm = 100000`, `a = 10000`, `b = 40000`, `L' = 30000`,
   `n = max(2, floor((60000 + 3000) / 6000) + 1) = 11`, posts at `10000 + floor(k * 30000 / 10)` mm:
   every 3 m from x = 10 to x = 40, 4 m south of the lane, named `fence#r0` to `fence#r10`.
-- Trees: the cottage's origin is in cell `(8, 18)` (`floor(60000 / 7000)`, `floor(132000 / 7000)`)
+- Trees: the cottage's origin is in lattice cell `(8, 18)` (`floor(60000 / 7000)`, `floor(132000 / 7000)`)
   of the lattice anchored at the world frame's origin, the frame `trees` is written in. `w = 5600`,
   so the candidate's x lies in `[56700, 62300)` mm. The draws give `(60683, 130893)`: keep
   `unit = 0.357854873215093 < 0.6`, so kept; it then lies under the cottage and gives way
@@ -647,7 +656,7 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 | r07 on_form | `on = { ref = "well", t = 0.5 }` on a point feature; then `span = [0, 1]` in an instance's `on` a path | build | `geom.no_length`, exit 1; then `place.on_form`, exit 1. |
 | r08 key_in_text | `on = { ref = "trees#s7000_8_18" }` | build | `identity.key_in_text`; hint holds `of = "trees"`. |
 | r09 overlap | Two hand instances 4 m apart | build | `place.overlap` naming both, exit 1. |
-| r10 cycle | Instance `on` a feature whose `where` reads its pad | build | Graph cycle error naming the edges, exit 1. |
+| r10 cycle | `cottage` with `ground = "pad"`, `on` a `where` region reading `inside('cottage.ground')` | build | `graph.cycle` naming the edges; exit 1. |
 | r11 relief | `max_relief = 0.6`, terrain `20 + 0.1 * x`, face 0 | build | `place.relief`, relief 0.8, limit 0.6, a position. |
 | r12 own_pad | A pad kind writing `keep_out = 1` | build | No `place.keep_out`. |
 | r13 pads_side | Two padded houses 9 m apart, pads overlapping | build | No `place.keep_out`, no `place.overlap`. |
@@ -660,9 +669,9 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 
 | Case | Input | Action | Must hold |
 |---|---|---|---|
-| r20 draws | `trees`, spacing 7, jitter 0.8, density 0.6, `scale = [0.8, 1.2]` | build | Cell `(8, 18)`: `jitter_x` `0xB61EE2389F06E35A`, `jitter_y` `0xBFB242685F562515`, origin `(60683, 130893)`; keep `0x5B9C60812C4D1041`, unit 0.357854873215093, kept; facing 338068; scale 1.027638703368402; name `trees#s7000_8_18`. |
-| r21 centre | r20 with `jitter = 0` | build | Cell `(8, 18)` at `(59500, 129500)`. |
-| r22 negative | r20 on extent `[-20, -20, 20, 20]` | build | Cell `(-1, -1)` at `(-4105, -6285)`, named `trees#s7000_n1_n1`. |
+| r20 draws | `trees`, spacing 7, jitter 0.8, density 0.6, `scale = [0.8, 1.2]` | build | Lattice cell `(8, 18)`: `jitter_x` `0xB61EE2389F06E35A`, `jitter_y` `0xBFB242685F562515`, origin `(60683, 130893)`; keep `0x5B9C60812C4D1041`, unit 0.357854873215093, kept; facing 338068; scale 1.027638703368402; name `trees#s7000_8_18`. |
+| r21 centre | r20 with `jitter = 0` | build | Lattice cell `(8, 18)` at `(59500, 129500)`. |
+| r22 negative | r20 on extent `[-20, -20, 20, 20]` | build | Lattice cell `(-1, -1)` at `(-4105, -6285)`, named `trees#s7000_n1_n1`. |
 | r23 threads | r20 | build at 1 and 8 threads | Same bytes. |
 | r24 thin | r20 | `density` 0.6 to 0.3 | Only removals. |
 | r25 swap | r20, flat, no other instances | change `assets` | Only swaps; no instance moved or removed. |
@@ -679,6 +688,11 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 | r36 keep_out_twice | `density = "= 0.6 * (1 - keep_out)"` | build | `scatter.keep_out_twice`. |
 | r37 scatter_bad | Each of: `scale = [1.2, 0.8]`; `within` a path; `density = 0` | build | `scatter.range` exit 1; `scatter.within` exit 1; `scatter.empty` naming `density`. |
 | r38 ford_spacing | `ford`, a clear and a pin with `by = ["trees"]` | spacing 7 to 6 | Every tree name changes (`s7000` to `s6000`); the clear's place holds no tree; the pin stands; both hand edits unchanged. |
+
+**M2: steps** (M1's only step is one lint, as a plain command)
+
+| Case | Input | Action | Must hold |
+|---|---|---|---|
 | r39 step_same_layer | A generate step in `trees`' layer that reads `trees` and places solid benches | build | Graph cycle error; hint names `solidity = "none"`, a higher layer, or `lint`. |
 | r40 step_above | The same step one layer above `trees`, a bench over a tree | build | No cycle; the tree stays; `place.crowded` naming both. |
 

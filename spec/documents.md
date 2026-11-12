@@ -26,7 +26,7 @@ be LF or CRLF; both read the same. Every file is flat and keyed by id (R1): `[fe
 - Nesting is at most 64 deep. Depth counts tables and lists in the tree (section 2), however they
   were written: the file's root table is depth 0, and each table, inline table, list or header part
   below it adds one; a string, number or bool adds nothing. So `[a.b.c]` is depth 3, and
-  `x = [[1]]` at the top is depth 2. A node deeper
+  `x = [[1]]` at the top is depth 2. An item deeper
   than 64 is `doc.too_deep`, at the span of the first value or key part past the limit, and that
   file is read no further. The reader counts before it descends, so no input overflows the stack
   (`diagnostics.md`, defects of ours). The limit is the same as `formulas.md`'s `formula.too_deep`,
@@ -73,23 +73,23 @@ The engine's first act is to turn each file into a plain tree. Everything after 
 never on TOML, so a second front end (a JSON form, an editor's own store) needs only to produce the
 same tree with spans. The model is ours.
 
-| Node | Holds |
+| Item | Holds |
 |---|---|
-| table | A map from key (a string) to node. Key order carries no meaning: the map is ordered by key, bytewise UTF-8 (`vocabulary.md` 2.2). |
-| list | Nodes in written order. List order carries meaning (a path's points). |
+| table | A map from key (a string) to item. Key order carries no meaning: the map is ordered by key, bytewise UTF-8 (`vocabulary.md` 2.2). |
+| list | Items in written order. List order carries meaning (a path's points). |
 | string | UTF-8 text, after TOML's escapes are applied. |
 | number | The literal's source text; its normalised text, as `numbers.md` 3.1 step 1 reads it (`_` dropped, a leading `+` dropped, a hexadecimal, octal or binary integer converted to decimal digits); and whether it was written as a TOML integer. Never a binary float. How the normalised text becomes a value, and millimetres for geometry, is `numbers.md`. |
 | bool | `true` or `false`. |
 
-Every node carries its **origin**: its spans (2.1) and the chain of includes, layers and changes it
+Every item carries its **origin**: its spans (2.1) and the chain of includes, layers and changes it
 came through (diagnostics print the chain, `diagnostics.md` 1.2).
 
-- TOML dates and times have no node. Any one is `doc.type`.
+- TOML dates and times have no tree item. Any one is `doc.type`.
 - Non-finite numbers (`inf`, `nan`) are rejected at read as `num.not_finite` (R26).
 - A key that takes `integer` accepts only a number written as a TOML integer. A key that takes
   `number` accepts both forms; `7` and `7.0` are the same value.
 - Dotted keys, standard tables and inline tables that say the same thing build the same tree. So
-  `on = { ref = "beck", t = 0.5 }` and a `[feature.ford.on]` table are one node. Whether a table node
+  `on = { ref = "beck", t = 0.5 }` and a `[feature.ford.on]` table are one item. Whether a table item
   merges key by key or is replaced whole is set by its key (6.2), never by how it was written.
 
 **The parser.** Standard TOML readers drop what this model needs. The reader must give: each key's
@@ -130,6 +130,12 @@ a tagged form (`lib:<library id>/`, `pack:`, `change:`, `step:<id>/`, `input:`).
 library is written by its library id, never by which root found it (section 4), so the order of
 `--lib` roots does not change the bytes. A change file's stem is unique (section 3), so `change:`
 and its file name names one file. No span ever holds an absolute path.
+
+A file that fits several forms takes the first that fits: a step's returned document, `step:`;
+the pack file and every file it binds, `pack:` and the path relative to the pack file's folder, so
+`lib/packs/primitive.toml` is `pack:primitive.toml` and a file under `root = "../art"` is
+`pack:../art/models/cottage.glb`; a file in a library, `lib:`; a file under the world file's folder,
+its path; a change file, `change:`; anything else, `input:`.
 
 ### 2.2 Entities
 
@@ -243,7 +249,7 @@ A binary built by `cargo build` sits at `target/<profile>/via`, so its shipped r
 |---|---|---|
 | A developer at the shell | `VIA_LIB=<repo>/lib`, set once in their shell, or `--lib <repo>/lib`. | `via trust <world>` once; again after each edit to a library's code (`protocol.md` 7). |
 | `cargo run` and `cargo test` | The repository's `.cargo/config.toml` sets `[env] VIA_LIB = { value = "lib", relative = true }`, which Cargo turns into the absolute path of `<repo>/lib`. | As the conformance runner. |
-| The conformance runner | It sets `VIA_LIB=<repo>/lib` for every case, so `via build examples/ford/world.toml` (`docs/plan.md`, Verification) runs as written, with no `--lib`. A case that names its own roots passes `--lib`, which is searched first. | Per run, it makes a fresh empty folder, sets `VIA_CONFIG_DIR` to it (`protocol.md` Conformance), and runs `via trust <world> --yes`, with each change the case requests, before the case. Cases that test trust itself (`protocol.md` cases 6 to 8, 38) use their own fixture config folder instead and skip this. |
+| The conformance runner | It sets `VIA_LIB=<repo>/lib` for every case, so `via build examples/ford/world.toml` (`docs/plan.md`, Verification) runs as written, with no `--lib`. A case that names its own roots passes `--lib`, which is searched first. It also sets `VIA_CONFIG_DIR={work}/.config`, empty. The runner never trusts a world or records a program itself (`conformance.md` 5.2): those are the case's own actions. A `ford` case runs `via config program python {python}` (its lint step's `command` starts with `python`; without it, `protocol.no_program`), then `via trust world.toml --yes` with each change it requests, before it builds (`conformance.md` 3.6). The cases that test trust itself (`protocol.md` cases 6 to 8, 38) write their own. |
 | A released binary | Its shipped root, `<executable's folder>/../lib`, installed beside it. | By the digests it carries. |
 
 - **Only a release carries digests.** The release process builds the binary with the code folder
@@ -253,8 +259,8 @@ A binary built by `cargo build` sits at `target/<profile>/via`, so its shipped r
   without `via trust`. A binary cannot tell a stale checkout from a release's folder except by
   digest, and development builds have none to compare.
 - **No committed `trust.toml`.** Trust is by digest, so a trust file committed under `fixtures/`
-  would go stale with every library edit. The runner makes it each run from the current code,
-  through the same `via trust` a user runs. That the code is ours is what the runner's trust says;
+  would go stale with every library edit. Each case makes it from the current code, through the
+  same `via trust` a user runs. That the code is ours is what the case's trust says;
   it is never a rule inside the engine that our libraries are trusted (R19b: no private door).
 - Trust changes whether a step runs, never what a build contains (`protocol.md` 7), so a released
   and a development binary of one engine version give the same bytes for one world.
@@ -286,9 +292,12 @@ carries its `layer` (`build.md` 9.1); a separate file per layer is `build.md`'s,
 ### 5.1 Direction
 
 A layer refers downward only. Direction is checked on **named references**: a name written in a
-name key (`on.ref`, `starts_at`, `ends_at`, `follows`, `within`, `set`, `ground`, a `by` that is
-written), or a name a formula reads (`formulas.md` reports the names it reads). Each is an edge in
-the graph (`graph.md` 2). For each:
+name key (`on.ref`, `of` in `on` and `within`, `starts_at`, `ends_at`, `follows`, `within`, `set`,
+`by` when written, `clump.around`, `give`, and every attribute a kind lists in `names`, checked at
+the feature's rank, `authority.md` 1.2), a name a formula reads (`formulas.md` reports the names
+it reads), or an effect's `field` selector (`role:`, `tag:`), checked at the rank of each feature of
+its kind (`fields.md` 2.3, case `upward selector`). Each is an edge in the graph (`graph.md` 2). `ground` names a kind, which has no rank:
+only that the kind exists is checked (`identity.md`). For each:
 
 - the referring entity has the rank of the layer it is declared in; a key a change wrote onto an
   entity has that entity's rank;
@@ -300,7 +309,7 @@ the graph (`graph.md` 2). For each:
 
 What is not a named reference, and so not checked for direction:
 
-- **A selector** (`kind:`, `tag:`, a shape selector in a formula, `for_each`). It resolves only to
+- **A read selector** (`kind:`, `tag:` or a shape selector in a formula, `for_each`). It resolves only to
   entities at or below the referring rank (R21's view, `formulas.md` 7, `graph.md` 4); members
   above are left out without a diagnostic. If that leaves it empty, the reading chapter's own code
   applies (`formula.empty_selection`, `graph.for_each_empty`).
@@ -349,7 +358,7 @@ is `identity.duplicate_id`.
 | `remove = true` | Deletes the entity, or the sub-table it is written in. No other key may sit beside it (`doc.remove_with_keys`). |
 | `unset = ["k", ...]` | Deletes those keys from the table it is written in. In `[change.<c>.let]` it deletes `let` names. A key named in `unset` and also written in the same table is `doc.remove_with_keys`. |
 | one placement key (`at`, `on`, `path`, `region`, `where`, `follows`) | Sets it and deletes the other placement keys of that table. If the key is not `path`, it also deletes `starts_at`, `ends_at` and `smooth`, which only a path takes (`geometry.md` 2.2, 2.3). |
-| the top-level keys `pack`, `seed`, `extent`, `resolution` | Sets them. `pack` is the ford pack-swap case: the world's text is untouched and a change file holding `pack = "<other>"` swaps the look. |
+| the top-level keys `pack`, `seed`, `extent`, `resolution` | Sets them. `pack` is the ford pack-swap case: a change file holding `pack = "<other>"` leaves the world's text untouched and swaps the look, the facts it carries (size, footprint, mounts) and what follows from them, which settles and is reported (R30, `assets.md` 1). |
 
 What a change body may not hold:
 
@@ -434,7 +443,19 @@ No key is ever ignored. Every key in every file is one of:
 - in a pack, an asset fact `assets.md` allows.
 
 Anything else is `doc.unknown_key`, naming the nearest listed key or declared attribute as its
-hint. A word the vocabulary lists for a later milestone is `doc.not_yet`, naming the milestone. A
+hint. A removed or forbidden word has a fixed hint instead, which replaces the nearest-word hint:
+
+| Word | Where | Fixed hint |
+|---|---|---|
+| `over` | a feature | "`over` was dropped; change one decision, see `authority.md` 5" |
+| `authority` | an instance | "the footprint takes its `ground` kind's tier; ground with a kind of the tier you want" (`authority.md` 1.3) |
+| `feature` | `on` | "write `ref`" |
+| `joins` | a feature | "write `starts_at` or `ends_at`" |
+| `[params]` | top level | "write `[let]`" |
+| `[variant.<n>]` | top level | "write `[change.<n>]`" |
+
+The other dropped words of `vocabulary.md` section 6 take the nearest-word hint. A word the
+vocabulary lists for a later milestone is `doc.not_yet`, naming the milestone. A
 kind that declares an attribute named as a reserved feature key is `doc.reserved_attribute`. A table
 holding two placement keys is `doc.placement_twice`, naming both.
 
@@ -555,8 +576,12 @@ declared translation into this form, following `vocabulary.md` section 6. Where 
 What is decided: an import is a world built apart, with its own files, namespaces and includes
 (section 3). The parent names its places, never its coordinates (R8), and requests its changes by
 name in `changes`. A parent's change may write the parent's `[import.<id>]` table, never the
-imported world's own tables: a difference inside an import is one of the import's changes. Every
-import key is `doc.not_yet` in M1.
+imported world's own tables: a difference inside an import is one of the import's changes. A place
+is built alone and joined at its edge (R11): the parent changes imported ground only through a layer
+with `after = "imports"` (R10), and a fill that must read its parent takes it through `give`. An
+import's own imports are followed or rejected with a diagnostic, never ignored; which: (open),
+decided here in M4 by `county`. Whatever is decided about an import's pack, one asset id bound to
+two different files is an error. Every import key is `doc.not_yet` in M1.
 
 `exit` (a kind key, R9) marks a kind's point features as places where something leaves the world;
 the core owns the flag and the word. Which of an exit's attributes the core compares when two
@@ -595,7 +620,7 @@ width = 6
 
 ```toml
 [instance.cart]
-asset = "cart.small"
+asset = "box_small"
 on    = { ref = "lane", t = 0.3, offset = 4 }
 ```
 
@@ -627,7 +652,7 @@ unrequested change are reported as `doc.idle_change`.
 | `doc.syntax` | error | Not TOML 1.0.0, not UTF-8, or a `[[x]]` header; position from the parser. |
 | `doc.too_deep` | error | Tables and lists nested over 64 deep (section 1); the file is read no further. |
 | `doc.type` | error | A value of the wrong form for its key, or a TOML date or time. |
-| `doc.unknown_key` | error | A key or table not listed for its place; the nearest listed word. |
+| `doc.unknown_key` | error | A key or table not listed for its place; the nearest listed word, or a removed word's fixed hint (section 7). |
 | `doc.missing_key` | error | A required key is absent; the table, the key and what it takes. |
 | `doc.not_yet` | error | A word of a later milestone; names the milestone. |
 | `doc.reserved_attribute` | error | A kind declares an attribute named as a reserved feature key. |
@@ -725,7 +750,7 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 | adds_near | A change writes `[feature.frod]` beside `feature.ford` | merge | `doc.change_adds_near` warning, `data.nearest` `ford`. |
 | on_partial | A change writes only `t` in `on` | merge | `doc.missing_key` naming `ref`. |
 | idle_change | An unrequested inline change writing `widht` | merge | `doc.idle_change` warning, `data.code` `doc.unknown_key`; exit 0. |
-| pack_swap | A change file holding `pack = "other"` | merge, build | JSON `pack` is `other`; builds; world text untouched. |
+| pack_swap | A change file holding `pack = "other"` | merge, build | JSON `pack` is `other`; every other member as without the change; builds. |
 | unknown_change | Requesting `dowstream` | merge | `doc.unknown_change`, hint `downstream`. |
 | change_name | Change files `Winter.toml`, `no_cart.v2.toml` | merge | `identity.bad_id` each. |
 | change_ext | Change file `winter.tml` | merge | `doc.path_form`. |
@@ -768,4 +793,4 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 | How a world keeps an included kind with a local difference, other than an always-requested change or a copy under a new name. | The first example that needs it. |
 | A separate output file per layer, for a game to load or replace. | `build.md`, M6. |
 | Building or swapping one layer alone (a spike lesson). | The first case that needs it; not before M6. |
-| Whether an import may bring its own pack; which exit attributes the core compares (challenge 55 records `width`); change files requested by an import. | M4, in this chapter. |
+| Whether an import may bring its own pack; whether an import's imports are followed or rejected; which exit attributes the core compares (challenge 55 records `width`); change files requested by an import. | M4, in this chapter, by `county`. |

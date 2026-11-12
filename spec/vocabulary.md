@@ -5,13 +5,13 @@ key means one thing in every table it appears in (principle 9); where it appears
 one row and the others point to it. A chapter may not use a key, table or selector this page does
 not list; a new one is added here first. Exempt: formula function names (listed in `formulas`),
 diagnostic codes (listed in `diagnostics`), and anything inside `params` (handed on unread).
-Authority: `docs/doctrine.md` (principles 1-13, rulings R1-R27, section 6 applied as recommended on
+Authority: `docs/doctrine.md` (principles 1-13, rulings R1-R31, section 6 applied as recommended on
 2026-11-13).
 
 Every example is flat TOML keyed by id (R1): `[feature.mill]`, never `[[feature]]`. A list whose
 items a change would name is a table of tables with ids (`[kind.lane.effect.bed]`). A list of plain
 values (`assets`, `path`) is a value, replaced whole. Which tables merge and which are replaced:
-`documents.md` 6.2 (section 2.5). One exception to R1: a pack's taxonomy nodes are keyed by path
+`documents.md` 6.2 (section 2.5). One exception to R1: a pack's taxonomy entries are keyed by path
 (`[taxon."<path>"]`, `assets.md` 5).
 
 Keys use British spelling, as prose does (`colour`, `base_centre`; `assets.md` 1.1).
@@ -103,6 +103,10 @@ The **Takes** column says what a key accepts:
 
 Lists and tables of these are written as such ("4 lengths", "list of points").
 
+Words of `numbers.md`: the **lattice** (the integer-millimetre points, 3.1), a **post** (a sample
+point of a field's grid, 4), a **window** (a rectangle of posts a field is evaluated over, 6) and a
+**halo** (the posts around a window an operation reads, 6).
+
 - Numbers are finite. TOML's `inf` and `nan` are rejected with a code (R26).
 - A length is metres with at most three decimals. More is an error, never rounded (R24: integer
   millimetres in the core). Heights are not lengths: they are field values (`numbers.md` 3.1).
@@ -112,7 +116,8 @@ Lists and tables of these are written as such ("4 lengths", "list of points").
   in a feature attribute, which has no Takes, the mark decides (`formulas.md` 1, `documents.md` 7.1).
   Inside a formula, `t` is the fraction along a path and `d`, `sd` the distance and signed distance
   from a feature. Formulas read fields and `let` names by name, never by role. The function list has
-  no `where` (it is a feature key).
+  no `where` (it is a feature key). A function may read around a point only with a declared halo and
+  cap (R28, `formulas.md` 8.6); an open-ended neighbourhood or an algorithm is a step.
 
 ### 2.5 Merging (`documents`)
 
@@ -164,10 +169,10 @@ is built (`documents.md` 5, 6).
 | `extent` | 4 lengths | `[x0, y0, x1, y1]`, a rectangle in the world frame, `x1 > x0` and `y1 > y0`: the world's on the document, the raster's on a field (Fields). | numbers |
 | `resolution` | length | Spacing of field samples. Greater than 0. | numbers |
 | `seed` | integer (world), string (rule) | What randomness is drawn from. On the world: an integer `0` to `2^63 - 1`, default `0`, used as an unsigned 64-bit value and mixed into every rule's stream; changing it re-rolls everything derived. On a scatter: a name in the id grammar, default the scatter's id; write one only to change it. A run or a set takes none: `seed` there is `doc.unknown_key` (`numbers.md` 7.1, `rules.md` 4 and 5). Mixed by SplitMix64 (Steele, Lea and Flood, 2014) as in the carried-over seed derivation; byte order in `numbers.md` 7.2. | numbers |
-| `include` | list of strings | Libraries, by name, never by path; each adds its kinds to the one kind namespace. A name is looked up in `lib/` beside the world file, then each `--lib` root in order, then the shipped `lib` beside the `via` executable's folder; first match wins (`documents.md` 4). Two libraries that declare one kind are `identity.duplicate_id`. Versions of a library: (open), decided by the first shipped library change that breaks a world, no later than M7. | documents |
-| `pack` | string | The pack that binds asset ids: a path if it holds `/` or ends in `.toml`, else a name looked up as `assets.md` 1.2 says. A world never names an asset file (principle 6). | assets |
+| `include` | list of strings | Libraries, by name, never by path; each adds its kinds to the one kind namespace. A name is looked up in `lib/` beside the world file, each `--lib` root, each `VIA_LIB` entry, then the shipped root; first match wins (`documents.md` 4). Two libraries that declare one kind are `identity.duplicate_id`. Versions of a library: (open), decided by the first shipped library change that breaks a world, no later than M7. | documents |
+| `pack` | string | The pack that binds asset ids: a path if it holds `/` or ends in `.toml`, else a name looked up as `assets.md` 1.2 says. A world never names an asset file (principle 6). Swapping it swaps the look and the facts the look carries (size, footprint, mounts), and what follows settles and is reported; nothing the author wrote changes (R30). | assets |
 | `[layer.<id>]` | table | One document of the world: `file`, `owner`, `rank`. The world file's own text is the layer `world`. | documents |
-| `file` | string | A path relative to the file that names it: on a layer, an import or a field. In a pack, an asset's or material's `file` (and `detail`) resolves against `root`. A field's `file` is a declared input of the graph (principle 7). Whether principle 6 ("a world never names a file") admits a field's `file` is (open): `fields.md` 4 reads it as forbidding asset files only; a doctrine ruling on principles 6 and 7 decides it. | documents |
+| `file` | string | A path relative to the file that names it: on a layer, an import or a field. In a pack, an asset's or material's `file` (and `detail`) resolves against `root`. A field's `file` is a declared outside input of the graph under principle 7, not an asset, so principle 6 does not forbid it (R30). | documents |
 | `owner` | string | Who answers for a layer, free text. The build does not check it; it travels in the chain of every diagnostic raised from that layer (`documents.md` 5). | documents |
 | `rank` | integer | A layer's place, lowest first, unique. `world` is 0 unless written. A layer names only what is at or below its rank. | documents |
 | `[let]` | table of formulas | Named values formulas read. Also `[field.<n>.let]` and `[kind.<k>.let]`. Resolved by dependency; a cycle is an error. | formulas |
@@ -213,15 +218,15 @@ How a field's value is built: the base, then every entry, in one total order per
 `authority.md` 4 fixes. In short:
 
 1. **The head**, every `then` row, written or returned by a step, before every effect
-   (`authority.md` 4.1): by layer rank; then source (text rows, then each step's rows, steps by
-   id); then `order`; then the row's place name.
+   (`authority.md` 4.1): by `order`; then layer rank (a step's rows take its layer's); then the
+   row's place name, bytewise (its id, or `<step>#<id>` for a step's row).
 2. **Effects** (`authority.md` 4.2): by authority (derived, shaped, anchored) across the whole
    world; then nesting (`authority.md` 4.3); then `order`; then layer rank; then the feature's place
    name, then the effect id.
 
-The placement of the head is ours. Nesting and `order` before layer rank is `authority.md`'s reading
-of R21, **pending the lead's ruling** (an amendment to R21 citing challenge 36 and R18); until it is
-recorded, `authority.md` 4 is the source and this summary follows it.
+Ties within one tier are R29's: nesting, then `order`, then layer rank, then id bytewise; document
+order never decides. A step's rows and a field read from a `file` are rows like any other. The
+placement of the head is ours; `authority.md` 4 is the source and this summary follows it.
 
 ### Features (`geometry`, `authority`)
 
@@ -259,8 +264,8 @@ north, 0 north, 90 east. The loader maps these to the engine's axes. This conven
 | `[kind.<k>.surface.<name>]` | table | A bounded surface every feature of the kind owns: `base` (its height, a per-point formula), and `bound` on a path owner. Named `<feature>.<name>`. No `then` rows, no tags; no effect writes it. Key words pending `surfaces.md` Open 1. | surfaces |
 | `bound` | formula | On a kind surface of a path owner: the strip's half width, metres, a per-feature formula above 0. A region owner has none; a point owner owns no surface (`surface.owner_shape`). | surfaces |
 | `[kind.<k>.mount.<name>]` | table | A place every feature of the kind has (a deck's two ends): `t`, `offset`, `face`, `surface`, `meets`, `connector`. No `at`. Named `<feature>.<name>`; shares one namespace with the kind's surfaces. | surfaces |
-| `surface` | name | On a kind mount: the owner's kind surface it lies on. Default the terrain. | surfaces |
-| `meets` | name | On a kind mount: another mount of the same kind; the pair is one meeting. | surfaces |
+| `surface` | name | On a kind mount: the owner's kind surface it lies on. Default the terrain, which the world owns (R31). | surfaces |
+| `meets` | name | On a kind mount: another mount of the same kind. Every meeting is a pair of mounts; a path that ends at a place meets that place's default mount (R31, `surfaces.md` 3.3). | surfaces |
 | `connector` | string | On a kind mount: what joint it is, a free word compared only for equality (M5). On an asset mount: `doc.not_yet` until M5. | surfaces |
 
 | Word | Meaning | Chapter |
@@ -282,10 +287,10 @@ One grammar for features, instances, sets, rules and hand edits.
 | `on` | `{ ref, t, offset }` or `{ of, class, near, t, offset }` | On an authored thing by name (`ref`), or on a produced thing selected by a point near it (`of`). Never both (`identity.on_both`). Runs take `span` in place of `t`. Scatters take no `on`: they use `within`. | geometry |
 | `ref` | name | In `on`: the place name it is placed on (2.1): a feature, an instance, a mount, a path end, a set item, an import's place. Never a produced name (`identity.key_in_text`). | geometry |
 | `of` | name | In `on` or `within`: the maker selected from, by its id. | identity |
-| `class` | string | In `on` or `within`: one class of the maker's output: `instance`, `node`, `edge`, `area`, `cell`, `rest`, `piece`, `feature` (section 4). Needed when the maker's output has more than one class (`identity.of_ambiguous`). | identity |
+| `class` | string | In `on` or `within`: one class of the maker's output: `instance`, `junction`, `edge`, `area`, `cell`, `rest`, `piece`, `feature`, `field` (open: needs ruling, R21; `fields.md` 7), `row` (`identity.md` 2.3). `field` and `row` have no place: selecting one is `identity.no_place`. Needed when the maker's output has more than one class (`identity.of_ambiguous`). | identity |
 | `near` | point | In `on` or `within`: the selection resolves to the candidate of `class` nearest this point, in the frame of the table it is in. | identity |
 | `t` | number | Fraction along, 0 to 1. Outside that range is `geom.t_range`. | geometry |
-| `span` | 2 numbers | On a run: `[from, to]`, fractions along, `0 <= from < to <= 1`. | rules |
+| `span` | 2 numbers | On a run: `[from, to]`, fractions along, `0 <= from < to <= 1`. In `follows`: `geometry.md` 4. | rules |
 | `offset` | length | Distance to the left of the direction of travel. Default 0. | geometry |
 | `face` | number or string | Which way the thing looks: a bearing (Features), or one of `along`, `toward`, `away`, relative to `on` (`geometry.md` 2.6, a closed list). A word without `on` is `geom.face_needs_on`. On a thing with a facing, a number is added to the host's facing (`rules.md` 3.3). | geometry |
 
@@ -316,8 +321,9 @@ One grammar for features, instances, sets, rules and hand edits.
 | `spacing` | length | Distance between neighbours. On a scatter: the side of a lattice cell. | rules |
 | `ends` | string | On a run: `"half"` (default), a half step free at each end; `"both"`, a member at each end. | rules |
 | `[scatter.<id>]` | table | A density turned into instances: `assets`, `spacing`, `jitter`, `density`, `within`, `scale`, `tint`, `clump`, `seed`. | rules |
-| `jitter` | number | On a scatter: the share of the cell a candidate may move across, 0 to 1. Default 0.8. | rules |
+| `jitter` | number | On a scatter: the share of the lattice cell a candidate may move across, 0 to 1. Default 0.8. Read exactly in millionths (`numbers.md` 3.3). | rules |
 | `assets` | list | Choices, each an asset id, `@<taxon path>` or `{ id, weight }`. A value, replaced whole. | assets |
+| `id`, `weight` | name, number | In an `assets` choice: an asset id or `@<taxon path>`, and its weight (default 1), read exactly in millionths (`numbers.md` 3.3, `rules.md` 7.4). | rules |
 | `density` | formula | 0 to 1 at each point. | rules |
 | `clump` | inline table | How instances gather by cause (R5). One of two forms: `members`, `radius`, `shrink`; or `around`, `radius` (`rules.md` 7.3). A value, replaced whole. | rules |
 | `members` | integer, or 2 integers | In `clump`: how many members each parent gets, 0 or more; a pair is drawn. | rules |
@@ -339,7 +345,7 @@ One grammar for features, instances, sets, rules and hand edits.
 - A pin places its instance and removes every instance of the producers in `by` whose footprint
   overlaps its own. An overlap with an instance of any other producer is a warning naming both
   (R13: a pin inside a building is reported). A pin inside a clear, or where `keep_out` is above 0,
-  is a warning naming both. Two pins whose footprints overlap are an error.
+  is a warning naming both; inside a clear the later edit wins and says so (R31). Two pins whose footprints overlap are an error.
 - A clear removes every instance of the producers in `by` whose origin lies within `radius` of its
   place, inside its `region`, or inside the region it is `on` (`identity.md` 4.3). Whether it also
   removes generated features: (open) decided with M3's `quay`.
@@ -368,7 +374,7 @@ One grammar for features, instances, sets, rules and hand edits.
 | Key | Takes | Meaning | Chapter |
 |---|---|---|---|
 | `[step.<id>]` | table | Declares a step in the layer it writes to; it reads that layer and those below (R21). | protocol |
-| `when` | string | `generate`, `lint` or `export` (R22). | protocol |
+| `when` | string | `generate`, `lint` or `export` (R22). A lint or export step reads the finished build (R29). | protocol |
 | `command` | list of strings | The program and its arguments. Never a shell string, since quoting differs on Windows (R20). An element may be `lib:<library>/<path>` (Selectors). | protocol |
 | `worker` | bool | `true`: the step speaks the protocol on stdio and may call the engine; `false` (default): a plain command. | protocol |
 | `params` | table | Handed to the step unread. Any keys. On an asset or material: handed to the loader unread. | protocol |
@@ -383,7 +389,7 @@ A pack is a document users write. It may name files; a world may not (principle 
 |---|---|---|---|
 | `root` | string | The folder every file of the pack is found under, relative to the pack file. Default the pack file's folder. | assets |
 | `[defaults]` | table | Values for declared facts every asset takes unless it, or a taxon above it, writes them. | assets |
-| `[taxon."<path>"]` | table | One node of the pack's taxonomy, keyed by path (the exception to R1). Key: `defaults`. | assets |
+| `[taxon."<path>"]` | table | One entry of the pack's taxonomy, keyed by path (the exception to R1). Key: `defaults`. | assets |
 | `[asset.<id>]` | table | One asset, with exactly one source marker: `file` (a model, M2), `primitive`, or `engine = true`. Keys per source: `assets.md` 2.2. | assets |
 | `engine` | bool | `true`: an engine-made asset, made by the loader from `params`. | assets |
 | `primitive` | string | One of `assets.md` 6's shape words. | assets |
@@ -435,10 +441,10 @@ accept`.
 | class | What sort of produced thing it is; the closed list is the `class` key's (Placement, `identity.md` 2.3). | identity |
 | ordinal | A key's last part: a thing's position among exactly those that share every other part. Fixed before any filtering. | identity |
 | lattice index | The `(i, j)` a scatter candidate was drawn for, which its key holds, so jitter never renames. | identity |
-| node | A point where a network's paths meet. | geometry |
+| junction | A point where a network's paths meet (`geometry.md` 3.2), named `<maker>#j...`, class `junction`. | geometry |
 | frontage | One source path on one side, along which cells are cut. | geometry |
 | stretch | A part of a frontage between corners. | identity |
-| anchor | The key of the last node at or before a stretch's start. | identity |
+| anchor | The key of the last junction at or before a stretch's start. | identity |
 
 ## 4. Owed words (R13, R16, R18, R25)
 
@@ -447,7 +453,7 @@ chapter named decides it, for M1 track A unless said.
 
 | Word | Meaning | Chapter |
 |---|---|---|
-| `follows` | A path written along another feature (R18): `follows = { ref, span, offset }` as a sketch. | geometry |
+| `follows` | A path written along another feature (R18): `follows = { ref, span, offset }`, decided in `geometry.md` 4; M1, `span` included. | geometry |
 | network | Paths noded where they cross, with the areas between them (R13). A maker. How one is declared, for example from a `kind:` selection: (open). | geometry |
 | area | A region bounded by a network's paths, named `<maker>#<place key>`, class `area`. Not `face`, which is orientation. | geometry |
 | cell | One part of a region divided along a frontage (R13, R23), named `<maker>#<place key>`, class `cell`; what lies deeper than a cell's depth is class `rest`. The place key of a name is not a cell. | geometry |
@@ -459,15 +465,15 @@ chapter named decides it, for M1 track A unless said.
 
 ## 5. Not in M1
 
-The M1 parser rejects each key below with `doc.not_yet`, naming its milestone. It never ignores one.
+The M1 parser rejects each key or value below with `doc.not_yet` at its span, naming its milestone. It never ignores one.
 
 | Words | Milestone |
 |---|---|
-| `worker`; `clump` and its `members`, `shrink`, `around`; a model asset's `file` and `detail`; `channel`, `range` (PNG fields); `filter = "cubic"`; class `feature` | M2 |
-| `[set]`, `set`, `[run]`, `count`, `span`, `ends`, `[lock]` and its record, `for_each`, user syntax for network, area and cell, classes `node`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
+| `worker = true` (`worker = false` is accepted in M1); `when = "generate"`; `clump` and its `members`, `shrink`, `around`; a model asset's `file` and `detail`; a field `file` naming a PNG, `channel`, `range` (PNG fields); `filter = "cubic"`; class `feature` | M2 |
+| `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, `for_each`, user syntax for network, area and cell, classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
 | `[import]`, `changes`, `footprint` on an import, `blend`, `give`, `[given]`, `accepts`, `after`, `exit` | M4 |
 | `type = "volume"`, `hosts`, `connector`, `solidity = "passable"` | M5 |
-| `chunk`, `[budget]` | M6 |
+| `when = "export"`, `chunk`, `[budget]` | M6 |
 
 A second top-level `surface` field is not here: it is `surface.two_terrains` in every milestone.
 
@@ -574,6 +580,8 @@ Allowed in the core in one sense only. The test passes them; review checks the s
 | `pad` | Padding bytes or text. |
 | `lane` | A lane of a vector instruction. |
 | `reach` | Reachability in a graph. |
+| `crossing` | Where two segments or paths cross (geometry), as in `geom.self_crossing`, `geom.unowned_crossing`. |
+| `profile` | A picture's colour profile, `field.file_profile`; a Cargo build profile. |
 
 The list grows when a library adds a noun.
 
@@ -589,8 +597,9 @@ From `docs/ledger.md` section 25, and from review of this page.
 | portal | Dropped: an interior is an import placed on a mount. | Engines use portal for visibility culling. |
 | layer | Kept for a document only; field rows are `then`. | An engine's terrain layer is a `weights` field with `role = "material"` here. |
 | face | Orientation only. A region between a network's paths is an area. | Doctrine section 6 keeps `face` for orientation. |
-| edge | A network edge (class `edge`), beside the world's edge of R9 and R10. The network's is always "edge"; the world's is always "the world's edge". | Two senses that prose must keep apart (`identity.md` 9). |
-| cell | One part of a divided region only. Generated names use a place key. | One word, one meaning (principle 9). |
+| edge | A network edge (class `edge`); the world's edge of R9 and R10, always "the world's edge"; a graph edge, in `graph.md` only (its section 2, and the run report's `reason: "edge"`). | Three senses that prose must keep apart. |
+| cell | One part of a divided region. A grid or lattice square is always "grid cell" or "lattice cell". Generated names use a place key. | One word, one meaning (principle 9). |
+| node | The graph's unit of work only (`graph.md`). Where a network's paths meet is a junction. | One word, one meaning (principle 9). |
 | producer, maker | A producer is a run, a scatter or a step; a maker is anything with produced names (a producer, a network, a cells table, a `where` feature). | `by` names producers only; selection names makers (`identity.md` 1). |
 | where | A feature key only. A diagnostic's location is `position`; formulas have no `where`. | One word, one meaning (principle 9). |
 | kind | Kept. | One of the eleven nouns; its meaning is stated above, which the ledger found missing. |

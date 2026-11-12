@@ -113,7 +113,8 @@ inside one is reported; every piece of a masked region is kept; same bytes on ev
 authority, `at` / `on` / `face`, scatter with pin and clear, diagnostics and `via explain`, build
 directory v0, the change report, one lint step through the SDK, the Godot loader, the sheet tool.
 
-The world, about 80 lines, in the v1 forms the chapters fix:
+`examples/ford/world.toml` is exactly this block, byte for byte, LF line endings and one final
+newline. Cases that cite its lines and bytes read this text:
 
 ```toml
 name    = "ford"
@@ -177,6 +178,7 @@ asset = "house_low"
 ground = "pad"
 margin = 1
 on = { ref = "lane_west", t = 0.6, offset = 12 }
+face = "toward"
 
 [scatter.trees]
 assets = ["@plant/tree"]
@@ -204,29 +206,86 @@ by = ["trees"]
 spacing = 6
 ```
 
-Which library writes what. The `pad` (land library) writes `role:keep_out` under the cottage's
-footprint, so no tree stands on it. The `beck` (water library) writes `role:keep_out` along its
-bed and `tag:water_level` in its channel, the tag the water library documents (`fields.md` 2.2,
-`build.md` 6.4). Without the two fields those effects would match nothing (`authority.no_field`).
-`toward` is the review library's key for the place a bookmark looks at (`build.md` 9.2, 15.1);
-`lib/review` documents it in M1. `tree_oak` is an asset `lib/packs/primitive.toml` files under
-`plant/tree`. The lint step is restated in the world because `protocol.md` 1 leaves open how a
-library offers a lint without it: (open), decided by `lib/review`'s first lint in M1; until then
-`ford` declares it, and the `lib:` form waits on the lead adding it to the vocabulary before M1
-code.
+**Ford's libraries.** `lib/land`, `lib/water`, `lib/ways` and `lib/review`, each a `kinds.toml`
+(and `lib/review/checks.py`), are written first in M1's shared base: before `geometry.md` 2.6's
+frame decision reads them, so before track A. From then their text is a fixture every ford case
+reads; changing it is a spec change. Until written, this table binds them. Every effect has a
+`radius`, its own or its kind's, so every entry has a window (`fields.md` 5.3).
+
+| Kind | Library | Tier | Attributes | Effects: id, field | Radius |
+|---|---|---|---|---|---|
+| `beck` | water | `shaped` (ford's beck writes `anchored`) | `width` 6, `depth` 1.2 | `bed`, `role:surface` (lowers the ground across `width`); `bank`, `role:keep_out`; `level`, `tag:water_level` (the water surface in the channel) | 16 |
+| `ford` | ways | `anchored` | none | `approach`, `role:surface`: asks `v` where it overlaps the beck (`authority.md` 6), grades the banks down to the bed outside it | 20 |
+| `lane` | ways | `shaped` | `width` 4, `camber` 0.02 | `bed`, `role:surface` | 12 |
+| `pad` | land | `shaped` | none | `level`, `role:surface`, `under('mean')` (`surfaces.md` 6.1); `clear`, `role:keep_out` | 3 |
+| `firm_pad` | land | `anchored` | none | As `pad`. The firm pad of `authority.md` 1.3; only the bad edit grounds with it | 3 |
+| `bookmark` | review | `derived` | `toward` (required, a name), `eye_height` 1.7 | none; `output = "bookmark"` (`build.md` 9.2) | none |
+
+So the pad keeps trees off the cottage's footprint, and the beck keeps them off its bed and writes
+`tag:water_level`, the tag the water library documents (`fields.md` 2.2, `build.md` 6.4). Without
+`clearing` and `water` those effects would match nothing (`authority.no_field`). `toward` is the
+review library's key for the place a bookmark looks at (`build.md` 9.2, 15.1); its name beside
+`face = "toward"` is (open: needs ruling), principle 9. `tree_oak` is an asset
+`lib/packs/primitive.toml` files under `plant/tree`. The lint step is restated in the world because
+`protocol.md` 1 leaves open how a library offers a lint without it: (open), decided by
+`lib/review`'s first lint in M1; until then `ford` declares it.
+
+Until written, this table binds `checks.py` too. Each row is one `info` record per subject, code
+`step.checks.<name>` (`diag.emit` sends `<name>`), the number in `data.value`, with `position` where
+the measure is taken. The first record of each code in a call carries `explain` (`protocol.md` 3.3),
+so a ford build raises no `protocol.no_explain`.
+
+| Name | Subject | `data.value`, unit | `position` | Ford's value |
+|---|---|---|---|---|
+| `lane_gap` | `feature.lane_west`, `feature.lane_east` | Lane end to the ford, metres | The lane end | 0 |
+| `approach_grade` | `feature.ford` | Steepest grade on `approach`, rise over run | Where it is steepest | Measured |
+| `ford_depth` | `feature.ford` | `water` less `height` at the ford, metres | The ford | Measured |
+| `water_step` | `feature.beck` | Largest jump in `water` between neighbouring posts along the bank, metres | Where it is largest | Measured |
+| `cottage_relief` | `instance.cottage` | Highest less lowest `height` under the footprint, metres | The cottage | Measured |
+| `trees_in_clearing` | `scatter.trees` | Trees where `clearing` holds, a count | None | 0 |
+
+**Change files**, in `examples/ford/changes/`, each a change file (`documents.md` 6), requested with
+`--change changes/<name>.toml`. Each file is exactly its body, byte for byte: each table header
+line, then each key on its own line in the order shown, tables in the order shown, no blank or
+comment lines, LF line endings and one final newline. Cases that cite their lines and bytes read
+this text.
+
+| File | Body |
+|---|---|
+| `vertex.toml` | `[feature.beck]` `path = [[150, 256], [140, 170], [164, 90], [150, 0]]`: the vertex `[160, 90]` moved 4 m east |
+| `bigger.toml` | `pack = "packs/primitive_large.toml"`, the pack of `assets.md` 6.2, copied to `examples/ford/packs/` |
+| `bad_anchor.toml` | Below: an anchored pad across the anchored beck's bed |
+| `bad_typo.toml` | Below: `xx` at line 2, column 67, bytes `[82, 84]` (`diagnostics.md` 8) |
+| `bad_cycle.toml` | `[field.loop_a]` `base = "= f('loop_b')"` `[field.loop_b]` `base = "= f('loop_a')"` |
+| `bad_asset.toml` | `[instance.shed]` `asset = "shed_gabel"` `on = { ref = "lane_east", t = 0.5, offset = -10 }` |
+
+`bad_anchor.toml`:
+
+```toml
+[instance.cottage]
+ground = "firm_pad"
+on = { ref = "beck", t = 0.3, offset = 2 }
+```
+
+`bad_typo.toml`:
+
+```toml
+[scatter.trees]
+density = "= smoothstep(0.1, 0.5, fbm(60, 3)) * smoothstep(0, 20, xx)"
+```
+
+Each bad edit touches nothing the others need, so all four are reported in one run.
 
 | Change | Must follow, and be reported | Must hold |
 |---|---|---|
 | Nothing | No node runs | Every byte the same, at 1 or 8 threads, on every system |
-| `downstream` | `identity.md` 5 entries, each with its cause: `ford` (the edited entity), `lane_west`, `lane_east`, `at_ford`, `on_bank`, `to_door`, `in_trees` where their places follow the moved features, `cottage`, footprint `cottage`, the trees added and removed where the old and new pads give way, and the changed regions of `height`, `clearing` and `water` | No post changes outside the union of the reach of the moved features (the lanes, the ford, the pad), old and new |
-| One vertex of the beck | `beck` and its regions of `height`, `clearing` and `water`; then every entry of `downstream` | As `downstream`, with the beck's old and new reach added |
-| Pack swapped | The pad grows; the cottage named with old and new facts | World text untouched |
+| `downstream` | `identity.md` 5 entries, each with its cause: `ford` (the edited entity), `lane_west`, `lane_east`, `at_ford`, `on_bank`, `to_door`, `in_trees` where their places follow the moved features, `cottage`, footprint `cottage`, the trees added and removed where the old and new pads give way, and the changed regions of `height`, `clearing` and `water` | No post of any field changes outside the union of the effect windows (`fields.md` 5.3) of every entry whose feature moved, old shape and new |
+| `changes/vertex.toml` | `beck` and its regions of `height`, `clearing` and `water`; then every entry of `downstream` | As `downstream`, the beck's entries among those moved |
+| `changes/bigger.toml` | The pad grows; the cottage named with old and new facts (`assets.md` 7) | World text untouched |
 | `hand`, then `hand` and `denser` (spacing 7 to 6, under a clear and a pin) | Every `s7000_` tree removed, every `s6000_` tree added | The pin stands; nothing inside the clear; both hand edits unchanged |
-| Bad edits (cottage anchored in the beck, a formula typo, a cycle, an unknown asset) | Code, subject, file and line, position, hint | Exit status 1 |
+| The four `bad_*` files together | `authority.conflict`, `formula.unknown_name` (nearest `x`), `graph.cycle`, `asset.unknown` (nearest `shed_gable`): code, subject, file and line, hint; `authority.conflict` and `asset.unknown` also a position | Exit status 1 |
 
-Measured by the lint step: lane end to ford distance (zero), approach grade, depth on the ford
-(`water` less `height`), no step in the water surface along the bank, relief under the cottage, no
-tree in the clearing. Build times, cold and unchanged, come from the run report
+Measured by the lint step, as its table above gives. Build times, cold and unchanged, come from the run report
 (`<directory>.run.json`, `graph.md` 6.3), never from a lint, under a stated protocol: machine,
 thread count, cold store against warm. Seen at 1.7 m, before and after, from the four bookmarks:
 `at_ford` on the lane short of the ford, `on_bank` along the water's edge, `to_door` from the lane to
