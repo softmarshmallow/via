@@ -57,9 +57,11 @@ step's layer decides what it reads and the rank of what it returns (R21, `docume
 library has no layer. A library ships code; any element of `command` may name it in the form
 `lib:<library>/<path>`, which the engine resolves in that library's folder as `documents.md`
 section 4 finds it. Only a library named in `include` may be named this way
-(`protocol.unknown_library`). The form is ours; `vocabulary.md` lists it (Selectors). How a library offers a lint without each world
-restating its `[step]` table is (open), a principle 10 question, decided by `lib/review`'s first
-lint in M1.
+(`protocol.unknown_library`). The form is ours; `vocabulary.md` lists it (Selectors). A library
+offers a lint by documenting the `[step]` table a world restates (decided by `lib/review`'s first
+lint in M1, principle 10): a lint's place needs no layer, but any new way for a library to declare a
+step would be a second mechanism for what three lines of world text already say, and the restated
+table shows a reviewer what runs.
 
 ### 1.1 The three points
 
@@ -878,7 +880,6 @@ by code, severity, subject, location and `data`.
 | Question | Decided by |
 |---|---|
 | Whether a lint step's report files belong in the build directory. | R15's first library lint in M1, with `build.md`. |
-| How a library offers a lint without each world restating its `[step]`. | `lib/review`'s first lint, M1. |
 | The deadlines' values. | The M0 probe and M2's `basin` (a 3.5 s model). |
 | Whether a plain command may declare what it reads, to be handed less. | The first plain step whose request is too large to write; not before M2. |
 | Shipping `viasdk` outside the engine (PyPI), and whether a project's virtual environment may serve as a named program. M1's route is decided (8.1). | M2 packaging, with the trust rule unchanged. |

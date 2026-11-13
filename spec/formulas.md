@@ -378,8 +378,9 @@ SDK's function list (section 11). Angles are degrees, matching bearings (`vocabu
 **Halo**: what it reads beyond the point being computed (`numbers.md` 6). A window's values equal
 the same cut of the whole world; every function below honours that by reading its halo, never by
 changing its rule at a window's edge. **Where**: the contexts of section 6 it may appear in; "any"
-is every context its rate allows. **M**: the milestone that needs it; earlier milestones reject it
-with `doc.not_yet`.
+is every context its rate allows; a call outside them is `formula.unknown_function`, saying where
+the function exists. **M**: the milestone that needs it; earlier milestones reject it with
+`doc.not_yet`.
 
 ### 8.1 Arithmetic and shaping
 
@@ -688,8 +689,8 @@ defaults = { width = 4, camber = 0.02 }
 radius   = 12
 
 [kind.lane.effect.bed]
-field = "tag:ground"
-value = "= smoothed_along(24) - camber * abs(sd)"
+field = "role:surface"
+value = "= smoothed_along(24) - camber * d"
 mask  = "= 1 - smoothstep(width / 2, width / 2 + 6, d)"
 ```
 
@@ -736,7 +737,7 @@ checks hold it equal to section 8. The reference page is generated into `docs/re
 | `formula.too_deep` | error | Nesting over 64 deep. |
 | `formula.syntax` | error | The text does not parse; names the span and what was expected (section 2's table). |
 | `formula.operator` | error | An operator of another language, or `=` for `==`; names ours. |
-| `formula.unknown_name` | error | A name is not visible here; nearest name, and where it does exist. |
+| `formula.unknown_name` | error | A name is not visible here (`data.name`); nearest name, and where it does exist. |
 | `formula.unknown_function` | error | A call names no function in the table; the alias table below, else the nearest function. |
 | `formula.arguments` | error | Wrong count, an unknown or repeated named argument, or a positional one after a named one. |
 | `formula.type` | error | A number where yes/no is needed, or the reverse; a selector out of place; a text, array or table attribute read; a formula for a bool or text attribute; a `weights` field read by `f`. |

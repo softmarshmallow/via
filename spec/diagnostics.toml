@@ -1504,8 +1504,8 @@ Fixed: value = "= clamp(a, 0, 1)"
 severity = "error"
 chapter = "formulas"
 milestone = 1
-summary = "A name is not visible here; nearest name, and where it does exist."
-data = ["nearest"]
+summary = "A name is not visible here (`data.name`); nearest name, and where it does exist."
+data = ["name", "nearest"]
 explain = """
 A formula read a name that is not a field, a let name or an attribute of its owner.
 `data.nearest` holds the nearest visible name, and `related` points at its declaration.

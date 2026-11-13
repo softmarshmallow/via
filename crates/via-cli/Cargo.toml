@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 description = "The via command line and the build directory it writes."
+build = "build.rs"
 
 [[bin]]
 name = "via"
@@ -13,7 +14,13 @@ path = "src/main.rs"
 [dependencies]
 via-num = { workspace = true }
 via-diag = { workspace = true }
+via-doc = { workspace = true }
+via-raster = { workspace = true }
+via-graph = { workspace = true }
+via-model = { workspace = true }
 via-proto = { workspace = true }
+# `config.toml` and `trust.toml` (protocol.md 6.3), files of the machine the command line writes.
+toml = "1.1"
 
 [lints]
 workspace = true

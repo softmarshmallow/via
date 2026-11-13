@@ -663,7 +663,10 @@ This section follows `identity.md` 5, which owns the change report's entries and
   from.
 - An instance whose asset's facts differ, and whose own origin, facing and asset do not, is
   `changed`. Its footprint feature, whose bounding box differs, is `moved`. Under `base_centre` a
-  larger house keeps its origin, so the instance is `changed`, never `moved`, by a swap alone.
+  larger house keeps its plan origin, so the instance is `changed`, never `moved` in plan, by a swap alone.
+  When its ground is levelled by a pad over the larger footprint, its height follows that ground,
+  and a height that differs in integer millimetres is also `moved` (`identity.md` 5: position is
+  plan and height).
 - Every entry whose cause includes a differing asset fact carries `facts`: each differing fact of
   that asset, old and new.
 - The cause is `identity.md` 5's form `asset.<asset id>.<fact>`, written with the asset id, never

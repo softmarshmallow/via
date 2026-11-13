@@ -1,0 +1,269 @@
+{
+ "source": "spec/identity.md 10",
+ "rows": [
+  [
+   "junction",
+   [
+    {
+     "set": [
+      {
+       "pair": [
+        {
+         "name": "lane"
+        },
+        {
+         "role": "start"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "f8361e4571a94ed7"
+  ],
+  [
+   "junction",
+   [
+    {
+     "set": [
+      {
+       "pair": [
+        {
+         "name": "lane"
+        },
+        {
+         "role": "end"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "9c42c3494176612f"
+  ],
+  [
+   "junction",
+   [
+    {
+     "set": [
+      {
+       "pair": [
+        {
+         "name": "lane"
+        },
+        {
+         "role": "pass"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "f5b1f230d9f66a5b"
+  ],
+  [
+   "junction",
+   [
+    {
+     "set": [
+      {
+       "pair": [
+        {
+         "name": "beck"
+        },
+        {
+         "role": "pass"
+        }
+       ]
+      },
+      {
+       "pair": [
+        {
+         "name": "lane"
+        },
+        {
+         "role": "pass"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "82df4d89dc3cb626"
+  ],
+  [
+   "junction",
+   [
+    {
+     "set": [
+      {
+       "pair": [
+        {
+         "name": "#clip"
+        },
+        {
+         "role": "pass"
+        }
+       ]
+      },
+      {
+       "pair": [
+        {
+         "name": "lane"
+        },
+        {
+         "role": "end"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "2658ccbb34c5aa87"
+  ],
+  [
+   "edge",
+   [
+    {
+     "name": "j82df4d89dc3cb626_0"
+    },
+    {
+     "name": "jf8361e4571a94ed7_0"
+    },
+    {
+     "set": [
+      {
+       "name": "lane"
+      }
+     ]
+    }
+   ],
+   "fb7cc1661c923e9b"
+  ],
+  [
+   "edge",
+   [
+    {
+     "name": "j82df4d89dc3cb626_0"
+    },
+    {
+     "name": "jf8361e4571a94ed7_0"
+    },
+    {
+     "set": [
+      {
+       "name": "beck"
+      },
+      {
+       "name": "lane"
+      }
+     ]
+    }
+   ],
+   "edaa5ba9984d5e26"
+  ],
+  [
+   "area",
+   [
+    {
+     "set": [
+      {
+       "pair": [
+        {
+         "name": "beck"
+        },
+        {
+         "side": "left"
+        }
+       ]
+      },
+      {
+       "pair": [
+        {
+         "name": "lane"
+        },
+        {
+         "side": "left"
+        }
+       ]
+      },
+      {
+       "pair": [
+        {
+         "name": "lane"
+        },
+        {
+         "side": "right"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "43c6f2eb9128ebc7"
+  ],
+  [
+   "cell",
+   [
+    {
+     "name": "lane"
+    },
+    {
+     "side": "left"
+    },
+    {
+     "name": "j82df4d89dc3cb626_0"
+    },
+    {
+     "int": 0
+    }
+   ],
+   "5a52c2461d4ce6d7"
+  ],
+  [
+   "cell",
+   [
+    {
+     "name": "lane"
+    },
+    {
+     "side": "left"
+    },
+    {
+     "name": ""
+    },
+    {
+     "int": 0
+    }
+   ],
+   "881980ca85a857fb"
+  ],
+  [
+   "cell",
+   [
+    {
+     "name": "lane"
+    },
+    {
+     "side": "right"
+    },
+    {
+     "name": "j82df4d89dc3cb626_0"
+    },
+    {
+     "int": -3
+    }
+   ],
+   "f8c5ecdf6d28f289"
+  ],
+  [
+   "rest",
+   [
+    {
+     "name": "streets#a43c6f2eb9128ebc7_0"
+    }
+   ],
+   "97d328fbf7300eb3"
+  ]
+ ]
+}

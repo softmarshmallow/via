@@ -95,9 +95,11 @@ came through (diagnostics print the chain, `diagnostics.md` 1.2).
 **The parser.** Standard TOML readers drop what this model needs. The reader must give: each key's
 and each value's byte range; the raw text of each number literal; a map from each character of a
 string's value back to the file; and whether a table came from a `[x]` header, a `[[x]]` header, a
-dotted key or an inline table. It must accept TOML 1.0.0 exactly. Whether this is a maintained crate
-that exposes raw text and spans or a reader of our own: (open), decided in M0 step 5 by the
-conformance cases `syntax_v11`, `array_table` and `formula_span`.
+dotted key or an inline table. It must accept TOML 1.0.0 exactly. It is a reader of our own
+(`crates/via-doc/src/read.rs`), decided in M1 by the conformance cases `syntax_v11`, `array_table`
+and `formula_span`: the maintained crates (`toml_edit` 0.25, `toml_parser` 1.1, `toml` 1.2) all
+read TOML 1.1, so `syntax_v11` passes on them where it must fail, and none maps a string's
+characters back to the file.
 
 ### 2.1 Spans
 
@@ -638,7 +640,8 @@ and `via merge` prints `feature` as:
 "feature":{"lane":{"@layer":"world","kind":"lane","path":[[0,40],[128,60]],"width":6}}
 ```
 
-`--origins` gives `width` the span `world.toml` line 21, column 1, chain `world` then change `wide`.
+`--origins` gives `width` the span `world.toml` line 21, column 1, chain change `wide` alone: the
+world file's own text has no chain entry (`diagnostics.md` 1.2).
 Requesting the two in the other order prints the same bytes. Writing `starts_at = "cart"` on
 `feature.lane` is `doc.upward_ref`: `lane` is rank 0 and `cart` rank 1.
 
@@ -784,7 +787,6 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 
 | Question | Decided by |
 |---|---|
-| The TOML reader: a maintained crate exposing raw text and spans, or our own. | M0 step 5, by `syntax_v11`, `array_table`, `formula_span`. |
 | Where the spike-to-v1 translation for oracle comparison lives. | M0 step 7. |
 | Versions of a library. | The first shipped library change that breaks a world; no later than M7. |
 | Which layer a change file's added entities belong to, other than `world`. | The first example whose change file must add a table naming something above rank 0. |

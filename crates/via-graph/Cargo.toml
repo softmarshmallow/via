@@ -6,13 +6,12 @@ rust-version.workspace = true
 license.workspace = true
 description = "The build graph: nodes, edges, content keys and the store."
 
+# The graph is generic over node kinds (`spec/graph.md`): the model crate tells it what each node
+# is made from and how to compute it, so it needs nothing of the document, formula, geometry or
+# raster crates. Diagnostics are via-diag's record; the digest is BLAKE3 (graph.md 3.1).
 [dependencies]
-via-num = { workspace = true }
 via-diag = { workspace = true }
-via-doc = { workspace = true }
-via-expr = { workspace = true }
-via-geom = { workspace = true }
-via-raster = { workspace = true }
+blake3 = { version = "1.8", default-features = false }
 
 [lints]
 workspace = true

@@ -1,0 +1,14 @@
+# The key vector of spec/graph.md 3.1, machine-readable. The chapter is the source; this file is
+# its copy. Read by via-graph's unit test (crates/via-graph/src/key.rs), not by conformance (R20):
+# the conformance table's "key vector" row. `bytes` is the canonical encoding in lowercase hex;
+# `digest` is its BLAKE3 digest at 256 bits, 64 lowercase hex digits.
+
+[key.source_world]
+versions = { document = "test-doc", protocol = "via-step-1", build = "via-build-0", epoch = 1 }
+family = "source"
+statements = []
+params = [["path", "world.toml"]]
+edges = [["bytes", "1111111111111111111111111111111111111111111111111111111111111111"]]
+length = 189
+bytes = "07000000000000007669612d6b65790800000000000000746573742d646f630a000000000000007669612d737465702d310b000000000000007669612d6275696c642d3001000000000000000600000000000000736f75726365000000000000000001000000000000000400000000000000706174680a00000000000000776f726c642e746f6d6c0100000000000000050000000000000062797465731111111111111111111111111111111111111111111111111111111111111111"
+digest = "642582b833812c83cf9e4c023621de08dc7bbb3f34793b5b53a3ad442f9be9a8"

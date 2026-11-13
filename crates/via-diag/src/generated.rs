@@ -1595,8 +1595,8 @@ pub(crate) static ROWS: [Row; 324] = [
         severity: Severity::Error,
         chapter: "formulas",
         milestone: 1,
-        summary: "A name is not visible here; nearest name, and where it does exist.",
-        data: &["nearest"],
+        summary: "A name is not visible here (`data.name`); nearest name, and where it does exist.",
+        data: &["name", "nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "A formula read a name that is not a field, a let name or an attribute of its owner.\n`data.nearest` holds the nearest visible name, and `related` points at its declaration.\nWrite the name as declared, or declare it in [let].\nBad:   value = \"= 2 * hieght\"\nFixed: value = \"= 2 * height\"\n",
@@ -3898,7 +3898,7 @@ pub mod codes {
         pub const TYPE: Code = Code::from_index(142);
         /// `formula.unknown_function` (error): A call names no function in the table; the alias table below, else the nearest function.
         pub const UNKNOWN_FUNCTION: Code = Code::from_index(143);
-        /// `formula.unknown_name` (error): A name is not visible here; nearest name, and where it does exist.
+        /// `formula.unknown_name` (error): A name is not visible here (`data.name`); nearest name, and where it does exist.
         pub const UNKNOWN_NAME: Code = Code::from_index(144);
         /// `formula.unmarked` (error): A formula key holds a string that does not start with `=`, or any string starts with spaces before `=`.
         pub const UNMARKED: Code = Code::from_index(145);

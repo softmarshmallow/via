@@ -211,6 +211,83 @@ class Launcher(unittest.TestCase):
             self.assertEqual(p.wait(timeout=20), 0)
 
 
+class PlainCommand(unittest.TestCase):
+    """protocol.md 2.2 and 8: ``python -m viasdk <script>`` with VIA_STEP set."""
+
+    def _run(self, script_text, data):
+        d = tempfile.mkdtemp()
+        objects = os.path.join(d, "objects")
+        out = os.path.join(d, "out")
+        os.makedirs(objects)
+        os.makedirs(out)
+        field = os.path.join(d, "h.npy")
+        _npy.write_field(field, np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]))
+        data.setdefault("fields", {"height": {
+            "type": "scalar", "role": "surface", "tags": ["ground"], "unit": "m",
+            "blob": "x", "path": field, "i0": 0, "j0": 0, "i1": 3, "j1": 2}})
+        req = {"protocol": "via-step-1", "step": "checks", "when": "lint", "for_each_item": None,
+               "params": {}, "grid": {"extent_mm": [0, 0, 2000, 1000], "resolution_mm": 1000,
+                                      "nx": 3, "ny": 2},
+               "seed": "0" * 16, "out": out, "objects": objects, "data": data}
+        rp = os.path.join(d, "request.json")
+        with open(rp, "w") as f:
+            json.dump(req, f)
+        sp = os.path.join(d, "s.py")
+        with open(sp, "w") as f:
+            f.write(textwrap.dedent(script_text))
+        env = dict(os.environ, VIA_STEP=rp, PYTHONPATH=SDK)
+        p = subprocess.run([sys.executable, "-m", "viasdk", sp], env=env, capture_output=True,
+                           text=True, timeout=60, stdin=subprocess.DEVNULL)
+        return p, out
+
+    def test_lint_reads_by_role_and_tag_and_writes_diagnostics(self):
+        data = {
+            "features": {
+                "name": {"dtype": "str", "values": ["a", "b"]},
+                "kind": {"dtype": "str", "values": ["lane", "ford"]},
+                "geometry": {"dtype": "u8", "values": [1, 0]},
+                "pieces": {"dtype": "i64", "values": [0, 1, 2]},
+                "rings": {"dtype": "i64", "values": [0, 1, 2]},
+                "ring_starts": {"dtype": "i64", "values": [0, 2, 3]},
+                "coords": {"dtype": "i32", "shape": [3, 2],
+                           "values": [[0, 0], [1000, 0], [500, 500]]},
+            },
+            "instances": {
+                "name": {"dtype": "str", "values": ["t#1", "house"]},
+                "by": {"dtype": "str", "values": ["t", "instance.house"]},
+                "taxon": {"dtype": "str", "values": ["plant/tree", "building/house"]},
+                "x": {"dtype": "i32", "values": [1, 2]},
+            },
+        }
+        p, out = self._run("""
+            def lint(step):
+                (h,) = step.fields(["role:surface"])
+                (g,) = step.fields(["tag:ground"])
+                f = step.features("kind:ford")
+                t = step.instances("@plant")
+                step.info(code="m", subject="feature.b", message="m", hint="h",
+                          data={"v": float(h[1][2] + g[0][0]), "n": len(f["name"]),
+                                "c": f["coords"].tolist(), "t": list(t["name"])},
+                          explain="e")
+        """, data)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        with open(os.path.join(out, "diagnostics.json")) as f:
+            recs = json.load(f)
+        self.assertEqual(recs[0]["data"], {"v": 7.0, "n": 1, "c": [[500, 500]], "t": ["t#1"]})
+        self.assertEqual(recs[0]["explain"], "e")
+
+    def test_missing_function_and_exception_exit_1(self):
+        p, _ = self._run("x = 1\n", {})
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("lint(step)", p.stderr)
+        p, _ = self._run("def lint(step):\n    raise ValueError('boom')\n", {})
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("boom", p.stderr)
+        p, _ = self._run("def lint(step):\n    step.fields(['role:none'])\n", {})
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("LookupError", p.stderr)
+
+
 class Version(unittest.TestCase):
     def test_major_version_is_the_protocol_number(self):
         self.assertEqual(viasdk.PROTOCOL, "via-step-1")

@@ -17,5 +17,6 @@ __version__ = "1.0.0a0"
 
 from ._errors import Cancelled, NotAWorker, RpcError  # noqa: E402
 from ._step import Step  # noqa: E402
+from ._plain import request  # noqa: E402
 
-__all__ = ["PROTOCOL", "Cancelled", "NotAWorker", "RpcError", "Step", "__version__"]
+__all__ = ["PROTOCOL", "Cancelled", "NotAWorker", "RpcError", "Step", "__version__", "request"]

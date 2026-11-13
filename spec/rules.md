@@ -421,7 +421,7 @@ unknown-asset error.
 A scatter is derived (principle 3). After choosing, a candidate or clump member is dropped when:
 
 - its footprint overlaps the footprint of a hand instance, or of a non-scattered produced instance,
-  in the scatter's layer or below, and either asset's solidity is not `none` (`assets.md` 2.4).
+  in the scatter's layer or below, and neither asset's solidity is `none` (`assets.md` 2.4; as 8.1 tests, and as 3.4's edges read only solid hand instances).
   Overlap is 8.1's: interiors meet, so touching edges pass. v0 keeps no distance around a footprint
   (`assets.md` 2.4); a spacing fact, if one is wanted, takes a new word through `assets.md` and
   `vocabulary.md`, never `keep_out`, which is a field role (principle 9). Hand instances that stand on this scatter's output (3.4) are excluded; or

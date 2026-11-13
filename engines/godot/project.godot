@@ -1,0 +1,21 @@
+; The via Godot loader and its review tools (spec/build.md 15.1). Builds are loaded at run time or
+; saved as scenes by the editor plugin; nothing of a build is imported into this project.
+config_version=5
+
+[application]
+config/name="via loader"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[display]
+window/size/viewport_width=320
+window/size/viewport_height=180
+window/dpi/allow_hidpi=false
+
+[editor_plugins]
+enabled=PackedStringArray("res://addons/via_loader/plugin.cfg")
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2
+lights_and_shadows/directional_shadow/size=4096

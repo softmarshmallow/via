@@ -390,8 +390,8 @@ neighbours (a step computing slope, a lint, export normals) asks for its window 
 core resolves the grown window, cut at the extent, and never invents posts beyond it. How a step
 asks is `protocol.md`.
 
-Weights are held sparse: a window keeps one plane per material that some row painted in it, and no
-plane for any other.
+Weights are held sparse: a window keeps one plane per material that some entry painted in it (a mask
+above 0 at some post of the window), and no plane for any other.
 
 ### 6.4 The last writer at a point
 

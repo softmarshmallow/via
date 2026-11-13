@@ -10,5 +10,9 @@ description = "Formulas: parsing, checking and evaluating the formula language f
 via-num = { workspace = true }
 via-diag = { workspace = true }
 
+[dev-dependencies]
+# Reads spec/functions.toml in the test that holds the table equal to it (tests/table.rs).
+toml = "1.1"
+
 [lints]
 workspace = true

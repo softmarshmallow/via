@@ -1,0 +1,41 @@
+# The land library: the ground and what is levelled into it (docs/plan.md, "Ford's libraries").
+#
+# Conventions this library documents for a world that includes it:
+# - The terrain is a field with role `surface`, owned by the world (R25, R31); a world names it as
+#   it likes (`ford` calls it `height`). Libraries write it as `role:surface`, never by name.
+# - "Not here" for scatters and props is a field with role `keep_out` (rules.md 7.1). A world that
+#   wants pads to clear their ground declares one (`ford`'s `clearing`, `base = "= 0"`).
+# - Ground materials are the pack's `[material.<name>]` tables; the primitive pack ships `grass`
+#   and `rock` (assets.md 6.1). Painting them needs a `weights` field with role `material`, which
+#   `ford` does not have; no kind here paints yet.
+#
+# A pad is lent to an instance by `ground = "pad"` (rules.md 2.1): the footprint grown by `margin`
+# becomes a region feature of this kind, so the ground under a house is level and clear.
+
+[kind.pad]
+authority = "shaped"
+radius    = 4                             # the mask fades by 3; the ring (fields.md 5.3) stays clear
+
+[kind.pad.effect.level]                   # the ground under the footprint at its mean (surfaces.md 6.1)
+field = "role:surface"
+value = "= under('mean')"
+mask  = "= 1 - smoothstep(0, 3, d)"
+
+[kind.pad.effect.clear]                   # no tree on the footprint
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 2, d)"
+
+[kind.firm_pad]                           # the firm pad of authority.md 1.3: a pad that holds
+authority = "anchored"
+radius    = 4                             # the mask fades by 3; the ring (fields.md 5.3) stays clear
+
+[kind.firm_pad.effect.level]
+field = "role:surface"
+value = "= under('mean')"
+mask  = "= 1 - smoothstep(0, 3, d)"
+
+[kind.firm_pad.effect.clear]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 2, d)"

@@ -5,46 +5,79 @@
 //! result reaches the user as text or as canonical JSON, with diagnostics from `via-diag`.
 //!
 //! Governed by `spec/build.md` (section 14 for the commands, sections 1 to 13 for the build
-//! directory). At M0 the skeleton answers `via --version` and `via help` only; any other argument
-//! is a usage error with exit status 2, as `spec/diagnostics.md` gives `cli.usage`.
-//! `--diagnostics FILE` is honoured on every command, wherever it appears (`build.md` 14), because
-//! the conformance runner reads every record from that file, exit 0 and 2 included.
+//! directory), with `spec/protocol.md` 6 and 7 for steps and trust and `spec/diagnostics.md` 2 and
+//! 7 for `explain` and where records go. `--diagnostics FILE` is honoured on every command,
+//! wherever it appears, because the conformance runner reads every record from that file.
+//!
+//! # Map
+//!
+//! | Module | Section |
+//! |---|---|
+//! | `build` | 13, 14: `via build` from reading to the run report |
+//! | `out` | 2 to 9: the files of the `id` and the manifest's world keys |
+//! | `layout` | 5: chunks |
+//! | `changes` | 11.2: `changes.json` |
+//! | `snap` | 11.2: the baseline kept in the store |
+//! | `dir` | 13: replacing a directory whole, recovery, what `via` may delete |
+//! | `check` | 14: `via check` |
+//! | `steps` | `protocol.md` 2, 6, 7, 8.1: lint steps as plain commands, trust, the carried SDK |
+//! | `cmds` | 14: `merge`, `explain`, `eval`, `vectors`, `trust`, `config program` |
 
+mod build;
+mod changes;
+mod check;
+mod cmds;
+mod dir;
+mod json;
+mod layout;
+mod npy;
+mod out;
+mod snap;
+mod steps;
+
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use via_diag::nearest::nearest;
 use via_diag::terminal::{self, Options};
 use via_diag::{
-    codes, document, exit_status, finish, Diag, FailOn, NoWorld, Record, Site, Subject,
+    codes, document, exit_status, fail_on_code, Diag, Lint, NoWorld, Record, Site, Subject, Text,
 };
-use via_diag::{text, Text};
+use via_doc::ChangeRequest;
 
 /// The engine version, from the workspace manifest, so the binary and `Cargo.toml` cannot disagree.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const HELP: &str = "\
-usage: via <command> [--diagnostics FILE]
+usage: via <command> [arguments] [--diagnostics FILE]
 
 commands:
-  help         print this text
-  --version    print the engine version
+  build WORLD      build the world into its build directory
+  merge WORLD      print the merged document as canonical JSON
+  check DIR        check a build directory; writes nothing
+  explain [CODE]   print a code's registry row; every code with none
+  explain NODE WORLD   print a node's cause in the last build
+  eval WORLD --field F [--window i0,j0,i1,j1] [--tile N] --out FILE
+                   evaluate one scalar field into an array file
+  vectors FILE     compute each vector of a vector file
+  trust WORLD      list the world's steps and record trust
+  config program NAME PATH   record a named program's path
+  help             print this text
+  --version        print the engine version
 
-flags:
-  --diagnostics FILE   also write the diagnostics document to FILE
+flags of build:
+  --change C  --out DIR  --lib DIR  --threads N  --store DIR  --against DIR
+  --fail-on CODE  --rerun-step ID  --step-deadline SECONDS  --sdk DIR  --json  --info
 ";
-
-/// The commands of M0, for the nearest-name hint of an unknown one.
-const COMMANDS: [&str; 3] = ["--help", "--version", "help"];
 
 /// A diagnostic text built at run time; a blank one would be a defect of ours, so it falls back
 /// to a fixed text instead of panicking.
-fn txt(s: String) -> Text {
-    Text::new(s).unwrap_or_else(|_| text!("(no text)"))
+pub(crate) fn txt(s: String) -> Text {
+    Text::new(s).unwrap_or_else(|_| via_diag::text!("(no text)"))
 }
 
 /// A `cli.usage` record at the 1-based argument `argument`.
-fn usage(argument: usize, message: String, hint: String) -> Diag {
-    let argument = u32::try_from(argument).unwrap_or(u32::MAX);
+pub(crate) fn usage(argument: u32, message: String, hint: String) -> Diag {
     Diag::new(
         codes::cli::USAGE,
         Subject::Cli,
@@ -54,135 +87,569 @@ fn usage(argument: usize, message: String, hint: String) -> Diag {
     )
 }
 
-/// What the command line asks for, once `--diagnostics FILE` is taken out.
-enum Command {
-    Version,
-    Help,
+const COMMANDS: [&str; 11] = [
+    "--help",
+    "--version",
+    "build",
+    "check",
+    "config",
+    "eval",
+    "explain",
+    "help",
+    "merge",
+    "trust",
+    "vectors",
+];
+
+/// Flags that take a value.
+const VALUED: [&str; 16] = [
+    "--against",
+    "--change",
+    "--diagnostics",
+    "--fail-on",
+    "--field",
+    "--in",
+    "--lib",
+    "--out",
+    "--rerun-step",
+    "--sdk",
+    "--step-deadline",
+    "--store",
+    "--threads",
+    "--tile",
+    "--window",
+    "--option",
+];
+
+/// Flags without a value.
+const SWITCHES: [&str; 6] = [
+    "--info",
+    "--json",
+    "--lowered",
+    "--origins",
+    "--stand-ins",
+    "--yes",
+];
+
+/// The arguments, read: positional words and flags, each with its 1-based position.
+#[derive(Default)]
+struct Parsed {
+    words: Vec<(u32, String)>,
+    flags: Vec<(u32, String, Option<String>)>,
 }
 
-/// An argument and its 1-based position, so a fault can name where it is.
-type Arg = (usize, String);
+impl Parsed {
+    fn values(&self, f: &str) -> Vec<(u32, String)> {
+        self.flags
+            .iter()
+            .filter(|(_, n, _)| n == f)
+            .filter_map(|(a, _, v)| v.clone().map(|v| (*a + 1, v)))
+            .collect()
+    }
 
-/// Reads the arguments: the command, the `--diagnostics` file if any, or the usage records.
-fn parse(raw: Vec<std::ffi::OsString>) -> (Result<Command, Vec<Diag>>, Option<Arg>) {
+    fn one(&self, f: &str) -> Option<(u32, String)> {
+        self.values(f).pop()
+    }
+
+    fn has(&self, f: &str) -> Option<u32> {
+        self.flags
+            .iter()
+            .find(|(_, n, _)| n == f)
+            .map(|(a, _, _)| *a)
+    }
+}
+
+fn read_args(raw: Vec<std::ffi::OsString>) -> (Parsed, Vec<Diag>) {
+    let mut p = Parsed::default();
     let mut faults = Vec::new();
-    let mut words: Vec<Arg> = Vec::new();
-    let mut diagnostics: Option<Arg> = None;
-    let mut iter = raw.into_iter().enumerate().map(|(i, a)| (i + 1, a));
-    while let Some((position, arg)) = iter.next() {
-        // `std::env::args` panics on an argument that is not valid UTF-8, which would abort the
-        // process instead of reporting a usage error; such an argument is `cli.usage`.
-        let arg = match arg.into_string() {
-            Ok(text) => text,
+    let mut it = raw
+        .into_iter()
+        .enumerate()
+        .map(|(i, a)| (u32::try_from(i + 1).unwrap_or(u32::MAX), a));
+    while let Some((at, a)) = it.next() {
+        let a = match a.into_string() {
+            Ok(t) => t,
             Err(raw) => {
                 faults.push(usage(
-                    position,
+                    at,
                     format!(
-                        "argument {position} is not valid UTF-8 (`{}`)",
+                        "argument {at} is not valid UTF-8 (`{}`)",
                         raw.to_string_lossy()
                     ),
-                    "write the argument in UTF-8".to_string(),
+                    "write the argument in UTF-8".into(),
                 ));
                 continue;
             }
         };
-        if arg == "--diagnostics" {
-            match iter.next() {
-                Some((at, file)) => match file.into_string() {
-                    Ok(f) if !f.is_empty() => diagnostics = Some((at, f)),
+        if a.starts_with("--") && a != "--help" && a != "--version" {
+            if VALUED.contains(&a.as_str()) {
+                match it.next().map(|(_, v)| v.into_string()) {
+                    Some(Ok(v)) if !v.is_empty() => p.flags.push((at, a, Some(v))),
                     _ => faults.push(usage(
-                        position + 1,
-                        "`--diagnostics` needs a file path in UTF-8".to_string(),
-                        "write `--diagnostics FILE`".to_string(),
+                        at,
+                        format!("`{a}` needs a value"),
+                        format!("write `{a} VALUE`"),
                     )),
-                },
-                None => faults.push(usage(
-                    position,
-                    "`--diagnostics` needs a file".to_string(),
-                    "write `--diagnostics FILE`".to_string(),
-                )),
+                }
+            } else if SWITCHES.contains(&a.as_str()) {
+                p.flags.push((at, a, None));
+            } else {
+                let known = VALUED.iter().chain(SWITCHES.iter()).copied();
+                let near = nearest(&a, known);
+                let mut d = usage(
+                    at,
+                    format!("unknown flag `{a}`"),
+                    near.hint("run `via help`"),
+                );
+                if let Some(n) = near.found() {
+                    d = d.with("nearest", n);
+                }
+                faults.push(d);
             }
         } else {
-            words.push((position, arg));
+            p.words.push((at, a));
         }
     }
-    if !faults.is_empty() {
-        return (Err(faults), diagnostics);
+    (p, faults)
+}
+
+/// Flags each command takes; any other is `cli.usage`.
+fn allowed(command: &str) -> &'static [&'static str] {
+    match command {
+        "build" => &[
+            "--against",
+            "--change",
+            "--diagnostics",
+            "--fail-on",
+            "--info",
+            "--json",
+            "--lib",
+            "--out",
+            "--rerun-step",
+            "--sdk",
+            "--stand-ins",
+            "--step-deadline",
+            "--store",
+            "--threads",
+        ],
+        "merge" => &["--change", "--diagnostics", "--lib", "--origins", "--sdk"],
+        "check" => &["--diagnostics", "--json", "--info"],
+        "explain" => &["--diagnostics", "--json", "--out"],
+        "eval" => &[
+            "--change",
+            "--diagnostics",
+            "--field",
+            "--json",
+            "--lib",
+            "--out",
+            "--sdk",
+            "--tile",
+            "--window",
+        ],
+        "vectors" => &["--diagnostics"],
+        "trust" => &[
+            "--change",
+            "--diagnostics",
+            "--json",
+            "--lib",
+            "--sdk",
+            "--yes",
+        ],
+        _ => &["--diagnostics"],
     }
-    let command = match words.as_slice() {
-        [(_, w)] if w == "--version" => Ok(Command::Version),
-        [(_, w)] if w == "help" || w == "--help" => Ok(Command::Help),
-        [] => Err(vec![usage(
+}
+
+fn changes_of(p: &Parsed) -> Vec<ChangeRequest> {
+    p.values("--change")
+        .into_iter()
+        .map(|(at, c)| ChangeRequest::new(c, at))
+        .collect()
+}
+
+fn libs_of(p: &Parsed) -> Vec<PathBuf> {
+    p.values("--lib")
+        .into_iter()
+        .map(|(_, l)| PathBuf::from(l))
+        .collect()
+}
+
+/// What a command gives: its records, lint list, exit status override, and build directory.
+struct Done {
+    records: Vec<Record>,
+    lints: Vec<Lint>,
+    status: Option<u8>,
+    out: Option<PathBuf>,
+}
+
+impl Done {
+    fn of(records: Vec<Record>) -> Done {
+        Done {
+            records,
+            lints: Vec::new(),
+            status: None,
+            out: None,
+        }
+    }
+}
+
+fn need_world(p: &Parsed, command: &str) -> Result<(u32, PathBuf), Diag> {
+    p.words
+        .get(1)
+        .map(|(a, w)| (*a, PathBuf::from(w)))
+        .ok_or_else(|| {
+            usage(
+                1,
+                format!("`via {command}` needs a world file"),
+                format!("write `via {command} WORLD`"),
+            )
+        })
+}
+
+#[allow(clippy::too_many_lines)]
+fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
+    let Some((at, command)) = p.words.first().cloned() else {
+        if p.has("--version").is_some() {
+            println!("via {VERSION}");
+            return Ok(Done::of(Vec::new()));
+        }
+        return Err(vec![usage(
             1,
-            "no command given".to_string(),
-            "run `via help`".to_string(),
-        )]),
-        [(position, w), ..] if !COMMANDS.contains(&w.as_str()) => {
-            let near = nearest(w, COMMANDS);
-            let hint = near.hint("run `via help`");
-            let mut d = usage(*position, format!("unknown command `{w}`"), hint);
-            if let Some(n) = near.found() {
-                d = d.with("nearest", n);
-            }
-            Err(vec![d])
-        }
-        [.., (position, w)] => Err(vec![usage(
-            *position,
-            format!("unexpected argument `{w}`"),
-            "run `via help`".to_string(),
-        )]),
+            "no command given".into(),
+            "run `via help`".into(),
+        )]);
     };
-    (command, diagnostics)
+    if !COMMANDS.contains(&command.as_str()) {
+        let near = nearest(&command, COMMANDS);
+        let mut d = usage(
+            at,
+            format!("unknown command `{command}`"),
+            near.hint("run `via help`"),
+        );
+        if let Some(n) = near.found() {
+            d = d.with("nearest", n);
+        }
+        return Err(vec![d]);
+    }
+    let ok = allowed(&command);
+    let bad: Vec<Diag> = p
+        .flags
+        .iter()
+        .filter(|(_, f, _)| !ok.contains(&f.as_str()))
+        .map(|(a, f, _)| {
+            if f == "--json" && matches!(command.as_str(), "merge" | "vectors") {
+                usage(*a, format!("`--json` is not taken by `via {command}`, whose standard output is its result"), "use `--diagnostics FILE`".into())
+            } else {
+                usage(*a, format!("`via {command}` takes no `{f}`"), "run `via help`".into())
+            }
+        })
+        .collect();
+    if !bad.is_empty() {
+        return Err(bad);
+    }
+    let extra = |max: usize| -> Result<(), Vec<Diag>> {
+        match p.words.get(max) {
+            Some((a, w)) => Err(vec![usage(
+                *a,
+                format!("unexpected argument `{w}`"),
+                "run `via help`".into(),
+            )]),
+            None => Ok(()),
+        }
+    };
+    match command.as_str() {
+        "--version" => {
+            extra(1)?;
+            println!("via {VERSION}");
+            Ok(Done::of(Vec::new()))
+        }
+        "help" | "--help" => {
+            extra(1)?;
+            print!("{HELP}");
+            Ok(Done::of(Vec::new()))
+        }
+        "build" => {
+            extra(2)?;
+            let (wa, world) = need_world(p, "build").map_err(|d| vec![d])?;
+            if let Some(a) = p.has("--stand-ins") {
+                return Err(vec![Diag::new(
+                    codes::doc::NOT_YET,
+                    Subject::Cli,
+                    Site::Argument(a),
+                    txt("`--stand-ins` arrives in milestone 2".into()),
+                    via_diag::text!("build without `--stand-ins`"),
+                )]);
+            }
+            let mut fail_on = Vec::new();
+            let mut faults = Vec::new();
+            for (a, c) in p.values("--fail-on") {
+                match fail_on_code(&c, a) {
+                    Ok(c) => fail_on.push(c),
+                    Err(d) => faults.push(d),
+                }
+            }
+            let threads = match p.one("--threads") {
+                Some((a, t)) => match t.parse::<usize>() {
+                    Ok(n) if n >= 1 => Some(n),
+                    _ => {
+                        faults.push(usage(
+                            a,
+                            format!("`--threads {t}` is not a whole number of at least 1"),
+                            "write `--threads N`".into(),
+                        ));
+                        None
+                    }
+                },
+                None => None,
+            };
+            let deadline = match p.one("--step-deadline") {
+                Some((a, t)) => match t.parse::<u64>() {
+                    Ok(n) if n >= 1 => Some(n),
+                    _ => {
+                        faults.push(usage(
+                            a,
+                            format!("`--step-deadline {t}` is not a whole number of seconds"),
+                            "write `--step-deadline SECONDS`".into(),
+                        ));
+                        None
+                    }
+                },
+                None => None,
+            };
+            if !faults.is_empty() {
+                return Err(faults);
+            }
+            let o = build::run(&build::Args {
+                world,
+                world_arg: wa,
+                changes: changes_of(p),
+                out: p.one("--out").map(|(_, o)| PathBuf::from(o)),
+                lib: libs_of(p),
+                threads,
+                store: p.one("--store").map(|(_, s)| PathBuf::from(s)),
+                against: p.one("--against").map(|(_, s)| PathBuf::from(s)),
+                fail_on,
+                rerun: p
+                    .values("--rerun-step")
+                    .into_iter()
+                    .map(|(_, s)| s)
+                    .collect(),
+                deadline,
+                sdk: p.one("--sdk").map(|(_, s)| PathBuf::from(s)),
+            });
+            Ok(Done {
+                records: o.records,
+                lints: o.lints,
+                status: None,
+                out: o.out,
+            })
+        }
+        "merge" => {
+            extra(2)?;
+            let (wa, world) = need_world(p, "merge").map_err(|d| vec![d])?;
+            Ok(Done::of(cmds::merge(
+                &world,
+                wa,
+                changes_of(p),
+                libs_of(p),
+                p.has("--origins").is_some(),
+            )))
+        }
+        "check" => {
+            extra(2)?;
+            let Some((_, d)) = p.words.get(1) else {
+                return Err(vec![usage(
+                    1,
+                    "`via check` needs a build directory".into(),
+                    "write `via check DIR`".into(),
+                )]);
+            };
+            let records = check::check(Path::new(d))
+                .iter()
+                .map(|d| d.emit(&NoWorld))
+                .collect();
+            Ok(Done::of(records))
+        }
+        "explain" => {
+            extra(3)?;
+            let code = p.words.get(1).map(|(a, c)| (c.as_str(), *a));
+            let world = p.words.get(2).map(|(_, w)| PathBuf::from(w));
+            let out = p.one("--out").map(|(_, o)| PathBuf::from(o));
+            Ok(Done::of(cmds::explain(
+                code,
+                world.as_deref(),
+                out.as_deref(),
+                p.has("--json").is_some(),
+            )))
+        }
+        "eval" => {
+            extra(2)?;
+            let (wa, world) = need_world(p, "eval").map_err(|d| vec![d])?;
+            let Some((fa, field)) = p.one("--field") else {
+                return Err(vec![usage(
+                    1,
+                    "`via eval` needs `--field F`".into(),
+                    "write `--field F`".into(),
+                )]);
+            };
+            let Some((_, out)) = p.one("--out") else {
+                return Err(vec![usage(
+                    1,
+                    "`via eval` needs `--out FILE`".into(),
+                    "write `--out FILE`".into(),
+                )]);
+            };
+            let window = match p.one("--window") {
+                Some((a, w)) => match cmds::parse_window(&w) {
+                    Some(v) => Some((v, a)),
+                    None => {
+                        return Err(vec![usage(
+                            a,
+                            format!("`--window {w}` is not four whole numbers"),
+                            "write `--window i0,j0,i1,j1`".into(),
+                        )])
+                    }
+                },
+                None => None,
+            };
+            let tile = match p.one("--tile") {
+                Some((a, t)) => match t.parse::<u64>() {
+                    Ok(n) if n >= 1 => Some(n),
+                    _ => {
+                        return Err(vec![usage(
+                            a,
+                            format!("`--tile {t}` is not a whole number of at least 1"),
+                            "write `--tile N`".into(),
+                        )])
+                    }
+                },
+                None => None,
+            };
+            Ok(Done::of(cmds::eval(&cmds::EvalArgs {
+                world,
+                world_arg: wa,
+                changes: changes_of(p),
+                lib: libs_of(p),
+                field: (field, fa),
+                window,
+                tile,
+                out: PathBuf::from(out),
+            })))
+        }
+        "vectors" => {
+            extra(2)?;
+            let Some((a, f)) = p.words.get(1) else {
+                return Err(vec![usage(
+                    1,
+                    "`via vectors` needs a vector file".into(),
+                    "write `via vectors FILE`".into(),
+                )]);
+            };
+            Ok(Done::of(cmds::vectors(Path::new(f), *a)))
+        }
+        "trust" => {
+            extra(2)?;
+            let (wa, world) = need_world(p, "trust").map_err(|d| vec![d])?;
+            let sdk = p.one("--sdk").map(|(_, s)| PathBuf::from(s));
+            let (records, status) = cmds::trust(
+                &world,
+                wa,
+                changes_of(p),
+                libs_of(p),
+                sdk.as_deref(),
+                p.has("--yes").is_some(),
+                p.has("--json").is_some(),
+            );
+            Ok(Done {
+                records,
+                lints: Vec::new(),
+                status: Some(status),
+                out: None,
+            })
+        }
+        "config" => {
+            extra(4)?;
+            match (p.words.get(1), p.words.get(2), p.words.get(3)) {
+                (Some((_, w)), Some((_, name)), Some((a, path))) if w == "program" => {
+                    Ok(Done::of(cmds::config_program(name, path, *a)))
+                }
+                _ => Err(vec![usage(
+                    1,
+                    "`via config` takes `program NAME PATH`".into(),
+                    "write `via config program NAME PATH`".into(),
+                )]),
+            }
+        }
+        _ => Err(vec![usage(
+            at,
+            format!("unknown command `{command}`"),
+            "run `via help`".into(),
+        )]),
+    }
 }
 
 fn main() -> ExitCode {
-    let (command, diagnostics) = parse(std::env::args_os().skip(1).collect());
-    let records: Vec<Record> = match command {
-        Ok(Command::Version) => {
-            println!("via {VERSION}");
-            Vec::new()
-        }
-        Ok(Command::Help) => {
-            print!("{HELP}");
-            Vec::new()
-        }
-        Err(faults) => finish(
-            faults.iter().map(|d| d.emit(&NoWorld)).collect(),
-            &FailOn::none(),
-        ),
+    let (p, faults) = read_args(std::env::args_os().skip(1).collect());
+    let diagnostics = p.one("--diagnostics");
+    let json = p.has("--json").is_some()
+        && !matches!(
+            p.words.first().map(|w| w.1.as_str()),
+            Some("trust" | "explain" | "merge" | "vectors")
+        );
+    let info = p.has("--info").is_some();
+    let done = if faults.is_empty() {
+        dispatch(&p)
+    } else {
+        Err(faults)
     };
-    let mut status = exit_status(&records);
-    if !records.is_empty() {
+    let mut done = match done {
+        Ok(d) => d,
+        Err(faults) => Done::of(via_diag::finish(
+            faults.iter().map(|d| d.emit(&NoWorld)).collect(),
+            &via_diag::FailOn::none(),
+        )),
+    };
+    // A `--diagnostics FILE` inside the build directory would be replaced with it (14).
+    if let (Some((at, file)), Some(out)) = (&diagnostics, &done.out) {
+        let abs = |q: &Path| std::path::absolute(q).unwrap_or_else(|_| q.to_path_buf());
+        if abs(Path::new(file)).starts_with(abs(out)) {
+            done.records.push(
+                usage(*at, format!("`--diagnostics {file}` lies inside the build directory, which is replaced whole"), "write the file outside `--out`".into())
+                    .emit(&NoWorld),
+            );
+        }
+    }
+    let mut status = exit_status(&done.records).max(done.status.unwrap_or(0));
+    if !done.records.is_empty() {
         let colour = std::env::var_os("NO_COLOR").is_none()
             && std::io::IsTerminal::is_terminal(&std::io::stderr());
         eprint!(
             "{}",
-            terminal::render(
-                &records,
-                &[],
-                Options {
-                    info: false,
-                    colour
-                }
-            )
+            terminal::render(&done.records, &done.lints, Options { info, colour })
         );
     }
+    if json {
+        print!("{}", document(&done.records, &done.lints, status));
+    }
     if let Some((at, file)) = diagnostics {
-        if let Err(e) = std::fs::write(&file, document(&records, &[], status)) {
-            // build.md 14: a file that cannot be written is `build.write_failed`, on standard
-            // error only.
-            let d = Diag::new(
-                codes::build::WRITE_FAILED,
-                Subject::Cli,
-                Site::Argument(u32::try_from(at).unwrap_or(u32::MAX)),
-                txt(format!(
-                    "cannot write the diagnostics document `{file}`: {e}"
-                )),
-                text!("free space, or fix the folder's permissions"),
-            )
-            .emit(&NoWorld);
-            eprint!("{}", terminal::render(&[d], &[], Options::default()));
-            status = status.max(1);
+        let inside = done.out.as_ref().is_some_and(|o| {
+            let abs = |q: &Path| std::path::absolute(q).unwrap_or_else(|_| q.to_path_buf());
+            abs(Path::new(&file)).starts_with(abs(o))
+        });
+        if !inside {
+            if let Err(e) = std::fs::write(&file, document(&done.records, &done.lints, status)) {
+                let d = Diag::new(
+                    codes::build::WRITE_FAILED,
+                    Subject::Cli,
+                    Site::Argument(at),
+                    txt(format!(
+                        "cannot write the diagnostics document `{file}`: {e}"
+                    )),
+                    via_diag::text!("free space, or fix the folder's permissions"),
+                )
+                .emit(&NoWorld);
+                eprint!("{}", terminal::render(&[d], &[], Options::default()));
+                status = status.max(1);
+            }
         }
     }
     ExitCode::from(status)

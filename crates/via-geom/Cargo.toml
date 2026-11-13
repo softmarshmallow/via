@@ -9,6 +9,8 @@ description = "The geometry kernel: lattice geometry, noding, networks, areas an
 [dependencies]
 via-num = { workspace = true }
 via-diag = { workspace = true }
+# The digest of graph.md 3.1, naming a reproduction folder (geometry.md 7.4).
+blake3 = { version = "1.8", default-features = false }
 
 [lints]
 workspace = true

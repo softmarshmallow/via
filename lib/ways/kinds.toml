@@ -1,0 +1,35 @@
+# The ways library: lanes and the places they cross water (docs/plan.md, "Ford's libraries").
+#
+# A way meets another thing only at its ends (geometry.md 2.7). Where a lane meets water, a named
+# thing owns the meeting (R18): the lane ends at a `ford` (`ends_at = "ford"`), and the next lane
+# starts there. The ford is a point placed on the water (`on = { ref = "beck", t = 0.55 }`).
+
+[kind.lane]
+authority = "shaped"
+radius    = 12
+
+[kind.lane.defaults]
+width  = 4                                # metres
+camber = 0.02                             # fall from the crown to each edge, per metre
+
+[kind.lane.effect.bed]                    # a road bed smoothed along the lane, crowned across it
+field = "role:surface"
+value = "= smoothed_along(24) - camber * d"
+mask  = "= 1 - smoothstep(width / 2, width / 2 + 6, d)"
+
+[kind.ford]
+authority = "anchored"
+radius    = 21                             # the mask fades by 20; the ring (fields.md 5.3) stays clear
+
+[kind.ford.let]
+water_reach = "= 9"                       # where a beck of the water library's default width stops
+                                          # writing the ground: width / 2 + 6 (lib/water)
+grade       = "= 0.25"                    # the steepest approach, rise over run, from the ford's bed
+
+# Where the beck writes the ground, the ford asks what it found (`v`), so the two anchored
+# statements agree (authority.md 5 and 6). Outside it, the ford cuts any ground that stands above a
+# slope of `grade` rising from the bed at the ford, so the banks come down to the bed.
+[kind.ford.effect.approach]
+field = "role:surface"
+value = "= if(dist('kind:beck', 20) < water_reach, v, min(v, under('mean') + grade * d))"
+mask  = "= 1 - smoothstep(16, 20, d)"

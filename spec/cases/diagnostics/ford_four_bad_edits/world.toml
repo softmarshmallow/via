@@ -79,7 +79,7 @@ at = [200, 60]
 by = ["trees"]
 
 [change.hand.clear.gap]
-at = [60, 200]
+at = [208, 208]
 radius = 6
 by = ["trees"]
 

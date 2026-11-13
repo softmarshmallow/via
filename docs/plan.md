@@ -198,7 +198,7 @@ at = [200, 60]
 by = ["trees"]
 
 [change.hand.clear.gap]
-at = [60, 200]
+at = [208, 208]
 radius = 6
 by = ["trees"]
 
@@ -210,15 +210,16 @@ spacing = 6
 (and `lib/review/checks.py`), are written first in M1's shared base: before `geometry.md` 2.6's
 frame decision reads them, so before track A. From then their text is a fixture every ford case
 reads; changing it is a spec change. Until written, this table binds them. Every effect has a
-`radius`, its own or its kind's, so every entry has a window (`fields.md` 5.3).
+`radius`, its own or its kind's, so every entry has a window (`fields.md` 5.3), and every mask fades
+to 0 one post spacing inside it, so no ring post is `field.effect_cut`.
 
 | Kind | Library | Tier | Attributes | Effects: id, field | Radius |
 |---|---|---|---|---|---|
 | `beck` | water | `shaped` (ford's beck writes `anchored`) | `width` 6, `depth` 1.2 | `bed`, `role:surface` (lowers the ground across `width`); `bank`, `role:keep_out`; `level`, `tag:water_level` (the water surface in the channel) | 16 |
-| `ford` | ways | `anchored` | none | `approach`, `role:surface`: asks `v` where it overlaps the beck (`authority.md` 6), grades the banks down to the bed outside it | 20 |
+| `ford` | ways | `anchored` | none | `approach`, `role:surface`: asks `v` where it overlaps the beck (`authority.md` 6), grades the banks down to the bed outside it | 21 (its mask fades by 20) |
 | `lane` | ways | `shaped` | `width` 4, `camber` 0.02 | `bed`, `role:surface` | 12 |
-| `pad` | land | `shaped` | none | `level`, `role:surface`, `under('mean')` (`surfaces.md` 6.1); `clear`, `role:keep_out` | 3 |
-| `firm_pad` | land | `anchored` | none | As `pad`. The firm pad of `authority.md` 1.3; only the bad edit grounds with it | 3 |
+| `pad` | land | `shaped` | none | `level`, `role:surface`, `under('mean')` (`surfaces.md` 6.1); `clear`, `role:keep_out` | 4 (its mask fades by 3) |
+| `firm_pad` | land | `anchored` | none | As `pad`. The firm pad of `authority.md` 1.3; only the bad edit grounds with it | 4 |
 | `bookmark` | review | `derived` | `toward` (required, a name), `eye_height` 1.7 | none; `output = "bookmark"` (`build.md` 9.2) | none |
 
 So the pad keeps trees off the cottage's footprint, and the beck keeps them off its bed and writes

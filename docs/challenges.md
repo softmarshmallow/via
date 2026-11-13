@@ -98,6 +98,19 @@ doctrine section 7). Time of day and sun direction are carried as facts.
 | 41 | Unreal | none | Not shown | loader | |
 | 42 | Streaming and per-chunk loading | chunk budgets only | Not shown | loader, with core chunks | |
 
+## Closed in the rewrite
+
+Rows answered by the rewrite, milestone by milestone. The row above keeps what the spike showed;
+this table says what the rewrite shows now. Evidence is the milestone sheet and the command that
+makes it.
+
+| # | Milestone | Shown in | Held | What does not hold yet |
+|---|---|---|---|---|
+| 1 | M1 | `examples/ford/world.toml`: 87 lines of text; kinds as library data (`lib/land`, `water`, `ways`, `review`); formulas in the defined language of `spec/formulas.md`, not Python; lanes meet the ford by name (`ends_at`, `starts_at`), so `lane_gap` is 0 before and after the ford moves | Held | One 256 m world; numbers sit in the libraries' kind defaults (beck width 6, ford radius 21), which is where they belong, but no second world has reused them yet |
+| 3 | M1 | `engines/godot`: the loader turns a build into one node tree with terrain collision; the sheet tool renders the four bookmarks at 1.7 m before and after (`docs/reports/m1-sheet.png`) | Partly | Nobody walked ford: there is no walker, only cameras. The ground draws flat white (no material field), water edges are stair-stepped at 0.5 m posts, and one downstream view has a stray grey shard |
+| 19 | M1 | `attrs` pass through unread to `features.json` and to the loader as metadata; `outputs.bookmark` is the first defined output a loader reads (`build.md` 9.2, 15.1) | Partly | The query half is not built: `via query` (`surfaces.md` 7, tagged M1) is not a command yet. No hero or interactive object exists in ford |
+| 49 | M1 (points) | `hand` and `denser` on ford: the pin `oak` stands, nothing inside the clear, every `s7000_` tree removed and every `s6000_` added (92 and 126); `changes.json` names each moved feature, instance and field region with its cause | Held (points) | Points only, as planned; paths and painted fields are M3. In `downstream` the report has 10 trees moved where the acceptance table expects trees added and removed where the pads give way: the plan or the scatter's naming must be settled |
+
 ## What the list says about the rewrite
 
 - **The core is asked for surfaces above and below the ground again and again** (7, 12, 13, 34,

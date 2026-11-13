@@ -1328,7 +1328,7 @@ To fix: Remove unit.
 | `formula.too_long` | error | 1 |  | The formula text is over 4096 bytes. |
 | `formula.type` | error | 1 |  | A number where yes/no is needed, or the reverse; a selector out of place; a text, array or table attribute read; a formula for a bool or text attribute; a `weights` field read by `f`. |
 | `formula.unknown_function` | error | 1 | `nearest` | A call names no function in the table; the alias table below, else the nearest function. |
-| `formula.unknown_name` | error | 1 | `nearest` | A name is not visible here; nearest name, and where it does exist. |
+| `formula.unknown_name` | error | 1 | `name`, `nearest` | A name is not visible here (`data.name`); nearest name, and where it does exist. |
 | `formula.unmarked` | error | 1 |  | A formula key holds a string that does not start with `=`, or any string starts with spaces before `=`. |
 
 ### `formula.arguments`

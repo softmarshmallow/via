@@ -39,10 +39,11 @@ def main(argv):
         print("usage: python -m viasdk <script.py>", file=sys.stderr)
         return 2
     if os.environ.get("VIA_STEP"):
-        # The plain command (protocol.md 2.2, 8) arrives with M1; the transport is told apart by
-        # VIA_STEP alone, so a worker never takes this branch.
-        print("viasdk: the plain-command transport arrives with M1", file=sys.stderr)
-        return 1
+        # The plain command (protocol.md 2.2, 8): told apart by VIA_STEP alone, so a worker
+        # never takes this branch. It speaks no protocol, so the descriptors stay as they are.
+        from ._plain import run
+
+        return run(argv[0])
     rfile, wfile = _take_descriptors()
     from ._worker import serve
 

@@ -18,7 +18,7 @@ step calls an operation: `spec/protocol.md`.
 | Lattice | Every coordinate the kernel holds is an integer number of millimetres in the world frame (R24). Text is decimal metres with at most three decimals, mapped exactly by `numbers.md` 3.1. |
 | Range | Each coordinate lies in `[-(2^31 - 1), 2^31 - 1]` mm (about ±2147 km). Text outside it is `num.out_of_range` (`numbers.md`). A point the kernel computes outside it (an offset, a cut, a stroke) is `geom.range`. |
 | Predicates | Decided exactly in integer arithmetic. No tolerance, no epsilon, no float in a predicate. Widths below. |
-| Crossings | The crossing point of two segments is computed as an exact rational and rounded to the nearest lattice point, ties to even, per axis. |
+| Crossings | The crossing point of two segments is computed as an exact rational and rounded, per axis, to the lattice point whose hot pixel (3.1) holds it: the nearest, a tie going up. Ties to even would put a crossing on a pixel's high edge in a pixel the segments do not pass through, and noding would not settle (found by M1's noding fuzz test). |
 | Other constructions | An offset vertex, an arc sample, a curve sample, a point at `t`, a cut end: computed in doubles through `via-num` (R26) and rounded to the lattice by `numbers.md` 3.1, once, at the end of each construction. |
 | Lengths | `numbers.md` 5.5 is the one definition, and this chapter does not restate it: a segment's length `lk` is the exact squared length `dx*dx + dy*dy` in 128-bit integers, converted to the nearest double once, then `sqrt`. Cumulative lengths `Ck` and the total `L` are summed in doubles, in order from the start. Every length, `t`, `d` and `sd` in this chapter uses those expressions, so the kernel and formulas give the same bits. |
 | Area | Twice the signed area of a ring is an exact integer (mm², shoelace formula). Every area guarantee in this chapter is stated in that integer. |
@@ -244,11 +244,15 @@ outside the world; each lane's step past the ford lies inside it, over the beck.
 `spec/vectors/geometry/ford_frame.json`, a `via kernel project` input with its expected output
 (section 7), written with the runner.
 
-**A smoothed frame: (open).** Decided in M1 track A by this vector (R33), read against the effects
-the water and ways libraries declare for the beck and the lane: if any of them reads `t` at a
-radius where the vector's jump exceeds one metre, or reads `sd` (not through `abs`) past a lane's
-end, a smoothed frame is specified here before any track A effect reads the frame. Otherwise v1
-keeps the nearest-point frame and E1 stays accepted with the note above.
+**A smoothed frame: decided in M1 track A (R33): none in v1.** The vector holds bit for bit in the
+kernel. Read against the effects `docs/plan.md` binds for ford (until `lib/water` and `lib/ways`
+are written): the beck's `bed` and `bank` and the lane's `bed` are profiles across the line, which
+read `d` (the lane's camber reads `d` too: a crown is symmetric); the ford's `approach` reads `d`
+from the ford's point. None reads `t` at a radius past the vector's one-metre jump (about 2.7 m on
+the beck), and none reads `sd` past a lane's end. So v1 keeps the nearest-point frame and E1 stays
+accepted with the note above. The condition binds the libraries: an effect that reads `t` keeps
+within `1 / (2 tan(τ/2))` m of its line, and the beck's `level` takes its fall along the beck from
+the ground beneath it, not from `t`. A library effect that breaks it reopens this paragraph.
 
 ### 2.7 Ends and meetings (R18)
 
@@ -303,8 +307,9 @@ such that no two segments cross, overlap or touch except at a shared vertex.
   Guibas and Marimont 1998). The hot pixel of lattice point `(x, y)` is `[x - 0.5, x + 0.5) ×
   [y - 0.5, y + 0.5)` in millimetres, half-open on the high side of both axes. To make the result
   stable we use a variant whose output, rounded again, is unchanged: iterated snap rounding
-  (Halperin and Packer 2002) or stable snap rounding (Hershberger 2013). Which one is (open),
-  decided by the fixtures in section 6.
+  (Halperin and Packer 2002), decided in M1 by the `near` and `linework_a` fixtures and a fuzz test
+  of 3000 random batches: each fragment is routed again until it passes through no hot pixel but
+  its two ends.
 - **Provenance.** Each segment carries every source it lies on, as `(source, segment index on the
   source, t interval, same or reversed direction)`. The `t` interval is two doubles, the `t` of the
   segment's two ends on that source, each by `project`'s sequence (3.8).
@@ -317,7 +322,7 @@ such that no two segments cross, overlap or touch except at a shared vertex.
 |---|---|
 | Noded | No two segments cross; two segments meet only at a vertex. |
 | Idempotent | Noding the output again returns it unchanged, byte for byte. |
-| Close | Every segment lies within the bound of the chosen variant of its sources; for plain snap rounding that is √2/2 mm. The variant's bound is measured on the fixtures and written here when chosen. |
+| Close | Every segment lies within the bound of the chosen variant of its sources; for plain snap rounding that is √2/2 mm. Iterated snap rounding's measured bound on `linework_a` is 0.64 mm; the guarantee checked is 1.5 mm, so a further iteration's drift is allowed for. |
 | Faithful | Every point of every source lies within the same bound of some segment that names it. |
 | Order-free | Shuffling the input list changes no byte of the output (2.5). |
 
@@ -358,7 +363,8 @@ library (`identity.md`, Open).
 
 **Representative point.** The one interior point used by areas, cells and masked pieces, in this
 chapter and in `identity.md`. Candidates are the posts of the world grid (`numbers.md` 4) strictly
-inside the region. The one farthest from the outline (every ring) wins; distances are compared
+inside the region, the grid's lattice extended past the extent (a shape beyond it is kept whole,
+2.8). The one farthest from the outline (every ring) wins; distances are compared
 exactly (section 1); ties go to the lowest `y`, then the lowest `x`. If no post is inside, the
 candidate spacing is halved by integer division, anchored at the grid's origin, down to 1 mm, until
 one is. If no lattice point is strictly inside, the point is the shell's start vertex. Ours; chosen
@@ -995,9 +1001,9 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 
 ## Open
 
-- **Snap rounding variant** (iterated or stable): decided by the `near` and `linework_a` fixtures, on
-  idempotence and the measured bound.
-- **`i_overlay` for booleans and offsets**: decided by the bake-off (section 6).
+- **`i_overlay` for booleans and offsets**: decided by the bake-off (section 6). In M1 the
+  fallback (ours) is built and passes the section's cases; `i_overlay` was not fetched (no download
+  was approved), so the bake-off itself is still owed.
 - **Triangulator**: decided when `build.md` first exports a region as a mesh.
 - **The datum**: decided in M6 with `atlas` (2.1).
 - **`starts_at` and `ends_at` with `follows`**, and smoothing on `follows`: decided by the M3
@@ -1010,5 +1016,3 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 - **A profile swept along a path**: decided by the first world with a wall along a path (3.12).
 - **Where routing over a cost field is specified**, and the junction-placing search for main ways:
   decided when M2 or M3 first needs a found course (3.11).
-- **A smoothed frame** for paths (limitation E1): decided before M1 track A by the `ford_frame`
-  vector read against the water and ways libraries' effects (2.6).

@@ -848,7 +848,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | `fields` | Fields to keep as data in the root's metadata. |
 | `water` | One selector naming a water surface height field (6.4) to draw as water. |
 | `features` | Make nodes for features (below). |
-| `diagnostics` | A path: write the loader's diagnostics there as `diagnostics.md` 7's document, for unattended runs. Without it, they go to Godot's output. |
+| `diagnostics` | A path: write the loader's diagnostics there as `diagnostics.md` 7's document, for unattended runs. Without it, they go to Godot's output. A loader reads no text, so each record has the `file` form (`diagnostics.md` 1.2): `file` is a build path (3.4), or `pack:` and the pack path for a pack file. |
 
 | Build | Becomes in Godot |
 |---|---|
@@ -856,7 +856,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | A chunk | A `Node3D` `c_<cx>_<cy>` under it. Streaming chunks in and out is the engine's (M6). |
 | The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. |
 | A `material` weights field | Per chunk: a `ShaderMaterial` on that mesh, its planes as one `Texture2DArray` (format `R8`, one Godot texture layer per material), and each material's `colour`, `file` and `repeat` from `materials`. The shader loops over the chunk's count; there is no fixed number. A chunk naming more materials than the loader draws is `load.too_many_materials`, naming the chunk and its materials (`fields.md` 7.1). |
-| The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material. Not collided. |
+| The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0, so the surface meets the bank where it is dry. Not collided. |
 | A bounded field (6.3) | Not drawn; a kind surface is drawn from its mesh. Kept as data when `fields` names it. |
 | Any other field | Not drawn. Taken as an `Image` (`FORMAT_RF`) in the root's metadata when `fields` names it. Every field neither drawn nor kept is listed once in `load.fields_not_drawn` (info). |
 | Instances of one asset in one chunk | A `MultiMeshInstance3D` named after the asset id, its `MultiMesh` holding one transform per row and `tint` as instance custom data. The mesh comes from the asset's glTF through `GLTFDocument`, made with `to_asset`, which takes the file's node space as stored; a primitive or stand-in is made by the loader from `assets.md` 6. |
@@ -866,7 +866,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | A feature | Nothing by default. With `features`: a `Path3D` with a `Curve3D` for a path, a `Marker3D` for a point, a `Polygon` in metadata for a region; `attrs` as metadata. |
 | The review library's `bookmark` output | A `Camera3D` under a `bookmarks` node, named after the bookmark (as an instance name, below): the eye at the feature's `at` raised by `attrs.eye_height` metres (9.2), looking at `toward`'s `at` (9.1), with +Z of the world up. The loader reads `at` and never resolves a name. A `toward` that is missing or not of the form `{ "at", "name" }`, or whose `at` lies within 1 mm of the eye in plan, or an `eye_height` that is missing or not a finite number, is `load.bad_target`; that bookmark is not made, and no default is guessed. The sheet tool renders each (below). Other outputs: not read. |
 | A generated mesh (M3) | A `MeshInstance3D` from its `.glb`; with `collides`, a `StaticBody3D` with a `ConcavePolygonShape3D`. |
-| A meeting | A `NavigationLink3D` between its two mounts. |
+| A meeting | A `NavigationLink3D` between its two mounts, under a `meets` node, named `<a>+<b>` with `.` mapped as in an instance name. |
 | `diagnostics.json`, `changes.json` | Not read. The viewer may show them; the scene never holds them. |
 
 **The place a bookmark looks at** is resolved by the core (`authority.md` 1.2) and written as
@@ -911,8 +911,10 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   `{ "after", "before", "bookmarks", "camera", "godot", "light", "renderer", "size" }`. `before`
   and `after` are `{ "id", "world" }` (`after` `null` without one); each of `bookmarks` is
   `{ "after", "before", "eye", "name", "target" }`, with the two image paths (`null` where absent),
-  the eye point and `toward` as written.
-- The loader's diagnostics go to `<out>/diagnostics.json` in `diagnostics.md` 7's form. Exit 0 when
+  the eye point and `toward` as written, both from the after build where it has the bookmark, else
+  the before.
+- The loader's diagnostics go to `<out>/diagnostics.json` in `diagnostics.md` 7's form, each
+  record's `data.build` naming its build, `before` or `after`. Exit 0 when
   every bookmark was rendered, 1 with any error, 2 for a bad argument.
 - Images are not compared byte for byte: renderers differ between machines. The Godot loader suite
   checks their size and that they are not one colour; a person or an agent reads them.
@@ -1115,7 +1117,7 @@ numpy or the standard library, never through the SDK. Every case is also checked
     `manifest.json` without a `via-build-` format; build each; `build.not_a_build`, the files
     untouched.
 24. **Killed between renames.** `ford` built, then rebuilt with a test switch that stops the process
-    after the first rename; build again; the build completes, and no `.partial` or `.old` remains.
+    after the first rename (the environment variable `VIA_TEST_STOP_BETWEEN_RENAMES` set, exit 9); build again; the build completes, and no `.partial` or `.old` remains.
 25. **Baseline gone.** `ford` built with `--out build/ford`, the store deleted, rebuilt with
     `--change downstream --out build/ford`; `changes.json`
     has `against: null`; `build.baseline_missing` in the run report.

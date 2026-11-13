@@ -1,0 +1,39 @@
+# The water library: running water as kinds (docs/plan.md, "Ford's libraries").
+#
+# Conventions this library documents for a world that includes it:
+# - The ground is the field with role `surface` (fields.md 2.1). The beck cuts its bed into it.
+# - Water level is a field tagged `water_level` (fields.md 2.2, build.md 6.4), never a core role.
+#   Write its base as the ground, `base = "= f('height')"`, so where it is dry it equals the ground
+#   and the depth `water - ground` is 0. A loader is pointed at it with
+#   `--option water=tag:water_level` (build.md 15.1).
+# - What the beck keeps free of trees and props it writes on the field with role `keep_out`.
+#
+# Profiles read `d` only, never `t` (geometry.md 2.6: the beck bends, so a frame read far from its
+# line would jump). The water surface takes its fall along the beck from the ground beneath it.
+
+[kind.beck]
+authority = "shaped"                      # a world that means it firmly writes "anchored" (ford does)
+radius    = 16
+
+[kind.beck.defaults]
+width = 6                                 # metres across the channel floor
+depth = 1.2                               # metres the floor lies below the ground it was cut into
+
+[kind.beck.let]
+cut       = "= 1 - smoothstep(width / 2, width / 2 + 6, d)"   # 1 on the floor, 0 at the top of the bank
+freeboard = "= 0.3"                       # metres from the water to the top of the bank
+
+[kind.beck.effect.bed]                    # lowers the ground across `width`, banks over 6 m each side
+field = "role:surface"
+value = "= v - depth"
+mask  = "= cut"
+
+[kind.beck.effect.bank]                   # no tree on the floor or the bank
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 2, width / 2 + 4, d)"
+
+[kind.beck.effect.level]                  # the water surface: `freeboard` below the ground the bed was cut into
+field = "tag:water_level"
+value = "= v + max(0, depth * cut - freeboard)"
+mask  = "= 1 - smoothstep(width / 2 + 6, width / 2 + 7, d)"   # beyond the bank the value is `v`; fade before the ring

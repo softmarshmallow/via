@@ -429,9 +429,14 @@ dependencies = [
 name = "via-cli"
 version = "0.1.0"
 dependencies = [
+ "toml",
  "via-diag",
+ "via-doc",
+ "via-graph",
+ "via-model",
  "via-num",
  "via-proto",
+ "via-raster",
 ]
 
 [[package]]
@@ -454,6 +459,7 @@ dependencies = [
 name = "via-expr"
 version = "0.1.0"
 dependencies = [
+ "toml",
  "via-diag",
  "via-num",
 ]
@@ -462,6 +468,7 @@ dependencies = [
 name = "via-geom"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "via-diag",
  "via-num",
 ]
@@ -470,21 +477,22 @@ dependencies = [
 name = "via-graph"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "via-diag",
- "via-doc",
- "via-expr",
- "via-geom",
- "via-num",
- "via-raster",
 ]
 
 [[package]]
 name = "via-model"
 version = "0.1.0"
 dependencies = [
+ "toml",
  "via-diag",
+ "via-doc",
+ "via-expr",
+ "via-geom",
  "via-graph",
  "via-num",
+ "via-raster",
 ]
 
 [[package]]

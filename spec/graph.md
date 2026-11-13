@@ -27,7 +27,9 @@ of every node whose formula reads it, as a statement that node is made from (3.1
 
 A **node** is one unit of work with one result, its **value**. A node reads only its inputs, which
 arrive along its edges; the graph crate hands a node its inputs and nothing else. A node id is
-`<family>:<subject>`, then `/v:<view>`, `/w:<window>` and `/i:<item>` where the family has them.
+`<family>:<subject>`, then `/v:<view>`, `/w:<window>` and `/i:<item>` where the family has them; a
+family with one node (`merge`) is its own id. A subject may hold `/` and `:` (a path); only those
+three suffixes are read as parts of the id.
 
 | Family | Node id | Made from | Value | Kept in the store |
 |---|---|---|---|---|
@@ -234,7 +236,7 @@ The store is a folder of write-once files named by digest. Where it lives is `bu
 
 | Entry | Path | Holds |
 |---|---|---|
-| object | `objects/ab/<value digest>` | the value's bytes |
+| object | `objects/ab/<value digest>` | the value's bytes; for a value with diagnostics, `"via-value-1"`, the bytes and the diagnostics in the encoding of 3.1, so the value digest covers them (3.4) and a build file's object is the file itself |
 | key record | `keys/ab/<key>` | the value digest and the node's diagnostics |
 | trace | `traces/<static key>/<trace digest>` | one trace of a step (5.1) and its value digest |
 | build record | `builds/<build key>` | 6.2 |
@@ -421,8 +423,9 @@ equal digests for every recorded read mean the same reads.
 
 **The build record**, kept in the store under the build key, holds: the four versions (3.3); every
 node's id, key and value digest; the build's world diagnostics as emitted; the digest of each build file; and whether every step
-completed. Statement digests are in `merge`'s value and per-chunk field digests are the `field`
-nodes' value digests, so the change report (6.4) needs nothing more. The build key is written to
+completed. It also holds each statement's digest by statement id, as `merge`'s value does, and each
+leaf's `bytes` digest, so the causes of 6.3 need no reading of `merge`. Per-chunk field digests are
+the `field` nodes' value digests, so the change report (6.4) needs nothing more. The build key is written to
 the manifest as `run.key` (`build.md` 4). `.previous` (`build.md` 11.2) names the last complete build
 by its `id` and manifest digest; this chapter neither reads nor writes it.
 
@@ -478,7 +481,7 @@ A **node** object:
 | `value` | Its value digest; `null` when `skipped`, or for a step that did not complete. |
 | `failed` | `true` when its value holds an error, or it is a step that did not complete; else `false`. |
 | `cause` | For a `ran` node, the cause object below; else `null`. |
-| `needed_by` | For a `recomputed` node, the lowest id among the nodes that read its value and ran, or `"expansion"` when only the expansion of the graph (2.1) needed it; else `null`. |
+| `needed_by` | For a `recomputed` node, the lowest id among the nodes that read its value and ran or were recomputed (a digest-only reader computed again needs its own inputs), or `"expansion"` when only the expansion of the graph (2.1) needed it; else `null`. |
 | `ms` | Whole milliseconds from its start to its value or its status being known. |
 
 A **cause** says why a `ran` node's key was not in the store. The first rule that holds, in this
@@ -491,7 +494,7 @@ order, gives it:
 | `versions` | The record's versions differ from this build's. | |
 | `new node` | Its id is not in the previous record. | |
 | `statements` | A statement it is made from (3.1, item 3) has another digest in the previous record's `merge` value. | |
-| `edge` | An input edge's node has another value digest than in the previous record, or is not in it. The first such edge by label. | `edge`: the label; `node`: the input's id |
+| `edge` | An input edge's node has another value digest than in the previous record, or is not in it. The first such edge by label. A leaf's `bytes` edge, which has no node behind it, comes after its node edges and names the leaf itself. | `edge`: the label; `node`: the input's id |
 | `key` | Its key differs from the previous record's for none of the reasons above: an edge removed, a parameter changed. | |
 | `not stored` | Its key equals the previous record's, but the store does not hold it: dropped as corrupt, a step that did not complete, a store that could not be written. | |
 
@@ -533,7 +536,8 @@ A short example, one line per node for reading:
 
 The run report is about the run, not the world: it is not part of the build's bytes, and section 7
 leaves it out. Times are never compared. Conformance asserts the set of `ran` nodes exactly, and
-that every `recomputed` node's `needed_by` names a `ran` node that reads it, or `"expansion"`.
+that every `recomputed` node's `needed_by` names a `ran` or `recomputed` node that reads it, or
+`"expansion"`.
 
 ### 6.4 What the change report gets from the graph
 

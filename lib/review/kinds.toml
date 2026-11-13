@@ -1,0 +1,21 @@
+# The review library: where a build is judged from, and the measures beside the eye (R15, R17).
+#
+# A bookmark is a ground view at a meeting: a point placed with `on` (or `at`), looking at the place
+# its `toward` names. The core knows neither word: the kind hands its features to the loader as
+# the output `bookmark` (build.md 9.2), and the Godot loader makes each a camera `eye_height` metres
+# above the bookmark's point, looking at `toward` (build.md 15.1).
+#
+# The measures are a lint step, `checks.py`. A library declares no step (protocol.md 1), so a world
+# that wants them restates this table:
+#
+#   [step.checks]
+#   when = "lint"
+#   command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+
+[kind.bookmark]                           # derived, the default: it writes no field
+output   = "bookmark"
+requires = ["toward"]                     # the place looked at: a feature, an end, a mount
+names    = ["toward"]
+
+[kind.bookmark.defaults]
+eye_height = 1.7                          # metres above the ground at the bookmark

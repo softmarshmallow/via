@@ -79,9 +79,8 @@ fn worked_example_one() {
             r#""message":"no field, let or attribute named `xx`","severity":"error","subject":"scatter.shrubs.density"}"#
         )
     );
-    // The chapter's own example carries `data.name`, which its row does not name; the registry
-    // follows the row (section 2), so the record reports it as undeclared.
-    assert_eq!(d.undeclared_data(), ["name"]);
+    // The chapter's own example carries `data.name`, and its row now names it (section 2).
+    assert!(d.undeclared_data().is_empty());
     assert_eq!(exit_status(&[r]), 1);
 }
 
@@ -440,7 +439,7 @@ fn explain_finds_codes_and_names_the_nearest() {
     assert!(explain::text(e)
         .starts_with("formula.unknown_name (error, spec/formulas.md, milestone 1)\n"));
     let j = explain::json(e);
-    assert!(j.starts_with(r#"{"chapter":"formulas","code":"formula.unknown_name","covered_by":"conformance","data":["nearest"]"#), "{j}");
+    assert!(j.starts_with(r#"{"chapter":"formulas","code":"formula.unknown_name","covered_by":"conformance","data":["name","nearest"]"#), "{j}");
     let err = explain::lookup("formula.unknwn_name", &[], 2).unwrap_err();
     assert_eq!(err.code().to_string(), "cli.unknown_code");
     assert_eq!(err.data()["nearest"], Value::from("formula.unknown_name"));

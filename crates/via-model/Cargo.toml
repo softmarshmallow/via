@@ -9,7 +9,13 @@ description = "The world model: kinds and authority, rules, surfaces, assets and
 [dependencies]
 via-num = { workspace = true }
 via-diag = { workspace = true }
+via-doc = { workspace = true }
+via-expr = { workspace = true }
+via-geom = { workspace = true }
+via-raster = { workspace = true }
 via-graph = { workspace = true }
+# The pack reader (assets.md 2): a pack is not a world document, so via-doc does not read it.
+toml = "1.1"
 
 [lints]
 workspace = true
