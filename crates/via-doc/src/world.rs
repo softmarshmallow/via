@@ -229,6 +229,62 @@ impl World {
         Some((e, s))
     }
 
+    /// A feature's key it does not write, taken from its kind (`diagnostics.md` 1.2, `defaults`
+    /// in the chain table): an attribute from the kind's `defaults`, any other key (`authority`)
+    /// from the kind itself. The chain ends with the `defaults` entry at the feature's header.
+    fn inherited(
+        &self,
+        subject: &Subject,
+        extra: &[KeyPart],
+    ) -> Option<(&Entry, Option<&Str>, via_diag::ChainEntry)> {
+        let Subject::Entity {
+            collection,
+            id,
+            keys,
+        } = subject
+        else {
+            return None;
+        };
+        // A feature takes from its `kind`; a hand instance's footprint from its `ground` kind.
+        let via = match collection.as_str() {
+            "feature" => "kind",
+            "instance" => "ground",
+            _ => return None,
+        };
+        let feature = self.entity_entry(collection, id)?;
+        let Value::Table(ft) = &feature.item.value else {
+            return None;
+        };
+        let kind = ft.str(via)?;
+        let kind_subject = Subject::entity("kind", kind);
+        let path: Vec<KeyPart> = if !keys.is_empty() && extra.starts_with(keys) {
+            extra.to_vec()
+        } else {
+            keys.iter().chain(extra).cloned().collect()
+        };
+        let first = path.first()?;
+        // Only a key the feature does not write is inherited.
+        if let KeyPart::Key(k) = first {
+            if ft.get(k).is_some() {
+                return None;
+            }
+        }
+        let mut under_defaults = vec![KeyPart::Key("defaults".to_string())];
+        under_defaults.extend(path.iter().cloned());
+        let (e, s) = self
+            .walk(&kind_subject, &under_defaults)
+            .or_else(|| self.walk(&kind_subject, &path))?;
+        let header = ft.header();
+        let link = via_diag::ChainEntry {
+            through: via_diag::Through::Defaults,
+            name: format!("{collection}.{id}"),
+            file: self.sources.name(header.src).to_string(),
+            line: self.sources.line(header),
+            owner: None,
+        };
+        Some((e, s, link))
+    }
+
     fn resolved(&self, span: Span, entry: &Entry) -> Resolved {
         Resolved {
             location: self.sources.location(span),
@@ -300,11 +356,22 @@ impl Resolve for World {
                     let e = self.base.root.get(k)?;
                     return Some(self.resolved(e.key, e));
                 }
-                let (e, _) = self.walk(subject, path.parts())?;
-                Some(self.resolved(e.key, e))
+                if let Some((e, _)) = self.walk(subject, path.parts()) {
+                    return Some(self.resolved(e.key, e));
+                }
+                let (e, _, link) = self.inherited(subject, path.parts())?;
+                let mut r = self.resolved(e.key, e);
+                r.chain.push(link);
+                Some(r)
             }
             Site::Expr(path, range) => {
-                let (e, s) = self.walk(subject, path.parts())?;
+                let (e, s, link) = match self.walk(subject, path.parts()) {
+                    Some((e, s)) => (e, s, None),
+                    None => {
+                        let (e, s, l) = self.inherited(subject, path.parts())?;
+                        (e, s, Some(l))
+                    }
+                };
                 let s = s?;
                 let (start, end) = s.file_range(range.start as usize, range.end as usize)?;
                 let span = Span {
@@ -312,7 +379,9 @@ impl Resolve for World {
                     start,
                     end,
                 };
-                Some(self.resolved(span, e))
+                let mut r = self.resolved(span, e);
+                r.chain.extend(link);
+                Some(r)
             }
             Site::File { .. } | Site::Text { .. } | Site::Argument(_) | Site::World => None,
         }

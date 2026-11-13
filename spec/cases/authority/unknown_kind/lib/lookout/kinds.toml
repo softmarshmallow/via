@@ -1,0 +1,10 @@
+# A reader of the faulty feature: the review library's bookmark (authority.md 1.2), cut to what the
+# case needs. Its `toward` is a name attribute, so `feature.view` reads `feature.puddle`.
+
+[kind.bookmark]
+output   = "bookmark"
+requires = ["toward"]
+names    = ["toward"]
+
+[kind.bookmark.defaults]
+eye_height = 1.7

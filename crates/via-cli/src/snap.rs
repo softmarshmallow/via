@@ -16,7 +16,7 @@ use via_graph::{Dec, Digest, Enc, Store};
 use via_model::{Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Tier};
 use via_num::Grid;
 
-const FORMAT: &str = "via-baseline-2";
+const FORMAT: &str = "via-baseline-3";
 
 /// Where a statement key was written: source path and line.
 pub type Lines = BTreeMap<String, BTreeMap<String, (String, u32)>>;
@@ -79,6 +79,11 @@ pub fn lines_of(world: &World, build: &Build) -> Lines {
             }
         }
         out.insert(stmt.clone(), m);
+    }
+    // A declared asset fact is located in the pack's text (`assets.md` 7): the cause
+    // `asset.<id>.<fact>` reads `asset.<id>`'s lines like a statement's.
+    for (id, facts) in &build.asset_lines {
+        out.insert(format!("asset.{id}"), facts.clone());
     }
     out
 }
@@ -247,6 +252,7 @@ pub fn encode(s: &Snapshot) -> Vec<u8> {
     for (who, (name, (x, y))) in &b.selections {
         e.str(who).str(name).u64(*x as u64).u64(*y as u64);
     }
+    str_map(&mut e, &b.removed_by);
     e.finish()
 }
 
@@ -366,6 +372,7 @@ pub fn decode(bytes: &[u8]) -> Option<Snapshot> {
                 points,
                 facing,
                 attrs,
+                attr_types: BTreeMap::new(),
                 names,
                 output,
                 rings,
@@ -447,6 +454,7 @@ pub fn decode(bytes: &[u8]) -> Option<Snapshot> {
         let at = (d.u64()? as i64, d.u64()? as i64);
         b.selections.insert(who, (name, at));
     }
+    b.removed_by = d_map(&mut d)?;
     d.done().then_some(Snapshot {
         build: b,
         lines,

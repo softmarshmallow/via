@@ -22,6 +22,8 @@ via-geom = { workspace = true }
 via-proto = { workspace = true }
 # `config.toml` and `trust.toml` (protocol.md 6.3), files of the machine the command line writes.
 toml = "1.1"
+# Ctrl+C and SIGTERM while a step runs (protocol.md 6.2), as via-proto uses it.
+libc = "0.2"
 
 [lints]
 workspace = true

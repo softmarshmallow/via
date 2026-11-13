@@ -9,6 +9,8 @@
 shader_type spatial;
 render_mode cull_back;
 
+#include "res://addons/via_loader/linear.gdshaderinc"
+
 uniform sampler2DArray weights : filter_linear, repeat_disable;
 uniform sampler2D params : filter_nearest, repeat_disable;
 uniform sampler2DArray albedo : source_color, filter_linear_mipmap, repeat_enable;
@@ -43,17 +45,17 @@ void fragment() {
 			continue;
 		}
 		vec4 p = texelFetch(params, ivec2(i, 0), 0);
-		vec3 c = p.rgb;
+		vec3 c;
 		if (p.a > 0.5) {
 			float rep = texelFetch(params, ivec2(i, 1), 0).r;
-			c = texture(albedo, vec3(plan / rep, float(i))).rgb;
+			c = texture(albedo, vec3(plan / rep, float(i))).rgb;   // source_color: as each renderer wants it
 		} else {
-			c *= 0.8 + 0.25 * noise(plan * 0.35) + 0.15 * noise(plan * 2.3 + float(i) * 17.0);
+			c = albedo_from_linear(p.rgb * (0.8 + 0.25 * noise(plan * 0.35) + 0.15 * noise(plan * 2.3 + float(i) * 17.0)));
 		}
 		acc += w * c;
 		total += w;
 	}
 	ALBEDO = total > 0.001 ? acc / total
-		: default_colour * (0.8 + 0.25 * noise(plan * 0.35) + 0.15 * noise(plan * 2.3));
+		: albedo_from_linear(default_colour * (0.8 + 0.25 * noise(plan * 0.35) + 0.15 * noise(plan * 2.3)));
 	ROUGHNESS = 0.95;
 }

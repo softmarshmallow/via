@@ -1,0 +1,65 @@
+# identity.md 10: the digest vectors, the machine-readable copy of that section's table.
+# Form: numbers.md 10 (one [vector.<id>] per row, fn, args, expected). `digest`'s args are
+# [class, [part, ...]]; each part one type of identity.md 2.2, written as identity.md 10 says:
+# { name = "..." }, { int = n }, { side = "left" | "right" }, { role = "start" | "end" | "pass" },
+# { pair = [p, q] }, { set = [p, ...] }. Rows in the table's order; transcribed, not computed.
+
+[vector.junction_lane_start]
+fn       = "digest"
+args     = ["junction", [{ set = [{ pair = [{ name = "lane" }, { role = "start" }] }] }]]
+expected = "f8361e4571a94ed7"
+
+[vector.junction_lane_end]
+fn       = "digest"
+args     = ["junction", [{ set = [{ pair = [{ name = "lane" }, { role = "end" }] }] }]]
+expected = "9c42c3494176612f"
+
+[vector.junction_lane_pass]
+fn       = "digest"
+args     = ["junction", [{ set = [{ pair = [{ name = "lane" }, { role = "pass" }] }] }]]
+expected = "f5b1f230d9f66a5b"
+
+[vector.junction_beck_lane_pass]
+fn       = "digest"
+args     = ["junction", [{ set = [{ pair = [{ name = "beck" }, { role = "pass" }] }, { pair = [{ name = "lane" }, { role = "pass" }] }] }]]
+expected = "82df4d89dc3cb626"
+
+[vector.junction_clip_lane_end]
+fn       = "digest"
+args     = ["junction", [{ set = [{ pair = [{ name = "#clip" }, { role = "pass" }] }, { pair = [{ name = "lane" }, { role = "end" }] }] }]]
+expected = "2658ccbb34c5aa87"
+
+[vector.edge_lane]
+fn       = "digest"
+args     = ["edge", [{ name = "j82df4d89dc3cb626_0" }, { name = "jf8361e4571a94ed7_0" }, { set = [{ name = "lane" }] }]]
+expected = "fb7cc1661c923e9b"
+
+[vector.edge_beck_lane]
+fn       = "digest"
+args     = ["edge", [{ name = "j82df4d89dc3cb626_0" }, { name = "jf8361e4571a94ed7_0" }, { set = [{ name = "beck" }, { name = "lane" }] }]]
+expected = "edaa5ba9984d5e26"
+
+[vector.area_beck_lane]
+fn       = "digest"
+args     = ["area", [{ set = [{ pair = [{ name = "beck" }, { side = "left" }] }, { pair = [{ name = "lane" }, { side = "left" }] }, { pair = [{ name = "lane" }, { side = "right" }] }] }]]
+expected = "43c6f2eb9128ebc7"
+
+[vector.cell_lane_left]
+fn       = "digest"
+args     = ["cell", [{ name = "lane" }, { side = "left" }, { name = "j82df4d89dc3cb626_0" }, { int = 0 }]]
+expected = "5a52c2461d4ce6d7"
+
+[vector.cell_lane_left_empty]
+fn       = "digest"
+args     = ["cell", [{ name = "lane" }, { side = "left" }, { name = "" }, { int = 0 }]]
+expected = "881980ca85a857fb"
+
+[vector.cell_lane_right_negative]
+fn       = "digest"
+args     = ["cell", [{ name = "lane" }, { side = "right" }, { name = "j82df4d89dc3cb626_0" }, { int = -3 }]]
+expected = "f8c5ecdf6d28f289"
+
+[vector.rest_streets]
+fn       = "digest"
+args     = ["rest", [{ name = "streets#a43c6f2eb9128ebc7_0" }]]
+expected = "97d328fbf7300eb3"

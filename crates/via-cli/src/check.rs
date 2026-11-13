@@ -326,11 +326,42 @@ pub fn check(dir: &Path) -> Vec<Diag> {
                 for (i, c) in data.chunks_exact(4).enumerate() {
                     let v = f32::from_le_bytes([c[0], c[1], c[2], c[3]]);
                     if !v.is_finite() || v.to_bits() == 0x8000_0000 {
+                        let what = if v.is_nan() {
+                            "NaN"
+                        } else if v == f32::INFINITY {
+                            "+inf"
+                        } else if v == f32::NEG_INFINITY {
+                            "-inf"
+                        } else {
+                            "-0"
+                        };
+                        let cols = match h.shape.as_slice() {
+                            [_, c] => (*c).max(1),
+                            _ => 0,
+                        };
+                        let (place, mut facts) = if cols > 0 {
+                            let (row, col) = (i / cols, i % cols);
+                            (
+                                format!("element {i} (row {row}, column {col})"),
+                                vec![
+                                    ("row", Value::from(row as i64)),
+                                    ("column", Value::from(col as i64)),
+                                ],
+                            )
+                        } else {
+                            (format!("element {i}"), Vec::new())
+                        };
+                        let fix = if what == "-0" {
+                            "a build writes 0, never -0"
+                        } else {
+                            "a build writes only finite values"
+                        };
+                        facts.push(("index", Value::from(i as i64)));
                         out.push(fault(
                             codes::check::VALUE,
                             path,
-                            format!("`{path}`: element {i} is not finite or is -0"),
-                            &[("index", Value::from(i as i64))],
+                            format!("`{path}`: {place} is {what}; {fix}"),
+                            &facts,
                         ));
                         break;
                     }

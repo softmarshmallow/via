@@ -398,11 +398,48 @@ impl<'w> Checker<'w> {
                 }
                 true
             }
-            (Takes::Free | Takes::Defaults, Value::Table(_)) => true,
+            (Takes::Free, Value::Table(t)) => {
+                self.free(t, ctx);
+                true
+            }
+            (Takes::Defaults, Value::Table(_)) => true,
             _ => false,
         };
         if !ok {
             self.type_fault(takes, e, ctx);
+        }
+    }
+
+    /// A free table (a step's `params`, `protocol.md` 2.1): any keys, but a date or time never
+    /// reaches a step. Each is `doc.type` at its key, at any depth; a list holding one is reported
+    /// at the list's key.
+    fn free(&mut self, t: &Table, ctx: &Ctx) {
+        fn has_date(v: &Value) -> bool {
+            match v {
+                Value::DateTime => true,
+                Value::List(xs) => xs.iter().any(|x| has_date(&x.value)),
+                _ => false,
+            }
+        }
+        for (k, e) in t.iter() {
+            let sub = ctx.below(k);
+            match &e.item.value {
+                Value::Table(inner) => self.free(inner, &sub),
+                v if has_date(v) => self.push(
+                    Fault::new(
+                        codes::doc::TYPE,
+                        sub.subject(),
+                        At::Span(e.key),
+                        format!(
+                            "{}: a TOML date or time, which never reaches a step",
+                            sub.place()
+                        ),
+                        "write the date as a string, or as a number the step reads".to_string(),
+                    )
+                    .chain(&e.chain),
+                ),
+                _ => {}
+            }
         }
     }
 

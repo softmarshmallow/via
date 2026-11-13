@@ -674,4 +674,8 @@ fn blank_text_is_refused() {
     assert!(Text::new("").is_err());
     assert!(Text::new(" \n\t").is_err());
     assert!(Text::new("x").is_ok());
+    // A placeholder is not a hint (1.3).
+    assert!(Text::new("-").is_err());
+    assert!(Text::new(" ? ").is_err());
+    assert!(Text::new("é").is_ok());
 }

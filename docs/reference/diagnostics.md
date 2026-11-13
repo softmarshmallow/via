@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-324 codes in 21 groups. 274 have no bad and fixed example yet; their explain text is the
+324 codes in 21 groups. 89 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -66,8 +66,12 @@ chapter's summary and hint.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-A declared footprint is not a simple polygon of at least three distinct points, counter-clockwise.
-To fix: Reverse the points, or remove the repeated one.
+A footprint written on an asset is not a simple polygon: fewer than three distinct points, a
+point repeated, edges that cross, or points that run clockwise.
+To fix: List at least three distinct points counter-clockwise; reverse a clockwise list, remove a
+repeat.
+Bad:   footprint = [[0, 0], [0, 2], [2, 2], [2, 0]]
+Fixed: footprint = [[0, 0], [2, 0], [2, 2], [0, 2]]
 ```
 
 ### `asset.declared_measured`
@@ -75,8 +79,14 @@ To fix: Reverse the points, or remove the repeated one.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-An asset's own table writes a fact its source measures or fixes (2.2).
+An asset's own table writes a fact that its source already fixes: a model file's measured size,
+or what a primitive's shape gives. Two statements of one fact would drift apart.
 To fix: Remove the key; for a model, via pack list shows the measured value.
+Bad:   [asset.a]
+       file = "a.glb"
+       size = [2, 2, 3]
+Fixed: [asset.a]
+       file = "a.glb"
 ```
 
 ### `asset.detail_bounds`
@@ -120,8 +130,12 @@ To fix: Export the mesh into the default scene.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-A selection or list filter names a declared taxon, or a tag, with no asset.
-To fix: The nearest taxon or tag that has assets.
+A selection or a list filter names a taxon that is declared, or a tag, but no asset of the pack
+has it, so the selection holds nothing. `data.nearest` holds the nearest taxon or tag that has
+assets.
+To fix: Select the taxon or tag the hint names, or give an asset that taxon.
+Bad:   assets = ["@prop/b"]   (no asset has taxon prop/b)
+Fixed: assets = ["@prop/a"]
 ```
 
 ### `asset.pivot_moved`
@@ -174,8 +188,15 @@ To fix: Review the change report, then run via pack accept PACK.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-An asset has no source marker, or more than one, or lacks a key its source requires (size, triangles; 2.2).
-To fix: Write exactly one of file, primitive, engine = true, or the named key.
+An asset must say where its shape comes from with exactly one source marker: `file`, `primitive`
+or `engine = true`. This one has none, more than one, or lacks a key its source requires (`size`
+for a primitive, `triangles` for an engine-made asset).
+To fix: Write exactly one of file, primitive or engine = true, and the keys that source requires.
+Bad:   [asset.a]
+       primitive = "box"
+Fixed: [asset.a]
+       primitive = "box"
+       size = [2, 2, 1]
 ```
 
 ### `asset.stand_in_stale`
@@ -201,8 +222,11 @@ To fix: Run via pack accept PACK.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-A world names an asset id the pack lacks.
-To fix: The nearest id.
+The world names an asset id that the pack does not hold. `data.nearest` holds the nearest id the
+pack has.
+To fix: Write an id the pack holds (via pack list shows them), or add the asset to the pack.
+Bad:   asset = "box_smal"
+Fixed: asset = "box_small"
 ```
 
 ### `asset.unknown_primitive`
@@ -210,8 +234,11 @@ To fix: The nearest id.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-primitive names no shape of section 6.
-To fix: The nearest shape word.
+`primitive` names a shape that is not one of the primitive shapes of assets.md section 6.
+`data.nearest` holds the nearest shape word.
+To fix: Write one of the listed shape words.
+Bad:   primitive = "boxx"
+Fixed: primitive = "box"
 ```
 
 ### `asset.untextured`
@@ -228,7 +255,7 @@ To fix: Bind the texture in the model if it should have one.
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
 | `authority.attribute_twice` | error | 1 |  | An attribute declared in both `defaults` and `requires`. |
-| `authority.conflict` | error | 1 |  | Two anchored features disagree where both masks are 1; subject the later; values, post, counts. |
+| `authority.conflict` | error | 1 | `field`, `both_full`, `both_partial` | Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`. |
 | `authority.ground_requires` | error | 1 |  | An instance grounds with a kind that has `requires`; the instance's `ground` line and the kind's `requires` line. |
 | `authority.hidden` | info | 1 |  | An entry left no trace: later entries with mask 1 cover all of it; once per feature and field. |
 | `authority.max_change` | error | 1 |  | An entry moves a value more than `max_change`; post of the largest move, amount, limit, `v` and `value`. |
@@ -239,7 +266,7 @@ To fix: Bind the texture in the model if it should have one.
 | `authority.range` | error | 1 |  | `radius` at or below 0; the key, value and range. |
 | `authority.requires` | error | 1 |  | A feature lacks an attribute its kind requires; names both lines. |
 | `authority.selector` | error | 1 | `nearest` | An effect's `field` is not `role:<role>` or `tag:<tag>`, or names an unknown role; both forms, nearest role, the role of a field named bare. |
-| `authority.squeezed` | warning | 1 |  | Two anchored features disagree only where a mask is below 1; as above. |
+| `authority.squeezed` | warning | 1 | `field`, `both_full`, `both_partial` | Two anchored features disagree only where a mask is below 1; as above: `data.field`, `data.both_full`, `data.both_partial`. |
 | `authority.step_anchored` | error | 2 |  | A step returned an anchored feature. M2. |
 | `authority.step_view` | error | 2 |  | A step returned rows on a field whose full view it read, or a row sorting before a row of its head view. M2. |
 | `authority.unchecked` | error | 2 |  | A generate step that read stated features and returned rows or features is named by no lint step's `checks`. M2, (open: queued by R31). |
@@ -251,7 +278,12 @@ To fix: Bind the texture in the model if it should have one.
 error, milestone 1, `spec/authority.md`.
 
 ```text
-An attribute declared in both defaults and requires.
+A kind declares one attribute both in `defaults` and in `requires`. A required attribute has no
+default, and a defaulted one is not required, so the two say opposite things.
+To fix: Keep it in one: requires if each feature must write it, defaults if a value serves.
+Bad:   requires = ["a"]
+       defaults = { a = 1 }
+Fixed: defaults = { a = 1 }
 ```
 
 ### `authority.conflict`
@@ -259,7 +291,17 @@ An attribute declared in both defaults and requires.
 error, milestone 1, `spec/authority.md`.
 
 ```text
-Two anchored features disagree where both masks are 1; subject the later; values, post, counts.
+Two anchored features write different values on one field at posts where both masks are exactly
+1. Neither may give way, so the build stops. The subject is the later feature, the earlier is in
+related; the message gives both values at the post of the largest difference. `data.field` names
+the field, `data.both_full` counts the posts where both masks are 1 and `data.both_partial` those
+where both are above 0.
+To fix: Make one shaped so the other holds; or move one off the other; or let the later one read
+the earlier (value = "= v") where they overlap.
+Bad:   [feature.a]  authority = "anchored", value 10 here
+       [feature.b]  authority = "anchored", value 12 on the same posts
+Fixed: [feature.b]
+       authority = "shaped"
 ```
 
 ### `authority.ground_requires`
@@ -267,7 +309,15 @@ Two anchored features disagree where both masks are 1; subject the later; values
 error, milestone 1, `spec/authority.md`.
 
 ```text
-An instance grounds with a kind that has requires; the instance's ground line and the kind's requires line.
+An instance grounds itself with a kind (`ground = "<kind>"`) that has `requires`. The footprint
+feature made for the instance has no way to write those attributes, so it could never be
+complete. The record gives the instance's ground line and the kind's requires line.
+To fix: Ground with a kind that has no requires, or give the attributes defaults in the kind.
+Bad:   [kind.k]
+       requires = ["a"]
+       (and ground = "k" on an instance)
+Fixed: [kind.k]
+       defaults = { a = 1 }
 ```
 
 ### `authority.hidden`
@@ -275,7 +325,12 @@ An instance grounds with a kind that has requires; the instance's ground line an
 info, milestone 1, `spec/authority.md`.
 
 ```text
-An entry left no trace: later entries with mask 1 cover all of it; once per feature and field.
+An entry left no trace on its field: later entries with mask 1 cover every post it touches, so
+its value is never seen. Said once per feature and field.
+To fix: Nothing if intended; otherwise move the feature out from under the later ones, or remove
+the effect.
+Bad:   an effect wholly inside a later anchored feature on the same field
+Fixed: the same effect where the later feature does not cover it
 ```
 
 ### `authority.max_change`
@@ -283,7 +338,12 @@ An entry left no trace: later entries with mask 1 cover all of it; once per feat
 error, milestone 1, `spec/authority.md`.
 
 ```text
-An entry moves a value more than max_change; post of the largest move, amount, limit, v and value.
+An entry moves its field's value further than its `max_change` allows. The record gives the post
+of the largest move, the amount and the limit, the value before (`v`) and the value asked.
+To fix: Raise max_change, or bring the asked value closer to v (for example by reading v).
+Bad:   max_change = 1
+       value = "= 30"   (v is 20 here)
+Fixed: value = "= v + clamp(30 - v, -1, 1)"
 ```
 
 ### `authority.names_undeclared`
@@ -291,7 +351,13 @@ An entry moves a value more than max_change; post of the largest move, amount, l
 error, milestone 1, `spec/authority.md`.
 
 ```text
-An attribute in a kind's names is in neither defaults nor requires; nearest declared attribute.
+A kind's `names` lists an attribute that is in neither its `defaults` nor its `requires`, so no
+feature of that kind can hold it. `data.nearest` holds the nearest declared attribute.
+To fix: Declare the attribute in defaults or requires, or correct the name.
+Bad:   names = ["targt"]
+       requires = ["target"]
+Fixed: names = ["target"]
+       requires = ["target"]
 ```
 
 ### `authority.no_field`
@@ -299,7 +365,13 @@ An attribute in a kind's names is in neither defaults nor requires; nearest decl
 info, milestone 1, `spec/authority.md`.
 
 ```text
-A well-formed selector matches no field, and the kind has a feature; once per kind and effect.
+An effect's selector is well formed but matches no field of this world, while the kind has at
+least one feature, so the effect writes nothing. Said once per kind and effect.
+To fix: Declare a field with that role or tag, or remove the effect if the world does not need it.
+Bad:   field = "tag:b"   (no field has tag b)
+Fixed: [field.b]
+       tags = ["b"]
+       base = "= 0"
 ```
 
 ### `authority.no_kind`
@@ -307,7 +379,14 @@ A well-formed selector matches no field, and the kind has a feature; once per ki
 error, milestone 1, `spec/authority.md`.
 
 ```text
-authority on a guide.
+A guide (a feature with no kind) writes `authority`. Authority belongs to a kind's effects; a
+guide writes nothing to any field.
+To fix: Remove authority, or give the feature a kind and set authority there.
+Bad:   [feature.a]
+       path = [[0, 0], [10, 0]]
+       authority = "anchored"
+Fixed: [feature.a]
+       path = [[0, 0], [10, 0]]
 ```
 
 ### `authority.order_cycle`
@@ -315,7 +394,12 @@ authority on a guide.
 error, milestone 1, `spec/authority.md`.
 
 ```text
-Nesting on one field forms a cycle; the field, every feature, each link and which side it puts later.
+Nesting decides which of two features on one field goes later: the one inside goes after the one
+around it. Here the links on one field form a loop, so no order exists. The record names the
+field, every feature, each link and which side it puts later.
+To fix: Break one link: move or reshape one feature so it no longer lies inside the next.
+Bad:   a inside b, b inside c, and c inside a on field height
+Fixed: c moved so it no longer lies inside a
 ```
 
 ### `authority.range`
@@ -323,7 +407,11 @@ Nesting on one field forms a cycle; the field, every feature, each link and whic
 error, milestone 1, `spec/authority.md`.
 
 ```text
-radius at or below 0; the key, value and range.
+`radius` is at or below 0. An effect's radius is how far its mask may reach from the feature, so
+it must be above 0. The record gives the key, the value and the range.
+To fix: Write a radius above 0.
+Bad:   radius = 0
+Fixed: radius = 4
 ```
 
 ### `authority.requires`
@@ -331,7 +419,14 @@ radius at or below 0; the key, value and range.
 error, milestone 1, `spec/authority.md`.
 
 ```text
-A feature lacks an attribute its kind requires; names both lines.
+A feature lacks an attribute its kind lists in `requires`. The record names the feature's table
+and the kind's requires line.
+To fix: Write the attribute on the feature.
+Bad:   [feature.a]
+       kind = "k"   (k requires width)
+Fixed: [feature.a]
+       kind = "k"
+       width = 4
 ```
 
 ### `authority.selector`
@@ -339,7 +434,12 @@ A feature lacks an attribute its kind requires; names both lines.
 error, milestone 1, `spec/authority.md`.
 
 ```text
-An effect's field is not role:<role> or tag:<tag>, or names an unknown role; both forms, nearest role, the role of a field named bare.
+An effect's `field` must be `role:<role>` or `tag:<tag>`. This one is a bare name, another form,
+or names an unknown role. The record shows both forms, the nearest role, and the role of a field
+when a field is named bare.
+To fix: Write role:<role> or tag:<tag>; a kind never names a world's field directly.
+Bad:   field = "height"
+Fixed: field = "role:surface"
 ```
 
 ### `authority.squeezed`
@@ -347,7 +447,13 @@ An effect's field is not role:<role> or tag:<tag>, or names an unknown role; bot
 warning, milestone 1, `spec/authority.md`.
 
 ```text
-Two anchored features disagree only where a mask is below 1; as above.
+Two anchored features write different values on one field, but only at posts where at least one
+mask is below 1, so the blend between them leaves neither value. A warning: the build goes on.
+`data.field`, `data.both_full` and `data.both_partial` are as for authority.conflict.
+To fix: Make one shaped; or move them apart so their fades do not overlap; or let the later one
+read the earlier (value = "= v") where they overlap.
+Bad:   two anchored features 2 m apart whose masks fade over 4 m
+Fixed: the same features 6 m apart, or one of them shaped
 ```
 
 ### `authority.step_anchored`
@@ -379,7 +485,11 @@ A generate step that read stated features and returned rows or features is named
 error, milestone 1, `spec/authority.md`.
 
 ```text
-authority is not derived, shaped or anchored; nearest tier.
+`authority` is not one of the three tiers: derived, shaped or anchored. `data.nearest` holds the
+nearest tier.
+To fix: Write one of the three tiers.
+Bad:   authority = "anchor"
+Fixed: authority = "anchored"
 ```
 
 ### `authority.unknown_kind`
@@ -387,7 +497,11 @@ authority is not derived, shaped or anchored; nearest tier.
 error, milestone 1, `spec/authority.md`.
 
 ```text
-A feature's kind or an instance's ground names no kind in the world's kind namespace; nearest kind.
+A feature's `kind` or an instance's `ground` names no kind in the world's kind namespace (the
+libraries in include). `data.nearest` holds the nearest kind.
+To fix: Write a kind an included library declares, or include the library that declares it.
+Bad:   kind = "edg"
+Fixed: kind = "edge"
 ```
 
 ## build
@@ -410,7 +524,11 @@ A feature's kind or an instance's ground names no kind in the world's kind names
 error, milestone 1, `spec/build.md`.
 
 ```text
---against names a folder with no manifest of a known format. Hint: name a complete build directory.
+`--against` names a folder that is not a complete build directory: it has no manifest.json, or
+the manifest's format is one this version does not read. No change report can be made against it.
+To fix: Name a folder a complete via build wrote, or drop --against to use .previous.
+Bad:   via build world.toml --against out
+Fixed: via build world.toml --against build/a
 ```
 
 ### `build.baseline_missing`
@@ -418,7 +536,12 @@ error, milestone 1, `spec/build.md`.
 warning, milestone 1, `spec/build.md`.
 
 ```text
-.previous names a build the store no longer holds; the change report has no baseline. Hint: rebuild the earlier text, or pass --against.
+The build directory's .previous names an earlier build that the store no longer holds (it was
+cleared, or another --store is in use), so the change report has no baseline. A warning: the
+build itself is complete.
+To fix: Rebuild the earlier text to restore the baseline, or name one with --against.
+Bad:   via build world.toml --store /tmp/s2   (the baseline was kept in another store)
+Fixed: via build world.toml --against build/a
 ```
 
 ### `build.chunk_not_multiple`
@@ -434,7 +557,11 @@ chunk is not a whole multiple of resolution; the hint gives the nearest that are
 error, milestone 1, `spec/build.md`, covered by the workspace tests.
 
 ```text
-The build directory could not be replaced because a file in it is open; names the file. Hint: close the program holding it, or build to another --out.
+The build directory could not be replaced because another program holds a file in it open
+(an engine with the build loaded, say). The record names the file. Nothing was replaced.
+To fix: Close the program holding the file, or build to another --out.
+Bad:   via build world.toml --out build/a   (build/a/manifest.json open elsewhere)
+Fixed: via build world.toml --out build/b
 ```
 
 ### `build.internal`
@@ -442,7 +569,12 @@ The build directory could not be replaced because a file in it is open; names th
 error, milestone 1, `spec/build.md`, covered by the workspace tests.
 
 ```text
-A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3.
+A value reaching the writer was not finite, a weight was below 0, or a file failed its own check
+after it was written. The text cannot cause this: it is a defect of ours, and the build exits
+with status 3. The record names the file and the post or row.
+To fix: Report it with the world text and the record; no change to the text is needed.
+Bad:   (none: a defect of ours, not of the text)
+Fixed: (none)
 ```
 
 ### `build.no_facts`
@@ -458,7 +590,11 @@ error, milestone 2, `spec/build.md`.
 error, milestone 1, `spec/build.md`.
 
 ```text
---out, <out>.partial or <out>.old is a file, a non-empty folder via did not write, or the world file's own folder; nothing was deleted. Hint: name an empty or new folder.
+The build would replace a folder that is not a build: --out, <out>.partial or <out>.old is a
+file, a non-empty folder via did not write, or the world file's own folder. Nothing was deleted.
+To fix: Name an empty or new folder for --out.
+Bad:   via build world.toml --out .
+Fixed: via build world.toml --out build/a
 ```
 
 ### `build.pack_root_far`
@@ -466,7 +602,11 @@ error, milestone 1, `spec/build.md`.
 warning, milestone 1, `spec/build.md`.
 
 ```text
-No relative path leads from the build directory to the pack's root (another drive); pack_root is null. Hint: build onto the pack's drive, or tell the loader where the pack is.
+No relative path leads from the build directory to the pack's root (they are on different
+drives), so the manifest's pack_root is null and a loader cannot find the asset files by itself.
+To fix: Build onto the pack's drive, or tell the loader where the pack is.
+Bad:   via build world.toml --out E:/builds/a   (pack on C:)
+Fixed: via build world.toml --out build/a
 ```
 
 ### `build.store_inside`
@@ -474,7 +614,11 @@ No relative path leads from the build directory to the pack's root (another driv
 error, milestone 1, `spec/build.md`.
 
 ```text
-The store resolves inside the build directory, which every build replaces. Hint: drop --store, or name a folder outside --out.
+The store resolves to a folder inside the build directory. Every build replaces that directory,
+so the store would be deleted with it.
+To fix: Drop --store to use the default, or name a folder outside --out.
+Bad:   via build world.toml --out build/a --store build/a/store
+Fixed: via build world.toml --out build/a --store build/store
 ```
 
 ### `build.write_failed`
@@ -482,7 +626,11 @@ The store resolves inside the build directory, which every build replaces. Hint:
 error, milestone 1, `spec/build.md`.
 
 ```text
-A file or rename could not be written; names the path and the system's error. Hint: free space, or fix the folder's permissions.
+A file or a rename could not be written. The record names the path and the system's error (no
+space left, no permission). The previous build is left as it was.
+To fix: Free space, or fix the folder's permissions, then build again.
+Bad:   via build world.toml --out /read_only/a
+Fixed: via build world.toml --out build/a
 ```
 
 ## check
@@ -509,7 +657,11 @@ A file or rename could not be written; names the path and the system's error. Hi
 error, milestone 1, `spec/build.md`.
 
 ```text
-A JSON or text file the build writes holds an absolute path; gives the key path.
+via check found an absolute path in a JSON or text file of the build. A build never holds one, so
+it moves between machines unchanged. The record gives the file and the key path.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   "pack_root": "/home/a/packs"   (in manifest.json)
+Fixed: "pack_root": "../packs"
 ```
 
 ### `check.chunk_rows`
@@ -517,7 +669,11 @@ A JSON or text file the build writes holds an absolute path; gives the key path.
 error, milestone 1, `spec/build.md`.
 
 ```text
-Chunks' [first, count] ranges leave a gap or overlap, or a row lies outside its chunk; gives the chunk and row.
+via check found that the chunks' [first, count] ranges do not tile the instance rows: a gap, an
+overlap, or a row whose position lies outside its chunk. The record gives the chunk and the row.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   chunks [0, 10] and [12, 5]   (rows 10 and 11 in none)
+Fixed: chunks [0, 10] and [10, 7]
 ```
 
 ### `check.digest`
@@ -525,7 +681,11 @@ Chunks' [first, count] ranges leave a gap or overlap, or a row lies outside its 
 error, milestone 1, `spec/build.md`.
 
 ```text
-A listed file's bytes or digest differs from its record; gives both.
+via check found a listed file whose size or digest differs from what the manifest records: the
+file was changed after the build wrote it. The record gives both.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   a field file edited by hand after the build
+Fixed: the same build written again by via build
 ```
 
 ### `check.face`
@@ -533,7 +693,10 @@ A listed file's bytes or digest differs from its record; gives both.
 error, milestone 1, `spec/build.md`.
 
 ```text
-A face outside [0, 360000); gives the row.
+via check found an instance facing outside [0, 360000) millidegrees. The record gives the row.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   face = 360000
+Fixed: face = 0
 ```
 
 ### `check.format`
@@ -541,7 +704,11 @@ A face outside [0, 360000); gives the row.
 error, milestone 1, `spec/build.md`.
 
 ```text
-No manifest.json, not canonical, or an unknown format.
+via check found no manifest.json in the folder, a manifest that is not canonical JSON, or a
+format it does not read. The folder is not a build this version can check.
+To fix: Name a folder via build wrote, or check it with the version that wrote it.
+Bad:   via check build
+Fixed: via check build/a
 ```
 
 ### `check.header`
@@ -549,7 +716,11 @@ No manifest.json, not canonical, or an unknown format.
 error, milestone 1, `spec/build.md`.
 
 ```text
-An array file's header is outside the subset of 3.2, or its size does not match it; gives the offset.
+via check found an array file whose header is outside the subset build.md 3.2 allows, or whose
+size does not match its header. The record gives the byte offset.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   an array file cut short by a failed copy
+Fixed: the same file written again by via build
 ```
 
 ### `check.id`
@@ -557,7 +728,11 @@ An array file's header is outside the subset of 3.2, or its size does not match 
 error, milestone 1, `spec/build.md`.
 
 ```text
-id is missing or differs from the digest recomputed by section 12; gives both.
+via check found a manifest with no id, or an id that differs from the digest recomputed from the
+manifest (build.md 12): the manifest was changed after the build. The record gives both.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   a manifest.json edited by hand
+Fixed: the manifest via build writes
 ```
 
 ### `check.missing`
@@ -565,7 +740,10 @@ id is missing or differs from the digest recomputed by section 12; gives both.
 error, milestone 1, `spec/build.md`.
 
 ```text
-A listed file is absent.
+via check found a file the manifest lists that is not in the folder.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   a build folder copied without its fields folder
+Fixed: the whole folder copied
 ```
 
 ### `check.names`
@@ -573,7 +751,11 @@ A listed file is absent.
 error, milestone 1, `spec/build.md`.
 
 ```text
-names.txt has other than count lines, a repeated name, or a character outside section 8's alphabet; gives the line.
+via check found names.txt with a line count other than count, a name repeated, or a character
+outside the name alphabet of build.md 8. The record gives the line.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   names.txt holding a.b twice
+Fixed: names.txt as via build writes it
 ```
 
 ### `check.not_canonical`
@@ -581,7 +763,11 @@ names.txt has other than count lines, a repeated name, or a character outside se
 error, milestone 1, `spec/build.md`.
 
 ```text
-A JSON file the build writes is not canonical; gives the byte offset of the first difference.
+via check found a JSON file of the build that is not canonical (key order, spacing or number
+form differ from the canonical form). The record gives the byte offset of the first difference.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   {"b": 1, "a": 2}
+Fixed: {"a":2,"b":1}
 ```
 
 ### `check.shape`
@@ -589,7 +775,11 @@ A JSON file the build writes is not canonical; gives the byte offset of the firs
 error, milestone 1, `spec/build.md`.
 
 ```text
-An array file's descr or shape differs from what the manifest says it holds; gives both.
+via check found an array file whose element type (descr) or shape differs from what the manifest
+says it holds. The record gives both.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   a scalar field file of shape (256, 255) where the grid is (256, 256)
+Fixed: the file via build writes for that field
 ```
 
 ### `check.unlisted`
@@ -597,7 +787,11 @@ An array file's descr or shape differs from what the manifest says it holds; giv
 error, milestone 1, `spec/build.md`.
 
 ```text
-A file is present that no list names.
+via check found a file in the build folder that no list of the manifest names. A build folder
+holds only what the build wrote, so nothing else is mistaken for part of it.
+To fix: Move the extra file out of the build folder.
+Bad:   build/a/notes.txt
+Fixed: notes.txt kept beside the build folder
 ```
 
 ### `check.value`
@@ -605,7 +799,10 @@ A file is present that no list names.
 error, milestone 1, `spec/build.md`.
 
 ```text
-A float that is not finite or is -0; gives the file and the index.
+via check found a float that is not finite, or is -0. The record gives the file and the index.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   a field sample of NaN
+Fixed: the field as via build writes it
 ```
 
 ### `check.weights_sum`
@@ -613,7 +810,11 @@ A float that is not finite or is -0; gives the file and the index.
 error, milestone 1, `spec/build.md`.
 
 ```text
-A post's weights sum to neither 255 nor 0; gives the chunk and post.
+via check found a post whose material weights sum to neither 255 (painted) nor 0 (unpainted).
+The record gives the chunk and the post.
+To fix: Build again into a new folder; if a fresh build fails this check, report it.
+Bad:   weights 200 and 50 at one post (250)
+Fixed: weights 204 and 51 (255)
 ```
 
 ## cli
@@ -631,7 +832,7 @@ error, milestone 1, `spec/diagnostics.md`.
 ```text
 `via explain` was given a world file that does not exist or is not a file. Exit status 2. Every
 other command reports a missing world as doc.file_missing.
-Give the path of an existing world file.
+To fix: Give the path of an existing world file.
 Bad:   via explain step.a.b missing.toml
 Fixed: via explain step.a.b world.toml
 ```
@@ -643,7 +844,7 @@ error, milestone 1, `spec/diagnostics.md`.
 ```text
 `via explain` or `--fail-on` was given a code that is not registered, and is not a step code of
 the last build. Exit status 2. `data.nearest` holds the nearest code.
-Write the code as `via explain` lists it.
+To fix: Write the code as `via explain` lists it.
 Bad:   via explain formula.unknwn_name
 Fixed: via explain formula.unknown_name
 ```
@@ -656,9 +857,9 @@ error, milestone 1, `spec/diagnostics.md`.
 The command line is wrong: an unknown flag, a missing argument, a bad value, or a --fail-on code
 that is not a warning. `argument` is the index of the argument at fault, counting from 1 after
 the program name. No build is attempted and the exit status is 2.
-Write the flag as `via help` lists it; the hint gives the nearest one.
-Bad:   via build world.toml --frobnicate
-Fixed: via build world.toml
+To fix: Write the flag as `via help` lists it; data.nearest gives the nearest one.
+Bad:   via build world.toml --chnage a
+Fixed: via build world.toml --change a
 ```
 
 ## diag
@@ -677,7 +878,7 @@ error, milestone 1, `spec/diagnostics.md`, covered by the workspace tests.
 The engine stopped on a defect of its own, not of the text: a panic, or a diagnostic whose place
 could not be found. The build exits with status 3. `data.message` holds the panic's text and
 `data.repro` the digest of the reproduction folder written beside the build directory.
-Report it with that folder; no change to the text is needed or expected to help.
+To fix: Report it with that folder; no change to the text is needed or expected to help.
 Bad:   (none: this is never the text's fault)
 Fixed: (none)
 ```
@@ -691,7 +892,7 @@ A step sent a diagnostic the engine could not keep: no hint, an empty message, a
 world does not have, a code not of the form [a-z][a-z0-9_]*, data that is not a table of plain
 values, a position outside the extent, or one code with two severities. `data.message` holds the
 step's message and `data.missing` what was wrong.
-Change the step so every diagnostic it sends is complete.
+To fix: Change the step so every diagnostic it sends is complete.
 Bad:   step.diag.emit(code="too_steep", subject="feature.a", message="too steep")
 Fixed: step.diag.emit(code="too_steep", subject="feature.a", message="slope 0.4 over 0.3", hint="lower the slope")
 ```
@@ -705,7 +906,7 @@ A node failed, so every node that reads it, directly or through others, was not 
 record is the one thing said about them: `count` is how many things were skipped and
 `data.first` names the first ten. With `data.stage = "export"`, export steps did not run because
 the build had an error.
-Fix the error on the subject; what was skipped is built again with it.
+To fix: Fix the error on the subject; what was skipped is built again with it.
 Bad:   value = "= 2 * hieght"   (an error; everything reading value is skipped)
 Fixed: value = "= 2 * height"
 ```
@@ -752,7 +953,12 @@ Fixed: value = "= 2 * height"
 warning, milestone 1, `spec/documents.md`.
 
 ```text
-A change adds an entity whose id is near an existing one.
+A change writes a table for an id that does not exist, so it adds a new entity, and an existing
+id in the same table is its nearest name. A typo would otherwise add a new thing silently.
+`data.nearest` holds that id.
+To fix: Write the existing id if the change meant to edit it; rename the new one if it did not.
+Bad:   [change.c.feature.alpah]   (feature alpha exists)
+Fixed: [change.c.feature.alpha]
 ```
 
 ### `doc.change_conflict`
@@ -760,7 +966,11 @@ A change adds an entity whose id is near an existing one.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-Two requested changes write or remove one key path; both changes and spans.
+Two requested changes write or remove the same key path, so the result would depend on their
+order. The record names both changes and both spans.
+To fix: Request only one of them, or make them write different keys.
+Bad:   [change.c.feature.a]  width = 4   and   [change.d.feature.a]  width = 6
+Fixed: [change.c.feature.a]  width = 4   and   [change.d.feature.a]  height = 6
 ```
 
 ### `doc.change_empty`
@@ -769,7 +979,7 @@ warning, milestone 1, `spec/documents.md`.
 
 ```text
 A change body writes nothing, so requesting it changes nothing.
-Write what the change should set, or delete it.
+To fix: Write what the change should set, or delete it.
 Bad:   [change.a]
 Fixed: [change.a.feature.b]
        width = 4
@@ -780,7 +990,12 @@ Fixed: [change.a.feature.b]
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A change writes include or name.
+A change writes `include` or `name`. The include list is settled before any change applies, and
+name names the world the changes are differences of, so neither may change.
+To fix: Edit include or name in the world file itself.
+Bad:   [change.c]
+       include = ["b"]
+Fixed: include = ["a", "b"]   (in the world file)
 ```
 
 ### `doc.change_nested`
@@ -788,7 +1003,11 @@ A change writes include or name.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-[change] in a kinds file, pack, change file or change body.
+`[change]` is written in a kinds file, a pack, a change file, or inside another change's body.
+Changes are declared in a world or layer file only, one level deep.
+To fix: Move the change to the world or a layer file; in a change file, write the body at its top.
+Bad:   [change.c.change.d.feature.a]
+Fixed: [change.d.feature.a]
 ```
 
 ### `doc.dangling`
@@ -796,7 +1015,15 @@ error, milestone 1, `spec/documents.md`.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A name whose target a change removed; the holding table and the change.
+A name points at something a requested change removed. The record names the table holding the
+name and the change that removed its target.
+To fix: Remove or retarget the name in the same change, or do not remove the target.
+Bad:   [change.c.feature.a]
+       remove = true   (feature b still has on = { ref = "a" })
+Fixed: [change.c.feature.a]
+       remove = true
+       [change.c.feature.b]
+       remove = true
 ```
 
 ### `doc.file_missing`
@@ -805,7 +1032,7 @@ error, milestone 1, `spec/documents.md`.
 
 ```text
 A file was not found: the world, a layer, a change file or a library folder.
-Correct the path, relative to the world file's folder, or create the file.
+To fix: Correct the path, relative to the world file's folder, or create the file.
 Bad:   file = "layers/mian.toml"
 Fixed: file = "layers/main.toml"
 ```
@@ -815,7 +1042,10 @@ Fixed: file = "layers/main.toml"
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A file found but not readable.
+A file exists but could not be read (no permission, or a folder where a file is named).
+To fix: Make the file readable by the user running via, or name the file, not its folder.
+Bad:   file = "layers"
+Fixed: file = "layers/a.toml"
 ```
 
 ### `doc.idle_change`
@@ -823,7 +1053,13 @@ A file found but not readable.
 warning, milestone 1, `spec/documents.md`.
 
 ```text
-An unrequested inline change has a fault; data.code holds its code.
+A change declared inline but not requested has a fault. It does not stop this build, but would
+stop any build that requests it. `data.code` holds the fault's own code.
+To fix: Fix the change as that code's explain says, or delete the change.
+Bad:   [change.c.feature.a]
+       widht = 4
+Fixed: [change.c.feature.a]
+       width = 4
 ```
 
 ### `doc.include_cycle`
@@ -831,7 +1067,10 @@ An unrequested inline change has a fault; data.code holds its code.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-Libraries that include each other; the loop.
+Libraries include each other in a loop, so none can be read first. The record names the loop.
+To fix: Remove one include of the loop; move what both need into a third library.
+Bad:   a includes b, and b includes a
+Fixed: a and b both include c
 ```
 
 ### `doc.include_missing`
@@ -839,7 +1078,11 @@ Libraries that include each other; the loop.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A library name found in no root; roots searched, by place not path; nearest name.
+An include names a library found in no library root. The record lists the roots searched, by
+place, not by path. `data.nearest` holds the nearest library name.
+To fix: Write a library name that exists, or add the library folder to a root.
+Bad:   include = ["lnd"]
+Fixed: include = ["land"]
 ```
 
 ### `doc.include_shadowed`
@@ -847,7 +1090,11 @@ A library name found in no root; roots searched, by place not path; nearest name
 info, milestone 1, `spec/documents.md`.
 
 ```text
-A library name found in several roots; the one used.
+A library name is found in more than one root. The first in search order is used; the record
+names it.
+To fix: Nothing if the one used is right; otherwise rename one library or remove it from a root.
+Bad:   include = ["a"]   (a in two roots)
+Fixed: include = ["a"]   (a in one root)
 ```
 
 ### `doc.kind_outside_library`
@@ -855,7 +1102,11 @@ A library name found in several roots; the one used.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-[kind] in a world or layer file, or a kind a change adds.
+`[kind]` is written in a world or layer file, or a change adds a new kind. Kinds are declared in
+a library's kinds file only; a change may edit or remove an existing kind.
+To fix: Move the kind to a library folder and include it.
+Bad:   [kind.k]   (in world.toml)
+Fixed: [kind.k]   (in lib/a/kinds.toml)  and  include = ["a"]
 ```
 
 ### `doc.layer_file_twice`
@@ -863,7 +1114,10 @@ error, milestone 1, `spec/documents.md`.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-Two layers name one file, or a layer names the world file.
+Two layers name one file, or a layer names the world file. Each file is one layer.
+To fix: Give each layer its own file.
+Bad:   [layer.a]  file = "x.toml"   and   [layer.b]  file = "x.toml"
+Fixed: [layer.a]  file = "a.toml"   and   [layer.b]  file = "b.toml"
 ```
 
 ### `doc.layer_rank`
@@ -871,7 +1125,13 @@ Two layers name one file, or a layer names the world file.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-Two layers with one rank, world's included.
+Two layers share one rank. Ranks order layers and must be unique; the world file is rank 0
+unless [layer.world] says otherwise.
+To fix: Give each layer its own rank.
+Bad:   [layer.a]
+       rank = 0   (the world is 0)
+Fixed: [layer.a]
+       rank = 1
 ```
 
 ### `doc.missing_key`
@@ -881,10 +1141,14 @@ error, milestone 1, `spec/documents.md`.
 ```text
 A required key is absent; the record names the table, the key and what it takes, at the span
 that creates the table.
-Add the key.
-Bad:   [field.height]
-Fixed: [field.height]
-       type = "scalar"
+To fix: Add the key.
+Bad:   [layer.a]
+       file = "a.toml"
+       owner = "b"
+Fixed: [layer.a]
+       file = "a.toml"
+       owner = "b"
+       rank = 1
 ```
 
 ### `doc.not_yet`
@@ -892,10 +1156,13 @@ Fixed: [field.height]
 error, milestone 1, `spec/documents.md`.
 
 ```text
-The text uses a word of a later milestone; the message names the milestone.
-Remove it for now, or use the form this milestone has.
-Bad:   (a key from a later milestone)
-Fixed: (the same table without it)
+The text uses a word that a later milestone brings; the message names that milestone. This
+version reads it but does not act on it.
+To fix: Remove it for now, or use the form this milestone has.
+Bad:   [layer.a]
+       after = "b"   (M4)
+Fixed: [layer.a]
+       rank = 2
 ```
 
 ### `doc.path_case`
@@ -903,7 +1170,11 @@ Fixed: (the same table without it)
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A path whose case differs from the name on disk.
+A path differs in letter case from the name on disk. Paths match case exactly on every system,
+so a world that builds on one builds on all. The record gives the name on disk.
+To fix: Write the path with the case the disk has.
+Bad:   file = "Layers/a.toml"
+Fixed: file = "layers/a.toml"
 ```
 
 ### `doc.path_form`
@@ -911,7 +1182,11 @@ A path whose case differs from the name on disk.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-An absolute path, a \, a part not portable, or a change file not ending in .toml.
+A path is absolute, holds a backslash, has a part that is not portable (a reserved device name,
+a trailing dot or space), or a change file does not end in .toml.
+To fix: Write a relative path with forward slashes and portable parts.
+Bad:   file = "C:\\work\\a.toml"
+Fixed: file = "layers/a.toml"
 ```
 
 ### `doc.placement_twice`
@@ -919,7 +1194,12 @@ An absolute path, a \, a part not portable, or a change file not ending in .toml
 error, milestone 1, `spec/documents.md`.
 
 ```text
-One table holds two placement keys; names both.
+One table holds two placement keys (at, on, path, region, where, follows). A thing is placed one
+way. The record names both.
+To fix: Keep one placement key.
+Bad:   at = [10, 10]
+       on = { ref = "a", t = 0.5 }
+Fixed: on = { ref = "a", t = 0.5 }
 ```
 
 ### `doc.remove_above_entity`
@@ -927,7 +1207,13 @@ One table holds two placement keys; names both.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-remove or unset at a change body's root or on a top table.
+`remove` or `unset` is written at a change body's root or directly on a top table. Removal acts
+on one entity or inside one, never on a whole world or a whole table.
+To fix: Write remove inside the entity's own table.
+Bad:   [change.c.feature]
+       remove = true
+Fixed: [change.c.feature.a]
+       remove = true
 ```
 
 ### `doc.remove_missing`
@@ -935,7 +1221,13 @@ remove or unset at a change body's root or on a top table.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-remove or unset names nothing in the base.
+`remove` or `unset` names something that is not in the base, so it removes nothing. A change
+cannot remove what another change adds.
+To fix: Name an entity or key the base has, or delete the line.
+Bad:   [change.c.feature.zz]
+       remove = true   (no feature zz)
+Fixed: [change.c.feature.a]
+       remove = true
 ```
 
 ### `doc.remove_outside_change`
@@ -943,7 +1235,12 @@ remove or unset names nothing in the base.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-remove or unset outside a change body.
+`remove` or `unset` is written outside a change body. The base says what is, not what is not.
+To fix: Delete the table or key from the base, or move the removal into a change.
+Bad:   [feature.a]
+       remove = true
+Fixed: [change.c.feature.a]
+       remove = true
 ```
 
 ### `doc.remove_with_keys`
@@ -951,7 +1248,14 @@ remove or unset outside a change body.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-remove = true beside other keys, or a key both written and unset.
+`remove = true` sits beside other keys, or one key is both written and named in unset. Each says
+the opposite of the other.
+To fix: Keep remove alone, or drop the key from unset or from the table.
+Bad:   [change.c.feature.a]
+       remove = true
+       width = 4
+Fixed: [change.c.feature.a]
+       remove = true
 ```
 
 ### `doc.reserved_attribute`
@@ -959,7 +1263,11 @@ remove = true beside other keys, or a key both written and unset.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A kind declares an attribute named as a reserved feature key.
+A kind declares an attribute named as a reserved feature key (kind, authority, at, on, path and
+the others the feature table takes), so the feature table could not tell them apart.
+To fix: Rename the attribute.
+Bad:   defaults = { path = 2 }
+Fixed: defaults = { path_width = 2 }
 ```
 
 ### `doc.syntax`
@@ -967,9 +1275,10 @@ A kind declares an attribute named as a reserved feature key.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-The file is not TOML 1.0.0, not UTF-8, or uses an array-of-tables header. Files are flat and keyed
-by id: [collection.id], never [[collection]].
-Correct the text at the position given; for [[x]], write one [x.<id>] per item.
+The file is not TOML 1.0.0, not UTF-8 (the byte offset is in `data.offset`), or uses an
+array-of-tables header. Files are flat and keyed by id: [collection.id], never [[collection]];
+`data.rewrite` holds the exact rewrite of such a header.
+To fix: Correct the text at the position given; for [[x]], write one [x.<id>] per item.
 Bad:   [[feature]]
        id = "a"
 Fixed: [feature.a]
@@ -981,7 +1290,7 @@ error, milestone 1, `spec/documents.md`.
 
 ```text
 Tables and lists nest over 64 deep; the file is read no further.
-Flatten the structure.
+To fix: Flatten the structure.
 Bad:   value = [[[[ ... ]]]]   (65 levels)
 Fixed: value = [1, 2]
 ```
@@ -993,7 +1302,7 @@ error, milestone 1, `spec/documents.md`.
 ```text
 A value has the wrong form for its key (a string where a number is taken), or is a TOML date or
 time, which no key takes.
-Write the form the key takes.
+To fix: Write the form the key takes.
 Bad:   width = "6"
 Fixed: width = 6
 ```
@@ -1004,7 +1313,7 @@ error, milestone 1, `spec/documents.md`.
 
 ```text
 A requested change does not exist. `data.nearest` holds the nearest change name.
-Request a change that the world or a change file declares.
+To fix: Request a change that the world or a change file declares.
 Bad:   via build world.toml --change tset
 Fixed: via build world.toml --change test
 ```
@@ -1016,7 +1325,7 @@ error, milestone 1, `spec/documents.md`.
 ```text
 A key or table is not listed for its place. `data.nearest` holds the nearest listed word; a word
 removed from the language has a fixed hint instead.
-Write the key as listed, or remove it.
+To fix: Write the key as listed, or remove it.
 Bad:   [feature.a]
        widht = 6
 Fixed: [feature.a]
@@ -1028,7 +1337,12 @@ Fixed: [feature.a]
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A named reference to something in a higher layer; both entities, layers, owners.
+A name refers to something declared in a higher layer. A layer sees its own rank and below, so a
+lower layer never depends on a higher one. The record names both entities, their layers and
+owners.
+To fix: Move the referred thing down to the referring layer or below, or the reference up.
+Bad:   on = { ref = "b" }   in rank 0, b declared in rank 1
+Fixed: the same line in the rank 1 layer
 ```
 
 ### `doc.world_key_in_layer`
@@ -1036,7 +1350,11 @@ A named reference to something in a higher layer; both entities, layers, owners.
 error, milestone 1, `spec/documents.md`.
 
 ```text
-A world-file-only key or [layer] in a layer.
+A layer file writes a key that only the world file holds (name, extent, resolution, seed,
+include, pack) or a [layer] table. Layers do not nest.
+To fix: Move the key to the world file.
+Bad:   extent = [0, 0, 100, 100]   (in layers/a.toml)
+Fixed: extent = [0, 0, 100, 100]   (in world.toml)
 ```
 
 ## field
@@ -1075,8 +1393,15 @@ A world-file-only key or [layer] in a layer.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A field with both base and file.
+A scalar field has both `base` and `file`. Its value before any row comes from one of them, a
+formula or a raster, never both.
 To fix: Keep one.
+Bad:   [field.a]
+       base = "= 0"
+       file = "a.npy"
+Fixed: [field.a]
+       file = "a.npy"
+       outside = 0
 ```
 
 ### `field.effect_cut`
@@ -1084,8 +1409,13 @@ To fix: Keep one.
 warning, milestone 1, `spec/fields.md`.
 
 ```text
-An effect's mask is above 0.02 on its ring; the effect, the feature and the first post.
-To fix: Raise radius, or fade mask to 0 by it.
+An effect's mask is still above 0.02 on its ring, the posts at its radius, so it stops with a
+visible step instead of fading out. The record names the effect, the feature and the first post.
+To fix: Raise radius, or make mask reach 0 by radius.
+Bad:   radius = 3
+       mask = "= 1 - smoothstep(0, 4, d)"
+Fixed: radius = 5
+       mask = "= 1 - smoothstep(0, 4, d)"
 ```
 
 ### `field.file_coarse`
@@ -1102,8 +1432,12 @@ To fix: Use 16-bit, or a narrower range.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-An unsupported format, depth or palette; an array file whose shape is not 2-D or whose descr is not <f4; a raster with a dimension under 2.
-To fix: Save as 8- or 16-bit grey PNG, or an array file.
+The file a field reads is in an unsupported format, depth or palette; an array file whose shape
+is not 2-D or whose element type is not <f4 (32-bit float); or a raster with a side under 2
+samples.
+To fix: Save the raster as a 2-D <f4 array file (from M2 also 8- or 16-bit grey PNG).
+Bad:   file = "a.npy"   (shape (64, 64, 3))
+Fixed: file = "a.npy"   (shape (64, 64), descr <f4)
 ```
 
 ### `field.file_key`
@@ -1111,8 +1445,15 @@ To fix: Save as 8- or 16-bit grey PNG, or an array file.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A file key without file, one that does not apply, an unknown channel or filter, or a channel the picture lacks.
-To fix: The keys that apply; for luma, name one channel.
+A key that only applies to a file is written without `file`, or does not apply to this format
+(range or channel on an array file), or names an unknown channel or filter, or a channel the
+picture lacks.
+To fix: Keep only the keys that apply; for luma, name one channel.
+Bad:   [field.a]
+       base = "= 0"
+       filter = "nearest"
+Fixed: [field.a]
+       base = "= 0"
 ```
 
 ### `field.file_nonfinite`
@@ -1120,8 +1461,11 @@ To fix: The keys that apply; for luma, name one channel.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A non-finite sample; its row and column.
-To fix: Repair the file.
+A sample of the field's file is not finite (an infinity or NaN). A field never holds one. The
+record gives the sample's row and column.
+To fix: Repair the file: replace the sample with a finite value.
+Bad:   a.npy with NaN at row 3, column 7
+Fixed: a.npy with that sample set to its neighbours' mean
 ```
 
 ### `field.file_offworld`
@@ -1129,8 +1473,11 @@ To fix: Repair the file.
 warning, milestone 1, `spec/fields.md`.
 
 ```text
-A raster extent wholly outside the world's.
-To fix: Correct extent.
+A raster's `extent` lies wholly outside the world's, so no post reads it and the field is
+`outside` everywhere.
+To fix: Correct extent to where the raster lies in the world frame.
+Bad:   extent = [1000, 1000, 1256, 1256]   (world [0, 0, 256, 256])
+Fixed: extent = [0, 0, 256, 256]
 ```
 
 ### `field.file_outside`
@@ -1138,8 +1485,14 @@ To fix: Correct extent.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-file without outside.
-To fix: Add outside, the value beyond the raster.
+A field has `file` without `outside`, the value at posts beyond the raster's extent. There is no
+default, so the field would be undefined there.
+To fix: Add outside.
+Bad:   [field.a]
+       file = "a.npy"
+Fixed: [field.a]
+       file = "a.npy"
+       outside = 0
 ```
 
 ### `field.file_profile`
@@ -1165,8 +1518,11 @@ To fix: A constant is a base.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-More samples than the post-count limit; the header's size.
+The file holds more samples than the post-count limit. The record gives the size its header
+declares; the file is not read.
 To fix: Crop or downsample the raster.
+Bad:   file = "a.npy"   (shape (40000, 40000))
+Fixed: file = "a.npy"   (shape (4000, 4000))
 ```
 
 ### `field.role_missing`
@@ -1174,8 +1530,14 @@ To fix: Crop or downsample the raster.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-No surface field, and something asked for ground; names the first that asked.
-To fix: Add a field with role = "surface".
+Something needs the ground (an instance, a pad, a formula's ground read) but no field has role
+surface. The record names the first thing that asked.
+To fix: Give one scalar field in metres role = "surface".
+Bad:   [field.height]
+       base = "= 20"
+Fixed: [field.height]
+       role = "surface"
+       base = "= 20"
 ```
 
 ### `field.role_range`
@@ -1183,8 +1545,11 @@ To fix: Add a field with role = "surface".
 warning, milestone 1, `spec/fields.md`.
 
 ```text
-A keep_out value outside 0 to 1, clamped; the field and its first post.
-To fix: Wrap the row or base in clamp(..., 0, 1).
+A keep_out field holds a value outside 0 to 1, so it was clamped. The record names the field and
+its first such post.
+To fix: Wrap the row's value or the base in clamp(..., 0, 1).
+Bad:   base = "= a * 2"
+Fixed: base = "= clamp(a * 2, 0, 1)"
 ```
 
 ### `field.role_twice`
@@ -1192,8 +1557,11 @@ To fix: Wrap the row or base in clamp(..., 0, 1).
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A second material field; names both.
-To fix: Remove role from one; it is handed over as data.
+A second field has role material. An engine has one set of terrain layers, so a world has one
+material field. The record names both.
+To fix: Remove role from one; it is still built and handed over as data.
+Bad:   [field.a]  role = "material"   and   [field.b]  role = "material"
+Fixed: [field.a]  role = "material"   and   [field.b]  type = "weights"
 ```
 
 ### `field.role_type`
@@ -1201,8 +1569,14 @@ To fix: Remove role from one; it is handed over as data.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A role on a field of the wrong type.
-To fix: The role's type, e.g. type = "weights".
+A role is given to a field of the wrong type: surface and keep_out take scalar, material takes
+weights.
+To fix: Write the role's type.
+Bad:   [field.a]
+       role = "material"
+Fixed: [field.a]
+       role = "material"
+       type = "weights"
 ```
 
 ### `field.role_unit`
@@ -1210,8 +1584,12 @@ To fix: The role's type, e.g. type = "weights".
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A role on a field with another unit.
+A role is given to a field whose unit is not the role's: surface is in m, keep_out and material
+in ratio.
 To fix: Remove unit, or write the role's.
+Bad:   role = "surface"
+       unit = "deg"
+Fixed: role = "surface"
 ```
 
 ### `field.role_unknown`
@@ -1219,8 +1597,11 @@ To fix: Remove unit, or write the role's.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A role that is not surface, material or keep_out.
-To fix: Nearest role; a library word belongs in tags.
+`role` is not surface, material or keep_out. A role is a core meaning; a library's own word
+belongs in tags. `data.nearest` holds the nearest role.
+To fix: Write the nearest role, or move the word to tags.
+Bad:   role = "level"
+Fixed: tags = ["level"]
 ```
 
 ### `field.row_key`
@@ -1228,8 +1609,13 @@ To fix: Nearest role; a library word belongs in tags.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-paint on a scalar entry, or value on a weights entry; names the row or effect and the field.
-To fix: Use the key of the field's type, or narrow the effect's selector.
+A row or effect writes the key of the other field type: `paint` on a scalar field, or `value` on
+a weights field. The record names the row or effect and the field.
+To fix: Use the key of the field's type, or narrow the effect's selector to the fields meant.
+Bad:   [field.height.then.a]
+       paint = "rock"
+Fixed: [field.height.then.a]
+       value = "= v + 1"
 ```
 
 ### `field.row_missing`
@@ -1237,8 +1623,14 @@ To fix: Use the key of the field's type, or narrow the effect's selector.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A scalar row or entry with no value, or a weights one with no paint; names the row or effect.
+A scalar row or entry has no `value`, or a weights one has no `paint`, so it writes nothing. The
+record names the row or effect.
 To fix: Add the key.
+Bad:   [field.height.then.a]
+       mask = "= 1"
+Fixed: [field.height.then.a]
+       value = "= v + 1"
+       mask = "= 1"
 ```
 
 ### `field.step_base`
@@ -1264,8 +1656,12 @@ To fix: Move the step up, or the field down.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A type not on the list.
-To fix: Nearest type; for material: type = "weights", role = "material".
+`type` is not one of scalar, weights or volume. `data.nearest` holds the nearest type; for
+materials write type = "weights" with role = "material".
+To fix: Write the nearest type.
+Bad:   type = "material"
+Fixed: type = "weights"
+       role = "material"
 ```
 
 ### `field.unit_unknown`
@@ -1273,8 +1669,10 @@ To fix: Nearest type; for material: type = "weights", role = "material".
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A unit not on the list.
-To fix: Nearest unit.
+`unit` is not one of m, deg or ratio. `data.nearest` holds the nearest unit.
+To fix: Write the nearest unit.
+Bad:   unit = "metres"
+Fixed: unit = "m"
 ```
 
 ### `field.unpainted`
@@ -1282,8 +1680,15 @@ To fix: Nearest unit.
 warning, milestone 1, `spec/fields.md`.
 
 ```text
-Posts of the material field with weights summing below 1; the first and the count.
-To fix: Add a first row with no mask.
+Some posts of the material field have weights summing below 1, so part of the ground has no
+material. The record gives the first post and the count.
+To fix: Add a first row with no mask, painting the ground everywhere.
+Bad:   [field.m.then.a]
+       paint = "rock"
+       mask = "= 0.5"
+Fixed: [field.m.then.base]
+       paint = "grass"
+       (before the rock row)
 ```
 
 ### `field.weights_base`
@@ -1291,8 +1696,15 @@ To fix: Add a first row with no mask.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-base or file on a weights field.
+A weights field has `base` or `file`. Its weights start at 0 and are built by its rows only.
 To fix: Read the raster as a scalar field and use it as a row's mask.
+Bad:   [field.m]
+       type = "weights"
+       file = "m.npy"
+Fixed: [field.cover]
+       file = "m.npy"
+       outside = 0
+       (and mask = "= f('cover')" on a row of m)
 ```
 
 ### `field.weights_unit`
@@ -1300,8 +1712,11 @@ To fix: Read the raster as a scalar field and use it as a row's mask.
 error, milestone 1, `spec/fields.md`.
 
 ```text
-A unit other than ratio on a weights field.
+A weights field has a unit other than ratio. Weights are fractions.
 To fix: Remove unit.
+Bad:   type = "weights"
+       unit = "m"
+Fixed: type = "weights"
 ```
 
 ## formula
@@ -1338,7 +1753,7 @@ error, milestone 1, `spec/formulas.md`.
 ```text
 A call has the wrong number of arguments, an unknown or repeated named argument, or a positional
 argument after a named one.
-Give the arguments the function's entry in the table lists, positional first.
+To fix: Give the arguments the function's entry in the table lists, positional first.
 Bad:   value = "= clamp(a, 0)"
 Fixed: value = "= clamp(a, 0, 1)"
 ```
@@ -1349,7 +1764,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 dist or sdist has no cap, and there is no radius to default to.
-Give the cap.
+To fix: Give the cap.
 Bad:   value = "= dist('tag:edge')"
 Fixed: value = "= dist('tag:edge', 40)"
 ```
@@ -1360,7 +1775,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 The formula holds a character outside the language. Names are lower case.
-Remove the character, or write the name in lower case.
+To fix: Remove the character, or write the name in lower case.
 Bad:   value = "= 2 * Height"
 Fixed: value = "= 2 * height"
 ```
@@ -1372,7 +1787,7 @@ warning, milestone 1, `spec/formulas.md`.
 ```text
 A kind: selection is empty at its stratum, so the function used its value for nothing. Reported
 once per formula and stratum; the message says the value used.
-Add a feature of that kind below this layer, or drop the term.
+To fix: Add a feature of that kind below this layer, or drop the term.
 Bad:   value = "= dist('kind:k', 10)"   (no feature of kind k here)
 Fixed: value = "= 1"
 ```
@@ -1384,7 +1799,7 @@ error, milestone 1, `spec/formulas.md`.
 ```text
 An operation gave an infinity or NaN; the record names the operation, its operands, the post and
 the feature. No non-finite value is ever stored.
-Guard the operation (a divisor away from 0, a root of a non-negative value).
+To fix: Guard the operation (a divisor away from 0, a root of a non-negative value).
 Bad:   value = "= 1 / a"   (a is 0 at one post)
 Fixed: value = "= 1 / max(a, 0.001)"
 ```
@@ -1395,7 +1810,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 The formula uses an operator of another language, or `=` where `==` compares.
-Use the operator the hint names.
+To fix: Use the operator the hint names.
 Bad:   value = "= if(a = 1, 2, 3)"
 Fixed: value = "= if(a == 1, 2, 3)"
 ```
@@ -1405,10 +1820,10 @@ Fixed: value = "= if(a == 1, 2, 3)"
 error, milestone 1, `spec/formulas.md`.
 
 ```text
-A field was read at a point beyond the world's extent.
-Read inside the extent, or clamp the point.
-Bad:   (a read of a field at a point beyond the extent)
-Fixed: (the same read at a point inside it)
+A field was read at a point beyond the world's extent, where it has no value.
+To fix: Move the thing whose formula reads the field inside the extent, or widen the extent.
+Bad:   [feature.a]  at = [300, 10]   (extent [0, 0, 256, 256]; a reads f('height'))
+Fixed: [feature.a]  at = [250, 10]
 ```
 
 ### `formula.range`
@@ -1417,7 +1832,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 A value is outside its key's or parameter's range at a named post or feature.
-Bound the value, or change the inputs that push it out.
+To fix: Bound the value, or change the inputs that push it out.
 Bad:   radius = "= a - 10"   (a is 4 at one feature)
 Fixed: radius = "= max(a - 10, 1)"
 ```
@@ -1429,7 +1844,8 @@ error, milestone 1, `spec/formulas.md`.
 ```text
 A sub-expression varies faster than the key or parameter allows (a value per post where only
 one per feature is taken). The record names the sub-expression.
-Reduce it to the allowed rate (a mean over the feature, say), or move it to a key that takes it.
+To fix: Reduce it to the allowed rate (a mean over the feature, say), or move it to a key that
+takes it.
 Bad:   radius = "= f('height')"   (varies by post; radius takes one value per feature)
 Fixed: radius = "= 4"
 ```
@@ -1440,7 +1856,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 A noise call's seed is not a name.
-Write a name.
+To fix: Write a name.
 Bad:   value = "= fbm(60, 3, seed = 7)"
 Fixed: value = "= fbm(60, 3, seed = 'base')"
 ```
@@ -1451,7 +1867,7 @@ warning, milestone 1, `spec/formulas.md`.
 
 ```text
 Two noise calls of one owner use one stream, so they move together.
-Give each call its own seed name.
+To fix: Give each call its own seed name.
 Bad:   value = "= fbm(60, 3) + fbm(20, 2)"
 Fixed: value = "= fbm(60, 3, seed = 'a') + fbm(20, 2, seed = 'b')"
 ```
@@ -1462,7 +1878,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 A selector names nothing, names a thing of the wrong class, or uses role:.
-Select by tag: or by a name that exists.
+To fix: Select by tag: or by a name that exists.
 Bad:   value = "= dist('role:surface', 10)"
 Fixed: value = "= dist('tag:edge', 10)"
 ```
@@ -1473,7 +1889,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 A selection holds more things than the function takes, or none where it needs one.
-Narrow the selector to what the function takes.
+To fix: Narrow the selector to what the function takes.
 Bad:   value = "= sdist('tag:paths', 10)"   (several paths; sdist takes one)
 Fixed: value = "= sdist('tag:one_path', 10)"
 ```
@@ -1485,7 +1901,7 @@ error, milestone 1, `spec/formulas.md`.
 ```text
 A let or attribute name equals a built-in or keyword, a let name equals a field's, or one name is
 declared twice in one scope.
-Rename one of the two.
+To fix: Rename one of the two.
 Bad:   [let] x = "= 2"
 Fixed: [let] x_scale = "= 2"
 ```
@@ -1496,7 +1912,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 A function was given a feature of a shape it cannot take (a point where a region is needed).
-Select features of the shape the function takes.
+To fix: Select features of the shape the function takes.
 Bad:   value = "= inside('tag:points')"
 Fixed: value = "= inside('tag:areas')"
 ```
@@ -1507,7 +1923,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 The formula text does not parse; the record points at the span and says what was expected there.
-Complete or correct the expression at that span.
+To fix: Complete or correct the expression at that span.
 Bad:   value = "= 2 * (height + 1"
 Fixed: value = "= 2 * (height + 1)"
 ```
@@ -1518,7 +1934,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 The formula nests over 64 deep, so it is not read further.
-Name inner parts in [let].
+To fix: Name inner parts in [let].
 Bad:   value = "= ((((((... a ...))))))"   (65 levels)
 Fixed: [let] inner = "= (a)"   and   value = "= (inner)"
 ```
@@ -1529,7 +1945,7 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 The formula text is over 4096 bytes.
-Split it: name parts in [let] and read them by name.
+To fix: Split it: name parts in [let] and read them by name.
 Bad:   value = "= a + a + a + ... (5000 bytes)"
 Fixed: [let] part = "= a + a"   and   value = "= part + part"
 ```
@@ -1540,8 +1956,9 @@ error, milestone 1, `spec/formulas.md`.
 
 ```text
 A value of the wrong type: a number where yes/no is needed or the reverse, a selector out of
-place, or an attribute that is not a number read as one.
-Compare to get yes/no, or use if() to get a number.
+place, a text, array or table attribute read, a formula on a bool or text attribute, or a
+weights field read by f.
+To fix: Compare to get yes/no, or use if() to get a number.
 Bad:   value = "= if(a, 1, 0)"   (a is a number)
 Fixed: value = "= if(a > 0, 1, 0)"
 ```
@@ -1553,7 +1970,7 @@ error, milestone 1, `spec/formulas.md`.
 ```text
 A call names no function in the table. Some names from other languages have a fixed answer
 (clip is clamp, lerp is mix); otherwise `data.nearest` holds the nearest function.
-Call a function of the table, or the one the hint names.
+To fix: Call a function of the table, or the one the hint names.
 Bad:   value = "= clip(a, 0, 1)"
 Fixed: value = "= clamp(a, 0, 1)"
 ```
@@ -1563,9 +1980,10 @@ Fixed: value = "= clamp(a, 0, 1)"
 error, milestone 1, `spec/formulas.md`.
 
 ```text
-A formula read a name that is not a field, a let name or an attribute of its owner.
-`data.nearest` holds the nearest visible name, and `related` points at its declaration.
-Write the name as declared, or declare it in [let].
+A formula read a name that is not a field, a let name or an attribute of its owner. `data.name`
+holds the name read, `data.nearest` the nearest visible name, and `related` points at where a
+name of that spelling does exist.
+To fix: Write the name as declared, or declare it in [let].
 Bad:   value = "= 2 * hieght"
 Fixed: value = "= 2 * height"
 ```
@@ -1577,7 +1995,7 @@ error, milestone 1, `spec/formulas.md`.
 ```text
 A key that takes a formula holds a string that does not start with `=`, or has spaces before it.
 Only a string starting with `=` is read as a formula.
-Start the string with `=`.
+To fix: Start the string with `=`.
 Bad:   value = " = 2 * height"
 Fixed: value = "= 2 * height"
 ```
@@ -1621,8 +2039,11 @@ Fixed: value = "= 2 * height"
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-An operation parameter outside its range; names it and its value.
-To fix: The range.
+A geometry operation was given a parameter outside its range (a length not above 0, a minimum
+above what it bounds). The record names the parameter and its value.
+To fix: Give a value inside the range the record states.
+Bad:   cell_length = 0
+Fixed: cell_length = 12
 ```
 
 ### `geom.cell_merged`
@@ -1630,7 +2051,11 @@ To fix: The range.
 info, milestone 1, `spec/geometry.md`.
 
 ```text
-A cell was merged into its neighbour, or bordered several stations.
+Cutting a frontage band into cells left a cell too short, so it was merged into its neighbour,
+or an area bordered several stations. Information only: the cells are valid.
+To fix: Nothing if intended; for even cells, make the frontage a multiple of cell_length.
+Bad:   a frontage of 50 m with cell_length = 12   (a 2 m cell merged)
+Fixed: a frontage of 48 m with cell_length = 12
 ```
 
 ### `geom.cell_none`
@@ -1638,8 +2063,11 @@ A cell was merged into its neighbour, or bordered several stations.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-A stretch of frontage is shorter than one cell.
-To fix: Shorten cell_length.
+A stretch of frontage is shorter than one cell length, so it holds no cell. The record gives its
+position.
+To fix: Shorten cell_length, or lengthen the frontage.
+Bad:   a stretch of 8 m with cell_length = 12
+Fixed: the same stretch with cell_length = 8
 ```
 
 ### `geom.cell_small`
@@ -1647,8 +2075,11 @@ To fix: Shorten cell_length.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-A short cell had no neighbour to merge into; kept.
+A cell is short (below min_cell_length or min_cell_area) and had no neighbour to merge into, so
+it was kept as it is.
 To fix: Lower the minimum, or lengthen the frontage.
+Bad:   a stretch of 10 m with min_cell_length = 12
+Fixed: the same stretch with min_cell_length = 8
 ```
 
 ### `geom.dead_end`
@@ -1656,7 +2087,11 @@ To fix: Lower the minimum, or lengthen the frontage.
 info, milestone 1, `spec/geometry.md`.
 
 ```text
-A network has junctions of degree 1; the count.
+A network has junctions of degree 1, lines that end without meeting another. They are legal and
+counted. Information only.
+To fix: Nothing if intended; otherwise end each line on another.
+Bad:   path = [[0, 0], [40, 0]]   (ends short of the line at x = 50)
+Fixed: path = [[0, 0], [50, 0]]
 ```
 
 ### `geom.degenerate`
@@ -1664,8 +2099,11 @@ A network has junctions of degree 1; the count.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A path with fewer than two distinct points, or a ring with fewer than three or no area.
-To fix: Add points or remove the feature.
+A path has fewer than two distinct points, or a ring has fewer than three distinct points or no
+area, so it has no length or no inside.
+To fix: Add points, or remove the feature.
+Bad:   path = [[10, 10], [10, 10]]
+Fixed: path = [[10, 10], [20, 10]]
 ```
 
 ### `geom.duplicate_source`
@@ -1673,8 +2111,11 @@ To fix: Add points or remove the feature.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-One batch holds two inputs with one source id.
-To fix: Give each input its own source.
+One batch of geometry inputs holds two inputs with the same source id, so results could not be
+traced back to one input.
+To fix: Give each input its own source id.
+Bad:   two inputs both with source "a"
+Fixed: inputs with sources "a" and "b"
 ```
 
 ### `geom.face_needs_on`
@@ -1682,8 +2123,13 @@ To fix: Give each input its own source.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A face word without on.
-To fix: Use a bearing in degrees.
+`face` is a word (along, toward, away), which is measured from what the thing is placed on, but
+the thing has no `on`.
+To fix: Place it with on, or use a bearing in degrees.
+Bad:   at = [10, 10]
+       face = "along"
+Fixed: at = [10, 10]
+       face = 90
 ```
 
 ### `geom.face_side`
@@ -1691,8 +2137,13 @@ To fix: Use a bearing in degrees.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-face = "toward" or "away" with offset = 0, or on a ref with no length.
+face = "toward" or "away" points at or from the thing it is placed on, which needs a side: it
+fails with offset = 0, or on a ref with no length.
 To fix: Give an offset, or use along or a bearing.
+Bad:   on = { ref = "a", t = 0.5 }
+       face = "toward"
+Fixed: on = { ref = "a", t = 0.5, offset = 4 }
+       face = "toward"
 ```
 
 ### `geom.face_unknown`
@@ -1700,8 +2151,10 @@ To fix: Give an offset, or use along or a bearing.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A face word that is not along, toward or away.
-To fix: The nearest word.
+`face` is a word that is not along, toward or away. `data.nearest` holds the nearest word.
+To fix: Write the nearest word, or a bearing in degrees.
+Bad:   face = "towards"
+Fixed: face = "toward"
 ```
 
 ### `geom.follow_broken`
@@ -1709,8 +2162,12 @@ To fix: The nearest word.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A path along another feature breaks into pieces; each gap and the widest offset that holds.
+A path that follows another feature at an offset breaks into pieces or touches itself (the offset
+is wider than a narrow bend allows). The result is never joined silently. The record gives each
+gap and the widest offset that holds.
 To fix: Use at most that offset, or a shorter span.
+Bad:   follows = { ref = "a", offset = -12 }
+Fixed: follows = { ref = "a", offset = -6 }
 ```
 
 ### `geom.internal`
@@ -1718,8 +2175,11 @@ To fix: Use at most that offset, or a shorter span.
 error, milestone 1, `spec/geometry.md`, covered by the workspace tests.
 
 ```text
-A guarantee check failed inside the kernel (Euler, closure, validity). A defect of ours; exit 3.
-To fix: Report it with the reproduction folder data.repro names.
+A guarantee check failed inside the geometry kernel (Euler count, closure, validity). The text
+cannot cause this: it is a defect of ours, and the build exits with status 3.
+To fix: Report it with the reproduction folder data.repro names; no change to the text is needed.
+Bad:   (none: a defect of ours, not of the text)
+Fixed: (none)
 ```
 
 ### `geom.many_rings`
@@ -1727,8 +2187,11 @@ To fix: Report it with the reproduction folder data.repro names.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-on, follows, interpolate or substring on a region of more than one ring, which has no t.
+on, follows, interpolate or substring is used on a region of more than one ring. Such a region
+has no single outline to measure t along.
 To fix: Place on one piece's outline, or use at.
+Bad:   on = { ref = "a", t = 0.5 }   (a has two rings)
+Fixed: at = [40, 20]
 ```
 
 ### `geom.mask_dropped`
@@ -1736,7 +2199,11 @@ To fix: Place on one piece's outline, or use at.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-A masked piece had no area on the lattice and was dropped.
+A piece of a masked region had no area once rounded to the 1 mm lattice, so it was dropped. The
+record gives its position.
+To fix: Nothing if intended; widen the condition if that piece mattered.
+Bad:   where = "= f('height') > 29.9999"   (a sliver)
+Fixed: where = "= f('height') > 29"
 ```
 
 ### `geom.mask_empty`
@@ -1744,8 +2211,11 @@ A masked piece had no area on the lattice and was dropped.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-A mask is above 0 nowhere; the formula's text and its range of values.
-To fix: Check the condition against the range.
+A mask is above 0 nowhere, so the masked region is empty. The record gives the formula's text and
+the range of values it took.
+To fix: Check the condition against the range of values the record gives.
+Bad:   where = "= f('height') > 90"   (height ranges 20 to 40)
+Fixed: where = "= f('height') > 30"
 ```
 
 ### `geom.mask_tiny`
@@ -1753,7 +2223,11 @@ To fix: Check the condition against the range.
 info, milestone 1, `spec/geometry.md`.
 
 ```text
-A masked region has pieces smaller than one grid cell; the count and positions; kept.
+A masked region has pieces smaller than one grid cell. They are kept; the record gives the count
+and each piece's position. Information only.
+To fix: Nothing if intended; smooth or widen the condition for fewer specks.
+Bad:   where = "= fbm(2, 3) > 0.5"
+Fixed: where = "= fbm(40, 3) > 0.5"
 ```
 
 ### `geom.meet_shape`
@@ -1761,8 +2235,10 @@ A masked region has pieces smaller than one grid cell; the count and positions; 
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-starts_at or ends_at names a whole path or a region.
-To fix: Name an end, or place a point feature on it.
+starts_at or ends_at names a whole path or a region, which has no one point to meet.
+To fix: Name an end (a.end), a mount, or place a point feature on it with on and name that.
+Bad:   ends_at = "a"   (a is a path)
+Fixed: ends_at = "a.end"
 ```
 
 ### `geom.no_area`
@@ -1770,8 +2246,10 @@ To fix: Name an end, or place a point feature on it.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-A network encloses no area.
-To fix: Close the linework, or add a clip.
+A network's linework encloses no area, so it yields no regions.
+To fix: Close the linework, or add a clip region.
+Bad:   two lines that do not meet
+Fixed: the same lines with a clip region around them
 ```
 
 ### `geom.no_length`
@@ -1779,8 +2257,11 @@ To fix: Close the linework, or add a clip.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-t, offset or follows on a point, a zero-length thing or an empty region. (A run's is run.no_length, rules.md 5.)
+t, offset or follows is used on a point, a thing of zero length, or an empty region, none of
+which can be measured along. A run's is run.no_length.
 To fix: Use at, or place on a path or region.
+Bad:   on = { ref = "p", t = 0.5 }   (p is a point)
+Fixed: on = { ref = "p" }
 ```
 
 ### `geom.offset_empty`
@@ -1788,8 +2269,10 @@ To fix: Use at, or place on a path or region.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-An inset left nothing.
+An inset of a region left nothing: the distance is larger than the region's half width.
 To fix: Use a smaller distance.
+Bad:   an inset of 6 m on a region 10 m wide
+Fixed: an inset of 3 m
 ```
 
 ### `geom.offset_split`
@@ -1797,7 +2280,11 @@ To fix: Use a smaller distance.
 info, milestone 1, `spec/geometry.md`.
 
 ```text
-An inset split a piece; the count.
+An inset split a region into several pieces at a narrow neck. Information only; the record gives
+the count.
+To fix: Nothing if intended; use a smaller distance to keep one piece.
+Bad:   an inset of 3 m on a region with a 5 m neck
+Fixed: an inset of 2 m
 ```
 
 ### `geom.overlap`
@@ -1805,7 +2292,11 @@ An inset split a piece; the count.
 info, milestone 1, `spec/geometry.md`.
 
 ```text
-Two sources, or one with itself, run along one another; the stretch and the ids.
+Two sources, or one with itself, run along one another for a stretch (a path doubling back, two
+paths sharing segments). Information only; the record gives the stretch and the ids.
+To fix: Nothing if intended; otherwise remove the shared stretch from one.
+Bad:   path = [[0, 0], [20, 0], [10, 0]]
+Fixed: path = [[0, 0], [20, 0]]
 ```
 
 ### `geom.range`
@@ -1813,8 +2304,11 @@ Two sources, or one with itself, run along one another; the stretch and the ids.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A point the kernel computed (offset, cut, stroke, join) is outside ±(2^31 - 1) mm.
-To fix: Move the shape nearer the origin or reduce the distance.
+A point the kernel computed (an offset, cut, stroke or join) lies outside plus or minus
+2^31 - 1 mm from the origin.
+To fix: Move the shape nearer the origin, or reduce the distance.
+Bad:   offset = 3000000
+Fixed: offset = 30
 ```
 
 ### `geom.repeated_point`
@@ -1822,8 +2316,10 @@ To fix: Move the shape nearer the origin or reduce the distance.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-A point repeats the one before it; it is removed.
+A point repeats the one before it. It is removed and the build goes on.
 To fix: Delete the repeat.
+Bad:   path = [[0, 0], [10, 0], [10, 0], [20, 5]]
+Fixed: path = [[0, 0], [10, 0], [20, 5]]
 ```
 
 ### `geom.self_crossing`
@@ -1831,8 +2327,11 @@ To fix: Delete the repeat.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A written ring crosses itself, visits a point twice or doubles back; the first fault.
-To fix: Reorder the points or split the region.
+A written ring crosses itself, visits a point twice or doubles back. The record gives the first
+fault.
+To fix: Reorder the points, or split the region in two.
+Bad:   region = [[0, 0], [10, 10], [10, 0], [0, 10]]
+Fixed: region = [[0, 0], [10, 0], [10, 10], [0, 10]]
 ```
 
 ### `geom.smooth_not_path`
@@ -1840,8 +2339,11 @@ To fix: Reorder the points or split the region.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-smooth on a feature without path.
-To fix: Remove smooth.
+`smooth` is written on a feature placed without `path`. Only a written path is smoothed.
+To fix: Remove smooth, or place the feature with path.
+Bad:   region = [[0, 0], [10, 0], [10, 10]]
+       smooth = true
+Fixed: region = [[0, 0], [10, 0], [10, 10]]
 ```
 
 ### `geom.span_order`
@@ -1849,8 +2351,10 @@ To fix: Remove smooth.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A span on a path whose from is not less than its to.
+A span's from is not less than its to. A span runs forward along the path.
 To fix: Swap the two, or reverse the path.
+Bad:   span = [0.7, 0.2]
+Fixed: span = [0.2, 0.7]
 ```
 
 ### `geom.t_range`
@@ -1858,8 +2362,10 @@ To fix: Swap the two, or reverse the path.
 error, milestone 1, `spec/geometry.md`.
 
 ```text
-A t or a span end outside 0 to 1, or nan.
+A t or a span end is outside 0 to 1, or is nan. t is the fraction of the length.
 To fix: Write a fraction from 0 to 1.
+Bad:   on = { ref = "a", t = 1.2 }
+Fixed: on = { ref = "a", t = 1 }
 ```
 
 ### `geom.unowned_crossing`
@@ -1867,8 +2373,14 @@ To fix: Write a fraction from 0 to 1.
 warning, milestone 1, `spec/geometry.md`.
 
 ```text
-Two paths with kinds cross or touch with no owner of the meeting (2.7); names both.
-To fix: End one on the other or on a named owner.
+Two paths with kinds cross or touch, and nothing owns the meeting: neither ends on the other or
+on a named owner, neither follows the other, and no network holds both. The record names both.
+To fix: End one on the other or on a named owner (starts_at, ends_at).
+Bad:   [feature.b]
+       path = [[0, 50], [100, 50]]   (crosses a)
+Fixed: [feature.b]
+       path = [[0, 50]]
+       ends_at = "m"   (m a point feature on a)
 ```
 
 ## graph
@@ -1890,7 +2402,11 @@ To fix: End one on the other or on a named owner.
 info, milestone 1, `spec/graph.md`.
 
 ```text
-A build file differed from its record and was written again. Run diagnostic.
+A file of the build directory differed from its record (it was edited or damaged), so the build
+wrote it again. A run diagnostic: information only.
+To fix: Nothing; edit the world text, never the build's files.
+Bad:   a field file edited by hand between builds
+Fixed: the same edit made in the world text
 ```
 
 ### `graph.busy`
@@ -1898,7 +2414,10 @@ A build file differed from its record and was written again. Run diagnostic.
 error, milestone 1, `spec/graph.md`, covered by the workspace tests.
 
 ```text
-Another build holds this build directory's lock. Run diagnostic.
+Another build holds this build directory's lock, so this one did not start. A run diagnostic.
+To fix: Wait for the other build to end, or build to another --out.
+Bad:   two via build world.toml --out build/a at once
+Fixed: via build world.toml --out build/b for the second
 ```
 
 ### `graph.cycle`
@@ -1906,7 +2425,13 @@ Another build holds this build directory's lock. Run diagnostic.
 error, milestone 1, `spec/graph.md`.
 
 ```text
-References form a loop; names one loop in source order, each member with the key that makes its edge.
+References form a loop: a field reads a field that reads it back, or a feature is placed on a
+thing placed on it. Nothing in the loop can be built first. The record names one loop in source
+order, each member with the key that makes its edge.
+To fix: Break one edge: compute one member from a third thing, or read v (the value so far)
+instead of the field being built.
+Bad:   [field.a]  base = "= f('b')"   and   [field.b]  base = "= f('a')"
+Fixed: [field.a]  base = "= 0"        and   [field.b]  base = "= f('a')"
 ```
 
 ### `graph.for_each_empty`
@@ -1922,7 +2447,11 @@ A for_each selector matched nothing in the step's view; the step did not run. (M
 error, milestone 1, `spec/graph.md`.
 
 ```text
-A step's declared input (inputs, protocol.md 1) does not exist; names the path. The step does not run (5.1).
+A path in a step's inputs does not exist, so the step does not run. Paths are relative to the
+document that declares the step.
+To fix: Correct the path, or create the file or folder.
+Bad:   inputs = ["dat/a.csv"]
+Fixed: inputs = ["data/a.csv"]
 ```
 
 ### `graph.read_outside`
@@ -1938,7 +2467,12 @@ A worker asked for something outside its stratum; names it and the lowest layer 
 warning, milestone 1, `spec/graph.md`.
 
 ```text
-Under --rerun-step, a step gave another value for a matching trace; names both digests. Run diagnostic.
+Under --rerun-step, a step gave a different result for the same inputs (a matching trace), so it
+is not deterministic. The record names both digests. A run diagnostic.
+To fix: Make the step's result depend on its inputs only: seed any randomness from them, sort
+unordered output.
+Bad:   a step that orders its output by a set's iteration order
+Fixed: the same step sorting its output
 ```
 
 ### `graph.store_corrupt`
@@ -1946,7 +2480,11 @@ Under --rerun-step, a step gave another value for a matching trace; names both d
 warning, milestone 1, `spec/graph.md`.
 
 ```text
-A store entry did not match its name or could not be read; it was dropped and its node ran again. Run diagnostic.
+A store entry did not match its name or could not be read. It was dropped and its node ran
+again, so the build is correct. A run diagnostic.
+To fix: Nothing; if it recurs, check the disk the store is on.
+Bad:   a store entry damaged on disk
+Fixed: the entry written again by the next build
 ```
 
 ### `graph.store_unavailable`
@@ -1954,7 +2492,11 @@ A store entry did not match its name or could not be read; it was dropped and it
 warning, milestone 1, `spec/graph.md`, covered by the workspace tests.
 
 ```text
-The store cannot be written; this build keeps nothing more. Run diagnostic.
+The store cannot be written (no space, no permission), so this build keeps nothing new for later
+builds to reuse. The build itself is complete. A run diagnostic.
+To fix: Free space, fix the store folder's permissions, or name another with --store.
+Bad:   via build world.toml --store /read_only/s
+Fixed: via build world.toml --store build/store
 ```
 
 ## identity
@@ -1998,7 +2540,7 @@ error, milestone 1, `spec/identity.md`.
 ```text
 An id breaks [a-z][a-z0-9_]* or is longer than 48 bytes. The hint gives the repaired id:
 lower-cased, each invalid character replaced by _, x in front if it does not start with a letter.
-Write the repaired id.
+To fix: Write the repaired id.
 Bad:   [feature.Mill-A]
 Fixed: [feature.mill_a]
 ```
@@ -2017,8 +2559,17 @@ To fix: The repaired key, as for bad_id, or the class list.
 warning, milestone 1, `spec/identity.md`.
 
 ```text
-A clear removed nothing (4.3).
-To fix: The nearest instance of a by producer and its distance; delete the clear if it is no longer wanted.
+A clear removed nothing: no instance of the producers in its by stands inside it. The record
+gives the nearest instance of a by producer and its distance.
+To fix: Move the clear onto the instance meant, or delete it if it is no longer wanted.
+Bad:   [clear.a]
+       at = [10, 10]
+       radius = 2
+       by = ["s"]   (nearest instance of s at 6 m)
+Fixed: [clear.a]
+       at = [10, 10]
+       radius = 7
+       by = ["s"]
 ```
 
 ### `identity.duplicate_id`
@@ -2027,7 +2578,7 @@ error, milestone 1, `spec/identity.md`.
 
 ```text
 Two tables in one namespace share an id, in one file or across layers. The record names both.
-Rename one, or merge them in one layer.
+To fix: Rename one, or merge them in one layer.
 Bad:   [feature.a]  in world.toml   and   [feature.a]  in layers/b.toml
 Fixed: [feature.a]  and  [feature.a2]
 ```
@@ -2046,8 +2597,12 @@ To fix: Build the key from place, with the SDK's naming calls.
 error, milestone 1, `spec/identity.md`.
 
 ```text
-A produced name is written in a key that takes a name.
-To fix: { of, class, near } at the thing's current position.
+A produced name (one holding #) is written in a key that takes a name. Produced names belong to
+the engine and may change between builds; text selects produced things by place instead. The
+hint gives the { of, class, near } form at the thing's current position.
+To fix: Write the { of, class, near } form the hint gives.
+Bad:   on = { ref = "s#e12" }
+Fixed: on = { of = "s", class = "edge", near = [40, 12] }
 ```
 
 ### `identity.lock_asset_missing`
@@ -2109,8 +2664,12 @@ To fix: via lock <world> <id>.
 error, milestone 1, `spec/identity.md`.
 
 ```text
-A maker has no candidate of the class asked for; lists every selection left with nothing.
-To fix: The nearest candidate of any class of that maker and its distance, or that the maker made nothing.
+A selection asks a maker for a class it has no candidate of, so it resolves to nothing. Said once
+per maker and class, listing every selection left with nothing; the record gives the nearest
+candidate of any class and its distance, or says the maker made nothing.
+To fix: Ask for a class the maker produces, or select another maker.
+Bad:   on = { of = "s", class = "area", near = [10, 10] }   (s made no areas)
+Fixed: on = { of = "s", class = "edge", near = [10, 10] }
 ```
 
 ### `identity.no_place`
@@ -2118,8 +2677,11 @@ To fix: The nearest candidate of any class of that maker and its distance, or th
 error, milestone 1, `spec/identity.md`.
 
 ```text
-A selection's class is field or row, which have no place (2.4).
+A selection's class is field or row. Fields and rows cover the world and have no place to be
+nearest to.
 To fix: Read a field by name or 'tag:<tag>' in a formula; select a feature or instance by place.
+Bad:   on = { of = "s", class = "field", near = [0, 0] }
+Fixed: value = "= f('tag:b')"
 ```
 
 ### `identity.no_previous`
@@ -2127,8 +2689,11 @@ To fix: Read a field by name or 'tag:<tag>' in a formula; select a feature or in
 info, milestone 1, `spec/identity.md`.
 
 ```text
-No baseline to report changes against.
-To fix: None needed; the next build has one.
+There is no baseline build to report changes against, so this build's change report is empty.
+Information only; the next build has one.
+To fix: None needed; to compare with a given build now, pass --against.
+Bad:   via build world.toml --out build/new   (first build there)
+Fixed: via build world.toml --out build/new --against build/a
 ```
 
 ### `identity.not_a_producer`
@@ -2136,8 +2701,11 @@ To fix: None needed; the next build has one.
 error, milestone 1, `spec/identity.md`.
 
 ```text
-by names a set, or a maker that places no instances (a network, a cells table, a where feature).
+`by` names a set, or a maker that places no instances (a network, a cells table, a where
+feature). A pin or clear acts on the instances of producers only.
 To fix: Name the producers that place on it.
+Bad:   by = ["n"]   (n is a network)
+Fixed: by = ["s"]   (s a scatter within n's areas)
 ```
 
 ### `identity.of_ambiguous`
@@ -2154,8 +2722,11 @@ To fix: The classes, with a count of each near near.
 error, milestone 1, `spec/identity.md`.
 
 ```text
-on has both ref and of.
+`on` has both `ref` and `of`. ref names an authored thing by id; of names a maker whose produced
+thing is selected by place. One on uses one.
 To fix: Keep ref for an authored thing, of for a produced one.
+Bad:   on = { ref = "a", of = "s", class = "edge", near = [0, 0] }
+Fixed: on = { ref = "a", t = 0.5 }
 ```
 
 ### `identity.pin_in_clear`
@@ -2163,8 +2734,11 @@ To fix: Keep ref for an authored thing, of for a produced one.
 warning, milestone 1, `spec/identity.md`.
 
 ```text
-A pin stands inside a clear; names both.
-To fix: Leave it if the pin is what the spot is for; otherwise move the pin.
+A pin stands inside a clear. The pin stays: hand edits never remove each other. The record names
+both.
+To fix: Leave it if the pin is what the spot is for; otherwise move the pin or the clear.
+Bad:   [pin.a] at = [10, 10]   and   [clear.b] at = [10, 10], radius = 4
+Fixed: [pin.a] at = [20, 10]
 ```
 
 ### `identity.pin_in_keep_out`
@@ -2172,8 +2746,11 @@ To fix: Leave it if the pin is what the spot is for; otherwise move the pin.
 warning, milestone 1, `spec/identity.md`.
 
 ```text
-A pin stands where keep_out is above 0; names the field.
-To fix: Move the pin, or accept it here.
+A pin stands where a keep_out field is above 0. A pin is placed where it is written, so it stays;
+the record names the field.
+To fix: Move the pin, or accept it there.
+Bad:   [pin.a]  at = [10, 10]   (keep_out 1 there)
+Fixed: [pin.a]  at = [30, 10]
 ```
 
 ### `identity.pin_overlap`
@@ -2181,8 +2758,11 @@ To fix: Move the pin, or accept it here.
 warning, milestone 1, `spec/identity.md`.
 
 ```text
-A pin overlaps an instance of a producer outside its by; names both.
+A pin overlaps an instance of a producer that is not in its by, so that instance was not removed
+for it. The record names both.
 To fix: Add that producer to by, or move the pin.
+Bad:   by = ["s"]   (overlaps an instance of t)
+Fixed: by = ["s", "t"]
 ```
 
 ### `identity.pin_removed`
@@ -2190,8 +2770,11 @@ To fix: Add that producer to by, or move the pin.
 info, milestone 1, `spec/identity.md`.
 
 ```text
-What a pin removed: count and names.
-To fix: Narrow by to keep them.
+What a pin removed: the instances of its by producers that its footprint overlapped, with count
+and names. Information only.
+To fix: Nothing if intended; narrow by to keep them.
+Bad:   by = ["s", "t"]   (removed instances of t that should stay)
+Fixed: by = ["s"]
 ```
 
 ### `identity.pins_overlap`
@@ -2199,8 +2782,11 @@ To fix: Narrow by to keep them.
 error, milestone 1, `spec/identity.md`.
 
 ```text
-Two pins' footprints overlap; names both.
-To fix: Move one; the overlap's size is given.
+Two pins' footprints overlap. Pins are placed exactly as written, so neither can give way. The
+record names both and the overlap's size.
+To fix: Move one by at least the overlap's size.
+Bad:   [pin.a] at = [10, 10]   and   [pin.b] at = [11, 10]
+Fixed: [pin.a] at = [10, 10]   and   [pin.b] at = [14, 10]
 ```
 
 ### `identity.reselected`
@@ -2208,8 +2794,12 @@ To fix: Move one; the overlap's size is given.
 warning, milestone 1, `spec/identity.md`.
 
 ```text
-A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (build.md 11.1).
+A selection resolved to a different produced name than in the baseline: the thing near its near
+point changed (an edge was cut, say). A run diagnostic; the record names both and the distance
+moved.
 To fix: Move near onto the thing meant, or select a feature that does not split (section 3).
+Bad:   on = { of = "n", class = "edge", near = [50, 1] }   (now nearer a new edge)
+Fixed: on = { ref = "a", t = 0.5 }   (a the path the edge came from)
 ```
 
 ### `identity.reserved`
@@ -2217,8 +2807,9 @@ To fix: Move near onto the thing meant, or select a feature that does not split 
 error, milestone 1, `spec/identity.md`.
 
 ```text
-An id is world, or a mount, set item or kind surface is named start, end or ground.
-Choose another name; the hint gives the nearest free one.
+An id is world, or a mount, set item or kind surface is named start, end or ground. Those names
+are taken by the language.
+To fix: Choose another name; the hint gives the nearest free one.
 Bad:   [feature.world]
 Fixed: [feature.world_a]
 ```
@@ -2237,8 +2828,10 @@ To fix: The nearest lock id.
 error, milestone 1, `spec/identity.md`.
 
 ```text
-of names nothing.
-To fix: The nearest maker id.
+`of` names no maker. `data.nearest` holds the nearest maker id.
+To fix: Write the id of a maker the world declares.
+Bad:   on = { of = "sx", class = "edge", near = [0, 0] }
+Fixed: on = { of = "s", class = "edge", near = [0, 0] }
 ```
 
 ### `identity.unknown_place`
@@ -2247,7 +2840,7 @@ error, milestone 1, `spec/identity.md`.
 
 ```text
 A part of a place name names nothing. `data.nearest` holds the nearest match.
-Write the place name as declared.
+To fix: Write the place name as declared.
 Bad:   at = "a.ned"
 Fixed: at = "a.end"
 ```
@@ -2257,8 +2850,10 @@ Fixed: at = "a.end"
 error, milestone 1, `spec/identity.md`.
 
 ```text
-by names nothing.
-To fix: The nearest producer id.
+`by` names no producer. `data.nearest` holds the nearest producer id.
+To fix: Write the id of a producer the world declares.
+Bad:   by = ["sx"]
+Fixed: by = ["s"]
 ```
 
 ## load
@@ -2276,7 +2871,11 @@ To fix: The nearest producer id.
 error, milestone 1, `spec/build.md`, covered by the reader tests.
 
 ```text
-An array file's header, size or shape is wrong, or a listed file is missing.
+A loader found an array file whose header, size or shape is wrong, or a listed file missing. The
+build directory was changed or damaged after the build.
+To fix: Run via check on the folder, and build again into a new folder.
+Bad:   a build folder copied without its fields folder
+Fixed: the whole folder copied
 ```
 
 ### `load.bad_target`
@@ -2284,7 +2883,16 @@ An array file's header, size or shape is wrong, or a listed file is missing.
 warning, milestone 1, `spec/build.md`, covered by the reader tests.
 
 ```text
-An output feature's camera target (a name attribute) is missing, is not the resolved form { "at", "name" } of 9.1, or lies within 1 mm of the eye in plan, or its eye height is missing or not a finite number (15.1); names the feature and the attribute. That feature gets no camera. Hint: check that its kind lists the attribute in names (authority.md 1.2) and gives the eye height a default.
+An output feature's camera target (a name attribute) is missing, not the resolved form
+{ "at", "name" }, or within 1 mm of the eye in plan, or its eye height is missing or not a
+finite number. That feature gets no camera; no default is guessed.
+To fix: Check that the kind lists the attribute in names and gives the eye height a default.
+Bad:   [kind.k]
+       requires = ["toward"]
+Fixed: [kind.k]
+       requires = ["toward"]
+       names = ["toward"]
+       defaults = { eye_height = 1.7 }
 ```
 
 ### `load.fields_not_drawn`
@@ -2292,7 +2900,11 @@ An output feature's camera target (a name attribute) is missing, is not the reso
 info, milestone 1, `spec/build.md`, covered by the reader tests.
 
 ```text
-The fields the loader neither drew nor kept, by name.
+The fields the loader neither drew nor kept, by name. Information only: every field is in the
+build; the loader keeps the ones it is told to.
+To fix: Nothing; to keep a field, name it in the loader's fields option.
+Bad:   fields = []   (a field wanted in the engine)
+Fixed: fields = ["b"]
 ```
 
 ### `load.format`
@@ -2300,7 +2912,11 @@ The fields the loader neither drew nor kept, by name.
 error, milestone 1, `spec/build.md`, covered by the reader tests.
 
 ```text
-A loader found no manifest, or a format it does not read; names diagnostics.json when present.
+A loader found no manifest.json, or a format it does not read. It names diagnostics.json when
+present, since a failed build leaves no manifest.
+To fix: Fix the build's errors (see diagnostics.json) and build again, or update the loader.
+Bad:   loading a folder where the build failed
+Fixed: loading the folder after a build that exits 0
 ```
 
 ### `load.too_many_materials`
@@ -2308,7 +2924,11 @@ A loader found no manifest, or a format it does not read; names diagnostics.json
 warning, milestone 1, `spec/build.md`, covered by the reader tests.
 
 ```text
-A chunk names more materials than this loader draws; names the chunk and its materials (fields.md 7.1).
+A chunk names more materials than this loader draws at once. The record names the chunk and its
+materials.
+To fix: Paint fewer materials where they meet, or use a loader that draws more.
+Bad:   six materials painted in one chunk
+Fixed: four materials there
 ```
 
 ## num
@@ -2333,7 +2953,11 @@ A chunk names more materials than this loader draws; names the chunk and its mat
 error, milestone 1, `spec/numbers.md`.
 
 ```text
-A mean, minimum or maximum over a feature with no samples. Names the feature.
+A mean, minimum or maximum was taken over a feature with no samples (no post inside it), so it
+has no value. The record names the feature.
+To fix: Make the feature large enough to hold a post, or use a finer resolution.
+Bad:   value = "= under('mean')"   (a region smaller than one post spacing)
+Fixed: the same region with a side of at least 2 post spacings
 ```
 
 ### `num.extent_empty`
@@ -2342,7 +2966,7 @@ error, milestone 1, `spec/numbers.md`.
 
 ```text
 The extent has x1 <= x0 or y1 <= y0, so the world has no area.
-Write the corners as [x0, y0, x1, y1] with x1 > x0 and y1 > y0.
+To fix: Write the corners as [x0, y0, x1, y1] with x1 > x0 and y1 > y0.
 Bad:   extent = [100, 0, 0, 100]
 Fixed: extent = [0, 0, 100, 100]
 ```
@@ -2354,7 +2978,7 @@ error, milestone 1, `spec/numbers.md`.
 ```text
 The extent's width or height is not a whole multiple of the resolution. The hint keeps x0 and y0
 and gives x1 and y1 rounded down and up, and the nearest resolutions that divide both widths.
-Write one of them.
+To fix: Write one of them.
 Bad:   extent = [0, 0, 100.25, 100]   with resolution = 0.5
 Fixed: extent = [0, 0, 100.5, 100]
 ```
@@ -2365,7 +2989,7 @@ error, milestone 1, `spec/numbers.md`.
 
 ```text
 A number in the text is inf or nan, which no key takes.
-Write a finite number.
+To fix: Write a finite number.
 Bad:   value = nan
 Fixed: value = 0
 ```
@@ -2375,7 +2999,11 @@ Fixed: value = 0
 error, milestone 1, `spec/numbers.md`.
 
 ```text
-A step or a stored feature value would store an infinite or NaN value. Names the step or feature and the row or position. A formula's is formula.not_finite.
+A step or a stored feature value would store an infinite or NaN value. The record names the step
+or feature and the row or position. A formula's is formula.not_finite.
+To fix: Change the step or value so it yields a finite number there.
+Bad:   a step returning a row with value inf
+Fixed: the step clamping its result to a finite range
 ```
 
 ### `num.out_of_range`
@@ -2385,7 +3013,7 @@ error, milestone 1, `spec/numbers.md`.
 ```text
 A number is out of range: a length beyond plus or minus 2^31 - 1 mm, a facing beyond 64 bits, a
 double too large to hold.
-Write a number in range.
+To fix: Write a number in range.
 Bad:   width = 3000000
 Fixed: width = 3000
 ```
@@ -2395,7 +3023,11 @@ Fixed: width = 3000
 error, milestone 1, `spec/numbers.md`, covered by the workspace tests.
 
 ```text
-A checked integer operation overflowed. Names the subject and the position.
+A checked integer operation overflowed (a sum of millimetres, a count). The record names the
+subject and the position.
+To fix: Bring the values involved into a smaller range: shorter lengths, fewer things.
+Bad:   a path whose summed length passes 2^31 - 1 mm
+Fixed: the same path split in two
 ```
 
 ### `num.resolution`
@@ -2404,7 +3036,7 @@ error, milestone 1, `spec/numbers.md`.
 
 ```text
 The resolution is below 1 mm.
-Write a post spacing of at least 0.001.
+To fix: Write a post spacing of at least 0.001.
 Bad:   resolution = 0.0001
 Fixed: resolution = 0.5
 ```
@@ -2415,7 +3047,7 @@ error, milestone 1, `spec/numbers.md`.
 
 ```text
 The world seed is negative.
-Write a seed of 0 or more.
+To fix: Write a seed of 0 or more.
 Bad:   seed = -1
 Fixed: seed = 1
 ```
@@ -2427,7 +3059,7 @@ error, milestone 1, `spec/numbers.md`.
 ```text
 A seed has the wrong form: a world seed that is not an integer, or a scatter seed that is not a
 name or breaks the id grammar.
-Write the form the hint suggests.
+To fix: Write the form the hint suggests.
 Bad:   seed = "Base"   (on a scatter)
 Fixed: seed = "base"
 ```
@@ -2438,7 +3070,7 @@ error, milestone 1, `spec/numbers.md`.
 
 ```text
 The grid would hold more posts than the limit; the record names nx, ny and the limit.
-Use a coarser resolution or a smaller extent.
+To fix: Use a coarser resolution or a smaller extent.
 Bad:   extent = [0, 0, 100000, 100000]   with resolution = 0.5
 Fixed: extent = [0, 0, 100000, 100000]   with resolution = 8
 ```
@@ -2450,7 +3082,7 @@ error, milestone 1, `spec/numbers.md`.
 ```text
 A length is not a whole number of millimetres, or a facing not a whole number of millidegrees.
 The hint gives the two nearest values that are.
-Write one of them.
+To fix: Write one of them.
 Bad:   width = 1.0005
 Fixed: width = 1.001
 ```
@@ -2488,8 +3120,13 @@ To fix: Fix the listed errors, then accept again.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-front or up is not one of the six signed axes, or both name one axis.
-To fix: A pair on two axes, for example front = "-y", up = "+z".
+`front` or `up` is not one of the six signed axis names (+x, -x, +y, -y, +z, -z), or both name
+the same axis, so the model's orientation is not fixed.
+To fix: Name two different axes, for example front = "-y", up = "+z".
+Bad:   front = "+z"
+       up    = "-z"
+Fixed: front = "-y"
+       up    = "+z"
 ```
 
 ### `pack.bad_facts`
@@ -2515,8 +3152,14 @@ To fix: Re-export without the named extension, or fix the pointed part.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-A material has file without repeat, or repeat without file.
-To fix: Write both, or neither.
+A material has `file` without `repeat`, or `repeat` without `file`. A texture needs the length it
+repeats over, and a repeat means nothing without a texture.
+To fix: Write both keys, or neither (a plain colour).
+Bad:   [material.a]
+       file = "a.png"
+Fixed: [material.a]
+       file = "a.png"
+       repeat = 2
 ```
 
 ### `pack.missing_file`
@@ -2524,8 +3167,11 @@ To fix: Write both, or neither.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-root, a file the pack names, or a URI a model references, does not exist. M1 checks root and a material's file; M2 adds models, detail copies and their URIs.
-To fix: The nearest file name in that folder.
+A path the pack names does not exist: its `root`, or a material's `file` (in M1; models and their
+references are checked from M2). `data.nearest` holds the nearest file name in that folder.
+To fix: Correct the path, relative to the pack's root, or add the file.
+Bad:   file = "textures/gras.png"
+Fixed: file = "textures/grass.png"
 ```
 
 ### `pack.not_found`
@@ -2533,8 +3179,11 @@ To fix: The nearest file name in that folder.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-The pack string names no file; the roots searched, by place.
-To fix: The nearest pack name, or write a path.
+The world's `pack` names no pack file in any pack root. The record lists the roots searched, by
+place. `data.nearest` holds the nearest pack name.
+To fix: Write the pack name the hint gives, or a relative path to the pack file.
+Bad:   pack = "primitve"
+Fixed: pack = "primitive"
 ```
 
 ### `pack.outside_root`
@@ -2551,8 +3200,11 @@ To fix: Move the file under root, or move root.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-A pack number out of range: size or repeat not above 0, triangles, max_relief below 0, a colour part outside 0 to 1.
-To fix: The allowed range.
+A number in the pack is outside its range: `size` or `repeat` not above 0, `triangles` or
+`max_relief` below 0, or a `colour` part outside 0 to 1.
+To fix: Write a value inside the range the record gives.
+Bad:   colour = [0.4, 1.2, 0.3]
+Fixed: colour = [0.4, 1.0, 0.3]
 ```
 
 ### `pack.shadowed`
@@ -2560,8 +3212,11 @@ To fix: The allowed range.
 info, milestone 1, `spec/assets.md`.
 
 ```text
-A pack name found in several roots.
-To fix: The one used; write a path to choose another.
+The pack name is found in more than one pack root. The first root in search order is used; the
+record names it.
+To fix: Nothing if the one used is right; otherwise write a relative path to the file meant.
+Bad:   pack = "a"   (found in two roots)
+Fixed: pack = "packs/a.toml"
 ```
 
 ### `pack.stale_facts`
@@ -2587,8 +3242,11 @@ To fix: Run via pack accept PACK.
 error, milestone 1, `spec/assets.md`.
 
 ```text
-A paint names a material the pack lacks.
-To fix: The nearest material, or add [material.<name>].
+A `paint` names a material that the pack does not declare. `data.nearest` holds the nearest
+material name.
+To fix: Paint a material the pack declares, or add [material.<name>] to the pack.
+Bad:   paint = "gras"
+Fixed: paint = "grass"
 ```
 
 ### `pack.unknown_taxon`
@@ -2596,8 +3254,11 @@ To fix: The nearest material, or add [material.<name>].
 error, milestone 1, `spec/assets.md`.
 
 ```text
-An asset's taxon, a selection or a --taxon filter names an undeclared taxon.
-To fix: The nearest declared path, or declare [taxon."<path>"].
+An asset's `taxon`, a selection (`@path`) or a `--taxon` filter names a taxon the pack does not
+declare. `data.nearest` holds the nearest declared path.
+To fix: Write a declared taxon path, or declare it with [taxon."<path>"].
+Bad:   taxon = "prop/bx"
+Fixed: taxon = "prop/box"
 ```
 
 ## place
@@ -2622,8 +3283,13 @@ To fix: The nearest declared path, or declare [taxon."<path>"].
 error, milestone 1, `spec/rules.md`.
 
 ```text
-A placement writes both asset and set, or neither.
-To fix: Keep one of asset, set.
+A placement writes both `asset` and `set`, or neither. It places one asset or one set.
+To fix: Keep one of asset and set.
+Bad:   [instance.a]
+       asset = "b"
+       set = "c"
+Fixed: [instance.a]
+       asset = "b"
 ```
 
 ### `place.crowded`
@@ -2631,8 +3297,12 @@ To fix: Keep one of asset, set.
 warning, milestone 1, `spec/rules.md`.
 
 ```text
-Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both.
-To fix: Change one producer's on or span, or add a clear or pin in the higher layer with by naming the lower producer.
+Two produced instances overlap, or one overlaps a thing in a higher layer. A warning: both stay.
+The record names both.
+To fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names
+the lower producer.
+Bad:   two runs along one path at the same offset
+Fixed: on = { ref = "a", span = [0.1, 0.4], offset = 4 }   for one of them
 ```
 
 ### `place.gave_way`
@@ -2640,8 +3310,12 @@ To fix: Change one producer's on or span, or add a clear or pin in the higher la
 info, milestone 1, `spec/rules.md`.
 
 ```text
-A producer's candidates dropped by overlap and by relief, as counts, with their box.
-To fix: Widen the space or change the hand instances it gives way to; nothing if intended.
+A producer's candidates were dropped because they overlapped hand instances or exceeded the
+relief allowed. The record gives the counts and their box. Information only.
+To fix: Nothing if intended; otherwise widen the space, or change the hand instances it gives way
+to.
+Bad:   a run of 20 posts where 8 give way to an instance
+Fixed: the run's span moved clear of the instance
 ```
 
 ### `place.keep_out`
@@ -2649,8 +3323,11 @@ To fix: Widen the space or change the hand instances it gives way to; nothing if
 warning, milestone 1, `spec/rules.md`.
 
 ```text
-An instance stands where keep_out is above 0; names the field and the position.
+A hand instance stands where a keep_out field is above 0. It stays, since it is placed as
+written; the record names the field and the position.
 To fix: Move it, or change the kind whose effect writes keep_out there.
+Bad:   [instance.a]  at = [10, 10]   (keep_out 1 there)
+Fixed: [instance.a]  at = [30, 10]
 ```
 
 ### `place.margin_alone`
@@ -2658,8 +3335,16 @@ To fix: Move it, or change the kind whose effect writes keep_out there.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-margin without ground.
+`margin` is written without `ground`. margin is how far the ground footprint grows beyond the
+asset's footprint; without ground there is no footprint feature to grow.
 To fix: Add ground = "<kind>", or remove margin.
+Bad:   [instance.a]
+       asset = "b"
+       margin = 1
+Fixed: [instance.a]
+       asset = "b"
+       ground = "k"
+       margin = 1
 ```
 
 ### `place.no_footprint`
@@ -2676,8 +3361,13 @@ To fix: Declare the asset's footprint, or remove ground.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-An instance or pin has neither at nor on; a run has no on.
-To fix: Write at or on.
+An instance or pin has neither at nor on, or a run has no on, so it has no place.
+To fix: Write at or on (a run takes on).
+Bad:   [instance.a]
+       asset = "b"
+Fixed: [instance.a]
+       asset = "b"
+       at = [10, 10]
 ```
 
 ### `place.on_form`
@@ -2685,8 +3375,13 @@ To fix: Write at or on.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-span in an instance's on, or t in a run's on. (t or offset on a thing with no length is geom.no_length.)
+An instance's on holds span, or a run's on holds t. An instance stands at one point (t); a run
+fills a stretch (span).
 To fix: Write t on an instance, span on a run.
+Bad:   [run.a]
+       on = { ref = "b", t = 0.5 }
+Fixed: [run.a]
+       on = { ref = "b", span = [0.2, 0.8] }
 ```
 
 ### `place.outside`
@@ -2694,8 +3389,10 @@ To fix: Write t on an instance, span on a run.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-A hand instance or set item whose origin is outside the extent; not placed (8.4).
+A hand instance or set item has its origin outside the extent, so it is not placed.
 To fix: Move it inside the extent, or widen the extent.
+Bad:   at = [300, 10]   (extent [0, 0, 256, 256])
+Fixed: at = [250, 10]
 ```
 
 ### `place.overlap`
@@ -2703,8 +3400,11 @@ To fix: Move it inside the extent, or widen the extent.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-Two hand instances' footprints overlap; names both.
-To fix: Move one; the overlap's size is given.
+Two hand instances' footprints overlap. Both are placed as written, so neither gives way. The
+record names both and the overlap's size.
+To fix: Move one by at least the overlap's size.
+Bad:   [instance.a] at = [10, 10]   and   [instance.b] at = [12, 10]   (each 4 m wide)
+Fixed: [instance.b] at = [15, 10]
 ```
 
 ### `place.range`
@@ -2712,8 +3412,11 @@ To fix: Move one; the overlap's size is given.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-On an instance, run or set item: scale not above 0, tint below 0, margin below 0, or a [lo, hi] pair (only a scatter draws).
-To fix: The key and its allowed range.
+On an instance, run or set item: scale not above 0, tint below 0, margin below 0, or a [lo, hi]
+pair, which only a scatter draws from.
+To fix: Write a single value inside the key's range.
+Bad:   scale = [0.8, 1.2]   (on an instance)
+Fixed: scale = 1
 ```
 
 ### `place.relief`
@@ -2721,8 +3424,17 @@ To fix: The key and its allowed range.
 warning, milestone 1, `spec/rules.md`.
 
 ```text
-Relief under an instance exceeds its asset's max_relief; gives both numbers and the position.
-To fix: Move it, give it ground with a kind that levels, or choose an asset with a larger max_relief.
+The ground under an instance varies more than its asset's max_relief allows. The record gives
+both numbers and the position.
+To fix: Move it, give it ground with a kind that levels, or choose an asset with a larger
+max_relief.
+Bad:   [instance.a]
+       asset = "b"
+       at = [10, 10]
+Fixed: [instance.a]
+       asset = "b"
+       at = [10, 10]
+       ground = "k"   (k levels the ground)
 ```
 
 ## protocol
@@ -2767,7 +3479,10 @@ To fix: Move it, give it ground with a kind that levels, or choose an asset with
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-command holds an absolute path.
+A step's command holds an absolute path, which would not exist on another machine.
+To fix: Name a configured program, a path relative to the declaring document, or lib:<library>/.
+Bad:   command = ["/usr/bin/python3", "a.py"]
+Fixed: command = ["python", "steps/a.py"]
 ```
 
 ### `protocol.blob_digest`
@@ -2791,7 +3506,11 @@ A column blob whose header or size does not match the dtype and shape its messag
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-The code folder is or holds the world's folder; move the script into its own folder.
+A step's code folder (the folder of its script) is, or holds, the world file's folder. Every edit
+to the world would then change the step's trust digest and need trusting again.
+To fix: Move the script into a folder of its own.
+Bad:   command = ["python", "a.py"]   (a.py beside world.toml)
+Fixed: command = ["python", "steps/a.py"]
 ```
 
 ### `protocol.column_mixed`
@@ -2799,7 +3518,11 @@ The code folder is or holds the world's folder; move the script into its own fol
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-One attribute has two types across the selected kinds; names both kinds.
+One attribute has two types across the kinds a step selected (a number in one, a text in
+another), so it cannot be one column. The record names both kinds.
+To fix: Give the attribute one type in both kinds, or rename it in one.
+Bad:   [kind.a]  defaults = { w = 1 }   and   [kind.b]  defaults = { w = "1" }
+Fixed: [kind.b]  defaults = { w = 1 }
 ```
 
 ### `protocol.crashed`
@@ -2815,7 +3538,11 @@ The worker exited during a call.
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-No answer by the deadline; which phase, and the deadline.
+A step gave no answer by its deadline. `data.phase` says which phase (initialize, step.call or
+cancel) and `data.deadline` the deadline in seconds.
+To fix: Make the step faster, or raise its deadline.
+Bad:   a step that waits on the network at start
+Fixed: the same step reading its data from a declared input
 ```
 
 ### `protocol.explain_differs`
@@ -2823,7 +3550,11 @@ No answer by the deadline; which phase, and the deadline.
 warning, milestone 1, `spec/protocol.md`.
 
 ```text
-A step sent two explain texts for one code.
+A step sent two different explain texts for one code. via explain prints one, so the first is
+kept.
+To fix: Send one explain text per code, from one place in the step.
+Bad:   two emits of code "a" with different explain strings
+Fixed: one constant explain string for "a"
 ```
 
 ### `protocol.failed`
@@ -2831,7 +3562,11 @@ A step sent two explain texts for one code.
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-A plain command exited non-zero; data.exit.
+A plain command (a step that does not speak the protocol) exited non-zero. `data.exit` holds the
+exit status.
+To fix: Run the command by hand from the declaring document's folder and fix its error.
+Bad:   command = ["python", "steps/a.py"]   (exits 1)
+Fixed: the same command after fixing a.py
 ```
 
 ### `protocol.field_file`
@@ -2887,7 +3622,10 @@ The script has no top-level function named after when.
 warning, milestone 1, `spec/protocol.md`.
 
 ```text
-A step sent a code with no explain text.
+A step sent a code without explain text, so via explain has nothing to print for it.
+To fix: Send explain with the first diagnostic of each code.
+Bad:   step.diag.emit(code="a", subject="feature.b", message="m", hint="h")
+Fixed: step.diag.emit(code="a", subject="feature.b", message="m", hint="h", explain="what a means")
 ```
 
 ### `protocol.no_output`
@@ -2903,7 +3641,11 @@ A generate step returned no document.
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-command[0] is no configured program and no file, or is a .bat/.cmd; the hint gives via config program.
+command[0] is a name with no configured program and no file of that path, or is a .bat or .cmd
+file, which is refused. Programs are never looked up on PATH.
+To fix: Configure it: via config program <name> <path>.
+Bad:   command = ["python3", "steps/a.py"]   (no program python3 configured)
+Fixed: via config program python3 /usr/bin/python3
 ```
 
 ### `protocol.output_file`
@@ -2920,6 +3662,10 @@ error, milestone 1, `spec/protocol.md`.
 
 ```text
 A plain command's out/diagnostics.json is not a list of diagnostic objects.
+To fix: Write a JSON list of objects with the diagnostic members (severity, code, subject,
+message, hint).
+Bad:   {"code": "a"}
+Fixed: [{"severity": "warning", "code": "a", "subject": "feature.b", "message": "m", "hint": "h"}]
 ```
 
 ### `protocol.output_table`
@@ -2927,7 +3673,11 @@ A plain command's out/diagnostics.json is not a list of diagnostic objects.
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-A returned document holds a table or key a step may not return, or a lint or export returned one.
+A returned document holds a table or key a step may not return ([change], [kind], [let], remove,
+unset), or a lint or export step returned a document at all.
+To fix: Return only the tables the step's when allows; a lint or export returns diagnostics only.
+Bad:   a generate step returning [kind.a]
+Fixed: the step returning [feature.a] with kind = "a"
 ```
 
 ### `protocol.output_twice`
@@ -2959,7 +3709,11 @@ A worker had to be killed after shutdown.
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-The process could not be started; data.kind (6.2).
+The step's process could not be started. `data.kind` says why: not_found, denied, other, or empty
+for an empty command.
+To fix: Check the program path and that it is executable.
+Bad:   command = ["steps/a.sh"]   (not executable)
+Fixed: command = ["sh", "steps/a.sh"]   (with sh configured)
 ```
 
 ### `protocol.unknown_library`
@@ -2967,7 +3721,11 @@ The process could not be started; data.kind (6.2).
 error, milestone 1, `spec/protocol.md`.
 
 ```text
-A lib: element names a library not in include; the nearest name.
+A lib: element names a library that is not in the world's include. `data.nearest` holds the
+nearest included library.
+To fix: Write an included library, or add it to include.
+Bad:   command = ["python", "lib:chcks/a.py"]
+Fixed: command = ["python", "lib:checks/a.py"]
 ```
 
 ### `protocol.untrusted`
@@ -2991,7 +3749,10 @@ An untrusted step was built from its committed result, which matched (M2).
 warning, milestone 1, `spec/protocol.md`.
 
 ```text
-An untrusted lint or export step was skipped.
+A lint or export step is not trusted, so it was skipped. The build is complete without it.
+To fix: Review the step and trust it with via trust.
+Bad:   via build world.toml   (step not in trust.toml)
+Fixed: via trust world.toml, then via build world.toml
 ```
 
 ### `protocol.untrusted_stale`
@@ -3087,8 +3848,11 @@ To fix: The key to remove or change.
 warning, milestone 1, `spec/rules.md`.
 
 ```text
-A scatter placed nothing; names the stage that removed the last candidate.
-To fix: The key behind that stage (density, within, keep_out, a hand edit).
+A scatter placed nothing. The record names the stage that removed the last candidate (density,
+within, keep_out, a hand edit).
+To fix: Change the key behind that stage.
+Bad:   density = "= if(f('height') > 90, 0.6, 0)"   (height never above 90)
+Fixed: density = 0.6
 ```
 
 ### `scatter.keep_out_twice`
@@ -3096,8 +3860,11 @@ To fix: The key behind that stage (density, within, keep_out, a hand edit).
 info, milestone 1, `spec/rules.md`.
 
 ```text
-density reads a keep_out field, which the scatter already applies.
+`density` reads a keep_out field, which the scatter already applies to every candidate, so it is
+counted twice.
 To fix: Remove the keep_out factor from density.
+Bad:   density = "= 0.6 * (1 - f('b'))"   (b has role keep_out)
+Fixed: density = 0.6
 ```
 
 ### `scatter.range`
@@ -3105,8 +3872,11 @@ To fix: Remove the keep_out factor from density.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-A [lo, hi] with lo > hi, a scale not above 0, a tint below 0, a jitter outside 0 to 1, a spacing not above 0, or a weight not above 0.
-To fix: The key and its allowed range.
+A scatter key is out of range: a [lo, hi] with lo > hi, a scale not above 0, a tint below 0, a
+jitter outside 0 to 1, a spacing not above 0, or a weight not above 0.
+To fix: Write the key inside its range.
+Bad:   scale = [1.2, 0.8]
+Fixed: scale = [0.8, 1.2]
 ```
 
 ### `scatter.within`
@@ -3114,8 +3884,10 @@ To fix: The key and its allowed range.
 error, milestone 1, `spec/rules.md`.
 
 ```text
-within names a path or a point.
+`within` names a path or a point, which has no inside to scatter in.
 To fix: Name a region feature, a footprint feature, or select an area, cell, rest or piece.
+Bad:   within = "a"   (a is a path)
+Fixed: within = "b"   (b is a region)
 ```
 
 ## set
@@ -3219,7 +3991,11 @@ Different connectors; names both.
 error, milestone 1, `spec/surfaces.md`.
 
 ```text
-A region given to relief has zero area.
+A region whose relief was asked (how much the ground varies under it) has zero area, so there
+is nothing to measure.
+To fix: Ask with a region that has area: its points must not all lie on one line.
+Bad:   relief asked for [[0, 0], [10, 0], [20, 0]]
+Fixed: relief asked for [[0, 0], [10, 0], [10, 10]]
 ```
 
 ### `surface.facing`
@@ -3259,7 +4035,11 @@ ground on an instance that stands on a kind surface.
 error, milestone 1, `spec/surfaces.md`.
 
 ```text
-What it is placed on, or the owner of the mount it is placed on, was not placed (4.1).
+A thing is placed on something, or on a mount of something, that was not placed (it failed, or
+was removed), so it has no surface to stand on.
+To fix: Fix why the host was not placed, or place this thing elsewhere.
+Bad:   on = { ref = "a.m" }   (instance a outside the extent)
+Fixed: on = { ref = "a.m" }   with a moved inside the extent
 ```
 
 ### `surface.meets_self`
@@ -3339,7 +4119,11 @@ meetings() called at generate.
 error, milestone 1, `spec/surfaces.md`.
 
 ```text
-Two surface fields at the top level. Hint: make one a kind's surface.
+Two fields at the top level have role surface. A world has one terrain; other surfaces belong to
+kinds.
+To fix: Remove role from one, or make it a kind's surface.
+Bad:   [field.a]  role = "surface"   and   [field.b]  role = "surface"
+Fixed: [field.a]  role = "surface"   and   [field.b]  base = "= f('a') + 2"
 ```
 
 ### `surface.unknown_mount`

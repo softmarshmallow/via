@@ -2,7 +2,9 @@
 // the MultiMesh carries as instance custom data (build.md 15.1).
 shader_type spatial;
 
-uniform vec3 colour : source_color = vec3(0.8);
+#include "res://addons/via_loader/linear.gdshaderinc"
+
+uniform vec3 colour = vec3(0.8);   // linear, as declared (assets.md 2.6): no source_color, which would convert it again
 
 varying float tint;
 
@@ -11,6 +13,6 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = colour * tint;
+	ALBEDO = albedo_from_linear(colour * tint);
 	ROUGHNESS = 0.85;
 }

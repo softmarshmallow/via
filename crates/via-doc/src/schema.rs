@@ -341,6 +341,9 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("class", Ok(T::Str)),
             ("near", Ok(T::Point)),
             ("t", Ok(T::Number)),
+            // A run's (`rules.md` 4); in an instance's `on` it is `place.on_form`, said by the
+            // model, which knows what holds the `on`.
+            ("span", Ok(T::Numbers(2))),
             ("offset", Ok(T::Length)),
             ("feature", Fixed("write `ref`")),
         ],

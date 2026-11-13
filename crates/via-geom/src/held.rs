@@ -79,6 +79,37 @@ fn inside(place: &ClearPlace, p: P) -> bool {
     }
 }
 
+/// Which hand edit removed each of `removed` (instances [`hold`] took out of `instances`): the
+/// first clear, by id, that speaks to its producer and holds its origin, else the first pin, by
+/// id, that speaks to it and overlaps it, as `hold` applies them. For the change report's causes
+/// (`identity.md` 5: a hand edit is a cause like any key). Name to `clear.<id>` or `pin.<id>`.
+pub fn removed_by(
+    removed: &[Instance],
+    clears: &[Clear],
+    pins: &[Pin],
+) -> Result<Vec<(String, String)>, GeomDiag> {
+    let mut clears: Vec<&Clear> = clears.iter().collect();
+    clears.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut pins: Vec<&Pin> = pins.iter().collect();
+    pins.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut out = Vec::new();
+    'each: for i in removed {
+        for c in &clears {
+            if speaks_to(&c.by, &i.producer) && inside(&c.place, i.origin) {
+                out.push((i.name.clone(), format!("clear.{}", c.id)));
+                continue 'each;
+            }
+        }
+        for p in &pins {
+            if speaks_to(&p.by, &i.producer) && overlaps(&p.footprint, &i.footprint)? {
+                out.push((i.name.clone(), format!("pin.{}", p.id)));
+                continue 'each;
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// The held output: the producers' instances after clears and pins, and diagnostics.
 pub fn hold(
     instances: Vec<Instance>,

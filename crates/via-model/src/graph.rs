@@ -96,6 +96,8 @@ struct Eff {
     /// The effect's window (`fields.md` 5.3); the whole extent without a radius.
     window: Option<Window>,
     reads: FReads,
+    /// The writer's layer rank: a key of row order (R29), so a chunk's key holds it.
+    rank: i64,
 }
 
 impl Eff {
@@ -275,11 +277,61 @@ pub struct ModelPlan<'w> {
     field_memo: Mutex<Option<Arc<FieldsMemo>>>,
     whole: Mutex<Option<Arc<Whole>>>,
     pre: Mutex<Option<Arc<PreEdit>>>,
+    /// Members of a loop the reference graph reported (`graph.md` 2.2): the passes' own loop
+    /// messages about them are dropped.
+    superseded: BTreeSet<String>,
+}
+
+/// The key under the reader's statement that makes an edge, from its label (`graph.md` 2):
+/// `on.ref`, `starts_at`, `ends_at`, `follows`, `base` for a field's base and rows, `where`, a
+/// name attribute. `None` when no one key of the reader's table makes it (an effect).
+fn edge_key(label: &str) -> Option<via_diag::KeyPath> {
+    let head = label.split(' ').next().unwrap_or(label);
+    if head == "on.ref" {
+        return Some(via_diag::KeyPath::key("on").then("ref"));
+    }
+    if label.contains(' ') {
+        return match head {
+            "base" | "where" => Some(via_diag::KeyPath::key(head)),
+            _ => None,
+        };
+    }
+    match head {
+        "starts_at" | "ends_at" | "follows" | "within" => Some(via_diag::KeyPath::key(head)),
+        // A name attribute's label is the attribute.
+        h if !h.is_empty()
+            && h.bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_') =>
+        {
+            Some(via_diag::KeyPath::key(h))
+        }
+        _ => None,
+    }
+}
+
+/// The world's top-level keys that make the frame, the `world` statement (`graph.md` 1): the keys
+/// that decide geometry and numerics. `name` and `include` are not among them, and `pack` is its
+/// own statement ([`PACK`]).
+pub const FRAME_KEYS: [&str; 4] = ["extent", "resolution", "seed", "chunk"];
+
+/// The statement of the world's `pack` key, read by the nodes that resolve asset names.
+pub const PACK: &str = "world.pack";
+
+/// The one node of a declared feature, instance or pin whose declaration failed.
+fn failed_node(top: &str, id: &str) -> NodeId {
+    view(NodeId::of(
+        match top {
+            "feature" => "shape",
+            "instance" => "instance",
+            _ => "edit",
+        },
+        id,
+    ))
 }
 
 /// Each statement's digest (`graph.md` 1): the canonical text of each key with its table path,
-/// never a source position. `world` holds the top-level keys but the change list (`@changes`),
-/// which is the build's, not the world's; `asset:<id>` holds a pack asset's facts.
+/// never a source position. `world` is the frame ([`FRAME_KEYS`]); `world.pack` the pack key;
+/// `asset:<id>` holds a pack asset's facts.
 fn statement_digests(world: &World, p: &Prepared) -> BTreeMap<String, Digest> {
     let mut out = BTreeMap::new();
     let mut top_keys: Vec<(String, String)> = Vec::new();
@@ -292,6 +344,13 @@ fn statement_digests(world: &World, p: &Prepared) -> BTreeMap<String, Digest> {
                 for (id, ent) in t.iter() {
                     let mut enc = Enc::new();
                     enc.str("via-statement-1").str(top).str(id);
+                    // A layer statement's rank is part of its digest (`graph.md` 1): rank is a
+                    // key of row order (R29), so moving it to a layer of another rank re-runs
+                    // what reads it. Kinds and the pack have no rank.
+                    match world.rank(top, id) {
+                        Some(r) => enc.str("rank").str(&r.to_string()),
+                        None => enc.str("no rank"),
+                    };
                     match &ent.item.value {
                         via_doc::Value::Table(et) => {
                             let keys: Vec<(&String, String)> = et
@@ -311,7 +370,18 @@ fn statement_digests(world: &World, p: &Prepared) -> BTreeMap<String, Digest> {
                     out.insert(format!("{top}.{id}"), Digest::of(&enc.finish()));
                 }
             }
-            v => top_keys.push((top.clone(), crate::text::canonical(v))),
+            // `pack` is its own statement, read by the nodes that resolve asset names; `name`
+            // and `include` enter no node key: lookups and sources are in the build key.
+            v if top == "pack" => {
+                let mut enc = Enc::new();
+                enc.str("via-statement-1").str("world").str("pack");
+                enc.str(&crate::text::canonical(v));
+                out.insert(PACK.into(), Digest::of(&enc.finish()));
+            }
+            v if FRAME_KEYS.contains(&top.as_str()) => {
+                top_keys.push((top.clone(), crate::text::canonical(v)));
+            }
+            _ => {}
         }
     }
     let mut enc = Enc::new();
@@ -402,9 +472,15 @@ fn input_path(source: &str, written: &str) -> String {
     for seg in written.split(['/', '\\']) {
         match seg {
             "" | "." => {}
-            ".." => {
-                parts.pop();
-            }
+            // A path above the world's folder (`documents.md` 7.2 allows `..`) keeps its leading
+            // `..`, so it is never the id of a file inside the world; nor is a library's or the
+            // pack's root (`lib:<library>`, `pack:`) ever popped.
+            ".." => match parts.last() {
+                Some(&last) if last != ".." && !last.contains(':') => {
+                    parts.pop();
+                }
+                _ => parts.push(".."),
+            },
             s => parts.push(s),
         }
     }
@@ -434,9 +510,11 @@ impl<'w> ModelPlan<'w> {
             field_memo: Mutex::new(None),
             whole: Mutex::new(None),
             pre: Mutex::new(None),
+            superseded: BTreeSet::new(),
         };
         plan.fields = plan.field_infos();
         plan.define_all();
+        plan.report_cycles();
         plan.break_cycles();
         let early = plan.route_early();
         plan.early = early;
@@ -724,6 +802,12 @@ impl<'w> ModelPlan<'w> {
                     self.freads(e.value, &mut reads);
                     self.freads(e.mask, &mut reads);
                     self.freads(e.max_change, &mut reads);
+                    // As rows are ordered (`authority.md` 3): a feature's own rank, a
+                    // footprint's its instance's.
+                    let rank = match inst {
+                        Some(i) => d.instances.get(i).map_or(0, |x| x.rank),
+                        None => d.features.get(wname).map_or(0, |f| f.rank),
+                    };
                     info.effs.push(Eff {
                         writer: wname.clone(),
                         instance: inst.clone(),
@@ -731,6 +815,7 @@ impl<'w> ModelPlan<'w> {
                         effect: e.id.clone(),
                         window,
                         reads,
+                        rank,
                     });
                 }
             }
@@ -751,6 +836,9 @@ impl<'w> ModelPlan<'w> {
     /// The nodes a place name refers to (`graph.md` 2, "placement" and "mount").
     fn targets(&self, name: &str) -> Vec<NodeId> {
         let d = &self.p.decls;
+        if let Some((h, top)) = crate::place::failed_owner(d, name) {
+            return vec![failed_node(top, &h)];
+        }
         let base = name
             .strip_suffix(".start")
             .or_else(|| name.strip_suffix(".end"))
@@ -926,9 +1014,14 @@ impl<'w> ModelPlan<'w> {
             let mut edges = Vec::new();
             self.place_edges(&i.place, &mut edges);
             let statements = self.stmts_of(
-                [format!("instance.{id}"), "world".into(), asset.clone()]
-                    .iter()
-                    .map(String::as_str),
+                [
+                    format!("instance.{id}"),
+                    "world".into(),
+                    PACK.into(),
+                    asset.clone(),
+                ]
+                .iter()
+                .map(String::as_str),
             );
             defs.push((
                 view(NodeId::of("instance", id)),
@@ -967,8 +1060,17 @@ impl<'w> ModelPlan<'w> {
                 .map(|pl| region_bbox(&pl.footprint, pl.origin));
             let mut edges = vec![("plan".to_string(), view(NodeId::of("instance", id)))];
             edges.extend(self.standing_edges(at, true));
+            // A hand instance and the instance it stands on are not tested for overlap
+            // (`rules.md` 8.1), so neither reads the other for it: the one on a mount already
+            // reads its host's `height`, and an edge back would close a loop.
+            let stands_on = |x: &str, y: &str| {
+                d.instances.get(x).is_some_and(|i| match &i.place {
+                    Place::On(o) => o.reference.split('.').next() == Some(y),
+                    _ => false,
+                })
+            };
             for other in &hands {
-                if other != id {
+                if other != id && !stands_on(id, other) && !stands_on(other, id) {
                     edges.push((
                         format!("overlap {other}"),
                         view(NodeId::of("instance", other)),
@@ -992,6 +1094,7 @@ impl<'w> ModelPlan<'w> {
                 [
                     format!("pin.{id}"),
                     "world".into(),
+                    PACK.into(),
                     format!("asset:{}", pin.asset),
                 ]
                 .iter()
@@ -1045,6 +1148,26 @@ impl<'w> ModelPlan<'w> {
                 },
             ));
         }
+        // A declared place name whose declaration failed its own check (`diagnostics.md` 4): one
+        // node, failed by that check's record, so a reader of the name has an edge to it and is
+        // `skipped` under the one cause, never told the name names nothing.
+        for (id, top) in &d.declared {
+            if crate::place::failed_owner(d, id).is_none_or(|(h, _)| h != *id) {
+                continue;
+            }
+            defs.push((
+                failed_node(top, id),
+                Def {
+                    subject: Some(Subject::entity(*top, id.clone())),
+                    statements: self.stmts_of(
+                        [format!("{top}.{id}"), "world".into()]
+                            .iter()
+                            .map(String::as_str),
+                    ),
+                    ..Def::default()
+                },
+            ));
+        }
         // Producers.
         let assets: Vec<String> = self
             .p
@@ -1059,7 +1182,7 @@ impl<'w> ModelPlan<'w> {
             let subject = Some(Subject::entity("scatter", id.clone()));
             let mut reads = FReads::default();
             self.freads(s.density, &mut reads);
-            let mut st: Vec<String> = vec![format!("scatter.{id}"), "world".into()];
+            let mut st: Vec<String> = vec![format!("scatter.{id}"), "world".into(), PACK.into()];
             st.extend(assets.iter().cloned());
             st.extend(reads.lets.iter().cloned());
             let mut edges = vec![
@@ -1384,6 +1507,7 @@ impl<'w> ModelPlan<'w> {
                 NodeId::of("input", &input_path(&f.source, &f.written)),
             ));
         }
+        let mut ranks: Vec<(String, String)> = Vec::new();
         for e in &info.effs {
             if nofp && e.instance.is_some() {
                 continue;
@@ -1395,6 +1519,12 @@ impl<'w> ModelPlan<'w> {
             st.push(format!("kind.{}", e.kind));
             st.extend(e.reads.lets.iter().cloned());
             let label = e.label();
+            // Layer rank orders the rows (R29): moving a writer to a layer of another rank
+            // re-runs the chunk though its shape and attributes are unchanged (`graph.md` 1).
+            ranks.push((
+                format!("rank {}.{}", e.writer, e.effect),
+                e.rank.to_string(),
+            ));
             edges.push((label.clone(), dist_id(&e.writer, w)));
             edges.push((label.clone(), e.attr_node()));
             reads(&e.reads, &label, &mut edges);
@@ -1405,10 +1535,12 @@ impl<'w> ModelPlan<'w> {
                 ));
             }
         }
+        let mut params = vec![("window".into(), win_text(w))];
+        params.extend(ranks);
         Def {
             subject: Some(Subject::entity("field", name.to_string())),
             statements: self.stmts_of(st.iter().map(String::as_str)),
-            params: vec![("window".into(), win_text(w))],
+            params,
             edges,
             reports: if nofp {
                 Reports::ErrorsOnly
@@ -1500,9 +1632,16 @@ impl<'w> ModelPlan<'w> {
         let mut st: Vec<String> = vec![format!("field.{name}"), "world".into()];
         st.extend(info.own.lets.iter().cloned());
         let mut edges: Vec<(String, NodeId)> = Vec::new();
+        // The entries before this one are found by row order, of which layer rank is a key
+        // (R29, `graph.md` 1).
+        let mut params: Vec<(String, String)> = Vec::new();
         for m in &members {
             st.push(format!("kind.{}", m.kind));
             st.extend(m.reads.lets.iter().cloned());
+            params.push((
+                format!("rank {}.{}", m.writer, m.effect),
+                m.rank.to_string(),
+            ));
             edges.push((format!("entry {}.{}", m.writer, m.effect), m.shape_node()));
             edges.push((format!("entry {}.{}", m.writer, m.effect), m.attr_node()));
             for s in &m.reads.shapes {
@@ -1539,6 +1678,7 @@ impl<'w> ModelPlan<'w> {
                 None => Subject::entity("feature", e.writer.clone()),
             }),
             statements: self.stmts_of(st.iter().map(String::as_str)),
+            params,
             edges,
             ..Def::default()
         }
@@ -1556,6 +1696,112 @@ impl<'w> ModelPlan<'w> {
             }
         }
         view(NodeId::of("shape", m))
+    }
+
+    /// The one cycle report (`graph.md` 2.2): the reference graph is the node graph with view,
+    /// window and item removed, each vertex belonging to its node's statement. Each loop is one
+    /// `graph.cycle`, named from its first member in source order and located at the key that
+    /// makes that member's edge; it fails every node of every member of its component, so their
+    /// readers are skipped. The per-mechanism loop messages found while placing or resolving
+    /// (`cycles`) give way to it for the members it covers.
+    fn report_cycles(&mut self) {
+        let mut g = via_graph::RefGraph::new();
+        let mut members: BTreeSet<String> = BTreeSet::new();
+        for (id, def) in &self.defs {
+            let vertex = id.vertex();
+            let member = match &def.subject {
+                Some(
+                    s @ Subject::Entity {
+                        collection,
+                        id: sid,
+                        ..
+                    },
+                ) => {
+                    let m = format!("{collection}.{sid}");
+                    if members.insert(m.clone()) {
+                        let order = match self.world.key_location(s) {
+                            Some(via_diag::Location::Span { file, line, .. }) => {
+                                via_graph::SourceOrder {
+                                    rank: self.world.rank(collection, sid),
+                                    file,
+                                    line,
+                                }
+                            }
+                            _ => via_graph::SourceOrder {
+                                rank: None,
+                                file: String::new(),
+                                line: u32::MAX,
+                            },
+                        };
+                        g.member(
+                            m.clone(),
+                            via_graph::Member {
+                                subject: Subject::entity(collection.clone(), sid.clone()),
+                                order,
+                            },
+                        );
+                    }
+                    m
+                }
+                _ => {
+                    // A node of no statement (a selector, `merge`) is its own member, after
+                    // every statement in source order.
+                    if members.insert(vertex.clone()) {
+                        g.member(
+                            vertex.clone(),
+                            via_graph::Member {
+                                subject: Subject::Selector(vertex.clone()),
+                                order: via_graph::SourceOrder {
+                                    rank: None,
+                                    file: "\u{10ffff}".into(),
+                                    line: u32::MAX,
+                                },
+                            },
+                        );
+                    }
+                    vertex.clone()
+                }
+            };
+            g.vertex(vertex.clone(), member);
+            for (label, t) in &def.edges {
+                g.edge(via_graph::RefEdge {
+                    from: vertex.clone(),
+                    to: t.vertex(),
+                    label: label.clone(),
+                    key: edge_key(label),
+                });
+            }
+        }
+        let cycles = g.cycles();
+        if cycles.is_empty() {
+            return;
+        }
+        let mut covered: BTreeSet<String> = BTreeSet::new();
+        for c in &cycles {
+            covered.extend(c.members.iter().cloned());
+            for (id, def) in &mut self.defs {
+                if c.vertices.contains(&id.vertex()) {
+                    def.found.push(c.diag.clone());
+                }
+            }
+        }
+        // The loop messages of the passes, for members the report covers, are dropped.
+        let superseded = |d: &Diag| {
+            *d.code() == via_diag::DiagCode::Core(codes::graph::CYCLE)
+                && matches!(d.subject(), Subject::Entity { collection, id, .. }
+                    if covered.contains(&format!("{collection}.{id}")))
+                && !cycles.iter().any(|c| c.diag == *d)
+        };
+        self.p.diags.retain(|d| !superseded(d));
+        self.superseded = covered;
+    }
+
+    /// A pass's own loop message about a member the reference graph's report covers.
+    fn is_superseded(&self, d: &Diag) -> bool {
+        *d.code() == via_diag::DiagCode::Core(codes::graph::CYCLE)
+            && d.related_list().is_empty()
+            && matches!(d.subject(), Subject::Entity { collection, id, .. }
+                if self.superseded.contains(&format!("{collection}.{id}")))
     }
 
     /// Edges that would close a loop are dropped: the model reports every such loop itself
@@ -1588,7 +1834,8 @@ impl<'w> ModelPlan<'w> {
     /// before anything runs (`Def::found`), so they are reported whatever else failed; the
     /// placement pass's go into the value of the node that places.
     fn route_early(&mut self) -> BTreeMap<NodeId, Vec<Diag>> {
-        let placing = Placer::new(&self.p.decls, &self.p.pack).run().1;
+        let mut placing = Placer::new(&self.p.decls, &self.p.pack).run().1;
+        placing.retain(|d| !self.is_superseded(d));
         let fixed = minus(&self.p.diags, &placing);
         let mut out: BTreeMap<NodeId, Vec<Diag>> = BTreeMap::new();
         let mut found: Vec<(NodeId, Diag)> = Vec::new();
@@ -1677,7 +1924,7 @@ impl<'w> ModelPlan<'w> {
                         });
                         if late {
                             vec![Self::merge_id()]
-                        } else if placing {
+                        } else if placing || !self.p.decls.features.contains_key(id) {
                             vec![view(NodeId::of("shape", id))]
                         } else {
                             vec![NodeId::of("attr", id)]
@@ -1735,6 +1982,9 @@ impl<'w> ModelPlan<'w> {
                 memo.build.insert(name.clone(), r.map(|r| (*r).clone()));
                 for i in found {
                     let d = fields.diags.borrow()[i].clone();
+                    if self.is_superseded(&d) {
+                        continue;
+                    }
                     for o in self.field_owners(&name, &d) {
                         routed.entry(o).or_default().insert(i);
                     }
@@ -2269,6 +2519,30 @@ impl Plan for ModelPlan<'_> {
                 } else {
                     e.byte(0);
                 }
+                // A selection by place resolves against the maker's output, which this node
+                // reads by its `of` edge (`identity.md` 4.1): that output is part of the value,
+                // so a reader keyed on this node sees the place move when the maker's does.
+                let place = match (self.p.decls.pins.get(&s), self.p.decls.clears.get(&s)) {
+                    (Some(p), _) => Some(&p.place),
+                    (None, Some(c)) => c.place.as_ref(),
+                    _ => None,
+                };
+                match place {
+                    Some(Place::Of(sel)) if self.p.decls.scatters.contains_key(&sel.of) => {
+                        let pre = self.pre_edit();
+                        let list = pre.get(&sel.of).map(Vec::as_slice).unwrap_or(&[]);
+                        e.byte(1).len(list.len());
+                        for p in list {
+                            e.str(&p.name)
+                                .u64(p.origin.x as u64)
+                                .u64(p.origin.y as u64)
+                                .u64(p.facing as u64);
+                        }
+                    }
+                    _ => {
+                        e.byte(0);
+                    }
+                }
                 Self::val(e.finish(), self.early_diags(id))
             }
             "rule" => {
@@ -2358,4 +2632,25 @@ fn decode_bbox(bytes: &[u8]) -> Option<[i64; 4]> {
         d.u64()? as i64,
         d.u64()? as i64,
     ])
+}
+
+#[cfg(test)]
+mod input_path_tests {
+    use super::input_path;
+
+    #[test]
+    fn above_the_world_keeps_its_dots() {
+        assert_eq!(
+            input_path("world.toml", "../shared/h.npy"),
+            "../shared/h.npy"
+        );
+        assert_eq!(input_path("world.toml", "shared/h.npy"), "shared/h.npy");
+        assert_eq!(input_path("layers/a.toml", "../h.npy"), "h.npy");
+        assert_eq!(input_path("layers/a.toml", "../../x/h.npy"), "../x/h.npy");
+        assert_eq!(input_path("world.toml", "./a/../b.npy"), "b.npy");
+        assert_ne!(
+            input_path("world.toml", "../shared/h.npy"),
+            input_path("world.toml", "shared/h.npy")
+        );
+    }
 }

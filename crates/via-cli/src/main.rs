@@ -31,6 +31,8 @@ mod changes;
 mod check;
 mod cmds;
 mod dir;
+mod filebase;
+mod interrupt;
 mod json;
 mod kernel;
 mod layout;
@@ -53,6 +55,9 @@ use via_doc::ChangeRequest;
 
 /// The engine version, from the workspace manifest, so the binary and `Cargo.toml` cannot disagree.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The longest `--step-deadline`, in seconds: one day (`build.md` 14).
+const MAX_STEP_DEADLINE: u64 = 86_400;
 
 const HELP: &str = "\
 usage: via <command> [arguments] [--diagnostics FILE]
@@ -435,13 +440,16 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
                 None => None,
             };
             let deadline = match p.one("--step-deadline") {
+                // `build.md` 14: 1 to 86,400 seconds (one day); a longer wait is no deadline.
                 Some((a, t)) => match t.parse::<u64>() {
-                    Ok(n) if n >= 1 => Some(n),
+                    Ok(n) if (1..=MAX_STEP_DEADLINE).contains(&n) => Some(n),
                     _ => {
                         faults.push(usage(
                             a,
-                            format!("`--step-deadline {t}` is not a whole number of seconds"),
-                            "write `--step-deadline SECONDS`".into(),
+                            format!(
+                                "`--step-deadline {t}` is not a whole number of seconds from 1 to {MAX_STEP_DEADLINE}"
+                            ),
+                            "write `--step-deadline SECONDS`, at most 86400".into(),
                         ));
                         None
                     }
@@ -468,6 +476,7 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
                     .collect(),
                 deadline,
                 sdk: p.one("--sdk").map(|(_, s)| PathBuf::from(s)),
+                diagnostics: p.one("--diagnostics").map(|(a, f)| (a, PathBuf::from(f))),
             });
             Ok(Done {
                 records: o.records,
@@ -723,6 +732,7 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
 }
 
 fn main() -> ExitCode {
+    interrupt::install();
     let (p, faults) = read_args(std::env::args_os().skip(1).collect());
     let diagnostics = p.one("--diagnostics");
     let json = p.has("--json").is_some()
@@ -736,23 +746,13 @@ fn main() -> ExitCode {
     } else {
         Err(faults)
     };
-    let mut done = match done {
+    let done = match done {
         Ok(d) => d,
         Err(faults) => Done::of(via_diag::finish(
             faults.iter().map(|d| d.emit(&NoWorld)).collect(),
             &via_diag::FailOn::none(),
         )),
     };
-    // A `--diagnostics FILE` inside the build directory would be replaced with it (14).
-    if let (Some((at, file)), Some(out)) = (&diagnostics, &done.out) {
-        let abs = |q: &Path| std::path::absolute(q).unwrap_or_else(|_| q.to_path_buf());
-        if abs(Path::new(file)).starts_with(abs(out)) {
-            done.records.push(
-                usage(*at, format!("`--diagnostics {file}` lies inside the build directory, which is replaced whole"), "write the file outside `--out`".into())
-                    .emit(&NoWorld),
-            );
-        }
-    }
     let mut status = exit_status(&done.records).max(done.status.unwrap_or(0));
     if !done.records.is_empty() {
         let colour = std::env::var_os("NO_COLOR").is_none()
@@ -770,10 +770,11 @@ fn main() -> ExitCode {
         print!("{doc}");
     }
     if let Some((at, file)) = diagnostics {
-        let inside = done.out.as_ref().is_some_and(|o| {
-            let abs = |q: &Path| std::path::absolute(q).unwrap_or_else(|_| q.to_path_buf());
-            abs(Path::new(&file)).starts_with(abs(o))
-        });
+        // Never written into the build directory: `via build` refused it there (14).
+        let inside = done
+            .out
+            .as_ref()
+            .is_some_and(|o| build::lies_inside(Path::new(&file), o));
         if !inside {
             if let Err(e) = std::fs::write(&file, &doc) {
                 let d = Diag::new(

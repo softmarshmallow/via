@@ -96,6 +96,34 @@ mod lineref_cols {
     }
 }
 
+/// What each applied effect touched, and at each post the last entry that set it with mask 1:
+/// for `authority.hidden`.
+#[derive(Default)]
+struct Hidden {
+    /// (entry index, writer, posts with mask above 0).
+    entries: Vec<(usize, usize, Vec<usize>)>,
+    /// Post to (entry index, writer) of the last entry with mask exactly 1 there.
+    last1: BTreeMap<usize, (usize, usize)>,
+}
+
+impl Hidden {
+    /// `erases`: the entry's value does not read the field before it (`v`, one-argument `under`,
+    /// `smoothed_along`), so where its mask is 1 nothing earlier survives. An entry that reads `v`
+    /// carries the earlier value on and covers nothing.
+    fn track(&mut self, idx: usize, writer: usize, posts: &[usize], mask: &[f64], erases: bool) {
+        let mut mine = Vec::new();
+        for (k, &p) in posts.iter().enumerate() {
+            if mask[k] > 0.0 {
+                mine.push(p);
+            }
+            if erases && mask[k] == 1.0 {
+                self.last1.insert(p, (idx, writer));
+            }
+        }
+        self.entries.push((idx, writer, mine));
+    }
+}
+
 /// Resolved fields by (name, view); `None` for one that failed.
 type Cache = BTreeMap<(String, View), Option<Rc<Resolved>>>;
 
@@ -607,10 +635,7 @@ impl<'a> Fields<'a> {
         if unplaced {
             return None;
         }
-        let sel = Sel {
-            fields: self,
-            own: served,
-        };
+        let sel = self.selector(f, served);
         match bind(p, &sel) {
             Ok(b) => {
                 for w in &b.warnings {
@@ -623,6 +648,37 @@ impl<'a> Fields<'a> {
                 None
             }
         }
+    }
+
+    /// The selection phase for formula `f`, served to `served` (a kind's formula) or not. A read
+    /// selector sees the reader's rank and below (`documents.md` 5.1, `formulas.md` 7): a kind's
+    /// formula reads at the rank of the feature it serves.
+    pub(crate) fn selector<'s>(&'s self, f: FormulaId, served: Option<&'s str>) -> Sel<'s, 'a> {
+        let rank = match served {
+            Some(s) => self.writers.iter().find(|w| w.name == s).map(|w| w.rank),
+            None => self.d.formula_rank.get(&f).copied(),
+        };
+        Sel {
+            fields: self,
+            own: served,
+            rank,
+        }
+    }
+
+    /// The rank of a placed thing a shape selector names: a feature's, a footprint's instance's.
+    fn shape_rank(&self, id: &str) -> i64 {
+        let base = id
+            .strip_suffix(".start")
+            .or_else(|| id.strip_suffix(".end"))
+            .unwrap_or(id);
+        if let Some(w) = self.writers.iter().find(|w| w.name == base) {
+            return w.rank;
+        }
+        if let Some(f) = self.d.features.get(base) {
+            return f.rank;
+        }
+        let host = base.split('.').next().unwrap_or(base);
+        self.d.instances.get(host).map_or(0, |i| i.rank)
     }
 
     /// Evaluates a formula over a domain; a failure is reported and gives `None`.
@@ -665,6 +721,7 @@ impl<'a> Fields<'a> {
             served: None,
             reads: RefCell::new(BTreeSet::new()),
             own: attrs,
+            own_id: Some(feature),
         };
         let ww = via_expr::Window::whole(&self.grid);
         let wdom = Domain::Window {
@@ -710,6 +767,7 @@ impl<'a> Fields<'a> {
                 served: None,
                 reads: RefCell::new(BTreeSet::new()),
                 own: None,
+                own_id: None,
             };
             cur = self.eval(b, &ctx, &wdom, view, None)?;
             reads.extend(ctx.reads.into_inner());
@@ -739,6 +797,7 @@ impl<'a> Fields<'a> {
             return None;
         }
         let mut anchors: Vec<Anchor> = Vec::new();
+        let mut hid = Hidden::default();
         let mut failed = false;
         for (idx, entry) in entries.iter().enumerate() {
             match entry {
@@ -751,6 +810,7 @@ impl<'a> Fields<'a> {
                         served: None,
                         reads: RefCell::new(BTreeSet::new()),
                         own: None,
+                        own_id: None,
                     };
                     let mask = match row.mask {
                         Some(m) => self.eval(m, &ctx, &wdom, view, None),
@@ -839,6 +899,7 @@ impl<'a> Fields<'a> {
                         served: Some(&served),
                         reads: RefCell::new(BTreeSet::new()),
                         own: None,
+                        own_id: None,
                     };
                     let mask = match e.mask {
                         Some(m) => self.eval(m, &ctx, &dom, view, Some(&w.name)),
@@ -875,6 +936,9 @@ impl<'a> Fields<'a> {
                             );
                         }
                         paint_into(&mut weights, paint, &mask, Some(&posts), n);
+                        if view == View::Build {
+                            hid.track(idx, *writer, &posts, &mask, true);
+                        }
                         continue;
                     }
                     if e.paint.is_some() {
@@ -969,6 +1033,15 @@ impl<'a> Fields<'a> {
                         let p = posts[k];
                         cur[p] = (1.0 - m) * cur[p] + m * value[k];
                     }
+                    if view == View::Build {
+                        let erases = !self
+                            .d
+                            .formulas
+                            .programs
+                            .get(&vf)
+                            .is_some_and(|p| p.reads.entry_field);
+                        hid.track(idx, *writer, &posts, &mask, erases);
+                    }
                     if view == View::Build && w.tier == Tier::Anchored {
                         // The value just after this feature's last entry so far.
                         let last_of_writer = entries[idx + 1..].iter().all(
@@ -992,6 +1065,9 @@ impl<'a> Fields<'a> {
         }
         if view == View::Build && !fd.weights {
             self.anchors_meet(field, &anchors);
+        }
+        if view == View::Build {
+            self.report_hidden(field, &hid);
         }
         // Narrow once (fields.md 1.1).
         let narrow = |v: &[f64]| -> Option<Raster<f32>> {
@@ -1063,6 +1139,59 @@ impl<'a> Fields<'a> {
         })
     }
 
+    /// `authority.md` 5, hidden entries: an entry whose every post with mask above 0 is later set
+    /// by an entry with mask 1 left no trace; once per (feature, field), naming the features that
+    /// cover it.
+    fn report_hidden(&self, field: &str, hid: &Hidden) {
+        let mut said: BTreeSet<usize> = BTreeSet::new();
+        for (idx, writer, mine) in &hid.entries {
+            if mine.is_empty() || said.contains(writer) {
+                continue;
+            }
+            let mut by: BTreeSet<usize> = BTreeSet::new();
+            let covered = mine.iter().all(|p| match hid.last1.get(p) {
+                Some((at, w)) if at > idx => {
+                    by.insert(*w);
+                    true
+                }
+                _ => false,
+            });
+            by.remove(writer);
+            if !covered || by.is_empty() {
+                continue;
+            }
+            said.insert(*writer);
+            let w = &self.writers[*writer];
+            let names: Vec<String> = by
+                .iter()
+                .map(|b| format!("`{}`", self.writers[*b].name))
+                .collect();
+            let (top, id) = writer_subject(self.d, &w.name);
+            let mut d = text::at_header(
+                codes::authority::HIDDEN,
+                top,
+                &id,
+                &format!(
+                    "`{}` leaves no trace on `{field}`: {} later set every post it touches with mask 1",
+                    w.name,
+                    names.join(", ")
+                ),
+                "move it out from under them, raise its authority, or drop it if that is meant",
+            )
+            .with("field", DValue::text(field));
+            for b in &by {
+                let (bt, bid) = writer_subject(self.d, &self.writers[*b].name);
+                d = d.related(via_diag::Related {
+                    subject: Subject::entity(bt, bid),
+                    site: Site::Header,
+                    position: None,
+                    note: via_diag::text!("a later entry with mask 1 that covers it"),
+                });
+            }
+            self.report(View::Build, d);
+        }
+    }
+
     /// `authority.md` 5: anchored features that meet on one scalar field.
     fn anchors_meet(&self, field: &str, anchors: &[Anchor]) {
         for (bi, b) in anchors.iter().enumerate() {
@@ -1122,7 +1251,7 @@ impl<'a> Fields<'a> {
                 let mut d = text::diag(
                     code,
                     Subject::entity(top, id.clone()),
-                    authority_site(self.d, top, &id),
+                    authority_site(),
                     &format!("`{}` and `{}` are both anchored and disagree on `{field}` at {count} posts: `{}` leaves {}, `{}` asks {}", wb.name, wa.name, wa.name, text::dbl(worst.2), wb.name, text::dbl(worst.3)),
                     &format!("make one `shaped` so the other holds; or move one off the other; or let `{}` read `{}` with `value = \"= v\"` where they overlap", wb.name, wa.name),
                 )
@@ -1132,7 +1261,7 @@ impl<'a> Fields<'a> {
                 .with("both_partial", DValue::Int(both0 as i64));
                 d = d.related(via_diag::Related {
                     subject: Subject::entity(atop, aid.clone()),
-                    site: authority_site(self.d, atop, &aid),
+                    site: authority_site(),
                     position: None,
                     note: via_diag::text!("the earlier anchored feature"),
                 });
@@ -1207,14 +1336,11 @@ fn writer_subject(d: &Decls, name: &str) -> (&'static str, String) {
     }
 }
 
-fn authority_site(d: &Decls, top: &str, id: &str) -> Site {
-    if top == "feature" && d.features.get(id).is_some_and(|f| f.tier.is_some()) {
-        Site::Key(via_diag::KeyPath::key("authority"))
-    } else if top == "instance" {
-        Site::Key(via_diag::KeyPath::key("ground"))
-    } else {
-        Site::Key(via_diag::KeyPath::key("kind"))
-    }
+fn authority_site() -> Site {
+    // `authority.md` 5: the line of each one's `authority`, the feature's, or its kind's when
+    // inherited (as a footprint's always is). An unwritten key resolves to the kind's, with the
+    // `defaults` entry in the chain (`diagnostics.md` 1.2).
+    Site::Key(via_diag::KeyPath::key("authority"))
 }
 
 /// Whether `b` lies inside region `a` and is smaller (`authority.md` 4.3), exactly.
@@ -1273,10 +1399,17 @@ fn paint_into(
     }
 }
 
-/// The selection phase over this world.
-struct Sel<'f, 'a> {
+/// The selection phase over this world, at the reader's rank (`None`: every rank).
+pub(crate) struct Sel<'f, 'a> {
     fields: &'f Fields<'a>,
     own: Option<&'f str>,
+    rank: Option<i64>,
+}
+
+impl Sel<'_, '_> {
+    fn sees(&self, rank: i64) -> bool {
+        self.rank.is_none_or(|r| rank <= r)
+    }
 }
 
 fn shape_of(g: &Geo) -> Shape {
@@ -1295,7 +1428,9 @@ impl Select for Sel<'_, '_> {
         d.fields
             .values()
             .filter(|f| match selector.strip_prefix("tag:") {
-                Some(t) => f.tags.iter().any(|x| x == t),
+                // A read selector leaves out what lies above the reader (`documents.md` 5.1); a
+                // field named outright is a named reference, checked as `doc.upward_ref`.
+                Some(t) => f.tags.iter().any(|x| x == t) && self.sees(f.rank),
                 None => f.name == selector,
             })
             .map(|f| FieldInfo {
@@ -1312,7 +1447,7 @@ impl Select for Sel<'_, '_> {
                 .fields
                 .writers
                 .iter()
-                .filter(|w| w.kind == k)
+                .filter(|w| w.kind == k && self.sees(w.rank))
                 .filter_map(|w| {
                     p.shapes.get(&w.name).map(|g| ShapeInfo {
                         id: w.name.clone(),
@@ -1323,6 +1458,7 @@ impl Select for Sel<'_, '_> {
             None => p
                 .shapes
                 .get(selector)
+                .filter(|_| self.sees(self.fields.shape_rank(selector)))
                 .map(|g| {
                     vec![ShapeInfo {
                         id: selector.to_string(),
@@ -1356,6 +1492,8 @@ struct Ctx<'c> {
     reads: RefCell<BTreeSet<String>>,
     /// The attributes of the feature whose `where` is evaluated (`formulas.md` 6.6).
     own: Option<&'c BTreeMap<String, Attr>>,
+    /// The id of that feature.
+    own_id: Option<&'c str>,
 }
 
 fn internal(what: &str) -> ReadError {
@@ -1418,9 +1556,24 @@ impl Reads for Ctx<'_> {
             Some(id) => self.f.d.features.get(id).map(|f| &f.attrs),
         }
         .ok_or_else(|| internal("an attribute"))?;
+        let owner = feature.or(self.served.map(|s| s.name)).or(self.own_id);
         match attrs.get(name) {
             Some(Attr::Number(x)) => Ok(Scalar::Number(*x)),
             Some(Attr::YesNo(b)) => Ok(Scalar::YesNo(*b)),
+            // An attribute formula that failed said so at its own text (`graph.md` 3.4).
+            None if owner.is_some_and(|o| {
+                self.f
+                    .d
+                    .failed_attrs
+                    .contains(&(o.to_string(), name.to_string()))
+            }) =>
+            {
+                Err(ReadError::new(
+                    codes::diag::SKIPPED,
+                    format!("`{name}` could not be worked out"),
+                    "see the attribute's own diagnostic",
+                ))
+            }
             _ => Err(ReadError::new(
                 codes::formula::TYPE,
                 format!("`{name}` is not a number here"),
@@ -1560,11 +1713,23 @@ impl Reads for Ctx<'_> {
         let s = self.served.ok_or_else(|| internal("`under`"))?;
         let g = &self.f.grid;
         let [x0, y0, x1, y1] = g.extent;
-        let pts: Vec<P> = self
-            .samples(s.geo)
-            .into_iter()
-            .filter(|p| p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1)
-            .collect();
+        let pts: Vec<P> = self.samples(s.geo);
+        // `formulas.md` 8.5: a sample beyond the extent has no field value.
+        if let Some(p) = pts
+            .iter()
+            .find(|p| !(p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1))
+        {
+            return Err(ReadError::new(
+                codes::formula::OUTSIDE_FIELD,
+                format!(
+                    "`{}` has a sample at ({}, {}), beyond the extent: `under` reads the field there",
+                    s.name,
+                    via_num::write_length(p.x),
+                    via_num::write_length(p.y)
+                ),
+                "keep the feature inside the world's extent, or widen the extent",
+            ));
+        }
         let mut vals = Vec::with_capacity(pts.len());
         match field {
             None => {

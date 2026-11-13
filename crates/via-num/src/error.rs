@@ -7,6 +7,8 @@
 
 use std::fmt;
 
+use crate::lattice::write_length;
+
 /// What a number read from text measures, so a `num.too_precise` hint can be written in the unit
 /// the author wrote (`numbers.md` 3).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -32,12 +34,15 @@ impl Quantity {
 
 /// The hint of `num.extent_not_multiple`: the extent's far corner rounded down and up to multiples
 /// of the resolution, and the nearest resolutions that divide both widths (`numbers.md` 4).
+/// Only values the lattice can hold are suggested: a rounded-up corner beyond `2^31 - 1` mm would
+/// be `num.out_of_range`, so it is left out.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExtentHint {
-    /// `x1` rounded down and up to a multiple of `r` from `x0`, in millimetres.
-    pub x1: [i64; 2],
-    /// `y1` rounded down and up to a multiple of `r` from `y0`, in millimetres.
-    pub y1: [i64; 2],
+    /// `x1` rounded down and up to a multiple of `r` from `x0`, in millimetres: one value when
+    /// both are the same or the rounded-up one is off the lattice, else two, lower first.
+    pub x1: Vec<i64>,
+    /// `y1` rounded down and up, the same way.
+    pub y1: Vec<i64>,
     /// The largest resolution below `r` that divides both widths, in millimetres.
     pub resolution_below: Option<i64>,
     /// The smallest resolution above `r` that divides both widths, if there is one.
@@ -139,7 +144,7 @@ impl fmt::Display for NumError {
             }
             NumError::OutOfRange { text } => write!(f, "`{text}` is out of range"),
             NumError::ExtentEmpty { extent } => {
-                write!(f, "extent {extent:?} mm has x1 <= x0 or y1 <= y0")
+                write!(f, "extent {} has x1 <= x0 or y1 <= y0", extent_text(extent))
             }
             NumError::Resolution { resolution } => {
                 write!(f, "resolution {resolution} mm is below 1 mm")
@@ -148,12 +153,25 @@ impl fmt::Display for NumError {
                 extent,
                 resolution,
                 hint,
-            } => write!(
-                f,
-                "extent {extent:?} mm is not a whole multiple of resolution {resolution} mm \
-                 (x1 {:?}, y1 {:?}, resolutions {:?} and {:?})",
-                hint.x1, hint.y1, hint.resolution_below, hint.resolution_above
-            ),
+            } => {
+                write!(
+                    f,
+                    "extent {} is not a whole multiple of resolution {}; keep x0 and y0 and try \
+                     x1 {}, y1 {}",
+                    extent_text(extent),
+                    write_length(*resolution),
+                    choices(&hint.x1),
+                    choices(&hint.y1),
+                )?;
+                let resolutions: Vec<i64> = [hint.resolution_below, hint.resolution_above]
+                    .into_iter()
+                    .flatten()
+                    .collect();
+                if !resolutions.is_empty() {
+                    write!(f, ", or resolution {}", choices(&resolutions))?;
+                }
+                Ok(())
+            }
             NumError::TooManyPosts { nx, ny, limit } => {
                 write!(f, "{nx} by {ny} posts exceeds the limit of {limit}")
             }
@@ -174,3 +192,15 @@ impl fmt::Display for NumError {
 }
 
 impl std::error::Error for NumError {}
+
+/// An extent as the author writes it: `[x0, y0, x1, y1]` in exact metres.
+fn extent_text(extent: &[i64; 4]) -> String {
+    let parts: Vec<String> = extent.iter().map(|&mm| write_length(mm)).collect();
+    format!("[{}]", parts.join(", "))
+}
+
+/// Lengths in exact metres joined with "or": `9 or 12`.
+fn choices(mm: &[i64]) -> String {
+    let parts: Vec<String> = mm.iter().map(|&v| write_length(v)).collect();
+    parts.join(" or ")
+}

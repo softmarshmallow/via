@@ -440,9 +440,12 @@ impl Parser<'_> {
             Tok::Op(Op::LParen) => {
                 self.enter(t.span.clone())?;
                 self.pos += 1;
-                let inner = self.expr()?;
-                self.expect(Op::RParen, "`)`")?;
+                let mut inner = self.expr()?;
+                let close = self.expect(Op::RParen, "`)`")?;
                 self.depth -= 1;
+                // The operand is the whole `( ... )`, so a fault at an operation on it is located
+                // and quoted with both parentheses (formulas.md, "Every failure is located").
+                inner.span = t.span.start..close.end;
                 Ok(inner)
             }
             Tok::Ident(name) => {

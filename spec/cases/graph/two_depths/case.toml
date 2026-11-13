@@ -1,0 +1,60 @@
+format    = "via-case-1"
+summary   = "One world, two --out depths, one shared --store: each manifest's pack_root resolves from its own directory; rebuilding the first directory runs nothing and restores nothing."
+milestone = 1
+actions   = ["program", "trust", "near", "far", "near_again"]
+
+# graph.md 6.2: pack_root is relative, so it enters the build key and write:manifest.json's key by
+# place; a directory at another depth has another key, never another directory's manifest. The
+# build record's manifest and report digests are per directory (build.md 13), so the far build
+# leaves the near directory's record untouched.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.near]
+via         = ["build", "world.toml", "--out", "build/near", "--store", "store"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/near"
+
+[action.near.check.root]
+fn    = "pack_root_resolves"
+build = "build/near"
+
+[action.far]
+via         = ["build", "world.toml", "--out", "build/a/b/far", "--store", "store"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a/b/far"
+
+[action.far.check.root]
+fn    = "pack_root_resolves"
+build = "build/a/b/far"
+
+[action.near_again]
+via         = ["build", "world.toml", "--out", "build/near", "--store", "store"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/near"
+
+[action.near_again.nodes]
+ran = []
+
+[action.near_again.check.root]
+fn    = "pack_root_resolves"
+build = "build/near"
+
+[action.near_again.check.no_restore]
+fn      = "json_count"
+path    = "build/near.run.json"
+pointer = "/diagnostics"
+count   = 0

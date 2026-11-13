@@ -64,7 +64,7 @@ face = "toward"
 [scatter.trees]
 assets = ["@plant/tree"]
 spacing = 7
-density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), near('lane_east', 16))"   # a wood along lane_east; the scatter applies keep_out itself
+density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), 1 - smoothstep(14, 22, dist('lane_east', 22)))"   # a wood along lane_east, out to 14 m; the scatter applies keep_out itself
 
 [step.checks]                             # the one lint step, through the SDK
 when = "lint"
@@ -75,11 +75,11 @@ on = { ref = "beck", t = 0.8 }
 
 [change.hand.pin.oak]                     # the hand edits the spacing row holds
 asset = "tree_oak"
-at = [200, 60]
+at = [213, 141]
 by = ["trees"]
 
 [change.hand.clear.gap]
-at = [208, 208]
+at = [226, 122]
 radius = 6
 by = ["trees"]
 

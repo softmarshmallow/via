@@ -19,6 +19,11 @@ pub struct RecordNode {
     /// Digests that entered its key with no node behind them (a leaf's `bytes`), for the
     /// `edge` cause of the next build.
     pub direct: Vec<(String, Digest)>,
+    /// The nodes it reads (its input edges' targets, sorted, once each), so a later build can
+    /// find a cause's chain in this graph when the dependency was only here (6.4).
+    pub inputs: Vec<NodeId>,
+    /// The statements it is made from.
+    pub made_from: Vec<String>,
 }
 
 /// The build record (6.2): the versions, every node's id, key and value digest, the build's
@@ -64,9 +69,17 @@ impl BuildRecord {
     /// The record's bytes.
     pub fn encode(&self) -> Vec<u8> {
         let mut e = Enc::new();
-        e.str("via-build-record-2");
+        e.str("via-build-record-3");
         self.versions.encode(&mut e);
         e.len(self.nodes.len());
+        // Inputs by their place in the node list, which is in id order; an input that is not a
+        // node of the record cannot be on a chain and is left out.
+        let place: BTreeMap<&NodeId, usize> = self
+            .nodes
+            .keys()
+            .enumerate()
+            .map(|(i, id)| (id, i))
+            .collect();
         for (id, n) in &self.nodes {
             e.str(id.as_str());
             opt(&mut e, n.key.as_ref());
@@ -74,6 +87,19 @@ impl BuildRecord {
             e.len(n.direct.len());
             for (l, d) in &n.direct {
                 e.str(l).digest(d);
+            }
+            let ins: Vec<usize> = n
+                .inputs
+                .iter()
+                .filter_map(|t| place.get(t).copied())
+                .collect();
+            e.len(ins.len());
+            for i in ins {
+                e.u64(u64::try_from(i).unwrap_or(u64::MAX));
+            }
+            e.len(n.made_from.len());
+            for s in &n.made_from {
+                e.str(s);
             }
         }
         e.len(self.statements.len());
@@ -117,7 +143,7 @@ impl BuildRecord {
     /// Reads a record; `None` when the bytes are not one.
     pub fn decode(b: &[u8]) -> Option<BuildRecord> {
         let mut d = Dec::new(b);
-        if d.str()? != "via-build-record-2" {
+        if d.str()? != "via-build-record-3" {
             return None;
         }
         let versions = Versions {
@@ -126,7 +152,8 @@ impl BuildRecord {
             build: d.str()?,
             epoch: d.u64()?,
         };
-        let mut nodes = BTreeMap::new();
+        // Inputs name nodes by place, so they are resolved once every id is read.
+        let mut list: Vec<(NodeId, RecordNode, Vec<usize>)> = Vec::new();
         for _ in 0..d.count()? {
             let id = NodeId::parse(&d.str()?).ok()?;
             let key = read_opt(&mut d)?;
@@ -135,7 +162,30 @@ impl BuildRecord {
             for _ in 0..d.count()? {
                 direct.push((d.str()?, d.digest()?));
             }
-            nodes.insert(id, RecordNode { key, value, direct });
+            let mut ins = Vec::new();
+            for _ in 0..d.count()? {
+                ins.push(usize::try_from(d.u64()?).ok()?);
+            }
+            let mut made_from = Vec::new();
+            for _ in 0..d.count()? {
+                made_from.push(d.str()?);
+            }
+            let node = RecordNode {
+                key,
+                value,
+                direct,
+                inputs: Vec::new(),
+                made_from,
+            };
+            list.push((id, node, ins));
+        }
+        let ids: Vec<NodeId> = list.iter().map(|n| n.0.clone()).collect();
+        let mut nodes = BTreeMap::new();
+        for (id, mut node, ins) in list {
+            for i in ins {
+                node.inputs.push(ids.get(i)?.clone());
+            }
+            nodes.insert(id, node);
         }
         let mut statements = BTreeMap::new();
         for _ in 0..d.count()? {
@@ -204,6 +254,30 @@ impl BuildRecord {
     /// Keeps the record in the store under its build key.
     pub fn put(&self, store: &Store, build_key: &Digest) {
         store.put_build(build_key, &self.encode());
+    }
+
+    /// Each node's input edges, as [`crate::causes_from`] takes them (labels are not kept).
+    pub fn edges(&self) -> BTreeMap<NodeId, Vec<(String, NodeId)>> {
+        self.nodes
+            .iter()
+            .map(|(id, n)| {
+                (
+                    id.clone(),
+                    n.inputs
+                        .iter()
+                        .map(|t| (String::new(), t.clone()))
+                        .collect(),
+                )
+            })
+            .collect()
+    }
+
+    /// The statements each node is made from, as [`crate::causes_from`] takes them.
+    pub fn made_from(&self) -> BTreeMap<NodeId, Vec<String>> {
+        self.nodes
+            .iter()
+            .map(|(id, n)| (id.clone(), n.made_from.clone()))
+            .collect()
     }
 
     /// Reads the record of a build key from the store.
@@ -293,6 +367,8 @@ mod tests {
                 key: Some(Digest([1; 32])),
                 value: Some(Digest([2; 32])),
                 direct: vec![("bytes".into(), Digest([3; 32]))],
+                inputs: vec![],
+                made_from: vec!["world".into()],
             },
         );
         nodes.insert(
@@ -301,6 +377,8 @@ mod tests {
                 key: None,
                 value: None,
                 direct: vec![],
+                inputs: vec![NodeId::parse("source:world.toml").unwrap()],
+                made_from: vec![],
             },
         );
         BuildRecord {
@@ -351,6 +429,20 @@ mod tests {
         let k2 = Digest([8; 32]);
         inc.put(&s, &k2);
         assert!(null_build(&s, &k2, Some(&k2), false).is_none());
+        // A later build with the same key replaces the record: complete now, the null build
+        // applies again (6.2).
+        let mut fixed = inc;
+        fixed.complete = true;
+        fixed.put(&s, &k2);
+        assert_eq!(null_build(&s, &k2, Some(&k2), false), Some(fixed.clone()));
+        // The graph's edges and makers come back by id.
+        assert_eq!(
+            fixed
+                .edges()
+                .get(&NodeId::parse("merge").unwrap())
+                .map(Vec::len),
+            Some(1)
+        );
         let _ = std::fs::remove_dir_all(&root);
     }
 

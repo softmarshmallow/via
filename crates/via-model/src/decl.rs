@@ -271,7 +271,7 @@ pub struct ScatterDecl {
     pub scale: Ranged,
     pub tint: Ranged,
     pub seed: String,
-    #[allow(dead_code)] // layer rank: giving way and hand edits read down only (`rules.md` 3.4)
+    /// Layer rank: giving way reads down only (`rules.md` 3.4).
     pub rank: i64,
 }
 
@@ -314,6 +314,9 @@ pub struct Formulas {
     /// Per formula id: the entity and key path holding it.
     pub at: Vec<(Subject, KeyPath)>,
     pub programs: BTreeMap<FormulaId, Program>,
+    /// Per kind: the attributes its `defaults` and its `requires` declare, to locate a
+    /// declaration a record points at.
+    pub kind_attrs: BTreeMap<String, (BTreeSet<String>, BTreeSet<String>)>,
 }
 
 impl Formulas {
@@ -346,7 +349,10 @@ impl Formulas {
                         Some(_) => s.clone(),
                     })
                     .unwrap_or(Subject::World),
-                None => Subject::World,
+                None => match at {
+                    via_expr::At::Declaration { scope, name } => self.declaration(scope, name).0,
+                    _ => Subject::World,
+                },
             }
         };
         let site_of = |at: &via_expr::At| -> Site {
@@ -362,10 +368,41 @@ impl Formulas {
                     Some((_, p)) => Site::Key(p.clone()),
                     None => Site::World,
                 },
-                via_expr::At::Declaration { .. } => Site::World,
+                via_expr::At::Declaration { scope, name } => self.declaration(scope, name).1,
             }
         };
         e.to_diag(&subject_of, &site_of)
+    }
+
+    /// The statement and site that declare a `let` or attribute (`via_expr::At::Declaration`):
+    /// a world `let` is its own statement; a field's or kind's `let` is the key under its `let`
+    /// table; a kind's attribute is its `defaults` key, else its `requires`; a kindless feature's
+    /// attribute is its own key.
+    fn declaration(&self, scope: &via_expr::Scope, name: &str) -> (Subject, Site) {
+        let key = |parts: &[&str]| {
+            let mut p = KeyPath::key(parts[0]);
+            for x in &parts[1..] {
+                p = p.then(*x);
+            }
+            Site::Key(p)
+        };
+        match scope {
+            via_expr::Scope::World => (Subject::entity("let", name), Site::Header),
+            via_expr::Scope::Field(f) => {
+                (Subject::entity("field", f.as_str()), key(&["let", name]))
+            }
+            via_expr::Scope::Kind(k) => match self.kind_attrs.get(k) {
+                Some((defaults, _)) if defaults.contains(name) => (
+                    Subject::entity("kind", k.as_str()),
+                    key(&["defaults", name]),
+                ),
+                Some((_, requires)) if requires.contains(name) => {
+                    (Subject::entity("kind", k.as_str()), key(&["requires"]))
+                }
+                Some(_) => (Subject::entity("kind", k.as_str()), Site::Header),
+                None => (Subject::entity("feature", k.as_str()), key(&[name])),
+            },
+        }
     }
 }
 
@@ -388,17 +425,88 @@ pub struct Decls {
     pub fields: BTreeMap<String, FieldDecl>,
     pub kinds: BTreeMap<String, Kind>,
     pub features: BTreeMap<String, FeatureDecl>,
+    /// Every place name the world declares (`identity.md` 1): a feature, instance or pin id to
+    /// its table, whether or not its own checks passed. A name whose declaration failed stays
+    /// visible: a reference to it reads the failed entity, it is never `names nothing`.
+    pub declared: BTreeMap<String, &'static str>,
     pub instances: BTreeMap<String, InstanceDecl>,
     pub scatters: BTreeMap<String, ScatterDecl>,
     pub pins: BTreeMap<String, PinDecl>,
     pub clears: BTreeMap<String, ClearDecl>,
     pub steps: BTreeMap<String, StepDecl>,
     pub formulas: Formulas,
+    /// Attribute formulas (`formulas.md` 6.7), worked out once per feature after the text phase.
+    pub attr_formulas: Vec<AttrFormula>,
+    /// Attributes whose formula failed or could not be worked out: a reader says nothing more
+    /// (`graph.md` 3.4), the formula's own record says why.
+    pub failed_attrs: BTreeSet<(String, String)>,
+    /// The layer rank each formula reads at; a kind's formulas read at the served feature's.
+    pub formula_rank: BTreeMap<FormulaId, i64>,
     pub diags: Vec<Diag>,
     /// Fields whose base is read from an array file (`fields.md` 4): the samples, where they lie,
     /// and the digest of the file's bytes (a declared outside input, `graph.md`). Filled by the
     /// build, which knows the folders.
     pub files: BTreeMap<String, FileBase>,
+}
+
+/// One attribute written as a formula: the feature's own text, or its kind's `defaults`.
+#[derive(Clone, Debug)]
+pub struct AttrFormula {
+    pub feature: String,
+    pub name: String,
+    pub formula: FormulaId,
+    /// True when the formula is the kind's default, not the feature's own text.
+    pub from_kind: bool,
+}
+
+/// An attribute formula's reads: the attributes worked out so far.
+struct AttrReads<'a> {
+    features: &'a BTreeMap<String, FeatureDecl>,
+    failed: &'a BTreeSet<(String, String)>,
+    own: &'a str,
+}
+
+impl via_expr::Reads for AttrReads<'_> {
+    fn attribute(
+        &self,
+        feature: Option<&str>,
+        name: &str,
+    ) -> Result<via_expr::Scalar, via_expr::ReadError> {
+        let id = feature.unwrap_or(self.own);
+        match self.features.get(id).and_then(|f| f.attrs.get(name)) {
+            Some(Attr::Number(x)) => Ok(via_expr::Scalar::Number(*x)),
+            Some(Attr::YesNo(b)) => Ok(via_expr::Scalar::YesNo(*b)),
+            Some(Attr::Text(_)) => Err(via_expr::ReadError::new(
+                codes::formula::TYPE,
+                format!("`{name}` is text, not a number"),
+                "read a number or bool attribute",
+            )),
+            None if self.failed.contains(&(id.to_string(), name.to_string())) => {
+                Err(via_expr::ReadError::new(
+                    codes::diag::SKIPPED,
+                    format!("`{id}.{name}` could not be worked out"),
+                    "see the attribute's own diagnostic",
+                ))
+            }
+            None => Err(via_expr::ReadError::new(
+                codes::diag::INTERNAL,
+                format!("the attribute `{id}.{name}` is not known"),
+                "report it: this is a defect of the engine",
+            )),
+        }
+    }
+}
+
+/// An attribute formula selects nothing (`formulas.md` 6.7).
+struct NoSelect;
+
+impl via_expr::Select for NoSelect {
+    fn fields(&self, _selector: &str) -> Vec<via_expr::FieldInfo> {
+        Vec::new()
+    }
+    fn shapes(&self, _selector: &str) -> Vec<via_expr::ShapeInfo> {
+        Vec::new()
+    }
 }
 
 /// A field's base file, read.
@@ -487,7 +595,143 @@ impl Decls {
         d.read_steps(root);
         d.declare_env();
         d.check_formulas(root);
+        let upward = d.upward_reads(world);
+        d.diags.extend(upward);
+        d.eval_attributes();
         d
+    }
+
+    /// `documents.md` 5.1 and `formulas.md` 5: a formula reads downward only. A `let`, a field
+    /// named outright, or `<id>.<attribute>` of a higher layer is `doc.upward_ref`, at the reading
+    /// formula, naming both layers and owners. A kind has no rank: its formula is checked at the
+    /// rank of each feature of the kind, one record with those features in `related`. Read
+    /// selectors (`kind:`, `tag:`, shapes) are not named references: they leave out what lies
+    /// above the reader when bound (`resolve::Sel`).
+    pub fn upward_reads(&mut self, world: &World) -> Vec<Diag> {
+        for (k, (subject, _)) in self.formulas.at.iter().enumerate() {
+            if let Subject::Entity { collection, id, .. } = subject {
+                if collection != "kind" {
+                    let r = world.rank(collection, id).unwrap_or(0);
+                    self.formula_rank.insert(FormulaId(k as u32), r);
+                }
+            }
+        }
+        let layer_words = |top: &str, id: &str| -> (i64, String) {
+            let home = world.home(top, id).unwrap_or("world");
+            let rank = world.rank(top, id).unwrap_or(0);
+            let owner = world
+                .layer_owner(home)
+                .map_or("no owner".to_string(), |o| format!("owner `{o}`"));
+            (rank, format!("layer `{home}` (rank {rank}, {owner})"))
+        };
+        let mut out = Vec::new();
+        for (fid, p) in &self.formulas.programs {
+            let Some((subject, path)) = self.formulas.at.get(fid.0 as usize) else {
+                continue;
+            };
+            let Subject::Entity { collection, id, .. } = subject else {
+                continue;
+            };
+            // The readers: the formula's own entity, or each feature of the kind.
+            let readers: Vec<(i64, Option<String>)> = if collection == "kind" {
+                self.features
+                    .values()
+                    .filter(|f| f.kind.as_deref() == Some(id.as_str()))
+                    .map(|f| (f.rank, Some(f.id.clone())))
+                    .collect()
+            } else {
+                vec![(self.formula_rank.get(fid).copied().unwrap_or(0), None)]
+            };
+            let mut targets: Vec<(String, String)> = Vec::new();
+            for (scope, name) in &p.reads.lets {
+                if scope == &via_expr::Scope::World.to_string() {
+                    targets.push(("let".into(), name.clone()));
+                }
+            }
+            for (fid2, _) in &p.reads.members {
+                targets.push(("feature".into(), fid2.clone()));
+            }
+            for (class, sel) in &p.reads.selectors {
+                if *class == via_expr::Class::Field
+                    && !sel.starts_with("tag:")
+                    && self.fields.contains_key(sel)
+                {
+                    targets.push(("field".into(), sel.clone()));
+                }
+            }
+            targets.sort();
+            targets.dedup();
+            for (ttop, tid) in targets {
+                let (trank, twords) = layer_words(&ttop, &tid);
+                let low: Vec<&(i64, Option<String>)> =
+                    readers.iter().filter(|(r, _)| *r < trank).collect();
+                if low.is_empty() {
+                    continue;
+                }
+                let (mine, reader) = if collection == "kind" {
+                    let names: Vec<String> = low
+                        .iter()
+                        .filter_map(|(_, f)| f.as_ref().map(|f| format!("`feature.{f}`")))
+                        .collect();
+                    (
+                        low.iter().map(|(r, _)| *r).max().unwrap_or(0),
+                        format!(
+                            "the kind `{id}`'s formula, serving {} at rank {}",
+                            names.join(", "),
+                            low.iter()
+                                .map(|(r, _)| r.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ),
+                    )
+                } else {
+                    let (r, w) = layer_words(collection, id);
+                    (r, format!("`{collection}.{id}` in {w}"))
+                };
+                let at = if collection == "let" {
+                    subject.clone()
+                } else {
+                    subject.clone().with_keys(path)
+                };
+                let site = match self.formulas.env.value(*fid) {
+                    Some(_) => Site::Expr(path.clone(), p.span.clone()),
+                    None => Site::Key(path.clone()),
+                };
+                let mut d = text::diag(
+                    codes::doc::UPWARD_REF,
+                    at,
+                    site,
+                    &format!(
+                        "{reader} reads `{ttop}.{tid}`, declared in {twords}; a layer refers downward only"
+                    ),
+                    &format!(
+                        "move `{ttop}.{tid}` to rank {mine} or below, or move the reader to rank {trank} or above"
+                    ),
+                )
+                .related(via_diag::Related {
+                    subject: Subject::entity(&ttop, &tid),
+                    site: if ttop == "let" {
+                        Site::Key(KeyPath::key(&tid))
+                    } else {
+                        Site::Header
+                    },
+                    position: None,
+                    note: via_diag::text!("the thing read, in a higher layer"),
+                });
+                for (_, f) in &low {
+                    if let Some(f) = f {
+                        d = d.related(via_diag::Related {
+                            subject: Subject::entity("feature", f),
+                            site: Site::Header,
+                            position: None,
+                            note: via_diag::text!("a feature of the kind, in a lower layer"),
+                        });
+                    }
+                }
+                out.push(d);
+            }
+        }
+        out
     }
 
     fn push(&mut self, diag: Diag) {
@@ -567,17 +811,22 @@ impl Decls {
             if let Some(a) = t.str("authority") {
                 match Tier::parse(a) {
                     Some(tier) => k.authority = Some(tier),
-                    None => self.push(at_key(
-                        codes::authority::UNKNOWN,
-                        "kind",
-                        id,
-                        "authority",
-                        &format!("`{a}` is not a tier"),
-                        &text::near_hint(
-                            a,
-                            ["derived", "shaped", "anchored"],
-                            "write `derived`, `shaped` or `anchored`",
+                    None => self.push(text::with_nearest(
+                        at_key(
+                            codes::authority::UNKNOWN,
+                            "kind",
+                            id,
+                            "authority",
+                            &format!("`{a}` is not a tier"),
+                            &text::near_hint(
+                                a,
+                                ["derived", "shaped", "anchored"],
+                                "write `derived`, `shaped` or `anchored`",
+                            ),
                         ),
+                        a,
+                        ["derived", "shaped", "anchored"],
+                        text::undeclared,
                     )),
                 }
             }
@@ -618,13 +867,33 @@ impl Decls {
                             .map(String::as_str)
                             .chain(k.requires.iter().map(String::as_str))
                             .collect();
-                        self.push(at_key(
-                            codes::authority::NAMES_UNDECLARED,
-                            "kind",
-                            id,
-                            "names",
-                            &format!("`{n}` in `names` is in neither `defaults` nor `requires`"),
-                            &text::near_hint(n, declared, "declare it in `requires`"),
+                        self.push(text::with_nearest(
+                            at_key(
+                                codes::authority::NAMES_UNDECLARED,
+                                "kind",
+                                id,
+                                "names",
+                                &format!(
+                                    "`{n}` in `names` is in neither `defaults` nor `requires`"
+                                ),
+                                &text::near_hint(
+                                    n,
+                                    declared.iter().copied(),
+                                    "declare it in `requires`",
+                                ),
+                            ),
+                            n,
+                            declared.iter().copied(),
+                            |n: &str| {
+                                Some((
+                                    Subject::entity("kind", id),
+                                    Site::Key(if k.defaults.contains_key(n) {
+                                        KeyPath::key("defaults").then(n)
+                                    } else {
+                                        KeyPath::key("requires")
+                                    }),
+                                ))
+                            },
                         ));
                     }
                 }
@@ -672,6 +941,13 @@ impl Decls {
                 }
             }
             d_effects(self, id, t, &mut k);
+            self.formulas.kind_attrs.insert(
+                id.to_string(),
+                (
+                    k.defaults.keys().cloned().collect(),
+                    k.requires.iter().cloned().collect(),
+                ),
+            );
             self.kinds.insert(id.to_string(), k);
         }
     }
@@ -703,14 +979,24 @@ impl Decls {
                             "write `scalar` or `weights`",
                         )
                     };
-                    self.push(at_key(
+                    let d = at_key(
                         codes::field::TYPE_UNKNOWN,
                         "field",
                         name,
                         "type",
                         &format!("`{other}` is not a field type"),
                         &hint,
-                    ));
+                    );
+                    self.push(if other == "material" {
+                        d
+                    } else {
+                        text::with_nearest(
+                            d,
+                            other,
+                            ["scalar", "weights", "volume"],
+                            text::undeclared,
+                        )
+                    });
                     continue;
                 }
             };
@@ -745,16 +1031,21 @@ impl Decls {
                     None => {
                         // `diagnostics.md` 1.1: one key's fault has the key in its subject.
                         let role = KeyPath::key("role");
-                        self.push(text::diag(
-                            codes::field::ROLE_UNKNOWN,
-                            Subject::entity("field", name).with_keys(&role),
-                            Site::Key(role.clone()),
-                            &format!("`{r}` is not a role"),
-                            &text::near_hint(
-                                r,
-                                ["surface", "material", "keep_out"],
-                                "a library word belongs in `tags`",
+                        self.push(text::with_nearest(
+                            text::diag(
+                                codes::field::ROLE_UNKNOWN,
+                                Subject::entity("field", name).with_keys(&role),
+                                Site::Key(role.clone()),
+                                &format!("`{r}` is not a role"),
+                                &text::near_hint(
+                                    r,
+                                    ["surface", "material", "keep_out"],
+                                    "a library word belongs in `tags`",
+                                ),
                             ),
+                            r,
+                            ["surface", "material", "keep_out"],
+                            text::undeclared,
                         ));
                         None
                     }
@@ -763,13 +1054,22 @@ impl Decls {
             let unit = t.str("unit").map(str::to_string);
             if let Some(u) = &unit {
                 if !["m", "deg", "ratio"].contains(&u.as_str()) {
-                    self.push(at_key(
-                        codes::field::UNIT_UNKNOWN,
-                        "field",
-                        name,
-                        "unit",
-                        &format!("`{u}` is not a unit"),
-                        &text::near_hint(u, ["m", "deg", "ratio"], "write `m`, `deg` or `ratio`"),
+                    self.push(text::with_nearest(
+                        at_key(
+                            codes::field::UNIT_UNKNOWN,
+                            "field",
+                            name,
+                            "unit",
+                            &format!("`{u}` is not a unit"),
+                            &text::near_hint(
+                                u,
+                                ["m", "deg", "ratio"],
+                                "write `m`, `deg` or `ratio`",
+                            ),
+                        ),
+                        u,
+                        ["m", "deg", "ratio"],
+                        text::undeclared,
                     ));
                 } else if weights && u != "ratio" {
                     self.push(at_key(
@@ -1263,6 +1563,7 @@ impl Decls {
                         ),
                         w,
                         words,
+                        text::undeclared,
                     ));
                     None
                 }
@@ -1273,6 +1574,7 @@ impl Decls {
 
     fn read_features(&mut self, world: &World, root: &Table) {
         for (id, t) in table_of(root, "feature") {
+            self.declared.insert(id.to_string(), "feature");
             let kind = t.str("kind").map(str::to_string);
             let mut tier = None;
             if let Some(a) = t.str("authority") {
@@ -1288,34 +1590,44 @@ impl Decls {
                 } else {
                     match Tier::parse(a) {
                         Some(x) => tier = Some(x),
-                        None => self.push(at_key(
-                            codes::authority::UNKNOWN,
-                            "feature",
-                            id,
-                            "authority",
-                            &format!("`{a}` is not a tier"),
-                            &text::near_hint(
-                                a,
-                                ["derived", "shaped", "anchored"],
-                                "write `derived`, `shaped` or `anchored`",
+                        None => self.push(text::with_nearest(
+                            at_key(
+                                codes::authority::UNKNOWN,
+                                "feature",
+                                id,
+                                "authority",
+                                &format!("`{a}` is not a tier"),
+                                &text::near_hint(
+                                    a,
+                                    ["derived", "shaped", "anchored"],
+                                    "write `derived`, `shaped` or `anchored`",
+                                ),
                             ),
+                            a,
+                            ["derived", "shaped", "anchored"],
+                            text::undeclared,
                         )),
                     }
                 }
             }
             if let Some(k) = &kind {
                 if !self.kinds.contains_key(k) {
-                    self.push(at_key(
-                        codes::authority::UNKNOWN_KIND,
-                        "feature",
-                        id,
-                        "kind",
-                        &format!("`{k}` names no kind of this world"),
-                        &text::near_hint(
-                            k,
-                            self.kinds.keys().map(String::as_str),
-                            "include the library that declares it",
+                    self.push(text::with_nearest(
+                        at_key(
+                            codes::authority::UNKNOWN_KIND,
+                            "feature",
+                            id,
+                            "kind",
+                            &format!("`{k}` names no kind of this world"),
+                            &text::near_hint(
+                                k,
+                                self.kinds.keys().map(String::as_str),
+                                "include the library that declares it",
+                            ),
                         ),
+                        k,
+                        self.kinds.keys().map(String::as_str),
+                        text::header_of("kind"),
                     ));
                     continue;
                 }
@@ -1423,13 +1735,78 @@ impl Decls {
             }
             let mut attrs = BTreeMap::new();
             if let Some(k) = kind.as_ref().and_then(|k| self.kinds.get(k)).cloned() {
+                // Attribute formulas (`formulas.md` 1 and 6.7): a string that starts with `=`.
+                // Each is lowered to a formula at its own text, the feature's or the kind's
+                // `defaults`, and worked out after the text phase (`eval_attributes`).
+                let mut from_default: BTreeSet<String> = BTreeSet::new();
+                let mut formulas: BTreeSet<String> = BTreeSet::new();
                 for (n, v) in &k.defaults {
-                    attrs.insert(n.clone(), v.clone());
+                    match v {
+                        Attr::Text(s) if s.starts_with('=') => {
+                            from_default.insert(n.clone());
+                        }
+                        _ => {
+                            attrs.insert(n.clone(), v.clone());
+                        }
+                    }
                 }
                 let declared: BTreeSet<&String> =
                     k.defaults.keys().chain(k.requires.iter()).collect();
                 for (n, e) in t.iter() {
                     if declared.contains(n) {
+                        if let Value::Str(s) = &e.item.value {
+                            if s.text.starts_with('=') {
+                                // A formula where the kind's default is a bool or text.
+                                let bad = match k.defaults.get(n) {
+                                    Some(Attr::YesNo(_)) => Some("a bool"),
+                                    Some(Attr::Text(d)) if !d.starts_with('=') => Some("text"),
+                                    None if k.names.contains(n) => Some("text (a place name)"),
+                                    _ => None,
+                                };
+                                if let Some(what) = bad {
+                                    self.push(text::at_own_key(
+                                        codes::formula::TYPE,
+                                        "feature",
+                                        id,
+                                        n,
+                                        &format!("`{n}` is written as a formula, but its kind `{}` gives it {what}", k.id),
+                                        &format!("write {what} for `{n}`, as the kind's default is"),
+                                    ));
+                                    attrs.remove(n);
+                                    from_default.remove(n);
+                                    continue;
+                                }
+                                attrs.remove(n);
+                                from_default.remove(n);
+                                formulas.insert(n.clone());
+                                let fid = self.formulas.add(
+                                    &FormulaText::Text(s.text.clone()),
+                                    Subject::entity("feature", id),
+                                    KeyPath::key(n),
+                                );
+                                self.attr_formulas.push(AttrFormula {
+                                    feature: id.to_string(),
+                                    name: n.clone(),
+                                    formula: fid,
+                                    from_kind: false,
+                                });
+                                continue;
+                            }
+                            let rest = s.text.trim_start_matches([' ', '\t']);
+                            if rest.starts_with('=') {
+                                self.push(text::at_own_key(
+                                    codes::formula::UNMARKED,
+                                    "feature",
+                                    id,
+                                    n,
+                                    &format!("the attribute `{n}` has text before its `=`"),
+                                    &format!("remove what comes before `=`: write `\"{rest}\"`"),
+                                ));
+                                attrs.remove(n);
+                                from_default.remove(n);
+                                continue;
+                            }
+                        }
                         let v = match &e.item.value {
                             Value::Num(x) => text::num(x).ok().map(Attr::Number),
                             Value::Bool(b) => Some(Attr::YesNo(*b)),
@@ -1437,12 +1814,30 @@ impl Decls {
                             _ => None,
                         };
                         if let Some(v) = v {
+                            from_default.remove(n);
                             attrs.insert(n.clone(), v);
                         }
                     }
                 }
+                for n in &from_default {
+                    let Some(Attr::Text(s)) = k.defaults.get(n) else {
+                        continue;
+                    };
+                    formulas.insert(n.clone());
+                    let fid = self.formulas.add(
+                        &FormulaText::Text(s.clone()),
+                        Subject::entity("kind", &k.id),
+                        text::path(&["defaults", n]),
+                    );
+                    self.attr_formulas.push(AttrFormula {
+                        feature: id.to_string(),
+                        name: n.clone(),
+                        formula: fid,
+                        from_kind: true,
+                    });
+                }
                 for r in &k.requires {
-                    if !attrs.contains_key(r) {
+                    if !attrs.contains_key(r) && !formulas.contains(r) {
                         // `authority.md` 1: both lines, the feature's and the kind's `requires`.
                         self.push(
                             at_header(
@@ -1610,6 +2005,7 @@ impl Decls {
 
     fn read_instances(&mut self, world: &World, root: &Table) {
         for (id, t) in table_of(root, "instance") {
+            self.declared.insert(id.to_string(), "instance");
             if t.get("set").is_some() {
                 self.push(at_key(
                     codes::doc::NOT_YET,
@@ -1687,17 +2083,22 @@ impl Decls {
             if let Some(g) = &ground {
                 match self.kinds.get(g) {
                     None => {
-                        self.push(at_key(
-                            codes::authority::UNKNOWN_KIND,
-                            "instance",
-                            id,
-                            "ground",
-                            &format!("`{g}` names no kind of this world"),
-                            &text::near_hint(
-                                g,
-                                self.kinds.keys().map(String::as_str),
-                                "include the library that declares it",
+                        self.push(text::with_nearest(
+                            at_key(
+                                codes::authority::UNKNOWN_KIND,
+                                "instance",
+                                id,
+                                "ground",
+                                &format!("`{g}` names no kind of this world"),
+                                &text::near_hint(
+                                    g,
+                                    self.kinds.keys().map(String::as_str),
+                                    "include the library that declares it",
+                                ),
                             ),
+                            g,
+                            self.kinds.keys().map(String::as_str),
+                            text::header_of("kind"),
                         ));
                         continue;
                     }
@@ -1957,6 +2358,7 @@ impl Decls {
 
     fn read_edits(&mut self, world: &World, root: &Table) {
         for (id, t) in table_of(root, "pin") {
+            self.declared.insert(id.to_string(), "pin");
             let Some(asset) = t.str("asset").map(str::to_string) else {
                 self.push(at_header(
                     codes::place::ASSET_OR_SET,
@@ -2082,6 +2484,8 @@ impl Decls {
                 let ty = match v {
                     Attr::Number(_) => AttrType::Number,
                     Attr::YesNo(_) => AttrType::YesNo,
+                    // A default formula gives a number (`formulas.md` 6.7).
+                    Attr::Text(s) if s.starts_with('=') => AttrType::Number,
                     Attr::Text(_) => AttrType::Text,
                 };
                 env.kind_attribute(id, a, ty);
@@ -2106,6 +2510,174 @@ impl Decls {
                     Attr::Text(_) => AttrType::Text,
                 };
                 env.feature_attribute(id, a, ty);
+            }
+        }
+        for af in &self.attr_formulas {
+            env.feature_attribute(&af.feature, &af.name, AttrType::Number);
+        }
+    }
+
+    /// `formulas.md` 6.7: every attribute formula, once per feature, in dependency order, before
+    /// any shape or field. A loop between them is `graph.cycle` with the chain (case 39). A fault
+    /// is the formula's own, at its text; what read it says nothing more.
+    fn eval_attributes(&mut self) {
+        let n = self.attr_formulas.len();
+        if n == 0 {
+            return;
+        }
+        let index: BTreeMap<(String, String), usize> = self
+            .attr_formulas
+            .iter()
+            .enumerate()
+            .map(|(i, a)| ((a.feature.clone(), a.name.clone()), i))
+            .collect();
+        let deps: Vec<Vec<usize>> = self
+            .attr_formulas
+            .iter()
+            .map(|a| {
+                let Some(p) = self.formulas.programs.get(&a.formula) else {
+                    return Vec::new();
+                };
+                let own = p
+                    .reads
+                    .attributes
+                    .iter()
+                    .map(|x| (a.feature.clone(), x.clone()));
+                let mut v: Vec<usize> = own
+                    .chain(p.reads.members.iter().cloned())
+                    .filter_map(|k| index.get(&k).copied())
+                    .collect();
+                v.sort_unstable();
+                v.dedup();
+                v
+            })
+            .collect();
+        // Depth first, in declaration order; a node met again on the stack closes a loop.
+        let mut state = vec![0u8; n];
+        let mut order: Vec<usize> = Vec::with_capacity(n);
+        let mut looped: BTreeSet<usize> = BTreeSet::new();
+        let mut loops: Vec<Vec<usize>> = Vec::new();
+        fn visit(
+            i: usize,
+            deps: &[Vec<usize>],
+            state: &mut [u8],
+            stack: &mut Vec<usize>,
+            order: &mut Vec<usize>,
+            loops: &mut Vec<Vec<usize>>,
+        ) {
+            state[i] = 1;
+            stack.push(i);
+            for &j in &deps[i] {
+                match state[j] {
+                    0 => visit(j, deps, state, stack, order, loops),
+                    1 => {
+                        let at = stack.iter().position(|x| *x == j).unwrap_or(0);
+                        loops.push(stack[at..].to_vec());
+                    }
+                    _ => {}
+                }
+            }
+            stack.pop();
+            state[i] = 2;
+            order.push(i);
+        }
+        for i in 0..n {
+            if state[i] == 0 {
+                let mut stack = Vec::new();
+                visit(i, &deps, &mut state, &mut stack, &mut order, &mut loops);
+            }
+        }
+        let label = |a: &AttrFormula| format!("{}.{}", a.feature, a.name);
+        let mut said: BTreeSet<Vec<usize>> = BTreeSet::new();
+        for members in loops {
+            looped.extend(members.iter().copied());
+            let mut key = members.clone();
+            key.sort_unstable();
+            if !said.insert(key) {
+                continue;
+            }
+            // One loop, one record (`graph.md` 2), written from its least member.
+            let names: Vec<String> = members
+                .iter()
+                .map(|i| label(&self.attr_formulas[*i]))
+                .collect();
+            let least = (0..names.len())
+                .min_by(|x, y| names[*x].cmp(&names[*y]))
+                .unwrap_or(0);
+            let mut chain: Vec<String> = names[least..].to_vec();
+            chain.extend(names[..least].iter().cloned());
+            let first = &self.attr_formulas[members[least]];
+            let (subject, site) = if first.from_kind {
+                (Subject::entity("feature", &first.feature), Site::Header)
+            } else {
+                let p = KeyPath::key(&first.name);
+                (
+                    Subject::entity("feature", &first.feature).with_keys(&p),
+                    Site::Key(p),
+                )
+            };
+            let d = text::diag(
+                codes::graph::CYCLE,
+                subject,
+                site,
+                &format!(
+                    "attribute formulas read each other in a loop: {} -> {}",
+                    chain.join(" -> "),
+                    chain[0]
+                ),
+                "break the loop: one of these attributes must not read the next",
+            );
+            self.diags.push(d);
+        }
+        for i in order {
+            let a = self.attr_formulas[i].clone();
+            let key = (a.feature.clone(), a.name.clone());
+            let blocked = looped.contains(&i)
+                || deps[i].iter().any(|j| {
+                    let o = &self.attr_formulas[*j];
+                    self.failed_attrs
+                        .contains(&(o.feature.clone(), o.name.clone()))
+                });
+            let Some(p) = self.formulas.programs.get(&a.formula).filter(|_| !blocked) else {
+                self.failed_attrs.insert(key);
+                continue;
+            };
+            let result = via_expr::bind(p, &NoSelect)
+                .map_err(|e| self.formulas.diag(&e))
+                .and_then(|b| {
+                    let reads = AttrReads {
+                        features: &self.features,
+                        failed: &self.failed_attrs,
+                        own: &a.feature,
+                    };
+                    let setup = via_expr::Setup {
+                        world_seed: self.seed,
+                        feature: Some(&a.feature),
+                    };
+                    let one = [(0i64, 0i64)];
+                    match via_expr::evaluate(p, &b, &reads, &setup, &via_expr::Domain::Points(&one))
+                    {
+                        Ok(v) => Ok(v.first().copied()),
+                        Err(f) if f.error.code == codes::diag::SKIPPED => Ok(None),
+                        Err(f) => Err(self
+                            .formulas
+                            .diag(&f.error)
+                            .with("feature", via_diag::Value::text(a.feature.clone()))),
+                    }
+                });
+            match result {
+                Ok(Some(v)) => {
+                    if let Some(f) = self.features.get_mut(&a.feature) {
+                        f.attrs.insert(a.name.clone(), Attr::Number(v));
+                    }
+                }
+                Ok(None) => {
+                    self.failed_attrs.insert(key);
+                }
+                Err(d) => {
+                    self.diags.push(d);
+                    self.failed_attrs.insert(key);
+                }
             }
         }
     }
@@ -2245,6 +2817,16 @@ impl Decls {
                 ));
             }
         }
+        // Attribute formulas (6.7): the feature's own attributes, `<id>.<attribute>`, constant
+        // world `let`s.
+        for a in &self.attr_formulas {
+            lets.push((
+                a.formula,
+                Context::new(Key::Attribute)
+                    .feature(&a.feature)
+                    .noise(&["noise", "feature", &a.feature, &a.name]),
+            ));
+        }
         for (id, ctx) in lets {
             match self.formulas.env.check(id, &ctx) {
                 Ok(p) => {
@@ -2252,7 +2834,10 @@ impl Decls {
                 }
                 Err(e) => {
                     let d = self.formulas.diag(&e);
-                    self.diags.push(d);
+                    // A kind's default formula is checked once per feature: one record.
+                    if !self.diags.contains(&d) {
+                        self.diags.push(d);
+                    }
                 }
             }
         }
@@ -2285,17 +2870,22 @@ fn d_effects(d: &mut Decls, kind: &str, t: &Table, k: &mut Kind) {
             match Role::parse(r) {
                 Some(role) => Some(Selector::Role(role)),
                 None => {
-                    d.push(at_path(
-                        codes::authority::SELECTOR,
-                        "kind",
-                        kind,
-                        &["effect", eid, "field"],
-                        &format!("`{r}` is not a role"),
-                        &text::near_hint(
-                            r,
-                            ["surface", "material", "keep_out"],
-                            "write `role:<role>` or `tag:<tag>`",
+                    d.push(text::with_nearest(
+                        at_path(
+                            codes::authority::SELECTOR,
+                            "kind",
+                            kind,
+                            &["effect", eid, "field"],
+                            &format!("`{r}` is not a role"),
+                            &text::near_hint(
+                                r,
+                                ["surface", "material", "keep_out"],
+                                "write `role:<role>` or `tag:<tag>`",
+                            ),
                         ),
+                        r,
+                        ["surface", "material", "keep_out"],
+                        text::undeclared,
                     ));
                     None
                 }

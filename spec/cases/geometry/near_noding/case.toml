@@ -1,13 +1,51 @@
 format    = "via-case-1"
 summary   = "near; noding: no crossing; every segment within the bound of its sources; idempotent; the point on a hot pixel's high edge snaps to the pixel above it."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/near.json (geometry.md 6) not yet written"
-actions   = ["op"]
+actions   = ["op", "again_in", "again"]
+
+# geometry.md 6's `near`, written by hand in spec/vectors/geometry/near.json (millimetres):
+# - apart_a, apart_b: two 10 m segments 1 mm apart, y = 0 and y = 1.
+# - base_a along y = 20 000; vee_a's middle vertex [5000, 20001], 1 mm off it.
+# - edge_a [0, 30000]-[10000, 30003] and edge_b [0, 30003]-[10000, 30000] cross at
+#   (5000, 30001.5), on the high y edge of the hot pixel of [5000, 30001]. The pixel of (x, y) is
+#   [x - 0.5, x + 0.5) x [y - 0.5, y + 0.5) (3.1), so the crossing is in [5000, 30002]'s pixel: that
+#   vertex is made, and [5000, 30001] is not.
+# - odd_a along y = 50 000 and odd_b [1000, 49000]-[1001, 52000] cross at (1000 1/3, 50000), not a
+#   lattice point: the vertex [1000, 50000].
+# Then Noded, Close within 1.5 mm and Faithful (`noding_valid`), and Idempotent: the output fed back
+# (`derive`, conformance.md 3.3) and noded again gives the same vertices and segments.
 
 [copy.fixture]
 from = "spec/vectors/geometry/near.json"
 to   = "near.json"
 
 [action.op]
-via  = ["kernel", "noding", "--in", "near.json", "--out", "out.json"]
-exit = 0
+via         = ["kernel", "noding", "--in", "near.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.op.check.valid]
+fn    = "noding_valid"
+path  = "out.json"
+input = "near.json"
+bound = 1.5
+
+[action.op.file.high_edge]
+path     = "out.json"
+pointer  = "/vertices"
+includes = [[5000, 30002], [1000, 50000], [5000, 20001]]
+
+[action.again_in]
+derive = "again.json"
+from   = "out.json"
+as     = "segments"
+
+[action.again]
+via         = ["kernel", "noding", "--in", "again.json", "--out", "again.out.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.again.check.same]
+fn     = "noding_same"
+first  = "out.json"
+second = "again.out.json"

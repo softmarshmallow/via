@@ -44,6 +44,9 @@ pub struct Baseline<'a> {
     pub snapshot: &'a Snapshot,
     pub id: String,
     pub key: String,
+    /// Read from an `--against` directory's files, the store holding no record of it: the
+    /// report compares the files and its causes are `null` (`graph.md` 6.4).
+    pub files_only: bool,
 }
 
 /// What the command line's nodes are handed.
@@ -57,6 +60,9 @@ pub struct Ctx<'a> {
     pub seed: u64,
     pub deadline: Duration,
     pub pack: Option<&'a via_model::pack::Pack>,
+    /// The `via trust` command that trusts this build's steps, with its flags
+    /// (`protocol.untrusted_skipped`'s hint).
+    pub trust_command: String,
     pub name: &'a str,
     pub fail_on: &'a FailOn,
     /// The reading stage's records.
@@ -139,6 +145,27 @@ impl<'a> CliPlan<'a> {
             defs.insert(write_id(&path), def);
             data.push(path);
         }
+        // The diagnostics a lint returns are mapped to the world's entities by id
+        // (`protocol.md` 5): the set of ids enters its key, so a renamed or removed entity
+        // never replays a finding mapped to the old one.
+        let entities = {
+            let mut e = via_graph::Enc::new();
+            e.str("via-entities-1");
+            let mut all: Vec<String> = Vec::new();
+            for (top, ent) in ctx.world.root().iter() {
+                if let via_doc::Value::Table(t) = &ent.item.value {
+                    for id in t.keys() {
+                        all.push(format!("{top}.{id}"));
+                    }
+                }
+            }
+            all.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+            e.len(all.len());
+            for a in &all {
+                e.str(a);
+            }
+            Digest::of(&e.finish()).hex()
+        };
         for l in &ctx.lints {
             let s = &l.decl;
             let mut edges: Vec<(String, NodeId)> = data
@@ -160,11 +187,12 @@ impl<'a> CliPlan<'a> {
                     },
                 );
             }
-            let statements = model
-                .statements()
-                .get(&format!("step.{}", s.id))
-                .map(|d| vec![(format!("step.{}", s.id), *d)])
-                .unwrap_or_default();
+            // The step's statement and the frame (`graph.md` 5.1): the world's top-level keys,
+            // which hold the extent and resolution, are the `world` statement.
+            let statements: Vec<(String, Digest)> = [format!("step.{}", s.id), "world".into()]
+                .into_iter()
+                .filter_map(|st| model.statements().get(&st).map(|d| (st, *d)))
+                .collect();
             let trust = l
                 .code
                 .as_ref()
@@ -182,6 +210,7 @@ impl<'a> CliPlan<'a> {
                             ctx.sdk_digest.map(Digest::hex).unwrap_or_default(),
                         ),
                         ("seed".into(), ctx.seed.to_string()),
+                        ("entities".into(), entities.clone()),
                     ],
                     edges,
                     gate: Gate {
@@ -328,12 +357,40 @@ impl<'a> CliPlan<'a> {
                     .map_or(Digest::of(b"no baseline"), |b| {
                         Digest::of(format!("{}\n{}", b.id, b.key).as_bytes())
                     });
+                // How the baseline was read changes the report's bytes (`graph.md` 6.4): from
+                // the `--against` directory's files alone (causes `null`) or from the store,
+                // and then by the baseline's build record (the causes and `via` chains), or
+                // none found. A files-only report and a store-backed one never share a key.
+                let mode = Digest::of(match &self.ctx.baseline {
+                    None => b"none".as_slice(),
+                    Some(b) if b.files_only => b"files only".as_slice(),
+                    Some(_) => b"store".as_slice(),
+                });
+                // The baseline's own report and manifest nodes are keyed by *its* baseline, and
+                // no chain passes through them; left in, a baseline rebuilt with equal text
+                // against another baseline would change this key though the report's bytes are
+                // the same (`graph.md` 7, toggle).
+                let record =
+                    self.ctx
+                        .baseline_record
+                        .as_ref()
+                        .map_or(Digest::of(b"no record"), |r| {
+                            let mut r = r.clone();
+                            for own in [CHANGES, MANIFEST] {
+                                r.nodes.remove(&NodeId::parse(own).expect("an id"));
+                            }
+                            Digest::of(&r.encode())
+                        });
                 let mut edges = vec![("merge".to_string(), merge)];
                 edges.extend(data_edges);
                 Defined::Def(Def {
                     params: vec![("path".into(), "changes.json".into())],
                     edges,
-                    direct: vec![("baseline".into(), base)],
+                    direct: vec![
+                        ("baseline".into(), base),
+                        ("baseline mode".into(), mode),
+                        ("baseline record".into(), record),
+                    ],
                     gate: Gate {
                         skip_on_error: true,
                     },
@@ -388,8 +445,13 @@ impl<'a> CliPlan<'a> {
             .insert(path.to_string(), bytes);
     }
 
-    /// The causes of each field's change (`graph.md` 6.4): from every chunk whose value differs
-    /// from the baseline's, the shortest edge path back to each changed statement.
+    /// The chain of each cause of each changed thing (`graph.md` 6.4, `build.md` 11.2): the
+    /// shortest edge path, over the build's real node edges, from the node made from each changed
+    /// statement to the thing's own node: `shape:` or `attr:` for a feature (the shorter, ties by
+    /// node id), `instance:` (a pin's `edit:` or `height:`) or the maker's `held:` for an instance, `footprint:` for a
+    /// footprint, and for a field its first chunk in chunk order whose value differs from the
+    /// baseline's. A statement with no path in this build's graph takes its path in the
+    /// baseline's, from the baseline's record. Keyed by [`changes::chain_key`].
     fn find_chains(&self, prev: &BuildRecord, value: &dyn Fn(&NodeId) -> Option<Digest>) {
         let mut made_from: BTreeMap<NodeId, Vec<String>> = BTreeMap::new();
         let mut edges: BTreeMap<NodeId, Vec<(String, NodeId)>> = BTreeMap::new();
@@ -402,30 +464,119 @@ impl<'a> CliPlan<'a> {
                 edges.insert(id.clone(), d.edges.clone());
             }
         }
-        let mut chains: Chains = BTreeMap::new();
-        for (name, _) in self.model.field_kinds() {
-            let mut m: BTreeMap<String, Vec<String>> = BTreeMap::new();
-            for (_, chunk) in self.model.file_reads(&FileReads::Field(name.clone())) {
-                let now = value(&chunk);
-                let before = prev.nodes.get(&chunk).and_then(|n| n.value);
-                if now == before {
-                    continue;
-                }
-                for c in via_graph::causes_from(
-                    self.model.statements(),
-                    &made_from,
-                    &edges,
-                    prev,
-                    &chunk,
-                ) {
+        let prev_edges = prev.edges();
+        let prev_made_from = prev.made_from();
+        let chains_to = |targets: &[NodeId]| -> BTreeMap<String, Vec<String>> {
+            let mut m: BTreeMap<String, (usize, NodeId, Vec<String>)> = BTreeMap::new();
+            let mut ts: Vec<&NodeId> = targets
+                .iter()
+                .filter(|t| self.model.def(t).is_some())
+                .collect();
+            ts.sort();
+            for t in ts {
+                for c in
+                    via_graph::causes_from(self.model.statements(), &made_from, &edges, prev, t)
+                {
                     let path: Vec<String> = c.path.iter().map(ToString::to_string).collect();
-                    let better = m.get(&c.statement).is_none_or(|p| path.len() < p.len());
+                    let better = m.get(&c.statement).is_none_or(|(n, _, _)| path.len() < *n);
                     if better {
-                        m.insert(c.statement, path);
+                        m.insert(c.statement, (path.len(), t.clone(), path));
                     }
                 }
             }
-            chains.insert(name, m);
+            // A statement with no path in this build's graph: the dependency was only in the
+            // baseline's (a change undone), so its chain is in the baseline's graph (6.4).
+            let mut ts: Vec<&NodeId> = targets
+                .iter()
+                .filter(|t| prev.nodes.contains_key(*t))
+                .collect();
+            ts.sort();
+            let mut old: BTreeMap<String, (usize, Vec<String>)> = BTreeMap::new();
+            for t in ts {
+                for c in via_graph::causes_from(
+                    self.model.statements(),
+                    &prev_made_from,
+                    &prev_edges,
+                    prev,
+                    t,
+                ) {
+                    if m.contains_key(&c.statement) {
+                        continue;
+                    }
+                    let path: Vec<String> = c.path.iter().map(ToString::to_string).collect();
+                    if old.get(&c.statement).is_none_or(|(n, _)| path.len() < *n) {
+                        old.insert(c.statement, (path.len(), path));
+                    }
+                }
+            }
+            m.into_iter()
+                .map(|(s, (_, _, p))| (s, p))
+                .chain(old.into_iter().map(|(s, (_, p))| (s, p)))
+                .collect()
+        };
+        let mut chains: Chains = BTreeMap::new();
+        for (name, _) in self.model.field_kinds() {
+            // In chunk order (`build.md` 5): rows of chunks, `cy` then `cx`.
+            let mut chunks: Vec<NodeId> = self
+                .model
+                .file_reads(&FileReads::Field(name.clone()))
+                .into_iter()
+                .map(|(_, chunk)| chunk)
+                .collect();
+            chunks.sort_by_key(|c| {
+                let w: Vec<u64> = c
+                    .as_str()
+                    .rsplit_once("/w:")
+                    .map(|(_, w)| w.split('.').filter_map(|x| x.parse().ok()).collect())
+                    .unwrap_or_default();
+                (w.get(1).copied(), w.first().copied())
+            });
+            let first = chunks
+                .into_iter()
+                .find(|chunk| value(chunk) != prev.nodes.get(chunk).and_then(|n| n.value));
+            if let Some(chunk) = first {
+                chains.insert(changes::chain_key("field", &name), chains_to(&[chunk]));
+            }
+        }
+        let build = self.model.build();
+        let base = self.ctx.baseline.as_ref().map(|b| &b.snapshot.build);
+        if let Some(report) = &build.changes {
+            for e in &report.entries {
+                let v = |f: &str, n: &str| NodeId::of(f, n).view("build");
+                let targets: Vec<NodeId> = match e.table.as_str() {
+                    "feature" => vec![v("shape", &e.name), NodeId::of("attr", &e.name)],
+                    "footprint" => vec![v("footprint", &e.name)],
+                    "instance" => {
+                        // A hand instance's own `instance:` node; a pin's is its `edit:` node,
+                        // or its `height:` (`build.md` 11.2, `graph.md` 1). `height:` is a
+                        // target only for a pin: a hand instance's chain ends at `instance:`.
+                        let pin = self.model.def(&v("edit", &e.name)).is_some();
+                        let families: &[&str] = if pin {
+                            &["instance", "edit", "height"]
+                        } else {
+                            &["instance"]
+                        };
+                        let own: Vec<NodeId> = families
+                            .iter()
+                            .map(|f| v(f, &e.name))
+                            .filter(|n| self.model.def(n).is_some())
+                            .collect();
+                        if !own.is_empty() {
+                            own
+                        } else {
+                            build
+                                .instances
+                                .get(&e.name)
+                                .or_else(|| base.and_then(|b| b.instances.get(&e.name)))
+                                .and_then(|i| i.maker.clone())
+                                .map(|m| vec![v("held", &m)])
+                                .unwrap_or_default()
+                        }
+                    }
+                    _ => continue,
+                };
+                chains.insert(changes::chain_key(&e.table, &e.name), chains_to(&targets));
+            }
         }
         *self
             .chains
@@ -440,6 +591,37 @@ impl<'a> CliPlan<'a> {
             return Output::of(Val::plain(bytes));
         };
         let build = self.model.build();
+        if b.files_only {
+            // Both sides read back from their files (`build.md` 11.2, `graph.md` 6.4).
+            let bytes = match self.files().as_ref() {
+                Ok(w) => {
+                    let head = J::Obj(w.head.clone());
+                    match crate::filebase::snapshot(&|p| w.files.get(p).cloned(), &head) {
+                        Some(new) => {
+                            let report =
+                                via_model::report::compare(Some(&b.snapshot.build), &new.build);
+                            changes::write(
+                                &report,
+                                &Side {
+                                    build: &new.build,
+                                    lines: &new.lines,
+                                    homes: &new.homes,
+                                },
+                                b.snapshot,
+                                (b.id.clone(), b.key.clone()),
+                                &BTreeMap::new(),
+                                false,
+                            )
+                            .file()
+                        }
+                        None => changes::without_baseline().file(),
+                    }
+                }
+                Err(_) => changes::without_baseline().file(),
+            };
+            self.stash("changes.json", bytes.clone());
+            return Output::of(Val::plain(bytes));
+        }
         let bytes = match &build.changes {
             Some(report) => {
                 let lines = snap::lines_of(self.ctx.world, &build);
@@ -459,6 +641,7 @@ impl<'a> CliPlan<'a> {
                     b.snapshot,
                     (b.id.clone(), b.key.clone()),
                     &chains,
+                    true,
                 )
                 .file()
             }
@@ -497,24 +680,11 @@ impl<'a> CliPlan<'a> {
         Output::of(Val::plain(bytes))
     }
 
-    fn compute_step(&self, id: &NodeId) -> Output {
-        let sid = &id.as_str()["step:".len()..];
-        let Some(l) = self.ctx.lints.iter().find(|l| l.decl.id == sid) else {
-            return Output::of(Val::plain(Vec::new()));
-        };
-        let code = match &l.code {
-            Ok(c) => c,
-            Err(d) => {
-                return Output::of(Val {
-                    bytes: Arc::new(step_bytes(false, &[])),
-                    diags: Arc::new(vec![d.clone()]),
-                })
-            }
-        };
-        let build = self.model.build();
-        let call = steps::Call {
+    /// What a lint call is handed beyond the step.
+    fn call<'b>(&'b self, build: &'b via_model::Build) -> steps::Call<'b> {
+        steps::Call {
             world: self.ctx.world,
-            build: &build,
+            build,
             store: self.ctx.store,
             roots: self.ctx.roots,
             config: self.ctx.config,
@@ -523,8 +693,54 @@ impl<'a> CliPlan<'a> {
             seed: self.ctx.seed,
             deadline: self.ctx.deadline,
             pack: self.ctx.pack,
+            trust_command: &self.ctx.trust_command,
+        }
+    }
+
+    /// A lint's definition with its request in the static key (`graph.md` 5.1): for a plain
+    /// command, the request with its absolute paths left out, made before the lookup. It holds
+    /// what no data file does (each field's role, tags and unit; the instances' asset, taxon and
+    /// `by`), so a change to any of it runs the lint again. A lint that will not be started
+    /// (untrusted, or its code not found) is handed nothing, and its key says why already.
+    fn step_def(&self, id: &NodeId, def: &Def) -> Def {
+        let mut def = def.clone();
+        let sid = &id.as_str()["step:".len()..];
+        let request = self
+            .ctx
+            .lints
+            .iter()
+            .find(|l| l.decl.id == sid)
+            .filter(|l| l.trusted && l.code.is_ok())
+            .map_or(Digest::of(b"via-request-1 not started"), |l| {
+                let build = self.model.build();
+                steps::request_key(&l.decl, &self.call(&build))
+            });
+        def.direct.push(("request".into(), request));
+        def
+    }
+
+    fn compute_step(&self, id: &NodeId) -> Output {
+        let sid = &id.as_str()["step:".len()..];
+        let Some(l) = self.ctx.lints.iter().find(|l| l.decl.id == sid) else {
+            return Output::of(Val::plain(Vec::new()));
         };
-        let r = steps::run_lint(&l.decl, code, l.trusted, &call);
+        let code = match &l.code {
+            Ok(c) => c,
+            Err(d) => {
+                // Not started (an unknown library, an unreadable code folder): not complete,
+                // so not stored, and it is tried again next build (`graph.md` 3.4).
+                return Output {
+                    value: Val {
+                        bytes: Arc::new(step_bytes(false, &[], &[])),
+                        diags: Arc::new(vec![d.clone()]),
+                    },
+                    complete: false,
+                    step: Some(StepRun::default()),
+                };
+            }
+        };
+        let build = self.model.build();
+        let r = steps::run_lint(&l.decl, code, l.trusted, &self.call(&build));
         let exit = r.record.get("exit").and_then(J::as_i64);
         let files: Vec<(String, Digest)> = r
             .record
@@ -544,20 +760,31 @@ impl<'a> CliPlan<'a> {
             .get("log")
             .and_then(J::as_str)
             .and_then(Digest::from_hex);
-        // A step that ran and did not exit 0, or was killed, did not complete: it is not
-        // stored and runs again next build (`graph.md` 3.4). Nor did one an error kept from
-        // starting (`protocol.no_program`): the program's path is in no key, so configuring it
-        // must not replay the error. An untrusted skip is a warning, and trust is keyed.
-        let complete = if r.ran {
-            exit == Some(0)
-        } else {
-            !r.diags
+        // Complete (`graph.md` 3.4): a call that ran, exited 0 and returned readable output; or
+        // the deliberate skip of an untrusted lint, whose key holds `trusted=false`; or a missing
+        // declared input, whose digest is in the key. Anything else that did not start (no
+        // program, a spawn that failed, a call folder that could not be written) is not stored:
+        // what kept it from starting is in no key, so it is tried again next build.
+        let input_missing = !r.ran
+            && !r.diags.is_empty()
+            && r.diags
                 .iter()
-                .any(|d| d.severity() == via_diag::Severity::Error)
+                .all(|d| *d.code() == DiagCode::Core(via_diag::codes::graph::INPUT_MISSING));
+        let complete = if r.ran {
+            r.complete
+        } else {
+            !l.trusted || input_missing
         };
+        // A plain command's one read, method `data`: its request without absolute paths, which
+        // is also all it is answered.
+        let data = r.data.map(|d| via_graph::Read {
+            method: "data".into(),
+            request: d,
+            answer: d,
+        });
         Output {
             value: Val {
-                bytes: Arc::new(step_bytes(r.ran, &r.explains)),
+                bytes: Arc::new(step_bytes(r.ran, &r.explains, &files)),
                 diags: Arc::new(r.diags),
             },
             complete,
@@ -565,15 +792,22 @@ impl<'a> CliPlan<'a> {
                 exit,
                 files,
                 log,
+                data,
                 ..StepRun::default()
             }),
         }
     }
 }
 
-/// A lint step's value: whether its process was started, and the explain text of each of its
-/// codes, as canonical JSON.
-fn step_bytes(ran: bool, explains: &[(String, Option<String>)]) -> Vec<u8> {
+/// A lint step's value: whether its process was started, the explain text of each of its
+/// codes, and each file it returned as (path, digest), as canonical JSON. The files are part of
+/// the value (`graph.md` 1, `step`), so a rerun that writes other bytes beside its diagnostics is
+/// `graph.step_unstable` (5.2).
+fn step_bytes(
+    ran: bool,
+    explains: &[(String, Option<String>)],
+    files: &[(String, Digest)],
+) -> Vec<u8> {
     obj([
         (
             "explains",
@@ -581,6 +815,15 @@ fn step_bytes(ran: bool, explains: &[(String, Option<String>)]) -> Vec<u8> {
                 explains
                     .iter()
                     .map(|(c, e)| J::Arr(vec![J::s(c.clone()), J::opt(e.as_deref())]))
+                    .collect(),
+            ),
+        ),
+        (
+            "files",
+            J::Arr(
+                files
+                    .iter()
+                    .map(|(p, d)| obj([("digest", J::s(d.hex())), ("path", J::s(p.clone()))]))
                     .collect(),
             ),
         ),
@@ -616,7 +859,8 @@ pub fn step_value(bytes: &[u8]) -> Option<(bool, Explains)> {
 }
 
 /// An input's id path and digest: relative to the world's folder with `/` where it can be, and
-/// the digest of a folder's listing (`graph.md` 5.1); a missing path digests as missing.
+/// the digest of a folder by `graph.md` 5.1's rule (every file, symbolic links as their
+/// target's text, bytes as they are); a missing path digests as missing.
 fn input_digest(
     world: &World,
     home: &Path,
@@ -641,11 +885,7 @@ fn input_digest(
                     .join("/")
             },
         );
-    let digest = if p.is_dir() {
-        steps::folder_digest(&p).0
-    } else {
-        std::fs::read(&p).map_or_else(|_| Digest::of(b"\0missing"), |b| Digest::of(&b))
-    };
+    let digest = steps::input_digest(&p).unwrap_or_else(|| Digest::of(b"\0missing"));
     (rel, digest)
 }
 
@@ -696,6 +936,9 @@ impl Plan for CliPlan<'_> {
             return self.model.define(id, known);
         }
         if let Some(d) = self.defs.get(id) {
+            if id.family() == "step" {
+                return Defined::Def(self.step_def(id, d));
+            }
             return Defined::Def(d.clone());
         }
         self.define_last(id, known)

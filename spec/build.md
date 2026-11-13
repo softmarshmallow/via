@@ -540,7 +540,7 @@ bounded field (M3), when its cover differs or a sample under cover 1 differs. Wh
 | `line` | integer or `null` | Its line, from 1. `null` when `file` is. |
 | `in` | string | `"this"` when `file` and `line` are in this build's text, `"baseline"` when in the baseline's: a removed table or key. |
 | `digests` | object or `null` | For `file:` and `step:`: `{ "after", "before" }`, the digests of the file, or of the step's command and code (R26); `null` on the side where it is absent. `null` for every other form. |
-| `via` | list of strings | `graph.md` node ids: the shortest chain of edges from the node that reads the statement to the thing's nearest node, both ends included, ties by node id (`graph.md` 6.4). The thing's nodes are `shape:` and `attr:` for a feature, `instance:` or `held:` for an instance, `footprint:` for a footprint, and for a field the `field:` node of its first differing chunk. It is one chain, not every route. |
+| `via` | list of strings | `graph.md` node ids: the shortest chain of edges from the node that reads the statement to the thing's nearest node, both ends included, ties by node id (`graph.md` 6.4). The thing's nodes are `shape:` and `attr:` for a feature, `instance:` or `held:` for an instance (for a pin, its `edit:` or `height:`), `footprint:` for a footprint, and for a field the `field:` node of its first differing chunk. It is one chain, not every route. |
 
 **A summary row** (`summary[]`), `identity.md` 5's line per maker:
 
@@ -683,7 +683,9 @@ to either without a new `format` or `epoch` fails `graph.md`'s epoch guard.
   `<directory>.partial`, `.previous` first, then swapped in by rename: the old directory to
   `<directory>.old`, the new one into place, the old one deleted. A reader never sees half a build.
 - **An unchanged rebuild writes nothing.** When the build key equals `run.key`, every file of
-  `files` and `run.reports` matches its record, and no `--against` is given, no node is touched
+  `files` matches the build record, `manifest.json` and every file of `run.reports` match the
+  directory's own manifest (the one `.previous` names; their digests are per directory, not per
+  key, `graph.md` 6.2), and no `--against` is given, no node is touched
   (`graph.md` 6.2) and the directory is left as it is, `changes.json` included. When a file
   differs, the whole directory is written again by the swap above, the files copied from the store
   into the partial folder, with `graph.build_file_restored` naming each file that differed. No file
@@ -762,7 +764,7 @@ Flags, on `build`, `merge` and `lock` where they apply:
 | `--origins` | On `merge`: prints, beside the merged document, each value's span and chain (`documents.md` 8). |
 | `--lowered` | On `merge`: prints the document after forms are lowered (`rules.md` 10). (open): whether `merge` prints this, or the lowered statements are read from the graph, is decided with `rules.md`'s first form in M3. |
 | `--rerun-step ID` | On `build`: runs that step even when its trace matches, and compares (`graph.md` 5.2). Repeatable. Not in the build key: it changes no output unless the step is unstable, which `graph.step_unstable` reports. |
-| `--step-deadline SECONDS` | On `build`: how long a step call may run before it is cancelled; default 600 (`protocol.md` 6.2). Not in the build key. |
+| `--step-deadline SECONDS` | On `build`: how long a step call may run before it is cancelled; default 600 (`protocol.md` 6.2). A whole number from 1 to 86,400 (one day); anything else is `cli.usage`. Not in the build key. |
 | `--sdk DIR` | On `build`, `lock`, `eval`, `query`, `merge` and `trust`: a working copy of the SDK in place of the carried one; its digest is in every step's static key and trust digest (`protocol.md` 8.1). |
 | `--change C` | Request a change. Repeatable; order changes nothing (changes commute). `C` holding a `.` or `/` is a change file's path, otherwise a change name: ids hold neither (`vocabulary.md` 2.1), so the two never mix. |
 | `--out DIR` | The build directory. Default: `build/<name>` beside the world file, with `+<change>` appended for each requested change, sorted (a file by its stem). When `name` cannot be read, `<name>` is the world file's stem. |
@@ -849,6 +851,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | `fields` | Fields to keep as data in the root's metadata. |
 | `water` | One selector naming a water surface height field (6.4) to draw as water. |
 | `features` | Make nodes for features (below). |
+| `paths` | Feature selectors (a name or `kind:<kind>`): draw each path feature they select as a strip on the ground, `width` metres across (its attribute, else 1 m), in the loader's path colour. A view aid until a world paints its ways; a selector matching no path feature is an option error. |
 | `diagnostics` | A path: write the loader's diagnostics there as `diagnostics.md` 7's document, for unattended runs. Without it, they go to Godot's output. A loader reads no text, so each record has the `file` form (`diagnostics.md` 1.2): `file` is a build path (3.4), or `pack:` and the pack path for a pack file. |
 
 | Build | Becomes in Godot |
@@ -888,8 +891,9 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
 - `--option` sets one loader option of the table above, repeatable; a list's items are separated
   by `,`, `features` takes `true` or `false`. `diagnostics` is not taken: the tool writes its own
   (below). An unknown name or a bad value is exit 2. `ford`'s viewer settings are exactly
-  `--option water=tag:water_level`, the tag the water library documents; the Godot loader suite and
-  the milestone sheet pass it.
+  `--option water=tag:water_level --option paths=kind:lane`: the tag the water library documents, and
+  the lanes drawn on the ground, since `ford` paints no material; the Godot loader suite and the
+  milestone sheet pass them.
 - `--before` and `--after` are build directories (`build/ford` and `build/ford+downstream`).
   `--pack` names the pack's root when a manifest's `pack_root` is `null`. `--out` is written whole,
   like a build (section 13); a non-empty folder the tool did not write is refused.
@@ -903,8 +907,8 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   the same for both builds, so a pair differs only by the build.
 - `<out>/sheet.png` is the sheet. A header band 48 pixels high holds the world's name, the first 12
   hex digits of each build's `id`, and the Godot release. Then one row per bookmark, in name order
-  over both builds: a label band 24 pixels high (the bookmark's name, its eye point, its target's
-  name), then the before view and the after view side by side, each scaled to 640 by 360. So the
+  over both builds: a label band 24 pixels high (the bookmark's name, its eye point, or both as
+  `before -> after` when they differ, and its target's name, likewise), then the before view and the after view side by side, each scaled to 640 by 360. So the
   sheet is 1280 pixels wide and `48 + 384 * rows` high: 1584 for `ford`'s four. Without `--after`
   it is one column, 640 wide. A bookmark in one build only has a grey cell (`#808080`) marked
   "absent" in the other.
@@ -912,8 +916,8 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   `{ "after", "before", "bookmarks", "camera", "godot", "light", "renderer", "size" }`. `before`
   and `after` are `{ "id", "world" }` (`after` `null` without one); each of `bookmarks` is
   `{ "after", "before", "eye", "name", "target" }`, with the two image paths (`null` where absent),
-  the eye point and `toward` as written, both from the after build where it has the bookmark, else
-  the before.
+  `eye` as `{ "after", "before" }`, each build's eye point (`null` where absent), and `target` as
+  `{ "after", "before" }`, each build's `toward` as written, `{ "at", "name" }` (`null` where absent).
 - The loader's diagnostics go to `<out>/diagnostics.json` in `diagnostics.md` 7's form, each
   record's `data.build` naming its build, `before` or `after`. Exit 0 when
   every bookmark was rendered, 1 with any error, 2 for a bad argument.

@@ -1,7 +1,19 @@
 format    = "via-case-1"
-summary   = "A formula typo; build twice: second the same error, nothing ran, exit 1."
+summary   = "A formula typo, then ford's bad_cycle and bad_anchor; each built twice: second the same errors, nothing ran, exit 1."
 milestone = 1
-actions   = ["first", "second"]
+actions   = ["first", "second", "program", "trust", "cycle_first", "cycle_second", "anchor_first", "anchor_second"]
+
+# graph.md 3.4: a node whose value holds an error is stored like any other and replays its error;
+# the error replay row (graph.md 7): build twice, the second the same error and nothing ran. The
+# typo fails a statement's own node. The cycle and the anchored clash fail field nodes whose
+# diagnostics carry `related` entries (graph.cycle names each statement of the loop,
+# diagnostics.md; authority.conflict names the earlier anchored thing, authority.md 5), and
+# bad_anchor also leaves a chunk with only a warning: those are stored and replayed as well.
+# ford is copied beside the typo world, under ford/, so the two stores stay apart.
+
+[copy.ford]
+from = "examples/ford"
+to   = "ford"
 
 [action.first]
 via  = ["build", "world.toml", "--out", "build/w"]
@@ -26,4 +38,66 @@ action = "first"
 what   = "diagnostics"
 
 [action.second.nodes]
+ran = []
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "ford/world.toml", "--yes", "--change", "ford/changes/bad_cycle.toml", "--change", "ford/changes/bad_anchor.toml"]
+exit = 0
+
+[action.cycle_first]
+via         = ["build", "ford/world.toml", "--change", "ford/changes/bad_cycle.toml", "--out", "build/cycle"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/cycle"
+
+[action.cycle_first.diag.cycle]
+code    = "graph.cycle"
+subject = "field.loop_a"
+
+[action.cycle_second]
+via         = ["build", "ford/world.toml", "--change", "ford/changes/bad_cycle.toml", "--out", "build/cycle"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/cycle"
+
+[action.cycle_second.diag.cycle]
+code    = "graph.cycle"
+subject = "field.loop_a"
+
+[action.cycle_second.same.d]
+action = "cycle_first"
+what   = "diagnostics"
+
+[action.cycle_second.nodes]
+ran = []
+
+[action.anchor_first]
+via         = ["build", "ford/world.toml", "--change", "ford/changes/bad_anchor.toml", "--out", "build/anchor"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/anchor"
+
+[action.anchor_first.diag.conflict]
+code    = "authority.conflict"
+subject = "instance.cottage"
+
+[action.anchor_second]
+via         = ["build", "ford/world.toml", "--change", "ford/changes/bad_anchor.toml", "--out", "build/anchor"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/anchor"
+
+[action.anchor_second.diag.conflict]
+code    = "authority.conflict"
+subject = "instance.cottage"
+
+[action.anchor_second.same.d]
+action = "anchor_first"
+what   = "diagnostics"
+
+[action.anchor_second.nodes]
 ran = []

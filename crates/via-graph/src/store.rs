@@ -9,8 +9,9 @@
 //!
 //! Every file is written to `tmp/` and linked into place without replacing: if the target exists
 //! the temporary file is deleted and the existing one kept, so the first writer wins and equal
-//! names hold equal bytes. The one exception is a step's trace entry under `--rerun-step`
-//! ([`Store::replace_trace`]), renamed over the old one. An object is checked against its name when first read in a build; a
+//! names hold equal bytes. The two exceptions, renamed over the old entry: a step's trace entry
+//! under `--rerun-step` ([`Store::replace_trace`]) and a build record, where the last build with
+//! a key wins ([`Store::put_build`]). An object is checked against its name when first read in a build; a
 //! mismatch, or an entry that cannot be read, is `graph.store_corrupt`, and the entry is dropped.
 //! A store that cannot be written is `graph.store_unavailable` once, and the build keeps nothing
 //! more. Where the store lives is `build.md` 13 (`.via/store/` beside the world, or `--store`).
@@ -325,28 +326,35 @@ impl Store {
         out
     }
 
-    /// Puts a trace entry over the one of the same name, if any: the one place the store
-    /// overwrites. A step forced by `--rerun-step` whose value changed for a trace it had
-    /// (`graph.md` 5.2) keeps its new value, so later builds take it. Written to a temporary name
-    /// and renamed over, so a reader sees the old entry or the new one, never half of one.
+    /// Puts a trace entry over the one of the same name, if any. A step forced by
+    /// `--rerun-step` whose value changed for a trace it had (`graph.md` 5.2) keeps its new value,
+    /// so later builds take it.
     pub fn replace_trace(&self, static_key: &Digest, trace: &Digest, bytes: &[u8]) {
+        self.replace(&self.trace_dir(static_key).join(trace.hex()), bytes);
+    }
+
+    /// Writes `bytes` at `target` over what is there, if anything: the two places the store
+    /// overwrites, a trace entry and a build record. Written to a temporary name and renamed
+    /// over, so a reader sees the old entry or the new one, never half of one.
+    fn replace(&self, target: &Path, bytes: &[u8]) {
         if self.is_unavailable() {
             return;
         }
-        let target = self.trace_dir(static_key).join(trace.hex());
         let n = TMP.fetch_add(1, Ordering::Relaxed);
         let tmp = self
             .root
             .join("tmp")
             .join(format!("{}-{n}", std::process::id()));
         let result = (|| -> io::Result<()> {
-            fs::create_dir_all(self.trace_dir(static_key))?;
+            if let Some(dir) = target.parent() {
+                fs::create_dir_all(dir)?;
+            }
             fs::create_dir_all(self.root.join("tmp"))?;
             let mut f = fs::File::create(&tmp)?;
             f.write_all(bytes)?;
             f.sync_all()?;
             drop(f);
-            fs::rename(&tmp, &target)
+            fs::rename(&tmp, target)
         })();
         if let Err(e) = result {
             let _ = fs::remove_file(&tmp);
@@ -360,13 +368,15 @@ impl Store {
         self.drop_entry(&p, why);
     }
 
-    /// Puts a build record under its build key.
+    /// Puts a build record under its build key, over any record already there: the last build
+    /// with a key wins (`graph.md` 6.2), so a complete build replaces the record of one whose
+    /// step did not complete, and the null build applies after it.
     pub fn put_build(&self, build_key: &Digest, bytes: &[u8]) {
         let mut e = Enc::new();
         e.str("via-buildrec-1")
             .digest(&Digest::of(bytes))
             .bytes(bytes);
-        self.write_once(&self.build_path(build_key), &e.finish());
+        self.replace(&self.build_path(build_key), &e.finish());
     }
 
     /// Reads a build record; a damaged one is dropped with `graph.store_corrupt`.

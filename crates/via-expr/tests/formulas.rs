@@ -738,7 +738,11 @@ fn case_24_shapes() {
     assert_eq!(bind_code(&w, "= smoothed_along(24)", &ctx), "formula.shape");
     w.own = Some(Shape::Path);
     assert_eq!(bind_code(&w, "= smoothed_along(24)", &ctx), "ok");
-    assert_eq!(code(check("= under('edge_min')", &ctx)), "doc.not_yet");
+    // `'edge_min'` takes a region (8.5): on a path it is `formula.shape`, told at selection; on
+    // a region it waits for milestone 2.
+    assert_eq!(bind_code(&w, "= under('edge_min')", &ctx), "formula.shape");
+    w.own = Some(Shape::Region { rings: 1 });
+    assert_eq!(bind_code(&w, "= under('edge_min')", &ctx), "doc.not_yet");
 }
 
 // Values.

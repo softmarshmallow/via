@@ -91,7 +91,10 @@ class FakeStep:
         return table(self._instances[select])
 
     def info(self, **kw):
-        self.records.append(kw)
+        self.records.append(dict(kw, severity="info"))
+
+    def warning(self, **kw):
+        self.records.append(dict(kw, severity="warning"))
 
 
 class ChecksTest(unittest.TestCase):
@@ -138,20 +141,91 @@ class ChecksTest(unittest.TestCase):
         for attrs in ({"width": 1.0}, {}):
             step = FakeStep()
             beck = ("beck", "beck", 1, [[[(24000, 0), (24000, 40000)]]], attrs)
-            step._features["kind:beck"] = [beck]
+            step._features["*"] = [beck] + [f for f in step._features["*"] if f[1] != "beck"]
             CHECKS["lint"](step)
             codes = {r["code"] for r in step.records}
             self.assertNotIn("water_step", codes, attrs)
 
+    def test_all_info_when_every_field_is_there(self):
+        self.assertEqual({r["severity"] for r in self.step.records}, {"info"})
+
     def test_world_without_water(self):
+        # A field the world lacks is said, per subject, as an `unmeasured` warning naming the
+        # measure; the measures that do not need it are still taken.
         step = FakeStep()
-        del step._fields["tag:water_level"]
-        step.fields = lambda names: [step._fields[n] for n in names]
+        del step._fields["tag:water_level"]  # the stand-in then raises KeyError, a LookupError
         CHECKS["lint"](step)
         codes = {r["code"] for r in step.records}
         self.assertNotIn("ford_depth", codes)
         self.assertNotIn("water_step", codes)
         self.assertIn("approach_grade", codes)
+        warned = {(r["subject"], r["data"]["measure"]): r for r in step.records
+                  if r["code"] == "unmeasured"}
+        self.assertEqual(sorted(warned), [("feature.beck", "water_step"), ("feature.ford", "ford_depth")])
+        for r in warned.values():
+            self.assertEqual(r["severity"], "warning")
+            self.assertIn("tag:water_level", r["message"])
+            self.assertTrue(r["hint"])
+            self.assertIn("position", r)
+        self.assertEqual(warned[("feature.ford", "ford_depth")]["position"], [20.0, 20.0])
+        first = [r for r in step.records if r["code"] == "unmeasured"][0]
+        self.assertIn("explain", first)
+
+    def test_world_without_surface_or_keep_out(self):
+        step = FakeStep()
+        del step._fields["role:surface"]
+        del step._fields["role:keep_out"]
+        CHECKS["lint"](step)
+        warned = sorted((r["subject"], r["data"]["measure"]) for r in step.records
+                        if r["code"] == "unmeasured")
+        self.assertEqual(warned, sorted([
+            ("feature.ford", "approach_grade"),
+            ("feature.ford", "ford_depth"),
+            ("feature.beck", "water_step"),
+            ("instance.cottage", "cottage_relief"),
+            ("scatter.trees", "trees_in_clearing"),
+        ]))
+        self.assertEqual({r["code"] for r in step.records if r["severity"] == "info"}, {"lane_gap"})
+
+    def test_trees_in_clearing_counts_only_scatters(self):
+        # A pin standing in keep_out is the build's place.keep_out (rules.md 8.3), not this
+        # measure: the scatter keeps its one record and its count.
+        step = FakeStep()
+        pin = {"name": "oak", "asset": "tree_oak", "by": "pin.oak", "x": 33000, "y": 33000}
+        step._instances["*"].append(pin)
+        step._instances["@plant/tree"].append(pin)
+        CHECKS["lint"](step)
+        got = [(r["subject"], r["data"]["value"]) for r in step.records if r["code"] == "trees_in_clearing"]
+        self.assertEqual(got, [("scatter.trees", 1)])
+
+    def test_trees_in_clearing_counts_the_fade(self):
+        # keep_out only multiplies the chance (rules.md 7.1): a tree where it is 0.9 or more is
+        # counted (the reported tree stood at 0.988), one in the fade below 0.9 is not.
+        for value, want in ((0.988, 2), (0.9, 2), (0.74, 1)):
+            step = FakeStep()
+            step._fields["role:keep_out"][30][10] = value   # under trees#s7000_b at (10, 30) m
+            CHECKS["lint"](step)
+            r = [r for r in step.records if r["code"] == "trees_in_clearing"]
+            self.assertEqual([x["data"]["value"] for x in r], [want], value)
+
+    def test_hints_name_the_edit(self):
+        hints = CHECKS["HINTS"]
+        self.assertIn("`bank_grade`", hints["water_step"])
+        self.assertIn("`verge`", hints["trees_in_clearing"])
+
+    def test_engine_faults_fail_the_step(self):
+        # An error the engine answers is not a missing field: it propagates (protocol.md 3.4), so
+        # the step fails and no measure is quietly dropped.
+        from viasdk import RpcError
+
+        def refuse(*_a, **_k):
+            raise RpcError(-32002, "blob missing")
+
+        for read in ("fields", "features", "instances"):
+            step = FakeStep()
+            setattr(step, read, refuse)
+            with self.assertRaises(RpcError, msg=read):
+                CHECKS["lint"](step)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,79 @@ pub struct Args {
     pub rerun: Vec<String>,
     pub deadline: Option<u64>,
     pub sdk: Option<PathBuf>,
+    /// `--diagnostics FILE` and its argument: a `FILE` inside the build directory is refused
+    /// before anything is read from or written to that directory (14).
+    pub diagnostics: Option<(u32, PathBuf)>,
+}
+
+/// Each library lookup the build made (`documents.md` 4, `graph.md` 6.2), one line each: the
+/// name, the root it was found in and each root before it that did not hold it, every root by its
+/// place (`beside`, `--lib <n>`, `VIA_LIB <n>`, `shipped`), never by path. Names come from the
+/// world's `include`, then from each found library's `kinds.toml` as read, each once, in the order
+/// first named; a name found nowhere is a line too.
+fn lookups(world: &World, roots: &steps::Roots) -> Vec<String> {
+    let mut places: Vec<(String, PathBuf)> = vec![("beside".into(), roots.world_dir.join("lib"))];
+    for (i, r) in roots.lib.iter().enumerate() {
+        places.push((format!("--lib {}", i + 1), r.clone()));
+    }
+    for (i, r) in roots.via_lib.iter().enumerate() {
+        places.push((format!("VIA_LIB {}", i + 1), r.clone()));
+    }
+    if let Some(r) = &roots.shipped {
+        places.push(("shipped".into(), r.clone()));
+    }
+    // The folder must be named exactly, letter case included (`documents.md` 7.2).
+    let holds = |root: &Path, name: &str| -> bool {
+        root.join(name).is_dir()
+            && std::fs::read_dir(root)
+                .is_ok_and(|rd| rd.flatten().any(|e| e.file_name().to_str() == Some(name)))
+    };
+    let kinds_includes = |name: &str| -> Vec<String> {
+        let file = format!("lib:{name}/kinds.toml");
+        let Some(src) = world.sources().iter().find(|s| s.name == file) else {
+            return Vec::new();
+        };
+        let Ok(t) = src
+            .text()
+            .trim_start_matches('\u{feff}')
+            .parse::<toml::Table>()
+        else {
+            return Vec::new();
+        };
+        match t.get("include") {
+            Some(toml::Value::Array(xs)) => xs
+                .iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect(),
+            _ => Vec::new(),
+        }
+    };
+    let mut queue: std::collections::VecDeque<String> = steps::includes(world).into();
+    let mut done: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut out = Vec::new();
+    while let Some(name) = queue.pop_front() {
+        if !done.insert(name.clone()) {
+            continue;
+        }
+        let mut absent: Vec<&str> = Vec::new();
+        let mut found: Option<&str> = None;
+        for (label, root) in &places {
+            if holds(root, &name) {
+                found = Some(label);
+                break;
+            }
+            absent.push(label);
+        }
+        out.push(format!(
+            "{name}\nfound {}\nabsent {}",
+            found.unwrap_or("nowhere"),
+            absent.join(", ")
+        ));
+        if found.is_some() {
+            queue.extend(kinds_includes(&name));
+        }
+    }
+    out
 }
 
 /// What a build gives the command line: every record, finished, and the lint list.
@@ -114,6 +187,26 @@ pub fn world_dir(world_path: &Path) -> PathBuf {
 
 fn absolute(p: &Path) -> PathBuf {
     std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf())
+}
+
+/// The absolute path with `.` and `..` folded away by name, so `../bx/d.json` and `/w/bx` compare.
+pub fn lexical(p: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in absolute(p).components() {
+        match c {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    out
+}
+
+/// Whether `file` lies at or under the folder `dir`, by name.
+pub fn lies_inside(file: &Path, dir: &Path) -> bool {
+    lexical(file).starts_with(lexical(dir))
 }
 
 fn relative(from: &Path, to: &Path) -> Option<String> {
@@ -231,6 +324,26 @@ pub fn run(a: &Args) -> Outcome {
         .out
         .clone()
         .unwrap_or_else(|| default_out(&a.world, &name, &a.changes));
+    // A `--diagnostics FILE` inside the build directory would be replaced with it (14): a usage
+    // fault, so nothing is built and the directory, the store and the run report are untouched.
+    if let Some((at, file)) = &a.diagnostics {
+        if lies_inside(file, &out_dir) {
+            let d = crate::usage(
+                *at,
+                format!(
+                    "`--diagnostics {}` lies inside the build directory `{}`, which is replaced whole",
+                    file.display(),
+                    out_dir.display()
+                ),
+                "write the diagnostics file outside the build directory".into(),
+            );
+            return Outcome {
+                records: finish(vec![d.emit(&NoWorld)], &fail_on),
+                lints: Vec::new(),
+                out: Some(out_dir),
+            };
+        }
+    }
     let store_root = a
         .store
         .clone()
@@ -354,10 +467,27 @@ pub fn run(a: &Args) -> Outcome {
     let (prev_id, prev_manifest) = previous_of(&out_dir);
     let mut baseline: Option<(Snapshot, J, String, String)> = None;
     let mut baseline_missing = false;
-    if let Some((bytes, (_m, id, key))) = &against {
+    // Whether the baseline was read from `--against DIR`'s files alone.
+    let mut files_only = false;
+    if let (Some((bytes, (m, id, key))), Some(dir)) = (&against, &a.against) {
+        // `--against DIR` (11.2): the baseline is that directory. The store's record of the same
+        // build, when it has one, gives the causes; else its files are compared, causes `null`.
         match snap::get(&store, &Digest::of(bytes)) {
             Some(s) => baseline = Some((s, J::Null, id.clone(), key.clone())),
-            None => baseline_missing = true,
+            None => {
+                let read = |p: &str| -> Option<Vec<u8>> {
+                    // Only a plain path inside the directory is read.
+                    let safe = !p.is_empty()
+                        && Path::new(p)
+                            .components()
+                            .all(|c| matches!(c, std::path::Component::Normal(_)));
+                    safe.then(|| std::fs::read(dir.join(p)).ok()).flatten()
+                };
+                if let Some(s) = crate::filebase::snapshot(&read, m) {
+                    baseline = Some((s, J::Null, id.clone(), key.clone()));
+                    files_only = true;
+                }
+            }
         }
     } else if let Some(hex) = prev_manifest.as_str() {
         let found = Digest::from_hex(hex).and_then(|d| {
@@ -413,11 +543,8 @@ pub fn run(a: &Args) -> Outcome {
         let s = &l.decl;
         for i in &s.inputs {
             let p = s.home.join(i);
-            let d = if p.is_dir() {
-                steps::folder_digest(&p).0
-            } else {
-                std::fs::read(&p).map_or_else(|_| Digest::of(b"\0missing"), |b| Digest::of(&b))
-            };
+            // A folder by `graph.md` 5.1's rule, so a new or changed file in it changes the key.
+            let d = steps::input_digest(&p).unwrap_or_else(|| Digest::of(b"\0missing"));
             parts.files.push((format!("input {}/{i}", s.id), d));
         }
         if let Ok(c) = &l.code {
@@ -430,6 +557,11 @@ pub fn run(a: &Args) -> Outcome {
     }
     if let Some(d) = &sdk_digest {
         parts.flags.push(("sdk".into(), d.hex()));
+    }
+    // Each library lookup and each `--lib` root, by place only (`graph.md` 6.2).
+    parts.lookups = lookups(&world, &roots);
+    for i in 1..=a.lib.len() {
+        parts.flags.push(("lib".into(), format!("--lib {i}")));
     }
 
     // The pack, read again for the instance taxa a step is handed and for the files of the id.
@@ -542,7 +674,22 @@ pub fn run(a: &Args) -> Outcome {
                     ),
                     &rec,
                 );
-                write_run_report(&out_dir, &text, &[]);
+                // The step codes, from each lint's value in the record and the replayed
+                // diagnostics: a null build runs no step but keeps what they sent.
+                let mut explains = Vec::new();
+                for l in &lint_steps {
+                    let id = NodeId::of("step", &l.decl.id);
+                    let bytes = rec
+                        .nodes
+                        .get(&id)
+                        .and_then(|n| n.value)
+                        .and_then(|d| store.get_object(&d))
+                        .map(|o| via_graph::object_bytes(&o));
+                    if let Some((_, e)) = bytes.as_deref().and_then(graph::step_value) {
+                        explains.extend(e);
+                    }
+                }
+                write_run_report(&out_dir, &text, &graph::step_codes(&explains, &diags));
             }
             return Outcome {
                 records,
@@ -599,6 +746,15 @@ pub fn run(a: &Args) -> Outcome {
         seed: world_seed(&world),
         deadline: Duration::from_secs(a.deadline.unwrap_or(600)),
         pack: pack.as_ref().map(|p| &p.0),
+        trust_command: steps::trust_command(
+            &a.world,
+            &a.lib,
+            a.sdk.as_deref(),
+            &a.changes
+                .iter()
+                .map(|c| c.written.clone())
+                .collect::<Vec<_>>(),
+        ),
         name: &name,
         fail_on: &fail_on,
         loaded: &loaded.records,
@@ -608,6 +764,7 @@ pub fn run(a: &Args) -> Outcome {
             snapshot: s,
             id: id.clone(),
             key: k.clone(),
+            files_only,
         }),
         baseline_record,
         key,
@@ -637,16 +794,24 @@ pub fn run(a: &Args) -> Outcome {
         .last_bytes("diagnostics.json")
         .unwrap_or_else(|| document(&world_r, &lints, exit_status(&world_r)).into_bytes());
     // The lint steps' explain texts, for `via explain` (the run report's `step_codes`).
+    // A reused step keeps its codes: they are read from its stored value, whether it ran or not.
     let mut explains = Vec::new();
+    let mut step_diags = node_diags.clone();
     for l in &plan.ctx.lints {
         let id = NodeId::of("step", &l.decl.id);
-        if let Some(v) = run.value(&id, &store, &plan) {
-            if let Some((_, e)) = graph::step_value(&v.bytes) {
-                explains.extend(e);
-            }
+        let value = run.value(&id, &store, &plan);
+        if let Some(v) = &value {
+            step_diags.extend(v.diags.iter().cloned());
+        }
+        let bytes = value.map(|v| v.bytes.as_ref().clone()).or_else(|| {
+            let d = run.nodes.get(&id)?.value?;
+            Some(via_graph::object_bytes(&store.get_object(&d)?))
+        });
+        if let Some((_, e)) = bytes.as_deref().and_then(graph::step_value) {
+            explains.extend(e);
         }
     }
-    let step_codes = graph::step_codes(&explains, &node_diags);
+    let step_codes = graph::step_codes(&explains, &step_diags);
     // `identity.no_previous` is about the run, never replayed (`graph.md` 6.2).
     let world_kept: Vec<Diag> = node_diags.clone();
     let put_record = |files: BTreeMap<String, Digest>| {

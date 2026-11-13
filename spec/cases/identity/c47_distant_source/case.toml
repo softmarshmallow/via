@@ -1,13 +1,49 @@
 format    = "via-case-1"
 summary   = "Distant source: linework_a; network; move one vertex of one source by 1 m; network: every junction, edge and area name unchanged; sources in reverse order: the same names."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/linework_a.json (geometry.md 6, import.py) not yet written"
-actions   = ["names"]
+actions   = ["names", "moved", "reversed"]
+
+# identity.md 47 through `via kernel names` (geometry.md 7.3), `params.of = "network"`, producer
+# `streets`, no instances or edits. The three inputs are import.py's (geometry.md 6):
+# names_a_moved.json moves the middle vertex of the source whose nearest vertex is farthest from the
+# grid's centre 1 m east; import.py refuses the move unless that vertex is no junction (an interior
+# vertex of one source, shared with none), the moved segments meet no other segment before or after
+# (no crossing added or lost) and come within 2 m of no other vertex (none passes another).
+# names_a_reversed.json lists the sources in reverse order: names, and so the whole output, are the
+# same bytes (2.5 Order-free).
 
 [copy.fixture]
-from = "spec/vectors/geometry/linework_a.json"
-to   = "linework_a.json"
+from = "spec/vectors/geometry/names_a.json"
+to   = "names_a.json"
+
+[copy.moved]
+from = "spec/vectors/geometry/names_a_moved.json"
+to   = "names_a_moved.json"
+
+[copy.reversed]
+from = "spec/vectors/geometry/names_a_reversed.json"
+to   = "names_a_reversed.json"
 
 [action.names]
-via  = ["kernel", "names", "--in", "linework_a.json", "--out", "out.json"]
-exit = 0
+via         = ["kernel", "names", "--in", "names_a.json", "--out", "names.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.moved]
+via         = ["kernel", "names", "--in", "names_a_moved.json", "--out", "moved.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.moved.check.unchanged]
+fn     = "names_same"
+first  = "names.json"
+second = "moved.json"
+
+[action.reversed]
+via         = ["kernel", "names", "--in", "names_a_reversed.json", "--out", "names.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.reversed.same.bytes]
+action = "names"
+what   = "names.json"

@@ -26,8 +26,8 @@ pub struct Side<'a> {
     pub homes: &'a BTreeMap<String, String>,
 }
 
-/// The chains of `graph.md` 6.4 for a field: statement id to node ids, from the node made from
-/// the statement to the field's node. Supplied by the caller from the graph's run.
+/// The chains of `graph.md` 6.4 per thing ([`chain_key`]): statement id to node ids, from the
+/// node made from the statement to the thing's own node. Supplied by the caller from the graph.
 pub type Chains = BTreeMap<String, BTreeMap<String, Vec<String>>>;
 
 /// `changes.json` with no baseline.
@@ -313,77 +313,25 @@ fn region(name: &str, old: &Build, new: &Build) -> Option<(J, Option<[i64; 4]>, 
     Some((r, bx, count > 0 || keys_differ))
 }
 
-/// The features a feature's shape is placed from: `on.ref`, `starts_at`, `ends_at`, each a place
-/// name whose first part is the feature.
-fn shape_refs(build: &Build, id: &str) -> BTreeSet<String> {
-    let mut out = BTreeSet::new();
-    let Some(st) = build.statements.get(&format!("feature.{id}")) else {
-        return out;
-    };
-    let first = |t: &str| t.split('.').next().unwrap_or(t).to_string();
-    if let Some(on) = st.get("on") {
-        if let Some(i) = on.find("\"ref\":\"") {
-            let rest = &on[i + 7..];
-            if let Some(j) = rest.find('"') {
-                out.insert(first(&rest[..j]));
-            }
-        }
-    }
-    for k in ["starts_at", "ends_at"] {
-        if let Some(v) = st.get(k) {
-            out.insert(first(v.trim_matches('"')));
-        }
-    }
-    out
+/// The key of a thing's chains in [`Chains`]: its table and name.
+pub fn chain_key(table: &str, name: &str) -> String {
+    format!("{table}\0{name}")
 }
 
-/// `via` for a feature (`graph.md` 6.4): the shortest chain of nodes from the edited feature's
-/// shape to this feature's shape or attributes, ties by node id. A feature's shape reads the
-/// shapes it is placed from; its attributes read the shapes its name attributes name.
-fn feature_via(cause: &str, name: &str, build: &Build) -> Vec<String> {
-    let mut parts = cause.splitn(3, '.');
-    let (Some("feature"), Some(start)) = (parts.next(), parts.next()) else {
-        return Vec::new();
-    };
-    let shape = |id: &str| format!("shape:{id}/v:build");
-    let attr = |id: &str| format!("attr:{id}");
-    // Node to the nodes that read it.
-    let mut next: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for (id, f) in &build.features {
-        for r in shape_refs(build, id) {
-            next.entry(shape(&r)).or_default().insert(shape(id));
-        }
-        for (place, _) in f.names.values() {
-            let r = place.split('.').next().unwrap_or(place);
-            next.entry(shape(r)).or_default().insert(attr(id));
-        }
+/// Whether a cause (`identity.md` 5's form) names a statement: the statement itself, a key below
+/// it (`feature.ford.on`, `world.extent`), or an asset's fact (`asset.<id>.<fact>` of the
+/// statement `asset:<id>`).
+fn names_statement(cause: &str, statement: &str) -> bool {
+    if cause == statement || cause.starts_with(&format!("{statement}.")) {
+        return true;
     }
-    let goals = [shape(name), attr(name)];
-    let from = shape(start);
-    let mut prev: BTreeMap<String, String> = BTreeMap::new();
-    let mut seen = BTreeSet::from([from.clone()]);
-    let mut layer = vec![from.clone()];
-    while !layer.is_empty() {
-        if let Some(g) = layer.iter().filter(|n| goals.contains(n)).min() {
-            let mut path = vec![g.clone()];
-            while let Some(p) = prev.get(path.last().map_or("", String::as_str)) {
-                path.push(p.clone());
-            }
-            path.reverse();
-            return path;
-        }
-        let mut nl = BTreeSet::new();
-        for n in &layer {
-            for m in next.get(n).into_iter().flatten() {
-                if seen.insert(m.clone()) {
-                    prev.insert(m.clone(), n.clone());
-                    nl.insert(m.clone());
-                }
-            }
-        }
-        layer = nl.into_iter().collect();
+    match (
+        cause.strip_prefix("asset."),
+        statement.strip_prefix("asset:"),
+    ) {
+        (Some(rest), Some(id)) => rest == id || rest.starts_with(&format!("{id}.")),
+        _ => false,
     }
-    Vec::new()
 }
 
 /// A cause (11.2), located in this build's text or the baseline's.
@@ -401,9 +349,9 @@ fn cause_json(cause: &str, new: &Side<'_>, old: &Side<'_>, via: Vec<String>) -> 
         let m = lines.get(&format!("{t}.{id}"))?;
         m.get(key).or_else(|| m.get("")).cloned()
     };
-    let (file, line, inn) = if cause.starts_with("asset.") {
-        (J::Null, J::Null, "this")
-    } else if let Some((f, l)) = locate(new.lines) {
+    // A declared asset fact is located at its pack text like any statement (`assets.md` 7, its
+    // lines recorded by `snap::lines_of`); only a fact measured from a model file (M2) has none.
+    let (file, line, inn) = if let Some((f, l)) = locate(new.lines) {
         (J::s(f), J::Num(l.to_string()), "this")
     } else if let Some((f, l)) = locate(old.lines) {
         (J::s(f), J::Num(l.to_string()), "baseline")
@@ -449,6 +397,7 @@ pub fn write(
     old: &Snapshot,
     against: (String, String),
     chains: &Chains,
+    causes_known: bool,
 ) -> J {
     let old_side = Side {
         build: &old.build,
@@ -491,7 +440,8 @@ pub fn write(
                     keys.push(k.clone());
                 }
             }
-            if !e.facts.is_empty() {
+            // A field's keys are `samples` and its manifest keys (11.2), never `facts`.
+            if !e.facts.is_empty() && (e.table == "instance" || e.table == "footprint") {
                 keys.push("facts".into());
             }
         }
@@ -535,27 +485,36 @@ pub fn write(
         let causes_j: Vec<J> = causes
             .into_iter()
             .map(|c| {
-                let via = if e.table == "field" {
-                    chains
-                        .get(&e.name)
-                        .and_then(|m| {
-                            m.iter()
-                                .find(|(st, _)| c == *st || c.starts_with(&format!("{st}.")))
-                                .map(|(_, v)| v.clone())
-                        })
-                        .unwrap_or_default()
-                } else if e.table == "feature" {
-                    feature_via(c, &e.name, new.build)
-                } else {
-                    Vec::new()
-                };
+                // One chain over the build's node edges (`build.md` 11.2), found by the graph.
+                let via = chains
+                    .get(&chain_key(&e.table, &e.name))
+                    .and_then(|m| {
+                        // The statement the cause is itself (`world.pack`) before one it is a
+                        // key below (`world.extent` of the frame `world`).
+                        m.get(c.as_str())
+                            .or_else(|| {
+                                m.iter()
+                                    .find(|(st, _)| names_statement(c, st))
+                                    .map(|(_, v)| v)
+                            })
+                            .cloned()
+                    })
+                    .unwrap_or_default();
                 cause_json(c, new, &old_side, via)
             })
             .collect();
         let mut m = J::obj();
         m.insert("after".into(), after);
         m.insert("before".into(), before);
-        m.insert("causes".into(), J::Arr(causes_j));
+        // `null` when the baseline's build record is not at hand (11.2, `graph.md` 6.4).
+        m.insert(
+            "causes".into(),
+            if causes_known {
+                J::Arr(causes_j)
+            } else {
+                J::Null
+            },
+        );
         m.insert("facts".into(), J::Arr(facts));
         m.insert("keys".into(), J::strs(keys.iter().map(String::as_str)));
         m.insert("name".into(), J::s(e.name.clone()));

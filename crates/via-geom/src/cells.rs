@@ -271,7 +271,10 @@ pub fn cells_on_area(
             closed: true,
         });
     }
-    let reach = 2.0 * (params.band_depth as f64);
+    // A cut reaches its own band's far side and stops just past it (5): never into the band of
+    // another frontage across a narrow region.
+    let depth = params.band_depth as f64;
+    let reach = depth + CUT_PAST;
     let mut ncut = 0usize;
     for (fi, fp) in fpaths.iter().enumerate() {
         inputs.push(Input {
@@ -332,10 +335,13 @@ pub fn cells_on_area(
             if sl == 0.0 {
                 continue;
             }
+            // To the mitre point of the two sides' far lines, `2 band_depth / |n1 + n2|`, at most
+            // the mitre limit's `2 band_depth`.
+            let to_mitre = via_num::min((2.0 * depth) / sl, 2.0 * depth) + CUT_PAST;
             let en = pt(
                 src,
-                (v.x as f64) + ((s.0 / sl) * reach),
-                (v.y as f64) + ((s.1 / sl) * reach),
+                (v.x as f64) + ((s.0 / sl) * to_mitre),
+                (v.y as f64) + ((s.1 / sl) * to_mitre),
             )?;
             inputs.push(Input {
                 source: format!("#cut{ncut:06}"),
@@ -344,6 +350,26 @@ pub fn cells_on_area(
             });
             ncut += 1;
         }
+    }
+    // The far side of each chain's band: its frontage offset inward by `band_depth`, mitre limit
+    // 2, as the band's own outline runs there (2). It closes each cell where bands of two
+    // frontages meet across a region narrower than twice the depth; what lies past it borders no
+    // frontage and is `rest`.
+    for (k, ch) in chains.iter().enumerate() {
+        let mut pts: Vec<P> = ch.iter().map(|&i| arr.org(shell[i])).collect();
+        if !closed_chain {
+            pts.push(arr.dst(shell[*ch.last().unwrap_or(&0)]));
+        }
+        pts.dedup();
+        if pts.len() < 2 {
+            continue;
+        }
+        let far_pts = far_line(src, &pts, closed_chain, depth)?;
+        inputs.push(Input {
+            source: format!("#cut_far{k:06}"),
+            pts: far_pts,
+            closed: false,
+        });
     }
     // The region's own outline joins the band and the cuts, so the areas partition the noded
     // region: the cells, and the rest. Segments of cuts outside the band are dropped.
@@ -470,8 +496,11 @@ pub fn cells_on_area(
     }
     let mut cells: Vec<Cell> = Vec::new();
     let mut rest_parts: Vec<Region> = Vec::new();
+    // Every area that takes one station is that station's one cell (6): `identity.md` names a
+    // cell by (frontage, station), so a station split in two by the far line is joined again.
+    let mut by_station: BTreeMap<(usize, usize), Vec<Proto>> = BTreeMap::new();
     for pr in protos {
-        let Some((&(fi, st), _)) = pr.borders.iter().next() else {
+        let Some((&key, _)) = pr.borders.iter().next() else {
             rest_parts.push(pr.region);
             continue;
         };
@@ -484,13 +513,32 @@ pub fn cells_on_area(
                 .at(representative_or(&pr.region, grid)),
             );
         }
+        by_station.entry(key).or_default().push(pr);
+    }
+    for ((fi, st), parts) in by_station {
         let fp = &fpaths[fi];
         let stretch = fp.first_station.iter().rposition(|&f| f <= st).unwrap_or(0);
-        let front_len: f64 = pr.borders.values().sum();
-        let span = pr.tspan.get(&fi).copied().unwrap_or([0.0, 0.0]);
+        let mut front_len = 0.0;
+        let mut span = [f64::INFINITY, f64::NEG_INFINITY];
+        let mut regions = Vec::new();
+        for pr in parts {
+            front_len += pr.borders.values().sum::<f64>();
+            if let Some(t) = pr.tspan.get(&fi) {
+                span = [via_num::min(span[0], t[0]), via_num::max(span[1], t[1])];
+            }
+            regions.push(pr.region);
+        }
+        let region = if regions.len() == 1 {
+            regions.pop().unwrap_or_default()
+        } else {
+            boolean(BoolOp::Union, &regions)?
+        };
+        if span[0] > span[1] {
+            span = [0.0, 0.0];
+        }
         cells.push(Cell {
-            point: crate::network::representative(&pr.region, grid),
-            region: pr.region,
+            point: crate::network::representative(&region, grid),
+            region,
             front: fp.front,
             station: st,
             stretch,
@@ -577,6 +625,58 @@ pub fn cells_on_area(
         noded_area,
     })
 }
+
+/// The far side of a chain's band (2): each segment offset `depth` into the region (to the left of
+/// travel), consecutive offsets meeting where their lines cross, as the mitre of the band's own
+/// outline does; past the mitre limit 2 the corner is bevelled. Closed chains end where they
+/// start.
+fn far_line(src: &str, pts: &[P], closed: bool, depth: f64) -> Result<Vec<P>, GeomDiag> {
+    let n = pts.len();
+    let m = if closed { n } else { n - 1 };
+    let mut normals = Vec::with_capacity(m);
+    for k in 0..m {
+        normals.push(left_normal(dir(pts[k], pts[(k + 1) % n])));
+    }
+    let off = |p: P, u: (f64, f64)| {
+        pt(
+            src,
+            (p.x as f64) + (u.0 * depth),
+            (p.y as f64) + (u.1 * depth),
+        )
+    };
+    let mut out: Vec<P> = Vec::new();
+    if !closed {
+        out.push(off(pts[0], normals[0])?);
+    }
+    let joins = if closed { m } else { m - 1 };
+    for j in 0..joins {
+        let (u0, u1) = (normals[j], normals[(j + 1) % m]);
+        let v = pts[(j + 1) % n];
+        let s = (u0.0 + u1.0, u0.1 + u1.1);
+        let s2 = (s.0 * s.0) + (s.1 * s.1);
+        if 4.0 <= 4.0 * s2 {
+            // Ratio 2 / |u0 + u1| at most the limit 2: the lines' crossing.
+            let k = (2.0 * depth) / s2;
+            out.push(pt(src, (v.x as f64) + (s.0 * k), (v.y as f64) + (s.1 * k))?);
+        } else {
+            out.push(off(v, u0)?);
+            out.push(off(v, u1)?);
+        }
+    }
+    if closed {
+        if let Some(&first) = out.first() {
+            out.push(first);
+        }
+    } else {
+        out.push(off(pts[n - 1], normals[m - 1])?);
+    }
+    out.dedup();
+    Ok(out)
+}
+
+/// How far a cut runs past its band's far side, millimetres: enough that a cut rounded to the
+/// lattice still crosses the far line it ends at.
+const CUT_PAST: f64 = 2.0;
 
 fn representative_or(r: &Region, grid: PostGrid) -> P {
     crate::network::representative(r, grid)

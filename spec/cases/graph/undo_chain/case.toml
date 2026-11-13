@@ -1,0 +1,135 @@
+format    = "via-case-1"
+summary   = "ford, ford with downstream, then ford again into one directory: undoing the change gives every cause a chain, the clearing's one through the baseline's graph."
+milestone = 1
+actions   = ["program", "trust", "base", "downstream", "undo"]
+
+# graph.md 6.4 and build.md 11.2: a cause's `via` is the shortest edge path from the node reading
+# the statement to the thing's node, both ends included, so never empty. Undoing downstream changes
+# the same things as doing it (build.md case 37), in the same order (by table, then name): the seven
+# features, the fields clearing, height and water, the cottage's footprint, the cottage, then the
+# trees. Their one cause is feature.ford.on as world.toml writes it (line 25, `in` = this).
+# clearing's first differing chunk in chunk order is (1, 0), which only the downstream lane meets:
+# this build's graph has no path to it from shape:ford, so the chain is the one in the baseline's
+# graph (graph.md 6.4), ending at that chunk's field node: chunk (1, 0) of k = 128 posts is the
+# window of posts 128 to 256 by 0 to 128, written w:128.0.257.129 (graph.md 1).
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/ford"]
+out         = "build/ford"
+exit        = 0
+diagnostics = "includes"
+
+[action.downstream]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+out         = "build/ford"
+exit        = 0
+diagnostics = "includes"
+
+[action.undo]
+via         = ["build", "world.toml", "--out", "build/ford"]
+out         = "build/ford"
+exit        = 0
+diagnostics = "includes"
+
+[action.undo.file.clearing]
+path     = "build/ford/changes.json"
+pointer  = "/entries/7"
+includes = { name = "clearing", table = "field", what = ["changed"] }
+
+[action.undo.file.cause_clearing]
+path     = "build/ford/changes.json"
+pointer  = "/entries/7/causes/0"
+includes = { cause = "feature.ford.on", file = "world.toml", in = "this", line = 25 }
+
+[action.undo.check.via_at_ford]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/0/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_ford]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/1/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_in_trees]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/2/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_lane_east]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/3/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_lane_west]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/4/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_on_bank]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/5/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_to_door]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/6/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_clearing]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/7/causes/0/via"
+at_least = 2
+last     = "field:clearing/v:build/w:128.0.257.129"
+
+[action.undo.check.via_height]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/8/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_water]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/9/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_cottage_footprint]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/10/causes/0/via"
+at_least = 1
+
+[action.undo.check.via_cottage]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/11/causes/0/via"
+at_least = 1
+
+# The trees past the written entries: their causes' chains too (from entry 12 on, each entry's one
+# cause, checked on the first tree).
+[action.undo.check.via_tree]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/12/causes/0/via"
+at_least = 1

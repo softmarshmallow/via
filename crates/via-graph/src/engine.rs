@@ -222,6 +222,19 @@ impl Run {
                             key: n.key,
                             value: n.value,
                             direct: self.direct.get(id).cloned().unwrap_or_default(),
+                            inputs: {
+                                let mut ins: Vec<NodeId> = self
+                                    .edges
+                                    .get(id)
+                                    .into_iter()
+                                    .flatten()
+                                    .map(|(_, t)| t.clone())
+                                    .collect();
+                                ins.sort();
+                                ins.dedup();
+                                ins
+                            },
+                            made_from: self.made_from.get(id).cloned().unwrap_or_default(),
                         },
                     )
                 })

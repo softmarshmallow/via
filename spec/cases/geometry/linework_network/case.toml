@@ -1,13 +1,26 @@
 format    = "via-case-1"
 summary   = "linework_a; network: Euler and closure hold; every area valid; no segment crosses another."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/linework_a.json, made by spec/vectors/geometry/import.py from fixtures/kernel/townland (geometry.md 6), not yet written"
 actions   = ["op"]
+
+# geometry.md 3.2 and Conformance. linework_a is made by spec/vectors/geometry/import.py from
+# fixtures/kernel/townland/streets.geojson (geometry.md 6). `network_valid` recomputes from the
+# output's segments and the input's path ends, exactly: Noded (3.1); the connected components;
+# Euler at both levels; the junctions of 3.2's definition and the edges between them; the bounded
+# faces, each area's shell one of them, canonical and valid (2.5); Closure against what the
+# top-level components enclose. The kernel's info and warnings are not asserted (`any`): the
+# dead-end count is a property of the data, not of this case.
 
 [copy.fixture]
 from = "spec/vectors/geometry/linework_a.json"
 to   = "linework_a.json"
 
 [action.op]
-via  = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
-exit = 0
+via         = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.op.check.valid]
+fn    = "network_valid"
+path  = "out.json"
+input = "linework_a.json"

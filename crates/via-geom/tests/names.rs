@@ -223,9 +223,15 @@ fn clear_one_cell() {
         place: ClearPlace::Inside(cells.cells[target].region.clone()),
         by: None,
     };
-    let (held, diags) = hold(inst.clone(), &[clear], &[]).unwrap();
+    let (held, diags) = hold(inst.clone(), std::slice::from_ref(&clear), &[]).unwrap();
     assert_eq!(held.len(), 9);
     assert!(!held.iter().any(|i| i.name == inst[target].name));
+    // The removal is the clear's: the change report's cause (identity.md 5).
+    let by = via_geom::held::removed_by(&[inst[target].clone()], &[clear], &[]).unwrap();
+    assert_eq!(
+        by,
+        vec![(inst[target].name.clone(), "clear.one".to_string())]
+    );
     let kept: Vec<&String> = held.iter().map(|i| &i.name).collect();
     for (i, x) in inst.iter().enumerate() {
         if i != target {
@@ -283,6 +289,14 @@ fn pin_in_cell() {
     };
     let (held, diags) = hold(inst.clone(), &[], &[pin(None)]).unwrap();
     assert_eq!(held.len(), 9);
+    let gone: Vec<_> = inst
+        .iter()
+        .filter(|i| !held.iter().any(|h| h.name == i.name))
+        .cloned()
+        .collect();
+    let by = via_geom::held::removed_by(&gone, &[], &[pin(None)]).unwrap();
+    assert_eq!(by.len(), 1);
+    assert_eq!(by[0].1, "pin.well");
     let removed = diags.iter().find(|d| d.code == Code::PinRemoved).unwrap();
     assert_eq!(removed.data.get("count"), Some(&via_diag::Value::Int(1)));
     let (held, diags) = hold(inst, &[], &[pin(Some(vec!["trees_other".into()]))]).unwrap();

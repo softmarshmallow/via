@@ -31,6 +31,12 @@ fn cases_read_and_cover_m0() {
     assert_clean("cases", xtask::cases::check(&xtask::repo_root(), 0));
 }
 
+/// Every M0 and M1 code's `explain` has a `To fix:` line and a bad and a fixed example.
+#[test]
+fn explain_texts_finished_to_m1() {
+    assert_clean("explain", xtask::explain::check(&xtask::repo_root(), 1));
+}
+
 #[test]
 fn limitations_name_existing_cases() {
     assert_clean(

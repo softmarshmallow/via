@@ -22,6 +22,13 @@ line or other source position. Kinds and packs have no rank (`documents.md` 5.1)
 within its file, or to another file of the same rank, changes no digest; moving it to a layer of
 another rank does, since layer rank is one of the keys of row order (R29).
 
+The world file's top-level keys (`documents.md` 1) make two statements. The **frame**, the
+`world` statement, is `extent`, `resolution`, `seed` and `chunk`: the keys that decide geometry
+and numerics; every node that works on posts, windows or the lattice is made from it. `pack` is
+the statement `world.pack`, made into the nodes that resolve asset names (a hand instance, a pin,
+a scatter's rule); an asset's facts are each `asset:<id>` statement. `name` and `include` enter
+no node's key: the lookups and sources they decide are in the build key (6.2).
+
 A `let` makes no node. It is inlined where it is read (`formulas.md` 5): its digest enters the key
 of every node whose formula reads it, as a statement that node is made from (3.1, item 3).
 
@@ -54,7 +61,8 @@ three suffixes are read as parts of the id.
 | `mesh` | `mesh:<owner>` | each generated mesh: a kind surface or a triangulated region (`surfaces.md` 5, `build.md` 10); the terrain is written as a field, not a mesh | the mesh | yes |
 | `write` | `write:<build file>` | each file of the build directory (`build.md` 2) | the file's bytes | yes |
 
-- **Paths** in `source` and `input` ids are relative to the world file's folder and use `/`. A file
+- **Paths** in `source` and `input` ids are relative to the world file's folder and use `/`; a file
+  above that folder keeps its leading `..` (`../shared/h.npy`), so two files never share an id. A file
   inside a library is `lib:<library>/<path>`, inside the pack `pack:<path>`, with the path relative
   to the library's or the pack's folder. So ids are equal on every machine.
 - **Selectors** are written in their canonical form as `documents.md`'s canonical JSON prints them.
@@ -244,6 +252,8 @@ The store is a folder of write-once files named by digest. Where it lives is `bu
 - A file is written to a temporary name in the store and renamed into place without replacing, so a
   reader never sees half a file and nothing is renamed over a file another process has open. If the
   target exists, the temporary file is deleted and the existing file kept: the first writer wins.
+  The exceptions are a trace entry a `--rerun-step` replaces (5.2) and a build record, which a
+  later build with the same key replaces (6.2).
   Equal names hold equal bytes, so one store may serve many builds and build directories at once.
 - An object is checked against its name when first read in a build. A mismatch, or a file that
   cannot be read, is `graph.store_corrupt`: the entry is dropped and its node runs again.
@@ -361,7 +371,8 @@ node has two parts.
 - **Static key.** The digest of: the four versions (3.3); the step's statement digest (`command`,
   `params`, `worker`, `when`, its id and rank); its trust digest (`protocol.md` 7: `command` and
   every file of its code folder, so `lib:` programs and a script's sibling modules are covered); the
-  frame; its seed; under `for_each`, the item's id and statement digest; the digest of each declared
+  frame (the `world` statement, section 1: `extent`, `resolution`, `seed`, `chunk`); the ids of the world's statements, by which the diagnostics it
+  returns are mapped (`protocol.md` 5); its seed; under `for_each`, the item's id and statement digest; the digest of each declared
   input. For a plain command, also the request with its absolute paths left out: blobs are named by
   digest, so the request still names every field it hands over. This is the one definition;
   `protocol.md` 4.4 points here.
@@ -392,7 +403,9 @@ accepts: a user's step is recorded, not promised.
 `--rerun-step ID` (repeatable) runs that step even when a trace matches, and compares: a value whose
 digest differs from the stored one for the same trace is `graph.step_unstable`, naming both digests,
 and the new value is used. It is the way out when something the engine cannot see has changed, and
-the one way instability is found. An export step that writes other bytes on a rerun (`build.md`
+the one way instability is found. The new value replaces the stored trace entry of the same name,
+written to a temporary name and renamed over it, as a build record is (3.2), so later
+builds take it. An export step that writes other bytes on a rerun (`build.md`
 11.4) is found the same way.
 
 ### 5.3 One call per item (M3)
@@ -424,7 +437,8 @@ others are `reused`. Status never depends on which thread got there first.
 **The build key** is the digest of: the four versions; the requested changes; each `source` and
 `input` path with its digest; each lookup the build made (`documents.md` 4: the name, the path
 found, and each candidate before it that was absent); each step's trust digest, and whether this
-machine trusts it (a lint trusted since runs); and `--lib`,
+machine trusts it (a lint trusted since runs); `locations.pack_root` as computed for this
+directory (`build.md` 4), which is relative, so it enters by place; and `--lib`,
 `--stand-ins` and `--fail-on`. Roots and lookups enter by place and source path only: each root as
 `beside`, `--lib <n>`, `VIA_LIB <n>` or `shipped`, each path as its `lib:<id>/` or world-relative
 source path (`documents.md` 2.1). No absolute path enters the key. A folder input's digest covers its listing, so a new file in it
@@ -432,9 +446,13 @@ changes the key. Which files are read is decided by the text of the files read b
 equal digests for every recorded read mean the same reads.
 
 **The build record**, kept in the store under the build key, holds: the four versions (3.3); every
-node's id, key and value digest; the build's world diagnostics as emitted; the digest of each build file; and whether every step
-completed. It also holds each statement's digest by statement id, as `merge`'s value does, and each
-leaf's `bytes` digest, so the causes of 6.3 need no reading of `merge`. Per-chunk field digests are
+node's id, key and value digest; the build's world diagnostics as emitted; the digest of each file
+of `files` (`build.md` 4); and whether every step completed. The manifest and the reports also
+depend on where the directory is and on its baseline, so their digests are per directory, not
+per key: they are read from the directory's own manifest, the one its `.previous` names in the
+store, never from the record. It also holds each statement's digest by statement id, as `merge`'s value does, each
+leaf's `bytes` digest, and each node's input nodes and the statements it is made from, so the
+causes of 6.3 need no reading of `merge` and a chain can be found in the baseline's graph (6.4). Per-chunk field digests are
 the `field` nodes' value digests, so the change report (6.4) needs nothing more. The build key is written to
 the manifest as `run.key` (`build.md` 4). `.previous` (`build.md` 11.2) names the last complete build
 by its `id` and manifest digest; this chapter neither reads nor writes it.
@@ -446,7 +464,9 @@ run report lists every node of the record as `reused`, and the world diagnostics
 Run diagnostics (`build.md` 11.1) are never recorded or replayed; each run computes its own, and
 on a null build there are normally none, since `.previous` names the recorded build. A
 build file whose bytes differ from the record (edited by hand, damaged) is written again from the
-store's object, with `graph.build_file_restored`. If the object is missing, the null build does not
+store's object, with `graph.build_file_restored`; the manifest and the reports are checked
+against the directory's own manifest (above), so another directory built with the same key never
+overwrites them. If the object is missing, the null build does not
 apply and the build runs as usual. After a build in which a step did not complete, it never
 applies. With `--against`, nodes are reused as usual, but `write:changes.json` runs against the
 named baseline.
@@ -522,7 +542,7 @@ A **step** object, one per `step:<id>` and `step:<id>/i:<item>` node:
 | `command` | The command as the step's statement writes it (`protocol.md` 1), a list of strings. |
 | `static_key` | Its static key (5.1). |
 | `trace` | The digest of the trace whose value it took or that this run added; `null` for a plain command, whose trace is empty, and when it did not run or match. |
-| `reads` | Each read in the order made: `{ "answer", "method", "request" }`, with `method` the engine call, and `request` and `answer` the digests of their canonical JSON. A plain command has one read, method `data`: its request without absolute paths (5.1). |
+| `reads` | Each read in the order made: `{ "answer", "method", "request" }`, with `method` the engine call, and `request` and `answer` the digests of their canonical JSON. A plain command has one read, method `data`: its request without absolute paths (5.1), whose `answer` is the same digest, since what it is handed is that request. |
 | `exit` | The process's exit status when it ran in this build; `null` when it did not run (reused, skipped, killed by a signal). |
 | `returned` | `{ "files", "value" }`: the value digest, and each file of `out` as `{ "digest", "path" }` sorted by path (`protocol.md` 5). Files a lint wrote beside its diagnostics are listed here. `null` when it returned nothing readable. |
 | `log` | The digest of its log in the store (`protocol.md` 6.2), or `null`. |
@@ -559,7 +579,8 @@ build's record and the baseline's (found by the baseline's build key):
   whose digest is unchanged is not read.
 - **Causes.** For each changed thing, every statement whose digest differs from the baseline's
   `merge` and that it depends on, each with the shortest edge path from that statement to it (ties
-  by node id).
+  by node id): in this build's graph, else in the baseline's (from its record) when the dependency
+  was only in the baseline, as when a change is undone.
 
 When the baseline's build record is not in the store (`--against` a build made with another store),
 whole field files are compared post by post, and causes are not given; `identity.md` says how an
@@ -690,7 +711,9 @@ error[graph.cycle] feature.ford: references form a loop of 2 statements
 Every case is also built with a fresh store into a fresh directory, and at 1 and 8 threads, and
 must give the same build directory and `diagnostics.json` (section 7). Unless said, a case is built
 once clean first. `ran` sets name nodes by id; where a case names a fixture, the set is listed there,
-one id per line, under `spec/vectors/graph/`, written with `examples/ford/` in M1.
+one id per line, as the case's `expected/ran.txt` (`conformance.md` 2), derived from sections 1 and 2
+for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstream/expected/ran.txt`,
+`ford_vertex.ran` is `spec/cases/graph/vertex/expected/ran.txt`.
 
 | Case | M | Input | Action | Must hold |
 |---|---|---|---|---|
@@ -722,6 +745,8 @@ one id per line, under `spec/vectors/graph/`, written with `examples/ford/` in M
 | epoch | M1 | the engine with `VIA_TEST_EPOCH_OFFSET=1`, read by test builds only | rebuild | every node `ran`; manifest `files` equal |
 | epoch guard | M1 | the examples' recorded `files` maps | build each | equal, or the epoch was raised |
 | failed step | M1 | a plain lint that exits 1 | build twice | `protocol.failed` both times; its readers `skipped`; it ran twice |
+| two depths | M1 | `ford` | build into two `--out` folders at different depths with one `--store`, then the first again | each manifest's `pack_root` resolves from its own directory (`pack_root_resolves`); the third build: nothing `ran`, no run diagnostic |
+| program later | M1 | `ford` with no program configured | build; configure the program; build | first: `protocol.no_program`; second: `step:checks` `ran` (a step that did not start is not stored, 3.4) |
 | busy | M1 | the runner holds `<directory>.lock` | build | `graph.busy`, exit 1 |
 | killed | M1 | a build killed mid-run | build | builds; no `graph.busy` |
 | step reuse | M2 | a plain generate step at layer 1; a `height`-writing feature of layer 2 moves | rebuild | `step:` node `reused` |

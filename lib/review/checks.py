@@ -18,7 +18,13 @@ Each measure is one ``info`` record per subject, code ``step.checks.<name>``, it
 |                   |                          | posts that are both wet, within its ``width`` of its     |
 |                   |                          | line, metres                                            |
 | cottage_relief    | each grounded instance   | highest less lowest ground over its footprint feature   |
-| trees_in_clearing | each producer of trees   | trees standing where keep_out holds (is 1), a count     |
+| trees_in_clearing | each scatter of trees    | trees standing where keep_out is 0.9 or more, a count;  |
+|                   |                          | a written pin or instance is not counted                |
+
+A subject whose measure cannot be taken, because a field it reads selects no field or several, gets
+one ``warning`` record instead, code ``step.checks.unmeasured``, the measure's name in
+``data.measure``; so every subject has one record. Any other failure, an engine or protocol fault
+included, is not caught: it fails the step.
 
 Fields are found by role and tag, never by name (fields.md 2.3): the ground is ``role:surface``,
 the water ``tag:water_level`` (lib/water), "not here" ``role:keep_out``. Kinds are the libraries':
@@ -30,8 +36,6 @@ their own methods (``tolist``) and the arithmetic here is plain Python doubles.
 
 import math
 
-from viasdk import RpcError
-
 # The approach is measured along each lane out to where the ford's `approach` mask reaches 0
 # (`1 - smoothstep(16, 20, d)`, lib/ways/kinds.toml). A coupling, kept by hand: a kind's radius and
 # masks are not in the feature list a step reads (protocol.md 4.3), only its attributes. If the
@@ -39,6 +43,14 @@ from viasdk import RpcError
 APPROACH_M = 20.0
 # A lane meets a ford when one of its ends lies this close to it (geometry.md 2.7: ends meet exactly).
 MEETS_MM = 1
+# Where `clearing` holds, for trees_in_clearing. The scatter keeps a candidate with chance
+# `density * (1 - keep_out)` (rules.md 7.1), so a tree can stand wherever keep_out is below 1: a
+# lucky draw survives a chance cut to a few percent. Counting only `keep_out = 1` misses it (a tree
+# at 0.988 whose crown hung over a lane counted 0). At 0.9 or more the chance is a tenth or less:
+# the core of a clearing, where a kind means "none here". Below it is the fade, where a kind lets
+# trees thin out by design (lib/ways' verge fades from 5 m, past a crown's reach), so a tree there
+# is not counted.
+KEPT_OUT = 0.9
 
 EXPLAIN = {
     "lane_gap": "Distance in metres from a lane's nearer end to the nearest ford. A lane that "
@@ -53,8 +65,16 @@ EXPLAIN = {
     "one is the water's edge, where the field holds the ground, and is not compared.",
     "cottage_relief": "Highest less lowest ground at the posts inside an instance's footprint "
     "feature (its footprint grown by margin): 0 means the pad left it level.",
-    "trees_in_clearing": "How many trees stand where keep_out is 1. The scatter applies keep_out "
-    "itself, so anything above 0 is a fault in the scatter or a hand edit.",
+    "trees_in_clearing": "How many trees of a scatter stand where keep_out is 0.9 or more. The "
+    "scatter keeps a candidate with chance density * (1 - keep_out), so a tree can survive anywhere "
+    "keep_out is below 1; at 0.9 or more its chance was a tenth or less, in the core of a clearing "
+    "that a kind writes to keep trees off a lane, a cottage or the water. Above 0 means that effect "
+    "is not 1 far enough out: a crown can reach what it keeps clear. A written pin or instance is "
+    "not counted here: the build reports it as place.keep_out.",
+    "unmeasured": "A measure that could not be taken for this subject, because a field it reads "
+    "(role surface, tag water_level or role keep_out) selects no field, or several. "
+    "`data.measure` names the measure. A fault in the engine or the protocol is not this: it fails "
+    "the step (protocol.failed).",
 }
 
 HINTS = {
@@ -63,21 +83,40 @@ HINTS = {
     "the beck; beyond it, a lower `grade` on the ford (keep `bank_grade` at or below `grade`). Or "
     "move the ford along the beck (`t`) where the banks are lower.",
     "ford_depth": "Move the ford along the beck (`t`), or change the beck's `depth`.",
-    "water_step": "Look at the effects writing tag:water_level near this position.",
+    "water_step": "Lower the beck's `bank_grade`, or change its `depth` or `width`.",
     "cottage_relief": "Ground the instance with a pad kind (`ground = \"pad\"`), or widen `margin`.",
-    "trees_in_clearing": "Look for a pin inside a clearing, or a kind writing keep_out after placement.",
+    "trees_in_clearing": "Hold the mask of the kind effect writing keep_out here at 1 farther from "
+    "its feature (a lane's `verge`, a pad's `clear`, a beck's `bank`), out past a crown's reach, "
+    "so it falls below 0.9 only where no crown reaches the feature.",
+}
+
+SURFACE = "role:surface"
+WATER = "tag:water_level"
+KEEP_OUT = "role:keep_out"
+
+# The hint of an `unmeasured` warning, by the measure not taken.
+UNMEASURED_HINTS = {
+    "approach_grade": "Give the world one field with `role = \"surface\"`.",
+    "ford_depth": "Give the world one field with `role = \"surface\"` and one tagged "
+    "`water_level` (lib/water's beck writes it).",
+    "water_step": "Give the world one field with `role = \"surface\"` and one tagged "
+    "`water_level` (lib/water's beck writes it).",
+    "cottage_relief": "Give the world one field with `role = \"surface\"`.",
+    "trees_in_clearing": "Give the world one field with `role = \"keep_out\"`.",
 }
 
 
 def lint(step):
     grid = Grid(step.grid)
-    height = _field(step, "role:surface")
-    water = _field(step, "tag:water_level")
-    keep_out = _field(step, "role:keep_out")
-    lanes = _features(step, "kind:lane")
-    fords = _features(step, "kind:ford")
-    becks = _features(step, "kind:beck")
-    grounds = [f for f in _features(step, "*") if f["name"].endswith(".ground") and f["geometry"] == 2]
+    missing = {}
+    height = _field(step, "role:surface", missing)
+    water = _field(step, "tag:water_level", missing)
+    keep_out = _field(step, "role:keep_out", missing)
+    every = _features(step)
+    lanes = [f for f in every if f["kind"] == "lane"]
+    fords = [f for f in every if f["kind"] == "ford"]
+    becks = [f for f in every if f["kind"] == "beck"]
+    grounds = [f for f in every if f["name"].endswith(".ground") and f["geometry"] == 2]
     pivots = {}
     trees = []
     for row in _instances(step, "*"):
@@ -85,13 +124,25 @@ def lint(step):
     for row in _instances(step, "@plant/tree"):
         trees.append(row)
     say = Sayer(step)
-    for rec in measure(grid, height, water, keep_out, lanes, fords, becks, grounds, pivots, trees):
+    for rec in measure(grid, height, water, keep_out, lanes, fords, becks, grounds, pivots, trees,
+                       missing):
         say(*rec)
 
 
-def measure(grid, height, water, keep_out, lanes, fords, becks, grounds, pivots, trees):
-    """Every record, as (name, subject, value, position or None, message), in a fixed order."""
+def measure(grid, height, water, keep_out, lanes, fords, becks, grounds, pivots, trees,
+            missing=None):
+    """Every record, as (name, subject, value, position or None, message), in a fixed order.
+
+    ``missing`` maps the selector of each field that could not be read to why. A measure whose
+    field is missing is not taken; its subject gets one ``unmeasured`` warning instead, whose
+    value is the measure's name, so every subject still has one record (docs/plan.md)."""
     out = []
+    missing = missing or {}
+
+    def unmeasured(name, subject, pos, needs):
+        sel = next(s for s in needs if s in missing)
+        out.append(("unmeasured", subject, name, pos,
+                    f"{name} of {subject} is not taken: {missing[sel]}."))
     ford_points = [(f["name"], f["rings"][0][0][0]) for f in fords]
     for lane in lanes:
         line = lane["rings"][0][0]
@@ -124,55 +175,81 @@ def measure(grid, height, water, keep_out, lanes, fords, becks, grounds, pivots,
                 value = round(steep[0], 4)
                 out.append(("approach_grade", "feature." + name, value, _m(steep[1]),
                             f"The steepest approach to {name} rises {value} per metre."))
-        if height is not None and water is not None and grid.inside(p):
-            depth = round(grid.sample(water, p) - grid.sample(height, p), 3)
-            out.append(("ford_depth", "feature." + name, depth, _m(p),
-                        f"The water at {name} is {depth} m deep."))
-    if height is not None and water is not None and becks:
-        for name, (jump, pos) in _water_steps(grid, height, water, becks):
-            value = round(jump, 3)
-            out.append(("water_step", "feature." + name, value, pos,
-                        f"The water surface along {name} jumps at most {value} m between posts."))
-    if height is not None:
-        for g in sorted(grounds, key=lambda f: f["name"]):
-            inst = g["name"][: -len(".ground")]
-            vals = _values_inside(grid, height, g["rings"])
-            if not vals:
-                continue
-            value = round(max(vals) - min(vals), 3)
-            pos = _m(pivots[inst]) if inst in pivots else None
-            out.append(("cottage_relief", "instance." + inst, value, pos,
-                        f"The ground under {inst} varies by {value} m."))
-    if keep_out is not None and trees:
+        else:
+            unmeasured("approach_grade", "feature." + name, _m(p), [SURFACE])
+        if height is not None and water is not None:
+            if grid.inside(p):
+                depth = round(grid.sample(water, p) - grid.sample(height, p), 3)
+                out.append(("ford_depth", "feature." + name, depth, _m(p),
+                            f"The water at {name} is {depth} m deep."))
+        else:
+            unmeasured("ford_depth", "feature." + name, _m(p), [SURFACE, WATER])
+    if height is not None and water is not None:
+        if becks:
+            for name, (jump, pos) in _water_steps(grid, height, water, becks):
+                value = round(jump, 3)
+                out.append(("water_step", "feature." + name, value, pos,
+                            f"The water surface along {name} jumps at most {value} m between posts."))
+    else:
+        for b in sorted(becks, key=lambda f: f["name"]):
+            if "width" in b["attrs"]:
+                unmeasured("water_step", "feature." + b["name"], _m(b["rings"][0][0][0]),
+                           [SURFACE, WATER])
+    for g in sorted(grounds, key=lambda f: f["name"]):
+        inst = g["name"][: -len(".ground")]
+        pos = _m(pivots[inst]) if inst in pivots else None
+        if height is None:
+            unmeasured("cottage_relief", "instance." + inst, pos, [SURFACE])
+            continue
+        vals = _values_inside(grid, height, g["rings"])
+        if not vals:
+            continue
+        value = round(max(vals) - min(vals), 3)
+        out.append(("cottage_relief", "instance." + inst, value, pos,
+                    f"The ground under {inst} varies by {value} m."))
+    # Only scattered trees: a written instance's `by` is its own statement, `pin.<n>` or
+    # `instance.<n>` (protocol.md 2.2), and rules.md 8.3 reports it as place.keep_out already.
+    scattered = [t for t in trees if t["by"] and "." not in t["by"]]
+    if keep_out is None:
+        for by in sorted({t["by"] for t in scattered}):
+            unmeasured("trees_in_clearing", "scatter." + by, None, [KEEP_OUT])
+    elif scattered:
         counts = {}
-        for t in trees:
+        for t in scattered:
             by = t["by"]
             p = (t["x"], t["y"])
-            held = 1 if grid.inside(p) and grid.sample(keep_out, p) >= 1.0 else 0
+            held = 1 if grid.inside(p) and grid.sample(keep_out, p) >= KEPT_OUT else 0
             counts[by] = counts.get(by, 0) + held
         for by in sorted(counts):
-            subject = by if "." in by else "scatter." + by
-            out.append(("trees_in_clearing", subject, counts[by], None,
-                        f"{counts[by]} trees of {by} stand where keep_out holds."))
+            out.append(("trees_in_clearing", "scatter." + by, counts[by], None,
+                        f"{counts[by]} trees of {by} stand where keep_out is {KEPT_OUT} or more."))
     return out
 
 
 class Sayer:
-    """Sends each record as ``step.info``, the first of each code with its ``explain``."""
+    """Sends each measure as ``step.info`` and each ``unmeasured`` as ``step.warning``, the first
+    of each code with its ``explain``."""
 
     def __init__(self, step):
         self.step = step
         self.explained = set()
 
     def __call__(self, name, subject, value, position, message):
-        kw = {"code": name, "subject": subject, "message": message, "hint": HINTS[name],
-              "data": {"value": value}}
+        if name == "unmeasured":
+            kw = {"code": name, "subject": subject, "message": message,
+                  "hint": UNMEASURED_HINTS[value], "data": {"measure": value}}
+        else:
+            kw = {"code": name, "subject": subject, "message": message, "hint": HINTS[name],
+                  "data": {"value": value}}
         if position is not None:
             kw["position"] = [position[0], position[1]]
         if name not in self.explained:
             kw["explain"] = EXPLAIN[name]
             self.explained.add(name)
-        self.step.info(**kw)
+        if name == "unmeasured":
+            self.step.warning(**kw)
+        else:
+            self.step.info(**kw)
 
 
 class Grid:
@@ -356,8 +433,10 @@ def _m(p):
     return (p[0] / 1000.0, p[1] / 1000.0)
 
 
-# Reading through the SDK. Each read is tolerant of what this world lacks: a world with no water
-# field has no ford depth, and says nothing about it.
+# Reading through the SDK. A field the world lacks is the one read this lint tolerates, and it says
+# so: the measures that need it are `unmeasured` warnings (Sayer). Features and instances are read
+# with `*` and filtered here, so an empty selection is an empty list, never an exception. Any other
+# failure, an RpcError from the engine included, propagates and fails the step.
 
 
 def _rows(a):
@@ -365,12 +444,13 @@ def _rows(a):
     return a.tolist() if hasattr(a, "tolist") else a
 
 
-def _field(step, selector):
+def _field(step, selector, missing):
+    """The one field ``selector`` selects, or None with the reason put in ``missing``. The SDK
+    answers a selector that selects no field, or several, with LookupError (its only one here)."""
     try:
         got = step.fields([selector])
-    except (LookupError, RpcError):  # no field matches: the measures that need it are not taken
-        return None
-    if not got:
+    except LookupError as e:
+        missing[selector] = f"`{selector}` could not be read ({e})"
         return None
     return _rows(got[0])
 
@@ -379,14 +459,11 @@ def _list(col):
     return col.tolist() if hasattr(col, "tolist") else list(col)
 
 
-def _features(step, select):
-    """A feature list (protocol.md 4.3) as one dict per feature: name, kind, geometry,
+def _features(step):
+    """Every feature (protocol.md 4.3) as one dict per feature: name, kind, geometry,
     ``rings`` as pieces of rings of (x, y) millimetre pairs, and ``attrs``, the number attributes
     each feature has (its ``<attribute>?`` column is 1)."""
-    try:
-        fl = step.features(select)
-    except (LookupError, RpcError):  # no feature matches
-        return []
+    fl = step.features("*")
     names = _list(fl["name"])
     kinds = _list(fl["kind"])
     geometry = _list(fl["geometry"])
@@ -417,10 +494,8 @@ def _features(step, select):
 
 
 def _instances(step, select):
-    """An instance table (protocol.md 3.3) as one dict per row: name, asset, by, x, y (mm)."""
-    try:
-        t = step.instances(select)
-    except (LookupError, RpcError):  # nothing selected
-        return []
+    """An instance table (protocol.md 3.3) as one dict per row: name, asset, by, x, y (mm). A
+    selection of nothing is an empty table (protocol.md 3.3), so nothing is caught here."""
+    t = step.instances(select)
     cols = {k: _list(t[k]) for k in ("name", "asset", "by", "x", "y")}
     return [{k: cols[k][r] for k in cols} for r in range(len(cols["name"]))]

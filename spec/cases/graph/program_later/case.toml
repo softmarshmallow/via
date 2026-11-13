@@ -1,0 +1,45 @@
+format    = "via-case-1"
+summary   = "A plain lint built with no program configured, then with one: protocol.no_program first; the second build runs the lint (a step that did not start is not stored, graph.md 3.4)."
+milestone = 1
+actions   = ["trust", "unset", "program", "set"]
+
+# graph.md 3.4: a step that did not complete is not stored and runs again next build. A lint
+# that never started (no program, a spawn that failed) did not complete: the program's path is in
+# no key, so configuring it must not replay the stored failure.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.unset]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.unset.diag.no_program]
+code    = "protocol.no_program"
+subject = "step.checks"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.set]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.set.nodes]
+ran_includes = ["step:checks"]
+
+[action.set.check.ran]
+fn       = "run_node"
+path     = "build/ford.run.json"
+node     = "step:checks"
+includes = { status = "ran" }

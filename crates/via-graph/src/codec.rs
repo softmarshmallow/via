@@ -9,7 +9,9 @@
 
 use std::sync::Arc;
 
-use via_diag::{registry, Diag, DiagCode, KeyPart, KeyPath, Position, Site, Subject, Text, Value};
+use via_diag::{
+    registry, Diag, DiagCode, KeyPart, KeyPath, Position, Related, Site, Subject, Text, Value,
+};
 
 use crate::digest::{Dec, Digest, Enc};
 
@@ -26,9 +28,10 @@ pub trait DiagCodec: Sync {
 }
 
 /// The codec for diagnostics with core codes and with a step's own code (`step.<id>.<name>`,
-/// rebuilt on reading through [`via_diag::step::arrive`], as it first arrived). `related` entries
-/// and a stated `count` are not readable outside `via-diag`, so a diagnostic with either is
-/// refused (see [`DiagCodec::encode`]): its node's value is used but not stored.
+/// rebuilt on reading through [`via_diag::step::arrive`], as it first arrived). Every member is
+/// written: code, subject, site, message, hint, position, data, produced name, `related` entries
+/// (subject, site, position, note) and a stated `count`. A diagnostic that still would not read
+/// back equal is refused (see [`DiagCodec::encode`]): its node's value is used but not stored.
 pub struct CoreCodec;
 
 impl DiagCodec for CoreCodec {
@@ -75,7 +78,32 @@ fn encode_diag(e: &mut Enc, d: &Diag) -> Option<()> {
     e.str(&d.subject().to_string());
     encode_site(e, d.site());
     e.str(d.message().as_str()).str(d.hint().as_str());
-    match d.position() {
+    encode_position(e, d.position());
+    e.len(d.data().len());
+    for (k, v) in d.data() {
+        e.str(k);
+        encode_value(e, v);
+    }
+    match d.produced_name() {
+        None => e.byte(0),
+        Some(n) => e.byte(1).str(n),
+    };
+    e.len(d.related_list().len());
+    for r in d.related_list() {
+        e.str(&r.subject.to_string());
+        encode_site(e, &r.site);
+        encode_position(e, r.position);
+        e.str(r.note.as_str());
+    }
+    match d.stated_count() {
+        None => e.byte(0),
+        Some(n) => e.byte(1).u64(u64::from(n)),
+    };
+    Some(())
+}
+
+fn encode_position(e: &mut Enc, p: Option<Position>) {
+    match p {
         None => {
             e.byte(0);
         }
@@ -87,16 +115,46 @@ fn encode_diag(e: &mut Enc, d: &Diag) -> Option<()> {
             };
         }
     }
-    e.len(d.data().len());
-    for (k, v) in d.data() {
-        e.str(k);
-        encode_value(e, v);
-    }
-    match d.produced_name() {
-        None => e.byte(0),
-        Some(n) => e.byte(1).str(n),
-    };
-    Some(())
+}
+
+fn decode_position(d: &mut Dec) -> Option<Option<Position>> {
+    Some(match d.byte()? {
+        0 => None,
+        1 => {
+            let x = d.u64()? as i64;
+            let y = d.u64()? as i64;
+            let p = Position::plan(x, y);
+            Some(match d.byte()? {
+                0 => p,
+                1 => p.with_z(via_diag::Finite::new(f64::from_bits(d.u64()?))?),
+                _ => return None,
+            })
+        }
+        _ => return None,
+    })
+}
+
+/// One stored `related` entry.
+fn decode_related(d: &mut Dec) -> Option<Related> {
+    let subject = Subject::parse(&d.str()?).ok()?;
+    let site = decode_site(d)?;
+    let position = decode_position(d)?;
+    let note = Text::new(d.str()?).ok()?;
+    Some(Related {
+        subject,
+        site,
+        position,
+        note,
+    })
+}
+
+/// The stated count after the related entries: `None` when there is none.
+fn decode_count(d: &mut Dec) -> Option<Option<u32>> {
+    Some(match d.byte()? {
+        0 => None,
+        1 => Some(u32::try_from(d.u64()?).ok()?),
+        _ => return None,
+    })
 }
 
 fn decode_diag(d: &mut Dec) -> Option<Diag> {
@@ -110,21 +168,23 @@ fn decode_diag(d: &mut Dec) -> Option<Diag> {
     let message = Text::new(d.str()?).ok()?;
     let hint = Text::new(d.str()?).ok()?;
     let mut diag = Diag::new(code, subject, site, message, hint);
-    if d.byte()? == 1 {
-        let x = d.u64()? as i64;
-        let y = d.u64()? as i64;
-        let mut p = Position::plan(x, y);
-        if d.byte()? == 1 {
-            p = p.with_z(via_diag::Finite::new(f64::from_bits(d.u64()?))?);
-        }
+    if let Some(p) = decode_position(d)? {
         diag = diag.at(p);
     }
     for _ in 0..d.count()? {
         let k = d.str()?;
         diag = diag.with(k, decode_value(d, 0)?);
     }
-    if d.byte()? == 1 {
-        diag = diag.produced(d.str()?);
+    match d.byte()? {
+        0 => {}
+        1 => diag = diag.produced(d.str()?),
+        _ => return None,
+    }
+    for _ in 0..d.count()? {
+        diag = diag.related(decode_related(d)?);
+    }
+    if let Some(n) = decode_count(d)? {
+        diag = diag.counted(n);
     }
     Some(diag)
 }
@@ -182,6 +242,24 @@ fn decode_step_diag(d: &mut Dec) -> Option<Diag> {
         1 => Some(d.str()?),
         _ => return None,
     };
+    // A related entry as the step sent it: its subject already canonical, its position in
+    // millimetres, which the stored world maps as they are. Its site is the one arrival gives.
+    let mut related = Vec::new();
+    for _ in 0..d.count()? {
+        let r = decode_related(d)?;
+        related.push(via_diag::step::StepRelatedIn {
+            subject: Some(r.subject.to_string()),
+            position: r.position.map(|p| {
+                let mut v = vec![p.x_mm() as f64, p.y_mm() as f64];
+                if let Some(z) = p.z() {
+                    v.push(z.get());
+                }
+                v
+            }),
+            note: Some(r.note.as_str().to_string()),
+        });
+    }
+    let count = decode_count(d)?;
     let input = via_diag::step::StepDiagIn {
         severity: Some(severity),
         code: Some(name),
@@ -189,15 +267,18 @@ fn decode_step_diag(d: &mut Dec) -> Option<Diag> {
         message: Some(message),
         hint: Some(hint),
         position,
-        related: Vec::new(),
+        related,
         data: (!data.is_empty()).then_some(via_diag::step::RawValue::Table(data)),
         explain: None,
     };
-    let diag = via_diag::step::arrive(&step, &input, &Stored);
-    Some(match produced {
-        Some(n) => diag.produced(n),
-        None => diag,
-    })
+    let mut diag = via_diag::step::arrive(&step, &input, &Stored);
+    if let Some(n) = produced {
+        diag = diag.produced(n);
+    }
+    if let Some(n) = count {
+        diag = diag.counted(n);
+    }
+    Some(diag)
 }
 
 /// A stored `data` value as a step sends it: only what a step's value can be.
@@ -517,7 +598,11 @@ mod tests {
             message: Some("the lane ends 0 m from the crossing".into()),
             hint: Some("nothing to do".into()),
             position: Some(vec![153.63, 115.48, 25.25]),
-            related: Vec::new(),
+            related: vec![via_diag::step::StepRelatedIn {
+                subject: Some("feature.lane_east".into()),
+                position: Some(vec![150.0, 115.5]),
+                note: Some("the crossing".into()),
+            }],
             data: Some(via_diag::step::RawValue::Table(
                 [
                     ("value".to_string(), via_diag::step::RawValue::Number(0.0)),
@@ -540,9 +625,33 @@ mod tests {
     }
 
     #[test]
-    fn related_and_count_are_refused_not_lost() {
-        let d = sample().counted(3);
-        assert!(CoreCodec.encode(&[d]).is_none());
+    fn related_and_count_read_back_equal() {
+        let related = |s: &str, site: Site, position: Option<Position>| Related {
+            subject: Subject::parse(s).unwrap(),
+            site,
+            position,
+            note: via_diag::text!("the other end of the loop"),
+        };
+        let d = sample()
+            .related(related(
+                "field.loop_b",
+                Site::Expr(KeyPath::key("fields").then("loop_b"), 0..6),
+                Some(Position::plan(3, -4)),
+            ))
+            .related(related("world", Site::World, None))
+            .counted(3);
+        let plain = Diag::new(
+            codes::diag::SKIPPED,
+            Subject::World,
+            Site::World,
+            via_diag::text!("1 thing was not built"),
+            via_diag::text!("fix the error"),
+        )
+        .counted(1);
+        let ds = vec![d, plain, sample()];
+        let b = CoreCodec.encode(&ds).expect("related and count are stored");
+        assert_eq!(CoreCodec.decode(&b), Some(ds.clone()));
+        assert!(CoreCodec.decode(&b[..b.len() - 1]).is_none());
     }
 
     #[test]

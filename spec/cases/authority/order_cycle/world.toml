@@ -8,13 +8,19 @@ pack       = "pack.toml"
 role = "surface"
 base = 0
 
-[feature.a]
-kind = "sha"
-path = [[0, 8], [16, 8]]
-k    = 1
+[feature.lane]
+kind    = "sha"
+path    = [[2, 8]]
+k       = 1
+ends_at = "yard"
 
-[feature.b]
-kind = "sha"
-follows = { ref = "a", span = [0, 0.5] }
-k    = 2
-ends_at = "a.end"
+[feature.spur]
+kind      = "sha"
+starts_at = "lane.end"
+path      = [[11, 8]]
+k         = 2
+
+[instance.yard]
+asset  = "block"
+at     = [8, 8]
+ground = "pad9"

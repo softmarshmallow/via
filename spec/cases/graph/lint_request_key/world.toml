@@ -1,0 +1,12 @@
+name       = "tags"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 0
+tags = ["aa"]
+
+[step.look]
+when    = "lint"
+command = ["python", "steps/lint.py"]

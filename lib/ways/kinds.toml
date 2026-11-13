@@ -1,6 +1,10 @@
 # The ways library: lanes and the places they cross water (docs/plan.md, "Ford's libraries").
 #
-# A lane keeps trees off its bed and its verges (`role:keep_out`), so no crown hangs over it.
+# A lane keeps trees off its bed and its verges (`role:keep_out`). keep_out only multiplies a
+# scatter's chance (rules.md 7.1), so the verge holds it at 1 out past a crown's reach and fades
+# beyond: a tree whose crown reaches the lane's edge has no chance, and one in the fade stands
+# with its crown clear of the lane. The reach is the tallest pack tree's crown (primitive's
+# `tree_oak`, 2.5 m), with half a metre to spare.
 #
 # A way meets another thing only at its ends (geometry.md 2.7). Where a lane meets water, a named
 # thing owns the meeting (R18): the lane ends at a `ford` (`ends_at = "ford"`), and the next lane
@@ -24,7 +28,7 @@ mask  = "= 1 - smoothstep(width / 2, width / 2 + 6, d)"
 [kind.lane.effect.verge]                  # no tree on the lane, nor so near that its crown hangs over it
 field = "role:keep_out"
 value = "= 1"
-mask  = "= 1 - smoothstep(width / 2 + 2, width / 2 + 4, d)"
+mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"   # 1 out to 5 m, 0.5 at 6 m, 0 by 7 m
 
 [kind.ford]
 authority = "anchored"

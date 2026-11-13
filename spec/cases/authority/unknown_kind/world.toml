@@ -1,7 +1,7 @@
 name       = "tarns"
 extent     = [0, 0, 128, 128]
 resolution = 1
-include    = ["water"]
+include    = ["water", "lookout"]
 pack       = "pack.toml"
 
 [field.height]
@@ -37,3 +37,8 @@ water_height = 1
 asset  = "block"
 at     = [100, 20]
 ground = "pnod"
+
+[feature.view]
+kind   = "bookmark"
+at     = [60, 100]
+toward = "puddle"

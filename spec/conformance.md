@@ -118,6 +118,7 @@ Each action holds exactly one of these keys, which says what it is:
 | `delete` | path | Deletes a file or a folder. |
 | `flip` | path | Inverts every bit of the byte at `at` (integer, a byte offset from the start). |
 | `truncate` | path | Cuts the file to `bytes` (integer) bytes. |
+| `derive` | path | Writes a `via kernel` input (`geometry.md` 7.1) made from the kernel output `from`, so one call feeds the next. `as = "segments"`: noding's segments, each a two-point `path` with source `s<index>` (`geometry.md` 3.1 Idempotent). `as = "cells"`: a folder of one `cells` input per area of the network output `from`, with `input`'s shapes and grid, `params` added, the area by its start vertex and as frontage every `(source, edge, side)` on its shell, the side facing the area. Nothing is computed but this rewriting. |
 
 Every path is relative to the working folder. Only `via` actions carry the keys below and the
 checks of section 3.4. The others are how a case edits text between builds ("then move the lane's
@@ -144,6 +145,9 @@ end"), and how `build.md` case 9 damages a build.
 | `{repo}` | The repository root's absolute path (`--lib {repo}/lib`). |
 | `{python}` | The absolute path of the Python running the runner, for a step's program (`via config program python {python}`). |
 | `{item}` | Under `for_each`, the current match. |
+
+Under `for_each`, `{item}` is also replaced in the string arguments of the action's named checks
+(3.4), so each run's check reads that run's files.
 
 Nothing in a copied or written file is replaced. A case that needs an absolute path in a file, such
 as a program path in `config.toml`, gets it by running the command that writes that file.
@@ -216,11 +220,19 @@ check not listed is a case error. Rows are added with the cases that need them.
 | `json_count` | `path` (a JSON file), `pointer`, `count` | The list or object at `pointer` has exactly `count` members. | `geometry.md` (counts of vertices, segments, junctions, edges, areas, cells, pieces); `identity.md` 47 to 49 |
 | `run_node` | `path` (a run report), `node` (a node id), `includes` (a table) | The report's node object with that id exists and holds these members with these values (3.4 `includes`). | `graph.md` why, lint gate, failed step |
 | `run_report_valid` | `path` (a run report) | `graph.md` 6.3: canonical JSON, `format` `"via-run-0"`, every member of 6.3; `nodes` lists every node once, in id order; `totals` counts equal the statuses; every `ran` node has a cause, every other `null`. | `graph.md` run report, why |
-| `json_list` | `path`, `pointer`; `from`, `at_least`, `includes`, `starts`, `last` (optional) | The list at `pointer` has at least `at_least` (default 1) elements from index `from` (default 0); each of those includes `includes` (3.4 `includes`) and has each member of `starts` (a table of strings) beginning with that string; its last element equals `last` (3.4 `value`). | `build.md` 11.2, plan ford row `downstream` (the trees past the written entries; a cause's `via` ends at the thing's node) |
+| `pack_root_resolves` | `build` (a build directory) | `build.md` 4: the manifest's `locations.pack_root`, read from that directory, names an existing folder holding every file `assets.files` lists. | `graph.md` two depths |
+| `json_list` | `path`, `pointer`; `from`, `at_least`, `includes`, `starts`, `last`, `nulls` (optional) | The list at `pointer` has at least `at_least` (default 1) elements from index `from` (default 0); each of those includes `includes` (3.4 `includes`), has each member of `starts` (a table of strings) beginning with that string, and has each member named in `nulls` (a list of strings) present with the value `null`, which TOML cannot write; its last element equals `last` (3.4 `value`). | `build.md` 11.2, plan ford row `downstream` (the trees past the written entries; a cause's `via` ends at the thing's node); `graph.md` 6.4 (`causes` null against a build of another store) |
 | `instance_at` | `build`, `name`, `at` | The build holds exactly one instance named `name`, its plan origin exactly `at` in integer millimetres (`build.md` 8). | plan, ford row `hand` ("the pin stands"); `identity.md` 31 |
 | `changes_inside` | `path`, `prefix`, `at`, `radius`, `what`, `cause` (a table) | At least one entry whose name starts with `prefix` has its `before` or `after` `at` at distance `<= radius` from `at`; every such entry's `what` equals `what` and one of its causes includes `cause`. | `identity.md` 4.3, 5, 31 (what a clear removed, and its cause) |
 | `changes_absent` | `path`; `entry_names`, `causes` (lists, optional) | No entry's `name` is in `entry_names`, and no entry has a cause whose `cause` starts with a string of `causes`. | plan, ford rows `downstream` (`beck` untouched) and `hand` ("both hand edits unchanged") |
 | `vectors_match` | `path` (a vector file of `numbers.md` 10's form); `fns` (optional, a list of `fn` names) | Every vector of the file, or of those whose `fn` is in `fns`, is printed by the action (`via vectors`, `build.md` 14) as `{"got", "id"}`, and its `got` equals the vector's `expected`: bit patterns exactly, numbers by value. | `build.md` 14 ("the runner compares `got`"); `numbers.md` seed_vectors; `formulas.md` 29, 52; `identity.md` 45 |
+| `network_valid` | `path` (a `network` output), `input` (its input) | Recomputed from the segments and the input's path ends: Noded (`geometry.md` 3.1); `components` the count of connected pieces; Euler at both levels; the junctions of 3.2's definition, by `(x, y)`, and as many edges as chains between them; as many areas as bounded faces, each area's shell one of them, canonical (2.5), its holes clockwise, its `twice_area` its rings'; Closure exactly. | `geometry.md` 3.2, `linework_a` network |
+| `network_measures` | `path`, `reference` (`fixtures/kernel/townland/reference.json`) | Always: a note on the outcome gives the area count and total area beside the reference's (a measure, never a failure; `fixtures/README.md`). | `geometry.md` 6 Measures |
+| `noding_valid` | `path` (a `noding` output), `input`; `bound` (mm, default 1.5) | Noded; each segment's ends within `bound` of every source segment its provenance names (Close); every source vertex within `bound` of a segment naming its source, and each path's `t` intervals covering 0 to 1 (Faithful). | `geometry.md` 3.1, `near`, `linework_a` |
+| `noding_same` | `first`, `second` (two `noding` outputs) | The same `vertices` and the same segment `ends`, byte for byte (provenance differs by construction under `derive`). | `geometry.md` 3.1 Idempotent |
+| `names_same` | `first`, `second` (two `names` outputs) | The same junction, edge and area names, as sets; none empty. | `identity.md` 47 |
+| `cells_valid` | `path` (a `cells` output), `input` (its input), `network` (the network the area came from); `bound` (mm, default 1.5) | Fronts: each cell borders its frontage edge along at least `min_cell_length`, ends within `bound` of the edge, or a `geom.cell_small` lies within 1 m of it; one cell per frontage and station; Closure: cells and `rest` sum to the area's twice-area within `2 × bound × perimeter`, what noding may move an outline; no cell gives `geom.cell_none`. | `geometry.md` 3.6, `linework_a` cells |
+| `sample_terrain` | `path` (a `sample` answer), `input` (its question), `field` (the built terrain field), `manifest` | Each row is `surfaces.md` 2.2 computed from the field's posts by `fields.md` 1.2's cell and order, in f64, bit for bit, `inside` true. | `surfaces.md` sample_edge |
 
 ### 3.5 Expected diagnostics
 
@@ -257,7 +269,7 @@ key not written is not compared. Messages and hints are never compared (`diagnos
 | `related` | A list of tables `{ file, line }`: each is among the record's `related`. |
 | `chain` | A list of tables `{ through, name, file, line }`: as long as the record's `chain`, in its order, and each entry includes the members written (3.4 `includes`), so an unwritten `owner` is not compared. |
 | `failed_on` | Its `failed_on`. |
-| `records` | How many records match this expectation. Default 1. `diagnostics.md`'s "ten `place.relief` records" is `records = 10`. |
+| `records` | How many records match this expectation. Default 1. `diagnostics.md`'s "ten `place.relief` records" is `records = 10`. `0`: no record agrees with the expectation, whatever the mode ("no `build.baseline_missing`"). |
 | `from` | `world` (default) or `run`. |
 
 **Matching.** The runner finds an assignment in which each expectation takes `records` distinct

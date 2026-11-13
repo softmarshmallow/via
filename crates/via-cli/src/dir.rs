@@ -172,27 +172,44 @@ fn busy_or_failed(p: &Path, e: &std::io::Error) -> Diag {
     }
 }
 
-/// Every file under `dir` as a build path, sorted.
+/// Every file under `dir` as a build path, sorted. Symbolic links are neither followed nor
+/// listed: a link to a folder would repeat the walk (to `ELOOP`), and a link to a file outside
+/// `dir` would be read as if it were in it.
 pub fn listing(dir: &Path) -> Vec<String> {
-    fn walk(base: &Path, d: &Path, out: &mut Vec<String>) {
+    listing_with_links(dir).0
+}
+
+/// The files under `dir`, then the symbolic links met, each as a build path, sorted. Links are
+/// not followed.
+pub fn listing_with_links(dir: &Path) -> (Vec<String>, Vec<String>) {
+    fn rel(base: &Path, p: &Path) -> Option<String> {
+        let r = p.strip_prefix(base).ok()?;
+        let parts: Vec<String> = r
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        Some(parts.join("/"))
+    }
+    fn walk(base: &Path, d: &Path, files: &mut Vec<String>, links: &mut Vec<String>) {
         let Ok(rd) = std::fs::read_dir(d) else { return };
         for e in rd.flatten() {
+            // `DirEntry::file_type` does not follow a link.
+            let Ok(t) = e.file_type() else { continue };
             let p = e.path();
-            if p.is_dir() {
-                walk(base, &p, out);
-            } else if let Ok(rel) = p.strip_prefix(base) {
-                let parts: Vec<String> = rel
-                    .components()
-                    .map(|c| c.as_os_str().to_string_lossy().into_owned())
-                    .collect();
-                out.push(parts.join("/"));
+            if t.is_symlink() {
+                links.extend(rel(base, &p));
+            } else if t.is_dir() {
+                walk(base, &p, files, links);
+            } else {
+                files.extend(rel(base, &p));
             }
         }
     }
-    let mut out = Vec::new();
-    walk(dir, dir, &mut out);
-    out.sort();
-    out
+    let (mut files, mut links) = (Vec::new(), Vec::new());
+    walk(dir, dir, &mut files, &mut links);
+    files.sort();
+    links.sort();
+    (files, links)
 }
 
 #[cfg(test)]
@@ -252,5 +269,22 @@ mod tests {
         assert!(out.join(".previous").exists());
         assert!(!old.exists());
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn listing_follows_no_link() {
+        let d = tmp("links");
+        std::fs::create_dir_all(d.join("sub")).unwrap();
+        std::fs::write(d.join("sub/f.txt"), b"x").unwrap();
+        let outside = tmp("links-outside");
+        std::fs::write(outside.join("secret"), b"s").unwrap();
+        std::os::unix::fs::symlink(".", d.join("a")).unwrap();
+        std::os::unix::fs::symlink(".", d.join("b")).unwrap();
+        std::os::unix::fs::symlink(outside.join("secret"), d.join("x")).unwrap();
+        let (files, links) = listing_with_links(&d);
+        assert_eq!(files, vec!["sub/f.txt"]);
+        assert_eq!(links, vec!["a", "b", "x"]);
+        assert_eq!(listing(&d), vec!["sub/f.txt"]);
     }
 }

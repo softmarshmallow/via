@@ -17,7 +17,7 @@ use via_num::Grid;
 
 use crate::decl::{Attr, Decls, Role, ShapeDecl, Tier};
 use crate::pack::{self, Pack, Roots};
-use crate::place::{Geo, Placer};
+use crate::place::{Geo, Placed, Placer};
 use crate::report::{self, ChangeReport};
 use crate::resolve::{Fields, View};
 use crate::rules::{self, Placement};
@@ -83,6 +83,9 @@ pub struct FeatureOut {
     pub points: Vec<(i64, i64)>,
     pub facing: Option<i64>,
     pub attrs: BTreeMap<String, String>,
+    /// Each attribute's type: `number`, `bool` or `text` (`protocol.md` 4.3's columns). Empty for
+    /// a feature read back from a snapshot, which keeps the text only.
+    pub attr_types: BTreeMap<String, String>,
     /// Name attributes resolved: attribute to (place name, plan point).
     pub names: BTreeMap<String, (String, (i64, i64))>,
     /// The kind's `output`, for the loader.
@@ -149,6 +152,12 @@ pub struct Build {
     pub meetings: Vec<Meeting>,
     /// The resolved facts of every asset the build uses (`build.md` 7).
     pub assets: BTreeMap<String, BTreeMap<String, String>>,
+    /// Where each used asset's declared facts are written (`assets.md` 7): asset id to fact key to
+    /// (file as a record names it, 1-based line); the key `""` is the asset's header.
+    pub asset_lines: BTreeMap<String, BTreeMap<String, (String, u32)>>,
+    /// Each produced instance a hand edit removed, to the edit's statement (`clear.<id>`,
+    /// `pin.<id>`): the cause of its removal, or of its return when the edit goes.
+    pub removed_by: BTreeMap<String, String>,
     /// The lint steps the caller runs after the build (M1 runs one, through the SDK).
     pub lint_steps: Vec<(String, Vec<String>)>,
     /// Every diagnostic, raised, not yet located: emit them against the merged world.
@@ -283,13 +292,18 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
         for f in decls.fields.values().filter(|f| f.role == material) {
             for row in &f.rows {
                 if let Some(m) = row.paint.as_deref().filter(|m| unknown(m)) {
-                    diags.push(text::at_path(
-                        codes::pack::UNKNOWN_MATERIAL,
-                        "field",
-                        &f.name,
-                        &["then", &row.id, "paint"],
-                        &format!("the pack binds no material `{m}`"),
-                        &text::near_hint(m, names(), "add `[material.<name>]` to the pack"),
+                    diags.push(text::with_nearest(
+                        text::at_path(
+                            codes::pack::UNKNOWN_MATERIAL,
+                            "field",
+                            &f.name,
+                            &["then", &row.id, "paint"],
+                            &format!("the pack binds no material `{m}`"),
+                            &text::near_hint(m, names(), "add `[material.<name>]` to the pack"),
+                        ),
+                        m,
+                        names(),
+                        |n: &str| pk.declaration("material", n),
                     ));
                 }
             }
@@ -300,13 +314,18 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
             };
             for e in k.effects.values().filter(to_material) {
                 if let Some(m) = e.paint.as_deref().filter(|m| unknown(m)) {
-                    diags.push(text::at_path(
-                        codes::pack::UNKNOWN_MATERIAL,
-                        "kind",
-                        &k.id,
-                        &["effect", &e.id, "paint"],
-                        &format!("the pack binds no material `{m}`"),
-                        &text::near_hint(m, names(), "add `[material.<name>]` to the pack"),
+                    diags.push(text::with_nearest(
+                        text::at_path(
+                            codes::pack::UNKNOWN_MATERIAL,
+                            "kind",
+                            &k.id,
+                            &["effect", &e.id, "paint"],
+                            &format!("the pack binds no material `{m}`"),
+                            &text::near_hint(m, names(), "add `[material.<name>]` to the pack"),
+                        ),
+                        m,
+                        names(),
+                        |n: &str| pk.declaration("material", n),
                     ));
                 }
             }
@@ -504,6 +523,7 @@ pub(crate) fn finish(
         out.selections
             .insert(who.clone(), (name.clone(), (p.x, p.y)));
     }
+    out.removed_by = produced.removed_by;
     let mut all: Vec<Placement> = Vec::new();
     all.append(&mut hand);
     all.append(&mut late);
@@ -530,8 +550,8 @@ pub(crate) fn finish(
                         .collect(),
                 },
             );
-            let mut deps: BTreeSet<String> =
-                BTreeSet::from([format!("field.{name}"), "world".to_string()]);
+            let mut deps: BTreeSet<String> = frame_deps();
+            deps.insert(format!("field.{name}"));
             for w in &r.writers {
                 deps.insert(w.clone());
             }
@@ -587,6 +607,18 @@ pub(crate) fn finish(
                     .iter()
                     .map(|(k, v)| (k.clone(), attr_text(v)))
                     .collect(),
+                attr_types: f
+                    .attrs
+                    .iter()
+                    .map(|(k, v)| {
+                        let t = match v {
+                            Attr::Number(_) => "number",
+                            Attr::YesNo(_) => "bool",
+                            Attr::Text(_) => "text",
+                        };
+                        (k.clone(), t.to_string())
+                    })
+                    .collect(),
                 names,
                 output: kind.and_then(|k| k.output.clone()),
                 rings,
@@ -625,6 +657,15 @@ pub(crate) fn finish(
         if let Some(asset) = pk.assets.get(a) {
             out.assets.insert(a.clone(), asset.facts());
         }
+        if let Some(lines) = pk.lines.get(a) {
+            out.asset_lines.insert(
+                a.clone(),
+                lines
+                    .iter()
+                    .map(|(k, l)| (k.clone(), (pk.display.clone(), *l)))
+                    .collect(),
+            );
+        }
     }
     // Meetings (surfaces.md 3.3): path ends at a place, on the terrain in M1.
     let surface = fields.surface();
@@ -659,6 +700,7 @@ pub(crate) fn finish(
     }
     out.meetings
         .sort_by(|x, y| (x.a.as_bytes(), x.b.as_bytes()).cmp(&(y.a.as_bytes(), y.b.as_bytes())));
+    unowned_crossings(&decls, &placed, &mut diags);
     // Dependencies, for causes.
     deps_of(&decls, &placed, &mut out);
     out.diagnostics = diags;
@@ -703,9 +745,18 @@ pub(crate) fn finish(
     out
 }
 
+/// The frame's keys as dependencies (`world.<key>`, `graph.md` 1): a world key enters a thing's
+/// causes only when it is a key of the frame, or `pack` for a thing that resolves an asset name.
+pub(crate) fn frame_deps() -> BTreeSet<String> {
+    crate::graph::FRAME_KEYS
+        .iter()
+        .map(|k| format!("world.{k}"))
+        .collect()
+}
+
 /// The statements a feature, instance or pin depends on, following its placement references.
 pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> BTreeSet<String> {
-    let mut s = BTreeSet::from(["world".to_string()]);
+    let mut s = frame_deps();
     if !seen.insert(id.to_string()) {
         return s;
     }
@@ -759,6 +810,7 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         }
     } else if let Some(i) = d.instances.get(base) {
         s.insert(format!("instance.{base}"));
+        s.insert(crate::graph::PACK.to_string());
         s.insert(format!("asset:{}", i.asset));
         if let Some(g) = &i.ground {
             s.insert(format!("kind.{g}"));
@@ -770,6 +822,7 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         }
     } else if let Some(p) = d.pins.get(base) {
         s.insert(format!("pin.{base}"));
+        s.insert(crate::graph::PACK.to_string());
         s.insert(format!("asset:{}", p.asset));
         match &p.place {
             crate::decl::Place::On(o) => s.extend(feature_deps(d, &o.reference, seen)),
@@ -847,7 +900,9 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
     for (name, maker) in names {
         let mut s = match &maker {
             Some(m) => {
-                let mut s = BTreeSet::from([format!("scatter.{m}"), "world".to_string()]);
+                let mut s = frame_deps();
+                s.insert(format!("scatter.{m}"));
+                s.insert(crate::graph::PACK.to_string());
                 s.extend(ground_fields.iter().cloned());
                 for i in d.instances.keys() {
                     s.extend(
@@ -886,4 +941,113 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
         out.deps.insert(("instance".into(), name), s);
     }
     let _ = P::new(0, 0);
+}
+
+/// `geometry.md` 2.7 (R18): every point where two path features with kinds cross or touch must be
+/// owned: the end of one named onto the other or onto a point on it (`starts_at`, `ends_at`), or
+/// one following the other. Networks own their junctions (M3). Any other meeting is
+/// `geom.unowned_crossing`, at the point, naming both. Guides (no kind) are left out.
+fn unowned_crossings(decls: &Decls, placed: &Placed, diags: &mut Vec<Diag>) {
+    let paths: Vec<(&String, &crate::decl::FeatureDecl, &via_geom::lineref::Line)> = decls
+        .features
+        .iter()
+        .filter(|(_, f)| f.kind.is_some())
+        .filter_map(|(id, f)| match placed.shapes.get(id) {
+            Some(Geo::Path { line }) => Some((id, f, line)),
+            _ => None,
+        })
+        .collect();
+    // The feature a place name stands for: a path's end is the path; a point feature `on` a
+    // path is on that path.
+    let base = |r: &str| -> String {
+        r.strip_suffix(".start")
+            .or_else(|| r.strip_suffix(".end"))
+            .unwrap_or(r)
+            .to_string()
+    };
+    let lies_on = |name: &str, other: &str| -> bool {
+        let b = base(name);
+        if b == other {
+            return true;
+        }
+        match decls.features.get(&b).map(|f| &f.shape) {
+            Some(ShapeDecl::Point(crate::decl::Place::On(o))) => base(&o.reference) == other,
+            _ => false,
+        }
+    };
+    // The place `a`'s end at `p` is named onto, when `p` is such an end.
+    let named_end = |a: &crate::decl::FeatureDecl, line: &via_geom::lineref::Line, p: P| {
+        let first = line.pts[0];
+        let last = line.pts[line.pts.len() - 1];
+        let mut out = Vec::new();
+        if p == first {
+            out.extend(a.starts_at.as_deref().map(base));
+        }
+        if p == last {
+            out.extend(a.ends_at.as_deref().map(base));
+        }
+        out
+    };
+    let follows = |a: &crate::decl::FeatureDecl, other: &str| matches!(&a.shape, ShapeDecl::Follows(fl) if base(&fl.reference) == other);
+    for (k, (ia, fa, la)) in paths.iter().enumerate() {
+        for (ib, fb, lb) in &paths[k + 1..] {
+            if follows(fa, ib) || follows(fb, ia) {
+                continue;
+            }
+            let mut points: BTreeSet<(i64, i64)> = BTreeSet::new();
+            for sa in 0..la.segments() {
+                let (a0, a1) = la.seg(sa);
+                for sb in 0..lb.segments() {
+                    let (b0, b1) = lb.seg(sb);
+                    match via_geom::pred::meet(a0, a1, b0, b1) {
+                        via_geom::pred::Meet::Point(p) => {
+                            points.insert((p.x, p.y));
+                        }
+                        via_geom::pred::Meet::Overlap => {
+                            // A shared stretch: reported at its first shared point.
+                            for q in [a0, a1, b0, b1] {
+                                if via_geom::pred::on_segment(q, a0, a1)
+                                    && via_geom::pred::on_segment(q, b0, b1)
+                                {
+                                    points.insert((q.x, q.y));
+                                    break;
+                                }
+                            }
+                        }
+                        via_geom::pred::Meet::None => {}
+                    }
+                }
+            }
+            for (x, y) in points {
+                let p = P::new(x, y);
+                // Owned: an end named onto the other or onto a point on it, or both ends named
+                // onto one place, which owns the junction (ford's lanes both end at the ford).
+                let (na, nb) = (named_end(fa, la, p), named_end(fb, lb, p));
+                if na.iter().any(|t| lies_on(t, ib))
+                    || nb.iter().any(|t| lies_on(t, ia))
+                    || na.iter().any(|t| nb.contains(t))
+                {
+                    continue;
+                }
+                diags.push(
+                    text::at_header(
+                        codes::geom::UNOWNED_CROSSING,
+                        "feature",
+                        ib,
+                        &format!("`{ia}` and `{ib}` meet here and neither owns the meeting"),
+                        &format!(
+                            "end one on the other (`ends_at = \"{ia}.end\"`), or on a point feature placed `on` it"
+                        ),
+                    )
+                    .at(text::pos(x, y))
+                    .related(via_diag::Related {
+                        subject: Subject::entity("feature", ia.as_str()),
+                        site: Site::Header,
+                        position: None,
+                        note: via_diag::text!("the other path"),
+                    }),
+                );
+            }
+        }
+    }
 }

@@ -4,14 +4,20 @@ milestone = 1
 actions   = ["program", "trust", "base", "vertex"]
 
 # graph.md's `vertex` row, the plan's ford row changes/vertex.toml ("Must follow"); its "Must hold"
-# is fields/change_windows. The earlier expected/ran.txt was recorded from a build (whole-field
-# nodes, contrary to graph.md 1's per-chunk nodes) and is removed; the ran set is asserted by what
-# the chapter fixes until ford_vertex.ran is derived from it. The beck's vertex [160, 90] moves to
-# [164, 90]: the beck's shape, the ford on it (t = 0.55 of a new path), the lanes ending and
-# starting at the ford and the bookmark naming it all run.
-# Chunks (0, 3) and (3, 3), x 0 to 64 and 192 to 256 m, y 192 to 256 m (k = 128 posts, graph.md 1):
-# no effect window of the beck (x 140 to 166 above y 170), the lanes (y below 132 + 12), the ford or
-# the cottage's pad reaches them, before or after the change, so none of their field nodes runs.
+# is fields/change_windows. `ran` equals ford_vertex.ran, which is expected/ran.txt (conformance.md
+# 2), derived from graph.md 1 and 2, not recorded; the downstream case's notes give the chunks and
+# the reasons that repeat here. The beck's vertex [160, 90] moves to [164, 90]:
+# - source:changes/vertex.toml (a new node), merge; statements: shape:beck, attr:beck. Then
+#   on_bank and the ford stand on the beck (the ford moves about 2.8 m east, to about (156.4, 115.3));
+#   the lanes, the bookmarks, the cottage, its footprint and the trees follow as in downstream.
+# - distance: beck in columns 1 and 2, every row (bbox grown by 16 m stays below x = 192); ford
+#   (2, 1), (2, 2); lane_west columns 0 to 2 and lane_east columns 2, 3, rows 1 and 2;
+#   cottage.ground (1, 1), (1, 2), since the pad straddles y = 128; so does the cottage's own
+#   footprint, so build-nofootprint clearing runs in both.
+# - height: the beck's columns and rows 1, 2 of columns 0 and 3. clearing: the same, less (1, 3)
+#   and (2, 3): above y = 192 the beck's nearest point is the unmoved vertex (140, 170), so
+#   distance:beck there ran with an unchanged value, and the bank has no measure (early cutoff).
+#   water: the beck's columns, then (0, 1), (3, 1), (3, 2), as in downstream.
 
 [copy.ford]
 from = "examples/ford"
@@ -38,5 +44,4 @@ diagnostics = "includes"
 out         = "build/ford"
 
 [action.vertex.nodes]
-ran_includes = ["source:changes/vertex.toml", "merge", "shape:beck/v:build", "shape:ford/v:build", "shape:lane_east/v:build", "shape:lane_west/v:build", "attr:at_ford", "write:manifest.json"]
-not_ran      = ["field:clearing/v:build/w:0.384.129.513", "field:height/v:build/w:0.384.129.513", "field:water/v:build/w:0.384.129.513", "field:clearing/v:build/w:384.384.513.513", "field:height/v:build/w:384.384.513.513", "field:water/v:build/w:384.384.513.513"]
+ran_file = "expected/ran.txt"

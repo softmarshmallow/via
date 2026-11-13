@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from . import canon, files
+from . import canon, files, kernel
 
 Failure = tuple[str, str, str]
 
@@ -366,6 +366,28 @@ def _vector_equal(a: Any, b: Any) -> bool:
 # --- json_count -------------------------------------------------------------------------------
 
 
+def pack_root_resolves(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """`build.md` 4: the manifest's `locations.pack_root`, a path from the build directory, names
+    an existing folder that holds every file `assets.files` lists."""
+    build = work / args["build"]
+    m = _read_json(build / "manifest.json")
+    root = (m.get("locations") or {}).get("pack_root")
+    if not isinstance(root, str):
+        return [(f"check.{cid}", f"{args['build']}: pack_root is a path", repr(root))]
+    folder = build / root
+    if not folder.is_dir():
+        return [(f"check.{cid}", f"{args['build']}: pack_root {root} is a folder", "absent")]
+    missing = []
+    for a in (m.get("assets") or {}).values():
+        files = a.get("files") if isinstance(a, dict) else None
+        for f in (files.values() if isinstance(files, dict) else files or []):
+            if isinstance(f, str) and not (folder / f).is_file():
+                missing.append(f)
+    if missing:
+        return [(f"check.{cid}", f"{args['build']}: asset files under pack_root", ", ".join(sorted(missing)))]
+    return []
+
+
 def json_count(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
     """The list or object a JSON Pointer names in a JSON file has exactly `count` members."""
     doc = _read_json(work / args["path"])
@@ -492,8 +514,8 @@ def _starts(got: Any, prefixes: dict[str, str]) -> bool:
 
 def json_list(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
     """The list at `pointer`: at least `at_least` (default 1) elements from index `from` (default
-    0); each of those includes `includes` and has each member of `starts` beginning with that
-    prefix; its last element equals `last`."""
+    0); each of those includes `includes`, has each member of `starts` beginning with that
+    prefix and each member named in `nulls` present and null; its last element equals `last`."""
     doc = _read_json(work / args["path"])
     try:
         node = canon.resolve(doc, args["pointer"])
@@ -513,6 +535,9 @@ def json_list(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -
             break
         if "starts" in args and not _starts(e, args["starts"]):
             fails.append((f"check.{cid}", f"element {i} starts {canon.show(args['starts'])}", canon.show(e)))
+            break
+        if "nulls" in args and not (isinstance(e, dict) and all(k in e and e[k] is None for k in args["nulls"])):
+            fails.append((f"check.{cid}", f"element {i} has {', '.join(args['nulls'])} null", canon.show(e)))
             break
     if "last" in args and (not node or not canon.values_equal(args["last"], node[-1])):
         fails.append((f"check.{cid}", f"last element {canon.show(args['last'])}",
@@ -618,6 +643,95 @@ def changes_absent(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, An
     return fails
 
 
+# --- kernel guarantees (geometry.md 3.1, 3.2, 3.6; identity.md 47) ----------------------------
+
+
+def _kread(path: Path) -> dict[str, Any]:
+    try:
+        return kernel.read(path)
+    except kernel.KernelFileError as e:
+        raise NamedCheckError(str(e)) from e
+
+
+def network_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    return kernel.network_valid(cid, _kread(work / args["path"]), _kread(work / args["input"]))
+
+
+def network_measures(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """A measure, reported as a note and never a failure (geometry.md 6, fixtures/README.md)."""
+    note = kernel.network_measures(_kread(work / args["path"]), _kread(work / args["reference"]))
+    if "note" in ctx:
+        ctx["note"](f"{cid}: {note}")
+    return []
+
+
+def noding_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    bound = Fraction(str(args.get("bound", "1.5")))
+    return kernel.noding_valid(cid, _kread(work / args["path"]), _kread(work / args["input"]), bound)
+
+
+def noding_same(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    return kernel.noding_same(cid, _kread(work / args["first"]), _kread(work / args["second"]))
+
+
+def names_same(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    return kernel.names_same(cid, _kread(work / args["first"]), _kread(work / args["second"]))
+
+
+def cells_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    try:
+        return kernel.cells_valid(cid, _kread(work / args["path"]), _kread(work / args["input"]),
+                                  _kread(work / args["network"]), float(args.get("bound", 1.5)))
+    except kernel.KernelFileError as e:
+        raise NamedCheckError(str(e)) from e
+
+
+# --- sample_terrain (surfaces.md 2.2, fields.md 1.2) ------------------------------------------
+
+
+def sample_terrain(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """Each row of a `sample` answer on the terrain equals surfaces.md 2.2 computed from the built
+    field's posts: the cell of fields.md 1.2, z its bilinear interpolant, gx and gy that
+    interpolant's gradient, in f64 in the chapter's order, bit for bit; `inside` true."""
+    name = f"check.{cid}"
+    ans = _read_json(work / args["path"])
+    inp = _read_json(work / args["input"])
+    x0, y0, r, nx, ny = _frame(_read_json(work / args["manifest"]))  # metres (build.md 5)
+    x0, y0, r = x0 * 1000, y0 * 1000, r * 1000
+    if r.denominator != 1 or x0.denominator != 1 or y0.denominator != 1:
+        raise NamedCheckError("manifest frame not in integer millimetres")
+    arr = files.load_array(work / args["field"])
+    if arr.shape != (ny, nx):
+        return [(name, f"field of shape ({ny}, {nx})", str(arr.shape))]
+    rm, R = int(r), int(r) / 1000.0
+    fails: list[Failure] = []
+    for k, (x, y) in enumerate(zip(inp["x"], inp["y"])):
+        a, b = x - int(x0), y - int(y0)
+        i, j = min(a // rm, nx - 2), min(b // rm, ny - 2)
+        fx, fy = (a - i * rm) / rm, (b - j * rm) / rm
+        z00, z10 = float(arr[j, i]), float(arr[j, i + 1])
+        z01, z11 = float(arr[j + 1, i]), float(arr[j + 1, i + 1])
+        s_ = (1 - fx) * z00 + fx * z10
+        n_ = (1 - fx) * z01 + fx * z11
+        want = {
+            "inside": True,
+            "z": (1 - fy) * s_ + fy * n_,
+            "gx": ((z10 - z00) * (1 - fy) + (z11 - z01) * fy) / R,
+            "gy": ((z01 - z00) * (1 - fx) + (z11 - z10) * fx) / R,
+        }
+        for col, w in want.items():
+            try:
+                got = ans[col][k]
+            except (KeyError, IndexError, TypeError):
+                fails.append((name, f"row {k}: `{col}`", "absent"))
+                continue
+            same = got is w if isinstance(w, bool) else (isinstance(got, (int, float)) and not isinstance(got, bool)
+                                                          and float(got) == w and math.copysign(1, float(got)) == math.copysign(1, w))
+            if not same:
+                fails.append((name, f"row {k} ({x}, {y}) mm, cell ({i}, {j}): {col} = {w!r}", canon.show(got)))
+    return fails
+
+
 CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Failure]]] = {
     "weights_sum_at_most": weights_sum_at_most,
     "weights_sum_255_or_0": weights_sum_255_or_0,
@@ -630,10 +744,18 @@ CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Fai
     "run_node": run_node,
     "array_window": array_window,
     "run_report_valid": run_report_valid,
+    "pack_root_resolves": pack_root_resolves,
     "json_list": json_list,
     "instance_at": instance_at,
     "changes_inside": changes_inside,
     "changes_absent": changes_absent,
+    "network_valid": network_valid,
+    "network_measures": network_measures,
+    "noding_valid": noding_valid,
+    "noding_same": noding_same,
+    "names_same": names_same,
+    "cells_valid": cells_valid,
+    "sample_terrain": sample_terrain,
 }
 
 

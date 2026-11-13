@@ -1,22 +1,50 @@
 format    = "via-case-1"
-summary   = "A feature with kind = \"pnod\", and an instance with ground = \"pnod\", in section 9's library: authority.unknown_kind at each line, hint pond; exit 1."
+summary   = "A feature with kind = \"pnod\", and an instance with ground = \"pnod\", in section 9's library: authority.unknown_kind at each line, hint pond; a bookmark whose toward names the faulty feature is skipped under one diag.skipped, with no identity.unknown_place; exit 1."
 milestone = 1
 actions   = ["build"]
+
+# The diagnostics are exact: a failed entity's readers are skipped and say nothing of their own
+# (diagnostics.md 4, graph.md 3.4). `feature.view` names `puddle` by a name attribute
+# (authority.md 1.2); `puddle` exists, so the name resolves, and its failure is said once, by
+# `diag.skipped` under it, never again as an `identity.unknown_place` on the reader. The reader's
+# kind is in lib/lookout, a name the repository's lib/ (VIA_LIB) does not hold; lib/water is also
+# there, so the beside one is used with one doc.include_shadowed (documents.md 4), as in pond_lake.
 
 [action.build]
 via         = ["build", "world.toml", "--out", "build/w"]
 exit        = 1
-diagnostics = "includes"
+diagnostics = "exact"
 out         = "build/w"
 
+[action.build.diag.shadowed]
+code     = "doc.include_shadowed"
+severity = "info"
+
 [action.build.diag.unknown_kind]
-code = "authority.unknown_kind"
-file = "world.toml"
-line = 32
-data = { nearest = "pond" }
+code    = "authority.unknown_kind"
+subject = "feature.puddle"
+file    = "world.toml"
+line    = 32
+data    = { nearest = "pond" }
 
 [action.build.diag.ground]
-code = "authority.unknown_kind"
-file = "world.toml"
-line = 39
-data = { nearest = "pond" }
+code    = "authority.unknown_kind"
+subject = "instance.hut"
+file    = "world.toml"
+line    = 39
+data    = { nearest = "pond" }
+
+# diagnostics.md 4: subject the failed node's entity, located at the span that creates it (its
+# header, line 31, column 1); count the distinct subjects skipped, the failed node's own excluded.
+[action.build.diag.skipped]
+code    = "diag.skipped"
+subject = "feature.puddle"
+file    = "world.toml"
+line    = 31
+column  = 1
+count   = 1
+data    = { first = ["feature.view"] }
+
+[action.build.diag.no_false_place]
+code    = "identity.unknown_place"
+records = 0

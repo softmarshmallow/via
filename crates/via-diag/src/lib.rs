@@ -56,14 +56,15 @@ pub use site::{ChainEntry, Location, NoWorld, Resolve, Resolved, Site, Through};
 pub use subject::{KeyPart, KeyPath, Subject, SubjectError};
 pub use value::{Finite, Value};
 
-/// True when the text is empty or only ASCII white space; usable in constants, so [`text!`] can
-/// reject a blank literal at compile time.
+/// True when the text holds no letter (no ASCII letter and no non-ASCII character, which may be
+/// one): empty, white space, or a placeholder such as `-`. Usable in constants, so [`text!`] can
+/// reject such a literal at compile time.
 #[doc(hidden)]
 pub const fn is_blank_ascii(s: &str) -> bool {
     let b = s.as_bytes();
     let mut i = 0;
     while i < b.len() {
-        if !b[i].is_ascii_whitespace() {
+        if b[i].is_ascii_alphabetic() || b[i] >= 0x80 {
             return false;
         }
         i += 1;
@@ -87,7 +88,7 @@ macro_rules! text {
         const T: &str = $lit;
         const _: () = assert!(
             !$crate::is_blank_ascii(T),
-            "a diagnostic text cannot be blank"
+            "a diagnostic text must hold a letter"
         );
         $crate::Text::from_checked_static(T)
     }};

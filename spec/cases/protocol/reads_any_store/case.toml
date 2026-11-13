@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "One world and one plain lint built twice into one directory, with two stores: the step's record (command, static key, trace, reads, what it returned) is the same; only where the store is differs."
+milestone = 1
+actions   = ["program", "trust", "a", "b"]
+
+# protocol.md 4.4, graph.md 5.1 and R26: no absolute path, no `out`, no `objects` enters a key, so
+# a key is the same on every machine and in every folder. A plain command's one `data` read is its
+# request with those left out; a field or a column handed over as a blob is named by its digest,
+# so the read's digest does not depend on where the store is. The second build uses a store that
+# holds nothing of the first, so the step runs again (graph.md 6.2) and its record is made anew.
+# graph.md 6.3 compares `steps` less `log`; the rest of the run report (timings, nodes, the build
+# key's facts) is not compared here.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.a]
+via  = ["build", "world.toml", "--store", "store_a", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.b]
+via  = ["build", "world.toml", "--store", "store_b", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.b.same.steps]
+action = "a"
+what   = "build/w.run.json"
+ignore = ["/build", "/diagnostics", "/engine", "/nodes", "/step_codes", "/system", "/threads", "/totals", "/steps/0/log"]

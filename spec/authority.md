@@ -299,9 +299,12 @@ formed per field, among those features only. One side comes later:
 - Across tiers there is no nesting; authority decides alone.
 - A cycle in the relation is `authority.order_cycle`, naming the field, every feature in the cycle,
   the key that made each link and which side that link puts later. The hint: state the meeting once.
-  A cycle needs written links that disagree: two paths that each start at the other's end, or a
-  feature that both follows and arrives at another. A ford `on` a beck with lanes arriving at the ford is
-  not one: the beck comes first, then the lanes, then the ford.
+  A cycle needs links that disagree, at least one of them written. Two paths that each start at
+  the other's end are not one: each shape reads the other, a `graph.cycle` before any order is
+  formed (`graph.md` 2.2). A feature that both follows and arrives at another waits on `geometry.md`
+  4 (M3). One that M1 builds: a path that ends at an instance, and a second path that starts at the
+  first's end and lies inside the instance's footprint. A ford `on` a beck with lanes arriving at
+  the ford is not one: the beck comes first, then the lanes, then the ford.
 
 Entries whose windows (`fields.md` 5.3) do not overlap commute, so an implementation may test
 containment only between features whose windows overlap. The result is the same.
@@ -377,8 +380,9 @@ are above 0.
   is named by its instance's address (`instance.cottage`, as `identity.md` 5 names it). It gives
   the file and line of each one's `authority` (the feature's, or its kind's if inherited, as a
   footprint's always is), `a` and `b` at the post of the largest
-  difference (ties: post order), and the number of posts that disagree. Its `data` holds both
-  counts: posts where both masks are 1, and posts where both are above 0.
+  difference (ties: post order), and the number of posts that disagree. Its `data` holds the field
+  (`field`) and both counts: posts where both masks are 1 (`both_full`), and posts where both are
+  above 0 (`both_partial`).
 - Diagnostics are computed over the whole of both features, whatever window was asked for.
 - The hint offers the three ways out, in this order: make one `shaped`, so the other holds; move one
   off the other; or let the later one read the earlier (`value = "= v"` where they overlap), so they
@@ -567,8 +571,8 @@ would not change.
 | `authority.unknown_kind` | error | A feature's `kind` or an instance's `ground` names no kind in the world's kind namespace; nearest kind. |
 | `authority.no_kind` | error | `authority` on a guide. |
 | `authority.order_cycle` | error | Nesting on one field forms a cycle; the field, every feature, each link and which side it puts later. |
-| `authority.conflict` | error | Two anchored features disagree where both masks are 1; subject the later; values, post, counts. |
-| `authority.squeezed` | warning | Two anchored features disagree only where a mask is below 1; as above. |
+| `authority.conflict` | error | Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`. |
+| `authority.squeezed` | warning | Two anchored features disagree only where a mask is below 1; as above: `data.field`, `data.both_full`, `data.both_partial`. |
 | `authority.hidden` | info | An entry left no trace: later entries with mask 1 cover all of it; once per feature and field. |
 | `authority.step_view` | error | A step returned rows on a field whose full view it read, or a row sorting before a row of its head view. M2. |
 | `authority.step_anchored` | error | A step returned an anchored feature. M2. |
@@ -598,7 +602,7 @@ Six entries fit a 32-bit float exactly.
 | owner_holds | M1 | Two shaped lanes ending at a shaped ford, ids sorting after the ford | build | The ford's digit after both lanes'. |
 | ford_meeting | M1 | A shaped ford `on` a shaped beck, two shaped lanes arriving at the ford | build | Digits: beck, then lanes, then ford; no `authority.order_cycle`. |
 | arrive_inside | M1 | A shaped lane ending at an instance `yard` grounded with a shaped kind whose footprint contains the lane | build | The footprint's digit after the lane's; no cycle. |
-| order_cycle | M1 | Two shaped paths `a` and `b`, `a` starting at `b.end` and `b` at `a.end` | build | `authority.order_cycle` naming both and each link's direction; exit 1. |
+| order_cycle | M1 | A shaped path `lane` ending at an instance `yard` grounded with a shaped kind; a shaped path `spur` starting at `lane.end` and lying wholly inside `yard`'s footprint (4.3) | build | `authority.order_cycle` naming the field and the three (`lane`, `spur`, `yard.ground`) and each link's key and direction; exit 1. |
 | ford_on_anchored | M1 | An anchored ford asking `value = "= v"` on an anchored beck whose bank mask fades | build | No diagnostic. |
 | pond_lake | M1 | Section 9 as written | build | Pond interior the 32-bit float nearest 31.8; no authority diagnostic. |
 | pond_lake_firm | M1 | Section 9 with `firm` | build | `authority.squeezed`, subject `pond`, 133 posts, (71, 37); exit 0. |

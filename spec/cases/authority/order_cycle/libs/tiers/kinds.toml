@@ -33,3 +33,15 @@ field = "role:surface"
 value = "= v * 10 + k"
 mask = "= 1 - smoothstep(0, 1, d)"
 
+[kind.pad9]
+authority = "shaped"
+radius = 2
+
+[kind.pad9.defaults]
+k = 9
+
+[kind.pad9.effect.e]
+field = "role:surface"
+value = "= v * 10 + k"
+mask = "= 1 - smoothstep(0, 1, d)"
+

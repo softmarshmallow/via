@@ -4,7 +4,7 @@ milestone = 1
 actions   = ["program", "trust", "base", "hand", "denser"]
 
 # identity.md case 31, rules.md r38 and the plan's ford row `hand`, then `hand` and `denser`.
-# The clear `gap` is at [208, 208] with radius 6 (docs/plan.md); the pin `oak` at [200, 60].
+# The clear `gap` is at [226, 122] with radius 6 (docs/plan.md); the pin `oak` at [213, 141].
 # Produced names are `trees#s7000_...` and `trees#s6000_...` (identity.md 2).
 #
 # `hand` is built against plain ford, so its report lists what the hand edits did (identity.md 5):
@@ -13,7 +13,7 @@ actions   = ["program", "trust", "base", "hand", "denser"]
 # the clear removed with cause `clear.gap` at its header, line 81 (4.3). Entries sort by table, then
 # name, and `oak` sorts before every `trees#` name; nothing else is touched, since neither a tree
 # nor the pin has `ground`, so `oak` is entry 0.
-# The plan's "must hold" for `hand` then `denser`: the pin stands, at [200, 60] in both builds,
+# The plan's "must hold" for `hand` then `denser`: the pin stands, at [213, 141] in both builds,
 # with no entry in the second report; nothing is inside the clear; both hand edits unchanged, so
 # neither is the cause of any entry, and world.toml is untouched.
 
@@ -46,7 +46,7 @@ untouched = ["world.toml", "build/ford"]
 fn    = "instance_at"
 build = "build/ford+hand"
 name  = "oak"
-at    = [200, 60]
+at    = [213, 141]
 
 [action.hand.file.pin_added]
 path     = "build/ford+hand/changes.json"
@@ -62,7 +62,7 @@ includes = { cause = "pin.oak", file = "world.toml", line = 76, in = "this" }
 fn     = "changes_inside"
 path   = "build/ford+hand/changes.json"
 prefix = "trees#"
-at     = [208, 208]
+at     = [226, 122]
 radius = 6
 what   = ["removed"]
 cause  = { cause = "clear.gap", file = "world.toml", line = 81, in = "this" }
@@ -70,7 +70,7 @@ cause  = { cause = "clear.gap", file = "world.toml", line = 81, in = "this" }
 [action.hand.check.clear]
 fn     = "no_origin_inside"
 build  = "build/ford+hand"
-at     = [208, 208]
+at     = [226, 122]
 radius = 6
 prefix = "trees#"
 
@@ -85,7 +85,7 @@ untouched = ["world.toml", "build/ford+hand"]
 fn    = "instance_at"
 build = "build/ford+denser+hand"
 name  = "oak"
-at    = [200, 60]
+at    = [213, 141]
 
 [action.denser.check.hand_edits_unchanged]
 fn          = "changes_absent"
@@ -110,6 +110,20 @@ names  = "build/ford+denser+hand/instances/names.txt"
 [action.denser.check.clear]
 fn     = "no_origin_inside"
 build  = "build/ford+denser+hand"
-at     = [208, 208]
+at     = [226, 122]
 radius = 6
 prefix = "trees#"
+
+# build.md 11.2: a cause's `via` has both ends, so it is never empty. The pin's own nodes are its
+# `edit:` and `height:` (graph.md 1); entry 1 is a tree the clear or the pin removed.
+[action.hand.check.pin_via]
+fn       = "json_list"
+path     = "build/ford+hand/changes.json"
+pointer  = "/entries/0/causes/0/via"
+at_least = 1
+
+[action.hand.check.tree_via]
+fn       = "json_list"
+path     = "build/ford+hand/changes.json"
+pointer  = "/entries/1/causes/0/via"
+at_least = 1

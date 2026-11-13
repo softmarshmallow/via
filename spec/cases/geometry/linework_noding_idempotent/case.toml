@@ -1,13 +1,40 @@
 format    = "via-case-1"
 summary   = "linework_a noded; noded again: byte-identical."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/linework_a.json, made by spec/vectors/geometry/import.py from fixtures/kernel/townland (geometry.md 6), not yet written"
-actions   = ["op"]
+actions   = ["op", "again_in", "again"]
+
+# geometry.md 3.1 Idempotent: "noding the output again returns it unchanged, byte for byte". The
+# output is fed back as an input by `derive` (conformance.md 3.3): each segment a two-point path
+# with a source of its own, so the provenance differs by construction and only the vertices and
+# the segments' ends are compared. The first noding is also checked Noded, Close (1.5 mm) and
+# Faithful against linework_a.
 
 [copy.fixture]
 from = "spec/vectors/geometry/linework_a.json"
 to   = "linework_a.json"
 
 [action.op]
-via  = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
-exit = 0
+via         = ["kernel", "noding", "--in", "linework_a.json", "--out", "noded.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.op.check.valid]
+fn    = "noding_valid"
+path  = "noded.json"
+input = "linework_a.json"
+bound = 1.5
+
+[action.again_in]
+derive = "again.json"
+from   = "noded.json"
+as     = "segments"
+
+[action.again]
+via         = ["kernel", "noding", "--in", "again.json", "--out", "again.out.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.again.check.same]
+fn     = "noding_same"
+first  = "noded.json"
+second = "again.out.json"

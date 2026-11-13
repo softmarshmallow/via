@@ -1035,6 +1035,7 @@ impl Loader<'_> {
                 if !table_ok {
                     continue;
                 }
+                let taken: std::collections::BTreeSet<String> = t.entries.keys().cloned().collect();
                 for (id, ee) in t.entries {
                     if ts == "change" {
                         let sub = Subject::entity("change", &id);
@@ -1094,7 +1095,7 @@ impl Loader<'_> {
                         continue;
                     }
                     if id == "world" && ts != "layer" && ts != "let" {
-                        self.fault(change::reserved(sub, &ee));
+                        self.fault(change::reserved(sub, &ee, &|c| taken.contains(c)));
                         continue;
                     }
                     if ts != "let" {

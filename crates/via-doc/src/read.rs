@@ -73,6 +73,56 @@ pub(crate) fn read(src: SrcId, text: &str) -> Result<Table, Vec<Fault>> {
     Ok(root)
 }
 
+/// One syntax fault of a document read outside a world (a pack, `assets.md` 1): section 1's
+/// rules, messages and hints, with the byte range in the file.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SyntaxFault {
+    /// What is wrong, with no file, line or column.
+    pub message: String,
+    /// What to change.
+    pub hint: String,
+    /// The UTF-8 byte range `[start, end)` in the file.
+    pub bytes: [u32; 2],
+    /// The record's `data`, when the fault carries any.
+    pub data: Vec<(String, DValue)>,
+}
+
+/// Reads `bytes` as a document under section 1's rules and gives its syntax faults; none when it
+/// reads. `file` names the file in a message about its encoding.
+pub fn syntax_faults(bytes: Vec<u8>, file: &str) -> Vec<SyntaxFault> {
+    let of = |f: &Fault| {
+        let bytes = match &f.at {
+            At::Span(s) => [s.start, s.end],
+            At::File(_, facts) => {
+                let at = facts
+                    .iter()
+                    .find(|(k, _)| k == "offset")
+                    .and_then(|(_, v)| match v {
+                        DValue::Int(i) => u32::try_from(*i).ok(),
+                        _ => None,
+                    })
+                    .unwrap_or(0);
+                [at, at]
+            }
+            At::Argument(_) | At::World => [0, 0],
+        };
+        SyntaxFault {
+            message: f.message.clone(),
+            hint: f.hint.clone(),
+            bytes,
+            data: f.data.clone(),
+        }
+    };
+    let text = match decode(bytes, file) {
+        Ok(t) => t,
+        Err(f) => return vec![of(&f)],
+    };
+    match read(SrcId(0), &text) {
+        Ok(_) => Vec::new(),
+        Err(faults) => faults.iter().map(of).collect(),
+    }
+}
+
 struct Stop;
 type R<T> = Result<T, Stop>;
 
@@ -312,7 +362,11 @@ impl<'a> Parser<'a> {
                         match table_at(root, path) {
                             Some(t) => (t, depth),
                             None => {
-                                return self.fail(self.pos, "a key outside any table", "-");
+                                return self.fail(
+                                    self.pos,
+                                    "a key outside any table",
+                                    "put the key under a `[table]` header",
+                                );
                             }
                         }
                     }
@@ -384,7 +438,13 @@ impl<'a> Parser<'a> {
             }
             t = match t.table_mut(k) {
                 Some(sub) => sub,
-                None => return self.fail_span(*ks, "not a table", "-"),
+                None => {
+                    return self.fail_span(
+                        *ks,
+                        "the key does not name a table",
+                        "rename the key, or write the table it names with `[name]`",
+                    )
+                }
             };
         }
         Ok(())
@@ -395,7 +455,13 @@ impl<'a> Parser<'a> {
         let parts = self.key()?;
         let key_span = match (parts.first(), parts.last()) {
             (Some((_, a)), Some((_, b))) => a.to(*b),
-            _ => return self.fail(self.pos, "expected a key", "-"),
+            _ => {
+                return self.fail(
+                    self.pos,
+                    "expected a key",
+                    "write `key = value`, the key bare, or in a basic or literal string",
+                )
+            }
         };
         for (i, (_, ks)) in parts.iter().enumerate().take(parts.len() - 1) {
             self.depth(depth + i + 1, *ks)?;
@@ -425,7 +491,13 @@ impl<'a> Parser<'a> {
         let mut t = table;
         let (last, init) = match parts.split_last() {
             Some(x) => x,
-            None => return self.fail_span(key_span, "expected a key", "-"),
+            None => {
+                return self.fail_span(
+                    key_span,
+                    "expected a key",
+                    "write `key = value`, the key bare, or in a basic or literal string",
+                )
+            }
         };
         for (k, ks) in init {
             match t.value(k) {
@@ -460,7 +532,13 @@ impl<'a> Parser<'a> {
             }
             t = match t.table_mut(k) {
                 Some(sub) => sub,
-                None => return self.fail_span(*ks, "not a table", "-"),
+                None => {
+                    return self.fail_span(
+                        *ks,
+                        "the key does not name a table",
+                        "rename the key, or write the table it names with `[name]`",
+                    )
+                }
             };
         }
         let (k, _) = last;
@@ -490,13 +568,21 @@ impl<'a> Parser<'a> {
             let name = match self.peek() {
                 Some(b'"') => {
                     if self.b[self.pos..].starts_with(b"\"\"\"") {
-                        return self.fail(start, "a key cannot be a multi-line string", "-");
+                        return self.fail(
+                            start,
+                            "a key cannot be a multi-line string",
+                            "write the key on one line in a basic or literal string",
+                        );
                     }
                     self.basic(false)?.text
                 }
                 Some(b'\'') => {
                     if self.b[self.pos..].starts_with(b"'''") {
-                        return self.fail(start, "a key cannot be a multi-line string", "-");
+                        return self.fail(
+                            start,
+                            "a key cannot be a multi-line string",
+                            "write the key on one line in a basic or literal string",
+                        );
                     }
                     self.literal(false)?.text
                 }
@@ -557,7 +643,11 @@ impl<'a> Parser<'a> {
                 self.inline(parent + 1)
             }
             Some(_) => self.scalar(),
-            None => self.fail(self.pos, "expected a value, found the end of the file", "-"),
+            None => self.fail(
+                self.pos,
+                "expected a value, found the end of the file",
+                "write the value, and close any open array with `]` and inline table with `}`",
+            ),
         }
     }
 
@@ -857,7 +947,7 @@ impl<'a> Parser<'a> {
                     }
                     if n >= 3 {
                         if n > 5 {
-                            return self.fail(at, "too many quotes closing a string", "-");
+                            return self.fail(at, "too many quotes closing a string", "close the literal string with three quotes, at most two more before them");
                         }
                         for i in 0..n - 3 {
                             push(&mut text, &mut map, '\'', at + i);
@@ -914,7 +1004,7 @@ impl<'a> Parser<'a> {
         let span = self.span(start, self.pos);
         if tok.is_empty() {
             let f = self.found();
-            return self.fail(start, format!("expected a value, found {f}"), "-");
+            return self.fail(start, format!("expected a value, found {f}"), "write a value: a string in quotes, a number, `true` or `false`, a date, `[...]` or `{...}`");
         }
         let value = match tok {
             "true" => Value::Bool(true),

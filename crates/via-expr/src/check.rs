@@ -426,6 +426,50 @@ impl Compiler<'_> {
         out
     }
 
+    /// Where a name visible in `frame` is declared (`diagnostics.md` 1.3, `related` of a
+    /// not-found record): a `let`'s formula key, else the attribute's declaration. `None` for a
+    /// built-in name, which no text declares.
+    fn declared_at(&self, n: &str, frame: &Frame) -> Option<At> {
+        if Builtin::parse(n).is_some() {
+            return None;
+        }
+        let decl = |scope: Scope| At::Declaration {
+            scope,
+            name: n.to_string(),
+        };
+        match &frame.scope {
+            Scope::Kind(k) => {
+                if let Some(kd) = self.env.kinds.get(k) {
+                    if let Some(f) = kd.lets.get(n) {
+                        return Some(At::Key { formula: *f });
+                    }
+                    if kd.attributes.contains_key(n) {
+                        return Some(decl(Scope::Kind(k.clone())));
+                    }
+                }
+            }
+            Scope::Field(fld) => {
+                if let Some(f) = self.env.field_lets.get(fld).and_then(|l| l.get(n)) {
+                    return Some(At::Key { formula: *f });
+                }
+            }
+            Scope::World => {}
+        }
+        if frame.own {
+            if let Some(f) = self.ctx.feature.as_ref() {
+                if self
+                    .env
+                    .features
+                    .get(f)
+                    .is_some_and(|fd| fd.attributes.contains_key(n))
+                {
+                    return Some(decl(Scope::Kind(f.clone())));
+                }
+            }
+        }
+        self.env.world_lets.get(n).map(|f| At::Key { formula: *f })
+    }
+
     fn name(&mut self, n: &str, e: &Expr, frame: &Frame) -> Result<usize, ExprError> {
         let at = self.at(frame, e.span.clone());
         if let Some(b) = Builtin::parse(n) {
@@ -551,6 +595,9 @@ impl Compiler<'_> {
         .with("name", n);
         if let Nearest::Found(f) = near {
             err = err.with("nearest", f);
+            if let Some(at) = self.declared_at(f, frame) {
+                err.related.push((at, "declared here".to_string()));
+            }
         }
         Err(err)
     }
@@ -1130,14 +1177,10 @@ impl Compiler<'_> {
             }
             Class::Statistic => match s.as_str() {
                 "mean" | "min" | "max" => {}
-                "edge_min" => {
-                    return Err(ExprError::new(
-                        doc::NOT_YET,
-                        at,
-                        "`'edge_min'` arrives in milestone 2",
-                        "use `'min'` for now",
-                    ));
-                }
+                // Regions only (8.5): a path or point is `formula.shape`, which the selection
+                // phase says first, knowing the feature's shape; on a region it is `doc.not_yet`
+                // until milestone 2 (`bind`).
+                "edge_min" => {}
                 _ => {
                     let near = nearest(&s, ["mean", "min", "max"]);
                     let mut err = sel_err(

@@ -210,3 +210,62 @@ value   = "instance (written): +0 -0 ~1 swapped 0 changed 0, 0 untouched"
 path     = "build/ford/changes.json"
 pointer  = "/summary/4"
 includes = { maker = "trees", table = "instance", swapped = 0, changed = 0 }
+
+# Every written entry's cause has a non-empty `via` (build.md 11.2: both ends included). Its first
+# node is not asserted for these: both shape:ford and attr:ford read feature.ford.on (graph.md 6.4
+# row 3), so the shortest chain may start at either; at_ford's, the cottage's and its footprint's
+# are asserted whole or by their last node above.
+
+[action.downstream.check.via_ford]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/1/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_in_trees]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/2/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_lane_east]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/3/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_lane_west]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/4/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_on_bank]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/5/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_to_door]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/6/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_clearing]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/7/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_height]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/8/causes/0/via"
+at_least = 1
+
+[action.downstream.check.via_water]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/9/causes/0/via"
+at_least = 1

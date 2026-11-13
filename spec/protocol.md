@@ -490,7 +490,9 @@ Anything else (`[step]`, `[layer]`, `[pin]`, `[clear]`, `[lock]`, `[import]`, `[
   2.5).
 - **Rank.** Everything returned has the rank of the step's layer, and refers downward only
   (`documents.md` 5.1).
-- **Files.** A `file` that leaves `out`, or names nothing, is `protocol.output_file`.
+- **Files.** A `file` that leaves `out`, or names nothing, is `protocol.output_file`. So is a
+  symbolic link anywhere under `out`, on any step: the engine neither follows nor reads it, and
+  stores nothing through it.
 - **Values.** Number rules are the text's: `num.not_finite`, `num.too_precise` at the line in
   `document.toml`. The SDK writes lattice values exactly from millimetres.
 - **Holds.** The core applies holds to what is returned, after the call (`identity.md` 4.1).
@@ -546,11 +548,14 @@ pending is `protocol.crashed`. A process that cannot be started is `protocol.sta
 
 **The log.** A step's standard error (and a plain command's standard output) is its log, decoded as
 UTF-8 with each invalid byte replaced by U+FFFD. A process that cannot be started has as its log the
-system's reason. The log is kept in the store and named by digest in the run report's `steps[].log`
+system's reason. Each stream is kept up to 1 MiB; what follows is read and dropped, and the log ends
+with a line saying how much. A stream still open at the deadline (a descendant that left the process
+group holds it) is abandoned, and the call is `protocol.deadline`. The log is kept in the store and named by digest in the run report's `steps[].log`
 (`graph.md` 6.3, `build.md` 11.3); it is not part of the build, and the terminal prints its last 40
 lines under the diagnostic. These diagnostics are world diagnostics, so `diagnostics.json` holds only
 facts that are the same on every system (R26, `build.md` rule 6): `protocol.failed` has `data.exit`,
-the exit status; `protocol.start` has `data.kind`, `not_found`, `denied` or `other`;
+the exit status; `protocol.start` has `data.kind`, `not_found`, `denied`, `other`, or `empty` for a
+`command` with no program (located at `command`);
 `protocol.raised` has `data.exception`, the exception's type name; `protocol.crashed` has none. The
 message is made from these facts only. No log text, traceback or digest of a log enters it.
 
@@ -568,7 +573,8 @@ What this does not catch: on Linux and macOS, a grandchild that leaves the group
 grandchildren, and a plain command on macOS has no protocol input to lose. These are (open), below.
 
 A terminal's Ctrl+C reaches the engine and not the step, which is in its own group; the engine then
-cancels and kills as above.
+cancels and kills as above, removes each call folder (6.3), and ends by the same signal (`SIGINT`, or
+`SIGTERM` when that was sent), writing no build directory and no run report.
 
 ### 6.3 Folders and files of the machine
 

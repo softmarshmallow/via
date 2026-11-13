@@ -1,0 +1,58 @@
+format    = "via-case-1"
+summary   = "Two ways swap layers of different rank, their text unchanged; the rebuild in the same store re-runs what orders rows by rank and the field changes."
+milestone = 1
+actions   = ["first", "swap_base", "swap_top", "swapped", "fresh_store", "fresh"]
+
+# A layer statement's digest holds its table path and its layer's rank (graph.md 1): moving a
+# table to a layer of another rank changes its digest, since rank is a key of row order (R29).
+# The kinds are authority's order library `tiers` (libs/): each way writes
+# `value = "= v * 10 + k"` (pavement, order 0) and `k + 5` (roadway, order 1) with mask 1 on its
+# shape, on a field whose base is 0; the post at the crossing (8, 8) spells the order
+# (authority.md 3: order, then layer rank, then file and line).
+# First: a in the base layer (rank 0), b in `top` (rank 1): a pave 1, b pave 2, a road 6, b road 7,
+# so 1267. Swapped: b in the base, a in `top`: b pave 2, a pave 1, b road 7, a road 6, so 2176.
+# The rebuild in the same store must give what a fresh store gives (graph.md 7).
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.first.file.order]
+path  = "build/w/fields/height.npy"
+post  = [8, 8]
+value = 1267
+
+[action.swap_base]
+write = "world.toml"
+from  = "later/world.toml"
+
+[action.swap_top]
+write = "top.toml"
+from  = "later/top.toml"
+
+[action.swapped]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.swapped.file.order]
+path  = "build/w/fields/height.npy"
+post  = [8, 8]
+value = 2176
+
+[action.fresh_store]
+delete = ".via"
+
+[action.fresh]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/f"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/f"
+
+[action.fresh.file.order]
+path  = "build/f/fields/height.npy"
+post  = [8, 8]
+value = 2176

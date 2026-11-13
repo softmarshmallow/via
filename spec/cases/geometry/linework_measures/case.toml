@@ -1,13 +1,26 @@
 format    = "via-case-1"
 summary   = "linework_a; network: area count and total area reported as measures against reference.json."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/linework_a.json, made by spec/vectors/geometry/import.py from fixtures/kernel/townland (geometry.md 6), not yet written"
 actions   = ["op"]
+
+# geometry.md 6 Measures, under fixtures/README.md's rule: read and explained, never tuned to. The
+# check writes the count and total area beside reference.json's `faces` and `total_area_m2` as a
+# note on the outcome; it never fails on a difference. The network must still be built (exit 0).
 
 [copy.fixture]
 from = "spec/vectors/geometry/linework_a.json"
 to   = "linework_a.json"
 
+[copy.reference]
+from = "fixtures/kernel/townland/reference.json"
+to   = "reference.json"
+
 [action.op]
-via  = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
-exit = 0
+via         = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.op.check.measures]
+fn        = "network_measures"
+path      = "out.json"
+reference = "reference.json"

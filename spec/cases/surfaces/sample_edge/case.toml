@@ -1,8 +1,19 @@
 format    = "via-case-1"
 summary   = "ford; a point on a cell edge, one on a post, one on the extent's east edge, the north-east corner; sample: equal to the vector, bit for bit; the edge points use the west and south cell."
 milestone = 1
-pending   = "the vector of sampled values owed with the case (surfaces.md Conformance: spec/vectors/surfaces/ moves to the case's folder) is not yet written"
-actions   = ["program", "trust", "q"]
+actions   = ["program", "trust", "build", "q"]
+
+# surfaces.md 2.2 and its sample_edge row. ford's grid is [0, 0, 256, 256] m at 0.5 m: 513 posts a
+# side (numbers.md 4). The points, in millimetres (in.json):
+# - (100250, 100000): on the line between cells i = 199 and 200 in x (fx = 0.5) and on a post row in
+#   y: cell (200, 200), the one to its east and north (fields.md 1.2), fy = 0.
+# - (100000, 100000): on post (200, 200): z is that post bit for bit.
+# - (256000, 128000): on the extent's east edge: i = min(512, 511) = 511, the west cell, fx = 1.
+# - (256000, 256000): the north-east corner: cell (511, 511), the west and south one, fx = fy = 1.
+# The vector is not a table of numbers recorded from a build: `sample_terrain` computes each row's
+# z, gx and gy by surfaces.md 2.2 and fields.md 1.2 from the posts of the built height field (the
+# same world, so the same field the query answers over), in f64 in the chapter's order, and
+# compares bit for bit.
 
 [copy.ford]
 from = "examples/ford"
@@ -16,7 +27,20 @@ exit = 0
 via  = ["trust", "world.toml", "--yes"]
 exit = 0
 
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+out         = "build/ford"
+exit        = 0
+diagnostics = "includes"
+
 [action.q]
 via         = ["query", "world.toml", "sample", "--in", "in.json", "--out", "out.json"]
 exit        = 0
 diagnostics = "includes"
+
+[action.q.check.vector]
+fn       = "sample_terrain"
+path     = "out.json"
+input    = "in.json"
+field    = "build/ford/fields/height.npy"
+manifest = "build/ford/manifest.json"

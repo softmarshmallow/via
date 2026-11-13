@@ -1,10 +1,84 @@
 format    = "via-case-1"
 summary   = "smoothed_along(4) on a 10 m path at spacing 1 over base = \"= x\": the values of the vector table written with the code (M1)."
 milestone = 1
-pending   = "the vector table formulas.md case 36 names is not yet in spec/vectors/ (owed with the code, M1)"
 actions   = ["build"]
 
 [action.build]
 via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit = 0
 out  = "build/w"
+
+# The values are spec/vectors/formulas/smoothed_along.toml's, derived by formulas.md 8.5's rule (see
+# that file): at each post [3 + j, 4] on the path the effect's mask 1 - smoothstep(0, 1, d) is 1, so
+# the post is u_j exactly (fields.md 5.1), narrowed to 32 bits. Posts at d >= 1 keep base x: the two
+# ends' neighbours [2, 4] and [14, 4], and [8, 5] beside the path.
+
+[action.build.file.p3]
+path  = "build/w/fields/height.npy"
+post  = [3, 4]
+value = 4.5
+
+[action.build.file.p4]
+path  = "build/w/fields/height.npy"
+post  = [4, 4]
+value = 4.875
+
+[action.build.file.p5]
+path  = "build/w/fields/height.npy"
+post  = [5, 4]
+value = 5.3
+
+[action.build.file.p6]
+path  = "build/w/fields/height.npy"
+post  = [6, 4]
+value = 6.1
+
+[action.build.file.p7]
+path  = "build/w/fields/height.npy"
+post  = [7, 4]
+value = 7.0
+
+[action.build.file.p8]
+path  = "build/w/fields/height.npy"
+post  = [8, 4]
+value = 8.0
+
+[action.build.file.p9]
+path  = "build/w/fields/height.npy"
+post  = [9, 4]
+value = 9.0
+
+[action.build.file.p10]
+path  = "build/w/fields/height.npy"
+post  = [10, 4]
+value = 9.9
+
+[action.build.file.p11]
+path  = "build/w/fields/height.npy"
+post  = [11, 4]
+value = 10.7
+
+[action.build.file.p12]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 11.125
+
+[action.build.file.p13]
+path  = "build/w/fields/height.npy"
+post  = [13, 4]
+value = 11.5
+
+[action.build.file.off_2_4]
+path  = "build/w/fields/height.npy"
+post  = [2, 4]
+value = 2
+
+[action.build.file.off_14_4]
+path  = "build/w/fields/height.npy"
+post  = [14, 4]
+value = 14
+
+[action.build.file.off_8_5]
+path  = "build/w/fields/height.npy"
+post  = [8, 5]
+value = 8

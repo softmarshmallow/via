@@ -272,6 +272,12 @@ def match(
                 + (canon.show(similar, 600) if similar else "none")
             )
             failures.append((f"diag.{cid}", canon.show(exps[cid]), got))
+        for cid in sorted(exps):
+            if exps[cid].get("records", 1) == 0:
+                hits = [r for r in records if _agrees(exps[cid], r)]
+                if hits:
+                    failures.append((f"diag.{cid}", f"no record agrees with {canon.show(exps[cid])}",
+                                     canon.show(hits, 600)))
         if source == "world" and mode == "exact":
             used = {t for t in taken if t is not None}
             left = [

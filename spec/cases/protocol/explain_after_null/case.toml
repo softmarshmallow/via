@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "A plain lint step with a diagnostic and explain; built, built again unchanged (a null build), then via explain step.<id>.<code> WORLD: the step's text is still found, exit 0."
+milestone = 1
+actions   = ["program", "trust", "build", "again", "explain"]
+
+# diagnostics.md 2: `via explain step.<id>.<name> WORLD` prints the explain text the step sent in
+# the last build of WORLD. The last build here ran no step (graph.md 6.2, a null build), yet the
+# step's diagnostics and texts are the build's as much as before, so explain finds the code. The
+# build goes to the default directory, build/<name> (build.md 14), which explain finds from the
+# world's `name` without merging the world.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml"]
+exit = 0
+out  = "build/steps"
+
+[action.build.diag.steep]
+code     = "step.look.steep"
+severity = "warning"
+
+[action.again]
+via  = ["build", "world.toml"]
+exit = 0
+out  = "build/steps"
+
+[action.again.diag.steep]
+code     = "step.look.steep"
+severity = "warning"
+
+[action.explain]
+via  = ["explain", "step.look.steep", "world.toml"]
+exit = 0

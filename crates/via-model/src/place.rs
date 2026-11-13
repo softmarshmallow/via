@@ -200,6 +200,35 @@ fn pt(p: (i64, i64)) -> P {
     P::new(p.0, p.1)
 }
 
+/// The declared id a place name reads (`identity.md` 1) when that declaration failed its own
+/// check: the name itself, a path's `.start`/`.end`, or the host of `<instance>.<mount>`.
+pub(crate) fn failed_owner(d: &Decls, name: &str) -> Option<(String, &'static str)> {
+    let mut heads = vec![name];
+    if let Some(s) = name
+        .strip_suffix(".start")
+        .or_else(|| name.strip_suffix(".end"))
+    {
+        heads.push(s);
+    }
+    if let Some((host, _)) = name.split_once('.') {
+        heads.push(host);
+    }
+    heads.into_iter().find_map(|h| {
+        let top = *d.declared.get(h)?;
+        let live = match top {
+            "feature" => d.features.contains_key(h),
+            "instance" => d.instances.contains_key(h),
+            _ => d.pins.contains_key(h),
+        };
+        (!live).then(|| (h.to_string(), top))
+    })
+}
+
+/// Whether a place name reads a declaration that failed ([`failed_owner`]).
+pub(crate) fn failed_declaration(d: &Decls, name: &str) -> bool {
+    failed_owner(d, name).is_some()
+}
+
 /// The world-frame footprint of an asset at a frame.
 pub fn footprint(asset: &Asset, origin: P, facing: i64, scale: f64) -> Option<Region> {
     if asset.footprint.is_empty() {
@@ -494,44 +523,65 @@ impl<'a> Placer<'a> {
                         })
                     }
                     None => {
-                        self.diags.push(at_key(
-                            codes::identity::UNKNOWN_PLACE,
-                            top,
-                            id,
-                            key,
-                            &format!("`{part}` is no mount of `{host}`'s asset `{}`", pl.asset),
-                            &text::near_hint(
-                                part,
-                                asset.mounts.keys().map(String::as_str),
-                                "name a mount the asset declares",
+                        self.diags.push(text::with_nearest(
+                            at_key(
+                                codes::identity::UNKNOWN_PLACE,
+                                top,
+                                id,
+                                key,
+                                &format!("`{part}` is no mount of `{host}`'s asset `{}`", pl.asset),
+                                &text::near_hint(
+                                    part,
+                                    asset.mounts.keys().map(String::as_str),
+                                    "name a mount the asset declares",
+                                ),
                             ),
+                            part,
+                            asset.mounts.keys().map(String::as_str),
+                            |_: &str| self.pack.declaration("asset", &pl.asset),
                         ));
                         None
                     }
                 };
             }
         }
-        let mut names: Vec<String> = self.d.features.keys().cloned().collect();
-        names.extend(self.d.instances.keys().cloned());
+        // A name whose declaration failed its own check still names it (`diagnostics.md` 4): its
+        // record is the one cause, and the reader reads the failed entity, which the graph makes
+        // an edge to the failed node, so the reader is `skipped`, not `names nothing`.
+        if self.failed_declaration(name) {
+            return None;
+        }
+        let mut names: Vec<String> = self.d.declared.keys().cloned().collect();
         for (fid, f) in &self.d.features {
             if matches!(f.shape, ShapeDecl::Path(_)) {
                 names.push(format!("{fid}.start"));
                 names.push(format!("{fid}.end"));
             }
         }
-        self.diags.push(at_key(
-            codes::identity::UNKNOWN_PLACE,
-            top,
-            id,
-            key,
-            &format!("`{name}` names nothing"),
-            &text::near_hint(
-                name,
-                names.iter().map(String::as_str),
-                "name a feature, an end, an instance or a mount",
+        self.diags.push(text::with_nearest(
+            at_key(
+                codes::identity::UNKNOWN_PLACE,
+                top,
+                id,
+                key,
+                &format!("`{name}` names nothing"),
+                &text::near_hint(
+                    name,
+                    names.iter().map(String::as_str),
+                    "name a feature, an end, an instance or a mount",
+                ),
             ),
+            name,
+            names.iter().map(String::as_str),
+            |n: &str| declared_at(self.d, n),
         ));
         None
+    }
+
+    /// Whether a place name names a declared feature, instance or pin whose declaration failed:
+    /// the name itself, a path's end, or an instance's mount or `ground`.
+    pub(crate) fn failed_declaration(&self, name: &str) -> bool {
+        failed_declaration(self.d, name)
     }
 
     fn host_missing(&mut self, top: &str, id: &str, key: &str, host: &str) {
@@ -762,27 +812,25 @@ impl<'a> Placer<'a> {
                 return None;
             }
             self.diags.push(
-                at_key(
-                    codes::asset::UNKNOWN,
-                    top,
-                    id,
-                    "asset",
-                    &format!("the pack binds no asset `{asset}`"),
-                    &text::near_hint(
-                        asset,
-                        self.pack.assets.keys().map(String::as_str),
-                        "name an asset the pack declares",
+                text::with_nearest(
+                    at_key(
+                        codes::asset::UNKNOWN,
+                        top,
+                        id,
+                        "asset",
+                        &format!("the pack binds no asset `{asset}`"),
+                        &text::near_hint(
+                            asset,
+                            self.pack.assets.keys().map(String::as_str),
+                            "name an asset the pack declares",
+                        ),
                     ),
+                    asset,
+                    self.pack.assets.keys().map(String::as_str),
+                    |n: &str| self.pack.declaration("asset", n),
                 )
                 .at(text::pos(origin.x, origin.y)),
             );
-            if let Some(d) = self.diags.pop() {
-                self.diags.push(text::with_nearest(
-                    d,
-                    asset,
-                    self.pack.assets.keys().map(String::as_str),
-                ));
-            }
             return None;
         };
         let Some(fp) = footprint(a, origin, facing, scale) else {
@@ -1140,6 +1188,7 @@ impl<'a> Placer<'a> {
                 ),
                 &sel.of,
                 makers.iter().copied(),
+                text::header_of("scatter"),
             ));
             return None;
         }
@@ -1342,4 +1391,22 @@ impl<'a> Placer<'a> {
             }
         }
     }
+}
+
+/// The declaration a place name reads (`identity.md` 1), for a not-found record's `related`
+/// (`diagnostics.md` 1.3): the header of the feature, instance or pin it names, through a path's
+/// end, an instance's mount or its `ground`.
+pub(crate) fn declared_at(d: &Decls, name: &str) -> Option<(Subject, Site)> {
+    let base = name
+        .strip_suffix(".start")
+        .or_else(|| name.strip_suffix(".end"))
+        .unwrap_or(name);
+    let head = base.split('.').next().unwrap_or(base);
+    let top = *d.declared.get(base).or_else(|| d.declared.get(head))?;
+    let id = if d.declared.contains_key(base) {
+        base
+    } else {
+        head
+    };
+    Some((Subject::entity(top, id), Site::Header))
 }

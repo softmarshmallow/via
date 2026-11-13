@@ -4,7 +4,8 @@
 //! (`spec/vocabulary.md` 7, from `spec/vocabulary.toml`), the vocabulary's machine copy equal to
 //! its chapter (sections 3 and 7), the limitations test of R33, generated files fresh, and the
 //! case checks of `spec/conformance.md` 7 that need only the manifests and the code registry
-//! ([`cases`]: manifests read, no copy from `spike/` or outside the repository, code coverage).
+//! ([`cases`]: manifests read, no copy from `spike/` or outside the repository, code coverage),
+//! and every registered code's `explain` finished up to the milestone, M1 at least ([`explain`]).
 //! They read the repository as text, so this crate depends on no engine crate.
 //!
 //! Not here: that every Conformance row has a case folder with an equal milestone (owed, recorded
@@ -15,7 +16,7 @@
 //!
 //! `cargo run -p xtask -- check [--milestone N]` runs every check below and exits 1 if any fails.
 //! The checks that need only the repository's text (deny-list, maths dependencies, vocabulary
-//! sync, cases at M0, limitations, Python imports) are also `cargo test` tests in `tests/workspace.rs`, so `cargo test --workspace` holds them; the
+//! sync, cases at M0, explain texts to M1, limitations, Python imports) are also `cargo test` tests in `tests/workspace.rs`, so `cargo test --workspace` holds them; the
 //! freshness hooks (they run cargo) and the private-name guard (it needs untracked patterns) run
 //! from the command only. Maths through `via-num` is held in two parts: the float methods by
 //! clippy's `disallowed_methods` (`clippy.toml`), and "no crate but `via-num` depends on a maths
@@ -23,6 +24,7 @@
 
 pub mod cases;
 pub mod denylist;
+pub mod explain;
 pub mod fresh;
 pub mod keys;
 pub mod lex;
@@ -60,10 +62,11 @@ pub struct Options {
 type CheckFn = fn(&Path, &Options) -> Result<Outcome, CheckError>;
 
 /// Every check, by name, in the order they run.
-pub const CHECKS: [(&str, CheckFn); 8] = [
+pub const CHECKS: [(&str, CheckFn); 9] = [
     ("deny-list", |r, _| denylist::check(r)),
     ("maths-deps", |r, _| mathdeps::check(r)),
     ("cases", |r, o| cases::check(r, o.milestone)),
+    ("explain", |r, o| explain::check(r, o.milestone)),
     ("vocabulary-sync", |r, _| denylist::check_sync(r)),
     ("python-imports", |r, _| pyimports::check(r)),
     ("limitations", |r, _| limitations::check(r)),

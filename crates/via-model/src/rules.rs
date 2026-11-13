@@ -136,17 +136,22 @@ fn choice_lists(
     for Choice { what, weight } in &s.choices {
         if let Some(taxon) = what.strip_prefix('@') {
             if !pack.taxa.contains(taxon) {
-                diags.push(at_key(
-                    codes::pack::UNKNOWN_TAXON,
-                    "scatter",
-                    &s.id,
-                    "assets",
-                    &format!("the taxon `{taxon}` is not declared in the pack"),
-                    &text::near_hint(
-                        taxon,
-                        pack.taxa.iter().map(String::as_str),
-                        "declare `[taxon.\"<path>\"]` in the pack",
+                diags.push(text::with_nearest(
+                    at_key(
+                        codes::pack::UNKNOWN_TAXON,
+                        "scatter",
+                        &s.id,
+                        "assets",
+                        &format!("the taxon `{taxon}` is not declared in the pack"),
+                        &text::near_hint(
+                            taxon,
+                            pack.taxa.iter().map(String::as_str),
+                            "declare `[taxon.\"<path>\"]` in the pack",
+                        ),
                     ),
+                    taxon,
+                    pack.taxa.iter().map(String::as_str),
+                    |n: &str| pack.declaration("taxon", n),
                 ));
                 ok = false;
                 continue;
@@ -163,13 +168,18 @@ fn choice_lists(
                     .filter(|t| !pack.select(t).is_empty())
                     .map(String::as_str)
                     .collect();
-                diags.push(at_key(
-                    codes::asset::EMPTY_SELECTION,
-                    "scatter",
-                    &s.id,
-                    "assets",
-                    &format!("no asset is filed at or under `{taxon}`"),
-                    &text::near_hint(taxon, with, "file an asset there"),
+                diags.push(text::with_nearest(
+                    at_key(
+                        codes::asset::EMPTY_SELECTION,
+                        "scatter",
+                        &s.id,
+                        "assets",
+                        &format!("no asset is filed at or under `{taxon}`"),
+                        &text::near_hint(taxon, with.iter().copied(), "file an asset there"),
+                    ),
+                    taxon,
+                    with.iter().copied(),
+                    |n: &str| pack.declaration("taxon", n),
                 ));
                 ok = false;
                 continue;
@@ -193,6 +203,7 @@ fn choice_lists(
                 ),
                 what,
                 pack.assets.keys().map(String::as_str),
+                |n: &str| pack.declaration("asset", n),
             ));
             ok = false;
         }
@@ -237,6 +248,9 @@ pub struct Produced {
     pub selections: BTreeMap<String, (String, P)>,
     /// Per producer: the names before hand edits, for `place.gave_way` and the change report.
     pub makers: BTreeSet<String>,
+    /// Each produced name a hand edit removed, to that edit's statement (`clear.<id>`,
+    /// `pin.<id>`): the change report's cause for the removal (`identity.md` 5).
+    pub removed_by: BTreeMap<String, String>,
     pub diags: Vec<Diag>,
 }
 
@@ -323,18 +337,33 @@ pub fn scatter_all(
                     ));
                     continue;
                 }
+                // A name whose thing failed its own check said why; the rule reads that failure
+                // (`diagnostics.md` 4), it is not `names nothing`.
+                None if crate::place::failed_declaration(d, w)
+                    || d.features.contains_key(w)
+                    || w.strip_suffix(".ground").is_some_and(|h| {
+                        d.instances.get(h).is_some_and(|i| i.ground.is_some())
+                    }) =>
+                {
+                    continue;
+                }
                 None => {
-                    out.diags.push(at_key(
-                        codes::identity::UNKNOWN_PLACE,
-                        "scatter",
-                        &s.id,
-                        "within",
-                        &format!("`{w}` names no region"),
-                        &text::near_hint(
-                            w,
-                            placed.shapes.keys().map(String::as_str),
-                            "name a region feature",
+                    out.diags.push(text::with_nearest(
+                        at_key(
+                            codes::identity::UNKNOWN_PLACE,
+                            "scatter",
+                            &s.id,
+                            "within",
+                            &format!("`{w}` names no region"),
+                            &text::near_hint(
+                                w,
+                                placed.shapes.keys().map(String::as_str),
+                                "name a region feature",
+                            ),
                         ),
+                        w,
+                        placed.shapes.keys().map(String::as_str),
+                        |n: &str| crate::place::declared_at(d, n),
                     ));
                     continue;
                 }
@@ -401,7 +430,7 @@ pub fn scatter_all(
                 let Some(p) = d.formulas.programs.get(&fid) else {
                     continue;
                 };
-                let sel = DensitySel { f };
+                let sel = f.selector(fid, None);
                 let b = match via_expr::bind(p, &sel) {
                     Ok(b) => b,
                     Err(e) => {
@@ -464,11 +493,16 @@ pub fn scatter_all(
             // Give way (7.5): solid hand instances, then relief.
             // Neither asset `none` (rules.md 7.5, as 8.1 and 3.4's edges read).
             // Pins are hand edits, applied to the held output, not given way to (identity.md 4.1).
+            // Giving way reads down only (`rules.md` 3.4): a hand instance in a higher layer is
+            // not given way to; an overlap with it is `place.crowded` (8.1).
             let overlap = a.solid
-                && hand.iter().filter(|h| !h.pin).any(|h| {
-                    pack.assets.get(&h.asset).is_some_and(|ha| ha.solid)
-                        && overlaps(&h.footprint, &fp)
-                });
+                && hand
+                    .iter()
+                    .filter(|h| !h.pin && d.instances.get(&h.name).is_none_or(|i| i.rank <= s.rank))
+                    .any(|h| {
+                        pack.assets.get(&h.asset).is_some_and(|ha| ha.solid)
+                            && overlaps(&h.footprint, &fp)
+                    });
             let mut relief_bad = false;
             if !overlap {
                 if let (Some(limit), Some(sf)) = (a.max_relief, surface) {
@@ -729,8 +763,17 @@ pub fn scatter_all(
             by,
         });
     }
+    let all_raw = raw.clone();
     match held::hold(raw, &clears, &pins) {
         Ok((live, gd)) => {
+            let kept: BTreeSet<&str> = live.iter().map(|i| i.name.as_str()).collect();
+            let gone: Vec<held::Instance> = all_raw
+                .into_iter()
+                .filter(|i| !kept.contains(i.name.as_str()))
+                .collect();
+            if let Ok(by) = held::removed_by(&gone, &clears, &pins) {
+                out.removed_by.extend(by);
+            }
             for g in gd {
                 let src = g.source.clone().unwrap_or_default();
                 let top = if d.pins.contains_key(&src) {
@@ -760,67 +803,6 @@ pub fn scatter_all(
         Err(g) => out.diags.push(g.to_diag(Subject::World, Site::World)),
     }
     out
-}
-
-struct DensitySel<'f, 'a> {
-    f: &'f Fields<'a>,
-}
-
-impl via_expr::Select for DensitySel<'_, '_> {
-    fn fields(&self, selector: &str) -> Vec<via_expr::FieldInfo> {
-        self.f
-            .d
-            .fields
-            .values()
-            .filter(|fd| match selector.strip_prefix("tag:") {
-                Some(t) => fd.tags.iter().any(|x| x == t),
-                None => fd.name == selector,
-            })
-            .map(|fd| via_expr::FieldInfo {
-                name: fd.name.clone(),
-                weights: fd.weights,
-            })
-            .collect()
-    }
-    fn shapes(&self, selector: &str) -> Vec<via_expr::ShapeInfo> {
-        let shape = |g: &Geo| match g {
-            Geo::Point { .. } => via_expr::Shape::Point,
-            Geo::Path { .. } => via_expr::Shape::Path,
-            Geo::Region { region, .. } => via_expr::Shape::Region {
-                rings: region.ring_count() as u32,
-            },
-        };
-        match selector.strip_prefix("kind:") {
-            Some(k) => self
-                .f
-                .writers
-                .iter()
-                .filter(|w| w.kind == k)
-                .filter_map(|w| {
-                    self.f
-                        .placed
-                        .shapes
-                        .get(&w.name)
-                        .map(|g| via_expr::ShapeInfo {
-                            id: w.name.clone(),
-                            shape: shape(g),
-                        })
-                })
-                .collect(),
-            None => self
-                .f
-                .placed
-                .shapes
-                .get(selector)
-                .map(|g| {
-                    vec![via_expr::ShapeInfo {
-                        id: selector.to_string(),
-                        shape: shape(g),
-                    }]
-                })
-                .unwrap_or_default(),
-        }
-    }
 }
 
 struct DensityReads<'f, 'a> {
@@ -916,13 +898,70 @@ pub fn hand(
             z: 0.0,
         });
     };
+    // `surfaces.md` 4.1: a thing whose host (the instance it stands `on`) was not placed is not
+    // placed either, with `surface.host_missing` naming the host; never a second code on it.
+    let outside = |pl: &Plan| {
+        let o = pl.origin;
+        o.x < x0 || o.x > x1 || o.y < y0 || o.y > y1
+    };
+    let host_of = |pl: &Plan| -> Option<String> {
+        let on = pl.on.as_deref()?;
+        let host = on.split('.').next().unwrap_or(on);
+        (host != pl.name && d.instances.contains_key(host)).then(|| host.to_string())
+    };
+    let mut failed: BTreeSet<String> = placed
+        .plans
+        .values()
+        .filter(|pl| outside(pl) && host_of(pl).is_none())
+        .map(|pl| pl.name.clone())
+        .collect();
+    // Hosts that never got a plan at all (they said why) fail their dependants too.
+    let mut missing: BTreeMap<String, String> = BTreeMap::new();
+    loop {
+        let mut grew = false;
+        for pl in placed.plans.values() {
+            if failed.contains(&pl.name) {
+                continue;
+            }
+            if let Some(h) = host_of(pl) {
+                if failed.contains(&h) || !placed.plans.contains_key(&h) {
+                    failed.insert(pl.name.clone());
+                    missing.insert(pl.name.clone(), h);
+                    grew = true;
+                }
+            }
+        }
+        if !grew {
+            break;
+        }
+    }
     for p in placed.plans.values() {
+        if let Some(h) = missing.get(&p.name) {
+            diags.push(
+                at_header(
+                    codes::surface::HOST_MISSING,
+                    "instance",
+                    &p.name,
+                    &format!(
+                        "`{}` stands on `{h}`, which was not placed; not placed",
+                        p.name
+                    ),
+                    &format!("fix `{h}` first: what stands on it is placed with it"),
+                )
+                .related(via_diag::Related {
+                    subject: Subject::entity("instance", h.clone()),
+                    site: Site::Header,
+                    position: None,
+                    note: via_diag::text!("the host, not placed"),
+                }),
+            );
+            continue;
+        }
         add(p, false, diags);
     }
     for p in placed.pins.values() {
         add(p, true, diags);
     }
-    let _ = d;
     out
 }
 
@@ -1015,9 +1054,51 @@ pub fn ground_and_check(
     }
     // Overlap between hand instances (8.1).
     let hands: Vec<&Placement> = all.iter().filter(|p| p.maker.is_none() && !p.pin).collect();
+    // A lower layer's produced instance and a hand instance in a higher layer (8.1, 3.4: giving
+    // way reads down only): `place.crowded`, naming both.
+    let solid = |x: &Placement| pack.assets.get(&x.asset).is_some_and(|s| s.solid);
+    for p in all.iter().filter(|p| p.maker.is_some() && !p.pin) {
+        let Some(maker) = p.maker.as_deref() else {
+            continue;
+        };
+        let Some(prank) = d.scatters.get(maker).map(|s| s.rank) else {
+            continue;
+        };
+        if !solid(p) {
+            continue;
+        }
+        for h in &hands {
+            let hrank = d.instances.get(&h.name).map_or(0, |i| i.rank);
+            if hrank <= prank || !solid(h) || !overlaps(&p.footprint, &h.footprint) {
+                continue;
+            }
+            diags.push(
+                at_header(
+                    codes::place::CROWDED,
+                    "scatter",
+                    maker,
+                    &format!(
+                        "`{}` of `{maker}` (rank {prank}) and `{}` (rank {hrank}) overlap; a producer gives way only to its own layer and below",
+                        p.name, h.name
+                    ),
+                    &format!(
+                        "add a clear or pin in `{}`'s layer with `by = [\"{maker}\"]`, or move one",
+                        h.name
+                    ),
+                )
+                .at(text::pos(p.origin.x, p.origin.y))
+                .with("instances", DValue::texts([p.name.clone(), h.name.clone()]))
+                .related(via_diag::Related {
+                    subject: Subject::entity("instance", h.name.clone()),
+                    site: Site::Header,
+                    position: Some(text::pos(h.origin.x, h.origin.y)),
+                    note: via_diag::text!("the instance in the higher layer"),
+                }),
+            );
+        }
+    }
     for (k, a) in hands.iter().enumerate() {
         for b in &hands[k + 1..] {
-            let solid = |x: &Placement| pack.assets.get(&x.asset).is_some_and(|s| s.solid);
             if !solid(a) || !solid(b) {
                 continue;
             }
@@ -1071,12 +1152,17 @@ fn by_fault(d: &Decls, top: &str, id: &str, b: &str) -> Diag {
             "name the producers that place on it",
         );
     }
-    at_key(
-        codes::identity::UNKNOWN_PRODUCER,
-        top,
-        id,
-        "by",
-        &format!("`{b}` names no producer"),
-        &text::near_hint(b, d.scatters.keys().map(String::as_str), "name a scatter"),
+    text::with_nearest(
+        at_key(
+            codes::identity::UNKNOWN_PRODUCER,
+            top,
+            id,
+            "by",
+            &format!("`{b}` names no producer"),
+            &text::near_hint(b, d.scatters.keys().map(String::as_str), "name a scatter"),
+        ),
+        b,
+        d.scatters.keys().map(String::as_str),
+        text::header_of("scatter"),
     )
 }

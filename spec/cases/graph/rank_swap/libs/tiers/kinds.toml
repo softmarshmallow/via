@@ -1,0 +1,19 @@
+[kind.way]
+authority = "shaped"
+radius = 2
+
+[kind.way.defaults]
+k = 0
+
+[kind.way.effect.pave]
+field = "role:surface"
+value = "= v * 10 + k"
+mask = "= 1 - smoothstep(0, 1, d)"
+order = 0
+
+[kind.way.effect.road]
+field = "role:surface"
+value = "= v * 10 + k + 5"
+mask = "= 1 - smoothstep(0, 1, d)"
+order = 1
+

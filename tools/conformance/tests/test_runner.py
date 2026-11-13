@@ -223,6 +223,53 @@ class RunTests(Base):
             """))
         self.assertPass(o)
 
+    def test_derive_and_item_in_checks(self) -> None:
+        """conformance.md 3.3 `derive`, and `{item}` in a for_each action's named check arguments."""
+        net = canon.canonical_bytes(_cross_network()).decode()
+        inp = canon.canonical_bytes(CROSS_IN).decode()
+        o = self.run_folder(self.case(HEAD + """\
+            actions = ["net", "inp", "renode", "cells", "each"]
+            [action.net]
+            write = "net.json"
+            from  = "later/net.json"
+            [action.inp]
+            write = "in.json"
+            from  = "later/in.json"
+            [action.renode]
+            derive = "again.json"
+            from   = "net.json"
+            as     = "segments"
+            [action.cells]
+            derive = "cells"
+            from   = "net.json"
+            as     = "cells"
+            input  = "in.json"
+            params = { cell_length = 10000 }
+            [action.each]
+            via      = ["--version"]
+            for_each = "cells/*.json"
+            exit     = 0
+            [action.each.check.n]
+            fn      = "json_count"
+            path    = "{item}"
+            pointer = "/params/frontage"
+            count   = 3
+            [action.each.file.again]
+            path    = "again.json"
+            pointer = "/shapes/11/source"
+            value   = "s11"
+            """, files={"later/net.json": net, "later/in.json": inp}))
+        self.assertPass(o)
+        bad = self.case(HEAD + """\
+            actions = ["d"]
+            [action.d]
+            derive = "x.json"
+            from   = "net.json"
+            as     = "cells"
+            """)
+        with self.assertRaises(model.CaseError):
+            model.parse_case(bad, "build")
+
     def test_build_checks_pass(self) -> None:
         o = self.run_folder(self.case(BUILD.replace('actions   = ["build"]', 'actions = ["build", "again", "usage"]') + """\
             [action.build.diag.first]
@@ -640,6 +687,14 @@ class NamedCheckTests(unittest.TestCase):
         self.assertEqual(self.run_check(via), [])
         self.assertTrue(self.run_check({**via, "last": "shape:ford/v:build"}))
         self.assertTrue(self.run_check({**via, "at_least": 3}))
+        # `nulls`: a member present and null (graph.md 6.4's causes against another store's build).
+        self.changes([{"name": "beck", "causes": None}, {"name": "ford", "causes": None}])
+        nulls = {"fn": "json_list", "path": "c.json", "pointer": "/entries", "nulls": ["causes"]}
+        self.assertEqual(self.run_check(nulls), [])
+        self.changes([{"name": "beck", "causes": None}, {"name": "ford", "causes": []}])
+        self.assertTrue(self.run_check(nulls))
+        self.changes([{"name": "beck"}])
+        self.assertTrue(self.run_check(nulls))
 
     def test_instance_at(self) -> None:
         b = self.tmp / "b" / "instances"
@@ -668,6 +723,178 @@ class NamedCheckTests(unittest.TestCase):
         self.assertEqual(self.run_check({**absent, "causes": ["pin.elm"]}), [])
 
 
+CROSS_IN = {"@format": "via-kernel-1", "grid": {"extent": [0, 0, 100000, 100000], "resolution": 500}, "shapes": [
+    {"ring": [[0, 0], [100000, 0], [100000, 100000], [0, 100000]], "source": "frame_a"},
+    {"path": [[0, 50000], [100000, 50000]], "source": "cross_ew"},
+    {"path": [[50000, 0], [50000, 100000]], "source": "cross_ns"}]}
+
+
+def _cross_network() -> dict:
+    """geometry.md 5's cross, written out by hand from the chapter: 9 vertices, 12 segments, 5
+    junctions, 8 edges, 4 areas (each a 50 m square), 1 component."""
+    P = [[x, y] for x in (0, 50000, 100000) for y in (0, 50000, 100000)]
+    P.sort()
+    segs = []
+    def prov(src, seg, t, rev=False):
+        return {"provenance": [{"reversed": rev, "segment": seg, "source": src, "t": t}]}
+    for a, b, pr in (
+        ([0, 0], [0, 50000], prov("frame_a", 3, [1, 0.875], True)), ([0, 0], [50000, 0], prov("frame_a", 0, [0, 0.125])),
+        ([0, 50000], [0, 100000], prov("frame_a", 3, [0.875, 0.75], True)), ([0, 50000], [50000, 50000], prov("cross_ew", 0, [0, 0.5])),
+        ([0, 100000], [50000, 100000], prov("frame_a", 2, [0.75, 0.625], True)), ([50000, 0], [50000, 50000], prov("cross_ns", 0, [0, 0.5])),
+        ([50000, 0], [100000, 0], prov("frame_a", 0, [0.125, 0.25])), ([50000, 50000], [50000, 100000], prov("cross_ns", 0, [0.5, 1])),
+        ([50000, 50000], [100000, 50000], prov("cross_ew", 0, [0.5, 1])), ([50000, 100000], [100000, 100000], prov("frame_a", 2, [0.625, 0.5], True)),
+        ([100000, 0], [100000, 50000], prov("frame_a", 1, [0.25, 0.375])), ([100000, 50000], [100000, 100000], prov("frame_a", 1, [0.375, 0.5])),
+    ):
+        segs.append({"ends": [a, b], **pr})
+    sq = lambda x, y: [[[x, y], [x + 50000, y], [x + 50000, y + 50000], [x, y + 50000]]]
+    areas = [{"region": [sq(x, y)], "twice_area": 5000000000} for x, y in ((0, 0), (0, 50000), (50000, 0), (50000, 50000))]
+    junctions = [[0, 50000], [50000, 0], [50000, 50000], [50000, 100000], [100000, 50000]]
+    paths = [
+        [[0, 50000], [50000, 50000]], [[50000, 50000], [100000, 50000]], [[50000, 0], [50000, 50000]],
+        [[50000, 50000], [50000, 100000]], [[0, 50000], [0, 0], [50000, 0]], [[50000, 0], [100000, 0], [100000, 50000]],
+        [[0, 50000], [0, 100000], [50000, 100000]], [[50000, 100000], [100000, 100000], [100000, 50000]],
+    ]
+    edges = sorted(({"ends": [p[0], p[-1]], "path": p} for p in paths), key=lambda e: (e["ends"], e["path"][1]))
+    return {"vertices": P, "segments": segs, "junctions": junctions, "edges": edges, "areas": areas, "components": 1}
+
+
+class KernelCheckTests(unittest.TestCase):
+    """The kernel guarantees of geometry.md 3, each seen to hold and to fail."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="via-kernel-test-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.put("in.json", CROSS_IN)
+
+    def put(self, name: str, doc: dict) -> None:
+        (self.tmp / name).write_bytes(canon.canonical_bytes(doc))
+
+    def run_check(self, table: dict) -> list:
+        from via_conformance import named
+        self.notes: list[str] = []
+        return named.run_named("c", table, self.tmp, {"u5": lambda: [], "stdout": b"", "note": self.notes.append})
+
+    def test_network_valid(self) -> None:
+        net = _cross_network()
+        self.put("out.json", net)
+        check = {"fn": "network_valid", "path": "out.json", "input": "in.json"}
+        self.assertEqual(self.run_check(check), [])
+        bad = json.loads(json.dumps(net))
+        bad["areas"] = bad["areas"][1:]  # a face with no area: Euler and Closure both fail
+        self.put("out.json", bad)
+        got = self.run_check(check)
+        self.assertTrue(any("Euler, fine" in g[1] for g in got), got)
+        self.assertTrue(any("Closure" in g[1] for g in got), got)
+        bad = json.loads(json.dumps(net))
+        bad["segments"][0]["ends"] = [[0, 0], [100000, 100000]]  # a diagonal through a vertex
+        self.put("out.json", bad)
+        self.assertTrue(any("3.1 Noded" in g[1] for g in self.run_check(check)))
+        bad = json.loads(json.dumps(net))
+        bad["junctions"] = bad["junctions"][:4]
+        self.put("out.json", bad)
+        self.assertTrue(any("junctions" in g[1] for g in self.run_check(check)))
+        bad = json.loads(json.dumps(net))
+        bad["areas"][0]["region"][0][0].reverse()  # a clockwise shell
+        self.put("out.json", bad)
+        self.assertTrue(self.run_check(check))
+
+    def test_network_measures_never_fails(self) -> None:
+        self.put("out.json", _cross_network())
+        self.put("ref.json", {"streets": {"faces": 5, "total_area_m2": 1}})
+        self.assertEqual(self.run_check({"fn": "network_measures", "path": "out.json", "reference": "ref.json"}), [])
+        self.assertIn("4 areas against 5 faces", self.notes[0])
+
+    def test_noding_valid_and_same(self) -> None:
+        inp = {"@format": "via-kernel-1", "shapes": [{"path": [[0, 0], [10, 0]], "source": "a"},
+                                                     {"path": [[5, -5], [5, 5]], "source": "b"}]}
+        self.put("n.json", inp)
+        out = {"vertices": [[0, 0], [5, -5], [5, 0], [5, 5], [10, 0]], "segments": [
+            {"ends": [[0, 0], [5, 0]], "provenance": [{"reversed": False, "segment": 0, "source": "a", "t": [0, 0.5]}]},
+            {"ends": [[5, -5], [5, 0]], "provenance": [{"reversed": False, "segment": 0, "source": "b", "t": [0, 0.5]}]},
+            {"ends": [[5, 0], [5, 5]], "provenance": [{"reversed": False, "segment": 0, "source": "b", "t": [0.5, 1]}]},
+            {"ends": [[5, 0], [10, 0]], "provenance": [{"reversed": False, "segment": 0, "source": "a", "t": [0.5, 1]}]}]}
+        self.put("o.json", out)
+        check = {"fn": "noding_valid", "path": "o.json", "input": "n.json"}
+        self.assertEqual(self.run_check(check), [])
+        far = json.loads(json.dumps(out))
+        far["segments"][0]["ends"] = [[0, 0], [5, 2]]
+        far["segments"][3]["ends"] = [[5, 2], [10, 0]]
+        self.put("o.json", far)
+        self.assertTrue(any("Close" in g[1] for g in self.run_check(check)))
+        gap = json.loads(json.dumps(out))
+        del gap["segments"][3]
+        self.put("o.json", gap)
+        self.assertTrue(any("Faithful" in g[1] for g in self.run_check(check)))
+        uncut = {"vertices": out["vertices"], "segments": [
+            {"ends": [[0, 0], [10, 0]], "provenance": [{"reversed": False, "segment": 0, "source": "a", "t": [0, 1]}]},
+            {"ends": [[5, -5], [5, 5]], "provenance": [{"reversed": False, "segment": 0, "source": "b", "t": [0, 1]}]}]}
+        self.put("o.json", uncut)
+        self.assertTrue(any("Noded" in g[1] for g in self.run_check(check)))
+        self.put("o.json", out)
+        self.put("p.json", out)
+        same = {"fn": "noding_same", "first": "o.json", "second": "p.json"}
+        self.assertEqual(self.run_check(same), [])
+        self.put("p.json", gap)
+        self.assertTrue(self.run_check(same))
+
+    def test_names_same(self) -> None:
+        a = {"junctions": [{"name": "j1"}], "edges": [{"name": "e1"}], "areas": [{"name": "a1"}, {"name": "a2"}]}
+        self.put("a.json", a)
+        self.put("b.json", {**a, "areas": [{"name": "a2"}, {"name": "a1"}]})
+        self.assertEqual(self.run_check({"fn": "names_same", "first": "a.json", "second": "b.json"}), [])
+        self.put("b.json", {**a, "areas": [{"name": "a3"}, {"name": "a1"}]})
+        self.assertTrue(self.run_check({"fn": "names_same", "first": "a.json", "second": "b.json"}))
+
+    def test_derive_and_cells_valid(self) -> None:
+        from via_conformance import kernel
+        net = _cross_network()
+        made = kernel.derive_cells(net, CROSS_IN, {"cell_length": 10000})
+        self.assertEqual(len(made), 4)
+        first = made[0][1]["params"]
+        self.assertEqual(first["area"], [0, 0])
+        # The first area, [0, 0]-[50, 50]: inside frame_a, a ring's left (geometry.md 3.2); below
+        # cross_ew, which runs east (its right); west of cross_ns, which runs north (its left).
+        sides = {(f["source"], f["side"]) for f in first["frontage"]}
+        self.assertEqual(sides, {("frame_a", "left"), ("cross_ew", "right"), ("cross_ns", "left")})
+        seg = kernel.derive_segments(net)
+        self.assertEqual(len(seg["shapes"]), 12)
+        self.assertEqual(seg["shapes"][0], {"path": [[0, 0], [0, 50000]], "source": "s00"})
+        # cells_valid: one 50 m cell along cross_ns, 10 m deep, and the rest.
+        net["edges"] = [{"ends": [[50000, 0], [50000, 50000]], "path": [[50000, 0], [50000, 50000]]}]
+        self.put("net.json", net)
+        cin = {"params": {"area": [0, 0], "min_cell_length": 8000}}
+        self.put("cin.json", cin)
+        cell = [[[40000, 0], [50000, 0], [50000, 50000], [40000, 50000]]]
+        rest = [[[0, 0], [40000, 0], [40000, 50000], [0, 50000]]]
+        fr = {"edge": [[50000, 0], [50000, 50000]], "side": "left", "source": "cross_ns"}
+        self.put("cout.json", {"cells": [{"frontage": fr, "region": [cell], "station": 0}], "rest": [rest], "diagnostics": []})
+        check = {"fn": "cells_valid", "path": "cout.json", "input": "cin.json", "network": "net.json"}
+        self.assertEqual(self.run_check(check), [])
+        short = [[[40000, 0], [50000, 0], [50000, 5000], [40000, 5000]]]
+        self.put("cout.json", {"cells": [{"frontage": fr, "region": [short], "station": 0}], "rest": [rest], "diagnostics": []})
+        got = self.run_check(check)
+        self.assertTrue(any("Fronts" in g[1] for g in got), got)
+        self.assertTrue(any("Closure" in g[1] for g in got), got)
+        self.put("cout.json", {"cells": [], "rest": [], "diagnostics": []})
+        self.assertTrue(any("cell_none" in g[1] for g in self.run_check(check)))
+
+    def test_sample_terrain(self) -> None:
+        b = self.tmp / "b" / "fields"
+        b.mkdir(parents=True)
+        arr = np.array([[0, 1, 2], [3, 4, 6]], dtype="<f4")  # rows from the south, 3 by 2 posts
+        np.save(b / "height.npy", arr)
+        self.put("b/manifest.json", {"frame": {"extent": [0, 0, 2, 1], "posts": [3, 2], "resolution": 1}})
+        self.put("q.json", {"surface": "height", "x": [500, 2000], "y": [0, 1000]})
+        # (0.5, 0): cell (0, 0), z = 0.5, gx = 1, gy = 3. (2, 1): the last cell (1, 0), z = 6,
+        # gx = (1 * 0 + 2 * 1) / 1 = 2, gy = (3 * 0 + 4 * 1) / 1 = 4.
+        self.put("a.json", {"gx": [1, 2], "gy": [3, 4], "inside": [True, True], "z": [0.5, 6]})
+        check = {"fn": "sample_terrain", "path": "a.json", "input": "q.json", "field": "b/fields/height.npy",
+                 "manifest": "b/manifest.json"}
+        self.assertEqual(self.run_check(check), [])
+        self.put("a.json", {"gx": [1, 1], "gy": [3, 4], "inside": [True, True], "z": [0.5, 6]})
+        self.assertTrue(self.run_check(check))
+
+
 class MatchingTests(unittest.TestCase):
     def test_assignment_needs_search(self) -> None:
         # Greedy first-fit gives the line-1 record to `any`, leaving `one` unmatched.
@@ -676,6 +903,14 @@ class MatchingTests(unittest.TestCase):
         exps = {"any": {"code": "a.b"}, "one": {"code": "a.b", "line": 1}}
         self.assertEqual(diags.match(exps, doc, "exact"), [])
         self.assertTrue(diags.match({"x": {"code": "a.b", "records": 3}}, doc, "includes"))
+
+    def test_records_zero_is_absent(self) -> None:
+        doc = diags.DiagDoc(0, [{"code": "a.b"}], [{"code": "build.baseline_missing"}])
+        none = {"x": {"code": "build.baseline_missing", "from": "run", "records": 0}}
+        self.assertTrue(diags.match(none, doc, "includes"))
+        self.assertEqual(diags.match(none, diags.DiagDoc(0, [{"code": "a.b"}], []), "includes"), [])
+        self.assertTrue(diags.match({"x": {"code": "a.b", "records": 0}}, doc, "any") == [])
+        self.assertTrue(diags.match({"x": {"code": "a.b", "records": 0}}, doc, "includes"))
 
     def test_count_defaults_to_one(self) -> None:
         doc = diags.DiagDoc(0, [{"code": "a.b"}], [])

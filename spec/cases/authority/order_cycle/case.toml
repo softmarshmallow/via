@@ -1,13 +1,12 @@
 format    = "via-case-1"
-summary   = "Written links that disagree (a path that follows another and ends at its end): authority.order_cycle naming both and each link's direction; exit 1."
+summary   = "Links that disagree: a lane ending at an instance, a spur starting at the lane's end inside the instance's footprint; authority.order_cycle naming the field and the three; exit 1."
 milestone = 1
 actions   = ["build"]
 
-# The row's form, `a` starting at `b.end` and `b` at `a.end`, makes each path's shape read the
-# other's (graph.md 2: an end is an edge to that path's shape), which is graph.cycle before any order
-# is formed. authority.md 4.3 names the other cycle that needs written links that disagree: a feature
-# that both follows and arrives at another. `b` follows `a` (b later) and ends at `a.end` (a later,
-# the owner of the meeting). (open) whether `follows` with `ends_at` is a legal pair: geometry.md 4.
+# authority.md 4.3 and its order_cycle row. `lane` ends at `yard` (arrival: `yard.ground` later);
+# `spur` starts at `lane.end` (arrival: `lane` later); `spur` lies wholly inside `yard`'s 10 m
+# block footprint, from (8, 8) to (11, 8), and is not linked to it in writing (containment:
+# `spur` later). No shape reads another in a loop, so no graph.cycle comes first.
 
 [action.build]
 via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
@@ -17,3 +16,4 @@ out         = "build/w"
 
 [action.build.diag.order_cycle]
 code = "authority.order_cycle"
+data = { field = "height", features = ["lane", "spur", "yard.ground"] }

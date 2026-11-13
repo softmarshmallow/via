@@ -1,0 +1,71 @@
+format    = "via-case-1"
+summary   = "ford built; --change downstream --against it with a fresh --store: entries listed, every causes null, no build.baseline_missing."
+milestone = 1
+actions   = ["program", "trust", "base", "down_base", "against"]
+
+# graph.md 6.4's last paragraph and build.md 11.2: when the baseline's build record is not in the
+# store (`--against` a build made with another store), whole field files are compared post by post
+# and causes are not given; each entry's `causes` is null, never [] (build.md 11.2 `causes`).
+# build/down is built first with the default store, so its .previous names a build the fresh store
+# does not hold: without --against that is build.baseline_missing (build.md 11.2). With --against
+# the baseline is build/ford, read from that directory, so the warning does not apply.
+# The entries are those of build.md case 37 (twelve written ones, then at least one tree); only
+# their presence is asserted here, and that none carries a cause.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.down_base]
+via         = ["build", "world.toml", "--out", "build/down"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/down"
+
+[action.against]
+via         = ["build", "world.toml", "--change", "downstream", "--against", "build/ford", "--store", "fresh", "--out", "build/down"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/down"
+untouched   = ["build/ford"]
+
+[action.against.diag.no_baseline_missing]
+code    = "build.baseline_missing"
+from    = "run"
+records = 0
+
+[action.against.file.ford]
+path     = "build/down/changes.json"
+pointer  = "/entries/1"
+includes = { name = "ford", table = "feature" }
+
+[action.against.file.cottage]
+path     = "build/down/changes.json"
+pointer  = "/entries/11"
+includes = { name = "cottage", table = "instance" }
+
+[action.against.check.causes_null]
+fn       = "json_list"
+path     = "build/down/changes.json"
+pointer  = "/entries"
+at_least = 13
+nulls    = ["causes"]
+
+[action.against.check.beck_untouched]
+fn          = "changes_absent"
+path        = "build/down/changes.json"
+entry_names = ["beck"]

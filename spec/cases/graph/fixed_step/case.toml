@@ -1,0 +1,79 @@
+format    = "via-case-1"
+summary   = "ford built with no program, then with one, then twice unchanged: the fixed build's record replaces the failed one's, so both unchanged builds are null builds."
+milestone = 1
+actions   = ["trust", "unset", "program", "fixed", "again", "third"]
+
+# graph.md 6.2: the program's path is in no key, so the failed build and the fixed one share a build
+# key. A later build with the same key replaces its record; the fixed build completed every step, so
+# the null build applies to the next unchanged build ("No node runs", the plan's ford row Nothing),
+# and to every one after it.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.unset]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.unset.diag.no_program]
+code    = "protocol.no_program"
+subject = "step.checks"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.fixed]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.fixed.nodes]
+ran_includes = ["step:checks"]
+
+[action.fixed.file.complete]
+path    = "build/ford.run.json"
+pointer = "/build/complete"
+value   = true
+
+[action.again]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+untouched   = ["build/ford"]
+
+[action.again.nodes]
+ran = []
+
+[action.again.file.null]
+path    = "build/ford.run.json"
+pointer = "/build/null"
+value   = true
+
+[action.third]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+untouched   = ["build/ford"]
+
+[action.third.nodes]
+ran = []
+
+[action.third.file.null]
+path    = "build/ford.run.json"
+pointer = "/build/null"
+value   = true
+
+[action.third.same.files]
+action = "fixed"
+what   = "files"

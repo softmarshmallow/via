@@ -89,12 +89,35 @@ fn point(j: &Json, path: &str) -> R<P> {
     let y = a[1].int().ok_or_else(|| Fail::Usage(path.to_string()))?;
     let p = P::new(x, y);
     if !p.in_range() {
+        // No position: a point off the lattice cannot be held as one (geometry.md 3). The member
+        // path names it; the source is added by the shape reading it (`with_source`).
+        let (axis, v) = if x.abs() > via_num::LATTICE_MAX {
+            ("x", x)
+        } else {
+            ("y", y)
+        };
+        let limit = via_num::LATTICE_MAX;
         return Err(Fail::Geom(
-            GeomDiag::new(Code::NumOutOfRange, "an input coordinate is out of range")
-                .at(P::new(0, 0)),
+            GeomDiag::new(
+                Code::NumOutOfRange,
+                format!(
+                    "`{path}` has {axis} = {v} mm, beyond the lattice limit of -{limit} to {limit} mm"
+                ),
+            )
+            .with("member", via_diag::Value::text(path.to_string()))
+            .with("value", via_diag::Value::Int(v))
+            .with("limit", via_diag::Value::Int(limit)),
         ));
     }
     Ok(p)
+}
+
+/// A failure reading a shape's points, given that shape's source id.
+fn with_source(f: Fail, source: &str) -> Fail {
+    match f {
+        Fail::Geom(d) if d.source.is_none() => Fail::Geom(d.source(source)),
+        other => other,
+    }
 }
 
 fn points(j: &Json, path: &str) -> R<Vec<P>> {
@@ -151,9 +174,9 @@ fn shapes(input: &Json, diags: &mut Vec<GeomDiag>) -> R<Vec<Src>> {
             .ok_or_else(|| Fail::Usage(format!("{path}.source")))?
             .to_string();
         let shape = if let Some(p) = s.get("point") {
-            Shape::Point(point(p, &format!("{path}.point"))?)
+            Shape::Point(point(p, &format!("{path}.point")).map_err(|f| with_source(f, &source))?)
         } else if let Some(p) = s.get("path") {
-            let pts = points(p, &format!("{path}.path"))?;
+            let pts = points(p, &format!("{path}.path")).map_err(|f| with_source(f, &source))?;
             match read_path(&source, &pts, diags) {
                 Some(v) => Shape::Path(v),
                 None => {
@@ -165,7 +188,7 @@ fn shapes(input: &Json, diags: &mut Vec<GeomDiag>) -> R<Vec<Src>> {
                 }
             }
         } else if let Some(p) = s.get("ring") {
-            let pts = points(p, &format!("{path}.ring"))?;
+            let pts = points(p, &format!("{path}.ring")).map_err(|f| with_source(f, &source))?;
             match read_ring(&source, &pts, diags) {
                 Some(v) => Shape::Ring(v),
                 None => {
@@ -177,7 +200,9 @@ fn shapes(input: &Json, diags: &mut Vec<GeomDiag>) -> R<Vec<Src>> {
                 }
             }
         } else if let Some(p) = s.get("region") {
-            Shape::Region(region_of(p, &format!("{path}.region"))?)
+            Shape::Region(
+                region_of(p, &format!("{path}.region")).map_err(|f| with_source(f, &source))?,
+            )
         } else {
             return Err(Fail::Usage(format!("{path}.path")));
         };

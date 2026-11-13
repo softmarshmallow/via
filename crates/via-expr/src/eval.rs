@@ -17,7 +17,7 @@
 //! that post the first such operation in evaluation order. That is the record whatever the
 //! window, so the least record over all windows is the whole domain's.
 
-use via_diag::codes::{diag, formula};
+use via_diag::codes::{diag, doc, formula};
 use via_diag::Code;
 use via_num::{clamp, cos_deg, max, metres, min, mix, sin_deg, tan_deg, Grid, NumError};
 
@@ -454,6 +454,29 @@ pub fn bind(program: &Program, select: &dyn Select) -> Result<Binding, ExprError
             }
         }
     }
+    // `'edge_min'` (8.5): regions only, else `formula.shape`; on a region, milestone 2.
+    if let Some(u) = program
+        .selectors
+        .iter()
+        .find(|u| u.class == Class::Statistic && u.text == "edge_min")
+    {
+        return Err(match select.own_shape() {
+            Some(Shape::Region { .. }) => sel_error(
+                program,
+                &u.at,
+                doc::NOT_YET,
+                "`'edge_min'` arrives in milestone 2".into(),
+                "use `'min'` for now".into(),
+            ),
+            _ => sel_error(
+                program,
+                &u.at,
+                formula::SHAPE,
+                "`'edge_min'` takes a region; this feature is a path or a point".into(),
+                "use `'min'` on a path or a point".into(),
+            ),
+        });
+    }
     let smoothed = program
         .nodes
         .iter()
@@ -733,11 +756,11 @@ pub fn evaluate(
 
 /// Narrows a column for a field file (`numbers.md` 8, rule 9): finite, `-0` as `+0`, rounded
 /// once to `f32`. The index of the first value that cannot be stored on failure.
-pub fn narrow(values: &[f64]) -> Result<Vec<f32>, (usize, NumError)> {
+pub fn narrow(values: &[f64]) -> Result<Vec<f32>, Box<(usize, NumError)>> {
     values
         .iter()
         .enumerate()
-        .map(|(k, &v)| via_num::store_f32(v).map_err(|e| (k, e)))
+        .map(|(k, &v)| via_num::store_f32(v).map_err(|e| Box::new((k, e))))
         .collect()
 }
 

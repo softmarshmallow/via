@@ -9,7 +9,7 @@ use via_diag::nearest::nearest;
 use via_diag::{codes, Diag, NoWorld, Record, Site, Subject};
 use via_doc::{ChangeRequest, LoadOptions};
 
-use crate::build::{default_out, world_dir, world_name};
+use crate::build::{default_out, world_dir};
 use crate::json::{obj, parse, J};
 use crate::{steps, txt, usage};
 
@@ -33,16 +33,35 @@ pub fn merge(
         }
         print!("{s}");
     }
-    l.records
+    let mut records = l.records;
+    // A merge with no document error also checks the names formulas read (`documents.md` 5.1).
+    if let Some(w) = &l.world {
+        if !records
+            .iter()
+            .any(|r| r.severity() == via_diag::Severity::Error)
+        {
+            records.extend(via_model::formula_direction(w).iter().map(|d| d.emit(w)));
+        }
+    }
+    records
 }
 
-/// The run report beside the last build of `WORLD` (default `--out`, or `out`).
-fn last_report(world: &Path, out: Option<&Path>) -> Option<J> {
+/// The world's top-level `name`, read as plain TOML: no include, no change, no merge
+/// (`diagnostics.md` 2: `via explain` runs nothing and does not merge the world). `None` when the
+/// file does not read or has no string `name`.
+fn plain_name(world: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(world).ok()?;
+    let t: toml::Table = toml::from_str(&text).ok()?;
+    t.get("name")?.as_str().map(str::to_string)
+}
+
+/// The run report beside the last build of `WORLD` (default `--out`, or `out`), or the build
+/// directory it was looked for in when there is none.
+fn last_report(world: &Path, out: Option<&Path>) -> Result<J, PathBuf> {
     let out = match out {
         Some(o) => o.to_path_buf(),
         None => {
-            let l = via_doc::load(world, 1, &LoadOptions::from_env(Vec::new(), Vec::new()));
-            let name = l.world.as_ref().and_then(world_name).unwrap_or_else(|| {
+            let name = plain_name(world).unwrap_or_else(|| {
                 world
                     .file_stem()
                     .map_or_else(String::new, |s| s.to_string_lossy().into_owned())
@@ -50,8 +69,10 @@ fn last_report(world: &Path, out: Option<&Path>) -> Option<J> {
             default_out(world, &name, &[])
         }
     };
-    let text = std::fs::read_to_string(via_graph::report_path(&out)).ok()?;
-    parse(&text).ok()
+    std::fs::read_to_string(via_graph::report_path(&out))
+        .ok()
+        .and_then(|t| parse(&t).ok())
+        .ok_or(out)
 }
 
 /// `via explain [CODE] [WORLD] [--json]`, and `via explain NODE WORLD`.
@@ -86,10 +107,22 @@ pub fn explain(
             )
             .emit(&NoWorld)];
         };
-        let report = last_report(world, out);
+        let report = match last_report(world, out) {
+            Ok(r) => r,
+            Err(dir) => {
+                return vec![usage(
+                    at,
+                    format!(
+                        "no build at `{}`: it holds no run report",
+                        dir.to_string_lossy().replace('\\', "/")
+                    ),
+                    "run `via build` first, or name its directory with `--out`".into(),
+                )
+                .emit(&NoWorld)];
+            }
+        };
         let nodes: Vec<J> = report
-            .as_ref()
-            .and_then(|r| r.get("nodes"))
+            .get("nodes")
             .and_then(J::as_arr)
             .map(<[J]>::to_vec)
             .unwrap_or_default();
@@ -98,14 +131,43 @@ pub fn explain(
             .filter_map(|n| Some((n.get("id")?.as_str()?, n)))
             .collect();
         if !by_id.contains_key(code) {
+            // The nearest full id; else the nearest by entity, the id with its view, window and
+            // item taken off (`field:height` for `field:height/v:build/w:...`), naming every full
+            // id of that entity (diagnostics.md 1.3 and 1.4).
             let near = nearest(code, by_id.keys().copied());
-            let mut d = usage(
-                at,
-                format!("the last build held no node `{code}`"),
-                near.hint("run `via build` first"),
-            );
-            if let Some(n) = near.found() {
-                d = d.with("nearest", n);
+            let named: Vec<&str> = match near.found() {
+                Some(n) => vec![n],
+                None => {
+                    let shorts: std::collections::BTreeSet<&str> =
+                        by_id.keys().map(|k| entity_of(k)).collect();
+                    match nearest(entity_of(code), shorts.iter().copied()).found() {
+                        Some(e) => by_id
+                            .keys()
+                            .copied()
+                            .filter(|k| entity_of(k) == e)
+                            .collect(),
+                        None => Vec::new(),
+                    }
+                }
+            };
+            let hint = if named.is_empty() {
+                near.hint("name a node of the last build")
+            } else {
+                let shown: Vec<String> = named.iter().take(5).map(|n| format!("`{n}`")).collect();
+                let more = named.len().saturating_sub(5);
+                format!(
+                    "write {}{}",
+                    shown.join(" or "),
+                    if more > 0 {
+                        format!(", or one of {more} more of that entity")
+                    } else {
+                        String::new()
+                    }
+                )
+            };
+            let mut d = usage(at, format!("the last build held no node `{code}`"), hint);
+            if let Some(n) = named.first() {
+                d = d.with("nearest", *n);
             }
             return vec![d.emit(&NoWorld)];
         }
@@ -128,7 +190,7 @@ pub fn explain(
     // Step codes recorded by the last build of WORLD.
     let mut recorded = Vec::new();
     if let Some(w) = world {
-        if let Some(r) = last_report(w, out) {
+        if let Ok(r) = last_report(w, out) {
             for c in r.get("step_codes").and_then(J::as_arr).unwrap_or(&[]) {
                 if let Some(name) = c.get("code").and_then(J::as_str) {
                     recorded.push(via_diag::explain::StepCode {
@@ -155,6 +217,15 @@ pub fn explain(
         }
         Err(d) => vec![d.emit(&NoWorld)],
     }
+}
+
+/// A node id without its view, window and item (`graph.md` 2): `<family>:<subject>`.
+fn entity_of(id: &str) -> &str {
+    ["/v:", "/w:", "/i:"]
+        .iter()
+        .filter_map(|m| id.find(m))
+        .min()
+        .map_or(id, |i| &id[..i])
 }
 
 /// A window `i0,j0,i1,j1` of posts.
@@ -470,6 +541,15 @@ pub fn trust(
     if json {
         println!("{}", J::Arr(rows.clone()).canonical());
     } else {
+        // `protocol.md` 8.1: the SDK folder enters every step's trust digest, so it is listed once.
+        if let Some(d) = sdk {
+            let (digest, files) = steps::folder_digest(d);
+            eprintln!(
+                "sdk {} | {files} files | digest {}",
+                d.to_string_lossy().replace('\\', "/"),
+                digest.hex()
+            );
+        }
         for r in &rows {
             eprintln!(
                 "step {}: {} | code folder {} | {} files | trust {}",
@@ -588,6 +668,60 @@ fn delegated(func: &str, args: &[toml::Value]) -> Option<via_num::vectors::Got> 
             out.push(pt(lineref::at_length(&line, "v", l, true, 0).ok()?.point));
             Some(Got::List(out))
         }
+        // `identity.md` 10: `[class, [part, ...]]`, the digest as 16 lowercase hex digits.
+        "digest" => {
+            let class = args.first()?.as_str()?;
+            let parts = args
+                .get(1)?
+                .as_array()?
+                .iter()
+                .map(digest_part)
+                .collect::<Option<Vec<_>>>()?;
+            Some(Got::Text(via_geom::names::hex(via_geom::names::digest(
+                class, &parts,
+            ))))
+        }
         _ => None,
     }
+}
+
+/// One part of a `digest` vector, written as `identity.md` 10 says: `{ name }`, `{ int }`,
+/// `{ side }`, `{ role }`, `{ pair = [p, q] }` or `{ set = [p, ...] }`.
+fn digest_part(v: &toml::Value) -> Option<via_geom::names::Part> {
+    use via_geom::names::{Part, Role};
+    use via_geom::network::Side;
+    let t = v.as_table()?;
+    if t.len() != 1 {
+        return None;
+    }
+    let (k, x) = t.iter().next()?;
+    Some(match k.as_str() {
+        "name" => Part::name(x.as_str()?),
+        "int" => Part::Int(x.as_integer()?),
+        "side" => Part::Side(match x.as_str()? {
+            "left" => Side::Left,
+            "right" => Side::Right,
+            _ => return None,
+        }),
+        "role" => Part::Role(match x.as_str()? {
+            "start" => Role::Start,
+            "end" => Role::End,
+            "pass" => Role::Pass,
+            _ => return None,
+        }),
+        "pair" => {
+            let a = x.as_array()?;
+            if a.len() != 2 {
+                return None;
+            }
+            Part::pair(digest_part(&a[0])?, digest_part(&a[1])?)
+        }
+        "set" => Part::Set(
+            x.as_array()?
+                .iter()
+                .map(digest_part)
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        _ => return None,
+    })
 }

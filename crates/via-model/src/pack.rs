@@ -123,9 +123,21 @@ pub struct Pack {
     /// The world names a pack that could not be found or read. Its error is reported once; what
     /// reads the pack is skipped, not reported again (`diagnostics.md` 4).
     pub failed: bool,
+    /// Where each asset's declared facts are written (7: a declared fact's file and line are the
+    /// pack text's): asset id to key to 1-based line; the key `""` is the asset's header.
+    pub lines: BTreeMap<String, BTreeMap<String, u32>>,
+    /// Where each name the pack declares is declared, for a not-found record's `related`
+    /// (`diagnostics.md` 1.3): `asset.<id>`, `material.<name>`, `taxon.<path>` (a taxon implied
+    /// by a longer path is declared by the first such path) to its subject and header site.
+    pub declared: BTreeMap<String, (Subject, Site)>,
 }
 
 impl Pack {
+    /// The declaration of a pack name, `class` one of `asset`, `material`, `taxon`.
+    pub fn declaration(&self, class: &str, name: &str) -> Option<(Subject, Site)> {
+        self.declared.get(&format!("{class}.{name}")).cloned()
+    }
+
     /// The assets filed at or under a taxon, by id (5).
     pub fn select(&self, taxon: &str) -> Vec<&Asset> {
         let below = format!("{taxon}/");
@@ -211,17 +223,22 @@ pub fn find(written: &str, roots: &Roots, diags: &mut Vec<Diag>) -> Option<PathB
     match found.len() {
         0 => {
             let places: Vec<String> = roots.named().into_iter().map(|(p, _)| p).collect();
-            diags.push(pack_diag(
-                codes::pack::NOT_FOUND,
-                &format!(
-                    "no pack `{written}` in the roots searched: {}",
-                    places.join(", ")
+            diags.push(text::with_nearest(
+                pack_diag(
+                    codes::pack::NOT_FOUND,
+                    &format!(
+                        "no pack `{written}` in the roots searched: {}",
+                        places.join(", ")
+                    ),
+                    &text::near_hint(
+                        written,
+                        seen_names.iter().map(String::as_str),
+                        "write a path to the pack file",
+                    ),
                 ),
-                &text::near_hint(
-                    written,
-                    seen_names.iter().map(String::as_str),
-                    "write a path to the pack file",
-                ),
+                written,
+                seen_names.iter().map(String::as_str),
+                text::undeclared,
             ));
             None
         }
@@ -324,20 +341,55 @@ impl Reader<'_> {
             .as_ref()
             .and_then(|t| span_in(t.get_ref(), subject, key))
             .unwrap_or(0..0);
+        let site = self.text_site(&span);
+        self.diags.push(text::diag(code, subj, site, message, hint));
+    }
+
+    /// The last fault with the nearest of `names` to `written` (`diagnostics.md` 1.3).
+    fn near<'n>(
+        &mut self,
+        written: &str,
+        names: impl IntoIterator<Item = &'n str>,
+        declared: impl FnOnce(&str) -> Option<(Subject, Site)>,
+    ) {
+        if let Some(d) = self.diags.pop() {
+            self.diags
+                .push(text::with_nearest(d, written, names, declared));
+        }
+    }
+
+    /// The pack text at a byte span, as a site.
+    fn text_site(&self, span: &std::ops::Range<usize>) -> Site {
         let (line, column) = line_column(self.text, span.start);
         let clamp = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
-        self.diags.push(text::diag(
-            code,
-            subj,
-            Site::Text {
-                file: self.file.clone(),
-                line,
-                column,
-                bytes: [clamp(span.start), clamp(span.end)],
-            },
-            message,
-            hint,
-        ));
+        Site::Text {
+            file: self.file.clone(),
+            line,
+            column,
+            bytes: [clamp(span.start), clamp(span.end)],
+        }
+    }
+
+    /// The header of `[<class>.<name>]`, as subject and site, when the text holds it.
+    fn declared(&self, class: &str, name: &str) -> Option<(Subject, Site)> {
+        let root = self.spans.as_ref()?.get_ref();
+        let span = root
+            .iter()
+            .find(|(k, _)| k.get_ref().as_ref() == class)
+            .and_then(|(_, v)| match v.get_ref() {
+                toml::de::DeValue::Table(t) => t
+                    .iter()
+                    .find(|(k, _)| k.get_ref().as_ref() == name)
+                    .map(|(k, _)| k.span()),
+                _ => None,
+            })?;
+        let subject = Subject::parse(&if via_doc::is_id(name) {
+            format!("{class}.{name}")
+        } else {
+            format!("{class}.\"{name}\"")
+        })
+        .ok()?;
+        Some((subject, self.text_site(&span)))
     }
 }
 
@@ -357,6 +409,58 @@ fn lengths(v: &toml::Value) -> Option<Vec<i64>> {
     xs.iter()
         .map(|x| num_text(x).and_then(|t| via_num::parse_length(&t).ok()))
         .collect()
+}
+
+/// The TOML form of a value, as a message names it.
+fn form_word(v: &toml::Value) -> String {
+    match v {
+        toml::Value::String(_) => "a string".into(),
+        toml::Value::Integer(_) | toml::Value::Float(_) => "a number".into(),
+        toml::Value::Boolean(_) => "a boolean".into(),
+        toml::Value::Datetime(_) => "a date".into(),
+        toml::Value::Array(xs) => format!(
+            "an array of {} value{}",
+            xs.len(),
+            if xs.len() == 1 { "" } else { "s" }
+        ),
+        toml::Value::Table(_) => "a table".into(),
+    }
+}
+
+/// `size`: three lengths, or the code, message and hint of what is wrong with it.
+fn size_of(v: &toml::Value) -> Result<[i64; 3], (Code, String, String)> {
+    let wrong = |found: String| {
+        (
+            codes::doc::TYPE,
+            format!("`size` takes an array of three lengths in metres; found {found}"),
+            "write `size = [x, y, z]` in metres".to_string(),
+        )
+    };
+    let toml::Value::Array(xs) = v else {
+        return Err(wrong(form_word(v)));
+    };
+    if xs.len() != 3 {
+        return Err(wrong(form_word(v)));
+    }
+    let mut out = [0i64; 3];
+    for (i, x) in xs.iter().enumerate() {
+        let Some(t) = num_text(x) else {
+            return Err(wrong(format!("{} at index {i}", form_word(x))));
+        };
+        match via_num::parse_length(&t) {
+            Ok(mm) => out[i] = mm,
+            Err(e) => {
+                let hint = match &e {
+                    via_num::NumError::TooPrecise { nearest, .. } => {
+                        format!("write `{}` or `{}`", nearest[0], nearest[1])
+                    }
+                    _ => "write a length in range".to_string(),
+                };
+                return Err((text::num_code(&e), format!("`size` index {i}: {e}"), hint));
+            }
+        }
+    }
+    Ok(out)
 }
 
 fn doubles(v: &toml::Value) -> Option<Vec<f64>> {
@@ -409,7 +513,7 @@ fn is_ccw_simple(ring: &[(i64, i64)]) -> bool {
 
 /// Reads a pack file. Pack-wide faults (8.3) come back as diagnostics.
 pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
-    let bytes = match std::fs::read_to_string(path) {
+    let raw = match std::fs::read(path) {
         Ok(b) => b,
         Err(e) => {
             return (
@@ -422,6 +526,40 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
             )
         }
     };
+    // Syntax under `documents.md` 1's rules, through the documents' own reader: the same forms,
+    // messages and hints as a world file, each located by line, column and bytes.
+    let syntax = via_doc::read::syntax_faults(raw.clone(), display);
+    if !syntax.is_empty() {
+        let shown = String::from_utf8_lossy(&raw);
+        let diags = syntax
+            .into_iter()
+            .map(|f| {
+                let start = f.bytes[0] as usize;
+                let (line, column) = line_column(&shown, start);
+                let mut d = text::diag(
+                    codes::doc::SYNTAX,
+                    Subject::World,
+                    Site::Text {
+                        file: display.to_string(),
+                        line,
+                        column,
+                        bytes: f.bytes,
+                    },
+                    &f.message,
+                    &f.hint,
+                );
+                for (k, v) in f.data {
+                    d = d.with(k, v);
+                }
+                d
+            })
+            .collect();
+        return (None, diags);
+    }
+    let Ok(bytes) = String::from_utf8(raw) else {
+        // `syntax_faults` reports bytes that are not UTF-8; this is not reached.
+        return (None, Vec::new());
+    };
     let mut r = Reader {
         file: display.to_string(),
         text: &bytes,
@@ -431,15 +569,17 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
     let table: toml::Table = match bytes.parse() {
         Ok(t) => t,
         Err(e) => {
+            // Our reader took the text and the TOML crate did not: located by the crate's span,
+            // with its one-line message.
+            let span = e.span().unwrap_or(0..0);
+            let site = r.text_site(&span);
+            let first = e.message().lines().next().unwrap_or("").trim().to_string();
             r.diags.push(text::diag(
                 codes::doc::SYNTAX,
                 Subject::World,
-                Site::File {
-                    file: display.to_string(),
-                    locator: BTreeMap::new(),
-                },
-                &format!("the pack is not valid TOML: {e}"),
-                "fix the pack's syntax",
+                site,
+                &format!("the pack is not TOML here: {first}"),
+                "write the value or header in TOML 1.0's form",
             ));
             return (None, r.diags);
         }
@@ -559,6 +699,66 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
             }
         }
     }
+    if let Some(spans) = r.spans.as_ref() {
+        let root = spans.get_ref();
+        for id in pack.assets.keys() {
+            let subject = format!("asset.{id}");
+            let mut m = BTreeMap::new();
+            if let Some(h) = span_in(root, &subject, None) {
+                m.insert(String::new(), line_column(r.text, h.start).0);
+            }
+            let table = root
+                .iter()
+                .find(|(k, _)| k.get_ref().as_ref() == "asset")
+                .and_then(|(_, v)| match v.get_ref() {
+                    toml::de::DeValue::Table(t) => t
+                        .iter()
+                        .find(|(k, _)| k.get_ref().as_ref() == id.as_str())
+                        .and_then(|(_, v)| match v.get_ref() {
+                            toml::de::DeValue::Table(t) => Some(t),
+                            _ => None,
+                        }),
+                    _ => None,
+                });
+            if let Some(t) = table {
+                for (k, _) in t.iter() {
+                    m.insert(
+                        k.get_ref().to_string(),
+                        line_column(r.text, k.span().start).0,
+                    );
+                }
+            }
+            pack.lines.insert(id.clone(), m);
+        }
+    }
+    let mut declared = BTreeMap::new();
+    for id in pack.assets.keys() {
+        if let Some(d) = r.declared("asset", id) {
+            declared.insert(format!("asset.{id}"), d);
+        }
+    }
+    for name in pack.materials.keys() {
+        if let Some(d) = r.declared("material", name) {
+            declared.insert(format!("material.{name}"), d);
+        }
+    }
+    if let Some(toml::Value::Table(t)) = table.get("taxon") {
+        for path in t.keys() {
+            let Some(d) = r.declared("taxon", path) else {
+                continue;
+            };
+            let segs: Vec<&str> = path.split('/').collect();
+            for n in (1..=segs.len()).rev() {
+                let at = format!("taxon.{}", segs[..n].join("/"));
+                if n == segs.len() {
+                    declared.insert(at, d.clone());
+                } else {
+                    declared.entry(at).or_insert_with(|| d.clone());
+                }
+            }
+        }
+    }
+    pack.declared = declared;
     (Some(pack), r.diags)
 }
 
@@ -588,6 +788,7 @@ fn check_defaults(r: &mut Reader<'_>, subject: &str, d: &toml::Table) {
                 &format!("`{k}` is not a key `defaults` may hold"),
                 &text::near_hint(k, DEFAULT_KEYS, "see assets.md 2.5"),
             );
+            r.near(k, DEFAULT_KEYS, text::undeclared);
         }
     }
     check_axes(r, subject, d);
@@ -672,6 +873,7 @@ fn read_asset(
                 &format!("`{k}` is not a key of an asset"),
                 &text::near_hint(k, ASSET_KEYS, "see assets.md 2.2"),
             );
+            r.near(k, ASSET_KEYS, text::undeclared);
         }
     }
     for k in ["file", "detail"] {
@@ -723,18 +925,26 @@ fn read_asset(
     let taxon_of = a.get("taxon").and_then(|v| v.as_str());
     // A declared fact: the asset's own value, else an inherited one (2.5).
     let declared = |k: &str| a.get(k).or_else(|| inherited.get(taxon_of, k));
-    let size = match a.get("size").and_then(lengths) {
-        Some(s) if s.len() == 3 => [s[0], s[1], s[2]],
-        _ => {
+    // 8.1: an absent `size` is the source's fault; a present one of the wrong form is `doc.type`,
+    // and a length off the lattice `num.too_precise` (`numbers.md` 3.1), as in a world file.
+    let size = match a.get("size") {
+        None => {
             r.fault(
                 codes::asset::SOURCE,
                 &subject,
-                Some("size"),
+                None,
                 "the asset lacks `size`, three lengths",
                 "write `size = [x, y, z]` in metres",
             );
             return None;
         }
+        Some(v) => match size_of(v) {
+            Ok(s) => s,
+            Err((code, message, hint)) => {
+                r.fault(code, &subject, Some("size"), &message, &hint);
+                return None;
+            }
+        },
     };
     if size.iter().any(|v| *v <= 0) {
         r.fault(
@@ -757,6 +967,7 @@ fn read_asset(
                     &format!("`{p}` is not a primitive shape"),
                     &text::near_hint(p, PRIMITIVES.iter().map(|(n, _)| *n), "see assets.md 6"),
                 );
+                r.near(p, PRIMITIVES.iter().map(|(n, _)| *n), text::undeclared);
                 return None;
             }
         },
@@ -881,6 +1092,11 @@ fn read_asset(
                     "declare `[taxon.\"<path>\"]`",
                 ),
             );
+            let declared = |n: &str| r.declared("taxon", n);
+            let at = via_diag::nearest::nearest(t, taxa.iter().map(String::as_str))
+                .found()
+                .and_then(declared);
+            r.near(t, taxa.iter().map(String::as_str), |_| at);
         }
     }
     let tags = a
@@ -896,13 +1112,18 @@ fn read_asset(
     if let Some(toml::Value::Table(ms)) = a.get("mount") {
         for (name, m) in ms {
             if matches!(name.as_str(), "start" | "end" | "ground") {
+                let free = via_doc::free_name(name, &|c| ms.contains_key(c));
                 r.fault(
                     codes::identity::RESERVED,
                     &subject,
                     Some("mount"),
                     &format!("a mount may not be named `{name}`"),
-                    "choose another name",
+                    &format!("choose another name, such as `{free}`"),
                 );
+                if let Some(d) = r.diags.pop() {
+                    r.diags
+                        .push(d.with("nearest", via_diag::Value::text(free.clone())));
+                }
                 continue;
             }
             if m.get("connector").is_some() {

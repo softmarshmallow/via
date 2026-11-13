@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from . import canon, diags, files, leaks, named
+from . import kernel as kernel_files
 from .model import Action, Case, CaseError
 
 Failure = tuple[str, str, str]
@@ -311,6 +312,8 @@ class CaseRun:
                 raise CaseError(f"{where}: byte {t['at']} is past the end of {a.target} ({len(data)} bytes)")
             data[t["at"]] ^= 0xFF
             path.write_bytes(bytes(data))
+        elif a.kind == "derive":
+            self.derive(a)
         elif a.kind == "truncate":
             if not path.is_file():
                 raise CaseError(f"{where}: {a.target} is not a file")
@@ -319,6 +322,29 @@ class CaseRun:
                 raise CaseError(f"{where}: cannot cut {a.target} ({size} bytes) to {t['bytes']} bytes")
             with open(path, "r+b") as fh:
                 fh.truncate(t["bytes"])
+
+    def derive(self, a: Action) -> None:
+        """conformance.md 3.3 `derive`: a kernel input written from a kernel output."""
+        t = a.table
+        where = f"action.{a.id}"
+        try:
+            out = kernel_files.read(self.work / t["from"])
+            inp = kernel_files.read(self.work / t["input"]) if "input" in t else None
+        except kernel_files.KernelFileError as e:
+            raise CaseError(f"{where}: {e}") from e
+        dest = self.work / t["derive"]
+        if t["as"] == "segments":
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(canon.canonical_bytes(kernel_files.derive_segments(out)))
+        else:
+            if dest.exists():
+                raise CaseError(f"{where}: {t['derive']} already exists")
+            dest.mkdir(parents=True)
+            made = kernel_files.derive_cells(out, inp, t["params"])
+            if not made:
+                raise CaseError(f"{where}: {t['from']} has no area")
+            for fname, doc in made:
+                (dest / fname).write_bytes(canon.canonical_bytes(doc))
 
     # --- via actions ------------------------------------------------------------------------
 
@@ -442,7 +468,10 @@ class CaseRun:
 
         u5 = lambda: self._u5(out, diag_file)  # noqa: E731
         for cid, ct in t.get("check", {}).items():
-            for check, exp, got in named.run_named(cid, ct, self.work, {"u5": u5, "stdout": proc.stdout}):
+            if item is not None:
+                ct = {k: (v.replace("{item}", item) if isinstance(v, str) else v) for k, v in ct.items()}
+            ctx = {"u5": u5, "stdout": proc.stdout, "note": self.notes.append}
+            for check, exp, got in named.run_named(cid, ct, self.work, ctx):
                 self.fail(label, check, exp, got)
 
         # U4: via check passes on every build that exits 0.

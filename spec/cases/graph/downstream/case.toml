@@ -3,13 +3,31 @@ summary   = "ford, then --change downstream into the clean build's directory: ra
 milestone = 1
 actions   = ["program", "trust", "base", "downstream"]
 
-# graph.md's row compares `ran` with the fixture ford_downstream.ran. That list is the node set of
-# graph.md 1 to 2 expanded over ford's chunks and features; until it is derived from the chapter
-# (not recorded from a build), the case asserts the parts the chapter fixes: the moved ford, the
-# lanes that end and start at it, the bookmark naming it, the writes; the beck untouched.
-# Chunks (0, 3) and (3, 3), x 0 to 64 and 192 to 256 m, y 192 to 256 m (k = 128 posts, graph.md 1):
-# no effect window of the beck (x 140 to 166 above y 170), the lanes (y below 132 + 12), the ford or
-# the cottage's pad reaches them, before or after the change, so none of their field nodes runs.
+# graph.md's row: `ran` equals ford_downstream.ran, which is expected/ran.txt (conformance.md 2),
+# derived from graph.md 1 and 2, not recorded. Chunks are 4 by 4 of k = 128 posts (513 posts a side);
+# chunk (cx, cy) spans x 64cx to 64cx + 64 m. The ford moves on the beck from t = 0.55, about
+# (153.6, 115.4), to t = 0.8, about (155.7, 51.6).
+# - merge (another change set); no source changed. statements: shape:ford, attr:ford. Placement
+#   edges: lane_west and lane_east arrive at the ford; at_ford, to_door, cottage stand on lane_west;
+#   in_trees on lane_east; footprint, height of the cottage follow. Name attributes: at_ford and
+#   on_bank (toward ford), to_door (toward cottage), in_trees (toward lane_east.end). on_bank's shape
+#   stands on the beck, which is unchanged; beck, lane attrs and every select are not touched.
+# - rule:trees reads shape:lane_east (near at a candidate's point, formulas.md 6.9) and the
+#   surface and keep_out chunks; held:trees and height:trees follow.
+# - distance nodes: the moved features' effect windows (fields.md 5.3) after the change: ford
+#   (radius 21) chunks (2, 0), (2, 1); lane_west (12) columns 0 to 2, rows 0 to 2; lane_east
+#   columns 2, 3, rows 0 to 2; cottage.ground (pad, 4) (1, 1). The beck's are reused.
+# - measures: each moved feature's under/smoothed_along, and the beck's bed (it is anchored, so it
+#   reads the lanes' and the pad's shaped entries before it, authority.md 4.2) and level (it reads
+#   water's base, f('height')). graph.md 1 does not spell <call>, so these end in `*`.
+# - height: every chunk a moved window meets before or after (rows 0 to 2), and every chunk the
+#   beck meets (columns 1, 2), whose bed measure changed: all but (0, 3) and (3, 3).
+# - clearing: what the lanes and the pad meet, rows 0 to 2, and the cottage's chunk in
+#   build-nofootprint (rules.md 8.3); the beck's bank has no measure, so row 3 is reused.
+# - water: the beck's columns (its level measure), and where height's value changed: (0, 1),
+#   (3, 1), (3, 2). (0, 0), (3, 0) and (0, 2) lie beyond every lane's mask (d >= 8 m), so height
+#   ran there with an unchanged value and water is reused (early cutoff).
+# - step:checks reads the finished build; every write but .previous (graph.md shuffle row).
 
 [copy.ford]
 from = "examples/ford"
@@ -36,5 +54,4 @@ diagnostics = "includes"
 out         = "build/ford"
 
 [action.downstream.nodes]
-ran_includes = ["merge", "shape:ford/v:build", "shape:lane_east/v:build", "shape:lane_west/v:build", "attr:at_ford", "write:changes.json", "write:manifest.json"]
-not_ran      = ["shape:beck/v:build", "field:clearing/v:build/w:0.384.129.513", "field:height/v:build/w:0.384.129.513", "field:water/v:build/w:0.384.129.513", "field:clearing/v:build/w:384.384.513.513", "field:height/v:build/w:384.384.513.513", "field:water/v:build/w:384.384.513.513"]
+ran_file = "expected/ran.txt"

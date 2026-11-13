@@ -110,6 +110,14 @@ fn causes(
             }
             continue;
         }
+        // A world key (`world.<key>`): the frame's keys and `pack` are each their own cause.
+        if let Some(k) = s.strip_prefix("world.") {
+            let get = |b: &Build| b.statements.get("world").and_then(|m| m.get(k)).cloned();
+            if get(old) != get(new) {
+                out.insert(s.clone());
+            }
+            continue;
+        }
         match (old.statements.get(s), new.statements.get(s)) {
             (Some(a), Some(b)) => {
                 let keys: BTreeSet<&String> = a.keys().chain(b.keys()).collect();
@@ -164,11 +172,14 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
                     after: Option<[i64; 4]>,
                     deps: &BTreeSet<String>| {
         let (causes, facts) = causes(old, new, deps);
-        let facts = if status.changed || status.moved {
-            facts
-        } else {
-            BTreeMap::new()
-        };
+        // `facts` belong to an instance or footprint whose asset's facts differ (`build.md`
+        // 11.2); a field depends on an asset's facts, which may be its cause, but has none.
+        let facts =
+            if (status.changed || status.moved) && (table == "instance" || table == "footprint") {
+                facts
+            } else {
+                BTreeMap::new()
+            };
         entries.push(Entry {
             table: table.into(),
             name: name.into(),
@@ -255,6 +266,10 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
             if let Some(i) = b.or(a) {
                 deps.insert(format!("asset:{}", i.asset));
             }
+            // A hand edit is a cause like any key (`identity.md` 5): the clear or pin that
+            // removed a produced instance, in this build or the baseline (its return).
+            deps.extend(new.removed_by.get(n.as_str()).cloned());
+            deps.extend(old.removed_by.get(n.as_str()).cloned());
             push(
                 "instance",
                 n,

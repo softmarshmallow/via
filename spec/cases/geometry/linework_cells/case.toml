@@ -1,13 +1,44 @@
 format    = "via-case-1"
 summary   = "linework_a's network; cells on each area, frontage every (source, side): Fronts holds; closure per area; geom.cell_none for short areas."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/linework_a.json, made by spec/vectors/geometry/import.py from fixtures/kernel/townland (geometry.md 6), not yet written"
-actions   = ["op"]
+actions   = ["net", "inputs", "cells"]
+
+# geometry.md Conformance, the row for linework_a's cells, and 3.6. `derive` (conformance.md 3.3)
+# writes one cells input per area of the network: linework_a's shapes and grid, the area by its
+# start vertex, and as frontage every (source, edge, side) on its shell, each side the one facing
+# the area (the area lies left of its counter-clockwise shell); cell_length 20 m, band_depth 30 m,
+# min_cell_length 8 m, min_cell_area 100 m2. Each runs as one `via kernel cells`.
+# `cells_valid` per area: Fronts (each cell borders its frontage edge along at least
+# min_cell_length, or a geom.cell_small lies at it); one cell per (frontage, station), since
+# identity.md names a cell by them; Closure, the cells and rest summing to the area's twice-area
+# within what noding may move an outline (1.5 mm, 3.1 Close, along the perimeter, both ways); an
+# area with no cell carries geom.cell_none.
 
 [copy.fixture]
 from = "spec/vectors/geometry/linework_a.json"
 to   = "linework_a.json"
 
-[action.op]
-via  = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
-exit = 0
+[action.net]
+via         = ["kernel", "network", "--in", "linework_a.json", "--out", "net.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.inputs]
+derive = "cells"
+from   = "net.json"
+as     = "cells"
+input  = "linework_a.json"
+params = { cell_length = 20000, band_depth = 30000, min_cell_length = 8000, min_cell_area = 100000000 }
+
+[action.cells]
+via         = ["kernel", "cells", "--in", "{item}", "--out", "{item}.out"]
+for_each    = "cells/*.json"
+exit        = 0
+diagnostics = "any"
+
+[action.cells.check.fronts]
+fn      = "cells_valid"
+path    = "{item}.out"
+input   = "{item}"
+network = "net.json"
+bound   = 1.5

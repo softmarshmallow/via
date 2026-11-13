@@ -1,7 +1,7 @@
 format    = "via-case-1"
 summary   = "course_a; stroke 8.5 m and 17 m both sides, round: areas reported as measures against reference.json."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/course_a.json, made by import.py from fixtures/kernel/townland (geometry.md 6), not yet written"
+pending   = "course_a.json is written (spec/vectors/geometry/import.py, no grid or params); a stroke input needs params.left, right, join, cap beside it, and the measure of each stroked area against reference.json needs a named check of conformance.md 3.4 like network_measures"
 actions   = ["op"]
 
 [copy.fixture]

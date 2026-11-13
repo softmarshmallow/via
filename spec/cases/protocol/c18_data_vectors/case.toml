@@ -1,7 +1,7 @@
 format    = "via-case-1"
 summary   = "A plain lint handed the four features of 4.3's vector; then 2.2's data vector: its columns equal the vector; its data equals the vector's bytes, less absolute paths."
 milestone = 1
-pending   = "the vector bytes owed to spec/vectors/protocol/data/ with case 18 (protocol.md 2.2, 4.3) are not yet written"
+pending   = "4.3's vector cannot be handed to a lint by any world: region c has a hole and region d two pieces, but a written region is one ring (geometry.md 2.3) and a `where` region's corners are cut by marching squares (3.7), so no square-with-hole outline exists; the vector waits on a ruling (protocol.md Open)"
 actions   = ["program", "trust", "build"]
 
 [action.program]

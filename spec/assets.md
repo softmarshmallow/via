@@ -680,9 +680,10 @@ This section follows `identity.md` 5, which owns the change report's entries and
   feature touched, and the scattered instances that now give way.
 
 The M1 case: `ford` on `lib/packs/primitive.toml` (6.1), then the change `bigger` writing `pack` to
-the second pack of 6.2; a build with that change against the base build. `cottage` is `changed`
-only, with `facts` old and new: `size` `[8, 6, 4]` to `[10, 8, 4]`, `bounds` `[-4, -3, 0, 4, 3, 4]`
-to `[-5, -4, 0, 5, 4, 4]`, and `footprint`. Footprint `cottage` is `moved`, its pad (margin 1) grown
+the second pack of 6.2; a build with that change against the base build. `cottage` is `moved` and
+`changed` (its pad levels its ground to another mean, 7's fourth sentence of the second bullet),
+with `facts` old and new: `size` `[8, 6, 4]` to `[10, 8, 4]`, `bounds` `[-4, -3, 0, 4, 3, 4]` to
+`[-5, -4, 0, 5, 4, 4]`, and `footprint`. Footprint `cottage` is `moved`, its pad (margin 1) grown
 from 10 m by 8 m to 12 m by 10 m, with the same `facts`. Both carry both causes, sorted bytewise
 (`build.md` 11.2): `asset.house_low.size`, then `world.pack`.
 

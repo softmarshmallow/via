@@ -1,0 +1,4 @@
+[feature.a]
+kind = "way"
+path = [[0, 8], [16, 8]]
+k    = 1

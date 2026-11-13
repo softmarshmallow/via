@@ -1,0 +1,61 @@
+format    = "via-case-1"
+summary   = "A lint reports a field's tags, which no data file holds; the tags change; the rebuild runs the lint again and reports the new tag."
+milestone = 1
+actions   = ["program", "trust", "first", "retag", "retagged", "same"]
+
+# A plain command's static key holds its request with the absolute paths left out (graph.md 5.1),
+# and the request hands each field's `tags` (protocol.md 2.2), which are in no data file. So a
+# change to a field's tags runs the lint again, though every data file is unchanged; an unchanged
+# rebuild reuses it. The lint returns one warning `tag_<tag>` per tag of `height`.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.first.diag.aa]
+code     = "step.look.tag_aa"
+severity = "warning"
+subject  = "field.height"
+
+[action.retag]
+replace = "world.toml"
+find    = 'tags = ["aa"]'
+with    = 'tags = ["bb"]'
+
+[action.retagged]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.retagged.diag.bb]
+code     = "step.look.tag_bb"
+severity = "warning"
+subject  = "field.height"
+
+[action.retagged.nodes]
+ran_includes = ["step:look"]
+
+[action.same]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.same.diag.bb]
+code     = "step.look.tag_bb"
+severity = "warning"
+subject  = "field.height"
+
+[action.same.nodes]
+ran = []

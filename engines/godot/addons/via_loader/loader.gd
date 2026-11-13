@@ -29,18 +29,29 @@ const MAX_MATERIALS := 256
 ## Material images are resampled to one size so they share one Texture2DArray.
 const ALBEDO_SIZE := 256
 ## A post with every weight 0 holds no material, and a world with no material field has none: this
-## loader's default (build.md 6.2). A mid grey, darker than the glTF reader's 0.8, which the sun and
-## the filmic tone map draw as white, so the ground kept no contrast at eye height.
-const DEFAULT_GROUND := Color(0.45, 0.45, 0.42)
+## loader's default (build.md 6.2). A plain mid grey (sRGB 0.5, linear 0.214); exposure is the sheet
+## rig's (rig.gd), never set by darkening a colour.
+const DEFAULT_GROUND := Color(0.5, 0.5, 0.5)
 const WATER_COLOUR := Color(0.12, 0.3, 0.38, 0.85)
 ## The water's opacity: WATER_CLEAR at depth 0, thickening by WATER_THICKEN per metre of depth up to
 ## WATER_COLOUR's alpha.
 const WATER_CLEAR := 0.3
 const WATER_THICKEN := 1.2
-const OPTION_NAMES := ["diagnostics", "features", "fields", "water"]
+## The `paths` option (build.md 15.1): a path feature drawn as a strip on the ground, until a world
+## paints its ways. Its `width` attribute in metres when it has one, else PATH_WIDTH; raised
+## PATH_LIFT over the ground mesh so it does not hide it; linear, as a pack colour is. Paths that
+## share an end point are joined there by a disc.
+const PATH_COLOUR := Color(0.42, 0.33, 0.2)
+const PATH_WIDTH := 1.0
+const PATH_LIFT := 0.04
+## Path ends this close, in metres, are one meeting (geometry.md 2.7: ends meet exactly), drawn with
+## a round join of JOIN_SEGMENTS sides.
+const JOIN_TOLERANCE := 0.001
+const JOIN_SEGMENTS := 32
+const OPTION_NAMES := ["diagnostics", "features", "fields", "paths", "water"]
 
 var diags := Diagnostics.new()
-var options := {"fields": [], "water": "", "features": false, "diagnostics": ""}
+var options := {"fields": [], "water": "", "features": false, "paths": [], "diagnostics": ""}
 ## Where the pack's root is when the manifest's `pack_root` is null (build.md 4).
 var pack_dir := ""
 var option_error := ""
@@ -73,10 +84,23 @@ static func valid_selector(s: String) -> bool:
 	return re.search(body) != null
 
 
+static func valid_feature_selector(s: String) -> bool:
+	## A feature's name or `kind:<kind>` (the `paths` option).
+	var re := RegEx.create_from_string("^[a-z][a-z0-9_]*$")
+	return re.search(s.trim_prefix("kind:")) != null
+
+
 static func parse_option(opts: Dictionary, name: String, value: String) -> String:
 	## Sets one option from text, as the sheet tool's --option NAME=VALUE gives it. Returns "" or
 	## what is wrong. A list's items are separated by `,`; `features` takes true or false.
 	match name:
+		"paths":
+			var sel: Array = []
+			for s in value.split(",", false):
+				if not valid_feature_selector(s):
+					return "paths: `%s` is not a feature selector (a name or kind:<kind>)" % s
+				sel.append(s)
+			opts["paths"] = sel
 		"fields":
 			var list: Array = []
 			for s in value.split(",", false):
@@ -168,6 +192,9 @@ func make(build_dir: String, opts := {}) -> Node3D:
 	for chunk in _manifest.get("chunks", []):
 		root.add_child(_chunk(chunk, material, cols, not water.is_empty()))
 	_features(root)
+	if not _paths(root):
+		root.free()
+		return null
 	_bookmarks(root)
 	_meets(root)
 	var kept := _keep_fields(root, fields)
@@ -399,8 +426,8 @@ func _ground_material(chunk_name: String, w: Dictionary) -> ShaderMaterial:
 		var c: Array = e.get("colour", [0.8, 0.8, 0.8])
 		var img := _material_image(names[m], e)
 		any_file = any_file or img != null
-		var lin := Color(c[0], c[1], c[2]).srgb_to_linear()
-		params.set_pixel(m, 0, Color(lin.r, lin.g, lin.b, 1.0 if img != null else 0.0))
+		# A pack colour is linear already (assets.md 2.6), as an asset's is: drawn as declared.
+		params.set_pixel(m, 0, Color(c[0], c[1], c[2], 1.0 if img != null else 0.0))
 		params.set_pixel(m, 1, Color(float(e.get("repeat", 1.0)), 0, 0, 1))
 		albedo.append(img)
 	mat.set_shader_parameter("weights", tex)
@@ -742,6 +769,197 @@ func _features(root: Node3D) -> void:
 			node.set_meta(k, f.get(k))
 		node.set_meta("attrs", f.get("attrs", {}))
 		prints.add_child(node)
+
+
+func _paths(root: Node3D) -> bool:
+	## The `paths` option: each path feature a selector names (a name, or `kind:<kind>`) as a
+	## MeshInstance3D strip under `paths`, named after the feature, draped on the ground: `width`
+	## metres across (attrs.width, else PATH_WIDTH), PATH_LIFT above the ground as its mesh draws it
+	## (ground_at). Where drawn paths share an end point (a lane ending at a ford and the next lane
+	## starting there, geometry.md 2.7), the first of them by name also carries a round join there,
+	## a disc as wide as the widest of them, so the bend shows no notch. Not collided. A selector
+	## matching no path feature is an option error, as `water` is. False when the option is in error.
+	if options.paths.is_empty():
+		return true
+	var holder := Node3D.new()
+	holder.name = "paths"
+	root.add_child(holder)
+	var paths := _feature_list().filter(func(f): return f.get("shape") == "path" and f.get("points", []).size() >= 2)
+	var chosen := {}
+	for sel in options.paths:
+		var hits: Array = []
+		for f in paths:
+			if f.get("name") == sel or (sel.begins_with("kind:") and f.get("kind") == sel.trim_prefix("kind:")):
+				hits.append(f)
+		if hits.is_empty():
+			option_error = "paths: `%s` selects no path feature in this build" % sel
+			return false
+		for f in hits:
+			chosen[String(f.name)] = f
+	if _height.is_empty():
+		return true   # no ground to lay them on: nothing is drawn, as with water
+	var names := chosen.keys()
+	names.sort()
+	var widths := {}
+	var ends := {}   # name -> [first point, last point], plan metres
+	for n in names:
+		var f: Dictionary = chosen[n]
+		var attrs: Dictionary = f.get("attrs", {}) if f.get("attrs") is Dictionary else {}
+		var w = attrs.get("width")
+		widths[n] = float(w) if _finite_number(w) and float(w) > 0.0 else PATH_WIDTH
+		var pts: Array = f.points
+		ends[n] = [Vector2(float(pts[0][0]), float(pts[0][1])), Vector2(float(pts[-1][0]), float(pts[-1][1]))]
+	# Each shared end point once: the first path by name that ends there draws the join.
+	var joins := {}   # name -> [[point, radius]]
+	var done: Array[Vector2] = []
+	for n in names:
+		joins[n] = []
+		for e in ends[n]:
+			if done.any(func(q): return q.distance_to(e) <= JOIN_TOLERANCE):
+				continue
+			var radius: float = widths[n] * 0.5
+			var shared := false
+			for m in names:
+				if m == n:
+					continue
+				for o in ends[m]:
+					if o.distance_to(e) <= JOIN_TOLERANCE:
+						shared = true
+						radius = maxf(radius, widths[m] * 0.5)
+			if shared:
+				joins[n].append([e, radius])
+				done.append(e)
+	for n in names:
+		var f: Dictionary = chosen[n]
+		var mi := MeshInstance3D.new()
+		mi.name = node_name(n)
+		mi.mesh = _strip(f.points, widths[n], joins[n])
+		mi.set_meta("across", across_count(widths[n], _res))
+		mi.set_meta("joins", joins[n].size())
+		mi.material_override = path_material()
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(mi)
+	return true
+
+
+func ground_at(x: float, y: float) -> float:
+	## The ground's height at a plan point as the ground mesh draws it, clamped to the extent: on
+	## the triangle of its quad that holds the point, each quad split from its south-west to its
+	## north-east post (_ground_mesh). Not bilinear: a strip draped on the bilinear surface sinks
+	## under the mesh wherever the quad's diagonal is a ridge.
+	var fx := clampf((x - _x0) / _res, 0.0, _nx - 1.0)
+	var fy := clampf((y - _y0) / _res, 0.0, _ny - 1.0)
+	var i := mini(int(fx), _nx - 2)
+	var j := mini(int(fy), _ny - 2)
+	var ax := fx - i
+	var ay := fy - j
+	var sw := _h(i, j)
+	var ne := _h(i + 1, j + 1)
+	if ax >= ay:   # sw, se, ne
+		return sw + ax * (_h(i + 1, j) - sw) + ay * (ne - _h(i + 1, j))
+	return sw + ay * (_h(i, j + 1) - sw) + ax * (ne - _h(i, j + 1))   # sw, nw, ne
+
+
+static func across_count(width: float, res: float) -> int:
+	## Vertices across a strip `width` metres wide: no further apart than the post spacing `res`,
+	## and an odd count, so one runs down the path's line.
+	var gaps := maxi(2, ceili(width / res - 1e-6))
+	return gaps + gaps % 2 + 1
+
+
+func _strip(points: Array, width: float, joins: Array = []) -> ArrayMesh:
+	## A strip along the polyline, sampled every half post spacing along and at most one post
+	## spacing across (across_count), each vertex on the ground mesh (ground_at) plus PATH_LIFT.
+	## Across, the strip is perpendicular to the segment it lies on; at a vertex it takes the mean
+	## of the two segments' directions. Each of `joins`, [point, radius], adds a disc there.
+	var line: Array[Vector2] = []
+	for p in points:
+		line.append(Vector2(float(p[0]), float(p[1])))
+	var step := _res * 0.5
+	var at: Array[Vector2] = []
+	var dirs: Array[Vector2] = []
+	for k in line.size() - 1:
+		var a := line[k]
+		var b := line[k + 1]
+		var d := b - a
+		if d.length() == 0.0:
+			continue
+		var n := maxi(1, ceili(d.length() / step))
+		for s in n:
+			at.append(a + d * (float(s) / n))
+			dirs.append(d.normalized())
+	at.append(line[-1])
+	dirs.append(dirs[-1] if not dirs.is_empty() else Vector2.RIGHT)
+	var across := across_count(width, _res)
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	for r in at.size():
+		var d := dirs[r]
+		if r > 0 and dirs[r - 1] != d:
+			d = (dirs[r - 1] + d).normalized()
+		var side := Vector2(-d.y, d.x)
+		for c in across:
+			var q := at[r] + side * width * (float(c) / (across - 1) - 0.5)
+			verts.append(g(q.x, q.y, ground_at(q.x, q.y) + PATH_LIFT))
+			normals.append(Vector3.UP)
+	var idx := PackedInt32Array()
+	for r in at.size() - 1:
+		for c in across - 1:
+			var a := r * across + c
+			var b := a + 1
+			var e := a + across
+			var f := e + 1
+			idx.append_array([a, e, b, b, e, f])
+	for j in joins:
+		_disc(verts, normals, idx, j[0], j[1])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+func _disc(verts: PackedVector3Array, normals: PackedVector3Array, idx: PackedInt32Array, centre: Vector2, radius: float) -> void:
+	## A round join appended to a strip's arrays: rings every half post spacing out to `radius`,
+	## JOIN_SEGMENTS around, each vertex on the ground mesh plus PATH_LIFT. Faces up, as the strip's
+	## do; the material draws both sides.
+	var rings := maxi(1, ceili(radius / (_res * 0.5)))
+	var base := verts.size()
+	verts.append(g(centre.x, centre.y, ground_at(centre.x, centre.y) + PATH_LIFT))
+	normals.append(Vector3.UP)
+	for k in range(1, rings + 1):
+		var rr := radius * float(k) / rings
+		for s in JOIN_SEGMENTS:
+			var q := centre + Vector2.from_angle(TAU * float(s) / JOIN_SEGMENTS) * rr
+			verts.append(g(q.x, q.y, ground_at(q.x, q.y) + PATH_LIFT))
+			normals.append(Vector3.UP)
+	for s in JOIN_SEGMENTS:
+		var t := (s + 1) % JOIN_SEGMENTS
+		idx.append_array([base, base + 1 + s, base + 1 + t])
+	for k in range(1, rings):
+		var inner := base + 1 + (k - 1) * JOIN_SEGMENTS
+		var outer := inner + JOIN_SEGMENTS
+		for s in JOIN_SEGMENTS:
+			var t := (s + 1) % JOIN_SEGMENTS
+			idx.append_array([inner + s, outer + s, outer + t, inner + s, outer + t, inner + t])
+
+
+var _path_material: ShaderMaterial
+
+
+func path_material() -> ShaderMaterial:
+	## PATH_COLOUR as declared, the way the instance shader draws an asset's colour: a plain linear
+	## uniform, made ALBEDO by linear.gdshaderinc so each renderer lights it as declared.
+	if _path_material == null:
+		var sh := Shader.new()
+		sh.code = "shader_type spatial;\nrender_mode cull_disabled;\n#include \"res://addons/via_loader/linear.gdshaderinc\"\nuniform vec3 colour;\nvoid fragment() {\n\tALBEDO = albedo_from_linear(colour);\n\tROUGHNESS = 0.95;\n}\n"
+		_path_material = ShaderMaterial.new()
+		_path_material.shader = sh
+		_path_material.set_shader_parameter("colour", Color(PATH_COLOUR.r, PATH_COLOUR.g, PATH_COLOUR.b))
+	return _path_material
 
 
 static func _pieces(pieces: Array) -> Array:

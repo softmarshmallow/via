@@ -183,7 +183,7 @@ face = "toward"
 [scatter.trees]
 assets = ["@plant/tree"]
 spacing = 7
-density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), near('lane_east', 16))"   # a wood along lane_east; the scatter applies keep_out itself
+density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), 1 - smoothstep(14, 22, dist('lane_east', 22)))"   # a wood along lane_east, out to 14 m; the scatter applies keep_out itself
 
 [step.checks]                             # the one lint step, through the SDK
 when = "lint"
@@ -194,11 +194,11 @@ on = { ref = "beck", t = 0.8 }
 
 [change.hand.pin.oak]                     # the hand edits the spacing row holds
 asset = "tree_oak"
-at = [200, 60]
+at = [213, 141]
 by = ["trees"]
 
 [change.hand.clear.gap]
-at = [208, 208]
+at = [226, 122]
 radius = 6
 by = ["trees"]
 
@@ -222,9 +222,16 @@ to 0 one post spacing inside it, so no ring post is `field.effect_cut`.
 | `firm_pad` | land | `anchored` | none | As `pad`. The firm pad of `authority.md` 1.3; only the bad edit grounds with it | 4 |
 | `bookmark` | review | `derived` | `toward` (required, a name), `eye_height` 1.7 | none; `output = "bookmark"` (`build.md` 9.2) | none |
 
-So the pad keeps trees off the cottage's footprint, the lane's verge keeps them off the lane, and the
-scatter's density thickens to a wood along `lane_east` (`near`, `formulas.md`), so `in_trees` looks
-down a lane through trees in every build. The beck keeps trees off its bed and writes
+So the pad keeps trees off the cottage's footprint, the lane's verge keeps them off the lane (its
+`keep_out` is 1 out to 5 m and 0 from 7 m), and the scatter's density is 1 out to 14 m from
+`lane_east` and 0 from 22 m (`dist`, `formulas.md`), so the wood stands on both sides beyond the
+verge rather than under it, and `in_trees` looks down a lane through trees in every build. The
+floor that claim is checked against: in the base, `downstream` and `denser` builds, at least 15 of
+the scatter's trees on each side of `lane_east`, origin within 20 m of the lane and beside its
+length (measured: base 22 north and 24 south, `downstream` 27 and 31, `denser` 30 and 36). The hand
+edits stand in `in_trees`' view: the pin `oak` about 24 m ahead and 11 m north of the lane, 27
+degrees off the view's axis; the clear `gap` about 31 m ahead and 11 m south, 20 degrees off, over
+three of the base build's trees. The beck keeps trees off its bed and writes
 `tag:water_level`, the tag the water library documents (`fields.md` 2.2, `build.md` 6.4). Without
 `clearing` and `water` those effects would match nothing (`authority.no_field`). `toward` is the
 review library's key for the place a bookmark looks at (`build.md` 9.2, 15.1); its name beside
@@ -245,7 +252,7 @@ so a ford build raises no `protocol.no_explain`.
 | `ford_depth` | `feature.ford` | `water` less `height` at the ford, metres | The ford | Measured |
 | `water_step` | `feature.beck` | Largest jump in `water` between neighbouring posts along the bank, metres | Where it is largest | Measured |
 | `cottage_relief` | `instance.cottage` | Highest less lowest `height` under the footprint, metres | The cottage | Measured |
-| `trees_in_clearing` | `scatter.trees` | Trees where `clearing` holds, a count | None | 0 |
+| `trees_in_clearing` | `scatter.trees` | The scatter's trees where `clearing` is 0.9 or more, a count | None | 0 |
 
 **Change files**, in `examples/ford/changes/`, each a change file (`documents.md` 6), requested with
 `--change changes/<name>.toml`. Each file is exactly its body, byte for byte: each table header
@@ -277,23 +284,26 @@ on = { ref = "beck", t = 0.3, offset = 2 }
 density = "= smoothstep(0.1, 0.5, fbm(60, 3)) * smoothstep(0, 20, xx)"
 ```
 
-Each bad edit touches nothing the others need, so all four are reported in one run.
+The four errors fall on four different nodes, so all four are reported in one run; they are not
+independent of each other's readers. The shed is a hand instance, so the cottage's footprint reads it
+for the overlap test (`rules.md` 8.1), and the shed's failure skips the cottage's nodes that read it.
 
 | Change | Must follow, and be reported | Must hold |
 |---|---|---|
 | Nothing | No node runs | Every byte the same, at 1 or 8 threads, on every system |
-| `downstream` | `identity.md` 5 entries, each with its cause: `ford` (the edited entity), `lane_west`, `lane_east`, `at_ford`, `on_bank`, `to_door`, `in_trees` where their places follow the moved features, `cottage`, footprint `cottage`, the trees removed where the new pad and lanes give way and those added and removed where the wood follows `lane_east` (the scatter's density reads it), and the changed regions of `height`, `clearing` and `water` | No post of any field changes outside the union of the effect windows (`fields.md` 5.3) of every entry whose feature moved, old shape and new |
-| `changes/vertex.toml` | `beck` and its regions of `height`, `clearing` and `water`; then every entry of `downstream` | As `downstream`, the beck's entries among those moved |
+| `downstream` | `identity.md` 5 entries, each with its cause: `ford` (the edited entity), `lane_west`, `lane_east`, `at_ford`, `on_bank`, `to_door`, `in_trees` where their places follow the moved features, `cottage`, footprint `cottage`, the trees removed where the new lanes give way (no tree of ford stands where the old or new pad would hold it back) and those added and removed where the wood follows `lane_east` (the scatter's density reads it), and the trees moved where the ground under them changed (only their height differs: `identity.md` 5 counts that as moved), and the changed regions of `height`, `clearing` and `water` | No post of any field changes outside the union of the effect windows (`fields.md` 5.3) of every entry whose feature moved, old shape and new |
+| `changes/vertex.toml` | `beck` and its regions of `height`, `clearing` and `water`, and the trees moved where the ground under them changed; then every entry of `downstream` | As `downstream`, the beck's entries among those moved |
 | `changes/bigger.toml` | The pad grows; the cottage named with old and new facts (`assets.md` 7) | World text untouched |
 | `hand`, then `hand` and `denser` (spacing 7 to 6, under a clear and a pin) | Every `s7000_` tree removed, every `s6000_` tree added | The pin stands; nothing inside the clear; both hand edits unchanged |
-| The four `bad_*` files together | `authority.conflict`, `formula.unknown_name` (nearest `x`), `graph.cycle`, `asset.unknown` (nearest `shed_gable`): code, subject, file and line, hint; `authority.conflict` and `asset.unknown` also a position | Exit status 1 |
+| The four `bad_*` files together | `authority.conflict`, `formula.unknown_name` (nearest `x`), `graph.cycle`, `asset.unknown` (nearest `shed_gable`): code, subject, file and line, hint; `authority.conflict` and `asset.unknown` also a position. Beside the conflict, one `authority.squeezed` warning, subject `instance.cottage`, `related` `beck`, on `clearing` (the beck's bank against the pad's clear, `authority.md` 5). One `diag.skipped` info per failed node with skipped readers (`diagnostics.md` 4): under `instance.shed`, `count` 3, `data.first` `instance.cottage`, `scatter.trees`, `step.checks`; and one each under `field.loop_a`, `instance.cottage` and `scatter.trees` | Exit status 1; no other error or warning |
 
 Measured by the lint step, as its table above gives. Build times, cold and unchanged, come from the run report
 (`<directory>.run.json`, `graph.md` 6.3), never from a lint, under a stated protocol: machine,
 thread count, cold store against warm. Seen at 1.7 m, before and after, from the four bookmarks:
 `at_ford` on the lane short of the ford, `on_bank` along the water's edge, `to_door` from the lane to
-the door, `in_trees` along the lane through the trees. `build.md` case 27 lists all four in
-`outputs.bookmark`.
+the door, `in_trees` along the lane through the trees. `in_trees` shows the `hand` edits, the pin
+standing and the clear empty, so its before and after differ for `hand`. `build.md` case 27 lists
+all four in `outputs.bookmark`.
 
 ## How every milestone runs
 

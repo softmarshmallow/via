@@ -54,5 +54,16 @@ pub use decl::Tier;
 pub use graph::{build_graph, dedupe, leaves, FileReads, ModelPlan};
 pub use rules::scatter_name;
 
+/// `documents.md` 5.1 at merge: the names formulas read that lie above the reader
+/// (`doc.upward_ref`). `via merge` reports them beside the document checks, so a merge fails
+/// where the build would.
+pub fn formula_direction(world: &via_doc::World) -> Vec<via_diag::Diag> {
+    decl::Decls::read(world)
+        .diags
+        .into_iter()
+        .filter(|x| *x.code() == via_diag::DiagCode::Core(via_diag::codes::doc::UPWARD_REF))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests;

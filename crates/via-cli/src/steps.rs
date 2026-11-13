@@ -68,10 +68,20 @@ pub fn includes(w: &World) -> Vec<String> {
     }
 }
 
-/// `protocol.unknown_library`'s hint: the nearest library `include` lists (`protocol.md` 2).
-fn library_hint(lib: &str, roots: &Roots) -> String {
-    via_diag::nearest::nearest(lib, roots.include.iter().map(String::as_str))
-        .hint("name a library the world lists in `include`")
+/// `protocol.unknown_library`: its hint and `data.nearest` name the nearest library `include`
+/// lists (`protocol.md` 2).
+fn unknown_library(step: &str, message: String, lib: &str, roots: &Roots) -> Diag {
+    let near = via_diag::nearest::nearest(lib, roots.include.iter().map(String::as_str));
+    let d = step_diag(
+        step,
+        codes::protocol::UNKNOWN_LIBRARY,
+        message,
+        near.hint("name a library the world lists in `include`"),
+    );
+    match near.found() {
+        Some(n) => d.with("nearest", n),
+        None => d,
+    }
 }
 
 impl Roots {
@@ -165,6 +175,62 @@ pub struct Code {
     pub trust: Digest,
 }
 
+/// A declared input's digest (`graph.md` 5.1): a file's bytes; a folder as the sorted list,
+/// bytewise, of every file under it as (path relative to the folder with `/`, file digest), with
+/// no name skipped and no line ending rewritten, and a symbolic link entered as its target's
+/// text, not followed. `None` when the path does not exist; a file that exists but cannot be
+/// read digests as unreadable, never as missing.
+pub fn input_digest(p: &Path) -> Option<Digest> {
+    fn file(p: &Path) -> Digest {
+        std::fs::read(p).map_or_else(|_| Digest::of(b"\0unreadable"), |b| Digest::of(&b))
+    }
+    fn link(p: &Path) -> Digest {
+        let t = std::fs::read_link(p).map_or_else(
+            |_| String::from("\0unreadable"),
+            |t| t.to_string_lossy().replace('\\', "/"),
+        );
+        Digest::of(format!("via-link-1\0{t}").as_bytes())
+    }
+    fn walk(base: &Path, d: &Path, out: &mut Vec<(String, Digest)>) {
+        let Ok(rd) = std::fs::read_dir(d) else { return };
+        for e in rd.flatten() {
+            let Ok(ft) = e.file_type() else { continue };
+            let p = e.path();
+            let Ok(rel) = p.strip_prefix(base) else {
+                continue;
+            };
+            let r: Vec<String> = rel
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect();
+            if ft.is_symlink() {
+                out.push((r.join("/"), link(&p)));
+            } else if ft.is_dir() {
+                walk(base, &p, out);
+            } else {
+                out.push((r.join("/"), file(&p)));
+            }
+        }
+    }
+    let meta = std::fs::symlink_metadata(p).ok()?;
+    if meta.file_type().is_symlink() {
+        // Followed at the top only when it names a folder; a dangling link is missing.
+        std::fs::metadata(p).ok()?;
+    }
+    if !p.is_dir() {
+        return Some(file(p));
+    }
+    let mut files = Vec::new();
+    walk(p, p, &mut files);
+    files.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
+    let mut e = Enc::new();
+    e.str("via-input-folder-1").len(files.len());
+    for (rel, d) in &files {
+        e.str(rel).digest(d);
+    }
+    Some(Digest::of(&e.finish()))
+}
+
 /// The digest of a folder by 7's rule, and its file count.
 pub fn folder_digest(dir: &Path) -> (Digest, usize) {
     fn walk(base: &Path, d: &Path, out: &mut Vec<(String, PathBuf)>) {
@@ -229,14 +295,14 @@ pub fn code_of(
             let lib = rest.split('/').next().unwrap_or("");
             folder = roots.library(lib);
             if folder.is_none() {
-                return Err(step_diag(
+                return Err(unknown_library(
                     &s.id,
-                    codes::protocol::UNKNOWN_LIBRARY,
                     format!(
                         "step `{}` names `{el}`, and no library root holds `{lib}`",
                         s.id
                     ),
-                    library_hint(lib, roots),
+                    lib,
+                    roots,
                 ));
             }
             break;
@@ -309,13 +375,17 @@ pub fn trusted(config: &Path) -> std::collections::BTreeSet<String> {
         .unwrap_or_default()
 }
 
+/// A counter for the SDK's temporary folders: with the process id, unique per call, so two lint
+/// steps run by two graph threads never write the same folder.
+static SDK_TMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// The carried SDK written once to `<store>/sdk/<digest>/`, or `--sdk`'s folder; the folder to put
-/// on `PYTHONPATH`.
-pub fn sdk_folder(store: &Store, sdk: Option<&Path>) -> Option<PathBuf> {
+/// on `PYTHONPATH`. On failure, the path that could not be written and why.
+pub fn sdk_folder(store: &Store, sdk: Option<&Path>) -> Result<PathBuf, (PathBuf, std::io::Error)> {
     // Absolute: the step runs in its own working folder, where a relative path means nothing.
     let absolute = |p: PathBuf| std::path::absolute(&p).unwrap_or(p);
     if let Some(s) = sdk {
-        return Some(absolute(s.to_path_buf()));
+        return Ok(absolute(s.to_path_buf()));
     }
     let mut e = Enc::new();
     e.str("via-sdk-1").len(carried::FILES.len());
@@ -325,23 +395,36 @@ pub fn sdk_folder(store: &Store, sdk: Option<&Path>) -> Option<PathBuf> {
     let d = Digest::of(&e.finish());
     let dir = store.root().join("sdk").join(d.hex());
     if !dir.join(".complete").exists() {
-        let tmp = store
-            .root()
-            .join("sdk")
-            .join(format!("{}.tmp{}", d.hex(), std::process::id()));
-        for (p, b) in carried::FILES {
-            let t = tmp.join(p);
-            if let Some(parent) = t.parent() {
-                std::fs::create_dir_all(parent).ok()?;
+        let n = SDK_TMP.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let tmp =
+            store
+                .root()
+                .join("sdk")
+                .join(format!("{}.tmp{}-{n}", d.hex(), std::process::id()));
+        let write = || -> Result<(), (PathBuf, std::io::Error)> {
+            for (p, b) in carried::FILES {
+                let t = tmp.join(p);
+                if let Some(parent) = t.parent() {
+                    std::fs::create_dir_all(parent).map_err(|e| (parent.to_path_buf(), e))?;
+                }
+                std::fs::write(&t, b).map_err(|e| (t.clone(), e))?;
             }
-            std::fs::write(&t, b).ok()?;
-        }
-        std::fs::write(tmp.join(".complete"), b"").ok()?;
-        if std::fs::rename(&tmp, &dir).is_err() {
+            let c = tmp.join(".complete");
+            std::fs::write(&c, b"").map_err(|e| (c.clone(), e))
+        };
+        if let Err(f) = write() {
             let _ = std::fs::remove_dir_all(&tmp);
+            return Err(f);
+        }
+        // A folder already in place (another call or build won the race) is the same bytes.
+        if let Err(e) = std::fs::rename(&tmp, &dir) {
+            let _ = std::fs::remove_dir_all(&tmp);
+            if !dir.join(".complete").exists() {
+                return Err((dir, e));
+            }
         }
     }
-    Some(absolute(dir))
+    Ok(absolute(dir))
 }
 
 fn slash(p: &Path) -> String {
@@ -423,8 +506,16 @@ fn col_u8(store: &Store, v: &[u8]) -> J {
     )
 }
 
-/// `data.features` (2.2, 4.3): every feature and footprint feature as one feature list.
-fn features_data(store: &Store, b: &Build, world: &World) -> J {
+/// An attribute two kinds give two types (4.3): the attribute, then (kind, type) for each.
+pub(crate) struct Mixed {
+    attr: String,
+    a: (String, String),
+    b: (String, String),
+}
+
+/// `data.features` (2.2, 4.3): every feature and footprint feature as one feature list. An
+/// attribute that two kinds give two types cannot be one column: `Err`, `protocol.column_mixed`.
+fn features_data(store: &Store, b: &Build, world: &World) -> Result<J, Mixed> {
     struct Row {
         name: String,
         kind: String,
@@ -433,14 +524,18 @@ fn features_data(store: &Store, b: &Build, world: &World) -> J {
         geometry: u8,
         ring: Vec<(i64, i64)>,
         attrs: BTreeMap<String, String>,
+        types: BTreeMap<String, String>,
     }
     let mut rows: Vec<Row> = Vec::new();
     for (n, f) in &b.features {
         let mut attrs = f.attrs.clone();
+        let mut types = f.attr_types.clone();
         for (a, (place, _)) in &f.names {
             attrs.insert(a.clone(), place.clone());
+            types.insert(a.clone(), "text".into());
         }
         rows.push(Row {
+            types,
             name: n.clone(),
             kind: f.kind.clone().unwrap_or_default(),
             authority: f
@@ -475,6 +570,7 @@ fn features_data(store: &Store, b: &Build, world: &World) -> J {
             geometry: 2,
             ring: crate::out::canonical_ring(&f.ring, true),
             attrs: BTreeMap::new(),
+            types: BTreeMap::new(),
         });
     }
     rows.sort_by(|a, b| a.name.as_bytes().cmp(b.name.as_bytes()));
@@ -525,8 +621,37 @@ fn features_data(store: &Store, b: &Build, world: &World) -> J {
             .map(|r| u8::from(r.attrs.contains_key(a)))
             .collect();
         let vals: Vec<Option<&String>> = rows.iter().map(|r| r.attrs.get(a)).collect();
-        let all = |f: &dyn Fn(&str) -> bool| vals.iter().flatten().all(|v| f(v));
-        let col = if all(&|v| v == "true" || v == "false") {
+        // Each row's type: as the model typed it, else read from the text (a snapshot's).
+        let type_of = |r: &Row, v: &str| -> String {
+            r.types.get(a).cloned().unwrap_or_else(|| {
+                if v == "true" || v == "false" {
+                    "bool".into()
+                } else if v.parse::<f64>().is_ok_and(f64::is_finite) {
+                    "number".into()
+                } else {
+                    "text".into()
+                }
+            })
+        };
+        let mut seen: Vec<(String, String)> = Vec::new();
+        for r in &rows {
+            if let Some(v) = r.attrs.get(a) {
+                let t = type_of(r, v);
+                if let Some(first) = seen.first() {
+                    if first.1 != t {
+                        return Err(Mixed {
+                            attr: a.clone(),
+                            a: first.clone(),
+                            b: (r.kind.clone(), t),
+                        });
+                    }
+                } else {
+                    seen.push((r.kind.clone(), t));
+                }
+            }
+        }
+        let ty = seen.first().map_or("text", |s| s.1.as_str());
+        let col = if ty == "bool" {
             let b: Vec<u8> = vals
                 .iter()
                 .map(|v| u8::from(v.is_some_and(|v| v == "true")))
@@ -538,7 +663,7 @@ fn features_data(store: &Store, b: &Build, world: &World) -> J {
                 b.iter().map(|x| J::Bool(*x == 1)).collect(),
                 b,
             )
-        } else if all(&|v| v.parse::<f64>().is_ok_and(f64::is_finite)) {
+        } else if ty == "number" {
             let f: Vec<f64> = vals
                 .iter()
                 .map(|v| v.and_then(|v| v.parse().ok()).unwrap_or(0.0))
@@ -563,7 +688,7 @@ fn features_data(store: &Store, b: &Build, world: &World) -> J {
         m.insert(a.clone(), col);
         m.insert(format!("{a}?"), col_u8(store, &present));
     }
-    J::Obj(m)
+    Ok(J::Obj(m))
 }
 
 /// `data.instances` (2.2): one table, rows by name.
@@ -704,6 +829,13 @@ pub struct Ran {
     pub ran: bool,
     pub explains: Vec<(String, Option<String>)>,
     pub record: J,
+    /// The digest of the request with its absolute paths left out (`graph.md` 5.1 and 6.3: a
+    /// plain command's one read, method `data`), once the request was made.
+    pub data: Option<Digest>,
+    /// Whether the call completed (`graph.md` 3.4): it started, exited 0 and returned readable
+    /// output. A call that never started, failed, was killed or returned nothing readable did
+    /// not, and is not stored.
+    pub complete: bool,
 }
 
 /// What a lint call is handed beyond the step.
@@ -719,6 +851,45 @@ pub struct Call<'a> {
     pub deadline: Duration,
     /// The world's pack: each instance's taxon for `data.instances`.
     pub pack: Option<&'a via_model::pack::Pack>,
+    /// `via trust` and, in words, this build's flags that enter the trust digest (`--lib`,
+    /// `--sdk`, `--change`, `protocol.md` 7): [`trust_command`].
+    pub trust_command: &'a str,
+}
+
+/// `via trust WORLD` as a world record may say it: no machine path (`diagnostics.md` 5, R26). The
+/// world file is named as records name it, by its file name; the flags that enter the trust
+/// digest (`--lib`, `--sdk`, `--change`, `protocol.md` 7) are named in words, so the hint is the
+/// same wherever the build was run from.
+pub fn trust_command(
+    world: &Path,
+    lib: &[PathBuf],
+    sdk: Option<&Path>,
+    changes: &[String],
+) -> String {
+    let name = world.file_name().map_or_else(
+        || "world.toml".to_string(),
+        |n| n.to_string_lossy().into_owned(),
+    );
+    let mut flags: Vec<&str> = Vec::new();
+    if !lib.is_empty() {
+        flags.push("`--lib`");
+    }
+    if sdk.is_some() {
+        flags.push("`--sdk`");
+    }
+    if !changes.is_empty() {
+        flags.push("`--change`");
+    }
+    let mut out = format!("`via trust {name}`");
+    match flags.as_slice() {
+        [] => {}
+        [one] => out.push_str(&format!(" with the same {one} as this build")),
+        [rest @ .., last] => out.push_str(&format!(
+            " with the same {} and {last} as this build",
+            rest.join(", ")
+        )),
+    }
+    out
 }
 
 struct Mapper<'a> {
@@ -726,15 +897,45 @@ struct Mapper<'a> {
     grid: Option<Grid>,
 }
 
+impl Mapper<'_> {
+    /// Whether a selector of this class selects anything in the merged world.
+    fn selects(&self, class: &str, name: &str) -> bool {
+        if name.is_empty() {
+            return false;
+        }
+        match class {
+            "kind" => self.world.entity("kind", name).is_some(),
+            "role" | "tag" => self.world.root().table("field").is_some_and(|t| {
+                t.iter().any(|(_, e)| match &e.item.value {
+                    via_doc::Value::Table(f) => match class {
+                        "role" => f.str("role") == Some(name),
+                        _ => f.value("tags").is_some_and(|v| match v {
+                            via_doc::Value::List(a) => a.iter().any(
+                                |x| matches!(&x.value, via_doc::Value::Str(s) if s.text == name),
+                            ),
+                            _ => false,
+                        }),
+                    },
+                    _ => false,
+                })
+            }),
+            _ => false,
+        }
+    }
+}
+
 impl StepWorld for Mapper<'_> {
     fn map_subject(&self, written: &str) -> Option<Mapped> {
-        if let Some(sel) = written.strip_prefix("kind:") {
-            let _ = sel;
-            return Some(Mapped {
-                subject: Subject::Selector(written.to_string()),
-                produced: None,
-                place: None,
-            });
+        // A selector subject must select something of this world (`diagnostics.md` 6): a kind
+        // the merge declares, a role some field holds, a tag some field carries.
+        if let Some((class, name)) = written.split_once(':') {
+            if matches!(class, "kind" | "role" | "tag") {
+                return self.selects(class, name).then(|| Mapped {
+                    subject: Subject::Selector(written.to_string()),
+                    produced: None,
+                    place: None,
+                });
+            }
         }
         if let Ok(s) = Subject::parse(written) {
             if let Subject::Entity { collection, id, .. } = &s {
@@ -781,8 +982,29 @@ impl StepWorld for Mapper<'_> {
         })
     }
 
-    fn selector_site(&self, _step: &str, _selector: &str) -> Site {
-        Site::World
+    /// The step's `for_each` key, which wrote the selector, else the step's header
+    /// (`diagnostics.md` 6). The site is the step table's text, so it is given as that text.
+    fn selector_site(&self, step: &str, _selector: &str) -> Site {
+        use via_diag::Resolve;
+        let subject = Subject::entity("step", step);
+        let resolved = self
+            .world
+            .resolve(&subject, &Site::Key(via_diag::KeyPath::key("for_each")))
+            .or_else(|| self.world.resolve(&subject, &Site::Header));
+        match resolved.map(|r| r.location) {
+            Some(via_diag::Location::Span {
+                file,
+                line,
+                column,
+                bytes,
+            }) => Site::Text {
+                file,
+                line,
+                column,
+                bytes,
+            },
+            _ => Site::World,
+        }
     }
 }
 
@@ -842,14 +1064,14 @@ fn resolve_program(name: &str, s: &StepDecl, call: &Call<'_>) -> Result<PathBuf,
             .library(lib)
             .map(|d| d.join(path))
             .ok_or_else(|| {
-                step_diag(
+                unknown_library(
                     &s.id,
-                    codes::protocol::UNKNOWN_LIBRARY,
                     format!(
                         "step `{}` names `{name}`, and no library root holds `{lib}`",
                         s.id
                     ),
-                    library_hint(lib, call.roots),
+                    lib,
+                    call.roots,
                 )
             });
     }
@@ -886,102 +1108,27 @@ fn resolve_program(name: &str, s: &StepDecl, call: &Call<'_>) -> Result<PathBuf,
     })
 }
 
-/// Runs one lint step as a plain command (2.2), when it is trusted.
-pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ran {
-    let mut ran = Ran {
-        diags: Vec::new(),
-        ran: false,
-        explains: Vec::new(),
-        record: J::Null,
-    };
-    if !trusted {
-        ran.diags.push(
-            step_diag(
-                &s.id,
-                codes::protocol::UNTRUSTED_SKIPPED,
-                format!(
-                    "lint step `{}` is not trusted on this machine and was skipped",
-                    s.id
-                ),
-                "run `via trust <world>` after reading its code folder".into(),
-            )
-            .with("trust", code.trust.hex()),
-        );
-        return ran;
-    }
-    let Some(grid) = call.build.grid else {
-        return ran;
-    };
-    let program = match s.command.first() {
-        Some(p) => match resolve_program(p, s, call) {
-            Ok(p) => p,
-            Err(d) => {
-                ran.diags.push(d);
-                return ran;
-            }
-        },
-        None => return ran,
-    };
-    // The call folder (6.3) and the request (2).
-    let nonce = format!(
-        "{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    );
-    let folder = call
-        .store
-        .root()
-        .join("calls")
-        .join(format!("{}-{nonce}", s.id));
-    let out = folder.join("out");
-    if std::fs::create_dir_all(&out).is_err() {
-        return ran;
-    }
-    let mut inputs: Vec<J> = Vec::new();
-    let mut sorted_inputs = s.inputs.clone();
-    sorted_inputs.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
-    for i in &sorted_inputs {
-        let p = s.home.join(i);
-        let digest = if p.is_dir() {
-            Some(folder_digest(&p).0)
-        } else {
-            std::fs::read(&p).ok().map(|b| Digest::of(&b))
-        };
-        match digest {
-            Some(d) => inputs.push(obj([
-                ("absolute", J::s(slash(&p))),
-                ("digest", J::s(d.hex())),
-                ("path", J::s(i.clone())),
-            ])),
-            None => ran.diags.push(
-                step_diag(
-                    &s.id,
-                    codes::graph::INPUT_MISSING,
-                    format!("step `{}`: the input `{i}` does not exist", s.id),
-                    "create it, or remove it from `inputs`".into(),
-                )
-                .with("path", i.clone()),
-            ),
-        }
-    }
-    if !ran.diags.is_empty() {
-        return ran;
-    }
+/// The request of a lint call (`protocol.md` 2), given its `data.features`, its inputs, the
+/// objects folder and the call's `out` folder.
+fn make_request(
+    s: &StepDecl,
+    call: &Call<'_>,
+    grid: &Grid,
+    features: J,
+    inputs: Vec<J>,
+    objects: String,
+    out: String,
+) -> J {
     let seed = via_num::world_seed(i64::try_from(call.seed).unwrap_or(0))
         .map(|w| via_num::stream(w, &["step", s.id.as_str()]))
         .unwrap_or(0);
     let [x0, y0, x1, y1] = grid.extent;
-    let request = obj([
+    obj([
         (
             "data",
             obj([
-                (
-                    "features",
-                    features_data(call.store, call.build, call.world),
-                ),
-                ("fields", fields_data(call.store, call.build, &grid)),
+                ("features", features),
+                ("fields", fields_data(call.store, call.build, grid)),
                 ("inputs", J::Arr(inputs)),
                 (
                     "instances",
@@ -1002,16 +1149,360 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
                 ("resolution_mm", J::int(grid.resolution)),
             ]),
         ),
-        ("objects", J::s(slash(&call.store.root().join("objects")))),
-        ("out", J::s(slash(&out))),
+        ("objects", J::s(objects)),
+        ("out", J::s(out)),
         ("params", s.params.clone()),
         ("protocol", J::s(via_proto::PROTOCOL)),
         ("seed", J::s(format!("{seed:016x}"))),
         ("step", J::s(s.id.clone())),
         ("when", J::s(s.when.clone())),
-    ]);
+    ])
+}
+
+/// The digest of the request a lint would be handed, its absolute paths left out (`graph.md`
+/// 5.1): part of a plain command's static key, made before the lookup. A request that cannot be
+/// made (no grid, an attribute typed two ways, a missing input) is named by a marker: what keeps
+/// it from being made is in the world or in the inputs' digests, both in the key.
+pub fn request_key(s: &StepDecl, call: &Call<'_>) -> Digest {
+    let Some(grid) = call.build.grid else {
+        return Digest::of(b"via-request-1 no grid");
+    };
+    let features = match features_data(call.store, call.build, call.world) {
+        Ok(f) => f,
+        Err(m) => {
+            return Digest::of(format!("via-request-1 mixed {}", m.attr).as_bytes());
+        }
+    };
+    let mut sorted_inputs = s.inputs.clone();
+    sorted_inputs.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+    let mut inputs: Vec<J> = Vec::new();
+    for i in &sorted_inputs {
+        match input_digest(&s.home.join(i)) {
+            Some(d) => inputs.push(obj([("digest", J::s(d.hex())), ("path", J::s(i.clone()))])),
+            None => return Digest::of(b"via-request-1 input missing"),
+        }
+    }
+    let request = make_request(
+        s,
+        call,
+        &grid,
+        features,
+        inputs,
+        String::new(),
+        String::new(),
+    );
+    Digest::of(&request_data(&request).file())
+}
+
+/// A request with its absolute paths left out (`graph.md` 5.1): `objects`, `out` and each
+/// input's `absolute`. Blobs are named by digest, so it still names every field it hands over.
+fn request_data(request: &J) -> J {
+    let mut r = request.clone();
+    if let J::Obj(m) = &mut r {
+        m.remove("objects");
+        m.remove("out");
+        if let Some(J::Obj(data)) = m.get_mut("data") {
+            if let Some(J::Arr(inputs)) = data.get_mut("inputs") {
+                for i in inputs.iter_mut() {
+                    if let J::Obj(im) = i {
+                        im.remove("absolute");
+                    }
+                }
+            }
+        }
+        if let Some(data) = m.get_mut("data") {
+            drop_blob_paths(data);
+        }
+    }
+    r
+}
+
+/// Removes `path` from every blob object (one with a `blob` digest) under `j`: a field's file or a
+/// column over 4,096 values. The path is where the store is (`<store>/objects/..`); the blob is
+/// named by its digest, so nothing a step reads is lost and the read is the same in every store.
+fn drop_blob_paths(j: &mut J) {
+    match j {
+        J::Obj(m) => {
+            if m.contains_key("blob") {
+                m.remove("path");
+            }
+            for v in m.values_mut() {
+                drop_blob_paths(v);
+            }
+        }
+        J::Arr(a) => {
+            for v in a.iter_mut() {
+                drop_blob_paths(v);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// `build.write_failed` for a step's call folder or request, at the step: the path and the
+/// system's error.
+fn write_failed(step: &str, path: &Path, e: &std::io::Error) -> Diag {
+    step_diag(
+        step,
+        codes::build::WRITE_FAILED,
+        format!("step `{step}`: `{}` could not be written: {e}", slash(path)),
+        "free space, or fix the folder's permissions".into(),
+    )
+    .with("path", slash(path))
+    .with("error", e.to_string())
+}
+
+/// How long a step's output streams may stay open after its deadline before they are abandoned.
+const STREAM_GRACE: Duration = Duration::from_secs(2);
+
+/// The most of each stream (standard output, standard error) a step's log keeps.
+const LOG_CAP: usize = 1 << 20;
+
+/// One output stream of a step, read on its own thread into a capped buffer. Bytes beyond
+/// [`LOG_CAP`] are read and dropped, so the step never blocks on a full pipe, and the log says it
+/// was cut. The buffer is shared, so what was read is kept even when the thread is abandoned.
+struct Capture {
+    buf: std::sync::Arc<std::sync::Mutex<(Vec<u8>, usize)>>,
+    done: std::sync::mpsc::Receiver<()>,
+    finished: std::cell::Cell<bool>,
+}
+
+impl Capture {
+    fn start(r: Option<Box<dyn std::io::Read + Send>>) -> Capture {
+        let buf = std::sync::Arc::new(std::sync::Mutex::new((Vec::new(), 0usize)));
+        let (tx, done) = std::sync::mpsc::channel();
+        let shared = buf.clone();
+        std::thread::spawn(move || {
+            if let Some(mut r) = r {
+                let mut chunk = [0u8; 8192];
+                loop {
+                    match r.read(&mut chunk) {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            let mut g = shared
+                                .lock()
+                                .unwrap_or_else(std::sync::PoisonError::into_inner);
+                            let space = LOG_CAP.saturating_sub(g.0.len());
+                            let keep = n.min(space);
+                            g.0.extend_from_slice(&chunk[..keep]);
+                            g.1 += n - keep;
+                        }
+                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                        Err(_) => break,
+                    }
+                }
+            }
+            let _ = tx.send(());
+        });
+        Capture {
+            buf,
+            done,
+            finished: std::cell::Cell::new(false),
+        }
+    }
+
+    /// Waits for the stream's end until `until` (with no end when `None`); false when it is still
+    /// open then.
+    fn wait(&self, until: Option<Instant>) -> bool {
+        if self.finished.get() {
+            return true;
+        }
+        let ok = match until {
+            Some(u) => self
+                .done
+                .recv_timeout(u.saturating_duration_since(Instant::now()))
+                .is_ok(),
+            None => self.done.recv().is_ok(),
+        };
+        self.finished.set(ok);
+        ok
+    }
+
+    /// What was read, with a closing line when bytes were dropped.
+    fn take(&self) -> Vec<u8> {
+        let g = self
+            .buf
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut out = g.0.clone();
+        if g.1 > 0 {
+            out.extend_from_slice(
+                format!(
+                    "\n[via: log cut at {LOG_CAP} bytes; {} more dropped]\n",
+                    g.1
+                )
+                .as_bytes(),
+            );
+        }
+        if !self.finished.get() {
+            out.extend_from_slice(b"\n[via: stream still open at the deadline; abandoned]\n");
+        }
+        out
+    }
+}
+
+/// Runs one lint step as a plain command (2.2), when it is trusted.
+pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ran {
+    let mut ran = Ran {
+        diags: Vec::new(),
+        ran: false,
+        explains: Vec::new(),
+        record: J::Null,
+        data: None,
+        complete: false,
+    };
+    if !trusted {
+        ran.diags.push(
+            step_diag(
+                &s.id,
+                codes::protocol::UNTRUSTED_SKIPPED,
+                format!(
+                    "lint step `{}` is not trusted on this machine and was skipped",
+                    s.id
+                ),
+                format!("run {}, after reading its code folder", call.trust_command),
+            )
+            .with("trust", code.trust.hex()),
+        );
+        return ran;
+    }
+    let Some(grid) = call.build.grid else {
+        return ran;
+    };
+    let program = match s.command.first() {
+        Some(p) => match resolve_program(p, s, call) {
+            Ok(p) => p,
+            Err(d) => {
+                ran.diags.push(d);
+                return ran;
+            }
+        },
+        // `protocol.md` 1: `command` is required, a program and its arguments. Nothing to start
+        // is said at the step, never passed as a clean run.
+        None => {
+            let written = call
+                .world
+                .entity("step", &s.id)
+                .is_some_and(|t| t.get("command").is_some());
+            ran.diags.push(if written {
+                Diag::new(
+                    codes::protocol::START,
+                    Subject::entity("step", s.id.clone()),
+                    Site::Key(via_diag::KeyPath::key("command")),
+                    txt(format!(
+                        "step `{}` could not be started: its `command` is empty",
+                        s.id
+                    )),
+                    txt("write the program and its arguments, `command = [\"python\", \"steps/lint.py\"]`".into()),
+                )
+                .with("kind", "empty")
+            } else {
+                Diag::new(
+                    codes::doc::MISSING_KEY,
+                    Subject::entity("step", s.id.clone()),
+                    Site::Header,
+                    txt(format!("step `{}` has no `command`", s.id)),
+                    txt("write the program and its arguments, `command = [\"python\", \"steps/lint.py\"]`".into()),
+                )
+            });
+            return ran;
+        }
+    };
+    // `data.features` first: an attribute two kinds type differently cannot be handed (4.3).
+    let features = match features_data(call.store, call.build, call.world) {
+        Ok(f) => f,
+        Err(m) => {
+            let kind_related = |k: &str, note: &str| via_diag::Related {
+                subject: Subject::entity("kind", k),
+                site: Site::Header,
+                position: None,
+                note: txt(note.to_string()),
+            };
+            let mut d = step_diag(
+                &s.id,
+                codes::protocol::COLUMN_MIXED,
+                format!(
+                    "step `{}`: the attribute `{}` is {} on kind `{}` and {} on kind `{}`, so it cannot be one column",
+                    s.id, m.attr, m.a.1, m.a.0, m.b.1, m.b.0
+                ),
+                format!(
+                    "give `{}` one type in both kinds, or read each kind by its own `kind:` selector",
+                    m.attr
+                ),
+            )
+            .with("attribute", m.attr.clone())
+            .with("kinds", via_diag::Value::texts([m.a.0.clone(), m.b.0.clone()]));
+            for (k, _) in [&m.a, &m.b] {
+                if !k.is_empty() && call.world.entity("kind", k).is_some() {
+                    d = d.related(kind_related(k, "a kind giving the attribute"));
+                }
+            }
+            ran.diags.push(d);
+            return ran;
+        }
+    };
+    // The call folder (6.3) and the request (2).
+    let nonce = format!(
+        "{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
+    );
+    let folder = call
+        .store
+        .root()
+        .join("calls")
+        .join(format!("{}-{nonce}", s.id));
+    // Counted from here, and dropped after the process tree: on Ctrl+C the tree is killed, the
+    // call folder removed, and the engine ends (protocol.md 6.2).
+    let _live = crate::interrupt::Live::enter(folder.clone());
+    let out = folder.join("out");
+    if let Err(e) = std::fs::create_dir_all(&out) {
+        ran.diags.push(write_failed(&s.id, &out, &e));
+        let _ = std::fs::remove_dir_all(&folder);
+        return ran;
+    }
+    let mut inputs: Vec<J> = Vec::new();
+    let mut sorted_inputs = s.inputs.clone();
+    sorted_inputs.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+    for i in &sorted_inputs {
+        let p = s.home.join(i);
+        match input_digest(&p) {
+            Some(d) => inputs.push(obj([
+                ("absolute", J::s(slash(&p))),
+                ("digest", J::s(d.hex())),
+                ("path", J::s(i.clone())),
+            ])),
+            None => ran.diags.push(
+                step_diag(
+                    &s.id,
+                    codes::graph::INPUT_MISSING,
+                    format!("step `{}`: the input `{i}` does not exist", s.id),
+                    "create it, or remove it from `inputs`".into(),
+                )
+                .with("path", i.clone()),
+            ),
+        }
+    }
+    if !ran.diags.is_empty() {
+        let _ = std::fs::remove_dir_all(&folder);
+        return ran;
+    }
+    let request = make_request(
+        s,
+        call,
+        &grid,
+        features,
+        inputs,
+        slash(&call.store.root().join("objects")),
+        slash(&out),
+    );
+    ran.data = Some(Digest::of(&request_data(&request).file()));
     let req_path = folder.join("request.json");
-    if std::fs::write(&req_path, request.file()).is_err() {
+    if let Err(e) = std::fs::write(&req_path, request.file()) {
+        ran.diags.push(write_failed(&s.id, &req_path, &e));
+        let _ = std::fs::remove_dir_all(&folder);
         return ran;
     }
     let mut cmd = std::process::Command::new(&program);
@@ -1046,13 +1537,21 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
-    if let Some(sdk) = sdk_folder(call.store, call.sdk) {
-        let mut paths = vec![sdk];
-        if let Some(old) = std::env::var_os("PYTHONPATH") {
-            paths.extend(std::env::split_paths(&old));
+    match sdk_folder(call.store, call.sdk) {
+        Ok(sdk) => {
+            let mut paths = vec![sdk];
+            if let Some(old) = std::env::var_os("PYTHONPATH") {
+                paths.extend(std::env::split_paths(&old));
+            }
+            if let Ok(joined) = std::env::join_paths(paths) {
+                cmd.env("PYTHONPATH", joined);
+            }
         }
-        if let Ok(joined) = std::env::join_paths(paths) {
-            cmd.env("PYTHONPATH", joined);
+        Err((path, e)) => {
+            // Never run without the SDK: its import error would be a wrong cause.
+            ran.diags.push(write_failed(&s.id, &path, &e));
+            let _ = std::fs::remove_dir_all(&folder);
+            return ran;
         }
     }
     let _ = call.sdk_digest;
@@ -1077,22 +1576,13 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
             return ran;
         }
     };
-    let take = |r: Option<Box<dyn std::io::Read + Send>>| {
-        std::thread::spawn(move || {
-            let mut b = Vec::new();
-            if let Some(mut r) = r {
-                let _ = r.read_to_end(&mut b);
-            }
-            b
-        })
-    };
-    let out_t = take(
+    let out_t = Capture::start(
         tree.child_mut()
             .stdout
             .take()
             .map(|r| Box::new(r) as Box<dyn std::io::Read + Send>),
     );
-    let err_t = take(
+    let err_t = Capture::start(
         tree.child_mut()
             .stderr
             .take()
@@ -1100,6 +1590,13 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
     );
     let start = Instant::now();
     let status = loop {
+        if crate::interrupt::pending().is_some() {
+            // Ctrl+C or SIGTERM: the step is killed now; `_live` removes the call folder and
+            // ends the engine when this returns.
+            let _ = tree.kill();
+            let _ = std::fs::remove_dir_all(&folder);
+            return ran;
+        }
         match tree.try_wait() {
             Ok(Some(st)) => break Some(st),
             Ok(None) if start.elapsed() > call.deadline => {
@@ -1110,21 +1607,47 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
             Err(_) => break None,
         }
     };
-    let mut log = out_t.join().unwrap_or_default();
-    log.extend(err_t.join().unwrap_or_default());
+    // The readers end when every holder of the pipes closes them. A descendant that left the
+    // process group (and so outlived the kill) may hold them open: the readers are waited for
+    // until the deadline, plus a short grace after a kill, and then abandoned, never joined.
+    // Checked: a deadline past what an instant holds waits with no end, never panics.
+    let until = start
+        .checked_add(call.deadline)
+        .and_then(|t| t.checked_add(STREAM_GRACE));
+    let streams_done = out_t.wait(until) & err_t.wait(until);
+    let mut log = out_t.take();
+    log.extend(err_t.take());
     let log_digest = call.store.put_object(&log);
     ran.ran = true;
+    let status = if streams_done {
+        status
+    } else {
+        // Its output never ended: it is not a finished call, whatever its exit (6.2).
+        let _ = tree.kill();
+        None
+    };
     let exit = status.and_then(|s| s.code());
     match (status, exit) {
         (None, _) => ran.diags.push(
             step_diag(
                 &s.id,
                 codes::protocol::DEADLINE,
-                format!(
-                    "step `{}` did not finish before its deadline and was killed",
-                    s.id
-                ),
-                "raise `--step-deadline`, or make the step faster".into(),
+                if streams_done {
+                    format!(
+                        "step `{}` did not finish before its deadline and was killed",
+                        s.id
+                    )
+                } else {
+                    format!(
+                        "step `{}`: its output was still held open at its deadline (a process it started outlived it)",
+                        s.id
+                    )
+                },
+                if streams_done {
+                    "raise `--step-deadline`, or make the step faster".into()
+                } else {
+                    "end every process the step starts before it exits".into()
+                },
             )
             .with("phase", "step.call")
             .with(
@@ -1148,7 +1671,24 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
     }
     // What it returned (5).
     let mut returned: Vec<J> = Vec::new();
-    for f in crate::dir::listing(&out) {
+    let (files, links) = crate::dir::listing_with_links(&out);
+    // A step returns files, never links: a link is not followed, read or stored, so nothing
+    // outside the call folder enters the store or the run report (5).
+    for l in &links {
+        ran.diags.push(
+            step_diag(
+                &s.id,
+                codes::protocol::OUTPUT_FILE,
+                format!(
+                    "step `{}` left `out/{l}`, a symbolic link; a step returns files, not links",
+                    s.id
+                ),
+                "write the file itself into `out`".into(),
+            )
+            .with("path", l.clone()),
+        );
+    }
+    for f in files {
         if let Ok(b) = std::fs::read(out.join(&f)) {
             let d = call.store.put_object(&b);
             returned.push(obj([("digest", J::s(d.hex())), ("path", J::s(f.clone()))]));
@@ -1165,8 +1705,12 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
             ));
         }
     }
-    if exit == Some(0) {
-        if let Ok(text) = std::fs::read_to_string(out.join("diagnostics.json")) {
+    ran.complete = status.is_some() && exit == Some(0) && links.is_empty();
+    let diagnostics_file = out.join("diagnostics.json");
+    let is_link =
+        std::fs::symlink_metadata(&diagnostics_file).is_ok_and(|m| m.file_type().is_symlink());
+    if exit == Some(0) && !is_link {
+        if let Ok(text) = std::fs::read_to_string(&diagnostics_file) {
             match crate::json::parse(&text) {
                 Ok(J::Arr(items)) if items.iter().all(|i| matches!(i, J::Obj(_))) => {
                     let mapper = Mapper {
@@ -1191,15 +1735,19 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
                         .map(|(c, e)| (c.to_string(), e.map(str::to_string)))
                         .collect();
                 }
-                _ => ran.diags.push(step_diag(
-                    &s.id,
-                    codes::protocol::OUTPUT_JSON,
-                    format!(
-                        "step `{}`: `diagnostics.json` is not a JSON list of objects",
-                        s.id
-                    ),
-                    "write a list of objects, one per diagnostic".into(),
-                )),
+                _ => {
+                    // Nothing readable: not complete, so not stored (`graph.md` 3.4).
+                    ran.complete = false;
+                    ran.diags.push(step_diag(
+                        &s.id,
+                        codes::protocol::OUTPUT_JSON,
+                        format!(
+                            "step `{}`: `diagnostics.json` is not a JSON list of objects",
+                            s.id
+                        ),
+                        "write a list of objects, one per diagnostic".into(),
+                    ));
+                }
             }
         }
     }
@@ -1213,4 +1761,77 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
     ]);
     let _ = std::fs::remove_dir_all(&folder);
     ran
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A small world of its own: one kind from a local library, one feature of it, one step.
+    const WORLD: &str = "name = \"marks\"\nextent = [0, 0, 16, 16]\nresolution = 1\n\
+        include = [\"marks\"]\n\n[field.height]\nrole = \"surface\"\nbase = 0\n\n\
+        [feature.one]\nkind = \"mark\"\npath = [[2, 8], [12, 8]]\n\n\
+        [step.checks]\nwhen = \"lint\"\ncommand = [\"python\", \"steps/lint.py\"]\n";
+    const KINDS: &str = "[kind.mark]\nauthority = \"shaped\"\nradius = 2\n\n\
+        [kind.mark.effect.e]\nfield = \"role:surface\"\nvalue = \"= v + 1\"\n\
+        mask = \"= 1 - smoothstep(0, 1, d)\"\n";
+
+    fn small_world() -> World {
+        let dir = std::env::temp_dir().join(format!("via-steps-test-{}", std::process::id()));
+        let libs = dir.join("libs");
+        std::fs::create_dir_all(libs.join("marks")).expect("a scratch folder");
+        std::fs::write(dir.join("world.toml"), WORLD).expect("the world");
+        std::fs::write(libs.join("marks/kinds.toml"), KINDS).expect("the library");
+        let opts = via_doc::LoadOptions {
+            lib_roots: vec![libs],
+            via_lib: None,
+            shipped_root: None,
+            changes: Vec::new(),
+        };
+        let world = via_doc::load(&dir.join("world.toml"), 2, &opts).world;
+        let _ = std::fs::remove_dir_all(&dir);
+        world.expect("the world merges")
+    }
+
+    fn lint(subject: &str) -> StepDiagIn {
+        StepDiagIn {
+            severity: Some("warning".into()),
+            code: Some("l7".into()),
+            subject: Some(subject.into()),
+            message: Some("a lint".into()),
+            hint: Some("change it".into()),
+            position: None,
+            related: Vec::new(),
+            data: None,
+            explain: None,
+        }
+    }
+
+    /// A selector subject that selects nothing is `diag.malformed`; one that selects something
+    /// is located at the step's header, which wrote it (no `for_each` before M3).
+    #[test]
+    fn selector_subjects_are_checked_and_located_at_the_step() {
+        let world = small_world();
+        let m = Mapper {
+            world: &world,
+            grid: None,
+        };
+        let bad = via_diag::step::arrive("checks", &lint("kind:nothing"), &m);
+        assert_eq!(bad.code().to_string(), "diag.malformed");
+        let good = via_diag::step::arrive("checks", &lint("kind:mark"), &m);
+        assert_eq!(good.code().to_string(), "step.checks.l7");
+        match good.site() {
+            Site::Text { file, line, .. } => {
+                assert_eq!(file, "world.toml");
+                let header = WORLD
+                    .lines()
+                    .position(|l| l.starts_with("[step.checks]"))
+                    .expect("a step header");
+                assert_eq!(*line as usize, header + 1);
+            }
+            s => panic!("not at the step: {s:?}"),
+        }
+        let role = via_diag::step::arrive("checks", &lint("role:nothing"), &m);
+        assert_eq!(role.code().to_string(), "diag.malformed");
+    }
 }

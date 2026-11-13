@@ -97,14 +97,32 @@ pub fn near_hint<'a>(
     nearest(written, names).hint(otherwise)
 }
 
-/// `d` with `data.nearest` when a name close to `written` is visible (`diagnostics.md` 1.3).
-pub fn with_nearest<'a>(d: Diag, written: &str, names: impl IntoIterator<Item = &'a str>) -> Diag {
+/// `d` with `data.nearest` when a name close to `written` is visible, and `related` at that
+/// name's declaration when `declared` gives one (`diagnostics.md` 1.3). A word of the language,
+/// which no text declares, passes [`undeclared`].
+pub fn with_nearest<'a>(
+    d: Diag,
+    written: &str,
+    names: impl IntoIterator<Item = &'a str>,
+    declared: impl FnOnce(&str) -> Option<(Subject, Site)>,
+) -> Diag {
     match nearest(written, names) {
         via_diag::nearest::Nearest::Found(n) => {
-            d.with("nearest", via_diag::Value::text(n.to_string()))
+            let at = declared(n);
+            d.nearest_name(n, at)
         }
         via_diag::nearest::Nearest::None(_) => d,
     }
+}
+
+/// No declaration in text: the name is a word of the language (a tier, a unit, a key).
+pub fn undeclared(_: &str) -> Option<(Subject, Site)> {
+    None
+}
+
+/// A world entity's declaration: its header (`[kind.<k>]`, `[feature.<id>]`).
+pub fn header_of(top: &'static str) -> impl FnOnce(&str) -> Option<(Subject, Site)> {
+    move |n| Some((Subject::entity(top, n), Site::Header))
 }
 
 /// A number's double (`numbers.md` 3.3).

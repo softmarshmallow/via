@@ -103,3 +103,21 @@ fn      = "json_count"
 path    = "build/ford+bigger/changes.json"
 pointer = "/entries/4/causes"
 count   = 2
+
+# The three fields the larger pad touches (entries 0 to 2). build.md 11.2: a field's `keys` are
+# `samples` and any key of its manifest entry that differs (none here), never `facts`; `facts` is
+# for an instance or footprint, so a field's is `[]`. Its cause may still be the asset's size.
+[action.bigger.file.clearing_keys]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/0"
+includes = { name = "clearing", table = "field", keys = ["samples"], facts = [] }
+
+[action.bigger.file.height_keys]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/1"
+includes = { name = "height", table = "field", keys = ["samples"], facts = [] }
+
+[action.bigger.file.water_keys]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/2"
+includes = { name = "water", table = "field", keys = ["samples"], facts = [] }

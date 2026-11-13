@@ -223,21 +223,32 @@ fn ids_of(ch: &Change, top: &str, e: &Entry) -> Vec<Fault> {
         if let Some(f) = ids::check(id, sub.clone(), At::Span(ee.key), "id") {
             out.push(f.chain(&ee.chain));
         } else if id == "world" {
-            out.push(reserved(sub, ee));
+            out.push(reserved(sub, ee, &|c| t.get(c).is_some()));
         }
     }
     out
 }
 
-pub(crate) fn reserved(sub: Subject, e: &Entry) -> Fault {
+pub(crate) fn reserved(sub: Subject, e: &Entry, taken: &dyn Fn(&str) -> bool) -> Fault {
+    let free = free_name("world", taken);
     Fault::new(
         codes::identity::RESERVED,
         sub,
         At::Span(e.key),
         "the id `world` is reserved: it names the world file's own layer",
-        "choose another id",
+        format!("choose another id, such as `{free}`"),
     )
+    .with("nearest", free.as_str())
     .chain(&e.chain)
+}
+
+/// The nearest free name to a reserved one (`identity.md`, `identity.reserved`): the name with
+/// `_<n>` after it, for the least `n` from 2 that the namespace has not taken.
+pub fn free_name(name: &str, taken: &dyn Fn(&str) -> bool) -> String {
+    (2u32..)
+        .map(|n| format!("{name}_{n}"))
+        .find(|c| !taken(c))
+        .unwrap_or_else(|| format!("{name}_2"))
 }
 
 fn link(ch: &Change, span: Span) -> Link {
@@ -249,11 +260,15 @@ fn link(ch: &Change, span: Span) -> Link {
     }
 }
 
-fn set_chain_deep(e: &mut Entry, chain: &[Link]) {
-    e.chain = chain.to_vec();
+/// Gives `e` and every entry under it the chain `chain`, then the change's own link at the entry's
+/// key: where the change wrote that value (`diagnostics.md` 1.2), not its table's header.
+fn set_chain_deep(e: &mut Entry, chain: &[Link], ch: &Change) {
+    let mut own = chain.to_vec();
+    own.push(link(ch, e.key));
+    e.chain = own;
     if let Value::Table(t) = &mut e.item.value {
         for sub in t.entries.values_mut() {
-            set_chain_deep(sub, chain);
+            set_chain_deep(sub, chain, ch);
         }
     }
 }
@@ -261,9 +276,8 @@ fn set_chain_deep(e: &mut Entry, chain: &[Link]) {
 fn written_entry(e: &Entry, prior: &[Link], ch: &Change) -> Entry {
     let mut chain = prior.to_vec();
     chain.extend(e.chain.iter().cloned());
-    chain.push(link(ch, e.key));
     let mut out = e.clone();
-    set_chain_deep(&mut out, &chain);
+    set_chain_deep(&mut out, &chain, ch);
     out
 }
 

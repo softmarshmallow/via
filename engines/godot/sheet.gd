@@ -16,10 +16,9 @@ const Loader := preload("res://addons/via_loader/loader.gd")
 const Diagnostics := preload("res://addons/via_loader/diagnostics.gd")
 const CJson := preload("res://addons/via_loader/cjson.gd")
 const Compose := preload("res://compose.gd")
+const Rig := preload("res://rig.gd")
 
 const SHOT := Vector2i(1280, 720)
-const LIGHT_BEARING := 225.0
-const LIGHT_ELEVATION := 45.0
 const SETTLE_FRAMES := 4
 const WATCHDOG_S := 300.0
 const PARKED := Vector2i(160, 90)
@@ -133,28 +132,6 @@ static func _remove(dir: String) -> void:
 	DirAccess.remove_absolute(dir)
 
 
-func _rig(vp: SubViewport) -> void:
-	## One light and one environment, the same for both builds, so a pair differs only by build.
-	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
-	env.sky = Sky.new()
-	env.sky.sky_material = ProceduralSkyMaterial.new()
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	var we := WorldEnvironment.new()
-	we.environment = env
-	vp.add_child(we)
-	var sun := DirectionalLight3D.new()
-	var b := deg_to_rad(LIGHT_BEARING)
-	var e := deg_to_rad(LIGHT_ELEVATION)
-	# toward the sun, world frame: (sin b cos e, cos b cos e, sin e); light travels the other way
-	var travel := Loader.g(-sin(b) * cos(e), -cos(b) * cos(e), -sin(e))
-	sun.transform = Transform3D(Basis.looking_at(travel, Vector3.UP), Vector3.ZERO)
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 250.0
-	vp.add_child(sun)
-
-
 func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dictionary:
 	## Loads one build into the viewport and renders each bookmark camera. Returns
 	## { "root_meta": {id, world}, "shots": { name: {"file", "eye", "toward", "image"} }, "far" }.
@@ -200,7 +177,7 @@ func _run() -> void:
 	vp.own_world_3d = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
-	_rig(vp)
+	Rig.rig(vp)
 	var two := after != ""
 	var b: Dictionary = await _render(vp, before, "before", partial + "/before")
 	var a: Dictionary = {"shots": {}, "id": null, "world": null, "far": null, "option_error": ""}
@@ -223,15 +200,25 @@ func _run() -> void:
 	var rows: Array = []
 	var marks: Array = []
 	for n in order:
-		var s: Dictionary = a.shots.get(n, b.shots.get(n, {}))
-		var eye: Array = s.eye
-		var target: Dictionary = s.toward
+		# Each cell is seen from its own build's eye toward its own build's target: both are
+		# recorded, and labelled when they differ.
+		var eb = b.shots.get(n, {}).get("eye")
+		var ea = a.shots.get(n, {}).get("eye")
+		var tb = b.shots.get(n, {}).get("toward")
+		var ta = a.shots.get(n, {}).get("toward")
+		var eyes := _eye_text(eb if eb != null else ea)
+		if eb != null and ea != null and eb != ea:
+			eyes = "%s -> %s" % [_eye_text(eb), _eye_text(ea)]
+		var towards := String((tb if tb != null else ta).get("name", ""))
+		if tb != null and ta != null and tb.get("name") != ta.get("name"):
+			towards = "%s -> %s" % [tb.get("name", ""), ta.get("name", "")]
 		rows.append({
-			"label": "%s    eye (%.2f, %.2f, %.2f)    toward %s" % [n, eye[0], eye[1], eye[2], target.get("name", "")],
+			"label": "%s    eye %s    toward %s" % [n, eyes, towards],
 			"before": b.shots.get(n, {}).get("image"), "after": a.shots.get(n, {}).get("image"),
 		})
 		marks.append({"after": a.shots.get(n, {}).get("file") if two else null,
-			"before": b.shots.get(n, {}).get("file"), "eye": eye, "name": n, "target": target})
+			"before": b.shots.get(n, {}).get("file"), "eye": {"after": ea, "before": eb}, "name": n,
+			"target": {"after": ta, "before": tb}})
 	var godot := "%d.%d.%d.%s" % [Engine.get_version_info().major, Engine.get_version_info().minor,
 		Engine.get_version_info().patch, Engine.get_version_info().status]
 	var world = b.world if b.world != null else a.world
@@ -247,7 +234,7 @@ func _run() -> void:
 		"bookmarks": marks,
 		"camera": {"far": b.far if b.far != null else a.far, "fov": 75.0, "near": 0.05},
 		"godot": godot,
-		"light": {"bearing": LIGHT_BEARING, "elevation": LIGHT_ELEVATION},
+		"light": {"bearing": Rig.LIGHT_BEARING, "elevation": Rig.LIGHT_ELEVATION},
 		"renderer": RenderingServer.get_current_rendering_method(),
 		"size": [SHOT.x, SHOT.y],
 	}
@@ -267,6 +254,10 @@ func _run() -> void:
 		failed = true
 	print("sheet: %d bookmark(s), %s" % [order.size(), out + "/sheet.png"])
 	_quit(1 if failed or diags.status() != 0 else 0)
+
+
+static func _eye_text(e: Array) -> String:
+	return "(%.2f, %.2f, %.2f)" % [e[0], e[1], e[2]]
 
 
 static func _short(id) -> String:

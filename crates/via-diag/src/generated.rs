@@ -15,7 +15,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A declared footprint is not a simple polygon of at least three distinct points, counter-clockwise.\nTo fix: Reverse the points, or remove the repeated one.\n",
+        explain: "A footprint written on an asset is not a simple polygon: fewer than three distinct points, a\npoint repeated, edges that cross, or points that run clockwise.\nTo fix: List at least three distinct points counter-clockwise; reverse a clockwise list, remove a\nrepeat.\nBad:   footprint = [[0, 0], [0, 2], [2, 2], [2, 0]]\nFixed: footprint = [[0, 0], [2, 0], [2, 2], [0, 2]]\n",
     },
     Row {
         code: "asset.declared_measured",
@@ -26,7 +26,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An asset's own table writes a fact its source measures or fixes (2.2).\nTo fix: Remove the key; for a model, via pack list shows the measured value.\n",
+        explain: "An asset's own table writes a fact that its source already fixes: a model file's measured size,\nor what a primitive's shape gives. Two statements of one fact would drift apart.\nTo fix: Remove the key; for a model, via pack list shows the measured value.\nBad:   [asset.a]\n       file = \"a.glb\"\n       size = [2, 2, 3]\nFixed: [asset.a]\n       file = \"a.glb\"\n",
     },
     Row {
         code: "asset.detail_bounds",
@@ -81,7 +81,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A selection or list filter names a declared taxon, or a tag, with no asset.\nTo fix: The nearest taxon or tag that has assets.\n",
+        explain: "A selection or a list filter names a taxon that is declared, or a tag, but no asset of the pack\nhas it, so the selection holds nothing. `data.nearest` holds the nearest taxon or tag that has\nassets.\nTo fix: Select the taxon or tag the hint names, or give an asset that taxon.\nBad:   assets = [\"@prop/b\"]   (no asset has taxon prop/b)\nFixed: assets = [\"@prop/a\"]\n",
     },
     Row {
         code: "asset.pivot_moved",
@@ -147,7 +147,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An asset has no source marker, or more than one, or lacks a key its source requires (size, triangles; 2.2).\nTo fix: Write exactly one of file, primitive, engine = true, or the named key.\n",
+        explain: "An asset must say where its shape comes from with exactly one source marker: `file`, `primitive`\nor `engine = true`. This one has none, more than one, or lacks a key its source requires (`size`\nfor a primitive, `triangles` for an engine-made asset).\nTo fix: Write exactly one of file, primitive or engine = true, and the keys that source requires.\nBad:   [asset.a]\n       primitive = \"box\"\nFixed: [asset.a]\n       primitive = \"box\"\n       size = [2, 2, 1]\n",
     },
     Row {
         code: "asset.stand_in_stale",
@@ -180,7 +180,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A world names an asset id the pack lacks.\nTo fix: The nearest id.\n",
+        explain: "The world names an asset id that the pack does not hold. `data.nearest` holds the nearest id the\npack has.\nTo fix: Write an id the pack holds (via pack list shows them), or add the asset to the pack.\nBad:   asset = \"box_smal\"\nFixed: asset = \"box_small\"\n",
     },
     Row {
         code: "asset.unknown_primitive",
@@ -191,7 +191,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "primitive names no shape of section 6.\nTo fix: The nearest shape word.\n",
+        explain: "`primitive` names a shape that is not one of the primitive shapes of assets.md section 6.\n`data.nearest` holds the nearest shape word.\nTo fix: Write one of the listed shape words.\nBad:   primitive = \"boxx\"\nFixed: primitive = \"box\"\n",
     },
     Row {
         code: "asset.untextured",
@@ -213,18 +213,18 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An attribute declared in both defaults and requires.\n",
+        explain: "A kind declares one attribute both in `defaults` and in `requires`. A required attribute has no\ndefault, and a defaulted one is not required, so the two say opposite things.\nTo fix: Keep it in one: requires if each feature must write it, defaults if a value serves.\nBad:   requires = [\"a\"]\n       defaults = { a = 1 }\nFixed: defaults = { a = 1 }\n",
     },
     Row {
         code: "authority.conflict",
         severity: Severity::Error,
         chapter: "authority",
         milestone: 1,
-        summary: "Two anchored features disagree where both masks are 1; subject the later; values, post, counts.",
-        data: &[],
+        summary: "Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`.",
+        data: &["field", "both_full", "both_partial"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two anchored features disagree where both masks are 1; subject the later; values, post, counts.\n",
+        explain: "Two anchored features write different values on one field at posts where both masks are exactly\n1. Neither may give way, so the build stops. The subject is the later feature, the earlier is in\nrelated; the message gives both values at the post of the largest difference. `data.field` names\nthe field, `data.both_full` counts the posts where both masks are 1 and `data.both_partial` those\nwhere both are above 0.\nTo fix: Make one shaped so the other holds; or move one off the other; or let the later one read\nthe earlier (value = \"= v\") where they overlap.\nBad:   [feature.a]  authority = \"anchored\", value 10 here\n       [feature.b]  authority = \"anchored\", value 12 on the same posts\nFixed: [feature.b]\n       authority = \"shaped\"\n",
     },
     Row {
         code: "authority.ground_requires",
@@ -235,7 +235,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An instance grounds with a kind that has requires; the instance's ground line and the kind's requires line.\n",
+        explain: "An instance grounds itself with a kind (`ground = \"<kind>\"`) that has `requires`. The footprint\nfeature made for the instance has no way to write those attributes, so it could never be\ncomplete. The record gives the instance's ground line and the kind's requires line.\nTo fix: Ground with a kind that has no requires, or give the attributes defaults in the kind.\nBad:   [kind.k]\n       requires = [\"a\"]\n       (and ground = \"k\" on an instance)\nFixed: [kind.k]\n       defaults = { a = 1 }\n",
     },
     Row {
         code: "authority.hidden",
@@ -246,7 +246,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An entry left no trace: later entries with mask 1 cover all of it; once per feature and field.\n",
+        explain: "An entry left no trace on its field: later entries with mask 1 cover every post it touches, so\nits value is never seen. Said once per feature and field.\nTo fix: Nothing if intended; otherwise move the feature out from under the later ones, or remove\nthe effect.\nBad:   an effect wholly inside a later anchored feature on the same field\nFixed: the same effect where the later feature does not cover it\n",
     },
     Row {
         code: "authority.max_change",
@@ -257,7 +257,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An entry moves a value more than max_change; post of the largest move, amount, limit, v and value.\n",
+        explain: "An entry moves its field's value further than its `max_change` allows. The record gives the post\nof the largest move, the amount and the limit, the value before (`v`) and the value asked.\nTo fix: Raise max_change, or bring the asked value closer to v (for example by reading v).\nBad:   max_change = 1\n       value = \"= 30\"   (v is 20 here)\nFixed: value = \"= v + clamp(30 - v, -1, 1)\"\n",
     },
     Row {
         code: "authority.names_undeclared",
@@ -268,7 +268,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An attribute in a kind's names is in neither defaults nor requires; nearest declared attribute.\n",
+        explain: "A kind's `names` lists an attribute that is in neither its `defaults` nor its `requires`, so no\nfeature of that kind can hold it. `data.nearest` holds the nearest declared attribute.\nTo fix: Declare the attribute in defaults or requires, or correct the name.\nBad:   names = [\"targt\"]\n       requires = [\"target\"]\nFixed: names = [\"target\"]\n       requires = [\"target\"]\n",
     },
     Row {
         code: "authority.no_field",
@@ -279,7 +279,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A well-formed selector matches no field, and the kind has a feature; once per kind and effect.\n",
+        explain: "An effect's selector is well formed but matches no field of this world, while the kind has at\nleast one feature, so the effect writes nothing. Said once per kind and effect.\nTo fix: Declare a field with that role or tag, or remove the effect if the world does not need it.\nBad:   field = \"tag:b\"   (no field has tag b)\nFixed: [field.b]\n       tags = [\"b\"]\n       base = \"= 0\"\n",
     },
     Row {
         code: "authority.no_kind",
@@ -290,7 +290,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "authority on a guide.\n",
+        explain: "A guide (a feature with no kind) writes `authority`. Authority belongs to a kind's effects; a\nguide writes nothing to any field.\nTo fix: Remove authority, or give the feature a kind and set authority there.\nBad:   [feature.a]\n       path = [[0, 0], [10, 0]]\n       authority = \"anchored\"\nFixed: [feature.a]\n       path = [[0, 0], [10, 0]]\n",
     },
     Row {
         code: "authority.order_cycle",
@@ -301,7 +301,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Nesting on one field forms a cycle; the field, every feature, each link and which side it puts later.\n",
+        explain: "Nesting decides which of two features on one field goes later: the one inside goes after the one\naround it. Here the links on one field form a loop, so no order exists. The record names the\nfield, every feature, each link and which side it puts later.\nTo fix: Break one link: move or reshape one feature so it no longer lies inside the next.\nBad:   a inside b, b inside c, and c inside a on field height\nFixed: c moved so it no longer lies inside a\n",
     },
     Row {
         code: "authority.range",
@@ -312,7 +312,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "radius at or below 0; the key, value and range.\n",
+        explain: "`radius` is at or below 0. An effect's radius is how far its mask may reach from the feature, so\nit must be above 0. The record gives the key, the value and the range.\nTo fix: Write a radius above 0.\nBad:   radius = 0\nFixed: radius = 4\n",
     },
     Row {
         code: "authority.requires",
@@ -323,7 +323,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A feature lacks an attribute its kind requires; names both lines.\n",
+        explain: "A feature lacks an attribute its kind lists in `requires`. The record names the feature's table\nand the kind's requires line.\nTo fix: Write the attribute on the feature.\nBad:   [feature.a]\n       kind = \"k\"   (k requires width)\nFixed: [feature.a]\n       kind = \"k\"\n       width = 4\n",
     },
     Row {
         code: "authority.selector",
@@ -334,18 +334,18 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An effect's field is not role:<role> or tag:<tag>, or names an unknown role; both forms, nearest role, the role of a field named bare.\n",
+        explain: "An effect's `field` must be `role:<role>` or `tag:<tag>`. This one is a bare name, another form,\nor names an unknown role. The record shows both forms, the nearest role, and the role of a field\nwhen a field is named bare.\nTo fix: Write role:<role> or tag:<tag>; a kind never names a world's field directly.\nBad:   field = \"height\"\nFixed: field = \"role:surface\"\n",
     },
     Row {
         code: "authority.squeezed",
         severity: Severity::Warning,
         chapter: "authority",
         milestone: 1,
-        summary: "Two anchored features disagree only where a mask is below 1; as above.",
-        data: &[],
+        summary: "Two anchored features disagree only where a mask is below 1; as above: `data.field`, `data.both_full`, `data.both_partial`.",
+        data: &["field", "both_full", "both_partial"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two anchored features disagree only where a mask is below 1; as above.\n",
+        explain: "Two anchored features write different values on one field, but only at posts where at least one\nmask is below 1, so the blend between them leaves neither value. A warning: the build goes on.\n`data.field`, `data.both_full` and `data.both_partial` are as for authority.conflict.\nTo fix: Make one shaped; or move them apart so their fades do not overlap; or let the later one\nread the earlier (value = \"= v\") where they overlap.\nBad:   two anchored features 2 m apart whose masks fade over 4 m\nFixed: the same features 6 m apart, or one of them shaped\n",
     },
     Row {
         code: "authority.step_anchored",
@@ -389,7 +389,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "authority is not derived, shaped or anchored; nearest tier.\n",
+        explain: "`authority` is not one of the three tiers: derived, shaped or anchored. `data.nearest` holds the\nnearest tier.\nTo fix: Write one of the three tiers.\nBad:   authority = \"anchor\"\nFixed: authority = \"anchored\"\n",
     },
     Row {
         code: "authority.unknown_kind",
@@ -400,7 +400,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A feature's kind or an instance's ground names no kind in the world's kind namespace; nearest kind.\n",
+        explain: "A feature's `kind` or an instance's `ground` names no kind in the world's kind namespace (the\nlibraries in include). `data.nearest` holds the nearest kind.\nTo fix: Write a kind an included library declares, or include the library that declares it.\nBad:   kind = \"edg\"\nFixed: kind = \"edge\"\n",
     },
     Row {
         code: "build.against_not_build",
@@ -411,7 +411,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "--against names a folder with no manifest of a known format. Hint: name a complete build directory.\n",
+        explain: "`--against` names a folder that is not a complete build directory: it has no manifest.json, or\nthe manifest's format is one this version does not read. No change report can be made against it.\nTo fix: Name a folder a complete via build wrote, or drop --against to use .previous.\nBad:   via build world.toml --against out\nFixed: via build world.toml --against build/a\n",
     },
     Row {
         code: "build.baseline_missing",
@@ -422,7 +422,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: ".previous names a build the store no longer holds; the change report has no baseline. Hint: rebuild the earlier text, or pass --against.\n",
+        explain: "The build directory's .previous names an earlier build that the store no longer holds (it was\ncleared, or another --store is in use), so the change report has no baseline. A warning: the\nbuild itself is complete.\nTo fix: Rebuild the earlier text to restore the baseline, or name one with --against.\nBad:   via build world.toml --store /tmp/s2   (the baseline was kept in another store)\nFixed: via build world.toml --against build/a\n",
     },
     Row {
         code: "build.chunk_not_multiple",
@@ -444,7 +444,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Workspace,
-        explain: "The build directory could not be replaced because a file in it is open; names the file. Hint: close the program holding it, or build to another --out.\n",
+        explain: "The build directory could not be replaced because another program holds a file in it open\n(an engine with the build loaded, say). The record names the file. Nothing was replaced.\nTo fix: Close the program holding the file, or build to another --out.\nBad:   via build world.toml --out build/a   (build/a/manifest.json open elsewhere)\nFixed: via build world.toml --out build/b\n",
     },
     Row {
         code: "build.internal",
@@ -455,7 +455,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Workspace,
-        explain: "A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3.\n",
+        explain: "A value reaching the writer was not finite, a weight was below 0, or a file failed its own check\nafter it was written. The text cannot cause this: it is a defect of ours, and the build exits\nwith status 3. The record names the file and the post or row.\nTo fix: Report it with the world text and the record; no change to the text is needed.\nBad:   (none: a defect of ours, not of the text)\nFixed: (none)\n",
     },
     Row {
         code: "build.no_facts",
@@ -477,7 +477,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "--out, <out>.partial or <out>.old is a file, a non-empty folder via did not write, or the world file's own folder; nothing was deleted. Hint: name an empty or new folder.\n",
+        explain: "The build would replace a folder that is not a build: --out, <out>.partial or <out>.old is a\nfile, a non-empty folder via did not write, or the world file's own folder. Nothing was deleted.\nTo fix: Name an empty or new folder for --out.\nBad:   via build world.toml --out .\nFixed: via build world.toml --out build/a\n",
     },
     Row {
         code: "build.pack_root_far",
@@ -488,7 +488,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "No relative path leads from the build directory to the pack's root (another drive); pack_root is null. Hint: build onto the pack's drive, or tell the loader where the pack is.\n",
+        explain: "No relative path leads from the build directory to the pack's root (they are on different\ndrives), so the manifest's pack_root is null and a loader cannot find the asset files by itself.\nTo fix: Build onto the pack's drive, or tell the loader where the pack is.\nBad:   via build world.toml --out E:/builds/a   (pack on C:)\nFixed: via build world.toml --out build/a\n",
     },
     Row {
         code: "build.store_inside",
@@ -499,7 +499,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The store resolves inside the build directory, which every build replaces. Hint: drop --store, or name a folder outside --out.\n",
+        explain: "The store resolves to a folder inside the build directory. Every build replaces that directory,\nso the store would be deleted with it.\nTo fix: Drop --store to use the default, or name a folder outside --out.\nBad:   via build world.toml --out build/a --store build/a/store\nFixed: via build world.toml --out build/a --store build/store\n",
     },
     Row {
         code: "build.write_failed",
@@ -510,7 +510,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A file or rename could not be written; names the path and the system's error. Hint: free space, or fix the folder's permissions.\n",
+        explain: "A file or a rename could not be written. The record names the path and the system's error (no\nspace left, no permission). The previous build is left as it was.\nTo fix: Free space, or fix the folder's permissions, then build again.\nBad:   via build world.toml --out /read_only/a\nFixed: via build world.toml --out build/a\n",
     },
     Row {
         code: "check.absolute_path",
@@ -521,7 +521,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A JSON or text file the build writes holds an absolute path; gives the key path.\n",
+        explain: "via check found an absolute path in a JSON or text file of the build. A build never holds one, so\nit moves between machines unchanged. The record gives the file and the key path.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   \"pack_root\": \"/home/a/packs\"   (in manifest.json)\nFixed: \"pack_root\": \"../packs\"\n",
     },
     Row {
         code: "check.chunk_rows",
@@ -532,7 +532,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Chunks' [first, count] ranges leave a gap or overlap, or a row lies outside its chunk; gives the chunk and row.\n",
+        explain: "via check found that the chunks' [first, count] ranges do not tile the instance rows: a gap, an\noverlap, or a row whose position lies outside its chunk. The record gives the chunk and the row.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   chunks [0, 10] and [12, 5]   (rows 10 and 11 in none)\nFixed: chunks [0, 10] and [10, 7]\n",
     },
     Row {
         code: "check.digest",
@@ -543,7 +543,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A listed file's bytes or digest differs from its record; gives both.\n",
+        explain: "via check found a listed file whose size or digest differs from what the manifest records: the\nfile was changed after the build wrote it. The record gives both.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   a field file edited by hand after the build\nFixed: the same build written again by via build\n",
     },
     Row {
         code: "check.face",
@@ -554,7 +554,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A face outside [0, 360000); gives the row.\n",
+        explain: "via check found an instance facing outside [0, 360000) millidegrees. The record gives the row.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   face = 360000\nFixed: face = 0\n",
     },
     Row {
         code: "check.format",
@@ -565,7 +565,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "No manifest.json, not canonical, or an unknown format.\n",
+        explain: "via check found no manifest.json in the folder, a manifest that is not canonical JSON, or a\nformat it does not read. The folder is not a build this version can check.\nTo fix: Name a folder via build wrote, or check it with the version that wrote it.\nBad:   via check build\nFixed: via check build/a\n",
     },
     Row {
         code: "check.header",
@@ -576,7 +576,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An array file's header is outside the subset of 3.2, or its size does not match it; gives the offset.\n",
+        explain: "via check found an array file whose header is outside the subset build.md 3.2 allows, or whose\nsize does not match its header. The record gives the byte offset.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   an array file cut short by a failed copy\nFixed: the same file written again by via build\n",
     },
     Row {
         code: "check.id",
@@ -587,7 +587,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "id is missing or differs from the digest recomputed by section 12; gives both.\n",
+        explain: "via check found a manifest with no id, or an id that differs from the digest recomputed from the\nmanifest (build.md 12): the manifest was changed after the build. The record gives both.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   a manifest.json edited by hand\nFixed: the manifest via build writes\n",
     },
     Row {
         code: "check.missing",
@@ -598,7 +598,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A listed file is absent.\n",
+        explain: "via check found a file the manifest lists that is not in the folder.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   a build folder copied without its fields folder\nFixed: the whole folder copied\n",
     },
     Row {
         code: "check.names",
@@ -609,7 +609,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "names.txt has other than count lines, a repeated name, or a character outside section 8's alphabet; gives the line.\n",
+        explain: "via check found names.txt with a line count other than count, a name repeated, or a character\noutside the name alphabet of build.md 8. The record gives the line.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   names.txt holding a.b twice\nFixed: names.txt as via build writes it\n",
     },
     Row {
         code: "check.not_canonical",
@@ -620,7 +620,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A JSON file the build writes is not canonical; gives the byte offset of the first difference.\n",
+        explain: "via check found a JSON file of the build that is not canonical (key order, spacing or number\nform differ from the canonical form). The record gives the byte offset of the first difference.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   {\"b\": 1, \"a\": 2}\nFixed: {\"a\":2,\"b\":1}\n",
     },
     Row {
         code: "check.shape",
@@ -631,7 +631,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An array file's descr or shape differs from what the manifest says it holds; gives both.\n",
+        explain: "via check found an array file whose element type (descr) or shape differs from what the manifest\nsays it holds. The record gives both.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   a scalar field file of shape (256, 255) where the grid is (256, 256)\nFixed: the file via build writes for that field\n",
     },
     Row {
         code: "check.unlisted",
@@ -642,7 +642,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A file is present that no list names.\n",
+        explain: "via check found a file in the build folder that no list of the manifest names. A build folder\nholds only what the build wrote, so nothing else is mistaken for part of it.\nTo fix: Move the extra file out of the build folder.\nBad:   build/a/notes.txt\nFixed: notes.txt kept beside the build folder\n",
     },
     Row {
         code: "check.value",
@@ -653,7 +653,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A float that is not finite or is -0; gives the file and the index.\n",
+        explain: "via check found a float that is not finite, or is -0. The record gives the file and the index.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   a field sample of NaN\nFixed: the field as via build writes it\n",
     },
     Row {
         code: "check.weights_sum",
@@ -664,7 +664,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A post's weights sum to neither 255 nor 0; gives the chunk and post.\n",
+        explain: "via check found a post whose material weights sum to neither 255 (painted) nor 0 (unpainted).\nThe record gives the chunk and the post.\nTo fix: Build again into a new folder; if a fresh build fails this check, report it.\nBad:   weights 200 and 50 at one post (250)\nFixed: weights 204 and 51 (255)\n",
     },
     Row {
         code: "cli.no_world",
@@ -675,7 +675,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "`via explain` was given a world file that does not exist or is not a file. Exit status 2. Every\nother command reports a missing world as doc.file_missing.\nGive the path of an existing world file.\nBad:   via explain step.a.b missing.toml\nFixed: via explain step.a.b world.toml\n",
+        explain: "`via explain` was given a world file that does not exist or is not a file. Exit status 2. Every\nother command reports a missing world as doc.file_missing.\nTo fix: Give the path of an existing world file.\nBad:   via explain step.a.b missing.toml\nFixed: via explain step.a.b world.toml\n",
     },
     Row {
         code: "cli.unknown_code",
@@ -686,7 +686,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "`via explain` or `--fail-on` was given a code that is not registered, and is not a step code of\nthe last build. Exit status 2. `data.nearest` holds the nearest code.\nWrite the code as `via explain` lists it.\nBad:   via explain formula.unknwn_name\nFixed: via explain formula.unknown_name\n",
+        explain: "`via explain` or `--fail-on` was given a code that is not registered, and is not a step code of\nthe last build. Exit status 2. `data.nearest` holds the nearest code.\nTo fix: Write the code as `via explain` lists it.\nBad:   via explain formula.unknwn_name\nFixed: via explain formula.unknown_name\n",
     },
     Row {
         code: "cli.usage",
@@ -697,7 +697,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The command line is wrong: an unknown flag, a missing argument, a bad value, or a --fail-on code\nthat is not a warning. `argument` is the index of the argument at fault, counting from 1 after\nthe program name. No build is attempted and the exit status is 2.\nWrite the flag as `via help` lists it; the hint gives the nearest one.\nBad:   via build world.toml --frobnicate\nFixed: via build world.toml\n",
+        explain: "The command line is wrong: an unknown flag, a missing argument, a bad value, or a --fail-on code\nthat is not a warning. `argument` is the index of the argument at fault, counting from 1 after\nthe program name. No build is attempted and the exit status is 2.\nTo fix: Write the flag as `via help` lists it; data.nearest gives the nearest one.\nBad:   via build world.toml --chnage a\nFixed: via build world.toml --change a\n",
     },
     Row {
         code: "diag.internal",
@@ -708,7 +708,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["message", "repro"],
         worst: None,
         covered_by: CoveredBy::Workspace,
-        explain: "The engine stopped on a defect of its own, not of the text: a panic, or a diagnostic whose place\ncould not be found. The build exits with status 3. `data.message` holds the panic's text and\n`data.repro` the digest of the reproduction folder written beside the build directory.\nReport it with that folder; no change to the text is needed or expected to help.\nBad:   (none: this is never the text's fault)\nFixed: (none)\n",
+        explain: "The engine stopped on a defect of its own, not of the text: a panic, or a diagnostic whose place\ncould not be found. The build exits with status 3. `data.message` holds the panic's text and\n`data.repro` the digest of the reproduction folder written beside the build directory.\nTo fix: Report it with that folder; no change to the text is needed or expected to help.\nBad:   (none: this is never the text's fault)\nFixed: (none)\n",
     },
     Row {
         code: "diag.malformed",
@@ -719,7 +719,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["message", "missing"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A step sent a diagnostic the engine could not keep: no hint, an empty message, a subject this\nworld does not have, a code not of the form [a-z][a-z0-9_]*, data that is not a table of plain\nvalues, a position outside the extent, or one code with two severities. `data.message` holds the\nstep's message and `data.missing` what was wrong.\nChange the step so every diagnostic it sends is complete.\nBad:   step.diag.emit(code=\"too_steep\", subject=\"feature.a\", message=\"too steep\")\nFixed: step.diag.emit(code=\"too_steep\", subject=\"feature.a\", message=\"slope 0.4 over 0.3\", hint=\"lower the slope\")\n",
+        explain: "A step sent a diagnostic the engine could not keep: no hint, an empty message, a subject this\nworld does not have, a code not of the form [a-z][a-z0-9_]*, data that is not a table of plain\nvalues, a position outside the extent, or one code with two severities. `data.message` holds the\nstep's message and `data.missing` what was wrong.\nTo fix: Change the step so every diagnostic it sends is complete.\nBad:   step.diag.emit(code=\"too_steep\", subject=\"feature.a\", message=\"too steep\")\nFixed: step.diag.emit(code=\"too_steep\", subject=\"feature.a\", message=\"slope 0.4 over 0.3\", hint=\"lower the slope\")\n",
     },
     Row {
         code: "diag.skipped",
@@ -730,7 +730,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["first", "stage"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A node failed, so every node that reads it, directly or through others, was not built. This\nrecord is the one thing said about them: `count` is how many things were skipped and\n`data.first` names the first ten. With `data.stage = \"export\"`, export steps did not run because\nthe build had an error.\nFix the error on the subject; what was skipped is built again with it.\nBad:   value = \"= 2 * hieght\"   (an error; everything reading value is skipped)\nFixed: value = \"= 2 * height\"\n",
+        explain: "A node failed, so every node that reads it, directly or through others, was not built. This\nrecord is the one thing said about them: `count` is how many things were skipped and\n`data.first` names the first ten. With `data.stage = \"export\"`, export steps did not run because\nthe build had an error.\nTo fix: Fix the error on the subject; what was skipped is built again with it.\nBad:   value = \"= 2 * hieght\"   (an error; everything reading value is skipped)\nFixed: value = \"= 2 * height\"\n",
     },
     Row {
         code: "doc.change_adds_near",
@@ -741,7 +741,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A change adds an entity whose id is near an existing one.\n",
+        explain: "A change writes a table for an id that does not exist, so it adds a new entity, and an existing\nid in the same table is its nearest name. A typo would otherwise add a new thing silently.\n`data.nearest` holds that id.\nTo fix: Write the existing id if the change meant to edit it; rename the new one if it did not.\nBad:   [change.c.feature.alpah]   (feature alpha exists)\nFixed: [change.c.feature.alpha]\n",
     },
     Row {
         code: "doc.change_conflict",
@@ -752,7 +752,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two requested changes write or remove one key path; both changes and spans.\n",
+        explain: "Two requested changes write or remove the same key path, so the result would depend on their\norder. The record names both changes and both spans.\nTo fix: Request only one of them, or make them write different keys.\nBad:   [change.c.feature.a]  width = 4   and   [change.d.feature.a]  width = 6\nFixed: [change.c.feature.a]  width = 4   and   [change.d.feature.a]  height = 6\n",
     },
     Row {
         code: "doc.change_empty",
@@ -763,7 +763,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A change body writes nothing, so requesting it changes nothing.\nWrite what the change should set, or delete it.\nBad:   [change.a]\nFixed: [change.a.feature.b]\n       width = 4\n",
+        explain: "A change body writes nothing, so requesting it changes nothing.\nTo fix: Write what the change should set, or delete it.\nBad:   [change.a]\nFixed: [change.a.feature.b]\n       width = 4\n",
     },
     Row {
         code: "doc.change_fixed",
@@ -774,7 +774,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A change writes include or name.\n",
+        explain: "A change writes `include` or `name`. The include list is settled before any change applies, and\nname names the world the changes are differences of, so neither may change.\nTo fix: Edit include or name in the world file itself.\nBad:   [change.c]\n       include = [\"b\"]\nFixed: include = [\"a\", \"b\"]   (in the world file)\n",
     },
     Row {
         code: "doc.change_nested",
@@ -785,7 +785,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "[change] in a kinds file, pack, change file or change body.\n",
+        explain: "`[change]` is written in a kinds file, a pack, a change file, or inside another change's body.\nChanges are declared in a world or layer file only, one level deep.\nTo fix: Move the change to the world or a layer file; in a change file, write the body at its top.\nBad:   [change.c.change.d.feature.a]\nFixed: [change.d.feature.a]\n",
     },
     Row {
         code: "doc.dangling",
@@ -796,7 +796,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A name whose target a change removed; the holding table and the change.\n",
+        explain: "A name points at something a requested change removed. The record names the table holding the\nname and the change that removed its target.\nTo fix: Remove or retarget the name in the same change, or do not remove the target.\nBad:   [change.c.feature.a]\n       remove = true   (feature b still has on = { ref = \"a\" })\nFixed: [change.c.feature.a]\n       remove = true\n       [change.c.feature.b]\n       remove = true\n",
     },
     Row {
         code: "doc.file_missing",
@@ -807,7 +807,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A file was not found: the world, a layer, a change file or a library folder.\nCorrect the path, relative to the world file's folder, or create the file.\nBad:   file = \"layers/mian.toml\"\nFixed: file = \"layers/main.toml\"\n",
+        explain: "A file was not found: the world, a layer, a change file or a library folder.\nTo fix: Correct the path, relative to the world file's folder, or create the file.\nBad:   file = \"layers/mian.toml\"\nFixed: file = \"layers/main.toml\"\n",
     },
     Row {
         code: "doc.file_unreadable",
@@ -818,7 +818,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A file found but not readable.\n",
+        explain: "A file exists but could not be read (no permission, or a folder where a file is named).\nTo fix: Make the file readable by the user running via, or name the file, not its folder.\nBad:   file = \"layers\"\nFixed: file = \"layers/a.toml\"\n",
     },
     Row {
         code: "doc.idle_change",
@@ -829,7 +829,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["code"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An unrequested inline change has a fault; data.code holds its code.\n",
+        explain: "A change declared inline but not requested has a fault. It does not stop this build, but would\nstop any build that requests it. `data.code` holds the fault's own code.\nTo fix: Fix the change as that code's explain says, or delete the change.\nBad:   [change.c.feature.a]\n       widht = 4\nFixed: [change.c.feature.a]\n       width = 4\n",
     },
     Row {
         code: "doc.include_cycle",
@@ -840,7 +840,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Libraries that include each other; the loop.\n",
+        explain: "Libraries include each other in a loop, so none can be read first. The record names the loop.\nTo fix: Remove one include of the loop; move what both need into a third library.\nBad:   a includes b, and b includes a\nFixed: a and b both include c\n",
     },
     Row {
         code: "doc.include_missing",
@@ -851,7 +851,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A library name found in no root; roots searched, by place not path; nearest name.\n",
+        explain: "An include names a library found in no library root. The record lists the roots searched, by\nplace, not by path. `data.nearest` holds the nearest library name.\nTo fix: Write a library name that exists, or add the library folder to a root.\nBad:   include = [\"lnd\"]\nFixed: include = [\"land\"]\n",
     },
     Row {
         code: "doc.include_shadowed",
@@ -862,7 +862,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A library name found in several roots; the one used.\n",
+        explain: "A library name is found in more than one root. The first in search order is used; the record\nnames it.\nTo fix: Nothing if the one used is right; otherwise rename one library or remove it from a root.\nBad:   include = [\"a\"]   (a in two roots)\nFixed: include = [\"a\"]   (a in one root)\n",
     },
     Row {
         code: "doc.kind_outside_library",
@@ -873,7 +873,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "[kind] in a world or layer file, or a kind a change adds.\n",
+        explain: "`[kind]` is written in a world or layer file, or a change adds a new kind. Kinds are declared in\na library's kinds file only; a change may edit or remove an existing kind.\nTo fix: Move the kind to a library folder and include it.\nBad:   [kind.k]   (in world.toml)\nFixed: [kind.k]   (in lib/a/kinds.toml)  and  include = [\"a\"]\n",
     },
     Row {
         code: "doc.layer_file_twice",
@@ -884,7 +884,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two layers name one file, or a layer names the world file.\n",
+        explain: "Two layers name one file, or a layer names the world file. Each file is one layer.\nTo fix: Give each layer its own file.\nBad:   [layer.a]  file = \"x.toml\"   and   [layer.b]  file = \"x.toml\"\nFixed: [layer.a]  file = \"a.toml\"   and   [layer.b]  file = \"b.toml\"\n",
     },
     Row {
         code: "doc.layer_rank",
@@ -895,7 +895,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two layers with one rank, world's included.\n",
+        explain: "Two layers share one rank. Ranks order layers and must be unique; the world file is rank 0\nunless [layer.world] says otherwise.\nTo fix: Give each layer its own rank.\nBad:   [layer.a]\n       rank = 0   (the world is 0)\nFixed: [layer.a]\n       rank = 1\n",
     },
     Row {
         code: "doc.missing_key",
@@ -906,7 +906,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A required key is absent; the record names the table, the key and what it takes, at the span\nthat creates the table.\nAdd the key.\nBad:   [field.height]\nFixed: [field.height]\n       type = \"scalar\"\n",
+        explain: "A required key is absent; the record names the table, the key and what it takes, at the span\nthat creates the table.\nTo fix: Add the key.\nBad:   [layer.a]\n       file = \"a.toml\"\n       owner = \"b\"\nFixed: [layer.a]\n       file = \"a.toml\"\n       owner = \"b\"\n       rank = 1\n",
     },
     Row {
         code: "doc.not_yet",
@@ -917,7 +917,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The text uses a word of a later milestone; the message names the milestone.\nRemove it for now, or use the form this milestone has.\nBad:   (a key from a later milestone)\nFixed: (the same table without it)\n",
+        explain: "The text uses a word that a later milestone brings; the message names that milestone. This\nversion reads it but does not act on it.\nTo fix: Remove it for now, or use the form this milestone has.\nBad:   [layer.a]\n       after = \"b\"   (M4)\nFixed: [layer.a]\n       rank = 2\n",
     },
     Row {
         code: "doc.path_case",
@@ -928,7 +928,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A path whose case differs from the name on disk.\n",
+        explain: "A path differs in letter case from the name on disk. Paths match case exactly on every system,\nso a world that builds on one builds on all. The record gives the name on disk.\nTo fix: Write the path with the case the disk has.\nBad:   file = \"Layers/a.toml\"\nFixed: file = \"layers/a.toml\"\n",
     },
     Row {
         code: "doc.path_form",
@@ -939,7 +939,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An absolute path, a \\, a part not portable, or a change file not ending in .toml.\n",
+        explain: "A path is absolute, holds a backslash, has a part that is not portable (a reserved device name,\na trailing dot or space), or a change file does not end in .toml.\nTo fix: Write a relative path with forward slashes and portable parts.\nBad:   file = \"C:\\\\work\\\\a.toml\"\nFixed: file = \"layers/a.toml\"\n",
     },
     Row {
         code: "doc.placement_twice",
@@ -950,7 +950,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "One table holds two placement keys; names both.\n",
+        explain: "One table holds two placement keys (at, on, path, region, where, follows). A thing is placed one\nway. The record names both.\nTo fix: Keep one placement key.\nBad:   at = [10, 10]\n       on = { ref = \"a\", t = 0.5 }\nFixed: on = { ref = \"a\", t = 0.5 }\n",
     },
     Row {
         code: "doc.remove_above_entity",
@@ -961,7 +961,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "remove or unset at a change body's root or on a top table.\n",
+        explain: "`remove` or `unset` is written at a change body's root or directly on a top table. Removal acts\non one entity or inside one, never on a whole world or a whole table.\nTo fix: Write remove inside the entity's own table.\nBad:   [change.c.feature]\n       remove = true\nFixed: [change.c.feature.a]\n       remove = true\n",
     },
     Row {
         code: "doc.remove_missing",
@@ -972,7 +972,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "remove or unset names nothing in the base.\n",
+        explain: "`remove` or `unset` names something that is not in the base, so it removes nothing. A change\ncannot remove what another change adds.\nTo fix: Name an entity or key the base has, or delete the line.\nBad:   [change.c.feature.zz]\n       remove = true   (no feature zz)\nFixed: [change.c.feature.a]\n       remove = true\n",
     },
     Row {
         code: "doc.remove_outside_change",
@@ -983,7 +983,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "remove or unset outside a change body.\n",
+        explain: "`remove` or `unset` is written outside a change body. The base says what is, not what is not.\nTo fix: Delete the table or key from the base, or move the removal into a change.\nBad:   [feature.a]\n       remove = true\nFixed: [change.c.feature.a]\n       remove = true\n",
     },
     Row {
         code: "doc.remove_with_keys",
@@ -994,7 +994,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "remove = true beside other keys, or a key both written and unset.\n",
+        explain: "`remove = true` sits beside other keys, or one key is both written and named in unset. Each says\nthe opposite of the other.\nTo fix: Keep remove alone, or drop the key from unset or from the table.\nBad:   [change.c.feature.a]\n       remove = true\n       width = 4\nFixed: [change.c.feature.a]\n       remove = true\n",
     },
     Row {
         code: "doc.reserved_attribute",
@@ -1005,7 +1005,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A kind declares an attribute named as a reserved feature key.\n",
+        explain: "A kind declares an attribute named as a reserved feature key (kind, authority, at, on, path and\nthe others the feature table takes), so the feature table could not tell them apart.\nTo fix: Rename the attribute.\nBad:   defaults = { path = 2 }\nFixed: defaults = { path_width = 2 }\n",
     },
     Row {
         code: "doc.syntax",
@@ -1016,7 +1016,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["offset", "rewrite"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The file is not TOML 1.0.0, not UTF-8, or uses an array-of-tables header. Files are flat and keyed\nby id: [collection.id], never [[collection]].\nCorrect the text at the position given; for [[x]], write one [x.<id>] per item.\nBad:   [[feature]]\n       id = \"a\"\nFixed: [feature.a]\n",
+        explain: "The file is not TOML 1.0.0, not UTF-8 (the byte offset is in `data.offset`), or uses an\narray-of-tables header. Files are flat and keyed by id: [collection.id], never [[collection]];\n`data.rewrite` holds the exact rewrite of such a header.\nTo fix: Correct the text at the position given; for [[x]], write one [x.<id>] per item.\nBad:   [[feature]]\n       id = \"a\"\nFixed: [feature.a]\n",
     },
     Row {
         code: "doc.too_deep",
@@ -1027,7 +1027,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Tables and lists nest over 64 deep; the file is read no further.\nFlatten the structure.\nBad:   value = [[[[ ... ]]]]   (65 levels)\nFixed: value = [1, 2]\n",
+        explain: "Tables and lists nest over 64 deep; the file is read no further.\nTo fix: Flatten the structure.\nBad:   value = [[[[ ... ]]]]   (65 levels)\nFixed: value = [1, 2]\n",
     },
     Row {
         code: "doc.type",
@@ -1038,7 +1038,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A value has the wrong form for its key (a string where a number is taken), or is a TOML date or\ntime, which no key takes.\nWrite the form the key takes.\nBad:   width = \"6\"\nFixed: width = 6\n",
+        explain: "A value has the wrong form for its key (a string where a number is taken), or is a TOML date or\ntime, which no key takes.\nTo fix: Write the form the key takes.\nBad:   width = \"6\"\nFixed: width = 6\n",
     },
     Row {
         code: "doc.unknown_change",
@@ -1049,7 +1049,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A requested change does not exist. `data.nearest` holds the nearest change name.\nRequest a change that the world or a change file declares.\nBad:   via build world.toml --change tset\nFixed: via build world.toml --change test\n",
+        explain: "A requested change does not exist. `data.nearest` holds the nearest change name.\nTo fix: Request a change that the world or a change file declares.\nBad:   via build world.toml --change tset\nFixed: via build world.toml --change test\n",
     },
     Row {
         code: "doc.unknown_key",
@@ -1060,7 +1060,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A key or table is not listed for its place. `data.nearest` holds the nearest listed word; a word\nremoved from the language has a fixed hint instead.\nWrite the key as listed, or remove it.\nBad:   [feature.a]\n       widht = 6\nFixed: [feature.a]\n       width = 6\n",
+        explain: "A key or table is not listed for its place. `data.nearest` holds the nearest listed word; a word\nremoved from the language has a fixed hint instead.\nTo fix: Write the key as listed, or remove it.\nBad:   [feature.a]\n       widht = 6\nFixed: [feature.a]\n       width = 6\n",
     },
     Row {
         code: "doc.upward_ref",
@@ -1071,7 +1071,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A named reference to something in a higher layer; both entities, layers, owners.\n",
+        explain: "A name refers to something declared in a higher layer. A layer sees its own rank and below, so a\nlower layer never depends on a higher one. The record names both entities, their layers and\nowners.\nTo fix: Move the referred thing down to the referring layer or below, or the reference up.\nBad:   on = { ref = \"b\" }   in rank 0, b declared in rank 1\nFixed: the same line in the rank 1 layer\n",
     },
     Row {
         code: "doc.world_key_in_layer",
@@ -1082,7 +1082,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A world-file-only key or [layer] in a layer.\n",
+        explain: "A layer file writes a key that only the world file holds (name, extent, resolution, seed,\ninclude, pack) or a [layer] table. Layers do not nest.\nTo fix: Move the key to the world file.\nBad:   extent = [0, 0, 100, 100]   (in layers/a.toml)\nFixed: extent = [0, 0, 100, 100]   (in world.toml)\n",
     },
     Row {
         code: "field.base_and_file",
@@ -1093,7 +1093,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A field with both base and file.\nTo fix: Keep one.\n",
+        explain: "A scalar field has both `base` and `file`. Its value before any row comes from one of them, a\nformula or a raster, never both.\nTo fix: Keep one.\nBad:   [field.a]\n       base = \"= 0\"\n       file = \"a.npy\"\nFixed: [field.a]\n       file = \"a.npy\"\n       outside = 0\n",
     },
     Row {
         code: "field.effect_cut",
@@ -1104,7 +1104,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An effect's mask is above 0.02 on its ring; the effect, the feature and the first post.\nTo fix: Raise radius, or fade mask to 0 by it.\n",
+        explain: "An effect's mask is still above 0.02 on its ring, the posts at its radius, so it stops with a\nvisible step instead of fading out. The record names the effect, the feature and the first post.\nTo fix: Raise radius, or make mask reach 0 by radius.\nBad:   radius = 3\n       mask = \"= 1 - smoothstep(0, 4, d)\"\nFixed: radius = 5\n       mask = \"= 1 - smoothstep(0, 4, d)\"\n",
     },
     Row {
         code: "field.file_coarse",
@@ -1126,7 +1126,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An unsupported format, depth or palette; an array file whose shape is not 2-D or whose descr is not <f4; a raster with a dimension under 2.\nTo fix: Save as 8- or 16-bit grey PNG, or an array file.\n",
+        explain: "The file a field reads is in an unsupported format, depth or palette; an array file whose shape\nis not 2-D or whose element type is not <f4 (32-bit float); or a raster with a side under 2\nsamples.\nTo fix: Save the raster as a 2-D <f4 array file (from M2 also 8- or 16-bit grey PNG).\nBad:   file = \"a.npy\"   (shape (64, 64, 3))\nFixed: file = \"a.npy\"   (shape (64, 64), descr <f4)\n",
     },
     Row {
         code: "field.file_key",
@@ -1137,7 +1137,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A file key without file, one that does not apply, an unknown channel or filter, or a channel the picture lacks.\nTo fix: The keys that apply; for luma, name one channel.\n",
+        explain: "A key that only applies to a file is written without `file`, or does not apply to this format\n(range or channel on an array file), or names an unknown channel or filter, or a channel the\npicture lacks.\nTo fix: Keep only the keys that apply; for luma, name one channel.\nBad:   [field.a]\n       base = \"= 0\"\n       filter = \"nearest\"\nFixed: [field.a]\n       base = \"= 0\"\n",
     },
     Row {
         code: "field.file_nonfinite",
@@ -1148,7 +1148,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A non-finite sample; its row and column.\nTo fix: Repair the file.\n",
+        explain: "A sample of the field's file is not finite (an infinity or NaN). A field never holds one. The\nrecord gives the sample's row and column.\nTo fix: Repair the file: replace the sample with a finite value.\nBad:   a.npy with NaN at row 3, column 7\nFixed: a.npy with that sample set to its neighbours' mean\n",
     },
     Row {
         code: "field.file_offworld",
@@ -1159,7 +1159,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A raster extent wholly outside the world's.\nTo fix: Correct extent.\n",
+        explain: "A raster's `extent` lies wholly outside the world's, so no post reads it and the field is\n`outside` everywhere.\nTo fix: Correct extent to where the raster lies in the world frame.\nBad:   extent = [1000, 1000, 1256, 1256]   (world [0, 0, 256, 256])\nFixed: extent = [0, 0, 256, 256]\n",
     },
     Row {
         code: "field.file_outside",
@@ -1170,7 +1170,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "file without outside.\nTo fix: Add outside, the value beyond the raster.\n",
+        explain: "A field has `file` without `outside`, the value at posts beyond the raster's extent. There is no\ndefault, so the field would be undefined there.\nTo fix: Add outside.\nBad:   [field.a]\n       file = \"a.npy\"\nFixed: [field.a]\n       file = \"a.npy\"\n       outside = 0\n",
     },
     Row {
         code: "field.file_profile",
@@ -1203,7 +1203,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "More samples than the post-count limit; the header's size.\nTo fix: Crop or downsample the raster.\n",
+        explain: "The file holds more samples than the post-count limit. The record gives the size its header\ndeclares; the file is not read.\nTo fix: Crop or downsample the raster.\nBad:   file = \"a.npy\"   (shape (40000, 40000))\nFixed: file = \"a.npy\"   (shape (4000, 4000))\n",
     },
     Row {
         code: "field.role_missing",
@@ -1214,7 +1214,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "No surface field, and something asked for ground; names the first that asked.\nTo fix: Add a field with role = \"surface\".\n",
+        explain: "Something needs the ground (an instance, a pad, a formula's ground read) but no field has role\nsurface. The record names the first thing that asked.\nTo fix: Give one scalar field in metres role = \"surface\".\nBad:   [field.height]\n       base = \"= 20\"\nFixed: [field.height]\n       role = \"surface\"\n       base = \"= 20\"\n",
     },
     Row {
         code: "field.role_range",
@@ -1225,7 +1225,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A keep_out value outside 0 to 1, clamped; the field and its first post.\nTo fix: Wrap the row or base in clamp(..., 0, 1).\n",
+        explain: "A keep_out field holds a value outside 0 to 1, so it was clamped. The record names the field and\nits first such post.\nTo fix: Wrap the row's value or the base in clamp(..., 0, 1).\nBad:   base = \"= a * 2\"\nFixed: base = \"= clamp(a * 2, 0, 1)\"\n",
     },
     Row {
         code: "field.role_twice",
@@ -1236,7 +1236,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A second material field; names both.\nTo fix: Remove role from one; it is handed over as data.\n",
+        explain: "A second field has role material. An engine has one set of terrain layers, so a world has one\nmaterial field. The record names both.\nTo fix: Remove role from one; it is still built and handed over as data.\nBad:   [field.a]  role = \"material\"   and   [field.b]  role = \"material\"\nFixed: [field.a]  role = \"material\"   and   [field.b]  type = \"weights\"\n",
     },
     Row {
         code: "field.role_type",
@@ -1247,7 +1247,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A role on a field of the wrong type.\nTo fix: The role's type, e.g. type = \"weights\".\n",
+        explain: "A role is given to a field of the wrong type: surface and keep_out take scalar, material takes\nweights.\nTo fix: Write the role's type.\nBad:   [field.a]\n       role = \"material\"\nFixed: [field.a]\n       role = \"material\"\n       type = \"weights\"\n",
     },
     Row {
         code: "field.role_unit",
@@ -1258,7 +1258,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A role on a field with another unit.\nTo fix: Remove unit, or write the role's.\n",
+        explain: "A role is given to a field whose unit is not the role's: surface is in m, keep_out and material\nin ratio.\nTo fix: Remove unit, or write the role's.\nBad:   role = \"surface\"\n       unit = \"deg\"\nFixed: role = \"surface\"\n",
     },
     Row {
         code: "field.role_unknown",
@@ -1269,7 +1269,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A role that is not surface, material or keep_out.\nTo fix: Nearest role; a library word belongs in tags.\n",
+        explain: "`role` is not surface, material or keep_out. A role is a core meaning; a library's own word\nbelongs in tags. `data.nearest` holds the nearest role.\nTo fix: Write the nearest role, or move the word to tags.\nBad:   role = \"level\"\nFixed: tags = [\"level\"]\n",
     },
     Row {
         code: "field.row_key",
@@ -1280,7 +1280,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "paint on a scalar entry, or value on a weights entry; names the row or effect and the field.\nTo fix: Use the key of the field's type, or narrow the effect's selector.\n",
+        explain: "A row or effect writes the key of the other field type: `paint` on a scalar field, or `value` on\na weights field. The record names the row or effect and the field.\nTo fix: Use the key of the field's type, or narrow the effect's selector to the fields meant.\nBad:   [field.height.then.a]\n       paint = \"rock\"\nFixed: [field.height.then.a]\n       value = \"= v + 1\"\n",
     },
     Row {
         code: "field.row_missing",
@@ -1291,7 +1291,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A scalar row or entry with no value, or a weights one with no paint; names the row or effect.\nTo fix: Add the key.\n",
+        explain: "A scalar row or entry has no `value`, or a weights one has no `paint`, so it writes nothing. The\nrecord names the row or effect.\nTo fix: Add the key.\nBad:   [field.height.then.a]\n       mask = \"= 1\"\nFixed: [field.height.then.a]\n       value = \"= v + 1\"\n       mask = \"= 1\"\n",
     },
     Row {
         code: "field.step_base",
@@ -1324,7 +1324,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A type not on the list.\nTo fix: Nearest type; for material: type = \"weights\", role = \"material\".\n",
+        explain: "`type` is not one of scalar, weights or volume. `data.nearest` holds the nearest type; for\nmaterials write type = \"weights\" with role = \"material\".\nTo fix: Write the nearest type.\nBad:   type = \"material\"\nFixed: type = \"weights\"\n       role = \"material\"\n",
     },
     Row {
         code: "field.unit_unknown",
@@ -1335,7 +1335,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A unit not on the list.\nTo fix: Nearest unit.\n",
+        explain: "`unit` is not one of m, deg or ratio. `data.nearest` holds the nearest unit.\nTo fix: Write the nearest unit.\nBad:   unit = \"metres\"\nFixed: unit = \"m\"\n",
     },
     Row {
         code: "field.unpainted",
@@ -1346,7 +1346,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Posts of the material field with weights summing below 1; the first and the count.\nTo fix: Add a first row with no mask.\n",
+        explain: "Some posts of the material field have weights summing below 1, so part of the ground has no\nmaterial. The record gives the first post and the count.\nTo fix: Add a first row with no mask, painting the ground everywhere.\nBad:   [field.m.then.a]\n       paint = \"rock\"\n       mask = \"= 0.5\"\nFixed: [field.m.then.base]\n       paint = \"grass\"\n       (before the rock row)\n",
     },
     Row {
         code: "field.weights_base",
@@ -1357,7 +1357,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "base or file on a weights field.\nTo fix: Read the raster as a scalar field and use it as a row's mask.\n",
+        explain: "A weights field has `base` or `file`. Its weights start at 0 and are built by its rows only.\nTo fix: Read the raster as a scalar field and use it as a row's mask.\nBad:   [field.m]\n       type = \"weights\"\n       file = \"m.npy\"\nFixed: [field.cover]\n       file = \"m.npy\"\n       outside = 0\n       (and mask = \"= f('cover')\" on a row of m)\n",
     },
     Row {
         code: "field.weights_unit",
@@ -1368,7 +1368,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A unit other than ratio on a weights field.\nTo fix: Remove unit.\n",
+        explain: "A weights field has a unit other than ratio. Weights are fractions.\nTo fix: Remove unit.\nBad:   type = \"weights\"\n       unit = \"m\"\nFixed: type = \"weights\"\n",
     },
     Row {
         code: "formula.arguments",
@@ -1379,7 +1379,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A call has the wrong number of arguments, an unknown or repeated named argument, or a positional\nargument after a named one.\nGive the arguments the function's entry in the table lists, positional first.\nBad:   value = \"= clamp(a, 0)\"\nFixed: value = \"= clamp(a, 0, 1)\"\n",
+        explain: "A call has the wrong number of arguments, an unknown or repeated named argument, or a positional\nargument after a named one.\nTo fix: Give the arguments the function's entry in the table lists, positional first.\nBad:   value = \"= clamp(a, 0)\"\nFixed: value = \"= clamp(a, 0, 1)\"\n",
     },
     Row {
         code: "formula.cap",
@@ -1390,7 +1390,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "dist or sdist has no cap, and there is no radius to default to.\nGive the cap.\nBad:   value = \"= dist('tag:edge')\"\nFixed: value = \"= dist('tag:edge', 40)\"\n",
+        explain: "dist or sdist has no cap, and there is no radius to default to.\nTo fix: Give the cap.\nBad:   value = \"= dist('tag:edge')\"\nFixed: value = \"= dist('tag:edge', 40)\"\n",
     },
     Row {
         code: "formula.character",
@@ -1401,7 +1401,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The formula holds a character outside the language. Names are lower case.\nRemove the character, or write the name in lower case.\nBad:   value = \"= 2 * Height\"\nFixed: value = \"= 2 * height\"\n",
+        explain: "The formula holds a character outside the language. Names are lower case.\nTo fix: Remove the character, or write the name in lower case.\nBad:   value = \"= 2 * Height\"\nFixed: value = \"= 2 * height\"\n",
     },
     Row {
         code: "formula.empty_selection",
@@ -1412,7 +1412,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A kind: selection is empty at its stratum, so the function used its value for nothing. Reported\nonce per formula and stratum; the message says the value used.\nAdd a feature of that kind below this layer, or drop the term.\nBad:   value = \"= dist('kind:k', 10)\"   (no feature of kind k here)\nFixed: value = \"= 1\"\n",
+        explain: "A kind: selection is empty at its stratum, so the function used its value for nothing. Reported\nonce per formula and stratum; the message says the value used.\nTo fix: Add a feature of that kind below this layer, or drop the term.\nBad:   value = \"= dist('kind:k', 10)\"   (no feature of kind k here)\nFixed: value = \"= 1\"\n",
     },
     Row {
         code: "formula.not_finite",
@@ -1423,7 +1423,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An operation gave an infinity or NaN; the record names the operation, its operands, the post and\nthe feature. No non-finite value is ever stored.\nGuard the operation (a divisor away from 0, a root of a non-negative value).\nBad:   value = \"= 1 / a\"   (a is 0 at one post)\nFixed: value = \"= 1 / max(a, 0.001)\"\n",
+        explain: "An operation gave an infinity or NaN; the record names the operation, its operands, the post and\nthe feature. No non-finite value is ever stored.\nTo fix: Guard the operation (a divisor away from 0, a root of a non-negative value).\nBad:   value = \"= 1 / a\"   (a is 0 at one post)\nFixed: value = \"= 1 / max(a, 0.001)\"\n",
     },
     Row {
         code: "formula.operator",
@@ -1434,7 +1434,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The formula uses an operator of another language, or `=` where `==` compares.\nUse the operator the hint names.\nBad:   value = \"= if(a = 1, 2, 3)\"\nFixed: value = \"= if(a == 1, 2, 3)\"\n",
+        explain: "The formula uses an operator of another language, or `=` where `==` compares.\nTo fix: Use the operator the hint names.\nBad:   value = \"= if(a = 1, 2, 3)\"\nFixed: value = \"= if(a == 1, 2, 3)\"\n",
     },
     Row {
         code: "formula.outside_field",
@@ -1445,7 +1445,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A field was read at a point beyond the world's extent.\nRead inside the extent, or clamp the point.\nBad:   (a read of a field at a point beyond the extent)\nFixed: (the same read at a point inside it)\n",
+        explain: "A field was read at a point beyond the world's extent, where it has no value.\nTo fix: Move the thing whose formula reads the field inside the extent, or widen the extent.\nBad:   [feature.a]  at = [300, 10]   (extent [0, 0, 256, 256]; a reads f('height'))\nFixed: [feature.a]  at = [250, 10]\n",
     },
     Row {
         code: "formula.range",
@@ -1456,7 +1456,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A value is outside its key's or parameter's range at a named post or feature.\nBound the value, or change the inputs that push it out.\nBad:   radius = \"= a - 10\"   (a is 4 at one feature)\nFixed: radius = \"= max(a - 10, 1)\"\n",
+        explain: "A value is outside its key's or parameter's range at a named post or feature.\nTo fix: Bound the value, or change the inputs that push it out.\nBad:   radius = \"= a - 10\"   (a is 4 at one feature)\nFixed: radius = \"= max(a - 10, 1)\"\n",
     },
     Row {
         code: "formula.rate",
@@ -1467,7 +1467,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A sub-expression varies faster than the key or parameter allows (a value per post where only\none per feature is taken). The record names the sub-expression.\nReduce it to the allowed rate (a mean over the feature, say), or move it to a key that takes it.\nBad:   radius = \"= f('height')\"   (varies by post; radius takes one value per feature)\nFixed: radius = \"= 4\"\n",
+        explain: "A sub-expression varies faster than the key or parameter allows (a value per post where only\none per feature is taken). The record names the sub-expression.\nTo fix: Reduce it to the allowed rate (a mean over the feature, say), or move it to a key that\ntakes it.\nBad:   radius = \"= f('height')\"   (varies by post; radius takes one value per feature)\nFixed: radius = \"= 4\"\n",
     },
     Row {
         code: "formula.seed",
@@ -1478,7 +1478,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A noise call's seed is not a name.\nWrite a name.\nBad:   value = \"= fbm(60, 3, seed = 7)\"\nFixed: value = \"= fbm(60, 3, seed = 'base')\"\n",
+        explain: "A noise call's seed is not a name.\nTo fix: Write a name.\nBad:   value = \"= fbm(60, 3, seed = 7)\"\nFixed: value = \"= fbm(60, 3, seed = 'base')\"\n",
     },
     Row {
         code: "formula.seed_shared",
@@ -1489,7 +1489,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two noise calls of one owner use one stream, so they move together.\nGive each call its own seed name.\nBad:   value = \"= fbm(60, 3) + fbm(20, 2)\"\nFixed: value = \"= fbm(60, 3, seed = 'a') + fbm(20, 2, seed = 'b')\"\n",
+        explain: "Two noise calls of one owner use one stream, so they move together.\nTo fix: Give each call its own seed name.\nBad:   value = \"= fbm(60, 3) + fbm(20, 2)\"\nFixed: value = \"= fbm(60, 3, seed = 'a') + fbm(20, 2, seed = 'b')\"\n",
     },
     Row {
         code: "formula.selector",
@@ -1500,7 +1500,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A selector names nothing, names a thing of the wrong class, or uses role:.\nSelect by tag: or by a name that exists.\nBad:   value = \"= dist('role:surface', 10)\"\nFixed: value = \"= dist('tag:edge', 10)\"\n",
+        explain: "A selector names nothing, names a thing of the wrong class, or uses role:.\nTo fix: Select by tag: or by a name that exists.\nBad:   value = \"= dist('role:surface', 10)\"\nFixed: value = \"= dist('tag:edge', 10)\"\n",
     },
     Row {
         code: "formula.selector_count",
@@ -1511,7 +1511,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A selection holds more things than the function takes, or none where it needs one.\nNarrow the selector to what the function takes.\nBad:   value = \"= sdist('tag:paths', 10)\"   (several paths; sdist takes one)\nFixed: value = \"= sdist('tag:one_path', 10)\"\n",
+        explain: "A selection holds more things than the function takes, or none where it needs one.\nTo fix: Narrow the selector to what the function takes.\nBad:   value = \"= sdist('tag:paths', 10)\"   (several paths; sdist takes one)\nFixed: value = \"= sdist('tag:one_path', 10)\"\n",
     },
     Row {
         code: "formula.shadow",
@@ -1522,7 +1522,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A let or attribute name equals a built-in or keyword, a let name equals a field's, or one name is\ndeclared twice in one scope.\nRename one of the two.\nBad:   [let] x = \"= 2\"\nFixed: [let] x_scale = \"= 2\"\n",
+        explain: "A let or attribute name equals a built-in or keyword, a let name equals a field's, or one name is\ndeclared twice in one scope.\nTo fix: Rename one of the two.\nBad:   [let] x = \"= 2\"\nFixed: [let] x_scale = \"= 2\"\n",
     },
     Row {
         code: "formula.shape",
@@ -1533,7 +1533,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A function was given a feature of a shape it cannot take (a point where a region is needed).\nSelect features of the shape the function takes.\nBad:   value = \"= inside('tag:points')\"\nFixed: value = \"= inside('tag:areas')\"\n",
+        explain: "A function was given a feature of a shape it cannot take (a point where a region is needed).\nTo fix: Select features of the shape the function takes.\nBad:   value = \"= inside('tag:points')\"\nFixed: value = \"= inside('tag:areas')\"\n",
     },
     Row {
         code: "formula.syntax",
@@ -1544,7 +1544,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The formula text does not parse; the record points at the span and says what was expected there.\nComplete or correct the expression at that span.\nBad:   value = \"= 2 * (height + 1\"\nFixed: value = \"= 2 * (height + 1)\"\n",
+        explain: "The formula text does not parse; the record points at the span and says what was expected there.\nTo fix: Complete or correct the expression at that span.\nBad:   value = \"= 2 * (height + 1\"\nFixed: value = \"= 2 * (height + 1)\"\n",
     },
     Row {
         code: "formula.too_deep",
@@ -1555,7 +1555,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The formula nests over 64 deep, so it is not read further.\nName inner parts in [let].\nBad:   value = \"= ((((((... a ...))))))\"   (65 levels)\nFixed: [let] inner = \"= (a)\"   and   value = \"= (inner)\"\n",
+        explain: "The formula nests over 64 deep, so it is not read further.\nTo fix: Name inner parts in [let].\nBad:   value = \"= ((((((... a ...))))))\"   (65 levels)\nFixed: [let] inner = \"= (a)\"   and   value = \"= (inner)\"\n",
     },
     Row {
         code: "formula.too_long",
@@ -1566,7 +1566,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The formula text is over 4096 bytes.\nSplit it: name parts in [let] and read them by name.\nBad:   value = \"= a + a + a + ... (5000 bytes)\"\nFixed: [let] part = \"= a + a\"   and   value = \"= part + part\"\n",
+        explain: "The formula text is over 4096 bytes.\nTo fix: Split it: name parts in [let] and read them by name.\nBad:   value = \"= a + a + a + ... (5000 bytes)\"\nFixed: [let] part = \"= a + a\"   and   value = \"= part + part\"\n",
     },
     Row {
         code: "formula.type",
@@ -1577,7 +1577,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A value of the wrong type: a number where yes/no is needed or the reverse, a selector out of\nplace, or an attribute that is not a number read as one.\nCompare to get yes/no, or use if() to get a number.\nBad:   value = \"= if(a, 1, 0)\"   (a is a number)\nFixed: value = \"= if(a > 0, 1, 0)\"\n",
+        explain: "A value of the wrong type: a number where yes/no is needed or the reverse, a selector out of\nplace, a text, array or table attribute read, a formula on a bool or text attribute, or a\nweights field read by f.\nTo fix: Compare to get yes/no, or use if() to get a number.\nBad:   value = \"= if(a, 1, 0)\"   (a is a number)\nFixed: value = \"= if(a > 0, 1, 0)\"\n",
     },
     Row {
         code: "formula.unknown_function",
@@ -1588,7 +1588,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A call names no function in the table. Some names from other languages have a fixed answer\n(clip is clamp, lerp is mix); otherwise `data.nearest` holds the nearest function.\nCall a function of the table, or the one the hint names.\nBad:   value = \"= clip(a, 0, 1)\"\nFixed: value = \"= clamp(a, 0, 1)\"\n",
+        explain: "A call names no function in the table. Some names from other languages have a fixed answer\n(clip is clamp, lerp is mix); otherwise `data.nearest` holds the nearest function.\nTo fix: Call a function of the table, or the one the hint names.\nBad:   value = \"= clip(a, 0, 1)\"\nFixed: value = \"= clamp(a, 0, 1)\"\n",
     },
     Row {
         code: "formula.unknown_name",
@@ -1599,7 +1599,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["name", "nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A formula read a name that is not a field, a let name or an attribute of its owner.\n`data.nearest` holds the nearest visible name, and `related` points at its declaration.\nWrite the name as declared, or declare it in [let].\nBad:   value = \"= 2 * hieght\"\nFixed: value = \"= 2 * height\"\n",
+        explain: "A formula read a name that is not a field, a let name or an attribute of its owner. `data.name`\nholds the name read, `data.nearest` the nearest visible name, and `related` points at where a\nname of that spelling does exist.\nTo fix: Write the name as declared, or declare it in [let].\nBad:   value = \"= 2 * hieght\"\nFixed: value = \"= 2 * height\"\n",
     },
     Row {
         code: "formula.unmarked",
@@ -1610,7 +1610,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A key that takes a formula holds a string that does not start with `=`, or has spaces before it.\nOnly a string starting with `=` is read as a formula.\nStart the string with `=`.\nBad:   value = \" = 2 * height\"\nFixed: value = \"= 2 * height\"\n",
+        explain: "A key that takes a formula holds a string that does not start with `=`, or has spaces before it.\nOnly a string starting with `=` is read as a formula.\nTo fix: Start the string with `=`.\nBad:   value = \" = 2 * height\"\nFixed: value = \"= 2 * height\"\n",
     },
     Row {
         code: "geom.bad_parameter",
@@ -1621,7 +1621,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An operation parameter outside its range; names it and its value.\nTo fix: The range.\n",
+        explain: "A geometry operation was given a parameter outside its range (a length not above 0, a minimum\nabove what it bounds). The record names the parameter and its value.\nTo fix: Give a value inside the range the record states.\nBad:   cell_length = 0\nFixed: cell_length = 12\n",
     },
     Row {
         code: "geom.cell_merged",
@@ -1632,7 +1632,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A cell was merged into its neighbour, or bordered several stations.\n",
+        explain: "Cutting a frontage band into cells left a cell too short, so it was merged into its neighbour,\nor an area bordered several stations. Information only: the cells are valid.\nTo fix: Nothing if intended; for even cells, make the frontage a multiple of cell_length.\nBad:   a frontage of 50 m with cell_length = 12   (a 2 m cell merged)\nFixed: a frontage of 48 m with cell_length = 12\n",
     },
     Row {
         code: "geom.cell_none",
@@ -1643,7 +1643,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A stretch of frontage is shorter than one cell.\nTo fix: Shorten cell_length.\n",
+        explain: "A stretch of frontage is shorter than one cell length, so it holds no cell. The record gives its\nposition.\nTo fix: Shorten cell_length, or lengthen the frontage.\nBad:   a stretch of 8 m with cell_length = 12\nFixed: the same stretch with cell_length = 8\n",
     },
     Row {
         code: "geom.cell_small",
@@ -1654,7 +1654,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A short cell had no neighbour to merge into; kept.\nTo fix: Lower the minimum, or lengthen the frontage.\n",
+        explain: "A cell is short (below min_cell_length or min_cell_area) and had no neighbour to merge into, so\nit was kept as it is.\nTo fix: Lower the minimum, or lengthen the frontage.\nBad:   a stretch of 10 m with min_cell_length = 12\nFixed: the same stretch with min_cell_length = 8\n",
     },
     Row {
         code: "geom.dead_end",
@@ -1665,7 +1665,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A network has junctions of degree 1; the count.\n",
+        explain: "A network has junctions of degree 1, lines that end without meeting another. They are legal and\ncounted. Information only.\nTo fix: Nothing if intended; otherwise end each line on another.\nBad:   path = [[0, 0], [40, 0]]   (ends short of the line at x = 50)\nFixed: path = [[0, 0], [50, 0]]\n",
     },
     Row {
         code: "geom.degenerate",
@@ -1676,7 +1676,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A path with fewer than two distinct points, or a ring with fewer than three or no area.\nTo fix: Add points or remove the feature.\n",
+        explain: "A path has fewer than two distinct points, or a ring has fewer than three distinct points or no\narea, so it has no length or no inside.\nTo fix: Add points, or remove the feature.\nBad:   path = [[10, 10], [10, 10]]\nFixed: path = [[10, 10], [20, 10]]\n",
     },
     Row {
         code: "geom.duplicate_source",
@@ -1687,7 +1687,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "One batch holds two inputs with one source id.\nTo fix: Give each input its own source.\n",
+        explain: "One batch of geometry inputs holds two inputs with the same source id, so results could not be\ntraced back to one input.\nTo fix: Give each input its own source id.\nBad:   two inputs both with source \"a\"\nFixed: inputs with sources \"a\" and \"b\"\n",
     },
     Row {
         code: "geom.face_needs_on",
@@ -1698,7 +1698,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A face word without on.\nTo fix: Use a bearing in degrees.\n",
+        explain: "`face` is a word (along, toward, away), which is measured from what the thing is placed on, but\nthe thing has no `on`.\nTo fix: Place it with on, or use a bearing in degrees.\nBad:   at = [10, 10]\n       face = \"along\"\nFixed: at = [10, 10]\n       face = 90\n",
     },
     Row {
         code: "geom.face_side",
@@ -1709,7 +1709,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "face = \"toward\" or \"away\" with offset = 0, or on a ref with no length.\nTo fix: Give an offset, or use along or a bearing.\n",
+        explain: "face = \"toward\" or \"away\" points at or from the thing it is placed on, which needs a side: it\nfails with offset = 0, or on a ref with no length.\nTo fix: Give an offset, or use along or a bearing.\nBad:   on = { ref = \"a\", t = 0.5 }\n       face = \"toward\"\nFixed: on = { ref = \"a\", t = 0.5, offset = 4 }\n       face = \"toward\"\n",
     },
     Row {
         code: "geom.face_unknown",
@@ -1720,7 +1720,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A face word that is not along, toward or away.\nTo fix: The nearest word.\n",
+        explain: "`face` is a word that is not along, toward or away. `data.nearest` holds the nearest word.\nTo fix: Write the nearest word, or a bearing in degrees.\nBad:   face = \"towards\"\nFixed: face = \"toward\"\n",
     },
     Row {
         code: "geom.follow_broken",
@@ -1731,7 +1731,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A path along another feature breaks into pieces; each gap and the widest offset that holds.\nTo fix: Use at most that offset, or a shorter span.\n",
+        explain: "A path that follows another feature at an offset breaks into pieces or touches itself (the offset\nis wider than a narrow bend allows). The result is never joined silently. The record gives each\ngap and the widest offset that holds.\nTo fix: Use at most that offset, or a shorter span.\nBad:   follows = { ref = \"a\", offset = -12 }\nFixed: follows = { ref = \"a\", offset = -6 }\n",
     },
     Row {
         code: "geom.internal",
@@ -1742,7 +1742,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["repro"],
         worst: None,
         covered_by: CoveredBy::Workspace,
-        explain: "A guarantee check failed inside the kernel (Euler, closure, validity). A defect of ours; exit 3.\nTo fix: Report it with the reproduction folder data.repro names.\n",
+        explain: "A guarantee check failed inside the geometry kernel (Euler count, closure, validity). The text\ncannot cause this: it is a defect of ours, and the build exits with status 3.\nTo fix: Report it with the reproduction folder data.repro names; no change to the text is needed.\nBad:   (none: a defect of ours, not of the text)\nFixed: (none)\n",
     },
     Row {
         code: "geom.many_rings",
@@ -1753,7 +1753,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "on, follows, interpolate or substring on a region of more than one ring, which has no t.\nTo fix: Place on one piece's outline, or use at.\n",
+        explain: "on, follows, interpolate or substring is used on a region of more than one ring. Such a region\nhas no single outline to measure t along.\nTo fix: Place on one piece's outline, or use at.\nBad:   on = { ref = \"a\", t = 0.5 }   (a has two rings)\nFixed: at = [40, 20]\n",
     },
     Row {
         code: "geom.mask_dropped",
@@ -1764,7 +1764,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A masked piece had no area on the lattice and was dropped.\n",
+        explain: "A piece of a masked region had no area once rounded to the 1 mm lattice, so it was dropped. The\nrecord gives its position.\nTo fix: Nothing if intended; widen the condition if that piece mattered.\nBad:   where = \"= f('height') > 29.9999\"   (a sliver)\nFixed: where = \"= f('height') > 29\"\n",
     },
     Row {
         code: "geom.mask_empty",
@@ -1775,7 +1775,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A mask is above 0 nowhere; the formula's text and its range of values.\nTo fix: Check the condition against the range.\n",
+        explain: "A mask is above 0 nowhere, so the masked region is empty. The record gives the formula's text and\nthe range of values it took.\nTo fix: Check the condition against the range of values the record gives.\nBad:   where = \"= f('height') > 90\"   (height ranges 20 to 40)\nFixed: where = \"= f('height') > 30\"\n",
     },
     Row {
         code: "geom.mask_tiny",
@@ -1786,7 +1786,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A masked region has pieces smaller than one grid cell; the count and positions; kept.\n",
+        explain: "A masked region has pieces smaller than one grid cell. They are kept; the record gives the count\nand each piece's position. Information only.\nTo fix: Nothing if intended; smooth or widen the condition for fewer specks.\nBad:   where = \"= fbm(2, 3) > 0.5\"\nFixed: where = \"= fbm(40, 3) > 0.5\"\n",
     },
     Row {
         code: "geom.meet_shape",
@@ -1797,7 +1797,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "starts_at or ends_at names a whole path or a region.\nTo fix: Name an end, or place a point feature on it.\n",
+        explain: "starts_at or ends_at names a whole path or a region, which has no one point to meet.\nTo fix: Name an end (a.end), a mount, or place a point feature on it with on and name that.\nBad:   ends_at = \"a\"   (a is a path)\nFixed: ends_at = \"a.end\"\n",
     },
     Row {
         code: "geom.no_area",
@@ -1808,7 +1808,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A network encloses no area.\nTo fix: Close the linework, or add a clip.\n",
+        explain: "A network's linework encloses no area, so it yields no regions.\nTo fix: Close the linework, or add a clip region.\nBad:   two lines that do not meet\nFixed: the same lines with a clip region around them\n",
     },
     Row {
         code: "geom.no_length",
@@ -1819,7 +1819,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "t, offset or follows on a point, a zero-length thing or an empty region. (A run's is run.no_length, rules.md 5.)\nTo fix: Use at, or place on a path or region.\n",
+        explain: "t, offset or follows is used on a point, a thing of zero length, or an empty region, none of\nwhich can be measured along. A run's is run.no_length.\nTo fix: Use at, or place on a path or region.\nBad:   on = { ref = \"p\", t = 0.5 }   (p is a point)\nFixed: on = { ref = \"p\" }\n",
     },
     Row {
         code: "geom.offset_empty",
@@ -1830,7 +1830,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An inset left nothing.\nTo fix: Use a smaller distance.\n",
+        explain: "An inset of a region left nothing: the distance is larger than the region's half width.\nTo fix: Use a smaller distance.\nBad:   an inset of 6 m on a region 10 m wide\nFixed: an inset of 3 m\n",
     },
     Row {
         code: "geom.offset_split",
@@ -1841,7 +1841,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An inset split a piece; the count.\n",
+        explain: "An inset split a region into several pieces at a narrow neck. Information only; the record gives\nthe count.\nTo fix: Nothing if intended; use a smaller distance to keep one piece.\nBad:   an inset of 3 m on a region with a 5 m neck\nFixed: an inset of 2 m\n",
     },
     Row {
         code: "geom.overlap",
@@ -1852,7 +1852,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two sources, or one with itself, run along one another; the stretch and the ids.\n",
+        explain: "Two sources, or one with itself, run along one another for a stretch (a path doubling back, two\npaths sharing segments). Information only; the record gives the stretch and the ids.\nTo fix: Nothing if intended; otherwise remove the shared stretch from one.\nBad:   path = [[0, 0], [20, 0], [10, 0]]\nFixed: path = [[0, 0], [20, 0]]\n",
     },
     Row {
         code: "geom.range",
@@ -1863,7 +1863,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A point the kernel computed (offset, cut, stroke, join) is outside ±(2^31 - 1) mm.\nTo fix: Move the shape nearer the origin or reduce the distance.\n",
+        explain: "A point the kernel computed (an offset, cut, stroke or join) lies outside plus or minus\n2^31 - 1 mm from the origin.\nTo fix: Move the shape nearer the origin, or reduce the distance.\nBad:   offset = 3000000\nFixed: offset = 30\n",
     },
     Row {
         code: "geom.repeated_point",
@@ -1874,7 +1874,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A point repeats the one before it; it is removed.\nTo fix: Delete the repeat.\n",
+        explain: "A point repeats the one before it. It is removed and the build goes on.\nTo fix: Delete the repeat.\nBad:   path = [[0, 0], [10, 0], [10, 0], [20, 5]]\nFixed: path = [[0, 0], [10, 0], [20, 5]]\n",
     },
     Row {
         code: "geom.self_crossing",
@@ -1885,7 +1885,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A written ring crosses itself, visits a point twice or doubles back; the first fault.\nTo fix: Reorder the points or split the region.\n",
+        explain: "A written ring crosses itself, visits a point twice or doubles back. The record gives the first\nfault.\nTo fix: Reorder the points, or split the region in two.\nBad:   region = [[0, 0], [10, 10], [10, 0], [0, 10]]\nFixed: region = [[0, 0], [10, 0], [10, 10], [0, 10]]\n",
     },
     Row {
         code: "geom.smooth_not_path",
@@ -1896,7 +1896,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "smooth on a feature without path.\nTo fix: Remove smooth.\n",
+        explain: "`smooth` is written on a feature placed without `path`. Only a written path is smoothed.\nTo fix: Remove smooth, or place the feature with path.\nBad:   region = [[0, 0], [10, 0], [10, 10]]\n       smooth = true\nFixed: region = [[0, 0], [10, 0], [10, 10]]\n",
     },
     Row {
         code: "geom.span_order",
@@ -1907,7 +1907,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A span on a path whose from is not less than its to.\nTo fix: Swap the two, or reverse the path.\n",
+        explain: "A span's from is not less than its to. A span runs forward along the path.\nTo fix: Swap the two, or reverse the path.\nBad:   span = [0.7, 0.2]\nFixed: span = [0.2, 0.7]\n",
     },
     Row {
         code: "geom.t_range",
@@ -1918,7 +1918,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A t or a span end outside 0 to 1, or nan.\nTo fix: Write a fraction from 0 to 1.\n",
+        explain: "A t or a span end is outside 0 to 1, or is nan. t is the fraction of the length.\nTo fix: Write a fraction from 0 to 1.\nBad:   on = { ref = \"a\", t = 1.2 }\nFixed: on = { ref = \"a\", t = 1 }\n",
     },
     Row {
         code: "geom.unowned_crossing",
@@ -1929,7 +1929,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two paths with kinds cross or touch with no owner of the meeting (2.7); names both.\nTo fix: End one on the other or on a named owner.\n",
+        explain: "Two paths with kinds cross or touch, and nothing owns the meeting: neither ends on the other or\non a named owner, neither follows the other, and no network holds both. The record names both.\nTo fix: End one on the other or on a named owner (starts_at, ends_at).\nBad:   [feature.b]\n       path = [[0, 50], [100, 50]]   (crosses a)\nFixed: [feature.b]\n       path = [[0, 50]]\n       ends_at = \"m\"   (m a point feature on a)\n",
     },
     Row {
         code: "graph.build_file_restored",
@@ -1940,7 +1940,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A build file differed from its record and was written again. Run diagnostic.\n",
+        explain: "A file of the build directory differed from its record (it was edited or damaged), so the build\nwrote it again. A run diagnostic: information only.\nTo fix: Nothing; edit the world text, never the build's files.\nBad:   a field file edited by hand between builds\nFixed: the same edit made in the world text\n",
     },
     Row {
         code: "graph.busy",
@@ -1951,7 +1951,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Workspace,
-        explain: "Another build holds this build directory's lock. Run diagnostic.\n",
+        explain: "Another build holds this build directory's lock, so this one did not start. A run diagnostic.\nTo fix: Wait for the other build to end, or build to another --out.\nBad:   two via build world.toml --out build/a at once\nFixed: via build world.toml --out build/b for the second\n",
     },
     Row {
         code: "graph.cycle",
@@ -1962,7 +1962,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "References form a loop; names one loop in source order, each member with the key that makes its edge.\n",
+        explain: "References form a loop: a field reads a field that reads it back, or a feature is placed on a\nthing placed on it. Nothing in the loop can be built first. The record names one loop in source\norder, each member with the key that makes its edge.\nTo fix: Break one edge: compute one member from a third thing, or read v (the value so far)\ninstead of the field being built.\nBad:   [field.a]  base = \"= f('b')\"   and   [field.b]  base = \"= f('a')\"\nFixed: [field.a]  base = \"= 0\"        and   [field.b]  base = \"= f('a')\"\n",
     },
     Row {
         code: "graph.for_each_empty",
@@ -1984,7 +1984,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A step's declared input (inputs, protocol.md 1) does not exist; names the path. The step does not run (5.1).\n",
+        explain: "A path in a step's inputs does not exist, so the step does not run. Paths are relative to the\ndocument that declares the step.\nTo fix: Correct the path, or create the file or folder.\nBad:   inputs = [\"dat/a.csv\"]\nFixed: inputs = [\"data/a.csv\"]\n",
     },
     Row {
         code: "graph.read_outside",
@@ -2006,7 +2006,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Under --rerun-step, a step gave another value for a matching trace; names both digests. Run diagnostic.\n",
+        explain: "Under --rerun-step, a step gave a different result for the same inputs (a matching trace), so it\nis not deterministic. The record names both digests. A run diagnostic.\nTo fix: Make the step's result depend on its inputs only: seed any randomness from them, sort\nunordered output.\nBad:   a step that orders its output by a set's iteration order\nFixed: the same step sorting its output\n",
     },
     Row {
         code: "graph.store_corrupt",
@@ -2017,7 +2017,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A store entry did not match its name or could not be read; it was dropped and its node ran again. Run diagnostic.\n",
+        explain: "A store entry did not match its name or could not be read. It was dropped and its node ran\nagain, so the build is correct. A run diagnostic.\nTo fix: Nothing; if it recurs, check the disk the store is on.\nBad:   a store entry damaged on disk\nFixed: the entry written again by the next build\n",
     },
     Row {
         code: "graph.store_unavailable",
@@ -2028,7 +2028,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Workspace,
-        explain: "The store cannot be written; this build keeps nothing more. Run diagnostic.\n",
+        explain: "The store cannot be written (no space, no permission), so this build keeps nothing new for later\nbuilds to reuse. The build itself is complete. A run diagnostic.\nTo fix: Free space, fix the store folder's permissions, or name another with --store.\nBad:   via build world.toml --store /read_only/s\nFixed: via build world.toml --store build/store\n",
     },
     Row {
         code: "identity.bad_id",
@@ -2039,7 +2039,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An id breaks [a-z][a-z0-9_]* or is longer than 48 bytes. The hint gives the repaired id:\nlower-cased, each invalid character replaced by _, x in front if it does not start with a letter.\nWrite the repaired id.\nBad:   [feature.Mill-A]\nFixed: [feature.mill_a]\n",
+        explain: "An id breaks [a-z][a-z0-9_]* or is longer than 48 bytes. The hint gives the repaired id:\nlower-cased, each invalid character replaced by _, x in front if it does not start with a letter.\nTo fix: Write the repaired id.\nBad:   [feature.Mill-A]\nFixed: [feature.mill_a]\n",
     },
     Row {
         code: "identity.bad_key",
@@ -2061,7 +2061,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A clear removed nothing (4.3).\nTo fix: The nearest instance of a by producer and its distance; delete the clear if it is no longer wanted.\n",
+        explain: "A clear removed nothing: no instance of the producers in its by stands inside it. The record\ngives the nearest instance of a by producer and its distance.\nTo fix: Move the clear onto the instance meant, or delete it if it is no longer wanted.\nBad:   [clear.a]\n       at = [10, 10]\n       radius = 2\n       by = [\"s\"]   (nearest instance of s at 6 m)\nFixed: [clear.a]\n       at = [10, 10]\n       radius = 7\n       by = [\"s\"]\n",
     },
     Row {
         code: "identity.duplicate_id",
@@ -2072,7 +2072,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two tables in one namespace share an id, in one file or across layers. The record names both.\nRename one, or merge them in one layer.\nBad:   [feature.a]  in world.toml   and   [feature.a]  in layers/b.toml\nFixed: [feature.a]  and  [feature.a2]\n",
+        explain: "Two tables in one namespace share an id, in one file or across layers. The record names both.\nTo fix: Rename one, or merge them in one layer.\nBad:   [feature.a]  in world.toml   and   [feature.a]  in layers/b.toml\nFixed: [feature.a]  and  [feature.a2]\n",
     },
     Row {
         code: "identity.key_collision",
@@ -2094,7 +2094,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A produced name is written in a key that takes a name.\nTo fix: { of, class, near } at the thing's current position.\n",
+        explain: "A produced name (one holding #) is written in a key that takes a name. Produced names belong to\nthe engine and may change between builds; text selects produced things by place instead. The\nhint gives the { of, class, near } form at the thing's current position.\nTo fix: Write the { of, class, near } form the hint gives.\nBad:   on = { ref = \"s#e12\" }\nFixed: on = { of = \"s\", class = \"edge\", near = [40, 12] }\n",
     },
     Row {
         code: "identity.lock_asset_missing",
@@ -2171,7 +2171,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A maker has no candidate of the class asked for; lists every selection left with nothing.\nTo fix: The nearest candidate of any class of that maker and its distance, or that the maker made nothing.\n",
+        explain: "A selection asks a maker for a class it has no candidate of, so it resolves to nothing. Said once\nper maker and class, listing every selection left with nothing; the record gives the nearest\ncandidate of any class and its distance, or says the maker made nothing.\nTo fix: Ask for a class the maker produces, or select another maker.\nBad:   on = { of = \"s\", class = \"area\", near = [10, 10] }   (s made no areas)\nFixed: on = { of = \"s\", class = \"edge\", near = [10, 10] }\n",
     },
     Row {
         code: "identity.no_place",
@@ -2182,7 +2182,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A selection's class is field or row, which have no place (2.4).\nTo fix: Read a field by name or 'tag:<tag>' in a formula; select a feature or instance by place.\n",
+        explain: "A selection's class is field or row. Fields and rows cover the world and have no place to be\nnearest to.\nTo fix: Read a field by name or 'tag:<tag>' in a formula; select a feature or instance by place.\nBad:   on = { of = \"s\", class = \"field\", near = [0, 0] }\nFixed: value = \"= f('tag:b')\"\n",
     },
     Row {
         code: "identity.no_previous",
@@ -2193,7 +2193,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "No baseline to report changes against.\nTo fix: None needed; the next build has one.\n",
+        explain: "There is no baseline build to report changes against, so this build's change report is empty.\nInformation only; the next build has one.\nTo fix: None needed; to compare with a given build now, pass --against.\nBad:   via build world.toml --out build/new   (first build there)\nFixed: via build world.toml --out build/new --against build/a\n",
     },
     Row {
         code: "identity.not_a_producer",
@@ -2204,7 +2204,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "by names a set, or a maker that places no instances (a network, a cells table, a where feature).\nTo fix: Name the producers that place on it.\n",
+        explain: "`by` names a set, or a maker that places no instances (a network, a cells table, a where\nfeature). A pin or clear acts on the instances of producers only.\nTo fix: Name the producers that place on it.\nBad:   by = [\"n\"]   (n is a network)\nFixed: by = [\"s\"]   (s a scatter within n's areas)\n",
     },
     Row {
         code: "identity.of_ambiguous",
@@ -2226,7 +2226,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "on has both ref and of.\nTo fix: Keep ref for an authored thing, of for a produced one.\n",
+        explain: "`on` has both `ref` and `of`. ref names an authored thing by id; of names a maker whose produced\nthing is selected by place. One on uses one.\nTo fix: Keep ref for an authored thing, of for a produced one.\nBad:   on = { ref = \"a\", of = \"s\", class = \"edge\", near = [0, 0] }\nFixed: on = { ref = \"a\", t = 0.5 }\n",
     },
     Row {
         code: "identity.pin_in_clear",
@@ -2237,7 +2237,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A pin stands inside a clear; names both.\nTo fix: Leave it if the pin is what the spot is for; otherwise move the pin.\n",
+        explain: "A pin stands inside a clear. The pin stays: hand edits never remove each other. The record names\nboth.\nTo fix: Leave it if the pin is what the spot is for; otherwise move the pin or the clear.\nBad:   [pin.a] at = [10, 10]   and   [clear.b] at = [10, 10], radius = 4\nFixed: [pin.a] at = [20, 10]\n",
     },
     Row {
         code: "identity.pin_in_keep_out",
@@ -2248,7 +2248,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A pin stands where keep_out is above 0; names the field.\nTo fix: Move the pin, or accept it here.\n",
+        explain: "A pin stands where a keep_out field is above 0. A pin is placed where it is written, so it stays;\nthe record names the field.\nTo fix: Move the pin, or accept it there.\nBad:   [pin.a]  at = [10, 10]   (keep_out 1 there)\nFixed: [pin.a]  at = [30, 10]\n",
     },
     Row {
         code: "identity.pin_overlap",
@@ -2259,7 +2259,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A pin overlaps an instance of a producer outside its by; names both.\nTo fix: Add that producer to by, or move the pin.\n",
+        explain: "A pin overlaps an instance of a producer that is not in its by, so that instance was not removed\nfor it. The record names both.\nTo fix: Add that producer to by, or move the pin.\nBad:   by = [\"s\"]   (overlaps an instance of t)\nFixed: by = [\"s\", \"t\"]\n",
     },
     Row {
         code: "identity.pin_removed",
@@ -2270,7 +2270,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "What a pin removed: count and names.\nTo fix: Narrow by to keep them.\n",
+        explain: "What a pin removed: the instances of its by producers that its footprint overlapped, with count\nand names. Information only.\nTo fix: Nothing if intended; narrow by to keep them.\nBad:   by = [\"s\", \"t\"]   (removed instances of t that should stay)\nFixed: by = [\"s\"]\n",
     },
     Row {
         code: "identity.pins_overlap",
@@ -2281,7 +2281,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two pins' footprints overlap; names both.\nTo fix: Move one; the overlap's size is given.\n",
+        explain: "Two pins' footprints overlap. Pins are placed exactly as written, so neither can give way. The\nrecord names both and the overlap's size.\nTo fix: Move one by at least the overlap's size.\nBad:   [pin.a] at = [10, 10]   and   [pin.b] at = [11, 10]\nFixed: [pin.a] at = [10, 10]   and   [pin.b] at = [14, 10]\n",
     },
     Row {
         code: "identity.reselected",
@@ -2292,7 +2292,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (build.md 11.1).\nTo fix: Move near onto the thing meant, or select a feature that does not split (section 3).\n",
+        explain: "A selection resolved to a different produced name than in the baseline: the thing near its near\npoint changed (an edge was cut, say). A run diagnostic; the record names both and the distance\nmoved.\nTo fix: Move near onto the thing meant, or select a feature that does not split (section 3).\nBad:   on = { of = \"n\", class = \"edge\", near = [50, 1] }   (now nearer a new edge)\nFixed: on = { ref = \"a\", t = 0.5 }   (a the path the edge came from)\n",
     },
     Row {
         code: "identity.reserved",
@@ -2303,7 +2303,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An id is world, or a mount, set item or kind surface is named start, end or ground.\nChoose another name; the hint gives the nearest free one.\nBad:   [feature.world]\nFixed: [feature.world_a]\n",
+        explain: "An id is world, or a mount, set item or kind surface is named start, end or ground. Those names\nare taken by the language.\nTo fix: Choose another name; the hint gives the nearest free one.\nBad:   [feature.world]\nFixed: [feature.world_a]\n",
     },
     Row {
         code: "identity.unknown_lock",
@@ -2325,7 +2325,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "of names nothing.\nTo fix: The nearest maker id.\n",
+        explain: "`of` names no maker. `data.nearest` holds the nearest maker id.\nTo fix: Write the id of a maker the world declares.\nBad:   on = { of = \"sx\", class = \"edge\", near = [0, 0] }\nFixed: on = { of = \"s\", class = \"edge\", near = [0, 0] }\n",
     },
     Row {
         code: "identity.unknown_place",
@@ -2336,7 +2336,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A part of a place name names nothing. `data.nearest` holds the nearest match.\nWrite the place name as declared.\nBad:   at = \"a.ned\"\nFixed: at = \"a.end\"\n",
+        explain: "A part of a place name names nothing. `data.nearest` holds the nearest match.\nTo fix: Write the place name as declared.\nBad:   at = \"a.ned\"\nFixed: at = \"a.end\"\n",
     },
     Row {
         code: "identity.unknown_producer",
@@ -2347,7 +2347,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "by names nothing.\nTo fix: The nearest producer id.\n",
+        explain: "`by` names no producer. `data.nearest` holds the nearest producer id.\nTo fix: Write the id of a producer the world declares.\nBad:   by = [\"sx\"]\nFixed: by = [\"s\"]\n",
     },
     Row {
         code: "load.bad_file",
@@ -2358,7 +2358,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Reader,
-        explain: "An array file's header, size or shape is wrong, or a listed file is missing.\n",
+        explain: "A loader found an array file whose header, size or shape is wrong, or a listed file missing. The\nbuild directory was changed or damaged after the build.\nTo fix: Run via check on the folder, and build again into a new folder.\nBad:   a build folder copied without its fields folder\nFixed: the whole folder copied\n",
     },
     Row {
         code: "load.bad_target",
@@ -2369,7 +2369,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Reader,
-        explain: "An output feature's camera target (a name attribute) is missing, is not the resolved form { \"at\", \"name\" } of 9.1, or lies within 1 mm of the eye in plan, or its eye height is missing or not a finite number (15.1); names the feature and the attribute. That feature gets no camera. Hint: check that its kind lists the attribute in names (authority.md 1.2) and gives the eye height a default.\n",
+        explain: "An output feature's camera target (a name attribute) is missing, not the resolved form\n{ \"at\", \"name\" }, or within 1 mm of the eye in plan, or its eye height is missing or not a\nfinite number. That feature gets no camera; no default is guessed.\nTo fix: Check that the kind lists the attribute in names and gives the eye height a default.\nBad:   [kind.k]\n       requires = [\"toward\"]\nFixed: [kind.k]\n       requires = [\"toward\"]\n       names = [\"toward\"]\n       defaults = { eye_height = 1.7 }\n",
     },
     Row {
         code: "load.fields_not_drawn",
@@ -2380,7 +2380,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Reader,
-        explain: "The fields the loader neither drew nor kept, by name.\n",
+        explain: "The fields the loader neither drew nor kept, by name. Information only: every field is in the\nbuild; the loader keeps the ones it is told to.\nTo fix: Nothing; to keep a field, name it in the loader's fields option.\nBad:   fields = []   (a field wanted in the engine)\nFixed: fields = [\"b\"]\n",
     },
     Row {
         code: "load.format",
@@ -2391,7 +2391,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Reader,
-        explain: "A loader found no manifest, or a format it does not read; names diagnostics.json when present.\n",
+        explain: "A loader found no manifest.json, or a format it does not read. It names diagnostics.json when\npresent, since a failed build leaves no manifest.\nTo fix: Fix the build's errors (see diagnostics.json) and build again, or update the loader.\nBad:   loading a folder where the build failed\nFixed: loading the folder after a build that exits 0\n",
     },
     Row {
         code: "load.too_many_materials",
@@ -2402,7 +2402,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Reader,
-        explain: "A chunk names more materials than this loader draws; names the chunk and its materials (fields.md 7.1).\n",
+        explain: "A chunk names more materials than this loader draws at once. The record names the chunk and its\nmaterials.\nTo fix: Paint fewer materials where they meet, or use a loader that draws more.\nBad:   six materials painted in one chunk\nFixed: four materials there\n",
     },
     Row {
         code: "num.empty_reduction",
@@ -2413,7 +2413,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A mean, minimum or maximum over a feature with no samples. Names the feature.\n",
+        explain: "A mean, minimum or maximum was taken over a feature with no samples (no post inside it), so it\nhas no value. The record names the feature.\nTo fix: Make the feature large enough to hold a post, or use a finer resolution.\nBad:   value = \"= under('mean')\"   (a region smaller than one post spacing)\nFixed: the same region with a side of at least 2 post spacings\n",
     },
     Row {
         code: "num.extent_empty",
@@ -2424,7 +2424,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The extent has x1 <= x0 or y1 <= y0, so the world has no area.\nWrite the corners as [x0, y0, x1, y1] with x1 > x0 and y1 > y0.\nBad:   extent = [100, 0, 0, 100]\nFixed: extent = [0, 0, 100, 100]\n",
+        explain: "The extent has x1 <= x0 or y1 <= y0, so the world has no area.\nTo fix: Write the corners as [x0, y0, x1, y1] with x1 > x0 and y1 > y0.\nBad:   extent = [100, 0, 0, 100]\nFixed: extent = [0, 0, 100, 100]\n",
     },
     Row {
         code: "num.extent_not_multiple",
@@ -2435,7 +2435,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The extent's width or height is not a whole multiple of the resolution. The hint keeps x0 and y0\nand gives x1 and y1 rounded down and up, and the nearest resolutions that divide both widths.\nWrite one of them.\nBad:   extent = [0, 0, 100.25, 100]   with resolution = 0.5\nFixed: extent = [0, 0, 100.5, 100]\n",
+        explain: "The extent's width or height is not a whole multiple of the resolution. The hint keeps x0 and y0\nand gives x1 and y1 rounded down and up, and the nearest resolutions that divide both widths.\nTo fix: Write one of them.\nBad:   extent = [0, 0, 100.25, 100]   with resolution = 0.5\nFixed: extent = [0, 0, 100.5, 100]\n",
     },
     Row {
         code: "num.not_finite",
@@ -2446,7 +2446,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A number in the text is inf or nan, which no key takes.\nWrite a finite number.\nBad:   value = nan\nFixed: value = 0\n",
+        explain: "A number in the text is inf or nan, which no key takes.\nTo fix: Write a finite number.\nBad:   value = nan\nFixed: value = 0\n",
     },
     Row {
         code: "num.not_finite_result",
@@ -2457,7 +2457,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A step or a stored feature value would store an infinite or NaN value. Names the step or feature and the row or position. A formula's is formula.not_finite.\n",
+        explain: "A step or a stored feature value would store an infinite or NaN value. The record names the step\nor feature and the row or position. A formula's is formula.not_finite.\nTo fix: Change the step or value so it yields a finite number there.\nBad:   a step returning a row with value inf\nFixed: the step clamping its result to a finite range\n",
     },
     Row {
         code: "num.out_of_range",
@@ -2468,7 +2468,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A number is out of range: a length beyond plus or minus 2^31 - 1 mm, a facing beyond 64 bits, a\ndouble too large to hold.\nWrite a number in range.\nBad:   width = 3000000\nFixed: width = 3000\n",
+        explain: "A number is out of range: a length beyond plus or minus 2^31 - 1 mm, a facing beyond 64 bits, a\ndouble too large to hold.\nTo fix: Write a number in range.\nBad:   width = 3000000\nFixed: width = 3000\n",
     },
     Row {
         code: "num.overflow",
@@ -2479,7 +2479,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Workspace,
-        explain: "A checked integer operation overflowed. Names the subject and the position.\n",
+        explain: "A checked integer operation overflowed (a sum of millimetres, a count). The record names the\nsubject and the position.\nTo fix: Bring the values involved into a smaller range: shorter lengths, fewer things.\nBad:   a path whose summed length passes 2^31 - 1 mm\nFixed: the same path split in two\n",
     },
     Row {
         code: "num.resolution",
@@ -2490,7 +2490,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The resolution is below 1 mm.\nWrite a post spacing of at least 0.001.\nBad:   resolution = 0.0001\nFixed: resolution = 0.5\n",
+        explain: "The resolution is below 1 mm.\nTo fix: Write a post spacing of at least 0.001.\nBad:   resolution = 0.0001\nFixed: resolution = 0.5\n",
     },
     Row {
         code: "num.seed_range",
@@ -2501,7 +2501,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The world seed is negative.\nWrite a seed of 0 or more.\nBad:   seed = -1\nFixed: seed = 1\n",
+        explain: "The world seed is negative.\nTo fix: Write a seed of 0 or more.\nBad:   seed = -1\nFixed: seed = 1\n",
     },
     Row {
         code: "num.seed_type",
@@ -2512,7 +2512,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A seed has the wrong form: a world seed that is not an integer, or a scatter seed that is not a\nname or breaks the id grammar.\nWrite the form the hint suggests.\nBad:   seed = \"Base\"   (on a scatter)\nFixed: seed = \"base\"\n",
+        explain: "A seed has the wrong form: a world seed that is not an integer, or a scatter seed that is not a\nname or breaks the id grammar.\nTo fix: Write the form the hint suggests.\nBad:   seed = \"Base\"   (on a scatter)\nFixed: seed = \"base\"\n",
     },
     Row {
         code: "num.too_many_posts",
@@ -2523,7 +2523,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The grid would hold more posts than the limit; the record names nx, ny and the limit.\nUse a coarser resolution or a smaller extent.\nBad:   extent = [0, 0, 100000, 100000]   with resolution = 0.5\nFixed: extent = [0, 0, 100000, 100000]   with resolution = 8\n",
+        explain: "The grid would hold more posts than the limit; the record names nx, ny and the limit.\nTo fix: Use a coarser resolution or a smaller extent.\nBad:   extent = [0, 0, 100000, 100000]   with resolution = 0.5\nFixed: extent = [0, 0, 100000, 100000]   with resolution = 8\n",
     },
     Row {
         code: "num.too_precise",
@@ -2534,7 +2534,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A length is not a whole number of millimetres, or a facing not a whole number of millidegrees.\nThe hint gives the two nearest values that are.\nWrite one of them.\nBad:   width = 1.0005\nFixed: width = 1.001\n",
+        explain: "A length is not a whole number of millimetres, or a facing not a whole number of millidegrees.\nThe hint gives the two nearest values that are.\nTo fix: Write one of them.\nBad:   width = 1.0005\nFixed: width = 1.001\n",
     },
     Row {
         code: "pack.accept_refused",
@@ -2556,7 +2556,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "front or up is not one of the six signed axes, or both name one axis.\nTo fix: A pair on two axes, for example front = \"-y\", up = \"+z\".\n",
+        explain: "`front` or `up` is not one of the six signed axis names (+x, -x, +y, -y, +z, -z), or both name\nthe same axis, so the model's orientation is not fixed.\nTo fix: Name two different axes, for example front = \"-y\", up = \"+z\".\nBad:   front = \"+z\"\n       up    = \"-z\"\nFixed: front = \"-y\"\n       up    = \"+z\"\n",
     },
     Row {
         code: "pack.bad_facts",
@@ -2589,7 +2589,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A material has file without repeat, or repeat without file.\nTo fix: Write both, or neither.\n",
+        explain: "A material has `file` without `repeat`, or `repeat` without `file`. A texture needs the length it\nrepeats over, and a repeat means nothing without a texture.\nTo fix: Write both keys, or neither (a plain colour).\nBad:   [material.a]\n       file = \"a.png\"\nFixed: [material.a]\n       file = \"a.png\"\n       repeat = 2\n",
     },
     Row {
         code: "pack.missing_file",
@@ -2600,7 +2600,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "root, a file the pack names, or a URI a model references, does not exist. M1 checks root and a material's file; M2 adds models, detail copies and their URIs.\nTo fix: The nearest file name in that folder.\n",
+        explain: "A path the pack names does not exist: its `root`, or a material's `file` (in M1; models and their\nreferences are checked from M2). `data.nearest` holds the nearest file name in that folder.\nTo fix: Correct the path, relative to the pack's root, or add the file.\nBad:   file = \"textures/gras.png\"\nFixed: file = \"textures/grass.png\"\n",
     },
     Row {
         code: "pack.not_found",
@@ -2611,7 +2611,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The pack string names no file; the roots searched, by place.\nTo fix: The nearest pack name, or write a path.\n",
+        explain: "The world's `pack` names no pack file in any pack root. The record lists the roots searched, by\nplace. `data.nearest` holds the nearest pack name.\nTo fix: Write the pack name the hint gives, or a relative path to the pack file.\nBad:   pack = \"primitve\"\nFixed: pack = \"primitive\"\n",
     },
     Row {
         code: "pack.outside_root",
@@ -2633,7 +2633,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A pack number out of range: size or repeat not above 0, triangles, max_relief below 0, a colour part outside 0 to 1.\nTo fix: The allowed range.\n",
+        explain: "A number in the pack is outside its range: `size` or `repeat` not above 0, `triangles` or\n`max_relief` below 0, or a `colour` part outside 0 to 1.\nTo fix: Write a value inside the range the record gives.\nBad:   colour = [0.4, 1.2, 0.3]\nFixed: colour = [0.4, 1.0, 0.3]\n",
     },
     Row {
         code: "pack.shadowed",
@@ -2644,7 +2644,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A pack name found in several roots.\nTo fix: The one used; write a path to choose another.\n",
+        explain: "The pack name is found in more than one pack root. The first root in search order is used; the\nrecord names it.\nTo fix: Nothing if the one used is right; otherwise write a relative path to the file meant.\nBad:   pack = \"a\"   (found in two roots)\nFixed: pack = \"packs/a.toml\"\n",
     },
     Row {
         code: "pack.stale_facts",
@@ -2677,7 +2677,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A paint names a material the pack lacks.\nTo fix: The nearest material, or add [material.<name>].\n",
+        explain: "A `paint` names a material that the pack does not declare. `data.nearest` holds the nearest\nmaterial name.\nTo fix: Paint a material the pack declares, or add [material.<name>] to the pack.\nBad:   paint = \"gras\"\nFixed: paint = \"grass\"\n",
     },
     Row {
         code: "pack.unknown_taxon",
@@ -2688,7 +2688,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An asset's taxon, a selection or a --taxon filter names an undeclared taxon.\nTo fix: The nearest declared path, or declare [taxon.\"<path>\"].\n",
+        explain: "An asset's `taxon`, a selection (`@path`) or a `--taxon` filter names a taxon the pack does not\ndeclare. `data.nearest` holds the nearest declared path.\nTo fix: Write a declared taxon path, or declare it with [taxon.\"<path>\"].\nBad:   taxon = \"prop/bx\"\nFixed: taxon = \"prop/box\"\n",
     },
     Row {
         code: "place.asset_or_set",
@@ -2699,7 +2699,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A placement writes both asset and set, or neither.\nTo fix: Keep one of asset, set.\n",
+        explain: "A placement writes both `asset` and `set`, or neither. It places one asset or one set.\nTo fix: Keep one of asset and set.\nBad:   [instance.a]\n       asset = \"b\"\n       set = \"c\"\nFixed: [instance.a]\n       asset = \"b\"\n",
     },
     Row {
         code: "place.crowded",
@@ -2710,7 +2710,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both.\nTo fix: Change one producer's on or span, or add a clear or pin in the higher layer with by naming the lower producer.\n",
+        explain: "Two produced instances overlap, or one overlaps a thing in a higher layer. A warning: both stay.\nThe record names both.\nTo fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names\nthe lower producer.\nBad:   two runs along one path at the same offset\nFixed: on = { ref = \"a\", span = [0.1, 0.4], offset = 4 }   for one of them\n",
     },
     Row {
         code: "place.gave_way",
@@ -2721,7 +2721,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A producer's candidates dropped by overlap and by relief, as counts, with their box.\nTo fix: Widen the space or change the hand instances it gives way to; nothing if intended.\n",
+        explain: "A producer's candidates were dropped because they overlapped hand instances or exceeded the\nrelief allowed. The record gives the counts and their box. Information only.\nTo fix: Nothing if intended; otherwise widen the space, or change the hand instances it gives way\nto.\nBad:   a run of 20 posts where 8 give way to an instance\nFixed: the run's span moved clear of the instance\n",
     },
     Row {
         code: "place.keep_out",
@@ -2732,7 +2732,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An instance stands where keep_out is above 0; names the field and the position.\nTo fix: Move it, or change the kind whose effect writes keep_out there.\n",
+        explain: "A hand instance stands where a keep_out field is above 0. It stays, since it is placed as\nwritten; the record names the field and the position.\nTo fix: Move it, or change the kind whose effect writes keep_out there.\nBad:   [instance.a]  at = [10, 10]   (keep_out 1 there)\nFixed: [instance.a]  at = [30, 10]\n",
     },
     Row {
         code: "place.margin_alone",
@@ -2743,7 +2743,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "margin without ground.\nTo fix: Add ground = \"<kind>\", or remove margin.\n",
+        explain: "`margin` is written without `ground`. margin is how far the ground footprint grows beyond the\nasset's footprint; without ground there is no footprint feature to grow.\nTo fix: Add ground = \"<kind>\", or remove margin.\nBad:   [instance.a]\n       asset = \"b\"\n       margin = 1\nFixed: [instance.a]\n       asset = \"b\"\n       ground = \"k\"\n       margin = 1\n",
     },
     Row {
         code: "place.no_footprint",
@@ -2765,7 +2765,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An instance or pin has neither at nor on; a run has no on.\nTo fix: Write at or on.\n",
+        explain: "An instance or pin has neither at nor on, or a run has no on, so it has no place.\nTo fix: Write at or on (a run takes on).\nBad:   [instance.a]\n       asset = \"b\"\nFixed: [instance.a]\n       asset = \"b\"\n       at = [10, 10]\n",
     },
     Row {
         code: "place.on_form",
@@ -2776,7 +2776,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "span in an instance's on, or t in a run's on. (t or offset on a thing with no length is geom.no_length.)\nTo fix: Write t on an instance, span on a run.\n",
+        explain: "An instance's on holds span, or a run's on holds t. An instance stands at one point (t); a run\nfills a stretch (span).\nTo fix: Write t on an instance, span on a run.\nBad:   [run.a]\n       on = { ref = \"b\", t = 0.5 }\nFixed: [run.a]\n       on = { ref = \"b\", span = [0.2, 0.8] }\n",
     },
     Row {
         code: "place.outside",
@@ -2787,7 +2787,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A hand instance or set item whose origin is outside the extent; not placed (8.4).\nTo fix: Move it inside the extent, or widen the extent.\n",
+        explain: "A hand instance or set item has its origin outside the extent, so it is not placed.\nTo fix: Move it inside the extent, or widen the extent.\nBad:   at = [300, 10]   (extent [0, 0, 256, 256])\nFixed: at = [250, 10]\n",
     },
     Row {
         code: "place.overlap",
@@ -2798,7 +2798,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two hand instances' footprints overlap; names both.\nTo fix: Move one; the overlap's size is given.\n",
+        explain: "Two hand instances' footprints overlap. Both are placed as written, so neither gives way. The\nrecord names both and the overlap's size.\nTo fix: Move one by at least the overlap's size.\nBad:   [instance.a] at = [10, 10]   and   [instance.b] at = [12, 10]   (each 4 m wide)\nFixed: [instance.b] at = [15, 10]\n",
     },
     Row {
         code: "place.range",
@@ -2809,7 +2809,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "On an instance, run or set item: scale not above 0, tint below 0, margin below 0, or a [lo, hi] pair (only a scatter draws).\nTo fix: The key and its allowed range.\n",
+        explain: "On an instance, run or set item: scale not above 0, tint below 0, margin below 0, or a [lo, hi]\npair, which only a scatter draws from.\nTo fix: Write a single value inside the key's range.\nBad:   scale = [0.8, 1.2]   (on an instance)\nFixed: scale = 1\n",
     },
     Row {
         code: "place.relief",
@@ -2820,7 +2820,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Relief under an instance exceeds its asset's max_relief; gives both numbers and the position.\nTo fix: Move it, give it ground with a kind that levels, or choose an asset with a larger max_relief.\n",
+        explain: "The ground under an instance varies more than its asset's max_relief allows. The record gives\nboth numbers and the position.\nTo fix: Move it, give it ground with a kind that levels, or choose an asset with a larger\nmax_relief.\nBad:   [instance.a]\n       asset = \"b\"\n       at = [10, 10]\nFixed: [instance.a]\n       asset = \"b\"\n       at = [10, 10]\n       ground = \"k\"   (k levels the ground)\n",
     },
     Row {
         code: "protocol.absolute_path",
@@ -2831,7 +2831,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "command holds an absolute path.\n",
+        explain: "A step's command holds an absolute path, which would not exist on another machine.\nTo fix: Name a configured program, a path relative to the declaring document, or lib:<library>/.\nBad:   command = [\"/usr/bin/python3\", \"a.py\"]\nFixed: command = [\"python\", \"steps/a.py\"]\n",
     },
     Row {
         code: "protocol.blob_digest",
@@ -2864,7 +2864,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The code folder is or holds the world's folder; move the script into its own folder.\n",
+        explain: "A step's code folder (the folder of its script) is, or holds, the world file's folder. Every edit\nto the world would then change the step's trust digest and need trusting again.\nTo fix: Move the script into a folder of its own.\nBad:   command = [\"python\", \"a.py\"]   (a.py beside world.toml)\nFixed: command = [\"python\", \"steps/a.py\"]\n",
     },
     Row {
         code: "protocol.column_mixed",
@@ -2875,7 +2875,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "One attribute has two types across the selected kinds; names both kinds.\n",
+        explain: "One attribute has two types across the kinds a step selected (a number in one, a text in\nanother), so it cannot be one column. The record names both kinds.\nTo fix: Give the attribute one type in both kinds, or rename it in one.\nBad:   [kind.a]  defaults = { w = 1 }   and   [kind.b]  defaults = { w = \"1\" }\nFixed: [kind.b]  defaults = { w = 1 }\n",
     },
     Row {
         code: "protocol.crashed",
@@ -2897,7 +2897,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["phase", "deadline"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "No answer by the deadline; which phase, and the deadline.\n",
+        explain: "A step gave no answer by its deadline. `data.phase` says which phase (initialize, step.call or\ncancel) and `data.deadline` the deadline in seconds.\nTo fix: Make the step faster, or raise its deadline.\nBad:   a step that waits on the network at start\nFixed: the same step reading its data from a declared input\n",
     },
     Row {
         code: "protocol.explain_differs",
@@ -2908,7 +2908,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A step sent two explain texts for one code.\n",
+        explain: "A step sent two different explain texts for one code. via explain prints one, so the first is\nkept.\nTo fix: Send one explain text per code, from one place in the step.\nBad:   two emits of code \"a\" with different explain strings\nFixed: one constant explain string for \"a\"\n",
     },
     Row {
         code: "protocol.failed",
@@ -2919,7 +2919,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["exit"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A plain command exited non-zero; data.exit.\n",
+        explain: "A plain command (a step that does not speak the protocol) exited non-zero. `data.exit` holds the\nexit status.\nTo fix: Run the command by hand from the declaring document's folder and fix its error.\nBad:   command = [\"python\", \"steps/a.py\"]   (exits 1)\nFixed: the same command after fixing a.py\n",
     },
     Row {
         code: "protocol.field_file",
@@ -2996,7 +2996,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A step sent a code with no explain text.\n",
+        explain: "A step sent a code without explain text, so via explain has nothing to print for it.\nTo fix: Send explain with the first diagnostic of each code.\nBad:   step.diag.emit(code=\"a\", subject=\"feature.b\", message=\"m\", hint=\"h\")\nFixed: step.diag.emit(code=\"a\", subject=\"feature.b\", message=\"m\", hint=\"h\", explain=\"what a means\")\n",
     },
     Row {
         code: "protocol.no_output",
@@ -3018,7 +3018,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "command[0] is no configured program and no file, or is a .bat/.cmd; the hint gives via config program.\n",
+        explain: "command[0] is a name with no configured program and no file of that path, or is a .bat or .cmd\nfile, which is refused. Programs are never looked up on PATH.\nTo fix: Configure it: via config program <name> <path>.\nBad:   command = [\"python3\", \"steps/a.py\"]   (no program python3 configured)\nFixed: via config program python3 /usr/bin/python3\n",
     },
     Row {
         code: "protocol.output_file",
@@ -3040,7 +3040,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A plain command's out/diagnostics.json is not a list of diagnostic objects.\n",
+        explain: "A plain command's out/diagnostics.json is not a list of diagnostic objects.\nTo fix: Write a JSON list of objects with the diagnostic members (severity, code, subject,\nmessage, hint).\nBad:   {\"code\": \"a\"}\nFixed: [{\"severity\": \"warning\", \"code\": \"a\", \"subject\": \"feature.b\", \"message\": \"m\", \"hint\": \"h\"}]\n",
     },
     Row {
         code: "protocol.output_table",
@@ -3051,7 +3051,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A returned document holds a table or key a step may not return, or a lint or export returned one.\n",
+        explain: "A returned document holds a table or key a step may not return ([change], [kind], [let], remove,\nunset), or a lint or export step returned a document at all.\nTo fix: Return only the tables the step's when allows; a lint or export returns diagnostics only.\nBad:   a generate step returning [kind.a]\nFixed: the step returning [feature.a] with kind = \"a\"\n",
     },
     Row {
         code: "protocol.output_twice",
@@ -3095,7 +3095,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["kind"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The process could not be started; data.kind (6.2).\n",
+        explain: "The step's process could not be started. `data.kind` says why: not_found, denied, other, or empty\nfor an empty command.\nTo fix: Check the program path and that it is executable.\nBad:   command = [\"steps/a.sh\"]   (not executable)\nFixed: command = [\"sh\", \"steps/a.sh\"]   (with sh configured)\n",
     },
     Row {
         code: "protocol.unknown_library",
@@ -3106,7 +3106,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A lib: element names a library not in include; the nearest name.\n",
+        explain: "A lib: element names a library that is not in the world's include. `data.nearest` holds the\nnearest included library.\nTo fix: Write an included library, or add it to include.\nBad:   command = [\"python\", \"lib:chcks/a.py\"]\nFixed: command = [\"python\", \"lib:checks/a.py\"]\n",
     },
     Row {
         code: "protocol.untrusted",
@@ -3139,7 +3139,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "An untrusted lint or export step was skipped.\n",
+        explain: "A lint or export step is not trusted, so it was skipped. The build is complete without it.\nTo fix: Review the step and trust it with via trust.\nBad:   via build world.toml   (step not in trust.toml)\nFixed: via trust world.toml, then via build world.toml\n",
     },
     Row {
         code: "protocol.untrusted_stale",
@@ -3238,7 +3238,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A scatter placed nothing; names the stage that removed the last candidate.\nTo fix: The key behind that stage (density, within, keep_out, a hand edit).\n",
+        explain: "A scatter placed nothing. The record names the stage that removed the last candidate (density,\nwithin, keep_out, a hand edit).\nTo fix: Change the key behind that stage.\nBad:   density = \"= if(f('height') > 90, 0.6, 0)\"   (height never above 90)\nFixed: density = 0.6\n",
     },
     Row {
         code: "scatter.keep_out_twice",
@@ -3249,7 +3249,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "density reads a keep_out field, which the scatter already applies.\nTo fix: Remove the keep_out factor from density.\n",
+        explain: "`density` reads a keep_out field, which the scatter already applies to every candidate, so it is\ncounted twice.\nTo fix: Remove the keep_out factor from density.\nBad:   density = \"= 0.6 * (1 - f('b'))\"   (b has role keep_out)\nFixed: density = 0.6\n",
     },
     Row {
         code: "scatter.range",
@@ -3260,7 +3260,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A [lo, hi] with lo > hi, a scale not above 0, a tint below 0, a jitter outside 0 to 1, a spacing not above 0, or a weight not above 0.\nTo fix: The key and its allowed range.\n",
+        explain: "A scatter key is out of range: a [lo, hi] with lo > hi, a scale not above 0, a tint below 0, a\njitter outside 0 to 1, a spacing not above 0, or a weight not above 0.\nTo fix: Write the key inside its range.\nBad:   scale = [1.2, 0.8]\nFixed: scale = [0.8, 1.2]\n",
     },
     Row {
         code: "scatter.within",
@@ -3271,7 +3271,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "within names a path or a point.\nTo fix: Name a region feature, a footprint feature, or select an area, cell, rest or piece.\n",
+        explain: "`within` names a path or a point, which has no inside to scatter in.\nTo fix: Name a region feature, a footprint feature, or select an area, cell, rest or piece.\nBad:   within = \"a\"   (a is a path)\nFixed: within = \"b\"   (b is a region)\n",
     },
     Row {
         code: "set.empty",
@@ -3359,7 +3359,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A region given to relief has zero area.\n",
+        explain: "A region whose relief was asked (how much the ground varies under it) has zero area, so there\nis nothing to measure.\nTo fix: Ask with a region that has area: its points must not all lie on one line.\nBad:   relief asked for [[0, 0], [10, 0], [20, 0]]\nFixed: relief asked for [[0, 0], [10, 0], [10, 10]]\n",
     },
     Row {
         code: "surface.facing",
@@ -3414,7 +3414,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "What it is placed on, or the owner of the mount it is placed on, was not placed (4.1).\n",
+        explain: "A thing is placed on something, or on a mount of something, that was not placed (it failed, or\nwas removed), so it has no surface to stand on.\nTo fix: Fix why the host was not placed, or place this thing elsewhere.\nBad:   on = { ref = \"a.m\" }   (instance a outside the extent)\nFixed: on = { ref = \"a.m\" }   with a moved inside the extent\n",
     },
     Row {
         code: "surface.meets_self",
@@ -3524,7 +3524,7 @@ pub(crate) static ROWS: [Row; 324] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two surface fields at the top level. Hint: make one a kind's surface.\n",
+        explain: "Two fields at the top level have role surface. A world has one terrain; other surfaces belong to\nkinds.\nTo fix: Remove role from one, or make it a kind's surface.\nBad:   [field.a]  role = \"surface\"   and   [field.b]  role = \"surface\"\nFixed: [field.a]  role = \"surface\"   and   [field.b]  base = \"= f('a') + 2\"\n",
     },
     Row {
         code: "surface.unknown_mount",
@@ -3620,7 +3620,7 @@ pub mod codes {
         use crate::registry::Code;
         /// `authority.attribute_twice` (error): An attribute declared in both `defaults` and `requires`.
         pub const ATTRIBUTE_TWICE: Code = Code::from_index(18);
-        /// `authority.conflict` (error): Two anchored features disagree where both masks are 1; subject the later; values, post, counts.
+        /// `authority.conflict` (error): Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`.
         pub const CONFLICT: Code = Code::from_index(19);
         /// `authority.ground_requires` (error): An instance grounds with a kind that has `requires`; the instance's `ground` line and the kind's `requires` line.
         pub const GROUND_REQUIRES: Code = Code::from_index(20);
@@ -3642,7 +3642,7 @@ pub mod codes {
         pub const REQUIRES: Code = Code::from_index(28);
         /// `authority.selector` (error): An effect's `field` is not `role:<role>` or `tag:<tag>`, or names an unknown role; both forms, nearest role, the role of a field named bare.
         pub const SELECTOR: Code = Code::from_index(29);
-        /// `authority.squeezed` (warning): Two anchored features disagree only where a mask is below 1; as above.
+        /// `authority.squeezed` (warning): Two anchored features disagree only where a mask is below 1; as above: `data.field`, `data.both_full`, `data.both_partial`.
         pub const SQUEEZED: Code = Code::from_index(30);
         /// `authority.step_anchored` (error): A step returned an anchored feature. M2.
         pub const STEP_ANCHORED: Code = Code::from_index(31);

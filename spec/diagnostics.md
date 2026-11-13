@@ -138,7 +138,7 @@ file's own text is the layer `world`, which has no owner and no entry.
 | `include` | The library's id | The `include` key that named it. |
 | `layer` | The layer's id | Where the layer wrote the value. |
 | `change` | The change's name | Where the change wrote the value. |
-| `defaults` | The address of the feature that took the default | The feature's header. |
+| `defaults` | The address of the feature or instance that took the value from its kind: a `defaults` attribute, or a kind key it inherits (`authority`, `authority.md` 5) | The feature's or instance's header. |
 
 Imports add `import` (M4). A value written in layer `roads` and written over by the change
 `downstream`:

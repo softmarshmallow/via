@@ -1,13 +1,46 @@
 format    = "via-case-1"
 summary   = "linework_a shuffled, and cross shuffled; network: same bytes as unshuffled."
 milestone = 1
-pending   = "fixture spec/vectors/geometry/linework_a.json, made by spec/vectors/geometry/import.py from fixtures/kernel/townland (geometry.md 6), not yet written"
-actions   = ["op"]
+actions   = ["op", "shuffled", "cross", "cross_shuffled"]
+
+# geometry.md 3.1 Order-free and 2.5. linework_a_shuffled.json is import.py's: the same shapes
+# sorted by the bytes of the reversed source id. cross is section 5's input, as cross_network
+# holds it; cross_shuffled.json lists its three shapes in another order.
 
 [copy.fixture]
 from = "spec/vectors/geometry/linework_a.json"
 to   = "linework_a.json"
 
+[copy.shuffled]
+from = "spec/vectors/geometry/linework_a_shuffled.json"
+to   = "linework_a_shuffled.json"
+
+[copy.cross]
+from = "spec/cases/geometry/cross_network/in.json"
+to   = "cross.json"
+
 [action.op]
-via  = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
+via         = ["kernel", "network", "--in", "linework_a.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.shuffled]
+via         = ["kernel", "network", "--in", "linework_a_shuffled.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "any"
+
+[action.shuffled.same.bytes]
+action = "op"
+what   = "out.json"
+
+[action.cross]
+via  = ["kernel", "network", "--in", "cross.json", "--out", "cross.out.json"]
 exit = 0
+
+[action.cross_shuffled]
+via  = ["kernel", "network", "--in", "cross_shuffled.json", "--out", "cross.out.json"]
+exit = 0
+
+[action.cross_shuffled.same.bytes]
+action = "cross"
+what   = "cross.out.json"

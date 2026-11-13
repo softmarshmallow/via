@@ -4,7 +4,7 @@
 # ///
 """Draw the M1 sheet, docs/reports/m1-sheet.png, from fresh builds of examples/ford.
 
-    uv run docs/reports/make_m1_sheet.py [--keep DIR]
+    uv run docs/reports/make_m1_sheet.py [--keep DIR] [--slow FILE]
 
 What it runs, in order (every number on the sheet comes from one of these):
 
@@ -36,6 +36,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 import matplotlib
@@ -84,8 +85,7 @@ class Ford:
               threads: int | None = None) -> dict:
         d = self.tmp / out
         diag = self.tmp / f"{out}.diagnostics.json"
-        # --lib is absolute: a relative library root is resolved twice for a `lib:` argument
-        # (the step runs in the code folder), so `lib:review/checks.py` is not found.
+        # --lib is absolute so the scratch folders can live anywhere (a relative one works too).
         # No --sdk: the SDK carried in the binary runs the lint (an --sdk working copy would enter
         # the trust digest, protocol.md 8.1, and `via trust` would need the same flag).
         cmd = [VIA, "build", FORD, "--lib", ROOT / "lib",
@@ -138,6 +138,27 @@ def names(c: dict, word: str, prefix: str = "") -> list[str]:
     return [e["name"] for e in c["entries"] if word in e["what"] and e["name"].startswith(prefix)]
 
 
+def nodes_line(b: dict) -> str:
+    t = b["run"]["totals"]
+    return f"nodes ran {t['ran']}, reused {t['reused']}, skipped {t['skipped']} of {t['nodes']}"
+
+
+def pad_area(d: Path) -> float:
+    """The cottage's footprint area in features.json, outer rings less holes (shoelace)."""
+    def ring(r: list) -> float:
+        p = np.array(r)[:, :2]
+        return 0.5 * abs(float(np.dot(p[:, 0], np.roll(p[:, 1], -1)) - np.dot(np.roll(p[:, 0], -1), p[:, 1])))
+    fs = json.loads((d / "features.json").read_text())
+    return sum(ring(pc["outer"]) - sum(ring(h) for h in pc.get("holes", []))
+               for fp in fs["footprints"] if fp.get("instance") == "cottage" for pc in fp["pieces"])
+
+
+WORLD_TEXT = FORD.read_text()
+WORLD = tomllib.loads(WORLD_TEXT)
+PIN = WORLD["change"]["hand"]["pin"]["oak"]["at"]
+CLEAR = WORLD["change"]["hand"]["clear"]["gap"]
+
+
 def change_rows(f: Ford, base: dict) -> list[dict]:
     rows = []
     # 1. Nothing: rebuild unchanged against itself; and bytes at 1 and 8 threads, fresh stores.
@@ -160,12 +181,12 @@ def change_rows(f: Ford, base: dict) -> list[dict]:
     want = {"ford", "lane_west", "lane_east", "at_ford", "on_bank", "to_door", "in_trees"}
     feats = {e["name"] for e in c["entries"] if e["table"] == "feature"}
     fields = {e["name"]: e["region"] for e in c["entries"] if e["table"] == "field"}
-    trees_moved = len(names(c, "moved", "trees#"))
-    trees_addrem = len(names(c, "added", "trees#")) + len(names(c, "removed", "trees#"))
+    t_add, t_rem = len(names(c, "added", "trees#")), len(names(c, "removed", "trees#"))
+    t_mov = len(names(c, "moved", "trees#"))
     caused = all(e["causes"] for e in c["entries"])
     rows.append({
         "name": "downstream (ford moved to t = 0.8 on the beck)",
-        "lines": summary_lines(c) + [
+        "lines": [nodes_line(ds)] + summary_lines(c) + [
             "fields: " + ", ".join(f"{k} {v['posts']} posts" for k, v in sorted(fields.items()))],
         "checks": [("the seven features named", want <= feats),
                    ("cottage and its footprint named",
@@ -173,19 +194,23 @@ def change_rows(f: Ford, base: dict) -> list[dict]:
                     <= {(e["table"], e["name"]) for e in c["entries"]}),
                    ("height, clearing, water regions", set(fields) == {"height", "clearing", "water"}),
                    ("every entry has its cause", caused),
-                   (f"trees added/removed where pads give way: {trees_addrem} "
-                    f"(the report has {trees_moved} moved instead)", trees_addrem > 0)],
+                   (f"trees added {t_add}, removed {t_rem}, moved {t_mov} (ground under them)",
+                    t_add > 0 and t_rem > 0 and t_mov > 0)],
         "build": ds,
     })
     # 3. vertex.
     vx = f.build("ford+vertex", "store", ["changes/vertex.toml"], against="ford")
     c = vx["changes"]
     feats = {e["name"] for e in c["entries"] if e["table"] == "feature"}
+    fields = {e["name"] for e in c["entries"] if e["table"] == "field"}
+    t_mov = len(names(c, "moved", "trees#"))
     rows.append({
         "name": "changes/vertex.toml (beck vertex [160, 90] 4 m east)",
-        "lines": summary_lines(c),
+        "lines": [nodes_line(vx)] + summary_lines(c),
         "checks": [("beck named", "beck" in feats),
-                   ("downstream's features follow", want <= feats | {"on_bank"}),
+                   ("its height, clearing, water regions", fields == {"height", "clearing", "water"}),
+                   (f"trees moved where the ground changed: {t_mov}", t_mov > 0),
+                   ("downstream's features follow", want <= feats),
                    ("every entry has its cause", all(e["causes"] for e in c["entries"]))],
         "build": vx,
     })
@@ -196,9 +221,12 @@ def change_rows(f: Ford, base: dict) -> list[dict]:
     facts = sorted({x["fact"] for e in cot for x in e["facts"]})
     rows.append({
         "name": "changes/bigger.toml (pack swapped for primitive_large)",
-        "lines": summary_lines(c) + [f"cottage facts named: {', '.join(facts) or 'none'}"],
+        "lines": [nodes_line(bg)] + summary_lines(c)
+        + [f"cottage facts named: {', '.join(facts) or 'none'}"],
         "checks": [("cottage named with old and new facts", bool(facts)),
-                   ("the pad grows (footprint entry)", any(e["table"] == "footprint" for e in cot))],
+                   (f"the pad grows: {pad_area(base['dir']):.1f} to {pad_area(bg['dir']):.1f} m2",
+                    pad_area(bg["dir"]) > pad_area(base["dir"])),
+                   ("world text untouched (world.toml bytes the same)", FORD.read_text() == WORLD_TEXT)],
     })
     # 5. hand, then hand + denser.
     hd = f.build("ford+hand", "store", ["hand"], against="ford")
@@ -212,35 +240,64 @@ def change_rows(f: Ford, base: dict) -> list[dict]:
     added = set(names(c, "added", "trees#s6000_"))
     x = np.load(dn["dir"] / "instances/x.npy") / 1000.0
     y = np.load(dn["dir"] / "instances/y.npy") / 1000.0
-    inside = int(np.sum((x - 208) ** 2 + (y - 208) ** 2 < 36))
-    pins = [n for n in after if "oak" in n and not n.startswith("trees#s")]
+    (cx, cy), cr = CLEAR["at"], CLEAR["radius"]
+    inside = int(np.sum((x - cx) ** 2 + (y - cy) ** 2 < cr ** 2))
+    pin_at = [(float(x[i]), float(y[i])) for i, n in enumerate(after) if n == "oak"]
+    hand_entries = [e for e in c["entries"] if e["name"] in ("oak", "gap")]
+    hd_lines = [s for s in summary_lines(hd["changes"]) if not s.startswith("(")]
     rows.append({
         "name": "hand, then hand + denser (spacing 7 to 6)",
-        "lines": ["hand vs ford: " + s for s in summary_lines(hd["changes"])[:2]] + [
+        "lines": ["hand vs ford: " + s for s in hd_lines] + [
                   f"denser: s7000_ removed {len(removed)} of {len(s7)}, "
-                  f"s6000_ added {len(added)} of {len(s6)}"],
+                  f"s6000_ added {len(added)} of {len(s6)}; {nodes_line(dn)}"],
         "checks": [("every s7000_ removed, every s6000_ added",
                     removed == set(s7) and added == set(s6)),
-                   (f"the pin stands ({', '.join(pins) or 'not found'})", bool(pins)),
-                   (f"nothing inside the clear ({inside} instances)", inside == 0)],
+                   (f"the pin oak stands at {pin_at[0] if pin_at else 'nowhere'} (world says {PIN})",
+                    pin_at == [tuple(float(v) for v in PIN)]),
+                   (f"nothing inside the clear gap, r {cr} m at {CLEAR['at']} ({inside} instances)",
+                    inside == 0),
+                   ("both hand edits unchanged (no entry for oak or gap)", not hand_entries)],
+        "build": hd,
     })
     # 6. the four bad files together.
     bad = f.build("ford+bad", "store", [f"changes/bad_{n}.toml" for n in
                                         ("anchor", "typo", "cycle", "asset")])
     ds_ = (bad["diag"] or {}).get("diagnostics", [])
     errs = [d for d in ds_ if d["severity"] == "error"]
+    warns = [d for d in ds_ if d["severity"] == "warning"]
+    skips = {d["subject"]: d for d in ds_ if d["code"] == "diag.skipped"}
     want_codes = ["authority.conflict", "formula.unknown_name", "graph.cycle", "asset.unknown"]
-    got_codes = sorted({d["code"] for d in errs})
+    got_codes = sorted(d["code"] for d in errs)
+    by = {d["code"]: d for d in errs}
     lines = []
-    for d in errs:
+    for d in errs + warns:
+        near = (d.get("data") or {}).get("nearest")
         lines.append(f"{d['code']} {d['subject']} {d.get('file')}:{d.get('line')}"
-                     + (" pos" if d.get("position") else ""))
+                     + (" pos" if d.get("position") else "") + (f" nearest {near}" if near else ""))
+    lines.append("diag.skipped under " + ", ".join(f"{k} ({v.get('count')})" for k, v in sorted(skips.items())))
+    sq = [d for d in warns if d["code"] == "authority.squeezed"]
+    shed = skips.get("instance.shed", {})
     rows.append({
         "name": "the four bad_* files together",
-        "lines": lines[:6] + ([f"... {len(lines) - 6} more"] if len(lines) > 6 else []),
+        "lines": lines,
         "checks": [("exit status 1", bad["status"] == 1),
-                   ("all four codes, nothing else", got_codes == sorted(want_codes)),
-                   ("each has a hint", all(d.get("hint") for d in errs))],
+                   ("the four errors, one each, each with a hint",
+                    got_codes == sorted(want_codes) and all(d.get("hint") for d in errs)),
+                   ("nearest x and shed_gable",
+                    (by.get("formula.unknown_name", {}).get("data") or {}).get("nearest") == "x"
+                    and (by.get("asset.unknown", {}).get("data") or {}).get("nearest") == "shed_gable"),
+                   ("conflict and unknown asset have a position",
+                    all(by.get(k, {}).get("position") for k in ("authority.conflict", "asset.unknown"))),
+                   ("one squeezed warning: cottage, related beck, on clearing",
+                    len(sq) == 1 and sq[0]["subject"] == "instance.cottage"
+                    and any(r["subject"] == "feature.beck" for r in sq[0].get("related") or [])
+                    and (sq[0].get("data") or {}).get("field") == "clearing"),
+                   ("diag.skipped under shed (count 3: cottage, trees, checks), loop_a, cottage, trees",
+                    set(skips) == {"instance.shed", "field.loop_a", "instance.cottage", "scatter.trees"}
+                    and shed.get("count") == 3
+                    and (shed.get("data") or {}).get("first")
+                    == ["instance.cottage", "scatter.trees", "step.checks"]),
+                   ("no other error or warning", len(errs) == 4 and len(warns) == 1)],
     })
     return rows
 
@@ -249,7 +306,32 @@ def godot(f: Ford, before: Path, after: Path, out: Path) -> tuple[int, str]:
     if out.exists():
         shutil.rmtree(out)
     return run([ROOT / "engines/godot/sheet.sh", "--before", before, "--after", after,
-                "--out", out, "--option", "water=tag:water_level"])
+                "--out", out, "--option", "water=tag:water_level", "--option", "paths=kind:lane"])
+
+
+def query(f: Ford, base: dict) -> list[str]:
+    """`via query` (surfaces.md 7): surfaces_at under each bookmark's eye, against height.npy."""
+    fs = json.loads((base["dir"] / "features.json").read_text())["features"]
+    pts = [next(x for x in fs if x["name"] == bm)["at"][:2] for bm in BOOKMARKS]
+    q_in, q_out = f.tmp / "query.in.json", f.tmp / "query.out.json"
+    q_in.write_text(json.dumps({"x": [round(p[0] * 1000) for p in pts],
+                                "y": [round(p[1] * 1000) for p in pts]}))
+    code, text = run([VIA, "query", FORD, "surfaces_at", "--in", q_in, "--out", q_out,
+                      "--lib", ROOT / "lib", "--store", f.tmp / "store"], cwd=FORD.parent, env=f.env)
+    if code or not q_out.exists():
+        return [f"via query surfaces_at: exit {code}: {text.strip().splitlines()[:1]}"]
+    a = json.loads(q_out.read_text())
+    h = np.load(base["dir"] / "fields/height.npy").astype(np.float64)
+    out = [f"via query surfaces_at, the four bookmarks (exit {code}; columns {', '.join(sorted(a))}):"]
+    zs = a.get("z", [])
+    for i, bm in enumerate(BOOKMARKS):
+        surf = [a["surface"][k] for k in range(len(zs)) if a["point"][k] == i] if "point" in a else []
+        z = [zs[k] for k in range(len(zs)) if a.get("point", list(range(len(zs))))[k] == i]
+        px, py = pts[i]
+        hv = h[int(round(py / 0.5)), int(round(px / 0.5))]
+        out.append(f"  {bm:<9} {', '.join(f'{s} {v:.3f}' for s, v in zip(surf or ['?'] * len(z), z))}"
+                   f"  (height.npy at the nearest post {hv:.3f})")
+    return out
 
 
 def conformance() -> tuple[dict[str, int], dict[str, int], list[str]]:
@@ -336,7 +418,7 @@ def plan_view(ax, base: dict, ds: dict) -> None:
                linewidths=0.4)
     depth = np.ma.masked_less_equal(w - h, 0.001)
     ax.imshow(depth, origin="lower", extent=ext, cmap="Blues", vmin=-0.4, vmax=1.4, alpha=0.85)
-    ax.contourf(k, levels=[0.5, 1.5], origin="lower", extent=ext, colors=["#d9534f"], alpha=0.25)
+    ax.contour(k, levels=[0.5], origin="lower", extent=ext, colors=["#d9534f"], linewidths=0.8)
     feats = json.loads((d / "features.json").read_text())
     after = json.loads((ds["dir"] / "features.json").read_text())
 
@@ -387,6 +469,7 @@ def main() -> None:
     f = Ford(tmp)
 
     print("cold and unchanged builds ...", flush=True)
+    _, load = run(["sysctl", "-n", "vm.loadavg"])
     cold, warm = [], []
     for i in range(3):
         b = f.build(f"cold{i}", f"store_cold{i}")
@@ -397,37 +480,54 @@ def main() -> None:
         warm.append(b["run"]["totals"]["ms"])
     threads = base["run"]["threads"]
     nodes = base["run"]["totals"]["nodes"]
-    step_ms = [n.get("ms") for n in base["run"].get("nodes", [])]
+    fam_n, fam_ms = {}, {}
+    for n in json.loads((tmp / "cold0.run.json").read_text()).get("nodes", []):
+        fam_n[n["family"]] = fam_n.get(n["family"], 0) + 1
+        fam_ms[n["family"]] = fam_ms.get(n["family"], 0) + (n.get("ms") or 0)
 
     print("change rows ...", flush=True)
     rows = change_rows(f, base)
-    ds, vx = rows[1]["build"], rows[2]["build"]
-    m0, m1, m2 = measures(base), measures(ds), measures(vx)
+    ds, vx, hd = rows[1]["build"], rows[2]["build"], rows[4]["build"]
+    m0, m1, m2, m3 = measures(base), measures(ds), measures(vx), measures(hd)
+    q_lines = query(f, base)
 
     print("Godot views ...", flush=True)
-    g1 = godot(f, base["dir"], ds["dir"], tmp / "review_downstream")
-    g2 = godot(f, base["dir"], vx["dir"], tmp / "review_vertex")
+    gs = [godot(f, base["dir"], ds["dir"], tmp / "review_downstream"),
+          godot(f, base["dir"], vx["dir"], tmp / "review_vertex"),
+          godot(f, base["dir"], hd["dir"], tmp / "review_hand")]
     gver = json.loads((tmp / "review_downstream/sheet.json").read_text())["godot"] \
         if (tmp / "review_downstream/sheet.json").exists() else "?"
 
-    print("conformance, xtask, track A ...", flush=True)
-    per_m, conf, conf_bad = conformance()
-    cases_status, cases_note, xtask_ok = xtask_cases()
-    meas, geom_tests = track_a()
+    # --slow FILE: reuse the conformance, xtask and track A results a previous run saved there
+    # (for redrawing the layout only; a sheet that is handed over is made without it).
+    slow = Path(sys.argv[sys.argv.index("--slow") + 1]) if "--slow" in sys.argv else None
+    if slow and slow.exists():
+        per_m, conf, conf_bad, cases_status, cases_note, xtask_ok, meas, geom_tests = \
+            json.loads(slow.read_text())
+    else:
+        print("conformance, xtask, track A ...", flush=True)
+        per_m, conf, conf_bad = conformance()
+        cases_status, cases_note, xtask_ok = xtask_cases()
+        meas, geom_tests = track_a()
+        if slow:
+            slow.write_text(json.dumps([per_m, conf, conf_bad, cases_status, cases_note, xtask_ok,
+                                        meas, geom_tests]))
 
     _, rustc = run(["rustc", "--version"])
-    _, head = run(["git", "rev-parse", "--short", "HEAD"])
+    _, head = run(["git", "log", "-1", "--format=%h %ad", "--date=short"])
     _, porcelain = run(["git", "status", "--porcelain"])
     _, cpu = run(["sysctl", "-n", "machdep.cpu.brand_string"])
     machine = f"{platform.system()} {platform.release()} {platform.machine()}, {cpu.strip()}"
     today = datetime.date.today().isoformat()
+    dirty = len(porcelain.splitlines())
 
     # ---- the sheet ----
-    W, H, DPI = 2400, 2590, 100
+    W, H, DPI = 2400, 3200, 100
     fig = plt.figure(figsize=(W / DPI, H / DPI), dpi=DPI, facecolor="white")
     BODY, HEAD, MONO = 11, 14, "DejaVu Sans Mono"
-    LH = 22
+    LH = 21
     BAD = "#b03a00"
+    GREY = "#333333"
 
     def axes(x, y, w, h):
         return fig.add_axes([x / W, 1 - (y + h) / H, w / W, h / H])
@@ -452,31 +552,34 @@ def main() -> None:
         def check(self, s: str, ok: bool) -> None:
             self.line(("  held   " if ok else "  NOT    ") + s, colour="black" if ok else BAD)
 
-    text(40, 22, f"via M1 sheet: ford   branch rewrite at {head.strip()} + uncommitted M1 work "
-         f"({len(porcelain.splitlines())} paths); nothing committed   {today}", size=18,
-         mono=False, bold=True)
+    state = (f"working tree: {dirty} uncommitted paths over it" if dirty
+             else "working tree clean")
+    text(40, 22, f"via M1 sheet: ford   branch rewrite, last commit {head.strip()}; {state}   "
+         f"made {today}", size=18, mono=False, bold=True)
     text(40, 56, f"Made by docs/reports/make_m1_sheet.py on {machine}; {rustc.strip()}; "
-         f"Godot {gver}. Every number is read from a build, a report or a command the script ran.",
-         size=BODY, mono=False, colour="#333333")
+         f"Godot {gver}. Every number is read from a build, a report or a command the script ran; "
+         f"the builds are of the working tree, not of the commit.",
+         size=BODY, mono=False, colour=GREY)
 
-    # Eye-height views: four bookmarks by before / downstream / vertex.
-    VX, VY, VW = 40, 100, 470
+    # 1. Eye-height views: four bookmarks by before / downstream / vertex / hand.
+    VX, VY, VW = 40, 100, 350
     VH = int(VW * 9 / 16)
     text(VX, VY, "1  Eye height (1.7 m), the four bookmarks, rendered by engines/godot/sheet.sh",
          size=HEAD, mono=False, bold=True)
     cols = [("before: ford", tmp / "review_downstream/before"),
             ("after downstream (ford to t = 0.8)", tmp / "review_downstream/after"),
-            ("after vertex.toml (beck vertex 4 m east)", tmp / "review_vertex/after")]
+            ("after vertex.toml (beck vertex 4 m east)", tmp / "review_vertex/after"),
+            ("after hand (pin oak, clear gap)", tmp / "review_hand/after")]
     y = VY + 34
     for i, (label, _) in enumerate(cols):
-        text(VX + i * (VW + 10), y, label, size=12, mono=False, bold=True)
-    y += 26
+        text(VX + i * (VW + 10), y, label, size=11, mono=False, bold=True)
+    y += 24
+    feats0 = json.loads((base["dir"] / "features.json").read_text())["features"]
     for bm in BOOKMARKS:
-        eye = next((x for x in json.loads((base["dir"] / "features.json").read_text())["features"]
-                    if x["name"] == bm), None)
+        eye = next((x for x in feats0 if x["name"] == bm), None)
         tow = eye["attrs"]["toward"]["name"] if eye else "?"
         text(VX, y, f"{bm}: {WHERE[bm]}, toward {tow}", size=11, mono=False)
-        y += 22
+        y += 20
         for i, (_, folder) in enumerate(cols):
             ax = axes(VX + i * (VW + 10), y, VW, VH)
             p = folder / f"{bm}.png"
@@ -486,40 +589,80 @@ def main() -> None:
                 ax.text(0.5, 0.5, "not rendered", ha="center", va="center", transform=ax.transAxes)
             ax.set_xticks([])
             ax.set_yticks([])
-        y += VH + 10
+        y += VH + 8
+    text(VX, y, "Protocol: 1280x720 per view (spec/build.md 15.1), Compatibility renderer, Camera3D "
+         "defaults (75 deg), one sun from 225 deg at 45 deg;\nthe eye from the after build's bookmark; "
+         "options water=tag:water_level, paths=kind:lane (lanes drawn as strips).",
+         size=10, mono=False, colour=GREY)
+    y += 34
+    codes = [g[0] for g in gs]
+    if any(codes):
+        text(VX, y, f"sheet.sh exit {codes}", colour=BAD)
+        y += LH
     views_bottom = y
-    if g1[0] or g2[0]:
-        text(VX, y, f"sheet.sh exit {g1[0]}, {g2[0]}", colour=BAD)
-    text(VX, y, "Protocol: 1280x720 per view (spec/build.md 15.1), Compatibility renderer, "
-         "Camera3D defaults (75 deg), one sun from 225 deg at 45 deg; the eye from the after "
-         "build's bookmark.", size=10, mono=False, colour="#333333")
-    views_bottom = y + 24
 
-    # Plan view.
+    # 2. Plan view.
     PX, PY0, PW = 1500, 100, 860
     text(PX, PY0, "2  Plan, 256 m square: ford before (black), downstream (orange, dashed)",
          size=HEAD, mono=False, bold=True)
     ax = axes(PX + 30, PY0 + 40, PW - 40, PW - 40)
     plan_view(ax, base, ds)
     text(PX, PY0 + PW + 30, "Hillshade of height, contours every 1 m; blue: water less height > 1 mm; "
-         "red tint: clearing = 1;\ndots: trees (before); arrows: bookmarks, 12 m toward their target; "
-         "boxes: the cottage's pad footprint.", size=10, mono=False, colour="#333333")
+         "red line: clearing = 0.5;\ndots: trees (before); arrows: bookmarks, 12 m toward their target; "
+         "boxes: the cottage's pad footprint.", size=10, mono=False, colour=GREY)
 
-    # Measures table under the plan.
+    # 3. Measures table under the plan.
     c = Col(PX, PY0 + PW + 74)
     c.head("3  Measures (lib/review/checks.py, the lint step through the SDK)")
-    c.line(f"{'measure':<18}{'subject':<18}{'before':>9}{'downstr.':>10}{'vertex':>9}", bold=True)
+    c.line(f"{'measure':<18}{'subject':<11}{'before':>9}{'downstr.':>10}{'vertex':>9}{'hand':>9}",
+           bold=True)
     for key in sorted(m0):
         name, subj = key
-        vals = [m.get(key) for m in (m0, m1, m2)]
-        c.line(f"{name:<18}{subj.split('.', 1)[1]:<18}"
-               + "".join(f"{('-' if v is None else f'{v:g}'):>{w}}" for v, w in zip(vals, (9, 10, 9))))
-    c.line("Protocol: data.value of each step.checks.* info in", colour="#333333")
-    c.line("diagnostics.json; units in checks.py; a measure informs,", colour="#333333")
-    c.line("never a target (R15). grade = rise over run.", colour="#333333")
+        vals = [m.get(key) for m in (m0, m1, m2, m3)]
+        c.line(f"{name:<18}{subj.split('.', 1)[1]:<11}"
+               + "".join(f"{('-' if v is None else f'{v:g}'):>{w}}"
+                         for v, w in zip(vals, (9, 10, 9, 9))))
+    c.line("Protocol: data.value of each step.checks.* info in diagnostics.json;", colour=GREY)
+    c.line("units in checks.py; a measure informs, never a target (R15).", colour=GREY)
+    c.line("grade = rise over run.", colour=GREY)
+    measures_bottom = c.y
 
-    # Change rows, full width under the views.
-    c = Col(40, max(views_bottom, 0) + 6)
+    # 5 and 6 under the views, left of the measures.
+    c = Col(40, views_bottom)
+    c.head("5  Build times (run report totals.ms)")
+    c.line(f"cold      {statistics.median(cold):>5} ms  median of {cold}")
+    c.line(f"unchanged {statistics.median(warm):>5} ms  median of {warm}")
+    c.line(f"Protocol: {threads} threads (default), release binary; cold = fresh")
+    c.line("store and directory each run; unchanged = rebuild into the same")
+    c.line("directory, warm store. The run report's own wall time; lint step")
+    c.line(f"included. Laptop, not isolated: load average {load.strip().strip('{} ')}")
+    c.line("  at the start (other builds were running).")
+    top = sorted(fam_n, key=lambda k: -fam_ms[k])
+    c.line(f"Graph: {nodes} nodes; first cold run, ms summed by family:")
+    c.line("  " + ", ".join(f"{k} {fam_ms[k]}" for k in top[:4]))
+    c.line("  nodes by family: " + ", ".join(f"{k} {fam_n[k]}" for k in top[:4]) + ", ...")
+    left_bottom = c.y
+
+    c = Col(760, views_bottom)
+    c.head("6  Conformance (tools/conformance, --via release)")
+    c.line("cases per milestone tag: " + ", ".join(f"{k} {v}" for k, v in sorted(per_m.items())))
+    c.line(f"run --milestone 1: {conf['pass']} pass, {conf['fail']} fail, "
+           f"{conf['pending']} pending, {conf['error']} error",
+           colour="black" if not conf_bad else BAD)
+    conf_bad = sorted(conf_bad, key=lambda s: (not s.startswith("fail"), s))
+    for a, b in zip(conf_bad[::2], conf_bad[1::2] + [""]):
+        c.line(f"  {a:<36}{b}", colour=BAD)
+    c.line(f"xtask cases (owed rows/codes): {cases_status}",
+           colour=BAD if "FAIL" in cases_status else "black")
+    for part in cases_note.split("; "):
+        c.line("  " + part)
+    c.line(f"xtask: {xtask_ok} other checks ok")
+    for s in q_lines:
+        c.line(s)
+    mid_bottom = c.y
+
+    # 4. Change rows, full width.
+    c = Col(40, max(left_bottom, mid_bottom, measures_bottom) + 6)
     c.head("4  The six change rows (docs/plan.md acceptance table): changes.json summary, then the checks")
     left = Col(40, c.y)
     right = Col(1240, c.y)
@@ -533,84 +676,72 @@ def main() -> None:
         col.y += 8
     y = max(left.y, right.y) + 4
 
-    # Bottom: build times, conformance and track A, still wrong.
+    # 7. Track A; 8. still wrong.
     c = Col(40, y)
-    c.head("5  Build times (run report totals.ms)")
-    c.line(f"cold      {statistics.median(cold):>5} ms  median of {cold}")
-    c.line(f"unchanged {statistics.median(warm):>5} ms  median of {warm}")
-    c.line(f"Protocol: {threads} threads (default), release binary;")
-    c.line("cold = fresh store and directory each run; unchanged =")
-    c.line("rebuild into the same directory, warm store. The run")
-    c.line("report's own wall time; lint step included. Laptop,")
-    c.line(f"not isolated. Graph: {nodes} nodes ({', '.join(str(s) for s in step_ms)} ms).")
-    c.head("6  Conformance (tools/conformance, --via release)")
-    c.line("cases per milestone tag: " + ", ".join(f"{k} {v}" for k, v in sorted(per_m.items())))
-    c.line(f"run --milestone 1: {conf['pass']} pass, {conf['fail']} fail, "
-           f"{conf['pending']} pending, {conf['error']} error",
-           colour="black" if not conf_bad else BAD)
-    for s in conf_bad:
-        c.line("  " + s, colour=BAD)
-    c.line(f"xtask cases (owed rows/codes): {cases_status}", colour=BAD if "FAIL" in cases_status else "black")
-    c.line("  " + cases_note.replace("; ", ";\n  ").split("\n")[0])
-    c.line("  " + (cases_note.split("; ", 1)[1] if "; " in cases_note else ""))
-    c.line(f"xtask: {xtask_ok} other checks ok")
-
-    c = Col(860, y)
     c.head("7  Track A gate (cargo test -p via-geom --release)")
     for s in gate_lines(meas):
         c.line(s)
-    c.line("clear removes one cell's building; a pin inside one is")
-    c.line("reported; every masked piece kept: unit tests")
+    c.line("clear removes one cell's building; a pin inside one is reported;")
+    c.line("every masked piece kept: unit tests")
     c.line(f"  {geom_tests.split('; ')[1]}")
     c.line(f"via-geom tests: {geom_tests.split('; ')[0]}")
-    c.line("same bytes on every system: macOS only (Linux and", colour=BAD)
-    c.line("  Windows testing set aside, doctrine 2026-11-13)", colour=BAD)
+    c.line("same bytes on every system: macOS only (Linux and Windows testing", colour=BAD)
+    c.line("  set aside, doctrine 2026-11-13)", colour=BAD)
     c.line("Spike numbers: fixtures/kernel/townland/reference.json")
     c.line("  (Shapely 2.2 / GEOS 3.14, floating point).")
+    bottom = c.y
 
-    c = Col(1640, y)
+    c = Col(1240, y)
     c.head("8  Still wrong")
-    for s in STILL_WRONG(rows, base):
-        c.line(s, colour=BAD if s and not s.startswith(" ") else BAD)
+    for s in STILL_WRONG(rows, base, conf_bad, cases_status):
+        c.line(s, colour=BAD)
+    bottom = max(bottom, c.y) + 30
 
-    fig.savefig(OUT, dpi=DPI, facecolor="white")
-    print(f"wrote {OUT}  (scratch builds in {tmp})")
+    fig.canvas.draw()
+    img = np.asarray(fig.canvas.buffer_rgba())[: int(bottom)]
+    plt.imsave(OUT, img)
+    print(f"wrote {OUT}  ({W}x{int(bottom)}; scratch builds in {tmp})")
 
 
-def STILL_WRONG(rows: list[dict], base: dict) -> list[str]:
+def STILL_WRONG(rows: list[dict], base: dict, conf_bad: list[str], cases_status: str) -> list[str]:
     d = base["dir"]
     h = np.load(d / "fields/height.npy").astype(np.float64)
     w = np.load(d / "fields/water.npy").astype(np.float64)
     wet_m2 = float(np.sum(w - h > 0.001)) * 0.25
-    failed = [s for r in rows for s, ok in r["checks"] if not ok]
-    out = [f"{len(failed)} acceptance check(s) not held above."]
-    out += [
-        f"Water covers {wet_m2:.0f} m2; the 6 m beck over",
-        "  ~270 m is ~1600 m2. The wet area spreads past",
-        "  the channel (water = height off the bed).",
-        "Water edges are stair-stepped: a quad is drawn",
-        "  when any post is wet (15.1), at 0.5 m posts.",
-        "Ground draws flat white: ford has no material",
-        "  field, so views lack ground contrast.",
-        "Trees are spheres on no trunk; the cottage a box;",
-        "  primitive pack only (asset facts arrive M2).",
-        "The graph has one node per field; shapes,",
-        "  scatter and lint are not nodes, so a change",
-        "  re-runs every field whole (no reuse).",
-        "A relative --lib breaks `lib:` step arguments",
-        "  (resolved twice); this script passes it",
-        "  absolute. via-cli steps.rs.",
-        "`via query` (surfaces.md 7, tagged M1) is not",
-        "  a command yet: no surface question asked.",
-        "Nothing walks ford: the loader makes collision,",
-        "  but no walker was run; views are cameras only.",
-        "in_trees after downstream: a grey shard at the",
-        "  lower left (a near-clipped shadow or mesh).",
-        "Case folders: most Conformance rows and codes",
-        "  have no case yet (section 6).",
-        "Same bytes across systems: macOS only.",
-    ]
+    failed = [f"{r['name'].split(' (')[0]}: {s}" for r in rows for s, ok in r["checks"] if not ok]
+    out = [f"{len(failed)} acceptance check(s) not held above" + (":" if failed else ".")]
+    out += ["  " + s for s in failed]
+    fails = [s.split()[1] for s in conf_bad if s.startswith("fail")]
+    if fails:
+        out.append(f"Conformance at milestone 1 fails: {', '.join(fails)} (section 6).")
+    pend = [s for s in conf_bad if s.startswith("pending")]
+    if pend:
+        out.append(f"{len(pend)} conformance case(s) at milestone 1 still pending (section 6).")
+    if "FAIL" in cases_status:
+        out.append(f"xtask cases: {cases_status}: owed case folders (section 6).")
+    out += STILL_WRONG_BY_EYE(wet_m2)
     return out
+
+
+def STILL_WRONG_BY_EYE(wet_m2: float) -> list[str]:
+    """Written by hand from looking at this sheet's views (2026-11-14); the one number is computed."""
+    out = []
+    if wet_m2 > 2000:
+        out += [f"Water covers {wet_m2:.0f} m2 (the 6 m beck over ~270 m is ~1600 m2): the wet",
+                "  area spreads past the channel."]
+    return out + [
+        "The ground is one grey: ford paints no material field, so the pack's grass",
+        "  and rock are never drawn (lib/land; a `weights` field, role material).",
+        "Lanes show only because the sheet asks `paths=kind:lane`: a drawing option",
+        "  (build.md 15.1), not the world's ground.",
+        "Trees are spheres on no trunk; the cottage a box with no door, so to_door",
+        "  looks at a blank wall: primitive pack only (asset facts arrive in M2).",
+        "In in_trees after hand, the pin oak and the clear gap cannot be told from",
+        "  the scatter by eye: the oak is the same sphere; the views do not mark them.",
+        "Nobody walked ford: the loader makes terrain collision, but no walker was",
+        "  run; the views are cameras only. 'On foot' is not shown.",
+        "Same bytes across systems: macOS only (set aside).",
+    ]
 
 
 if __name__ == "__main__":

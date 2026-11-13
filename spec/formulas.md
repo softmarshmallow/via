@@ -575,7 +575,8 @@ its ends. Each sample's value is the field's at that lattice point, by `fields.m
 **`under`.** `'mean'` is the sum of the samples by `numbers.md` 8, rule 5 (the chunk rule), in sample
 order, divided by their count. `'min'` and `'max'` fold the samples in order by `numbers.md` 8,
 rule 4.
-`'edge_min'` (regions only, else `formula.shape`) is the least value at the posts within 1.5
+`'edge_min'` (regions only, else `formula.shape`, said at selection from M1, before its M2
+`doc.not_yet`, since the shape is a fault whatever the milestone) is the least value at the posts within 1.5
 spacings of the region's outline, inside or outside it, in post order. The test is exact on the
 lattice: a post `p` is in the band when, for some outline segment, `4 * dist² <= 9 * r²` in integer
 square millimetres (for a projection inside the segment, `dist² = cross(e, w)² / |e|²`, compared

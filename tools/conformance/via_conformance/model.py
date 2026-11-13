@@ -17,7 +17,8 @@ FORMAT = "via-case-1"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 MAX_ID_BYTES = 48
 
-ACTION_KINDS = ("via", "replace", "write", "delete", "flip", "truncate")
+ACTION_KINDS = ("via", "replace", "write", "delete", "flip", "truncate", "derive")
+DERIVE_AS = ("segments", "cells")
 SAME_WHAT_WORDS = ("id", "files", "diagnostics", "stdout", "ran")
 DIAG_MODES = ("exact", "includes", "any")
 
@@ -35,10 +36,18 @@ NAMED_CHECKS: dict[str, tuple[set[str], set[str]]] = {
     "run_node": ({"path", "node", "includes"}, set()),
     "array_window": ({"whole", "part", "window"}, set()),
     "run_report_valid": ({"path"}, set()),
-    "json_list": ({"path", "pointer"}, {"from", "at_least", "includes", "starts", "last"}),
+    "pack_root_resolves": ({"build"}, set()),
+    "json_list": ({"path", "pointer"}, {"from", "at_least", "includes", "starts", "last", "nulls"}),
     "instance_at": ({"build", "name", "at"}, set()),
     "changes_inside": ({"path", "prefix", "at", "radius", "what", "cause"}, set()),
     "changes_absent": ({"path"}, {"entry_names", "causes"}),
+    "network_valid": ({"path", "input"}, set()),
+    "network_measures": ({"path", "reference"}, set()),
+    "noding_valid": ({"path", "input"}, {"bound"}),
+    "noding_same": ({"first", "second"}, set()),
+    "names_same": ({"first", "second"}, set()),
+    "cells_valid": ({"path", "input", "network"}, {"bound"}),
+    "sample_terrain": ({"path", "input", "field", "manifest"}, set()),
 }
 
 
@@ -281,7 +290,7 @@ def _parse_diag(t: dict[str, Any], where: str) -> None:
         if k in t:
             _int(t[k], f"{where}.{k}", 0)
     if "records" in t:
-        _int(t["records"], f"{where}.records", 1)
+        _int(t["records"], f"{where}.records", 0)
     if "bytes" in t:
         b = t["bytes"]
         _expect_type(b, (list,), f"{where}.bytes", "2 integers")
@@ -366,7 +375,8 @@ def _parse_named(t: dict[str, Any], where: str) -> None:
     required, optional = NAMED_CHECKS[fn]
     args = {k: v for k, v in t.items() if k != "fn"}
     _keys(args, where, required, optional)
-    for k in ("path", "before", "after", "build", "world", "names", "whole", "part"):
+    for k in ("path", "before", "after", "build", "world", "names", "whole", "part", "input", "reference",
+              "first", "second", "network", "field", "manifest"):
         if k in args:
             _relative(_str(args[k], f"{where}.{k}"), f"{where}.{k}")
     for k in ("fields", "kinds", "what", "fns", "entry_names", "causes"):
@@ -385,6 +395,8 @@ def _parse_named(t: dict[str, Any], where: str) -> None:
             raise CaseError(f"{where}.pointer: {ptr!r} is not a JSON Pointer")
     if "count" in args:
         _int(args["count"], f"{where}.count", 0)
+    if "bound" in args:
+        _number(args["bound"], f"{where}.bound")
     if "window" in args:
         win = args["window"]
         _expect_type(win, (list,), f"{where}.window", "[i0, j0, i1, j1]")
@@ -532,6 +544,19 @@ def _parse_edit(a: Action) -> None:
     elif a.kind == "truncate":
         _keys(t, where, {"truncate", "bytes"}, set())
         _int(t["bytes"], f"{where}.bytes", 0)
+    elif a.kind == "derive":
+        _keys(t, where, {"derive", "from", "as"}, {"input", "params"})
+        _relative(_str(t["from"], f"{where}.from"), f"{where}.from")
+        if t["as"] not in DERIVE_AS:
+            raise CaseError(f"{where}.as: {t['as']!r} is not one of {', '.join(DERIVE_AS)}")
+        if "input" in t:
+            _relative(_str(t["input"], f"{where}.input"), f"{where}.input")
+        if t["as"] == "cells":
+            if "input" not in t or "params" not in t:
+                raise CaseError(f"{where}: `as = \"cells\"` needs `input` and `params`")
+            _table(t["params"], f"{where}.params")
+        elif "params" in t or "input" in t:
+            raise CaseError(f"{where}: only `as = \"cells\"` takes `input` and `params`")
 
 
 def check_id(value: str, where: str) -> None:

@@ -10,8 +10,8 @@ use crate::Severity;
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// A message or hint: text that is not empty and not only white space (1.3: "check your input"
-/// is not a hint, and no hint is not a hint either).
+/// A message or hint: text that holds at least one letter, so neither blank nor a placeholder
+/// such as `-` (1.3: "check your input" is not a hint, and no hint is not a hint either).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Text(String);
 
@@ -21,17 +21,20 @@ pub struct BlankText;
 
 impl fmt::Display for BlankText {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("a diagnostic's message and hint cannot be blank")
+        f.write_str(
+            "a diagnostic's message and hint must hold a letter, not be blank or a placeholder",
+        )
     }
 }
 
 impl std::error::Error for BlankText {}
 
 impl Text {
-    /// The text, or `BlankText` when it is empty or only white space.
+    /// The text, or `BlankText` when it holds no letter: empty, white space, or a placeholder
+    /// such as `-` or `?`.
     pub fn new(s: impl Into<String>) -> Result<Text, BlankText> {
         let s = s.into();
-        if s.chars().all(char::is_whitespace) {
+        if !s.chars().any(char::is_alphabetic) {
             Err(BlankText)
         } else {
             Ok(Text(s))
@@ -204,17 +207,9 @@ impl Diag {
         message: Text,
         hint: Text,
     ) -> Diag {
-        // 1.3: where a name was not found, the hint gives the nearest name and `data.nearest`
-        // holds it. The hint `write `x`` is how `nearest::Nearest::hint` gives one, so a code
-        // whose row declares `nearest` carries it whichever raiser wrote the hint.
-        let mut data = BTreeMap::new();
-        if let DiagCode::Core(c) = &code {
-            if c.row().data.contains(&"nearest") {
-                if let Some(n) = nearest_in_hint(hint.as_str()) {
-                    data.insert("nearest".to_string(), Value::text(n.to_string()));
-                }
-            }
-        }
+        // 1.3's nearest name is set by the lookup that found it ([`Diag::nearest_name`]),
+        // never read back from the hint's wording.
+        let data = BTreeMap::new();
         Diag(Box::new(DiagInner {
             code,
             subject,
@@ -249,6 +244,23 @@ impl Diag {
     pub fn related(mut self, related: Related) -> Diag {
         self.0.related.push(related);
         self
+    }
+
+    /// The nearest name of a not-found record (1.3), as the lookup found it: `data.nearest`
+    /// holds it, and when the world declares it in text, `related` points at that declaration
+    /// (`declared` is its subject and site) with the note "declared here".
+    #[must_use]
+    pub fn nearest_name(self, name: &str, declared: Option<(Subject, Site)>) -> Diag {
+        let d = self.with("nearest", Value::text(name.to_string()));
+        match declared {
+            Some((subject, site)) => d.related(Related {
+                subject,
+                site,
+                position: None,
+                note: crate::text!("declared here"),
+            }),
+            None => d,
+        }
     }
 
     /// The produced name this occurrence is about (1.1): the subject is its producer, and the
@@ -315,6 +327,11 @@ impl Diag {
     /// The produced name, if any.
     pub fn produced_name(&self) -> Option<&str> {
         self.0.name.as_deref()
+    }
+
+    /// The count the record states itself ([`Diag::counted`]), if any.
+    pub fn stated_count(&self) -> Option<u32> {
+        self.0.count
     }
 
     /// `data` names that the code's registry row does not list (section 2: a registry defect when
@@ -398,12 +415,6 @@ impl Diag {
         .with("message", message);
         internal.emit(resolver)
     }
-}
-
-/// The name of a hint that is exactly `write `x`` (`nearest::Nearest::hint`), if it is one.
-fn nearest_in_hint(hint: &str) -> Option<&str> {
-    let n = hint.strip_prefix("write `")?.strip_suffix('`')?;
-    (!n.is_empty() && !n.contains('`')).then_some(n)
 }
 
 fn resolve(resolver: &dyn Resolve, subject: &Subject, site: &Site) -> Option<Resolved> {

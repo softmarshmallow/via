@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "ford on the primitive pack, then changes/bigger.toml against it: cottage changed only, footprint cottage moved, both with old and new facts; world text untouched."
+summary   = "ford on the primitive pack, then changes/bigger.toml against it: cottage moved and changed (its pad levels it to another mean), footprint cottage moved, both with old and new facts; world text untouched."
 milestone = 1
 actions   = ["program", "trust", "base", "bigger"]
 
@@ -82,3 +82,50 @@ includes = { cause = "asset.house_low.size" }
 path     = "build/ford+bigger/changes.json"
 pointer  = "/entries/4/causes/1"
 includes = { cause = "world.pack" }
+
+# What runs (graph.md 1, the frame): `pack` is not a key of the frame (the `world` statement), so
+# swapping it reruns only the nodes made from `world.pack` (those that resolve asset names: the
+# hand instance, the scatter rule) or from the changed `asset:house_low`, and what reads their
+# changed values. Every shape, the attributes of features that name nothing on the cottage, the
+# selections and the distances of unchanged features read neither, so none of them runs. The
+# chunks below follow from edges whose values changed and are left out of the exact list: only
+# the nodes the rule decides are asserted.
+[action.bigger.nodes]
+ran_includes = [
+    "merge",
+    "source:changes/bigger.toml",
+    "instance:cottage/v:build",
+    "footprint:cottage/v:build",
+    "height:cottage/v:build",
+    "distance:cottage.ground/*",
+    "rule:trees/v:build",
+]
+not_ran = [
+    "shape:*",
+    "attr:beck",
+    "attr:ford",
+    "attr:at_ford",
+    "attr:on_bank",
+    "attr:in_trees",
+    "attr:lane_west",
+    "attr:lane_east",
+    "select:*",
+    "distance:beck/*",
+    "distance:ford/*",
+    "distance:lane_west/*",
+    "distance:lane_east/*",
+    "source:world.toml",
+]
+
+# A hand instance's `via` ends at its `instance:` node, never at `height:` (only a pin's may,
+# build.md 11.2). The cottage's node is made from `asset:house_low` and `world.pack` (graph.md 1),
+# so each chain is that one node, both ends included.
+[action.bigger.file.cottage_via_size]
+path    = "build/ford+bigger/changes.json"
+pointer = "/entries/4/causes/0/via"
+value   = ["instance:cottage/v:build"]
+
+[action.bigger.file.cottage_via_pack]
+path    = "build/ford+bigger/changes.json"
+pointer = "/entries/4/causes/1/via"
+value   = ["instance:cottage/v:build"]

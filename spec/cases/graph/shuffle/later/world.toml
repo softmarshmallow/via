@@ -10,11 +10,11 @@ spacing = 6
 [change.hand.clear.gap]
 by = ["trees"]
 radius = 6
-at = [208, 208]
+at = [226, 122]
 
 [change.hand.pin.oak]                     # the hand edits the spacing row holds
 by = ["trees"]
-at = [200, 60]
+at = [213, 141]
 asset = "tree_oak"
 
 [change.downstream.feature.ford]          # the change scenario is one line
@@ -25,7 +25,7 @@ command = ["python", "-m", "viasdk", "lib:review/checks.py"]
 when = "lint"
 
 [scatter.trees]
-density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), near('lane_east', 16))"   # a wood along lane_east; the scatter applies keep_out itself
+density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), 1 - smoothstep(14, 22, dist('lane_east', 22)))"   # a wood along lane_east, out to 14 m; the scatter applies keep_out itself
 spacing = 7
 assets = ["@plant/tree"]
 

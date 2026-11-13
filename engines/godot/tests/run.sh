@@ -25,12 +25,16 @@ r=$(godot --script res://tests/test_loader.gd); printf '%s\n' "$r" | grep -v "^o
 step "water in the frame at at_ford"
 godot --script res://tests/test_water.gd || fail=1
 
+step "exposure: known colours under the sheet's rig, not clipped, hue kept"
+r=$(godot --script res://tests/test_exposure.gd); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
 step "sheet: before and after"
 rm -rf "$OUT"
 "$ROOT/sheet.sh" --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" --out "$OUT/pair" \
-  --option water=tag:water_level >/dev/null 2>&1
+  --option water=tag:water_level --option paths=kind:lane >/dev/null 2>&1
 s=$?; [ $s -eq 0 ] || { echo "FAIL sheet exit $s"; fail=1; }
-quiet python3 "$HERE/check_sheet.py" "$OUT/pair" 5 || fail=1
+quiet python3 "$HERE/check_sheet.py" "$OUT/pair" 5 --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" || fail=1
 python3 - "$OUT/pair/diagnostics.json" <<'EOF' || fail=1
 import json, sys
 d = json.load(open(sys.argv[1]))
@@ -40,11 +44,23 @@ ok = want in codes and d["status"] == 0
 print(("ok   " if ok else "FAIL ") + "sheet diagnostics: the after build's bad bookmark is load.bad_target", codes)
 sys.exit(0 if ok else 1)
 EOF
+python3 - "$OUT/pair/sheet.json" <<'EOF' || fail=1
+import json, sys
+marks = {b["name"]: b for b in json.load(open(sys.argv[1]))["bookmarks"]}
+e = marks["at_ford"]["eye"]
+d = marks["downstream_view"]["eye"]
+t = marks["at_ford"]["target"]
+dt = marks["downstream_view"]["target"]
+ok = (e["before"] != e["after"] and d["before"] is None and d["after"] is not None
+      and t["before"]["at"] != t["after"]["at"] and dt["before"] is None and dt["after"] is not None)
+print(("ok   " if ok else "FAIL ") + "sheet.json: at_ford's eye and target moved, each given per build; a bookmark in one build has one", e, t, d, dt)
+sys.exit(0 if ok else 1)
+EOF
 
 step "sheet: one build, rewritten in place"
 "$ROOT/sheet.sh" --before "$HERE/fixture_build" --out "$OUT/one" >/dev/null 2>&1 || { echo "FAIL sheet exit"; fail=1; }
 "$ROOT/sheet.sh" --before "$HERE/fixture_build" --out "$OUT/one" >/dev/null 2>&1 || { echo "FAIL second run over its own folder"; fail=1; }
-quiet python3 "$HERE/check_sheet.py" "$OUT/one" 4 --one || fail=1
+quiet python3 "$HERE/check_sheet.py" "$OUT/one" 4 --one --before "$HERE/fixture_build" || fail=1
 
 step "sheet: bad arguments exit 2 and write nothing"
 mkdir -p "$OUT/foreign" && echo x > "$OUT/foreign/keep.txt"

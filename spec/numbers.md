@@ -160,7 +160,8 @@ The world frame is the plane `x`, `y` with `z` up. A world's fields are sampled 
 - `x1 - x0` and `y1 - y0` must each be a whole multiple of `r`. Otherwise `num.extent_not_multiple`.
   Its hint keeps `x0` and `y0`, and gives `x1` and `y1` rounded down and up to multiples of `r`; it
   also gives the resolutions nearest `r`, below and above, that divide both widths (divisors of their
-  greatest common divisor, in millimetres). Nothing is rounded.
+  greatest common divisor, in millimetres). Nothing is rounded. The hint is written in metres, and a
+  rounded-up `x1` or `y1` beyond the lattice range (3.1) is left out, as is a resolution with none.
 - A **post** is a sample point of the grid. There are `nx = (x1 - x0) / r + 1` posts along `x` and
   `ny = (y1 - y0) / r + 1` along `y`. Both edges carry posts.
 - `nx * ny` is at most `2^26` (67,108,864) posts, else `num.too_many_posts`, checked before anything

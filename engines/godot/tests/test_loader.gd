@@ -9,7 +9,7 @@ const Npy := preload("res://addons/via_loader/npy.gd")
 const CJson := preload("res://addons/via_loader/cjson.gd")
 const Primitives := preload("res://addons/via_loader/primitives.gd")
 
-const EXPECTED := 55
+const EXPECTED := 66
 var failed := 0
 var ran := 0
 var tests_dir := ""
@@ -22,6 +22,8 @@ func _initialize() -> void:
 	_cjson_exact()
 	_before()
 	_after()
+	_colours()
+	_paths()
 	_no_manifest()
 	_bad_format()
 	_options()
@@ -213,6 +215,93 @@ func _after() -> void:
 		and doc.status == 0 and doc.counts.warning == 1 and doc.diagnostics[0].code == "load.bad_target")
 	check("after: the document is canonical", FileAccess.get_file_as_string(out) == CJson.text(doc))
 	root.free()
+
+
+func _colours() -> void:
+	## A pack material and an asset declare their colour in linear RGB (assets.md 2.6, 6): the
+	## fixture's `rock` material and `rock_a` asset share one, and both paths must draw it as given.
+	var dir := tests_dir + "/fixture_build"
+	var manifest: Dictionary = _json(dir + "/manifest.json")
+	var loader := Loader.new()
+	var root := loader.make(dir, {})
+	var declared: Array = manifest.materials.rock.colour
+	var want := Color(declared[0], declared[1], declared[2])
+	var names: Array = manifest.chunks[0].weights.material.materials
+	var params := ((root.get_node("c_0_0/ground") as MeshInstance3D).material_override as ShaderMaterial).get_shader_parameter("params") as ImageTexture
+	var px := params.get_image().get_pixel(names.find("rock"), 0)
+	check("colours: a material's colour reaches the terrain shader as declared", Color(px.r, px.g, px.b).is_equal_approx(want), str(px))
+	var inst := (root.get_node("c_0_0/rock_a") as MultiMeshInstance3D).material_override as ShaderMaterial
+	var ic: Color = inst.get_shader_parameter("colour")
+	check("colours: an asset's colour reaches the instance shader as declared, equal to the material's", ic.is_equal_approx(want)
+		and manifest.assets.rock_a.colour == declared, str(ic))
+	var hinted := inst.shader.get_shader_uniform_list().filter(func(u): return u.name == "colour" and u.hint == PROPERTY_HINT_COLOR_NO_ALPHA)
+	check("colours: the instance shader does not convert its colour (no source_color)", hinted.is_empty())
+	root.free()
+
+
+func _paths() -> void:
+	var dir := tests_dir + "/fixture_build"
+	var feats: Array = _json(dir + "/features.json").features
+	var loader := Loader.new()
+	var root := loader.make(dir, {"paths": ["kind:lane"]})
+	check("paths: loads", root != null, loader.option_error)
+	if root == null:
+		return
+	var held := root.get_node("paths").get_children().map(func(n): return String(n.name))
+	check("paths: one strip per lane, the beck not drawn", held == ["lane_east", "lane_west"], str(held))
+	var west: Dictionary = feats.filter(func(x): return x.name == "lane_west")[0]
+	var west_mi := root.get_node("paths/lane_west") as MeshInstance3D
+	var v: PackedVector3Array = west_mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var n: int = west_mi.get_meta("across")
+	var res: float = loader._res
+	check("paths: vertices across no further apart than the post spacing",
+		n >= 3 and n % 2 == 1 and float(west.attrs.width) / (n - 1) <= res + 1e-6, str([n, res]))
+	var p0: Array = west.points[0]
+	var mid := v[(n - 1) / 2]
+	check("paths: the strip runs from the lane's first point, on the ground plus the lift",
+		is_equal_approx(mid.x, float(p0[0])) and is_equal_approx(-mid.z, float(p0[1]))
+		and is_equal_approx(mid.y, loader.ground_at(float(p0[0]), float(p0[1])) + Loader.PATH_LIFT), str(mid))
+	check("paths: as wide as the lane's width attribute", is_equal_approx(Vector2(v[0].x - v[n - 1].x, v[0].z - v[n - 1].z).length(), float(west.attrs.width)))
+	var pe: Array = west.points[-1]
+	var last := v[v.size() - n + (n - 1) / 2]
+	check("paths: the strip ends at the lane's last point", is_equal_approx(last.x, float(pe[0])) and is_equal_approx(-last.z, float(pe[1])), str(last))
+	# The lanes meet at the ford: one join, drawn once, by the first lane by name, centred there.
+	var east_mi := root.get_node("paths/lane_east") as MeshInstance3D
+	check("paths: lanes sharing an end are joined there once", east_mi.get_meta("joins") == 1 and west_mi.get_meta("joins") == 0,
+		str([east_mi.get_meta("joins"), west_mi.get_meta("joins")]))
+	var ev: PackedVector3Array = east_mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var east: Dictionary = feats.filter(func(x): return x.name == "lane_east")[0]
+	var ep: Array = east.points[0]
+	var centre_at := -1   # the last vertex there: the strip's first row has one too
+	for k in ev.size():
+		if is_equal_approx(ev[k].x, float(ep[0])) and is_equal_approx(-ev[k].z, float(ep[1])):
+			centre_at = k
+	check("paths: the join is a disc at the shared point, after the strip", centre_at >= 0 and centre_at % n == 0 and centre_at > n,
+		str([centre_at, n]))
+	if centre_at >= 0:
+		var rim := ev[ev.size() - 1]   # on the outer ring
+		check("paths: the join is as wide as the lane", is_equal_approx(Vector2(rim.x - ev[centre_at].x, rim.z - ev[centre_at].z).length(), float(east.attrs.width) * 0.5),
+			str(rim))
+	# Draped on the ground as its mesh draws it: each quad split from south-west to north-east.
+	var x0: float = loader._x0
+	var y0: float = loader._y0
+	var h00: float = loader._h(3, 4)
+	var h10: float = loader._h(4, 4)
+	var h11: float = loader._h(4, 5)
+	var h01: float = loader._h(3, 5)
+	var on_se := loader.ground_at(x0 + 3.75 * res, y0 + 4.25 * res)
+	var on_nw := loader.ground_at(x0 + 3.25 * res, y0 + 4.75 * res)
+	check("paths: ground_at follows the ground mesh's triangles",
+		is_equal_approx(on_se, h00 + 0.75 * (h10 - h00) + 0.25 * (h11 - h10))
+		and is_equal_approx(on_nw, h00 + 0.75 * (h01 - h00) + 0.25 * (h11 - h01)), str([on_se, on_nw]))
+	root.free()
+	var none := Loader.new()
+	check("paths: a selector matching no path feature is an option error",
+		none.make(dir, {"paths": ["kind:road"]}) == null and none.option_error.begins_with("paths:"), none.option_error)
+	var opts := {}
+	check("option: paths is a list of names and kind:<kind>", Loader.parse_option(opts, "paths", "kind:lane,beck") == ""
+		and opts.paths == ["kind:lane", "beck"])
+	check("option: paths refuses a field selector", Loader.parse_option(opts, "paths", "role:surface") != "")
 
 
 func _no_manifest() -> void:

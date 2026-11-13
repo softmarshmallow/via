@@ -133,10 +133,17 @@ impl Grid {
         let h = checked_sub(y1, y0, "extent height")?;
         let r = resolution;
         if w % r != 0 || h % r != 0 {
+            // Rounded down lies between `lo` and the written corner, so on the lattice; rounded
+            // up may not, and is then left out rather than suggested (`num.out_of_range`).
             let round = |lo: i64, width: i64| {
                 let down = lo + (width / r) * r;
-                let up = if width % r == 0 { down } else { down + r };
-                [down, up]
+                let mut out = vec![down];
+                if width % r != 0 {
+                    if let Some(up) = down.checked_add(r).filter(|&v| in_lattice(v)) {
+                        out.push(up);
+                    }
+                }
+                out
             };
             let (resolution_below, resolution_above) = nearest_divisors(gcd(w, h), r);
             return Err(NumError::ExtentNotMultiple {
@@ -227,12 +234,50 @@ mod tests {
         match Grid::new([0, 0, 10_000, 6_000], 3_000) {
             Err(NumError::ExtentNotMultiple { hint, .. }) => {
                 assert_eq!(hint.x1, [9_000, 12_000]);
-                assert_eq!(hint.y1, [6_000, 6_000]);
+                assert_eq!(hint.y1, [6_000]);
                 assert_eq!(hint.resolution_below, Some(2_000));
                 assert_eq!(hint.resolution_above, None);
             }
             other => panic!("{other:?}"),
         }
+        let text = Grid::new([0, 0, 10_000, 6_000], 3_000)
+            .unwrap_err()
+            .to_string();
+        assert_eq!(
+            text,
+            "extent [0, 0, 10, 6] is not a whole multiple of resolution 3; keep x0 and y0 and \
+             try x1 9 or 12, y1 6, or resolution 2"
+        );
+    }
+
+    /// The hint is user text in metres, never a Rust rendering, and never suggests a corner the
+    /// lattice cannot hold.
+    #[test]
+    fn not_multiple_hint_stays_on_the_lattice() {
+        // Widths 4,294,966,500 mm: rounded up, x1 would be 2,147,485,000 mm, above 2^31 - 1.
+        let (lo, hi) = (-2_147_483_000, 2_147_483_500);
+        let err = Grid::new([lo, lo, hi, hi], 2_000).unwrap_err();
+        match &err {
+            NumError::ExtentNotMultiple { hint, .. } => {
+                assert_eq!(hint.x1, [2_147_483_000]);
+                assert_eq!(hint.y1, [2_147_483_000]);
+                assert!(hint.x1.iter().chain(&hint.y1).all(|&v| in_lattice(v)));
+            }
+            other => panic!("{other:?}"),
+        }
+        let text = err.to_string();
+        assert!(!text.contains("Some") && !text.contains("None"), "{text}");
+        assert!(
+            text.contains("[-2147483, -2147483, 2147483.5, 2147483.5]"),
+            "{text}"
+        );
+        assert!(text.contains("x1 2147483, y1 2147483,"), "{text}");
+        assert!(!text.contains("2147485"), "{text}");
+        // An absent resolution above is left out, not written.
+        let text = Grid::new([0, 0, 10_000, 6_000], 3_000)
+            .unwrap_err()
+            .to_string();
+        assert!(text.ends_with("or resolution 2"), "{text}");
     }
 
     #[test]

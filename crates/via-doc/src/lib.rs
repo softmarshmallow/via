@@ -32,6 +32,7 @@ mod source;
 mod tree;
 mod world;
 
+pub use change::free_name;
 pub use ids::{is_id, repair as repair_id};
 pub use json::FORMAT;
 pub use load::{load, ChangeRequest, LoadOptions, Loaded};

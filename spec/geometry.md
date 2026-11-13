@@ -497,14 +497,18 @@ in urban modeling", simplified to straight cuts):
    numbered along the edge side from 0, counted from the edge's start in its source's direction,
    across its stretches.
 5. **Cuts.** At each station a cut runs into the band, square to the segment that holds it (2.6), of
-   length `2 × band_depth`. At a stretch end inside a chain the cut runs along the corner's bisector:
-   the direction is the sum of the two segments' unit inward normals, in doubles. Cut ends are
-   rounded to the lattice. Chain ends need no cut: the butt caps bound the band.
+   length `band_depth` plus 2 mm. At a stretch end inside a chain the cut runs along the corner's
+   bisector: the direction is the sum `s` of the two segments' unit inward normals, in doubles, and
+   the length `min(2 / |s|, 2) × band_depth` plus 2 mm, to the corner of the band's far side. Cut
+   ends are rounded to the lattice. Chain ends need no cut: the butt caps bound the band. Each
+   chain's **far side**, its frontage offset `band_depth` inward, consecutive segments joined where
+   their offset lines cross (bevelled past ratio 2), is built in with the cuts, so a cut never
+   divides the cells of a frontage across a region narrower than `2 × band_depth`.
 6. **Cells.** The band's outline and the cuts are built into a network with `clip` = the band (3.1,
    3.2). An area of it that borders the frontage between two stations of one edge side is that
-   station's cell. An area that borders several such portions is one cell, takes the lowest
-   (edge, side, station), and is reported by `geom.cell_merged`. An area that borders none is part of
-   `rest`. A cut that meets another near a concave bend so splits cleanly instead of crossing.
+   station's cell; when several areas take one station, they are joined into its one cell. An area
+   that borders several such portions is one cell, takes the lowest (edge, side, station), and is
+   reported by `geom.cell_merged`. An area that borders none is part of `rest`. A cut that meets another near a concave bend so splits cleanly instead of crossing.
 7. **Short cells.** A cell is short when its frontage portion is shorter than `min_cell_length` or its
    area is under `min_cell_area`. Repeat until none can merge: take the first short cell in output
    order that has a neighbour on its edge side, and merge it into the one before it (the one after,

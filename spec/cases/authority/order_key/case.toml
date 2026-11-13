@@ -7,11 +7,17 @@ actions   = ["one", "two"]
 # shape (`1 - smoothstep(0, 1, d)`, so 1 on the shape and 0 by 1 m off it), on a field whose base is
 # 0; the post's value spells the order. The kinds are the case's own library `tiers` (libs/).
 # Pavement writes k, roadway k + 5: a's pavement 1, b's 2, a's roadway 6, b's 7.
+# The two ways cross and neither ends on the other, so the build also warns
+# geom.unowned_crossing at (8, 8) (geometry.md 2.7, R18); the order is unchanged by it.
 
 [action.one]
 via  = ["build", "one/world.toml", "--lib", "{work}/libs", "--out", "one/build/w"]
 exit = 0
 out  = "one/build/w"
+
+[action.one.diag.crossing]
+code     = "geom.unowned_crossing"
+position = [8, 8]
 
 [action.one.file.order]
 path  = "one/build/w/fields/height.npy"
@@ -22,6 +28,10 @@ value = 1267
 via  = ["build", "two/world.toml", "--lib", "{work}/libs", "--out", "two/build/w"]
 exit = 0
 out  = "two/build/w"
+
+[action.two.diag.crossing]
+code     = "geom.unowned_crossing"
+position = [8, 8]
 
 [action.two.file.order]
 path  = "two/build/w/fields/height.npy"
