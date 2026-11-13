@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "r20 on extent [-20, -20, 20, 20]: lattice cell (-1, -1) at (-4105, -6285), named trees#s7000_n1_n1."
+milestone = 1
+actions   = ["build"]
+
+# (open) as r20.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

@@ -1,0 +1,7 @@
+[kind.mark]
+radius = 2
+
+[kind.mark.effect.e]
+field = "tag:woods"
+value = 5
+mask  = "= 1 - smoothstep(0, 1, d)"

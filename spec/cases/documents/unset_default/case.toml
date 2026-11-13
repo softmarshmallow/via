@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A change unsets width on a feature whose kind defaults it: the feature has no width; the kind's defaults.width is present."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "a"]
+exit = 0
+
+[action.merge.file.feature]
+stream  = "stdout"
+pointer = "/feature/lane"
+value   = { "@layer" = "world", kind = "lane", path = [[0, 40], [128, 60]] }
+
+[action.merge.file.kind]
+stream  = "stdout"
+pointer = "/kind/lane/defaults/width"
+value   = 4

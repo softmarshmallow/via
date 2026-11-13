@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A change writing include; another writing name: doc.change_fixed each."
+milestone = 1
+actions   = ["include", "name"]
+
+[action.include]
+via  = ["merge", "world.toml", "--change", "a"]
+exit = 1
+
+[action.include.diag.change_fixed]
+code = "doc.change_fixed"
+file = "world.toml"
+line = 16
+
+[action.name]
+via  = ["merge", "world.toml", "--change", "b"]
+exit = 1
+
+[action.name.diag.change_fixed]
+code = "doc.change_fixed"
+file = "world.toml"
+line = 19

@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A name holding e-acute, a tab and a quote: e-acute as raw UTF-8; \\u0009; \\\"."
+milestone = 1
+actions   = ["merge"]
+
+# The pointer compares the parsed value; the bytes (raw UTF-8, \u0009, \") are documents.md 8's canonical form, which U5's reader and the runner's canonical check enforce.
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 0
+
+[action.merge.file.name]
+stream  = "stdout"
+pointer = "/name"
+value   = "millé\t\""

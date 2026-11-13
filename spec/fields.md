@@ -526,15 +526,15 @@ Reading `f('height')` inside `cover` resolves `height` first, with its one row. 
 | `field.file_too_large` | error | More samples than the post-count limit; the header's size. | Crop or downsample the raster. |
 | `field.file_key` | error | A file key without `file`, one that does not apply, an unknown `channel` or `filter`, or a channel the picture lacks. | The keys that apply; for `luma`, name one channel. |
 | `field.file_outside` | error | `file` without `outside`. | Add `outside`, the value beyond the raster. |
-| `field.file_range` | error | `range` with `lo == hi`. | A constant is a `base`. |
+| `field.file_range` | error | `range` with `lo == hi` (M2). | A constant is a `base`. |
 | `field.file_offworld` | warning | A raster `extent` wholly outside the world's. | Correct `extent`. |
 | `field.file_nonfinite` | error | A non-finite sample; its row and column. | Repair the file. |
-| `field.file_coarse` | warning | A level step above 0.1 m on a field in `m`; the step. | Use 16-bit, or a narrower `range`. |
-| `field.file_profile` | info | A PNG's gamma, colour profile or `tRNS` was not applied. | None needed; levels are read as stored. |
+| `field.file_coarse` | warning | A level step above 0.1 m on a field in `m`; the step (M2). | Use 16-bit, or a narrower `range`. |
+| `field.file_profile` | info | A PNG's gamma, colour profile or `tRNS` was not applied (M2). | None needed; levels are read as stored. |
 | `field.unpainted` | warning | Posts of the `material` field with weights summing below 1; the first and the count. | Add a first row with no mask. |
 | `field.effect_cut` | warning | An effect's mask is above 0.02 on its ring; the effect, the feature and the first post. | Raise `radius`, or fade `mask` to 0 by it. |
-| `field.step_base` | error | A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare. | Return rows on the field instead. |
-| `field.step_layer` | error | A step's row on a field of a higher layer. | Move the step up, or the field down. |
+| `field.step_base` | error | A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare (M2). | Return rows on the field instead. |
+| `field.step_layer` | error | A step's row on a field of a higher layer (M2). | Move the step up, or the field down. |
 
 Codes of other chapters used here: `doc.unknown_key`, `doc.not_yet`, `doc.file_missing`,
 `doc.path_case`, `doc.file_unreadable`, `doc.upward_ref`,
@@ -559,7 +559,7 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 | row reads `v` | base 5, row `value = "= v + 2"` | 7 |
 | row order | rows `b` (order 0) value 1, `a` (order 0) value 2, `c` (order -1) value 3, all mask 1 | 1 (c, then a, then b) |
 | value required | a scalar row with only `mask`; a weights row with no `paint` | `field.row_missing` at each row's line |
-| unknown row key | row `colour = 1` | `doc.unknown_key`, hint `value` |
+| unknown row key | row `valeu = 1` | `doc.unknown_key`, hint `value` |
 | type unknown | `type = "material"` | `field.type_unknown`, hint `type = "weights"`, `role = "material"` |
 | weights rule | grass mask 1, rock mask 0.25 | grass 0.75, rock 0.25 |
 | weights sum | `spec/vectors/fields/masks.toml`: ten rows of three materials, `mask = "= 0.5 + 0.5 * sin(37 * x + 11 * y + <k>)"` | every post sums to at most 1 + 1e-6 |
@@ -568,7 +568,7 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 | roles | two `material` fields; `role = "water"` | `field.role_twice`; `field.role_unknown` |
 | role type | `role = "material"` on a scalar field | `field.role_type` |
 | role unit | `role = "surface"`, `unit = "deg"` | `field.role_unit` |
-| unit unknown | `unit = "metres"` | `field.unit_unknown`, hint `m` |
+| unit unknown | `unit = "dg"` | `field.unit_unknown`, hint `deg` (`metres` is too far from `m` for `diagnostics.md` 1.4) |
 | weights unit | `type = "weights"`, `unit = "m"` | `field.weights_unit` |
 | weights base | `type = "weights"`, `base = 1` | `field.weights_base` |
 | implied unit | surface, no `unit` | the build index lists `unit = "m"` |
@@ -584,7 +584,7 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 | tag in formula | effect `mask = "= f('tag:wet')"`, one field tagged `wet` | reads it; with two such fields, `formula.selector_count` |
 | bounded | effect radius 5 on a point at (4, 4), extent `[0, 0, 16, 16]`, `value = "= 1 / (d - 6)"` | posts with `d > 5` unchanged; no error, since `d = 6` lies beyond the radius |
 | cut | as "bounded", `value = 1`, mask 1 | `field.effect_cut` at post (1, 1) |
-| fade | as "cut", `mask = "= 1 - smoothstep(0, 5, d)"` | no `field.effect_cut` |
+| fade | as "cut", `mask = "= 1 - smoothstep(0, 4, d)"` (0 from `d = 4`, so on the whole ring) | no `field.effect_cut` |
 | world edge | radius 6 on a point at (4, 4), extent `[0, 0, 8, 8]`, mask 1 | no `field.effect_cut`: every ring post lies on the extent's edge |
 | edge equals cut | base `"= 2 * x"`; effect radius 3 on a point at (8, 4), `value = 1`, `mask = "= 1 - smoothstep(0, 2, d)"`, 0 on the ring; built once with extent `[0, 0, 8, 8]` and once with `[0, 0, 16, 8]` | every post of the first equals the second's post at the same place, bit for bit; no `field.effect_cut` in either |
 | no material | an instance, a `surface` field, no `material` field | builds, exit 0; the build's index lists no `material` field and no material is handed over; no `field.unpainted` |

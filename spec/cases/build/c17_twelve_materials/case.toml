@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "Twelve materials painted in overlapping strips inside one chunk: that chunk has twelve planes in id order, no warning or error; every post sums to 255 or 0."
+milestone = 1
+actions   = ["build"]
+
+# m01 everywhere first, so no post is unpainted; each of the other eleven paints half its weight in a 6 m strip, the strips overlapping by 4 m. Mode exact: no warning.
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.planes]
+path  = "build/w/weights/ground/0_0.npy"
+shape = [12, 33, 33]
+
+[action.build.check.sum]
+fn   = "weights_sum_255_or_0"
+path = "build/w/weights/ground"

@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "`[let] height` and `[field.height]`: formula.shadow, once; no doc or identity code."
+milestone = 1
+actions   = ["build"]
+
+# documents.md 3: formula.shadow is raised once by formulas.md, which checks names before anything
+# runs (diagnostics.md 4, stage 2), so the case builds rather than merges. That no doc or identity
+# code appears is not expressible in mode includes beside the library's info records; formulas.md
+# case 10 holds the same row.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.shadow]
+code    = "formula.shadow"
+records = 1

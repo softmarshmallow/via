@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A material with file and no repeat; a paint naming gras: pack.material_repeat; pack.unknown_material hint grass; exit 1."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.material_repeat]
+code    = "pack.material_repeat"
+subject = "material.stone"
+
+[action.build.diag.unknown_material]
+code = "pack.unknown_material"
+data = { nearest = "grass" }

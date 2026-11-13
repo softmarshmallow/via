@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A rank 0 formula with 'kind:lane'; lanes at rank 0 and rank 1: no doc.upward_ref; the selection holds the rank 0 lane only."
+milestone = 1
+actions   = ["merge", "build"]
+
+# Post (0, 0) lies on the rank 1 lane and 40 m from the rank 0 lane (from [0, 40]): it reads 40
+# only if the read selector left the rank 1 lane out (documents.md 5.1, formulas.md 7).
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.far]
+path  = "build/w/fields/near.npy"
+post  = [0, 0]
+value = 40

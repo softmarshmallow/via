@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "As name_attr, a change moving the ford: the change report lists at_ford with the ford's move as cause."
+milestone = 1
+actions   = ["program", "trust", "base", "moved"]
+
+# Entries sort by table, then name (build.md 11.2): at_ford is the first feature.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.moved.file.entry]
+path     = "build/ford/changes.json"
+pointer  = "/entries/0"
+includes = { name = "at_ford", table = "feature" }
+
+[action.moved.file.cause]
+path     = "build/ford/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "feature.ford.on" }

@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "A layer without `owner`; a world without `extent`: doc.missing_key for each, at the header."
+milestone = 1
+actions   = ["layer", "world"]
+
+# The world's header span is the file's start, line 1 (diagnostics.md 4: the world file at 1:1).
+
+[action.layer]
+via  = ["merge", "a/world.toml"]
+exit = 1
+
+[action.layer.diag.missing_key]
+code    = "doc.missing_key"
+subject = "layer.d"
+file    = "world.toml"
+line    = 15
+
+[action.world]
+via  = ["merge", "b/world.toml"]
+exit = 1
+
+[action.world.diag.missing_key]
+code    = "doc.missing_key"
+subject = "world"
+file    = "world.toml"
+line    = 1

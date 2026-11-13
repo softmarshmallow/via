@@ -1,0 +1,18 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = 1
+
+[clear.gap]
+at     = [10, 10]
+radius = 3
+by     = ["tres"]

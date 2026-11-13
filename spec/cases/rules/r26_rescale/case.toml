@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "r20, flat, no other instances; scale = [1, 1.5]: no instance moved, added or removed."
+milestone = 1
+actions   = ["base", "changed"]
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.changed]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "c", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.changed.check.report]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "trees#"
+what   = ["changed"]

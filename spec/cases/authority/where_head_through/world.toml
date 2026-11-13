@@ -1,0 +1,20 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = "= 0.05 * x * x"
+
+[field.steep]
+base = "= slope('height')"
+
+[feature.r]
+kind  = "lowk"
+where = "= f('steep') > 30"
+
+[change.ramp.feature.ramp]
+kind   = "steepen"
+region = [[11, 2], [15, 2], [15, 14], [11, 14]]

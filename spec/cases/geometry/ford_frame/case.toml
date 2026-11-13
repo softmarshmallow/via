@@ -1,0 +1,138 @@
+format    = "via-case-1"
+summary   = "ford_frame (2.6); project; every row of the table, bit for bit."
+milestone = 1
+actions   = ["beck", "lane_west", "lane_east"]
+
+# geometry.md 2.6's vector: one `via kernel project` input per feature, each row a check on its output. Doubles compare by exact value.
+
+[action.beck]
+via  = ["kernel", "project", "--in", "beck.json", "--out", "beck.out.json"]
+exit = 0
+
+[action.beck.file.t0]
+path    = "beck.out.json"
+pointer = "/results/0/t"
+value   = 0.347370404256366
+
+[action.beck.file.d0]
+path    = "beck.out.json"
+pointer = "/results/0/d"
+value   = 19.716448566078615
+
+[action.beck.file.sd0]
+path    = "beck.out.json"
+pointer = "/results/0/sd"
+value   = 19.716448566078615
+
+[action.beck.file.t1]
+path    = "beck.out.json"
+pointer = "/results/1/t"
+value   = 0.31966700518731006
+
+[action.beck.file.d1]
+path    = "beck.out.json"
+pointer = "/results/1/d"
+value   = 19.716689495547183
+
+[action.beck.file.sd1]
+path    = "beck.out.json"
+pointer = "/results/1/sd"
+value   = 19.716689495547183
+
+[action.beck.file.t2]
+path    = "beck.out.json"
+pointer = "/results/2/t"
+value   = 0.6648343886445807
+
+[action.beck.file.d2]
+path    = "beck.out.json"
+pointer = "/results/2/d"
+value   = 19.729033859375637
+
+[action.beck.file.sd2]
+path    = "beck.out.json"
+pointer = "/results/2/sd"
+value   = -19.729033859375637
+
+[action.beck.file.t3]
+path    = "beck.out.json"
+pointer = "/results/3/t"
+value   = 0.6375139173642725
+
+[action.beck.file.d3]
+path    = "beck.out.json"
+pointer = "/results/3/d"
+value   = 19.729060418580506
+
+[action.beck.file.sd3]
+path    = "beck.out.json"
+pointer = "/results/3/sd"
+value   = -19.729060418580506
+
+[action.lane_west]
+via  = ["kernel", "project", "--in", "lane_west.json", "--out", "lane_west.out.json"]
+exit = 0
+
+[action.lane_west.file.t0]
+path    = "lane_west.out.json"
+pointer = "/results/0/t"
+value   = 1
+
+[action.lane_west.file.d0]
+path    = "lane_west.out.json"
+pointer = "/results/0/d"
+value   = 9.999323027085383
+
+[action.lane_west.file.sd0]
+path    = "lane_west.out.json"
+pointer = "/results/0/sd"
+value   = 9.999323027085383
+
+[action.lane_west.file.t1]
+path    = "lane_west.out.json"
+pointer = "/results/1/t"
+value   = 1
+
+[action.lane_west.file.d1]
+path    = "lane_west.out.json"
+pointer = "/results/1/d"
+value   = 9.99935247903583
+
+[action.lane_west.file.sd1]
+path    = "lane_west.out.json"
+pointer = "/results/1/sd"
+value   = -9.99935247903583
+
+[action.lane_east]
+via  = ["kernel", "project", "--in", "lane_east.json", "--out", "lane_east.out.json"]
+exit = 0
+
+[action.lane_east.file.t0]
+path    = "lane_east.out.json"
+pointer = "/results/0/t"
+value   = 0
+
+[action.lane_east.file.d0]
+path    = "lane_east.out.json"
+pointer = "/results/0/d"
+value   = 10.000226247440605
+
+[action.lane_east.file.sd0]
+path    = "lane_east.out.json"
+pointer = "/results/0/sd"
+value   = -10.000226247440605
+
+[action.lane_east.file.t1]
+path    = "lane_east.out.json"
+pointer = "/results/1/t"
+value   = 0
+
+[action.lane_east.file.d1]
+path    = "lane_east.out.json"
+pointer = "/results/1/d"
+value   = 9.999993299997756
+
+[action.lane_east.file.sd1]
+path    = "lane_east.out.json"
+pointer = "/results/1/sd"
+value   = 9.999993299997756

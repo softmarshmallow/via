@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "course_a; stroke 8.5 m and 17 m both sides, round: areas reported as measures against reference.json."
+milestone = 1
+pending   = "fixture spec/vectors/geometry/course_a.json, made by import.py from fixtures/kernel/townland (geometry.md 6), not yet written"
+actions   = ["op"]
+
+[copy.fixture]
+from = "spec/vectors/geometry/course_a.json"
+to   = "course_a.json"
+
+[action.op]
+via  = ["kernel", "stroke", "--in", "course_a.json", "--out", "out.json"]
+exit = 0

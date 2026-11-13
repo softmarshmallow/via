@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "As name_attr, toward = \"frod\": identity.unknown_place, hint ford; exit 1."
+milestone = 1
+actions   = ["program", "trust", "frod", "build"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.frod]
+replace = "world.toml"
+find    = "toward = \"ford\"\n\n[feature.on_bank]"
+with    = "toward = \"frod\"\n\n[feature.on_bank]"
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.diag.unknown_place]
+code = "identity.unknown_place"
+data = { nearest = "ford" }

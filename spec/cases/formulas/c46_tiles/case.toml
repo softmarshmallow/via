@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "slope('height') and dist('beck', 30) by via eval with --tile 1 and --tile 16: equal --out files and diagnostics."
+milestone = 1
+actions   = ["s1", "s16", "b1", "b16"]
+
+# No diagnostic in either (mode exact on each).
+
+[action.s1]
+via  = ["eval", "world.toml", "--field", "s", "--tile", "1", "--out", "s.npy"]
+exit = 0
+
+[action.s16]
+via  = ["eval", "world.toml", "--field", "s", "--tile", "16", "--out", "s.npy"]
+exit = 0
+
+[action.s16.same.s]
+action = "s1"
+what   = "s.npy"
+
+[action.b1]
+via  = ["eval", "world.toml", "--field", "b", "--tile", "1", "--out", "b.npy"]
+exit = 0
+
+[action.b16]
+via  = ["eval", "world.toml", "--field", "b", "--tile", "16", "--out", "b.npy"]
+exit = 0
+
+[action.b16.same.b]
+action = "b1"
+what   = "b.npy"

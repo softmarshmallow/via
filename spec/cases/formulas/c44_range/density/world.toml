@@ -1,0 +1,12 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 4
+density = "= 1.2"

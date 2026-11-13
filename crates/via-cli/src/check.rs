@@ -49,17 +49,24 @@ fn absolute(s: &str) -> bool {
         || (b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':')
 }
 
+/// The members holding an absolute path, each named by its key path (`features[0].name`), the
+/// form subjects use: a JSON pointer starts with `/` and would itself read as a path.
 fn find_absolute(v: &J, path: &str, out: &mut Vec<String>) {
     match v {
         J::Str(s) if absolute(s) => out.push(path.to_string()),
         J::Arr(a) => {
             for (i, x) in a.iter().enumerate() {
-                find_absolute(x, &format!("{path}/{i}"), out);
+                find_absolute(x, &format!("{path}[{i}]"), out);
             }
         }
         J::Obj(m) => {
             for (k, x) in m {
-                find_absolute(x, &format!("{path}/{k}"), out);
+                let p = if path.is_empty() {
+                    k.clone()
+                } else {
+                    format!("{path}.{k}")
+                };
+                find_absolute(x, &p, out);
             }
         }
         _ => {}
@@ -156,7 +163,7 @@ pub fn check(dir: &Path) -> Vec<Diag> {
                     "`id` is {}; the digest recomputed by section 12 is {want}",
                     got.unwrap_or("missing")
                 ),
-                &[("key", Value::from("/id"))],
+                &[("key", Value::from("id"))],
             )
             .with("expected", want.clone()),
         ),
@@ -452,7 +459,11 @@ pub fn check(dir: &Path) -> Vec<Diag> {
                 }
                 for row in first..first + k {
                     if let (Some(x), Some(y)) = (xs.get(row), ys.get(row)) {
-                        if layout.chunk_of(i64::from(*x), i64::from(*y)) != ci {
+                        let (x, y) = (i64::from(*x), i64::from(*y));
+                        let [x0, y0, x1, y1] = g.extent;
+                        // A row outside the extent lies in no chunk; `chunk_of` would clamp it.
+                        let inside = (x0..=x1).contains(&x) && (y0..=y1).contains(&y);
+                        if !inside || layout.chunk_of(x, y) != ci {
                             out.push(fault(
                                 codes::check::CHUNK_ROWS,
                                 "instances/x.npy",

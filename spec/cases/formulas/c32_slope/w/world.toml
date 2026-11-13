@@ -1,0 +1,9 @@
+name       = "s"
+extent     = [0, 0, 4, 4]
+resolution = 1
+
+[field.height]
+base = "= 0.5 * x"
+
+[field.f]
+base = "= slope('height')"

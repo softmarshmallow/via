@@ -1,0 +1,5 @@
+[asset.tree_oak]
+primitive  = "sphere"
+size       = [5, 5, 7]
+footprint  = [[-2, -2], [2, -2], [2, 2], [-2, 2]]
+max_relief = 0.3

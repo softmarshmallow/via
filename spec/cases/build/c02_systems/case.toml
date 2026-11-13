@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "ford built at 1 and 8 threads: same id, every file byte-identical (on macOS, Linux and Windows by U7)."
+milestone = 1
+actions   = ["program", "trust", "one", "eight"]
+
+# The Windows leg waits for hosted runners (U7's record for that system is absent, so U7 is pending there).
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.one]
+via         = ["build", "world.toml", "--threads", "1", "--out", "build/one"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/one"
+
+[action.eight]
+via         = ["build", "world.toml", "--threads", "8", "--out", "build/eight"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/eight"
+
+[action.eight.same.id]
+action = "one"
+what   = "id"
+
+[action.eight.same.files]
+action = "one"
+what   = "files"

@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "via trust WORLD --yes; build twice: both builds trusted: no __pycache__ or dot-file changes the digest."
+milestone = 1
+actions   = ["program", "trust", "first", "second"]
+
+# The lint imports a sibling, which would write __pycache__ (PYTHONDONTWRITEBYTECODE=1, protocol.md 6.1); mode exact: neither build has protocol.untrusted_skipped.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.first.nodes]
+ran_includes = ["step:look"]
+
+[action.second]
+via  = ["build", "world.toml", "--out", "build/second"]
+exit = 0
+out  = "build/second"

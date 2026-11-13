@@ -1,0 +1,36 @@
+format    = "via-case-1"
+summary   = "primitive cylinder, size [2, 2, 1]: 16 points; the first [1, 0], the fifth [0, 1], counter-clockwise."
+milestone = 1
+actions   = ["list"]
+
+# Vertex k at k * 22.5 degrees from +x, (cx + rx cos, cy + ry sin) in millimetres rounded ties to
+# even: k = 1 gives (923.88, 382.68) mm, so [0.924, 0.383]; k = 15 gives [0.924, -0.383]. The
+# sixteenth is the last; a seventeenth is not asserted absent (no check says so).
+
+[action.list]
+via  = ["pack", "list", "pack.toml"]
+exit = 0
+
+[action.list.file.first]
+stream  = "stdout"
+pointer = "/footprint/0"
+line    = 1
+value   = [1, 0]
+
+[action.list.file.second]
+stream  = "stdout"
+pointer = "/footprint/1"
+line    = 1
+value   = [0.924, 0.383]
+
+[action.list.file.fifth]
+stream  = "stdout"
+pointer = "/footprint/4"
+line    = 1
+value   = [0, 1]
+
+[action.list.file.sixteenth]
+stream  = "stdout"
+pointer = "/footprint/15"
+line    = 1
+value   = [0.924, -0.383]

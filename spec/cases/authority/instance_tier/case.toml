@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "An instance with ground = \"pad\" and authority = \"anchored\": doc.unknown_key with the fixed hint of 1.3."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit = 1
+
+[action.merge.diag.unknown_key]
+code    = "doc.unknown_key"
+subject = "instance.hut.authority"

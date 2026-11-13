@@ -1,0 +1,5 @@
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = 1

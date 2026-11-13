@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "Section 9 as written: pond interior the 32-bit float nearest 31.8; no authority diagnostic."
+milestone = 1
+actions   = ["build"]
+
+# authority.md 9 as written: the world is the section's text, its `water` library the
+# section's kinds, beside the world in lib/water. The repository's lib/ (VIA_LIB) also holds a
+# `water`, so the beside one is used with doc.include_shadowed (documents.md 4).
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.shadowed]
+code     = "doc.include_shadowed"
+severity = "info"
+
+[action.build.file.pond]
+path  = "build/w/fields/height.npy"
+post  = [80, 50]
+value = 31.8

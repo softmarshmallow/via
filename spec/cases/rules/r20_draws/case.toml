@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "trees, spacing 7, jitter 0.8, density 0.6, scale [0.8, 1.2]: lattice cell (8, 18) at origin (60683, 130893), kept, facing 338068, scale 1.027638703368402, named trees#s7000_8_18."
+milestone = 1
+actions   = ["build"]
+
+# (open) The draws of rules.md r20 (jitter bits, keep unit, facing, scale) are numbers.md 10's
+# vectors (via vectors, numbers/seed_vectors). A build file holds each instance by row, sorted by
+# chunk, asset and name (build.md 8); asserting one named row's x, y, face and scale needs a
+# per-name column check, which conformance.md 3.4 lacks. The case builds the world of r20.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

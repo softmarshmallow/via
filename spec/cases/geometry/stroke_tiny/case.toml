@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "A path with a 90-degree turn; stroke 0.001 m left and right, round: one chord per arc, no non-finite value."
+milestone = 1
+actions   = ["op"]
+
+# No non-finite value can be written in canonical JSON, so exit 0 holds the second half; one chord per arc is (open) without a check over arcs.
+
+[action.op]
+via         = ["kernel", "stroke", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"

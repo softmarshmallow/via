@@ -110,6 +110,9 @@ pub struct Fields<'a> {
     pub diags: RefCell<Vec<Diag>>,
     keep_out: RefCell<BTreeMap<View, Rc<Raster<f64>>>>,
     reported: RefCell<BTreeSet<String>>,
+    /// Indices into `diags` of records a later evaluation reached again and added a reader to,
+    /// in order: so a caller that gives each field its own records gives them to every reader.
+    pub touched: RefCell<Vec<usize>>,
 }
 
 fn post_index(grid: &Grid, i: u64, j: u64) -> usize {
@@ -163,6 +166,7 @@ impl<'a> Fields<'a> {
             diags: RefCell::new(Vec::new()),
             keep_out: RefCell::new(BTreeMap::new()),
             reported: RefCell::new(BTreeSet::new()),
+            touched: RefCell::new(Vec::new()),
         };
         f.link();
         f
@@ -190,16 +194,37 @@ impl<'a> Fields<'a> {
             let mut v = Vec::new();
             if w.footprint {
                 let inst = w.name.trim_end_matches(".ground");
-                if let Some(crate::decl::Place::On(o)) = d.instances.get(inst).map(|i| &i.place) {
-                    if let Some(t) = target(&o.reference) {
-                        v.push((t, false, "on.ref"));
+                match d.instances.get(inst).map(|i| &i.place) {
+                    Some(crate::decl::Place::On(o)) => {
+                        if let Some(t) = target(&o.reference) {
+                            v.push((t, false, "on.ref"));
+                        }
                     }
+                    Some(crate::decl::Place::Of(o)) => {
+                        if let Some(t) = target(&o.of) {
+                            v.push((t, false, "on.of"));
+                        }
+                    }
+                    _ => {}
                 }
             } else if let Some(f) = d.features.get(&w.name) {
-                if let crate::decl::ShapeDecl::Point(crate::decl::Place::On(o)) = &f.shape {
-                    if let Some(t) = target(&o.reference) {
-                        v.push((t, false, "on.ref"));
+                match &f.shape {
+                    crate::decl::ShapeDecl::Point(crate::decl::Place::On(o)) => {
+                        if let Some(t) = target(&o.reference) {
+                            v.push((t, false, "on.ref"));
+                        }
                     }
+                    crate::decl::ShapeDecl::Point(crate::decl::Place::Of(o)) => {
+                        if let Some(t) = target(&o.of) {
+                            v.push((t, false, "on.of"));
+                        }
+                    }
+                    crate::decl::ShapeDecl::Follows(fl) => {
+                        if let Some(t) = target(&fl.reference) {
+                            v.push((t, false, "follows.ref"));
+                        }
+                    }
+                    _ => {}
                 }
                 for (key, e) in [("starts_at", &f.starts_at), ("ends_at", &f.ends_at)] {
                     if let Some(t) = e.as_deref().and_then(target) {
@@ -260,6 +285,34 @@ impl<'a> Fields<'a> {
                 continue;
             }
             for e in k.effects.values() {
+                // `fields.md` 5: `value` on a weights entry, `paint` on a scalar one.
+                for f in self.matching(&e.selector) {
+                    let weights = self.d.fields[&f].weights;
+                    let (bad, key) = if weights {
+                        (e.value.is_some(), "value")
+                    } else {
+                        (e.paint.is_some() && e.value.is_none(), "paint")
+                    };
+                    if bad {
+                        self.push(at_path(
+                            codes::field::ROW_KEY,
+                            "kind",
+                            &k.id,
+                            &["effect", &e.id, key],
+                            &format!(
+                                "the effect `{}` of `{}` writes `{key}` into the {} field `{f}`",
+                                e.id,
+                                k.id,
+                                if weights { "weights" } else { "scalar" }
+                            ),
+                            if weights {
+                                "a weights field takes `paint`; select the fields apart by tag"
+                            } else {
+                                "a scalar field takes `value`; select the fields apart by tag"
+                            },
+                        ));
+                    }
+                }
                 if self.matching(&e.selector).is_empty() {
                     let tags: Vec<&str> = self
                         .d
@@ -522,12 +575,38 @@ impl<'a> Fields<'a> {
             let tag = format!("{:?}{:?}{:?}", d.code(), d.subject(), d.site());
             if self.reported.borrow_mut().insert(tag) {
                 self.push(d);
+            } else {
+                // The same fault reached again: one location, every reader in `related`
+                // (`formulas.md` 9, a fault inside a `let` read by two formulas).
+                let mut diags = self.diags.borrow_mut();
+                let same = diags.iter_mut().enumerate().find(|(_, o)| {
+                    o.code() == d.code() && o.subject() == d.subject() && o.site() == d.site()
+                });
+                if let Some((i, o)) = same {
+                    for r in d.related_list() {
+                        if !o.related_list().contains(r) {
+                            *o = o.clone().related(r.clone());
+                        }
+                    }
+                    self.touched.borrow_mut().push(i);
+                }
             }
         }
     }
 
     fn binding(&self, f: FormulaId, served: Option<&str>) -> Option<Binding> {
         let p = self.d.formulas.programs.get(&f)?;
+        // A feature that was declared but not placed said why (a cycle, a bad shape); a formula
+        // reading it says nothing more (`graph.md` 3.4).
+        let unplaced = p.reads.selectors.iter().any(|(c, sel)| {
+            *c == via_expr::Class::Shape
+                && !sel.starts_with("kind:")
+                && self.d.features.contains_key(sel.as_str())
+                && !self.placed.shapes.contains_key(sel.as_str())
+        });
+        if unplaced {
+            return None;
+        }
         let sel = Sel {
             fields: self,
             own: served,
@@ -575,6 +654,40 @@ impl<'a> Fields<'a> {
         }
     }
 
+    /// A feature's `where` at every post, in the head view (`formulas.md` 6.6, `authority.md`
+    /// 2.3): its base and rows, never an effect. `None` after a fault, reported.
+    pub fn eval_where(&self, formula: FormulaId, feature: &str) -> Option<Vec<f64>> {
+        let attrs = self.d.features.get(feature).map(|f| &f.attrs);
+        let ctx = Ctx {
+            f: self,
+            view: View::Head,
+            current: None,
+            served: None,
+            reads: RefCell::new(BTreeSet::new()),
+            own: attrs,
+        };
+        let ww = via_expr::Window::whole(&self.grid);
+        let wdom = Domain::Window {
+            grid: self.grid,
+            window: ww,
+        };
+        let p = self.d.formulas.programs.get(&formula)?;
+        let b = self.binding(formula, None)?;
+        let setup = Setup {
+            world_seed: self.d.seed,
+            feature: Some(feature),
+        };
+        match evaluate(p, &b, &ctx, &setup, &wdom) {
+            Ok(v) => Some(v),
+            Err(fail) if fail.error.code == codes::diag::SKIPPED => None,
+            Err(fail) => {
+                let d = self.d.formulas.diag(&fail.error);
+                self.report(View::Build, d);
+                None
+            }
+        }
+    }
+
     fn resolve(&self, field: &str, view: View) -> Option<Resolved> {
         let fd = self.d.fields.get(field)?;
         let grid = self.grid;
@@ -596,9 +709,34 @@ impl<'a> Fields<'a> {
                 current: None,
                 served: None,
                 reads: RefCell::new(BTreeSet::new()),
+                own: None,
             };
             cur = self.eval(b, &ctx, &wdom, view, None)?;
             reads.extend(ctx.reads.into_inner());
+        } else if let Some(fb) = self.d.files.get(field) {
+            // A base from a file (`fields.md` 4.3), sampled to the posts.
+            match via_raster::file::resample(&grid, self.whole(), &fb.samples, fb.placement) {
+                Ok(r) => cur = r.values().to_vec(),
+                Err(e) => {
+                    let pos = e.position();
+                    let mut d = text::at_key(
+                        e.code(),
+                        "field",
+                        field,
+                        "file",
+                        &e.to_string(),
+                        "check the file and its `extent` and `outside`",
+                    );
+                    if let Some(p) = pos {
+                        d = d.at(p);
+                    }
+                    self.report(view, d);
+                    return None;
+                }
+            }
+        } else if fd.file.is_some() {
+            // The file could not be read; its fault is said at `file`.
+            return None;
         }
         let mut anchors: Vec<Anchor> = Vec::new();
         let mut failed = false;
@@ -612,6 +750,7 @@ impl<'a> Fields<'a> {
                         current: Some(&cur),
                         served: None,
                         reads: RefCell::new(BTreeSet::new()),
+                        own: None,
                     };
                     let mask = match row.mask {
                         Some(m) => self.eval(m, &ctx, &wdom, view, None),
@@ -699,6 +838,7 @@ impl<'a> Fields<'a> {
                         current: Some(&cur),
                         served: Some(&served),
                         reads: RefCell::new(BTreeSet::new()),
+                        own: None,
                     };
                     let mask = match e.mask {
                         Some(m) => self.eval(m, &ctx, &dom, view, Some(&w.name)),
@@ -1214,6 +1354,8 @@ struct Ctx<'c> {
     current: Option<&'c [f64]>,
     served: Option<&'c Served<'c>>,
     reads: RefCell<BTreeSet<String>>,
+    /// The attributes of the feature whose `where` is evaluated (`formulas.md` 6.6).
+    own: Option<&'c BTreeMap<String, Attr>>,
 }
 
 fn internal(what: &str) -> ReadError {
@@ -1272,7 +1414,7 @@ impl Ctx<'_> {
 impl Reads for Ctx<'_> {
     fn attribute(&self, feature: Option<&str>, name: &str) -> Result<Scalar, ReadError> {
         let attrs = match feature {
-            None => self.served.map(|s| s.attrs),
+            None => self.served.map(|s| s.attrs).or(self.own),
             Some(id) => self.f.d.features.get(id).map(|f| &f.attrs),
         }
         .ok_or_else(|| internal("an attribute"))?;

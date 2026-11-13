@@ -885,7 +885,7 @@ checks that a clean build equals the incremental one.
 | No source | 1 | An asset with only `size` and `params` | `via pack check` | `asset.source`, exit 1. |
 | Two sources | 1 | `primitive = "box"` and `engine = true` | `via pack check` | `asset.source`, exit 1. |
 | Fixed on primitive | 1 | `[defaults] pivot = "base_corner"`, a primitive, and a primitive writing `pivot` itself | `via pack check` | One `asset.declared_measured`, on the asset that wrote it; none for the default. |
-| Unknown primitive | 1 | `primitive = "cube"` | `via pack check` | `asset.unknown_primitive`, hint `box`, exit 1. |
+| Unknown primitive | 1 | `primitive = "boxx"` | `via pack check` | `asset.unknown_primitive`, hint `box`, exit 1. |
 | Bad value | 1 | `solidity = "solidd"`; `size = [0, 1, 1]`; `colour = [1.2, 0, 0]` | `via pack check` | `doc.type` hint `solid`; two `pack.range`; exit 1. |
 | Passable reserved | 1 | `solidity = "passable"` | `via pack check` | `doc.not_yet` naming M5. |
 | Unknown default key | 1 | `[defaults] pivt = "origin"` | `via pack check` | `doc.unknown_key`, hint `pivot`. |

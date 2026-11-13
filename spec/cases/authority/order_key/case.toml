@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "Two crossing ways in one tier, each with pavement (order 0) and roadway (1): both pavement digits before either roadway digit, in one layer and across two."
+milestone = 1
+actions   = ["one", "two"]
+
+# authority.md's order cases: each entry writes `value = "= v * 10 + k"` with mask 1 at its
+# shape (`1 - smoothstep(0, 1, d)`, so 1 on the shape and 0 by 1 m off it), on a field whose base is
+# 0; the post's value spells the order. The kinds are the case's own library `tiers` (libs/).
+# Pavement writes k, roadway k + 5: a's pavement 1, b's 2, a's roadway 6, b's 7.
+
+[action.one]
+via  = ["build", "one/world.toml", "--lib", "{work}/libs", "--out", "one/build/w"]
+exit = 0
+out  = "one/build/w"
+
+[action.one.file.order]
+path  = "one/build/w/fields/height.npy"
+post  = [8, 8]
+value = 1267
+
+[action.two]
+via  = ["build", "two/world.toml", "--lib", "{work}/libs", "--out", "two/build/w"]
+exit = 0
+out  = "two/build/w"
+
+[action.two.file.order]
+path  = "two/build/w/fields/height.npy"
+post  = [8, 8]
+value = 1267

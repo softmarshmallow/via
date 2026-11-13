@@ -1,0 +1,12 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.height]
+role = "surface"
+base = 5
+
+[field.height.then.r]
+value = "= v + 2"

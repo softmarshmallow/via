@@ -1,0 +1,48 @@
+format    = "via-case-1"
+summary   = "A field slope('height') (halo 1), windows touching each grid edge: same bits as the whole."
+milestone = 1
+actions   = ["whole", "sw", "ne", "west", "north"]
+
+[action.whole]
+via  = ["eval", "world.toml", "--field", "s", "--out", "whole.npy"]
+exit = 0
+
+[action.sw]
+via  = ["eval", "world.toml", "--field", "s", "--window", "0,0,5,5", "--out", "sw.npy"]
+exit = 0
+
+[action.sw.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "sw.npy"
+window = [0, 0, 5, 5]
+
+[action.ne]
+via  = ["eval", "world.toml", "--field", "s", "--window", "28,28,33,33", "--out", "ne.npy"]
+exit = 0
+
+[action.ne.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "ne.npy"
+window = [28, 28, 33, 33]
+
+[action.west]
+via  = ["eval", "world.toml", "--field", "s", "--window", "0,10,4,20", "--out", "west.npy"]
+exit = 0
+
+[action.west.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "west.npy"
+window = [0, 10, 4, 20]
+
+[action.north]
+via  = ["eval", "world.toml", "--field", "s", "--window", "10,30,20,33", "--out", "north.npy"]
+exit = 0
+
+[action.north.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "north.npy"
+window = [10, 30, 20, 33]

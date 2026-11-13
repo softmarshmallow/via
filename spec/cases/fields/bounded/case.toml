@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "effect radius 5 on a point at (4, 4), extent [0, 0, 16, 16], value = \"= 1 / (d - 6)\": posts with d > 5 unchanged; no error."
+milestone = 1
+actions   = ["build"]
+
+# d = 6 lies beyond the radius, so the division by 0 is never evaluated (exit 0). Mask 1 on the ring is field.effect_cut, the next row's.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.far]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 0
+
+[action.build.file.near]
+path  = "build/w/fields/height.npy"
+post  = [4, 4]
+value = -0.16666666666666666

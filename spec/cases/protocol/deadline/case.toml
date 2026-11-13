@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A plain lint that runs past --step-deadline 2: protocol.deadline, phase step.call, deadline 2."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--step-deadline", "2", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.deadline]
+code = "protocol.deadline"
+data = { phase = "step.call", deadline = 2 }

@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "cross with a path spur_a from [0, 25] to [20, 25]; network: the first area's sides unchanged, spur_a in its spurs; geom.dead_end with count 1."
+milestone = 1
+actions   = ["op"]
+
+# The count (1 dead end) is the record's data; its member name is not fixed by the chapter.
+
+[action.op]
+via         = ["kernel", "network", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.dead_end]
+code    = "geom.dead_end"
+subject = "cli"
+
+[action.op.check.sides]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/areas/0/sides"
+count   = 3
+
+[action.op.check.spurs]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/areas/0/spurs"
+count   = 1

@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A change writing `[asset.cart]`: doc.unknown_key, hint pack."
+milestone = 1
+actions   = ["merge"]
+
+# documents.md 6.1 and 7: a forbidden word has a fixed hint, `pack`, which replaces the nearest-word hint, so no data.nearest.
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "a"]
+exit = 1
+
+[action.merge.diag.unknown_key]
+code    = "doc.unknown_key"
+subject = "change.a.asset"

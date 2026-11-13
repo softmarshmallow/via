@@ -183,7 +183,7 @@ face = "toward"
 [scatter.trees]
 assets = ["@plant/tree"]
 spacing = 7
-density = "= smoothstep(0.1, 0.5, fbm(60, 3))"   # the scatter applies keep_out itself
+density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), near('lane_east', 16))"   # a wood along lane_east; the scatter applies keep_out itself
 
 [step.checks]                             # the one lint step, through the SDK
 when = "lint"
@@ -215,14 +215,16 @@ to 0 one post spacing inside it, so no ring post is `field.effect_cut`.
 
 | Kind | Library | Tier | Attributes | Effects: id, field | Radius |
 |---|---|---|---|---|---|
-| `beck` | water | `shaped` (ford's beck writes `anchored`) | `width` 6, `depth` 1.2 | `bed`, `role:surface` (lowers the ground across `width`); `bank`, `role:keep_out`; `level`, `tag:water_level` (the water surface in the channel) | 16 |
-| `ford` | ways | `anchored` | none | `approach`, `role:surface`: asks `v` where it overlaps the beck (`authority.md` 6), grades the banks down to the bed outside it | 21 (its mask fades by 20) |
+| `beck` | water | `shaped` (ford's beck writes `anchored`) | `width` 6, `depth` 1.2, `flow` 0.3, `bank_grade` 0.2 | `bed`, `role:surface` (lowers the ground across `width`, its banks cut at `bank_grade` until they meet the ground); `bank`, `role:keep_out`; `level`, `tag:water_level` (the water surface in the channel) | 16 |
+| `ford` | ways | `anchored` | `grade` 0.25 | `approach`, `role:surface`: `min(v, bed + grade * d)`, so it cuts the banks down to a slope of `grade` from its bed and asks `v` wherever the beck's bank already lies below that slope (`authority.md` 6); the beck's `bank_grade` at or below `grade` keeps the two in agreement | 21 (its mask fades by 20) |
 | `lane` | ways | `shaped` | `width` 4, `camber` 0.02 | `bed`, `role:surface` | 12 |
 | `pad` | land | `shaped` | none | `level`, `role:surface`, `under('mean')` (`surfaces.md` 6.1); `clear`, `role:keep_out` | 4 (its mask fades by 3) |
 | `firm_pad` | land | `anchored` | none | As `pad`. The firm pad of `authority.md` 1.3; only the bad edit grounds with it | 4 |
 | `bookmark` | review | `derived` | `toward` (required, a name), `eye_height` 1.7 | none; `output = "bookmark"` (`build.md` 9.2) | none |
 
-So the pad keeps trees off the cottage's footprint, and the beck keeps them off its bed and writes
+So the pad keeps trees off the cottage's footprint, the lane's verge keeps them off the lane, and the
+scatter's density thickens to a wood along `lane_east` (`near`, `formulas.md`), so `in_trees` looks
+down a lane through trees in every build. The beck keeps trees off its bed and writes
 `tag:water_level`, the tag the water library documents (`fields.md` 2.2, `build.md` 6.4). Without
 `clearing` and `water` those effects would match nothing (`authority.no_field`). `toward` is the
 review library's key for the place a bookmark looks at (`build.md` 9.2, 15.1); its name beside
@@ -280,7 +282,7 @@ Each bad edit touches nothing the others need, so all four are reported in one r
 | Change | Must follow, and be reported | Must hold |
 |---|---|---|
 | Nothing | No node runs | Every byte the same, at 1 or 8 threads, on every system |
-| `downstream` | `identity.md` 5 entries, each with its cause: `ford` (the edited entity), `lane_west`, `lane_east`, `at_ford`, `on_bank`, `to_door`, `in_trees` where their places follow the moved features, `cottage`, footprint `cottage`, the trees added and removed where the old and new pads give way, and the changed regions of `height`, `clearing` and `water` | No post of any field changes outside the union of the effect windows (`fields.md` 5.3) of every entry whose feature moved, old shape and new |
+| `downstream` | `identity.md` 5 entries, each with its cause: `ford` (the edited entity), `lane_west`, `lane_east`, `at_ford`, `on_bank`, `to_door`, `in_trees` where their places follow the moved features, `cottage`, footprint `cottage`, the trees removed where the new pad and lanes give way and those added and removed where the wood follows `lane_east` (the scatter's density reads it), and the changed regions of `height`, `clearing` and `water` | No post of any field changes outside the union of the effect windows (`fields.md` 5.3) of every entry whose feature moved, old shape and new |
 | `changes/vertex.toml` | `beck` and its regions of `height`, `clearing` and `water`; then every entry of `downstream` | As `downstream`, the beck's entries among those moved |
 | `changes/bigger.toml` | The pad grows; the cottage named with old and new facts (`assets.md` 7) | World text untouched |
 | `hand`, then `hand` and `denser` (spacing 7 to 6, under a clear and a pin) | Every `s7000_` tree removed, every `s6000_` tree added | The pin stands; nothing inside the clear; both hand edits unchanged |

@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "inside('pond') at a post on the outline: yes."
+milestone = 1
+actions   = ["w"]
+
+[action.w]
+via  = ["build", "w/world.toml", "--lib", "{work}/libs", "--out", "w/build/w"]
+exit = 0
+out  = "w/build/w"
+
+[action.w.file.edge]
+path  = "w/build/w/fields/f.npy"
+post  = [2, 4]
+value = 1
+
+[action.w.file.corner]
+path  = "w/build/w/fields/f.npy"
+post  = [6, 6]
+value = 1
+
+[action.w.file.out]
+path  = "w/build/w/fields/f.npy"
+post  = [7, 4]
+value = 0

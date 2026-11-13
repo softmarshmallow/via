@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "`[layer.d] rank = 0x10`: JSON rank is 16."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 0
+
+[action.merge.file.rank]
+stream  = "stdout"
+pointer = "/layer/d/rank"
+value   = 16

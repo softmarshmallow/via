@@ -1,0 +1,21 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = 1
+
+[clear.gap]
+at     = [20, 20]
+radius = 6
+
+[pin.box]
+asset = "box_small"
+at    = [20, 20]

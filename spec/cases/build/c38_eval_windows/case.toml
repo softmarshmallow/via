@@ -1,0 +1,80 @@
+format    = "via-case-1"
+summary   = "ford; via eval --field height whole and with three windows: each equals the same cut of the whole, bit for bit, and of fields/height.npy; empty or outside windows: cli.usage, exit 2."
+milestone = 1
+actions   = ["program", "trust", "build", "whole", "a", "b", "c", "empty", "outside"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.whole]
+via         = ["eval", "world.toml", "--field", "height", "--out", "whole.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.whole.check.build]
+fn     = "array_window"
+whole  = "build/ford/fields/height.npy"
+part   = "whole.npy"
+window = [0, 0, 513, 513]
+
+[action.a]
+via         = ["eval", "world.toml", "--field", "height", "--window", "0,0,1,1", "--out", "a.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.a.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "a.npy"
+window = [0, 0, 1, 1]
+
+[action.b]
+via         = ["eval", "world.toml", "--field", "height", "--window", "3,5,10,8", "--out", "b.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.b.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "b.npy"
+window = [3, 5, 10, 8]
+
+[action.c]
+via         = ["eval", "world.toml", "--field", "height", "--window", "128,128,256,256", "--out", "c.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.c.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "c.npy"
+window = [128, 128, 256, 256]
+
+[action.empty]
+via  = ["eval", "world.toml", "--field", "height", "--window", "0,0,0,1", "--out", "e.npy"]
+exit = 2
+
+[action.empty.diag.usage]
+code = "cli.usage"
+
+[action.outside]
+via  = ["eval", "world.toml", "--field", "height", "--window", "0,0,600,1", "--out", "o.npy"]
+exit = 2
+
+[action.outside.diag.usage]
+code = "cli.usage"

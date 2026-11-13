@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "base 0.1, row value = \"= 1 / 3\", mask 1: every post holds the f32 nearest 1/3."
+milestone = 1
+actions   = ["build"]
+
+# A `value` compared with a 32-bit element is first narrowed to 32 bits (conformance.md 3.4).
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.all]
+path = "build/w/fields/height.npy"
+all  = 0.3333333333333333

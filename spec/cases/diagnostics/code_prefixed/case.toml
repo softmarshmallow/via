@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A lint step that sends code = \"unknown_name\": the code is step.<id>.unknown_name."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_name]
+code     = "step.look.unknown_name"
+severity = "warning"

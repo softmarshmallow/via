@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "Build into build/a, then the same text with --against build/a: changes.json has entries [] and every summary row zero."
+milestone = 1
+actions   = ["a", "b"]
+
+# (open) every summary row's counts zero: build.md 11.2's summary row members are asserted by build.md case 37; here the entries.
+
+[action.a]
+via         = ["build", "world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.b]
+via         = ["build", "world.toml", "--against", "build/a", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.b.file.none]
+path    = "build/b/changes.json"
+pointer = "/entries"
+value   = []

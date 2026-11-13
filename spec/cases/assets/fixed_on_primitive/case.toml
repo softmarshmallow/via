@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "[defaults] pivot = \"base_centre\", a primitive, and a primitive writing pivot itself: one asset.declared_measured, on the asset that wrote it."
+milestone = 1
+actions   = ["check"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.declared_measured]
+code    = "asset.declared_measured"
+subject = "asset.b.pivot"
+line    = 11

@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "Same, min_cell_area 60 m2: 8 cells; two geom.cell_merged, each corner triangle merged into station 3 of its edge side."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via         = ["kernel", "cells", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.cell_merged]
+code    = "geom.cell_merged"
+subject = "cli"
+
+[action.op.diag.second]
+code    = "geom.cell_merged"
+subject = "cli"
+
+[action.op.check.n]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/cells"
+count   = 8

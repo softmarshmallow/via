@@ -1,0 +1,15 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+base = "= 0.05 * x * y"
+
+[feature.beck]
+path = [[0, 5], [16, 9]]
+
+[field.s]
+base = "= slope('height')"
+
+[field.b]
+base = "= dist('beck', 30)"

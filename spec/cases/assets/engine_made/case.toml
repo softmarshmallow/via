@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "engine = true, size [4, 4, 9], triangles 500: source engine, bounds [-2, -2, 0, 2, 2, 9], triangles 500."
+milestone = 1
+actions   = ["list"]
+
+[action.list]
+via  = ["pack", "list", "pack.toml"]
+exit = 0
+
+[action.list.file.source]
+stream  = "stdout"
+pointer = "/source"
+line    = 1
+value   = "engine"
+
+[action.list.file.bounds]
+stream  = "stdout"
+pointer = "/bounds"
+line    = 1
+value   = [-2, -2, 0, 2, 2, 9]
+
+[action.list.file.triangles]
+stream  = "stdout"
+pointer = "/triangles"
+line    = 1
+value   = 500

@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "Section 9 with wide: authority.conflict, subject pond, lake related, both lines, 147 posts, 2.8 m, (70, 40), hint; exit 1."
+milestone = 1
+actions   = ["build"]
+
+# authority.md 9 as written: the world is the section's text, its `water` library the
+# section's kinds, beside the world in lib/water. The repository's lib/ (VIA_LIB) also holds a
+# `water`, so the beside one is used with doc.include_shadowed (documents.md 4).
+# authority.md 9: the subject `pond`, located at its kind's inherited `authority` line
+# (lib:water/kinds.toml line 20); `lake` in related at its `authority` line in the change wide
+# (world.toml line 27). The counts (147, 457) are in `data`, whose member names the chapter
+# does not fix.
+
+[action.build]
+via  = ["build", "world.toml", "--change", "wide", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.shadowed]
+code     = "doc.include_shadowed"
+severity = "info"
+
+[action.build.diag.conflict]
+code     = "authority.conflict"
+subject  = "feature.pond"
+position = [70, 40]
+file     = "lib:water/kinds.toml"
+line     = 20
+related  = [{ file = "world.toml", line = 27 }]

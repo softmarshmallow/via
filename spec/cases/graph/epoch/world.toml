@@ -1,0 +1,6 @@
+name       = "ep"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+base = "= x * y"

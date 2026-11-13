@@ -1,0 +1,45 @@
+format    = "via-case-1"
+summary   = "A kind attribute d; width in defaults and in let; floor read as floor(floor) builds; [let] height beside [field.height]: formula.shadow as the row says."
+milestone = 1
+actions   = ["attr_d", "twice", "floor", "let_field"]
+
+# Each kind in its own library root, so each world reads only the kind it tests.
+
+[action.attr_d]
+via         = ["build", "attr_d/world.toml", "--lib", "{work}/libs_d", "--out", "attr_d/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "attr_d/build/w"
+
+[action.attr_d.diag.shadow]
+code = "formula.shadow"
+
+[action.twice]
+via         = ["build", "twice/world.toml", "--lib", "{work}/libs_w", "--out", "twice/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "twice/build/w"
+
+[action.twice.diag.shadow]
+code = "formula.shadow"
+
+[action.floor]
+via         = ["build", "floor/world.toml", "--lib", "{work}/libs_f", "--out", "floor/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "floor/build/w"
+
+[action.floor.file.v]
+path  = "floor/build/w/fields/m.npy"
+post  = [8, 8]
+value = 2
+
+[action.let_field]
+via         = ["build", "let_field/world.toml", "--lib", "{work}/libs", "--out", "let_field/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "let_field/build/w"
+
+[action.let_field.diag.shadow]
+code    = "formula.shadow"
+records = 1

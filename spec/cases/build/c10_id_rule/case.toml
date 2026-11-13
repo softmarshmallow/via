@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "ford: the digest of manifest.json less id, run and locations equals id; changes.json rewritten with its record updated: via check passes and id is unchanged."
+milestone = 1
+pending   = "the runner reads with the standard library and numpy only (conformance.md 6), which have no BLAKE3 (build.md 3.3): a named check for the id rule waits on that choice"
+actions   = ["program", "trust", "build"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"

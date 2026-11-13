@@ -1,12 +1,21 @@
 format    = "via-case-1"
-summary   = "One vertex of the beck moved: ran equals ford_vertex.ran, the beck's nodes, then those of downstream."
+summary   = "One vertex of the beck moved: the beck's nodes, then those of downstream, run; the far chunks do not."
 milestone = 1
 actions   = ["program", "trust", "base", "vertex"]
 
-# expected/ran.txt was recorded from examples/ford in M1, where the graph's nodes are whole-field
-# nodes: the beck writes all three fields, so all three run.
-# graph.md's `vertex` row, the plan's ford row changes/vertex.toml ("Must follow"). Its "Must
-# hold" is fields/change_windows.
+# graph.md's `vertex` row, the plan's ford row changes/vertex.toml ("Must follow"); its "Must hold"
+# is fields/change_windows. The earlier expected/ran.txt was recorded from a build (whole-field
+# nodes, contrary to graph.md 1's per-chunk nodes) and is removed; the ran set is asserted by what
+# the chapter fixes until ford_vertex.ran is derived from it. The beck's vertex [160, 90] moves to
+# [164, 90]: the beck's shape, the ford on it (t = 0.55 of a new path), the lanes ending and
+# starting at the ford and the bookmark naming it all run.
+# Chunks (0, 3) and (3, 3), x 0 to 64 and 192 to 256 m, y 192 to 256 m (k = 128 posts, graph.md 1):
+# no effect window of the beck (x 140 to 166 above y 170), the lanes (y below 132 + 12), the ford or
+# the cottage's pad reaches them, before or after the change, so none of their field nodes runs.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
 
 [action.program]
 via  = ["config", "program", "python", "{python}"]
@@ -17,14 +26,17 @@ via  = ["trust", "world.toml", "--yes", "--change", "changes/vertex.toml"]
 exit = 0
 
 [action.base]
-via  = ["build", "world.toml", "--out", "build/ford"]
-out  = "build/ford"
-exit = 0
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
 
 [action.vertex]
-via  = ["build", "world.toml", "--change", "changes/vertex.toml", "--out", "build/ford"]
-out  = "build/ford"
-exit = 0
+via         = ["build", "world.toml", "--change", "changes/vertex.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
 
 [action.vertex.nodes]
-ran_file = "expected/ran.txt"
+ran_includes = ["source:changes/vertex.toml", "merge", "shape:beck/v:build", "shape:ford/v:build", "shape:lane_east/v:build", "shape:lane_west/v:build", "attr:at_ford", "write:manifest.json"]
+not_ran      = ["field:clearing/v:build/w:0.384.129.513", "field:height/v:build/w:0.384.129.513", "field:water/v:build/w:0.384.129.513", "field:clearing/v:build/w:384.384.513.513", "field:height/v:build/w:384.384.513.513", "field:water/v:build/w:384.384.513.513"]

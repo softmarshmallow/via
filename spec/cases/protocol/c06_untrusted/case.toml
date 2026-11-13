@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "A plain lint not in trust.toml, no gen/: protocol.untrusted_skipped, exit status 0, the program never started."
+milestone = 1
+actions   = ["program", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.untrusted_skipped]
+code     = "protocol.untrusted_skipped"
+severity = "warning"
+
+[action.build.file.never]
+path   = "started.txt"
+exists = false

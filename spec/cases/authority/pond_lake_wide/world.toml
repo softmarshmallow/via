@@ -1,0 +1,28 @@
+name       = "tarns"
+extent     = [0, 0, 128, 128]
+resolution = 1
+include    = ["water"]
+
+[field.height]
+role = "surface"
+base = "= 30 + 0.05 * x"
+
+[field.wet]
+tags = ["water"]
+
+[feature.lake]
+kind         = "lake"
+region       = [[20, 30], [64, 30], [64, 70], [20, 70]]
+water_height = 31.0
+
+[feature.pond]
+kind         = "pond"
+region       = [[70, 40], [90, 40], [90, 60], [70, 60]]
+water_height = 33.0
+
+[change.firm.feature.lake]
+authority = "anchored"
+
+[change.wide.feature.lake]
+authority = "anchored"
+region    = [[20, 30], [76, 30], [76, 70], [20, 70]]

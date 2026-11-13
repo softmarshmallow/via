@@ -1,0 +1,60 @@
+format    = "via-case-1"
+summary   = "A world with errors in three files; move tables within each file; build: with location fields removed, the records are the same multiset; each location names the moved text."
+milestone = 1
+actions   = ["first", "move_w", "move_1", "move_2", "moved"]
+
+# Each file holds one unknown kind; moving the tables moves each record's line and nothing else. The multiset of records less locations is the three codes and subjects, asserted on both builds.
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.first.diag.unknown_kind]
+code = "authority.unknown_kind"
+file = "world.toml"
+line = 16
+
+[action.first.diag.one]
+code = "authority.unknown_kind"
+file = "one.toml"
+line = 2
+
+[action.first.diag.two]
+code = "authority.unknown_kind"
+file = "two.toml"
+line = 2
+
+[action.move_w]
+write = "world.toml"
+from  = "later/world.toml"
+
+[action.move_1]
+write = "one.toml"
+from  = "later/one.toml"
+
+[action.move_2]
+write = "two.toml"
+from  = "later/two.toml"
+
+[action.moved]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.diag.unknown_kind]
+code = "authority.unknown_kind"
+file = "world.toml"
+line = 19
+
+[action.moved.diag.one]
+code = "authority.unknown_kind"
+file = "one.toml"
+line = 5
+
+[action.moved.diag.two]
+code = "authority.unknown_kind"
+file = "two.toml"
+line = 5

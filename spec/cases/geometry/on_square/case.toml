@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "on that square at t = 0.125, offset = 2; placed: [5, 2]."
+milestone = 1
+actions   = ["build"]
+
+# Features sort by name: mark, then sq.
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.x]
+path    = "build/w/features.json"
+pointer = "/features/0/at/0"
+value   = 5
+
+[action.build.file.y]
+path    = "build/w/features.json"
+pointer = "/features/0/at/1"
+value   = 2

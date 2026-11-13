@@ -1,11 +1,25 @@
 format    = "via-case-1"
 summary   = "ford's trees, spacing 7 to 6, under one pin and one clear: every s7000_ name removed, every s6000_ name added, nothing inside the clear."
 milestone = 1
-actions   = ["program", "trust", "hand", "denser"]
+actions   = ["program", "trust", "base", "hand", "denser"]
 
 # identity.md case 31, rules.md r38 and the plan's ford row `hand`, then `hand` and `denser`.
 # The clear `gap` is at [208, 208] with radius 6 (docs/plan.md); the pin `oak` at [200, 60].
 # Produced names are `trees#s7000_...` and `trees#s6000_...` (identity.md 2).
+#
+# `hand` is built against plain ford, so its report lists what the hand edits did (identity.md 5):
+# the pin's instance `oak`, a written thing, added with cause `pin.oak` at its header, world.toml
+# line 76 (identity.md 4.2; a table added is `<table>.<id>`); and every tree whose origin is inside
+# the clear removed with cause `clear.gap` at its header, line 81 (4.3). Entries sort by table, then
+# name, and `oak` sorts before every `trees#` name; nothing else is touched, since neither a tree
+# nor the pin has `ground`, so `oak` is entry 0.
+# The plan's "must hold" for `hand` then `denser`: the pin stands, at [200, 60] in both builds,
+# with no entry in the second report; nothing is inside the clear; both hand edits unchanged, so
+# neither is the cause of any entry, and world.toml is untouched.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
 
 [action.program]
 via  = ["config", "program", "python", "{python}"]
@@ -15,10 +29,43 @@ exit = 0
 via  = ["trust", "world.toml", "--yes", "--change", "hand", "--change", "denser"]
 exit = 0
 
+[action.base]
+via  = ["build", "world.toml", "--out", "build/ford"]
+out  = "build/ford"
+exit = 0
+diagnostics = "includes"
+
 [action.hand]
-via  = ["build", "world.toml", "--change", "hand", "--out", "build/ford+hand"]
+via  = ["build", "world.toml", "--change", "hand", "--against", "build/ford", "--out", "build/ford+hand"]
 out  = "build/ford+hand"
 exit = 0
+diagnostics = "includes"
+untouched = ["world.toml", "build/ford"]
+
+[action.hand.check.pin]
+fn    = "instance_at"
+build = "build/ford+hand"
+name  = "oak"
+at    = [200, 60]
+
+[action.hand.file.pin_added]
+path     = "build/ford+hand/changes.json"
+pointer  = "/entries/0"
+includes = { name = "oak", table = "instance", what = ["added"] }
+
+[action.hand.file.pin_cause]
+path     = "build/ford+hand/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "pin.oak", file = "world.toml", line = 76, in = "this" }
+
+[action.hand.check.cleared]
+fn     = "changes_inside"
+path   = "build/ford+hand/changes.json"
+prefix = "trees#"
+at     = [208, 208]
+radius = 6
+what   = ["removed"]
+cause  = { cause = "clear.gap", file = "world.toml", line = 81, in = "this" }
 
 [action.hand.check.clear]
 fn     = "no_origin_inside"
@@ -31,6 +78,20 @@ prefix = "trees#"
 via  = ["build", "world.toml", "--change", "hand", "--change", "denser", "--against", "build/ford+hand", "--out", "build/ford+denser+hand"]
 out  = "build/ford+denser+hand"
 exit = 0
+diagnostics = "includes"
+untouched = ["world.toml", "build/ford+hand"]
+
+[action.denser.check.pin]
+fn    = "instance_at"
+build = "build/ford+denser+hand"
+name  = "oak"
+at    = [200, 60]
+
+[action.denser.check.hand_edits_unchanged]
+fn          = "changes_absent"
+path        = "build/ford+denser+hand/changes.json"
+entry_names = ["oak"]
+causes      = ["pin.oak", "clear.gap"]
 
 [action.denser.check.removed]
 fn     = "changes_by_prefix"

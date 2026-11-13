@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "A change file holding pack = \"other\": JSON pack is other; every other member as without the change; builds."
+milestone = 1
+actions   = ["merge", "build"]
+
+# `other` is a pack name, found as lib/packs/other.toml beside the world (assets.md 1.2), a copy of
+# the primitive pack. `@changes` differs from the build without the change, so the other members
+# are compared one by one.
+
+[copy.pack]
+from = "lib/packs/primitive.toml"
+to   = "lib/packs/other.toml"
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "changes/other.toml"]
+exit = 0
+
+[action.merge.file.pack]
+stream  = "stdout"
+pointer = "/pack"
+value   = "other"
+
+[action.merge.file.lane]
+stream  = "stdout"
+pointer = "/feature/lane"
+value   = { "@layer" = "world", kind = "lane", path = [[0, 40], [128, 60]] }
+
+[action.merge.file.height]
+stream  = "stdout"
+pointer = "/field/height"
+value   = { "@layer" = "world", base = 20, role = "surface" }
+
+[action.build]
+via         = ["build", "world.toml", "--change", "changes/other.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

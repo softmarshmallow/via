@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "A program that cannot be started: protocol.start, data.kind."
+milestone = 1
+actions   = ["trust", "build"]
+
+# steps/tool exists without execute permission (case files are written without it), so the system refuses to start it: `denied` (protocol.md 6.2). On Windows a non-.exe file is refused as `other`: (open) per system, so `one_system` would be wrong; the kind is asserted for macOS and Linux.
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.start]
+code = "protocol.start"
+data = { kind = "denied" }

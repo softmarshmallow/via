@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A 3-point path with smooth = true; read: written points kept, spans sampled every 250 mm or less."
+milestone = 1
+actions   = ["op"]
+
+# (open) that the middle written point is kept and every span is at most 250 mm needs a check over the output path; its first point is asserted.
+
+[action.op]
+via  = ["kernel", "read", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.file.first]
+path    = "out.json"
+pointer = "/shape/0"
+value   = [0, 0]

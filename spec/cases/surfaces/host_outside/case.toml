@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "ford; shed at [300, 10]; barrow on shed; pail on barrow: place.outside on shed only; surface.host_missing on barrow and on pail; none placed; no surface.outside; exit 1."
+milestone = 1
+actions   = ["program", "trust", "add", "build"]
+
+# (open) related shed and barrow are asserted by subject only; `related` entries name file and line, which follow the inserted text.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.add]
+replace = "world.toml"
+find    = "[scatter.trees]"
+with    = "[instance.shed]\nasset = \"shed_gable\"\nat    = [300, 10]\n\n[instance.barrow]\nasset = \"box_small\"\non    = { ref = \"shed\" }\n\n[instance.pail]\nasset = \"box_small\"\non    = { ref = \"barrow\" }\n\n[scatter.trees]"
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.diag.outside]
+code    = "place.outside"
+subject = "instance.shed"
+records = 1
+
+[action.build.diag.host_missing]
+code    = "surface.host_missing"
+subject = "instance.barrow"
+
+[action.build.diag.pail]
+code    = "surface.host_missing"
+subject = "instance.pail"

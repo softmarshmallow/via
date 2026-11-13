@@ -1,0 +1,20 @@
+name       = "three"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[layer.one]
+file  = "one.toml"
+owner = "a"
+rank  = 1
+
+[layer.two]
+file  = "two.toml"
+owner = "b"
+rank  = 2
+
+[field.f]
+base = 1
+
+[feature.p0]
+kind = "nope_w"
+at   = [1, 1]

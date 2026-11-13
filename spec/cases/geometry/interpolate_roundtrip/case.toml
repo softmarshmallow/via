@@ -1,0 +1,9 @@
+format    = "via-case-1"
+summary   = "A path; interpolate(project(p)) for 1000 seeded points: within 1 mm of the exact nearest point."
+milestone = 1
+pending   = "needs a named check that feeds one kernel output into the next call and measures the round trip (conformance.md 3.4 has none)"
+actions   = ["op"]
+
+[action.op]
+via  = ["kernel", "project", "--in", "in.json", "--out", "out.json"]
+exit = 0

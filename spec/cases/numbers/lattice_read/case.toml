@@ -1,0 +1,89 @@
+format    = "via-case-1"
+summary   = "Each row of the table in 3.1 as an offset on a placed instance: accepted rows give those millimetres, as exact metres in the merged document; rejected rows give their code, file and line, exit 1."
+milestone = 1
+actions   = ["accepted", "rejected"]
+
+# No placement is made (merge only), so a large offset tests reading only. The merged document writes a length as exact metres (documents.md 8).
+
+[action.accepted]
+via  = ["merge", "good/world.toml"]
+exit = 0
+
+[action.accepted.file.i0]
+stream  = "stdout"
+pointer = "/instance/i0/on/offset"
+value   = 12.5
+
+[action.accepted.file.i1]
+stream  = "stdout"
+pointer = "/instance/i1/on/offset"
+value   = 3
+
+[action.accepted.file.i2]
+stream  = "stdout"
+pointer = "/instance/i2/on/offset"
+value   = 0.001
+
+[action.accepted.file.i3]
+stream  = "stdout"
+pointer = "/instance/i3/on/offset"
+value   = 1.005
+
+[action.accepted.file.i4]
+stream  = "stdout"
+pointer = "/instance/i4/on/offset"
+value   = 1.234
+
+[action.accepted.file.i5]
+stream  = "stdout"
+pointer = "/instance/i5/on/offset"
+value   = 1000.25
+
+[action.accepted.file.i6]
+stream  = "stdout"
+pointer = "/instance/i6/on/offset"
+value   = 1000
+
+[action.accepted.file.i7]
+stream  = "stdout"
+pointer = "/instance/i7/on/offset"
+value   = 0
+
+[action.accepted.file.i8]
+stream  = "stdout"
+pointer = "/instance/i8/on/offset"
+value   = 0
+
+[action.accepted.file.i9]
+stream  = "stdout"
+pointer = "/instance/i9/on/offset"
+value   = 0
+
+[action.rejected]
+via  = ["merge", "bad/world.toml"]
+exit = 1
+
+[action.rejected.diag.i0]
+code = "num.too_precise"
+file = "world.toml"
+line = 14
+
+[action.rejected.diag.i1]
+code = "num.too_precise"
+file = "world.toml"
+line = 18
+
+[action.rejected.diag.i2]
+code = "num.too_precise"
+file = "world.toml"
+line = 22
+
+[action.rejected.diag.i3]
+code = "num.out_of_range"
+file = "world.toml"
+line = 26
+
+[action.rejected.diag.i4]
+code = "num.out_of_range"
+file = "world.toml"
+line = 30

@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "--fail-on formula.unknwn_name: exit 2, cli.unknown_code, nearest code named; no build directory touched. --fail-on of a registered error code: exit 2, cli.usage, nearest warning code named."
+milestone = 1
+actions   = ["unknown", "error"]
+
+[action.unknown]
+via  = ["build", "world.toml", "--fail-on", "formula.unknwn_name", "--out", "build/w"]
+exit = 2
+out  = "build/w"
+
+[action.unknown.diag.unknown_code]
+code = "cli.unknown_code"
+data = { nearest = "formula.unknown_name" }
+
+[action.unknown.file.none]
+path   = "build/w"
+exists = false
+
+[action.error]
+via  = ["build", "world.toml", "--fail-on", "formula.unknown_name", "--out", "build/w"]
+exit = 2
+out  = "build/w"
+
+[action.error.diag.usage]
+code = "cli.usage"
+
+[action.error.file.none]
+path   = "build/w"
+exists = false

@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "at and on in one feature, in the base: doc.placement_twice."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.placement_twice]
+code    = "doc.placement_twice"
+subject = "feature.x"

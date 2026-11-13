@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "pack = \"primitve\": pack.not_found, hint primitive, exit 1."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.not_found]
+code = "pack.not_found"
+data = { nearest = "primitive" }

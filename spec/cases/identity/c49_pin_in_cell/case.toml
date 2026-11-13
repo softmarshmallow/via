@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "Pin in a cell: the same 10 instances; a pin inside the station 2 cell's instance. Default by: that instance removed, identity.pin_removed names it, count 1. by naming another producer: nothing removed, identity.pin_overlap."
+milestone = 1
+actions   = ["default", "other"]
+
+# The fixture instances stand one per cell of cross's first cells case (geometry.md), each with the
+# cell as its footprint and its origin at the cell's representative point (the station 4 triangles'
+# nearest lattice point to their centroid stands in; the case asserts nothing about it). The
+# producer is `homes`; the cells' maker is named `lots` for selections.
+# The pin's 1 m post lies inside homes#ns_2's square. `sheds` names a producer with no instance, so nothing is removed. (open) whether `held` lists the pin's own instance (geometry.md 7.3), so its count is not asserted.
+
+[action.default]
+via         = ["kernel", "names", "--in", "a.json", "--out", "a.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.default.diag.pin_removed]
+code    = "identity.pin_removed"
+subject = "cli"
+
+[action.other]
+via         = ["kernel", "names", "--in", "b.json", "--out", "b.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.other.diag.pin_overlap]
+code    = "identity.pin_overlap"
+subject = "cli"

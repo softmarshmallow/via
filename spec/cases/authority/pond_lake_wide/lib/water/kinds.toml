@@ -1,0 +1,36 @@
+[kind.lake]                                # derived: the default
+requires = ["water_height"]
+radius   = 10
+
+[kind.lake.defaults]
+depth = 2.0
+bank  = 8
+
+[kind.lake.effect.bed]
+field = "role:surface"
+value = "= water_height - depth"
+mask  = "= 1 - smoothstep(0, bank, d)"
+
+[kind.lake.effect.wet]
+field = "tag:water"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 1, d)"
+
+[kind.pond]
+authority = "anchored"
+requires  = ["water_height"]
+radius    = 6
+
+[kind.pond.defaults]
+depth = 1.2
+bank  = 4
+
+[kind.pond.effect.bed]
+field = "role:surface"
+value = "= water_height - depth"
+mask  = "= 1 - smoothstep(0, bank, d)"
+
+[kind.pond.effect.wet]
+field = "tag:water"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 1, d)"

@@ -1,0 +1,36 @@
+format    = "via-case-1"
+summary   = "Same, with a script that has no lint function; then one that raises: protocol.failed both times."
+milestone = 1
+actions   = ["program", "trust", "trust_raises", "nolint", "raises"]
+
+# The log naming the missing function, then holding the traceback, is in the store (protocol.md 6.2), not compared.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "nolint.toml", "--yes"]
+exit = 0
+
+[action.trust_raises]
+via  = ["trust", "raises.toml", "--yes"]
+exit = 0
+
+[action.nolint]
+via         = ["build", "nolint.toml", "--out", "build/a"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/a"
+
+[action.nolint.diag.failed]
+code = "protocol.failed"
+
+[action.raises]
+via         = ["build", "raises.toml", "--out", "build/b"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/b"
+
+[action.raises.diag.failed]
+code = "protocol.failed"

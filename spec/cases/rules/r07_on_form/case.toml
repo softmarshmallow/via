@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "on = { ref = \"well\", t = 0.5 } on a point feature: geom.no_length, exit 1; then span = [0, 1] in an instance's on a path: place.on_form, exit 1."
+milestone = 1
+actions   = ["point", "span"]
+
+[action.point]
+via         = ["build", "a/world.toml", "--lib", "{work}/libs", "--out", "a/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.point.diag.no_length]
+code = "geom.no_length"
+
+[action.span]
+via         = ["build", "b/world.toml", "--lib", "{work}/libs", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.span.diag.on_form]
+code = "place.on_form"

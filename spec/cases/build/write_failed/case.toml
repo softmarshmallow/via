@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "A build directory that cannot be written: build.write_failed, naming the path."
+milestone = 1
+actions   = ["build"]
+
+# `--out afile/w` needs a folder `afile`, which is a file: no directory can be made there.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "afile/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "afile/w"
+no_rerun    = "the folder cannot be written"
+
+[action.build.diag.write_failed]
+code = "build.write_failed"
+from = "run"

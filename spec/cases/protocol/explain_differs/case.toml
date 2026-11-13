@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A step sends two explain texts for one code: protocol.explain_differs."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.explain_differs]
+code     = "protocol.explain_differs"
+severity = "warning"

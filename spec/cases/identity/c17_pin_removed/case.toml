@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "The same pin with the default by: the rock is removed; identity.pin_removed names it; the change report lists it removed, cause pin.<id>."
+milestone = 1
+actions   = ["base", "pin"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.pin]
+via         = ["build", "world.toml", "--change", "pin", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.pin.diag.pin_removed]
+code     = "identity.pin_removed"
+severity = "info"
+
+[action.pin.check.removed]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "rocks#s5000_3_3"
+what   = ["removed"]

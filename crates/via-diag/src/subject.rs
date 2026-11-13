@@ -68,9 +68,13 @@ fn write_parts(parts: &[KeyPart], first: bool, f: &mut fmt::Formatter<'_>) -> fm
     Ok(())
 }
 
-/// A name part: bare when it is an id, quoted otherwise (a taxon path, `assets.md`).
+/// A name part: bare when TOML would write it bare (`A-Z a-z 0-9 _ -`), so a bad id reads as
+/// written (`feature.Mill`, `identity.md` case 1); quoted otherwise (a taxon path, `assets.md`).
 fn write_name(s: &str, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    if ident(s) {
+    let bare = !s.is_empty()
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
+    if bare {
         f.write_str(s)
     } else {
         write!(f, "\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))

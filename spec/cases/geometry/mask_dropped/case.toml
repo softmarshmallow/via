@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "Resolution 0.001, one post at 1e-9 and its neighbours at -1; mask: geom.mask_dropped at it."
+milestone = 1
+actions   = ["op"]
+
+# Grid of 3 by 3 posts 1 mm apart; the centre post (1, 1) at 1e-9: its piece has no area on the lattice.
+
+[action.op]
+via         = ["kernel", "mask", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.mask_dropped]
+code     = "geom.mask_dropped"
+subject  = "cli"
+position = [0.001, 0.001]

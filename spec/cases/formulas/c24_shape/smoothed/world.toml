@@ -1,0 +1,11 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.m]
+tags = ["mark"]
+
+[feature.r]
+kind   = "ks"
+region = [[2, 2], [10, 2], [10, 10], [2, 10]]

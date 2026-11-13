@@ -1,0 +1,4 @@
+[asset.hut]
+primitive  = "box"
+size       = [4, 4, 3]
+max_relief = 0.5

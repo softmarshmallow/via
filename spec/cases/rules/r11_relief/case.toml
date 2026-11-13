@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "max_relief = 0.6, terrain 20 + 0.1 * x, face 0: place.relief, relief 0.8, limit 0.6, a position."
+milestone = 1
+actions   = ["build"]
+
+# An 8 m footprint across a 0.1 slope: relief 0.8 above 0.6. (open) the position the record gives: the instance's origin is asserted.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.relief]
+code     = "place.relief"
+position = [50, 50]

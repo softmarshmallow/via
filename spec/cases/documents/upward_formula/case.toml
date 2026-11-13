@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A rank 0 formula reading a rank 1 `let` name: doc.upward_ref."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.upward_ref]
+code = "doc.upward_ref"
+file = "world.toml"
+line = 9

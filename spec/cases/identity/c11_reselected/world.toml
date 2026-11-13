@@ -1,0 +1,24 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = 1
+
+[feature.spot]
+at = [17.5, 17.5]
+
+[pin.box]
+asset = "box_small"
+on    = { of = "trees", near = [17.5, 17.5] }
+by    = ["trees"]
+
+[change.thin.scatter.trees]
+density = "= if(dist('spot', 100) < 3, 0, 1)"

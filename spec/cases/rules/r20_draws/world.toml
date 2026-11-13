@@ -1,0 +1,16 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0.8
+density = 0.6
+scale   = [0.8, 1.2]

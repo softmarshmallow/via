@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "row valeu = 1: doc.unknown_key, hint value."
+milestone = 1
+actions   = ["build"]
+
+# diagnostics.md 1.4's nearest to `valeu` among the row's keys (value, mask, paint, order) is `value`, one transposition.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_key]
+code = "doc.unknown_key"
+data = { nearest = "value" }

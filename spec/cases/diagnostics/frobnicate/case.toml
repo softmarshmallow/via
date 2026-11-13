@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "via build --frobnicate: exit 2, cli.usage with argument = 2; no build directory touched."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "--frobnicate", "world.toml"]
+exit = 2
+out  = "build/w"
+
+[action.build.diag.usage]
+code     = "cli.usage"
+argument = 2
+
+[action.build.file.none]
+path   = "build"
+exists = false

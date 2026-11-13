@@ -37,7 +37,7 @@ three suffixes are read as parts of the id.
 | `input` | `input:<path>` | each declared outside file or folder: a field's `file`, a step's `inputs`, an asset file the pack names | its digest (5.1 for a folder) | digest only |
 | `merge` | `merge` | the sources and the requested changes | the merged document, each statement's digest, each key's span | yes |
 | `attr` | `attr:<id>` | a feature, instance or rule | its attributes: kind defaults and attribute formulas resolved | digest only |
-| `select` | `select:<selector>/v:<view>` | each selector read (`kind:district`, `role:surface`) | the matching ids, in id order | digest only |
+| `select` | `select:<selector>/v:<view>` | each selector read (`kind:district`, `role:surface`), with the statements that decide what it matches: every field's for a role or tag, every feature's for a kind | the matching ids, in id order | digest only |
 | `shape` | `shape:<id>/v:<view>` | a feature, `where` regions included | its geometry on the integer lattice (`geometry.md`) | digest only |
 | `instance` | `instance:<id>/v:<view>` | a hand instance | its plan: origin in plan, facing, asset | digest only |
 | `rule` | `rule:<id>/v:<view>` | a set, run or scatter | its output before hand edits: instances in plan, with produced names | digest only |
@@ -96,7 +96,7 @@ spans; the engine reads `merge` to build the graph.
 | selection by place | `{ of, near }` (`identity.md` 3) | the maker's `held`, `op` or `step`; a hand edit's own selection reads the maker's `rule` or `step` (`identity.md` 4.1) |
 | step output | a `kind:` selector over features a step returned (`formulas.md` 7); a `tag:` selector resolving to a field a step declared is (open: needs ruling, R21; `fields.md` 7); never a produced name in text (R3) | that step's `step:<id>` node, or its `held` node for an instance |
 | mount | a place name through an instance (`cottage.door`); a path's `starts_at` or `ends_at` naming the instance itself meets its default mount (R31) | the instance's `instance` or `held`, and its `height` |
-| formula read | a field, attribute, feature or selector a formula names (`formulas.md` reports the names) | the field's nodes in the reader's view (in a `shape`, view `head`) over every chunk the reader's window, grown by the function's halo (`slope`: 1 post), meets; `attr`; `distance`; `select` |
+| formula read | a field, attribute, feature or selector a formula names (`formulas.md` reports the names) | the field's nodes in the reader's view (in a `shape`, view `head`) over every chunk the reader's window, grown by the function's halo (`slope`: 1 post), meets, and with no halo the chunk of the reader's own window alone, which holds every post read (a neighbour shares only posts it holds, `build.md` 5); `attr`; `distance`; `select` |
 | measure | `under`, `smoothed_along` | the `measure` node. Its own edges: `under(field, stat)` reads that field's nodes over every chunk the feature meets; `under(stat)` and `smoothed_along` read the written field's entries before this effect, computed inside the node and never kept, so its edges are those a `field` node over those chunks would have for those entries only |
 | effect | a kind's effect with `field = "role:..."` or `"tag:..."` | from each written `field` node to the feature's `distance` over that chunk and its `attr`, for each feature whose effect window (`fields.md` 5.3) meets the chunk |
 | field rows from a step | rows a step returned | from each `field` node of that field to the `step` |
@@ -300,6 +300,15 @@ A node whose value holds an error is stored like any other and replays its error
 (`protocol.md`: it failed, was killed or returned nothing readable) is not stored and runs again next
 build.
 
+An error the static checks find in a statement (`diagnostics.md` 4, stage 2) fails that statement's
+node before anything runs, whatever its inputs: its value is the error, and its key holds its
+statements, parameters and the error, no edge. So it is reported beside an independent failure
+upstream, which would otherwise have skipped it.
+
+A field's diagnostics are found over the whole extent, once (`fields.md` 6.1). Each belongs to the
+chunk node whose window holds its position, the first in chunk order, or, with no position, to
+every chunk node of the field; the build reports it once.
+
 ## 4. Strata and views
 
 A step declared in layer L reads its **stratum**: the statements of the layers at or below L, and
@@ -414,7 +423,8 @@ others are `reused`. Status never depends on which thread got there first.
 
 **The build key** is the digest of: the four versions; the requested changes; each `source` and
 `input` path with its digest; each lookup the build made (`documents.md` 4: the name, the path
-found, and each candidate before it that was absent); each step's trust digest; and `--lib`,
+found, and each candidate before it that was absent); each step's trust digest, and whether this
+machine trusts it (a lint trusted since runs); and `--lib`,
 `--stand-ins` and `--fail-on`. Roots and lookups enter by place and source path only: each root as
 `beside`, `--lib <n>`, `VIA_LIB <n>` or `shipped`, each path as its `lib:<id>/` or world-relative
 source path (`documents.md` 2.1). No absolute path enters the key. A folder input's digest covers its listing, so a new file in it
@@ -647,9 +657,9 @@ Each `field` chunk has the effect edges only of features whose effect window mee
 |---|---|---|
 | 1. clean | every node | |
 | 2. again | none | the null build: every node `reused` |
-| 3. `--change downstream` (`build.md` 14) | `merge`; `attr:ford` (its statement changed; same value); `shape:ford`, `shape:lane`; their `distance` nodes and the `height` chunks that the old or new windows of their effects meet; `write:fields/height.npy`, `write:diagnostics.json`, `write:manifest.json` | `shape:beck` and the other chunks `reused` |
-| 4. without the change | none | the store still holds build 2's record |
-| 5. tables shuffled, a comment added | `source:world.toml`, `merge`, `write:diagnostics.json`, `write:manifest.json` | statement digests unchanged, so nothing else runs; diagnostics carry new lines |
+| 3. `--change downstream` (`build.md` 14) | `merge`; `attr:ford` (its statement changed; same value); `shape:ford`, `shape:lane`; their `distance` nodes and the `height` chunks that the old or new windows of their effects meet; `write:fields/height.npy`, `write:changes.json`, `write:diagnostics.json`, `write:manifest.json` | `shape:beck` and the other chunks `reused` |
+| 4. without the change | `write:changes.json` and `write:manifest.json`: the report is against build 3 now | the store still holds build 1's nodes |
+| 5. tables shuffled, a comment added | `source:world.toml`, `merge`, `write:changes.json`, `write:diagnostics.json`, `write:manifest.json` | statement digests unchanged, so nothing else runs; diagnostics carry new lines |
 
 Writing `on = { ref = "lane", t = 0.5 }` on the ford closes a loop:
 
@@ -688,12 +698,12 @@ one id per line, under `spec/vectors/graph/`, written with `examples/ford/` in M
 | null | M1 | `ford` | build twice | second run: no node `ran` or `recomputed`; same bytes |
 | threads | M1 | `ford` | build at 1 and at 8 threads, each clean | same bytes; same `ran` set |
 | empty store | M1 | `ford`, store deleted, build directory kept | build | every node `ran`; same bytes as before |
-| shuffle | M1 | tables and keys reordered, comments added | rebuild | `ran` is exactly the changed `source` nodes, `merge`, `write:diagnostics.json` and `write:manifest.json` (it lists source digests); diagnostics show the new lines |
-| early cutoff | M1 | a world `let` read by `height`'s base, from `2 * 3` to `6` | rebuild | `ran` is `source:world.toml`, `merge`, every `field:height/v:build` chunk, `write:diagnostics.json` and `write:manifest.json`; `write:fields/height.npy` `reused` |
+| shuffle | M1 | tables and keys reordered, comments added | rebuild | `ran` is exactly the changed `source` nodes, `merge`, `write:diagnostics.json`, `write:changes.json` (now against the first build, `build.md` 11.2) and `write:manifest.json` (it lists source digests); diagnostics show the new lines |
+| early cutoff | M1 | a world `let` read by `height`'s base, from `2 * 3` to `6` | rebuild | `ran` is `source:world.toml`, `merge`, every `field:height/v:build` chunk, `write:diagnostics.json`, `write:changes.json` and `write:manifest.json`; `write:fields/height.npy` `reused` |
 | downstream | M1 | `ford` | `--change downstream --out build/ford` (the clean build's directory) | `ran` equals `ford_downstream.ran` |
 | vertex | M1 | one vertex of the beck moved | rebuild | `ran` equals `ford_vertex.ran`: the beck's nodes, then those of `downstream` |
 | why | M1 | the `downstream` case | read the run report | every `ran` node names a cause; `shape:ford/v:build`'s is "statements" |
-| toggle | M1 | `ford` | build with `downstream`, without, with | third and fourth runs: nothing `ran` |
+| toggle | M1 | `ford` | build with `downstream`, without, with, without | third run: only `write:changes.json` and `write:manifest.json` `ran` (the report is against the second build, where the first had none, and the manifest lists its digest, `build.md` 4, 11.2); fourth run: nothing `ran` (its baseline has the `id` and `run.key` of the second run's, and those are what `write:changes.json`'s key holds of a baseline) |
 | cycle two | M1 | `ford` with `feature.ford` `on.ref = "lane_west"`, against `lane_west.ends_at = "ford"` | build | one `graph.cycle`; loop starts at `world.toml:25:8` (`feature.ford` `on.ref`), then line 30 (`lane_west.ends_at`); exit 1 |
 | cycle order | M1 | three fields reading in a ring, declared in reverse, `ford`'s sixteen chunks (4 by 4) | build | one `graph.cycle`, first member the first in source order |
 | cycle rest | M1 | a cycle and an unrelated feature | build; fix the cycle; build | first: the unrelated feature's nodes `ran` and are in the store; the directory holds `diagnostics.json` and `.previous` only. Second: those nodes `reused` |

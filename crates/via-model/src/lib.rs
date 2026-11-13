@@ -25,20 +25,25 @@
 //! | `resolve` | `fields.md` 5 and 6, `authority.md` 2 to 5: entries in R21 order, views, conflicts |
 //! | `rules` | `rules.md` 6 to 8, `identity.md` 4: scatter, hand edits, grounding, checks |
 //! | [`report`] | `identity.md` 5, `assets.md` 7: the change report |
+//! | [`query`] | `surfaces.md` 2: the four surface questions over a build, on the terrain |
 //!
 //! # Not yet
 //!
-//! [`build_graph`] runs the same build through `via-graph`: each field is one `field` node over the
-//! whole grid, keyed by its statements and the fields it reads; the other node families
-//! (`shape`, `instance`, `rule`, `held`, `footprint`, `height`) and chunked windows are not nodes
-//! yet. `where` regions, `follows`, `smooth`, a field read from a `file`,
-//! selections by place (`{ of, near }`) and clears `on` a path are refused with `doc.not_yet`.
+//! [`ModelPlan`] is the build as `via-graph` nodes (`graph.md` 1): every statement's node, fields
+//! cut by the build's chunks; node values are taken from the model's whole-extent passes, made
+//! once per process and only when a node must run. [`build_graph`] runs it with the model's
+//! nodes alone. A selection by place of a scatter's instance (`on = { of = "<scatter>", near }`) is
+//! taken by pins and clears only, which read the scatter's run stage (`identity.md` 4.1); a
+//! feature or a hand instance placed on one waits for the instance nodes and is `doc.not_yet`.
+//! `starts_at` and `ends_at` with `follows` are `doc.not_yet` until the M3 waterfront case
+//! decides them (`geometry.md` 4).
 
 mod build;
 mod decl;
 mod graph;
 pub mod pack;
 mod place;
+pub mod query;
 pub mod report;
 mod resolve;
 mod rules;
@@ -46,7 +51,7 @@ mod text;
 
 pub use build::{build, Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Options};
 pub use decl::Tier;
-pub use graph::{build_graph, ModelPlan};
+pub use graph::{build_graph, dedupe, leaves, FileReads, ModelPlan};
 pub use rules::scatter_name;
 
 #[cfg(test)]

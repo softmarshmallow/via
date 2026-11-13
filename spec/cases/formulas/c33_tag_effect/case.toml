@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "An effect with field = \"tag:ground\" matching two fields of bases 5 and 9, value = \"= v + 1\": 6 and 10."
+milestone = 1
+actions   = ["w"]
+
+[action.w]
+via  = ["build", "w/world.toml", "--lib", "{work}/libs", "--out", "w/build/w"]
+exit = 0
+out  = "w/build/w"
+
+[action.w.file.g1]
+path  = "w/build/w/fields/g1.npy"
+post  = [4, 4]
+value = 6
+
+[action.w.file.g2]
+path  = "w/build/w/fields/g2.npy"
+post  = [4, 4]
+value = 10

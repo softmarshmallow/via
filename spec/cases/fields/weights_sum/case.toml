@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "ten rows of three materials, mask = 0.5 + 0.5 * sin(37 * x + 11 * y + k): every post sums to at most 1 + 1e-6."
+milestone = 1
+actions   = ["build"]
+
+# The rows are written in the world (conformance.md 2 moves fields.md's masks.toml into the case's
+# own folder; one case reads them, so they are the world's text). The written bytes are what a case
+# reads: at most 255 at every post (1 + 1e-6 of the doubles cannot reach 256). Unpainted posts are
+# expected (field.unpainted), so the mode is includes.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.sum]
+fn    = "weights_sum_at_most"
+path  = "build/w/weights/ground"
+limit = 255

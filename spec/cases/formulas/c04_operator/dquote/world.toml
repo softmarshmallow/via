@@ -1,0 +1,10 @@
+name       = "tiny"
+extent     = [0, 0, 1, 1]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= f(\"g\")"
+
+[field.g]
+base = 1

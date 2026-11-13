@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A fixed corpus of fuzz-found documents; build each: exit 0 or 1, never 3, never a crash."
+milestone = 1
+actions   = ["build"]
+
+# conformance.md 2: diagnostics.md's spec/conformance/diagnostics/fuzz/ is this folder's corpus/. Seeded with hostile documents; cargo-fuzz finds join it (diagnostics.md workspace checks).
+
+[action.build]
+via         = ["build", "{item}", "--out", "build/w"]
+exit        = [0, 1]
+diagnostics = "any"
+out         = "build/w"
+for_each    = "corpus/*.toml"

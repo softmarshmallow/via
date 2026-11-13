@@ -1,0 +1,21 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = 1
+
+[field.ko]
+role = "keep_out"
+base = "= if(x < 10, 1, 0)"
+
+[clear.gap]
+at     = [3.5, 3.5]
+radius = 2

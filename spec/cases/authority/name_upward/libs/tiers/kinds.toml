@@ -1,0 +1,4 @@
+[kind.mark]
+output   = "mark"
+requires = ["toward"]
+names    = ["toward"]

@@ -225,7 +225,7 @@ pub fn null_report(head: &ReportHead, record: &BuildRecord) -> String {
                     cause: None,
                     needed_by: None,
                     ms: 0,
-                    step: None,
+                    step: record.steps.get(id).cloned(),
                 },
             )
         })

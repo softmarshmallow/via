@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "A clockwise square; a square with its first point repeated: two asset.bad_footprint, exit 1."
+milestone = 1
+actions   = ["check"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.bad_footprint]
+code    = "asset.bad_footprint"
+subject = "asset.cw.footprint"
+
+[action.check.diag.closed]
+code    = "asset.bad_footprint"
+subject = "asset.closed.footprint"

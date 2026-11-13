@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "`[change.c] remove = true`: doc.remove_above_entity."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "c"]
+exit = 1
+
+[action.merge.diag.remove_above_entity]
+code = "doc.remove_above_entity"

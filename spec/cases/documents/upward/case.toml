@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A rank 0 feature with `starts_at` on a rank 1 thing: doc.upward_ref naming both owners."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.upward_ref]
+code    = "doc.upward_ref"
+subject = "feature.lane.starts_at"
+file    = "world.toml"
+line    = 13

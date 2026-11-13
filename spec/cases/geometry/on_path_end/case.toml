@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "on a path at t = 1; placed: offset along the last segment's normal."
+milestone = 1
+actions   = ["build"]
+
+# The last segment runs north; left of travel is west, so 2 m from (10, 10) is (8, 10).
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.x]
+path    = "build/w/features.json"
+pointer = "/features/0/at/0"
+value   = 8
+
+[action.build.file.y]
+path    = "build/w/features.json"
+pointer = "/features/0/at/1"
+value   = 10

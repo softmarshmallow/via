@@ -1,0 +1,10 @@
+format    = "via-case-1"
+summary   = "include = [\"streets\"]; streets/ holds code and no kinds.toml: no diagnostic; no kinds added."
+milestone = 1
+actions   = ["merge"]
+
+# No diagnostic (mode exact). That no kind is added is not asserted by a pointer: documents.md 8 does not say whether an empty `kind` member is printed.
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 0

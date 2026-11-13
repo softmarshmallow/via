@@ -1,0 +1,9 @@
+name       = "cut"
+extent     = [0, 0, 128, 128]
+resolution = 1
+
+[let]
+k = "= 2 * 3"
+
+[field.height]
+base = "= k + x"

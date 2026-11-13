@@ -1,0 +1,12 @@
+name       = "m"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.low]
+base = -1
+
+[feature.r]
+where = "= f('low')"
+
+[feature.p]
+on = { ref = "r", t = 0.5 }

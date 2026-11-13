@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "One world and --lib root from two checkout paths, with a fault in a library: byte-identical diagnostics.json; file begins lib:<id>/."
+milestone = 1
+actions   = ["one", "two"]
+
+[action.one]
+via         = ["build", "one/world.toml", "--lib", "{work}/one/roots", "--out", "one/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "one/build/w"
+
+[action.one.diag.unknown_key]
+code = "doc.unknown_key"
+file = "lib:wells/kinds.toml"
+
+[action.two]
+via         = ["build", "two/deeper/world.toml", "--lib", "{work}/two/deeper/roots", "--out", "two/deeper/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "two/deeper/build/w"
+
+[action.two.diag.unknown_key]
+code = "doc.unknown_key"
+file = "lib:wells/kinds.toml"
+
+[action.two.same.diag]
+action = "one"
+what   = "diagnostics"

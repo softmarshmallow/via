@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "ways under a --lib root and under VIA_LIB; land under VIA_LIB only: the --lib ways is used, doc.include_shadowed info; land found."
+milestone = 1
+actions   = ["merge"]
+
+# VIA_LIB is the repository's lib/ (conformance.md 5.2), which holds `ways` and `land`. The lane
+# the world uses is the --lib one (radius 5, no defaults). That spans in a library file are written
+# `lib:<id>/` is documents.md's span_portable case.
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{work}/roots"]
+exit = 0
+
+[action.merge.diag.include_shadowed]
+code     = "doc.include_shadowed"
+severity = "info"
+
+[action.merge.file.ways]
+stream  = "stdout"
+pointer = "/kind/lane"
+value   = { "@library" = "ways", radius = 5 }
+
+[action.merge.file.land]
+stream   = "stdout"
+pointer  = "/kind/pad"
+includes = { "@library" = "land" }

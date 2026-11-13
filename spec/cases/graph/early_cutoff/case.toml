@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "A world let read by height's base, from 2 * 3 to 6; rebuild: ran is source:world.toml, merge, every field:height/v:build chunk, write:diagnostics.json and write:manifest.json; write:fields/height.npy reused."
+milestone = 1
+actions   = ["first", "edit", "again"]
+
+# 128 m at resolution 1 is 129 posts, chunks of 64 posts: four chunk nodes. Each reads the let's digest, which changed, so each runs and gives the same samples; the field file's node is reused.
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.edit]
+replace = "world.toml"
+find    = "k = \"= 2 * 3\""
+with    = "k = 6"
+
+[action.again]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.again.nodes]
+ran    = ["field:height/v:build/w:0.0.65.65", "field:height/v:build/w:0.64.65.129", "field:height/v:build/w:64.0.129.65", "field:height/v:build/w:64.64.129.129", "merge", "source:world.toml", "write:changes.json", "write:diagnostics.json", "write:manifest.json"]
+reused = ["write:fields/height.npy"]

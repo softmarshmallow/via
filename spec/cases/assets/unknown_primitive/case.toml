@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "primitive = \"boxx\": asset.unknown_primitive, hint box, exit 1."
+milestone = 1
+actions   = ["check"]
+
+# assets.md's row gives the hint `box` (the nearest by diagnostics.md 1.4 over the five shape words: one deletion, within the limit of 1).
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.unknown_primitive]
+code = "asset.unknown_primitive"
+data = { nearest = "box" }

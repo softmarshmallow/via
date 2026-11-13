@@ -38,7 +38,37 @@ pub fn changed_statements(run: &Run, baseline: &BuildRecord) -> BTreeSet<String>
 /// along its inputs, taken in id order, so the first node found for a statement ends the
 /// shortest path, ties going to the lowest ids.
 pub fn causes(run: &Run, baseline: &BuildRecord, target: &NodeId) -> Vec<ChangeCause> {
-    let changed = changed_statements(run, baseline);
+    causes_from(
+        &run.statements,
+        &run.made_from,
+        &run.edges,
+        baseline,
+        target,
+    )
+}
+
+/// [`causes`] from a graph's parts rather than a finished run: each statement's digest, the
+/// statements each node is made from, and each node's input edges. A node defined last (the
+/// change report) has no run yet, and its plan knows these from its definitions.
+pub fn causes_from(
+    statements: &BTreeMap<String, crate::digest::Digest>,
+    made_from: &BTreeMap<NodeId, Vec<String>>,
+    edges: &BTreeMap<NodeId, Vec<(String, NodeId)>>,
+    baseline: &BuildRecord,
+    target: &NodeId,
+) -> Vec<ChangeCause> {
+    let changed: BTreeSet<String> = statements
+        .iter()
+        .filter(|(s, d)| baseline.statements.get(*s) != Some(d))
+        .map(|(s, _)| s.clone())
+        .chain(
+            baseline
+                .statements
+                .keys()
+                .filter(|s| !statements.contains_key(*s))
+                .cloned(),
+        )
+        .collect();
     let mut prev: BTreeMap<&NodeId, &NodeId> = BTreeMap::new();
     let mut seen: BTreeSet<&NodeId> = BTreeSet::new();
     let mut queue: VecDeque<&NodeId> = VecDeque::new();
@@ -46,7 +76,7 @@ pub fn causes(run: &Run, baseline: &BuildRecord, target: &NodeId) -> Vec<ChangeC
     seen.insert(target);
     queue.push_back(target);
     while let Some(n) = queue.pop_front() {
-        for s in run.made_from.get(n).into_iter().flatten() {
+        for s in made_from.get(n).into_iter().flatten() {
             if changed.contains(s) && !found.contains_key(s) {
                 let mut path = vec![n.clone()];
                 let mut at = n;
@@ -57,13 +87,7 @@ pub fn causes(run: &Run, baseline: &BuildRecord, target: &NodeId) -> Vec<ChangeC
                 found.insert(s.clone(), path);
             }
         }
-        let mut inputs: Vec<&NodeId> = run
-            .edges
-            .get(n)
-            .into_iter()
-            .flatten()
-            .map(|(_, t)| t)
-            .collect();
+        let mut inputs: Vec<&NodeId> = edges.get(n).into_iter().flatten().map(|(_, t)| t).collect();
         inputs.sort();
         inputs.dedup();
         for t in inputs {

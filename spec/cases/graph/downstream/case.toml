@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "ford, then --change downstream into the clean build's directory: ran holds the ford's and its followers' nodes, and none of the far chunks."
+milestone = 1
+actions   = ["program", "trust", "base", "downstream"]
+
+# graph.md's row compares `ran` with the fixture ford_downstream.ran. That list is the node set of
+# graph.md 1 to 2 expanded over ford's chunks and features; until it is derived from the chapter
+# (not recorded from a build), the case asserts the parts the chapter fixes: the moved ford, the
+# lanes that end and start at it, the bookmark naming it, the writes; the beck untouched.
+# Chunks (0, 3) and (3, 3), x 0 to 64 and 192 to 256 m, y 192 to 256 m (k = 128 posts, graph.md 1):
+# no effect window of the beck (x 140 to 166 above y 170), the lanes (y below 132 + 12), the ford or
+# the cottage's pad reaches them, before or after the change, so none of their field nodes runs.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.downstream]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.downstream.nodes]
+ran_includes = ["merge", "shape:ford/v:build", "shape:lane_east/v:build", "shape:lane_west/v:build", "attr:at_ford", "write:changes.json", "write:manifest.json"]
+not_ran      = ["shape:beck/v:build", "field:clearing/v:build/w:0.384.129.513", "field:height/v:build/w:0.384.129.513", "field:water/v:build/w:0.384.129.513", "field:clearing/v:build/w:384.384.513.513", "field:height/v:build/w:384.384.513.513", "field:water/v:build/w:384.384.513.513"]

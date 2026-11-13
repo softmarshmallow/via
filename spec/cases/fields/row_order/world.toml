@@ -1,0 +1,21 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.height.then.b]
+value = 1
+order = 0
+
+[field.height.then.a]
+value = 2
+order = 0
+
+[field.height.then.c]
+value = 3
+order = -1

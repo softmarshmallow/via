@@ -1,0 +1,17 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = 1
+
+[pin.oak]
+asset = "tree_oak"
+on    = { of = "tres", near = [10, 10] }

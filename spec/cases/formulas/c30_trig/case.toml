@@ -1,0 +1,76 @@
+format    = "via-case-1"
+summary   = "sin(180), cos(90), sin(360): 0; sin(90), sin(450): 1; cos(180), sin(-90): -1; tan(90): formula.not_finite at tan."
+milestone = 1
+actions   = ["sin180", "cos90", "sin360", "sin90", "sin450", "cos180", "sinm90", "tan90"]
+
+[action.sin180]
+via  = ["build", "sin180/world.toml", "--lib", "{work}/libs", "--out", "sin180/build/w"]
+exit = 0
+out  = "sin180/build/w"
+
+[action.sin180.file.all]
+path = "sin180/build/w/fields/f.npy"
+all  = 0
+
+[action.cos90]
+via  = ["build", "cos90/world.toml", "--lib", "{work}/libs", "--out", "cos90/build/w"]
+exit = 0
+out  = "cos90/build/w"
+
+[action.cos90.file.all]
+path = "cos90/build/w/fields/f.npy"
+all  = 0
+
+[action.sin360]
+via  = ["build", "sin360/world.toml", "--lib", "{work}/libs", "--out", "sin360/build/w"]
+exit = 0
+out  = "sin360/build/w"
+
+[action.sin360.file.all]
+path = "sin360/build/w/fields/f.npy"
+all  = 0
+
+[action.sin90]
+via  = ["build", "sin90/world.toml", "--lib", "{work}/libs", "--out", "sin90/build/w"]
+exit = 0
+out  = "sin90/build/w"
+
+[action.sin90.file.all]
+path = "sin90/build/w/fields/f.npy"
+all  = 1
+
+[action.sin450]
+via  = ["build", "sin450/world.toml", "--lib", "{work}/libs", "--out", "sin450/build/w"]
+exit = 0
+out  = "sin450/build/w"
+
+[action.sin450.file.all]
+path = "sin450/build/w/fields/f.npy"
+all  = 1
+
+[action.cos180]
+via  = ["build", "cos180/world.toml", "--lib", "{work}/libs", "--out", "cos180/build/w"]
+exit = 0
+out  = "cos180/build/w"
+
+[action.cos180.file.all]
+path = "cos180/build/w/fields/f.npy"
+all  = -1
+
+[action.sinm90]
+via  = ["build", "sinm90/world.toml", "--lib", "{work}/libs", "--out", "sinm90/build/w"]
+exit = 0
+out  = "sinm90/build/w"
+
+[action.sinm90.file.all]
+path = "sinm90/build/w/fields/f.npy"
+all  = -1
+
+[action.tan90]
+via         = ["build", "tan90/world.toml", "--lib", "{work}/libs", "--out", "tan90/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "tan90/build/w"
+
+[action.tan90.diag.not_finite]
+code = "formula.not_finite"

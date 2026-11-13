@@ -1,0 +1,4 @@
+[clear.in_beck]
+on     = { ref = "beck", t = 0.3 }
+radius = 1
+by     = ["trees"]

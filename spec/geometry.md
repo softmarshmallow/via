@@ -241,18 +241,31 @@ At 19.7 m from the beck, 1 mm across the bisector moves the nearest point 7.19 m
 the beck (`2 e tan(τ/2)` gives 7.19 and 7.09), while `d` changes by less than 0.3 mm. Past a lane's
 end `sd` changes sign over 1 mm. The beck's ends lie on the extent's edge, so its own step lies
 outside the world; each lane's step past the ford lies inside it, over the beck. The machine copy is
-`spec/vectors/geometry/ford_frame.json`, a `via kernel project` input with its expected output
-(section 7), written with the runner.
+the case `spec/cases/geometry/ford_frame/`: one `via kernel project` input per feature (section 7;
+one input holds one shape, so the three features cannot share one vector file), each row of the
+table a check on its output, values as written here.
 
-**A smoothed frame: decided in M1 track A (R33): none in v1.** The vector holds bit for bit in the
-kernel. Read against the effects `docs/plan.md` binds for ford (until `lib/water` and `lib/ways`
-are written): the beck's `bed` and `bank` and the lane's `bed` are profiles across the line, which
-read `d` (the lane's camber reads `d` too: a crown is symmetric); the ford's `approach` reads `d`
-from the ford's point. None reads `t` at a radius past the vector's one-metre jump (about 2.7 m on
-the beck), and none reads `sd` past a lane's end. So v1 keeps the nearest-point frame and E1 stays
-accepted with the note above. The condition binds the libraries: an effect that reads `t` keeps
-within `1 / (2 tan(τ/2))` m of its line, and the beck's `level` takes its fall along the beck from
-the ground beneath it, not from `t`. A library effect that breaks it reopens this paragraph.
+**A smoothed frame: decided in M1 track A (R33): none in v1.** The vector holds bit for bit through
+`via kernel project`. A smoothed frame would be a second frame beside the nearest point, one more
+mechanism (principle 10), and would move the `t` the author's points give (principle 2), while the
+jump it removes is bounded and stated above. So v1 keeps the nearest-point frame, and E1 stays
+accepted with the note above. The condition binds the libraries: an effect that reads `t`, directly
+or through `smoothed_along` (which reads each point's `t`, `formulas.md` 8.5), keeps its mask
+within `1 / (2 tan(τ/2))` m of its line where the line turns by `τ`, and no effect reads `sd` past
+a path's end.
+
+Measured when this was decided, on ford built from the text above with `lib/` as written then
+(resolution 0.5 m, `via eval --field water` and `--field height`, every pair of neighbouring posts
+within 8 m of a point where both posts are wet, one machine, one thread): the largest step in
+`water` is 0.091 m inside the bend at `[140, 170]`, against 0.036 m at the bend at `[160, 90]` and
+0.034 m on the straight stretch near `[145, 210]`, which is the ground's fall over one post. The
+excess at `[140, 170]` is the jump in `t`: `lib/water`'s `level` reads `smoothed_along(4)` with its
+mask out to `width / 2 + 4` = 7 m, past the beck's bound of 2.74 m, so it breaks the condition.
+The fault is the library's, not the frame's: `level` keeps its `t` read within the bound, or takes
+its fall from the ground beneath it (owed by `lib/water`, M1). The lane's `bed` reads
+`smoothed_along(24)` on a straight path, which has no inside medial axis; the ford's `approach`,
+the bank, the verge and the pads read `d` only. A library effect that breaks the condition with no
+such fix reopens this paragraph.
 
 ### 2.7 Ends and meetings (R18)
 
@@ -768,7 +781,8 @@ The output object holds `@format` (`"via-kernel-1"`), `op`, the OP's result memb
 `diagnostics`: every record, in the form and order of `diagnostics.md`'s `--json` document. A
 source id is not an entity address, so each record, and each of its `related` entries, has subject
 `cli`, the `argument` location (`diagnostics.md` 1.2, 7) giving the index of the input file's path
-after `--in`, `position` in millimetres where there is one, and the source id in `data.source` (no
+after `--in`, `position` where there is one (in metres, as every record writes it, `diagnostics.md`
+1.2), and the source id in `data.source` (no
 member when the record has no source). On an error the result members are absent and `diagnostics`
 is still written.
 
@@ -784,7 +798,7 @@ is still written.
 | `stroke` | 3.4 | Paths; `params.left`, `right`, `join`, `cap`, `limit`. | `results`: one `region` per input. |
 | `follow` | 3.5 | One path or one-ring region; `params.span` (two doubles), `params.offset`. | `path`. |
 | `cells` | 3.6 | `shapes` and `grid` as `network`; the region as `params.area`, an area's start vertex, or `params.region`, a region source; `params.frontage`, a list of `{ "source", "edge": [a, b], "side" }` (the edge by its two end junctions, least first; the side of that source's travel, as in `sides`) or `"outline"`; `params.cell_length`, `band_depth`, `min_cell_length`, `min_cell_area`. | `cells`, each `{ "region", "frontage", "station", "span", "point" }`; `rest`. |
-| `mask` | 3.7 | `grid`, `values`, `formula`; `params.window` (`[i0, j0, i1, j1]`, default the whole grid). | `region`. |
+| `mask` | 3.7 | `grid`, `values`, `formula`; `params.window` (`[i0, j0, i1, j1]`, posts `i0 <= i < i1` as `numbers.md` 6, default the whole grid). | `region`. |
 | `project` | 3.8 | One shape; `points`. | `results`: per point `{ "t", "d", "sd", "nearest" }`, `d` and `sd` in metres, `nearest` in millimetres. |
 | `interpolate` | 3.8 | One path or one-ring region; `t`. | `results`: per `t` `{ "point", "bearing" }`. |
 | `substring` | 3.8 | One path or one-ring region; `params.span`. | `path`. |
@@ -963,17 +977,18 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 - A 10 m square region and the point `[5, 2]`; `project`; `t = 0.125`, `sd = +2`, `d = 0`. The point
   `[5, -3]`; `sd = -3`, `d = 3`. The point `[10, 5]` on the outline; `t = 0.375`, `sd = +0`, `d = 0`.
 - `on` that square at `t = 0.125`, `offset = 2`; placed; `[5, 2]`.
-- A 3-point path with `smooth = true`; read; written points kept, spans sampled every ≤ 250 mm.
+- A 3-point path with `smooth = true`; read; written points kept, each span in `ceil(c / 250 mm)`
+  equal steps of the curve parameter (2.4; a step's chord can pass 250 mm where the curve bows).
 - `smooth = true` on a region; read; `geom.smooth_not_path`.
 - `on` a path at `t = 1`; placed; offset along the last segment's normal.
 - ford's cottage `on` the beck at the `t` of its vertex `[140, 170]` (found by `project`), offset
   12 m; placed along the normal of the outgoing segment, toward `[160, 90]`, not the bisector.
-- `on = { ref = "a", t = 1.5 }`, and `t = nan`; read; `geom.t_range` each.
+- `on = { ref = "a", t = 1.5 }`; read; `geom.t_range`. `t = nan`; read; `num.not_finite`, since a non-finite number in text is refused at read (`documents.md` 2, `numbers.md` 3.3) and never reaches the kernel.
 - A change writing only `on = { t = 0.8 }`; merge; `doc.missing_key` naming `ref`.
 - A region from `where` of two pieces; a feature `on` it; `geom.many_rings`. `project` on it; `d`
   and `sd` to the nearer ring.
 - `on` a point feature with `t = 0.5`; read; `geom.no_length`.
-- `face = "toward"` with `offset = 0`; read; `geom.face_side`. `face = "sideways"`; `geom.face_unknown`
+- `face = "toward"` with `offset = 0`; read; `geom.face_side`. `face = "awya"`; `geom.face_unknown`
   with hint `away`. `face = "along"` with `at`; `geom.face_needs_on`.
 - An instance `on` a mount with `face = "along"`; placed; facing equal to the mount's.
 - `ends_at` naming a region feature; read; `geom.meet_shape`.

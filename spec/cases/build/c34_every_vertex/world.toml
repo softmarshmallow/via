@@ -1,0 +1,10 @@
+name       = "v"
+extent     = [0, 0, 64, 16]
+resolution = 1
+
+[feature.a_five]
+path = [[0, 0], [10, 2], [20, 0], [30, 5], [40, 0]]
+
+[feature.b_smooth]
+path   = [[0, 8], [20, 14], [40, 8]]
+smooth = true

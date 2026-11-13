@@ -1,0 +1,8 @@
+name       = "x"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[layer.d]
+file  = "d.toml"
+owner = "tests"
+rank  = 1

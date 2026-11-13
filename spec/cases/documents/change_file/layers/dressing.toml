@@ -1,0 +1,3 @@
+[instance.cart]
+asset = "box_small"
+on    = { ref = "lane", t = 0.3, offset = 4 }

@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "ford with changes/bad_typo.toml: exit 1, formula.unknown_name at xx, data.nearest = x, no related, no output file but diagnostics.json."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# diagnostics.md 8. Every build writes .previous, a first one with a null id (build.md 2 and 11.2), so a failed build holds diagnostics.json and .previous (build.md 13). `related` is not compared absent by the runner; the record's `related` is checked by U2's form only. (open) a `related = []` expectation form.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/bad_typo.toml"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--change", "changes/bad_typo.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.diag.unknown_name]
+code    = "formula.unknown_name"
+subject = "scatter.trees.density"
+file    = "changes/bad_typo.toml"
+line    = 2
+column  = 67
+bytes   = [82, 84]
+data    = { name = "xx", nearest = "x" }
+
+[action.build.file.only]
+path    = "build/ford"
+listing = [".previous", "diagnostics.json"]

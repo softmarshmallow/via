@@ -1,0 +1,6 @@
+name       = "z"
+extent     = [0, 0, 4, 4]
+resolution = 1
+
+[field.a]
+base = "= -1 * 0"

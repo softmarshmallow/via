@@ -1,0 +1,4 @@
+name       = "x"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["k"]

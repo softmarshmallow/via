@@ -56,7 +56,12 @@ pub struct Derived {
 
 /// Codes `diagnostics.md` section 2 names as covered by a named workspace test, besides every
 /// `internal` code.
-const WORKSPACE_COVERED: &[&str] = &["build.dir_busy", "graph.busy", "graph.store_unavailable"];
+const WORKSPACE_COVERED: &[&str] = &[
+    "build.dir_busy",
+    "graph.busy",
+    "graph.store_unavailable",
+    "num.overflow",
+];
 
 /// Phrases after "nearest" that give a value, a candidate or a distance rather than a nearest name
 /// in the sense of section 1.4, so they add no `data.nearest`. The rule "then `nearest` if they

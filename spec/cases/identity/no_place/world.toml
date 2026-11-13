@@ -1,0 +1,16 @@
+name       = "x"
+extent     = [0, 0, 16, 16]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 4
+density = 1
+
+[pin.p]
+asset = "box_small"
+on    = { of = "trees", class = "row", near = [8, 8] }

@@ -1,0 +1,21 @@
+[kind.pad]
+authority = "shaped"
+radius    = 4
+
+[kind.pad.effect.level]
+field = "role:surface"
+value = "= under('mean')"
+mask  = "= 1 - smoothstep(0, 3, d)"
+
+[kind.pad.effect.clear]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 2, d)"
+
+[kind.blocker]
+radius = 2
+
+[kind.blocker.effect.out]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 1, d)"

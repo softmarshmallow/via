@@ -1,0 +1,12 @@
+name       = "rest"
+extent     = [0, 0, 64, 64]
+resolution = 1
+
+[field.a]
+base = "= f('b')"
+
+[field.b]
+base = "= f('a')"
+
+[feature.u]
+path = [[0, 8], [64, 8]]

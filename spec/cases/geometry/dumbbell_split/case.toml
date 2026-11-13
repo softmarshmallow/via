@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "dumbbell; offset -2.5 m: two pieces and geom.offset_split with count 2."
+milestone = 1
+actions   = ["op"]
+
+# Two 20 m squares joined by a 10 m long, 4 m wide neck; an inset of 2.5 m closes the neck. The count 2 is the record's data.
+
+[action.op]
+via         = ["kernel", "offset", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.offset_split]
+code    = "geom.offset_split"
+subject = "cli"
+
+[action.op.check.pieces]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/results/0"
+count   = 2

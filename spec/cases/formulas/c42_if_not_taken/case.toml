@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "\"= if(x > 100, sqrt(x - 100), 0)\" and the nested form: no diagnostic."
+milestone = 1
+actions   = ["one", "nested"]
+
+[action.one]
+via  = ["build", "one/world.toml", "--lib", "{work}/libs", "--out", "one/build/w"]
+exit = 0
+out  = "one/build/w"
+
+[action.nested]
+via  = ["build", "nested/world.toml", "--lib", "{work}/libs", "--out", "nested/build/w"]
+exit = 0
+out  = "nested/build/w"

@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "The worked example with wide: width = 6; its origin line 21, chain ends with change wide."
+milestone = 1
+actions   = ["merge", "origins"]
+
+# documents.md 10: --origins gives `width` world.toml line 21, column 1, chain change `wide`. The
+# origins object is printed beside the merged one (open, build.md 14), so the case asserts only the
+# merged value through a pointer and runs --origins for U1 to U5.
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "wide"]
+exit = 0
+
+[action.merge.file.width]
+stream  = "stdout"
+pointer = "/feature/lane/width"
+value   = 6
+
+[action.origins]
+via  = ["merge", "world.toml", "--change", "wide", "--origins"]
+exit = 0

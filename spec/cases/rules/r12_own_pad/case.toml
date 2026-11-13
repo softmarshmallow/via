@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "A pad kind writing keep_out = 1: no place.keep_out."
+milestone = 1
+actions   = ["build"]
+
+# Mode exact: the keep_out test reads the view without footprint entries (rules.md 8.3).
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"

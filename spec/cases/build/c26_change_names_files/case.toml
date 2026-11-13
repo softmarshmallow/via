@@ -1,0 +1,48 @@
+format    = "via-case-1"
+summary   = "--change downstream and --change changes/downstream.toml with the same body: same id; run.changes differs."
+milestone = 1
+actions   = ["program", "trust", "trust_file", "name", "file"]
+
+# Each change is trusted on its own: requested together, the inline change and the change file of one name are identity.duplicate_id (documents.md 3).
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.trust_file]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/downstream.toml"]
+exit = 0
+
+[action.name]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.name.file.c]
+path    = "build/a/manifest.json"
+pointer = "/run/changes"
+value   = ["downstream"]
+
+[action.file]
+via         = ["build", "world.toml", "--change", "changes/downstream.toml", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.file.file.c]
+path    = "build/b/manifest.json"
+pointer = "/run/changes"
+value   = ["changes/downstream.toml"]
+
+[action.file.same.id]
+action = "name"
+what   = "id"

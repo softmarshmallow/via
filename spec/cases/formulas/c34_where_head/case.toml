@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "A kind that lowers height, with a feature where = \"= f('height') < 10\": no cycle; the region follows the base. Adding a then row that raises the ground moves it."
+milestone = 1
+actions   = ["plain", "raised"]
+
+# authority.md where_head's numbers: at x = 3 the ground is 8, inside, lowered to 6; with the row the region shrinks to x < 2 and x = 3 reads 11.
+
+[action.plain]
+via  = ["build", "plain/world.toml", "--lib", "{work}/libs", "--out", "plain/build/w"]
+exit = 0
+out  = "plain/build/w"
+
+[action.plain.file.in]
+path  = "plain/build/w/fields/height.npy"
+post  = [3, 8]
+value = 6
+
+[action.raised]
+via  = ["build", "raised/world.toml", "--lib", "{work}/libs", "--out", "raised/build/w"]
+exit = 0
+out  = "raised/build/w"
+
+[action.raised.file.moved]
+path  = "raised/build/w/fields/height.npy"
+post  = [3, 8]
+value = 11

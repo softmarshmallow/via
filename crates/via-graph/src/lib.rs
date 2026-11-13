@@ -38,8 +38,8 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-pub use changes::{causes, changed_statements, ChangeCause};
-pub use codec::{CoreCodec, DiagCodec, Val};
+pub use changes::{causes, causes_from, changed_statements, ChangeCause};
+pub use codec::{object_bytes, CoreCodec, DiagCodec, Val};
 pub use digest::{Dec, Digest, Enc};
 pub use engine::{
     run, trace_digest, Cause, NeededBy, NodeOutcome, Options, Run, Status, StepOutcome,
@@ -49,7 +49,7 @@ pub use key::{digest_of_parts, encode_key, key, KeyParts, Versions};
 pub use lock::{lock_path, DirLock};
 pub use plan::{
     default_persist, Def, Defined, Gate, Inputs, Known, Output, Persist, Plan, Read, Reports,
-    StepDef, StepRun,
+    Settled, StepDef, StepRun,
 };
 pub use record::{build_key, null_build, BuildKeyParts, BuildRecord, RecordNode};
 pub use refgraph::{Cycle, Member, RefEdge, RefGraph, SourceOrder};

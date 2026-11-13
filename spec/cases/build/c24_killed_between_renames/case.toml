@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "ford built, then rebuilt with the test switch that stops after the first rename (exit 9); build again: the build completes, and no .partial or .old remains."
+milestone = 1
+actions   = ["program", "trust", "first", "killed", "again"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.killed]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+exit        = 9
+diagnostics = "any"
+out         = "build/ford"
+env         = { VIA_TEST_STOP_BETWEEN_RENAMES = "1" }
+no_rerun    = "a killed process"
+
+[action.again]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.again.file.no_partial]
+path   = "build/ford.partial"
+exists = false
+
+[action.again.file.no_old]
+path   = "build/ford.old"
+exists = false

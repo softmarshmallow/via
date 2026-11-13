@@ -1,0 +1,60 @@
+format    = "via-case-1"
+summary   = "ford, a clear and a pin with by = [\"trees\"]; spacing 7 to 6: every tree name changes (s7000 to s6000); the clear's place holds no tree; the pin stands; both hand edits unchanged."
+milestone = 1
+actions   = ["program", "trust", "hand", "denser"]
+
+# identity.md case 31, rules.md r38 and the plan's ford row `hand`, then `hand` and `denser`.
+# The clear `gap` is at [208, 208] with radius 6 (docs/plan.md); the pin `oak` at [200, 60].
+# Produced names are `trees#s7000_...` and `trees#s6000_...` (identity.md 2).
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "hand", "--change", "denser"]
+exit = 0
+
+[action.hand]
+via  = ["build", "world.toml", "--change", "hand", "--out", "build/ford+hand"]
+out  = "build/ford+hand"
+exit = 0
+diagnostics = "includes"
+
+[action.hand.check.clear]
+fn     = "no_origin_inside"
+build  = "build/ford+hand"
+at     = [208, 208]
+radius = 6
+prefix = "trees#"
+
+[action.denser]
+via  = ["build", "world.toml", "--change", "hand", "--change", "denser", "--against", "build/ford+hand", "--out", "build/ford+denser+hand"]
+out  = "build/ford+denser+hand"
+exit = 0
+diagnostics = "includes"
+
+[action.denser.check.removed]
+fn     = "changes_by_prefix"
+path   = "build/ford+denser+hand/changes.json"
+prefix = "trees#s7000_"
+what   = ["removed"]
+names  = "build/ford+hand/instances/names.txt"
+
+[action.denser.check.added]
+fn     = "changes_by_prefix"
+path   = "build/ford+denser+hand/changes.json"
+prefix = "trees#s6000_"
+what   = ["added"]
+names  = "build/ford+denser+hand/instances/names.txt"
+
+[action.denser.check.clear]
+fn     = "no_origin_inside"
+build  = "build/ford+denser+hand"
+at     = [208, 208]
+radius = 6
+prefix = "trees#"

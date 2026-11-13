@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A clear on = { of = \"trees\", near } with the default by: builds with no cycle, exit 0; the selected tree is gone."
+milestone = 1
+actions   = ["build"]
+
+# Jitter 0: trees#s7000_8_18 stands at (59.5, 129.5), the cell (8, 18) centre (rules.md r21); the clear selects it and removes it.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.gone]
+fn     = "no_origin_inside"
+build  = "build/w"
+at     = [59.5, 129.5]
+radius = 0.5
+prefix = "trees#"

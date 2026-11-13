@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "sd in a pond's effect: positive inside; sdist('pond', 20) in a base equals that sd within 20 m; t in an effect on a point feature: 0."
+milestone = 1
+actions   = ["sd", "t"]
+
+# The pond is the 4 m square from (2, 2): at (4, 4) sd is +2 (2 m inside), at (10, 4) it is -4. The mask is 1 everywhere within radius 20, so the field holds sd there.
+
+[action.sd]
+via         = ["build", "sd/world.toml", "--lib", "{work}/libs", "--out", "sd/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "sd/build/w"
+
+[action.sd.file.inside]
+path  = "sd/build/w/fields/m.npy"
+post  = [4, 4]
+value = 2
+
+[action.sd.file.sdist]
+path  = "sd/build/w/fields/s.npy"
+post  = [4, 4]
+value = 2
+
+[action.sd.file.out]
+path  = "sd/build/w/fields/m.npy"
+post  = [10, 4]
+value = -4
+
+[action.sd.file.sdist_out]
+path  = "sd/build/w/fields/s.npy"
+post  = [10, 4]
+value = -4
+
+[action.t]
+via         = ["build", "t/world.toml", "--lib", "{work}/libs", "--out", "t/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "t/build/w"
+
+[action.t.file.t]
+path  = "t/build/w/fields/m.npy"
+post  = [4, 4]
+value = 0

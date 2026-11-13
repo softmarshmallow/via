@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "primitive = \"box\" and engine = true: asset.source, exit 1."
+milestone = 1
+actions   = ["check"]
+
+# `triangles` on a primitive is also a fixed fact written (asset.declared_measured) unless the source is first found ambiguous; only asset.source is asserted.
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.source]
+code    = "asset.source"
+subject = "asset.t"

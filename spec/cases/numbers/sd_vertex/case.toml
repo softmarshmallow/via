@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "The sharp-turn path of section 10; Path A: sd negative at (101000, 500) and (9000, -1000), by the exact test."
+milestone = 1
+actions   = ["vectors"]
+
+# The section 10 measures, the sharp turn's rows among them, through `via vectors`.
+
+[copy.vectors]
+from = "spec/vectors/numbers.toml"
+to   = "numbers.toml"
+
+[action.vectors]
+via  = ["vectors", "numbers.toml"]
+exit = 0
+
+[action.vectors.check.v]
+fn   = "vectors_match"
+path = "numbers.toml"
+fns  = ["measure"]

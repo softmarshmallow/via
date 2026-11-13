@@ -190,6 +190,19 @@ impl World {
         };
         let mut e = self.entity_entry(collection, id)?;
         let mut item = &e.item;
+        // A `let` is a value, not a table: its formula's path is its own name, which names the
+        // entry itself (`let.slope` with `Expr(slope, ..)`).
+        if !matches!(item.value, Value::Table(_)) {
+            let own = [KeyPart::Key(id.clone())];
+            let rest = |p: &'_ [KeyPart]| -> bool { p.is_empty() || p == own.as_slice() };
+            if rest(keys) && rest(extra) {
+                let s = match &item.value {
+                    Value::Str(s) => Some(s),
+                    _ => None,
+                };
+                return Some((e, s));
+            }
+        }
         // A site's path is below the subject's keys, or, when it already starts with them, below
         // the entity: `scatter.trees.density` with `Expr(density, ..)` is the one key.
         let keys: &[KeyPart] = if !keys.is_empty() && extra.starts_with(keys) {
@@ -301,7 +314,7 @@ impl Resolve for World {
                 };
                 Some(self.resolved(span, e))
             }
-            Site::File { .. } | Site::Argument(_) | Site::World => None,
+            Site::File { .. } | Site::Text { .. } | Site::Argument(_) | Site::World => None,
         }
     }
 

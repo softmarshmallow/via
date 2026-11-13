@@ -1,0 +1,17 @@
+name       = "reads"
+extent     = [0, 0, 32, 32]
+resolution = 1
+include    = ["g"]
+
+[layer.one]
+file  = "one.toml"
+owner = "tests"
+rank  = 1
+
+[layer.two]
+file  = "two.toml"
+owner = "tests"
+rank  = 2
+
+[field.height]
+role = "surface"

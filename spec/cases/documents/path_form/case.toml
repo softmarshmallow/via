@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "A layer file written with \\; another C:x.toml; another aux.toml: doc.path_form each."
+milestone = 1
+actions   = ["backslash", "drive", "device"]
+
+[action.backslash]
+via         = ["merge", "a/world.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.backslash.diag.path_form]
+code = "doc.path_form"
+
+[action.drive]
+via         = ["merge", "b/world.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.drive.diag.path_form]
+code = "doc.path_form"
+
+[action.device]
+via         = ["merge", "c/world.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.device.diag.path_form]
+code = "doc.path_form"

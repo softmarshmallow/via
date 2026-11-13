@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "effect value = 1 on tag:x, matching a scalar and a weights field: field.row_key naming the effect and the weights field."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.row_key]
+code = "field.row_key"

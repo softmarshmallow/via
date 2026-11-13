@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A step sends a code with no explain text: protocol.no_explain."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.no_explain]
+code     = "protocol.no_explain"
+severity = "warning"

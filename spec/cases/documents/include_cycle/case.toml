@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "Libraries a and b including each other: doc.include_cycle naming a, b."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.include_cycle]
+code = "doc.include_cycle"

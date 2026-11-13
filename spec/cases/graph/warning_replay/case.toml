@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "A world with one warning; build twice: second the same diagnostics.json, nothing ran."
+milestone = 1
+actions   = ["first", "second"]
+
+# The kind pond is declared with no feature: dist over `kind:pond` is formula.empty_selection, the one warning (formulas.md 7).
+
+[action.first]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.first.diag.empty_selection]
+code = "formula.empty_selection"
+
+[action.second]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.second.diag.empty_selection]
+code = "formula.empty_selection"
+
+[action.second.same.d]
+action = "first"
+what   = "diagnostics"
+
+[action.second.nodes]
+ran = []

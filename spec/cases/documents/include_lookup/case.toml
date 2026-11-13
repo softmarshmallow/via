@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "lib/ways beside the world and ways under a --lib root: the local one is used; doc.include_shadowed info."
+milestone = 1
+actions   = ["merge"]
+
+# Three roots hold `ways` (beside, --lib 1, VIA_LIB 1); one doc.include_shadowed names the one used.
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{case}/roots"]
+exit = 0
+
+[action.merge.diag.include_shadowed]
+code = "doc.include_shadowed"
+
+[action.merge.file.local]
+stream  = "stdout"
+pointer = "/kind/lane/radius"
+value   = 3

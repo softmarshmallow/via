@@ -1,3 +1,0 @@
-[instance.shed]
-asset = "shed_gabel"
-on = { ref = "lane_east", t = 0.5, offset = -10 }

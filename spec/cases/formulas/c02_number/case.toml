@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "base = 20: 20 at every post."
+milestone = 1
+actions   = ["w"]
+
+[action.w]
+via  = ["build", "w/world.toml", "--lib", "{work}/libs", "--out", "w/build/w"]
+exit = 0
+out  = "w/build/w"
+
+[action.w.file.all]
+path = "w/build/w/fields/f.npy"
+all  = 20

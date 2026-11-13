@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "ford built to two --out folders at different depths: same id; manifest.json differs only in locations."
+milestone = 1
+actions   = ["program", "trust", "near", "deep"]
+
+# Only locations (the pack root's relative path) depends on depth; every file of files is compared.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.near]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.deep]
+via         = ["build", "world.toml", "--out", "a/b/c/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "a/b/c/ford"
+
+[action.deep.same.id]
+action = "near"
+what   = "id"
+
+[action.deep.same.files]
+action = "near"
+what   = "files"

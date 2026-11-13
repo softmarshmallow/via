@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "Extent [0, 0, 16, 16], resolution 1; a region [-4, 4, -1, 8] whose effect, radius 3, reads under('mean'): num.empty_reduction naming the region."
+milestone = 1
+actions   = ["build"]
+
+# The region (x from -4 to -1) holds no post; its window, within radius 3, reaches x = 0 to 2, so the measure is worked out (authority.md 2.1) and is empty.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.empty_reduction]
+code = "num.empty_reduction"

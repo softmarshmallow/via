@@ -1,0 +1,80 @@
+format    = "via-case-1"
+summary   = "cross; network: 9 vertices, 12 segments, 5 junctions, 8 edges, 4 areas, 1 component; areas, points and sides as in section 5."
+milestone = 1
+actions   = ["op"]
+
+# Areas in section 5's order (start vertex [0, 0], [0, 50], [50, 0], [50, 50]); each area's region
+# is one piece of one ring, canonical from its least vertex, counter-clockwise; its point the post
+# farthest from the outline, the centre of each 50 m square. The twice-areas (5 000 000 000 each)
+# are not members of the output; Euler and closure are checked by the kernel itself (geom.internal
+# otherwise, exit 3), so exit 0 holds them.
+
+[action.op]
+via  = ["kernel", "network", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.file.c]
+path    = "out.json"
+pointer = "/components"
+value   = 1
+
+[action.op.file.p0]
+path    = "out.json"
+pointer = "/areas/0/point"
+value   = [25000, 25000]
+
+[action.op.file.p1]
+path    = "out.json"
+pointer = "/areas/1/point"
+value   = [25000, 75000]
+
+[action.op.file.p2]
+path    = "out.json"
+pointer = "/areas/2/point"
+value   = [75000, 25000]
+
+[action.op.file.p3]
+path    = "out.json"
+pointer = "/areas/3/point"
+value   = [75000, 75000]
+
+[action.op.file.r0]
+path    = "out.json"
+pointer = "/areas/0/region"
+value   = [[[[0, 0], [50000, 0], [50000, 50000], [0, 50000]]]]
+
+[action.op.check.v]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/vertices"
+count   = 9
+
+[action.op.check.s]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/segments"
+count   = 12
+
+[action.op.check.j]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/junctions"
+count   = 5
+
+[action.op.check.e]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/edges"
+count   = 8
+
+[action.op.check.a]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/areas"
+count   = 4
+
+[action.op.check.sides0]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/areas/0/sides"
+count   = 3

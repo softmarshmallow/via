@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "pack = \"primitive\": lib/packs/primitive.toml is read from the VIA_LIB root; it is in the build's inputs."
+milestone = 1
+actions   = ["build"]
+
+# The asset resolves from the pack found by name, so the pack was read. That it is listed in
+# `run.inputs` as `pack:primitive.toml` is not asserted by a pointer: the entry's digest is not
+# fixed by the chapters (an `includes` on a list compares whole elements).
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.asset]
+path     = "build/w/manifest.json"
+pointer  = "/assets/house_low"
+includes = { source = "primitive", primitive = "box" }

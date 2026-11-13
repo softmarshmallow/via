@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "scale = [1.2, 0.8]; within a path; density = 0: scatter.range exit 1; scatter.within exit 1; scatter.empty naming density."
+milestone = 1
+actions   = ["range", "within", "empty"]
+
+[action.range]
+via         = ["build", "a/world.toml", "--lib", "{work}/libs", "--out", "a/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.range.diag.range]
+code = "scatter.range"
+
+[action.within]
+via         = ["build", "b/world.toml", "--lib", "{work}/libs", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.within.diag.within]
+code = "scatter.within"
+
+[action.empty]
+via         = ["build", "c/world.toml", "--lib", "{work}/libs", "--out", "c/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "c/build/w"
+
+[action.empty.diag.empty]
+code     = "scatter.empty"
+severity = "warning"

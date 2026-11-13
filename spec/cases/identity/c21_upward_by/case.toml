@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A pin in layer 1 and a scatter in layer 2 with by naming it: documents.md's upward reference error."
+milestone = 1
+actions   = ["build"]
+
+# (open: a second part of the row, a layer-2 pin speaking to a layer-1 scatter seen by a layer-1 lint, is protocol.md case 42's machinery and is not repeated here.)
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.upward_ref]
+code = "doc.upward_ref"

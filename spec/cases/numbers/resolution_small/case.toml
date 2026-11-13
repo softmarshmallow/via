@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "resolution below 1 mm: num.resolution."
+milestone = 1
+actions   = ["build"]
+
+# numbers.md 4: at least 1 mm. 0 is a whole number of millimetres, so not num.too_precise.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.resolution]
+code = "num.resolution"

@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "`[feature.lane] widht = 6`: doc.unknown_key at the line and column of widht, hint width."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.unknown_key]
+code    = "doc.unknown_key"
+subject = "feature.lane.widht"
+file    = "world.toml"
+line    = 14
+column  = 1
+data    = { nearest = "width" }

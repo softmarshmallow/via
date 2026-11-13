@@ -185,7 +185,7 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
         let (a, b) = (old.features.get(n), new.features.get(n));
         let status = match (a, b) {
             (Some(a), Some(b)) => Status {
-                moved: a.points != b.points || a.facing != b.facing,
+                moved: a.points != b.points || a.rings != b.rings || a.facing != b.facing,
                 changed: a.kind != b.kind
                     || a.attrs != b.attrs
                     || a.names != b.names
@@ -207,8 +207,8 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
                 "feature",
                 n,
                 status,
-                a.and_then(|x| bbox(&x.points)),
-                b.and_then(|x| bbox(&x.points)),
+                a.and_then(|x| bbox(&x.all_points())),
+                b.and_then(|x| bbox(&x.all_points())),
                 &deps_of("feature", n),
             );
         }

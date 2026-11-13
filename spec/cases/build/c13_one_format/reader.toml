@@ -1,0 +1,7 @@
+name       = "reader"
+extent     = [0, 0, 256, 256]
+
+[field.height]
+role    = "surface"
+file    = "build/ford/fields/height.npy"
+outside = 0

@@ -412,6 +412,7 @@ fn not_yet() {
 
 #[test]
 fn datetime() {
+    // `num.seed_type` is a string or a float (`numbers.md` 7); a date is the general fault.
     let l = merge(&simple(&format!("seed = 1979-05-27\n{HEAD}")), &[]);
     assert_eq!(codes(&l), ["doc.type"]);
 }
@@ -1035,15 +1036,15 @@ fn world_paths_never_absolute() {
     }
 }
 
-/// The plan's M1 world, read from the conformance fixture at run time so no library word is
-/// written here. Its libraries are stood in for by kinds generated from what it uses; each change
+/// The plan's M1 world, read from the example folder every M1 case copies, at run time
+/// so no library word is written here. Its libraries are stood in for by kinds generated from what it uses; each change
 /// file and inline change reads, and the four bad edits pass reading (their faults are later
 /// nodes': authority, formulas, the graph, the pack).
 #[test]
 fn m1_world_reads() {
-    // The diagnostics chapter's case with all four bad edits, found by its contents.
-    let cases = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/cases/diagnostics");
-    let case = std::fs::read_dir(&cases)
+    // The example world with all four bad edits, found by its contents.
+    let examples = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+    let case = std::fs::read_dir(&examples)
         .unwrap()
         .map(|e| e.unwrap().path())
         .find(|p| p.join("changes/bad_cycle.toml").is_file() && p.join("world.toml").is_file())

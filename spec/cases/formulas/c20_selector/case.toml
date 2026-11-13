@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "f('role:surface'): formula.selector, hint tag:; near('height', 5): formula.selector; dist('streets#e3', 10): identity.key_in_text."
+milestone = 1
+actions   = ["role", "near", "produced"]
+
+[action.role]
+via         = ["build", "role/world.toml", "--lib", "{work}/libs", "--out", "role/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "role/build/w"
+
+[action.role.diag.selector]
+code = "formula.selector"
+
+[action.near]
+via         = ["build", "near/world.toml", "--lib", "{work}/libs", "--out", "near/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "near/build/w"
+
+[action.near.diag.selector]
+code = "formula.selector"
+
+[action.produced]
+via         = ["build", "produced/world.toml", "--lib", "{work}/libs", "--out", "produced/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "produced/build/w"
+
+[action.produced.diag.key_in_text]
+code = "identity.key_in_text"

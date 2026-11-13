@@ -314,6 +314,310 @@ def changes_by_prefix(cid: str, args: dict[str, Any], work: Path, ctx: dict[str,
     return fails
 
 
+# --- vectors_match ----------------------------------------------------------------------------
+
+
+def vectors_match(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """build.md 14: `via vectors FILE` prints one `{"got","id"}` object per line, in the file's
+    order; the runner compares each `got` with the vector's `expected`. With `fns`, only the
+    vectors whose `fn` is listed are compared, and each of them must be printed."""
+    try:
+        doc = tomllib.loads((work / args["path"]).read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError, UnicodeDecodeError) as e:
+        raise NamedCheckError(f"cannot read vector file {args['path']}: {e}") from e
+    vectors = doc.get("vector", {})
+    fns = set(args.get("fns", []))
+    want = {vid: v for vid, v in vectors.items()
+            if isinstance(v, dict) and (not fns or v.get("fn") in fns)}
+    got: dict[str, Any] = {}
+    for n, line in enumerate(ctx.get("stdout", b"").decode("utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            obj = canon.loads(line.encode("utf-8"))
+        except ValueError as e:
+            return [(f"check.{cid}", "one JSON object per line", f"line {n}: {e}")]
+        if isinstance(obj, dict) and "id" in obj:
+            got[obj["id"]] = obj.get("got")
+    fails: list[Failure] = []
+    for vid, v in sorted(want.items()):
+        if vid not in got:
+            fails.append((f"check.{cid}", f"vector {vid} printed", "absent"))
+        elif not _vector_equal(got[vid], v.get("expected")):
+            fails.append((f"check.{cid}", f"vector {vid}: {canon.show(v.get('expected'))}", canon.show(got[vid])))
+    return fails
+
+
+def _vector_equal(a: Any, b: Any) -> bool:
+    """Exact equality; hexadecimal bit patterns compare ignoring letter case, numbers by value."""
+    if isinstance(a, str) and isinstance(b, str):
+        return a.upper() == b.upper() if a.lower().startswith("0x") else a == b
+    if isinstance(a, bool) or isinstance(b, bool):
+        return a is b
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return Fraction(a) == Fraction(b)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_vector_equal(x, y) for x, y in zip(a, b))
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_vector_equal(a[k], b[k]) for k in a)
+    return False
+
+
+# --- json_count -------------------------------------------------------------------------------
+
+
+def json_count(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """The list or object a JSON Pointer names in a JSON file has exactly `count` members."""
+    doc = _read_json(work / args["path"])
+    node: Any = doc
+    for part in [p.replace("~1", "/").replace("~0", "~") for p in args["pointer"].split("/")[1:]]:
+        if isinstance(node, list) and part.isdigit() and int(part) < len(node):
+            node = node[int(part)]
+        elif isinstance(node, dict) and part in node:
+            node = node[part]
+        else:
+            return [(f"check.{cid}", f"{args['pointer']} in {args['path']}", "absent")]
+    if not isinstance(node, (list, dict)):
+        return [(f"check.{cid}", f"{args['pointer']} is a list or object", type(node).__name__)]
+    if len(node) != args["count"]:
+        return [(f"check.{cid}", f"{args['pointer']} holds {args['count']}", str(len(node)))]
+    return []
+
+
+# --- run reports (graph.md 6.3) ---------------------------------------------------------------
+
+
+def _members_include(got: Any, want: Any) -> bool:
+    if isinstance(want, dict):
+        return isinstance(got, dict) and all(k in got and _members_include(got[k], v) for k, v in want.items())
+    if isinstance(want, bool) or isinstance(got, bool):
+        return got is want
+    if isinstance(want, (int, float)) and isinstance(got, (int, float)):
+        return Fraction(got) == Fraction(want)
+    return got == want
+
+
+def run_node(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """The run report's node object with id `node` exists and holds the members of `includes`."""
+    report = _read_json(work / args["path"])
+    nodes = report.get("nodes") if isinstance(report, dict) else None
+    if not isinstance(nodes, list):
+        return [(f"check.{cid}", "a run report with nodes", "no `nodes` list")]
+    found = [n for n in nodes if isinstance(n, dict) and n.get("id") == args["node"]]
+    if not found:
+        return [(f"check.{cid}", f"node {args['node']}", "absent")]
+    if not _members_include(found[0], args["includes"]):
+        return [(f"check.{cid}", f"node {args['node']} includes {canon.show(args['includes'])}", canon.show(found[0]))]
+    return []
+
+
+RUN_MEMBERS = {"build", "diagnostics", "engine", "format", "nodes", "steps", "system", "threads", "totals"}
+
+
+def run_report_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """graph.md 6.3: canonical JSON, format via-run-0, every member; nodes once each in id order;
+    totals equal the statuses; every ran node has a cause, every other node's cause is null."""
+    path = work / args["path"]
+    try:
+        raw = path.read_bytes()
+    except OSError as e:
+        raise NamedCheckError(f"cannot read {args['path']}: {e}") from e
+    report = _read_json(path)
+    fails: list[Failure] = []
+    if not canon.is_canonical(raw):
+        fails.append((f"check.{cid}", "the run report is canonical JSON", "it is not"))
+    if not isinstance(report, dict):
+        return fails + [(f"check.{cid}", "an object", type(report).__name__)]
+    if report.get("format") != "via-run-0":
+        fails.append((f"check.{cid}", "format via-run-0", canon.show(report.get("format"))))
+    missing = sorted(RUN_MEMBERS - set(report))
+    if missing:
+        fails.append((f"check.{cid}", "every member of graph.md 6.3", f"missing {', '.join(missing)}"))
+    nodes = report.get("nodes") if isinstance(report.get("nodes"), list) else []
+    ids = [n.get("id") for n in nodes if isinstance(n, dict)]
+    if ids != sorted(ids, key=lambda s: str(s).encode()) or len(set(ids)) != len(ids):
+        fails.append((f"check.{cid}", "nodes once each, in id order", "they are not"))
+    counts = {"ran": 0, "recomputed": 0, "reused": 0, "skipped": 0}
+    for n in nodes:
+        st = n.get("status")
+        if st in counts:
+            counts[st] += 1
+        if st == "ran" and not n.get("cause"):
+            fails.append((f"check.{cid}", f"ran node {n.get('id')} has a cause", "null"))
+        if st != "ran" and n.get("cause") is not None:
+            fails.append((f"check.{cid}", f"{st} node {n.get('id')} has cause null", canon.show(n.get("cause"))))
+    totals = report.get("totals") if isinstance(report.get("totals"), dict) else {}
+    for k, v in counts.items():
+        if totals.get(k) != v:
+            fails.append((f"check.{cid}", f"totals.{k} = {v}", canon.show(totals.get(k))))
+    if totals.get("nodes") != len(nodes):
+        fails.append((f"check.{cid}", f"totals.nodes = {len(nodes)}", canon.show(totals.get("nodes"))))
+    return fails
+
+
+# --- array_window -----------------------------------------------------------------------------
+
+
+def array_window(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """`part` (a 2-D array file) equals, element by element and bit for bit, the window
+    `[i0, j0, i1, j1]` (i1, j1 excluded) of `whole`: numbers.md 6's window rule, `build.md` 14's
+    `via eval --window`."""
+    whole = files.load_array(work / args["whole"])
+    part = files.load_array(work / args["part"])
+    i0, j0, i1, j1 = args["window"]
+    if whole.ndim != 2 or part.ndim != 2:
+        return [(f"check.{cid}", "two 2-D array files", f"{whole.ndim} and {part.ndim} dimensions")]
+    cut = whole[j0:j1, i0:i1]
+    if cut.shape != part.shape:
+        return [(f"check.{cid}", f"shape {cut.shape}", f"{part.shape}")]
+    a = np.ascontiguousarray(cut).view(np.uint8).reshape(cut.shape[0], cut.shape[1], -1)
+    b = np.ascontiguousarray(part).view(np.uint8).reshape(part.shape[0], part.shape[1], -1)
+    if cut.dtype != part.dtype or a.shape != b.shape:
+        return [(f"check.{cid}", f"dtype {cut.dtype}", f"{part.dtype}")]
+    bad = np.argwhere((a != b).any(axis=2))
+    if bad.size:
+        j, i = bad[0]
+        return [(f"check.{cid}", f"window {args['window']} of {args['whole']} bit for bit",
+                 f"{len(bad)} posts differ, first ({i0 + i}, {j0 + j})")]
+    return []
+
+
+# --- json_list --------------------------------------------------------------------------------
+
+
+def _starts(got: Any, prefixes: dict[str, str]) -> bool:
+    return isinstance(got, dict) and all(isinstance(got.get(k), str) and got[k].startswith(p)
+                                         for k, p in prefixes.items())
+
+
+def json_list(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """The list at `pointer`: at least `at_least` (default 1) elements from index `from` (default
+    0); each of those includes `includes` and has each member of `starts` beginning with that
+    prefix; its last element equals `last`."""
+    doc = _read_json(work / args["path"])
+    try:
+        node = canon.resolve(doc, args["pointer"])
+    except canon.PointerError as e:
+        return [(f"check.{cid}", f"{args['pointer']} resolves", str(e))]
+    if not isinstance(node, list):
+        return [(f"check.{cid}", f"{args['pointer']} is a list", type(node).__name__)]
+    start = args.get("from", 0)
+    tail = node[start:]
+    fails: list[Failure] = []
+    at_least = args.get("at_least", 1)
+    if len(tail) < at_least:
+        fails.append((f"check.{cid}", f"at least {at_least} elements from index {start}", str(len(tail))))
+    for i, e in enumerate(tail, start):
+        if "includes" in args and not _members_include(e, args["includes"]):
+            fails.append((f"check.{cid}", f"element {i} includes {canon.show(args['includes'])}", canon.show(e)))
+            break
+        if "starts" in args and not _starts(e, args["starts"]):
+            fails.append((f"check.{cid}", f"element {i} starts {canon.show(args['starts'])}", canon.show(e)))
+            break
+    if "last" in args and (not node or not canon.values_equal(args["last"], node[-1])):
+        fails.append((f"check.{cid}", f"last element {canon.show(args['last'])}",
+                      canon.show(node[-1]) if node else "an empty list"))
+    return fails
+
+
+# --- instance_at ------------------------------------------------------------------------------
+
+
+def instance_at(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """The build holds exactly one instance named `name`, its origin in plan exactly at `at`
+    (integer millimetres, build.md 8)."""
+    build = work / args["build"]
+    xs = files.load_array(build / "instances" / "x.npy")
+    ys = files.load_array(build / "instances" / "y.npy")
+    names = (build / "instances" / "names.txt").read_text(encoding="utf-8").splitlines()
+    if not (len(xs) == len(ys) == len(names)):
+        return [(f"check.{cid}", "x, y and names.txt of one length", f"{len(xs)}, {len(ys)}, {len(names)}")]
+    rows = [k for k, n in enumerate(names) if n == args["name"]]
+    if len(rows) != 1:
+        return [(f"check.{cid}", f"one instance named {args['name']}", str(len(rows)))]
+    want = (_mm(args["at"][0]), _mm(args["at"][1]))
+    got = (int(xs[rows[0]]), int(ys[rows[0]]))
+    if got != want:
+        return [(f"check.{cid}", f"{args['name']} at {want} mm", f"{got} mm")]
+    return []
+
+
+# --- changes_inside, changes_absent -----------------------------------------------------------
+
+
+def _entries(work: Path, path: str) -> list[dict[str, Any]] | None:
+    report = _read_json(work / path)
+    entries = report.get("entries") if isinstance(report, dict) else None
+    if not isinstance(entries, list):
+        return None
+    return [e for e in entries if isinstance(e, dict)]
+
+
+def _plan_mm(pos: Any) -> tuple[int, int] | None:
+    if isinstance(pos, dict) and isinstance(pos.get("at"), list) and len(pos["at"]) >= 2:
+        return _mm(pos["at"][0]), _mm(pos["at"][1])
+    return None
+
+
+def changes_inside(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """At least one entry whose name starts with `prefix` has a `before` or `after` origin at
+    distance <= `radius` from `at`; every such entry's `what` equals `what`, and one of its causes
+    includes the members of `cause` (identity.md 4.3, 5: what a hand edit removed, and why)."""
+    entries = _entries(work, args["path"])
+    if entries is None:
+        return [(f"check.{cid}", "a change report with entries", "no `entries` list")]
+    ax, ay = _mm(args["at"][0]), _mm(args["at"][1])
+    rad = Fraction(args["radius"]) * 1000
+    mine = []
+    for e in entries:
+        if not str(e.get("name", "")).startswith(args["prefix"]):
+            continue
+        for side in ("before", "after"):
+            p = _plan_mm(e.get(side))
+            if p is not None and (p[0] - ax) ** 2 + (p[1] - ay) ** 2 <= rad * rad:
+                mine.append(e)
+                break
+    where = f"{args['prefix']}* within {args['radius']} m of {args['at']}"
+    if not mine:
+        return [(f"check.{cid}", f"an entry {where}", "none")]
+    fails: list[Failure] = []
+    for e in mine:
+        if e.get("what") != args["what"]:
+            fails.append((f"check.{cid}", f"every entry {where} is {canon.show(args['what'])}",
+                          f"{e.get('name')} is {canon.show(e.get('what'))}"))
+            break
+        causes = e.get("causes")
+        if not isinstance(causes, list) or not any(_members_include(c, args["cause"]) for c in causes):
+            fails.append((f"check.{cid}", f"every entry {where} has a cause {canon.show(args['cause'])}",
+                          f"{e.get('name')}: {canon.show(causes)}"))
+            break
+    return fails
+
+
+def changes_absent(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """No entry is named one of `entry_names`, and no entry has a cause starting with one of `causes`."""
+    entries = _entries(work, args["path"])
+    if entries is None:
+        return [(f"check.{cid}", "a change report with entries", "no `entries` list")]
+    fails: list[Failure] = []
+    names = set(args.get("entry_names", []))
+    hit = [e for e in entries if e.get("name") in names]
+    if hit:
+        fails.append((f"check.{cid}", f"no entry named {', '.join(sorted(names))}",
+                      f"{hit[0].get('table')} {hit[0].get('name')}"))
+    prefixes = tuple(args.get("causes", []))
+    if prefixes:
+        for e in entries:
+            causes = e.get("causes") if isinstance(e.get("causes"), list) else []
+            bad = [c.get("cause") for c in causes if isinstance(c, dict)
+                   and isinstance(c.get("cause"), str) and c["cause"].startswith(prefixes)]
+            if bad:
+                fails.append((f"check.{cid}", f"no cause starting {', '.join(prefixes)}",
+                              f"{e.get('name')}: {bad[0]}"))
+                break
+    return fails
+
+
 CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Failure]]] = {
     "weights_sum_at_most": weights_sum_at_most,
     "weights_sum_255_or_0": weights_sum_255_or_0,
@@ -321,6 +625,15 @@ CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Fai
     "changed_within_windows": changed_within_windows,
     "no_origin_inside": no_origin_inside,
     "changes_by_prefix": changes_by_prefix,
+    "vectors_match": vectors_match,
+    "json_count": json_count,
+    "run_node": run_node,
+    "array_window": array_window,
+    "run_report_valid": run_report_valid,
+    "json_list": json_list,
+    "instance_at": instance_at,
+    "changes_inside": changes_inside,
+    "changes_absent": changes_absent,
 }
 
 

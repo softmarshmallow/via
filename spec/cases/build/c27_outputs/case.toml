@@ -1,0 +1,34 @@
+format    = "via-case-1"
+summary   = "ford: outputs.bookmark is [at_ford, in_trees, on_bank, to_door]; in features.json, to_door's attrs.toward is { at, name: cottage }, at the cottage's pivot."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# Features sort by name: at_ford, beck, ford, in_trees, lane_east, lane_west, on_bank, to_door (index 7). The cottage's pivot is not restated here.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.file.outputs]
+path    = "build/ford/manifest.json"
+pointer = "/outputs/bookmark"
+value   = ["at_ford", "in_trees", "on_bank", "to_door"]
+
+[action.build.file.toward]
+path    = "build/ford/features.json"
+pointer = "/features/7/attrs/toward/name"
+value   = "cottage"

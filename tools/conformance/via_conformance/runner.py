@@ -27,7 +27,7 @@ Failure = tuple[str, str, str]
 
 BUILD_COMMANDS = ("build", "lock")
 # build.md 11.1: when one of these is raised no build directory can be written.
-NO_DIRECTORY_CODES = {"graph.busy", "build.not_a_build", "build.store_inside"}
+NO_DIRECTORY_CODES = {"graph.busy", "build.not_a_build", "build.store_inside", "build.write_failed"}
 CASE_OWN = {"case.toml", "expected", "later"}
 
 
@@ -114,12 +114,77 @@ def _diff_snapshots(before: dict[str, tuple], after: dict[str, tuple]) -> list[s
     return changes
 
 
-def _copy_into(src: Path, dst: Path) -> None:
-    if src.is_dir():
-        shutil.copytree(src, dst, symlinks=True, dirs_exist_ok=True)
-    else:
+# What a build leaves beside its inputs and a case never copies (conformance.md 3.2): the store
+# (graph.md 3.2), the default build directory (build.md 14), the run report (graph.md 6.3) and the
+# lock (graph.md 6.3). A local build in `examples/ford` leaves all four.
+LEFT_BY_BUILDS_DIRS = {".via", "build"}
+LEFT_BY_BUILDS_SUFFIXES = (".run.json", ".lock")
+
+
+def _left_by_builds(name: str, is_dir: bool) -> bool:
+    if is_dir:
+        return name in LEFT_BY_BUILDS_DIRS
+    return name.endswith(LEFT_BY_BUILDS_SUFFIXES)
+
+
+def _git_ignored(repo: Path, paths: list[Path]) -> set[Path]:
+    """The paths git ignores and does not track. Outside a git checkout, or without git, none."""
+    if not paths:
+        return set()
+    try:
+        rels = [p.resolve().relative_to(repo.resolve()).as_posix() for p in paths]
+    except ValueError:
+        return set()
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(repo), "check-ignore", "-z", "--stdin"],
+            input="\0".join(rels).encode("utf-8") + b"\0",
+            capture_output=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    if r.returncode not in (0, 1):  # 128: not a checkout
+        return set()
+    hit = {s for s in r.stdout.decode("utf-8").split("\0") if s}
+    return {p for p, rel in zip(paths, rels) if rel in hit}
+
+
+def _copy_into(src: Path, dst: Path, repo: Path | None = None, skip_build_output: bool = True) -> None:
+    """Copy a fixture: never what a build left in it, nor anything git ignores (conformance.md 3.2).
+
+    `skip_build_output` drops the store, build directories, run reports and locks by name; it holds
+    for `[copy]` sources, whose folders are worlds someone may have built in by hand. A case's own
+    files keep a planted `build/` (a case may need one) but still lose `.via` and git-ignored files.
+    """
+    if not src.is_dir():
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        shutil.copy2(src, dst, follow_symlinks=False)
+        return
+    keep_dirs: list[Path] = []
+    keep_files: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(src):
+        d = Path(dirpath)
+        dirnames[:] = sorted(
+            n for n in dirnames
+            if not (n == ".via" or (skip_build_output and _left_by_builds(n, True)))
+        )
+        keep_dirs.extend(d / n for n in dirnames)
+        keep_files.extend(
+            d / n for n in sorted(filenames) if not (skip_build_output and _left_by_builds(n, False))
+        )
+    ignored = _git_ignored(repo, keep_dirs + keep_files) if repo is not None else set()
+    dst.mkdir(parents=True, exist_ok=True)
+    for p in keep_dirs:
+        if p in ignored or any(a in ignored for a in p.parents):
+            continue
+        (dst / p.relative_to(src)).mkdir(parents=True, exist_ok=True)
+    for p in keep_files:
+        if p in ignored or any(a in ignored for a in p.parents):
+            continue
+        out = dst / p.relative_to(src)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, out, follow_symlinks=False)
 
 
 class CaseRun:
@@ -188,11 +253,11 @@ class CaseRun:
             dst = self.work if c.to == "." else self.work / c.to
             if c.to == "." and not src.is_dir():
                 raise CaseError(f"copy.{c.id}: `to = \".\"` copies a folder's contents; {c.src} is a file")
-            _copy_into(src, dst)
+            _copy_into(src, dst, repo=self.s.repo)
         for p in sorted(self.case.folder.iterdir(), key=lambda q: q.name.encode()):
-            if p.name in CASE_OWN:
+            if p.name in CASE_OWN or p.name == ".via":
                 continue
-            _copy_into(p, self.work / p.name)
+            _copy_into(p, self.work / p.name, repo=self.s.repo, skip_build_output=False)
         for d in (".config", ".diag", ".home", ".home/.config", ".home/appdata", ".home/localappdata", ".home/tmp"):
             (self.work / d).mkdir(parents=True, exist_ok=True)
 
@@ -317,10 +382,14 @@ class CaseRun:
             self.fail(label, "U1", f"exit {canon.show(t['exit'])}",
                       f"exit {code}" + (f"; stderr: {' | '.join(stderr_tail)}" if stderr_tail else ""))
 
-        # 3.5: the --diagnostics document, on every exit status.
+        # 3.5: the --diagnostics document, on every exit status of diagnostics.md 7 (0 to 3). A
+        # process a test switch stopped (an expected status above 3, build.md case 24's 9) writes
+        # none, by design.
         doc: diags.DiagDoc | None = None
+        stopped = all(e > 3 for e in allowed) and code in allowed
         if not diag_file.is_file():
-            self.fail(label, "3.5", "the --diagnostics document written", "no file")
+            if not stopped:
+                self.fail(label, "3.5", "the --diagnostics document written", "no file")
         else:
             try:
                 doc = diags.read_doc(diag_file.read_bytes())
@@ -346,7 +415,7 @@ class CaseRun:
                 self.fail(label, "untouched", f"{p} untouched", "; ".join(changed[:5]))
 
         # `out`: the binary wrote there (3.3).
-        if is_build and out is not None and code != 2:
+        if is_build and out is not None and code != 2 and not stopped:
             run_codes = {r.get("code") for r in doc.run} if doc else set()
             if not (run_codes & NO_DIRECTORY_CODES) and not (out / "diagnostics.json").is_file():
                 self.fail(label, "out", f"{t['out']}/diagnostics.json written", "absent")
@@ -373,7 +442,7 @@ class CaseRun:
 
         u5 = lambda: self._u5(out, diag_file)  # noqa: E731
         for cid, ct in t.get("check", {}).items():
-            for check, exp, got in named.run_named(cid, ct, self.work, {"u5": u5}):
+            for check, exp, got in named.run_named(cid, ct, self.work, {"u5": u5, "stdout": proc.stdout}):
                 self.fail(label, check, exp, got)
 
         # U4: via check passes on every build that exits 0.

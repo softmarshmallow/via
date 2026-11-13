@@ -714,7 +714,7 @@ Fixed: value = "= 2 * height"
 
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
-| `doc.change_adds_near` | warning | 1 |  | A change adds an entity whose id is near an existing one. |
+| `doc.change_adds_near` | warning | 1 | `nearest` | A change adds an entity whose id is near an existing one; the nearest id. |
 | `doc.change_conflict` | error | 1 |  | Two requested changes write or remove one key path; both changes and spans. |
 | `doc.change_empty` | warning | 1 |  | A change body that writes nothing. |
 | `doc.change_fixed` | error | 1 |  | A change writes `include` or `name`. |
@@ -739,7 +739,7 @@ Fixed: value = "= 2 * height"
 | `doc.remove_outside_change` | error | 1 |  | `remove` or `unset` outside a change body. |
 | `doc.remove_with_keys` | error | 1 |  | `remove = true` beside other keys, or a key both written and unset. |
 | `doc.reserved_attribute` | error | 1 |  | A kind declares an attribute named as a reserved feature key. |
-| `doc.syntax` | error | 1 |  | Not TOML 1.0.0, not UTF-8, or a `[[x]]` header; position from the parser. |
+| `doc.syntax` | error | 1 | `offset`, `rewrite` | Not TOML 1.0.0, not UTF-8 (the byte offset in `data.offset`), or a `[[x]]` header (its exact rewrite in `data.rewrite`, section 1); position from the parser. |
 | `doc.too_deep` | error | 1 |  | Tables and lists nested over 64 deep (section 1); the file is read no further. |
 | `doc.type` | error | 1 |  | A value of the wrong form for its key, or a TOML date or time. |
 | `doc.unknown_change` | error | 1 | `nearest` | A requested change that does not exist; the nearest name. |
@@ -1045,14 +1045,14 @@ A world-file-only key or [layer] in a layer.
 |---|---|---|---|---|
 | `field.base_and_file` | error | 1 |  | A field with both `base` and `file`. |
 | `field.effect_cut` | warning | 1 |  | An effect's mask is above 0.02 on its ring; the effect, the feature and the first post. |
-| `field.file_coarse` | warning | 1 |  | A level step above 0.1 m on a field in `m`; the step. |
+| `field.file_coarse` | warning | 2 |  | A level step above 0.1 m on a field in `m`; the step (M2). |
 | `field.file_format` | error | 1 |  | An unsupported format, depth or palette; an array file whose `shape` is not 2-D or whose `descr` is not `<f4`; a raster with a dimension under 2. |
 | `field.file_key` | error | 1 |  | A file key without `file`, one that does not apply, an unknown `channel` or `filter`, or a channel the picture lacks. |
 | `field.file_nonfinite` | error | 1 |  | A non-finite sample; its row and column. |
 | `field.file_offworld` | warning | 1 |  | A raster `extent` wholly outside the world's. |
 | `field.file_outside` | error | 1 |  | `file` without `outside`. |
-| `field.file_profile` | info | 1 |  | A PNG's gamma, colour profile or `tRNS` was not applied. |
-| `field.file_range` | error | 1 |  | `range` with `lo == hi`. |
+| `field.file_profile` | info | 2 |  | A PNG's gamma, colour profile or `tRNS` was not applied (M2). |
+| `field.file_range` | error | 2 |  | `range` with `lo == hi` (M2). |
 | `field.file_too_large` | error | 1 |  | More samples than the post-count limit; the header's size. |
 | `field.role_missing` | error | 1 |  | No `surface` field, and something asked for ground; names the first that asked. |
 | `field.role_range` | warning | 1 |  | A `keep_out` value outside 0 to 1, clamped; the field and its first post. |
@@ -1062,8 +1062,8 @@ A world-file-only key or [layer] in a layer.
 | `field.role_unknown` | error | 1 | `nearest` | A role that is not `surface`, `material` or `keep_out`. |
 | `field.row_key` | error | 1 |  | `paint` on a scalar entry, or `value` on a weights entry; names the row or effect and the field. |
 | `field.row_missing` | error | 1 |  | A scalar row or entry with no `value`, or a weights one with no `paint`; names the row or effect. |
-| `field.step_base` | error | 1 |  | A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare. |
-| `field.step_layer` | error | 1 |  | A step's row on a field of a higher layer. |
+| `field.step_base` | error | 2 |  | A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare (M2). |
+| `field.step_layer` | error | 2 |  | A step's row on a field of a higher layer (M2). |
 | `field.type_unknown` | error | 1 | `nearest` | A `type` not on the list. |
 | `field.unit_unknown` | error | 1 | `nearest` | A `unit` not on the list. |
 | `field.unpainted` | warning | 1 |  | Posts of the `material` field with weights summing below 1; the first and the count. |
@@ -1090,7 +1090,7 @@ To fix: Raise radius, or fade mask to 0 by it.
 
 ### `field.file_coarse`
 
-warning, milestone 1, `spec/fields.md`.
+warning, milestone 2, `spec/fields.md`.
 
 ```text
 A level step above 0.1 m on a field in m; the step.
@@ -1144,7 +1144,7 @@ To fix: Add outside, the value beyond the raster.
 
 ### `field.file_profile`
 
-info, milestone 1, `spec/fields.md`.
+info, milestone 2, `spec/fields.md`.
 
 ```text
 A PNG's gamma, colour profile or tRNS was not applied.
@@ -1153,7 +1153,7 @@ To fix: None needed; levels are read as stored.
 
 ### `field.file_range`
 
-error, milestone 1, `spec/fields.md`.
+error, milestone 2, `spec/fields.md`.
 
 ```text
 range with lo == hi.
@@ -1243,7 +1243,7 @@ To fix: Add the key.
 
 ### `field.step_base`
 
-error, milestone 1, `spec/fields.md`.
+error, milestone 2, `spec/fields.md`.
 
 ```text
 A step's document sets base, file, role, type, unit or tags on a field it did not declare.
@@ -1252,7 +1252,7 @@ To fix: Return rows on the field instead.
 
 ### `field.step_layer`
 
-error, milestone 1, `spec/fields.md`.
+error, milestone 2, `spec/fields.md`.
 
 ```text
 A step's row on a field of a higher layer.
@@ -1962,22 +1962,22 @@ The store cannot be written; this build keeps nothing more. Run diagnostic.
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
 | `identity.bad_id` | error | 1 |  | An id breaks `[a-z][a-z0-9_]*` or is longer than 48 bytes. |
-| `identity.bad_key` | error | 1 |  | A step returned a key that breaks 2.2, or an unknown class; says which rule. |
+| `identity.bad_key` | error | 2 |  | A step returned a key that breaks 2.2, or an unknown class; says which rule (M2). |
 | `identity.clear_empty` | warning | 1 |  | A clear removed nothing (4.3). |
 | `identity.duplicate_id` | error | 1 |  | Two tables in one namespace share an id; names both, with file and line, across layers too. |
-| `identity.key_collision` | error | 1 |  | One step gave two things one key; names both positions. |
+| `identity.key_collision` | error | 2 |  | One step gave two things one key; names both positions (M2). |
 | `identity.key_in_text` | error | 1 |  | A produced name is written in a key that takes a name. |
-| `identity.lock_asset_missing` | error | 1 |  | A recorded item's asset is no longer bound by the pack. |
-| `identity.lock_differs` | info | 1 |  | What the producers would now do inside a lock, and live names dropped for a recorded one, as counts. |
-| `identity.lock_ground_moved` | warning | 1 |  | Recorded items stand on ground that moved; count and largest change. |
-| `identity.lock_pin_clash` | error | 1 |  | A recorded item overlaps a pin; names both. |
-| `identity.lock_rerecorded` | info | 1 |  | A record was replaced; counts of the difference. |
-| `identity.lock_unrecorded` | error | 1 |  | A lock has no record. |
+| `identity.lock_asset_missing` | error | 3 |  | A recorded item's asset is no longer bound by the pack (M3). |
+| `identity.lock_differs` | info | 3 |  | What the producers would now do inside a lock, and live names dropped for a recorded one, as counts (M3). |
+| `identity.lock_ground_moved` | warning | 3 |  | Recorded items stand on ground that moved; count and largest change (M3). |
+| `identity.lock_pin_clash` | error | 3 |  | A recorded item overlaps a pin; names both (M3). |
+| `identity.lock_rerecorded` | info | 3 |  | A record was replaced; counts of the difference (M3). |
+| `identity.lock_unrecorded` | error | 3 |  | A lock has no record (M3). |
 | `identity.near_none` | error | 1 |  | A maker has no candidate of the class asked for; lists every selection left with nothing. |
 | `identity.no_place` | error | 1 |  | A selection's `class` is `field` or `row`, which have no place (2.4). |
 | `identity.no_previous` | info | 1 |  | No baseline to report changes against. |
 | `identity.not_a_producer` | error | 1 |  | `by` names a set, or a maker that places no instances (a network, a cells table, a `where` feature). |
-| `identity.of_ambiguous` | error | 1 |  | `of` names a maker with several classes and no `class`. |
+| `identity.of_ambiguous` | error | 3 |  | `of` names a maker with several classes and no `class` (M3). |
 | `identity.on_both` | error | 1 |  | `on` has both `ref` and `of`. |
 | `identity.pin_in_clear` | warning | 1 |  | A pin stands inside a clear; names both. |
 | `identity.pin_in_keep_out` | warning | 1 |  | A pin stands where `keep_out` is above 0; names the field. |
@@ -1986,7 +1986,7 @@ The store cannot be written; this build keeps nothing more. Run diagnostic.
 | `identity.pins_overlap` | error | 1 |  | Two pins' footprints overlap; names both. |
 | `identity.reselected` | warning | 1 |  | A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (`build.md` 11.1). |
 | `identity.reserved` | error | 1 | `nearest` | An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r53, `surfaces.md` 1). |
-| `identity.unknown_lock` | error | 1 | `nearest` | `via lock` was given an id that is no lock. |
+| `identity.unknown_lock` | error | 3 | `nearest` | `via lock` was given an id that is no lock (M3). |
 | `identity.unknown_maker` | error | 1 | `nearest` | `of` names nothing. |
 | `identity.unknown_place` | error | 1 | `nearest` | A part of a place name names nothing. |
 | `identity.unknown_producer` | error | 1 | `nearest` | `by` names nothing. |
@@ -2005,7 +2005,7 @@ Fixed: [feature.mill_a]
 
 ### `identity.bad_key`
 
-error, milestone 1, `spec/identity.md`.
+error, milestone 2, `spec/identity.md`.
 
 ```text
 A step returned a key that breaks 2.2, or an unknown class; says which rule.
@@ -2034,7 +2034,7 @@ Fixed: [feature.a]  and  [feature.a2]
 
 ### `identity.key_collision`
 
-error, milestone 1, `spec/identity.md`.
+error, milestone 2, `spec/identity.md`.
 
 ```text
 One step gave two things one key; names both positions.
@@ -2052,7 +2052,7 @@ To fix: { of, class, near } at the thing's current position.
 
 ### `identity.lock_asset_missing`
 
-error, milestone 1, `spec/identity.md`.
+error, milestone 3, `spec/identity.md`.
 
 ```text
 A recorded item's asset is no longer bound by the pack.
@@ -2061,7 +2061,7 @@ To fix: Bind the asset again, or re-record with via lock.
 
 ### `identity.lock_differs`
 
-info, milestone 1, `spec/identity.md`.
+info, milestone 3, `spec/identity.md`.
 
 ```text
 What the producers would now do inside a lock, and live names dropped for a recorded one, as counts.
@@ -2070,7 +2070,7 @@ To fix: Re-record with via lock, or leave it.
 
 ### `identity.lock_ground_moved`
 
-warning, milestone 1, `spec/identity.md`.
+warning, milestone 3, `spec/identity.md`.
 
 ```text
 Recorded items stand on ground that moved; count and largest change.
@@ -2079,7 +2079,7 @@ To fix: Re-record with via lock, or edit the ground's cause.
 
 ### `identity.lock_pin_clash`
 
-error, milestone 1, `spec/identity.md`.
+error, milestone 3, `spec/identity.md`.
 
 ```text
 A recorded item overlaps a pin; names both.
@@ -2088,7 +2088,7 @@ To fix: Move the pin, or re-record with via lock.
 
 ### `identity.lock_rerecorded`
 
-info, milestone 1, `spec/identity.md`.
+info, milestone 3, `spec/identity.md`.
 
 ```text
 A record was replaced; counts of the difference.
@@ -2097,7 +2097,7 @@ To fix: None needed; review the record's diff.
 
 ### `identity.lock_unrecorded`
 
-error, milestone 1, `spec/identity.md`.
+error, milestone 3, `spec/identity.md`.
 
 ```text
 A lock has no record.
@@ -2142,7 +2142,7 @@ To fix: Name the producers that place on it.
 
 ### `identity.of_ambiguous`
 
-error, milestone 1, `spec/identity.md`.
+error, milestone 3, `spec/identity.md`.
 
 ```text
 of names a maker with several classes and no class.
@@ -2225,7 +2225,7 @@ Fixed: [feature.world_a]
 
 ### `identity.unknown_lock`
 
-error, milestone 1, `spec/identity.md`.
+error, milestone 3, `spec/identity.md`.
 
 ```text
 via lock was given an id that is no lock.
@@ -2392,7 +2392,7 @@ Fixed: width = 3000
 
 ### `num.overflow`
 
-error, milestone 1, `spec/numbers.md`.
+error, milestone 1, `spec/numbers.md`, covered by the workspace tests.
 
 ```text
 A checked integer operation overflowed. Names the subject and the position.
@@ -2609,7 +2609,7 @@ To fix: The nearest declared path, or declare [taxon."<path>"].
 | `place.gave_way` | info | 1 |  | A producer's candidates dropped by overlap and by relief, as counts, with their box. |
 | `place.keep_out` | warning | 1 |  | An instance stands where `keep_out` is above 0; names the field and the position. |
 | `place.margin_alone` | error | 1 |  | `margin` without `ground`. |
-| `place.no_footprint` | error | 1 |  | `ground` on an asset with no footprint. |
+| `place.no_footprint` | error | 2 |  | `ground` on an asset with no footprint; only a model measures a point footprint, `assets.md` 2.4 (M2). |
 | `place.no_position` | error | 1 |  | An instance or pin has neither `at` nor `on`; a run has no `on`. |
 | `place.on_form` | error | 1 |  | `span` in an instance's `on`, or `t` in a run's `on`. (`t` or `offset` on a thing with no length is `geom.no_length`.) |
 | `place.outside` | error | 1 |  | A hand instance or set item whose origin is outside the extent; not placed (8.4). |
@@ -2664,7 +2664,7 @@ To fix: Add ground = "<kind>", or remove margin.
 
 ### `place.no_footprint`
 
-error, milestone 1, `spec/rules.md`.
+error, milestone 2, `spec/rules.md`.
 
 ```text
 ground on an asset with no footprint.
@@ -2730,37 +2730,37 @@ To fix: Move it, give it ground with a kind that levels, or choose an asset with
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
 | `protocol.absolute_path` | error | 1 |  | `command` holds an absolute path. |
-| `protocol.blob_digest` | error | 1 |  | A blob's bytes do not match its name. |
-| `protocol.blob_header` | error | 1 |  | A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2). |
+| `protocol.blob_digest` | error | 2 |  | A blob's bytes do not match its name (M2). |
+| `protocol.blob_header` | error | 2 |  | A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2) (M2). |
 | `protocol.code_folder` | error | 1 |  | The code folder is or holds the world's folder; move the script into its own folder. |
 | `protocol.column_mixed` | error | 1 |  | One attribute has two types across the selected kinds; names both kinds. |
-| `protocol.crashed` | error | 1 |  | The worker exited during a call. |
+| `protocol.crashed` | error | 2 |  | The worker exited during a call (M2). |
 | `protocol.deadline` | error | 1 | `phase`, `deadline` | No answer by the deadline; which phase, `data.phase` (`initialize`, `step.call` or `cancel`), and the deadline in seconds, `data.deadline`. |
 | `protocol.explain_differs` | warning | 1 |  | A step sent two `explain` texts for one code. |
 | `protocol.failed` | error | 1 | `exit` | A plain command exited non-zero; `data.exit`. |
-| `protocol.field_file` | error | 1 |  | A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field`. |
-| `protocol.framing` | error | 1 |  | A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor. |
-| `protocol.input_undeclared` | error | 1 |  | `input.open` named a path not in `inputs`. |
-| `protocol.key_shadows` | error | 1 |  | A returned key equals a name the step can see. |
-| `protocol.message_too_large` | error | 1 | `bytes` | A frame over 16 MiB, `data.bytes` long; send the data as a blob. |
-| `protocol.no_entry` | error | 1 |  | The script has no top-level function named after `when`. |
+| `protocol.field_file` | error | 2 |  | A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field` (M2). |
+| `protocol.framing` | error | 2 |  | A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor (M2). |
+| `protocol.input_undeclared` | error | 2 |  | `input.open` named a path not in `inputs` (M2). |
+| `protocol.key_shadows` | error | 2 |  | A returned key equals a name the step can see (M2). |
+| `protocol.message_too_large` | error | 2 | `bytes` | A frame over 16 MiB, `data.bytes` long; send the data as a blob (M2). |
+| `protocol.no_entry` | error | 2 |  | The script has no top-level function named after `when` (M2). |
 | `protocol.no_explain` | warning | 1 |  | A step sent a code with no `explain` text. |
-| `protocol.no_output` | error | 1 |  | A generate step returned no document. |
+| `protocol.no_output` | error | 2 |  | A generate step returned no document (M2). |
 | `protocol.no_program` | error | 1 |  | `command[0]` is no configured program and no file, or is a `.bat`/`.cmd`; the hint gives `via config program`. |
-| `protocol.output_file` | error | 1 |  | A returned `file` leaves `out` or names nothing. |
+| `protocol.output_file` | error | 2 |  | A returned `file` leaves `out` or names nothing (M2). |
 | `protocol.output_json` | error | 1 |  | A plain command's `out/diagnostics.json` is not a list of diagnostic objects. |
 | `protocol.output_table` | error | 1 |  | A returned document holds a table or key a step may not return, or a lint or export returned one. |
-| `protocol.output_twice` | error | 1 |  | A worker returned a document and wrote `document.toml`. |
-| `protocol.raised` | error | 1 | `exception` | The step raised an exception it did not catch; `data.exception`. |
-| `protocol.slow_exit` | info | 1 |  | A worker had to be killed after `shutdown`. |
+| `protocol.output_twice` | error | 2 |  | A worker returned a document and wrote `document.toml` (M2). |
+| `protocol.raised` | error | 2 | `exception` | The step raised an exception it did not catch; `data.exception` (M2). |
+| `protocol.slow_exit` | info | 2 |  | A worker had to be killed after `shutdown` (M2). |
 | `protocol.start` | error | 1 | `kind` | The process could not be started; `data.kind` (6.2). |
 | `protocol.unknown_library` | error | 1 | `nearest` | A `lib:` element names a library not in `include`; the nearest name. |
-| `protocol.untrusted` | error | 1 |  | A generate step is not trusted and has no committed result; the hint is `via trust`. |
+| `protocol.untrusted` | error | 2 |  | A generate step is not trusted and has no committed result; the hint is `via trust` (M2). |
 | `protocol.untrusted_result` | info | 2 |  | An untrusted step was built from its committed result, which matched (M2). |
 | `protocol.untrusted_skipped` | warning | 1 |  | An untrusted lint or export step was skipped. |
 | `protocol.untrusted_stale` | error | 2 |  | A committed result's static key or a read of its trace differs from the current build; names the first difference (M2). |
-| `protocol.version` | error | 1 | `engine`, `worker` | The worker speaks another protocol version; both versions, `data.engine` and `data.worker`. |
-| `protocol.when_unserved` | error | 1 | `when` | The worker's `capabilities.when` lacks the step's `when`, `data.when`. |
+| `protocol.version` | error | 2 | `engine`, `worker` | The worker speaks another protocol version; both versions, `data.engine` and `data.worker` (M2). |
+| `protocol.when_unserved` | error | 2 | `when` | The worker's `capabilities.when` lacks the step's `when`, `data.when` (M2). |
 
 ### `protocol.absolute_path`
 
@@ -2772,7 +2772,7 @@ command holds an absolute path.
 
 ### `protocol.blob_digest`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A blob's bytes do not match its name.
@@ -2780,7 +2780,7 @@ A blob's bytes do not match its name.
 
 ### `protocol.blob_header`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A column blob whose header or size does not match the dtype and shape its message gives. A non-finite sample is num.not_finite_result (4.2).
@@ -2804,7 +2804,7 @@ One attribute has two types across the selected kinds; names both kinds.
 
 ### `protocol.crashed`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 The worker exited during a call.
@@ -2836,7 +2836,7 @@ A plain command exited non-zero; data.exit.
 
 ### `protocol.field_file`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A returned field file is outside 4.2's .npy subset, or has the wrong descr or shape for its field; the hint is step.out.field.
@@ -2844,7 +2844,7 @@ A returned field file is outside 4.2's .npy subset, or has the wrong descr or sh
 
 ### `protocol.framing`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A frame was not Content-Length and JSON; likely output written to the protocol descriptor.
@@ -2852,7 +2852,7 @@ A frame was not Content-Length and JSON; likely output written to the protocol d
 
 ### `protocol.input_undeclared`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 input.open named a path not in inputs.
@@ -2860,7 +2860,7 @@ input.open named a path not in inputs.
 
 ### `protocol.key_shadows`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A returned key equals a name the step can see.
@@ -2868,7 +2868,7 @@ A returned key equals a name the step can see.
 
 ### `protocol.message_too_large`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A frame over 16 MiB; send the data as a blob.
@@ -2876,7 +2876,7 @@ A frame over 16 MiB; send the data as a blob.
 
 ### `protocol.no_entry`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 The script has no top-level function named after when.
@@ -2892,7 +2892,7 @@ A step sent a code with no explain text.
 
 ### `protocol.no_output`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A generate step returned no document.
@@ -2908,7 +2908,7 @@ command[0] is no configured program and no file, or is a .bat/.cmd; the hint giv
 
 ### `protocol.output_file`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A returned file leaves out or names nothing.
@@ -2932,7 +2932,7 @@ A returned document holds a table or key a step may not return, or a lint or exp
 
 ### `protocol.output_twice`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A worker returned a document and wrote document.toml.
@@ -2940,7 +2940,7 @@ A worker returned a document and wrote document.toml.
 
 ### `protocol.raised`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 The step raised an exception it did not catch; data.exception.
@@ -2948,7 +2948,7 @@ The step raised an exception it did not catch; data.exception.
 
 ### `protocol.slow_exit`
 
-info, milestone 1, `spec/protocol.md`.
+info, milestone 2, `spec/protocol.md`.
 
 ```text
 A worker had to be killed after shutdown.
@@ -2972,7 +2972,7 @@ A lib: element names a library not in include; the nearest name.
 
 ### `protocol.untrusted`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 A generate step is not trusted and has no committed result; the hint is via trust.
@@ -3004,7 +3004,7 @@ A committed result's static key or a read of its trace differs from the current 
 
 ### `protocol.version`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 The worker speaks another protocol version; both versions.
@@ -3012,7 +3012,7 @@ The worker speaks another protocol version; both versions.
 
 ### `protocol.when_unserved`
 
-error, milestone 1, `spec/protocol.md`.
+error, milestone 2, `spec/protocol.md`.
 
 ```text
 The worker's capabilities.when lacks the step's when.
@@ -3022,14 +3022,14 @@ The worker's capabilities.when lacks the step's when.
 
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
-| `run.count` | error | 1 |  | `count` below 1, or below 2 with `ends = "both"` on an open stretch. |
-| `run.count_or_spacing` | error | 1 |  | A run writes both `count` and `spacing`, or neither. |
-| `run.no_length` | error | 1 |  | The run's `on` names a thing with no length, or its stretch is zero millimetres. |
-| `run.outside` | warning | 1 |  | Members fell outside the extent and were not made; gives the count. |
+| `run.count` | error | 3 |  | `count` below 1, or below 2 with `ends = "both"` on an open stretch (M3). |
+| `run.count_or_spacing` | error | 3 |  | A run writes both `count` and `spacing`, or neither (M3). |
+| `run.no_length` | error | 3 |  | The run's `on` names a thing with no length, or its stretch is zero millimetres (M3). |
+| `run.outside` | warning | 3 |  | Members fell outside the extent and were not made; gives the count (M3). |
 
 ### `run.count`
 
-error, milestone 1, `spec/rules.md`.
+error, milestone 3, `spec/rules.md`.
 
 ```text
 count below 1, or below 2 with ends = "both" on an open stretch.
@@ -3038,7 +3038,7 @@ To fix: The least allowed count.
 
 ### `run.count_or_spacing`
 
-error, milestone 1, `spec/rules.md`.
+error, milestone 3, `spec/rules.md`.
 
 ```text
 A run writes both count and spacing, or neither.
@@ -3047,7 +3047,7 @@ To fix: Keep one.
 
 ### `run.no_length`
 
-error, milestone 1, `spec/rules.md`.
+error, milestone 3, `spec/rules.md`.
 
 ```text
 The run's on names a thing with no length, or its stretch is zero millimetres.
@@ -3056,7 +3056,7 @@ To fix: Name a path or region, or widen span.
 
 ### `run.outside`
 
-warning, milestone 1, `spec/rules.md`.
+warning, milestone 3, `spec/rules.md`.
 
 ```text
 Members fell outside the extent and were not made; gives the count.
@@ -3067,7 +3067,7 @@ To fix: Narrow span to the part inside the extent.
 
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
-| `scatter.clump` | error | 1 |  | `clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer. |
+| `scatter.clump` | error | 2 |  | `clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer (M2). |
 | `scatter.empty` | warning | 1 |  | A scatter placed nothing; names the stage that removed the last candidate. |
 | `scatter.keep_out_twice` | info | 1 |  | `density` reads a `keep_out` field, which the scatter already applies. |
 | `scatter.range` | error | 1 |  | A `[lo, hi]` with `lo > hi`, a `scale` not above 0, a `tint` below 0, a `jitter` outside 0 to 1, a `spacing` not above 0, or a `weight` not above 0. |
@@ -3075,7 +3075,7 @@ To fix: Narrow span to the part inside the extent.
 
 ### `scatter.clump`
 
-error, milestone 1, `spec/rules.md`.
+error, milestone 2, `spec/rules.md`.
 
 ```text
 clump breaks 7.3: both forms, no radius, a value out of range, or around naming a non-producer.
@@ -3122,13 +3122,13 @@ To fix: Name a region feature, a footprint feature, or select an area, cell, res
 
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
-| `set.empty` | error | 1 |  | A set has no items. |
-| `set.unknown` | error | 1 | `nearest` | `set` names no set. |
-| `set.unused` | info | 1 |  | A set nothing places. |
+| `set.empty` | error | 3 |  | A set has no items (M3). |
+| `set.unknown` | error | 3 | `nearest` | `set` names no set (M3). |
+| `set.unused` | info | 3 |  | A set nothing places (M3). |
 
 ### `set.empty`
 
-error, milestone 1, `spec/rules.md`.
+error, milestone 3, `spec/rules.md`.
 
 ```text
 A set has no items.
@@ -3137,7 +3137,7 @@ To fix: Add [set.<id>.item.<name>], or remove the set.
 
 ### `set.unknown`
 
-error, milestone 1, `spec/rules.md`.
+error, milestone 3, `spec/rules.md`.
 
 ```text
 set names no set.
@@ -3146,7 +3146,7 @@ To fix: The nearest set id.
 
 ### `set.unused`
 
-info, milestone 1, `spec/rules.md`.
+info, milestone 3, `spec/rules.md`.
 
 ```text
 A set nothing places.

@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "The square; on = { t = 0.125, offset = 2 }; a formula writing sd and d: the placed point is (5000, 2000); there sd is +2 and d is 0."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.x]
+path    = "build/w/features.json"
+pointer = "/features/0/at/0"
+value   = 5
+
+[action.build.file.y]
+path    = "build/w/features.json"
+pointer = "/features/0/at/1"
+value   = 2
+
+[action.build.file.sd]
+path  = "build/w/fields/s.npy"
+post  = [5, 2]
+value = 2
+
+[action.build.file.d]
+path  = "build/w/fields/d.npy"
+post  = [5, 2]
+value = 0

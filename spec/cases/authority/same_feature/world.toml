@@ -1,0 +1,14 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.a]
+kind = "two"
+region = [[2, 2], [14, 2], [14, 14], [2, 14]]
+k    = 0

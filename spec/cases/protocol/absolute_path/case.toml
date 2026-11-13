@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "command holds an absolute path: protocol.absolute_path."
+milestone = 1
+actions   = ["program", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.absolute_path]
+code = "protocol.absolute_path"

@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "engine = true, no triangles: asset.source naming triangles, exit 1."
+milestone = 1
+actions   = ["check"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.source]
+code    = "asset.source"
+subject = "asset.e"

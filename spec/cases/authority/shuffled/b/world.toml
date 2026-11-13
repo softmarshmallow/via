@@ -1,0 +1,23 @@
+include    = ["tiers"]
+resolution = 1
+extent     = [0, 0, 16, 16]
+name       = "order"
+
+[feature.c]
+k    = 1
+at   = [8, 8]
+kind = "dig"
+
+[field.height]
+base = 0
+role = "surface"
+
+[feature.b]
+k    = 2
+kind = "sha"
+at   = [8, 8]
+
+[feature.a]
+at   = [8, 8]
+kind = "anc"
+k    = 3

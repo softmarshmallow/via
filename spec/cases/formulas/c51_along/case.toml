@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "along('pond') in a base, the pond a square region: on the outline, the outline fraction t; off it, t of the nearest outline point; along('well'), a point: 0."
+milestone = 1
+actions   = ["pond", "well"]
+
+# The square's outline is 16 m from its first point (2, 2), counter-clockwise: (4, 2) is 2 m along, t = 0.125; (6, 4) is 6 m, t = 0.375; (4, 0)'s nearest outline point is (4, 2).
+
+[action.pond]
+via  = ["build", "pond/world.toml", "--lib", "{work}/libs", "--out", "pond/build/w"]
+exit = 0
+out  = "pond/build/w"
+
+[action.pond.file.on]
+path  = "pond/build/w/fields/f.npy"
+post  = [4, 2]
+value = 0.125
+
+[action.pond.file.off]
+path  = "pond/build/w/fields/f.npy"
+post  = [4, 0]
+value = 0.125
+
+[action.pond.file.east]
+path  = "pond/build/w/fields/f.npy"
+post  = [6, 4]
+value = 0.375
+
+[action.well]
+via  = ["build", "well/world.toml", "--lib", "{work}/libs", "--out", "well/build/w"]
+exit = 0
+out  = "well/build/w"
+
+[action.well.file.all]
+path = "well/build/w/fields/f.npy"
+all  = 0

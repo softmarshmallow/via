@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "Two top-level surface fields; build: surface.two_terrains, exit 1."
+milestone = 1
+actions   = ["build"]
+
+# Subject the second field in source order; the first in related.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.two_terrains]
+code    = "surface.two_terrains"
+subject = "field.second"

@@ -1,0 +1,9 @@
+name       = "mill"
+extent     = [0, 0, 128, 128]
+resolution = 1
+include    = ["ways"]
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = "= 20 + 0 * \u0031 + hieght"

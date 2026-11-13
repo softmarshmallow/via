@@ -1,0 +1,54 @@
+format    = "via-case-1"
+summary   = "No position; neither asset nor set (set is M3); margin alone; scale = 0; authority on cottage: place.no_position, place.asset_or_set, place.margin_alone, place.range, doc.unknown_key; each exit 1 (ground on a point asset is M2)."
+milestone = 1
+actions   = ["no_position", "asset_or_set", "margin_alone", "scale", "authority"]
+
+# `ground` on a point asset (place.no_footprint) is left out: a point footprint is a model's zero-area
+# measured footprint (assets.md 2.4, asset.point_footprint, M2); every M1 asset, primitive or engine,
+# has a footprint of positive area from `size`. rules.md's table now marks place.no_footprint (M2).
+
+[action.no_position]
+via         = ["build", "no_position/world.toml", "--lib", "{work}/libs", "--out", "no_position/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "no_position/build/w"
+
+[action.no_position.diag.no_position]
+code = "place.no_position"
+
+[action.asset_or_set]
+via         = ["build", "asset_or_set/world.toml", "--lib", "{work}/libs", "--out", "asset_or_set/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "asset_or_set/build/w"
+
+[action.asset_or_set.diag.asset_or_set]
+code = "place.asset_or_set"
+
+[action.margin_alone]
+via         = ["build", "margin_alone/world.toml", "--lib", "{work}/libs", "--out", "margin_alone/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "margin_alone/build/w"
+
+[action.margin_alone.diag.margin_alone]
+code = "place.margin_alone"
+
+[action.scale]
+via         = ["build", "scale/world.toml", "--lib", "{work}/libs", "--out", "scale/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "scale/build/w"
+
+[action.scale.diag.range]
+code = "place.range"
+
+[action.authority]
+via         = ["build", "authority/world.toml", "--lib", "{work}/libs", "--out", "authority/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "authority/build/w"
+
+[action.authority.diag.unknown_key]
+code    = "doc.unknown_key"
+subject = "instance.cottage.authority"

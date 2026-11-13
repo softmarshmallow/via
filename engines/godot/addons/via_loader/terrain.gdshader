@@ -3,6 +3,9 @@
 // no fixed number of materials. `params` holds one column per material: row 0 its colour (linear,
 // alpha 1 when it has an image), row 1 its repeat in metres. A post where every weight is 0 holds
 // no material; the loader then draws its own default colour.
+// A material drawn by its colour alone, and the default, get a little brightness variation over the plan (two
+// octaves of value noise, metres apart and a stride apart), so flat ground keeps some texture at eye
+// height; a material with an image is drawn as the image.
 shader_type spatial;
 render_mode cull_back;
 
@@ -13,6 +16,18 @@ uniform int count = 0;
 uniform vec3 default_colour = vec3(0.6, 0.6, 0.6);
 
 varying vec2 plan;
+
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+		mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
 
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -32,10 +47,13 @@ void fragment() {
 		if (p.a > 0.5) {
 			float rep = texelFetch(params, ivec2(i, 1), 0).r;
 			c = texture(albedo, vec3(plan / rep, float(i))).rgb;
+		} else {
+			c *= 0.8 + 0.25 * noise(plan * 0.35) + 0.15 * noise(plan * 2.3 + float(i) * 17.0);
 		}
 		acc += w * c;
 		total += w;
 	}
-	ALBEDO = total > 0.001 ? acc / total : default_colour;
+	ALBEDO = total > 0.001 ? acc / total
+		: default_colour * (0.8 + 0.25 * noise(plan * 0.35) + 0.15 * noise(plan * 2.3));
 	ROUGHNESS = 0.95;
 }

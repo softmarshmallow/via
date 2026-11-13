@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A pin on = { ref = \"trees#s7000_5_3\" } and a scatter within = \"trees#s7000_5_3\": two identity.key_in_text, exit 1."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.key_in_text]
+code = "identity.key_in_text"
+line = 17
+
+[action.build.diag.within]
+code = "identity.key_in_text"
+line = 23

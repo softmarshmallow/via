@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "cross's first area, frontage cross_ns only, cell_length 50 m, band_depth 10 m, min_cell_area 600 m2: one cell of 500 m2, kept, geom.cell_small."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via         = ["kernel", "cells", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.cell_small]
+code    = "geom.cell_small"
+subject = "cli"
+
+[action.op.check.n]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/cells"
+count   = 1

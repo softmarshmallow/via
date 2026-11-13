@@ -432,6 +432,7 @@ dependencies = [
  "toml",
  "via-diag",
  "via-doc",
+ "via-geom",
  "via-graph",
  "via-model",
  "via-num",

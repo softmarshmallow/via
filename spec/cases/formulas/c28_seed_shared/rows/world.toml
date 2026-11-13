@@ -1,0 +1,11 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= fbm(80, 3)"
+
+[field.f.then.r]
+value = "= v + fbm(80, 3)"
+mask  = 0.5

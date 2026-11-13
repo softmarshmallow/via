@@ -1,0 +1,20 @@
+[kind.lane]
+radius = 2
+
+[kind.lane.defaults]
+width = 4
+
+[kind.lane.effect.bed]
+field = "tag:mark"
+value = "= width"
+mask  = "= 1 - smoothstep(0, 1, d)"
+
+[kind.kt]
+radius = 2
+
+[kind.kt.defaults]
+label = "x"
+
+[kind.kt.effect.e]
+field = "tag:mark"
+value = "= label"

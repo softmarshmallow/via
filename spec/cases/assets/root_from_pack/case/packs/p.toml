@@ -1,0 +1,6 @@
+root = "../art"
+
+[material.grass]
+colour = [0.2, 0.4, 0.1]
+file   = "grass.png"
+repeat = 2

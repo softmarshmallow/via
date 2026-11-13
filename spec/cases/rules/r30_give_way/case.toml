@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "r20 with cottage at [60, 132]: no tree footprint overlaps the cottage's; place.gave_way counts trees#s7000_8_18."
+milestone = 1
+actions   = ["build"]
+
+# A tree's 1 m trunk overlaps the 8 m by 6 m house (x 56 to 64, y 129 to 135) when its origin lies within 0.5 m of the house: none does, so no origin inside the house shrunk by the trunk's half width.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.gave_way]
+code    = "place.gave_way"
+subject = "scatter.trees"
+
+[action.build.check.clear]
+fn     = "no_origin_inside"
+build  = "build/w"
+points = [[56.5, 129.5], [63.5, 129.5], [63.5, 134.5], [56.5, 134.5]]
+prefix = "trees#"

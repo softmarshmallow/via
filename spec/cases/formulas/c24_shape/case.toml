@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "inside('lane_west'); sdist over a pond and a lane; smoothed_along(24) in a kind of regions; under('edge_min') on a path: formula.shape each."
+milestone = 1
+actions   = ["inside", "sdist", "smoothed", "edge_min"]
+
+[action.inside]
+via         = ["build", "inside/world.toml", "--lib", "{work}/libs", "--out", "inside/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "inside/build/w"
+
+[action.inside.diag.shape]
+code = "formula.shape"
+
+[action.sdist]
+via         = ["build", "sdist/world.toml", "--lib", "{work}/libs", "--out", "sdist/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "sdist/build/w"
+
+[action.sdist.diag.shape]
+code = "formula.shape"
+
+[action.smoothed]
+via         = ["build", "smoothed/world.toml", "--lib", "{work}/libs", "--out", "smoothed/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "smoothed/build/w"
+
+[action.smoothed.diag.shape]
+code = "formula.shape"
+
+[action.edge_min]
+via         = ["build", "edge_min/world.toml", "--lib", "{work}/libs", "--out", "edge_min/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "edge_min/build/w"
+
+[action.edge_min.diag.shape]
+code = "formula.shape"

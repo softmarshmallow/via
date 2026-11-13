@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "raster extent [100, 100, 110, 110]: field.file_offworld; every post outside."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.file_offworld]
+code = "field.file_offworld"
+
+[action.build.file.all]
+path = "build/w/fields/a.npy"
+all  = 3

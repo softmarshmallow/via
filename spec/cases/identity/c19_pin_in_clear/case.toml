@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A pin inside a clear: identity.pin_in_clear, exit 0. A pin where keep_out is 0.5: identity.pin_in_keep_out, exit 0."
+milestone = 1
+actions   = ["clear", "keep_out"]
+
+[action.clear]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.clear.diag.pin_in_clear]
+code = "identity.pin_in_clear"
+
+[action.keep_out]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.keep_out.diag.pin_in_keep_out]
+code = "identity.pin_in_keep_out"

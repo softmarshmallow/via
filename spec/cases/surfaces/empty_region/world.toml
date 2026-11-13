@@ -1,0 +1,7 @@
+name       = "ramp"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= 0.5 * x"

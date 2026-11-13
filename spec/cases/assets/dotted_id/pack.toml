@@ -1,0 +1,3 @@
+[asset."house.low"]
+primitive = "box"
+size      = [1, 1, 1]

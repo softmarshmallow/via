@@ -1,0 +1,12 @@
+name       = "tiny"
+extent     = [0, 0, 1, 1]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= 1 + rise"
+
+[layer.top]
+file  = "top.toml"
+owner = "tests"
+rank  = 1

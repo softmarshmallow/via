@@ -617,22 +617,22 @@ Codes this chapter introduces. Unknown names, cycles and bad `on` tables are `id
 | `place.outside` | error | A hand instance or set item whose origin is outside the extent; not placed (8.4). | Move it inside the extent, or widen the extent. |
 | `place.range` | error | On an instance, run or set item: `scale` not above 0, `tint` below 0, `margin` below 0, or a `[lo, hi]` pair (only a scatter draws). | The key and its allowed range. |
 | `place.margin_alone` | error | `margin` without `ground`. | Add `ground = "<kind>"`, or remove `margin`. |
-| `place.no_footprint` | error | `ground` on an asset with no footprint. | Declare the asset's `footprint`, or remove `ground`. |
+| `place.no_footprint` | error | `ground` on an asset with no footprint; only a model measures a point footprint, `assets.md` 2.4 (M2). | Declare the asset's `footprint`, or remove `ground`. |
 | `place.overlap` | error | Two hand instances' footprints overlap; names both. | Move one; the overlap's size is given. |
 | `place.crowded` | warning | Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both. | Change one producer's `on` or `span`, or add a clear or pin in the higher layer with `by` naming the lower producer. |
 | `place.relief` | warning | Relief under an instance exceeds its asset's `max_relief`; gives both numbers and the position. | Move it, give it `ground` with a kind that levels, or choose an asset with a larger `max_relief`. |
 | `place.keep_out` | warning | An instance stands where `keep_out` is above 0; names the field and the position. | Move it, or change the kind whose effect writes `keep_out` there. |
 | `place.gave_way` | info | A producer's candidates dropped by overlap and by relief, as counts, with their box. | Widen the space or change the hand instances it gives way to; nothing if intended. |
-| `set.unknown` | error | `set` names no set. | The nearest set id. |
-| `set.empty` | error | A set has no items. | Add `[set.<id>.item.<name>]`, or remove the set. |
-| `set.unused` | info | A set nothing places. | Place it with an instance or run, or remove it. |
-| `run.count_or_spacing` | error | A run writes both `count` and `spacing`, or neither. | Keep one. |
-| `run.count` | error | `count` below 1, or below 2 with `ends = "both"` on an open stretch. | The least allowed `count`. |
-| `run.no_length` | error | The run's `on` names a thing with no length, or its stretch is zero millimetres. | Name a path or region, or widen `span`. |
-| `run.outside` | warning | Members fell outside the extent and were not made; gives the count. | Narrow `span` to the part inside the extent. |
+| `set.unknown` | error | `set` names no set (M3). | The nearest set id. |
+| `set.empty` | error | A set has no items (M3). | Add `[set.<id>.item.<name>]`, or remove the set. |
+| `set.unused` | info | A set nothing places (M3). | Place it with an instance or run, or remove it. |
+| `run.count_or_spacing` | error | A run writes both `count` and `spacing`, or neither (M3). | Keep one. |
+| `run.count` | error | `count` below 1, or below 2 with `ends = "both"` on an open stretch (M3). | The least allowed `count`. |
+| `run.no_length` | error | The run's `on` names a thing with no length, or its stretch is zero millimetres (M3). | Name a path or region, or widen `span`. |
+| `run.outside` | warning | Members fell outside the extent and were not made; gives the count (M3). | Narrow `span` to the part inside the extent. |
 | `scatter.range` | error | A `[lo, hi]` with `lo > hi`, a `scale` not above 0, a `tint` below 0, a `jitter` outside 0 to 1, a `spacing` not above 0, or a `weight` not above 0. | The key and its allowed range. |
 | `scatter.within` | error | `within` names a path or a point. | Name a region feature, a footprint feature, or select an area, cell, rest or piece. |
-| `scatter.clump` | error | `clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer. | The key to remove or change. |
+| `scatter.clump` | error | `clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer (M2). | The key to remove or change. |
 | `scatter.keep_out_twice` | info | `density` reads a `keep_out` field, which the scatter already applies. | Remove the `keep_out` factor from `density`. |
 | `scatter.empty` | warning | A scatter placed nothing; names the stage that removed the last candidate. | The key behind that stage (`density`, `within`, `keep_out`, a hand edit). |
 
@@ -662,7 +662,7 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 | r13 pads_side | Two padded houses 9 m apart, pads overlapping | build | No `place.keep_out`, no `place.overlap`. |
 | r14 in_keep_out | A region feature writing `keep_out = 1`; a hand instance in it | build | `place.keep_out` naming the field. |
 | r15 outside | `at = [300, 10]` | build | `place.outside`, not placed, exit 1. |
-| r16 bad_keys | Each of: no position; `asset` and `set`; `ground` on a point asset; `margin` alone; `scale = 0`; `authority = "anchored"` on `cottage` | build | `place.no_position`, `place.asset_or_set`, `place.no_footprint`, `place.margin_alone`, `place.range`, `doc.unknown_key` with subject `instance.cottage.authority`; each exit 1. |
+| r16 bad_keys | Each of: no position; neither `asset` nor `set` (`set` itself is M3, `doc.not_yet` in M1); `ground` on a point asset; `margin` alone; `scale = 0`; `authority = "anchored"` on `cottage` | build | `place.no_position`, `place.asset_or_set`, `place.no_footprint`, `place.margin_alone`, `place.range`, `doc.unknown_key` with subject `instance.cottage.authority`; each exit 1. |
 | r17 edge | Lanes `lane_west` `[[0, 120], [100, 120]]` and `lane_east` `[[156, 140], [256, 140]]`; instances `on = { ref = "lane_west", t = 0 }`, `on = { ref = "lane_east", t = 1 }`, `at = [256, 256]`, `at = [256.001, 10]` | build | First three placed at `(0, 120000)`, `(256000, 140000)`, `(256000, 256000)`, no `place.outside`; the fourth `place.outside`, not placed, exit 1. |
 
 **M1: scatter**

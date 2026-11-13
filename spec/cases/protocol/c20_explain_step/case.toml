@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "A plain lint step with a diagnostic and explain; via explain step.<id>.<code> WORLD: prints the text, runs no program."
+milestone = 1
+actions   = ["program", "trust", "build", "explain"]
+
+# `via explain` runs nothing and does not merge the world (diagnostics.md 2). The build went to `--out build/w`, not the default `build/steps`, so explain names it too (build.md 14: the run report beside the default build directory, or `--out`'s). The explain text is printed to standard output; its form is not fixed, so it is not compared.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.steep]
+code     = "step.look.steep"
+severity = "warning"
+
+[action.explain]
+via  = ["explain", "step.look.steep", "world.toml", "--out", "build/w"]
+exit = 0

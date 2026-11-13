@@ -1,0 +1,36 @@
+format    = "via-case-1"
+summary   = "write height to an array file; a second world reads it with file, each filter: every post equal, bit for bit."
+milestone = 1
+actions   = ["source", "nearest", "linear", "again_n", "again_l"]
+
+# Each world reading the file is evaluated back into b/h.npy; `same` compares it with the bytes the source wrote.
+
+[action.source]
+via  = ["eval", "a/world.toml", "--field", "height", "--out", "b/h.npy"]
+exit = 0
+
+[action.nearest]
+via  = ["build", "b/nearest.toml", "--out", "b/build/n"]
+exit = 0
+out  = "b/build/n"
+
+[action.linear]
+via  = ["build", "b/linear.toml", "--out", "b/build/l"]
+exit = 0
+out  = "b/build/l"
+
+[action.again_n]
+via  = ["eval", "b/nearest.toml", "--field", "height", "--out", "b/h.npy"]
+exit = 0
+
+[action.again_n.same.n]
+action = "source"
+what   = "b/h.npy"
+
+[action.again_l]
+via  = ["eval", "b/linear.toml", "--field", "height", "--out", "b/h.npy"]
+exit = 0
+
+[action.again_l.same.l]
+action = "source"
+what   = "b/h.npy"

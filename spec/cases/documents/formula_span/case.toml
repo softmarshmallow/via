@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A formula with an unknown name in a basic string with an escape before it: the column is the name's column in the file."
+milestone = 1
+actions   = ["build"]
+
+# The name `hieght` starts at column 29 of line 9 in the file; in the string's value, after
+# the escape `\u0031` is read as one character, it is five columns earlier. The map of documents.md
+# 2.1 gives the file's column. The row says merge; formula names are checked before anything runs
+# (diagnostics.md 4, stage 2), after the merge's seven steps, so the case builds.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_name]
+code   = "formula.unknown_name"
+file   = "world.toml"
+line   = 9
+column = 29
+data   = { name = "hieght" }

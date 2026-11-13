@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "effect mask = \"= f('tag:wet')\", one field tagged wet: reads it; with two such fields, formula.selector_count."
+milestone = 1
+actions   = ["one", "two"]
+
+# The mask reads `damp` (0.5) everywhere: at (4, 4) the field is 0.5 * 1. With radius 2 the ring's mask is 0.5, so field.effect_cut is expected (mode includes).
+
+[action.one]
+via         = ["build", "one/world.toml", "--lib", "{work}/libs", "--out", "one/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "one/build/w"
+
+[action.one.file.read]
+path  = "one/build/w/fields/height.npy"
+post  = [4, 4]
+value = 0.5
+
+[action.two]
+via         = ["build", "two/world.toml", "--lib", "{work}/libs", "--out", "two/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "two/build/w"
+
+[action.two.diag.selector_count]
+code = "formula.selector_count"

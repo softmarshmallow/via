@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A layer holding byte 0xFF: doc.syntax with the byte offset."
+milestone = 1
+actions   = ["merge"]
+
+# diagnostics.md 1.2: a file that is not text is located by `file` alone and `data` (here `data.offset`). The bad byte is at offset 9 of layers/d.toml (`# caf` is bytes 0 to 4, e-acute 5 and 6, a space 7).
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.syntax]
+code = "doc.syntax"
+file = "layers/d.toml"
+data = { offset = 8 }

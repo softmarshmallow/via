@@ -1,0 +1,3 @@
+[asset.b]
+primitive = "box"
+size      = [1.001, 2, 3]

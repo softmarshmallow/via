@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = "A world with none: every column has shape (0,), names.txt is 0 bytes, via check passes."
+milestone = 1
+actions   = ["build", "check"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.x]
+path  = "build/w/instances/x.npy"
+shape = [0]
+
+[action.build.file.y]
+path  = "build/w/instances/y.npy"
+shape = [0]
+
+[action.build.file.z]
+path  = "build/w/instances/z.npy"
+shape = [0]
+
+[action.build.file.face]
+path  = "build/w/instances/face.npy"
+shape = [0]
+
+[action.build.file.scale]
+path  = "build/w/instances/scale.npy"
+shape = [0]
+
+[action.build.file.tint]
+path  = "build/w/instances/tint.npy"
+shape = [0]
+
+[action.build.file.names]
+path = "build/w/instances/names.txt"
+size = 0
+
+[action.check]
+via  = ["check", "build/w"]
+exit = 0

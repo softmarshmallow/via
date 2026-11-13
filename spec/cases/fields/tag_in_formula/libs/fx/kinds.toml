@@ -1,0 +1,7 @@
+[kind.mark]
+radius = 2
+
+[kind.mark.effect.e]
+field = "role:surface"
+value = 1
+mask  = "= f('tag:wet')"

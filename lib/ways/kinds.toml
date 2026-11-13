@@ -1,5 +1,7 @@
 # The ways library: lanes and the places they cross water (docs/plan.md, "Ford's libraries").
 #
+# A lane keeps trees off its bed and its verges (`role:keep_out`), so no crown hangs over it.
+#
 # A way meets another thing only at its ends (geometry.md 2.7). Where a lane meets water, a named
 # thing owns the meeting (R18): the lane ends at a `ford` (`ends_at = "ford"`), and the next lane
 # starts there. The ford is a point placed on the water (`on = { ref = "beck", t = 0.55 }`).
@@ -12,24 +14,38 @@ radius    = 12
 width  = 4                                # metres
 camber = 0.02                             # fall from the crown to each edge, per metre
 
+# The lane's bed cuts through rises and never fills: run down into a valley, its smoothing would
+# otherwise build a bank across the water at the ford.
 [kind.lane.effect.bed]                    # a road bed smoothed along the lane, crowned across it
 field = "role:surface"
-value = "= smoothed_along(24) - camber * d"
+value = "= min(v, smoothed_along(24) - camber * d)"
 mask  = "= 1 - smoothstep(width / 2, width / 2 + 6, d)"
+
+[kind.lane.effect.verge]                  # no tree on the lane, nor so near that its crown hangs over it
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 2, width / 2 + 4, d)"
 
 [kind.ford]
 authority = "anchored"
 radius    = 21                             # the mask fades by 20; the ring (fields.md 5.3) stays clear
 
-[kind.ford.let]
-water_reach = "= 9"                       # where a beck of the water library's default width stops
-                                          # writing the ground: width / 2 + 6 (lib/water)
-grade       = "= 0.25"                    # the steepest approach, rise over run, from the ford's bed
+[kind.ford.defaults]
+grade = 0.25                              # the steepest approach, rise over run, from the ford's bed;
+                                          # a feature may set its own
 
-# Where the beck writes the ground, the ford asks what it found (`v`), so the two anchored
-# statements agree (authority.md 5 and 6). Outside it, the ford cuts any ground that stands above a
-# slope of `grade` rising from the bed at the ford, so the banks come down to the bed.
+# The ford cuts any ground that stands above a slope of `grade` rising from its bed (the ground at
+# the ford, `under('mean')`), so the banks come down to the bed within 16 m; it never fills.
+#
+# Where the beck writes the ground, the ford must agree with it (authority.md 5 and 6). It reads
+# the ground the beck left (`v`) and keeps it wherever that lies below the slope, so it reads the
+# overlap itself rather than a copied distance: a wider beck or a changed bank moves the overlap
+# with it. lib/water's beck cuts its banks at `bank_grade` (0.2), below `grade`, so they lie under
+# the slope and the two agree; the approach is then no steeper than `bank_grade` within the beck's
+# reach and `grade` beyond it. A ford whose `grade` is below the beck's `bank_grade` would cut the
+# beck's bank: `authority.squeezed` or `authority.conflict` names both, and one of the two
+# decisions changes in text.
 [kind.ford.effect.approach]
 field = "role:surface"
-value = "= if(dist('kind:beck', 20) < water_reach, v, min(v, under('mean') + grade * d))"
+value = "= min(v, under('mean') + grade * d)"
 mask  = "= 1 - smoothstep(16, 20, d)"

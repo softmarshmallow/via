@@ -1,0 +1,8 @@
+name       = "seeds"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+seed       = -1
+
+[field.height]
+role = "surface"

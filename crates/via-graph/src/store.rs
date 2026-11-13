@@ -9,7 +9,8 @@
 //!
 //! Every file is written to `tmp/` and linked into place without replacing: if the target exists
 //! the temporary file is deleted and the existing one kept, so the first writer wins and equal
-//! names hold equal bytes. An object is checked against its name when first read in a build; a
+//! names hold equal bytes. The one exception is a step's trace entry under `--rerun-step`
+//! ([`Store::replace_trace`]), renamed over the old one. An object is checked against its name when first read in a build; a
 //! mismatch, or an entry that cannot be read, is `graph.store_corrupt`, and the entry is dropped.
 //! A store that cannot be written is `graph.store_unavailable` once, and the build keeps nothing
 //! more. Where the store lives is `build.md` 13 (`.via/store/` beside the world, or `--store`).
@@ -324,10 +325,39 @@ impl Store {
         out
     }
 
-    /// Drops a trace entry that does not match its name, with `graph.store_corrupt`.
-    pub fn drop_trace(&self, static_key: &Digest, trace: &Digest) {
+    /// Puts a trace entry over the one of the same name, if any: the one place the store
+    /// overwrites. A step forced by `--rerun-step` whose value changed for a trace it had
+    /// (`graph.md` 5.2) keeps its new value, so later builds take it. Written to a temporary name
+    /// and renamed over, so a reader sees the old entry or the new one, never half of one.
+    pub fn replace_trace(&self, static_key: &Digest, trace: &Digest, bytes: &[u8]) {
+        if self.is_unavailable() {
+            return;
+        }
+        let target = self.trace_dir(static_key).join(trace.hex());
+        let n = TMP.fetch_add(1, Ordering::Relaxed);
+        let tmp = self
+            .root
+            .join("tmp")
+            .join(format!("{}-{n}", std::process::id()));
+        let result = (|| -> io::Result<()> {
+            fs::create_dir_all(self.trace_dir(static_key))?;
+            fs::create_dir_all(self.root.join("tmp"))?;
+            let mut f = fs::File::create(&tmp)?;
+            f.write_all(bytes)?;
+            f.sync_all()?;
+            drop(f);
+            fs::rename(&tmp, &target)
+        })();
+        if let Err(e) = result {
+            let _ = fs::remove_file(&tmp);
+            self.unavailable(&e);
+        }
+    }
+
+    /// Drops a damaged trace entry, with `graph.store_corrupt` saying why.
+    pub fn drop_trace(&self, static_key: &Digest, trace: &Digest, why: &str) {
         let p = self.trace_dir(static_key).join(trace.hex());
-        self.drop_entry(&p, "does not match its name");
+        self.drop_entry(&p, why);
     }
 
     /// Puts a build record under its build key.
@@ -415,7 +445,12 @@ mod tests {
         let t1 = Digest::of(b"one");
         s.put_trace(&k, &t1, b"entry");
         assert_eq!(s.traces(&k), vec![(t1, b"entry".to_vec())]);
-        s.drop_trace(&k, &t1);
+        // A rerun's new value replaces the entry of the same name.
+        s.put_trace(&k, &t1, b"other");
+        assert_eq!(s.traces(&k), vec![(t1, b"entry".to_vec())]);
+        s.replace_trace(&k, &t1, b"other");
+        assert_eq!(s.traces(&k), vec![(t1, b"other".to_vec())]);
+        s.drop_trace(&k, &t1, "does not match its name");
         assert!(s.traces(&k).is_empty());
         assert_eq!(s.take_run_diags().len(), 1);
         s.put_build(&k, b"record");

@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "height read by three formulas: the run report holds one height node per window with status ran."
+milestone = 1
+actions   = ["build"]
+
+# One chunk (64 m default) holds every post of 9 by 9: window 0.0.9.9 (graph.md 1). `ran` lists node ids once each, so one node per window.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.nodes]
+ran_includes = ["field:height/v:build/w:0.0.9.9"]

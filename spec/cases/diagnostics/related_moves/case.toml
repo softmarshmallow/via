@@ -1,0 +1,59 @@
+format    = "via-case-1"
+summary   = "ford with changes/bad_anchor.toml; insert one blank line above the table related points at; build incrementally and clean: both diagnostics.json identical, related at the new line."
+milestone = 1
+actions   = ["program", "trust", "first", "blank", "retrust", "incremental", "clean"]
+
+# The firm pad under the cottage is anchored, as is the beck; the beck sorts first (place name), so
+# it is the earlier, in `related` at its own `authority` line (authority.md 5: world.toml line
+# 20, under its header at 18). The blank line above the beck's table moves it to line
+# 21.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/bad_anchor.toml"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--change", "changes/bad_anchor.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.first.diag.conflict]
+code = "authority.conflict"
+
+[action.blank]
+replace = "world.toml"
+find    = "[feature.beck]"
+with    = "\n[feature.beck]"
+
+[action.retrust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/bad_anchor.toml"]
+exit = 0
+
+[action.incremental]
+via         = ["build", "world.toml", "--change", "changes/bad_anchor.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.incremental.diag.conflict]
+code    = "authority.conflict"
+related = [{ file = "world.toml", line = 21 }]
+
+[action.clean]
+via         = ["build", "world.toml", "--change", "changes/bad_anchor.toml", "--out", "build/clean"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/clean"
+
+[action.clean.same.d]
+action = "incremental"
+what   = "diagnostics"

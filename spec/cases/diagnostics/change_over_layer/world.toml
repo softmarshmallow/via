@@ -1,0 +1,8 @@
+name       = "chain"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[layer.top]
+file  = "top.toml"
+owner = "someone"
+rank  = 1

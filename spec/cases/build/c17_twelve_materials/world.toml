@@ -1,0 +1,55 @@
+name       = "mats"
+extent     = [0, 0, 32, 32]
+resolution = 1
+pack       = "pack.toml"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.r00]
+paint = "m01"
+
+[field.ground.then.r01]
+paint = "m02"
+mask  = "= if(x >= 2, if(x < 8, 0.5, 0), 0)"
+
+[field.ground.then.r02]
+paint = "m03"
+mask  = "= if(x >= 4, if(x < 10, 0.5, 0), 0)"
+
+[field.ground.then.r03]
+paint = "m04"
+mask  = "= if(x >= 6, if(x < 12, 0.5, 0), 0)"
+
+[field.ground.then.r04]
+paint = "m05"
+mask  = "= if(x >= 8, if(x < 14, 0.5, 0), 0)"
+
+[field.ground.then.r05]
+paint = "m06"
+mask  = "= if(x >= 10, if(x < 16, 0.5, 0), 0)"
+
+[field.ground.then.r06]
+paint = "m07"
+mask  = "= if(x >= 12, if(x < 18, 0.5, 0), 0)"
+
+[field.ground.then.r07]
+paint = "m08"
+mask  = "= if(x >= 14, if(x < 20, 0.5, 0), 0)"
+
+[field.ground.then.r08]
+paint = "m09"
+mask  = "= if(x >= 16, if(x < 22, 0.5, 0), 0)"
+
+[field.ground.then.r09]
+paint = "m10"
+mask  = "= if(x >= 18, if(x < 24, 0.5, 0), 0)"
+
+[field.ground.then.r10]
+paint = "m11"
+mask  = "= if(x >= 20, if(x < 26, 0.5, 0), 0)"
+
+[field.ground.then.r11]
+paint = "m12"
+mask  = "= if(x >= 22, if(x < 28, 0.5, 0), 0)"

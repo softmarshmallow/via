@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "Two paths with kinds that cross, neither ending at the other; build: geom.unowned_crossing at the crossing, naming both."
+milestone = 1
+actions   = ["build"]
+
+# ford, built, raises none: its lanes end at the ford, which owns the meeting (held by ford's own cases).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unowned_crossing]
+code     = "geom.unowned_crossing"
+position = [8, 8]

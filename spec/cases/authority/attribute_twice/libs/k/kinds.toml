@@ -1,0 +1,5 @@
+[kind.post]
+requires = ["width"]
+
+[kind.post.defaults]
+width = 2

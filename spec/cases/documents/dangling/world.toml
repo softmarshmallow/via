@@ -1,0 +1,20 @@
+name       = "mill"
+extent     = [0, 0, 128, 128]
+resolution = 1
+include    = ["ways"]
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+kind = "lane"
+path = [[0, 40], [128, 60]]
+
+[instance.cart]
+asset = "box_small"
+on    = { ref = "lane", t = 0.3, offset = 4 }
+
+[change.a.feature.lane]
+remove = true

@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A path that leaves the extent, its effect reading under('mean'): a sample beyond the extent is formula.outside_field."
+milestone = 1
+actions   = ["build"]
+
+# formulas.md 8.5: a feature's samples are its path's points every resolution step; those at x below 0 lie beyond the extent.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.outside_field]
+code = "formula.outside_field"

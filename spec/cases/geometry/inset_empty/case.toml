@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A 4 m square; offset -3 m: empty and geom.offset_empty."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via         = ["kernel", "offset", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.offset_empty]
+code    = "geom.offset_empty"
+subject = "cli"
+
+[action.op.file.r]
+path    = "out.json"
+pointer = "/results/0"
+value   = []

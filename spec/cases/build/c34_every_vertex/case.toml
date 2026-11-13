@@ -1,0 +1,67 @@
+format    = "via-case-1"
+summary   = "A path of five written points, and a path with smooth: each feature's points in features.json are every vertex of its final curve."
+milestone = 1
+actions   = ["build"]
+
+# (open) the smoothed path's points equal geometry.md 2.4's polyline: the count and millimetres come from geometry's `read` (geometry/smooth_read); here the five written points are asserted.
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.p0x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.build.file.p1x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 10
+
+[action.build.file.p2x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/0"
+value   = 20
+
+[action.build.file.p3x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/3/0"
+value   = 30
+
+[action.build.file.p4x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/4/0"
+value   = 40
+
+[action.build.file.p0y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 0
+
+[action.build.file.p1y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 2
+
+[action.build.file.p2y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/1"
+value   = 0
+
+[action.build.file.p3y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/3/1"
+value   = 5
+
+[action.build.file.p4y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/4/1"
+value   = 0
+
+[action.build.check.five]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 5

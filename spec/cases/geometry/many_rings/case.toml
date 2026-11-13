@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "A region from where of two pieces; a feature on it: geom.many_rings. project on it: d and sd to the nearer ring."
+milestone = 1
+actions   = ["on", "project"]
+
+# The kernel input writes the two pieces directly; (4, 8) is 1 m from the western piece and 8 m from the eastern.
+
+[action.on]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.on.diag.many_rings]
+code = "geom.many_rings"
+
+[action.project]
+via  = ["kernel", "project", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.project.file.d]
+path    = "out.json"
+pointer = "/results/0/d"
+value   = 1

@@ -1,0 +1,6 @@
+[defaults]
+pivt = "origin"
+
+[asset.a]
+primitive = "box"
+size      = [1, 1, 1]

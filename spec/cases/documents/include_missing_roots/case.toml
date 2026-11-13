@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "include = [\"wyas\"]; one --lib and one VIA_LIB root, ways in the latter: doc.include_missing naming the roots, nearest ways; no absolute path."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{case}/roots"]
+exit = 1
+
+[action.merge.diag.include_missing]
+code = "doc.include_missing"
+data = { nearest = "ways" }
+
+[action.merge.check.no_abs]
+fn = "no_absolute_path"

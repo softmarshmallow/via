@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "\"= 1 and x > 0\"; if(x > 1, 1, x > 2); an attribute \"= 1 > 0\"; a formula reading a text attribute: formula.type each."
+milestone = 1
+actions   = ["and", "if", "attr", "text"]
+
+[action.and]
+via         = ["build", "and/world.toml", "--lib", "{work}/libs", "--out", "and/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "and/build/w"
+
+[action.and.diag.type]
+code = "formula.type"
+
+[action.if]
+via         = ["build", "if/world.toml", "--lib", "{work}/libs", "--out", "if/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "if/build/w"
+
+[action.if.diag.type]
+code = "formula.type"
+
+[action.attr]
+via         = ["build", "attr/world.toml", "--lib", "{work}/libs", "--out", "attr/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "attr/build/w"
+
+[action.attr.diag.type]
+code = "formula.type"
+
+[action.text]
+via         = ["build", "text/world.toml", "--lib", "{work}/libs", "--out", "text/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "text/build/w"
+
+[action.text.diag.type]
+code = "formula.type"

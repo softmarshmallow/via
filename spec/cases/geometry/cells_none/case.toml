@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "A frontage shorter than cell_length: no cell, and geom.cell_none."
+milestone = 1
+actions   = ["op"]
+
+# The row's 6 m frontage with 10 m cells, written on cross: a 50 m frontage with 60 m cells (shorter than one cell), since a stretch of frontage is an edge of a network here.
+
+[action.op]
+via         = ["kernel", "cells", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.cell_none]
+code    = "geom.cell_none"
+subject = "cli"
+
+[action.op.check.n]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/cells"
+count   = 0

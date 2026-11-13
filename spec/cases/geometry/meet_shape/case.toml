@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "ends_at naming a region feature; read: geom.meet_shape."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.meet_shape]
+code = "geom.meet_shape"

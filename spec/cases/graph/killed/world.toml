@@ -1,0 +1,9 @@
+name       = "kill"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.a]
+base = 1
+
+[change.c.field.a]
+base = 2

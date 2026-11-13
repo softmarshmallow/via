@@ -1,0 +1,15 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[pin.a]
+asset = "box_small"
+at    = [10, 10]
+
+[pin.b]
+asset = "box_small"
+at    = [11, 10]

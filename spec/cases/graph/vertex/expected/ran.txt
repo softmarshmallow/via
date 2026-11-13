@@ -1,3 +1,0 @@
-field:clearing/v:build/w:0.0.513.513
-field:height/v:build/w:0.0.513.513
-field:water/v:build/w:0.0.513.513

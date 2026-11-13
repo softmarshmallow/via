@@ -1,0 +1,26 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.a_ford]
+kind = "sha"
+at   = [8, 8]
+k    = 3
+
+[feature.m_west]
+kind = "sha"
+path = [[0, 8]]
+k    = 1
+ends_at = "a_ford"
+
+[feature.n_east]
+kind = "sha"
+path = [[16, 8]]
+k    = 2
+starts_at = "a_ford"

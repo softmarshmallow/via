@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A kind declares an attribute named as a reserved feature key: doc.reserved_attribute."
+milestone = 1
+actions   = ["merge"]
+
+# documents.md 7: `path` is reserved on a feature (vocabulary.md 2.3).
+
+[action.merge]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit        = 1
+diagnostics = "includes"
+
+[action.merge.diag.reserved_attribute]
+code = "doc.reserved_attribute"

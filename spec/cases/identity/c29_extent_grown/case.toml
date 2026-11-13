@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "Extent grown on all sides: every old scatter name keeps its position, facing and asset; only new lattice indices add names."
+milestone = 1
+actions   = ["base", "grown"]
+
+# The lattice is anchored at the world origin, not the extent (rules.md 7.1), so growing the extent by two cells each way only adds candidates; every trees# entry of the report is `added`.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.grown]
+via         = ["build", "world.toml", "--change", "grow", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.grown.check.added]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "trees#"
+what   = ["added"]

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A step with nested params of any keys: no diagnostic; params in the JSON as written."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 0
+
+[action.merge.file.params]
+stream  = "stdout"
+pointer = "/step/look/params"
+value   = { anything = 1, deep = { er = { whatever = "x" } } }

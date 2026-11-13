@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "Change file winter.tml: doc.path_form."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "changes/winter.tml"]
+exit = 1
+
+[action.merge.diag.path_form]
+code = "doc.path_form"

@@ -1,0 +1,20 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = "= if(dist('spot', 100) < 3, 0, 1)"
+
+[feature.spot]
+at = [17.5, 17.5]
+
+[clear.gap]
+at     = [17.5, 17.5]
+radius = 2

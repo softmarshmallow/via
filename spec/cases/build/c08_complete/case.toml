@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "Every case; via check; exit 0."
+milestone = 1
+actions   = ["program", "trust", "build", "check"]
+
+# U4 runs via check after every build that exits 0; this case runs it explicitly on ford.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.check]
+via  = ["check", "build/ford"]
+exit = 0

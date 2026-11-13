@@ -1,0 +1,47 @@
+format    = "via-case-1"
+summary   = "A clear on empty ground: identity.clear_empty, exit 0; again unchanged, again, and diagnostics.json byte-identical to a fresh directory's; a clear whose one tree a thinner density removes: identity.clear_empty."
+milestone = 1
+actions   = ["first", "again", "fresh", "thin"]
+
+# Empty ground: keep_out 1 west of x = 10 keeps every tree off it. Thinned: the one tree within 2 m of (17.5, 17.5) is removed by the density, so the clear removes nothing.
+
+[action.first]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.first.diag.clear_empty]
+code     = "identity.clear_empty"
+severity = "warning"
+
+[action.again]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.again.diag.clear_empty]
+code = "identity.clear_empty"
+
+[action.fresh]
+via         = ["build", "a/world.toml", "--out", "a/fresh/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "a/fresh/w"
+
+[action.fresh.diag.clear_empty]
+code = "identity.clear_empty"
+
+[action.fresh.same.d]
+action = "again"
+what   = "diagnostics"
+
+[action.thin]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.thin.diag.clear_empty]
+code = "identity.clear_empty"

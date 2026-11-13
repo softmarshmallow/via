@@ -6,6 +6,10 @@ actions   = ["program", "trust", "first", "second"]
 # graph.md's `null` row and the plan's ford row "Nothing": no node runs; every byte the same, at 1
 # or 8 threads (U6 rebuilds each build clean at 1 thread), on every system (U7).
 
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
 [action.program]
 via  = ["config", "program", "python", "{python}"]
 exit = 0
@@ -18,11 +22,13 @@ exit = 0
 via  = ["build", "world.toml", "--out", "build/ford"]
 out  = "build/ford"
 exit = 0
+diagnostics = "includes"
 
 [action.second]
 via       = ["build", "world.toml", "--out", "build/ford"]
 out       = "build/ford"
 exit      = 0
+diagnostics = "includes"
 untouched = ["build/ford"]
 
 [action.second.nodes]

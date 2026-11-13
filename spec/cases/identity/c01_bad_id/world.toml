@@ -1,0 +1,10 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.Mill]
+at = [4, 4]

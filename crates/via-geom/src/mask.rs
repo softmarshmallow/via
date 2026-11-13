@@ -28,7 +28,9 @@ pub struct MaskGrid {
     pub ny: usize,
 }
 
-/// The mask of `values` (post order) above 0, over the posts `[i0, i1] × [j0, j1]`.
+/// The mask of `values` (post order) above 0, over the window `[i0, j0, i1, j1]`: the posts
+/// `i0 <= i < i1`, `j0 <= j < j1` (`numbers.md` 6), so the rings are clipped to the rectangle from
+/// post `(i0, j0)` to post `(i1 - 1, j1 - 1)`.
 pub fn mask(
     grid: MaskGrid,
     values: &[f64],
@@ -42,7 +44,25 @@ pub fn mask(
                 .with("parameter", "values"),
         );
     }
-    let [i0, j0, i1, j1] = window.unwrap_or([0, 0, grid.nx - 1, grid.ny - 1]);
+    if grid.nx == 0 || grid.ny == 0 {
+        return Err(
+            GeomDiag::new(Code::BadParameter, "the grid has no posts").with("parameter", "grid")
+        );
+    }
+    // Half-open in, inclusive below: the last post of the window on each axis.
+    let [i0, j0, i1, j1] = match window {
+        None => [0, 0, grid.nx - 1, grid.ny - 1],
+        Some([i0, j0, i1, j1]) if i0 < i1 && j0 < j1 && i1 <= grid.nx && j1 <= grid.ny => {
+            [i0, j0, i1 - 1, j1 - 1]
+        }
+        Some(_) => {
+            return Err(GeomDiag::new(
+                Code::BadParameter,
+                "the window is empty or leaves the grid: `i0 < i1 <= nx`, `j0 < j1 <= ny`",
+            )
+            .with("parameter", "window"))
+        }
+    };
     let v = |i: usize, j: usize| values[j * grid.nx + i];
     let post =
         |i: usize, j: usize| P::new(grid.x0 + (i as i64) * grid.r, grid.y0 + (j as i64) * grid.r);

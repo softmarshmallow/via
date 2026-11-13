@@ -1,0 +1,6 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.f]
+base = "= sqrt(x - 100)"

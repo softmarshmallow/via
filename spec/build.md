@@ -472,7 +472,8 @@ Two kinds of diagnostic, kept apart so the same text gives the same `diagnostics
 - It is written whenever a build directory is known. When the world's `name` cannot be read (a
   syntax error, no `name`), the default `--out` falls back to `build/<world file stem>` beside the
   world file (section 14). When no directory can be written (`graph.busy`, `build.not_a_build`,
-  `build.store_inside`), the diagnostics go to the terminal, `--json` and `--diagnostics` only.
+  `build.store_inside`, or `build.write_failed` for the directory itself), the diagnostics go to
+  the terminal, `--json` and `--diagnostics` only.
 
 ### 11.2 `changes.json` and `.previous`
 
@@ -856,7 +857,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | A chunk | A `Node3D` `c_<cx>_<cy>` under it. Streaming chunks in and out is the engine's (M6). |
 | The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. |
 | A `material` weights field | Per chunk: a `ShaderMaterial` on that mesh, its planes as one `Texture2DArray` (format `R8`, one Godot texture layer per material), and each material's `colour`, `file` and `repeat` from `materials`. The shader loops over the chunk's count; there is no fixed number. A chunk naming more materials than the loader draws is `load.too_many_materials`, naming the chunk and its materials (`fields.md` 7.1). |
-| The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0, so the surface meets the bank where it is dry. Not collided. |
+| The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0. At a dry post of a drawn quad the surface takes the mean height of the wet posts among its eight neighbours (never above that post's ground), so it runs on under the bank and the ground hides it: the water's edge is where the bank meets the surface, not a quad's edge. Not collided. |
 | A bounded field (6.3) | Not drawn; a kind surface is drawn from its mesh. Kept as data when `fields` names it. |
 | Any other field | Not drawn. Taken as an `Image` (`FORMAT_RF`) in the root's metadata when `fields` names it. Every field neither drawn nor kept is listed once in `load.fields_not_drawn` (info). |
 | Instances of one asset in one chunk | A `MultiMeshInstance3D` named after the asset id, its `MultiMesh` holding one transform per row and `tint` as instance custom data. The mesh comes from the asset's glTF through `GLTFDocument`, made with `to_asset`, which takes the file's node space as stored; a primitive or stand-in is made by the loader from `assets.md` 6. |

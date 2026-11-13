@@ -87,6 +87,22 @@ pub struct FeatureOut {
     pub names: BTreeMap<String, (String, (i64, i64))>,
     /// The kind's `output`, for the loader.
     pub output: Option<String>,
+    /// A region's every piece, each its rings, shell first then holes, in canonical form
+    /// (`geometry.md` 2.5). Empty for a point or a path.
+    pub rings: Vec<Vec<Vec<(i64, i64)>>>,
+}
+
+impl FeatureOut {
+    /// Every vertex: the points, and every ring of every piece.
+    pub fn all_points(&self) -> Vec<(i64, i64)> {
+        let mut v = self.points.clone();
+        for pc in &self.rings {
+            for r in pc {
+                v.extend(r.iter().copied());
+            }
+        }
+        v
+    }
 }
 
 /// An instance as built: a hand instance, a pin's, or a produced one.
@@ -143,6 +159,9 @@ pub struct Build {
     pub deps: BTreeMap<(String, String), BTreeSet<String>>,
     /// The change report, when a baseline was given.
     pub changes: Option<ChangeReport>,
+    /// What each selection by place resolved to: `<table>.<id>` to (produced name, its point)
+    /// (`identity.md` 3), for `identity.reselected` against the next build.
+    pub selections: BTreeMap<String, (String, (i64, i64))>,
 }
 
 impl Build {
@@ -218,8 +237,9 @@ pub(crate) struct Prepared {
 /// Reads the world, finds and reads the pack, resolves shapes and plans.
 pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
     let mut diags: Vec<Diag> = Vec::new();
-    let decls = Decls::read(world);
+    let mut decls = Decls::read(world);
     diags.extend(decls.diags.iter().cloned());
+    read_files(&mut decls, options, &mut diags);
     // The pack (assets.md 1.2).
     let roots = Roots {
         world_dir: options.world_dir.clone(),
@@ -238,9 +258,12 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
             );
             let (p, pd) = pack::read(&path, &display);
             diags.extend(pd);
-            if let Some(p) = p {
-                pk = p;
+            match p {
+                Some(p) => pk = p,
+                None => pk.failed = true,
             }
+        } else {
+            pk.failed = true;
         }
     } else if asks_ground {
         diags.push(text::diag(
@@ -250,6 +273,44 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
             "the world places assets and names no `pack`",
             "write `pack = \"<name>\"` at the top of the world",
         ));
+    }
+    // `assets.md` 2.6, `fields.md` 5: a `paint` on the `material` field names a material the pack
+    // binds; on a weights field without a role it is any id.
+    if !pk.failed && decls.pack.is_some() {
+        let names = || pk.materials.keys().map(String::as_str);
+        let unknown = |m: &str| !pk.materials.contains_key(m);
+        let material = Some(crate::decl::Role::Material);
+        for f in decls.fields.values().filter(|f| f.role == material) {
+            for row in &f.rows {
+                if let Some(m) = row.paint.as_deref().filter(|m| unknown(m)) {
+                    diags.push(text::at_path(
+                        codes::pack::UNKNOWN_MATERIAL,
+                        "field",
+                        &f.name,
+                        &["then", &row.id, "paint"],
+                        &format!("the pack binds no material `{m}`"),
+                        &text::near_hint(m, names(), "add `[material.<name>]` to the pack"),
+                    ));
+                }
+            }
+        }
+        for k in decls.kinds.values() {
+            let to_material = |e: &&crate::decl::Effect| {
+                e.selector == crate::decl::Selector::Role(crate::decl::Role::Material)
+            };
+            for e in k.effects.values().filter(to_material) {
+                if let Some(m) = e.paint.as_deref().filter(|m| unknown(m)) {
+                    diags.push(text::at_path(
+                        codes::pack::UNKNOWN_MATERIAL,
+                        "kind",
+                        &k.id,
+                        &["effect", &e.id, "paint"],
+                        &format!("the pack binds no material `{m}`"),
+                        &text::near_hint(m, names(), "add `[material.<name>]` to the pack"),
+                    ));
+                }
+            }
+        }
     }
     let placed = match decls.grid {
         Some(_) => {
@@ -265,6 +326,113 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
         placed,
         diags,
     }
+}
+
+/// The folder of the document a record names `source` (`documents.md` 2.1): a path under the
+/// world's folder, or `lib:<id>/...` under the root that holds library `id` (section 4).
+fn source_folder(source: &str, options: &Options) -> Option<PathBuf> {
+    // A world named without a folder lies in the working folder; `.` keeps the case walk
+    // (`documents.md` 7.2) able to list it.
+    let world_dir = if options.world_dir.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        options.world_dir.clone()
+    };
+    if let Some(rest) = source.strip_prefix("lib:") {
+        let (lib, file) = rest.split_once('/').unwrap_or((rest, ""));
+        let root = std::iter::once(options.world_dir.join("lib"))
+            .chain(options.lib_roots.iter().cloned())
+            .chain(options.via_lib.iter().cloned())
+            .chain(options.shipped_root.iter().cloned())
+            .map(|r| r.join(lib))
+            .find(|p| p.is_dir())?;
+        let parent = std::path::Path::new(file).parent().map(PathBuf::from);
+        return Some(parent.map_or(root.clone(), |p| root.join(p)));
+    }
+    if source.contains(':') {
+        // A change file names its folder on the command line only; text in it is read
+        // against the world's folder.
+        return Some(world_dir);
+    }
+    let parent = std::path::Path::new(source).parent().map(PathBuf::from);
+    Some(parent.map_or(world_dir.clone(), |p| world_dir.join(p)))
+}
+
+/// Reads every field's `file` (`fields.md` 4): found by `documents.md` 7.2, an array file of
+/// 4.1, placed by `extent`. A fault is said at the `file` key and the field has no base.
+fn read_files(decls: &mut Decls, options: &Options, diags: &mut Vec<Diag>) {
+    let Some(grid) = decls.grid else { return };
+    let mut found = BTreeMap::new();
+    for (name, fd) in &decls.fields {
+        let Some(f) = &fd.file else { continue };
+        let fault = |code, message: &str, hint: &str| {
+            text::at_key(code, "field", name, "file", message, hint)
+        };
+        let Some(folder) = source_folder(&f.source, options) else {
+            diags.push(fault(
+                codes::doc::FILE_MISSING,
+                &format!("the folder of `{}` is not found", f.source),
+                "check the library roots",
+            ));
+            continue;
+        };
+        let path = match via_doc::open_file(&folder, &f.written) {
+            Ok(p) => p,
+            Err((code, message, hint)) => {
+                diags.push(fault(code, &message, &hint));
+                continue;
+            }
+        };
+        let bytes = match std::fs::read(&path) {
+            Ok(b) => b,
+            Err(e) => {
+                diags.push(fault(
+                    codes::doc::FILE_UNREADABLE,
+                    &format!("the file `{}` cannot be read: {e}", f.written),
+                    "check the file's permissions",
+                ));
+                continue;
+            }
+        };
+        let samples = match via_raster::npy::read_samples(&bytes, via_num::POST_LIMIT) {
+            Ok(s) => s,
+            Err(e) => {
+                let hint = match e.code() {
+                    c if c == codes::field::FILE_TOO_LARGE => {
+                        "use a coarser raster, or tile the world"
+                    }
+                    c if c == codes::field::FILE_NONFINITE => "write a finite value at that sample",
+                    _ => "write a 2-D array file of `<f4`, at least 2 by 2 (`build.md` 3.2)",
+                };
+                diags.push(fault(e.code(), &format!("`{}`: {e}", f.written), hint));
+                continue;
+            }
+        };
+        let extent = f.extent.unwrap_or(grid.extent);
+        if via_raster::file::offworld(&grid, extent) {
+            diags.push(text::at_key(
+                codes::field::FILE_OFFWORLD,
+                "field",
+                name,
+                if f.extent.is_some() { "extent" } else { "file" },
+                "the raster's extent lies wholly outside the world's: every post takes `outside`",
+                "correct `extent`",
+            ));
+        }
+        found.insert(
+            name.clone(),
+            crate::decl::FileBase {
+                samples,
+                placement: via_raster::file::Placement {
+                    extent,
+                    outside: f.outside,
+                    filter: f.filter,
+                },
+                digest: via_graph::Digest::of(&bytes).to_string(),
+            },
+        );
+    }
+    decls.files = found;
 }
 
 /// The rest of a build, with fields already resolved elsewhere (`seeds`, from the graph's
@@ -310,8 +478,35 @@ pub(crate) fn finish(
     let mut hand = rules::hand(&decls, &placed, &grid, &mut diags);
     let produced = rules::scatter_all(&decls, &pk, &placed, &fields, &hand);
     diags.extend(produced.diags);
+    // Pins placed on a scatter's instance stand where any pin does (`rules::hand`'s check).
+    let mut late: Vec<Placement> = produced.pins;
+    let mut late_diags = Vec::new();
+    late.retain(|p| {
+        let [x0, y0, x1, y1] = grid.extent;
+        let o = p.origin;
+        let inside = o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1;
+        if !inside {
+            late_diags.push(
+                text::at_header(
+                    codes::place::OUTSIDE,
+                    "pin",
+                    &p.name,
+                    &format!("`{}` stands outside the extent; not placed", p.name),
+                    "move it inside the extent, or widen the extent",
+                )
+                .at(text::pos(o.x, o.y)),
+            );
+        }
+        inside
+    });
+    diags.extend(late_diags);
+    for (who, (name, p)) in placed.selections.iter().chain(produced.selections.iter()) {
+        out.selections
+            .insert(who.clone(), (name.clone(), (p.x, p.y)));
+    }
     let mut all: Vec<Placement> = Vec::new();
     all.append(&mut hand);
+    all.append(&mut late);
     all.extend(produced.instances);
     rules::ground_and_check(&decls, &pk, &placed, &fields, &mut all, &mut diags);
     diags.extend(fields.diags.borrow().iter().cloned());
@@ -355,6 +550,19 @@ pub(crate) fn finish(
             Geo::Path { line } => ("path", line.pts.iter().map(|q| (q.x, q.y)).collect(), None),
             Geo::Region { region, .. } => ("region", ring_points(region), None),
         };
+        let rings = match g {
+            Geo::Region { region, .. } => region
+                .pieces
+                .iter()
+                .map(|pc| {
+                    std::iter::once(&pc.shell)
+                        .chain(pc.holes.iter())
+                        .map(|r| r.iter().map(|q| (q.x, q.y)).collect())
+                        .collect()
+                })
+                .collect(),
+            _ => Vec::new(),
+        };
         let kind = f.kind.as_ref().and_then(|k| decls.kinds.get(k));
         let names = placed
             .names
@@ -381,6 +589,7 @@ pub(crate) fn finish(
                     .collect(),
                 names,
                 output: kind.and_then(|k| k.output.clone()),
+                rings,
             },
         );
     }
@@ -436,14 +645,8 @@ pub(crate) fn finish(
             let z = surface
                 .and_then(|s| fields.read(s, View::Build, p))
                 .unwrap_or(0.0);
-            let (a, b) = {
-                let x = format!("{id}.{end}");
-                if x.as_bytes() <= place.as_bytes() {
-                    (x, place.clone())
-                } else {
-                    (place.clone(), x)
-                }
-            };
+            // `surfaces.md` 3.3: `a` is the path end, `b` the place's default mount.
+            let (a, b) = (format!("{id}.{end}"), place.clone());
             out.meetings.push(Meeting {
                 a,
                 b,
@@ -460,6 +663,34 @@ pub(crate) fn finish(
     deps_of(&decls, &placed, &mut out);
     out.diagnostics = diags;
     out.changes = Some(report::compare(baseline, &out));
+    // A selection that resolved to another name than in the baseline (`identity.md` 3): a run
+    // diagnostic, never in `diagnostics.json`.
+    if let Some(b) = baseline {
+        for (who, (name, p)) in &out.selections {
+            let Some((old, q)) = b.selections.get(who) else {
+                continue;
+            };
+            if old == name {
+                continue;
+            }
+            let (top, id) = who.split_once('.').unwrap_or(("world", who));
+            let moved = via_num::hypot((p.0 - q.0) as f64, (p.1 - q.1) as f64) / 1000.0;
+            out.diagnostics.push(
+                text::at_key(
+                    codes::identity::RESELECTED,
+                    top,
+                    id,
+                    "on",
+                    &format!(
+                        "the selection now resolves to `{name}`, not `{old}` as in the baseline; moved {} m",
+                        text::dbl(moved)
+                    ),
+                    "check that the thing meant is still the one selected; move `near` if not",
+                )
+                .at(text::pos(p.0, p.1)),
+            );
+        }
+    }
     if baseline.is_none() {
         out.diagnostics.push(text::diag(
             codes::identity::NO_PREVIOUS,
@@ -485,8 +716,34 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
             s.insert(format!("kind.{k}"));
         }
         let mut refs: Vec<String> = Vec::new();
-        if let ShapeDecl::Point(crate::decl::Place::On(o)) = &f.shape {
-            refs.push(o.reference.clone());
+        match &f.shape {
+            ShapeDecl::Point(crate::decl::Place::On(o)) => refs.push(o.reference.clone()),
+            ShapeDecl::Point(crate::decl::Place::Of(o)) => refs.push(o.of.clone()),
+            ShapeDecl::Follows(fl) => refs.push(fl.reference.clone()),
+            ShapeDecl::Where(w) => {
+                if let Some(p) = d.formulas.programs.get(w) {
+                    for (class, sel) in &p.reads.selectors {
+                        match class {
+                            via_expr::Class::Field => {
+                                for fd in d.fields.values() {
+                                    let hit = match sel.strip_prefix("tag:") {
+                                        Some(t) => fd.tags.iter().any(|x| x == t),
+                                        None => fd.name == *sel,
+                                    };
+                                    if hit {
+                                        s.insert(format!("field.{}", fd.name));
+                                    }
+                                }
+                            }
+                            via_expr::Class::Shape if !sel.starts_with("kind:") => {
+                                refs.push(sel.clone());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
         refs.extend(f.starts_at.clone());
         refs.extend(f.ends_at.clone());
@@ -506,15 +763,21 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         if let Some(g) = &i.ground {
             s.insert(format!("kind.{g}"));
         }
-        if let crate::decl::Place::On(o) = &i.place {
-            s.extend(feature_deps(d, &o.reference, seen));
+        match &i.place {
+            crate::decl::Place::On(o) => s.extend(feature_deps(d, &o.reference, seen)),
+            crate::decl::Place::Of(o) => s.extend(feature_deps(d, &o.of, seen)),
+            crate::decl::Place::At(_) => {}
         }
     } else if let Some(p) = d.pins.get(base) {
         s.insert(format!("pin.{base}"));
         s.insert(format!("asset:{}", p.asset));
-        if let crate::decl::Place::On(o) = &p.place {
-            s.extend(feature_deps(d, &o.reference, seen));
+        match &p.place {
+            crate::decl::Place::On(o) => s.extend(feature_deps(d, &o.reference, seen)),
+            crate::decl::Place::Of(o) => s.extend(feature_deps(d, &o.of, seen)),
+            crate::decl::Place::At(_) => {}
         }
+    } else if d.scatters.contains_key(base) {
+        s.insert(format!("scatter.{base}"));
     }
     s
 }

@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "Two layers naming one file: doc.layer_file_twice."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via         = ["merge", "world.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.merge.diag.layer_file_twice]
+code = "doc.layer_file_twice"

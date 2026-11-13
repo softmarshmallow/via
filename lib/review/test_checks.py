@@ -25,9 +25,18 @@ class Cols(dict):
 
 
 def feature_list(feats):
-    """feats: (name, kind, geometry, pieces of rings of (x, y) mm) -> protocol.md 4.3 columns."""
+    """feats: (name, kind, geometry, pieces of rings of (x, y) mm[, number attributes]) ->
+    protocol.md 4.3 columns, each attribute with its ``<attribute>?`` column."""
     cols = Cols(name=[], kind=[], geometry=[], pieces=[0], rings=[0], ring_starts=[0], coords=[])
-    for name, kind, geom, pieces in feats:
+    keys = sorted({k for f in feats if len(f) > 4 for k in f[4]})
+    for k in keys:
+        cols[k] = []
+        cols[k + "?"] = []
+    for name, kind, geom, pieces, *rest in feats:
+        attrs = rest[0] if rest else {}
+        for k in keys:
+            cols[k].append(attrs.get(k, 0.0))
+            cols[k + "?"].append(1 if k in attrs else 0)
         cols["name"].append(name)
         cols["kind"].append(kind)
         cols["geometry"].append(geom)
@@ -48,10 +57,14 @@ class FakeStep:
     def __init__(self):
         self.grid = {"extent_mm": [0, 0, 40000, 40000], "resolution_mm": 1000, "nx": N, "ny": N}
         height = [[10 + 0.1 * i for i in range(N)] for _ in range(N)]
-        water = [[h + (0.5 if abs(i - 20) <= 2 else 0) for i, h in enumerate(row)] for row in height]
+        # A level water surface over the posts 18 to 22 (lib/water: level across the channel), at
+        # 12.5 m south of y = 20 m and 12.8 m from there north: one step of 0.3 m in the surface.
+        # Dry posts hold the ground (build.md 6.4).
+        water = [[max(h, 12.5 if j < 20 else 12.8) if abs(i - 20) <= 2 else h for i, h in enumerate(row)]
+                 for j, row in enumerate(height)]
         keep = [[1.0 if 30 <= i <= 35 and 30 <= j <= 35 else 0.0 for i in range(N)] for j in range(N)]
         self._fields = {"role:surface": height, "tag:water_level": water, "role:keep_out": keep}
-        beck = ("beck", "beck", 1, [[[(20000, 0), (20000, 40000)]]])
+        beck = ("beck", "beck", 1, [[[(20000, 0), (20000, 40000)]]], {"width": 4.0})
         ford = ("ford", "ford", 0, [[[(20000, 20000)]]])
         west = ("lane_west", "lane", 1, [[[(0, 20000), (20000, 20000)]]])
         east = ("lane_east", "lane", 1, [[[(20000, 20000), (40000, 20000)]]])
@@ -94,15 +107,15 @@ class ChecksTest(unittest.TestCase):
         self.assertEqual(self.value("lane_gap", "feature.lane_west"), 0)
         self.assertEqual(self.value("lane_gap", "feature.lane_east"), 0)
         self.assertEqual(self.value("approach_grade", "feature.ford"), 0.1)
-        self.assertEqual(self.value("ford_depth", "feature.ford"), 0.5)
-        self.assertEqual(self.value("water_step", "feature.beck"), 0.6)
+        self.assertEqual(self.value("ford_depth", "feature.ford"), 0.8)
+        self.assertEqual(self.value("water_step", "feature.beck"), 0.3)
         self.assertEqual(self.value("cottage_relief", "instance.cottage"), 0.4)
         self.assertEqual(self.value("trees_in_clearing", "scatter.trees"), 1)
 
     def test_positions(self):
         self.assertEqual(self.by[("lane_gap", "feature.lane_west")]["position"], [20.0, 20.0])
         self.assertEqual(self.by[("ford_depth", "feature.ford")]["position"], [20.0, 20.0])
-        self.assertEqual(self.by[("water_step", "feature.beck")]["position"], [17.5, 0.0])
+        self.assertEqual(self.by[("water_step", "feature.beck")]["position"], [18.0, 19.5])
         self.assertEqual(self.by[("cottage_relief", "instance.cottage")]["position"], [7.0, 7.0])
         self.assertNotIn("position", self.by[("trees_in_clearing", "scatter.trees")])
 
@@ -118,6 +131,17 @@ class ChecksTest(unittest.TestCase):
         again = FakeStep()
         CHECKS["lint"](again)
         self.assertEqual(again.records, self.step.records)
+
+    def test_water_step_reach_is_the_becks_width(self):
+        # A line at x = 24 m lies 2 m from the nearest wet post (posts 18 to 22); a beck 1 m wide
+        # reaches 1 m, so no wet pair is near it, and a beck without `width` is not measured.
+        for attrs in ({"width": 1.0}, {}):
+            step = FakeStep()
+            beck = ("beck", "beck", 1, [[[(24000, 0), (24000, 40000)]]], attrs)
+            step._features["kind:beck"] = [beck]
+            CHECKS["lint"](step)
+            codes = {r["code"] for r in step.records}
+            self.assertNotIn("water_step", codes, attrs)
 
     def test_world_without_water(self):
         step = FakeStep()

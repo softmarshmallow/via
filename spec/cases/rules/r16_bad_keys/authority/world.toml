@@ -1,0 +1,14 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "pack.toml"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[instance.cottage]
+asset     = "house_low"
+at        = [50, 50]
+authority = "anchored"

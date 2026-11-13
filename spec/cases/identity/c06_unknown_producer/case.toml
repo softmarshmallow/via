@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A clear with by = [\"tres\"]: identity.unknown_producer, hint trees, exit 1."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_producer]
+code = "identity.unknown_producer"
+data = { nearest = "trees" }

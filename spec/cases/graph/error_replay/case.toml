@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "A formula typo; build twice: second the same error, nothing ran, exit 1."
+milestone = 1
+actions   = ["first", "second"]
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.first.diag.unknown_name]
+code = "formula.unknown_name"
+data = { name = "xx" }
+
+[action.second]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.second.diag.unknown_name]
+code = "formula.unknown_name"
+data = { name = "xx" }
+
+[action.second.same.d]
+action = "first"
+what   = "diagnostics"
+
+[action.second.nodes]
+ran = []

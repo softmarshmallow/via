@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "height base = \"= x * x\", an instance at = [2.5, 0]: its ground is 6.5 (bilinear), not 6.25."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.z]
+path = "build/w/instances/z.npy"
+all  = 6.5

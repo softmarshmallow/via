@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "A lint in layer 1 reading height; a height-writing feature of layer 2 moves; rebuild: the lint runs again; an unchanged rebuild reuses it."
+milestone = 1
+actions   = ["program", "trust", "first", "move", "moved", "same"]
+
+# A plain lint is handed the whole finished build (protocol.md 2.2), so a moved feature of any layer re-runs it (R29).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.move]
+replace = "two.toml"
+find    = "at   = [16, 16]"
+with    = "at   = [20, 16]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.nodes]
+ran_includes = ["step:look"]
+
+[action.same]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.same.nodes]
+ran = []

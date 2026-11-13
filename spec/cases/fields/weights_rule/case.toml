@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "grass mask 1, rock mask 0.25: grass 0.75, rock 0.25."
+milestone = 1
+actions   = ["build"]
+
+# Weights 0.75 and 0.25 become bytes by build.md 6.2: 191.25 and 63.75, floors 191 and 63, the one
+# byte left to the largest remainder (rock). The chunk file is the one chunk's, planes in id order.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.grass]
+path  = "build/w/weights/ground/0_0.npy"
+post  = [0, 0]
+plane = 0
+value = 191
+
+[action.build.file.rock]
+path  = "build/w/weights/ground/0_0.npy"
+post  = [0, 0]
+plane = 1
+value = 64

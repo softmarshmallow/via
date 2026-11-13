@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "`[[feature]]` items each with `id`, the first `mill`: doc.syntax, exit 1, data.rewrite `[feature.mill]`."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.syntax]
+code = "doc.syntax"
+file = "world.toml"
+line = 11
+data = { rewrite = "[feature.mill]" }

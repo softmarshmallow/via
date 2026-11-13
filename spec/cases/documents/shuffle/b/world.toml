@@ -1,0 +1,13 @@
+pack       = "primitive"
+include    = ["ways"]
+resolution = 1
+extent     = [0, 0, 128, 128]
+name       = "mill"
+
+[feature.lane]
+path = [[0, 40], [128, 60]]
+kind = "lane"
+
+[field.height]
+base = 20
+role = "surface"

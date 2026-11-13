@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "cross with a path east_a from [100, 80] to [130, 80]; move its end to [130, 95]; network: the first area is unchanged, byte for byte."
+milestone = 1
+actions   = ["before", "after"]
+
+[action.before]
+via         = ["kernel", "network", "--in", "a.json", "--out", "a.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.before.file.r0]
+path    = "a.out.json"
+pointer = "/areas/0/region"
+value   = [[[[0, 0], [50000, 0], [50000, 50000], [0, 50000]]]]
+
+[action.after]
+via         = ["kernel", "network", "--in", "b.json", "--out", "b.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.after.file.r0]
+path    = "b.out.json"
+pointer = "/areas/0/region"
+value   = [[[[0, 0], [50000, 0], [50000, 50000], [0, 50000]]]]
+
+[action.after.file.p0]
+path    = "b.out.json"
+pointer = "/areas/0/point"
+value   = [25000, 25000]

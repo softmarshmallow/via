@@ -1,0 +1,7 @@
+[kind.pond]
+radius = 4
+
+[kind.pond.effect.fill]
+field = "role:surface"
+value = "= level"
+mask  = "= if(sd > 0, 1, 0)"

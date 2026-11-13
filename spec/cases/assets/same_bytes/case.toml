@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "The primitive pack case built at 1 and 8 threads: same build digest (R26)."
+milestone = 1
+actions   = ["one", "eight"]
+
+# On each system: U7 compares the record across systems (conformance.md 5.3). From M2 the contract revision case joins it.
+
+[action.one]
+via  = ["build", "world.toml", "--threads", "1", "--out", "build/one"]
+exit = 0
+out  = "build/one"
+
+[action.eight]
+via  = ["build", "world.toml", "--threads", "8", "--out", "build/eight"]
+exit = 0
+out  = "build/eight"
+
+[action.eight.same.id]
+action = "one"
+what   = "id"

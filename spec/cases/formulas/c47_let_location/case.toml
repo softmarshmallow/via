@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "A let holding sqrt(-1) read by two formulas: one location, the let's, and the readers in related."
+milestone = 1
+actions   = ["w"]
+
+[action.w]
+via         = ["build", "w/world.toml", "--out", "w/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "w/build/w"
+
+[action.w.diag.not_finite]
+code    = "formula.not_finite"
+file    = "world.toml"
+line    = 6
+related = [{ file = "world.toml", line = 9 }, { file = "world.toml", line = 12 }]

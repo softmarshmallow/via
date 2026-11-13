@@ -1,0 +1,10 @@
+name       = "g"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[feature.sq]
+region = [[0, 0], [10, 0], [10, 10], [0, 10]]
+
+[feature.m]
+on   = { ref = "sq", t = 0.5, offset = 1 }
+face = "awya"

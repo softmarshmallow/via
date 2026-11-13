@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "[defaults] pivt = \"origin\": doc.unknown_key, hint pivot."
+milestone = 1
+actions   = ["check"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.unknown_key]
+code = "doc.unknown_key"
+line = 2
+data = { nearest = "pivot" }

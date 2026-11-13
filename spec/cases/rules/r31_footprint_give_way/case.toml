@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "A solid hand instance inside a scatter of solid assets; one candidate touches it edge to edge: no footprint overlaps it; the touching one is kept; the rest counted in place.gave_way."
+milestone = 1
+actions   = ["build"]
+
+# Jitter 0: the tree of cell (8, 18) stands at (59.5, 129.5), its trunk y 129 to 130; the crate (2 m
+# box) at (59.5, 128) covers y 127 to 129: they touch edge to edge, so that tree is kept. (open) which
+# named tree is kept needs a per-name check; the gave_way record is asserted.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.gave_way]
+code = "place.gave_way"

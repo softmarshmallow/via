@@ -1,0 +1,21 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.a]
+kind = "fix"
+region = [[2, 2], [10, 2], [10, 10], [2, 10]]
+k    = 0
+h    = 10
+
+[feature.b]
+kind = "fix"
+region = [[6, 6], [14, 6], [14, 14], [6, 14]]
+k    = 0
+h    = 10.0005

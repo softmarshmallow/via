@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "Two layers; a failed attr node in layer 2; a plain lint in layer 1 and one in layer 2: both skipped."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_name]
+code = "formula.unknown_name"
+
+[action.build.check.l1]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:lint_one"
+includes = { status = "skipped" }
+
+[action.build.check.l2]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:lint_two"
+includes = { status = "skipped" }

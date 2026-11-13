@@ -1,0 +1,19 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.height.then.r]
+mask = 0.5
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.p]
+mask = 1

@@ -1,0 +1,19 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.pad]
+kind = "ancv"
+region = [[6, 6], [10, 6], [10, 10], [6, 10]]
+k    = 0
+
+[feature.terrace]
+kind = "anc"
+region = [[2, 2], [14, 2], [14, 14], [2, 14]]
+k    = 1

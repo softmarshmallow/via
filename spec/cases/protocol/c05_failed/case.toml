@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "A plain command exiting 3: protocol.failed with data.exit = 3; diagnostics.json byte-identical on every system."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# Every system: U7's record compares diagnostics less message and hint.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.failed]
+code    = "protocol.failed"
+subject = "step.look"
+data    = { exit = 3 }

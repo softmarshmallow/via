@@ -1,0 +1,7 @@
+[kind.sm]
+radius = 2
+
+[kind.sm.effect.e]
+field = "role:surface"
+value = "= smoothed_along(4)"
+mask  = "= 1 - smoothstep(0, 1, d)"

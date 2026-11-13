@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "bend; follows with offset +5 m and -5 m: one simple path each, every segment off the round joins at 5 m within 1 mm."
+milestone = 1
+actions   = ["left", "right"]
+
+# The bend is a sine of amplitude 10 m and wavelength 30 m over 90 m, sampled every metre and rounded to the millimetre. (open) the 1 mm distance bound needs a named check.
+
+[action.left]
+via         = ["kernel", "follow", "--in", "l.json", "--out", "l.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.right]
+via         = ["kernel", "follow", "--in", "r.json", "--out", "r.out.json"]
+exit        = 0
+diagnostics = "includes"

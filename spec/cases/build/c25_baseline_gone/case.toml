@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "ford built, the store deleted, rebuilt with --change downstream: changes.json has against: null; build.baseline_missing in the run report."
+milestone = 1
+actions   = ["program", "trust", "first", "drop", "again"]
+
+# (open) `against: null` is not expressible: TOML has no null, and conformance.md 3.4's `value` takes TOML values. Owed: a null form for file checks.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--store", "store", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.drop]
+delete = "store"
+
+[action.again]
+via         = ["build", "world.toml", "--change", "downstream", "--store", "store", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+no_rerun    = "the store deleted on purpose"
+
+[action.again.diag.baseline_missing]
+code = "build.baseline_missing"
+from = "run"

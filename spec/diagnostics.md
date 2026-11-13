@@ -636,7 +636,8 @@ Each case runs through the command line (R20): input; action; what must hold.
 - The registry and every chapter's Diagnostics table: same codes, same severities, same summary.
 - Every registered code up to the current milestone with `covered_by = "conformance"` is raised by
   some conformance case. `reader` codes are covered by the loader's tests; `workspace` codes
-  (`internal` codes, `build.dir_busy`, `graph.busy`, `graph.store_unavailable`) by a named test.
+  (`internal` codes, `build.dir_busy`, `graph.busy`, `graph.store_unavailable`, `num.overflow`) by a
+  named test.
 - An injected panic in a node, in a test build; exit 3, `diag.internal` naming the node, independent
   nodes still reported, nothing printed by the panic hook.
 - Fuzzing documents and formulas (cargo-fuzz); new crashes join the fixed corpus above.

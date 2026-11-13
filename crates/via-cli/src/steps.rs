@@ -37,6 +37,11 @@ pub struct StepDecl {
     pub home: PathBuf,
 }
 
+/// `p` made absolute against the caller's folder, as given when that fails.
+fn absolute(p: &Path) -> PathBuf {
+    std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf())
+}
+
 /// Where libraries are found (`documents.md` 4), in search order.
 #[derive(Clone, Debug, Default)]
 pub struct Roots {
@@ -44,10 +49,35 @@ pub struct Roots {
     pub lib: Vec<PathBuf>,
     pub via_lib: Vec<PathBuf>,
     pub shipped: Option<PathBuf>,
+    /// The libraries the world lists in `include`: the names a `lib:` element may give, and
+    /// those `protocol.unknown_library` searches for the nearest.
+    pub include: Vec<String>,
+}
+
+/// The library names a world lists in `include`.
+pub fn includes(w: &World) -> Vec<String> {
+    match w.root().value("include") {
+        Some(Value::List(items)) => items
+            .iter()
+            .filter_map(|i| match &i.value {
+                Value::Str(s) => Some(s.text.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// `protocol.unknown_library`'s hint: the nearest library `include` lists (`protocol.md` 2).
+fn library_hint(lib: &str, roots: &Roots) -> String {
+    via_diag::nearest::nearest(lib, roots.include.iter().map(String::as_str))
+        .hint("name a library the world lists in `include`")
 }
 
 impl Roots {
-    /// The folder of library `name`: the first root holding it.
+    /// The folder of library `name`: the first root holding it, as an absolute path. A step runs
+    /// in its code folder, so a root given relative to the caller's folder (`--lib lib`) would
+    /// otherwise be read again from inside that folder and name nothing.
     pub fn library(&self, name: &str) -> Option<PathBuf> {
         std::iter::once(self.world_dir.join("lib"))
             .chain(self.lib.iter().cloned())
@@ -55,6 +85,7 @@ impl Roots {
             .chain(self.shipped.iter().cloned())
             .map(|r| r.join(name))
             .find(|p| p.is_dir())
+            .map(|p| absolute(&p))
     }
 }
 
@@ -205,7 +236,7 @@ pub fn code_of(
                         "step `{}` names `{el}`, and no library root holds `{lib}`",
                         s.id
                     ),
-                    "name a library the world lists in `include`".into(),
+                    library_hint(lib, roots),
                 ));
             }
             break;
@@ -818,12 +849,12 @@ fn resolve_program(name: &str, s: &StepDecl, call: &Call<'_>) -> Result<PathBuf,
                         "step `{}` names `{name}`, and no library root holds `{lib}`",
                         s.id
                     ),
-                    "name a library the world lists in `include`".into(),
+                    library_hint(lib, call.roots),
                 )
             });
     }
     if name.contains('/') {
-        return Ok(s.home.join(name));
+        return Ok(absolute(&s.home.join(name)));
     }
     let lower = name.to_ascii_lowercase();
     let no_program = |why: String| {
@@ -1085,15 +1116,22 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
     ran.ran = true;
     let exit = status.and_then(|s| s.code());
     match (status, exit) {
-        (None, _) => ran.diags.push(step_diag(
-            &s.id,
-            codes::protocol::DEADLINE,
-            format!(
-                "step `{}` did not finish before its deadline and was killed",
-                s.id
+        (None, _) => ran.diags.push(
+            step_diag(
+                &s.id,
+                codes::protocol::DEADLINE,
+                format!(
+                    "step `{}` did not finish before its deadline and was killed",
+                    s.id
+                ),
+                "raise `--step-deadline`, or make the step faster".into(),
+            )
+            .with("phase", "step.call")
+            .with(
+                "deadline",
+                i64::try_from(call.deadline.as_secs()).unwrap_or(i64::MAX),
             ),
-            "raise `--step-deadline`, or make the step faster".into(),
-        )),
+        ),
         (Some(_), Some(0)) => {}
         (Some(_), code) => {
             let e = code.unwrap_or(-1);

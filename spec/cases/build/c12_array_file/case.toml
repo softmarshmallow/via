@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "extent [0, 0, 10, 6], resolution 2, base = \"= 0.25 * x + y\": height.npy has shape (4, 6), dtype <f4, post (5, 3) holds 8.5; its size is its header plus 4 * 6 * 4 bytes."
+milestone = 1
+actions   = ["build"]
+
+# The header `{'descr': '<f4', 'fortran_order': False, 'shape': (4, 6), }` is 59 bytes; with magic, version, length and LF, 70, padded to 128 (protocol.md 4.2).
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.shape]
+path  = "build/w/fields/height.npy"
+dtype = "<f4"
+shape = [4, 6]
+
+[action.build.file.post]
+path  = "build/w/fields/height.npy"
+post  = [5, 3]
+value = 8.5
+
+[action.build.file.size]
+path = "build/w/fields/height.npy"
+size = 224

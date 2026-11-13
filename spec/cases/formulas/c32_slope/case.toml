@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "At resolution 1, a base \"= 0.5 * x\" and slope('height'): atan(0.5) * (180 / pi) at every post, edges included."
+milestone = 1
+actions   = ["w"]
+
+# atan(0.5) * (180 / pi) is 26.565051177077994 in doubles; the runner narrows it to 32 bits. One-sided differences at the edges give the same 0.5.
+
+[action.w]
+via  = ["build", "w/world.toml", "--out", "w/build/w"]
+exit = 0
+out  = "w/build/w"
+
+[action.w.file.all]
+path = "w/build/w/fields/f.npy"
+all  = 26.565051177077994

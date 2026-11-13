@@ -1,0 +1,25 @@
+[taxon."plant/tree"]
+[taxon."plant/shrub"]
+
+[asset.ash]
+primitive = "sphere"
+size      = [1, 1, 3]
+taxon     = "plant/tree"
+tags      = ["winter"]
+
+[asset.birch]
+primitive = "sphere"
+size      = [1, 1, 3]
+taxon     = "plant/tree"
+
+[asset.cedar]
+primitive = "sphere"
+size      = [1, 1, 3]
+taxon     = "plant/tree"
+tags      = ["winter"]
+
+[asset.weed]
+primitive = "cone"
+size      = [1, 1, 1]
+taxon     = "plant"
+tags      = ["winter"]

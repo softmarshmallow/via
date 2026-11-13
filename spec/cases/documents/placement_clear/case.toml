@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A change writes on on a feature with path, ends_at and smooth: on present; path, ends_at, smooth gone."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "a"]
+exit = 0
+
+[action.merge.file.spur]
+stream  = "stdout"
+pointer = "/feature/spur"
+value   = { "@layer" = "world", kind = "lane", on = { ref = "lane", t = 0.5 } }

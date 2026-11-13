@@ -1,0 +1,10 @@
+[kind.lane]
+radius = 2
+
+[kind.lane.defaults]
+width = 4
+
+[kind.lane.effect.bed]
+field = "tag:mark"
+value = "= width"
+mask  = "= 1 - smoothstep(0, 1, d)"

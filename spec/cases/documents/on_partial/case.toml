@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "A change writes only t in on: doc.missing_key naming ref."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "a"]
+exit = 1
+
+[action.merge.diag.missing_key]
+code = "doc.missing_key"

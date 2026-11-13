@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "comb, A union A, A intersect A, A minus A; booleans: A, A, empty, byte for byte."
+milestone = 1
+actions   = ["union", "inter", "diff"]
+
+# The comb is written in canonical form (2.5): one piece, the shell counter-clockwise from its least
+# vertex, holes clockwise from theirs, holes in order. So A union A and A intersect A print it back
+# as written; A less A is the empty region, an empty list.
+
+[action.union]
+via  = ["kernel", "boolean", "--in", "u.json", "--out", "u.out.json"]
+exit = 0
+
+[action.union.file.r]
+path    = "u.out.json"
+pointer = "/region"
+value   = [[[[0, 0], [60000, 0], [60000, 30000], [56000, 30000], [56000, 10000], [54000, 10000], [54000, 30000], [46000, 30000], [46000, 10000], [44000, 10000], [44000, 30000], [36000, 30000], [36000, 10000], [34000, 10000], [34000, 30000], [26000, 30000], [26000, 10000], [24000, 10000], [24000, 30000], [16000, 30000], [16000, 10000], [14000, 10000], [14000, 30000], [0, 30000]], [[2000, 2000], [2000, 6000], [6000, 6000], [6000, 2000]], [[50000, 2000], [50000, 6000], [54000, 6000], [54000, 2000]]]]
+
+[action.inter]
+via  = ["kernel", "boolean", "--in", "i.json", "--out", "i.out.json"]
+exit = 0
+
+[action.inter.file.r]
+path    = "i.out.json"
+pointer = "/region"
+value   = [[[[0, 0], [60000, 0], [60000, 30000], [56000, 30000], [56000, 10000], [54000, 10000], [54000, 30000], [46000, 30000], [46000, 10000], [44000, 10000], [44000, 30000], [36000, 30000], [36000, 10000], [34000, 10000], [34000, 30000], [26000, 30000], [26000, 10000], [24000, 10000], [24000, 30000], [16000, 30000], [16000, 10000], [14000, 10000], [14000, 30000], [0, 30000]], [[2000, 2000], [2000, 6000], [6000, 6000], [6000, 2000]], [[50000, 2000], [50000, 6000], [54000, 6000], [54000, 2000]]]]
+
+[action.diff]
+via  = ["kernel", "boolean", "--in", "d.json", "--out", "d.out.json"]
+exit = 0
+
+[action.diff.file.r]
+path    = "d.out.json"
+pointer = "/region"
+value   = []

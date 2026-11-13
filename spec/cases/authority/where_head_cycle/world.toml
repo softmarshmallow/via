@@ -1,0 +1,17 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[field.height.then.lift]
+value = "= v + 1"
+mask  = "= if(inside('r'), 1, 0)"
+
+[feature.r]
+kind  = "low"
+where = "= f('height') < 5"

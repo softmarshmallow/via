@@ -1,0 +1,6 @@
+name       = "huge"
+extent     = [0, 0, 2000000, 2000000]
+resolution = 0.001
+
+[field.h]
+base = 1

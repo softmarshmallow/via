@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "A box instance at scale = 2, with a mount at [1, 0] and max_relief = 0.5: footprint, sink, max_relief and the mount's at doubled."
+milestone = 1
+actions   = ["build"]
+
+# At scale 2 the 2 m box's footprint is 4 m square: the `plot` footprint feature (a kind with no
+# effect, margin 0) has the ring (18, 18) to (22, 22), canonical from its least vertex. The mount
+# [1, 0] doubled is 2 m east of the origin: `mark` stands at (22, 20). `sink` 0.25 doubled lowers
+# the pivot 0.5 m below the ground at the origin, 20 + 0.2 * 20 = 24, so z is 23.5. On the 0.2
+# slope the 4 m footprint has relief 0.8: above 0.5, below 1.0, so with `max_relief` doubled there
+# is no place.relief (mode exact).
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.footprint]
+path    = "build/w/features.json"
+pointer = "/footprints/0/pieces/0/outer"
+value   = [[18, 18], [22, 18], [22, 22], [18, 22]]
+
+[action.build.file.mount_x]
+path    = "build/w/features.json"
+pointer = "/features/0/at/0"
+value   = 22
+
+[action.build.file.mount_y]
+path    = "build/w/features.json"
+pointer = "/features/0/at/1"
+value   = 20
+
+[action.build.file.sink]
+path = "build/w/instances/z.npy"
+all  = 23.5

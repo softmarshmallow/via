@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "A lower layer's produced instance and a hand instance in a higher layer overlapping: place.crowded, warning, naming both."
+milestone = 1
+actions   = ["build"]
+
+# rules.md 8.1: giving way reads down only, so the scatter at rank 0 does not give way to the crate at rank 1; with jitter 0 the tree of cell (2, 2) stands at (17.5, 17.5), under the crate.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.crowded]
+code     = "place.crowded"
+severity = "warning"

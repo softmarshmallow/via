@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "face = -90, face = 270, face = 630: one facing, 270000, in the build."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.face]
+path = "build/w/instances/face.npy"
+all  = 270000

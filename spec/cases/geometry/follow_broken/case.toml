@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "dumbbell outline; follows with offset 3 m inward, span = [0.3, 0.3]: geom.follow_broken naming each gap and 1.999 m as the widest offset that holds."
+milestone = 1
+actions   = ["op"]
+
+# (open: needs ruling) The row's `span = [0.3, 0.3]` has from equal to to, which 3.5 makes geom.span_order on a path; on a ring a span may wrap. Kept as written.
+
+[action.op]
+via         = ["kernel", "follow", "--in", "in.json", "--out", "out.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.op.diag.follow_broken]
+code    = "geom.follow_broken"
+subject = "cli"

@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "cross; network twice, the second input with members in another order and spaced: the two output files are identical and canonical."
+milestone = 1
+actions   = ["first", "second"]
+
+# Canonical JSON (documents.md 8) is checked by U5's reader on every JSON output; `same` compares the bytes.
+
+[action.first]
+via  = ["kernel", "network", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.second]
+via  = ["kernel", "network", "--in", "spaced.json", "--out", "out.json"]
+exit = 0
+
+[action.second.same.bytes]
+action = "first"
+what   = "out.json"

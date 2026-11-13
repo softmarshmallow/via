@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "The same with --stand-ins: the second build runs, and assets.*.stand_in is true."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--stand-ins", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"

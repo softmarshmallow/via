@@ -1,0 +1,10 @@
+[taxon."plant/tree"]
+
+[asset.ash]
+primitive = "sphere"
+size      = [3, 3, 6]
+taxon     = "plant/tree"
+
+[asset.rock_a]
+primitive = "sphere"
+size      = [1.2, 1, 0.6]

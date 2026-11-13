@@ -100,6 +100,12 @@ id order, then the case's own files are laid over them, so a case file replaces 
 
 A case never copies from `spike/`. Private material is never a case input.
 
+A copy takes the fixture, never what a build left beside it: it skips every `.via/` store
+(`graph.md` 3.2), `build/` directory (`build.md` 14), `*.run.json` run report and `*.lock` lock
+(`graph.md` 6.3), and every file git ignores and does not track. So every case starts cold, whatever
+was built by hand in `examples/`. A case's own files skip only `.via/` and git-ignored files, so a
+case may plant a `build/` folder itself.
+
 ### 3.3 `[action.<id>]`: what the runner does
 
 Each action holds exactly one of these keys, which says what it is:
@@ -206,6 +212,15 @@ check not listed is a case error. Rows are added with the cases that need them.
 | `changed_within_windows` | `before`, `after` (build directories), `fields`, `kinds`, `world` | Every differing post of each named field lies in the union of the 5.3 windows of every moved feature or footprint, old shape and new, as `fields.md` defines it. | `fields.md` "change windows"; plan, ford rows `downstream`, `vertex` |
 | `no_origin_inside` | `build` (a build directory); `at` and `radius`, or `points` (a closed polygon); `prefix` (optional) | No row of `instances/x.npy`, `y.npy` whose name in `names.txt` starts with `prefix` has its origin at distance `<= radius` from `at`, or inside `points` (`identity.md` 4.3). | plan, ford row `hand`; `identity.md` 31; `rules.md` r38 |
 | `changes_by_prefix` | `path` (a `changes.json`), `prefix`, `what`; `names` (optional, a `names.txt`) | At least one entry's `name` starts with `prefix`, and every such entry's `what` equals `what`. With `names`: every line of it starting with `prefix` is such an entry. | plan, ford rows `hand`, `denser`; `identity.md` 31 |
+| `array_window` | `whole`, `part` (two 2-D array files), `window` (`[i0, j0, i1, j1]`, `i1`, `j1` excluded) | `part` equals that window of `whole`, element by element, bit for bit (`numbers.md` 6). | `numbers.md` window_equals_whole, halo_edge; `build.md` case 38 |
+| `json_count` | `path` (a JSON file), `pointer`, `count` | The list or object at `pointer` has exactly `count` members. | `geometry.md` (counts of vertices, segments, junctions, edges, areas, cells, pieces); `identity.md` 47 to 49 |
+| `run_node` | `path` (a run report), `node` (a node id), `includes` (a table) | The report's node object with that id exists and holds these members with these values (3.4 `includes`). | `graph.md` why, lint gate, failed step |
+| `run_report_valid` | `path` (a run report) | `graph.md` 6.3: canonical JSON, `format` `"via-run-0"`, every member of 6.3; `nodes` lists every node once, in id order; `totals` counts equal the statuses; every `ran` node has a cause, every other `null`. | `graph.md` run report, why |
+| `json_list` | `path`, `pointer`; `from`, `at_least`, `includes`, `starts`, `last` (optional) | The list at `pointer` has at least `at_least` (default 1) elements from index `from` (default 0); each of those includes `includes` (3.4 `includes`) and has each member of `starts` (a table of strings) beginning with that string; its last element equals `last` (3.4 `value`). | `build.md` 11.2, plan ford row `downstream` (the trees past the written entries; a cause's `via` ends at the thing's node) |
+| `instance_at` | `build`, `name`, `at` | The build holds exactly one instance named `name`, its plan origin exactly `at` in integer millimetres (`build.md` 8). | plan, ford row `hand` ("the pin stands"); `identity.md` 31 |
+| `changes_inside` | `path`, `prefix`, `at`, `radius`, `what`, `cause` (a table) | At least one entry whose name starts with `prefix` has its `before` or `after` `at` at distance `<= radius` from `at`; every such entry's `what` equals `what` and one of its causes includes `cause`. | `identity.md` 4.3, 5, 31 (what a clear removed, and its cause) |
+| `changes_absent` | `path`; `entry_names`, `causes` (lists, optional) | No entry's `name` is in `entry_names`, and no entry has a cause whose `cause` starts with a string of `causes`. | plan, ford rows `downstream` (`beck` untouched) and `hand` ("both hand edits unchanged") |
+| `vectors_match` | `path` (a vector file of `numbers.md` 10's form); `fns` (optional, a list of `fn` names) | Every vector of the file, or of those whose `fn` is in `fns`, is printed by the action (`via vectors`, `build.md` 14) as `{"got", "id"}`, and its `got` equals the vector's `expected`: bit patterns exactly, numbers by value. | `build.md` 14 ("the runner compares `got`"); `numbers.md` seed_vectors; `formulas.md` 29, 52; `identity.md` 45 |
 
 ### 3.5 Expected diagnostics
 
@@ -213,7 +228,9 @@ Where the records come from:
 
 - The runner passes `--diagnostics {work}/.diag/<action id>.json` to every `via` action and reads
   both kinds of record from that document, on every exit status, 2 included (`build.md` 14). It
-  never adds `--json`: on `via merge`, `via pack list` and `via vectors` that is `cli.usage`.
+  never adds `--json`: on `via merge`, `via pack list` and `via vectors` that is `cli.usage`. An
+  action whose `exit` allows only statuses above 3 (a process a test switch stops, `build.md` case
+  24's 9) is not asked for the document: the stopped process writes none.
 - **Run diagnostics** are the records whose codes `build.md` 11.1 lists as run codes, the ones
   never in `diagnostics.json`. An expectation for one says `from = "run"`.
 - **World diagnostics** are all the others.
@@ -233,6 +250,7 @@ key not written is not compared. Messages and hints are never compared (`diagnos
 | `file`, `line`, `column`, `bytes` | Its span or file location (`diagnostics.md` 1.2). |
 | `argument` | Its argument location. |
 | `position` | `[x, y]` or `[x, y, z]`, metres, exactly. |
+| `position_within` | `[x0, y0, x1, y1]`, metres: the record has a position, and its `x`, `y` lie in this box, edges included. For a position the chapters fix only to a region (a post of largest difference over measured ground). |
 | `count` | Its `count`. |
 | `occurrences` | The number of its `occurrences`. |
 | `data` | A table: each member written equals the record's `data` member. Members not written are not compared. |
@@ -355,7 +373,7 @@ These checks need no line in `case.toml`. Each comes from the chapter named.
 | U2 | Every diagnostic has a registered code, a subject, a location and a non-empty hint; a core code's severity equals the registry's; a step code has one severity in the build; `failed_on` appears only on a code `--fail-on` named. | every `via` action | `diagnostics.md` Conformance |
 | U3 | With exit status 2, nothing under the working folder is created, deleted or changed, but the `--diagnostics` file (3.5). | every `via` action | `diagnostics.md` 7 |
 | U4 | `via check <out>` exits 0. | every `build` or `lock` action that exits 0 | `build.md` case 8 |
-| U5 | No JSON or text file in the build directory (`out`), `<out>.run.json` or the `--diagnostics` file holds a path starting `/`, `\`, `//` or a drive letter, the working folder's path, the test user name, or the host name; no `..` but in `locations` and in source paths the text wrote so. `.config`, `.home` and the store are exempt: `config.toml` and `trust.toml` hold absolute paths by design (`protocol.md` 6.3), and `via config program` and `via trust` are checked by their own cases. | every `via` action | `build.md` case 7 |
+| U5 | No JSON or text file in the build directory (`out`), `<out>.run.json` or the `--diagnostics` file holds a path starting `/`, `\`, `//` or a drive letter, the working folder's path, the test user name, or the host name; no `..` but in `locations` and in source paths the text wrote so; no absolute path but in the run report's `steps[].command`, which repeats the text as written (`graph.md` 6.3; such text is `protocol.absolute_path`). `.config`, `.home` and the store are exempt: `config.toml` and `trust.toml` hold absolute paths by design (`protocol.md` 6.3), and `via config program` and `via trust` are checked by their own cases. | every `via` action | `build.md` case 7 |
 | U6 | Clean equals incremental, and 1 thread equals 8 (5.1). | every `build` or `lock` action, unless `no_rerun` | `graph.md` 7, 8; plan |
 | U7 | The same results on every system (5.3). | every case, unless `one_system` | R26 |
 

@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "Tables and keys reordered, comments added; rebuild: ran is exactly source:world.toml, merge, write:diagnostics.json and write:manifest.json; diagnostics show the new lines."
+milestone = 1
+actions   = ["program", "trust", "first", "shuffle", "retrust", "again"]
+
+# The world file's digest changes (source:world.toml) and the merge runs; every statement's digest is
+# the same (no position is in it, graph.md 1), so nothing else runs but the writes that hold spans and
+# source digests, and the change report, now against the first build (build.md 11.2). The step's trust digest covers its code folder only, so the shuffled
+# world keeps it; `via trust` again is harmless either way.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.shuffle]
+write = "world.toml"
+from  = "later/world.toml"
+
+[action.retrust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.again]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.again.nodes]
+ran = ["merge", "source:world.toml", "write:changes.json", "write:diagnostics.json", "write:manifest.json"]

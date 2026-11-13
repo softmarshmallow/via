@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "The engine with VIA_TEST_EPOCH_OFFSET=1, read by test builds only; rebuild: every node ran; manifest files equal."
+milestone = 1
+actions   = ["first", "epoch"]
+
+# A raised epoch is in every key (graph.md 3.3), so nothing is reused; the bytes are the same because the numerics did not change.
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.epoch]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+env  = { VIA_TEST_EPOCH_OFFSET = "1" }
+
+[action.epoch.same.files]
+action = "first"
+what   = "files"
+
+[action.epoch.nodes]
+reused       = []
+ran_includes = ["merge", "write:manifest.json"]

@@ -1,0 +1,11 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.m]
+tags = ["mark"]
+
+[feature.p]
+kind = "ke"
+path = [[0, 8], [128, 8]]

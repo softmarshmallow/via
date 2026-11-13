@@ -1,0 +1,3 @@
+[step.look]
+when    = "lint"
+command = ["python", "steps/lint.py"]

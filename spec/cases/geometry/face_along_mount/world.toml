@@ -1,0 +1,17 @@
+name       = "g"
+extent     = [0, 0, 32, 32]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[instance.hut]
+asset = "house_low"
+at    = [10, 10]
+face  = 90
+
+[instance.pot]
+asset = "box_small"
+on    = { ref = "hut.door" }
+face  = "along"

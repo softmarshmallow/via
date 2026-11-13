@@ -9,6 +9,26 @@ actions   = ["program", "trust", "base", "downstream"]
 # 1 untouched), then the fields clearing, height, water, the cottage's footprint, the cottage, and
 # the trees. Every entry's one cause is the one edited statement, feature.ford.on, written in
 # world.toml line 74. The positions of entries past the cottage are the trees', not asserted here.
+#
+# Nothing beyond what follows is listed (build.md 11.2's worked example, derived, not recorded):
+# - Features: lane_west, lane_east and in_trees stand on or arrive at the ford, so they moved;
+#   at_ford and to_door moved and changed (their `toward` names the ford, the cottage); on_bank
+#   stands on the beck, which did not move, so it only changed (its `toward` names the ford). The
+#   ford moved. So ~6, changed 3; beck has no entry and is the 1 untouched.
+# - Fields: height, clearing and water all changed (the ford's approach, the pad); 0 untouched.
+# - The cottage stands on lane_west, so it and its footprint moved (~1 each). Trees have no
+#   `ground`, so no footprint row of theirs.
+# - Rows sort by maker, null first, then table (build.md 11.2): four written rows, then `trees`.
+#   Its counts are measured, so only what the spec fixes is asserted: instances, nothing swapped
+#   or changed (a scatter's draws are not redrawn, identity.md 4.1).
+# - Every entry past the cottage (index 11) is a tree: instance `trees#...`.
+# - Each cause's `via` is one chain from the node reading feature.ford.on (shape:ford) to the
+#   thing's nearest node: instance:cottage for the cottage, footprint:cottage for its footprint
+#   (graph.md 1, build.md 11.2).
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
 
 [action.program]
 via  = ["config", "program", "python", "{python}"]
@@ -22,11 +42,13 @@ exit = 0
 via  = ["build", "world.toml", "--out", "build/ford"]
 out  = "build/ford"
 exit = 0
+diagnostics = "includes"
 
 [action.downstream]
 via  = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
 out  = "build/ford"
 exit = 0
+diagnostics = "includes"
 
 [action.downstream.file.at_ford]
 path     = "build/ford/changes.json"
@@ -113,3 +135,78 @@ includes = { cause = "feature.ford.on", file = "world.toml", in = "this", line =
 path    = "build/ford/changes.json"
 pointer = "/format"
 value   = "via-changes-0"
+
+[action.downstream.file.via_cottage_first]
+path    = "build/ford/changes.json"
+pointer = "/entries/11/causes/0/via/0"
+value   = "shape:ford/v:build"
+
+[action.downstream.check.via_cottage]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/11/causes/0/via"
+at_least = 2
+last     = "instance:cottage/v:build"
+
+[action.downstream.file.cause_footprint]
+path     = "build/ford/changes.json"
+pointer  = "/entries/10/causes/0"
+includes = { cause = "feature.ford.on", file = "world.toml", in = "this", line = 74 }
+
+[action.downstream.check.via_footprint]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries/10/causes/0/via"
+at_least = 2
+last     = "footprint:cottage/v:build"
+
+[action.downstream.check.one_cause_cottage]
+fn      = "json_count"
+path    = "build/ford/changes.json"
+pointer = "/entries/11/causes"
+count   = 1
+
+[action.downstream.check.trees_after_cottage]
+fn       = "json_list"
+path     = "build/ford/changes.json"
+pointer  = "/entries"
+from     = 12
+at_least = 1
+includes = { table = "instance" }
+starts   = { name = "trees#" }
+
+[action.downstream.check.beck_untouched]
+fn          = "changes_absent"
+path        = "build/ford/changes.json"
+entry_names = ["beck"]
+
+[action.downstream.check.summary_rows]
+fn      = "json_count"
+path    = "build/ford/changes.json"
+pointer = "/summary"
+count   = 5
+
+[action.downstream.file.summary_feature]
+path    = "build/ford/changes.json"
+pointer = "/summary/0/line"
+value   = "feature (written): +0 -0 ~6 swapped 0 changed 3, 1 untouched"
+
+[action.downstream.file.summary_field]
+path    = "build/ford/changes.json"
+pointer = "/summary/1/line"
+value   = "field (written): +0 -0 ~0 swapped 0 changed 3, 0 untouched"
+
+[action.downstream.file.summary_footprint]
+path    = "build/ford/changes.json"
+pointer = "/summary/2/line"
+value   = "footprint (written): +0 -0 ~1 swapped 0 changed 0, 0 untouched"
+
+[action.downstream.file.summary_instance]
+path    = "build/ford/changes.json"
+pointer = "/summary/3/line"
+value   = "instance (written): +0 -0 ~1 swapped 0 changed 0, 0 untouched"
+
+[action.downstream.file.summary_trees]
+path     = "build/ford/changes.json"
+pointer  = "/summary/4"
+includes = { maker = "trees", table = "instance", swapped = 0, changed = 0 }

@@ -204,6 +204,17 @@ impl Diag {
         message: Text,
         hint: Text,
     ) -> Diag {
+        // 1.3: where a name was not found, the hint gives the nearest name and `data.nearest`
+        // holds it. The hint `write `x`` is how `nearest::Nearest::hint` gives one, so a code
+        // whose row declares `nearest` carries it whichever raiser wrote the hint.
+        let mut data = BTreeMap::new();
+        if let DiagCode::Core(c) = &code {
+            if c.row().data.contains(&"nearest") {
+                if let Some(n) = nearest_in_hint(hint.as_str()) {
+                    data.insert("nearest".to_string(), Value::text(n.to_string()));
+                }
+            }
+        }
         Diag(Box::new(DiagInner {
             code,
             subject,
@@ -212,7 +223,7 @@ impl Diag {
             hint,
             position: None,
             related: Vec::new(),
-            data: BTreeMap::new(),
+            data,
             name: None,
             count: None,
         }))
@@ -284,6 +295,11 @@ impl Diag {
     /// The hint.
     pub fn hint(&self) -> &Text {
         &self.0.hint
+    }
+
+    /// The other things involved.
+    pub fn related_list(&self) -> &[Related] {
+        &self.0.related
     }
 
     /// The position, if any.
@@ -384,6 +400,12 @@ impl Diag {
     }
 }
 
+/// The name of a hint that is exactly `write `x`` (`nearest::Nearest::hint`), if it is one.
+fn nearest_in_hint(hint: &str) -> Option<&str> {
+    let n = hint.strip_prefix("write `")?.strip_suffix('`')?;
+    (!n.is_empty() && !n.contains('`')).then_some(n)
+}
+
 fn resolve(resolver: &dyn Resolve, subject: &Subject, site: &Site) -> Option<Resolved> {
     match site {
         Site::Argument(n) => Some(Resolved {
@@ -392,6 +414,20 @@ fn resolve(resolver: &dyn Resolve, subject: &Subject, site: &Site) -> Option<Res
         }),
         Site::File { file, .. } => Some(Resolved {
             location: Location::File { file: file.clone() },
+            chain: Vec::new(),
+        }),
+        Site::Text {
+            file,
+            line,
+            column,
+            bytes,
+        } => Some(Resolved {
+            location: Location::Span {
+                file: file.clone(),
+                line: *line,
+                column: *column,
+                bytes: *bytes,
+            },
             chain: Vec::new(),
         }),
         Site::World => Some(Resolved {

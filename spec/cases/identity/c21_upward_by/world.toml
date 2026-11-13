@@ -1,0 +1,17 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[layer.one]
+file  = "one.toml"
+owner = "tests"
+rank  = 1
+
+[layer.two]
+file  = "two.toml"
+owner = "tests"
+rank  = 2

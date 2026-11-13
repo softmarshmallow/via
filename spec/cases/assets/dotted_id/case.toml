@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "[asset.\"house.low\"]: identity.bad_id, exit 1."
+milestone = 1
+actions   = ["check"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.bad_id]
+code = "identity.bad_id"

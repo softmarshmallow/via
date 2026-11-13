@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "A world names ford's fields/height.npy as its height file, with ford's extent and outside = 0: its fields/height.npy is byte-identical to ford's."
+milestone = 1
+actions   = ["program", "trust", "ford", "ford_eval", "reader", "reader_eval"]
+
+# `via eval` writes the bytes the build writes for a field (build.md 14); the two evaluations are compared, ford's and the reader's.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.ford]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.ford_eval]
+via         = ["eval", "world.toml", "--field", "height", "--out", "h.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.reader]
+via  = ["build", "reader.toml", "--out", "build/reader"]
+exit = 0
+out  = "build/reader"
+
+[action.reader_eval]
+via  = ["eval", "reader.toml", "--field", "height", "--out", "h.npy"]
+exit = 0
+
+[action.reader_eval.same.bytes]
+action = "ford_eval"
+what   = "h.npy"

@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "Two fields with fbm(80, 3, seed = 'a'): equal at every post. A field trees with base fbm(80, 3) and a scatter trees with the same density term: different values."
+milestone = 1
+actions   = ["a", "b", "trees"]
+
+# One seed name gives one noise (formulas.md 8.2): `a` and `b` print the same bytes. `trees`'s default
+# stream is ["noise", "field", "trees", "base"], a scatter `trees`'s is ["noise", "scatter", "trees",
+# "density"], so they differ; that a scatter's density differs is shown through the field: no field
+# here shares the scatter's stream, and the field's own pattern differs from seed 'a' (it would
+# equal the scatter's only if the streams met, which their second part forbids). (open) a check on
+# the scatter's density values needs a column of density at candidates, which no build file holds.
+
+[action.a]
+via  = ["eval", "world.toml", "--field", "a", "--out", "x.npy"]
+exit = 0
+
+[action.b]
+via  = ["eval", "world.toml", "--field", "b", "--out", "x.npy"]
+exit = 0
+
+[action.b.same.equal]
+action = "a"
+what   = "x.npy"
+
+[action.trees]
+via  = ["eval", "world.toml", "--field", "trees", "--out", "x.npy"]
+exit = 0
+
+[action.trees.same.differ]
+action = "a"
+what   = "x.npy"
+differ = true

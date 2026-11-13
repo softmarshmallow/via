@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "A build killed mid-run; build: builds; no graph.busy."
+milestone = 1
+actions   = ["first", "killed", "again"]
+
+# The build is stopped between its renames by build.md case 24's test switch (exit 9): a lock left by a killed process is not held, so the next build takes it (graph.md busy).
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.killed]
+via         = ["build", "world.toml", "--change", "c", "--out", "build/w"]
+exit        = 9
+diagnostics = "any"
+out         = "build/w"
+env         = { VIA_TEST_STOP_BETWEEN_RENAMES = "1" }
+no_rerun    = "a killed process"
+
+[action.again]
+via  = ["build", "world.toml", "--change", "c", "--out", "build/w"]
+exit = 0
+out  = "build/w"

@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "A change removes a feature an instance is on: doc.dangling naming the instance and the change."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "a"]
+exit = 1
+
+[action.merge.diag.dangling]
+code = "doc.dangling"

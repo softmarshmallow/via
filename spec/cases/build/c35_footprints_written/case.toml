@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "ford: features.json's footprints holds one entry, instance cottage, kind pad."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.file.inst]
+path    = "build/ford/features.json"
+pointer = "/footprints/0/instance"
+value   = "cottage"
+
+[action.build.file.kind]
+path    = "build/ford/features.json"
+pointer = "/footprints/0/kind"
+value   = "pad"
+
+[action.build.check.one]
+fn      = "json_count"
+path    = "build/ford/features.json"
+pointer = "/footprints"
+count   = 1

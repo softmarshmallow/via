@@ -1,0 +1,1 @@
+{"@format": "via-kernel-1", "grid": {"extent": [0, 0, 100000, 100000], "resolution": 500}, "shapes": [{"path": [[0, 0], [10000, 10000]], "source": "a"}, {"path": [[0, 10000], [10000, 0]], "source": "b"}]}

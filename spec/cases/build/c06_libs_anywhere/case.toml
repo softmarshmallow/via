@@ -1,0 +1,70 @@
+format    = "via-case-1"
+summary   = "ford with --lib given as an absolute path to copies in two different folders: same id; manifest.json byte-identical but locations."
+milestone = 1
+actions   = ["program", "trust_one", "one", "trust_two", "two"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[copy.one_land]
+from = "lib/land"
+to   = "one/land"
+
+[copy.one_water]
+from = "lib/water"
+to   = "one/water"
+
+[copy.one_ways]
+from = "lib/ways"
+to   = "one/ways"
+
+[copy.one_review]
+from = "lib/review"
+to   = "one/review"
+
+[copy.two_deep_land]
+from = "lib/land"
+to   = "two/deep/land"
+
+[copy.two_deep_water]
+from = "lib/water"
+to   = "two/deep/water"
+
+[copy.two_deep_ways]
+from = "lib/ways"
+to   = "two/deep/ways"
+
+[copy.two_deep_review]
+from = "lib/review"
+to   = "two/deep/review"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust_one]
+via         = ["trust", "world.toml", "--yes", "--lib", "{work}/one"]
+exit        = 0
+diagnostics = "includes"
+
+[action.one]
+via         = ["build", "world.toml", "--lib", "{work}/one", "--out", "build/one"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/one"
+
+[action.trust_two]
+via         = ["trust", "world.toml", "--yes", "--lib", "{work}/two/deep"]
+exit        = 0
+diagnostics = "includes"
+
+[action.two]
+via         = ["build", "world.toml", "--lib", "{work}/two/deep", "--out", "build/two"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/two"
+
+[action.two.same.id]
+action = "one"
+what   = "id"

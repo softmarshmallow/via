@@ -15,7 +15,8 @@ Each measure is one ``info`` record per subject, code ``step.checks.<name>``, it
 | approach_grade    | each ford                | steepest rise over run along a lane within 20 m         |
 | ford_depth        | each ford                | water level less ground at the ford, metres             |
 | water_step        | each beck                | largest jump in the water surface between neighbouring  |
-|                   |                          | posts where one of them is wet, metres                  |
+|                   |                          | posts that are both wet, within its ``width`` of its     |
+|                   |                          | line, metres                                            |
 | cottage_relief    | each grounded instance   | highest less lowest ground over its footprint feature   |
 | trees_in_clearing | each producer of trees   | trees standing where keep_out holds (is 1), a count     |
 
@@ -31,10 +32,11 @@ import math
 
 from viasdk import RpcError
 
-# The approach is measured along each lane over the ford kind's radius (lib/ways/kinds.toml).
+# The approach is measured along each lane out to where the ford's `approach` mask reaches 0
+# (`1 - smoothstep(16, 20, d)`, lib/ways/kinds.toml). A coupling, kept by hand: a kind's radius and
+# masks are not in the feature list a step reads (protocol.md 4.3), only its attributes. If the
+# ford kind's mask changes, change this with it.
 APPROACH_M = 20.0
-# Wet-post pairs are given to the nearest beck within its kind's radius (lib/water/kinds.toml).
-BECK_RADIUS_M = 16.0
 # A lane meets a ford when one of its ends lies this close to it (geometry.md 2.7: ends meet exactly).
 MEETS_MM = 1
 
@@ -46,7 +48,9 @@ EXPLAIN = {
     "ford_depth": "Water level less ground at the ford's point, in metres: how deep the crossing is "
     "on foot. Read from the fields tagged water_level and with role surface.",
     "water_step": "The largest difference in the water surface between two neighbouring posts, "
-    "at least one of them wet, near the beck: a step there is a wall of water along the bank.",
+    "both wet, within the beck's `width` of its line: the surface should be level across the channel and fall gently "
+    "along it, so a step is water climbing the bank or a wall of water. A wet post beside a dry "
+    "one is the water's edge, where the field holds the ground, and is not compared.",
     "cottage_relief": "Highest less lowest ground at the posts inside an instance's footprint "
     "feature (its footprint grown by margin): 0 means the pad left it level.",
     "trees_in_clearing": "How many trees stand where keep_out is 1. The scatter applies keep_out "
@@ -55,7 +59,9 @@ EXPLAIN = {
 
 HINTS = {
     "lane_gap": "End the lane at the ford by name: `ends_at = \"<ford>\"` or `starts_at`.",
-    "approach_grade": "Lower the ford kind's `grade`, or move the ford where the banks are lower.",
+    "approach_grade": "Within the beck's reach its banks set the grade: set a lower `bank_grade` on "
+    "the beck; beyond it, a lower `grade` on the ford (keep `bank_grade` at or below `grade`). Or "
+    "move the ford along the beck (`t`) where the banks are lower.",
     "ford_depth": "Move the ford along the beck (`t`), or change the beck's `depth`.",
     "water_step": "Look at the effects writing tag:water_level near this position.",
     "cottage_relief": "Ground the instance with a pad kind (`ground = \"pad\"`), or widen `margin`.",
@@ -240,10 +246,14 @@ def _along(line, step_mm, limit_mm):
 
 
 def _water_steps(grid, height, water, becks):
-    """Per beck: the largest jump in water between east or north neighbours, one of them wet,
-    over pairs whose midpoint lies within BECK_RADIUS_M of that beck and nearest to it."""
-    lines = [(b["name"], b["rings"][0][0]) for b in becks]
-    cap = BECK_RADIUS_M * 1000.0
+    """Per beck: the largest jump in water between east or north neighbours, both wet,
+    over pairs whose midpoint lies within the beck's ``width`` of its line and nearest to it.
+
+    ``width`` is the beck's documented attribute (lib/water: metres across the water), so the
+    reach follows the beck the world wrote: water that climbs the bank as far again as the
+    channel's half-width is still compared. A beck without ``width`` is not measured."""
+    lines = [(b["name"], b["rings"][0][0], b["attrs"]["width"] * 1000.0)
+             for b in becks if "width" in b["attrs"]]
     best = {}
     for j in range(grid.ny):
         hrow, wrow = height[j], water[j]
@@ -252,9 +262,11 @@ def _water_steps(grid, height, water, becks):
         for i in range(grid.nx):
             wet = wrow[i] > hrow[i]
             pairs = []
-            if i + 1 < grid.nx and (wet or wrow[i + 1] > hrow[i + 1]):
+            if not wet:
+                continue
+            if i + 1 < grid.nx and wrow[i + 1] > hrow[i + 1]:
                 pairs.append((i + 1, j, wrow[i + 1]))
-            if wup is not None and (wet or wup[i] > hup[i]):
+            if wup is not None and wup[i] > hup[i]:
                 pairs.append((i, j + 1, wup[i]))
             for (i2, j2, w2) in pairs:
                 jump = abs(wrow[i] - w2)
@@ -262,7 +274,7 @@ def _water_steps(grid, height, water, becks):
                 b = grid.post(i2, j2)
                 mid = ((a[0] + b[0]) // 2, (a[1] + b[1]) // 2)
                 near = None
-                for name, line in lines:
+                for name, line, cap in lines:
                     d = _dist_to_line(mid, line)
                     if d <= cap and (near is None or d < near[0]):
                         near = (d, name)
@@ -368,8 +380,9 @@ def _list(col):
 
 
 def _features(step, select):
-    """A feature list (protocol.md 4.3) as one dict per feature: name, kind, geometry, and
-    ``rings`` as pieces of rings of (x, y) millimetre pairs."""
+    """A feature list (protocol.md 4.3) as one dict per feature: name, kind, geometry,
+    ``rings`` as pieces of rings of (x, y) millimetre pairs, and ``attrs``, the number attributes
+    each feature has (its ``<attribute>?`` column is 1)."""
     try:
         fl = step.features(select)
     except (LookupError, RpcError):  # no feature matches
@@ -381,12 +394,25 @@ def _features(step, select):
     rings = _list(fl["rings"])
     starts = _list(fl["ring_starts"])
     coords = [tuple(int(v) for v in c) for c in _list(fl["coords"])]
+    fixed = {"name", "kind", "authority", "layer", "geometry", "pieces", "rings", "ring_starts", "coords"}
+    attrs = {}
+    for k in fl:
+        if k in fixed or k.endswith("?") or (k + "?") not in fl:
+            continue
+        has = _list(fl[k + "?"])
+        vals = _list(fl[k])
+        attrs[k] = (has, vals)
     out = []
     for f, name in enumerate(names):
+        mine = {}
+        for k, (has, vals) in attrs.items():
+            if has[f] and isinstance(vals[f], (int, float)) and not isinstance(vals[f], bool):
+                mine[k] = float(vals[f])
         ps = []
         for p in range(pieces[f], pieces[f + 1]):
             ps.append([coords[starts[r]:starts[r + 1]] for r in range(rings[p], rings[p + 1])])
-        out.append({"name": name, "kind": kinds[f], "geometry": int(geometry[f]), "rings": ps})
+        out.append({"name": name, "kind": kinds[f], "geometry": int(geometry[f]), "rings": ps,
+                    "attrs": mine})
     return out
 
 

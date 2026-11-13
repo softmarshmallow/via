@@ -136,6 +136,34 @@ func _before() -> void:
 	check("before: height map row 0 is the chunk's north row", is_equal_approx(hshape.map_data[0], h[80 * 97 + 64]))
 	# water: drawn where the beck is, not in the dry chunk
 	check("before: water mesh in chunks the beck crosses", root.get_node_or_null("c_0_0/water") != null and root.get_node_or_null("c_1_0/water") != null)
+	# water's edge (15.1): a dry vertex of a drawn quad is at its wet neighbours' mean, not above
+	# its ground, so the bank clips the surface; a wet vertex is at the field's value
+	var wf := Npy.floats(Npy.read(dir + "/fields/water.npy"))
+	var wv: PackedVector3Array = (c00.get_node("water") as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var shore := 0
+	var shore_ok := true
+	var wet_ok := true
+	for j in 65:
+		for i in 65:
+			var k := j * 97 + i
+			var z := wv[j * 65 + i].y
+			if wf[k] > h[k]:
+				wet_ok = wet_ok and z == wf[k]
+				continue
+			var s := 0.0
+			var n := 0
+			for dj in [-1, 0, 1]:
+				for di in [-1, 0, 1]:
+					var a: int = i + di
+					var b: int = j + dj
+					if (di != 0 or dj != 0) and a >= 0 and b >= 0 and a < 97 and b < 81 and wf[b * 97 + a] > h[b * 97 + a]:
+						s += wf[b * 97 + a]
+						n += 1
+			if n > 0:
+				shore += 1
+				shore_ok = shore_ok and is_equal_approx(z, minf(s / n, h[k])) and z <= h[k]
+	check("before: water at wet posts is the field's value", wet_ok)
+	check("before: water at the shore runs level under the bank", shore > 0 and shore_ok, "%d shore posts" % shore)
 	# features, footprints, bookmarks, meetings
 	check("before: features as Path3D, Marker3D and polygon metadata", root.get_node("features/beck") is Path3D
 		and root.get_node("features/ford") is Marker3D and root.get_node("features/meadow").get_meta("polygon").size() == 1

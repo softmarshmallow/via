@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "Instances at; on a point feature without face; on lane.end; on an instance with face = 180: facings 0, 0, 90000, 180000."
+milestone = 1
+actions   = ["build"]
+
+# (open) Rows sort by chunk, then asset, then name (build.md 8): a in chunk (0, 0), b (0, 0), c (1,
+# 1), host and d (3, 3). The case builds; asserting each facing by name needs a per-name column check
+# (conformance.md 3.4 has none).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

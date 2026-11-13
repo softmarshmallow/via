@@ -1,0 +1,8 @@
+[step.lint_two]
+when    = "lint"
+command = ["python", "steps/lint.py"]
+
+[feature.hill]
+kind = "bump"
+at   = [16, 16]
+rise = "= 1 + xx"

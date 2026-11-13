@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "under('mean') on a region with no post inside: num.empty_reduction naming the feature; on a 2.3 m path at spacing 1: the mean of samples at 0, 1, 2 and 2.3 m."
+milestone = 1
+actions   = ["empty", "path"]
+
+# On `height = x` the path from x = 4 to 6.3 has samples at 4, 5, 6 and 6.3; their mean, 5.325, is written where the path's mask is 1, as at post (5, 4).
+
+[action.empty]
+via         = ["build", "empty/world.toml", "--lib", "{work}/libs", "--out", "empty/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "empty/build/w"
+
+[action.empty.diag.empty_reduction]
+code = "num.empty_reduction"
+
+[action.path]
+via         = ["build", "path/world.toml", "--lib", "{work}/libs", "--out", "path/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "path/build/w"
+
+[action.path.file.mean]
+path  = "path/build/w/fields/m.npy"
+post  = [5, 4]
+value = 5.325

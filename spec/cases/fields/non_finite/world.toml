@@ -1,0 +1,9 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.a]
+file    = "h.npy"
+outside = 0

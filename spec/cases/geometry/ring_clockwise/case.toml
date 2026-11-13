@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A ring written clockwise; read: stored counter-clockwise, t = 0 at the first written point."
+milestone = 1
+actions   = ["op"]
+
+# Stored counter-clockwise with t = 0 kept at the first written point [0, 0].
+
+[action.op]
+via  = ["kernel", "read", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.file.shape]
+path    = "out.json"
+pointer = "/shape"
+value   = [[0, 0], [10000, 0], [10000, 10000], [0, 10000]]

@@ -1,0 +1,3 @@
+[asset.n]
+size   = [1, 1, 1]
+params = { look = "x" }

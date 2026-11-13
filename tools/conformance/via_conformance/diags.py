@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 import tomllib
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -194,6 +195,15 @@ def _agrees(exp: dict[str, Any], r: dict[str, Any]) -> bool:
             for want in v:
                 if not any(isinstance(g, dict) and canon.includes(want, g) for g in rel):
                     return False
+        elif k == "position_within":
+            pos = r.get("position")
+            if not isinstance(pos, list) or len(pos) not in (2, 3):
+                return False
+            if not all(isinstance(n, (int, float)) and not isinstance(n, bool) for n in pos):
+                return False
+            x0, y0, x1, y1 = (Fraction(n) for n in v)
+            if not (x0 <= Fraction(pos[0]) <= x1 and y0 <= Fraction(pos[1]) <= y1):
+                return False
         elif k == "chain":
             chain = r.get("chain")
             if not isinstance(chain, list) or len(chain) != len(v):

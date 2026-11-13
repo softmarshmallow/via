@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "ford's cottage on the beck at the t of its vertex [140, 170] (found by project), offset 12 m: placed along the normal of the outgoing segment, toward [160, 90], not the bisector."
+milestone = 1
+pending   = "the placement needs the t project gives fed into a world, which no action can do (conformance.md 3.3); owed: an `on` at a vertex vector in geometry.md 2.6"
+actions   = ["project"]
+
+[action.project]
+via  = ["kernel", "project", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.project.file.t]
+path    = "out.json"
+pointer = "/results/0/nearest"
+value   = [140000, 170000]

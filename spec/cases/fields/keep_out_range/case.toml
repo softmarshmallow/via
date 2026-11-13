@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "keep_out base 1.5: field.role_range at (0, 0); read as 1."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.role_range]
+code     = "field.role_range"
+position = [0, 0]

@@ -1,0 +1,12 @@
+name       = "ring"
+extent     = [0, 0, 256, 256]
+resolution = 0.5
+
+[field.c]
+base = "= f('a')"
+
+[field.b]
+base = "= f('c')"
+
+[field.a]
+base = "= f('b')"

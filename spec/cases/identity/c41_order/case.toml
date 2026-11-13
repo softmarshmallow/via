@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "The same world with tables shuffled: the same names and the same report."
+milestone = 1
+actions   = ["a", "b"]
+
+[action.a]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.b]
+via         = ["build", "b/world.toml", "--against", "a/build/w", "--out", "b/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.b.file.none]
+path    = "b/build/w/changes.json"
+pointer = "/entries"
+value   = []
+
+[action.b.same.names]
+action = "a"
+what   = "files"

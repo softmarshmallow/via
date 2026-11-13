@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "ford: rows sorted by chunk, asset, name; each chunk's [first, count] covers exactly the rows whose x, y fall in it."
+milestone = 1
+actions   = ["program", "trust", "build", "check"]
+
+# via check's item 9 (build.md 14) holds the chunk ranges tiling the rows, each row in its chunk.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.check]
+via  = ["check", "build/ford"]
+exit = 0

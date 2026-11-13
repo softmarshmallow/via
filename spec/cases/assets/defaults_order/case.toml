@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "colour in pack defaults, in plant and plant/tree defaults, and on one asset: each asset's resolved value per 2.5."
+milestone = 1
+actions   = ["list"]
+
+[action.list]
+via  = ["pack", "list", "pack.toml"]
+exit = 0
+
+[action.list.file.a]
+stream  = "stdout"
+pointer = "/colour"
+line    = 1
+value   = [0.3, 0.3, 0.3]
+
+[action.list.file.b]
+stream  = "stdout"
+pointer = "/colour"
+line    = 2
+value   = [0.4, 0.4, 0.4]
+
+[action.list.file.c]
+stream  = "stdout"
+pointer = "/colour"
+line    = 3
+value   = [0.2, 0.2, 0.2]
+
+[action.list.file.d]
+stream  = "stdout"
+pointer = "/colour"
+line    = 4
+value   = [0.1, 0.1, 0.1]

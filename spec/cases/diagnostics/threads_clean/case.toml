@@ -1,0 +1,36 @@
+format    = "via-case-1"
+summary   = "The same world at 1 and 8 threads, clean and incremental: diagnostics.json byte-identical."
+milestone = 1
+actions   = ["one", "eight", "again"]
+
+# U6 rebuilds each clean at 1 thread as well.
+
+[action.one]
+via         = ["build", "world.toml", "--threads", "1", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.one.diag.relief]
+code    = "place.relief"
+records = 10
+
+[action.eight]
+via         = ["build", "world.toml", "--threads", "8", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.eight.same.d]
+action = "one"
+what   = "diagnostics"
+
+[action.again]
+via         = ["build", "world.toml", "--threads", "8", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.again.same.d]
+action = "one"
+what   = "diagnostics"

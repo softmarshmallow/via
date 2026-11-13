@@ -210,7 +210,8 @@ pub fn project_path(line: &Line, p: P) -> Measure {
     let n = nearest(line, p);
     let (e, t, q) = e_t(line, p, &n);
     let s = path_side(line, p, &n);
-    let sd = if s < 0 { -e } else { e };
+    // No negative zero leaves the kernel (`numbers.md` 8, rule 8): on the path, `sd` is `+0`.
+    let sd = if s < 0 && e != 0.0 { -e } else { e };
     Measure {
         t: Some(t),
         d: e,

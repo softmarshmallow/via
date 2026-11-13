@@ -1,0 +1,36 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[instance.box_small]
+asset = "box_small"
+at    = [6, 30]
+
+[instance.bush_round]
+asset = "bush_round"
+at    = [13, 30]
+
+[instance.fern_low]
+asset = "fern_low"
+at    = [20, 30]
+
+[instance.house_low]
+asset = "house_low"
+at    = [27, 30]
+
+[instance.lamp_post]
+asset = "lamp_post"
+at    = [34, 30]
+
+[instance.shed_gable]
+asset = "shed_gable"
+at    = [41, 30]
+
+[instance.tree_oak]
+asset = "tree_oak"
+at    = [48, 30]

@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "base 2x; effect radius 3 on (8, 4), mask fading to 0 by 2 m; built with extent [0, 0, 8, 8] and [0, 0, 16, 8]: every post of the first equals the second's at the same place, bit for bit; no field.effect_cut."
+milestone = 1
+actions   = ["small", "big", "small_eval", "big_eval"]
+
+# Posts 0 to 8 of the larger world are the whole of the smaller; `via eval` writes the same bytes the build writes for those posts (build.md 14). Mode exact on both builds: no field.effect_cut.
+
+[action.small]
+via  = ["build", "small/world.toml", "--lib", "{work}/libs", "--out", "small/build/w"]
+exit = 0
+out  = "small/build/w"
+
+[action.big]
+via  = ["build", "big/world.toml", "--lib", "{work}/libs", "--out", "big/build/w"]
+exit = 0
+out  = "big/build/w"
+
+[action.small_eval]
+via  = ["eval", "small/world.toml", "--field", "height", "--lib", "{work}/libs", "--out", "cut.npy"]
+exit = 0
+
+[action.big_eval]
+via  = ["eval", "big/world.toml", "--field", "height", "--lib", "{work}/libs", "--window", "0,0,9,9", "--out", "cut.npy"]
+exit = 0
+
+[action.big_eval.same.cut]
+action = "small_eval"
+what   = "cut.npy"

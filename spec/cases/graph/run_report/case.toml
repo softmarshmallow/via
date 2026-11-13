@@ -1,0 +1,36 @@
+format    = "via-case-1"
+summary   = "ford; build; --change downstream: each report is canonical JSON with format via-run-0 and every member of 6.3; nodes once in id order; totals equal the statuses; ran nodes have a cause, every other null."
+milestone = 1
+actions   = ["program", "trust", "base", "downstream"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.base.check.valid]
+fn   = "run_report_valid"
+path = "build/ford.run.json"
+
+[action.downstream]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.downstream.check.valid]
+fn   = "run_report_valid"
+path = "build/ford.run.json"

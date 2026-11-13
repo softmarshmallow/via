@@ -1,0 +1,15 @@
+name       = "nums"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.lane]
+path = [[0, 32], [64, 32]]
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+density = 1

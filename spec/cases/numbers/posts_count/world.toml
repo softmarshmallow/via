@@ -1,0 +1,6 @@
+name       = "posts"
+extent     = [0, 0, 10, 6]
+resolution = 2
+
+[field.h]
+base = "= x + y"

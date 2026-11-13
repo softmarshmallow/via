@@ -1,0 +1,16 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.well]
+at = [30, 30]
+
+[instance.a]
+asset = "box_small"
+on    = { ref = "well", t = 0.5 }

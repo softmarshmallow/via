@@ -1,0 +1,9 @@
+name       = "halo"
+extent     = [0, 0, 32, 32]
+resolution = 1
+
+[field.height]
+base = "= 0.01 * x * x + 0.3 * y"
+
+[field.s]
+base = "= slope('height')"

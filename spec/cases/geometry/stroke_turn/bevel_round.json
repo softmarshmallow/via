@@ -1,0 +1,1 @@
+{"@format": "via-kernel-1", "params": {"cap": "round", "join": "bevel", "left": 3000, "limit": 2, "right": 3000}, "shapes": [{"path": [[0, 0], [20000, 0], [20000, 20000]], "source": "p"}]}

@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "via explain formula.unknwn_name: exit 2, cli.unknown_code, nearest formula.unknown_name."
+milestone = 1
+actions   = ["explain"]
+
+[action.explain]
+via  = ["explain", "formula.unknwn_name"]
+exit = 2
+
+[action.explain.diag.unknown_code]
+code = "cli.unknown_code"
+data = { nearest = "formula.unknown_name" }

@@ -1,0 +1,69 @@
+format    = "via-case-1"
+summary   = "extent [0, 0, 10, 6], resolution 2, base = \"= y\": row 0 is all 0, row 3 is all 6."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.r0_0]
+path  = "build/w/fields/h.npy"
+post  = [0, 0]
+value = 0
+
+[action.build.file.r0_1]
+path  = "build/w/fields/h.npy"
+post  = [1, 0]
+value = 0
+
+[action.build.file.r0_2]
+path  = "build/w/fields/h.npy"
+post  = [2, 0]
+value = 0
+
+[action.build.file.r0_3]
+path  = "build/w/fields/h.npy"
+post  = [3, 0]
+value = 0
+
+[action.build.file.r0_4]
+path  = "build/w/fields/h.npy"
+post  = [4, 0]
+value = 0
+
+[action.build.file.r0_5]
+path  = "build/w/fields/h.npy"
+post  = [5, 0]
+value = 0
+
+[action.build.file.r3_0]
+path  = "build/w/fields/h.npy"
+post  = [0, 3]
+value = 6
+
+[action.build.file.r3_1]
+path  = "build/w/fields/h.npy"
+post  = [1, 3]
+value = 6
+
+[action.build.file.r3_2]
+path  = "build/w/fields/h.npy"
+post  = [2, 3]
+value = 6
+
+[action.build.file.r3_3]
+path  = "build/w/fields/h.npy"
+post  = [3, 3]
+value = 6
+
+[action.build.file.r3_4]
+path  = "build/w/fields/h.npy"
+post  = [4, 3]
+value = 6
+
+[action.build.file.r3_5]
+path  = "build/w/fields/h.npy"
+post  = [5, 3]
+value = 6

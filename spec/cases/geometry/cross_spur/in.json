@@ -1,0 +1,1 @@
+{"@format": "via-kernel-1", "grid": {"extent": [0, 0, 100000, 100000], "resolution": 500}, "shapes": [{"ring": [[0, 0], [100000, 0], [100000, 100000], [0, 100000]], "source": "frame_a"}, {"path": [[0, 50000], [100000, 50000]], "source": "cross_ew"}, {"path": [[50000, 0], [50000, 100000]], "source": "cross_ns"}, {"path": [[0, 25000], [20000, 25000]], "source": "spur_a"}]}

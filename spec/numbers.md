@@ -467,7 +467,9 @@ Its rules:
    depends on the thread count. The chunk rule is ours.
 6. **Integers.** Lattice arithmetic is integer and checked: an overflow is `num.overflow`, naming
    the operation's subject (feature, rule or field) and position, never a wrap. Only seed hashing
-   wraps, and says so.
+   wraps, and says so. No text reaches it in M1: lengths are bounded by 3.1 step 5 and computed
+   positions by `geom.range`, so 64-bit sums of them cannot overflow; a named workspace test covers
+   it (`diagnostics.md` 2).
 7. **No non-finite value enters a build.** A double that is infinite or NaN is never stored in a
    field, an attribute, a position or a build file. `via-num`'s functions return a checked value. A
    formula's non-finite result is `formula.not_finite` (`formulas.md` 9). A non-finite literal in a
@@ -778,7 +780,7 @@ it has no vector tests.
 | sd_chapters | The square; `on = { t = 0.125, offset = 2 }`; a formula writing `sd` and `d` | build | The placed point is `(5000, 2000)`; there `sd` is `+2` and `d` is 0, the worked points of this chapter and `geometry.md` 2.6 agreeing. |
 | point_t | A point feature of a kind whose effect reads `t` | build | `t` is 0 at every post; no error. `on` with `t` on it is `geom.no_length`. |
 | sd_vertex | The sharp-turn path of section 10; Path A | build | `sd` negative at `(101000, 500)` and `(9000, -1000)`, by the exact test. |
-| degenerate | A path with a repeated vertex; a one-point path with `t`; `face = "along"` on it | build | `geom.repeated_point`; `geom.degenerate` and `geom.no_length`; never a facing of north by default. |
+| degenerate | A path with a repeated vertex; a one-point path with `t`; `face = "along"` on it | build | `geom.repeated_point`; `geom.degenerate`, and the feature placed on it skipped (`diagnostics.md` 4: it raises nothing of its own); never a facing of north by default. |
 | points_at_t | The section 10 points-at-`t` table as instances placed `on` | build | Positions and `along` facings as tabled, `(500, 0)` included. |
 | window_equals_whole | ford's height field | `via eval` whole and by windows of 1x1, 7x3, 64x64 and odd offsets | Every post the same bits. |
 | halo_edge | A field `slope('height')` (halo 1, `formulas.md` 8.3), windows touching each grid edge | as above | Same bits as the whole. |

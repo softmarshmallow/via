@@ -1,0 +1,7 @@
+[kind.probe]
+radius = 2
+
+[kind.probe.effect.e]
+field = "tag:m"
+value = "= t"
+mask  = "= 1 - smoothstep(0, 1, d)"

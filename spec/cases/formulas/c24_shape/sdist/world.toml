@@ -1,0 +1,15 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= sdist('kind:pool', 20)"
+
+[feature.p]
+kind   = "pool"
+region = [[2, 2], [6, 2], [6, 6]]
+
+[feature.q]
+kind = "pool"
+path = [[0, 12], [128, 12]]

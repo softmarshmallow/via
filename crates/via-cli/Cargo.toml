@@ -18,6 +18,7 @@ via-doc = { workspace = true }
 via-raster = { workspace = true }
 via-graph = { workspace = true }
 via-model = { workspace = true }
+via-geom = { workspace = true }
 via-proto = { workspace = true }
 # `config.toml` and `trust.toml` (protocol.md 6.3), files of the machine the command line writes.
 toml = "1.1"

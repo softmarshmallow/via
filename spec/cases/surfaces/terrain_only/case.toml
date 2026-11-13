@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "ford; 100 points in points.json; surfaces_at: one row each, height."
+milestone = 1
+actions   = ["program", "trust", "q"]
+
+# The 100 points lie on a 2.56 m grid inside ford's extent; ford has one surface, the terrain, so one
+# row per point. (open) "same bytes at 1 and 8 threads": `via query` takes no --threads (surfaces.md
+# 7); U7 compares across systems.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.q]
+via         = ["query", "world.toml", "surfaces_at", "--in", "points.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.q.check.rows]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/point"
+count   = 100

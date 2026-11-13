@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "A world and the same with tables and keys reordered: same merged JSON and same build digest."
+milestone = 1
+actions   = ["a", "b", "build_a", "build_b"]
+
+[action.a]
+via  = ["merge", "a/world.toml"]
+exit = 0
+
+[action.b]
+via  = ["merge", "b/world.toml"]
+exit = 0
+
+[action.b.same.json]
+action = "a"
+what   = "stdout"
+
+[action.build_a]
+via         = ["build", "a/world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.build_b]
+via         = ["build", "b/world.toml", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.build_b.same.id]
+action = "build_a"
+what   = "id"

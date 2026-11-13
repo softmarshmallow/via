@@ -1,0 +1,36 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.well]
+at = [30, 30]
+
+[feature.lane]
+path = [[100, 100], [150, 100]]
+
+[instance.a]
+asset = "box_small"
+at    = [10, 10]
+
+[instance.b]
+asset = "box_small"
+on    = { ref = "well" }
+
+[instance.c]
+asset = "box_small"
+on    = { ref = "lane.end" }
+
+[instance.host]
+asset = "house_low"
+at    = [200, 200]
+face  = 180
+
+[instance.d]
+asset = "box_small"
+on    = { ref = "host" }

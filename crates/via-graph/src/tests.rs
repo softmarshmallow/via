@@ -136,6 +136,15 @@ impl Plan for Toy {
                 let name = &s["attr:".len()..];
                 def.subject = Some(Subject::entity("feature", name));
                 def.statements = vec![(format!("feature.{name}"), self.statement_digest(name))];
+                if self.world.statement(name).is_some_and(|l| l.1 == "static") {
+                    def.found = vec![Diag::new(
+                        codes::formula::UNKNOWN_NAME,
+                        Subject::entity("feature", name),
+                        Site::Key(KeyPath::key("value")),
+                        via_diag::text!("the value names nothing"),
+                        via_diag::text!("write a number"),
+                    )];
+                }
                 if let Some((_, _, reads)) = self.world.statement(name) {
                     def.edges = reads
                         .iter()
@@ -185,6 +194,7 @@ impl Plan for Toy {
                 def.step = Some(StepDef {
                     step: "lint".into(),
                     command: vec!["toy".into(), "lint".into()],
+                    lint: false,
                 });
             }
             "write" => match s {
@@ -731,6 +741,38 @@ fn warnings_and_errors_replay() {
     assert_clean_equals(&second, &b.store(), &bad);
 }
 
+/// `diagnostics.md` 4, stage 2: an error the static checks found fails its node whatever its
+/// inputs, so it is reported beside an independent failure upstream, and replays.
+#[test]
+fn a_static_error_is_reported_whatever_its_inputs() {
+    let mut w = world();
+    w.set("alpha", "err");
+    w.set("beta", "static");
+    let bad = Toy::new(w);
+    let mut b = Bench::new("static");
+    let first = b.build(&bad);
+    let beta = &first.nodes[&id("attr:beta")];
+    assert_eq!(beta.status, Status::Ran);
+    assert!(beta.failed);
+    let codes: Vec<String> = first
+        .world_diags
+        .iter()
+        .map(|d| d.code().to_string())
+        .collect();
+    assert!(
+        codes.contains(&"formula.unknown_name".to_string()),
+        "{codes:?}"
+    );
+    assert!(
+        codes.contains(&"graph.input_missing".to_string()),
+        "{codes:?}"
+    );
+    let second = b.build(&bad);
+    assert!(ran(&second).is_empty(), "{:?}", ran(&second));
+    assert_eq!(second.nodes[&id("attr:beta")].status, Status::Reused);
+    assert_eq!(first.world_diags, second.world_diags);
+}
+
 #[test]
 fn a_failed_step_runs_again_and_skips_its_readers() {
     let mut toy = Toy::new(world());
@@ -839,7 +881,7 @@ fn cycle_of(members: &[&str]) -> Vec<Cycle> {
             from: format!("attr:{a}"),
             to: format!("attr:{b}"),
             label: format!("reads {b}"),
-            key: KeyPath::key("reads"),
+            key: Some(KeyPath::key("reads")),
         });
     }
     g.cycles()

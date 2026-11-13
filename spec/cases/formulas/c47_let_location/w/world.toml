@@ -1,0 +1,12 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[let]
+bad = "= sqrt(-1)"
+
+[field.a]
+base = "= bad + 1"
+
+[field.b]
+base = "= bad * 2"

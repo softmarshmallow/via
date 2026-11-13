@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A noding batch with two inputs of source a: geom.duplicate_source naming a."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via  = ["kernel", "noding", "--in", "in.json", "--out", "out.json"]
+exit = 1
+
+[action.op.diag.duplicate_source]
+code    = "geom.duplicate_source"
+subject = "cli"
+data    = { source = "a" }

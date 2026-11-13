@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "file a 9 by 9 array file, outside = 0: every post equals its sample bit for bit."
+milestone = 1
+actions   = ["build"]
+
+# The build writes the field as build.md 3.2's array file, the same subset as the input, so the bytes are equal.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.same]
+path   = "build/w/fields/height.npy"
+equals = "expected/h.npy"

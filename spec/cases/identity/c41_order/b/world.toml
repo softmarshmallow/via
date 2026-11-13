@@ -1,0 +1,16 @@
+pack       = "primitive"
+resolution = 1
+extent     = [0, 0, 64, 64]
+name       = "names"
+
+[feature.lane]
+path = [[0, 32], [64, 32]]
+
+[scatter.trees]
+density = 1
+jitter  = 0
+spacing = 7
+assets  = ["tree_oak"]
+
+[field.height]
+role = "surface"

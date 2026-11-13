@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A plain lint handed the four features of 4.3's vector; then 2.2's data vector: its columns equal the vector; its data equals the vector's bytes, less absolute paths."
+milestone = 1
+pending   = "the vector bytes owed to spec/vectors/protocol/data/ with case 18 (protocol.md 2.2, 4.3) are not yet written"
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"

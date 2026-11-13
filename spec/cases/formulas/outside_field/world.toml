@@ -1,0 +1,12 @@
+name       = "x"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["k"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[feature.p]
+kind = "level"
+path = [[-10, 8], [8, 8]]

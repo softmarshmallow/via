@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "path = [[5, 5], [5, 5]]; read: geom.degenerate. region = [[0, 0], [10, 0], [20, 0]]; read: geom.degenerate."
+milestone = 1
+actions   = ["path", "ring"]
+
+[action.path]
+via         = ["kernel", "read", "--in", "p.json", "--out", "p.out.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.path.diag.degenerate]
+code    = "geom.degenerate"
+subject = "cli"
+
+[action.ring]
+via         = ["kernel", "read", "--in", "r.json", "--out", "r.out.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.ring.diag.degenerate]
+code    = "geom.degenerate"
+subject = "cli"

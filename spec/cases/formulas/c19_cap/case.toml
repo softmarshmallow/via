@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "dist('beck') in a field base: formula.cap; in a kind effect with no radius on the effect or the kind: formula.cap."
+milestone = 1
+actions   = ["base", "effect"]
+
+[action.base]
+via         = ["build", "base/world.toml", "--lib", "{work}/libs", "--out", "base/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "base/build/w"
+
+[action.base.diag.cap]
+code = "formula.cap"
+
+[action.effect]
+via         = ["build", "effect/world.toml", "--lib", "{work}/libs", "--out", "effect/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "effect/build/w"
+
+[action.effect.diag.cap]
+code = "formula.cap"

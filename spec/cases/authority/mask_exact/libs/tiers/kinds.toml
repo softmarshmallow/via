@@ -1,0 +1,13 @@
+[kind.fix4]
+authority = "anchored"
+radius = 5
+
+[kind.fix4.defaults]
+k = 0
+h = 0
+
+[kind.fix4.effect.e]
+field = "role:surface"
+value = "= h"
+mask = "= 1 - smoothstep(0, 4, d)"
+

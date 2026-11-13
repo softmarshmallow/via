@@ -1,0 +1,51 @@
+format    = "via-case-1"
+summary   = "ford: build with downstream, without, with: the third and fourth runs: nothing ran."
+milestone = 1
+actions   = ["program", "trust", "one", "two", "three", "four"]
+
+# Every node of both texts is in the store after the first two builds (graph.md 3). The third
+# build's change report is new (the first build had no baseline), so it and the manifest that lists
+# its digest run (build.md 4, 11.2); the fourth's report equals the second's (the same text against
+# the same baseline id), so nothing runs. graph.md's row is corrected to say so.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "downstream"]
+exit = 0
+
+[action.one]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.two]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.three]
+via         = ["build", "world.toml", "--change", "downstream", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.three.nodes]
+ran = ["write:changes.json", "write:manifest.json"]
+
+[action.four]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.four.nodes]
+ran = []

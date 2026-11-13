@@ -1,0 +1,21 @@
+name       = "mill"
+extent     = [0, 0, 128, 128]
+resolution = 1
+include    = ["ways"]                  # lib/ways/kinds.toml declares kind lane, attribute width
+pack       = "primitive"
+
+[layer.dressing]
+file  = "layers/dressing.toml"
+owner = "props"
+rank  = 1
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+kind = "lane"
+path = [[0, 40], [128, 60]]
+
+[change.wide.feature.lane]
+width = 6

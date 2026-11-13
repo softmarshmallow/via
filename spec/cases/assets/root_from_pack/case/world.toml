@@ -1,0 +1,11 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "packs/p.toml"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.all]
+paint = "grass"

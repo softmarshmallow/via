@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "Three assets under plant/tree, one under plant; a scatter with @plant/tree: resolves to the three, ordered by id."
+milestone = 1
+actions   = ["build"]
+
+# Which of the three each candidate draws is rules.md 7.4's, from the order by id; that `weed`
+# (filed at `plant`) is never drawn is not expressible as a check on the manifest (no check asserts a
+# member absent). The build exits 0 with only the three's taxon possible.
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.ash]
+path     = "build/w/manifest.json"
+pointer  = "/assets/ash"
+includes = { taxon = "plant/tree" }

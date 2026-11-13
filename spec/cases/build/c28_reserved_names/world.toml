@@ -1,0 +1,6 @@
+name       = "nul"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.nul]
+base = 1

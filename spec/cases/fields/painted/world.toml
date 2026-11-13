@@ -1,0 +1,17 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.a]
+paint = "grass"
+mask  = 1
+
+[field.ground.then.b]
+paint = "rock"
+mask  = 0.3

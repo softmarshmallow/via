@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "Three fields reading in a ring, declared in reverse, over ford's sixteen chunks (4 by 4): one graph.cycle, first member the first in source order."
+milestone = 1
+actions   = ["build"]
+
+# ford's extent and resolution give sixteen chunks; the cycle is found once on the reference graph (graph.md 2.2), not per chunk. `c` is first in the file.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.cycle]
+code    = "graph.cycle"
+subject = "field.c"
+file    = "world.toml"
+line    = 6
+records = 1

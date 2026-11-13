@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "[asset.box.mount.start]; again with ground: identity.reserved, exit 1."
+milestone = 1
+actions   = ["start", "ground"]
+
+[action.start]
+via  = ["pack", "check", "start.toml"]
+exit = 1
+
+[action.start.diag.reserved]
+code = "identity.reserved"
+
+[action.ground]
+via  = ["pack", "check", "ground.toml"]
+exit = 1
+
+[action.ground.diag.reserved]
+code = "identity.reserved"

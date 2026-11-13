@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "extent = [0, 0, 10, 6], no resolution: 21 by 13 posts at 500 mm; no doc.missing_key."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.shape]
+path  = "build/w/fields/h.npy"
+shape = [13, 21]
+
+[action.build.file.corner]
+path  = "build/w/fields/h.npy"
+post  = [20, 12]
+value = 16

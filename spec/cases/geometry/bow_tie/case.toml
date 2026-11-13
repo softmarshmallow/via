@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A bow-tie ring; read: geom.self_crossing at the crossing."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via  = ["kernel", "read", "--in", "in.json", "--out", "out.json"]
+exit = 1
+
+[action.op.diag.self_crossing]
+code     = "geom.self_crossing"
+subject  = "cli"
+position = [5, 5]
+data     = { source = "r" }

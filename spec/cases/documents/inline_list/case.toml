@@ -1,0 +1,8 @@
+format    = "via-case-1"
+summary   = "`assets = [{ id = \"a\", weight = 2 }]` on a scatter: no diagnostic."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 0

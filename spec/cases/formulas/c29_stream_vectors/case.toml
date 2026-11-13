@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "The stream vectors of 8.2: via vectors gives them bit for bit."
+milestone = 1
+actions   = ["vectors"]
+
+# The vectors are numbers.md 10's copy in spec/vectors/numbers.toml, which formulas.md 8.2's streams are drawn from.
+
+[copy.vectors]
+from = "spec/vectors/numbers.toml"
+to   = "numbers.toml"
+
+[action.vectors]
+via  = ["vectors", "numbers.toml"]
+exit = 0
+
+[action.vectors.check.stream]
+fn   = "vectors_match"
+path = "numbers.toml"
+fns  = ["splitmix64", "stream", "draw", "unit"]

@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "A bookmark in layer 0 whose name attribute names a feature in layer 1: doc.upward_ref."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit = 1
+
+[action.merge.diag.upward_ref]
+code    = "doc.upward_ref"
+subject = "feature.view.toward"

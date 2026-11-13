@@ -1,0 +1,7 @@
+name       = "inp"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[step.look]
+when    = "lint"
+command = ["python", "steps/lint.py"]

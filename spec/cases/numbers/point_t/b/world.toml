@@ -1,0 +1,12 @@
+name       = "sq"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[feature.sq]
+region = [[0, 0], [10, 0], [10, 10], [0, 10]]
+
+[feature.well]
+at = [4, 4]
+
+[feature.m]
+on = { ref = "well", t = 0.5 }

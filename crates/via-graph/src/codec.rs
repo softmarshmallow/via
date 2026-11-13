@@ -25,9 +25,10 @@ pub trait DiagCodec: Sync {
     fn decode(&self, bytes: &[u8]) -> Option<Vec<Diag>>;
 }
 
-/// The codec for diagnostics with core codes. A step's own code (`step.<id>.<name>`), `related`
-/// entries and a stated `count` are not readable outside `via-diag`, so a diagnostic with any of
-/// them is refused (see [`DiagCodec::encode`]); the model crate supplies a codec that knows them.
+/// The codec for diagnostics with core codes and with a step's own code (`step.<id>.<name>`,
+/// rebuilt on reading through [`via_diag::step::arrive`], as it first arrived). `related` entries
+/// and a stated `count` are not readable outside `via-diag`, so a diagnostic with either is
+/// refused (see [`DiagCodec::encode`]): its node's value is used but not stored.
 pub struct CoreCodec;
 
 impl DiagCodec for CoreCodec {
@@ -55,12 +56,23 @@ impl DiagCodec for CoreCodec {
     }
 }
 
+/// The code a step's own diagnostic is written under: no core code is empty.
+const STEP_CODE: &str = "";
+
 fn encode_diag(e: &mut Enc, d: &Diag) -> Option<()> {
-    let code = match d.code() {
-        DiagCode::Core(c) => c.as_str(),
-        DiagCode::Step { .. } => return None,
-    };
-    e.str(code).str(&d.subject().to_string());
+    match d.code() {
+        DiagCode::Core(c) => {
+            e.str(c.as_str());
+        }
+        DiagCode::Step {
+            step,
+            name,
+            severity,
+        } => {
+            e.str(STEP_CODE).str(step).str(name).str(severity.as_str());
+        }
+    }
+    e.str(&d.subject().to_string());
     encode_site(e, d.site());
     e.str(d.message().as_str()).str(d.hint().as_str());
     match d.position() {
@@ -88,7 +100,11 @@ fn encode_diag(e: &mut Enc, d: &Diag) -> Option<()> {
 }
 
 fn decode_diag(d: &mut Dec) -> Option<Diag> {
-    let code = registry::lookup(&d.str()?)?;
+    let code = d.str()?;
+    if code == STEP_CODE {
+        return decode_step_diag(d);
+    }
+    let code = registry::lookup(&code)?;
     let subject = Subject::parse(&d.str()?).ok()?;
     let site = decode_site(d)?;
     let message = Text::new(d.str()?).ok()?;
@@ -111,6 +127,89 @@ fn decode_diag(d: &mut Dec) -> Option<Diag> {
         diag = diag.produced(d.str()?);
     }
     Some(diag)
+}
+
+/// A step's own diagnostic, rebuilt as it first arrived (`diagnostics.md` 6): the stored subject
+/// and position are already canonical, so the arrival world maps them as they are.
+fn decode_step_diag(d: &mut Dec) -> Option<Diag> {
+    struct Stored;
+    impl via_diag::step::StepWorld for Stored {
+        fn map_subject(&self, written: &str) -> Option<via_diag::step::Mapped> {
+            Some(via_diag::step::Mapped {
+                subject: Subject::parse(written).ok()?,
+                produced: None,
+                place: None,
+            })
+        }
+        fn to_lattice(&self, mm: f64) -> Option<i64> {
+            // Stored positions are already millimetres, written exactly as doubles.
+            (mm.is_finite() && mm.abs() < 9.0e15 && (mm as i64) as f64 == mm).then_some(mm as i64)
+        }
+        fn in_extent(&self, _x: i64, _y: i64) -> bool {
+            true
+        }
+        fn selector_site(&self, _step: &str, _selector: &str) -> Site {
+            Site::World
+        }
+    }
+    let step = d.str()?;
+    let name = d.str()?;
+    let severity = d.str()?;
+    let subject = d.str()?;
+    let _site = decode_site(d)?;
+    let message = d.str()?;
+    let hint = d.str()?;
+    let position = match d.byte()? {
+        0 => None,
+        1 => {
+            let x = d.u64()? as i64 as f64;
+            let y = d.u64()? as i64 as f64;
+            let mut p = vec![x, y];
+            if d.byte()? == 1 {
+                p.push(f64::from_bits(d.u64()?));
+            }
+            Some(p)
+        }
+        _ => return None,
+    };
+    let mut data = std::collections::BTreeMap::new();
+    for _ in 0..d.count()? {
+        let k = d.str()?;
+        data.insert(k, raw_of(&decode_value(d, 0)?)?);
+    }
+    let produced = match d.byte()? {
+        0 => None,
+        1 => Some(d.str()?),
+        _ => return None,
+    };
+    let input = via_diag::step::StepDiagIn {
+        severity: Some(severity),
+        code: Some(name),
+        subject: Some(subject),
+        message: Some(message),
+        hint: Some(hint),
+        position,
+        related: Vec::new(),
+        data: (!data.is_empty()).then_some(via_diag::step::RawValue::Table(data)),
+        explain: None,
+    };
+    let diag = via_diag::step::arrive(&step, &input, &Stored);
+    Some(match produced {
+        Some(n) => diag.produced(n),
+        None => diag,
+    })
+}
+
+/// A stored `data` value as a step sends it: only what a step's value can be.
+fn raw_of(v: &Value) -> Option<via_diag::step::RawValue> {
+    use via_diag::step::RawValue;
+    Some(match v {
+        Value::Bool(b) => RawValue::Bool(*b),
+        Value::Double(f) => RawValue::Number(f.get()),
+        Value::Text(s) => RawValue::Text(s.clone()),
+        Value::List(items) => RawValue::List(items.iter().map(raw_of).collect::<Option<_>>()?),
+        Value::Int(_) | Value::Length(_) => return None,
+    })
 }
 
 fn encode_path(e: &mut Enc, p: &KeyPath) {
@@ -167,6 +266,18 @@ fn encode_site(e: &mut Enc, s: &Site) {
         Site::World => {
             e.byte(6);
         }
+        Site::Text {
+            file,
+            line,
+            column,
+            bytes,
+        } => {
+            e.byte(7)
+                .str(file)
+                .u64(u64::from(*line))
+                .u64(u64::from(*column));
+            e.u64(u64::from(bytes[0])).u64(u64::from(bytes[1]));
+        }
     }
 }
 
@@ -192,6 +303,19 @@ fn decode_site(d: &mut Dec) -> Option<Site> {
         }
         5 => Site::Argument(u32::try_from(d.u64()?).ok()?),
         6 => Site::World,
+        7 => {
+            let file = d.str()?;
+            let mut n = [0u32; 4];
+            for v in &mut n {
+                *v = u32::try_from(d.u64()?).ok()?;
+            }
+            Site::Text {
+                file,
+                line: n[0],
+                column: n[1],
+                bytes: [n[2], n[3]],
+            }
+        }
         _ => return None,
     })
 }
@@ -302,6 +426,22 @@ pub(crate) fn encode_val(v: &Val, codec: &dyn DiagCodec) -> Encoded {
     }
 }
 
+/// A stored object's value bytes, whether or not its value had diagnostics: the bytes inside a
+/// `"via-value-1"` object, else the object itself (a value with none is stored as its bytes).
+/// For a reader that has an object by digest and no key record, such as a node defined last
+/// reading a step's returned value.
+pub fn object_bytes(object: &[u8]) -> Vec<u8> {
+    let mut d = Dec::new(object);
+    if d.str().as_deref() == Some("via-value-1") {
+        if let Some(b) = d.bytes() {
+            if d.bytes().is_some() && d.done() {
+                return b.to_vec();
+            }
+        }
+    }
+    object.to_vec()
+}
+
 /// Reads an object back, given the diagnostics from its key record.
 pub(crate) fn decode_object(object: &[u8], diags: &[Diag], codec: &dyn DiagCodec) -> Option<Val> {
     if diags.is_empty() {
@@ -347,6 +487,56 @@ mod tests {
         let b = CoreCodec.encode(&ds).expect("storable");
         assert_eq!(CoreCodec.decode(&b), Some(ds));
         assert!(CoreCodec.decode(&b[..b.len() - 1]).is_none());
+    }
+
+    #[test]
+    fn step_diagnostics_round_trip() {
+        struct World;
+        impl via_diag::step::StepWorld for World {
+            fn map_subject(&self, written: &str) -> Option<via_diag::step::Mapped> {
+                Some(via_diag::step::Mapped {
+                    subject: Subject::parse(written).ok()?,
+                    produced: None,
+                    place: None,
+                })
+            }
+            fn to_lattice(&self, metres: f64) -> Option<i64> {
+                Some((metres * 1000.0) as i64)
+            }
+            fn in_extent(&self, _x: i64, _y: i64) -> bool {
+                true
+            }
+            fn selector_site(&self, _step: &str, _selector: &str) -> Site {
+                Site::World
+            }
+        }
+        let input = via_diag::step::StepDiagIn {
+            severity: Some("info".into()),
+            code: Some("lane_gap".into()),
+            subject: Some("feature.lane_west".into()),
+            message: Some("the lane ends 0 m from the crossing".into()),
+            hint: Some("nothing to do".into()),
+            position: Some(vec![153.63, 115.48, 25.25]),
+            related: Vec::new(),
+            data: Some(via_diag::step::RawValue::Table(
+                [
+                    ("value".to_string(), via_diag::step::RawValue::Number(0.0)),
+                    (
+                        "of".to_string(),
+                        via_diag::step::RawValue::List(vec![via_diag::step::RawValue::Text(
+                            "crossing".into(),
+                        )]),
+                    ),
+                ]
+                .into(),
+            )),
+            explain: None,
+        };
+        let d = via_diag::step::arrive("checks", &input, &World);
+        assert!(matches!(d.code(), DiagCode::Step { .. }), "{d:?}");
+        let ds = vec![d, sample()];
+        let b = CoreCodec.encode(&ds).expect("a step's own code is kept");
+        assert_eq!(CoreCodec.decode(&b), Some(ds));
     }
 
     #[test]

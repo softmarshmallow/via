@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "A sibling module in the plain lint's code folder edited; rebuild: the lint ran without the module in inputs."
+milestone = 1
+actions   = ["program", "trust", "first", "edit", "retrust", "again"]
+
+# The code folder's digest is in the step's key (protocol.md 6.3, 7), so an edited sibling re-runs it; trust is recorded again, since an edited code folder is untrusted (protocol.md case 8).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.edit]
+write = "steps/helper.py"
+text  = "VALUE = 2\n"
+
+[action.retrust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.again]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.again.nodes]
+ran_includes = ["step:look"]

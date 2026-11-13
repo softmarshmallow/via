@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "An unrequested inline change writing widht: doc.idle_change warning, data.code doc.unknown_key; exit 0."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 0
+
+[action.merge.diag.idle_change]
+code     = "doc.idle_change"
+severity = "warning"
+file     = "world.toml"
+line     = 16
+data     = { code = "doc.unknown_key" }

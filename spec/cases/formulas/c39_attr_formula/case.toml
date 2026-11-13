@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "lane_east.width = \"= lane_west.width + 0.5\": 4.0. Two attribute formulas reading each other: the graph's cycle report with the chain."
+milestone = 1
+actions   = ["read", "cycle"]
+
+[action.read]
+via  = ["build", "read/world.toml", "--lib", "{work}/libs", "--out", "read/build/w"]
+exit = 0
+out  = "read/build/w"
+
+[action.read.file.east]
+path  = "read/build/w/fields/m.npy"
+post  = [64, 12]
+value = 4
+
+[action.cycle]
+via         = ["build", "cycle/world.toml", "--lib", "{work}/libs", "--out", "cycle/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "cycle/build/w"
+
+[action.cycle.diag.cycle]
+code = "graph.cycle"

@@ -1,0 +1,87 @@
+name    = "ford"
+extent  = [0, 0, 256, 256]
+include = ["land", "water", "ways", "review"]   # kinds as data; the core knows none of these words
+pack    = "primitive"
+
+[field.height]
+role = "surface"
+base = "= 20 + 0.06 * y + 5 * fbm(110, 3, seed = 'hills')"
+
+[field.clearing]                          # the pad and the beck write it (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+[field.water]                             # the beck writes it (tag:water_level); dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[feature.beck]
+kind = "beck"
+authority = "anchored"
+path = [[150, 256], [140, 170], [160, 90], [150, 0]]
+
+[feature.ford]                            # the named thing that owns where lane and water meet (R18)
+kind = "ford"
+on = { ref = "beck", t = 0.55 }
+
+[feature.lane_west]
+kind = "lane"
+path = [[0, 120]]
+ends_at = "ford"
+
+[feature.lane_east]
+kind = "lane"
+starts_at = "ford"
+path = [[256, 140]]
+
+[feature.at_ford]                         # on the lane short of the ford; eye height is the review library's default
+kind = "bookmark"
+on = { ref = "lane_west", t = 0.93 }
+toward = "ford"
+
+[feature.on_bank]                         # on the bank along the water's edge
+kind = "bookmark"
+on = { ref = "beck", t = 0.45, offset = 4 }
+toward = "ford"
+
+[feature.to_door]                         # from the lane to the door
+kind = "bookmark"
+on = { ref = "lane_west", t = 0.6 }
+toward = "cottage"
+
+[feature.in_trees]                        # along the lane through the trees
+kind = "bookmark"
+on = { ref = "lane_east", t = 0.4 }
+toward = "lane_east.end"
+
+[instance.cottage]
+asset = "house_low"
+ground = "pad"
+margin = 1
+on = { ref = "lane_west", t = 0.6, offset = 12 }
+face = "toward"
+
+[scatter.trees]
+assets = ["@plant/tree"]
+spacing = 7
+density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), near('lane_east', 16))"   # a wood along lane_east; the scatter applies keep_out itself
+
+[step.checks]                             # the one lint step, through the SDK
+when = "lint"
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+
+[change.downstream.feature.ford]          # the change scenario is one line
+on = { ref = "beck", t = 0.8 }
+
+[change.hand.pin.oak]                     # the hand edits the spacing row holds
+asset = "tree_oak"
+at = [200, 60]
+by = ["trees"]
+
+[change.hand.clear.gap]
+at = [208, 208]
+radius = 6
+by = ["trees"]
+
+[change.denser.scatter.trees]
+spacing = 6

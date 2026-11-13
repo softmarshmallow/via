@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "Written links that disagree (a path that follows another and ends at its end): authority.order_cycle naming both and each link's direction; exit 1."
+milestone = 1
+actions   = ["build"]
+
+# The row's form, `a` starting at `b.end` and `b` at `a.end`, makes each path's shape read the
+# other's (graph.md 2: an end is an edge to that path's shape), which is graph.cycle before any order
+# is formed. authority.md 4.3 names the other cycle that needs written links that disagree: a feature
+# that both follows and arrives at another. `b` follows `a` (b later) and ends at `a.end` (a later,
+# the owner of the meeting). (open) whether `follows` with `ends_at` is a legal pair: geometry.md 4.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.order_cycle]
+code = "authority.order_cycle"

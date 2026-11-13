@@ -24,6 +24,23 @@ pub const FORMAT: &str = "via-build-0";
 /// a value. Written in `manifest.json`'s `engine` and in every key.
 pub const EPOCH: u64 = 1;
 
+/// The epoch this binary builds with: [`EPOCH`], and in a test build (debug assertions on) plus
+/// `VIA_TEST_EPOCH_OFFSET` when it is set to an integer (`graph.md` 7, case `epoch`). It goes
+/// into every node key, the build key, the manifest's `engine` and the run report's
+/// `engine.epoch`, so a raised epoch is seen to reuse nothing. A release binary ignores the
+/// variable.
+pub fn epoch() -> u64 {
+    if cfg!(debug_assertions) {
+        if let Some(off) = std::env::var("VIA_TEST_EPOCH_OFFSET")
+            .ok()
+            .and_then(|v| v.trim().parse::<u64>().ok())
+        {
+            return EPOCH.saturating_add(off);
+        }
+    }
+    EPOCH
+}
+
 /// Whether a build path is a file of the `id` rather than a report or `.previous`.
 pub fn is_listed_file(p: &str) -> bool {
     !matches!(
@@ -232,6 +249,35 @@ pub fn pieces(ring: &[(i64, i64)]) -> J {
     ])])
 }
 
+/// Every piece of a region, shell then holes, in canonical form (9.1).
+fn all_pieces(rings: &[Vec<Vec<(i64, i64)>>]) -> J {
+    J::Arr(
+        rings
+            .iter()
+            .filter(|pc| !pc.is_empty())
+            .map(|pc| {
+                obj([
+                    (
+                        "holes",
+                        J::Arr(
+                            pc[1..]
+                                .iter()
+                                .map(|h| {
+                                    J::Arr(canonical_ring(h, false).into_iter().map(xy).collect())
+                                })
+                                .collect(),
+                        ),
+                    ),
+                    (
+                        "outer",
+                        J::Arr(canonical_ring(&pc[0], true).into_iter().map(xy).collect()),
+                    ),
+                ])
+            })
+            .collect(),
+    )
+}
+
 /// One feature of `features.json` (9.1).
 pub fn feature_json(name: &str, f: &FeatureOut, layer: Option<&str>, surface: &Surface) -> J {
     let mut m = J::obj();
@@ -258,6 +304,9 @@ pub fn feature_json(name: &str, f: &FeatureOut, layer: Option<&str>, surface: &S
                 "points".into(),
                 J::Arr(f.points.iter().map(|p| surface.xyz(*p)).collect()),
             );
+        }
+        _ if !f.rings.is_empty() => {
+            m.insert("pieces".into(), all_pieces(&f.rings));
         }
         _ => {
             m.insert("pieces".into(), pieces(&f.points));
@@ -372,7 +421,10 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     head.insert("format".into(), J::s(FORMAT));
     head.insert(
         "engine".into(),
-        obj([("epoch", J::Num(EPOCH.to_string())), ("name", J::s("via"))]),
+        obj([
+            ("epoch", J::Num(epoch().to_string())),
+            ("name", J::s("via")),
+        ]),
     );
     head.insert("world".into(), J::s(input.name));
     head.insert("seed".into(), J::s(via_num::write_seed(input.seed)));

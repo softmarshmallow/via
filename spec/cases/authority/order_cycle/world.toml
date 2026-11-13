@@ -1,0 +1,20 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.a]
+kind = "sha"
+path = [[0, 8], [16, 8]]
+k    = 1
+
+[feature.b]
+kind = "sha"
+follows = { ref = "a", span = [0, 0.5] }
+k    = 2
+ends_at = "a.end"

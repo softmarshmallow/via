@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "a scalar row with only mask; a weights row with no paint: field.row_missing at each row's line."
+milestone = 1
+actions   = ["build"]
+
+# Located at each row's header (documents.md 2.1: a fault about a table as a whole). The world's top keys are lines 1 to 5.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.row_missing]
+code = "field.row_missing"
+file = "world.toml"
+line = 11
+
+[action.build.diag.weights]
+code = "field.row_missing"
+file = "world.toml"
+line = 18

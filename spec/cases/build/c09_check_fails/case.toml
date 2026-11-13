@@ -1,0 +1,130 @@
+format    = "via-case-1"
+summary   = "A ford build damaged five ways: via check exits 1 with check.digest, check.unlisted, check.header (and check.digest), check.not_canonical, check.id, naming the file; via check with no argument: exit 2."
+milestone = 1
+actions   = ["program", "trust", "b1", "flip", "c1", "b2", "add", "c2", "unadd", "b3", "cut", "c3", "b4", "keys", "c4", "b5", "noid", "c5", "bare"]
+
+# Each damage follows a fresh build of the same text, which writes the damaged file again
+# (graph.build_file_restored, graph.md 6.2) or the whole directory. features.json's keys reordered is
+# written as a member put before `features`, out of bytewise order. `id` removed is written as its
+# key renamed, so the manifest holds no `id`.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.b1]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.flip]
+flip = "build/ford/fields/height.npy"
+at   = 300
+
+[action.c1]
+via         = ["check", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c1.diag.digest]
+code = "check.digest"
+
+[action.b2]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+no_rerun    = "restores the damaged directory"
+
+[action.add]
+write = "build/ford/extra.txt"
+text  = "x\n"
+
+[action.c2]
+via         = ["check", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c2.diag.unlisted]
+code = "check.unlisted"
+
+[action.unadd]
+delete = "build/ford/extra.txt"
+
+[action.b3]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+no_rerun    = "restores the damaged directory"
+
+[action.cut]
+truncate = "build/ford/instances/x.npy"
+bytes    = 100
+
+[action.c3]
+via         = ["check", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c3.diag.header]
+code = "check.header"
+
+[action.c3.diag.digest]
+code = "check.digest"
+
+[action.b4]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+no_rerun    = "restores the damaged directory"
+
+[action.keys]
+replace = "build/ford/features.json"
+find    = "{\"features\":"
+with    = "{\"zz\":0,\"features\":"
+
+[action.c4]
+via         = ["check", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c4.diag.not_canonical]
+code = "check.not_canonical"
+
+[action.b5]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+no_rerun    = "restores the damaged directory"
+
+[action.noid]
+replace = "build/ford/manifest.json"
+find    = "\"id\":\""
+with    = "\"xd\":\""
+
+[action.c5]
+via         = ["check", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c5.diag.id]
+code = "check.id"
+
+[action.bare]
+via  = ["check"]
+exit = 2
+
+[action.bare.diag.usage]
+code = "cli.usage"

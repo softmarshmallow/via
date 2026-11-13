@@ -1,39 +1,58 @@
 # The water library: running water as kinds (docs/plan.md, "Ford's libraries").
 #
 # Conventions this library documents for a world that includes it:
-# - The ground is the field with role `surface` (fields.md 2.1). The beck cuts its bed into it.
+# - The ground is the field with role `surface` (fields.md 2.1). The beck cuts its channel into it.
 # - Water level is a field tagged `water_level` (fields.md 2.2, build.md 6.4), never a core role.
 #   Write its base as the ground, `base = "= f('height')"`, so where it is dry it equals the ground
 #   and the depth `water - ground` is 0. A loader is pointed at it with
 #   `--option water=tag:water_level` (build.md 15.1).
+# - The water is a surface over the channel, level across it: at each point of the beck it stands
+#   `flow` metres above the channel floor on the beck's line, and wets only the ground below that.
+#   It is never "so far above the ground beneath": that would lift it up the banks.
 # - What the beck keeps free of trees and props it writes on the field with role `keep_out`.
 #
-# Profiles read `d` only, never `t` (geometry.md 2.6: the beck bends, so a frame read far from its
-# line would jump). The water surface takes its fall along the beck from the ground beneath it.
+# Cross profiles read `d` only, never `t` (geometry.md 2.6: the beck bends, so a frame read far
+# from its line would jump). The water's fall along the beck comes from the floor on its line,
+# read by `smoothed_along`, so it is level across the channel and falls as the floor falls.
 
 [kind.beck]
 authority = "shaped"                      # a world that means it firmly writes "anchored" (ford does)
 radius    = 16
 
 [kind.beck.defaults]
-width = 6                                 # metres across the channel floor
+width = 6                                 # metres across the water
 depth = 1.2                               # metres the floor lies below the ground it was cut into
+flow  = 0.3                               # metres of water over the floor on the beck's line
+bank_grade = 0.2                          # the steepest bank, rise over run: a walker climbs out anywhere
 
 [kind.beck.let]
-cut       = "= 1 - smoothstep(width / 2, width / 2 + 6, d)"   # 1 on the floor, 0 at the top of the bank
-freeboard = "= 0.3"                       # metres from the water to the top of the bank
+toe  = "= width / 2 - flow / bank_grade"  # where the floor ends and the bank begins, from the line, so
+                                          # the water meets the bank `width / 2` from the line
+bank = "= 11"                             # metres from the toe within which the bank meets the ground
 
-[kind.beck.effect.bed]                    # lowers the ground across `width`, banks over 6 m each side
+# The floor is level across the channel at `depth` below the ground on the beck's line (smoothed
+# along it), and the bank rises from the toe at `bank_grade` until it meets the ground. It cuts and
+# never fills, so on a hillside the high side is a wider cutting and the slope stays `bank_grade`:
+# a bank cut as a share of the ground above would add the hill's own slope to it. A bank that has
+# not met the ground `bank` metres from the toe (at the defaults, a hill rising more than about 1 in
+# 13 across the beck) fades into it over the next metre, and is steeper there.
+#
+# A crossing that stands on the beck (lib/ways' `ford`) reads this bank where it lies under its own
+# approach, so the approach is no steeper than `bank_grade` within the beck's reach. Keep it at or
+# below the crossing's `grade`; above it, the crossing would cut the bank and the two anchored
+# statements would disagree (authority.md 5).
+[kind.beck.effect.bed]                    # lowers the ground: the floor across the water, the banks above it
 field = "role:surface"
-value = "= v - depth"
-mask  = "= cut"
+value = "= min(v, smoothed_along(4) - depth + bank_grade * max(0, d - toe))"
+mask  = "= 1 - smoothstep(toe + bank, toe + bank + 1, d)"
 
 [kind.beck.effect.bank]                   # no tree on the floor or the bank
 field = "role:keep_out"
 value = "= 1"
 mask  = "= 1 - smoothstep(width / 2 + 2, width / 2 + 4, d)"
 
-[kind.beck.effect.level]                  # the water surface: `freeboard` below the ground the bed was cut into
+[kind.beck.effect.level]                  # the water surface: `flow` over the floor on the line, level across
 field = "tag:water_level"
-value = "= v + max(0, depth * cut - freeboard)"
-mask  = "= 1 - smoothstep(width / 2 + 6, width / 2 + 7, d)"   # beyond the bank the value is `v`; fade before the ring
+value = "= max(v, smoothed_along(4) + flow)"
+mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 4, d)"   # up the bank, well above the water's edge;
+                                                               # beyond, a cutting below the level stays dry

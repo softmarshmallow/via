@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "Same as the first cells case; move cross_ew's west end to [0, 52]: only the cells of the cross_ew and cross_ns edge sides change."
+milestone = 1
+actions   = ["before", "after"]
+
+# (open) the row names the cells that may change; comparing the others needs a pointer into two outputs. Both run; the first holds 10 cells.
+
+[action.before]
+via  = ["kernel", "cells", "--in", "a.json", "--out", "a.out.json"]
+exit = 0
+
+[action.before.check.n]
+fn      = "json_count"
+path    = "a.out.json"
+pointer = "/cells"
+count   = 10
+
+[action.after]
+via         = ["kernel", "cells", "--in", "b.json", "--out", "b.out.json"]
+exit        = 0
+diagnostics = "includes"

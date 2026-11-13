@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "A plain lint that writes the time beside its diagnostics; build; build with --rerun-step: graph.step_unstable in the run report, not in diagnostics.json."
+milestone = 1
+actions   = ["program", "trust", "first", "rerun"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "the lint's output differs by design"
+
+[action.rerun]
+via      = ["build", "world.toml", "--rerun-step", "look", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "the lint's output differs by design"
+
+[action.rerun.diag.step_unstable]
+code = "graph.step_unstable"
+from = "run"
+
+[action.rerun.same.d]
+action = "first"
+what   = "diagnostics"

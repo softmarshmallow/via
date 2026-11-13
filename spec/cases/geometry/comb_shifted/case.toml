@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "comb and a copy shifted by [0.7, 0.3]; booleans: both closure identities exact on the noded inputs."
+milestone = 1
+actions   = ["union", "inter", "diff_ab", "diff_ba"]
+
+# (open) The identities (|A u B| + |A n B| = |A| + |B|, and |A u B| = |A - B| + |B - A| + |A n B|)
+# need the twice-areas of four outputs summed; no named check computes a region's area yet. The
+# kernel checks closure itself (geom.internal, exit 3), so exit 0 on each is what is asserted.
+
+[action.union]
+via  = ["kernel", "boolean", "--in", "u.json", "--out", "u.out.json"]
+exit = 0
+
+[action.inter]
+via  = ["kernel", "boolean", "--in", "i.json", "--out", "i.out.json"]
+exit = 0
+
+[action.diff_ab]
+via  = ["kernel", "boolean", "--in", "d1.json", "--out", "d1.out.json"]
+exit = 0
+
+[action.diff_ba]
+via  = ["kernel", "boolean", "--in", "d2.json", "--out", "d2.out.json"]
+exit = 0

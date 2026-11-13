@@ -1,0 +1,85 @@
+format    = "via-case-1"
+summary   = ".5, 5., 1e, 2e5x, 1.e3, 1_0, 1e400, 1e-400 as a base: formula.syntax each; \"= 1e-3\": the bits of 0.001, narrowed."
+milestone = 1
+actions   = ["n0", "n1", "n2", "n3", "n4", "n5", "n6", "n7", "milli"]
+
+[action.n0]
+via         = ["build", "n0/world.toml", "--lib", "{work}/libs", "--out", "n0/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n0/build/w"
+
+[action.n0.diag.syntax]
+code = "formula.syntax"
+
+[action.n1]
+via         = ["build", "n1/world.toml", "--lib", "{work}/libs", "--out", "n1/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n1/build/w"
+
+[action.n1.diag.syntax]
+code = "formula.syntax"
+
+[action.n2]
+via         = ["build", "n2/world.toml", "--lib", "{work}/libs", "--out", "n2/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n2/build/w"
+
+[action.n2.diag.syntax]
+code = "formula.syntax"
+
+[action.n3]
+via         = ["build", "n3/world.toml", "--lib", "{work}/libs", "--out", "n3/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n3/build/w"
+
+[action.n3.diag.syntax]
+code = "formula.syntax"
+
+[action.n4]
+via         = ["build", "n4/world.toml", "--lib", "{work}/libs", "--out", "n4/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n4/build/w"
+
+[action.n4.diag.syntax]
+code = "formula.syntax"
+
+[action.n5]
+via         = ["build", "n5/world.toml", "--lib", "{work}/libs", "--out", "n5/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n5/build/w"
+
+[action.n5.diag.syntax]
+code = "formula.syntax"
+
+[action.n6]
+via         = ["build", "n6/world.toml", "--lib", "{work}/libs", "--out", "n6/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n6/build/w"
+
+[action.n6.diag.syntax]
+code = "formula.syntax"
+
+[action.n7]
+via         = ["build", "n7/world.toml", "--lib", "{work}/libs", "--out", "n7/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "n7/build/w"
+
+[action.n7.diag.syntax]
+code = "formula.syntax"
+
+[action.milli]
+via  = ["build", "milli/world.toml", "--lib", "{work}/libs", "--out", "milli/build/w"]
+exit = 0
+out  = "milli/build/w"
+
+[action.milli.file.all]
+path = "milli/build/w/fields/f.npy"
+all  = 0.001

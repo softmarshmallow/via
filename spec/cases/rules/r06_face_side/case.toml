@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "face = \"toward\" on a point feature: geom.face_side, exit 1; then face = \"along\" on an instance facing 90: placed, facing 90."
+milestone = 1
+actions   = ["toward", "along"]
+
+# Both the host and the placed box face 90 (90000), so `all` holds.
+
+[action.toward]
+via         = ["build", "a/world.toml", "--lib", "{work}/libs", "--out", "a/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.toward.diag.face_side]
+code = "geom.face_side"
+
+[action.along]
+via  = ["build", "b/world.toml", "--lib", "{work}/libs", "--out", "b/build/w"]
+exit = 0
+out  = "b/build/w"
+
+[action.along.file.f]
+path = "b/build/w/instances/face.npy"
+all  = 90000

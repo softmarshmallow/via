@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "ground = \"pad\", margin = 1.5, at [50, 50]: cottage.ground is an 11 m by 9 m region in kind:pad."
+milestone = 1
+actions   = ["build"]
+
+# house_low is 8 m by 6 m about its base centre; grown by 1.5 m it is 11 m by 9 m: x 44.5 to 55.5, y 45.5 to 54.5.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.ring]
+path    = "build/w/features.json"
+pointer = "/footprints/0/pieces/0/outer"
+value   = [[44.5, 45.5], [55.5, 45.5], [55.5, 54.5], [44.5, 54.5]]
+
+[action.build.file.kind]
+path    = "build/w/features.json"
+pointer = "/footprints/0/kind"
+value   = "pad"

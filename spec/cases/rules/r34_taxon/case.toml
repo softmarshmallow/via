@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "[\"@plant/tree\", \"rock_a\"]; add an asset under plant/tree; rebuild: every instance that drew rock_a keeps it and is unmoved."
+milestone = 1
+actions   = ["base", "more", "again"]
+
+# (open) asserting that no rock_a instance is in the report needs a per-asset report check; both build.
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.more]
+write = "pack.toml"
+text  = "[taxon.\"plant/tree\"]\n\n[asset.ash]\nprimitive = \"sphere\"\nsize      = [3, 3, 6]\ntaxon     = \"plant/tree\"\n\n[asset.rock_a]\nprimitive = \"sphere\"\nsize      = [1.2, 1, 0.6]\n\n[asset.birch]\nprimitive = \"sphere\"\nsize      = [3, 3, 6]\ntaxon     = \"plant/tree\"\n"
+
+[action.again]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

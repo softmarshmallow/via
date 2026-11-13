@@ -233,19 +233,21 @@ fn mask_keeps_every_piece() {
         .pieces
         .iter()
         .any(|p| p.shell.contains(&P::new(10_000, 0))));
-    // Windows: every window's rings equal the whole's clipped to it.
+    // Windows (half-open, `numbers.md` 6): every window's rings equal the whole's clipped to
+    // the rectangle of its posts.
     for w in [
-        [0usize, 0, 10, 8],
-        [0, 0, 5, 5],
-        [5, 0, 10, 8],
-        [3, 2, 8, 6],
+        [0usize, 0, 11, 9],
+        [0, 0, 6, 6],
+        [5, 0, 11, 9],
+        [3, 2, 9, 7],
     ] {
         let (rw, _) = mask(g, &v, "= x", Some(w)).unwrap();
+        let (a, b) = (w[2] as i64 - 1, w[3] as i64 - 1);
         let win = Region::from_ring(vec![
             m(w[0] as i64, w[1] as i64),
-            m(w[2] as i64, w[1] as i64),
-            m(w[2] as i64, w[3] as i64),
-            m(w[0] as i64, w[3] as i64),
+            m(a, w[1] as i64),
+            m(a, b),
+            m(w[0] as i64, b),
         ]);
         let clipped = boolean(BoolOp::Intersection, &[r.clone(), win]).unwrap();
         assert_eq!(rw, clipped, "window {w:?}");

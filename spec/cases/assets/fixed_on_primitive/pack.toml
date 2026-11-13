@@ -1,0 +1,11 @@
+[defaults]
+pivot = "base_centre"
+
+[asset.a]
+primitive = "box"
+size      = [1, 1, 1]
+
+[asset.b]
+primitive = "box"
+size      = [1, 1, 1]
+pivot     = "base_centre"

@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "\"= if(sqrt(x - 100) > 1, 1, 0)\": at sqrt; \"= 1 / exp(1000)\": at exp; \"= x > 1 or sqrt(x - 100) > 0\": at sqrt."
+milestone = 1
+actions   = ["cond", "exp", "or"]
+
+[action.cond]
+via         = ["build", "cond/world.toml", "--lib", "{work}/libs", "--out", "cond/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "cond/build/w"
+
+[action.cond.diag.not_finite]
+code = "formula.not_finite"
+
+[action.exp]
+via         = ["build", "exp/world.toml", "--lib", "{work}/libs", "--out", "exp/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "exp/build/w"
+
+[action.exp.diag.not_finite]
+code = "formula.not_finite"
+
+[action.or]
+via         = ["build", "or/world.toml", "--lib", "{work}/libs", "--out", "or/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "or/build/w"
+
+[action.or.diag.not_finite]
+code = "formula.not_finite"

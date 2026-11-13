@@ -1,0 +1,14 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.m]
+tags = ["mark"]
+
+[feature.pond]
+kind   = "pond"
+region = [[2, 2], [6, 2], [6, 6], [2, 6]]
+
+[field.s]
+base = "= sdist('pond', 20)"

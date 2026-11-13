@@ -1,0 +1,20 @@
+name       = "nums"
+extent     = [0, 0, 128, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.lane]
+path = [[0, 32], [64, 32]]
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+density = "= if(x < 60, 1, 0)"
+
+[change.rocks.scatter.rocks]
+assets  = ["rock_a"]
+spacing = 5
+density = "= if(x > 70, 1, 0)"

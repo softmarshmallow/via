@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "An anchored pad inside an anchored terrace whose bank fades; pad value = \"= v\": pad digit after terrace digit; no diagnostic."
+milestone = 1
+actions   = ["build"]
+
+# authority.md's order cases: each entry writes `value = "= v * 10 + k"` with mask 1 at its
+# shape (`1 - smoothstep(0, 1, d)`, so 1 on the shape and 0 by 1 m off it), on a field whose base is
+# 0; the post's value spells the order. The kinds are the case's own library `tiers` (libs/).
+# The pad asks `v`. After the terrace it reads 1 and agrees; had it come first it would read 0,
+# and the terrace's 1 against it would be authority.conflict. So exit 0 with no diagnostic (mode
+# exact) says the pad came after, as containment puts it.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.order]
+path  = "build/w/fields/height.npy"
+post  = [8, 8]
+value = 1

@@ -1,0 +1,7 @@
+name       = "tiny"
+extent     = [0, 0, 1, 1]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= fbm(60, 3, octaves = 4)"

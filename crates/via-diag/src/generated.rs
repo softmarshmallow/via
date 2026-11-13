@@ -737,8 +737,8 @@ pub(crate) static ROWS: [Row; 324] = [
         severity: Severity::Warning,
         chapter: "documents",
         milestone: 1,
-        summary: "A change adds an entity whose id is near an existing one.",
-        data: &[],
+        summary: "A change adds an entity whose id is near an existing one; the nearest id.",
+        data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "A change adds an entity whose id is near an existing one.\n",
@@ -1012,8 +1012,8 @@ pub(crate) static ROWS: [Row; 324] = [
         severity: Severity::Error,
         chapter: "documents",
         milestone: 1,
-        summary: "Not TOML 1.0.0, not UTF-8, or a `[[x]]` header; position from the parser.",
-        data: &[],
+        summary: "Not TOML 1.0.0, not UTF-8 (the byte offset in `data.offset`), or a `[[x]]` header (its exact rewrite in `data.rewrite`, section 1); position from the parser.",
+        data: &["offset", "rewrite"],
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "The file is not TOML 1.0.0, not UTF-8, or uses an array-of-tables header. Files are flat and keyed\nby id: [collection.id], never [[collection]].\nCorrect the text at the position given; for [[x]], write one [x.<id>] per item.\nBad:   [[feature]]\n       id = \"a\"\nFixed: [feature.a]\n",
@@ -1110,8 +1110,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "field.file_coarse",
         severity: Severity::Warning,
         chapter: "fields",
-        milestone: 1,
-        summary: "A level step above 0.1 m on a field in `m`; the step.",
+        milestone: 2,
+        summary: "A level step above 0.1 m on a field in `m`; the step (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -1176,8 +1176,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "field.file_profile",
         severity: Severity::Info,
         chapter: "fields",
-        milestone: 1,
-        summary: "A PNG's gamma, colour profile or `tRNS` was not applied.",
+        milestone: 2,
+        summary: "A PNG's gamma, colour profile or `tRNS` was not applied (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -1187,8 +1187,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "field.file_range",
         severity: Severity::Error,
         chapter: "fields",
-        milestone: 1,
-        summary: "`range` with `lo == hi`.",
+        milestone: 2,
+        summary: "`range` with `lo == hi` (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -1297,8 +1297,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "field.step_base",
         severity: Severity::Error,
         chapter: "fields",
-        milestone: 1,
-        summary: "A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare.",
+        milestone: 2,
+        summary: "A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -1308,8 +1308,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "field.step_layer",
         severity: Severity::Error,
         chapter: "fields",
-        milestone: 1,
-        summary: "A step's row on a field of a higher layer.",
+        milestone: 2,
+        summary: "A step's row on a field of a higher layer (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2045,8 +2045,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.bad_key",
         severity: Severity::Error,
         chapter: "identity",
-        milestone: 1,
-        summary: "A step returned a key that breaks 2.2, or an unknown class; says which rule.",
+        milestone: 2,
+        summary: "A step returned a key that breaks 2.2, or an unknown class; says which rule (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2078,8 +2078,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.key_collision",
         severity: Severity::Error,
         chapter: "identity",
-        milestone: 1,
-        summary: "One step gave two things one key; names both positions.",
+        milestone: 2,
+        summary: "One step gave two things one key; names both positions (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2100,8 +2100,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.lock_asset_missing",
         severity: Severity::Error,
         chapter: "identity",
-        milestone: 1,
-        summary: "A recorded item's asset is no longer bound by the pack.",
+        milestone: 3,
+        summary: "A recorded item's asset is no longer bound by the pack (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2111,8 +2111,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.lock_differs",
         severity: Severity::Info,
         chapter: "identity",
-        milestone: 1,
-        summary: "What the producers would now do inside a lock, and live names dropped for a recorded one, as counts.",
+        milestone: 3,
+        summary: "What the producers would now do inside a lock, and live names dropped for a recorded one, as counts (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2122,8 +2122,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.lock_ground_moved",
         severity: Severity::Warning,
         chapter: "identity",
-        milestone: 1,
-        summary: "Recorded items stand on ground that moved; count and largest change.",
+        milestone: 3,
+        summary: "Recorded items stand on ground that moved; count and largest change (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2133,8 +2133,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.lock_pin_clash",
         severity: Severity::Error,
         chapter: "identity",
-        milestone: 1,
-        summary: "A recorded item overlaps a pin; names both.",
+        milestone: 3,
+        summary: "A recorded item overlaps a pin; names both (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2144,8 +2144,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.lock_rerecorded",
         severity: Severity::Info,
         chapter: "identity",
-        milestone: 1,
-        summary: "A record was replaced; counts of the difference.",
+        milestone: 3,
+        summary: "A record was replaced; counts of the difference (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2155,8 +2155,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.lock_unrecorded",
         severity: Severity::Error,
         chapter: "identity",
-        milestone: 1,
-        summary: "A lock has no record.",
+        milestone: 3,
+        summary: "A lock has no record (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2210,8 +2210,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.of_ambiguous",
         severity: Severity::Error,
         chapter: "identity",
-        milestone: 1,
-        summary: "`of` names a maker with several classes and no `class`.",
+        milestone: 3,
+        summary: "`of` names a maker with several classes and no `class` (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2309,8 +2309,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "identity.unknown_lock",
         severity: Severity::Error,
         chapter: "identity",
-        milestone: 1,
-        summary: "`via lock` was given an id that is no lock.",
+        milestone: 3,
+        summary: "`via lock` was given an id that is no lock (M3).",
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2478,7 +2478,7 @@ pub(crate) static ROWS: [Row; 324] = [
         summary: "A checked integer operation overflowed. Names the subject and the position.",
         data: &[],
         worst: None,
-        covered_by: CoveredBy::Conformance,
+        covered_by: CoveredBy::Workspace,
         explain: "A checked integer operation overflowed. Names the subject and the position.\n",
     },
     Row {
@@ -2749,8 +2749,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "place.no_footprint",
         severity: Severity::Error,
         chapter: "rules",
-        milestone: 1,
-        summary: "`ground` on an asset with no footprint.",
+        milestone: 2,
+        summary: "`ground` on an asset with no footprint; only a model measures a point footprint, `assets.md` 2.4 (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2837,8 +2837,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.blob_digest",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A blob's bytes do not match its name.",
+        milestone: 2,
+        summary: "A blob's bytes do not match its name (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2848,8 +2848,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.blob_header",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2).",
+        milestone: 2,
+        summary: "A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2) (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2881,8 +2881,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.crashed",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "The worker exited during a call.",
+        milestone: 2,
+        summary: "The worker exited during a call (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2925,8 +2925,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.field_file",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field`.",
+        milestone: 2,
+        summary: "A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field` (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2936,8 +2936,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.framing",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor.",
+        milestone: 2,
+        summary: "A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2947,8 +2947,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.input_undeclared",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "`input.open` named a path not in `inputs`.",
+        milestone: 2,
+        summary: "`input.open` named a path not in `inputs` (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2958,8 +2958,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.key_shadows",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A returned key equals a name the step can see.",
+        milestone: 2,
+        summary: "A returned key equals a name the step can see (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2969,8 +2969,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.message_too_large",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A frame over 16 MiB, `data.bytes` long; send the data as a blob.",
+        milestone: 2,
+        summary: "A frame over 16 MiB, `data.bytes` long; send the data as a blob (M2).",
         data: &["bytes"],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -2980,8 +2980,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.no_entry",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "The script has no top-level function named after `when`.",
+        milestone: 2,
+        summary: "The script has no top-level function named after `when` (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3002,8 +3002,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.no_output",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A generate step returned no document.",
+        milestone: 2,
+        summary: "A generate step returned no document (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3024,8 +3024,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.output_file",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A returned `file` leaves `out` or names nothing.",
+        milestone: 2,
+        summary: "A returned `file` leaves `out` or names nothing (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3057,8 +3057,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.output_twice",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A worker returned a document and wrote `document.toml`.",
+        milestone: 2,
+        summary: "A worker returned a document and wrote `document.toml` (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3068,8 +3068,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.raised",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "The step raised an exception it did not catch; `data.exception`.",
+        milestone: 2,
+        summary: "The step raised an exception it did not catch; `data.exception` (M2).",
         data: &["exception"],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3079,8 +3079,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.slow_exit",
         severity: Severity::Info,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A worker had to be killed after `shutdown`.",
+        milestone: 2,
+        summary: "A worker had to be killed after `shutdown` (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3112,8 +3112,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.untrusted",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "A generate step is not trusted and has no committed result; the hint is `via trust`.",
+        milestone: 2,
+        summary: "A generate step is not trusted and has no committed result; the hint is `via trust` (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3156,8 +3156,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.version",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "The worker speaks another protocol version; both versions, `data.engine` and `data.worker`.",
+        milestone: 2,
+        summary: "The worker speaks another protocol version; both versions, `data.engine` and `data.worker` (M2).",
         data: &["engine", "worker"],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3167,8 +3167,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "protocol.when_unserved",
         severity: Severity::Error,
         chapter: "protocol",
-        milestone: 1,
-        summary: "The worker's `capabilities.when` lacks the step's `when`, `data.when`.",
+        milestone: 2,
+        summary: "The worker's `capabilities.when` lacks the step's `when`, `data.when` (M2).",
         data: &["when"],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3178,8 +3178,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "run.count",
         severity: Severity::Error,
         chapter: "rules",
-        milestone: 1,
-        summary: "`count` below 1, or below 2 with `ends = \"both\"` on an open stretch.",
+        milestone: 3,
+        summary: "`count` below 1, or below 2 with `ends = \"both\"` on an open stretch (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3189,8 +3189,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "run.count_or_spacing",
         severity: Severity::Error,
         chapter: "rules",
-        milestone: 1,
-        summary: "A run writes both `count` and `spacing`, or neither.",
+        milestone: 3,
+        summary: "A run writes both `count` and `spacing`, or neither (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3200,8 +3200,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "run.no_length",
         severity: Severity::Error,
         chapter: "rules",
-        milestone: 1,
-        summary: "The run's `on` names a thing with no length, or its stretch is zero millimetres.",
+        milestone: 3,
+        summary: "The run's `on` names a thing with no length, or its stretch is zero millimetres (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3211,8 +3211,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "run.outside",
         severity: Severity::Warning,
         chapter: "rules",
-        milestone: 1,
-        summary: "Members fell outside the extent and were not made; gives the count.",
+        milestone: 3,
+        summary: "Members fell outside the extent and were not made; gives the count (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3222,8 +3222,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "scatter.clump",
         severity: Severity::Error,
         chapter: "rules",
-        milestone: 1,
-        summary: "`clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer.",
+        milestone: 2,
+        summary: "`clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer (M2).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3277,8 +3277,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "set.empty",
         severity: Severity::Error,
         chapter: "rules",
-        milestone: 1,
-        summary: "A set has no items.",
+        milestone: 3,
+        summary: "A set has no items (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3288,8 +3288,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "set.unknown",
         severity: Severity::Error,
         chapter: "rules",
-        milestone: 1,
-        summary: "`set` names no set.",
+        milestone: 3,
+        summary: "`set` names no set (M3).",
         data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3299,8 +3299,8 @@ pub(crate) static ROWS: [Row; 324] = [
         code: "set.unused",
         severity: Severity::Info,
         chapter: "rules",
-        milestone: 1,
-        summary: "A set nothing places.",
+        milestone: 3,
+        summary: "A set nothing places (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
@@ -3734,7 +3734,7 @@ pub mod codes {
     /// The group `doc`, owned by `spec/documents.md`.
     pub mod doc {
         use crate::registry::Code;
-        /// `doc.change_adds_near` (warning): A change adds an entity whose id is near an existing one.
+        /// `doc.change_adds_near` (warning): A change adds an entity whose id is near an existing one; the nearest id.
         pub const CHANGE_ADDS_NEAR: Code = Code::from_index(66);
         /// `doc.change_conflict` (error): Two requested changes write or remove one key path; both changes and spans.
         pub const CHANGE_CONFLICT: Code = Code::from_index(67);
@@ -3784,7 +3784,7 @@ pub mod codes {
         pub const REMOVE_WITH_KEYS: Code = Code::from_index(89);
         /// `doc.reserved_attribute` (error): A kind declares an attribute named as a reserved feature key.
         pub const RESERVED_ATTRIBUTE: Code = Code::from_index(90);
-        /// `doc.syntax` (error): Not TOML 1.0.0, not UTF-8, or a `[[x]]` header; position from the parser.
+        /// `doc.syntax` (error): Not TOML 1.0.0, not UTF-8 (the byte offset in `data.offset`), or a `[[x]]` header (its exact rewrite in `data.rewrite`, section 1); position from the parser.
         pub const SYNTAX: Code = Code::from_index(91);
         /// `doc.too_deep` (error): Tables and lists nested over 64 deep (section 1); the file is read no further.
         pub const TOO_DEEP: Code = Code::from_index(92);
@@ -3806,7 +3806,7 @@ pub mod codes {
         pub const BASE_AND_FILE: Code = Code::from_index(98);
         /// `field.effect_cut` (warning): An effect's mask is above 0.02 on its ring; the effect, the feature and the first post.
         pub const EFFECT_CUT: Code = Code::from_index(99);
-        /// `field.file_coarse` (warning): A level step above 0.1 m on a field in `m`; the step.
+        /// `field.file_coarse` (warning): A level step above 0.1 m on a field in `m`; the step (M2).
         pub const FILE_COARSE: Code = Code::from_index(100);
         /// `field.file_format` (error): An unsupported format, depth or palette; an array file whose `shape` is not 2-D or whose `descr` is not `<f4`; a raster with a dimension under 2.
         pub const FILE_FORMAT: Code = Code::from_index(101);
@@ -3818,9 +3818,9 @@ pub mod codes {
         pub const FILE_OFFWORLD: Code = Code::from_index(104);
         /// `field.file_outside` (error): `file` without `outside`.
         pub const FILE_OUTSIDE: Code = Code::from_index(105);
-        /// `field.file_profile` (info): A PNG's gamma, colour profile or `tRNS` was not applied.
+        /// `field.file_profile` (info): A PNG's gamma, colour profile or `tRNS` was not applied (M2).
         pub const FILE_PROFILE: Code = Code::from_index(106);
-        /// `field.file_range` (error): `range` with `lo == hi`.
+        /// `field.file_range` (error): `range` with `lo == hi` (M2).
         pub const FILE_RANGE: Code = Code::from_index(107);
         /// `field.file_too_large` (error): More samples than the post-count limit; the header's size.
         pub const FILE_TOO_LARGE: Code = Code::from_index(108);
@@ -3840,9 +3840,9 @@ pub mod codes {
         pub const ROW_KEY: Code = Code::from_index(115);
         /// `field.row_missing` (error): A scalar row or entry with no `value`, or a weights one with no `paint`; names the row or effect.
         pub const ROW_MISSING: Code = Code::from_index(116);
-        /// `field.step_base` (error): A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare.
+        /// `field.step_base` (error): A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare (M2).
         pub const STEP_BASE: Code = Code::from_index(117);
-        /// `field.step_layer` (error): A step's row on a field of a higher layer.
+        /// `field.step_layer` (error): A step's row on a field of a higher layer (M2).
         pub const STEP_LAYER: Code = Code::from_index(118);
         /// `field.type_unknown` (error): A `type` not on the list.
         pub const TYPE_UNKNOWN: Code = Code::from_index(119);
@@ -3992,27 +3992,27 @@ pub mod codes {
         use crate::registry::Code;
         /// `identity.bad_id` (error): An id breaks `[a-z][a-z0-9_]*` or is longer than 48 bytes.
         pub const BAD_ID: Code = Code::from_index(184);
-        /// `identity.bad_key` (error): A step returned a key that breaks 2.2, or an unknown class; says which rule.
+        /// `identity.bad_key` (error): A step returned a key that breaks 2.2, or an unknown class; says which rule (M2).
         pub const BAD_KEY: Code = Code::from_index(185);
         /// `identity.clear_empty` (warning): A clear removed nothing (4.3).
         pub const CLEAR_EMPTY: Code = Code::from_index(186);
         /// `identity.duplicate_id` (error): Two tables in one namespace share an id; names both, with file and line, across layers too.
         pub const DUPLICATE_ID: Code = Code::from_index(187);
-        /// `identity.key_collision` (error): One step gave two things one key; names both positions.
+        /// `identity.key_collision` (error): One step gave two things one key; names both positions (M2).
         pub const KEY_COLLISION: Code = Code::from_index(188);
         /// `identity.key_in_text` (error): A produced name is written in a key that takes a name.
         pub const KEY_IN_TEXT: Code = Code::from_index(189);
-        /// `identity.lock_asset_missing` (error): A recorded item's asset is no longer bound by the pack.
+        /// `identity.lock_asset_missing` (error): A recorded item's asset is no longer bound by the pack (M3).
         pub const LOCK_ASSET_MISSING: Code = Code::from_index(190);
-        /// `identity.lock_differs` (info): What the producers would now do inside a lock, and live names dropped for a recorded one, as counts.
+        /// `identity.lock_differs` (info): What the producers would now do inside a lock, and live names dropped for a recorded one, as counts (M3).
         pub const LOCK_DIFFERS: Code = Code::from_index(191);
-        /// `identity.lock_ground_moved` (warning): Recorded items stand on ground that moved; count and largest change.
+        /// `identity.lock_ground_moved` (warning): Recorded items stand on ground that moved; count and largest change (M3).
         pub const LOCK_GROUND_MOVED: Code = Code::from_index(192);
-        /// `identity.lock_pin_clash` (error): A recorded item overlaps a pin; names both.
+        /// `identity.lock_pin_clash` (error): A recorded item overlaps a pin; names both (M3).
         pub const LOCK_PIN_CLASH: Code = Code::from_index(193);
-        /// `identity.lock_rerecorded` (info): A record was replaced; counts of the difference.
+        /// `identity.lock_rerecorded` (info): A record was replaced; counts of the difference (M3).
         pub const LOCK_RERECORDED: Code = Code::from_index(194);
-        /// `identity.lock_unrecorded` (error): A lock has no record.
+        /// `identity.lock_unrecorded` (error): A lock has no record (M3).
         pub const LOCK_UNRECORDED: Code = Code::from_index(195);
         /// `identity.near_none` (error): A maker has no candidate of the class asked for; lists every selection left with nothing.
         pub const NEAR_NONE: Code = Code::from_index(196);
@@ -4022,7 +4022,7 @@ pub mod codes {
         pub const NO_PREVIOUS: Code = Code::from_index(198);
         /// `identity.not_a_producer` (error): `by` names a set, or a maker that places no instances (a network, a cells table, a `where` feature).
         pub const NOT_A_PRODUCER: Code = Code::from_index(199);
-        /// `identity.of_ambiguous` (error): `of` names a maker with several classes and no `class`.
+        /// `identity.of_ambiguous` (error): `of` names a maker with several classes and no `class` (M3).
         pub const OF_AMBIGUOUS: Code = Code::from_index(200);
         /// `identity.on_both` (error): `on` has both `ref` and `of`.
         pub const ON_BOTH: Code = Code::from_index(201);
@@ -4040,7 +4040,7 @@ pub mod codes {
         pub const RESELECTED: Code = Code::from_index(207);
         /// `identity.reserved` (error): An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r53, `surfaces.md` 1).
         pub const RESERVED: Code = Code::from_index(208);
-        /// `identity.unknown_lock` (error): `via lock` was given an id that is no lock.
+        /// `identity.unknown_lock` (error): `via lock` was given an id that is no lock (M3).
         pub const UNKNOWN_LOCK: Code = Code::from_index(209);
         /// `identity.unknown_maker` (error): `of` names nothing.
         pub const UNKNOWN_MAKER: Code = Code::from_index(210);
@@ -4136,7 +4136,7 @@ pub mod codes {
         pub const KEEP_OUT: Code = Code::from_index(247);
         /// `place.margin_alone` (error): `margin` without `ground`.
         pub const MARGIN_ALONE: Code = Code::from_index(248);
-        /// `place.no_footprint` (error): `ground` on an asset with no footprint.
+        /// `place.no_footprint` (error): `ground` on an asset with no footprint; only a model measures a point footprint, `assets.md` 2.4 (M2).
         pub const NO_FOOTPRINT: Code = Code::from_index(249);
         /// `place.no_position` (error): An instance or pin has neither `at` nor `on`; a run has no `on`.
         pub const NO_POSITION: Code = Code::from_index(250);
@@ -4156,15 +4156,15 @@ pub mod codes {
         use crate::registry::Code;
         /// `protocol.absolute_path` (error): `command` holds an absolute path.
         pub const ABSOLUTE_PATH: Code = Code::from_index(256);
-        /// `protocol.blob_digest` (error): A blob's bytes do not match its name.
+        /// `protocol.blob_digest` (error): A blob's bytes do not match its name (M2).
         pub const BLOB_DIGEST: Code = Code::from_index(257);
-        /// `protocol.blob_header` (error): A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2).
+        /// `protocol.blob_header` (error): A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2) (M2).
         pub const BLOB_HEADER: Code = Code::from_index(258);
         /// `protocol.code_folder` (error): The code folder is or holds the world's folder; move the script into its own folder.
         pub const CODE_FOLDER: Code = Code::from_index(259);
         /// `protocol.column_mixed` (error): One attribute has two types across the selected kinds; names both kinds.
         pub const COLUMN_MIXED: Code = Code::from_index(260);
-        /// `protocol.crashed` (error): The worker exited during a call.
+        /// `protocol.crashed` (error): The worker exited during a call (M2).
         pub const CRASHED: Code = Code::from_index(261);
         /// `protocol.deadline` (error): No answer by the deadline; which phase, `data.phase` (`initialize`, `step.call` or `cancel`), and the deadline in seconds, `data.deadline`.
         pub const DEADLINE: Code = Code::from_index(262);
@@ -4172,41 +4172,41 @@ pub mod codes {
         pub const EXPLAIN_DIFFERS: Code = Code::from_index(263);
         /// `protocol.failed` (error): A plain command exited non-zero; `data.exit`.
         pub const FAILED: Code = Code::from_index(264);
-        /// `protocol.field_file` (error): A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field`.
+        /// `protocol.field_file` (error): A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field` (M2).
         pub const FIELD_FILE: Code = Code::from_index(265);
-        /// `protocol.framing` (error): A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor.
+        /// `protocol.framing` (error): A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor (M2).
         pub const FRAMING: Code = Code::from_index(266);
-        /// `protocol.input_undeclared` (error): `input.open` named a path not in `inputs`.
+        /// `protocol.input_undeclared` (error): `input.open` named a path not in `inputs` (M2).
         pub const INPUT_UNDECLARED: Code = Code::from_index(267);
-        /// `protocol.key_shadows` (error): A returned key equals a name the step can see.
+        /// `protocol.key_shadows` (error): A returned key equals a name the step can see (M2).
         pub const KEY_SHADOWS: Code = Code::from_index(268);
-        /// `protocol.message_too_large` (error): A frame over 16 MiB, `data.bytes` long; send the data as a blob.
+        /// `protocol.message_too_large` (error): A frame over 16 MiB, `data.bytes` long; send the data as a blob (M2).
         pub const MESSAGE_TOO_LARGE: Code = Code::from_index(269);
-        /// `protocol.no_entry` (error): The script has no top-level function named after `when`.
+        /// `protocol.no_entry` (error): The script has no top-level function named after `when` (M2).
         pub const NO_ENTRY: Code = Code::from_index(270);
         /// `protocol.no_explain` (warning): A step sent a code with no `explain` text.
         pub const NO_EXPLAIN: Code = Code::from_index(271);
-        /// `protocol.no_output` (error): A generate step returned no document.
+        /// `protocol.no_output` (error): A generate step returned no document (M2).
         pub const NO_OUTPUT: Code = Code::from_index(272);
         /// `protocol.no_program` (error): `command[0]` is no configured program and no file, or is a `.bat`/`.cmd`; the hint gives `via config program`.
         pub const NO_PROGRAM: Code = Code::from_index(273);
-        /// `protocol.output_file` (error): A returned `file` leaves `out` or names nothing.
+        /// `protocol.output_file` (error): A returned `file` leaves `out` or names nothing (M2).
         pub const OUTPUT_FILE: Code = Code::from_index(274);
         /// `protocol.output_json` (error): A plain command's `out/diagnostics.json` is not a list of diagnostic objects.
         pub const OUTPUT_JSON: Code = Code::from_index(275);
         /// `protocol.output_table` (error): A returned document holds a table or key a step may not return, or a lint or export returned one.
         pub const OUTPUT_TABLE: Code = Code::from_index(276);
-        /// `protocol.output_twice` (error): A worker returned a document and wrote `document.toml`.
+        /// `protocol.output_twice` (error): A worker returned a document and wrote `document.toml` (M2).
         pub const OUTPUT_TWICE: Code = Code::from_index(277);
-        /// `protocol.raised` (error): The step raised an exception it did not catch; `data.exception`.
+        /// `protocol.raised` (error): The step raised an exception it did not catch; `data.exception` (M2).
         pub const RAISED: Code = Code::from_index(278);
-        /// `protocol.slow_exit` (info): A worker had to be killed after `shutdown`.
+        /// `protocol.slow_exit` (info): A worker had to be killed after `shutdown` (M2).
         pub const SLOW_EXIT: Code = Code::from_index(279);
         /// `protocol.start` (error): The process could not be started; `data.kind` (6.2).
         pub const START: Code = Code::from_index(280);
         /// `protocol.unknown_library` (error): A `lib:` element names a library not in `include`; the nearest name.
         pub const UNKNOWN_LIBRARY: Code = Code::from_index(281);
-        /// `protocol.untrusted` (error): A generate step is not trusted and has no committed result; the hint is `via trust`.
+        /// `protocol.untrusted` (error): A generate step is not trusted and has no committed result; the hint is `via trust` (M2).
         pub const UNTRUSTED: Code = Code::from_index(282);
         /// `protocol.untrusted_result` (info): An untrusted step was built from its committed result, which matched (M2).
         pub const UNTRUSTED_RESULT: Code = Code::from_index(283);
@@ -4214,27 +4214,27 @@ pub mod codes {
         pub const UNTRUSTED_SKIPPED: Code = Code::from_index(284);
         /// `protocol.untrusted_stale` (error): A committed result's static key or a read of its trace differs from the current build; names the first difference (M2).
         pub const UNTRUSTED_STALE: Code = Code::from_index(285);
-        /// `protocol.version` (error): The worker speaks another protocol version; both versions, `data.engine` and `data.worker`.
+        /// `protocol.version` (error): The worker speaks another protocol version; both versions, `data.engine` and `data.worker` (M2).
         pub const VERSION: Code = Code::from_index(286);
-        /// `protocol.when_unserved` (error): The worker's `capabilities.when` lacks the step's `when`, `data.when`.
+        /// `protocol.when_unserved` (error): The worker's `capabilities.when` lacks the step's `when`, `data.when` (M2).
         pub const WHEN_UNSERVED: Code = Code::from_index(287);
     }
     /// The group `run`, owned by `spec/rules.md`.
     pub mod run {
         use crate::registry::Code;
-        /// `run.count` (error): `count` below 1, or below 2 with `ends = "both"` on an open stretch.
+        /// `run.count` (error): `count` below 1, or below 2 with `ends = "both"` on an open stretch (M3).
         pub const COUNT: Code = Code::from_index(288);
-        /// `run.count_or_spacing` (error): A run writes both `count` and `spacing`, or neither.
+        /// `run.count_or_spacing` (error): A run writes both `count` and `spacing`, or neither (M3).
         pub const COUNT_OR_SPACING: Code = Code::from_index(289);
-        /// `run.no_length` (error): The run's `on` names a thing with no length, or its stretch is zero millimetres.
+        /// `run.no_length` (error): The run's `on` names a thing with no length, or its stretch is zero millimetres (M3).
         pub const NO_LENGTH: Code = Code::from_index(290);
-        /// `run.outside` (warning): Members fell outside the extent and were not made; gives the count.
+        /// `run.outside` (warning): Members fell outside the extent and were not made; gives the count (M3).
         pub const OUTSIDE: Code = Code::from_index(291);
     }
     /// The group `scatter`, owned by `spec/rules.md`.
     pub mod scatter {
         use crate::registry::Code;
-        /// `scatter.clump` (error): `clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer.
+        /// `scatter.clump` (error): `clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer (M2).
         pub const CLUMP: Code = Code::from_index(292);
         /// `scatter.empty` (warning): A scatter placed nothing; names the stage that removed the last candidate.
         pub const EMPTY: Code = Code::from_index(293);
@@ -4248,11 +4248,11 @@ pub mod codes {
     /// The group `set`, owned by `spec/rules.md`.
     pub mod set {
         use crate::registry::Code;
-        /// `set.empty` (error): A set has no items.
+        /// `set.empty` (error): A set has no items (M3).
         pub const EMPTY: Code = Code::from_index(297);
-        /// `set.unknown` (error): `set` names no set.
+        /// `set.unknown` (error): `set` names no set (M3).
         pub const UNKNOWN: Code = Code::from_index(298);
-        /// `set.unused` (info): A set nothing places.
+        /// `set.unused` (info): A set nothing places (M3).
         pub const UNUSED: Code = Code::from_index(299);
     }
     /// The group `surface`, owned by `spec/surfaces.md`.

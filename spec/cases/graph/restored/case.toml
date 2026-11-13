@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "One build file edited by hand; rebuild: graph.build_file_restored; the file equal to clean; nothing ran."
+milestone = 1
+actions   = ["first", "damage", "again"]
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.damage]
+flip = "build/w/fields/height.npy"
+at   = 200
+
+[action.again]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.again.diag.build_file_restored]
+code = "graph.build_file_restored"
+from = "run"
+
+[action.again.same.files]
+action = "first"
+what   = "files"
+
+[action.again.nodes]
+ran = []

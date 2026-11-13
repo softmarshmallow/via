@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "two material fields; role = \"water\": field.role_twice; field.role_unknown."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.role_twice]
+code = "field.role_twice"
+
+[action.build.diag.role_unknown]
+code    = "field.role_unknown"
+subject = "field.lake.role"

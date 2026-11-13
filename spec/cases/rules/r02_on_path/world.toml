@@ -1,0 +1,19 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 0], [100, 0]]
+
+[instance.cottage]
+asset = "house_low"
+on    = { ref = "lane", t = 0.25, offset = 2 }
+
+[change.bend.feature.lane]
+path = [[0, 0], [100, 10]]

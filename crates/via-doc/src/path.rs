@@ -129,6 +129,54 @@ pub(crate) fn walk(base: &Path, parts: &[String]) -> Result<PathBuf, Walk> {
     Ok(at)
 }
 
+/// A `file` value of text opened from the folder of the document that names it (7.2), for a
+/// reader outside this crate (a field's `file`, `fields.md` 4.1). The fault is the code, the
+/// message and the hint: `doc.path_form`, `doc.path_case` or `doc.file_missing`.
+pub fn open_file(
+    folder: &Path,
+    written: &str,
+) -> Result<PathBuf, (via_diag::Code, String, String)> {
+    use via_diag::codes;
+    let parts = form(written).map_err(|why| {
+        (
+            codes::doc::PATH_FORM,
+            format!("the path `{written}` is not portable: {why}"),
+            "write a relative path with `/`, of printable ASCII parts".to_string(),
+        )
+    })?;
+    walk(folder, &parts).map_err(|w| match w {
+        Walk::Case { index, on_disk } => (
+            codes::doc::PATH_CASE,
+            format!(
+                "the part `{}` of `{written}` is `{on_disk}` on disk; case must match on every system",
+                parts.get(index).cloned().unwrap_or_default()
+            ),
+            format!("write `{on_disk}`"),
+        ),
+        Walk::Missing { index, entries } => {
+            let part = parts.get(index).cloned().unwrap_or_default();
+            // Hidden entries (`.via`, a tool's own folders) are not names a text means, and
+            // listing them would tie the hint to whatever else shares the folder (R26).
+            let visible = entries
+                .iter()
+                .map(String::as_str)
+                .filter(|e| !e.starts_with('.') || part.starts_with('.'));
+            let near = via_diag::nearest::nearest(&part, visible);
+            (
+                codes::doc::FILE_MISSING,
+                format!(
+                    "the file `{written}` is not found: no `{part}` in `{}`",
+                    folder.join(parts[..index].join("/")).display()
+                ),
+                match near {
+                    via_diag::nearest::Nearest::Found(n) => format!("write `{n}`"),
+                    other => other.hint("correct the path"),
+                },
+            )
+        }
+    })
+}
+
 /// A command-line path as a base and parts to walk: an absolute path walks from its root, a
 /// relative one from the working folder.
 pub(crate) fn split_cli(p: &Path) -> (PathBuf, Vec<String>) {

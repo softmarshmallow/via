@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A point feature of a kind whose effect reads t: t is 0 at every post; no error. on with t on it: geom.no_length."
+milestone = 1
+actions   = ["t", "on"]
+
+[action.t]
+via  = ["build", "a/world.toml", "--lib", "{work}/libs", "--out", "a/build/w"]
+exit = 0
+out  = "a/build/w"
+
+[action.t.file.t]
+path  = "a/build/w/fields/m.npy"
+post  = [8, 8]
+value = 0
+
+[action.on]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.on.diag.no_length]
+code = "geom.no_length"

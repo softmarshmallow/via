@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "region = [[0, 0], [10, 0], [10, 10], [10, 0], [0, 5]] (a zero-width spike); read: geom.self_crossing at [10, 0]."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via  = ["kernel", "read", "--in", "in.json", "--out", "out.json"]
+exit = 1
+
+[action.op.diag.self_crossing]
+code     = "geom.self_crossing"
+subject  = "cli"
+position = [10, 0]
+data     = { source = "r" }

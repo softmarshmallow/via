@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A lib: element naming a library not in include: protocol.unknown_library, with the nearest name."
+milestone = 1
+actions   = ["program", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_library]
+code = "protocol.unknown_library"
+data = { nearest = "review" }

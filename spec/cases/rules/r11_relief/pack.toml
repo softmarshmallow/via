@@ -1,0 +1,4 @@
+[asset.house_low]
+primitive  = "box"
+size       = [8, 6, 4]
+max_relief = 0.6

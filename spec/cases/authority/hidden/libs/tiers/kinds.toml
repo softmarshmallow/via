@@ -1,0 +1,24 @@
+[kind.lawn]
+authority = "shaped"
+radius = 2
+
+[kind.lawn.defaults]
+k = 0
+
+[kind.lawn.effect.grass]
+field = "role:material"
+paint = "grass"
+mask = "= 1 - smoothstep(0, 1, d)"
+
+[kind.court]
+authority = "anchored"
+radius = 2
+
+[kind.court.defaults]
+k = 0
+
+[kind.court.effect.stone]
+field = "role:material"
+paint = "stone"
+mask = "= 1 - smoothstep(0, 1, d)"
+

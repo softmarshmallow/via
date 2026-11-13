@@ -1,0 +1,4 @@
+[pin.box]
+asset = "box_small"
+at    = [20, 20]
+by    = ["trees"]

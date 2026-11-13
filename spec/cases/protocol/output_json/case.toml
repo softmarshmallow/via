@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "A plain command's out/diagnostics.json is not a list of diagnostic objects: protocol.output_json."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.output_json]
+code = "protocol.output_json"

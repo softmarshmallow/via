@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A field named nul: the manifest names fields/nul-.npy, which exists."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.name]
+path    = "build/w/manifest.json"
+pointer = "/fields/nul/file"
+value   = "fields/nul-.npy"
+
+[action.build.file.there]
+path   = "build/w/fields/nul-.npy"
+exists = true

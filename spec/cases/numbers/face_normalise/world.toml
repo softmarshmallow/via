@@ -1,0 +1,25 @@
+name       = "nums"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.lane]
+path = [[0, 32], [64, 32]]
+
+[instance.f0]
+asset = "box_small"
+at    = [10, 10]
+face  = -90
+
+[instance.f1]
+asset = "box_small"
+at    = [20, 10]
+face  = 270
+
+[instance.f2]
+asset = "box_small"
+at    = [30, 10]
+face  = 630

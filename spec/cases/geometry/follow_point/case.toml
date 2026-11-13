@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A point feature; follows it: geom.no_length."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via         = ["kernel", "follow", "--in", "in.json", "--out", "out.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.op.diag.no_length]
+code    = "geom.no_length"
+subject = "cli"

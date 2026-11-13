@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A world file w.toml with a TOML syntax error, no --out: exit 1; build/w/diagnostics.json holds the error."
+milestone = 1
+actions   = ["build"]
+
+# With `name` unreadable, the default --out falls back to build/<world file stem> beside the world (build.md 11.1, 14).
+
+[action.build]
+via  = ["build", "w.toml"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.syntax]
+code = "doc.syntax"
+
+[action.build.file.diag]
+path    = "build/w/diagnostics.json"
+pointer = "/diagnostics/0/code"
+value   = "doc.syntax"

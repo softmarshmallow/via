@@ -1,0 +1,10 @@
+[kind.kf]
+radius = 2
+
+[kind.kf.defaults]
+floor = 2.5
+
+[kind.kf.effect.e]
+field = "tag:mark"
+value = "= floor(floor)"
+mask  = "= 1 - smoothstep(0, 1, d)"

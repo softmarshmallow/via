@@ -1,0 +1,6 @@
+[feature.q2]
+at = [4, 4]
+
+[feature.q1]
+kind = "nope_one"
+at   = [2, 2]

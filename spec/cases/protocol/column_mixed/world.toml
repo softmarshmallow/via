@@ -1,0 +1,19 @@
+name       = "steps"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["mix"]
+
+[field.height]
+role = "surface"
+
+[step.look]
+when    = "lint"
+command = ["python", "steps/lint.py"]
+
+[feature.p]
+kind = "a"
+at   = [2, 2]
+
+[feature.q]
+kind = "b"
+at   = [4, 4]

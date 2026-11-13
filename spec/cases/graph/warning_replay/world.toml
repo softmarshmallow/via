@@ -1,0 +1,7 @@
+name       = "warn"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["p"]
+
+[field.a]
+base = "= dist('kind:pond', 50)"

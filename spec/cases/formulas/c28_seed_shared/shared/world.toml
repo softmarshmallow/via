@@ -1,0 +1,7 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= fbm(80, 3) + fbm(40, 2)"

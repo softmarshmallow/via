@@ -1,0 +1,12 @@
+name       = "g"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["w"]
+
+[feature.a]
+kind = "way"
+path = [[0, 8], [16, 8]]
+
+[feature.b]
+kind = "way"
+path = [[8, 0], [8, 16]]

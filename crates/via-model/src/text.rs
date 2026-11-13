@@ -18,12 +18,26 @@ pub fn diag(code: Code, subject: Subject, site: Site, message: &str, hint: &str)
     Diag::new(code, subject, site, message, hint)
 }
 
-/// A diagnostic at a key of an entity.
+/// A diagnostic about an entity, located at one of its keys: the entity is at fault, the key is
+/// the text to edit. A fault in the key's own value takes [`at_own_key`].
 pub fn at_key(code: Code, top: &str, id: &str, key: &str, message: &str, hint: &str) -> Diag {
     diag(
         code,
         Subject::entity(top, id),
         Site::Key(KeyPath::key(key)),
+        message,
+        hint,
+    )
+}
+
+/// A diagnostic about one key's value: the subject is the address and the key path
+/// (`diagnostics.md` 1.1, "one key of it").
+pub fn at_own_key(code: Code, top: &str, id: &str, key: &str, message: &str, hint: &str) -> Diag {
+    let p = KeyPath::key(key);
+    diag(
+        code,
+        Subject::entity(top, id).with_keys(&p),
+        Site::Key(p),
         message,
         hint,
     )

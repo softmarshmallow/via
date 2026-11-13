@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "A plain lint, built again unchanged, then in another folder with the store kept: the step does not run; its result is reused."
+milestone = 1
+actions   = ["program", "trust", "first", "again", "elsewhere"]
+
+# Another machine with the store copied is the same keys read from a copied store (graph.md 3); a build into another folder with the store kept is that case on one machine.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--store", "store", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.first.nodes]
+ran_includes = ["step:look"]
+
+[action.again]
+via  = ["build", "world.toml", "--store", "store", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.again.nodes]
+not_ran = ["step:look"]
+
+[action.elsewhere]
+via  = ["build", "world.toml", "--store", "store", "--out", "other/w"]
+exit = 0
+out  = "other/w"
+
+[action.elsewhere.nodes]
+reused = ["step:look"]

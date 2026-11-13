@@ -22,6 +22,9 @@
 //! | `check` | 14: `via check` |
 //! | `steps` | `protocol.md` 2, 6, 7, 8.1: lint steps as plain commands, trust, the carried SDK |
 //! | `cmds` | 14: `merge`, `explain`, `eval`, `vectors`, `trust`, `config program` |
+//! | `kernel` | 14, `geometry.md` 7: `via kernel` |
+//! | `pack` | 14, `assets.md` 8: `via pack check`, `via pack list` |
+//! | `query` | 14, `surfaces.md` 7: `via query` |
 
 mod build;
 mod changes;
@@ -29,9 +32,12 @@ mod check;
 mod cmds;
 mod dir;
 mod json;
+mod kernel;
 mod layout;
 mod npy;
 mod out;
+mod pack;
+mod query;
 mod snap;
 mod steps;
 
@@ -60,6 +66,13 @@ commands:
   eval WORLD --field F [--window i0,j0,i1,j1] [--tile N] --out FILE
                    evaluate one scalar field into an array file
   vectors FILE     compute each vector of a vector file
+  kernel OP --in FILE --out FILE
+                   run one geometry operation on the shapes in a file
+  pack check PACK  check a pack without a world; writes nothing
+  pack list PACK [--taxon @PATH] [--tag TAG]
+                   print each asset's resolved facts as JSON Lines
+  query WORLD surfaces_at|sample|relief|meetings [--in FILE] --out FILE
+                   answer one surface question over the whole world
   trust WORLD      list the world's steps and record trust
   config program NAME PATH   record a named program's path
   help             print this text
@@ -87,7 +100,7 @@ pub(crate) fn usage(argument: u32, message: String, hint: String) -> Diag {
     )
 }
 
-const COMMANDS: [&str; 11] = [
+const COMMANDS: [&str; 14] = [
     "--help",
     "--version",
     "build",
@@ -96,13 +109,18 @@ const COMMANDS: [&str; 11] = [
     "eval",
     "explain",
     "help",
+    "kernel",
     "merge",
+    "pack",
+    "query",
     "trust",
     "vectors",
 ];
 
 /// Flags that take a value.
-const VALUED: [&str; 16] = [
+const VALUED: [&str; 18] = [
+    "--tag",
+    "--taxon",
     "--against",
     "--change",
     "--diagnostics",
@@ -247,6 +265,17 @@ fn allowed(command: &str) -> &'static [&'static str] {
             "--window",
         ],
         "vectors" => &["--diagnostics"],
+        "kernel" => &["--diagnostics", "--in", "--out"],
+        "pack" => &["--diagnostics", "--tag", "--taxon"],
+        "query" => &[
+            "--change",
+            "--diagnostics",
+            "--in",
+            "--lib",
+            "--out",
+            "--sdk",
+            "--store",
+        ],
         "trust" => &[
             "--change",
             "--diagnostics",
@@ -279,6 +308,9 @@ struct Done {
     lints: Vec<Lint>,
     status: Option<u8>,
     out: Option<PathBuf>,
+    /// The diagnostics document, when the command made it itself (`via kernel`, whose records
+    /// are those of its output file).
+    document: Option<String>,
 }
 
 impl Done {
@@ -288,6 +320,7 @@ impl Done {
             lints: Vec::new(),
             status: None,
             out: None,
+            document: None,
         }
     }
 }
@@ -336,7 +369,7 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
         .iter()
         .filter(|(_, f, _)| !ok.contains(&f.as_str()))
         .map(|(a, f, _)| {
-            if f == "--json" && matches!(command.as_str(), "merge" | "vectors") {
+            if f == "--json" && matches!(command.as_str(), "merge" | "vectors" | "pack") {
                 usage(*a, format!("`--json` is not taken by `via {command}`, whose standard output is its result"), "use `--diagnostics FILE`".into())
             } else {
                 usage(*a, format!("`via {command}` takes no `{f}`"), "run `via help`".into())
@@ -441,6 +474,7 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
                 lints: o.lints,
                 status: None,
                 out: o.out,
+                document: None,
             })
         }
         "merge" => {
@@ -564,7 +598,108 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
                 lints: Vec::new(),
                 status: Some(status),
                 out: None,
+                document: None,
             })
+        }
+        "kernel" => {
+            extra(2)?;
+            let Some((oa, op)) = p.words.get(1) else {
+                return Err(vec![usage(
+                    1,
+                    "`via kernel` needs an operation".into(),
+                    "write `via kernel OP --in FILE --out FILE`".into(),
+                )]);
+            };
+            let (Some((ia, inp)), Some((outa, outp))) = (p.one("--in"), p.one("--out")) else {
+                return Err(vec![usage(
+                    *oa,
+                    "`via kernel` needs `--in FILE` and `--out FILE`".into(),
+                    "write `via kernel OP --in FILE --out FILE`".into(),
+                )]);
+            };
+            let r = kernel::kernel(
+                (*oa, op.as_str()),
+                (ia, Path::new(&inp)),
+                (outa, Path::new(&outp)),
+            );
+            Ok(Done {
+                records: r.records,
+                lints: Vec::new(),
+                status: Some(r.status),
+                out: None,
+                document: r.document,
+            })
+        }
+        "pack" => {
+            extra(3)?;
+            let (Some((sa, sub)), Some((pa, pk))) = (p.words.get(1), p.words.get(2)) else {
+                return Err(vec![usage(
+                    1,
+                    "`via pack` takes `check PACK` or `list PACK`".into(),
+                    "write `via pack check PACK` or `via pack list PACK`".into(),
+                )]);
+            };
+            match sub.as_str() {
+                "check" => {
+                    if let Some((a, f, _)) = p
+                        .flags
+                        .iter()
+                        .find(|(_, f, _)| f == "--taxon" || f == "--tag")
+                    {
+                        return Err(vec![usage(
+                            *a,
+                            format!("`via pack check` takes no `{f}`"),
+                            "run `via pack list` to select".into(),
+                        )]);
+                    }
+                    Ok(Done::of(pack::check(Path::new(pk), *pa)))
+                }
+                "list" => Ok(Done::of(pack::list(
+                    Path::new(pk),
+                    *pa,
+                    p.one("--taxon"),
+                    p.one("--tag"),
+                ))),
+                other => {
+                    let near = nearest(other, ["check", "list"]);
+                    let mut d = usage(
+                        *sa,
+                        format!("`via pack {other}` is not a command"),
+                        near.hint("write `check` or `list`"),
+                    );
+                    if let Some(n) = near.found() {
+                        d = d.with("nearest", n);
+                    }
+                    Err(vec![d])
+                }
+            }
+        }
+        "query" => {
+            extra(3)?;
+            let (wa, world) = need_world(p, "query").map_err(|d| vec![d])?;
+            let Some((qa, q)) = p.words.get(2).cloned() else {
+                return Err(vec![usage(
+                    wa,
+                    "`via query` needs a question".into(),
+                    "write `via query WORLD surfaces_at|sample|relief|meetings --in FILE --out FILE`".into(),
+                )]);
+            };
+            let Some((outa, out)) = p.one("--out") else {
+                return Err(vec![usage(
+                    qa,
+                    "`via query` needs `--out FILE`".into(),
+                    "write `--out FILE`".into(),
+                )]);
+            };
+            Ok(Done::of(query::query(&query::QueryArgs {
+                world,
+                world_arg: wa,
+                question: (q, qa),
+                input: p.one("--in").map(|(a, f)| (PathBuf::from(f), a)),
+                out: (PathBuf::from(out), outa),
+                changes: changes_of(p),
+                lib: libs_of(p),
+            })))
         }
         "config" => {
             extra(4)?;
@@ -593,7 +728,7 @@ fn main() -> ExitCode {
     let json = p.has("--json").is_some()
         && !matches!(
             p.words.first().map(|w| w.1.as_str()),
-            Some("trust" | "explain" | "merge" | "vectors")
+            Some("trust" | "explain" | "merge" | "vectors" | "pack")
         );
     let info = p.has("--info").is_some();
     let done = if faults.is_empty() {
@@ -627,8 +762,12 @@ fn main() -> ExitCode {
             terminal::render(&done.records, &done.lints, Options { info, colour })
         );
     }
+    let doc = done
+        .document
+        .clone()
+        .unwrap_or_else(|| document(&done.records, &done.lints, status));
     if json {
-        print!("{}", document(&done.records, &done.lints, status));
+        print!("{doc}");
     }
     if let Some((at, file)) = diagnostics {
         let inside = done.out.as_ref().is_some_and(|o| {
@@ -636,7 +775,7 @@ fn main() -> ExitCode {
             abs(Path::new(&file)).starts_with(abs(o))
         });
         if !inside {
-            if let Err(e) = std::fs::write(&file, document(&done.records, &done.lints, status)) {
+            if let Err(e) = std::fs::write(&file, &doc) {
                 let d = Diag::new(
                     codes::build::WRITE_FAILED,
                     Subject::Cli,

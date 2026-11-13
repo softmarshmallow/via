@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "A 10 m square; offset +2 m, mitre, limit 1.2: each corner cut square to its bisector at 2.4 m from the corner."
+milestone = 1
+actions   = ["op"]
+
+# Limit 1.2 at distance 2 m cuts each corner at 2.4 m from it, across its bisector: at (0, 0) the cut
+# is x + y = -2.4 * sqrt(2) = -3.394 m, meeting x = -2 m at y = -1.394 m. Points rounded to the
+# millimetre (ties to even); the ring canonical from its least vertex, counter-clockwise.
+
+[action.op]
+via  = ["kernel", "offset", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.file.r]
+path    = "out.json"
+pointer = "/results/0"
+value   = [[[[-2000, -1394], [-1394, -2000], [11394, -2000], [12000, -1394], [12000, 11394], [11394, 12000], [-1394, 12000], [-2000, 11394]]]]

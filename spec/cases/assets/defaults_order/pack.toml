@@ -1,0 +1,28 @@
+[defaults]
+colour = [0.1, 0.1, 0.1]
+
+[taxon."plant"]
+defaults = { colour = [0.2, 0.2, 0.2] }
+
+[taxon."plant/tree"]
+defaults = { colour = [0.3, 0.3, 0.3] }
+
+[asset.a]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "plant/tree"
+
+[asset.b]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "plant/tree"
+colour    = [0.4, 0.4, 0.4]
+
+[asset.c]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "plant"
+
+[asset.d]
+primitive = "box"
+size      = [1, 1, 1]

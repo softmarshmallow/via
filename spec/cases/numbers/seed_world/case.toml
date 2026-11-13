@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "World seed = 1: at least one scatter instance moves; every hand-written instance and pin is unchanged in plan."
+milestone = 1
+actions   = ["base", "seeded"]
+
+# Jitter 0 keeps every tree at its cell centre, so each moves by facing only. (open) the hand instance and pin's absence from the report is not checkable with the named checks.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.seeded]
+via         = ["build", "world.toml", "--change", "seed", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.seeded.check.moved]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "trees#"
+what   = ["moved"]

@@ -1,0 +1,45 @@
+format    = "via-case-1"
+summary   = "ford, store deleted, build directory kept: build; every node ran; same bytes as before."
+milestone = 1
+actions   = ["program", "trust", "first", "drop", "again"]
+
+# `reused` empty: with no store no key is found, so every node ran (graph.md 6.1); recomputed needs a stored key too.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--store", "store", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.drop]
+delete = "store"
+
+[action.again]
+via         = ["build", "world.toml", "--store", "store", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+no_rerun    = "the store deleted on purpose"
+
+[action.again.same.files]
+action = "first"
+what   = "files"
+
+[action.again.same.id]
+action = "first"
+what   = "id"
+
+[action.again.nodes]
+reused = []

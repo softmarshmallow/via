@@ -320,7 +320,8 @@ relation.
 ### 4.3 Clear
 
 - `at`, or `on` a point or an instance, with `radius`: instances whose origin is at distance
-  `<= radius` from that point.
+  `<= radius` from that point. `on` an instance selected by place (`{ of, near }`) without
+  `radius`: that instance alone, the instances whose origin is its origin (case 15).
 - `on` a path or an edge with `t` and `radius`: from the point at `t`. Without `t`: from the
   nearest point of the whole path, so the clear is a strip.
 - `region`: instances whose origin is inside it.
@@ -563,10 +564,10 @@ table, and `position` is the item's place.
 | `identity.not_a_producer` | error | `by` names a set, or a maker that places no instances (a network, a cells table, a `where` feature). | Name the producers that place on it. |
 | `identity.unknown_maker` | error | `of` names nothing. | The nearest maker id. |
 | `identity.on_both` | error | `on` has both `ref` and `of`. | Keep `ref` for an authored thing, `of` for a produced one. |
-| `identity.bad_key` | error | A step returned a key that breaks 2.2, or an unknown class; says which rule. | The repaired key, as for `bad_id`, or the class list. |
-| `identity.key_collision` | error | One step gave two things one key; names both positions. | Build the key from place, with the SDK's naming calls. |
+| `identity.bad_key` | error | A step returned a key that breaks 2.2, or an unknown class; says which rule (M2). | The repaired key, as for `bad_id`, or the class list. |
+| `identity.key_collision` | error | One step gave two things one key; names both positions (M2). | Build the key from place, with the SDK's naming calls. |
 | `identity.key_in_text` | error | A produced name is written in a key that takes a name. | `{ of, class, near }` at the thing's current position. |
-| `identity.of_ambiguous` | error | `of` names a maker with several classes and no `class`. | The classes, with a count of each near `near`. |
+| `identity.of_ambiguous` | error | `of` names a maker with several classes and no `class` (M3). | The classes, with a count of each near `near`. |
 | `identity.no_place` | error | A selection's `class` is `field` or `row`, which have no place (2.4). | Read a field by name or `'tag:<tag>'` in a formula; select a feature or instance by place. |
 | `identity.near_none` | error | A maker has no candidate of the class asked for; lists every selection left with nothing. | The nearest candidate of any class of that maker and its distance, or that the maker made nothing. |
 | `identity.reselected` | warning | A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (`build.md` 11.1). | Move `near` onto the thing meant, or select a feature that does not split (section 3). |
@@ -576,13 +577,13 @@ table, and `position` is the item's place.
 | `identity.pin_in_keep_out` | warning | A pin stands where `keep_out` is above 0; names the field. | Move the pin, or accept it here. |
 | `identity.pins_overlap` | error | Two pins' footprints overlap; names both. | Move one; the overlap's size is given. |
 | `identity.clear_empty` | warning | A clear removed nothing (4.3). | The nearest instance of a `by` producer and its distance; delete the clear if it is no longer wanted. |
-| `identity.unknown_lock` | error | `via lock` was given an id that is no lock. | The nearest lock id. |
-| `identity.lock_unrecorded` | error | A lock has no record. | `via lock <world> <id>`. |
-| `identity.lock_rerecorded` | info | A record was replaced; counts of the difference. | None needed; review the record's diff. |
-| `identity.lock_differs` | info | What the producers would now do inside a lock, and live names dropped for a recorded one, as counts. | Re-record with `via lock`, or leave it. |
-| `identity.lock_ground_moved` | warning | Recorded items stand on ground that moved; count and largest change. | Re-record with `via lock`, or edit the ground's cause. |
-| `identity.lock_asset_missing` | error | A recorded item's asset is no longer bound by the pack. | Bind the asset again, or re-record with `via lock`. |
-| `identity.lock_pin_clash` | error | A recorded item overlaps a pin; names both. | Move the pin, or re-record with `via lock`. |
+| `identity.unknown_lock` | error | `via lock` was given an id that is no lock (M3). | The nearest lock id. |
+| `identity.lock_unrecorded` | error | A lock has no record (M3). | `via lock <world> <id>`. |
+| `identity.lock_rerecorded` | info | A record was replaced; counts of the difference (M3). | None needed; review the record's diff. |
+| `identity.lock_differs` | info | What the producers would now do inside a lock, and live names dropped for a recorded one, as counts (M3). | Re-record with `via lock`, or leave it. |
+| `identity.lock_ground_moved` | warning | Recorded items stand on ground that moved; count and largest change (M3). | Re-record with `via lock`, or edit the ground's cause. |
+| `identity.lock_asset_missing` | error | A recorded item's asset is no longer bound by the pack (M3). | Bind the asset again, or re-record with `via lock`. |
+| `identity.lock_pin_clash` | error | A recorded item overlaps a pin; names both (M3). | Move the pin, or re-record with `via lock`. |
 | `identity.no_previous` | info | No baseline to report changes against. | None needed; the next build has one. |
 
 ## Conformance
@@ -599,7 +600,7 @@ carries its subject and the file and line of the text at fault.
 3. (M1) `[feature.world]`; build; `identity.reserved`, exit 1. (M3) a set item named `end`; the same.
 4. (M1) `[feature.x]` in the world file and in a layer; build; one `identity.duplicate_id` naming
    both files and lines, exit 1.
-5. (M1) `on = { ref = "lane.middle" }`; `identity.unknown_place`, hint `lane.end`, exit 1.
+5. (M1) `on = { ref = "lane.edn" }`; `identity.unknown_place`, hint `lane.end`, exit 1.
 6. (M1) a clear with `by = ["tres"]`; `identity.unknown_producer`, hint `trees`, exit 1. (M3) `by =
    ["streets"]`, a network; `identity.not_a_producer`, exit 1.
 7. (M1) `of = "tres"`; `identity.unknown_maker`, hint `trees`, exit 1.

@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "The code folder checked out with CRLF line ends: same trust digest as with LF."
+milestone = 1
+actions   = ["program", "trust", "crlf", "build"]
+
+# Trust is recorded for the LF files; after the checkout turns them CRLF the build still runs the lint (mode exact: no protocol.untrusted_skipped), so the digest is the same.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.crlf]
+write = "steps/lint.py"
+from  = "later/lint.py"
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.nodes]
+ran_includes = ["step:look"]

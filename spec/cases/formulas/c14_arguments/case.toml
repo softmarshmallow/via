@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "fbm(60, 3, octaves = 4), fbm(wavelength = 60, 3), fbm(60, foo = 1): formula.arguments each."
+milestone = 1
+actions   = ["repeat", "order", "unknown"]
+
+[action.repeat]
+via         = ["build", "repeat/world.toml", "--lib", "{work}/libs", "--out", "repeat/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "repeat/build/w"
+
+[action.repeat.diag.arguments]
+code = "formula.arguments"
+
+[action.order]
+via         = ["build", "order/world.toml", "--lib", "{work}/libs", "--out", "order/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "order/build/w"
+
+[action.order.diag.arguments]
+code = "formula.arguments"
+
+[action.unknown]
+via         = ["build", "unknown/world.toml", "--lib", "{work}/libs", "--out", "unknown/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "unknown/build/w"
+
+[action.unknown.diag.arguments]
+code = "formula.arguments"

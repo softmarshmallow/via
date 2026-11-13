@@ -57,11 +57,12 @@ pub struct Region {
 }
 
 impl Region {
-    /// A region of one ring, read counter-clockwise.
+    /// A region of one ring, read counter-clockwise; a ring written clockwise is reversed and
+    /// keeps its first written point first, so it stays `t = 0` (`geometry.md` 2.3).
     pub fn from_ring(ring: Vec<P>) -> Region {
         let mut r = ring;
-        if twice_area(&r) < 0 {
-            r.reverse();
+        if twice_area(&r) < 0 && r.len() > 1 {
+            r[1..].reverse();
         }
         Region {
             pieces: vec![Piece {

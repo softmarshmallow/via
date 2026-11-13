@@ -1,0 +1,7 @@
+[kind.meanpad]
+radius = 3
+
+[kind.meanpad.effect.e]
+field = "role:surface"
+value = "= under('mean')"
+mask  = "= 1 - smoothstep(0, 2, d)"

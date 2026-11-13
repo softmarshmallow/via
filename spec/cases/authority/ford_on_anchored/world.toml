@@ -1,0 +1,19 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.beck]
+kind = "anc"
+path = [[8, 0], [8, 16]]
+k    = 1
+
+[feature.ford]
+kind = "ancv"
+on   = { ref = "beck", t = 0.5 }
+k    = 0

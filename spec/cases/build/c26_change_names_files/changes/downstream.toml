@@ -1,0 +1,2 @@
+[feature.ford]
+on = { ref = "beck", t = 0.8 }

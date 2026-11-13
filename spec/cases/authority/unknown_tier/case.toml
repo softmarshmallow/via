@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "authority is not derived, shaped or anchored: authority.unknown, with the nearest tier."
+milestone = 1
+actions   = ["build"]
+
+# authority.md 3.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown]
+code = "authority.unknown"
+data = { nearest = "anchored" }

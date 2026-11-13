@@ -1,0 +1,12 @@
+[kind.kw]
+radius = 2
+
+[kind.kw.defaults]
+width = 1
+
+[kind.kw.let]
+width = "= 2"
+
+[kind.kw.effect.e]
+field = "tag:mark"
+value = "= width"

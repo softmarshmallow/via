@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "ford with CRLF line endings: same digest as with LF."
+milestone = 1
+actions   = ["program", "trust", "lf", "crlf", "retrust", "crlf_build"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.lf]
+via         = ["build", "world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.crlf]
+write = "world.toml"
+from  = "later/world.toml"
+
+[action.retrust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.crlf_build]
+via         = ["build", "world.toml", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.crlf_build.same.id]
+action = "lf"
+what   = "id"

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "on a point feature with t = 0.5; read: geom.no_length."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.no_length]
+code = "geom.no_length"

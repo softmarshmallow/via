@@ -1,0 +1,19 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[instance.host]
+asset = "house_low"
+at    = [100, 100]
+face  = 90
+
+[instance.a]
+asset = "box_small"
+on    = { ref = "host" }
+face  = "along"

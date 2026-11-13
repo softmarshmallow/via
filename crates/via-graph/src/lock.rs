@@ -25,8 +25,9 @@ pub fn lock_path(directory: &Path) -> PathBuf {
 }
 
 impl DirLock {
-    /// Takes the lock without waiting. Another holder is `graph.busy`; a lock file that cannot
-    /// be opened is `graph.busy` too, naming the reason, since the build cannot know it is alone.
+    /// Takes the lock without waiting. Another holder is `graph.busy` (`graph.md` Diagnostics:
+    /// another build holds the lock). A lock file that cannot be created or opened is no other
+    /// build: it is `build.write_failed`, naming the path and the system's error (`build.md`).
     pub fn acquire(directory: &Path) -> Result<DirLock, Diag> {
         let path = lock_path(directory);
         if let Some(parent) = path.parent() {
@@ -37,7 +38,7 @@ impl DirLock {
             .truncate(false)
             .write(true)
             .open(&path)
-            .map_err(|e| busy(&path, &format!("its lock file cannot be opened ({e})")))?;
+            .map_err(|e| write_failed(&path, &e))?;
         match file.try_lock() {
             Ok(()) => Ok(DirLock { _file: file, path }),
             Err(TryLockError::WouldBlock) => Err(busy(&path, "another build holds its lock")),
@@ -51,6 +52,20 @@ impl DirLock {
     pub fn path(&self) -> &Path {
         &self.path
     }
+}
+
+fn write_failed(path: &Path, e: &std::io::Error) -> Diag {
+    Diag::new(
+        codes::build::WRITE_FAILED,
+        Subject::World,
+        Site::World,
+        Text::new(format!(
+            "the build directory's lock file `{}` cannot be written: {e}",
+            path.display()
+        ))
+        .unwrap_or_else(|_| via_diag::text!("the lock file cannot be written")),
+        via_diag::text!("free space, or fix the folder's permissions"),
+    )
 }
 
 fn busy(path: &Path, why: &str) -> Diag {

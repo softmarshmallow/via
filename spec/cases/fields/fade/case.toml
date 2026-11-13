@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "as cut, mask = \"= 1 - smoothstep(0, 4, d)\": no field.effect_cut."
+milestone = 1
+actions   = ["build"]
+
+# The mask is 0 for d >= 4, so 0 on the ring (4 < d <= 5). fields.md's row read `smoothstep(0, 5, d)`, which leaves 0.06 at (1, 1) (d = 4.24), above 0.02: corrected in the chapter to fade by 4.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"

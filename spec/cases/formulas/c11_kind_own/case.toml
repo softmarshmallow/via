@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A world let width = 1 and the library lane reading width: builds; the kind reads its own attribute, no message."
+milestone = 1
+actions   = ["w"]
+
+[action.w]
+via  = ["build", "w/world.toml", "--lib", "{work}/libs", "--out", "w/build/w"]
+exit = 0
+out  = "w/build/w"
+
+[action.w.file.v]
+path  = "w/build/w/fields/m.npy"
+post  = [64, 8]
+value = 4

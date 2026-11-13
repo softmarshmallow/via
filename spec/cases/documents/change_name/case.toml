@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "Change files Winter.toml, no_cart.v2.toml: identity.bad_id each."
+milestone = 1
+actions   = ["winter", "v2"]
+
+[action.winter]
+via  = ["merge", "world.toml", "--change", "changes/Winter.toml"]
+exit = 1
+
+[action.winter.diag.bad_id]
+code = "identity.bad_id"
+
+[action.v2]
+via  = ["merge", "world.toml", "--change", "changes/no_cart.v2.toml"]
+exit = 1
+
+[action.v2.diag.bad_id]
+code = "identity.bad_id"

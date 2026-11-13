@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "base = \"20 + y\": formula.unmarked, span of the value, exit 1; base = \" = 20\": the same, hint to remove the space."
+milestone = 1
+actions   = ["plain", "space"]
+
+# The value span starts at its opening quote, column 8 of `base = "..."` (documents.md 2.1).
+
+[action.plain]
+via         = ["build", "plain/world.toml", "--lib", "{work}/libs", "--out", "plain/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "plain/build/w"
+
+[action.plain.diag.unmarked]
+code   = "formula.unmarked"
+file   = "world.toml"
+line   = 7
+column = 8
+
+[action.space]
+via         = ["build", "space/world.toml", "--lib", "{work}/libs", "--out", "space/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "space/build/w"
+
+[action.space.diag.unmarked]
+code   = "formula.unmarked"
+file   = "world.toml"
+line   = 7
+column = 8

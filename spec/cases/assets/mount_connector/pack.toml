@@ -1,0 +1,7 @@
+[asset.box]
+primitive = "box"
+size      = [1, 1, 1]
+
+[asset.box.mount.side]
+at        = [0.5, 0]
+connector = "wall"

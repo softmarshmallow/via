@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "ford built at 1 and at 8 threads, each clean: same bytes; same ran set."
+milestone = 1
+actions   = ["program", "trust", "one", "eight"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.one]
+via         = ["build", "world.toml", "--threads", "1", "--store", "one/store", "--out", "one/build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "one/build/ford"
+no_rerun    = "tests threads itself"
+
+[action.eight]
+via         = ["build", "world.toml", "--threads", "8", "--store", "eight/store", "--out", "eight/build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "eight/build/ford"
+no_rerun    = "tests threads itself"
+
+[action.eight.same.files]
+action = "one"
+what   = "files"
+
+[action.eight.same.id]
+action = "one"
+what   = "id"
+
+[action.eight.same.ran]
+action = "one"
+what   = "ran"

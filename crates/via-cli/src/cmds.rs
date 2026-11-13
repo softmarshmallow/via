@@ -65,6 +65,18 @@ pub fn explain(
         print!("{}", via_diag::explain::list_text());
         return Vec::new();
     };
+    // `diagnostics.md` 2: a world named that is not a file is `cli.no_world`; the world follows
+    // the code on the command line.
+    if let Some(w) = world.filter(|w| !w.is_file()) {
+        return vec![Diag::new(
+            codes::cli::NO_WORLD,
+            Subject::Cli,
+            Site::Argument(at + 1),
+            txt(format!("the world file `{}` does not exist", w.display())),
+            txt("name the world file of the build to explain".to_string()),
+        )
+        .emit(&NoWorld)];
+    }
     if code.contains(':') {
         let Some(world) = world else {
             return vec![usage(
@@ -280,7 +292,20 @@ pub fn vectors(file: &Path, at: u32) -> Vec<Record> {
         }
     };
     match via_num::vectors::evaluate_file(&text) {
-        Ok(outcomes) => {
+        Ok(mut outcomes) => {
+            // `point_at`, `measure` and `samples` belong to the geometry kernel (`numbers.md`
+            // 10): via-num leaves them, and the binary computes them here with via-geom.
+            let table: Option<toml::Table> = text.parse().ok();
+            for o in &mut outcomes {
+                if o.got.is_none() {
+                    let args = table
+                        .as_ref()
+                        .and_then(|t| t.get("vector")?.get(&o.id)?.get("args")?.as_array());
+                    if let Some(g) = args.and_then(|a| delegated(&o.func, a)) {
+                        o.got = Some(g.to_json());
+                    }
+                }
+            }
             let mut out = std::io::stdout().lock();
             for o in &outcomes {
                 if let Some(line) = o.line() {
@@ -397,6 +422,7 @@ pub fn trust(
         lib,
         via_lib: mopts.via_lib,
         shipped: mopts.shipped_root,
+        include: steps::includes(&w),
     };
     let sdk_digest = sdk.map(|d| steps::folder_digest(d).0);
     let config = match config_or_fail(arg) {
@@ -506,5 +532,62 @@ pub fn trust(
             records.push(*r);
             (records, 1)
         }
+    }
+}
+
+/// A vector of the geometry kernel's (`numbers.md` 10): `point_at` (path, `t` as decimal text,
+/// offset) to the point and the bearing; `measure` (shape word, points, point) to `t`, `d`, `sd`;
+/// `samples` (path, `r`) to the sample points of 5.5. `None` when the arguments do not fit.
+fn delegated(func: &str, args: &[toml::Value]) -> Option<via_num::vectors::Got> {
+    use via_geom::lineref::{self, Line};
+    use via_geom::{Region, P};
+    use via_num::vectors::Got;
+    let int = |v: &toml::Value| v.as_integer();
+    let point = |v: &toml::Value| -> Option<P> {
+        let a = v.as_array()?;
+        Some(P::new(int(a.first()?)?, int(a.get(1)?)?))
+    };
+    let points = |v: &toml::Value| -> Option<Vec<P>> { v.as_array()?.iter().map(point).collect() };
+    let pt = |p: P| Got::List(vec![Got::Int(p.x), Got::Int(p.y)]);
+    match func {
+        "point_at" => {
+            let line = Line::new(points(args.first()?)?, false);
+            let t = via_num::parse_double(args.get(1)?.as_str()?).ok()?;
+            let at = lineref::interpolate(&line, "v", t, int(args.get(2)?)?).ok()?;
+            Some(Got::List(vec![pt(at.point), Got::Int(at.bearing)]))
+        }
+        "measure" => {
+            let shape = points(args.get(1)?)?;
+            let p = point(args.get(2)?)?;
+            let m = match args.first()?.as_str()? {
+                "path" => lineref::project_path(&Line::new(shape, false), p),
+                "region" => lineref::project_region(&Region::from_ring(shape), p)?,
+                "point" => lineref::project_point(*shape.first()?, p),
+                _ => return None,
+            };
+            Some(Got::List(vec![
+                Got::Double(m.t.unwrap_or(0.0)),
+                Got::Double(m.d),
+                Got::Double(m.sd),
+            ]))
+        }
+        "samples" => {
+            let line = Line::new(points(args.first()?)?, false);
+            let r = int(args.get(1)?)? as f64;
+            let l = line.length();
+            let mut out = Vec::new();
+            let mut i = 0.0;
+            loop {
+                let s = i * r;
+                if s >= l {
+                    break;
+                }
+                out.push(pt(lineref::at_length(&line, "v", s, false, 0).ok()?.point));
+                i += 1.0;
+            }
+            out.push(pt(lineref::at_length(&line, "v", l, true, 0).ok()?.point));
+            Some(Got::List(out))
+        }
+        _ => None,
     }
 }

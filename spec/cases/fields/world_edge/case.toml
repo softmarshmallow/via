@@ -1,0 +1,9 @@
+format    = "via-case-1"
+summary   = "radius 6 on a point at (4, 4), extent [0, 0, 8, 8], mask 1: no field.effect_cut: every ring post lies on the extent's edge."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"

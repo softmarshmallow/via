@@ -1,0 +1,5 @@
+[asset.t]
+primitive = "box"
+engine    = true
+size      = [1, 1, 1]
+triangles = 12

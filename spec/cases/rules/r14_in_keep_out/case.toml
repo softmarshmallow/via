@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A region feature writing keep_out = 1; a hand instance in it: place.keep_out naming the field."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.keep_out]
+code = "place.keep_out"

@@ -1,0 +1,13 @@
+name       = "tiny"
+extent     = [0, 0, 1, 1]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= f('tag:ground')"
+
+[field.g1]
+tags = ["ground"]
+
+[field.g2]
+tags = ["ground"]

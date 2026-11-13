@@ -1,0 +1,1 @@
+{"@format": "via-kernel-1", "params": {"distance": 2000, "join": "mitre", "limit": 1.2}, "shapes": [{"region": [[[[0, 0], [10000, 0], [10000, 10000], [0, 10000]]]], "source": "s"}]}

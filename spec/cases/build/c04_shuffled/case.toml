@@ -1,0 +1,51 @@
+format    = "via-case-1"
+summary   = "ford with tables and keys reordered and a comment added: same id, every file of files byte-identical; run.key and run.inputs differ."
+milestone = 1
+actions   = ["program", "trust", "first", "shuffle", "retrust", "second"]
+
+# The manifest differs, as run.key and run.inputs (the world file's digest) differ; which members differ is not compared member by member.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.shuffle]
+write = "world.toml"
+from  = "later/world.toml"
+
+[action.retrust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.second]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.second.same.id]
+action = "first"
+what   = "id"
+
+[action.second.same.files]
+action = "first"
+what   = "files"
+
+[action.second.same.manifest]
+action = "first"
+what   = "build/ford/manifest.json"
+differ = true

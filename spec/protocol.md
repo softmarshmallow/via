@@ -768,32 +768,32 @@ Not specified until the milestone that needs them. Each is decided by the case n
 | `protocol.no_program` | error | `command[0]` is no configured program and no file, or is a `.bat`/`.cmd`; the hint gives `via config program`. |
 | `protocol.absolute_path` | error | `command` holds an absolute path. |
 | `protocol.code_folder` | error | The code folder is or holds the world's folder; move the script into its own folder. |
-| `protocol.untrusted` | error | A generate step is not trusted and has no committed result; the hint is `via trust`. |
+| `protocol.untrusted` | error | A generate step is not trusted and has no committed result; the hint is `via trust` (M2). |
 | `protocol.untrusted_result` | info | An untrusted step was built from its committed result, which matched (M2). |
 | `protocol.untrusted_stale` | error | A committed result's static key or a read of its trace differs from the current build; names the first difference (M2). |
 | `protocol.untrusted_skipped` | warning | An untrusted lint or export step was skipped. |
 | `protocol.start` | error | The process could not be started; `data.kind` (6.2). |
-| `protocol.version` | error | The worker speaks another protocol version; both versions, `data.engine` and `data.worker`. |
-| `protocol.when_unserved` | error | The worker's `capabilities.when` lacks the step's `when`, `data.when`. |
-| `protocol.no_entry` | error | The script has no top-level function named after `when`. |
-| `protocol.framing` | error | A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor. |
-| `protocol.message_too_large` | error | A frame over 16 MiB, `data.bytes` long; send the data as a blob. |
+| `protocol.version` | error | The worker speaks another protocol version; both versions, `data.engine` and `data.worker` (M2). |
+| `protocol.when_unserved` | error | The worker's `capabilities.when` lacks the step's `when`, `data.when` (M2). |
+| `protocol.no_entry` | error | The script has no top-level function named after `when` (M2). |
+| `protocol.framing` | error | A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor (M2). |
+| `protocol.message_too_large` | error | A frame over 16 MiB, `data.bytes` long; send the data as a blob (M2). |
 | `protocol.deadline` | error | No answer by the deadline; which phase, `data.phase` (`initialize`, `step.call` or `cancel`), and the deadline in seconds, `data.deadline`. |
-| `protocol.crashed` | error | The worker exited during a call. |
-| `protocol.raised` | error | The step raised an exception it did not catch; `data.exception`. |
+| `protocol.crashed` | error | The worker exited during a call (M2). |
+| `protocol.raised` | error | The step raised an exception it did not catch; `data.exception` (M2). |
 | `protocol.failed` | error | A plain command exited non-zero; `data.exit`. |
-| `protocol.slow_exit` | info | A worker had to be killed after `shutdown`. |
-| `protocol.input_undeclared` | error | `input.open` named a path not in `inputs`. |
-| `protocol.blob_digest` | error | A blob's bytes do not match its name. |
-| `protocol.blob_header` | error | A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2). |
+| `protocol.slow_exit` | info | A worker had to be killed after `shutdown` (M2). |
+| `protocol.input_undeclared` | error | `input.open` named a path not in `inputs` (M2). |
+| `protocol.blob_digest` | error | A blob's bytes do not match its name (M2). |
+| `protocol.blob_header` | error | A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2) (M2). |
 | `protocol.column_mixed` | error | One attribute has two types across the selected kinds; names both kinds. |
-| `protocol.no_output` | error | A generate step returned no document. |
-| `protocol.output_twice` | error | A worker returned a document and wrote `document.toml`. |
+| `protocol.no_output` | error | A generate step returned no document (M2). |
+| `protocol.output_twice` | error | A worker returned a document and wrote `document.toml` (M2). |
 | `protocol.output_json` | error | A plain command's `out/diagnostics.json` is not a list of diagnostic objects. |
-| `protocol.field_file` | error | A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field`. |
+| `protocol.field_file` | error | A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field` (M2). |
 | `protocol.output_table` | error | A returned document holds a table or key a step may not return, or a lint or export returned one. |
-| `protocol.output_file` | error | A returned `file` leaves `out` or names nothing. |
-| `protocol.key_shadows` | error | A returned key equals a name the step can see. |
+| `protocol.output_file` | error | A returned `file` leaves `out` or names nothing (M2). |
+| `protocol.key_shadows` | error | A returned key equals a name the step can see (M2). |
 | `protocol.no_explain` | warning | A step sent a code with no `explain` text. |
 | `protocol.explain_differs` | warning | A step sent two `explain` texts for one code. |
 

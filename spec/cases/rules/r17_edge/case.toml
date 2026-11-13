@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "Lanes to the edges; instances at t = 0 and t = 1 of them, at [256, 256] and at [256.001, 10]: first three placed on the edge, no place.outside; the fourth place.outside, not placed, exit 1."
+milestone = 1
+actions   = ["build"]
+
+# A build with an error writes no instance columns, so the three placements are asserted by the absence of their place.outside (the one record names d).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.outside]
+code    = "place.outside"
+subject = "instance.d"
+records = 1

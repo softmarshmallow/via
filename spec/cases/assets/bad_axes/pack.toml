@@ -1,0 +1,7 @@
+[defaults]
+front = "+y"
+up    = "-y"
+
+[asset.a]
+primitive = "box"
+size      = [1, 1, 1]

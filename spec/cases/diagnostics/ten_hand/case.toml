@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "Ten hand instances on steep ground; build: ten place.relief records."
+milestone = 1
+actions   = ["build"]
+
+# Each hut's 4 m footprint on the 0.3 slope has relief 1.2, above 0.5; hand-written things have their own subjects, so the ten are never folded (diagnostics.md 5).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.relief]
+code    = "place.relief"
+records = 10

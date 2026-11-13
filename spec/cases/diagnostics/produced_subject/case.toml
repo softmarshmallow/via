@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "A lint step that sends a produced name as subject: the subject is its producer and the name is in occurrences."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# The lint names the first instance of the build (a produced tree name) from its request's instance columns (protocol.md 2.2, 4.3).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.near]
+code        = "step.look.near"
+subject     = "scatter.trees"
+occurrences = 1

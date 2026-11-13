@@ -1,0 +1,72 @@
+format    = "via-case-1"
+summary   = "A path with a 90-degree turn; stroke 3 m left and right, each join, butt and round caps: valid, arcs within 5 mm."
+milestone = 1
+actions   = ["round_butt", "round_round", "mitre_butt", "mitre_round", "bevel_butt", "bevel_round"]
+
+# (open) the 5 mm chord bound needs a named check over arcs; validity is the kernel's guarantee, so exit 0 is asserted.
+
+[action.round_butt]
+via         = ["kernel", "stroke", "--in", "round_butt.json", "--out", "round_butt.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.round_butt.check.one]
+fn      = "json_count"
+path    = "round_butt.out.json"
+pointer = "/results"
+count   = 1
+
+[action.round_round]
+via         = ["kernel", "stroke", "--in", "round_round.json", "--out", "round_round.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.round_round.check.one]
+fn      = "json_count"
+path    = "round_round.out.json"
+pointer = "/results"
+count   = 1
+
+[action.mitre_butt]
+via         = ["kernel", "stroke", "--in", "mitre_butt.json", "--out", "mitre_butt.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.mitre_butt.check.one]
+fn      = "json_count"
+path    = "mitre_butt.out.json"
+pointer = "/results"
+count   = 1
+
+[action.mitre_round]
+via         = ["kernel", "stroke", "--in", "mitre_round.json", "--out", "mitre_round.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.mitre_round.check.one]
+fn      = "json_count"
+path    = "mitre_round.out.json"
+pointer = "/results"
+count   = 1
+
+[action.bevel_butt]
+via         = ["kernel", "stroke", "--in", "bevel_butt.json", "--out", "bevel_butt.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.bevel_butt.check.one]
+fn      = "json_count"
+path    = "bevel_butt.out.json"
+pointer = "/results"
+count   = 1
+
+[action.bevel_round]
+via         = ["kernel", "stroke", "--in", "bevel_round.json", "--out", "bevel_round.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.bevel_round.check.one]
+fn      = "json_count"
+path    = "bevel_round.out.json"
+pointer = "/results"
+count   = 1

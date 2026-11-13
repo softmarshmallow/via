@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "ford with a second weights field, then without it; build twice: weights/<that field>/ is gone."
+milestone = 1
+actions   = ["program", "add", "trust", "with", "without"]
+
+# ford's own text has no weights field; the case adds one as an inline change `mix`, a weights field with no role painting `grass`.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.add]
+replace = "world.toml"
+find    = "[change.downstream.feature.ford]"
+with    = "[change.mix.field.mix]\ntype = \"weights\"\n\n[change.mix.field.mix.then.all]\npaint = \"grass\"\n\n[change.downstream.feature.ford]"
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "mix"]
+exit = 0
+
+[action.with]
+via         = ["build", "world.toml", "--change", "mix", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.with.file.there]
+path   = "build/ford/weights/mix"
+exists = true
+
+[action.without]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.without.file.gone]
+path   = "build/ford/weights/mix"
+exists = false

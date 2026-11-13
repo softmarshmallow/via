@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "No relative path leads from the build directory to the pack's root: build.pack_root_far, pack_root null."
+milestone = 1
+pending   = "no relative path exists only across drives (Windows), which waits on hosted runners (docs/plan.md)"
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.pack_root_far]
+code = "build.pack_root_far"
+from = "run"

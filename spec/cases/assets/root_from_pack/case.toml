@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "packs/p.toml with root = \"../art\" and a grass file; build and pack check from another folder: both exit 0, no pack.missing_file; art deleted: pack.missing_file naming root, exit 1."
+milestone = 1
+actions   = ["check", "build", "drop_art", "check_again"]
+
+# The runner's working folder is neither case/ nor case/packs/ (limitation S11.T.6). grass.png is
+# found under case/art/, relative to the pack file. The material's file is only checked to exist in
+# M1, so a placeholder's bytes do. Subject `pack.root`: a fault in one key of the pack adds the key
+# path to `pack` (assets.md Diagnostics); (open) whether it is `pack` alone.
+
+[action.check]
+via  = ["pack", "check", "case/packs/p.toml"]
+exit = 0
+
+[action.build]
+via  = ["build", "case/world.toml", "--out", "case/build/w"]
+exit = 0
+out  = "case/build/w"
+
+[action.drop_art]
+delete = "case/art"
+
+[action.check_again]
+via  = ["pack", "check", "case/packs/p.toml"]
+exit = 1
+
+[action.check_again.diag.missing_file]
+code    = "pack.missing_file"
+subject = "pack.root"

@@ -6,13 +6,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use via_diag::{codes, Diag, Site, Subject, Value as DValue};
 use via_expr::{evaluate, Domain, Setup};
 use via_geom::held::{self, Clear, ClearPlace, Pin};
+use via_geom::lineref::Line;
 use via_geom::overlay::{boolean, BoolOp};
+use via_geom::pred::{dist2_segment, Dist2, Wide};
 use via_geom::{Region, P};
 use via_raster::raster::read_at;
 
-use crate::decl::{Choice, Decls, Place, Ranged, ScatterDecl};
+use crate::decl::Select;
+use crate::decl::{Choice, Decls, Ranged, ScatterDecl};
 use crate::pack::Pack;
-use crate::place::{footprint, Geo, Placed, Plan};
+use crate::place::{footprint, ClearSpot, Geo, Placed, Plan};
 use crate::resolve::{Fields, View};
 use crate::text::{self, at_header, at_key};
 
@@ -34,7 +37,7 @@ pub struct Placement {
     pub z: f64,
 }
 
-fn key_int(i: i64) -> String {
+pub(crate) fn key_int(i: i64) -> String {
     if i < 0 {
         format!("n{}", -i)
     } else {
@@ -124,6 +127,10 @@ fn choice_lists(
     pack: &Pack,
     diags: &mut Vec<Diag>,
 ) -> Option<Vec<(Vec<String>, i64)>> {
+    if pack.failed {
+        // The pack's own error stands for every read of it (`diagnostics.md` 4).
+        return None;
+    }
     let mut out = Vec::new();
     let mut ok = true;
     for Choice { what, weight } in &s.choices {
@@ -224,9 +231,56 @@ fn ranged(r: Ranged, u: u64) -> f64 {
 #[derive(Debug, Default)]
 pub struct Produced {
     pub instances: Vec<Placement>,
+    /// Pins that select a scatter's instance (`identity.md` 4.1), placed once it has run.
+    pub pins: Vec<Placement>,
+    /// What each such selection resolved to: `<table>.<id>` to (produced name, point).
+    pub selections: BTreeMap<String, (String, P)>,
     /// Per producer: the names before hand edits, for `place.gave_way` and the change report.
     pub makers: BTreeSet<String>,
     pub diags: Vec<Diag>,
+}
+
+/// A hand edit's selection of a scatter's instance (`identity.md` 3), over the run stage.
+struct SelectRaw<'r> {
+    raw: &'r [held::Instance],
+    /// Selections that found nothing, by maker: `<table>.<id>`.
+    left: BTreeMap<String, Vec<String>>,
+    chosen: BTreeMap<String, (String, P)>,
+}
+
+impl SelectRaw<'_> {
+    /// The instance of `sel.of` nearest `near`, exactly; a tie goes to the bytewise-least name.
+    fn pick(&mut self, top: &str, id: &str, sel: &Select) -> Option<held::Instance> {
+        let near = P::new(sel.near.0, sel.near.1);
+        let mut best: Option<(i128, &held::Instance)> = None;
+        for i in self.raw.iter().filter(|i| i.producer == sel.of) {
+            let (dx, dy) = (
+                i128::from(i.origin.x - near.x),
+                i128::from(i.origin.y - near.y),
+            );
+            let d2 = dx * dx + dy * dy;
+            let better = best.as_ref().is_none_or(|(b, bi)| {
+                d2 < *b || (d2 == *b && i.name.as_bytes() < bi.name.as_bytes())
+            });
+            if better {
+                best = Some((d2, i));
+            }
+        }
+        match best {
+            Some((_, i)) => {
+                self.chosen
+                    .insert(format!("{top}.{id}"), (i.name.clone(), i.origin));
+                Some(i.clone())
+            }
+            None => {
+                self.left
+                    .entry(sel.of.clone())
+                    .or_default()
+                    .push(format!("{top}.{id}"));
+                None
+            }
+        }
+    }
 }
 
 /// Runs every scatter and applies hand edits.
@@ -250,6 +304,11 @@ pub fn scatter_all(
             continue;
         };
         let within = match &s.within {
+            None if s.within_of.is_some() => match placed.within.get(&s.id) {
+                Some(r) => Some(r.clone()),
+                // The selection said why it found nothing.
+                None => continue,
+            },
             None => None,
             Some(w) => match placed.shapes.get(w) {
                 Some(Geo::Region { region, .. }) => Some(region.clone()),
@@ -404,8 +463,9 @@ pub fn scatter_all(
             };
             // Give way (7.5): solid hand instances, then relief.
             // Neither asset `none` (rules.md 7.5, as 8.1 and 3.4's edges read).
+            // Pins are hand edits, applied to the held output, not given way to (identity.md 4.1).
             let overlap = a.solid
-                && hand.iter().any(|h| {
+                && hand.iter().filter(|h| !h.pin).any(|h| {
                     pack.assets.get(&h.asset).is_some_and(|ha| ha.solid)
                         && overlaps(&h.footprint, &fp)
                 });
@@ -469,86 +529,152 @@ pub fn scatter_all(
             ));
         }
     }
-    // Hand edits (identity.md 4.1): clears, then pins.
+    // Hand edits (identity.md 4.1): clears, then pins. A hand edit that selects a scatter's
+    // instance reads the run stage, `raw`, before any hand edit (section 3).
     let mut clears = Vec::new();
+    let mut strips: Vec<(String, Line, i64, Option<Vec<String>>)> = Vec::new();
+    let mut selector = SelectRaw {
+        raw: &raw,
+        left: BTreeMap::new(),
+        chosen: BTreeMap::new(),
+    };
     for c in d.clears.values() {
-        let place = match (&c.place, &c.region, c.radius) {
-            (_, Some(r), _) => {
-                let ring: Vec<P> = r.iter().map(|p| P::new(p.0, p.1)).collect();
-                ClearPlace::Inside(Region::from_ring(ring))
-            }
-            (Some(Place::At(p)), None, Some(r)) => ClearPlace::Disc(P::new(p.0, p.1), r),
-            (Some(Place::On(o)), None, r) => match placed.shapes.get(&o.reference) {
-                Some(Geo::Region { region, .. }) if r.is_none() => {
-                    ClearPlace::Inside(region.clone())
-                }
-                Some(Geo::Point { p, .. }) if r.is_some() => ClearPlace::Disc(*p, r.unwrap_or(0)),
-                _ => {
-                    out.diags.push(at_key(
-                        codes::doc::NOT_YET,
-                        "clear",
-                        &c.id,
-                        "on",
-                        "this clear's place is not built by this model yet",
-                        "write `at` with `radius`, or `region`",
-                    ));
-                    continue;
-                }
-            },
-            _ => {
-                out.diags.push(at_key(
-                    codes::doc::MISSING_KEY,
-                    "clear",
-                    &c.id,
-                    "radius",
-                    "a clear `at` a point needs `radius`",
-                    "write `radius`",
-                ));
-                continue;
-            }
-        };
         if let Some(by) = &c.by {
             for b in by {
                 if !d.scatters.contains_key(b) {
-                    out.diags.push(at_key(
-                        codes::identity::UNKNOWN_PRODUCER,
-                        "clear",
-                        &c.id,
-                        "by",
-                        &format!("`{b}` names no producer"),
-                        &text::near_hint(
-                            b,
-                            d.scatters.keys().map(String::as_str),
-                            "name a scatter",
-                        ),
-                    ));
+                    out.diags.push(by_fault(d, "clear", &c.id, b));
                 }
             }
         }
+        let place = match placed.clears.get(&c.id) {
+            Some(ClearSpot::Disc(p, r)) => ClearPlace::Disc(*p, *r),
+            Some(ClearSpot::Inside(r)) => ClearPlace::Inside(r.clone()),
+            Some(ClearSpot::Strip(line, r)) => {
+                strips.push((c.id.clone(), line.clone(), *r, c.by.clone()));
+                continue;
+            }
+            None => match placed.deferred.get(&format!("clear.{}", c.id)) {
+                Some(sel) => {
+                    let Some(inst) = selector.pick("clear", &c.id, sel) else {
+                        continue;
+                    };
+                    if sel.t.is_some() || sel.offset.is_some() {
+                        out.diags.push(at_key(
+                            codes::geom::NO_LENGTH,
+                            "clear",
+                            &c.id,
+                            "on",
+                            "an instance has no length, so no `t` or `offset`",
+                            "drop `t` and `offset`",
+                        ));
+                        continue;
+                    }
+                    // Without `radius`, the selected instance alone: origins at its origin.
+                    ClearPlace::Disc(inst.origin, c.radius.unwrap_or(0))
+                }
+                // Its place said why it could not be resolved.
+                None => continue,
+            },
+        };
         clears.push(Clear {
             id: c.id.clone(),
             place,
             by: c.by.clone(),
         });
     }
+    let mut pin_plans: Vec<(String, Plan)> = placed
+        .pins
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    for (key, sel) in &placed.deferred {
+        let Some(id) = key.strip_prefix("pin.") else {
+            continue;
+        };
+        let Some(pd) = d.pins.get(id) else { continue };
+        let Some(inst) = selector.pick("pin", id, sel) else {
+            continue;
+        };
+        let mut placer = crate::place::Placer::new(d, pack);
+        let spot = crate::place::Spot::At {
+            p: inst.origin,
+            facing: Some(inst.face),
+            end: false,
+        };
+        let plan = placer
+            .on_spot("pin", id, &sel.of, spot, sel.t, sel.offset, pd.face)
+            .and_then(|(origin, facing)| {
+                placer.plan_at(
+                    "pin",
+                    id,
+                    &pd.asset,
+                    origin,
+                    facing,
+                    1.0,
+                    1.0,
+                    Some(sel.of.clone()),
+                    pd.rank,
+                )
+            });
+        out.diags.extend(placer.diags);
+        if let Some(plan) = plan {
+            out.pins.push(Placement {
+                name: plan.name.clone(),
+                maker: None,
+                pin: true,
+                asset: plan.asset.clone(),
+                origin: plan.origin,
+                facing: plan.facing,
+                scale: plan.scale,
+                tint: plan.tint,
+                footprint: plan.footprint.clone(),
+                z: 0.0,
+            });
+            pin_plans.push((id.to_string(), plan));
+        }
+    }
+    pin_plans.sort_by(|a, b| a.0.cmp(&b.0));
+    out.selections = std::mem::take(&mut selector.chosen);
+    for (maker, who) in std::mem::take(&mut selector.left) {
+        let refs: Vec<(&str, &str)> = who.iter().filter_map(|w| w.split_once('.')).collect();
+        let mut placer = crate::place::Placer::new(d, pack);
+        placer.near_none(&maker, "instance", &refs);
+        out.diags.extend(placer.diags);
+    }
+    drop(selector);
+    // Strips (identity.md 4.3, a clear `on` a path without `t`): origins within `radius` of the
+    // nearest point of the whole path, tested exactly.
+    for (id, line, r, by) in &strips {
+        let r2 = Dist2 {
+            num: Wide::from_u128((i128::from(*r) * i128::from(*r)) as u128),
+            den: Wide::from_u128(1),
+        };
+        let before = raw.len();
+        raw.retain(|i| {
+            let speaks = by.as_ref().is_none_or(|b| b.contains(&i.producer));
+            let near = (0..line.segments()).any(|k| {
+                let (a, b) = line.seg(k);
+                dist2_segment(i.origin, a, b).0.cmp_exact(&r2) != std::cmp::Ordering::Greater
+            });
+            !(speaks && near)
+        });
+        if raw.len() == before {
+            out.diags.push(at_header(
+                codes::identity::CLEAR_EMPTY,
+                "clear",
+                id,
+                &format!("the clear `{id}` removed nothing"),
+                "delete the clear, or move it onto what it should remove",
+            ));
+        }
+    }
     let mut pins = Vec::new();
-    for (id, p) in &placed.pins {
+    for (id, p) in &pin_plans {
         let by = d.pins.get(id).and_then(|x| x.by.clone());
         if let Some(by) = &by {
             for b in by {
                 if !d.scatters.contains_key(b) {
-                    out.diags.push(at_key(
-                        codes::identity::UNKNOWN_PRODUCER,
-                        "pin",
-                        id,
-                        "by",
-                        &format!("`{b}` names no producer"),
-                        &text::near_hint(
-                            b,
-                            d.scatters.keys().map(String::as_str),
-                            "name a scatter",
-                        ),
-                    ));
+                    out.diags.push(by_fault(d, "pin", id, b));
                 }
             }
         }
@@ -925,4 +1051,32 @@ pub fn ground_and_check(
             }
         }
     }
+}
+
+/// A `by` name that is no scatter (`identity.md` 4.1): `identity.not_a_producer` when it names
+/// something that places no instances (a feature, an instance, an edit), else
+/// `identity.unknown_producer` with the nearest scatter.
+fn by_fault(d: &Decls, top: &str, id: &str, b: &str) -> Diag {
+    let names_something = d.features.contains_key(b)
+        || d.instances.contains_key(b)
+        || d.pins.contains_key(b)
+        || d.clears.contains_key(b);
+    if names_something {
+        return at_key(
+            codes::identity::NOT_A_PRODUCER,
+            top,
+            id,
+            "by",
+            &format!("`{b}` places no instances, so nothing of it can be edited"),
+            "name the producers that place on it",
+        );
+    }
+    at_key(
+        codes::identity::UNKNOWN_PRODUCER,
+        top,
+        id,
+        "by",
+        &format!("`{b}` names no producer"),
+        &text::near_hint(b, d.scatters.keys().map(String::as_str), "name a scatter"),
+    )
 }

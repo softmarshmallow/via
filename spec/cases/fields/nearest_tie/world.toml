@@ -1,0 +1,11 @@
+name       = "plot"
+extent     = [0, 0, 1, 1]
+resolution = 0.5
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.height]
+role    = "surface"
+file    = "h.npy"
+outside = 0
+filter  = "nearest"

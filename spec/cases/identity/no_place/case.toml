@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A selection whose class is row: identity.no_place."
+milestone = 1
+actions   = ["build"]
+
+# identity.md 2.4: `field` and `row` have no place. The M3 row (case 12's `class = "field"` on streets) is the same rule on a network.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.no_place]
+code = "identity.no_place"

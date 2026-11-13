@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "density = \"= 0.6 * (1 - keep_out)\": scatter.keep_out_twice."
+milestone = 1
+actions   = ["build"]
+
+# The field read is named `keep_out` so the row's formula reads it by name.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.keep_out_twice]
+code     = "scatter.keep_out_twice"
+severity = "info"

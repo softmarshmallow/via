@@ -1,0 +1,10 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.height]
+base = 1
+
+[let]
+height = 3

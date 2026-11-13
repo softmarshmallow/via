@@ -1,0 +1,22 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.wet]
+base = "= 4 - (x - 8) * (x - 8) - (y - 8) * (y - 8)"
+
+[feature.a_spot]
+kind = "sha"
+where = "= f('wet') > 0"
+k    = 2
+
+[feature.z_big]
+kind = "sha"
+region = [[2, 2], [14, 2], [14, 14], [2, 14]]
+k    = 1

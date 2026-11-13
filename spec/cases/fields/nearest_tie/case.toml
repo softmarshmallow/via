@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "world extent [0, 0, 1, 1], resolution 0.5; a 2 by 2 array file, nearest: post (1, 0) at x = 0.5 takes sample column 1."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.tie]
+path  = "build/w/fields/height.npy"
+post  = [1, 0]
+value = 1

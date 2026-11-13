@@ -1,0 +1,13 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.west]
+kind   = "meanpad"
+region = [[-4, 4], [-1, 4], [-1, 8], [-4, 8]]

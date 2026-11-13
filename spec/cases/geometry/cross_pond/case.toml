@@ -1,0 +1,55 @@
+format    = "via-case-1"
+summary   = "cross_pond; network: counts and twice-areas as in section 5; the first area's sides unchanged."
+milestone = 1
+actions   = ["op", "plain"]
+
+# (open) comparing the first area's `sides` between the two outputs needs a pointer into two files; the hole and the counts are asserted.
+
+[action.op]
+via  = ["kernel", "network", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.file.c]
+path    = "out.json"
+pointer = "/components"
+value   = 2
+
+[action.op.check.v]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/vertices"
+count   = 13
+
+[action.op.check.s]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/segments"
+count   = 16
+
+[action.op.check.j]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/junctions"
+count   = 6
+
+[action.op.check.e]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/edges"
+count   = 9
+
+[action.op.check.a]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/areas"
+count   = 5
+
+[action.op.check.holes]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/areas/0/holes"
+count   = 1
+
+[action.plain]
+via  = ["kernel", "network", "--in", "cross.json", "--out", "cross.out.json"]
+exit = 0

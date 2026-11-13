@@ -1,0 +1,8 @@
+[asset.block]
+primitive  = "box"
+size       = [2, 2, 2]
+sink       = 0.25
+max_relief = 0.5
+
+[asset.block.mount.door]
+at = [1, 0]

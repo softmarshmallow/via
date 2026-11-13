@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "on = { ref = \"a\", t = 1.5 }, and t = nan; read: geom.t_range for 1.5; nan in text is num.not_finite."
+milestone = 1
+actions   = ["big", "nan"]
+
+# TOML's `nan` never reaches the kernel: it is num.not_finite at read (documents.md 2, numbers.md 3.3). geometry.md's row is corrected to say so.
+
+[action.big]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.big.diag.t_range]
+code = "geom.t_range"
+
+[action.nan]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.nan.diag.not_finite]
+code = "num.not_finite"

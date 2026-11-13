@@ -1,0 +1,7 @@
+[kind.meanpad]
+radius = 2
+
+[kind.meanpad.effect.e]
+field = "tag:mark"
+value = "= under('height', 'mean')"
+mask  = "= 1 - smoothstep(0, 1, d)"

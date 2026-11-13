@@ -30,6 +30,15 @@ NAMED_CHECKS: dict[str, tuple[set[str], set[str]]] = {
     "changed_within_windows": ({"before", "after", "fields", "kinds", "world"}, set()),
     "no_origin_inside": ({"build"}, {"at", "radius", "points", "prefix"}),
     "changes_by_prefix": ({"path", "prefix", "what"}, {"names"}),
+    "vectors_match": ({"path"}, {"fns"}),
+    "json_count": ({"path", "pointer", "count"}, set()),
+    "run_node": ({"path", "node", "includes"}, set()),
+    "array_window": ({"whole", "part", "window"}, set()),
+    "run_report_valid": ({"path"}, set()),
+    "json_list": ({"path", "pointer"}, {"from", "at_least", "includes", "starts", "last"}),
+    "instance_at": ({"build", "name", "at"}, set()),
+    "changes_inside": ({"path", "prefix", "at", "radius", "what", "cause"}, set()),
+    "changes_absent": ({"path"}, {"entry_names", "causes"}),
 }
 
 
@@ -259,7 +268,7 @@ def _parse_file_check(t: dict[str, Any], where: str) -> None:
 def _parse_diag(t: dict[str, Any], where: str) -> None:
     allowed = {
         "code", "severity", "subject", "file", "line", "column", "bytes", "argument", "position",
-        "count", "occurrences", "data", "related", "chain", "failed_on", "records", "from",
+        "position_within", "count", "occurrences", "data", "related", "chain", "failed_on", "records", "from",
     }
     _keys(t, where, {"code"}, allowed - {"code"})
     _str(t["code"], f"{where}.code")
@@ -287,6 +296,15 @@ def _parse_diag(t: dict[str, Any], where: str) -> None:
             raise CaseError(f"{where}.position: expected [x, y] or [x, y, z]")
         for i, n in enumerate(p):
             _number(n, f"{where}.position[{i}]")
+    if "position_within" in t:
+        b = t["position_within"]
+        _expect_type(b, (list,), f"{where}.position_within", "[x0, y0, x1, y1]")
+        if len(b) != 4:
+            raise CaseError(f"{where}.position_within: expected [x0, y0, x1, y1]")
+        for i, n in enumerate(b):
+            _number(n, f"{where}.position_within[{i}]")
+        if b[0] > b[2] or b[1] > b[3]:
+            raise CaseError(f"{where}.position_within: x0 above x1 or y0 above y1")
     if "data" in t:
         _table(t["data"], f"{where}.data")
         _check_value_like(t["data"], f"{where}.data")
@@ -348,10 +366,10 @@ def _parse_named(t: dict[str, Any], where: str) -> None:
     required, optional = NAMED_CHECKS[fn]
     args = {k: v for k, v in t.items() if k != "fn"}
     _keys(args, where, required, optional)
-    for k in ("path", "before", "after", "build", "world", "names"):
+    for k in ("path", "before", "after", "build", "world", "names", "whole", "part"):
         if k in args:
             _relative(_str(args[k], f"{where}.{k}"), f"{where}.{k}")
-    for k in ("fields", "kinds", "what"):
+    for k in ("fields", "kinds", "what", "fns", "entry_names", "causes"):
         if k in args:
             _str_list(args[k], f"{where}.{k}")
     for k in ("kinds",):
@@ -361,6 +379,47 @@ def _parse_named(t: dict[str, Any], where: str) -> None:
         _str(args["prefix"], f"{where}.prefix")
     if "limit" in args:
         _number(args["limit"], f"{where}.limit")
+    if "pointer" in args:
+        ptr = _str(args["pointer"], f"{where}.pointer")
+        if ptr and not ptr.startswith("/"):
+            raise CaseError(f"{where}.pointer: {ptr!r} is not a JSON Pointer")
+    if "count" in args:
+        _int(args["count"], f"{where}.count", 0)
+    if "window" in args:
+        win = args["window"]
+        _expect_type(win, (list,), f"{where}.window", "[i0, j0, i1, j1]")
+        if len(win) != 4:
+            raise CaseError(f"{where}.window: expected [i0, j0, i1, j1]")
+        for i, n in enumerate(win):
+            _int(n, f"{where}.window[{i}]", 0)
+    if "node" in args:
+        _str(args["node"], f"{where}.node")
+    if "includes" in args:
+        _table(args["includes"], f"{where}.includes")
+        _check_value_like(args["includes"], f"{where}.includes")
+    for k in ("from", "at_least"):
+        if k in args:
+            _int(args[k], f"{where}.{k}", 0)
+    if "name" in args:
+        _str(args["name"], f"{where}.name")
+    for k in ("starts", "cause"):
+        if k in args:
+            _table(args[k], f"{where}.{k}")
+            _check_value_like(args[k], f"{where}.{k}")
+    if "starts" in args:
+        for k, v in args["starts"].items():
+            _str(v, f"{where}.starts.{k}")
+    if "last" in args:
+        _check_value_like({"last": args["last"]}, f"{where}")
+    if fn in ("instance_at", "changes_inside"):
+        at = args["at"]
+        _expect_type(at, (list,), f"{where}.at", "[x, y]")
+        if len(at) != 2:
+            raise CaseError(f"{where}.at: expected [x, y]")
+        for i, n in enumerate(at):
+            _number(n, f"{where}.at[{i}]")
+        if "radius" in args:
+            _number(args["radius"], f"{where}.radius")
     if fn == "no_origin_inside":
         has_disc = "at" in args or "radius" in args
         if has_disc == ("points" in args):

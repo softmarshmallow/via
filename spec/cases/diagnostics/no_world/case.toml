@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "via explain with a world file that does not exist: cli.no_world, exit 2."
+milestone = 1
+actions   = ["explain"]
+
+# cli.no_world is `via explain`'s alone; every other command reports doc.file_missing (diagnostics.md Diagnostics).
+
+[action.explain]
+via  = ["explain", "formula.unknown_name", "nowhere.toml"]
+exit = 2
+
+[action.explain.diag.no_world]
+code = "cli.no_world"

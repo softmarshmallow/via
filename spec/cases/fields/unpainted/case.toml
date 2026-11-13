@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "one rock row, mask 0.5: field.unpainted, first post (0, 0), count 81."
+milestone = 1
+actions   = ["build"]
+
+# The count, 81 (every post of 9 by 9), is in the record's message and data; the chapter does not name the data member.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.unpainted]
+code     = "field.unpainted"
+position = [0, 0]

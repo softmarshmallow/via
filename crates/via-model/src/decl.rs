@@ -91,7 +91,23 @@ pub struct FieldDecl {
     pub tags: Vec<String>,
     pub rank: i64,
     pub base: Option<FormulaId>,
+    /// A base from an array file (`fields.md` 4), in place of `base`.
+    pub file: Option<FileDecl>,
     pub rows: Vec<Row>,
+}
+
+/// A field's `file` and its keys (`fields.md` 4.2).
+#[derive(Clone, Debug)]
+pub struct FileDecl {
+    /// The path as written, relative to the document that names it.
+    pub written: String,
+    /// That document as a record names it (`documents.md` 2.1): a path under the world's
+    /// folder, or a tagged form (`lib:<id>/...`).
+    pub source: String,
+    /// Where the raster's corner samples lie; `None` for the world's extent.
+    pub extent: Option<[i64; 4]>,
+    pub outside: f64,
+    pub filter: via_raster::file::Filter,
 }
 
 /// An effect's field selector (`authority.md` 2).
@@ -153,11 +169,34 @@ pub enum Face {
     Away,
 }
 
-/// A placement: a coordinate or a place on a named thing.
+/// A selection by place, `on = { of, class, near, t, offset }` (`identity.md` 3).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Select {
+    /// The maker's id.
+    pub of: String,
+    /// The class asked for; `None` when the maker has one class.
+    pub class: Option<String>,
+    /// The point near the wanted thing, millimetres in the world frame.
+    pub near: (i64, i64),
+    pub t: Option<f64>,
+    pub offset: Option<i64>,
+}
+
+/// A placement: a coordinate, a place on a named thing, or a produced thing selected by place.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Place {
     At((i64, i64)),
     On(On),
+    Of(Select),
+}
+
+/// A path along another feature, `follows = { ref, span, offset }` (`geometry.md` 4).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Follows {
+    pub reference: String,
+    pub span: (f64, f64),
+    /// Millimetres to the left of the reference's travel.
+    pub offset: i64,
 }
 
 /// A feature's written shape.
@@ -166,6 +205,9 @@ pub enum ShapeDecl {
     Point(Place),
     Path(Vec<(i64, i64)>),
     Region(Vec<(i64, i64)>),
+    /// A region written as a condition (`geometry.md` 3.7): the formula.
+    Where(FormulaId),
+    Follows(Follows),
 }
 
 /// A feature (`geometry.md` 2.1).
@@ -180,6 +222,8 @@ pub struct FeatureDecl {
     pub ends_at: Option<String>,
     pub face: Option<Face>,
     pub attrs: BTreeMap<String, Attr>,
+    /// `smooth = true` on a path (`geometry.md` 2.4).
+    pub smooth: bool,
 }
 
 /// A hand instance (`rules.md` 2).
@@ -222,6 +266,8 @@ pub struct ScatterDecl {
     pub jitter: i64,
     pub density: Option<FormulaId>,
     pub within: Option<String>,
+    /// `within = { of, class, near }`: a piece of a `where` region (`identity.md` 3).
+    pub within_of: Option<Select>,
     pub scale: Ranged,
     pub tint: Ranged,
     pub seed: String,
@@ -284,12 +330,18 @@ impl Formulas {
     /// The diagnostic of a formula fault, located at the formula's key.
     pub fn diag(&self, e: &via_expr::ExprError) -> Diag {
         let subject_of = |f: Option<FormulaId>, at: &via_expr::At| -> Subject {
-            match f.or_else(|| at.formula()) {
+            // A fault inside a `let` is the `let`'s: its address, its span, and the reading
+            // formula in `related` (`formulas.md` 9), so two readers give one record.
+            match at.formula().or(f) {
                 // One key of an entity: the address and the key path (`diagnostics.md` 1.1).
                 Some(f) => self
                     .at
                     .get(f.0 as usize)
                     .map(|(s, p)| match s.key_path() {
+                        // A `let`'s address is the whole statement (`let.slope`).
+                        None if matches!(s, Subject::Entity { collection, .. } if collection == "let") => {
+                            s.clone()
+                        }
                         None => s.clone().with_keys(p),
                         Some(_) => s.clone(),
                     })
@@ -317,6 +369,16 @@ impl Formulas {
     }
 }
 
+/// The `requires` line of a kind, for a record that names it (`authority.md` 1).
+fn requires_line(kind: &str) -> via_diag::Related {
+    via_diag::Related {
+        subject: Subject::entity("kind", kind),
+        site: Site::Key(KeyPath::key("requires")),
+        position: None,
+        note: via_diag::text!("the kind's `requires`"),
+    }
+}
+
 /// The world read.
 #[derive(Debug, Default)]
 pub struct Decls {
@@ -333,6 +395,18 @@ pub struct Decls {
     pub steps: BTreeMap<String, StepDecl>,
     pub formulas: Formulas,
     pub diags: Vec<Diag>,
+    /// Fields whose base is read from an array file (`fields.md` 4): the samples, where they lie,
+    /// and the digest of the file's bytes (a declared outside input, `graph.md`). Filled by the
+    /// build, which knows the folders.
+    pub files: BTreeMap<String, FileBase>,
+}
+
+/// A field's base file, read.
+#[derive(Clone, Debug)]
+pub struct FileBase {
+    pub samples: via_raster::npy::Samples,
+    pub placement: via_raster::file::Placement,
+    pub digest: String,
 }
 
 fn table_of<'w>(root: &'w Table, top: &str) -> Vec<(&'w str, &'w Table)> {
@@ -360,6 +434,45 @@ fn kind_noise(feature_scope: &str, effect: &str, key: &str) -> Vec<NoisePart> {
 }
 
 impl Decls {
+    /// What a `where` reads (`authority.md` 2.3: "reads" is transitive): the fields, through the
+    /// bases and rows of the fields it reads, and the shape selectors (feature ids, place names,
+    /// `kind:<k>`). A shape node of a `where` region has an edge to each field's head view and
+    /// to each shape (`graph.md`).
+    pub fn where_reads(&self, formula: FormulaId) -> (BTreeSet<String>, BTreeSet<String>) {
+        let mut shapes = BTreeSet::new();
+        let mut fields: BTreeSet<String> = BTreeSet::new();
+        let mut stack = vec![formula];
+        while let Some(fid) = stack.pop() {
+            let Some(p) = self.formulas.programs.get(&fid) else {
+                continue;
+            };
+            for (class, sel) in &p.reads.selectors {
+                match class {
+                    via_expr::Class::Field => {
+                        for fd in self.fields.values() {
+                            let hit = match sel.strip_prefix("tag:") {
+                                Some(t) => fd.tags.iter().any(|x| x == t),
+                                None => fd.name == *sel,
+                            };
+                            if hit && fields.insert(fd.name.clone()) {
+                                stack.extend(fd.base);
+                                for r in &fd.rows {
+                                    stack.extend(r.value);
+                                    stack.extend(r.mask);
+                                }
+                            }
+                        }
+                    }
+                    via_expr::Class::Shape => {
+                        shapes.insert(sel.clone());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        (fields, shapes)
+    }
+
     /// Reads the merged world.
     pub fn read(world: &World) -> Decls {
         let mut d = Decls::default();
@@ -630,11 +743,12 @@ impl Decls {
                         Some(role)
                     }
                     None => {
-                        self.push(at_key(
+                        // `diagnostics.md` 1.1: one key's fault has the key in its subject.
+                        let role = KeyPath::key("role");
+                        self.push(text::diag(
                             codes::field::ROLE_UNKNOWN,
-                            "field",
-                            name,
-                            "role",
+                            Subject::entity("field", name).with_keys(&role),
+                            Site::Key(role.clone()),
                             &format!("`{r}` is not a role"),
                             &text::near_hint(
                                 r,
@@ -681,26 +795,7 @@ impl Decls {
                 }
             }
             let tags = t.value("tags").and_then(text::strings).unwrap_or_default();
-            if t.get("file").is_some() {
-                if t.get("base").is_some() {
-                    self.push(at_key(
-                        codes::field::BASE_AND_FILE,
-                        "field",
-                        name,
-                        "file",
-                        "a field has both `base` and `file`",
-                        "keep one",
-                    ));
-                }
-                self.push(at_key(
-                    codes::doc::NOT_YET,
-                    "field",
-                    name,
-                    "file",
-                    "a field read from a `file` is not built by this model yet",
-                    "write a `base` formula",
-                ));
-            }
+            let file = self.read_file(world, name, t);
             if weights && t.get("base").is_some() {
                 self.push(at_key(
                     codes::field::WEIGHTS_BASE,
@@ -807,6 +902,7 @@ impl Decls {
                     tags,
                     rank,
                     base,
+                    file,
                     rows,
                 },
             );
@@ -843,6 +939,127 @@ impl Decls {
         }
     }
 
+    /// A field's `file` and its keys (`fields.md` 4.2); faults are said here, the file is read
+    /// by the build, which knows the folders.
+    fn read_file(&mut self, world: &World, name: &str, t: &Table) -> Option<FileDecl> {
+        let keys = ["channel", "extent", "filter", "outside", "range"];
+        let Some(e) = t.get("file") else {
+            for k in keys {
+                if t.get(k).is_some() {
+                    self.push(text::at_own_key(
+                        codes::field::FILE_KEY,
+                        "field",
+                        name,
+                        k,
+                        &format!("`{k}` without `file`: it says how a file is read"),
+                        "add `file`, or remove the key",
+                    ));
+                }
+            }
+            return None;
+        };
+        let Value::Str(written) = &e.item.value else {
+            return None;
+        };
+        // `channel` and `range` are a PNG's (M2): on an array file they do not apply.
+        if written.text.to_ascii_lowercase().ends_with(".npy") {
+            for k in ["channel", "range"] {
+                if t.get(k).is_some() {
+                    self.push(text::at_own_key(
+                        codes::field::FILE_KEY,
+                        "field",
+                        name,
+                        k,
+                        &format!("`{k}` does not apply to an array file"),
+                        "remove the key: an array file holds the values themselves",
+                    ));
+                }
+            }
+        }
+        if t.get("base").is_some() {
+            self.push(at_key(
+                codes::field::BASE_AND_FILE,
+                "field",
+                name,
+                "file",
+                "a field has both `base` and `file`",
+                "keep one",
+            ));
+            return None;
+        }
+        let outside = match t.value("outside").map(text::number) {
+            Some(Some(Ok(x))) => x,
+            Some(Some(Err(e))) => {
+                self.push(text::num_diag(&e, "field", name, &["outside"]));
+                return None;
+            }
+            _ => {
+                self.push(at_key(
+                    codes::field::FILE_OUTSIDE,
+                    "field",
+                    name,
+                    "file",
+                    "a field read from a `file` names no `outside`",
+                    "write `outside = <value>`: the value at posts beyond the raster's extent",
+                ));
+                return None;
+            }
+        };
+        let filter = match t.str("filter") {
+            None | Some("linear") => via_raster::file::Filter::Linear,
+            Some("nearest") => via_raster::file::Filter::Nearest,
+            // `cubic` is refused by the document check (M2).
+            Some("cubic") => return None,
+            Some(f) => {
+                self.push(text::at_own_key(
+                    codes::field::FILE_KEY,
+                    "field",
+                    name,
+                    "filter",
+                    &format!("`{f}` is not a filter"),
+                    &text::near_hint(f, ["nearest", "linear"], "write `nearest` or `linear`"),
+                ));
+                return None;
+            }
+        };
+        let extent = match t.value("extent") {
+            Some(Value::List(xs)) if xs.len() == 4 => {
+                let mut v = [0i64; 4];
+                for (k, x) in xs.iter().enumerate() {
+                    match text::length(&x.value) {
+                        Some(Ok(mm)) => v[k] = mm,
+                        Some(Err(e)) => {
+                            self.push(text::num_diag(&e, "field", name, &["extent"]));
+                            return None;
+                        }
+                        None => return None,
+                    }
+                }
+                if v[2] <= v[0] || v[3] <= v[1] {
+                    self.push(at_key(
+                        codes::num::EXTENT_EMPTY,
+                        "field",
+                        name,
+                        "extent",
+                        "the raster's extent is empty: `x1` must exceed `x0` and `y1` `y0`",
+                        "write `[x0, y0, x1, y1]` with x0 < x1 and y0 < y1",
+                    ));
+                    return None;
+                }
+                Some(v)
+            }
+            Some(_) => return None,
+            None => None,
+        };
+        Some(FileDecl {
+            written: written.text.clone(),
+            source: world.sources().name(e.key.src).to_string(),
+            extent,
+            outside,
+            filter,
+        })
+    }
+
     fn read_place(&mut self, top: &str, id: &str, t: &Table) -> Option<Place> {
         if let Some(v) = t.value("at") {
             return match text::point(v) {
@@ -855,27 +1072,19 @@ impl Decls {
             };
         }
         let on = t.table("on")?;
-        if on.get("of").is_some() {
-            if on.get("ref").is_some() {
-                self.push(at_key(
-                    codes::identity::ON_BOTH,
-                    top,
-                    id,
-                    "on",
-                    "`on` has both `ref` and `of`",
-                    "keep `ref` for an authored thing, `of` for a produced one",
-                ));
-            } else {
-                self.push(at_key(
-                    codes::doc::NOT_YET,
-                    top,
-                    id,
-                    "on",
-                    "a selection by place `{ of, near }` is not built by this model yet",
-                    "name an authored thing with `ref`",
-                ));
-            }
+        if on.get("of").is_some() && on.get("ref").is_some() {
+            self.push(at_key(
+                codes::identity::ON_BOTH,
+                top,
+                id,
+                "on",
+                "`on` has both `ref` and `of`",
+                "keep `ref` for an authored thing, `of` for a produced one",
+            ));
             return None;
+        }
+        if let Some(of) = on.str("of") {
+            return self.read_select(top, id, on, of, &["on"]).map(Place::Of);
         }
         let reference = on.str("ref")?.to_string();
         if reference.contains('#') {
@@ -903,11 +1112,28 @@ impl Decls {
             ));
             return None;
         }
+        let (t_, offset) = self.read_t_offset(top, id, on, "on")?;
+        Some(Place::On(On {
+            reference,
+            t: t_,
+            offset,
+        }))
+    }
+
+    /// `t` and `offset` of an `on` table (`geometry.md` 2.6), `None` after a fault.
+    #[allow(clippy::type_complexity)]
+    fn read_t_offset(
+        &mut self,
+        top: &str,
+        id: &str,
+        on: &Table,
+        key: &str,
+    ) -> Option<(Option<f64>, Option<i64>)> {
         let t_ = match on.value("t") {
             Some(v) => match text::number(v) {
                 Some(Ok(x)) => Some(x),
                 Some(Err(e)) => {
-                    self.push(text::num_diag(&e, top, id, &["on", "t"]));
+                    self.push(text::num_diag(&e, top, id, &[key, "t"]));
                     return None;
                 }
                 None => None,
@@ -918,18 +1144,93 @@ impl Decls {
             Some(v) => match text::length(v) {
                 Some(Ok(mm)) => Some(mm),
                 Some(Err(e)) => {
-                    self.push(text::num_diag(&e, top, id, &["on", "offset"]));
+                    self.push(text::num_diag(&e, top, id, &[key, "offset"]));
                     return None;
                 }
                 None => None,
             },
             None => None,
         };
-        Some(Place::On(On {
-            reference,
+        Some((t_, offset))
+    }
+
+    /// A selection by place (`identity.md` 3): `{ of, class, near }`, with `t` and `offset` where
+    /// the table takes them. `path` is the key path of the table (`on`, or `within`).
+    fn read_select(
+        &mut self,
+        top: &str,
+        id: &str,
+        on: &Table,
+        of: &str,
+        path: &[&str],
+    ) -> Option<Select> {
+        fn join<'p>(path: &[&'p str], k: &'p str) -> Vec<&'p str> {
+            let mut v = path.to_vec();
+            v.push(k);
+            v
+        }
+        let at = |k: &'static str| join(path, k);
+        if of.contains('#') {
+            self.push(at_path(
+                codes::identity::KEY_IN_TEXT,
+                top,
+                id,
+                &at("of"),
+                &format!("`{of}` is a produced name; `of` names its maker"),
+                &format!(
+                    "select it by place: `{{ of = \"{}\", near = [x, y] }}`",
+                    of.split('#').next().unwrap_or("")
+                ),
+            ));
+            return None;
+        }
+        let class = on.str("class").map(str::to_string);
+        if let Some(c) = &class {
+            if c == "field" || c == "row" {
+                self.push(at_path(
+                    codes::identity::NO_PLACE,
+                    top,
+                    id,
+                    &at("class"),
+                    &format!("a `{c}` has no place, so it cannot be selected by one"),
+                    "select a class with a place, or read the field through a tag",
+                ));
+                return None;
+            }
+        }
+        let near = match on.value("near") {
+            Some(v) => match text::point(v) {
+                Some(Ok(p)) => p,
+                Some(Err(e)) => {
+                    self.push(text::num_diag(&e, top, id, &at("near")));
+                    return None;
+                }
+                None => return None,
+            },
+            None => {
+                self.push(at_path(
+                    codes::doc::MISSING_KEY,
+                    top,
+                    id,
+                    path,
+                    "a selection by place needs `near`",
+                    "write `near = [x, y]`, a point near the thing you mean",
+                ));
+                return None;
+            }
+        };
+        let (t_, offset) = if path == ["on"] {
+            self.read_t_offset(top, id, on, "on")?
+        } else {
+            (None, None)
+        };
+        Some(Select {
+            of: of.to_string(),
+            class,
+            near,
             t: t_,
             offset,
-        }))
+        })
     }
 
     fn read_face(&mut self, top: &str, id: &str, t: &Table) -> Option<Face> {
@@ -946,17 +1247,22 @@ impl Decls {
                 "toward" => Some(Face::Toward),
                 "away" => Some(Face::Away),
                 w => {
-                    self.push(at_key(
-                        codes::geom::FACE_UNKNOWN,
-                        top,
-                        id,
-                        "face",
-                        &format!("`{w}` is not a facing word"),
-                        &text::near_hint(
-                            w,
-                            ["along", "toward", "away"],
-                            "write a bearing in degrees, or `along`, `toward`, `away`",
+                    let words = ["along", "toward", "away"];
+                    self.push(text::with_nearest(
+                        at_key(
+                            codes::geom::FACE_UNKNOWN,
+                            top,
+                            id,
+                            "face",
+                            &format!("`{w}` is not a facing word"),
+                            &text::near_hint(
+                                w,
+                                words,
+                                "write a bearing in degrees, or `along`, `toward`, `away`",
+                            ),
                         ),
+                        w,
+                        words,
                     ));
                     None
                 }
@@ -1014,18 +1320,6 @@ impl Decls {
                     continue;
                 }
             }
-            for key in ["where", "follows", "smooth"] {
-                if t.get(key).is_some() {
-                    self.push(at_key(
-                        codes::doc::NOT_YET,
-                        "feature",
-                        id,
-                        key,
-                        &format!("`{key}` is not built by this model yet"),
-                        "write the shape with `path`, `region`, `at` or `on`",
-                    ));
-                }
-            }
             let starts_at = t.str("starts_at").map(str::to_string);
             let ends_at = t.str("ends_at").map(str::to_string);
             for (k, v) in [("starts_at", &starts_at), ("ends_at", &ends_at)] {
@@ -1058,6 +1352,24 @@ impl Decls {
                     }
                     None => continue,
                 }
+            } else if let Some(v) = t.value("where") {
+                match text::formula_text(v) {
+                    Some(Ok(ft)) => ShapeDecl::Where(self.formulas.add(
+                        &ft,
+                        Subject::entity("feature", id),
+                        KeyPath::key("where"),
+                    )),
+                    Some(Err(e)) => {
+                        self.push(text::num_diag(&e, "feature", id, &["where"]));
+                        continue;
+                    }
+                    None => continue,
+                }
+            } else if let Some(ft) = t.table("follows") {
+                match self.read_follows(id, ft) {
+                    Some(f) => ShapeDecl::Follows(f),
+                    None => continue,
+                }
             } else {
                 match self.read_place("feature", id, t) {
                     Some(p) => ShapeDecl::Point(p),
@@ -1080,6 +1392,35 @@ impl Decls {
                 }
             };
             let face = self.read_face("feature", id, t);
+            let smooth = match t.value("smooth") {
+                Some(Value::Bool(b)) if matches!(shape, ShapeDecl::Path(_)) => *b,
+                Some(_) => {
+                    self.push(at_key(
+                        codes::geom::SMOOTH_NOT_PATH,
+                        "feature",
+                        id,
+                        "smooth",
+                        "`smooth` is taken only with `path`",
+                        "remove `smooth`: it smooths a written `path`, nothing else",
+                    ));
+                    false
+                }
+                None => false,
+            };
+            if matches!(shape, ShapeDecl::Follows(_)) {
+                for k in ["starts_at", "ends_at"] {
+                    if t.get(k).is_some() {
+                        self.push(at_key(
+                            codes::doc::NOT_YET,
+                            "feature",
+                            id,
+                            k,
+                            &format!("`{k}` with `follows` is decided in M3 (`geometry.md` 4, the row on smoothing `follows`)"),
+                            "remove it: a path along another feature runs over its `span`",
+                        ));
+                    }
+                }
+            }
             let mut attrs = BTreeMap::new();
             if let Some(k) = kind.as_ref().and_then(|k| self.kinds.get(k)).cloned() {
                 for (n, v) in &k.defaults {
@@ -1102,13 +1443,17 @@ impl Decls {
                 }
                 for r in &k.requires {
                     if !attrs.contains_key(r) {
-                        self.push(at_header(
-                            codes::authority::REQUIRES,
-                            "feature",
-                            id,
-                            &format!("`{id}` lacks `{r}`, which its kind `{}` requires", k.id),
-                            &format!("write `{r} = ...` on `{id}`"),
-                        ));
+                        // `authority.md` 1: both lines, the feature's and the kind's `requires`.
+                        self.push(
+                            at_header(
+                                codes::authority::REQUIRES,
+                                "feature",
+                                id,
+                                &format!("`{id}` lacks `{r}`, which its kind `{}` requires", k.id),
+                                &format!("write `{r} = ...` on `{id}`"),
+                            )
+                            .related(requires_line(&k.id)),
+                        );
                     }
                 }
             }
@@ -1124,9 +1469,83 @@ impl Decls {
                     ends_at,
                     face,
                     attrs,
+                    smooth,
                 },
             );
         }
+    }
+
+    /// `follows = { ref, span, offset }` (`geometry.md` 4).
+    fn read_follows(&mut self, id: &str, t: &Table) -> Option<Follows> {
+        let Some(reference) = t.str("ref").map(str::to_string) else {
+            self.push(at_path(
+                codes::doc::MISSING_KEY,
+                "feature",
+                id,
+                &["follows"],
+                "`follows` names no `ref`",
+                "write `follows = { ref = \"<path or region>\", span = [from, to], offset = 0 }`",
+            ));
+            return None;
+        };
+        if reference.contains('#') {
+            self.push(at_path(
+                codes::identity::KEY_IN_TEXT,
+                "feature",
+                id,
+                &["follows", "ref"],
+                &format!("`{reference}` is a produced name, which text never writes"),
+                "name an authored path or region",
+            ));
+            return None;
+        }
+        let span = match t.value("span") {
+            None => (0.0, 1.0),
+            Some(Value::List(xs)) if xs.len() == 2 => {
+                let mut v = [0.0; 2];
+                for (k, x) in xs.iter().enumerate() {
+                    match text::number(&x.value) {
+                        Some(Ok(n)) => v[k] = n,
+                        Some(Err(e)) => {
+                            self.push(text::num_diag(&e, "feature", id, &["follows", "span"]));
+                            return None;
+                        }
+                        None => return None,
+                    }
+                }
+                for n in v {
+                    if !(0.0..=1.0).contains(&n) {
+                        self.push(at_path(
+                            codes::geom::T_RANGE,
+                            "feature",
+                            id,
+                            &["follows", "span"],
+                            &format!("a `span` end is {}, outside 0 to 1", text::dbl(n)),
+                            "write fractions from 0 to 1",
+                        ));
+                        return None;
+                    }
+                }
+                (v[0], v[1])
+            }
+            Some(_) => return None,
+        };
+        let offset = match t.value("offset") {
+            None => 0,
+            Some(v) => match text::length(v) {
+                Some(Ok(mm)) => mm,
+                Some(Err(e)) => {
+                    self.push(text::num_diag(&e, "feature", id, &["follows", "offset"]));
+                    return None;
+                }
+                None => return None,
+            },
+        };
+        Some(Follows {
+            reference,
+            span,
+            offset,
+        })
     }
 
     fn read_scale_tint(
@@ -1283,17 +1702,20 @@ impl Decls {
                         continue;
                     }
                     Some(k) if !k.requires.is_empty() => {
-                        self.push(at_key(
-                            codes::authority::GROUND_REQUIRES,
-                            "instance",
-                            id,
-                            "ground",
-                            &format!(
-                                "the kind `{g}` requires `{}`, which a footprint cannot write",
-                                k.requires.join("`, `")
-                            ),
-                            "give the attribute a default in the kind, or ground with another kind",
-                        ));
+                        self.push(
+                            at_key(
+                                codes::authority::GROUND_REQUIRES,
+                                "instance",
+                                id,
+                                "ground",
+                                &format!(
+                                    "the kind `{g}` requires `{}`, which a footprint cannot write",
+                                    k.requires.join("`, `")
+                                ),
+                                "give the attribute a default in the kind, or ground with another kind",
+                            )
+                            .related(requires_line(g)),
+                        );
                         continue;
                     }
                     _ => {}
@@ -1445,17 +1867,27 @@ impl Decls {
                     }
                     Some(s.text.clone())
                 }
-                Some(_) => {
-                    self.push(at_key(
-                        codes::doc::NOT_YET,
-                        "scatter",
-                        id,
-                        "within",
-                        "`within` by selection is not built by this model yet",
-                        "name a region feature",
-                    ));
-                    continue;
-                }
+                Some(_) => None,
+                None => None,
+            };
+            let within_of = match t.table("within") {
+                Some(w) => match w.str("of") {
+                    Some(of) => match self.read_select("scatter", id, w, of, &["within"]) {
+                        Some(sel) => Some(sel),
+                        None => continue,
+                    },
+                    None => {
+                        self.push(at_path(
+                            codes::doc::MISSING_KEY,
+                            "scatter",
+                            id,
+                            &["within"],
+                            "a selection in `within` needs `of`",
+                            "write `within = { of = \"<maker>\", class = \"piece\", near = [x, y] }`",
+                        ));
+                        continue;
+                    }
+                },
                 None => None,
             };
             if t.get("clump").is_some() {
@@ -1475,6 +1907,18 @@ impl Decls {
                 continue;
             };
             let seed = t.str("seed").unwrap_or(id).to_string();
+            // `numbers.md` 7: a scatter seed is a name, by the id grammar.
+            if !via_doc::is_id(&seed) {
+                let key = KeyPath::key("seed");
+                self.push(text::diag(
+                    codes::num::SEED_TYPE,
+                    Subject::entity("scatter", id).with_keys(&key),
+                    Site::Key(key),
+                    &format!("the seed `{seed}` is not a name: a name is `[a-z][a-z0-9_]*`"),
+                    &format!("write `{}`", via_doc::repair_id(&seed)),
+                ));
+                continue;
+            }
             self.scatters.insert(
                 id.to_string(),
                 ScatterDecl {
@@ -1484,6 +1928,7 @@ impl Decls {
                     jitter,
                     density,
                     within,
+                    within_of,
                     scale,
                     tint,
                     seed,
@@ -1782,6 +2227,16 @@ impl Decls {
                 }
             }
         }
+        for f in self.features.values() {
+            if let ShapeDecl::Where(w) = f.shape {
+                lets.push((
+                    w,
+                    Context::new(Key::Where)
+                        .feature(&f.id)
+                        .noise(&["noise", "feature", &f.id, "where"]),
+                ));
+            }
+        }
         for s in self.scatters.values() {
             if let Some(d) = s.density {
                 lets.push((
@@ -1800,6 +2255,25 @@ impl Decls {
                     self.diags.push(d);
                 }
             }
+        }
+        // `formulas.md` 8.2: two noise calls of one owner (a field, a feature, a scatter, a world
+        // `let`; a kind's formulas count as the kind's) on one stream.
+        let mut by_owner: BTreeMap<String, Vec<&via_expr::Program>> = BTreeMap::new();
+        for (id, p) in &self.formulas.programs {
+            if let Some((subject, _)) = self.formulas.at.get(id.0 as usize) {
+                by_owner
+                    .entry(subject.address().to_string())
+                    .or_default()
+                    .push(p);
+            }
+        }
+        let mut shared = Vec::new();
+        for programs in by_owner.values() {
+            shared.extend(via_expr::seed_shared(programs));
+        }
+        for e in shared {
+            let d = self.formulas.diag(&e);
+            self.diags.push(d);
         }
     }
 }

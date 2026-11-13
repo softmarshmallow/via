@@ -1,0 +1,13 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 4
+density = "= clamp(f('height') / 16, 0, 1)"

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "type = \"material\": field.type_unknown, hint type = \"weights\", role = \"material\"."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.type_unknown]
+code = "field.type_unknown"

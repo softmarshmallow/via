@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A 10 m square at [2147470, 0]; offset +20 m: geom.range."
+milestone = 1
+actions   = ["op"]
+
+# The square spans x from 2 147 470 000 to 2 147 480 000 mm; +20 m reaches 2 147 500 000 mm, past 2^31 - 1.
+
+[action.op]
+via         = ["kernel", "offset", "--in", "in.json", "--out", "out.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.op.diag.range]
+code    = "geom.range"
+subject = "cli"

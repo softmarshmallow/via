@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A world file path that does not exist: doc.file_missing, located by argument."
+milestone = 1
+actions   = ["merge"]
+
+# `via merge nowhere.toml`: the program name left out, the path is argument 2 (cli.usage counts so in diagnostics.md's `--frobnicate` case).
+
+[action.merge]
+via  = ["merge", "nowhere.toml"]
+exit = 1
+
+[action.merge.diag.file_missing]
+code     = "doc.file_missing"
+argument = 2

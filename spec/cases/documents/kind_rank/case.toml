@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A kind formula reading a rank 1 `let`, used by three rank 0 features: one doc.upward_ref, subject the kind's key path, three features in related."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{case}/roots"]
+exit = 1
+
+[action.merge.diag.upward_ref]
+code    = "doc.upward_ref"
+subject = "kind.pond.effect.fill.value"
+file    = "lib:pools/kinds.toml"
+line    = 6
+related = [{ file = "world.toml", line = 11 }, { file = "world.toml", line = 15 }, { file = "world.toml", line = 19 }]

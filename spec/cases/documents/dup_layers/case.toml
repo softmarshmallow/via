@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "One feature id in the world and a layer: identity.duplicate_id naming both files."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.duplicate_id]
+code    = "identity.duplicate_id"
+subject = "feature.lane"

@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "\"= fbm(80, 3) + fbm(40, 2)\": formula.seed_shared. A base and a then row each with fbm(80, 3): no warning, different patterns."
+milestone = 1
+actions   = ["shared", "rows"]
+
+[action.shared]
+via  = ["build", "shared/world.toml", "--lib", "{work}/libs", "--out", "shared/build/w"]
+exit = 0
+out  = "shared/build/w"
+
+[action.shared.diag.seed_shared]
+code     = "formula.seed_shared"
+severity = "warning"
+
+[action.rows]
+via  = ["build", "rows/world.toml", "--lib", "{work}/libs", "--out", "rows/build/w"]
+exit = 0
+out  = "rows/build/w"

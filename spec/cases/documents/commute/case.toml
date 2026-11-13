@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "Changes a and b on different keys: merge a b, then b a: same JSON."
+milestone = 1
+actions   = ["ab", "ba"]
+
+[action.ab]
+via  = ["merge", "world.toml", "--change", "a", "--change", "b"]
+exit = 0
+
+[action.ba]
+via  = ["merge", "world.toml", "--change", "b", "--change", "a"]
+exit = 0
+
+[action.ba.same.json]
+action = "ab"
+what   = "stdout"

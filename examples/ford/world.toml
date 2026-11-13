@@ -64,7 +64,7 @@ face = "toward"
 [scatter.trees]
 assets = ["@plant/tree"]
 spacing = 7
-density = "= smoothstep(0.1, 0.5, fbm(60, 3))"   # the scatter applies keep_out itself
+density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), near('lane_east', 16))"   # a wood along lane_east; the scatter applies keep_out itself
 
 [step.checks]                             # the one lint step, through the SDK
 when = "lint"

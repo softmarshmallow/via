@@ -1,0 +1,12 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.height]
+role = "surface"
+
+[feature.p]
+kind  = "wide"
+path  = [[0, 8], [16, 8]]
+width = 3

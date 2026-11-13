@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "\"= Sin(x)\": formula.character, hint lower case; \"= x $ 1\": formula.character."
+milestone = 1
+actions   = ["upper", "dollar"]
+
+[action.upper]
+via         = ["build", "upper/world.toml", "--lib", "{work}/libs", "--out", "upper/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "upper/build/w"
+
+[action.upper.diag.character]
+code = "formula.character"
+
+[action.dollar]
+via         = ["build", "dollar/world.toml", "--lib", "{work}/libs", "--out", "dollar/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "dollar/build/w"
+
+[action.dollar.diag.character]
+code = "formula.character"

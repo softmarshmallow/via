@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "A shaped lawn paint wholly inside an anchored court paint, both with mask 1: authority.hidden naming the lawn and the court."
+milestone = 1
+actions   = ["build"]
+
+# The lawn's entry has mask above 0 within 1 m of its square, all inside the court, whose mask is
+# 1 there: every post the lawn touches is later set by the court with mask 1. A `then` row paints
+# grass everywhere first so no post is unpainted. The world names its pack `pack.toml`; the world
+# file needs `pack` for `paint` (assets.md 2.6). (open) whether the world's `pack` key must be set
+# when only materials are used.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.hidden]
+code    = "authority.hidden"
+subject = "feature.lawn"

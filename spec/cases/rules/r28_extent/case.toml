@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "r20; shift the extent by one resolution step: no instance kept in both builds moved."
+milestone = 1
+actions   = ["base", "shifted"]
+
+# (open) that no tree in both builds moved needs a check that no entry of the report is `moved` under a prefix; conformance.md 3.4 lacks it. Both build.
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.shifted]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "c", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

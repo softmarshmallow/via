@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "`feature.mill` and `instance.mill`: identity.duplicate_id."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.duplicate_id]
+code = "identity.duplicate_id"

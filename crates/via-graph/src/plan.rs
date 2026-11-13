@@ -58,6 +58,10 @@ pub struct StepDef {
     pub step: String,
     /// The command as the step's statement writes it.
     pub command: Vec<String>,
+    /// True for a lint step (`when = "lint"`). A lint gated by an error is a skipped reader of
+    /// the failed node (`diagnostics.md` 4), counted under that node's `diag.skipped`; only
+    /// export steps are counted under the one `diag.skipped` with `data.stage = "export"`.
+    pub lint: bool,
 }
 
 /// What a node is made from (3.1): everything its key holds besides the versions.
@@ -81,9 +85,16 @@ pub struct Def {
     pub gate: Gate,
     /// Set for a `step` node: its key is then the static key (5.1), and its results are traces.
     pub step: Option<StepDef>,
+    /// Errors the static checks found in the statements it is made from, before anything runs
+    /// (`diagnostics.md` 4, stage 2: they fail "the node of the statement that holds it"). A
+    /// node with any is not computed and does not wait for its inputs: it fails with these, so
+    /// they are reported whatever else failed, and its readers are skipped. Its key holds its
+    /// statements, parameters and these errors, no edge.
+    pub found: Vec<Diag>,
 }
 
 /// The answer to [`Plan::define`].
+#[allow(clippy::large_enum_variant)] // one per node definition, never held in bulk
 pub enum Defined {
     /// The node is made from this.
     Def(Def),
@@ -153,12 +164,31 @@ pub struct Known<'a> {
     pub(crate) values: &'a BTreeMap<NodeId, Val>,
     pub(crate) world: Option<&'a [Diag]>,
     pub(crate) has_error: bool,
+    pub(crate) settled: Option<&'a BTreeMap<NodeId, Settled>>,
+}
+
+/// What a node defined last may know of another node: how it settled (6.1), its value digest,
+/// and whether it failed. The value itself is read from the store by digest when it is kept.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Settled {
+    /// Its status in this run.
+    pub status: crate::engine::Status,
+    /// Its value digest; `None` when skipped or not complete.
+    pub value: Option<Digest>,
+    /// Whether its value holds an error, or it is a step that did not complete.
+    pub failed: bool,
 }
 
 impl Known<'_> {
     /// A needed node's value.
     pub fn value(&self, id: &NodeId) -> Option<&Val> {
         self.values.get(id)
+    }
+
+    /// For a node defined last: how another node settled in this run, every other node being
+    /// settled by then. `None` before the last stage, or for a node not in the run.
+    pub fn settled(&self, id: &NodeId) -> Option<Settled> {
+        self.settled?.get(id).copied()
     }
 
     /// The build's world diagnostics, for a node defined last; `None` otherwise.

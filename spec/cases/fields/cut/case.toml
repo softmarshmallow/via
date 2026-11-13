@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "as bounded, value = 1, mask 1: field.effect_cut at post (1, 1)."
+milestone = 1
+actions   = ["build"]
+
+# The ring is 4 < d <= 5, the extent's edge posts left out; the first in post order is (1, 1), d = 4.24.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.effect_cut]
+code     = "field.effect_cut"
+position = [1, 1]

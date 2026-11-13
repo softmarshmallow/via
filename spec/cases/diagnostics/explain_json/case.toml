@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "via explain formula.unknown_name --json: exit 0; the registry row."
+milestone = 1
+actions   = ["explain"]
+
+# The registry row as JSON (diagnostics.md 2): its members are the row's keys.
+
+[action.explain]
+via  = ["explain", "formula.unknown_name", "--json"]
+exit = 0
+
+[action.explain.file.severity]
+stream  = "stdout"
+pointer = "/severity"
+value   = "error"
+
+[action.explain.file.chapter]
+stream  = "stdout"
+pointer = "/chapter"
+value   = "formulas"

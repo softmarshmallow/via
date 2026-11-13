@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "Add a second scatter elsewhere: the first scatter's instances unchanged."
+milestone = 1
+actions   = ["base", "more"]
+
+# (open) that no trees# entry is in the report needs a check that no entry has a prefix; the new scatter's are all added.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.more]
+via         = ["build", "world.toml", "--change", "rocks", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.more.check.added]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "rocks#"
+what   = ["added"]

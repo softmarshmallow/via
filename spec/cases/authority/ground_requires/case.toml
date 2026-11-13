@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "An instance grounding with a kind that requires water_height: authority.ground_requires at the ground line."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.ground_requires]
+code    = "authority.ground_requires"
+file    = "world.toml"
+line    = 14
+related = [{ file = "lib:tiers/kinds.toml", line = 2 }]

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "taxon = \"plant/tre\" on an asset: pack.unknown_taxon, hint plant/tree."
+milestone = 1
+actions   = ["check"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.unknown_taxon]
+code    = "pack.unknown_taxon"
+subject = "asset.a.taxon"
+data    = { nearest = "plant/tree" }

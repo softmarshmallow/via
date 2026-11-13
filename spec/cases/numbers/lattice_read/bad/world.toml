@@ -1,0 +1,30 @@
+name       = "nums"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.lane]
+path = [[0, 32], [64, 32]]
+
+[instance.i0]
+asset = "box_small"
+on    = { ref = "lane", t = 0.5, offset = 2.5e-3 }
+
+[instance.i1]
+asset = "box_small"
+on    = { ref = "lane", t = 0.5, offset = 0.0005 }
+
+[instance.i2]
+asset = "box_small"
+on    = { ref = "lane", t = 0.5, offset = 2.0000000000000001 }
+
+[instance.i3]
+asset = "box_small"
+on    = { ref = "lane", t = 0.5, offset = 1e400 }
+
+[instance.i4]
+asset = "box_small"
+on    = { ref = "lane", t = 0.5, offset = 2147483.648 }

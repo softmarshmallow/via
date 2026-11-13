@@ -1,0 +1,10 @@
+name       = "steps"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+
+[step.look]
+when    = "lint"
+command = ["python", "-m", "viasdk", "steps/nolint.py"]

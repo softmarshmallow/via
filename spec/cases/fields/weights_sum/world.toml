@@ -1,0 +1,49 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.r0]
+paint = "grass"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 0)"
+
+[field.ground.then.r1]
+paint = "rock"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 1)"
+
+[field.ground.then.r2]
+paint = "sand"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 2)"
+
+[field.ground.then.r3]
+paint = "grass"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 3)"
+
+[field.ground.then.r4]
+paint = "rock"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 4)"
+
+[field.ground.then.r5]
+paint = "sand"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 5)"
+
+[field.ground.then.r6]
+paint = "grass"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 6)"
+
+[field.ground.then.r7]
+paint = "rock"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 7)"
+
+[field.ground.then.r8]
+paint = "sand"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 8)"
+
+[field.ground.then.r9]
+paint = "grass"
+mask  = "= 0.5 + 0.5 * sin(37 * x + 11 * y + 9)"

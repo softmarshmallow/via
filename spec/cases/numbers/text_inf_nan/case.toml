@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "resolution = inf; spacing = nan: num.not_finite each, exit 1."
+milestone = 1
+actions   = ["res", "spacing"]
+
+[action.res]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.res.diag.not_finite]
+code = "num.not_finite"
+line = 3
+
+[action.spacing]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.spacing.diag.not_finite]
+code = "num.not_finite"

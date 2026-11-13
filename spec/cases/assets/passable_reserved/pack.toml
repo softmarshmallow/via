@@ -1,0 +1,4 @@
+[asset.p]
+primitive = "box"
+size      = [1, 1, 1]
+solidity  = "passable"

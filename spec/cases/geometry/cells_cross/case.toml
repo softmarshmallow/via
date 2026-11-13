@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "cross's first area, two frontages, cell_length 10 m, band_depth 10 m: 10 cells, 5 per edge side, stations 0 to 4; rest [0, 0]-[40, 40]; closure exact."
+milestone = 1
+actions   = ["op"]
+
+# Each 50 m frontage gives five 10 m cells, 10 m deep; the two meet at the corner [50, 50], where
+# the bisector splits the corner square into two triangles. What lies deeper than 10 m from both
+# frontages is the rest, the 40 m square from [0, 0]. Squares 200 000 000 and triangles 100 000 000
+# twice-area are not output members.
+
+[action.op]
+via  = ["kernel", "cells", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.file.rest]
+path    = "out.json"
+pointer = "/rest"
+value   = [[[[0, 0], [40000, 0], [40000, 40000], [0, 40000]]]]
+
+[action.op.check.n]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/cells"
+count   = 10

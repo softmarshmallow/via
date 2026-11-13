@@ -1,0 +1,17 @@
+[kind.two]
+authority = "anchored"
+radius = 2
+
+[kind.two.defaults]
+k = 0
+
+[kind.two.effect.one]
+field = "role:surface"
+value = "= 1"
+mask = "= 1 - smoothstep(0, 1, d)"
+
+[kind.two.effect.other]
+field = "role:surface"
+value = "= 2"
+mask = "= 1 - smoothstep(0, 1, d)"
+

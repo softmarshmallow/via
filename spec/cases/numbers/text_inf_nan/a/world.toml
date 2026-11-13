@@ -1,0 +1,10 @@
+name       = "nums"
+extent     = [0, 0, 64, 64]
+resolution = inf
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.lane]
+path = [[0, 32], [64, 32]]

@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "A density \"= 1.2\": formula.range, hint clamp; a mask \"= 1.5\": formula.range; clamp(x, 1, 0) and smoothstep(1, 1, x): formula.range."
+milestone = 1
+actions   = ["density", "mask", "clamp", "smoothstep"]
+
+[action.density]
+via         = ["build", "density/world.toml", "--out", "density/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "density/build/w"
+
+[action.density.diag.range]
+code = "formula.range"
+
+[action.mask]
+via         = ["build", "mask/world.toml", "--lib", "{work}/libs", "--out", "mask/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "mask/build/w"
+
+[action.mask.diag.range]
+code = "formula.range"
+
+[action.clamp]
+via         = ["build", "clamp/world.toml", "--lib", "{work}/libs", "--out", "clamp/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "clamp/build/w"
+
+[action.clamp.diag.range]
+code = "formula.range"
+
+[action.smoothstep]
+via         = ["build", "smoothstep/world.toml", "--lib", "{work}/libs", "--out", "smoothstep/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "smoothstep/build/w"
+
+[action.smoothstep.diag.range]
+code = "formula.range"

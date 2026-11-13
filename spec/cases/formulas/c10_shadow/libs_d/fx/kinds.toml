@@ -1,0 +1,9 @@
+[kind.kd]
+radius = 2
+
+[kind.kd.defaults]
+d = 1
+
+[kind.kd.effect.e]
+field = "tag:mark"
+value = "= d"

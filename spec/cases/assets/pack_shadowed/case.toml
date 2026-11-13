@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "lib/packs/primitive.toml beside the world: pack.shadowed naming root beside, never a path; that one is used."
+milestone = 1
+actions   = ["build"]
+
+# The beside copy gives house_low another size, so the manifest shows which pack was used. The root is named by place (`beside`), checked by U5 for no path.
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.shadowed]
+code     = "pack.shadowed"
+severity = "info"
+
+[action.build.file.used]
+path    = "build/w/manifest.json"
+pointer = "/assets/house_low/size"
+value   = [2, 3, 1]

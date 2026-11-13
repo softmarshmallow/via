@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "A plain lint that exits 1; build twice: protocol.failed both times; its readers skipped; it ran twice."
+milestone = 1
+actions   = ["program", "trust", "first", "second"]
+
+# A step that did not complete is never stored (graph.md 6.2), so the second build runs it again.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.first.diag.failed]
+code = "protocol.failed"
+data = { exit = 1 }
+
+[action.first.nodes]
+ran_includes = ["step:look"]
+
+[action.second]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.second.diag.failed]
+code = "protocol.failed"
+data = { exit = 1 }
+
+[action.second.nodes]
+ran_includes = ["step:look"]

@@ -60,8 +60,22 @@ pub struct RefEdge {
     pub to: String,
     /// The edge's label (2): `on.ref`, `base reads b`.
     pub label: String,
-    /// The key under the reader's statement that makes the edge (`on.ref`, `ends_at`).
-    pub key: KeyPath,
+    /// The key under the reader's statement that makes the edge (`on.ref`, `ends_at`); `None`
+    /// when no one key of the reader's table makes it (an effect a kind declares), and the
+    /// statement's header stands for it.
+    pub key: Option<KeyPath>,
+}
+
+impl RefEdge {
+    fn site(&self) -> Site {
+        self.key.clone().map_or(Site::Header, Site::Key)
+    }
+
+    fn key_text(&self) -> String {
+        self.key
+            .as_ref()
+            .map_or_else(|| self.label.clone(), ToString::to_string)
+    }
 }
 
 /// The reference graph: vertices with their members, and the references between them.
@@ -207,7 +221,7 @@ impl RefGraph {
         );
         let keys: Vec<String> = lines
             .iter()
-            .map(|(m, e)| format!("{} {}", self.subject_of(m), e.key))
+            .map(|(m, e)| format!("{} {}", self.subject_of(m), e.key_text()))
             .collect();
         let mut hint = match keys.len() {
             1 => format!("remove {}; it reads its own statement", keys[0]),
@@ -232,7 +246,7 @@ impl RefGraph {
         let mut diag = Diag::new(
             codes::graph::CYCLE,
             subject,
-            Site::Key(lines[0].1.key.clone()),
+            lines[0].1.site(),
             text(message),
             text(hint),
         );
@@ -240,14 +254,9 @@ impl RefGraph {
             let to = self.vertices.get(&e.to).map_or("", String::as_str);
             diag = diag.related(Related {
                 subject: self.subject_of(m),
-                site: Site::Key(e.key.clone()),
+                site: e.site(),
                 position: None,
-                note: text(format!(
-                    "{} = {} -> {}",
-                    e.key,
-                    e.label,
-                    self.subject_of(to)
-                )),
+                note: text(format!("{} -> {}", e.key_text(), self.subject_of(to))),
             });
         }
         for m in &rest {
@@ -400,15 +409,12 @@ mod tests {
             from: from.into(),
             to: to.into(),
             label: key.into(),
-            key: key
-                .split('.')
-                .fold(None, |p: Option<KeyPath>, k| {
-                    Some(match p {
-                        None => KeyPath::key(k),
-                        Some(p) => p.then(k),
-                    })
+            key: key.split('.').fold(None, |p: Option<KeyPath>, k| {
+                Some(match p {
+                    None => KeyPath::key(k),
+                    Some(p) => p.then(k),
                 })
-                .unwrap(),
+            }),
         });
     }
 
@@ -498,7 +504,7 @@ mod tests {
                     from: format!("v:{i}"),
                     to: format!("v:{}", i - 1),
                     label: "x".into(),
-                    key: KeyPath::key("x"),
+                    key: Some(KeyPath::key("x")),
                 });
             }
         }

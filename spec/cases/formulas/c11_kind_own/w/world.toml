@@ -1,0 +1,14 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.m]
+tags = ["mark"]
+
+[let]
+width = 1
+
+[feature.lane]
+kind = "lane"
+path = [[0, 8], [128, 8]]

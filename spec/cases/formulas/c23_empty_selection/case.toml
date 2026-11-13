@@ -1,0 +1,53 @@
+format    = "via-case-1"
+summary   = "dist('kind:pond', 50) with no pond: one formula.empty_selection warning, value 50; sdist -50; near 0; inside no."
+milestone = 1
+actions   = ["dist", "sdist", "near", "inside"]
+
+[action.dist]
+via  = ["build", "dist/world.toml", "--lib", "{work}/libs", "--out", "dist/build/w"]
+exit = 0
+out  = "dist/build/w"
+
+[action.dist.diag.empty_selection]
+code     = "formula.empty_selection"
+severity = "warning"
+
+[action.dist.file.all]
+path = "dist/build/w/fields/f.npy"
+all  = 50
+
+[action.sdist]
+via  = ["build", "sdist/world.toml", "--lib", "{work}/libs", "--out", "sdist/build/w"]
+exit = 0
+out  = "sdist/build/w"
+
+[action.sdist.diag.empty_selection]
+code = "formula.empty_selection"
+
+[action.sdist.file.all]
+path = "sdist/build/w/fields/f.npy"
+all  = -50
+
+[action.near]
+via  = ["build", "near/world.toml", "--lib", "{work}/libs", "--out", "near/build/w"]
+exit = 0
+out  = "near/build/w"
+
+[action.near.diag.empty_selection]
+code = "formula.empty_selection"
+
+[action.near.file.all]
+path = "near/build/w/fields/f.npy"
+all  = 0
+
+[action.inside]
+via  = ["build", "inside/world.toml", "--lib", "{work}/libs", "--out", "inside/build/w"]
+exit = 0
+out  = "inside/build/w"
+
+[action.inside.diag.empty_selection]
+code = "formula.empty_selection"
+
+[action.inside.file.all]
+path = "inside/build/w/fields/f.npy"
+all  = 0

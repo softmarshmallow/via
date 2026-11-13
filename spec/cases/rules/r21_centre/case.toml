@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "r20 with jitter = 0: lattice cell (8, 18) at (59500, 129500)."
+milestone = 1
+actions   = ["build"]
+
+# (open) as r20: a per-name column check is owed; the case builds.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

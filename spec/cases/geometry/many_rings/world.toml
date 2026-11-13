@@ -1,0 +1,12 @@
+name       = "g"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.w]
+base = "= if(x < 4, 1, if(x > 11, 1, -1))"
+
+[feature.r]
+where = "= f('w')"
+
+[feature.m]
+on = { ref = "r", t = 0.5 }

@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "overlap; noding: shared segments name both sources with directions; one geom.overlap per stretch, one for the self-pair."
+milestone = 1
+actions   = ["op"]
+
+# a and b share x 5 to 15 m on y = 0, b running back against a; c doubles back over x 4 to 10 m. Two
+# stretches, two geom.overlap (info), each with its first source in data.source (7.1).
+
+[action.op]
+via         = ["kernel", "noding", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.overlap]
+code    = "geom.overlap"
+subject = "cli"
+data    = { source = "a" }
+
+[action.op.diag.self]
+code    = "geom.overlap"
+subject = "cli"
+data    = { source = "c" }

@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "ford with a clear on the beck's bed gives identity.clear_empty (warning); built, then with --fail-on identity.clear_empty: exit 1, and not unchanged; then without: exit 0."
+milestone = 1
+actions   = ["program", "trust", "plain", "fail_on", "again"]
+
+# The flag is in the build key, so the second build is not the null build: its diagnostics are written again with failed_on. The M2 half (--stand-ins) is c29_flags_in_key_m2.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/in_beck.toml"]
+exit = 0
+
+[action.plain]
+via         = ["build", "world.toml", "--change", "changes/in_beck.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.plain.diag.clear_empty]
+code     = "identity.clear_empty"
+severity = "warning"
+
+[action.fail_on]
+via         = ["build", "world.toml", "--change", "changes/in_beck.toml", "--fail-on", "identity.clear_empty", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.fail_on.diag.clear_empty]
+code      = "identity.clear_empty"
+failed_on = true
+
+[action.fail_on.nodes]
+ran_includes = ["write:diagnostics.json"]
+
+[action.again]
+via         = ["build", "world.toml", "--change", "changes/in_beck.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.again.diag.clear_empty]
+code = "identity.clear_empty"

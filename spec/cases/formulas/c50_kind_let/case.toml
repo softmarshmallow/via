@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A kind of paths with let w2 = \"= sqrt(width - 10)\", a feature with width = 3, an effect on height reading w2: formula.not_finite at sqrt, located at the let's span, naming the feature; exit 1; no height."
+milestone = 1
+actions   = ["w"]
+
+[action.w]
+via         = ["build", "w/world.toml", "--lib", "{work}/libs", "--out", "w/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "w/build/w"
+
+[action.w.diag.not_finite]
+code = "formula.not_finite"
+file = "lib:fx/kinds.toml"
+line = 8
+
+[action.w.file.none]
+path   = "w/build/w/fields/height.npy"
+exists = false

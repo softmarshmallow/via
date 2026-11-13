@@ -1,0 +1,31 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane_west]
+path = [[0, 120], [100, 120]]
+
+[feature.lane_east]
+path = [[156, 140], [256, 140]]
+
+[instance.a]
+asset = "box_small"
+on    = { ref = "lane_west", t = 0 }
+
+[instance.b]
+asset = "box_small"
+on    = { ref = "lane_east", t = 1 }
+
+[instance.c]
+asset = "box_small"
+at    = [256, 256]
+
+[instance.d]
+asset = "box_small"
+at    = [256.001, 10]

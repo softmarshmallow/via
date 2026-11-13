@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "An effect with field = \"height\": authority.selector, hint role:surface."
+milestone = 1
+actions   = ["build"]
+
+# The hint gives the field's role (`height` has role `surface`): a fixed hint, so data.nearest is not asserted.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.selector]
+code = "authority.selector"
+file = "lib:tiers/kinds.toml"
+line = 5

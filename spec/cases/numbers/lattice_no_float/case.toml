@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "offset = 2.0000000000000001; offset = 0.0010000000000000001: num.too_precise each."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.too_precise]
+code = "num.too_precise"
+line = 14
+
+[action.merge.diag.second]
+code = "num.too_precise"
+line = 18

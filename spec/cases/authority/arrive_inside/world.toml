@@ -1,0 +1,20 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.lane]
+kind = "sha"
+path = [[4, 8]]
+k    = 1
+ends_at = "yard"
+
+[instance.yard]
+asset  = "block"
+at     = [8, 8]
+ground = "pad9"

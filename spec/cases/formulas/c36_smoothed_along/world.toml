@@ -1,0 +1,15 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.m]
+tags = ["mark"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[feature.p]
+kind = "sm"
+path = [[3, 4], [13, 4]]

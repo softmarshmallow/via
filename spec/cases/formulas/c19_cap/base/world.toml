@@ -1,0 +1,10 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[feature.beck]
+path = [[0, 8], [128, 8]]
+
+[field.f]
+base = "= dist('beck')"

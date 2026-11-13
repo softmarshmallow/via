@@ -196,6 +196,17 @@ impl Grid {
 mod tests {
     use super::*;
 
+    /// `numbers.md` 8 rule 6: a checked lattice operation that overflows is `num.overflow`, never a
+    /// wrap. No text reaches it (lengths are bounded), so this is its named workspace test.
+    #[test]
+    fn lattice_overflow_is_num_overflow() {
+        let code = |r: Result<i64, NumError>| r.map_err(|e| e.code());
+        assert_eq!(code(checked_add(i64::MAX, 1, "add")), Err("num.overflow"));
+        assert_eq!(code(checked_sub(i64::MIN, 1, "sub")), Err("num.overflow"));
+        assert_eq!(code(checked_mul(i64::MAX, 2, "mul")), Err("num.overflow"));
+        assert_eq!(code(checked_add(2, 3, "add")), Ok(5));
+    }
+
     #[test]
     fn worked_example_grid() {
         let g = Grid::new([0, 0, 10_000, 6_000], 2_000).unwrap();

@@ -1,0 +1,6 @@
+[asset.box]
+primitive = "box"
+size      = [1, 1, 1]
+
+[asset.box.mount.start]
+at = [0, 0]

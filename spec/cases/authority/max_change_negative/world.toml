@@ -1,0 +1,13 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = "= 0.2 * x"
+
+[feature.pad]
+kind   = "padm"
+region = [[3, 3], [13, 3], [13, 13], [3, 13]]

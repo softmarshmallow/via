@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "r03 on terrain 20 + 0.1 * x, a pad kind that levels: no cycle; z equals the final surface at the origin, not 25.0."
+milestone = 1
+actions   = ["build"]
+
+# (open) the final surface at (50, 50) under the levelled pad is the pad's mean over its footprint, 25.0 on a plane symmetric about x = 50, so the row's "not 25.0" depends on the mask's fade; the case asserts no cycle (exit 0).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

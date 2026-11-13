@@ -1,0 +1,17 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.m]
+tags = ["mark"]
+
+[feature.lane_west]
+kind = "lane"
+path = [[0, 4], [128, 4]]
+width = 3.5
+
+[feature.lane_east]
+kind  = "lane"
+path  = [[0, 12], [128, 12]]
+width = "= lane_west.width + 0.5"

@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "command = [\"python\", \"-m\", \"viasdk\", \"lib:review/checks.py\"], no worker, a configured Python with no viasdk installed: the launcher runs lint(step); its diagnostics are in the build."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# docs/plan.md's checks table: lane_gap is one info record per subject, lane_west and lane_east. The runner's Python has no viasdk; PYTHONPATH carries the engine's SDK (protocol.md 6.1).
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.diag.lane_gap]
+code     = "step.checks.lane_gap"
+severity = "info"
+records  = 2

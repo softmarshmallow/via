@@ -35,6 +35,7 @@ mod world;
 pub use ids::{is_id, repair as repair_id};
 pub use json::FORMAT;
 pub use load::{load, ChangeRequest, LoadOptions, Loaded};
+pub use path::open_file;
 pub use source::{Role, Source, Sources, Span, SrcId};
 pub use tree::{Entry, Form, Item, Link, Num, Str, Table, Value};
 pub use world::{FormulaAt, World};

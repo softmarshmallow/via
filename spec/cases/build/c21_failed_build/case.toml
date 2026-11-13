@@ -4,8 +4,10 @@ milestone = 1
 actions   = ["program", "trust", "good", "typo", "fixed"]
 
 # build.md case 21, as conformance.md 3.6 writes it, with the case's last clause added as `fixed`.
-# The ford world is this folder's world.toml and changes/, derived from docs/plan.md by
-# tools/conformance (python -m via_conformance.fixtures).
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
 
 [action.program]
 via  = ["config", "program", "python", "{python}"]
@@ -19,11 +21,13 @@ exit = 0
 via  = ["build", "world.toml", "--out", "build/ford"]
 out  = "build/ford"
 exit = 0
+diagnostics = "includes"
 
 [action.typo]
 via  = ["build", "world.toml", "--change", "changes/bad_typo.toml", "--out", "build/ford"]
 out  = "build/ford"
 exit = 1
+diagnostics = "includes"
 
 [action.typo.diag.skipped]
 code    = "diag.skipped"
@@ -55,6 +59,7 @@ listing = ["diagnostics.json", ".previous"]
 via  = ["build", "world.toml", "--out", "build/ford"]
 out  = "build/ford"
 exit = 0
+diagnostics = "includes"
 
 [action.fixed.same.world]
 action = "good"

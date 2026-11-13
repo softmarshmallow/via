@@ -1,0 +1,11 @@
+name       = "pt"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["k"]
+
+[field.m]
+tags = ["m"]
+
+[feature.well]
+kind = "probe"
+at   = [8, 8]

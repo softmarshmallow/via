@@ -1,0 +1,24 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.a]
+kind = "anc"
+at   = [8, 8]
+k    = 3
+
+[feature.b]
+kind = "sha"
+at   = [8, 8]
+k    = 2
+
+[feature.c]
+kind = "dig"
+at   = [8, 8]
+k    = 1

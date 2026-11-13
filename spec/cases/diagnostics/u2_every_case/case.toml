@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "Every case of every chapter; build: each diagnostic has a registered code, a subject, a location and a non-empty hint; a core code's severity equals the registry's."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# U2 runs on every action of every case (conformance.md 5); this case is ford with an error, where the most kinds of record meet.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/bad_typo.toml"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--change", "changes/bad_typo.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"

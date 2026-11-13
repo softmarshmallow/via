@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "Digest vectors: section 10's table through via vectors (digest), bit for bit."
+milestone = 1
+pending   = "spec/vectors/identity.toml (identity.md 10) not yet written"
+actions   = ["vectors"]
+
+[copy.vectors]
+from = "spec/vectors/identity.toml"
+to   = "identity.toml"
+
+[action.vectors]
+via  = ["vectors", "identity.toml"]
+exit = 0
+
+[action.vectors.check.v]
+fn   = "vectors_match"
+path = "identity.toml"

@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "solidity = \"solidd\"; size = [0, 1, 1]; colour = [1.2, 0, 0]: doc.type hint solid; two pack.range; exit 1."
+milestone = 1
+actions   = ["check"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.type]
+code    = "doc.type"
+subject = "asset.a.solidity"
+
+[action.check.diag.range]
+code    = "pack.range"
+subject = "asset.b.size"
+
+[action.check.diag.range_colour]
+code    = "pack.range"
+subject = "asset.c.colour"

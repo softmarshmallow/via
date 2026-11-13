@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "command = [\"python\", ...], no configured program, python on PATH: protocol.no_program."
+milestone = 1
+actions   = ["trust", "build"]
+
+# The runner's PATH holds a Python (conformance.md 5.2); `command[0]` is never looked up on PATH (protocol.md 6.1).
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.no_program]
+code = "protocol.no_program"

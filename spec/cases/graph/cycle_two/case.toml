@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "ford with feature.ford on.ref = \"lane_west\", against lane_west.ends_at = \"ford\": one graph.cycle; the loop starts at world.toml:25:8, then line 30; exit 1."
+milestone = 1
+actions   = ["program", "trust", "cycle", "build"]
+
+# The first member is feature.ford (line 24 in source order), located at its `on.ref` key's value, line 25 column 8 (`on = { ref` puts `ref` at 8); the loop's next member, lane_west's ends_at at line 30, is in the record's chain or related, whose form graph.md 2.2 leaves to diagnostics.md.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.cycle]
+replace = "world.toml"
+find    = "on = { ref = \"beck\", t = 0.55 }"
+with    = "on = { ref = \"lane_west\", t = 0.55 }"
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.diag.cycle]
+code    = "graph.cycle"
+subject = "feature.ford"
+file    = "world.toml"
+line    = 25
+column  = 8
+records = 1

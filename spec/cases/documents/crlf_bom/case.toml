@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "The world with CRLF line ends and a BOM: same JSON and same origins as with LF."
+milestone = 1
+actions   = ["lf", "crlf", "lf_origins", "crlf_origins"]
+
+# A skipped byte-order mark is not a column (documents.md 2.1), so every line and column agrees.
+
+[action.lf]
+via  = ["merge", "lf/world.toml"]
+exit = 0
+
+[action.crlf]
+via  = ["merge", "crlf/world.toml"]
+exit = 0
+
+[action.crlf.same.json]
+action = "lf"
+what   = "stdout"
+
+[action.lf_origins]
+via  = ["merge", "lf/world.toml", "--origins"]
+exit = 0
+
+[action.crlf_origins]
+via  = ["merge", "crlf/world.toml", "--origins"]
+exit = 0
+
+[action.crlf_origins.same.origins]
+action = "lf_origins"
+what   = "stdout"

@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "An attribute \"= f('height')\": formula.rate naming f('height'); fbm(x, 3): formula.rate on wavelength; max_change = \"= f('height')\": formula.rate."
+milestone = 1
+actions   = ["attr", "wavelength", "max_change"]
+
+[action.attr]
+via         = ["build", "attr/world.toml", "--lib", "{work}/libs", "--out", "attr/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "attr/build/w"
+
+[action.attr.diag.rate]
+code = "formula.rate"
+
+[action.wavelength]
+via         = ["build", "wavelength/world.toml", "--lib", "{work}/libs", "--out", "wavelength/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "wavelength/build/w"
+
+[action.wavelength.diag.rate]
+code = "formula.rate"
+
+[action.max_change]
+via         = ["build", "max_change/world.toml", "--lib", "{work}/libs", "--out", "max_change/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "max_change/build/w"
+
+[action.max_change.diag.rate]
+code = "formula.rate"

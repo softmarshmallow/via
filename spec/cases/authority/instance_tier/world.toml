@@ -1,0 +1,15 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.hut]
+asset     = "block"
+at        = [8, 8]
+ground    = "pad9"
+authority = "anchored"

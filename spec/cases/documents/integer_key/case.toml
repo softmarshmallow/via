@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "`[layer.d] rank = 1.0`: doc.type."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.type]
+code = "doc.type"
+file = "world.toml"
+line = 18

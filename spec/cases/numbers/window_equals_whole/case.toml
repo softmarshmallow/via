@@ -1,0 +1,76 @@
+format    = "via-case-1"
+summary   = "ford's height field: via eval whole and by windows of 1x1, 7x3, 64x64 and odd offsets: every post the same bits."
+milestone = 1
+actions   = ["program", "trust", "whole", "one", "seven_three", "big", "odd", "edge"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.whole]
+via         = ["eval", "world.toml", "--field", "height", "--out", "whole.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.one]
+via         = ["eval", "world.toml", "--field", "height", "--window", "100,200,101,201", "--out", "one.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.one.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "one.npy"
+window = [100, 200, 101, 201]
+
+[action.seven_three]
+via         = ["eval", "world.toml", "--field", "height", "--window", "3,5,10,8", "--out", "seven_three.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.seven_three.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "seven_three.npy"
+window = [3, 5, 10, 8]
+
+[action.big]
+via         = ["eval", "world.toml", "--field", "height", "--window", "64,64,128,128", "--out", "big.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.big.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "big.npy"
+window = [64, 64, 128, 128]
+
+[action.odd]
+via         = ["eval", "world.toml", "--field", "height", "--window", "129,257,200,300", "--out", "odd.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.odd.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "odd.npy"
+window = [129, 257, 200, 300]
+
+[action.edge]
+via         = ["eval", "world.toml", "--field", "height", "--window", "450,480,513,513", "--out", "edge.npy"]
+exit        = 0
+diagnostics = "includes"
+
+[action.edge.check.cut]
+fn     = "array_window"
+whole  = "whole.npy"
+part   = "edge.npy"
+window = [450, 480, 513, 513]

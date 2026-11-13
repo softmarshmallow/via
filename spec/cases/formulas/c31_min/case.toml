@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "min(3, 1, 2): 1; 1 / min(0, -0): formula.not_finite at /, operand -0."
+milestone = 1
+actions   = ["min", "div"]
+
+[action.min]
+via  = ["build", "min/world.toml", "--lib", "{work}/libs", "--out", "min/build/w"]
+exit = 0
+out  = "min/build/w"
+
+[action.min.file.all]
+path = "min/build/w/fields/f.npy"
+all  = 1
+
+[action.div]
+via         = ["build", "div/world.toml", "--lib", "{work}/libs", "--out", "div/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "div/build/w"
+
+[action.div.diag.not_finite]
+code = "formula.not_finite"

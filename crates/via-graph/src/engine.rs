@@ -18,7 +18,7 @@ use crate::codec::{decode_object, encode_val, Val};
 use crate::digest::{Dec, Digest, Enc};
 use crate::id::NodeId;
 use crate::key::{key, KeyParts, Versions};
-use crate::plan::{Def, Defined, Inputs, Known, Output, Persist, Plan, Read, Reports};
+use crate::plan::{Def, Defined, Inputs, Known, Output, Persist, Plan, Read, Reports, Settled};
 use crate::record::{BuildRecord, RecordNode};
 use crate::refgraph::Cycle;
 use crate::store::{KeyRecord, Store};
@@ -230,6 +230,15 @@ impl Run {
             world_diags,
             files,
             complete: self.complete,
+            steps: self
+                .nodes
+                .iter()
+                .filter_map(|(id, n)| {
+                    let mut so = n.step.clone()?;
+                    so.exit = None;
+                    Some((id.clone(), so))
+                })
+                .collect(),
         }
     }
 
@@ -517,11 +526,29 @@ impl Engine<'_> {
             return;
         }
         let in_last = self.world.is_some();
+        let settled: Option<BTreeMap<NodeId, Settled>> = in_last.then(|| {
+            self.st
+                .iter()
+                .filter_map(|(n, s)| {
+                    s.status.map(|status| {
+                        (
+                            n.clone(),
+                            Settled {
+                                status,
+                                value: s.vd,
+                                failed: s.failed,
+                            },
+                        )
+                    })
+                })
+                .collect()
+        });
         let defined = {
             let known = Known {
                 values: &values,
                 world: self.world.as_deref(),
                 has_error: self.has_error,
+                settled: settled.as_ref(),
             };
             self.plan.define(id, &known)
         };
@@ -564,6 +591,9 @@ impl Engine<'_> {
         };
         if def.gate.skip_on_error && !self.gates_open {
             return false;
+        }
+        if def.found.iter().any(|d| d.severity() == Severity::Error) {
+            return self.settle_found(id, &def);
         }
         let mut edges = Vec::with_capacity(def.edges.len() + def.direct.len());
         let mut all_settled = true;
@@ -667,6 +697,46 @@ impl Engine<'_> {
         }
     }
 
+    /// A node the static checks failed (`Def::found`): keyed by its statements, parameters and
+    /// errors alone, reused when that key is stored, else settled as `ran` with the errors as its
+    /// value's diagnostics.
+    fn settle_found(&mut self, id: &NodeId, def: &Def) -> bool {
+        let found = self.plan.codec().encode(&def.found);
+        let marker = match &found {
+            Some(b) => Digest::of(b),
+            None => Digest::of(format!("unstorable {:?}", def.found).as_bytes()),
+        };
+        let k = key(
+            &self.opts.versions,
+            &KeyParts {
+                family: id.family().to_string(),
+                statements: def.statements.iter().map(|(_, d)| *d).collect(),
+                params: def.params.clone(),
+                edges: vec![("static errors".to_string(), marker)],
+            },
+        );
+        if let Some(s) = self.st.get_mut(id) {
+            s.key = Some(k);
+        }
+        if let Some(rec) = self.store.get_key(&k) {
+            if let Some(diags) = self.plan.codec().decode(&rec.diags) {
+                if let Some(s) = self.st.get_mut(id) {
+                    s.failed = has_error(&diags);
+                    s.vd = Some(rec.value);
+                    s.diags = Some(Arc::new(diags));
+                    s.status = Some(Status::Reused);
+                }
+                return true;
+            }
+        }
+        let out = Output::of(Val {
+            bytes: Arc::new(Vec::new()),
+            diags: Arc::new(def.found.clone()),
+        });
+        self.settle(id, out, 0, Settle::Fresh);
+        true
+    }
+
     /// The newest trace under the static key whose every read answers the same again.
     fn find_trace(
         &self,
@@ -675,14 +745,18 @@ impl Engine<'_> {
     ) -> Option<(Digest, TraceEntry, Vec<Diag>)> {
         for (name, bytes) in self.store.traces(static_key) {
             let Some(entry) = TraceEntry::decode(&bytes) else {
-                self.store.drop_trace(static_key, &name);
+                self.store
+                    .drop_trace(static_key, &name, "is not a trace entry");
                 continue;
             };
             if trace_digest(&entry.reads) != name {
-                self.store.drop_trace(static_key, &name);
+                self.store
+                    .drop_trace(static_key, &name, "does not match its name");
                 continue;
             }
             let Some(diags) = self.plan.codec().decode(&entry.diags) else {
+                self.store
+                    .drop_trace(static_key, &name, "holds diagnostics that cannot be read");
                 continue;
             };
             if entry
@@ -867,6 +941,56 @@ impl Engine<'_> {
             .as_ref()
             .and_then(|d| d.step.as_ref())
             .map(|sd| sd.step.clone());
+        // A value computed again must give the digest its readers were keyed on. One that does
+        // not is a defect of the node's computation (it reads something that is not an edge):
+        // the node fails, so no reader takes bytes other than those its key names.
+        if out.complete && how != Settle::Fresh && is_step {
+            // A step whose object was lost ran again: what it gives is the step's (5.2).
+            if let Some(old) = s.vd.filter(|old| *old != enc.digest) {
+                self.run_diags.push(unstable(
+                    step_id.as_deref().unwrap_or(""),
+                    &old,
+                    &enc.digest,
+                ));
+            }
+        } else if out.complete && how != Settle::Fresh {
+            if let Some(old) = s.vd.filter(|old| *old != enc.digest) {
+                let message = format!(
+                    "`{id}` gave another value when computed again: {old} then {}",
+                    enc.digest
+                );
+                self.defects.push(
+                    Diag::new(
+                        codes::diag::INTERNAL,
+                        Subject::World,
+                        Site::World,
+                        text(format!(
+                            "a node of the build graph is not stable: {message}"
+                        )),
+                        via_diag::text!(
+                            "report it: this is a defect of the engine, not of the text"
+                        ),
+                    )
+                    .with("message", message),
+                );
+                self.has_error = true;
+                if let Some(s) = self.st.get_mut(id) {
+                    s.ms = ms;
+                    s.phase = Phase::Defined;
+                    s.failed = true;
+                    s.vd = None;
+                    s.value = None;
+                    s.diags = Some(out.value.diags.clone());
+                    s.status = Some(if how == Settle::Recompute {
+                        Status::Recomputed
+                    } else {
+                        Status::Ran
+                    });
+                    s.not_stored = how == Settle::Restore;
+                }
+                return;
+            }
+        }
         let mut trace = None;
         if out.complete && how != Settle::Recompute {
             if let Some(k) = key {
@@ -885,7 +1009,12 @@ impl Engine<'_> {
                             log: run.log,
                         };
                         let td = trace_digest(&run.reads);
-                        self.store.put_trace(&k, &td, &entry.encode());
+                        if rerun {
+                            // `--rerun-step` (5.2): the new value is used, now and later.
+                            self.store.replace_trace(&k, &td, &entry.encode());
+                        } else {
+                            self.store.put_trace(&k, &td, &entry.encode());
+                        }
                         trace = (!run.reads.is_empty()).then_some(td);
                     } else {
                         self.store.put_key(
@@ -918,11 +1047,7 @@ impl Engine<'_> {
         s.diags = Some(out.value.diags.clone());
         if out.complete {
             s.failed = out.value.has_error();
-            if how == Settle::Recompute {
-                s.vd = s.vd.or(Some(enc.digest));
-            } else {
-                s.vd = Some(enc.digest);
-            }
+            s.vd = Some(enc.digest);
             s.value = Some(out.value);
         } else {
             s.failed = true;
@@ -1035,9 +1160,9 @@ impl Engine<'_> {
             .values()
             .filter(|s| {
                 s.status == Some(Status::Skipped)
-                    && s.def
-                        .as_ref()
-                        .is_some_and(|d| d.gate.skip_on_error && d.step.is_some())
+                    && s.def.as_ref().is_some_and(|d| {
+                        d.gate.skip_on_error && d.step.as_ref().is_some_and(|sd| !sd.lint)
+                    })
                     && self.has_error
             })
             .count();

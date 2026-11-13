@@ -1,0 +1,26 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.all]
+paint = "grass"
+
+[feature.court]
+kind = "court"
+region = [[2, 2], [14, 2], [14, 14], [2, 14]]
+k    = 0
+
+[feature.lawn]
+kind = "lawn"
+region = [[6, 6], [10, 6], [10, 10], [6, 10]]
+k    = 0

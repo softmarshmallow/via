@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "A pond without water_height: authority.requires naming water_height and the kind's line."
+milestone = 1
+actions   = ["build"]
+
+# Section 9's world with the pond's `water_height` removed. The kind's `requires` line (kinds.toml line 21) is in `related`; (open) whether it is the record's location or a related entry.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.requires]
+code    = "authority.requires"
+subject = "feature.pond"
+related = [{ file = "lib:water/kinds.toml", line = 21 }]

@@ -1,0 +1,4 @@
+[asset.e]
+engine    = true
+size      = [4, 4, 9]
+triangles = 500

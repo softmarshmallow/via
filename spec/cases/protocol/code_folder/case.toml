@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "The code folder is the world's folder: protocol.code_folder."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# The script beside the world makes the world's folder its code folder (protocol.md 7); trust may refuse it too, so its exit is not asserted.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via         = ["trust", "world.toml", "--yes"]
+exit        = [0, 1]
+diagnostics = "any"
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.code_folder]
+code = "protocol.code_folder"

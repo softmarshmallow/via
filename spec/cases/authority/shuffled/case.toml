@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "The same world with its tables and keys shuffled: same digest."
+milestone = 1
+actions   = ["a", "b"]
+
+[action.a]
+via  = ["build", "a/world.toml", "--lib", "{work}/libs", "--out", "a/build/w"]
+exit = 0
+out  = "a/build/w"
+
+[action.b]
+via  = ["build", "b/world.toml", "--lib", "{work}/libs", "--out", "b/build/w"]
+exit = 0
+out  = "b/build/w"
+
+[action.b.same.id]
+action = "a"
+what   = "id"

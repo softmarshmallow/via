@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "A region of zero area; relief: surface.empty_region, exit 1."
+milestone = 1
+actions   = ["q"]
+
+[action.q]
+via         = ["query", "world.toml", "relief", "--in", "in.json", "--out", "out.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.q.diag.empty_region]
+code = "surface.empty_region"

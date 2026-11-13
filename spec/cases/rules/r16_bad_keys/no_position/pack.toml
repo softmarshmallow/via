@@ -1,0 +1,9 @@
+[asset.house_low]
+primitive = "box"
+size      = [8, 6, 4]
+
+[asset.point]
+engine    = true
+size      = [0.001, 0.001, 1]
+triangles = 1
+footprint = [[0, 0], [0.001, 0], [0, 0.001]]

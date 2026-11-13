@@ -1,0 +1,34 @@
+format    = "via-case-1"
+summary   = "An anchored path a_walk inside an anchored region yard, disagreeing: conflict subject a_walk; one point moved outside: no nesting, subject yard; no order_cycle."
+milestone = 1
+actions   = ["inside", "moved"]
+
+# authority.md's order cases: each entry writes `value = "= v * 10 + k"` with mask 1 at its
+# shape (`1 - smoothstep(0, 1, d)`, so 1 on the shape and 0 by 1 m off it), on a field whose base is
+# 0; the post's value spells the order. The kinds are the case's own library `tiers` (libs/).
+# The two anchored entries disagree (12 against 1, and 21 against 2), so each build fails and
+# writes no field: the order is read from the conflict's subject, which is the later of the two
+# (authority.md 5). Each one's `authority` is inherited from the kind `anc`, so the earlier one in
+# `related` is located at that kind's `authority` line. Inside: the path is contained, so it comes
+# later. Moved (to x = 15, past the yard's edge at 14): no containment, place name decides,
+# a_walk < yard, so yard is later. Mode exact: no authority.order_cycle.
+
+[action.inside]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.inside.diag.conflict]
+code    = "authority.conflict"
+subject = "feature.a_walk"
+related = [{ file = "lib:tiers/kinds.toml", line = 25 }]
+
+[action.moved]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--change", "out", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.moved.diag.conflict]
+code    = "authority.conflict"
+subject = "feature.yard"
+related = [{ file = "lib:tiers/kinds.toml", line = 25 }]

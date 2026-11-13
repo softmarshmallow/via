@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A shaped pad on a shaped lane, its id sorting before the lane's: the pad's digit after the lane's."
+milestone = 1
+actions   = ["build"]
+
+# authority.md's order cases: each entry writes `value = "= v * 10 + k"` with mask 1 at its
+# shape (`1 - smoothstep(0, 1, d)`, so 1 on the shape and 0 by 1 m off it), on a field whose base is
+# 0; the post's value spells the order. The kinds are the case's own library `tiers` (libs/).
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.order]
+path  = "build/w/fields/height.npy"
+post  = [8, 8]
+value = 12

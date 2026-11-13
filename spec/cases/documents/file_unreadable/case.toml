@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A file found but not readable: doc.file_unreadable."
+milestone = 1
+actions   = ["merge"]
+
+# The layer's path names a folder: found on disk, but not a readable file (documents.md 7.2). (open) whether a folder is doc.file_unreadable or doc.file_missing; the chapter's "found but not readable" is read as this.
+
+[action.merge]
+via         = ["merge", "world.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.merge.diag.file_unreadable]
+code = "doc.file_unreadable"

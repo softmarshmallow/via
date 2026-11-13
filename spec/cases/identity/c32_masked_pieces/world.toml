@@ -1,0 +1,16 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[field.blobs]
+base = "= if(x < 10, 1, if(x > 54, 1, if(y > 54, 1, -1)))"
+
+[feature.r]
+where = "= f('blobs')"
+
+[change.shrink.field.blobs]
+base = "= if(x < 10, 1, if(x > 54, 1, if(y > 58, 1, -1)))"

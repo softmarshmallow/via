@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "Two layers; a formula typo in an attribute of a layer-2 feature whose effect writes height; a plain lint in layer 2 and one in layer 1: both skipped; no write: node ran but write:diagnostics.json; exit 1."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# Each lint reads the finished build (R29), which holds the failed attr:hill node, so both are skipped. The scripts live in steps/, their own code folder (protocol.md 6.3).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_name]
+code = "formula.unknown_name"
+
+[action.build.check.l1]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:lint_one"
+includes = { status = "skipped" }
+
+[action.build.check.l2]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:lint_two"
+includes = { status = "skipped" }
+
+[action.build.nodes]
+not_ran = ["write:manifest.json", "write:fields/height.npy"]

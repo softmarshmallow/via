@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "--out naming a folder holding one unrelated file, and a folder holding a manifest.json without a via-build- format: build.not_a_build, the files untouched."
+milestone = 1
+actions   = ["plain", "other"]
+
+[action.plain]
+via       = ["build", "world.toml", "--out", "notes"]
+exit      = 1
+out       = "notes"
+untouched = ["notes"]
+no_rerun  = "the folder is not a build"
+
+[action.plain.diag.not_a_build]
+code = "build.not_a_build"
+from = "run"
+
+[action.other]
+via       = ["build", "world.toml", "--out", "other"]
+exit      = 1
+out       = "other"
+untouched = ["other"]
+no_rerun  = "the folder is not a build"
+
+[action.other.diag.not_a_build]
+code = "build.not_a_build"
+from = "run"

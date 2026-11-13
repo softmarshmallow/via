@@ -1,0 +1,7 @@
+[kind.low]
+radius = 2
+
+[kind.low.effect.e]
+field = "role:surface"
+value = "= v - 2"
+mask  = "= 1 - smoothstep(0, 1, d)"

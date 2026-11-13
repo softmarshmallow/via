@@ -1,0 +1,172 @@
+format    = "via-case-1"
+summary   = "via check on a build damaged in each further way: check.format, check.missing, check.names, check.shape, check.value, check.face, check.weights_sum, check.chunk_rows, check.absolute_path."
+milestone = 1
+actions   = ["b1", "fmt", "c1", "b2", "miss", "c2", "b3", "names", "c3", "b4", "shape", "c4", "b5", "value", "c5", "b6", "face", "c6", "b7", "weights", "c7", "b8", "rows", "c8", "b9", "abs", "c9"]
+
+# One instance (crate, at (3, 3)), one feature `a`, a 9 by 9 height field and a weights field `mix`
+# painting `p` in one chunk. Each damage follows a fresh build: an 8-row height (shape), a NaN
+# (value), a facing of 400000 (face), a chunk summing to 100 (weights_sum), the crate moved to 1000 m
+# (outside its chunk: chunk_rows), a feature name made an absolute path (absolute_path). Each damage
+# also breaks the file's digest; only the code named is asserted (mode includes).
+
+[action.b1]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.fmt]
+replace = "build/w/manifest.json"
+find    = "\"format\":\"via-build-0\""
+with    = "\"format\":\"via-build-9\""
+
+[action.c1]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c1.diag.format]
+code = "check.format"
+
+[action.b2]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.miss]
+delete = "build/w/instances/tint.npy"
+
+[action.c2]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c2.diag.missing]
+code = "check.missing"
+
+[action.b3]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.names]
+write = "build/w/instances/names.txt"
+text  = "crate\ncrate\n"
+
+[action.c3]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c3.diag.names]
+code = "check.names"
+
+[action.b4]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.shape]
+write = "build/w/fields/height.npy"
+from  = "later/shape.npy"
+
+[action.c4]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c4.diag.shape]
+code = "check.shape"
+
+[action.b5]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.value]
+write = "build/w/fields/height.npy"
+from  = "later/nan.npy"
+
+[action.c5]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c5.diag.value]
+code = "check.value"
+
+[action.b6]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.face]
+write = "build/w/instances/face.npy"
+from  = "later/face.npy"
+
+[action.c6]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c6.diag.face]
+code = "check.face"
+
+[action.b7]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.weights]
+write = "build/w/weights/mix/0_0.npy"
+from  = "later/weights.npy"
+
+[action.c7]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c7.diag.weights_sum]
+code = "check.weights_sum"
+
+[action.b8]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.rows]
+write = "build/w/instances/x.npy"
+from  = "later/x.npy"
+
+[action.c8]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c8.diag.chunk_rows]
+code = "check.chunk_rows"
+
+[action.b9]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "restores"
+
+[action.abs]
+replace = "build/w/features.json"
+find    = "\"name\":\"a\""
+with    = "\"name\":\"/abs\""
+
+[action.c9]
+via         = ["check", "build/w"]
+exit        = 1
+diagnostics = "includes"
+
+[action.c9.diag.absolute_path]
+code = "check.absolute_path"

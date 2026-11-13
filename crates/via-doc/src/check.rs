@@ -132,6 +132,14 @@ impl<'w> Checker<'w> {
                     self.value(Takes::Formula, e, &ctx.below(k));
                 }
                 None => self.unknown(e, ctx, k, &listed, None),
+                // `channel` and `range` are PNG keys (M2); on a field with no PNG `file` they do
+                // not apply at all, which is `field.file_key` (`fields.md` 4.2), the model's.
+                Some(Rule::NotYet(_))
+                    if shape == Shape::Field
+                        && matches!(k.as_str(), "channel" | "range")
+                        && !t
+                            .str("file")
+                            .is_some_and(|f| f.to_ascii_lowercase().ends_with(".png")) => {}
                 Some(Rule::NotYet(m)) => self.not_yet(e, ctx, k, m),
                 Some(Rule::Fixed(h)) => self.unknown(e, ctx, k, &listed, Some(h)),
                 Some(Rule::Ok(takes)) => {
@@ -304,17 +312,25 @@ impl<'w> Checker<'w> {
             }
             (Takes::Formula, Value::Str(s)) => {
                 if !s.text.starts_with('=') {
+                    // `formulas.md` 1: spaces before `=` get the hint to remove them.
+                    let rest = s.text.trim_start_matches([' ', '\t']);
+                    let hint = if rest.starts_with('=') {
+                        format!("remove what comes before `=`: write `\"{rest}\"`")
+                    } else {
+                        format!("write `\"= {}\"`, or a number", s.text)
+                    };
+                    // `formulas.md` Conformance 1: the span of the value.
                     self.push(
                         Fault::new(
                             codes::formula::UNMARKED,
                             ctx.subject(),
-                            At::Span(e.key),
+                            At::Span(e.item.span),
                             format!(
                                 "{} takes a formula, and the string `{}` has no leading `=`",
                                 ctx.place(),
                                 s.text
                             ),
-                            format!("write `\"= {}\"`, or a number", s.text),
+                            hint,
                         )
                         .chain(&e.chain),
                     );
@@ -452,9 +468,24 @@ impl<'w> Checker<'w> {
                 takes.words()
             );
         }
+        // `numbers.md` 7: a world seed of the wrong form has its own code.
+        // A string or a float (`numbers.md` 7); any other form is the general `doc.type`.
+        let seed_form = matches!(e.item.value, Value::Str(_) | Value::Num(_));
+        let code = if seed_form && ctx.id.is_none() && ctx.top == "seed" {
+            hint = "write an integer, 0 to 2^63 - 1".to_string();
+            codes::num::SEED_TYPE
+        } else if seed_form
+            && ctx.top == "scatter"
+            && ctx.path.last().map(String::as_str) == Some("seed")
+        {
+            hint = "write a name: `seed = '<name>'`".to_string();
+            codes::num::SEED_TYPE
+        } else {
+            codes::doc::TYPE
+        };
         self.push(
             Fault::new(
-                codes::doc::TYPE,
+                code,
                 ctx.subject(),
                 At::Span(e.key),
                 format!(

@@ -1,0 +1,4 @@
+[feature.pad]
+kind = "anc"
+region = [[6, 6], [10, 6], [10, 10], [6, 10]]
+k    = 2

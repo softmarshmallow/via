@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "A region writing keep_out = 1: no candidate kept inside it."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.none]
+fn     = "no_origin_inside"
+build  = "build/w"
+points = [[40, 40], [90, 40], [90, 90], [40, 90]]
+prefix = "trees#"

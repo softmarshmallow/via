@@ -1,0 +1,6 @@
+name       = "rows"
+extent     = [0, 0, 10, 6]
+resolution = 2
+
+[field.h]
+base = "= y"

@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "A pin on { of = \"trees\", near }; thin density so the selected tree goes: identity.reselected names both trees in the run report, not in diagnostics.json, exit 0; the same world in a fresh directory gives the same diagnostics.json."
+milestone = 1
+actions   = ["first", "thin", "fresh"]
+
+# With jitter 0 the tree nearest (17.5, 17.5) is trees#s7000_2_2 at that point. The change makes the
+# density 0 within 3 m of `spot`, so that tree goes and the selection resolves to a neighbour 7 m
+# away. identity.reselected is a run diagnostic (build.md 11.1), so diagnostics.json is the same as a
+# fresh build's, which has no baseline to compare with.
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.thin]
+via         = ["build", "world.toml", "--change", "thin", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.thin.diag.reselected]
+code = "identity.reselected"
+from = "run"
+
+[action.fresh]
+via         = ["build", "world.toml", "--change", "thin", "--out", "fresh/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "fresh/w"
+
+[action.fresh.same.d]
+action = "thin"
+what   = "diagnostics"

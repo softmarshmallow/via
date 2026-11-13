@@ -1,0 +1,13 @@
+[kind.wide]
+radius = 4
+
+[kind.wide.defaults]
+width = 12
+
+[kind.wide.let]
+w2 = "= sqrt(width - 10)"
+
+[kind.wide.effect.e]
+field = "role:surface"
+value = "= v + w2"
+mask  = "= 1 - smoothstep(0, 2, d)"

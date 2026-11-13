@@ -355,6 +355,62 @@ class RunTests(Base):
         reason = self.run_folder(self.case(HEAD + 'pending = "fixture"\nactions = ["v"]\n[action.v]\nvia = ["--version"]\nexit = 0\n', cid="reason"))
         self.assertEqual((reason.status, reason.detail), ("pending", ["fixture"]))
 
+    def plant_build_leftovers(self) -> Path:
+        """What a hand build leaves in an example folder: a store, a build directory, a run
+        report, a lock, and a file git ignores."""
+        w = self.repo / "examples" / "w"
+
+        def write(path: Path, text: str) -> None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(text.encode("utf-8"))
+
+        write(w / ".via" / "store" / "index.json", '{"stale":true}\n')
+        write(w / ".via" / "store" / "nodes" / "merge.bin", "stale")
+        write(w / "build" / "t" / ".previous", "stale")
+        write(w / "build" / "t" / "manifest.json", "{}\n")
+        write(w / "build" / "t.run.json", "{}\n")
+        write(w / "build.lock", "")
+        write(w / "t.run.json", "{}\n")
+        write(w / "w.lock", "")
+        write(w / "scratch.tmp", "ignored by git")
+        write(w / "sub" / "kept.toml", "x = 1\n")
+        write(self.repo / ".gitignore", "*.tmp\n")
+        return w
+
+    def test_copy_skips_what_builds_leave(self) -> None:
+        """A `[copy]` of a folder holding a `.via` store copies it without the store (conformance.md
+        3.2): a case must start cold whatever was built in the example by hand."""
+        from via_conformance.runner import _copy_into
+
+        w = self.plant_build_leftovers()
+        if shutil.which("git"):
+            import subprocess
+            subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        dst = self.tmp / "copied"
+        _copy_into(w, dst, repo=self.repo)
+        got = sorted(p.relative_to(dst).as_posix() for p in dst.rglob("*"))
+        want = ["sub", "sub/kept.toml", "world.toml"]
+        if not shutil.which("git"):
+            want.insert(0, "scratch.tmp")
+        self.assertEqual(got, want)
+
+    def test_copied_store_is_not_seen_by_the_build(self) -> None:
+        self.plant_build_leftovers()
+        o = self.run_folder(self.case(BUILD + """\
+            [action.build.diag.first]
+            code = "identity.no_previous"
+            from = "run"
+            [action.build.nodes]
+            ran = ["field:*", "merge"]
+            [action.build.file.lock]
+            path   = "w.lock"
+            exists = false
+            [action.build.file.report]
+            path   = "t.run.json"
+            exists = false
+            """))
+        self.assertPass(o)
+
 
 class FailTests(Base):
     """Every rule the runner adds, seen failing."""
@@ -516,6 +572,102 @@ class LeakTests(unittest.TestCase):
         self.assertEqual(self.scan("a.log", "fields/a.npy = 3, ok\n"), [])
 
 
+class NamedCheckTests(unittest.TestCase):
+    """The named checks added with M1's cases (conformance.md 3.4), each seen to hold and to fail."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="via-named-"))
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def run_check(self, table: dict, stdout: bytes = b"") -> list:
+        from via_conformance import named
+        return named.run_named("c", table, self.tmp, {"u5": lambda: [], "stdout": stdout})
+
+    def test_vectors_match(self) -> None:
+        write(self.tmp / "v.toml", '[vector.a]\nfn = "f"\nexpected = "0xAB"\n[vector.b]\nfn = "g"\nexpected = 1.5\n')
+        good = b'{"got":"0xab","id":"a"}\n{"got":1.5,"id":"b"}\n'
+        self.assertEqual(self.run_check({"fn": "vectors_match", "path": "v.toml"}, good), [])
+        self.assertTrue(self.run_check({"fn": "vectors_match", "path": "v.toml"}, b'{"got":"0xAC","id":"a"}\n'))
+        self.assertEqual(self.run_check({"fn": "vectors_match", "path": "v.toml", "fns": ["f"]}, b'{"got":"0xAB","id":"a"}\n'), [])
+
+    def test_json_count(self) -> None:
+        write(self.tmp / "o.json", '{"a":[1,2,3],"b":{"x":1}}\n')
+        self.assertEqual(self.run_check({"fn": "json_count", "path": "o.json", "pointer": "/a", "count": 3}), [])
+        self.assertEqual(self.run_check({"fn": "json_count", "path": "o.json", "pointer": "/b", "count": 1}), [])
+        self.assertTrue(self.run_check({"fn": "json_count", "path": "o.json", "pointer": "/a", "count": 2}))
+        self.assertTrue(self.run_check({"fn": "json_count", "path": "o.json", "pointer": "/c", "count": 0}))
+
+    def report(self, nodes: list, totals: dict) -> None:
+        doc = {"build": {}, "diagnostics": [], "engine": {"epoch": 1, "version": "0"}, "format": "via-run-0", "nodes": nodes,
+               "steps": [], "system": {}, "threads": 1, "totals": totals}
+        (self.tmp / "r.json").write_bytes(canon.canonical_bytes(doc))
+
+    def test_run_report_valid_and_node(self) -> None:
+        nodes = [{"cause": {"reason": "statements"}, "id": "a", "status": "ran"}, {"cause": None, "id": "b", "status": "reused"}]
+        self.report(nodes, {"ms": 0, "nodes": 2, "ran": 1, "recomputed": 0, "reused": 1, "skipped": 0})
+        self.assertEqual(self.run_check({"fn": "run_report_valid", "path": "r.json"}), [])
+        self.assertEqual(self.run_check({"fn": "run_node", "path": "r.json", "node": "a", "includes": {"cause": {"reason": "statements"}}}), [])
+        self.assertTrue(self.run_check({"fn": "run_node", "path": "r.json", "node": "b", "includes": {"status": "ran"}}))
+        self.report(list(reversed(nodes)), {"ms": 0, "nodes": 2, "ran": 2, "recomputed": 0, "reused": 0, "skipped": 0})
+        got = self.run_check({"fn": "run_report_valid", "path": "r.json"})
+        self.assertTrue(any("id order" in g[1] for g in got), got)
+        self.assertTrue(any("totals.ran" in g[1] for g in got), got)
+
+    def test_array_window(self) -> None:
+        whole = np.arange(30, dtype="<f4").reshape(5, 6)
+        np.save(self.tmp / "w.npy", whole)
+        np.save(self.tmp / "p.npy", np.ascontiguousarray(whole[1:3, 2:5]))
+        self.assertEqual(self.run_check({"fn": "array_window", "whole": "w.npy", "part": "p.npy", "window": [2, 1, 5, 3]}), [])
+        self.assertTrue(self.run_check({"fn": "array_window", "whole": "w.npy", "part": "p.npy", "window": [1, 1, 4, 3]}))
+
+
+    def changes(self, entries: list) -> None:
+        doc = {"against": None, "entries": entries, "format": "via-changes-0", "summary": []}
+        (self.tmp / "c.json").write_bytes(canon.canonical_bytes(doc))
+
+    def test_json_list(self) -> None:
+        self.changes([{"name": "cottage", "table": "instance", "via": ["shape:ford/v:build", "instance:cottage/v:build"]},
+                      {"name": "trees#s7000_1", "table": "instance"}, {"name": "trees#s7000_2", "table": "instance"}])
+        ok = {"fn": "json_list", "path": "c.json", "pointer": "/entries", "from": 1, "includes": {"table": "instance"},
+              "starts": {"name": "trees#"}}
+        self.assertEqual(self.run_check(ok), [])
+        self.assertTrue(self.run_check({**ok, "from": 0}))
+        self.assertTrue(self.run_check({**ok, "from": 3}))
+        self.assertEqual(self.run_check({**ok, "from": 3, "at_least": 0}), [])
+        via = {"fn": "json_list", "path": "c.json", "pointer": "/entries/0/via", "at_least": 2, "last": "instance:cottage/v:build"}
+        self.assertEqual(self.run_check(via), [])
+        self.assertTrue(self.run_check({**via, "last": "shape:ford/v:build"}))
+        self.assertTrue(self.run_check({**via, "at_least": 3}))
+
+    def test_instance_at(self) -> None:
+        b = self.tmp / "b" / "instances"
+        b.mkdir(parents=True)
+        np.save(b / "x.npy", np.array([200000, 5], dtype="<i4"))
+        np.save(b / "y.npy", np.array([60000, 5], dtype="<i4"))
+        write(b / "names.txt", "oak\ntrees#s7000_1\n")
+        self.assertEqual(self.run_check({"fn": "instance_at", "build": "b", "name": "oak", "at": [200, 60]}), [])
+        self.assertTrue(self.run_check({"fn": "instance_at", "build": "b", "name": "oak", "at": [200, 60.001]}))
+        self.assertTrue(self.run_check({"fn": "instance_at", "build": "b", "name": "elm", "at": [200, 60]}))
+
+    def test_changes_inside_and_absent(self) -> None:
+        clear = [{"cause": "clear.gap", "file": "world.toml", "line": 81}]
+        self.changes([{"before": {"at": [205, 206, 1]}, "causes": clear, "name": "trees#a", "what": ["removed"]},
+                      {"before": {"at": [100, 100, 1]}, "causes": [{"cause": "pin.oak"}], "name": "trees#b", "what": ["removed"]}])
+        inside = {"fn": "changes_inside", "path": "c.json", "prefix": "trees#", "at": [208, 208], "radius": 6,
+                  "what": ["removed"], "cause": {"cause": "clear.gap", "line": 81}}
+        self.assertEqual(self.run_check(inside), [])
+        self.assertTrue(self.run_check({**inside, "cause": {"cause": "clear.gap", "line": 80}}))
+        self.assertTrue(self.run_check({**inside, "at": [0, 0]}))
+        self.assertTrue(self.run_check({**inside, "radius": 200}))  # trees#b, inside now, has another cause
+        absent = {"fn": "changes_absent", "path": "c.json", "entry_names": ["oak", "beck"]}
+        self.assertEqual(self.run_check(absent), [])
+        self.assertTrue(self.run_check({**absent, "entry_names": ["trees#b"]}))
+        self.assertTrue(self.run_check({**absent, "causes": ["pin.oak"]}))
+        self.assertEqual(self.run_check({**absent, "causes": ["pin.elm"]}), [])
+
+
 class MatchingTests(unittest.TestCase):
     def test_assignment_needs_search(self) -> None:
         # Greedy first-fit gives the line-1 record to `any`, leaving `one` unmatched.
@@ -528,6 +680,13 @@ class MatchingTests(unittest.TestCase):
     def test_count_defaults_to_one(self) -> None:
         doc = diags.DiagDoc(0, [{"code": "a.b"}], [])
         self.assertEqual(diags.match({"x": {"code": "a.b", "count": 1}}, doc, "exact"), [])
+
+    def test_position_within(self) -> None:
+        doc = diags.DiagDoc(1, [{"code": "a.b", "position": [143, 178.4]}, {"code": "a.c"}], [])
+        self.assertEqual(diags.match({"x": {"code": "a.b", "position_within": [135, 170, 151, 187]}}, doc, "includes"), [])
+        self.assertEqual(diags.match({"x": {"code": "a.b", "position_within": [143, 178.4, 143, 178.4]}}, doc, "includes"), [])
+        self.assertTrue(diags.match({"x": {"code": "a.b", "position_within": [144, 170, 151, 187]}}, doc, "includes"))
+        self.assertTrue(diags.match({"x": {"code": "a.c", "position_within": [0, 0, 999, 999]}}, doc, "includes"))
 
     def test_chain_entries_include(self) -> None:
         # 3.5: same length and order; each entry includes the members written, so `owner` may go unwritten.

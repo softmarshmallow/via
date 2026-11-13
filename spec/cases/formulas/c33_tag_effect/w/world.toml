@@ -1,0 +1,16 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.g1]
+tags = ["ground"]
+base = 5
+
+[field.g2]
+tags = ["ground"]
+base = 9
+
+[feature.a]
+kind = "raise"
+at   = [4, 4]

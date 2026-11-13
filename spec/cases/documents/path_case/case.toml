@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "A layer file written Layers/d.toml, on disk layers/d.toml: doc.path_case on every system."
+milestone = 1
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml"]
+exit = 1
+
+[action.merge.diag.path_case]
+code = "doc.path_case"

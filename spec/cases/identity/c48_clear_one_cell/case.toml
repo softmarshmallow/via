@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "Clear one cell: cross's first cells case with one homes instance per cell; a clear on the station 2 cell of the cross_ns side, no radius: the held output lacks exactly that instance, keeps the other nine, names unchanged; a clear on the rest: identity.clear_empty."
+milestone = 1
+actions   = ["clear", "rest"]
+
+# The fixture instances stand one per cell of cross's first cells case (geometry.md), each with the
+# cell as its footprint and its origin at the cell's representative point (the station 4 triangles'
+# nearest lattice point to their centroid stands in; the case asserts nothing about it). The
+# producer is `homes`; the cells' maker is named `lots` for selections.
+# `held` is listed by name, so its first is homes#ew_0 whichever instance the clear removed; nine remain.
+
+[action.clear]
+via  = ["kernel", "names", "--in", "clear.json", "--out", "clear.out.json"]
+exit = 0
+
+[action.clear.file.first]
+path     = "clear.out.json"
+pointer  = "/held/0"
+includes = { name = "homes#ew_0", producer = "homes" }
+
+[action.clear.check.nine]
+fn      = "json_count"
+path    = "clear.out.json"
+pointer = "/held"
+count   = 9
+
+[action.rest]
+via  = ["kernel", "names", "--in", "rest.json", "--out", "rest.out.json"]
+exit = 0
+
+[action.rest.diag.clear_empty]
+code    = "identity.clear_empty"
+subject = "cli"
+
+[action.rest.check.ten]
+fn      = "json_count"
+path    = "rest.out.json"
+pointer = "/held"
+count   = 10

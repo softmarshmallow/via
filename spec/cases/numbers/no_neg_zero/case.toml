@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A formula giving -0: the bytes of +0 in the field file."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.zero]
+path = "build/w/fields/a.npy"
+post = [0, 0]
+bits = "0x00000000"
+
+[action.build.file.far]
+path = "build/w/fields/a.npy"
+post = [3, 3]
+bits = "0x00000000"

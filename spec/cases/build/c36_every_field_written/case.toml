@@ -1,0 +1,57 @@
+format    = "via-case-1"
+summary   = "ford with a scalar field moisture that no loader option names: the manifest's fields lists height, clearing, water and moisture, each file exists and via check passes."
+milestone = 1
+actions   = ["program", "trust", "add", "retrust", "build", "check"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.add]
+replace = "world.toml"
+find    = "[feature.beck]"
+with    = "[field.moisture]\nbase = \"= 0.5\"\n\n[feature.beck]"
+
+[action.retrust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.file.height]
+path   = "build/ford/fields/height.npy"
+exists = true
+
+[action.build.file.clearing]
+path   = "build/ford/fields/clearing.npy"
+exists = true
+
+[action.build.file.water]
+path   = "build/ford/fields/water.npy"
+exists = true
+
+[action.build.file.moisture]
+path   = "build/ford/fields/moisture.npy"
+exists = true
+
+[action.build.check.four]
+fn      = "json_count"
+path    = "build/ford/manifest.json"
+pointer = "/fields"
+count   = 4
+
+[action.check]
+via  = ["check", "build/ford"]
+exit = 0

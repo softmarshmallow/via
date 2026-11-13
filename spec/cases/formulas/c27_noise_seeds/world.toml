@@ -1,0 +1,12 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.a]
+base = "= fbm(80, 3, seed = 'a')"
+
+[field.b]
+base = "= fbm(80, 3, seed = 'a')"
+
+[field.trees]
+base = "= fbm(80, 3)"

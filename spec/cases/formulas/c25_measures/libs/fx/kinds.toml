@@ -1,0 +1,13 @@
+[kind.pond]
+radius = 20
+
+[kind.pond.effect.e]
+field = "tag:mark"
+value = "= sd"
+
+[kind.well]
+radius = 2
+
+[kind.well.effect.e]
+field = "tag:mark"
+value = "= t"

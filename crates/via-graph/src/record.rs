@@ -3,8 +3,10 @@
 use std::collections::BTreeMap;
 
 use crate::digest::{Dec, Digest, Enc};
+use crate::engine::StepOutcome;
 use crate::id::NodeId;
 use crate::key::{digest_of_parts, Versions};
+use crate::plan::Read;
 use crate::store::Store;
 
 /// One node in a build record.
@@ -33,17 +35,36 @@ pub struct BuildRecord {
     pub statements: BTreeMap<String, Digest>,
     /// The world diagnostics as emitted, in the caller's encoding (the canonical JSON records).
     pub world_diags: Vec<u8>,
-    /// Each build file by path.
+    /// Each file of the manifest's `files` (the data files) by path. Only files whose bytes are a
+    /// function of the build key are here: the manifest and the reports also depend on where the
+    /// directory is and on its baseline, so they are checked against the directory's own
+    /// manifest, never against this record (6.2).
     pub files: BTreeMap<String, Digest>,
     /// Whether every step completed.
     pub complete: bool,
+    /// Each step node's facts for the run report (6.3), so a null build lists its step objects:
+    /// its command, static key, trace, reads, what it returned and its log. The exit status is
+    /// not kept: a null build runs nothing, so every `exit` is `null`.
+    pub steps: BTreeMap<NodeId, StepOutcome>,
+}
+
+fn put_read(e: &mut Enc, r: &Read) {
+    e.str(&r.method).digest(&r.request).digest(&r.answer);
+}
+
+fn get_read(d: &mut Dec) -> Option<Read> {
+    Some(Read {
+        method: d.str()?,
+        request: d.digest()?,
+        answer: d.digest()?,
+    })
 }
 
 impl BuildRecord {
     /// The record's bytes.
     pub fn encode(&self) -> Vec<u8> {
         let mut e = Enc::new();
-        e.str("via-build-record-1");
+        e.str("via-build-record-2");
         self.versions.encode(&mut e);
         e.len(self.nodes.len());
         for (id, n) in &self.nodes {
@@ -65,13 +86,38 @@ impl BuildRecord {
             e.str(p).digest(d);
         }
         e.byte(u8::from(self.complete));
+        e.len(self.steps.len());
+        for (id, s) in &self.steps {
+            e.str(id.as_str()).len(s.command.len());
+            for c in &s.command {
+                e.str(c);
+            }
+            opt(&mut e, s.static_key.as_ref());
+            opt(&mut e, s.trace.as_ref());
+            e.len(s.reads.len());
+            for r in &s.reads {
+                put_read(&mut e, r);
+            }
+            match &s.returned {
+                None => {
+                    e.byte(0);
+                }
+                Some((v, files)) => {
+                    e.byte(1).digest(v).len(files.len());
+                    for (p, d) in files {
+                        e.str(p).digest(d);
+                    }
+                }
+            }
+            opt(&mut e, s.log.as_ref());
+        }
         e.finish()
     }
 
     /// Reads a record; `None` when the bytes are not one.
     pub fn decode(b: &[u8]) -> Option<BuildRecord> {
         let mut d = Dec::new(b);
-        if d.str()? != "via-build-record-1" {
+        if d.str()? != "via-build-record-2" {
             return None;
         }
         let versions = Versions {
@@ -105,6 +151,45 @@ impl BuildRecord {
             1 => true,
             _ => return None,
         };
+        let mut steps = BTreeMap::new();
+        for _ in 0..d.count()? {
+            let id = NodeId::parse(&d.str()?).ok()?;
+            let mut command = Vec::new();
+            for _ in 0..d.count()? {
+                command.push(d.str()?);
+            }
+            let static_key = read_opt(&mut d)?;
+            let trace = read_opt(&mut d)?;
+            let mut reads = Vec::new();
+            for _ in 0..d.count()? {
+                reads.push(get_read(&mut d)?);
+            }
+            let returned = match d.byte()? {
+                0 => None,
+                1 => {
+                    let v = d.digest()?;
+                    let mut files = Vec::new();
+                    for _ in 0..d.count()? {
+                        files.push((d.str()?, d.digest()?));
+                    }
+                    Some((v, files))
+                }
+                _ => return None,
+            };
+            let log = read_opt(&mut d)?;
+            steps.insert(
+                id,
+                StepOutcome {
+                    command,
+                    static_key,
+                    trace,
+                    reads,
+                    exit: None,
+                    returned,
+                    log,
+                },
+            );
+        }
         d.done().then_some(BuildRecord {
             versions,
             nodes,
@@ -112,6 +197,7 @@ impl BuildRecord {
             world_diags,
             files,
             complete,
+            steps,
         })
     }
 
@@ -222,8 +308,28 @@ mod tests {
             nodes,
             statements: [("field.height".to_string(), Digest([4; 32]))].into(),
             world_diags: b"[]".to_vec(),
-            files: [("manifest.json".to_string(), Digest([5; 32]))].into(),
+            files: [("fields/height.npy".to_string(), Digest([5; 32]))].into(),
             complete: true,
+            steps: [(
+                NodeId::parse("step:checks").unwrap(),
+                StepOutcome {
+                    command: vec!["python".into(), "check.py".into()],
+                    static_key: Some(Digest([6; 32])),
+                    trace: None,
+                    reads: vec![Read {
+                        method: "data".into(),
+                        request: Digest([7; 32]),
+                        answer: Digest([8; 32]),
+                    }],
+                    exit: None,
+                    returned: Some((
+                        Digest([9; 32]),
+                        vec![("diagnostics.json".into(), Digest([10; 32]))],
+                    )),
+                    log: Some(Digest([11; 32])),
+                },
+            )]
+            .into(),
         }
     }
 

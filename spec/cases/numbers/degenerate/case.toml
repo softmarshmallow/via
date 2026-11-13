@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "A path with a repeated vertex; a one-point path with t; face = \"along\" on it: geom.repeated_point; geom.degenerate, the feature on it skipped; never a facing of north by default."
+milestone = 1
+actions   = ["repeat", "one_point"]
+
+# A failed placement gives no facing at all, so never north by default (no instance or feature is written).
+
+[action.repeat]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.repeat.diag.repeated_point]
+code = "geom.repeated_point"
+
+[action.one_point]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.one_point.diag.degenerate]
+code = "geom.degenerate"
+
+# The one-point path fails with geom.degenerate; `m`, placed on it, depends on a failed node, so it
+# is skipped and raises nothing of its own (diagnostics.md 4): no geom.no_length.

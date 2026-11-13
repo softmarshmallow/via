@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "clip(x, 0, 1): formula.unknown_function, hint clamp; lerp(0, 1, 0.5): hint mix."
+milestone = 1
+actions   = ["clip", "lerp"]
+
+# The hints come from formulas.md's fixed alias table, not the nearest name, so data.nearest is not asserted.
+
+[action.clip]
+via         = ["build", "clip/world.toml", "--lib", "{work}/libs", "--out", "clip/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "clip/build/w"
+
+[action.clip.diag.unknown_function]
+code = "formula.unknown_function"
+
+[action.lerp]
+via         = ["build", "lerp/world.toml", "--lib", "{work}/libs", "--out", "lerp/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "lerp/build/w"
+
+[action.lerp.diag.unknown_function]
+code = "formula.unknown_function"

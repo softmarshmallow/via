@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "f('tag:ground') with two ground fields: formula.selector_count naming both; sdist('kind:lane', 20) and along('kind:lane') with two lanes: formula.selector_count."
+milestone = 1
+actions   = ["f", "sdist", "along"]
+
+[action.f]
+via         = ["build", "f/world.toml", "--lib", "{work}/libs", "--out", "f/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "f/build/w"
+
+[action.f.diag.selector_count]
+code = "formula.selector_count"
+
+[action.sdist]
+via         = ["build", "sdist/world.toml", "--lib", "{work}/libs", "--out", "sdist/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "sdist/build/w"
+
+[action.sdist.diag.selector_count]
+code = "formula.selector_count"
+
+[action.along]
+via         = ["build", "along/world.toml", "--lib", "{work}/libs", "--out", "along/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "along/build/w"
+
+[action.along.diag.selector_count]
+code = "formula.selector_count"

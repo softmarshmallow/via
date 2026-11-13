@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "65 nested lists: doc.too_deep at the 65th, no crash; 64 gives none; a header of 65 parts: doc.too_deep."
+milestone = 1
+actions   = ["lists65", "lists64", "header65"]
+
+# documents.md 1: the root is depth 0 and each list adds one, so the 65th list of `x` (column 69,
+# after `x = ` and 64 brackets) is depth 65, past the limit; the file is read no further, so nothing
+# else is reported. With 64 the file reads whole, and the one fault is the unknown top-level key `x`
+# (mode exact: no doc.too_deep). A header of 65 parts is depth 65.
+
+[action.lists65]
+via  = ["merge", "l65/world.toml"]
+exit = 1
+
+[action.lists65.diag.too_deep]
+code   = "doc.too_deep"
+file   = "world.toml"
+line   = 6
+column = 69
+
+[action.lists64]
+via  = ["merge", "l64/world.toml"]
+exit = 1
+
+[action.lists64.diag.unknown_key]
+code   = "doc.unknown_key"
+file   = "world.toml"
+line   = 6
+column = 1
+
+[action.header65]
+via  = ["merge", "h65/world.toml"]
+exit = 1
+
+[action.header65.diag.too_deep]
+code = "doc.too_deep"
+file = "world.toml"
+line = 7

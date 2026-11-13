@@ -1,0 +1,18 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= along('kind:lane')"
+
+[feature.a]
+kind = "lane"
+path = [[0, 4], [128, 4]]
+
+[feature.b]
+kind = "lane"
+path = [[0, 12], [128, 12]]
+
+[field.m]
+tags = ["mark"]

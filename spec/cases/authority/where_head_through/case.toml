@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "A where region reading slope, whose base reads height; another region's effect steepens height inside it: the region is the same with and without that effect; its own entries are made."
+milestone = 1
+actions   = ["without", "with"]
+
+# (open: the case asserts less than the row.) The region `r` reads `steep`, whose base reads
+# `height`, so `r` reads `height`'s head view, which holds no effect (authority.md 2.3). The row's
+# "same with and without" is r's pieces in features.json equal between the two builds; no check
+# compares one member of two different files, so only that both build, with r first by name, is
+# asserted. Owed: a `same` form taking a pointer, or a named check (conformance.md 3.4).
+
+[action.without]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.with]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "ramp", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.with.file.shape]
+path    = "build/b/features.json"
+pointer = "/features/0/name"
+value   = "r"

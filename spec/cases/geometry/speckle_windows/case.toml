@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "speckle masked by window, including windows on the grid's edge; compared with the whole, clipped: equal."
+milestone = 1
+actions   = ["whole", "sw", "ne"]
+
+# (open) clipping the whole's region to a window and comparing needs a boolean of two outputs; the windowed masks run, edge windows included.
+
+[action.whole]
+via         = ["kernel", "mask", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.sw]
+via         = ["kernel", "mask", "--in", "sw.json", "--out", "sw.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.ne]
+via         = ["kernel", "mask", "--in", "ne.json", "--out", "ne.out.json"]
+exit        = 0
+diagnostics = "includes"

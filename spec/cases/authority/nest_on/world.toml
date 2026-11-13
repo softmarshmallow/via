@@ -1,0 +1,19 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.a_pad]
+kind = "sha"
+on   = { ref = "b_lane", t = 0.5 }
+k    = 2
+
+[feature.b_lane]
+kind = "sha"
+path = [[0, 8], [16, 8]]
+k    = 1

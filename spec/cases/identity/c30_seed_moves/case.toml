@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "Seed changed, a scatter with density 1 and nothing to give way to: every name is kept, and each entry is moved or swapped only."
+milestone = 1
+actions   = ["base", "seed"]
+
+# One asset, a fixed scale and jitter 0: nothing can be swapped or changed, and no candidate can be
+# jittered past the extent's edge (where the confine step would drop it and a new seed add another),
+# so every entry is `moved`, by its new facing; none added or removed.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.seed]
+via         = ["build", "world.toml", "--change", "reseed", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.seed.check.moved]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "trees#"
+what   = ["moved"]

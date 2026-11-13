@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "front = \"+y\", up = \"-y\": pack.bad_axes, exit 1."
+milestone = 1
+actions   = ["check"]
+
+# `front` and `up` are fixed on a primitive (2.2); written in `[defaults]` they are a pack-wide axes check (8.3) that reaches only models.
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 1
+
+[action.check.diag.bad_axes]
+code = "pack.bad_axes"

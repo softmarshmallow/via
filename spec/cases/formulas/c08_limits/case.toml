@@ -1,0 +1,34 @@
+format    = "via-case-1"
+summary   = "A formula of 4097 bytes: formula.too_long. 65 nested parentheses: formula.too_deep; 64 build."
+milestone = 1
+actions   = ["long", "deep65", "deep64"]
+
+# The formula text is everything after `=` (formulas.md 1): ` `, 1023 times `1 + `, then `1111`:
+# 1 + 4092 + 4 = 4097 bytes, one over the limit of 4096.
+
+[action.long]
+via         = ["build", "long/world.toml", "--lib", "{work}/libs", "--out", "long/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "long/build/w"
+
+[action.long.diag.too_long]
+code = "formula.too_long"
+
+[action.deep65]
+via         = ["build", "deep65/world.toml", "--lib", "{work}/libs", "--out", "deep65/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "deep65/build/w"
+
+[action.deep65.diag.too_deep]
+code = "formula.too_deep"
+
+[action.deep64]
+via  = ["build", "deep64/world.toml", "--lib", "{work}/libs", "--out", "deep64/build/w"]
+exit = 0
+out  = "deep64/build/w"
+
+[action.deep64.file.all]
+path = "deep64/build/w/fields/f.npy"
+all  = 1

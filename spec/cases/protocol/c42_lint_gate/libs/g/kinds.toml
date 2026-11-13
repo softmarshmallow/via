@@ -1,0 +1,10 @@
+[kind.bump]
+radius = 3
+
+[kind.bump.defaults]
+rise = 1
+
+[kind.bump.effect.e]
+field = "role:surface"
+value = "= v + rise"
+mask  = "= 1 - smoothstep(0, 2, d)"

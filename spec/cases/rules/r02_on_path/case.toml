@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "Lane [[0, 0], [100, 0]]; on = { ref = \"lane\", t = 0.25, offset = 2 }; then move the lane's end to [100, 10]: (25000, 2000), facing 90000; then moved, cause feature.lane."
+milestone = 1
+actions   = ["build", "moved"]
+
+# Facing `along` is the default for a thing placed `on` a path? (open) rules.md 3.3: the row gives 90000 east along the lane. The second build's report lists the cottage `moved`; its cause feature.lane is (open) to assert without a check over causes.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.x]
+path = "build/w/instances/x.npy"
+all  = 25000
+
+[action.build.file.y]
+path = "build/w/instances/y.npy"
+all  = 2000
+
+[action.build.file.f]
+path = "build/w/instances/face.npy"
+all  = 90000
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "bend", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.check.moved]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "cottage"
+what   = ["moved"]

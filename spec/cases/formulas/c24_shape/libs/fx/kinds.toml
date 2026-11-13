@@ -1,0 +1,16 @@
+[kind.pool]
+radius = 2
+
+[kind.ks]
+radius = 2
+
+[kind.ks.effect.e]
+field = "tag:mark"
+value = "= smoothed_along(24)"
+
+[kind.ke]
+radius = 2
+
+[kind.ke.effect.e]
+field = "tag:mark"
+value = "= under('edge_min')"

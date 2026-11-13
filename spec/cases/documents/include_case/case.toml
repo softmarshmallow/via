@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "include = [\"paths\"], folder on disk lib/Paths/: doc.path_case on every system."
+milestone = 1
+actions   = ["merge"]
+
+# The row's `ways`/`Ways/` written as `paths`/`Paths/`: VIA_LIB holds a real `ways`, which would be found after the beside root.
+
+[action.merge]
+via         = ["merge", "world.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.merge.diag.path_case]
+code = "doc.path_case"

@@ -507,7 +507,12 @@ fn graph_reuses_unchanged_fields() {
     let d = world_dir(WORLD);
     let store = via_graph::Store::open(d.0.join("store"));
     let (a, ran) = graph_run(&d, &store, &[]);
-    assert_eq!(ran.len(), 2, "{ran:?}");
+    // A clean build runs every node, the field's chunk among them.
+    assert!(
+        ran.iter()
+            .any(|n| n.as_str().starts_with("field:height/v:build/w:")),
+        "{ran:?}"
+    );
     // The same build as in memory.
     let (m, _) = run(&d, &[], None);
     assert_eq!(a.fields, m.fields);
@@ -521,5 +526,186 @@ fn graph_reuses_unchanged_fields() {
         ran.iter()
             .any(|n| n.to_string().starts_with("field:height/")),
         "{ran:?}"
+    );
+}
+
+const GRID: &str = r#"name       = "plain"
+extent     = [0, 0, 64, 64]
+resolution = 1
+"#;
+
+/// Three discs, the first of radius squared `r`, as a `where` condition.
+fn discs(r: u32) -> String {
+    format!(
+        "{GRID}\n[field.height]\nrole = \"surface\"\nbase = \"= 10\"\n\n[feature.patch]\nwhere = \"= if((x - 10) * (x - 10) + (y - 10) * (y - 10) < {r}, 1, 0) + if((x - 40) * (x - 40) + (y - 12) * (y - 12) < 9, 1, 0) + if((x - 20) * (x - 20) + (y - 50) * (y - 50) < 9, 1, 0)\"\n"
+    )
+}
+
+#[test]
+fn where_keeps_every_piece_by_place() {
+    // geometry.md 3.7: every piece kept; identity.md 2.3 and case 32: a piece that shrinks
+    // renames nothing else.
+    let d = world_dir(&discs(16));
+    let (b, _) = run(&d, &[], None);
+    assert!(errors(&b).is_empty(), "{:?}", errors(&b));
+    assert_eq!(b.features["patch"].rings.len(), 3);
+    let d2 = world_dir(&discs(9));
+    let (b2, _) = run(&d2, &[], None);
+    assert_eq!(b2.features["patch"].rings.len(), 3);
+    // The selection by place names the piece nearest `near`; the other two keep their names.
+    let pick = |w: &str| {
+        let d = world_dir(&format!(
+            "{w}\n[feature.spot]\non = {{ of = \"patch\", near = [40, 30], t = 0, offset = 0 }}\n"
+        ));
+        let (b, _) = run(&d, &[], None);
+        assert!(errors(&b).is_empty(), "{:?}", errors(&b));
+        b.selections["feature.spot"].0.clone()
+    };
+    let a = pick(&discs(16));
+    assert_eq!(a, pick(&discs(9)));
+    assert!(a.starts_with("patch#p1_0_"), "{a}");
+}
+
+#[test]
+fn where_reads_the_head_view_and_a_cycle_is_said_once() {
+    // authority.md 2.3: a shape reads the head view; its own kind's effect does not move it.
+    let w = format!(
+        "{GRID}include = [\"marks\"]\n\n[field.height]\nrole = \"surface\"\nbase = \"= x / 4\"\n\n[field.height.then.lift]\nvalue = \"= v + 1\"\n\n[feature.low]\nkind  = \"strip\"\nwhere = \"= f('height') < 6\"\n"
+    );
+    let d = world_dir(&w);
+    let (b, _) = run(&d, &[], None);
+    assert!(errors(&b).is_empty(), "{:?}", errors(&b));
+    let ring = &b.features["low"].rings[0][0];
+    assert!(ring.iter().all(|p| p.0 <= 20_000), "{ring:?}");
+    assert!(ring.iter().any(|p| p.0 == 20_000), "{ring:?}");
+    // authority.md case where_head_cycle: a row that reads the region it shapes.
+    let w = format!(
+        "{GRID}\n[field.height]\nrole = \"surface\"\nbase = \"= x / 4\"\n\n[field.height.then.lift]\nvalue = \"= v + 1\"\nmask  = \"= if(inside('r'), 1, 0)\"\n\n[feature.r]\nwhere = \"= f('height') < 6\"\n"
+    );
+    let d = world_dir(&w);
+    let (b, _) = run(&d, &[], None);
+    let e = errors(&b);
+    assert_eq!(e.len(), 1, "{e:?}");
+    assert!(e[0].starts_with("graph.cycle"), "{e:?}");
+}
+
+#[test]
+fn follows_and_smooth() {
+    let w = format!(
+        "{GRID}\n[field.height]\nrole = \"surface\"\nbase = \"= 0\"\n\n[feature.line]\npath   = [[5, 5], [30, 20], [55, 10]]\nsmooth = true\n\n[feature.along]\nfollows = {{ ref = \"straight\", span = [0.25, 0.75], offset = 2 }}\n\n[feature.straight]\npath = [[0, 32], [64, 32]]\n\n[feature.bad]\nregion = [[0, 0], [4, 0], [4, 4]]\nsmooth = true\n"
+    );
+    let d = world_dir(&w);
+    let (b, _) = run(&d, &[], None);
+    // geometry.md 2.4: written points kept; each span in `ceil(c / 250 mm)` equal steps of the
+    // curve parameter: 117 and 108 steps for chords of 29.155 m and 26.926 m.
+    let pts = &b.features["line"].points;
+    for p in [(5_000, 5_000), (30_000, 20_000), (55_000, 10_000)] {
+        assert!(pts.contains(&p), "{p:?}");
+    }
+    assert_eq!(pts.len(), 117 + 108 + 1);
+    // geometry.md 3.5: the substring, 2 m to the left.
+    assert_eq!(
+        b.features["along"].points,
+        vec![(16_000, 34_000), (48_000, 34_000)]
+    );
+    let e = errors(&b);
+    assert!(
+        e.iter()
+            .any(|x| x.starts_with("geom.smooth_not_path feature.bad")),
+        "{e:?}"
+    );
+}
+
+/// An array file of `<f4` (`build.md` 3.2), rows from the south.
+fn npy(rows: usize, cols: usize, v: impl Fn(usize, usize) -> f32) -> Vec<u8> {
+    let head = format!("{{'descr': '<f4', 'fortran_order': False, 'shape': ({rows}, {cols}), }}");
+    let total = 10 + head.len() + 1;
+    let pad = (64 - total % 64) % 64;
+    let mut out = b"\x93NUMPY\x01\x00".to_vec();
+    out.extend(((head.len() + pad + 1) as u16).to_le_bytes());
+    out.extend(head.as_bytes());
+    out.extend(std::iter::repeat_n(b' ', pad));
+    out.push(b'\n');
+    for r in 0..rows {
+        for c in 0..cols {
+            out.extend(v(r, c).to_le_bytes());
+        }
+    }
+    out
+}
+
+#[test]
+fn field_from_an_array_file() {
+    // fields.md cases "array file base", "orientation", "file extent", "outside missing".
+    let root = dir(&[(
+        "world.toml",
+        "name = \"f\"\nextent = [0, 0, 8, 8]\nresolution = 1\n\n[field.height]\nrole = \"surface\"\nfile = \"g.npy\"\noutside = 0\n\n[field.o]\nfile = \"o.npy\"\noutside = -1\nfilter = \"nearest\"\nextent = [0, 0, 4, 4]\n",
+    )]);
+    std::fs::write(root.0.join("g.npy"), npy(9, 9, |r, c| (r * 9 + c) as f32)).expect("w");
+    std::fs::write(
+        root.0.join("o.npy"),
+        npy(2, 2, |r, c| if r == 0 && c == 0 { 1.0 } else { 0.0 }),
+    )
+    .expect("w");
+    let (b, _) = run(&root, &[], None);
+    assert!(errors(&b).is_empty(), "{:?}", errors(&b));
+    let h = b.fields["height"].values.as_ref().expect("scalar");
+    assert!(h.iter().enumerate().all(|(k, v)| *v == k as f32));
+    let o = b.fields["o"].values.as_ref().expect("scalar");
+    assert_eq!(o[0], 1.0);
+    assert_eq!(o[8], -1.0);
+    assert_eq!(o[4 * 9 + 4], 0.0);
+    let bad = dir(&[(
+        "world.toml",
+        "name = \"f\"\nextent = [0, 0, 8, 8]\nresolution = 1\n\n[field.a]\nfile = \"G.npy\"\noutside = 0\n\n[field.b]\nfile = \"g.npy\"\n\n[field.c]\nbase = \"= 0\"\nfilter = \"nearest\"\n",
+    )]);
+    std::fs::write(bad.0.join("g.npy"), npy(2, 2, |_, _| 0.0)).expect("w");
+    let (b, _) = run(&bad, &[], None);
+    let e = errors(&b);
+    assert!(
+        e.iter()
+            .any(|x| x.starts_with("doc.path_case field.a")
+                || x.starts_with("doc.file_missing field.a")),
+        "{e:?}"
+    );
+    assert!(
+        e.iter()
+            .any(|x| x.starts_with("field.file_outside field.b")),
+        "{e:?}"
+    );
+    assert!(
+        e.iter().any(|x| x.starts_with("field.file_key field.c")),
+        "{e:?}"
+    );
+}
+
+#[test]
+fn hand_edits_select_a_scatters_instance() {
+    // identity.md cases 7, 10 and 15: a clear and a pin select by place from the run stage.
+    let extra = "\n[clear.one]\non = { of = \"growth\", near = [30, 20] }\n\n[pin.bench]\nasset = \"stem\"\non = { of = \"growth\", near = [12, 40] }\nby = [\"growth\"]\n";
+    let d = world_dir(&format!("{WORLD}{extra}"));
+    let (b, _) = run(&d, &[], None);
+    assert!(errors(&b).is_empty(), "{:?}", errors(&b));
+    let (gone, at) = b.selections["clear.one"].clone();
+    assert!(!b.instances.contains_key(&gone), "{gone}");
+    let (under, at2) = b.selections["pin.bench"].clone();
+    assert!(gone.starts_with("growth#") && under.starts_with("growth#"));
+    assert_eq!(b.instances["bench"].origin, at2);
+    assert_ne!(at, at2);
+    let missing = "\n[scatter.none]\nassets = [\"stem\"]\nspacing = 9\ndensity = \"= 0\"\n\n[pin.p1]\nasset = \"stem\"\non = { of = \"none\", near = [10, 10] }\n\n[pin.p2]\nasset = \"stem\"\non = { of = \"none\", near = [20, 10] }\n\n[pin.p3]\nasset = \"stem\"\non = { of = \"growht\", near = [20, 10] }\n";
+    let d = world_dir(&format!("{WORLD}{missing}"));
+    let (b, _) = run(&d, &[], None);
+    let e = errors(&b);
+    assert_eq!(
+        e.iter()
+            .filter(|x| x.starts_with("identity.near_none scatter.none"))
+            .count(),
+        1,
+        "{e:?}"
+    );
+    assert!(
+        e.iter()
+            .any(|x| x.starts_with("identity.unknown_maker pin.p3")),
+        "{e:?}"
     );
 }

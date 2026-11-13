@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = "The plan's ford with the bookmark toward = \"ford\": features.json gives toward as { name, at }, at the ford's point; the graph holds the edge attr:at_ford to shape:ford."
+milestone = 1
+actions   = ["program", "trust", "build"]
+
+# build.md 9.1: `toward` is written `{"at":[153.63,115.48,...],"name":"ford"}`, the ford's lattice
+# point (153630, 115480) mm. Features sort by name, so at_ford is first. The edge attr:at_ford to
+# shape:ford is graph.md 2's; it is seen in name_moved, where the ford's move reaches at_ford.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/ford"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/ford"
+
+[action.build.file.name]
+path    = "build/ford/features.json"
+pointer = "/features/0/attrs/toward/name"
+value   = "ford"
+
+[action.build.file.x]
+path    = "build/ford/features.json"
+pointer = "/features/0/attrs/toward/at/0"
+value   = 153.63
+
+[action.build.file.y]
+path    = "build/ford/features.json"
+pointer = "/features/0/attrs/toward/at/1"
+value   = 115.48

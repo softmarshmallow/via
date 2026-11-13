@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "The examples' recorded files maps: build each: equal, or the epoch was raised."
+milestone = 1
+actions   = ["null"]
+
+# (open) The recorded manifests are build.md case 1's (spec/cases/build/c01_null/expected/), which
+# its own case compares less run and locations; graph.md's guard compares the `files` map, which a
+# case can name only through its own expected/ folder. The null world is rebuilt here; the guard's
+# comparison is case c01_null's `equals`.
+
+[copy.null]
+from = "spec/cases/build/c01_null/world.toml"
+to   = "world.toml"
+
+[action.null]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.null.file.files]
+path     = "build/w/manifest.json"
+pointer  = "/files"
+includes = {  }

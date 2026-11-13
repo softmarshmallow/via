@@ -1,0 +1,48 @@
+format    = "via-case-1"
+summary   = "A 10 m square and [5, 2]: t = 0.125, sd = +2, d = 0; [5, -3]: sd = -3, d = 3; [10, 5] on the outline: t = 0.375, sd = +0, d = 0."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via  = ["kernel", "project", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.file.t0]
+path    = "out.json"
+pointer = "/results/0/t"
+value   = 0.125
+
+[action.op.file.sd0]
+path    = "out.json"
+pointer = "/results/0/sd"
+value   = 2
+
+[action.op.file.d0]
+path    = "out.json"
+pointer = "/results/0/d"
+value   = 0
+
+[action.op.file.sd1]
+path    = "out.json"
+pointer = "/results/1/sd"
+value   = -3
+
+[action.op.file.d1]
+path    = "out.json"
+pointer = "/results/1/d"
+value   = 3
+
+[action.op.file.t2]
+path    = "out.json"
+pointer = "/results/2/t"
+value   = 0.375
+
+[action.op.file.sd2]
+path    = "out.json"
+pointer = "/results/2/sd"
+value   = 0
+
+[action.op.file.d2]
+path    = "out.json"
+pointer = "/results/2/d"
+value   = 0

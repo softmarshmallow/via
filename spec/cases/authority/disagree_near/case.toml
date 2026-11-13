@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "As agree, 0.0015 apart: authority.conflict."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.conflict]
+code    = "authority.conflict"
+subject = "feature.b"

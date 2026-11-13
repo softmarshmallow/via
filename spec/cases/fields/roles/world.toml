@@ -1,0 +1,16 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground2]
+type = "weights"
+role = "material"
+
+[field.lake]
+role = "water"

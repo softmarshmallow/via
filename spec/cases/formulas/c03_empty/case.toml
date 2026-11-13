@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "base = \"=\": formula.syntax, \"expected an expression\"."
+milestone = 1
+actions   = ["w"]
+
+[action.w]
+via         = ["build", "w/world.toml", "--lib", "{work}/libs", "--out", "w/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "w/build/w"
+
+[action.w.diag.syntax]
+code = "formula.syntax"

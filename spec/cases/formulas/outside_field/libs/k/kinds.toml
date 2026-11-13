@@ -1,0 +1,7 @@
+[kind.level]
+radius = 3
+
+[kind.level.effect.e]
+field = "role:surface"
+value = "= under('mean')"
+mask  = "= 1 - smoothstep(0, 2, d)"

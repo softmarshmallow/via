@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "by names a maker that places no instances (a where feature): identity.not_a_producer."
+milestone = 1
+actions   = ["build"]
+
+# identity.md 1: a `where` feature is a maker of pieces, not a producer. Case 6's M3 half (a network) is the same rule.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.not_a_producer]
+code = "identity.not_a_producer"

@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "Scale range of a scatter changed: every surviving name changed only, cause scatter.trees.scale. World seed changed: causes read world.seed."
+milestone = 1
+actions   = ["base", "scale"]
+
+# (open) the cause `scatter.trees.scale` of each entry, and the seed half, need a check over every entry's causes; the `what` is asserted.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.scale]
+via         = ["build", "world.toml", "--change", "bigger", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.scale.check.changed]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "trees#"
+what   = ["changed"]

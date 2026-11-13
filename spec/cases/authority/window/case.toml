@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "Section 9 wide: height evaluated whole and by windows, one cut through the overlap: the window equals the same cut of the whole; diagnostics equal the whole build's."
+milestone = 1
+actions   = ["whole", "cut"]
+
+# `wide` has an error, so `via eval` writes no file (build.md 14) and the comparison of values is
+# numbers.md's window_equals_whole on a world without one. The diagnostics are compared: the same
+# conflict, from the whole and from a window cut through the overlap (x 60 to 80, y 30 to 50).
+# (open) the runner's `same` on the --diagnostics files: their `status` member is equal (both 1).
+
+[action.whole]
+via         = ["eval", "world.toml", "--field", "height", "--change", "wide", "--out", "whole.npy"]
+exit        = 1
+diagnostics = "includes"
+
+[action.whole.diag.conflict]
+code    = "authority.conflict"
+subject = "feature.pond"
+
+[action.cut]
+via         = ["eval", "world.toml", "--field", "height", "--change", "wide", "--window", "60,30,80,50", "--out", "cut.npy"]
+exit        = 1
+diagnostics = "includes"
+
+[action.cut.diag.conflict]
+code    = "authority.conflict"
+subject = "feature.pond"
+
+[action.cut.same.diag]
+action = "whole"
+what   = ".diag/whole.json"
+ignore = []

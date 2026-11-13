@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "An attribute declared in both defaults and requires: authority.attribute_twice."
+milestone = 1
+actions   = ["build"]
+
+# authority.md 1.1.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.attribute_twice]
+code = "authority.attribute_twice"

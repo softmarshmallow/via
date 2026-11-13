@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "A where region in three pieces; change the condition so one piece shrinks: the other two keep their names."
+milestone = 1
+actions   = ["base", "shrink"]
+
+# (open) The three pieces are the west and east bands and a north band between them; the change
+# narrows the north one. Produced piece names appear in the change report only where they changed;
+# asserting that the two other pieces' names are absent from it needs a check that no entry has a
+# prefix, which conformance.md 3.4 lacks. Both builds run.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.shrink]
+via         = ["build", "world.toml", "--change", "shrink", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

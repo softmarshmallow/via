@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "The same world with its library given by --lib from two different folders: diagnostics.json byte-identical, library files written as lib:<id>/."
+milestone = 1
+actions   = ["one", "two"]
+
+[action.one]
+via         = ["build", "world.toml", "--lib", "{work}/one", "--out", "build/a"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/a"
+
+[action.one.diag.unknown_key]
+code = "doc.unknown_key"
+file = "lib:wells/kinds.toml"
+
+[action.two]
+via         = ["build", "world.toml", "--lib", "{work}/two/deeper", "--out", "build/b"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/b"
+
+[action.two.same.d]
+action = "one"
+what   = "diagnostics"

@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "max_change = \"= max_cut\" on a pad kind, two pads with max_cut 0.5 and 2 on one slope: authority.max_change for the first pad only."
+milestone = 1
+actions   = ["build"]
+
+# Each pad moves the ground by up to 1.0 at its edges: past 0.5, within 2. Mode exact: one authority.max_change in all, so none for `loose`. Which feature it names is in its location or data, which the chapter does not fix.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.max_change]
+code    = "authority.max_change"
+records = 1

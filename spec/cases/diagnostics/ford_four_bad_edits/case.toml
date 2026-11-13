@@ -3,12 +3,29 @@ summary   = "ford with four independent bad edits: authority.conflict, formula.u
 milestone = 1
 actions   = ["program", "trust", "bad"]
 
-# diagnostics.md's Conformance item and the plan's ford row "The four bad_* files together".
-# Each record's subject, location and hint are checked by U2 on every record; the values below
-# are those the chapters fix. authority.conflict's subject is "the later" of two anchored features
-# (authority.md), which the chapters do not order for a footprint against a path, so only its file
-# is written; its position is asserted by no key (conformance.md 3.5 compares a written position
-# exactly and has no "present" form).
+# diagnostics.md's Conformance item and the plan's ford row "The four bad_* files together": each
+# of the four has code, subject, file, line and hint (U2 checks the hint on every record); the clash
+# and the unknown asset also a position.
+#
+# authority.conflict (authority.md 5): the firm pad under the cottage and the beck are both
+# anchored. The footprint is that of an instance placed `on` the beck, so it stands on the beck and
+# comes later (4.3, 4.5): B, the subject. A footprint feature has no id of its own and is named by
+# its instance (identity.md 5, build.md 8), so the subject is `instance.cottage` (authority.md 5).
+# The record gives each one's `authority` line, the kind's when inherited: the footprint's is
+# `firm_pad`'s, lib:land/kinds.toml line 30; the beck's, world.toml line 20, is in `related`. The
+# post of largest difference lies where both masks are 1: inside the pad (10 m by 8 m around the
+# cottage at beck t = 0.3, 2 m left of travel, near (143.0, 178.4)) and within the floor (toe 2 m)
+# of the beck's line. Its exact post depends on measured ground, so it is boxed, not pinned.
+#
+# asset.unknown (assets.md 9, rules.md): subject the instance, as assets/unknown_asset; the span is
+# the value of `asset` at line 2. Its position is the shed's plan origin: lane_east from the ford
+# (beck t = 0.55, (153.63, 115.48), build.md 11.2's example) to (256, 140), at t = 0.5, 10 m right of
+# travel (geometry.md 2: offset is to the left): about (207.14, 118.02). Boxed for the same reason
+# of rounding, 2 m each way.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
 
 [action.program]
 via  = ["config", "program", "python", "{python}"]
@@ -25,7 +42,12 @@ exit        = 1
 diagnostics = "includes"
 
 [action.bad.diag.conflict]
-code = "authority.conflict"
+code            = "authority.conflict"
+subject         = "instance.cottage"
+file            = "lib:land/kinds.toml"
+line            = 30
+related         = [{ file = "world.toml", line = 20 }]
+position_within = [135, 170, 151, 187]
 
 [action.bad.diag.typo]
 code    = "formula.unknown_name"
@@ -43,10 +65,12 @@ file    = "changes/bad_cycle.toml"
 line    = 2
 
 [action.bad.diag.asset]
-code = "asset.unknown"
-file = "changes/bad_asset.toml"
-line = 2
-data = { nearest = "shed_gable" }
+code            = "asset.unknown"
+subject         = "instance.shed"
+file            = "changes/bad_asset.toml"
+line            = 2
+position_within = [205, 116, 209, 120]
+data            = { nearest = "shed_gable" }
 
 [action.bad.file.nothing_else]
 path    = "build/ford"

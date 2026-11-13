@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "an instance, a surface field, no material field: builds, exit 0; no field.unpainted."
+milestone = 1
+actions   = ["build"]
+
+# That the index lists no `material` field and no material is handed over is not asserted by a pointer (no check says a member is absent); mode exact rules out field.unpainted.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"

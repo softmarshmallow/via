@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "An asset with a square footprint, placed with face at the facings of the section 10 frame table, scale 1, 1.5 and 0.8: footprint corners in the build as section 5.1 gives them."
+milestone = 1
+actions   = ["vectors"]
+
+# The section 10 frame table, through the binary's own numerics (`via vectors`, build.md 14). (open) the same corners read from a build's footprint features: the table's inputs are in numbers.toml, not restated as a world here.
+
+[copy.vectors]
+from = "spec/vectors/numbers.toml"
+to   = "numbers.toml"
+
+[action.vectors]
+via  = ["vectors", "numbers.toml"]
+exit = 0
+
+[action.vectors.check.v]
+fn   = "vectors_match"
+path = "numbers.toml"
+fns  = ["frame", "facing"]

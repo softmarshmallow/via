@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "a 5 by 5 array file over the extent: posts (2i, 2j) equal sample (i, j) bit for bit."
+milestone = 1
+actions   = ["build"]
+
+# Sample (i, j) holds 10 * i + j; post (2i, 2j) lies on it.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.a]
+path  = "build/w/fields/height.npy"
+post  = [2, 4]
+value = 12
+
+[action.build.file.b]
+path  = "build/w/fields/height.npy"
+post  = [8, 8]
+value = 44
+
+[action.build.file.c]
+path  = "build/w/fields/height.npy"
+post  = [6, 0]
+value = 30

@@ -6,8 +6,8 @@ changed. Cases cite their lines and bytes, so a copy typed by hand could drift; 
 every file from those texts, writes it into each ford case folder, and checks that the folders
 still hold exactly that (`python -m via_conformance.fixtures --check`, and the self-tests).
 
-Until `examples/ford/` exists, each ford case carries the world in its own folder (conformance.md
-2: "anything else" in a case folder is an input copied into the working folder).
+Every ford case copies `examples/ford/` into its working folder (`[copy.ford]`, conformance.md
+3.2), so this module checks that folder: `examples/ford/` must hold exactly these bytes.
 """
 
 from __future__ import annotations
@@ -19,17 +19,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 
-# The cases whose folders hold the ford world (chapter/case).
-FORD_CASES = [
-    "assets/pack_swap",
-    "build/c21_failed_build",
-    "build/c37_change_report",
-    "diagnostics/ford_four_bad_edits",
-    "fields/change_windows",
-    "graph/null",
-    "graph/vertex",
-    "identity/c31_spacing_hand_edits",
-]
+# The folder that holds the ford world, relative to the repository; ford cases copy it.
+FORD_FOLDERS = ["examples/ford"]
 
 LARGE_HOUSE_FROM = "size      = [8, 6, 4]"
 LARGE_HOUSE_TO = "size      = [10, 8, 4]"
@@ -94,8 +85,8 @@ def ford_files(repo: Path = REPO) -> dict[str, bytes]:
 def write(repo: Path = REPO) -> list[Path]:
     files = ford_files(repo)
     written: list[Path] = []
-    for case in FORD_CASES:
-        folder = repo / "spec" / "cases" / case
+    for case in FORD_FOLDERS:
+        folder = repo / case
         for rel, data in files.items():
             p = folder / rel
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -106,11 +97,11 @@ def write(repo: Path = REPO) -> list[Path]:
 
 
 def check(repo: Path = REPO) -> list[str]:
-    """Each ford case folder holds exactly the derived files: none missing, none different."""
+    """examples/ford holds exactly the derived files: none missing, none different."""
     files = ford_files(repo)
     problems: list[str] = []
-    for case in FORD_CASES:
-        folder = repo / "spec" / "cases" / case
+    for case in FORD_FOLDERS:
+        folder = repo / case
         for rel, data in files.items():
             p = folder / rel
             if not p.is_file():

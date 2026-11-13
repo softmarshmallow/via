@@ -1,0 +1,10 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.f]
+base = "= along('pond')"
+
+[feature.pond]
+region = [[2, 2], [6, 2], [6, 6], [2, 6]]

@@ -1,0 +1,58 @@
+format    = "via-case-1"
+summary   = "& in where (hint and); x = 1 (hint ==); **, %, ?:; a selector in double quotes: formula.operator each."
+milestone = 1
+actions   = ["amp", "eq", "pow", "mod", "ternary", "dquote"]
+
+[action.amp]
+via         = ["build", "amp/world.toml", "--lib", "{work}/libs", "--out", "amp/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "amp/build/w"
+
+[action.amp.diag.operator]
+code = "formula.operator"
+
+[action.eq]
+via         = ["build", "eq/world.toml", "--lib", "{work}/libs", "--out", "eq/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "eq/build/w"
+
+[action.eq.diag.operator]
+code = "formula.operator"
+
+[action.pow]
+via         = ["build", "pow/world.toml", "--lib", "{work}/libs", "--out", "pow/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "pow/build/w"
+
+[action.pow.diag.operator]
+code = "formula.operator"
+
+[action.mod]
+via         = ["build", "mod/world.toml", "--lib", "{work}/libs", "--out", "mod/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "mod/build/w"
+
+[action.mod.diag.operator]
+code = "formula.operator"
+
+[action.ternary]
+via         = ["build", "ternary/world.toml", "--lib", "{work}/libs", "--out", "ternary/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "ternary/build/w"
+
+[action.ternary.diag.operator]
+code = "formula.operator"
+
+[action.dquote]
+via         = ["build", "dquote/world.toml", "--lib", "{work}/libs", "--out", "dquote/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "dquote/build/w"
+
+[action.dquote.diag.operator]
+code = "formula.operator"

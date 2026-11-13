@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A feature with kind = \"pnod\", and an instance with ground = \"pnod\", in section 9's library: authority.unknown_kind at each line, hint pond; exit 1."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_kind]
+code = "authority.unknown_kind"
+file = "world.toml"
+line = 32
+data = { nearest = "pond" }
+
+[action.build.diag.ground]
+code = "authority.unknown_kind"
+file = "world.toml"
+line = 39
+data = { nearest = "pond" }

@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "A ramped terrain; a footprint whose extreme lies on an edge between posts; relief: low, high equal to the vector."
+milestone = 1
+actions   = ["q"]
+
+# On `0.5 * x` the bilinear interpolant is exact: over the square from x = 2.5 to 4.5 (its sides between posts) the lowest height is 1.25 and the highest 2.25. These are the case's vector.
+
+[action.q]
+via  = ["query", "world.toml", "relief", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.q.file.low]
+path    = "out.json"
+pointer = "/low"
+value   = [1.25]
+
+[action.q.file.high]
+path    = "out.json"
+pointer = "/high"
+value   = [2.25]

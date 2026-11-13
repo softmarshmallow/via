@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "path = [[0, 0], [0, 0], [10, 0]]; read: one geom.repeated_point at [0, 0], a two-point path."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via  = ["kernel", "read", "--in", "in.json", "--out", "out.json"]
+exit = 0
+
+[action.op.diag.repeated_point]
+code     = "geom.repeated_point"
+subject  = "cli"
+position = [0, 0]
+data     = { source = "p" }
+
+[action.op.file.shape]
+path    = "out.json"
+pointer = "/shape"
+value   = [[0, 0], [10000, 0]]

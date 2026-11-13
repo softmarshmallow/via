@@ -665,7 +665,8 @@ Fixed: value = "= 2 * height"
 severity = "warning"
 chapter = "documents"
 milestone = 1
-summary = "A change adds an entity whose id is near an existing one."
+summary = "A change adds an entity whose id is near an existing one; the nearest id."
+data = ["nearest"]
 explain = """
 A change adds an entity whose id is near an existing one.
 """
@@ -907,7 +908,8 @@ A kind declares an attribute named as a reserved feature key.
 severity = "error"
 chapter = "documents"
 milestone = 1
-summary = "Not TOML 1.0.0, not UTF-8, or a `[[x]]` header; position from the parser."
+summary = "Not TOML 1.0.0, not UTF-8 (the byte offset in `data.offset`), or a `[[x]]` header (its exact rewrite in `data.rewrite`, section 1); position from the parser."
+data = ["offset", "rewrite"]
 explain = """
 The file is not TOML 1.0.0, not UTF-8, or uses an array-of-tables header. Files are flat and keyed
 by id: [collection.id], never [[collection]].
@@ -1012,8 +1014,8 @@ To fix: Raise radius, or fade mask to 0 by it.
 [field.file_coarse]
 severity = "warning"
 chapter = "fields"
-milestone = 1
-summary = "A level step above 0.1 m on a field in `m`; the step."
+milestone = 2
+summary = "A level step above 0.1 m on a field in `m`; the step (M2)."
 explain = """
 A level step above 0.1 m on a field in m; the step.
 To fix: Use 16-bit, or a narrower range.
@@ -1072,8 +1074,8 @@ To fix: Add outside, the value beyond the raster.
 [field.file_profile]
 severity = "info"
 chapter = "fields"
-milestone = 1
-summary = "A PNG's gamma, colour profile or `tRNS` was not applied."
+milestone = 2
+summary = "A PNG's gamma, colour profile or `tRNS` was not applied (M2)."
 explain = """
 A PNG's gamma, colour profile or tRNS was not applied.
 To fix: None needed; levels are read as stored.
@@ -1082,8 +1084,8 @@ To fix: None needed; levels are read as stored.
 [field.file_range]
 severity = "error"
 chapter = "fields"
-milestone = 1
-summary = "`range` with `lo == hi`."
+milestone = 2
+summary = "`range` with `lo == hi` (M2)."
 explain = """
 range with lo == hi.
 To fix: A constant is a base.
@@ -1183,8 +1185,8 @@ To fix: Add the key.
 [field.step_base]
 severity = "error"
 chapter = "fields"
-milestone = 1
-summary = "A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare."
+milestone = 2
+summary = "A step's document sets `base`, `file`, `role`, `type`, `unit` or `tags` on a field it did not declare (M2)."
 explain = """
 A step's document sets base, file, role, type, unit or tags on a field it did not declare.
 To fix: Return rows on the field instead.
@@ -1193,8 +1195,8 @@ To fix: Return rows on the field instead.
 [field.step_layer]
 severity = "error"
 chapter = "fields"
-milestone = 1
-summary = "A step's row on a field of a higher layer."
+milestone = 2
+summary = "A step's row on a field of a higher layer (M2)."
 explain = """
 A step's row on a field of a higher layer.
 To fix: Move the step up, or the field down.
@@ -1913,8 +1915,8 @@ Fixed: [feature.mill_a]
 [identity.bad_key]
 severity = "error"
 chapter = "identity"
-milestone = 1
-summary = "A step returned a key that breaks 2.2, or an unknown class; says which rule."
+milestone = 2
+summary = "A step returned a key that breaks 2.2, or an unknown class; says which rule (M2)."
 explain = """
 A step returned a key that breaks 2.2, or an unknown class; says which rule.
 To fix: The repaired key, as for bad_id, or the class list.
@@ -1945,8 +1947,8 @@ Fixed: [feature.a]  and  [feature.a2]
 [identity.key_collision]
 severity = "error"
 chapter = "identity"
-milestone = 1
-summary = "One step gave two things one key; names both positions."
+milestone = 2
+summary = "One step gave two things one key; names both positions (M2)."
 explain = """
 One step gave two things one key; names both positions.
 To fix: Build the key from place, with the SDK's naming calls.
@@ -1965,8 +1967,8 @@ To fix: { of, class, near } at the thing's current position.
 [identity.lock_asset_missing]
 severity = "error"
 chapter = "identity"
-milestone = 1
-summary = "A recorded item's asset is no longer bound by the pack."
+milestone = 3
+summary = "A recorded item's asset is no longer bound by the pack (M3)."
 explain = """
 A recorded item's asset is no longer bound by the pack.
 To fix: Bind the asset again, or re-record with via lock.
@@ -1975,8 +1977,8 @@ To fix: Bind the asset again, or re-record with via lock.
 [identity.lock_differs]
 severity = "info"
 chapter = "identity"
-milestone = 1
-summary = "What the producers would now do inside a lock, and live names dropped for a recorded one, as counts."
+milestone = 3
+summary = "What the producers would now do inside a lock, and live names dropped for a recorded one, as counts (M3)."
 explain = """
 What the producers would now do inside a lock, and live names dropped for a recorded one, as counts.
 To fix: Re-record with via lock, or leave it.
@@ -1985,8 +1987,8 @@ To fix: Re-record with via lock, or leave it.
 [identity.lock_ground_moved]
 severity = "warning"
 chapter = "identity"
-milestone = 1
-summary = "Recorded items stand on ground that moved; count and largest change."
+milestone = 3
+summary = "Recorded items stand on ground that moved; count and largest change (M3)."
 explain = """
 Recorded items stand on ground that moved; count and largest change.
 To fix: Re-record with via lock, or edit the ground's cause.
@@ -1995,8 +1997,8 @@ To fix: Re-record with via lock, or edit the ground's cause.
 [identity.lock_pin_clash]
 severity = "error"
 chapter = "identity"
-milestone = 1
-summary = "A recorded item overlaps a pin; names both."
+milestone = 3
+summary = "A recorded item overlaps a pin; names both (M3)."
 explain = """
 A recorded item overlaps a pin; names both.
 To fix: Move the pin, or re-record with via lock.
@@ -2005,8 +2007,8 @@ To fix: Move the pin, or re-record with via lock.
 [identity.lock_rerecorded]
 severity = "info"
 chapter = "identity"
-milestone = 1
-summary = "A record was replaced; counts of the difference."
+milestone = 3
+summary = "A record was replaced; counts of the difference (M3)."
 explain = """
 A record was replaced; counts of the difference.
 To fix: None needed; review the record's diff.
@@ -2015,8 +2017,8 @@ To fix: None needed; review the record's diff.
 [identity.lock_unrecorded]
 severity = "error"
 chapter = "identity"
-milestone = 1
-summary = "A lock has no record."
+milestone = 3
+summary = "A lock has no record (M3)."
 explain = """
 A lock has no record.
 To fix: via lock <world> <id>.
@@ -2065,8 +2067,8 @@ To fix: Name the producers that place on it.
 [identity.of_ambiguous]
 severity = "error"
 chapter = "identity"
-milestone = 1
-summary = "`of` names a maker with several classes and no `class`."
+milestone = 3
+summary = "`of` names a maker with several classes and no `class` (M3)."
 explain = """
 of names a maker with several classes and no class.
 To fix: The classes, with a count of each near near.
@@ -2158,8 +2160,8 @@ Fixed: [feature.world_a]
 [identity.unknown_lock]
 severity = "error"
 chapter = "identity"
-milestone = 1
-summary = "`via lock` was given an id that is no lock."
+milestone = 3
+summary = "`via lock` was given an id that is no lock (M3)."
 data = ["nearest"]
 explain = """
 via lock was given an id that is no lock.
@@ -2324,6 +2326,7 @@ severity = "error"
 chapter = "numbers"
 milestone = 1
 summary = "A checked integer operation overflowed. Names the subject and the position."
+covered_by = "workspace"
 explain = """
 A checked integer operation overflowed. Names the subject and the position.
 """
@@ -2587,8 +2590,8 @@ To fix: Add ground = "<kind>", or remove margin.
 [place.no_footprint]
 severity = "error"
 chapter = "rules"
-milestone = 1
-summary = "`ground` on an asset with no footprint."
+milestone = 2
+summary = "`ground` on an asset with no footprint; only a model measures a point footprint, `assets.md` 2.4 (M2)."
 explain = """
 ground on an asset with no footprint.
 To fix: Declare the asset's footprint, or remove ground.
@@ -2666,8 +2669,8 @@ command holds an absolute path.
 [protocol.blob_digest]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A blob's bytes do not match its name."
+milestone = 2
+summary = "A blob's bytes do not match its name (M2)."
 explain = """
 A blob's bytes do not match its name.
 """
@@ -2675,8 +2678,8 @@ A blob's bytes do not match its name.
 [protocol.blob_header]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2)."
+milestone = 2
+summary = "A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2) (M2)."
 explain = """
 A column blob whose header or size does not match the dtype and shape its message gives. A non-finite sample is num.not_finite_result (4.2).
 """
@@ -2702,8 +2705,8 @@ One attribute has two types across the selected kinds; names both kinds.
 [protocol.crashed]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "The worker exited during a call."
+milestone = 2
+summary = "The worker exited during a call (M2)."
 explain = """
 The worker exited during a call.
 """
@@ -2740,8 +2743,8 @@ A plain command exited non-zero; data.exit.
 [protocol.field_file]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field`."
+milestone = 2
+summary = "A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field` (M2)."
 explain = """
 A returned field file is outside 4.2's .npy subset, or has the wrong descr or shape for its field; the hint is step.out.field.
 """
@@ -2749,8 +2752,8 @@ A returned field file is outside 4.2's .npy subset, or has the wrong descr or sh
 [protocol.framing]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor."
+milestone = 2
+summary = "A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor (M2)."
 explain = """
 A frame was not Content-Length and JSON; likely output written to the protocol descriptor.
 """
@@ -2758,8 +2761,8 @@ A frame was not Content-Length and JSON; likely output written to the protocol d
 [protocol.input_undeclared]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "`input.open` named a path not in `inputs`."
+milestone = 2
+summary = "`input.open` named a path not in `inputs` (M2)."
 explain = """
 input.open named a path not in inputs.
 """
@@ -2767,8 +2770,8 @@ input.open named a path not in inputs.
 [protocol.key_shadows]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A returned key equals a name the step can see."
+milestone = 2
+summary = "A returned key equals a name the step can see (M2)."
 explain = """
 A returned key equals a name the step can see.
 """
@@ -2776,8 +2779,8 @@ A returned key equals a name the step can see.
 [protocol.message_too_large]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A frame over 16 MiB, `data.bytes` long; send the data as a blob."
+milestone = 2
+summary = "A frame over 16 MiB, `data.bytes` long; send the data as a blob (M2)."
 data = ["bytes"]
 explain = """
 A frame over 16 MiB; send the data as a blob.
@@ -2786,8 +2789,8 @@ A frame over 16 MiB; send the data as a blob.
 [protocol.no_entry]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "The script has no top-level function named after `when`."
+milestone = 2
+summary = "The script has no top-level function named after `when` (M2)."
 explain = """
 The script has no top-level function named after when.
 """
@@ -2804,8 +2807,8 @@ A step sent a code with no explain text.
 [protocol.no_output]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A generate step returned no document."
+milestone = 2
+summary = "A generate step returned no document (M2)."
 explain = """
 A generate step returned no document.
 """
@@ -2822,8 +2825,8 @@ command[0] is no configured program and no file, or is a .bat/.cmd; the hint giv
 [protocol.output_file]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A returned `file` leaves `out` or names nothing."
+milestone = 2
+summary = "A returned `file` leaves `out` or names nothing (M2)."
 explain = """
 A returned file leaves out or names nothing.
 """
@@ -2849,8 +2852,8 @@ A returned document holds a table or key a step may not return, or a lint or exp
 [protocol.output_twice]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A worker returned a document and wrote `document.toml`."
+milestone = 2
+summary = "A worker returned a document and wrote `document.toml` (M2)."
 explain = """
 A worker returned a document and wrote document.toml.
 """
@@ -2858,8 +2861,8 @@ A worker returned a document and wrote document.toml.
 [protocol.raised]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "The step raised an exception it did not catch; `data.exception`."
+milestone = 2
+summary = "The step raised an exception it did not catch; `data.exception` (M2)."
 data = ["exception"]
 explain = """
 The step raised an exception it did not catch; data.exception.
@@ -2868,8 +2871,8 @@ The step raised an exception it did not catch; data.exception.
 [protocol.slow_exit]
 severity = "info"
 chapter = "protocol"
-milestone = 1
-summary = "A worker had to be killed after `shutdown`."
+milestone = 2
+summary = "A worker had to be killed after `shutdown` (M2)."
 explain = """
 A worker had to be killed after shutdown.
 """
@@ -2897,8 +2900,8 @@ A lib: element names a library not in include; the nearest name.
 [protocol.untrusted]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "A generate step is not trusted and has no committed result; the hint is `via trust`."
+milestone = 2
+summary = "A generate step is not trusted and has no committed result; the hint is `via trust` (M2)."
 explain = """
 A generate step is not trusted and has no committed result; the hint is via trust.
 """
@@ -2933,8 +2936,8 @@ A committed result's static key or a read of its trace differs from the current 
 [protocol.version]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "The worker speaks another protocol version; both versions, `data.engine` and `data.worker`."
+milestone = 2
+summary = "The worker speaks another protocol version; both versions, `data.engine` and `data.worker` (M2)."
 data = ["engine", "worker"]
 explain = """
 The worker speaks another protocol version; both versions.
@@ -2943,8 +2946,8 @@ The worker speaks another protocol version; both versions.
 [protocol.when_unserved]
 severity = "error"
 chapter = "protocol"
-milestone = 1
-summary = "The worker's `capabilities.when` lacks the step's `when`, `data.when`."
+milestone = 2
+summary = "The worker's `capabilities.when` lacks the step's `when`, `data.when` (M2)."
 data = ["when"]
 explain = """
 The worker's capabilities.when lacks the step's when.
@@ -2953,8 +2956,8 @@ The worker's capabilities.when lacks the step's when.
 [run.count]
 severity = "error"
 chapter = "rules"
-milestone = 1
-summary = "`count` below 1, or below 2 with `ends = \"both\"` on an open stretch."
+milestone = 3
+summary = "`count` below 1, or below 2 with `ends = \"both\"` on an open stretch (M3)."
 explain = """
 count below 1, or below 2 with ends = "both" on an open stretch.
 To fix: The least allowed count.
@@ -2963,8 +2966,8 @@ To fix: The least allowed count.
 [run.count_or_spacing]
 severity = "error"
 chapter = "rules"
-milestone = 1
-summary = "A run writes both `count` and `spacing`, or neither."
+milestone = 3
+summary = "A run writes both `count` and `spacing`, or neither (M3)."
 explain = """
 A run writes both count and spacing, or neither.
 To fix: Keep one.
@@ -2973,8 +2976,8 @@ To fix: Keep one.
 [run.no_length]
 severity = "error"
 chapter = "rules"
-milestone = 1
-summary = "The run's `on` names a thing with no length, or its stretch is zero millimetres."
+milestone = 3
+summary = "The run's `on` names a thing with no length, or its stretch is zero millimetres (M3)."
 explain = """
 The run's on names a thing with no length, or its stretch is zero millimetres.
 To fix: Name a path or region, or widen span.
@@ -2983,8 +2986,8 @@ To fix: Name a path or region, or widen span.
 [run.outside]
 severity = "warning"
 chapter = "rules"
-milestone = 1
-summary = "Members fell outside the extent and were not made; gives the count."
+milestone = 3
+summary = "Members fell outside the extent and were not made; gives the count (M3)."
 explain = """
 Members fell outside the extent and were not made; gives the count.
 To fix: Narrow span to the part inside the extent.
@@ -2993,8 +2996,8 @@ To fix: Narrow span to the part inside the extent.
 [scatter.clump]
 severity = "error"
 chapter = "rules"
-milestone = 1
-summary = "`clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer."
+milestone = 2
+summary = "`clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer (M2)."
 explain = """
 clump breaks 7.3: both forms, no radius, a value out of range, or around naming a non-producer.
 To fix: The key to remove or change.
@@ -3043,8 +3046,8 @@ To fix: Name a region feature, a footprint feature, or select an area, cell, res
 [set.empty]
 severity = "error"
 chapter = "rules"
-milestone = 1
-summary = "A set has no items."
+milestone = 3
+summary = "A set has no items (M3)."
 explain = """
 A set has no items.
 To fix: Add [set.<id>.item.<name>], or remove the set.
@@ -3053,8 +3056,8 @@ To fix: Add [set.<id>.item.<name>], or remove the set.
 [set.unknown]
 severity = "error"
 chapter = "rules"
-milestone = 1
-summary = "`set` names no set."
+milestone = 3
+summary = "`set` names no set (M3)."
 data = ["nearest"]
 explain = """
 set names no set.
@@ -3064,8 +3067,8 @@ To fix: The nearest set id.
 [set.unused]
 severity = "info"
 chapter = "rules"
-milestone = 1
-summary = "A set nothing places."
+milestone = 3
+summary = "A set nothing places (M3)."
 explain = """
 A set nothing places.
 To fix: Place it with an instance or run, or remove it.

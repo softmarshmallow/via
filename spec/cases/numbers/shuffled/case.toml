@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "ford with its tables and keys shuffled: same digest."
+milestone = 1
+actions   = ["program", "trust", "ford", "shuffle", "retrust", "shuffled"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.ford]
+via         = ["build", "world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.shuffle]
+write = "world.toml"
+from  = "later/world.toml"
+
+[action.retrust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.shuffled]
+via         = ["build", "world.toml", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.shuffled.same.id]
+action = "ford"
+what   = "id"

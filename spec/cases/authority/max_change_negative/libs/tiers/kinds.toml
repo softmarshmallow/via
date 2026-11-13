@@ -1,0 +1,12 @@
+[kind.padm]
+authority = "shaped"
+radius    = 3
+
+[kind.padm.defaults]
+max_cut = 0.5
+
+[kind.padm.effect.level]
+field      = "role:surface"
+value      = "= under('mean')"
+mask       = "= 1 - smoothstep(0, 2, d)"
+max_change = "= -1"

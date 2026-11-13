@@ -1,0 +1,54 @@
+[kind.dig]
+radius = 2
+
+[kind.dig.defaults]
+k = 0
+
+[kind.dig.effect.e]
+field = "role:surface"
+value = "= v * 10 + k"
+mask = "= 1 - smoothstep(0, 1, d)"
+
+[kind.sha]
+authority = "shaped"
+radius = 2
+
+[kind.sha.defaults]
+k = 0
+
+[kind.sha.effect.e]
+field = "role:surface"
+value = "= v * 10 + k"
+mask = "= 1 - smoothstep(0, 1, d)"
+
+[kind.anc]
+authority = "anchored"
+radius = 2
+
+[kind.anc.defaults]
+k = 0
+
+[kind.anc.effect.e]
+field = "role:surface"
+value = "= v * 10 + k"
+mask = "= 1 - smoothstep(0, 1, d)"
+
+[kind.way]
+authority = "shaped"
+radius = 2
+
+[kind.way.defaults]
+k = 0
+
+[kind.way.effect.pave]
+field = "role:surface"
+value = "= v * 10 + k"
+mask = "= 1 - smoothstep(0, 1, d)"
+order = 0
+
+[kind.way.effect.road]
+field = "role:surface"
+value = "= v * 10 + k + 5"
+mask = "= 1 - smoothstep(0, 1, d)"
+order = 1
+

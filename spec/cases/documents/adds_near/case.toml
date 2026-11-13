@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A change writes [feature.frod] beside feature.ford: doc.change_adds_near warning, data.nearest ford."
+milestone = 1
+actions   = ["merge"]
+
+# The registry gives doc.change_adds_near no data; the row asks data.nearest (diagnostics.md 1.4 adds nearest when a nearest name is given).
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "a"]
+exit = 0
+
+[action.merge.diag.change_adds_near]
+code     = "doc.change_adds_near"
+severity = "warning"
+data     = { nearest = "ford" }

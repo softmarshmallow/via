@@ -7,6 +7,10 @@ actions   = ["program", "trust", "base", "downstream", "vertex"]
 # The named check reads the kinds files the world includes; they are copied out of lib/ into
 # kinds/, not into lib/ beside the world, which the build would search first (documents.md 4).
 
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
 [copy.land]
 from = "lib/land/kinds.toml"
 to   = "kinds/land.toml"
@@ -35,11 +39,13 @@ exit = 0
 via  = ["build", "world.toml", "--out", "build/ford"]
 out  = "build/ford"
 exit = 0
+diagnostics = "includes"
 
 [action.downstream]
 via  = ["build", "world.toml", "--change", "downstream", "--out", "build/ford+downstream"]
 out  = "build/ford+downstream"
 exit = 0
+diagnostics = "includes"
 
 [action.downstream.check.windows]
 fn     = "changed_within_windows"
@@ -53,6 +59,7 @@ world  = "world.toml"
 via  = ["build", "world.toml", "--change", "changes/vertex.toml", "--out", "build/ford+vertex"]
 out  = "build/ford+vertex"
 exit = 0
+diagnostics = "includes"
 
 [action.vertex.check.windows]
 fn     = "changed_within_windows"

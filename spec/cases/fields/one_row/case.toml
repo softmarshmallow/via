@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "base 10, row value = 20, mask = 0.25: 12.5 at every post."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.all]
+path = "build/w/fields/height.npy"
+all  = 12.5

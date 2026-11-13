@@ -1,0 +1,9 @@
+format    = "via-case-1"
+summary   = "features, no instance, no surface: builds, exit 0."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"

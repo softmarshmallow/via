@@ -9,7 +9,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use via_diag::{codes, Code, Diag, Site, Subject, Value as DValue};
+use via_diag::{codes, Code, Diag, Site, Subject};
 
 use crate::text;
 
@@ -120,6 +120,9 @@ pub struct Pack {
     /// Every declared taxon, those above each declared one included.
     pub taxa: BTreeSet<String>,
     pub materials: BTreeMap<String, Material>,
+    /// The world names a pack that could not be found or read. Its error is reported once; what
+    /// reads the pack is skipped, not reported again (`diagnostics.md` 4).
+    pub failed: bool,
 }
 
 impl Pack {
@@ -241,49 +244,100 @@ pub fn find(written: &str, roots: &Roots, diags: &mut Vec<Diag>) -> Option<PathB
     }
 }
 
-/// The line of the first occurrence of `needle` in `text`, 1-based.
-fn line_of(text: &str, needle: &str) -> Option<i64> {
-    let at = text.find(needle)?;
-    Some(text[..at].bytes().filter(|b| *b == b'\n').count() as i64 + 1)
+/// The byte span a pack fault is located at (`diagnostics.md` 1.2: a pack is text, so a span):
+/// the key named `key` first in source order under the subject's table, at any depth (a mount's
+/// keys sit in `[asset.<id>.mount.<name>]`); without one, the subject's own key, which is the
+/// header that creates it.
+fn span_in(
+    root: &toml::de::DeTable<'_>,
+    subject: &str,
+    key: Option<&str>,
+) -> Option<std::ops::Range<usize>> {
+    let mut table = root;
+    let mut at: Option<std::ops::Range<usize>> = None;
+    for part in subject.split('.') {
+        let Some((k, v)) = table.iter().find(|(k, _)| k.get_ref().as_ref() == part) else {
+            break;
+        };
+        at = Some(k.span());
+        match v.get_ref() {
+            toml::de::DeValue::Table(t) => table = t,
+            _ => break,
+        }
+    }
+    if let Some(key) = key {
+        if let Some(s) = first_key(table, key) {
+            return Some(s);
+        }
+    }
+    at
+}
+
+/// The span of the key named `key` that comes first in the text, at any depth under `table`.
+fn first_key(table: &toml::de::DeTable<'_>, key: &str) -> Option<std::ops::Range<usize>> {
+    let mut best: Option<std::ops::Range<usize>> = None;
+    for (k, v) in table.iter() {
+        let here = if k.get_ref().as_ref() == key {
+            Some(k.span())
+        } else if let toml::de::DeValue::Table(t) = v.get_ref() {
+            first_key(t, key)
+        } else {
+            None
+        };
+        if let Some(s) = here {
+            if best.as_ref().is_none_or(|b| s.start < b.start) {
+                best = Some(s);
+            }
+        }
+    }
+    best
+}
+
+/// 1-based line and column (in Unicode scalar values) of a byte offset.
+fn line_column(text: &str, at: usize) -> (u32, u32) {
+    let at = at.min(text.len());
+    let before = text.get(..at).unwrap_or("");
+    let line = before.bytes().filter(|b| *b == b'\n').count() + 1;
+    let start = before.rfind('\n').map_or(0, |i| i + 1);
+    let column = before.get(start..).map_or(0, |s| s.chars().count()) + 1;
+    let clamp = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+    (clamp(line), clamp(column))
 }
 
 struct Reader<'a> {
     file: String,
     text: &'a str,
+    /// The pack with its spans; `None` only when it is not TOML, which is reported first.
+    spans: Option<toml::Spanned<toml::de::DeTable<'a>>>,
     diags: Vec<Diag>,
 }
 
 impl Reader<'_> {
     fn fault(&mut self, code: Code, subject: &str, key: Option<&str>, message: &str, hint: &str) {
-        let mut loc = BTreeMap::new();
-        let needle = match key {
-            Some(_) | None => subject_header(subject),
-        };
-        if let Some(l) = line_of(self.text, &needle) {
-            loc.insert("line".to_string(), DValue::Int(l));
-        }
         let subj = Subject::parse(&match key {
             Some(k) => format!("{subject}.{k}"),
             None => subject.to_string(),
         })
         .unwrap_or(Subject::World);
+        let span = self
+            .spans
+            .as_ref()
+            .and_then(|t| span_in(t.get_ref(), subject, key))
+            .unwrap_or(0..0);
+        let (line, column) = line_column(self.text, span.start);
+        let clamp = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
         self.diags.push(text::diag(
             code,
             subj,
-            Site::File {
+            Site::Text {
                 file: self.file.clone(),
-                locator: loc,
+                line,
+                column,
+                bytes: [clamp(span.start), clamp(span.end)],
             },
             message,
             hint,
         ));
-    }
-}
-
-fn subject_header(subject: &str) -> String {
-    match subject.split_once('.') {
-        Some((top, id)) => format!("[{top}.{id}"),
-        None => subject.to_string(),
     }
 }
 
@@ -371,6 +425,7 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
     let mut r = Reader {
         file: display.to_string(),
         text: &bytes,
+        spans: toml::de::DeTable::parse(&bytes).ok(),
         diags: Vec::new(),
     };
     let table: toml::Table = match bytes.parse() {
@@ -393,6 +448,42 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
         display: display.to_string(),
         ..Pack::default()
     };
+    // 2.1: `root`, relative to the pack file; the pack file's folder by default.
+    let here = path.parent().map(Path::to_path_buf).unwrap_or_default();
+    let root = match table.get("root") {
+        None => Some(here),
+        Some(toml::Value::String(s)) => {
+            let dir = here.join(s);
+            if !dir.is_dir() {
+                r.fault(
+                    codes::pack::MISSING_FILE,
+                    "pack",
+                    Some("root"),
+                    &format!("the pack's `root` `{s}` is not a folder"),
+                    "write `root` relative to the pack file, or create the folder",
+                );
+            }
+            Some(dir)
+        }
+        Some(_) => None,
+    };
+    // 2.5: `[defaults]` and each taxon's `defaults`.
+    let mut taxon_defaults: BTreeMap<String, toml::Table> = BTreeMap::new();
+    let pack_defaults = match table.get("defaults") {
+        Some(toml::Value::Table(d)) => {
+            check_defaults(&mut r, "defaults", d);
+            d.clone()
+        }
+        _ => toml::Table::new(),
+    };
+    if let Some(toml::Value::Table(t)) = table.get("taxon") {
+        for (path, v) in t {
+            if let Some(toml::Value::Table(d)) = v.get("defaults") {
+                check_defaults(&mut r, &format!("taxon.\"{path}\".defaults"), d);
+                taxon_defaults.insert(path.clone(), d.clone());
+            }
+        }
+    }
     for (k, v) in &table {
         match (k.as_str(), v) {
             ("taxon", toml::Value::Table(t)) => {
@@ -419,6 +510,19 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
                         Some(c) if c.len() == 3 => [c[0], c[1], c[2]],
                         _ => [0.8, 0.8, 0.8],
                     };
+                    // 2.6: a material's `file` is checked from M1, relative to `root`. A missing
+                    // `root` is reported once, below, and stands for its files.
+                    if let (Some(f), Some(dir)) = (m.get("file").and_then(|v| v.as_str()), &root) {
+                        if dir.is_dir() && !dir.join(f).is_file() {
+                            r.fault(
+                                codes::pack::MISSING_FILE,
+                                &format!("material.{name}"),
+                                Some("file"),
+                                &format!("the material's file `{f}` does not exist under `root`"),
+                                "write the path relative to the pack's `root`",
+                            );
+                        }
+                    }
                     let has_file = m.get("file").is_some();
                     let has_repeat = m.get("repeat").is_some();
                     if has_file != has_repeat {
@@ -446,7 +550,11 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
     if let Some(toml::Value::Table(assets)) = table.get("asset") {
         for (id, a) in assets {
             let toml::Value::Table(a) = a else { continue };
-            if let Some(asset) = read_asset(&mut r, id, a, &pack.taxa) {
+            let inherited = Inherited {
+                pack: &pack_defaults,
+                taxa: &taxon_defaults,
+            };
+            if let Some(asset) = read_asset(&mut r, id, a, &pack.taxa, &inherited) {
                 pack.assets.insert(id.clone(), asset);
             }
         }
@@ -454,11 +562,95 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
     (Some(pack), r.diags)
 }
 
+/// The keys `defaults` may hold (2.5).
+const DEFAULT_KEYS: [&str; 8] = [
+    "colour",
+    "front",
+    "max_relief",
+    "params",
+    "pivot",
+    "sink",
+    "solidity",
+    "up",
+];
+
+/// The six axis words of 2.3.
+const AXES: [&str; 6] = ["+x", "-x", "+y", "-y", "+z", "-z"];
+
+/// Checks a `defaults` table (2.5): its keys, and its axes (2.3, a pack-wide check, 8.3).
+fn check_defaults(r: &mut Reader<'_>, subject: &str, d: &toml::Table) {
+    for k in d.keys() {
+        if !DEFAULT_KEYS.contains(&k.as_str()) {
+            r.fault(
+                codes::doc::UNKNOWN_KEY,
+                subject,
+                Some(k),
+                &format!("`{k}` is not a key `defaults` may hold"),
+                &text::near_hint(k, DEFAULT_KEYS, "see assets.md 2.5"),
+            );
+        }
+    }
+    check_axes(r, subject, d);
+}
+
+/// `pack.bad_axes` (2.3): `front` or `up` outside the six words, or both on one axis.
+fn check_axes(r: &mut Reader<'_>, subject: &str, t: &toml::Table) {
+    let word = |k: &str| t.get(k).and_then(|v| v.as_str());
+    for k in ["front", "up"] {
+        if let Some(w) = word(k) {
+            if !AXES.contains(&w) {
+                r.fault(
+                    codes::pack::BAD_AXES,
+                    subject,
+                    Some(k),
+                    &format!("`{w}` is not an axis"),
+                    &text::near_hint(w, AXES, "write one of `+x`, `-x`, `+y`, `-y`, `+z`, `-z`"),
+                );
+                return;
+            }
+        }
+    }
+    let front = word("front").unwrap_or("+z");
+    let up = word("up").unwrap_or("+y");
+    if front.get(1..) == up.get(1..) {
+        r.fault(
+            codes::pack::BAD_AXES,
+            subject,
+            Some(if t.contains_key("up") { "up" } else { "front" }),
+            &format!("`front = \"{front}\"` and `up = \"{up}\"` lie on one axis"),
+            "name two different axes: the mapping is a rotation",
+        );
+    }
+}
+
+/// Where an asset's declared facts come from besides its own table (2.5).
+struct Inherited<'a> {
+    pack: &'a toml::Table,
+    taxa: &'a BTreeMap<String, toml::Table>,
+}
+
+impl Inherited<'_> {
+    /// The value of `key` for an asset filed under `taxon`: its taxon's defaults, then each
+    /// taxon above it, nearest first, then the pack's. The asset's own table is read first by
+    /// the caller.
+    fn get(&self, taxon: Option<&str>, key: &str) -> Option<&toml::Value> {
+        let mut t = taxon;
+        while let Some(path) = t {
+            if let Some(v) = self.taxa.get(path).and_then(|d| d.get(key)) {
+                return Some(v);
+            }
+            t = path.rsplit_once('/').map(|(up, _)| up);
+        }
+        self.pack.get(key)
+    }
+}
+
 fn read_asset(
     r: &mut Reader<'_>,
     id: &str,
     a: &toml::Table,
     taxa: &BTreeSet<String>,
+    inherited: &Inherited<'_>,
 ) -> Option<Asset> {
     let subject = format!("asset.{id}");
     if !via_doc::is_id(id) {
@@ -512,6 +704,25 @@ fn read_asset(
         );
         return None;
     }
+    // 2.2: `front`, `up` and `pivot` are fixed on a primitive and an engine-made asset, and
+    // `triangles` on a primitive; only the asset's own table can write one (defaults skip it).
+    for k in ["front", "up", "pivot", "triangles"] {
+        if a.contains_key(k) && (k != "triangles" || primitive.is_some()) {
+            r.fault(
+                codes::asset::DECLARED_MEASURED,
+                &subject,
+                Some(k),
+                &format!(
+                    "`{k}` is fixed on a {} asset",
+                    if engine { "engine-made" } else { "primitive" }
+                ),
+                &format!("remove `{k}`"),
+            );
+        }
+    }
+    let taxon_of = a.get("taxon").and_then(|v| v.as_str());
+    // A declared fact: the asset's own value, else an inherited one (2.5).
+    let declared = |k: &str| a.get(k).or_else(|| inherited.get(taxon_of, k));
     let size = match a.get("size").and_then(lengths) {
         Some(s) if s.len() == 3 => [s[0], s[1], s[2]],
         _ => {
@@ -552,10 +763,11 @@ fn read_asset(
         None => match a.get("triangles").and_then(toml::Value::as_integer) {
             Some(t) if t >= 0 => t as u64,
             _ => {
+                // A missing key is located at the table that should hold it (1.2).
                 r.fault(
                     codes::asset::SOURCE,
                     &subject,
-                    Some("triangles"),
+                    a.contains_key("triangles").then_some("triangles"),
                     "an engine-made asset needs `triangles`, 0 or more",
                     "write `triangles = <count>`",
                 );
@@ -605,7 +817,7 @@ fn read_asset(
             ],
         },
     };
-    let solid = match a.get("solidity").and_then(|v| v.as_str()) {
+    let solid = match declared("solidity").and_then(|v| v.as_str()) {
         None | Some("solid") => true,
         Some("none") => false,
         Some("passable") => {
@@ -629,8 +841,8 @@ fn read_asset(
             true
         }
     };
-    let sink = a.get("sink").and_then(double).unwrap_or(0.0);
-    let max_relief = a.get("max_relief").and_then(double);
+    let sink = declared("sink").and_then(double).unwrap_or(0.0);
+    let max_relief = declared("max_relief").and_then(double);
     if max_relief.is_some_and(|m| m < 0.0) {
         r.fault(
             codes::pack::RANGE,
@@ -640,7 +852,7 @@ fn read_asset(
             "write a number of metres, 0 or more",
         );
     }
-    let colour = match a.get("colour").and_then(doubles) {
+    let colour = match declared("colour").and_then(doubles) {
         Some(c) if c.len() == 3 => {
             if c.iter().any(|v| !(0.0..=1.0).contains(v)) {
                 r.fault(
@@ -696,8 +908,8 @@ fn read_asset(
             if m.get("connector").is_some() {
                 r.fault(
                     codes::doc::NOT_YET,
-                    &subject,
-                    Some("mount"),
+                    &format!("{subject}.mount.{name}"),
+                    Some("connector"),
                     "`connector` on an asset mount arrives in M5",
                     "remove `connector`",
                 );

@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "A cycle and an unrelated feature; build; fix the cycle; build: first the unrelated feature's nodes ran and are stored, the directory holds no output; then they are not run again."
+milestone = 1
+actions   = ["cycle", "fix", "fixed"]
+
+# graph.md's row says the directory holds diagnostics.json and .previous; with no earlier complete
+# build there is no .previous (build.md 13), so the case asserts no manifest. "Reused" is asserted as
+# not ran: a digest-only node is `recomputed` when a reader that runs needs its value (graph.md 6.1),
+# which is still not run again.
+
+[action.cycle]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.cycle.diag.cycle]
+code = "graph.cycle"
+
+[action.cycle.file.diag]
+path   = "build/w/diagnostics.json"
+exists = true
+
+[action.cycle.file.no_manifest]
+path   = "build/w/manifest.json"
+exists = false
+
+[action.cycle.nodes]
+ran_includes = ["shape:u/v:build"]
+
+[action.fix]
+replace = "world.toml"
+find    = "base = \"= f('a')\""
+with    = "base = 1"
+
+[action.fixed]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.fixed.nodes]
+not_ran = ["shape:u/v:build"]

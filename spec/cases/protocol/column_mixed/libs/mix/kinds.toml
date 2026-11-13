@@ -1,0 +1,9 @@
+[kind.a]
+
+[kind.a.defaults]
+width = 1
+
+[kind.b]
+
+[kind.b.defaults]
+width = "wide"

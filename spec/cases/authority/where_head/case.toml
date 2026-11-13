@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "A where = \"= f('height') < 10\" region whose kind lowers role:surface by 2, on a base rising through 10: no cycle; lowered by 2 there; a then row raising the ground moves the region."
+milestone = 1
+actions   = ["plain", "raised"]
+
+# The base 5 + x is below 10 for x < 5; at x = 3 the ground is 8, lowered to 6; at x = 8 (3 m past
+# the region, mask 0) it stays 13. With the row `v + 3` the head view is 8 + x, below 10 only for
+# x < 2, so at x = 3 (1 m outside, mask 0) the ground is 8 + 3 = 11 (formulas.md case 34).
+
+[action.plain]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/plain"]
+exit = 0
+out  = "build/plain"
+
+[action.plain.file.inside]
+path  = "build/plain/fields/height.npy"
+post  = [3, 8]
+value = 6
+
+[action.plain.file.outside]
+path  = "build/plain/fields/height.npy"
+post  = [8, 8]
+value = 13
+
+[action.raised]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--change", "up", "--out", "build/raised"]
+exit = 0
+out  = "build/raised"
+
+[action.raised.file.moved]
+path  = "build/raised/fields/height.npy"
+post  = [3, 8]
+value = 11

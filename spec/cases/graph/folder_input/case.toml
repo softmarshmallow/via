@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "A file added to the plain lint's inputs folder; rebuild: the null build does not apply; the lint ran."
+milestone = 1
+actions   = ["program", "trust", "first", "add", "again"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.add]
+write = "data/new.csv"
+text  = "x\n"
+
+[action.again]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.again.nodes]
+ran_includes = ["step:look"]

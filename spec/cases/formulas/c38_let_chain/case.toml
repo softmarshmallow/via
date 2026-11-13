@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "A chain of 40 lets, each reading the one before twice: builds; the field equals its value bit for bit."
+milestone = 1
+actions   = ["build"]
+
+# Each let is `l * 0.5 + l * 0.5`, exactly l in doubles, so l39 is x: the field equals x at every post. The row's "vector table" is this derivation.
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.x0]
+path  = "build/w/fields/f.npy"
+post  = [0, 0]
+value = 0
+
+[action.build.file.x5]
+path  = "build/w/fields/f.npy"
+post  = [5, 3]
+value = 5
+
+[action.build.file.x16]
+path  = "build/w/fields/f.npy"
+post  = [16, 16]
+value = 16

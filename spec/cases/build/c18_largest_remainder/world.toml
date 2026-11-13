@@ -1,0 +1,37 @@
+name       = "lr"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.three]
+type = "weights"
+
+[field.three.then.a]
+paint = "a"
+
+[field.three.then.b]
+paint = "b"
+mask  = 0.5
+
+[field.three.then.c]
+paint = "c"
+mask  = "= 1 / 3"
+
+[field.two]
+type = "weights"
+
+[field.two.then.a]
+paint = "a"
+
+[field.two.then.b]
+paint = "b"
+mask  = 0.5
+
+[field.tiny]
+type = "weights"
+
+[field.tiny.then.a]
+paint = "a"
+
+[field.tiny.then.b]
+paint = "b"
+mask  = 1e-4

@@ -1,0 +1,20 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = 20
+
+[field.clearing]
+role = "keep_out"
+
+[feature.zone]
+kind   = "blocker"
+region = [[40, 40], [60, 40], [60, 60], [40, 60]]
+
+[instance.cottage]
+asset = "house_low"
+at    = [50, 50]

@@ -8,16 +8,45 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use via_diag::{codes, Diag, KeyPath, Site, Subject};
+use via_diag::{codes, Diag, KeyPath, Site, Subject, Value as DValue};
+use via_geom::follow::{follow, Reference};
 use via_geom::lineref::{self, Line};
+use via_geom::mask::{mask, MaskGrid};
+use via_geom::network::{representative, PostGrid};
 use via_geom::offset::{offset, Join};
+use via_geom::pred::{dist2_rings, Dist2, Side, Wide};
 use via_geom::shape::{read_path, read_ring};
 use via_geom::{Region, P};
 use via_num::Frame;
 
-use crate::decl::{Decls, Face, FeatureDecl, On, Place, ShapeDecl};
+use crate::decl::{Decls, Face, FeatureDecl, Follows, On, Place, Select, ShapeDecl};
 use crate::pack::{Asset, Pack};
+use crate::resolve::Fields;
 use crate::text::{self, at_key, at_path};
+
+/// The side of the coarse lattice square that names a `where` piece (`identity.md` 2.3), mm.
+const PIECE_SQUARE_MM: i64 = 32_000;
+
+/// One piece of a `where` region, named by place (`identity.md` 2.3, class `piece`).
+#[derive(Clone, Debug)]
+pub struct PieceOut {
+    /// `<feature>#p<i>_<j>_<ordinal>`.
+    pub name: String,
+    pub region: Region,
+    /// The representative point (`geometry.md` 3.2) that names and orders it.
+    pub point: P,
+}
+
+/// Where a clear acts (`identity.md` 4.3), resolved.
+#[derive(Clone, Debug)]
+pub enum ClearSpot {
+    /// Origins within the radius of a point.
+    Disc(P, i64),
+    /// Origins inside a region, outline included.
+    Inside(Region),
+    /// Origins within the radius of the nearest point of a whole path: a strip.
+    Strip(Line, i64),
+}
 
 /// A resolved shape.
 #[derive(Clone, Debug)]
@@ -132,7 +161,7 @@ pub enum Spot {
 }
 
 /// Every resolved shape and plan.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Placed {
     /// Authored features by id; footprint features by `<instance>.ground`.
     pub shapes: BTreeMap<String, Geo>,
@@ -144,6 +173,17 @@ pub struct Placed {
     pub names: BTreeMap<(String, String), (String, P)>,
     /// Instances not placed, so dependants report `surface.host_missing`.
     pub missing: BTreeSet<String>,
+    /// The pieces of each `where` region, by feature, in name order.
+    pub pieces: BTreeMap<String, Vec<PieceOut>>,
+    /// A scatter's `within` written as a selection, resolved to a piece's region.
+    pub within: BTreeMap<String, Region>,
+    /// Each clear's place, resolved; a clear that selects a scatter's instance is in `deferred`.
+    pub clears: BTreeMap<String, ClearSpot>,
+    /// What each selection by place resolved to: `<table>.<id>` to (produced name, its point).
+    pub selections: BTreeMap<String, (String, P)>,
+    /// Hand edits that select a scatter's instance (`identity.md` 4.1): `<table>.<id>` to the
+    /// selection. They read the scatter's run stage, so they resolve after it runs.
+    pub deferred: BTreeMap<String, Select>,
 }
 
 pub struct Placer<'a> {
@@ -175,7 +215,7 @@ pub fn footprint(asset: &Asset, origin: P, facing: i64, scale: f64) -> Option<Re
 }
 
 impl<'a> Placer<'a> {
-    pub fn new(d: &'a Decls, pack: &'a Pack) -> Placer<'a> {
+    pub(crate) fn new(d: &'a Decls, pack: &'a Pack) -> Placer<'a> {
         Placer {
             d,
             pack,
@@ -197,6 +237,18 @@ impl<'a> Placer<'a> {
         }
         for id in self.d.pins.keys() {
             self.pin(id);
+        }
+        for (id, s) in &self.d.scatters {
+            if let Some(sel) = &s.within_of {
+                if let Some(Spot::Long(Geo::Region { region, .. })) =
+                    self.select("scatter", id, sel)
+                {
+                    self.out.within.insert(id.clone(), region);
+                }
+            }
+        }
+        for id in self.d.clears.keys() {
+            self.clear(id);
         }
         self.name_attributes();
         (self.out, self.diags)
@@ -275,10 +327,22 @@ impl<'a> Placer<'a> {
                 for g in gd {
                     self.geom_fault("feature", &f.id, "path", g);
                 }
+                let mut path = path?;
+                if f.smooth {
+                    match via_geom::curve::smooth(&f.id, &path) {
+                        Ok(p) => path = p,
+                        Err(e) => {
+                            self.geom_fault("feature", &f.id, "smooth", e);
+                            return None;
+                        }
+                    }
+                }
                 Some(Geo::Path {
-                    line: Line::new(path?, false),
+                    line: Line::new(path, false),
                 })
             }
+            ShapeDecl::Follows(fl) => self.follows_path(f, fl),
+            ShapeDecl::Where(w) => self.where_region(f, *w),
             ShapeDecl::Region(pts) => {
                 let v: Vec<P> = pts.iter().map(|p| pt(*p)).collect();
                 let mut gd = Vec::new();
@@ -299,7 +363,7 @@ impl<'a> Placer<'a> {
                 let own = match f.face {
                     Some(Face::Bearing(b)) => Some(b),
                     _ => match place {
-                        Place::On(_) => Some(facing),
+                        Place::On(_) | Place::Of(_) => Some(facing),
                         Place::At(_) => None,
                     },
                 };
@@ -527,104 +591,133 @@ impl<'a> Placer<'a> {
                 offset,
             }) => {
                 let spot = self.spot(top, id, "on", reference)?;
-                match spot {
-                    Spot::Long(g) => {
-                        let line = match &g {
-                            Geo::Path { line } => line.clone(),
-                            Geo::Region { line: Some(l), .. } => l.clone(),
-                            _ => {
-                                self.diags.push(at_key(
-                                    codes::geom::MANY_RINGS,
-                                    top,
-                                    id,
-                                    "on",
-                                    "`t` is undefined on a region of several rings",
-                                    "place it on a point feature instead",
-                                ));
-                                return None;
-                            }
-                        };
-                        let Some(t) = *t else {
-                            self.diags.push(at_path(
-                                codes::doc::MISSING_KEY,
-                                top,
-                                id,
-                                &["on"],
-                                "`on` a path or region needs `t`",
-                                "write the whole table: `on = { ref, t, offset }`",
-                            ));
-                            return None;
-                        };
-                        let off = offset.unwrap_or(0);
-                        let at = match lineref::interpolate(&line, reference, t, off) {
-                            Ok(a) => a,
-                            Err(e) => {
-                                self.diags.push(e.to_diag(
-                                    Subject::entity(top, id),
-                                    Site::Key(text::path(&["on", "t"])),
-                                ));
-                                return None;
-                            }
-                        };
-                        let facing = match face {
-                            None | Some(Face::Along) => at.bearing,
-                            Some(Face::Bearing(b)) => b,
-                            Some(Face::Toward) | Some(Face::Away) => {
-                                let on_line =
-                                    lineref::interpolate(&line, reference, t, 0).ok()?.point;
-                                let (dx, dy) = (on_line.x - at.point.x, on_line.y - at.point.y);
-                                let Some(b) = via_num::bearing(dx, dy) else {
-                                    self.diags.push(at_key(
-                                        codes::geom::FACE_SIDE,
-                                        top,
-                                        id,
-                                        "face",
-                                        "`toward` and `away` need an offset to face across",
-                                        "write a bearing, or give `offset`",
-                                    ));
-                                    return None;
-                                };
-                                if face == Some(Face::Away) {
-                                    via_num::normalise_facing(b + 180_000)
-                                } else {
-                                    b
-                                }
-                            }
-                        };
-                        Some((at.point, facing))
+                self.on_spot(top, id, reference, spot, *t, *offset, face)
+            }
+            Place::Of(sel) => {
+                let spot = self.select(top, id, sel)?;
+                self.on_spot(top, id, &sel.of, spot, sel.t, sel.offset, face)
+            }
+        }
+    }
+
+    /// The point and facing at a resolved place, by `t`, `offset` and `face` (`geometry.md` 2.6).
+    #[allow(clippy::too_many_arguments)] // one placement's slots, as `geometry.md` 2.6 lists them
+    pub(crate) fn on_spot(
+        &mut self,
+        top: &str,
+        id: &str,
+        reference: &str,
+        spot: Spot,
+        t: Option<f64>,
+        offset: Option<i64>,
+        face: Option<Face>,
+    ) -> Option<(P, i64)> {
+        match spot {
+            Spot::Long(g) => {
+                let line = match &g {
+                    Geo::Path { line } => line.clone(),
+                    Geo::Region { line: Some(l), .. } => l.clone(),
+                    Geo::Region { region, .. } if region.is_empty() => {
+                        self.diags.push(at_key(
+                            codes::geom::NO_LENGTH,
+                            top,
+                            id,
+                            "on",
+                            &format!("`{reference}` is an empty region, which has no length"),
+                            "use `at`, or place on a region that has pieces",
+                        ));
+                        return None;
                     }
-                    Spot::At { p, facing, end } => {
-                        if t.is_some() || offset.is_some() {
+                    _ => {
+                        self.diags.push(at_key(
+                            codes::geom::MANY_RINGS,
+                            top,
+                            id,
+                            "on",
+                            "`t` is undefined on a region of several rings",
+                            "place it on a point feature instead",
+                        ));
+                        return None;
+                    }
+                };
+                let Some(t) = t else {
+                    self.diags.push(at_path(
+                        codes::doc::MISSING_KEY,
+                        top,
+                        id,
+                        &["on"],
+                        "`on` a path or region needs `t`",
+                        "write the whole table: `on = { ref, t, offset }`",
+                    ));
+                    return None;
+                };
+                let off = offset.unwrap_or(0);
+                let at = match lineref::interpolate(&line, reference, t, off) {
+                    Ok(a) => a,
+                    Err(e) => {
+                        self.diags.push(e.to_diag(
+                            Subject::entity(top, id),
+                            Site::Key(text::path(&["on", "t"])),
+                        ));
+                        return None;
+                    }
+                };
+                let facing = match face {
+                    None | Some(Face::Along) => at.bearing,
+                    Some(Face::Bearing(b)) => b,
+                    Some(Face::Toward) | Some(Face::Away) => {
+                        let on_line = lineref::interpolate(&line, reference, t, 0).ok()?.point;
+                        let (dx, dy) = (on_line.x - at.point.x, on_line.y - at.point.y);
+                        let Some(b) = via_num::bearing(dx, dy) else {
                             self.diags.push(at_key(
-                                codes::geom::NO_LENGTH,
+                                codes::geom::FACE_SIDE,
                                 top,
                                 id,
-                                "on",
-                                &format!("`{reference}` has no length, so no `t` or `offset`"),
-                                "place a set on it, or drop `t` and `offset`",
+                                "face",
+                                "`toward` and `away` need an offset to face across",
+                                "write a bearing, or give `offset`",
                             ));
                             return None;
-                        }
-                        let host = facing.unwrap_or(0);
-                        let facing = match face {
-                            None | Some(Face::Along) => host,
-                            Some(Face::Bearing(b)) if end => b,
-                            Some(Face::Bearing(b)) => via_num::normalise_facing(host + b),
-                            Some(_) => {
-                                self.diags.push(at_key(
-                                    codes::geom::FACE_SIDE,
-                                    top,
-                                    id,
-                                    "face",
-                                    "`toward` and `away` need a line and an offset",
-                                    "write a bearing, or `along`",
-                                ));
-                                return None;
-                            }
                         };
-                        Some((p, facing))
+                        if face == Some(Face::Away) {
+                            via_num::normalise_facing(b + 180_000)
+                        } else {
+                            b
+                        }
                     }
+                };
+                Some((at.point, facing))
+            }
+            Spot::At { p, facing, end } => {
+                if t.is_some() || offset.is_some() {
+                    self.diags.push(at_key(
+                        codes::geom::NO_LENGTH,
+                        top,
+                        id,
+                        "on",
+                        &format!("`{reference}` has no length, so no `t` or `offset`"),
+                        "place a set on it, or drop `t` and `offset`",
+                    ));
+                    return None;
                 }
+                let host = facing.unwrap_or(0);
+                let facing = match face {
+                    None | Some(Face::Along) => host,
+                    Some(Face::Bearing(b)) if end => b,
+                    Some(Face::Bearing(b)) => via_num::normalise_facing(host + b),
+                    Some(_) => {
+                        self.diags.push(at_key(
+                            codes::geom::FACE_SIDE,
+                            top,
+                            id,
+                            "face",
+                            "`toward` and `away` need a line and an offset",
+                            "write a bearing, or `along`",
+                        ));
+                        return None;
+                    }
+                };
+                Some((p, facing))
             }
         }
     }
@@ -642,7 +735,32 @@ impl<'a> Placer<'a> {
         rank: i64,
     ) -> Option<Plan> {
         let (origin, facing) = self.locate(top, id, place, face, false)?;
+        let on = match place {
+            Place::On(o) => Some(o.reference.clone()),
+            Place::Of(o) => Some(o.of.clone()),
+            Place::At(_) => None,
+        };
+        self.plan_at(top, id, asset, origin, facing, scale, tint, on, rank)
+    }
+
+    /// A plan at a point and facing: the asset and its footprint there (`rules.md` 2).
+    #[allow(clippy::too_many_arguments)] // one placement's facts, as `rules.md` 2 lists them
+    pub(crate) fn plan_at(
+        &mut self,
+        top: &str,
+        id: &str,
+        asset: &str,
+        origin: P,
+        facing: i64,
+        scale: f64,
+        tint: f64,
+        on: Option<String>,
+        rank: i64,
+    ) -> Option<Plan> {
         let Some(a) = self.pack.assets.get(asset) else {
+            if self.pack.failed {
+                return None;
+            }
             self.diags.push(
                 at_key(
                     codes::asset::UNKNOWN,
@@ -677,10 +795,6 @@ impl<'a> Placer<'a> {
                 "move it",
             ));
             return None;
-        };
-        let on = match place {
-            Place::On(o) => Some(o.reference.clone()),
-            Place::At(_) => None,
         };
         Some(Plan {
             name: id.to_string(),
@@ -771,6 +885,438 @@ impl<'a> Placer<'a> {
                 None
             }
         }
+    }
+
+    /// A path along another feature (`geometry.md` 3.5 and 4).
+    fn follows_path(&mut self, f: &FeatureDecl, fl: &Follows) -> Option<Geo> {
+        let reference = match self.spot("feature", &f.id, "follows", &fl.reference)? {
+            Spot::Long(Geo::Path { line }) => Reference::Path(line.pts.clone()),
+            Spot::Long(Geo::Region { region, .. }) if region.ring_count() == 1 => {
+                Reference::Ring(region.pieces[0].shell.clone())
+            }
+            Spot::Long(Geo::Region { region, .. }) => {
+                let what = if region.is_empty() {
+                    (
+                        codes::geom::NO_LENGTH,
+                        "an empty region, which has no outline",
+                    )
+                } else {
+                    (
+                        codes::geom::MANY_RINGS,
+                        "a region of several rings, which has no one `t`",
+                    )
+                };
+                self.diags.push(at_path(
+                    what.0,
+                    "feature",
+                    &f.id,
+                    &["follows", "ref"],
+                    &format!("`{}` is {}", fl.reference, what.1),
+                    "follow a path, or a region of one ring",
+                ));
+                return None;
+            }
+            Spot::Long(Geo::Point { .. }) | Spot::At { .. } => {
+                self.diags.push(at_path(
+                    codes::geom::NO_LENGTH,
+                    "feature",
+                    &f.id,
+                    &["follows", "ref"],
+                    &format!("`{}` has no length to follow", fl.reference),
+                    "follow a path or a region, or place the feature with `on`",
+                ));
+                return None;
+            }
+        };
+        let closed = matches!(reference, Reference::Ring(_)) && fl.span.0 == fl.span.1;
+        match follow(&f.id, &reference, fl.span.0, fl.span.1, fl.offset) {
+            Ok((mut pts, gd)) => {
+                for g in gd {
+                    self.geom_fault("feature", &f.id, "follows", g);
+                }
+                if closed && pts.len() > 1 && pts.first() == pts.last() {
+                    pts.pop();
+                }
+                Some(Geo::Path {
+                    line: Line::new(pts, closed),
+                })
+            }
+            Err(e) => {
+                self.geom_fault("feature", &f.id, "follows", e);
+                None
+            }
+        }
+    }
+
+    /// A region written as a condition (`geometry.md` 3.7): the formula in the head view at every
+    /// post, masked, every piece kept and named by place (`identity.md` 2.3).
+    fn where_region(&mut self, f: &FeatureDecl, formula: via_expr::FormulaId) -> Option<Geo> {
+        let grid = self.d.grid?;
+        // What the shape reads is resolved first; reading itself is a cycle (`formulas.md` 6.6).
+        for sel in self.d.where_reads(formula).1 {
+            match sel.strip_prefix("kind:") {
+                Some(k) => {
+                    let ids: Vec<String> = self
+                        .d
+                        .features
+                        .iter()
+                        .filter(|(_, x)| x.kind.as_deref() == Some(k))
+                        .map(|(i, _)| i.clone())
+                        .collect();
+                    for i in ids {
+                        self.feature(&i);
+                    }
+                }
+                None => {
+                    let base = sel
+                        .strip_suffix(".ground")
+                        .filter(|h| self.d.instances.contains_key(*h));
+                    match base {
+                        Some(inst) => {
+                            let inst = inst.to_string();
+                            self.instance(&inst);
+                        }
+                        None if self.d.features.contains_key(&sel) => {
+                            self.feature(&sel);
+                        }
+                        None => {}
+                    }
+                }
+            }
+            if self.failed.contains(&f.id) {
+                return None;
+            }
+        }
+        let snapshot = self.out.clone();
+        let fields = Fields::new(self.d, &snapshot, grid);
+        let values = fields.eval_where(formula, &f.id);
+        self.diags.extend(fields.diags.borrow().iter().cloned());
+        let values = values?;
+        let mg = MaskGrid {
+            x0: grid.extent[0],
+            y0: grid.extent[1],
+            r: grid.resolution,
+            nx: usize::try_from(grid.nx).ok()?,
+            ny: usize::try_from(grid.ny).ok()?,
+        };
+        let text = self.d.formulas.env.value(formula).unwrap_or("").to_string();
+        let region = match mask(mg, &values, &text, None) {
+            Ok((r, gd)) => {
+                for g in gd {
+                    self.geom_fault("feature", &f.id, "where", g);
+                }
+                r
+            }
+            Err(e) => {
+                self.geom_fault("feature", &f.id, "where", e);
+                return None;
+            }
+        };
+        self.name_pieces(&f.id, &region, grid);
+        let line =
+            (region.ring_count() == 1).then(|| Line::new(region.pieces[0].shell.clone(), true));
+        Some(Geo::Region { region, line })
+    }
+
+    /// Names every piece of a `where` region by place: the 32 m square holding its
+    /// representative point, and an ordinal by that point, `x` then `y` (`identity.md` 2.3).
+    fn name_pieces(&mut self, id: &str, region: &Region, grid: via_num::Grid) {
+        let pg = PostGrid {
+            extent: grid.extent,
+            resolution: grid.resolution,
+        };
+        let mut found: Vec<((i64, i64), P, Region)> = region
+            .pieces
+            .iter()
+            .map(|pc| {
+                let r = Region {
+                    pieces: vec![pc.clone()],
+                };
+                let point = representative(&r, pg);
+                (
+                    (
+                        point.x.div_euclid(PIECE_SQUARE_MM),
+                        point.y.div_euclid(PIECE_SQUARE_MM),
+                    ),
+                    point,
+                    r,
+                )
+            })
+            .collect();
+        found.sort_by_key(|(sq, p, _)| (*sq, p.x, p.y));
+        let mut out = Vec::new();
+        let mut last: Option<(i64, i64)> = None;
+        let mut ordinal = 0;
+        for (sq, point, r) in found {
+            ordinal = if last == Some(sq) { ordinal + 1 } else { 0 };
+            last = Some(sq);
+            out.push(PieceOut {
+                name: format!(
+                    "{id}#p{}_{}_{ordinal}",
+                    crate::rules::key_int(sq.0),
+                    crate::rules::key_int(sq.1)
+                ),
+                region: r,
+                point,
+            });
+        }
+        out.sort_by(|a, b| a.name.as_bytes().cmp(b.name.as_bytes()));
+        self.out.pieces.insert(id.to_string(), out);
+    }
+
+    /// A selection by place (`identity.md` 3), resolved to the thing nearest `near`. A hand edit
+    /// that selects a scatter's instance is deferred until the scatter has run (4.1).
+    fn select(&mut self, top: &str, id: &str, sel: &Select) -> Option<Spot> {
+        let key: &[&str] = if top == "scatter" {
+            &["within", "of"]
+        } else {
+            &["on", "of"]
+        };
+        let near = pt(sel.near);
+        let is_where = self
+            .d
+            .features
+            .get(&sel.of)
+            .is_some_and(|f| matches!(f.shape, ShapeDecl::Where(_)));
+        if self.d.scatters.contains_key(&sel.of) {
+            if sel.class.as_deref().is_some_and(|c| c != "instance") {
+                self.near_none(&sel.of, sel.class.as_deref().unwrap_or(""), &[(top, id)]);
+                return None;
+            }
+            if matches!(top, "pin" | "clear") {
+                self.out.deferred.insert(format!("{top}.{id}"), sel.clone());
+                return None;
+            }
+            let why = if top == "scatter" {
+                "`within` takes a region: an `area`, `cell`, `rest` or `piece`"
+            } else {
+                "a feature or an instance placed on a scatter's instance waits for the instance nodes of `graph.md`; in M1 only a pin or a clear selects a scatter's instance"
+            };
+            self.diags.push(at_path(
+                if top == "scatter" {
+                    codes::scatter::WITHIN
+                } else {
+                    codes::doc::NOT_YET
+                },
+                top,
+                id,
+                key,
+                &format!("`{}` is a scatter: {why}", sel.of),
+                "select a piece of a `where` region, or name an authored thing with `ref`",
+            ));
+            return None;
+        }
+        if !is_where {
+            let mut makers: Vec<&str> = self.d.scatters.keys().map(String::as_str).collect();
+            makers.extend(
+                self.d
+                    .features
+                    .iter()
+                    .filter(|(_, f)| matches!(f.shape, ShapeDecl::Where(_)))
+                    .map(|(i, _)| i.as_str()),
+            );
+            let what = if self.d.features.contains_key(&sel.of)
+                || self.d.instances.contains_key(&sel.of)
+            {
+                format!(
+                    "`{}` is an authored thing, not a maker; name it with `ref`",
+                    sel.of
+                )
+            } else {
+                format!("`{}` names no maker", sel.of)
+            };
+            self.diags.push(text::with_nearest(
+                at_path(
+                    codes::identity::UNKNOWN_MAKER,
+                    top,
+                    id,
+                    key,
+                    &what,
+                    &text::near_hint(
+                        &sel.of,
+                        makers.iter().copied(),
+                        "name a scatter or a `where` feature",
+                    ),
+                ),
+                &sel.of,
+                makers.iter().copied(),
+            ));
+            return None;
+        }
+        if sel.class.as_deref().is_some_and(|c| c != "piece") {
+            self.near_none(&sel.of, sel.class.as_deref().unwrap_or(""), &[(top, id)]);
+            return None;
+        }
+        self.feature(&sel.of)?;
+        let pieces = self.out.pieces.get(&sel.of).cloned().unwrap_or_default();
+        let zero = Dist2 {
+            num: Wide::from_u128(0),
+            den: Wide::from_u128(1),
+        };
+        let mut best: Option<(Dist2, &PieceOut)> = None;
+        for pc in &pieces {
+            let d = if pc.region.side(near) != Side::Out {
+                zero
+            } else {
+                match dist2_rings(near, &pc.region.rings()) {
+                    Some(d) => d,
+                    None => continue,
+                }
+            };
+            // Pieces are in name order, so a tie keeps the bytewise-least name.
+            if best
+                .as_ref()
+                .is_none_or(|(b, _)| d.cmp_exact(b) == std::cmp::Ordering::Less)
+            {
+                best = Some((d, pc));
+            }
+        }
+        let Some((_, pc)) = best else {
+            self.near_none(&sel.of, "piece", &[(top, id)]);
+            return None;
+        };
+        self.out
+            .selections
+            .insert(format!("{top}.{id}"), (pc.name.clone(), pc.point));
+        let line = Line::new(pc.region.pieces[0].shell.clone(), true);
+        let single = pc.region.ring_count() == 1;
+        Some(Spot::Long(Geo::Region {
+            region: pc.region.clone(),
+            line: single.then_some(line),
+        }))
+    }
+
+    /// `identity.near_none`: a maker with no candidate of the class, at the maker, listing the
+    /// selections it left with nothing.
+    pub(crate) fn near_none(&mut self, maker: &str, class: &str, who: &[(&str, &str)]) {
+        let top = if self.d.scatters.contains_key(maker) {
+            "scatter"
+        } else {
+            "feature"
+        };
+        let list: Vec<String> = who.iter().map(|(t, i)| format!("{t}.{i}")).collect();
+        self.diags.push(
+            text::at_header(
+                codes::identity::NEAR_NONE,
+                top,
+                maker,
+                &format!(
+                    "`{maker}` has no `{class}` to select; left with nothing: {}",
+                    list.join(", ")
+                ),
+                "select from a maker that makes that class, or change what it makes",
+            )
+            .with("selections", DValue::texts(list.iter().map(String::as_str))),
+        );
+    }
+
+    /// A clear's place (`identity.md` 4.3).
+    fn clear(&mut self, id: &str) {
+        let Some(c) = self.d.clears.get(id) else {
+            return;
+        };
+        if let Some(r) = &c.region {
+            let ring: Vec<P> = r.iter().map(|p| pt(*p)).collect();
+            self.out
+                .clears
+                .insert(id.to_string(), ClearSpot::Inside(Region::from_ring(ring)));
+            return;
+        }
+        let radius = c.radius;
+        let (spot, t, offset, reference) = match &c.place {
+            Some(Place::At(p)) => (
+                Spot::At {
+                    p: pt(*p),
+                    facing: None,
+                    end: false,
+                },
+                None,
+                None,
+                String::new(),
+            ),
+            Some(Place::On(o)) => match self.spot("clear", id, "on", &o.reference) {
+                Some(s) => (s, o.t, o.offset, o.reference.clone()),
+                None => return,
+            },
+            Some(Place::Of(sel)) => match self.select("clear", id, sel) {
+                Some(s) => (s, sel.t, sel.offset, sel.of.clone()),
+                None => return,
+            },
+            None => return,
+        };
+        let need_radius = |me: &mut Self| {
+            me.diags.push(at_key(
+                codes::doc::MISSING_KEY,
+                "clear",
+                id,
+                "radius",
+                "a clear at a point needs `radius`",
+                "write `radius`",
+            ));
+        };
+        let spot_out = match spot {
+            Spot::At { p, .. } => {
+                if t.is_some() || offset.is_some() {
+                    self.diags.push(at_key(
+                        codes::geom::NO_LENGTH,
+                        "clear",
+                        id,
+                        "on",
+                        &format!("`{reference}` has no length, so no `t` or `offset`"),
+                        "drop `t` and `offset`",
+                    ));
+                    return;
+                }
+                let Some(r) = radius else {
+                    need_radius(self);
+                    return;
+                };
+                ClearSpot::Disc(p, r)
+            }
+            Spot::Long(Geo::Region { region, .. }) => {
+                if radius.is_some() || t.is_some() {
+                    self.diags.push(at_key(
+                        codes::place::ON_FORM,
+                        "clear",
+                        id,
+                        "on",
+                        "a clear `on` a region takes neither `t` nor `radius`: it empties the region",
+                        "remove `t` and `radius`, or clear `on` a point with `radius`",
+                    ));
+                    return;
+                }
+                ClearSpot::Inside(region)
+            }
+            Spot::Long(Geo::Path { line }) => {
+                let Some(r) = radius else {
+                    need_radius(self);
+                    return;
+                };
+                match t {
+                    Some(t) => {
+                        match lineref::interpolate(&line, &reference, t, offset.unwrap_or(0)) {
+                            Ok(a) => ClearSpot::Disc(a.point, r),
+                            Err(e) => {
+                                self.diags.push(e.to_diag(
+                                    Subject::entity("clear", id),
+                                    Site::Key(text::path(&["on", "t"])),
+                                ));
+                                return;
+                            }
+                        }
+                    }
+                    None => ClearSpot::Strip(line, r),
+                }
+            }
+            Spot::Long(Geo::Point { p, .. }) => {
+                let Some(r) = radius else {
+                    need_radius(self);
+                    return;
+                };
+                ClearSpot::Disc(p, r)
+            }
+        };
+        self.out.clears.insert(id.to_string(), spot_out);
     }
 
     /// Name attributes (`authority.md` 1.2), resolved to the place they give.

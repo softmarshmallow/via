@@ -1,0 +1,19 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.view]
+kind   = "mark"
+at     = [2, 2]
+toward = "tower"
+
+[layer.top]
+file  = "top.toml"
+owner = "tests"
+rank  = 1

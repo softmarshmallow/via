@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "resolution = 3 on that extent: num.extent_not_multiple naming [0, 0, 9, 6], [0, 0, 12, 6] and resolution 2."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.extent_not_multiple]
+code = "num.extent_not_multiple"

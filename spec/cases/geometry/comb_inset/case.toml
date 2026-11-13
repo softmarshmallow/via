@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "comb; offset -1.5 m with each join: valid region, no crossing; every edge not from a join on a line 1.5 m from an input segment, within 1 mm."
+milestone = 1
+actions   = ["round", "mitre", "bevel"]
+
+# (open) the 1 mm distance property needs a named check over output edges; validity is the kernel's own guarantee (geom.internal otherwise), so exit 0 is asserted.
+
+[action.round]
+via         = ["kernel", "offset", "--in", "round.json", "--out", "round.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.mitre]
+via         = ["kernel", "offset", "--in", "mitre.json", "--out", "mitre.out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.bevel]
+via         = ["kernel", "offset", "--in", "bevel.json", "--out", "bevel.out.json"]
+exit        = 0
+diagnostics = "includes"

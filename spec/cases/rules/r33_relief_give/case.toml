@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "Trees with max_relief = 0.3 on terrain 20 + 0.1 * x: no tree placed whose footprint spans more than 3 m in x; counted as relief."
+milestone = 1
+actions   = ["build"]
+
+# A 4 m footprint on the 0.1 slope has relief 0.4 above 0.3: every candidate whose footprint lies
+# inside the extent gives way, counted as relief in place.gave_way. Relief is taken on the posts
+# under the footprint, so a candidate within 2 m of the extent's edge may span less: the check
+# covers the interior only.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.gave_way]
+code = "place.gave_way"
+
+[action.build.check.none]
+fn     = "no_origin_inside"
+build  = "build/w"
+points = [[4, 4], [252, 4], [252, 252], [4, 252]]
+prefix = "trees#"

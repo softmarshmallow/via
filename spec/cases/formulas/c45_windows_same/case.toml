@@ -1,0 +1,48 @@
+format    = "via-case-1"
+summary   = "Case 41's field by via eval with --tile 1 and --tile 16, and case 41's world built at 1 and 8 threads: each pair's diagnostics equal."
+milestone = 1
+actions   = ["tile1", "tile16", "one", "eight"]
+
+# (open) the two --diagnostics documents of `via eval` are not compared byte for byte: `same` names one path, and each action writes its own .diag/<action>.json. Both carry the one record at the first post; the builds' diagnostics.json are compared.
+
+[action.tile1]
+via         = ["eval", "world.toml", "--field", "f", "--tile", "1", "--out", "f.npy"]
+exit        = 1
+diagnostics = "includes"
+
+[action.tile1.diag.not_finite]
+code     = "formula.not_finite"
+position = [0, 0]
+
+[action.tile16]
+via         = ["eval", "world.toml", "--field", "f", "--tile", "16", "--out", "f.npy"]
+exit        = 1
+diagnostics = "includes"
+
+[action.tile16.diag.not_finite]
+code     = "formula.not_finite"
+position = [0, 0]
+
+[action.one]
+via         = ["build", "world.toml", "--threads", "1", "--out", "build/one"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/one"
+
+[action.one.diag.not_finite]
+code     = "formula.not_finite"
+position = [0, 0]
+
+[action.eight]
+via         = ["build", "world.toml", "--threads", "8", "--out", "build/eight"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/eight"
+
+[action.eight.diag.not_finite]
+code     = "formula.not_finite"
+position = [0, 0]
+
+[action.eight.same.diag]
+action = "one"
+what   = "diagnostics"

@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "fbm(60, 3.5), fbm(60, 13), fbm(60, 3, gain = 0), fbm(60, 3, lacunarity = 1): formula.range each."
+milestone = 1
+actions   = ["r0", "r1", "r2", "r3"]
+
+[action.r0]
+via         = ["build", "r0/world.toml", "--lib", "{work}/libs", "--out", "r0/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "r0/build/w"
+
+[action.r0.diag.range]
+code = "formula.range"
+
+[action.r1]
+via         = ["build", "r1/world.toml", "--lib", "{work}/libs", "--out", "r1/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "r1/build/w"
+
+[action.r1.diag.range]
+code = "formula.range"
+
+[action.r2]
+via         = ["build", "r2/world.toml", "--lib", "{work}/libs", "--out", "r2/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "r2/build/w"
+
+[action.r2.diag.range]
+code = "formula.range"
+
+[action.r3]
+via         = ["build", "r3/world.toml", "--lib", "{work}/libs", "--out", "r3/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "r3/build/w"
+
+[action.r3.diag.range]
+code = "formula.range"

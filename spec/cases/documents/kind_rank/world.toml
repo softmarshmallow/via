@@ -1,0 +1,26 @@
+name       = "mill"
+extent     = [0, 0, 128, 128]
+resolution = 1
+include    = ["pools"]
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.a]
+kind   = "pond"
+region = [[10, 10], [20, 10], [20, 20]]
+
+[feature.b]
+kind   = "pond"
+region = [[40, 10], [50, 10], [50, 20]]
+
+[feature.c]
+kind   = "pond"
+region = [[70, 10], [80, 10], [80, 20]]
+
+[layer.d]
+file  = "layers/d.toml"
+owner = "props"
+rank  = 1

@@ -1,0 +1,20 @@
+name       = "steps"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+
+[step.look]
+when    = "lint"
+command = ["python", "steps/lint.py"]
+
+[step.look.params]
+a = 1_000.5
+b = +1.0
+c = 0xff
+d = 0o17
+e = 0b101
+f = 9007199254740993
+g = 6.0
+h = 6

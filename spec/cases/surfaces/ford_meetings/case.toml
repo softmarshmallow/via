@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "ford; meetings; then move one vertex of the beck 4 m east: two rows as in 6.2, gap = 0, at the ford's point; after the move, both rows at the new point."
+milestone = 1
+actions   = ["program", "trust", "before", "after"]
+
+# The rows' points (about [153.63, 115.48], then [156.40, 115.34]) are lattice values in the vector owed with the case; the two rows and gap 0 are asserted.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/vertex.toml"]
+exit = 0
+
+[action.before]
+via         = ["query", "world.toml", "meetings", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.before.file.gap]
+path    = "out.json"
+pointer = "/gap"
+value   = [0, 0]
+
+[action.after]
+via         = ["query", "world.toml", "meetings", "--out", "after.json", "--change", "changes/vertex.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.after.file.gap]
+path    = "after.json"
+pointer = "/gap"
+value   = [0, 0]

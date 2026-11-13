@@ -1,0 +1,8 @@
+[kind.wetpad]
+requires = ["water_height"]
+radius   = 2
+
+[kind.wetpad.effect.e]
+field = "role:surface"
+value = "= water_height"
+mask  = "= 1 - smoothstep(0, 1, d)"

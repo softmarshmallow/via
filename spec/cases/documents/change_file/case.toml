@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "The worked example with changes/no_cart.toml: no instance.cart."
+milestone = 1
+actions   = ["merge", "build"]
+
+# The merged lane is unchanged; the build holds no instance (names.txt is 0 bytes, build.md case 15).
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "changes/no_cart.toml"]
+exit = 0
+
+[action.merge.file.lane]
+stream  = "stdout"
+pointer = "/feature/lane"
+value   = { "@layer" = "world", kind = "lane", path = [[0, 40], [128, 60]] }
+
+[action.build]
+via         = ["build", "world.toml", "--change", "changes/no_cart.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.no_rows]
+path = "build/w/instances/names.txt"
+size = 0

@@ -652,7 +652,7 @@ unrequested change are reported as `doc.idle_change`.
 
 | Code | Severity | Says |
 |---|---|---|
-| `doc.syntax` | error | Not TOML 1.0.0, not UTF-8, or a `[[x]]` header; position from the parser. |
+| `doc.syntax` | error | Not TOML 1.0.0, not UTF-8 (the byte offset in `data.offset`), or a `[[x]]` header (its exact rewrite in `data.rewrite`, section 1); position from the parser. |
 | `doc.too_deep` | error | Tables and lists nested over 64 deep (section 1); the file is read no further. |
 | `doc.type` | error | A value of the wrong form for its key, or a TOML date or time. |
 | `doc.unknown_key` | error | A key or table not listed for its place; the nearest listed word, or a removed word's fixed hint (section 7). |
@@ -679,7 +679,7 @@ unrequested change are reported as `doc.idle_change`.
 | `doc.change_fixed` | error | A change writes `include` or `name`. |
 | `doc.change_empty` | warning | A change body that writes nothing. |
 | `doc.change_conflict` | error | Two requested changes write or remove one key path; both changes and spans. |
-| `doc.change_adds_near` | warning | A change adds an entity whose id is near an existing one. |
+| `doc.change_adds_near` | warning | A change adds an entity whose id is near an existing one; the nearest id. |
 | `doc.remove_missing` | error | `remove` or `unset` names nothing in the base. |
 | `doc.remove_with_keys` | error | `remove = true` beside other keys, or a key both written and unset. |
 | `doc.dangling` | error | A name whose target a change removed; the holding table and the change. |

@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A point feature on a where region reading height, its kind writing role:surface: no cycle; the point's entry applied after the base and head."
+milestone = 1
+actions   = ["build"]
+
+# No cycle: the region reads the head view, and the point's entry is an effect, outside it
+# (exit 0). Where the point lands (t = 0.5 of the outline from its least vertex, geometry.md 2.5) is
+# not asserted.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "The selection pack, via pack list --taxon @plant/tree --tag winter: only the assets passing both, one JSON object per line, sorted by id, exit 0."
+milestone = 1
+actions   = ["list"]
+
+# ash and cedar pass both; birch has no tag, weed is not under plant/tree. A third line is not asserted absent (no check says so).
+
+[action.list]
+via  = ["pack", "list", "pack.toml", "--taxon", "@plant/tree", "--tag", "winter"]
+exit = 0
+
+[action.list.file.first]
+stream  = "stdout"
+pointer = "/id"
+line    = 1
+value   = "ash"
+
+[action.list.file.second]
+stream  = "stdout"
+pointer = "/id"
+line    = 2
+value   = "cedar"

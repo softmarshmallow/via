@@ -1,0 +1,20 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = 1
+
+[feature.lane]
+path = [[0, 32], [64, 32]]
+
+[pin.oak]
+asset = "tree_oak"
+on    = { ref = "lane", of = "trees", near = [10, 10] }

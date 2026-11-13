@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "An instance on a mount with face = \"along\"; placed: facing equal to the mount's."
+milestone = 1
+actions   = ["build"]
+
+# The house faces 90; its door mount faces 0 in the asset frame, so 90 in the world; the pot takes it. Both rows hold 90000.
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.face]
+path = "build/w/instances/face.npy"
+all  = 90000

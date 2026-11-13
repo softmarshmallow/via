@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "speckle; mask: every piece kept, one geom.mask_tiny with the count and positions of single-post pieces, the saddle joined by its mean, the edge piece closed along the extent."
+milestone = 1
+actions   = ["op"]
+
+# speckle, written here: a 9 by 9 grid at 1 m, -1 everywhere but two single posts (2, 2) and (6, 6),
+# a saddle of two posts meeting at one corner ((4, 1), (5, 2)), and three posts on the north edge.
+# Pieces and their positions in the record are not asserted beyond the one mask_tiny record.
+
+[action.op]
+via         = ["kernel", "mask", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.mask_tiny]
+code     = "geom.mask_tiny"
+subject  = "cli"
+severity = "info"

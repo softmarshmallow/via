@@ -28,9 +28,15 @@ const FORMAT := "via-build-0"
 const MAX_MATERIALS := 256
 ## Material images are resampled to one size so they share one Texture2DArray.
 const ALBEDO_SIZE := 256
-## A post with every weight 0 holds no material: this loader's default, the glTF reader's grey.
-const DEFAULT_GROUND := Color(0.8, 0.8, 0.8)
-const WATER_COLOUR := Color(0.12, 0.34, 0.48, 0.82)
+## A post with every weight 0 holds no material, and a world with no material field has none: this
+## loader's default (build.md 6.2). A mid grey, darker than the glTF reader's 0.8, which the sun and
+## the filmic tone map draw as white, so the ground kept no contrast at eye height.
+const DEFAULT_GROUND := Color(0.45, 0.45, 0.42)
+const WATER_COLOUR := Color(0.12, 0.3, 0.38, 0.85)
+## The water's opacity: WATER_CLEAR at depth 0, thickening by WATER_THICKEN per metre of depth up to
+## WATER_COLOUR's alpha.
+const WATER_CLEAR := 0.3
+const WATER_THICKEN := 1.2
 const OPTION_NAMES := ["diagnostics", "features", "fields", "water"]
 
 var diags := Diagnostics.new()
@@ -473,12 +479,21 @@ func _water_mesh(i0: int, j0: int, i1: int, j1: int) -> MeshInstance3D:
 		return null
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var colours := PackedColorArray()
 	verts.resize(cols * rows)
 	normals.resize(cols * rows)
+	colours.resize(cols * rows)
 	for r in rows:
 		for c in cols:
-			verts[r * cols + c] = g(_x0 + (i0 + c) * _res, _y0 + (j0 + r) * _res, _water[(j0 + r) * _nx + i0 + c])
+			var k := (j0 + r) * _nx + i0 + c
+			var z := _water[k]
+			if wet[r * cols + c] == 0:
+				z = _shore_level(i0 + c, j0 + r, z)
+			verts[r * cols + c] = g(_x0 + (i0 + c) * _res, _y0 + (j0 + r) * _res, z)
 			normals[r * cols + c] = Vector3.UP
+			# Shallow water lets the bed show through; the edge, where depth is 0, most of all.
+			var a := clampf(WATER_CLEAR + (z - _height[k]) * WATER_THICKEN, WATER_CLEAR, WATER_COLOUR.a)
+			colours[r * cols + c] = Color(1, 1, 1, a)
 	var keep := func(c, r):
 		var n: int = r * cols + c
 		return wet[n] == 1 or wet[n + 1] == 1 or wet[n + cols] == 1 or wet[n + cols + 1] == 1
@@ -486,6 +501,7 @@ func _water_mesh(i0: int, j0: int, i1: int, j1: int) -> MeshInstance3D:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colours
 	arrays[Mesh.ARRAY_INDEX] = _grid_indices(cols, rows, keep)
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -497,10 +513,34 @@ func _water_mesh(i0: int, j0: int, i1: int, j1: int) -> MeshInstance3D:
 	return mi
 
 
+func _shore_level(i: int, j: int, ground: float) -> float:
+	## A dry post at the water's edge: the mean water height of its wet neighbours (the eight
+	## around it, in the whole field, so chunks agree at their seams), never above its own ground.
+	## The surface runs on level under the bank and the ground mesh hides it, so the water's edge
+	## is where the bank meets the surface, not a quad's edge (build.md 15.1). A post with no wet
+	## neighbour keeps its own height.
+	var sum := 0.0
+	var n := 0
+	for dj in [-1, 0, 1]:
+		for di in [-1, 0, 1]:
+			var a: int = i + di
+			var b: int = j + dj
+			if (di == 0 and dj == 0) or a < 0 or b < 0 or a >= _nx or b >= _ny:
+				continue
+			var k := b * _nx + a
+			if _water[k] > _height[k]:
+				sum += _water[k]
+				n += 1
+	if n == 0:
+		return ground
+	return minf(sum / n, ground)
+
+
 func water_material() -> StandardMaterial3D:
 	if _water_material == null:
 		_water_material = StandardMaterial3D.new()
-		_water_material.albedo_color = WATER_COLOUR
+		_water_material.albedo_color = Color(WATER_COLOUR, 1.0)
+		_water_material.vertex_color_use_as_albedo = true   # alpha by depth, per vertex
 		_water_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_water_material.roughness = 0.25
 		_water_material.metallic_specular = 0.3

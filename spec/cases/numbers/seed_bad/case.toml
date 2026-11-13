@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "World seed = -1; world seed = \"a\"; scatter seed = 1; scatter seed = \"Trees\": num.seed_range; num.seed_type three times, the last hinting trees."
+milestone = 1
+actions   = ["neg", "text", "int", "upper"]
+
+[action.neg]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.neg.diag.seed_range]
+code = "num.seed_range"
+
+[action.text]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.text.diag.seed_type]
+code = "num.seed_type"
+
+[action.int]
+via         = ["build", "c/world.toml", "--out", "c/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "c/build/w"
+
+[action.int.diag.seed_type]
+code = "num.seed_type"
+
+[action.upper]
+via         = ["build", "d/world.toml", "--out", "d/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "d/build/w"
+
+[action.upper.diag.seed_type]
+code = "num.seed_type"

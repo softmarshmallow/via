@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "Each row of 2.1's table in params: the request's params text equals the table; inf and a date are refused."
+milestone = 1
+actions   = ["program", "trust", "build", "inf", "date"]
+
+# The lint reads its request with every number kept as its JSON text and reports a step error if any differs from the table; mode exact: none.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.inf]
+via         = ["build", "inf/world.toml", "--out", "inf/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "inf/build/w"
+
+[action.inf.diag.not_finite]
+code = "num.not_finite"
+
+[action.date]
+via         = ["build", "date/world.toml", "--out", "date/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "date/build/w"
+
+[action.date.diag.type]
+code = "doc.type"

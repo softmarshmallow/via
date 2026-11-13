@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A path; follows with span = [0.7, 0.2]: geom.span_order."
+milestone = 1
+actions   = ["op"]
+
+[action.op]
+via         = ["kernel", "follow", "--in", "in.json", "--out", "out.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.op.diag.span_order]
+code    = "geom.span_order"
+subject = "cli"

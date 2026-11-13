@@ -16,7 +16,7 @@ use via_graph::{Dec, Digest, Enc, Store};
 use via_model::{Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Tier};
 use via_num::Grid;
 
-const FORMAT: &str = "via-baseline-1";
+const FORMAT: &str = "via-baseline-2";
 
 /// Where a statement key was written: source path and line.
 pub type Lines = BTreeMap<String, BTreeMap<String, (String, u32)>>;
@@ -182,6 +182,13 @@ pub fn encode(s: &Snapshot) -> Vec<u8> {
             e.str(a).str(place).u64(*x as u64).u64(*y as u64);
         }
         opt_str(&mut e, f.output.as_deref());
+        e.len(f.rings.len());
+        for pc in &f.rings {
+            e.len(pc.len());
+            for r in pc {
+                pts(&mut e, r);
+            }
+        }
     }
     e.len(b.footprints.len());
     for (n, f) in &b.footprints {
@@ -236,6 +243,10 @@ pub fn encode(s: &Snapshot) -> Vec<u8> {
         }
     }
     str_map(&mut e, &s.homes);
+    e.len(b.selections.len());
+    for (who, (name, (x, y))) in &b.selections {
+        e.str(who).str(name).u64(*x as u64).u64(*y as u64);
+    }
     e.finish()
 }
 
@@ -338,6 +349,14 @@ pub fn decode(bytes: &[u8]) -> Option<Snapshot> {
             names.insert(a, (place, (d.u64()? as i64, d.u64()? as i64)));
         }
         let output = d_opt(&mut d)?;
+        let mut rings = Vec::new();
+        for _ in 0..d.count()? {
+            let mut pc = Vec::new();
+            for _ in 0..d.count()? {
+                pc.push(d_pts(&mut d)?);
+            }
+            rings.push(pc);
+        }
         b.features.insert(
             n,
             FeatureOut {
@@ -349,6 +368,7 @@ pub fn decode(bytes: &[u8]) -> Option<Snapshot> {
                 attrs,
                 names,
                 output,
+                rings,
             },
         );
     }
@@ -421,6 +441,12 @@ pub fn decode(bytes: &[u8]) -> Option<Snapshot> {
         lines.insert(st, m);
     }
     let homes = d_map(&mut d)?;
+    for _ in 0..d.count()? {
+        let who = d.str()?;
+        let name = d.str()?;
+        let at = (d.u64()? as i64, d.u64()? as i64);
+        b.selections.insert(who, (name, at));
+    }
     d.done().then_some(Snapshot {
         build: b,
         lines,

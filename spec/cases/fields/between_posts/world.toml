@@ -1,0 +1,13 @@
+name       = "plot"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "pack.toml"
+include    = ["fx"]
+
+[field.height]
+role = "surface"
+base = "= x * x"
+
+[instance.crate]
+asset = "box"
+at    = [2.5, 0]

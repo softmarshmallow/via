@@ -125,6 +125,12 @@ def _exempt_dotdot(trail: tuple[str, ...]) -> bool:
     return len(trail) >= 2 and trail[-2] == "changes" and "run" in trail
 
 
+def _exempt_absolute(trail: tuple[str, ...]) -> bool:
+    """The run report's `steps[].command` repeats the step's statement as written (graph.md 6.3);
+    an absolute path there is the text's own fault, protocol.absolute_path, not a leak."""
+    return len(trail) >= 3 and trail[0] == "steps" and trail[2] == "command"
+
+
 def scan_file(path: Path, label: str, secrets: Secrets) -> list[str]:
     """Problems found in one file; [] when it is clean or not a text file."""
     if path.suffix in BINARY_SUFFIXES:
@@ -152,7 +158,7 @@ def scan_file(path: Path, label: str, secrets: Secrets) -> list[str]:
     if doc is not None:
         for trail, s in _strings(doc):
             where = "/" + "/".join(trail)
-            if _is_absolute(s):
+            if _is_absolute(s) and not _exempt_absolute(trail):
                 problems.append(f"{label} {where}: absolute path {s!r}")
             if _has_dotdot(s) and not _exempt_dotdot(trail):
                 problems.append(f"{label} {where}: '..' in {s!r}")

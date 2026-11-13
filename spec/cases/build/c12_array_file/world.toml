@@ -1,0 +1,6 @@
+name       = "arr"
+extent     = [0, 0, 10, 6]
+resolution = 2
+
+[field.height]
+base = "= 0.25 * x + y"

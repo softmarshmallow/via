@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "A warning code and --fail-on naming it; build: exit 1, the record a warning with failed_on = true, no outputs; without the flag, exit 0 and outputs written."
+milestone = 1
+actions   = ["failing", "plain"]
+
+[action.failing]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--fail-on", "formula.empty_selection", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.failing.diag.empty_selection]
+code      = "formula.empty_selection"
+severity  = "warning"
+failed_on = true
+
+[action.failing.file.none]
+path   = "build/w/manifest.json"
+exists = false
+
+[action.plain]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.plain.diag.empty_selection]
+code     = "formula.empty_selection"
+severity = "warning"
+
+[action.plain.file.out]
+path   = "build/w/manifest.json"
+exists = true

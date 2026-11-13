@@ -373,8 +373,10 @@ are above 0.
 | Only at posts where at least one mask is below 1 | `authority.squeezed` | warning | Posts where both masks are above 0. |
 
 - One diagnostic per pair of features and field: a conflict if any post qualifies, else a squeeze.
-  Its subject is B, the later; A is in `related`. It gives the file and line of each one's
-  `authority` (the feature's, or its kind's if inherited), `a` and `b` at the post of the largest
+  Its subject is B, the later; A is in `related`. A footprint feature has no id of its own, so it
+  is named by its instance's address (`instance.cottage`, as `identity.md` 5 names it). It gives
+  the file and line of each one's `authority` (the feature's, or its kind's if inherited, as a
+  footprint's always is), `a` and `b` at the post of the largest
   difference (ties: post order), and the number of posts that disagree. Its `data` holds both
   counts: posts where both masks are 1, and posts where both are above 0.
 - Diagnostics are computed over the whole of both features, whatever window was asked for.

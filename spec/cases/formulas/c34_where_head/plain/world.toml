@@ -1,0 +1,12 @@
+name       = "sd"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.height]
+role = "surface"
+base = "= 5 + x"
+
+[feature.dip]
+kind  = "low"
+where = "= f('height') < 10"

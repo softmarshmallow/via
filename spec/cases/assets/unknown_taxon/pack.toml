@@ -1,0 +1,6 @@
+[taxon."plant/tree"]
+
+[asset.a]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "plant/tre"

@@ -1,0 +1,20 @@
+name       = "w"
+extent     = [0, 0, 8, 8]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[instance.crate]
+asset = "box_small"
+at    = [3, 3]
+
+[feature.a]
+at = [1, 1]
+
+[field.mix]
+type = "weights"
+
+[field.mix.then.all]
+paint = "p"

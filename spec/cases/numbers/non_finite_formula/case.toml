@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A field base = \"= 1 / (x - x)\": formula.not_finite naming the formula and a position, never a NaN in the field."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.not_finite]
+code     = "formula.not_finite"
+position = [0, 0]
+
+[action.build.file.none]
+path   = "build/w/fields/a.npy"
+exists = false

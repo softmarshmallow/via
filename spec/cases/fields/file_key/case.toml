@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "range without file; channel on an array file; filter = \"smooth\": field.file_key each."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.file_key]
+code    = "field.file_key"
+subject = "field.a.range"
+
+[action.build.diag.b]
+code    = "field.file_key"
+subject = "field.b.channel"
+
+[action.build.diag.c]
+code    = "field.file_key"
+subject = "field.c.filter"

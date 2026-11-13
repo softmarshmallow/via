@@ -1,0 +1,9 @@
+[asset.cw]
+primitive = "box"
+size      = [2, 2, 1]
+footprint = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
+
+[asset.closed]
+primitive = "box"
+size      = [2, 2, 1]
+footprint = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]]

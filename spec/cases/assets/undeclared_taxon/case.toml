@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "@plant/shurb, not declared: pack.unknown_taxon, hint plant/shrub, exit 1."
+milestone = 1
+actions   = ["build"]
+
+# The registry gives pack.unknown_taxon no data; the row's hint is a nearest name (diagnostics.md 1.4), so data.nearest.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_taxon]
+code = "pack.unknown_taxon"
+data = { nearest = "plant/shrub" }

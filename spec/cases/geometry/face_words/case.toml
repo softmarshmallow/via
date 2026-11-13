@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "face = \"toward\" with offset = 0: geom.face_side; face = \"awya\": geom.face_unknown, hint away; face = \"along\" with at: geom.face_needs_on."
+milestone = 1
+actions   = ["side", "unknown", "needs_on"]
+
+[action.side]
+via         = ["build", "a/world.toml", "--out", "a/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "a/build/w"
+
+[action.side.diag.face_side]
+code = "geom.face_side"
+
+[action.unknown]
+via         = ["build", "b/world.toml", "--out", "b/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "b/build/w"
+
+[action.unknown.diag.face_unknown]
+code = "geom.face_unknown"
+data = { nearest = "away" }
+
+[action.needs_on]
+via         = ["build", "c/world.toml", "--out", "c/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "c/build/w"
+
+[action.needs_on.diag.face_needs_on]
+code = "geom.face_needs_on"

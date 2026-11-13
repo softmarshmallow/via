@@ -30,6 +30,18 @@ pub enum Site {
         /// Facts locating the fault inside the file.
         locator: BTreeMap<String, Value>,
     },
+    /// Text that is not a document of the merge (a pack, `assets.md` 2), located when it is
+    /// read: the file as a record writes it, a 1-based line and column, and `[start, end)` bytes.
+    Text {
+        /// The file, in the form of `documents.md` 2.1.
+        file: String,
+        /// 1-based line.
+        line: u32,
+        /// 1-based column in Unicode scalar values.
+        column: u32,
+        /// `[start, end)` in bytes.
+        bytes: [u32; 2],
+    },
     /// A command-line fault: the 1-based index of the argument at fault, after the program name.
     Argument(u32),
     /// The world file at line 1, column 1, bytes `[0, 0]`.
@@ -45,6 +57,7 @@ impl Site {
             Site::Header => "the header".to_string(),
             Site::Selector(p) => format!("the selector at `{p}`"),
             Site::File { file, .. } => format!("file `{file}`"),
+            Site::Text { file, line, .. } => format!("`{file}` line {line}"),
             Site::Argument(n) => format!("argument {n}"),
             Site::World => "the world file".to_string(),
         }

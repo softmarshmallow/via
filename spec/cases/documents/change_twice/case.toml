@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "--change wide --change wide: same JSON as once; no diagnostic."
+milestone = 1
+actions   = ["once", "twice"]
+
+[action.once]
+via  = ["merge", "world.toml", "--change", "wide"]
+exit = 0
+
+[action.twice]
+via  = ["merge", "world.toml", "--change", "wide", "--change", "wide"]
+exit = 0
+
+[action.twice.same.json]
+action = "once"
+what   = "stdout"

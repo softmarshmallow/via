@@ -1,0 +1,87 @@
+pack    = "primitive"
+include = ["land", "water", "ways", "review"]   # kinds as data; the core knows none of these words
+extent  = [0, 0, 256, 256]
+name    = "ford"
+
+[change.denser.scatter.trees]
+spacing = 6
+
+[change.hand.clear.gap]
+by = ["trees"]
+radius = 6
+at = [208, 208]
+
+[change.hand.pin.oak]                     # the hand edits the spacing row holds
+by = ["trees"]
+at = [200, 60]
+asset = "tree_oak"
+
+[change.downstream.feature.ford]          # the change scenario is one line
+on = { ref = "beck", t = 0.8 }
+
+[step.checks]                             # the one lint step, through the SDK
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+when = "lint"
+
+[scatter.trees]
+density = "= max(smoothstep(0.1, 0.5, fbm(60, 3)), near('lane_east', 16))"   # a wood along lane_east; the scatter applies keep_out itself
+spacing = 7
+assets = ["@plant/tree"]
+
+[instance.cottage]
+face = "toward"
+on = { ref = "lane_west", t = 0.6, offset = 12 }
+margin = 1
+ground = "pad"
+asset = "house_low"
+
+[feature.in_trees]                        # along the lane through the trees
+toward = "lane_east.end"
+on = { ref = "lane_east", t = 0.4 }
+kind = "bookmark"
+
+[feature.to_door]                         # from the lane to the door
+toward = "cottage"
+on = { ref = "lane_west", t = 0.6 }
+kind = "bookmark"
+
+[feature.on_bank]                         # on the bank along the water's edge
+toward = "ford"
+on = { ref = "beck", t = 0.45, offset = 4 }
+kind = "bookmark"
+
+[feature.at_ford]                         # on the lane short of the ford; eye height is the review library's default
+toward = "ford"
+on = { ref = "lane_west", t = 0.93 }
+kind = "bookmark"
+
+[feature.lane_east]
+path = [[256, 140]]
+starts_at = "ford"
+kind = "lane"
+
+[feature.lane_west]
+ends_at = "ford"
+path = [[0, 120]]
+kind = "lane"
+
+[feature.ford]                            # the named thing that owns where lane and water meet (R18)
+on = { ref = "beck", t = 0.55 }
+kind = "ford"
+
+[feature.beck]
+path = [[150, 256], [140, 170], [160, 90], [150, 0]]
+authority = "anchored"
+kind = "beck"
+
+[field.water]                             # the beck writes it (tag:water_level); dry, it is the ground
+base = "= f('height')"
+tags = ["water_level"]
+
+[field.clearing]                          # the pad and the beck write it (role:keep_out)
+base = "= 0"
+role = "keep_out"
+
+[field.height]
+base = "= 20 + 0.06 * y + 5 * fbm(110, 3, seed = 'hills')"
+role = "surface"

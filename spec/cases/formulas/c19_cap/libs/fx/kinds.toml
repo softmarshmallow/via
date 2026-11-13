@@ -1,0 +1,5 @@
+[kind.kc]
+
+[kind.kc.effect.e]
+field = "tag:mark"
+value = "= dist('beck')"

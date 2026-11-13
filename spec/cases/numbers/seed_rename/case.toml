@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "Rename the scatter: its instances added and removed; nothing else."
+milestone = 1
+actions   = ["base", "renamed"]
+
+# A rename is the old scatter removed and a new one added; its default seed is its id (numbers.md 7.1), so every name and draw is new.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.renamed]
+via         = ["build", "world.toml", "--change", "rename", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.renamed.check.removed]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "trees#"
+what   = ["removed"]
+
+[action.renamed.check.added]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "woods#"
+what   = ["added"]

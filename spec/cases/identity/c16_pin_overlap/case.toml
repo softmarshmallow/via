@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "A pin with by = [\"trees\"] overlapping an instance of another producer: identity.pin_overlap names both, exit 0."
+milestone = 1
+actions   = ["build"]
+
+# The row's bush is written as a rock: bush_round is `solidity = "none"` in the primitive pack and claims no ground (assets.md 6.1). rocks#s5000_3_3 stands at (17.5, 17.5).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.pin_overlap]
+code    = "identity.pin_overlap"
+subject = "pin.box"

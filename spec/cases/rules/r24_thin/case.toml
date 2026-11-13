@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "r20, density 0.6 to 0.3: only removals."
+milestone = 1
+actions   = ["base", "changed"]
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.changed]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "c", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.changed.check.report]
+fn     = "changes_by_prefix"
+path   = "build/w/changes.json"
+prefix = "trees#"
+what   = ["removed"]

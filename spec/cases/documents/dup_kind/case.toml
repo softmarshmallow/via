@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "Two libraries declaring `kind.lane`: identity.duplicate_id naming both kinds files."
+milestone = 1
+actions   = ["merge"]
+
+# `ways` is the repository's lib/ways (VIA_LIB). One record names both files: its location and `related` (which file is which is not fixed by the chapter).
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{case}/roots"]
+exit = 1
+
+[action.merge.diag.duplicate_id]
+code    = "identity.duplicate_id"
+subject = "kind.lane"

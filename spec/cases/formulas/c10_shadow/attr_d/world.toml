@@ -1,0 +1,11 @@
+name       = "wide"
+extent     = [0, 0, 128, 16]
+resolution = 1
+include    = ["fx"]
+
+[field.m]
+tags = ["mark"]
+
+[feature.a]
+kind = "kd"
+at   = [8, 8]

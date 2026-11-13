@@ -1,0 +1,16 @@
+name       = "order"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[feature.r]
+where = "= f('height') < 5"
+
+[feature.spot]
+kind = "flat"
+on   = { ref = "r", t = 0.5 }

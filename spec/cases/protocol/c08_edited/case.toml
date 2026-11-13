@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "Trusted; then one file in the code folder edited: protocol.untrusted_skipped."
+milestone = 1
+actions   = ["program", "trust", "first", "edit", "again"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.edit]
+write = "steps/lint.py"
+text  = "import json, os\nrequest = json.load(open(os.environ[\"VIA_STEP\"], encoding=\"utf-8\"))\nopen(os.path.join(request[\"out\"], \"diagnostics.json\"), \"w\", encoding=\"utf-8\").write('[]')\n# edited\n"
+
+[action.again]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.again.diag.untrusted_skipped]
+code = "protocol.untrusted_skipped"

@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "via kernel frobnicate: cli.usage, exit 2, nothing written; an input with @format via-kernel-0: cli.usage naming @format, exit 2."
+milestone = 1
+actions   = ["unknown", "format"]
+
+# U3 holds that exit 2 created, deleted or changed nothing in the working folder but the --diagnostics file.
+
+[action.unknown]
+via  = ["kernel", "frobnicate", "--in", "in.json", "--out", "out.json"]
+exit = 2
+
+[action.unknown.diag.usage]
+code = "cli.usage"
+
+[action.unknown.file.none]
+path   = "out.json"
+exists = false
+
+[action.format]
+via  = ["kernel", "network", "--in", "old.json", "--out", "out.json"]
+exit = 2
+
+[action.format.diag.usage]
+code = "cli.usage"
+
+[action.format.file.none]
+path   = "out.json"
+exists = false

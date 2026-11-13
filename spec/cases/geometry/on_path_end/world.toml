@@ -1,0 +1,9 @@
+name       = "g"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[feature.p]
+path = [[0, 0], [10, 0], [10, 10]]
+
+[feature.a_mark]
+on = { ref = "p", t = 1, offset = 2 }

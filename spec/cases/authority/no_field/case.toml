@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "An effect on tag:snow in a world with no such tag, its kind with one feature: authority.no_field once."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.no_field]
+code    = "authority.no_field"
+subject = "kind.k"
+records = 1

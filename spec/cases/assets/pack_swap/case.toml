@@ -11,6 +11,10 @@ actions   = ["program", "trust", "base", "bigger"]
 # only `bounds` and `size` are asserted. The cottage is also `moved`: the larger pad levels its
 # ground to another mean, so its height differs (assets.md 7, identity.md 5).
 
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
 [action.program]
 via  = ["config", "program", "python", "{python}"]
 exit = 0
@@ -23,12 +27,14 @@ exit = 0
 via       = ["build", "world.toml", "--out", "build/ford"]
 out       = "build/ford"
 exit      = 0
+diagnostics = "includes"
 untouched = ["world.toml"]
 
 [action.bigger]
 via       = ["build", "world.toml", "--change", "changes/bigger.toml", "--against", "build/ford", "--out", "build/ford+bigger"]
 out       = "build/ford+bigger"
 exit      = 0
+diagnostics = "includes"
 untouched = ["world.toml", "build/ford"]
 
 [action.bigger.file.footprint]

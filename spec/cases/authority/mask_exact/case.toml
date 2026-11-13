@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "Two anchored regions sharing an edge, masks 1 - smoothstep(0, 4, d), values 1 m apart: authority.conflict at the shared edge (d = 0, mask exactly 1)."
+milestone = 1
+actions   = ["build"]
+
+# Both masks are 1 only on the shared edge x = 8, y 2 to 14; every such post differs by 1, so the first in post order, (8, 2).
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.conflict]
+code     = "authority.conflict"
+subject  = "feature.b"
+position = [8, 2]

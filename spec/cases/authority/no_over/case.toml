@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A feature with over = [\"pond\"]: doc.unknown_key with the fixed hint naming section 5."
+milestone = 1
+actions   = ["merge"]
+
+# The fixed hint replaces the nearest-word hint (documents.md 7), so no data.nearest; the hint text is never compared.
+
+[action.merge]
+via  = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit = 1
+
+[action.merge.diag.unknown_key]
+code    = "doc.unknown_key"
+subject = "feature.a.over"

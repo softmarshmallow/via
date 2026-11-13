@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "One feature written with an inline `on`, then with `[feature.x.on]`: same JSON."
+milestone = 1
+actions   = ["a", "b"]
+
+[action.a]
+via  = ["merge", "a/world.toml"]
+exit = 0
+
+[action.b]
+via  = ["merge", "b/world.toml"]
+exit = 0
+
+[action.b.same.json]
+action = "a"
+what   = "stdout"

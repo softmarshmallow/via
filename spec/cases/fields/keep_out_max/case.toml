@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "two keep_out array files, one 1 at even i, the other the reverse; a scatter with density = 1: no candidate kept anywhere."
+milestone = 1
+actions   = ["build"]
+
+# The per-post maximum is 1 at every post, so 1 between posts too (interpolating each first would
+# give 0.5 midway). Every candidate, wherever jitter puts it, reads 1: none is kept (scatter.empty
+# expected, so mode includes).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.none]
+path = "build/w/instances/names.txt"
+size = 0

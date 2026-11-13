@@ -11,7 +11,7 @@ uv run python -m via_conformance run --via PATH --milestone 1 --chapter build --
 uv run python -m via_conformance run --milestone 1 --record runs/  # writes <os>-<arch>.json (U7)
 uv run python -m via_conformance compare runs/macos-aarch64.json runs/linux-x86_64.json
 uv run python -m via_conformance list                              # parse every case, count per milestone
-uv run python -m via_conformance.fixtures --check                  # ford case folders match the documents
+uv run python -m via_conformance.fixtures --check                  # examples/ford matches the documents
 uv run python -m unittest discover -s tests                        # the runner's self-tests
 ```
 
@@ -19,9 +19,10 @@ uv run python -m unittest discover -s tests                        # the runner'
   working folder is kept and its path printed.
 - **Checks added to every case** (U1 to U7, `conformance.md` 5) need no line in a `case.toml`.
   U2 reads `spec/diagnostics.toml`; while it does not exist, every core code fails U2.
-- **The ford world** is carried in each ford case's folder, derived byte for byte from
-  `docs/plan.md` and `spec/assets.md` 6.2 by `via_conformance/fixtures.py`. Edit the documents,
-  then run `python -m via_conformance.fixtures` to rewrite the copies.
+- **The ford world** is `examples/ford/`, which every ford case copies into its working folder
+  (`[copy.ford] from = "examples/ford"`, `to = "."`). `via_conformance/fixtures.py` checks that
+  folder byte for byte against `docs/plan.md` and `spec/assets.md` 6.2 (`--check`); edit the
+  documents, then run `python -m via_conformance.fixtures` to rewrite it.
 - **Self-tests** drive `tests/fake_via.py`, a fake binary that is honest by default and breaks one
   rule on request (`FAKE_VIA=threads`, `incremental`, `abspath`, ...), so each check is seen both
   to pass and to fail. A `--via` ending in `.py` runs under the runner's own Python, so the

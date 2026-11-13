@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A guide with authority = \"anchored\": authority.no_kind."
+milestone = 1
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.no_kind]
+code    = "authority.no_kind"
+subject = "feature.g"

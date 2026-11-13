@@ -1,0 +1,12 @@
+name       = "plot"
+extent     = [0, 0, 16, 8]
+resolution = 1
+include    = ["fx"]
+
+[field.height]
+role = "surface"
+base = "= 2 * x"
+
+[feature.p]
+kind = "mark"
+at   = [8, 4]

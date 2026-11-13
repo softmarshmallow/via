@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = "A byte changed in the plain lint's inputs file; then the file deleted; rebuild each: the lint ran; then graph.input_missing."
+milestone = 1
+actions   = ["program", "trust", "first", "edit", "changed", "drop", "missing"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.edit]
+write = "data/table.csv"
+text  = "a,b\n1,3\n"
+
+[action.changed]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.changed.nodes]
+ran_includes = ["step:look"]
+
+[action.drop]
+delete = "data/table.csv"
+
+[action.missing]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.missing.diag.input_missing]
+code = "graph.input_missing"
