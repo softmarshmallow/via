@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "identity.md 28: a new self-crossing on a path; its far end junction keeps its name."
+milestone = 3
+pending   = "owed in M3 slice 2: needs a network over one path bent to cross itself between two builds, and a check that reads junction names, which features.json does not hold (geometry.md 8.1); the far junction is seen only through a selection `on = { of, class = \"junction\", near }` not reselected, as in c25"
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

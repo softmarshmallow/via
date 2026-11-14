@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "Two crossing paths and no ring, clipped by a 60 m square: 4 areas; the same paths unclipped enclose nothing: one geom.no_area, for that network only."
+milestone = 3
+actions   = ["build"]
+
+# 3.2: the clip's outline is a ring source (#clip, identity.md 2.3) and the network keeps what lies
+# inside it, so the two paths cut the square into four 30 m squares. Network m has no `within`, so
+# the cross encloses nothing (8.1, Empty): geom.no_area (warning), exit 0.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.areas]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "n#a"
+count  = 4
+
+[action.build.check.none]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "m#a"
+count  = 0
+
+[action.build.diag.no_area]
+code    = "geom.no_area"
+records = 1
+subject = "network.m"

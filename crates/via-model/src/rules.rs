@@ -251,6 +251,10 @@ pub struct Produced {
     /// Each produced name a hand edit removed, to that edit's statement (`clear.<id>`,
     /// `pin.<id>`): the change report's cause for the removal (`identity.md` 5).
     pub removed_by: BTreeMap<String, String>,
+    /// The instances steps returned that went through the hand edits here (`identity.md` 4.1:
+    /// a step is a producer): the caller drops them from the hand instances; the live ones are
+    /// in `instances`, as they were placed.
+    pub stepped: BTreeSet<String>,
     pub diags: Vec<Diag>,
 }
 
@@ -725,6 +729,29 @@ pub fn scatter_all(
             ));
         }
     }
+    // A step that returned instances is a producer too (`identity.md` 4.1): when the world has
+    // hand edits, its instances are held by them as a scatter's are.
+    let mut stepped: BTreeMap<String, Placement> = BTreeMap::new();
+    if !d.clears.is_empty() || !d.pins.is_empty() {
+        for p in hand {
+            let Some((maker, _)) = p.name.split_once('#') else {
+                continue;
+            };
+            if p.pin || !d.steps.contains_key(maker) {
+                continue;
+            }
+            raw.push(held::Instance {
+                name: p.name.clone(),
+                producer: maker.to_string(),
+                asset: p.asset.clone(),
+                origin: p.origin,
+                face: p.facing,
+                footprint: p.footprint.clone(),
+            });
+            stepped.insert(p.name.clone(), p.clone());
+        }
+        out.stepped = stepped.keys().cloned().collect();
+    }
     // Hand edits (identity.md 4.1): clears, then pins. A hand edit that selects a scatter's
     // instance reads the run stage, `raw`, before any hand edit (section 3).
     let mut clears = Vec::new();
@@ -737,7 +764,7 @@ pub fn scatter_all(
     for c in d.clears.values() {
         if let Some(by) = &c.by {
             for b in by {
-                if !d.scatters.contains_key(b) {
+                if !d.scatters.contains_key(b) && !d.steps.contains_key(b) {
                     out.diags.push(by_fault(d, "clear", &c.id, b));
                 }
             }
@@ -869,7 +896,7 @@ pub fn scatter_all(
         let by = d.pins.get(id).and_then(|x| x.by.clone());
         if let Some(by) = &by {
             for b in by {
-                if !d.scatters.contains_key(b) {
+                if !d.scatters.contains_key(b) && !d.steps.contains_key(b) {
                     out.diags.push(by_fault(d, "pin", id, b));
                 }
             }
@@ -947,6 +974,10 @@ pub fn scatter_all(
                     .push(g.to_diag(Subject::entity(top, src), Site::Header));
             }
             for i in live {
+                if let Some(p) = stepped.get(&i.name) {
+                    out.instances.push(p.clone());
+                    continue;
+                }
                 let (scale, tint) = facts.get(&i.name).copied().unwrap_or((1.0, 1.0));
                 out.instances.push(Placement {
                     name: i.name,
@@ -1331,7 +1362,8 @@ fn by_fault(d: &Decls, top: &str, id: &str, b: &str) -> Diag {
     let names_something = d.features.contains_key(b)
         || d.instances.contains_key(b)
         || d.pins.contains_key(b)
-        || d.clears.contains_key(b);
+        || d.clears.contains_key(b)
+        || d.is_maker_table(b);
     if names_something {
         return at_key(
             codes::identity::NOT_A_PRODUCER,

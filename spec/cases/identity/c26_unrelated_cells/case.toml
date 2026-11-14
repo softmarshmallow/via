@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "Unrelated change inside one maker: one cells table divides two regions selected by kind; shorten one region; its cell count moves (24 to 20) and no name of the other region's cells or rest changes."
+milestone = 3
+actions   = ["base", "shorter"]
+
+# Each region feature's whole outline is its frontage (geometry.md 8.2, default). r1 and r2 are
+# 80 by 40 m: stretches 80, 40, 80, 40 hold floor(L / 20) = 4, 2, 4, 2 cells (3.6 step 4), 12 each,
+# 24 in all. r1 shortened to 40 by 40 m holds 2, 2, 2, 2 = 8: 20 in all. The box [0, 0, 100, 60]
+# holds every vertex of r1 before and after, strictly inside, and none of r2 (x from 110).
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.base.check.count]
+fn     = "names_count"
+path   = "build/a/features.json"
+prefix = "c#c"
+count  = 24
+
+[action.shorter]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "shorter", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.shorter.check.count]
+fn     = "names_count"
+path   = "build/b/features.json"
+prefix = "c#c"
+count  = 20
+
+[action.shorter.check.kept]
+fn            = "names_kept"
+first         = "build/a/features.json"
+second        = "build/b/features.json"
+prefix        = "c#"
+except_within = [0, 0, 100, 60]

@@ -398,9 +398,10 @@ name), `kind`, `authority`, `layer`, `pieces` and `attrs`, as above.
 `x` and `y` are exact metres from the lattice; `z` is the height of the surface beneath at that
 point (`surfaces.md` 2.2). A formula attribute is written as its text.
 
-A network's areas and a divided region's cells (R13, M3) are region features under their produced
-names (`identity.md` 2.3). Their `kind` is (open) until `geometry.md` says how a network is
-declared, decided by `quay` in M3.
+A network's areas and a divided region's cells and rest pieces (R13, M3) are region features under
+their produced names (`identity.md` 2.3). An area's or a cell's `kind` is the one its `[network]` or
+`[cells]` table writes, `null` when it writes none; a rest piece's is `null` (`geometry.md` 8).
+Junctions and edges are not written: they are selected and reported only.
 
 ### 9.2 Outputs
 
@@ -642,7 +643,9 @@ reader is handed.
 ## 12. The identity of a build
 
 The `id` answers one question: does this directory hand a reader the same world? It is the BLAKE3
-digest of one canonical JSON object: the manifest with `id`, `run` and `locations` removed. That
+digest of one canonical JSON object: the manifest with `id`, `run` and `locations` removed, written
+as canonical JSON (`documents.md` 8) without its closing line feed: the bytes digested end at the
+object's last `}`. The null vector (`spec/cases/build/c01_null/expected/id.txt`) fixes this. That
 object lists every file in `files` by digest, so the `id` covers exactly those files and the
 manifest's world keys. This is the one rule; `via check` recomputes it (section 14).
 
@@ -1291,7 +1294,6 @@ Owed to other chapters:
 - **The terrain under a floor or deck** (`surfaces.md` open 7). Decided in M5 by `station`'s walk.
 - **A picture passed to the engine as a texture** (`fields.md` open). Decided by `relief` in M2: if
   a field file loses what the picture carried.
-- **The `kind` of a network's areas and cells** in `features.json` (9.1). Decided by `quay` in M3.
 - **How the SDK names a blob** without a native BLAKE3 (3.3). Decided in `protocol.md` for M2.
 - **glTF instancing** (`EXT_mesh_gpu_instancing`) in place of a node per instance. Decided by the
   second reader on `atlas`.

@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "A scatter within = { of = n, class = area, near } over a clipped cross: trees only in the selected 30 m square, 9 of them."
+milestone = 3
+actions   = ["build"]
+
+# The clipped cross makes four 30 m squares (geometry.md 8.1, case n10); near [35, 35] selects
+# [20, 50] x [20, 50] (identity.md 3). With jitter 0 a candidate is its lattice cell's centre
+# (rules.md 7.1): x and y at 25, 35, 45, so 3 x 3 = 9 trees, density 1 keeping each. The two
+# polygons cover every other point of the extent; no centre lies on their shared edges.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.count]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "trees#"
+count  = 9
+
+[action.build.check.east_north]
+fn     = "no_origin_inside"
+build  = "build/w"
+prefix = "trees#"
+points = [[50, 0], [100, 0], [100, 100], [0, 100], [0, 50], [50, 50]]
+
+[action.build.check.south_west]
+fn     = "no_origin_inside"
+build  = "build/w"
+prefix = "trees#"
+points = [[0, 0], [50, 0], [50, 20], [20, 20], [20, 50], [0, 50]]

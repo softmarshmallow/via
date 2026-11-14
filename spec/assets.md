@@ -554,6 +554,17 @@ colour    = [0.55, 0.42, 0.33]
 [asset.house_low.mount.door]
 at = [0, 3]
 
+# A narrow town house (asked in TODO: "The pack has no small urban building; an old town is 22 m
+# boxes"): two storeys on a 5 m front, deep from its street, for lots of 6 m or more (lib/town).
+[asset.house_narrow]
+primitive = "box"
+size      = [5, 8, 7]
+taxon     = "building/house"
+colour    = [0.62, 0.5, 0.4]
+
+[asset.house_narrow.mount.door]
+at = [0, 4]
+
 [asset.shed_gable]
 primitive = "prism"
 size      = [4, 3, 3]
@@ -617,6 +628,7 @@ What follows from it, by sections 2.4 and 6:
 | Asset | `bounds` | `triangles` | `footprint` | `solidity` | Mounts |
 |---|---|---|---|---|---|
 | `house_low` | `[-4, -3, 0, 4, 3, 4]` | 12 | the rectangle of `bounds` | solid | `door` at `[0, 3]`, face 0: the middle of its front wall |
+| `house_narrow` | `[-2.5, -4, 0, 2.5, 4, 7]` | 12 | the rectangle of `bounds` | solid | `door` at `[0, 4]`, face 0: the middle of its front wall (M3, `lib/town`) |
 | `shed_gable` | `[-2, -1.5, 0, 2, 1.5, 3]` | 8 | the rectangle | solid | none |
 | `tree_oak` | `[-2.5, -2.5, 0, 2.5, 2.5, 7]` | 224 | the declared 1 m trunk square | solid | none |
 | `bush_round` | `[-0.75, -0.75, 0, 0.75, 0.75, 1.2]` | 224 | the 16-sided ring | none | none |
@@ -630,6 +642,9 @@ What follows from it, by sections 2.4 and 6:
   assume. A case that needs `max_relief` writes its own pack.
 - Every one of section 6's five shapes is used once or more, so the "Primitive pack" case checks
   every fixed triangle count.
+- `building/house` holds two assets from M3: `house_low` and `house_narrow`, the small town house
+  `lib/town`'s houses step prefers on a narrow lot. A world that draws `@building/house` draws
+  between them.
 - `plant/tree` holds one asset, so `ford`'s `@plant/tree` draws no asset choice. `fern_low` is filed
   apart from `plant/bush`, so `rules.md` 11's `["@plant/bush", { id = "fern_low", weight = 2 }]`
   names it once.

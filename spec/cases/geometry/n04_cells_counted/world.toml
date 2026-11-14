@@ -1,0 +1,14 @@
+name       = "counted"
+extent     = [0, 0, 120, 80]
+resolution = 0.5
+
+[field.height]
+role = "surface"
+
+[feature.yard]
+region = [[10, 10], [110, 10], [110, 70], [10, 70]]
+
+[cells.strips]
+within  = "yard"
+spacing = 20
+depth   = 15

@@ -1,0 +1,111 @@
+# What a quay build must measure (docs/plan.md, M3; R13's four obligations). Measures, never bytes
+# (R15): each row names a measure of `measure.py` and the band it must fall in. Taken by
+#
+#   python3 examples/quay/measure.py BUILD                      # base
+#   python3 examples/quay/measure.py BUILD+<c> --base BUILD     # a change, built with --against
+#
+# Protocol of the numbers below: macOS arm64 (M4 Pro), the release `via` of the rewrite branch at
+# 2026-11-15 (uncommitted M3 tree), Python 3.12 (sdk/python/.venv) for the steps, a fresh store, one
+# build each, default threads; VIA_LIB=lib. Measured once, so the bands are the measured number:
+# a band is not a target, it says where someone looks.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.blocks]                               # areas of `town`: the streets, the main way and the quay
+measure = "block"
+band    = [16, 16]
+
+[base.lots]
+measure = "lot"
+band    = [178, 178]
+
+[base.rest]                                 # what no frontage reaches (cells' rest pieces)
+measure = "rest"
+band    = [31, 31]
+
+[base.streets]                              # 3 contour streets, 5 cross streets, 3 down to the quay
+measure = "street"
+band    = [11, 11]
+
+[base.houses]                               # lots a house fits on; the rest are `step.houses.small`
+measure = "houses"
+band    = [30, 30]
+
+[base.unowned]                              # every meeting is owned by the network or a named point (R18)
+measure = "geom.unowned_crossing"
+band    = [0, 0]
+
+[base.dead_ends]
+measure = "geom.dead_end"
+band    = [0, 0]
+
+[base.views]                                # one per kind of meeting, and one from the gate (R17)
+measure = "bookmarks"
+band    = [6, 6]
+
+[base.unlevelled]                           # no pad from the houses' layer yet (core gap): every house
+measure = "place.relief"                    # stands on the slope as it lies. Should be 0.
+band    = [30, 30]
+
+# ------------------------------------------------------------------------------------------ R13
+
+[clear_one.house_gone]                      # 1. a clear on a generated house removes it
+measure = "houses_removed"
+band    = [1, 1]
+
+[clear_one.lots_kept]
+measure = "lot_removed"
+band    = [0, 0]
+
+[pin_one.house_replaced]                    # 2. a pin inside a cell replaces the house it overlaps
+measure = "houses_removed"
+band    = [1, 1]
+
+[pin_one.reported]                          # and says so (identity.pin_removed)
+measure = "identity.pin_removed"
+band    = [1, 1]
+
+[pin_one.lots_kept]
+measure = "lot_removed"
+band    = [0, 0]
+
+# 3. placed on a generated street: the views `street_street` and `way_street` stand on network
+# junctions (`{ of = "town", class = "junction", near }`); `bookmarks` above counts them placed.
+
+[unrelated.lots_west]                       # 4. a distant edit: no lot west of x = 200 m renamed
+measure = "lot_removed_west"
+band    = [0, 0]
+
+[unrelated.rest_west]                       # one rest piece west of 200 m is new: a piece of an
+measure = "rest_added_west"                 # east-touching block whose centre lies west of 200 m
+band    = [1, 1]
+
+[unrelated.blocks]
+measure = "block_removed"
+band    = [0, 0]
+
+[unrelated.lots_east]                       # the east end does change
+measure = "lot_removed"
+band    = [6, 6]
+
+# ------------------------------------------------------------------------------------------ move_hill
+
+[move_hill.streets_kept]                    # the streets keep their names (keyed by place)
+measure = "street_removed"
+band    = [0, 0]
+
+[move_hill.lots_resettled]                  # the contours move, so the lots between them do
+measure = "lot_removed"
+band    = [73, 73]
+
+[move_hill.lots_new]
+measure = "lot_added"
+band    = [51, 51]
+
+[move_hill.houses_moved_out]
+measure = "houses_removed"
+band    = [15, 15]
+
+[move_hill.views_reselected]                # the two junction views follow their junction and say so
+measure = "identity.reselected"
+band    = [0, 0]                            # run diagnostic: on the terminal (2), not in diagnostics.json

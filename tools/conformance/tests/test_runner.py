@@ -646,6 +646,24 @@ class NamedCheckTests(unittest.TestCase):
         self.assertTrue(self.run_check({"fn": "json_count", "path": "o.json", "pointer": "/a", "count": 2}))
         self.assertTrue(self.run_check({"fn": "json_count", "path": "o.json", "pointer": "/c", "count": 0}))
 
+    def test_names_count_and_kept(self) -> None:
+        sq = lambda x, y: {"outer": [[x, y], [x + 1, y], [x + 1, y + 1]], "holes": []}
+        a = {"features": [{"name": "g#a1", "pieces": [sq(0, 0)]}, {"name": "g#a2", "pieces": [sq(50, 50)]},
+                          {"name": "r", "points": [[0, 0], [9, 9]]}]}
+        b = {"features": [{"name": "g#a1", "pieces": [sq(0, 0)]}, {"name": "g#a3", "pieces": [sq(50, 50)]}]}
+        write(self.tmp / "a.json", json.dumps(a))
+        write(self.tmp / "b.json", json.dumps(b))
+        write(self.tmp / "n.txt", "h#1\nh#2\nk#1\n")
+        self.assertEqual(self.run_check({"fn": "names_count", "path": "a.json", "prefix": "g#a", "count": 2}), [])
+        self.assertEqual(self.run_check({"fn": "names_count", "path": "n.txt", "prefix": "h#", "count": 2}), [])
+        self.assertTrue(self.run_check({"fn": "names_count", "path": "a.json", "prefix": "g#a", "count": 3}))
+        kept = {"fn": "names_kept", "first": "a.json", "second": "b.json", "prefix": "g#"}
+        self.assertTrue(self.run_check(kept))
+        self.assertEqual(self.run_check({**kept, "except_within": [40, 40, 60, 60]}), [])
+        # Edges excluded: a feature touching the box only at its corner is still checked.
+        self.assertTrue(self.run_check({**kept, "except_within": [51, 51, 60, 60]}))
+        self.assertTrue(self.run_check({**kept, "prefix": "z#"}))
+
     def report(self, nodes: list, totals: dict) -> None:
         doc = {"build": {}, "diagnostics": [], "engine": {"epoch": 1, "version": "0"}, "format": "via-run-0", "nodes": nodes,
                "steps": [], "system": {}, "threads": 1, "totals": totals}

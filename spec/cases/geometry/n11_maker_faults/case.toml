@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "Maker faults: spacing 0 and depth -1 give two geom.bad_parameter naming each key; from naming an instance is identity.unknown_place naming it; a network kind with effects is doc.not_yet; exit 1."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.spacing]
+code    = "geom.bad_parameter"
+subject = "cells.bad"
+data    = { parameter = "spacing" }
+
+[action.build.diag.depth]
+code    = "geom.bad_parameter"
+subject = "cells.bad"
+data    = { parameter = "depth" }
+
+[action.build.diag.from]
+code    = "identity.unknown_place"
+subject = "network.inst"
+data    = { name = "lamp" }
+
+[action.build.diag.effects]
+code    = "doc.not_yet"
+subject = "network.fx"
+data    = { kind = "wet" }

@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "Obligation 3: a lamp on = { of = grid, class = edge, near, t = 0.5, offset = 3 } stands at [45, 73]; a post on a step's returned path by of = ribs, class = feature, t = 0.5, offset -2 stands at [95, 118]."
+milestone = 3
+actions   = ["program", "trust", "build"]
+
+# geometry.md 8.4. The edge of ribs#y70 from the junction at [20, 70] to [70, 70]: its one source runs
+# east, so t = 0.5 is [45, 70] and the left is north (identity.md 3). ribs#y120 runs from [10, 120]
+# to [180, 120]: t = 0.5 is [95, 120], offset -2 is to the right, south.
+
+[copy.grid]
+from = "spec/vectors/cells/grid"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "lamp", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.lamp]
+fn    = "instance_at"
+build = "build/w"
+name  = "lamp"
+at    = [45, 73]
+
+[action.build.check.post]
+fn    = "instance_at"
+build = "build/w"
+name  = "post"
+at    = [95, 118]

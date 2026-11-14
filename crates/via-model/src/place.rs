@@ -66,6 +66,27 @@ pub enum Geo {
 }
 
 impl Geo {
+    /// The shape's nearest point to `near` on the lattice, and its squared distance in square
+    /// millimetres: 0 inside a region or on the shape. Selections compare these exactly
+    /// (`identity.md` 3, "compared exactly in integer millimetres"); a point off the lattice is
+    /// never nearest.
+    pub fn nearest_mm(&self, near: P) -> (i128, P) {
+        if self.contains(near) {
+            return (0, near);
+        }
+        let m = self.project(near);
+        match (
+            via_num::round_to_lattice(m.nearest.0),
+            via_num::round_to_lattice(m.nearest.1),
+        ) {
+            (Ok(x), Ok(y)) => (
+                via_num::distance_sq_mm((x, y), (near.x, near.y)),
+                P::new(x, y),
+            ),
+            _ => (i128::MAX, near),
+        }
+    }
+
     /// The plan bounding box.
     pub fn bbox(&self) -> (P, P) {
         match self {
@@ -184,14 +205,18 @@ pub struct Placed {
     /// Hand edits that select a scatter's instance (`identity.md` 4.1): `<table>.<id>` to the
     /// selection. They read the scatter's run stage, so they resolve after it runs.
     pub deferred: BTreeMap<String, Select>,
+    /// What each `[network]` and `[cells]` table made (`geometry.md` 8), by its id.
+    pub made: BTreeMap<String, crate::makers::Made>,
+    /// Each network, kept for the cells tables that divide its areas.
+    pub nets: BTreeMap<String, crate::makers::KeptNet>,
 }
 
 pub struct Placer<'a> {
-    d: &'a Decls,
+    pub(crate) d: &'a Decls,
     pack: &'a Pack,
     pub out: Placed,
     visiting: Vec<String>,
-    failed: BTreeSet<String>,
+    pub(crate) failed: BTreeSet<String>,
     pub diags: Vec<Diag>,
     cycles: BTreeSet<Vec<String>>,
     /// Each `identity.near_none` said so far, by maker and class: its index in `diags` and the
@@ -265,6 +290,7 @@ impl<'a> Placer<'a> {
         for id in self.d.features.keys() {
             self.feature(id);
         }
+        self.make_all();
         for id in self.d.instances.keys() {
             self.instance(id);
         }
@@ -287,7 +313,7 @@ impl<'a> Placer<'a> {
         (self.out, self.diags)
     }
 
-    fn enter(&mut self, name: &str, top: &str) -> bool {
+    pub(crate) fn enter(&mut self, name: &str, top: &str) -> bool {
         if let Some(at) = self.visiting.iter().position(|v| v == name) {
             let mut members: Vec<String> = self.visiting[at..].to_vec();
             members.sort();
@@ -309,7 +335,7 @@ impl<'a> Placer<'a> {
         true
     }
 
-    fn leave(&mut self) {
+    pub(crate) fn leave(&mut self) {
         self.visiting.pop();
     }
 
@@ -1179,7 +1205,10 @@ impl<'a> Placer<'a> {
 
     /// A selection by place (`identity.md` 3), resolved to the thing nearest `near`. A hand edit
     /// that selects a scatter's instance is deferred until the scatter has run (4.1).
-    fn select(&mut self, top: &str, id: &str, sel: &Select) -> Option<Spot> {
+    pub(crate) fn select(&mut self, top: &str, id: &str, sel: &Select) -> Option<Spot> {
+        if self.d.is_maker_table(&sel.of) {
+            return self.select_made(top, id, sel);
+        }
         let key: &[&str] = if top == "scatter" {
             &["within", "of"]
         } else {
@@ -1201,27 +1230,19 @@ impl<'a> Placer<'a> {
                 .filter(|k| k.starts_with(&prefix))
                 .cloned()
                 .collect();
-            let mut best: Option<(f64, String, Geo)> = None;
+            // Ids in name order and a strict `<`: a tie keeps the bytewise-least name.
+            let mut best: Option<(i128, P, String, Geo)> = None;
             for f in ids {
                 let Some(g) = self.feature(&f) else { continue };
-                let d = if g.contains(near) {
-                    0.0
-                } else {
-                    g.project(near).d
-                };
-                if best.as_ref().is_none_or(|(b, _, _)| d < *b) {
-                    best = Some((d, f, g));
+                let (d, at) = g.nearest_mm(near);
+                if best.as_ref().is_none_or(|(b, ..)| d < *b) {
+                    best = Some((d, at, f, g));
                 }
             }
-            let Some((_, name, geo)) = best else {
+            let Some((_, at, name, geo)) = best else {
                 self.near_none(&sel.of, "feature", &[(top, id)]);
                 return None;
             };
-            let m = geo.project(near);
-            let at = P::new(
-                m.nearest.0.round_ties_even() as i64,
-                m.nearest.1.round_ties_even() as i64,
-            );
             self.out
                 .selections
                 .insert(format!("{top}.{id}"), (name, at));
@@ -1351,7 +1372,9 @@ impl<'a> Placer<'a> {
     /// `identity.near_none`: a maker with no candidate of the class, at the maker, listing the
     /// selections it left with nothing.
     pub(crate) fn near_none(&mut self, maker: &str, class: &str, who: &[(&str, &str)]) {
-        let top = if self.d.scatters.contains_key(maker) {
+        let top = if let Some(t) = self.d.maker_top(maker) {
+            t
+        } else if self.d.scatters.contains_key(maker) {
             "scatter"
         } else if self.d.steps.contains_key(maker) {
             "step"

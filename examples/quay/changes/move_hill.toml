@@ -1,0 +1,5 @@
+# The moved hill (docs/plan.md, M3): the hill's crest moves 80 m west. A height change: the
+# contour streets follow the land again, so the blocks and lots they bound resettle, and the houses
+# with them.
+[feature.crest]
+at = [96, 150]

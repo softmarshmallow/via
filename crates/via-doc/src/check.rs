@@ -699,8 +699,8 @@ pub(crate) fn find_id<'b>(
     id: &str,
 ) -> Option<(String, &'b String)> {
     for top in [
-        "clear", "feature", "field", "import", "instance", "layer", "lock", "pin", "run",
-        "scatter", "set", "step",
+        "cells", "clear", "feature", "field", "import", "instance", "layer", "lock", "network",
+        "pin", "run", "scatter", "set", "step",
     ] {
         if root.table(top).is_some_and(|t| t.get(id).is_some()) {
             if let Some(h) = homes.get(&(top.to_string(), id.to_string())) {
@@ -720,7 +720,9 @@ pub(crate) fn direction(
     removed: &[crate::change::Removal],
 ) -> Vec<Fault> {
     let mut out = Vec::new();
-    for top in ["feature", "instance", "pin", "clear", "scatter"] {
+    for top in [
+        "feature", "instance", "pin", "clear", "scatter", "network", "cells",
+    ] {
         let Some(t) = root.table(top) else { continue };
         for (id, e) in t.iter() {
             let Value::Table(ent) = &e.item.value else {
@@ -731,6 +733,8 @@ pub(crate) fn direction(
                 "feature" => &["starts_at", "ends_at"],
                 "pin" | "clear" => &["by"],
                 "scatter" => &["within"],
+                "network" => &["from", "within"],
+                "cells" => &["within", "frontage"],
                 _ => &[],
             };
             for k in simple {

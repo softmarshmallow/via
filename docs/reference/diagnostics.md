@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-332 codes in 22 groups. 37 have no bad and fixed example yet; their explain text is the
+334 codes in 22 groups. 37 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -26,7 +26,7 @@ chapter's summary and hint.
 | [`doc`](#doc) | `spec/documents.md` | 32 |
 | [`field`](#field) | `spec/fields.md` | 26 |
 | [`formula`](#formula) | `spec/formulas.md` | 22 |
-| [`geom`](#geom) | `spec/geometry.md` | 29 |
+| [`geom`](#geom) | `spec/geometry.md` | 31 |
 | [`graph`](#graph) | `spec/graph.md` | 9 |
 | [`identity`](#identity) | `spec/identity.md` | 29 |
 | [`load`](#load) | `spec/build.md` | 5 |
@@ -2153,12 +2153,14 @@ Fixed: value = "= 2 * height"
 | `geom.face_side` | error | 1 |  | `face = "toward"` or `"away"` with `offset = 0`, or on a ref with no length. |
 | `geom.face_unknown` | error | 1 | `nearest` | A `face` word that is not `along`, `toward` or `away`. |
 | `geom.follow_broken` | error | 1 |  | A path along another feature breaks into pieces; each gap and the widest offset that holds. |
+| `geom.frontage_none` | warning | 3 |  | A cells table's `frontage` selects no side of any region it divides, so nothing is divided (8.2; M3). |
 | `geom.internal` | error | 1 | `repro` | A guarantee check failed inside the kernel (Euler, closure, validity). A defect of ours; exit 3. |
 | `geom.many_rings` | error | 1 |  | `on`, `follows`, `interpolate` or `substring` on a region of more than one ring, which has no `t`. |
 | `geom.mask_dropped` | warning | 1 |  | A masked piece had no area on the lattice and was dropped. |
 | `geom.mask_empty` | warning | 1 |  | A mask is above 0 nowhere; the formula's text and its range of values. |
 | `geom.mask_tiny` | info | 1 |  | A masked region has pieces smaller than one grid cell; the count and positions; kept. |
 | `geom.meet_shape` | error | 1 |  | `starts_at` or `ends_at` names a whole path or a region. |
+| `geom.network_point` | error | 3 |  | A network's `from` names a point feature; a network is made of paths and region outlines (8.1; M3). |
 | `geom.no_area` | warning | 1 |  | A network encloses no area. |
 | `geom.no_length` | error | 1 |  | `t`, `offset` or `follows` on a point, a zero-length thing or an empty region. (A run's is `run.no_length`, `rules.md` 5.) |
 | `geom.offset_empty` | warning | 1 |  | An inset left nothing. |
@@ -2203,9 +2205,9 @@ warning, milestone 1, `spec/geometry.md`.
 ```text
 A stretch of frontage is shorter than one cell length, so it holds no cell. The record gives its
 position.
-To fix: Shorten cell_length, or lengthen the frontage.
-Bad:   a stretch of 8 m with cell_length = 12
-Fixed: the same stretch with cell_length = 8
+To fix: Lower `spacing` (3.6's cell_length) in the [cells] table, or lengthen the frontage.
+Bad:   a stretch of 8 m with spacing = 12
+Fixed: the same stretch with spacing = 8
 ```
 
 ### `geom.cell_small`
@@ -2308,6 +2310,19 @@ Bad:   follows = { ref = "a", offset = -12 }
 Fixed: follows = { ref = "a", offset = -6 }
 ```
 
+### `geom.frontage_none`
+
+warning, milestone 3, `spec/geometry.md`.
+
+```text
+A cells table divides regions along their frontage, and its frontage selects no side of any
+region it divides: no edge on a selected source lies on their shells, and no divided region is
+itself selected. Nothing is divided; every region is all rest.
+To fix: Select the sources the cells should face, or leave frontage out to face every side.
+Bad:   frontage = ["east_a"]   (a path on no side of the divided areas)
+Fixed: frontage = ["kind:rib"]
+```
+
 ### `geom.internal`
 
 error, milestone 1, `spec/geometry.md`, covered by the workspace tests.
@@ -2377,6 +2392,19 @@ starts_at or ends_at names a whole path or a region, which has no one point to m
 To fix: Name an end (a.end), a mount, or place a point feature on it with on and name that.
 Bad:   ends_at = "a"   (a is a path)
 Fixed: ends_at = "a.end"
+```
+
+### `geom.network_point`
+
+error, milestone 3, `spec/geometry.md`.
+
+```text
+A network's from names a point feature. A network nodes paths and region outlines; a point has no
+line to node. A kind: selector leaves a kind's points out by itself; a name must name a path or a
+region.
+To fix: Name a path or region, or place the point on one with on.
+Bad:   from = ["frame_a", "well"]   (well is a point)
+Fixed: from = ["frame_a"]
 ```
 
 ### `geom.no_area`

@@ -32,8 +32,8 @@ pub use decimal::{
 pub use error::{ExtentHint, NumError, Quantity};
 pub use frame::Frame;
 pub use lattice::{
-    checked_add, checked_mul, checked_sub, in_lattice, metres, round_to_lattice, write_facing,
-    write_length, write_seed, Grid, DEFAULT_RESOLUTION_MM, POST_LIMIT,
+    checked_add, checked_mul, checked_sub, distance_sq_mm, in_lattice, metres, round_to_lattice,
+    write_facing, write_length, write_seed, Grid, DEFAULT_RESOLUTION_MM, POST_LIMIT,
 };
 pub use math::{
     acos, asin, atan, atan2, bearing, cbrt, clamp, cos, cos_deg, cosh, exp, exp2, exp_m1,

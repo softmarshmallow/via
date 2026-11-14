@@ -73,7 +73,8 @@ fn entity_subject(top: &str, id: &str, path: &[String]) -> Subject {
 }
 
 /// The words a change body may hold at its root, for nearest-word hints.
-const BODY_WORDS: [&str; 12] = [
+const BODY_WORDS: [&str; 14] = [
+    "cells",
     "clear",
     "extent",
     "feature",
@@ -81,6 +82,7 @@ const BODY_WORDS: [&str; 12] = [
     "instance",
     "kind",
     "let",
+    "network",
     "pack",
     "pin",
     "resolution",

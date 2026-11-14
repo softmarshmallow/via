@@ -637,6 +637,9 @@ impl<'w> ModelPlan<'w> {
                         Geo::Region { .. } => {}
                     }
                 }
+                for id in self.p.placed.made.keys() {
+                    out.push((format!("op {id}"), NodeId::of("op", id)));
+                }
                 for ((f, a), (_, p)) in &self.p.placed.names {
                     let _ = (f, a);
                     pts.push(*p);
@@ -645,9 +648,12 @@ impl<'w> ModelPlan<'w> {
             }
             FileReads::Instances => {
                 for id in self.defs.keys() {
+                    // A clear reaches the instances a step returned, which no `held` node
+                    // holds (`identity.md` 4.1), so the file reads every edit.
                     if matches!(id.family(), "instance" | "held" | "height")
                         || (id.family() == "edit"
-                            && self.p.decls.pins.contains_key(&subject_of(id)))
+                            && (self.p.decls.pins.contains_key(&subject_of(id))
+                                || self.p.decls.clears.contains_key(&subject_of(id))))
                     {
                         out.push((format!("{} {}", id.family(), subject_of(id)), id.clone()));
                     }
@@ -899,6 +905,12 @@ impl<'w> ModelPlan<'w> {
             if d.scatters.contains_key(producer) {
                 return vec![view(NodeId::of("held", producer))];
             }
+            if d.is_maker_table(producer) {
+                return vec![NodeId::of("op", producer)];
+            }
+        }
+        if d.is_maker_table(name) {
+            return vec![NodeId::of("op", name)];
         }
         if d.features.contains_key(base) {
             return vec![view(NodeId::of("shape", base))];
@@ -1081,6 +1093,96 @@ impl<'w> ModelPlan<'w> {
                 },
             ));
         }
+        // Networks and cells tables (`geometry.md` 8.3): one `op` node each, reading what its
+        // keys resolve to; a selection from it reads it.
+        let makers: Vec<(&'static str, String)> = d
+            .networks
+            .keys()
+            .map(|k| ("network", k.clone()))
+            .chain(d.cells.keys().map(|k| ("cells", k.clone())))
+            .collect();
+        for (top, id) in makers {
+            let mut edges = Vec::new();
+            let mut names: BTreeSet<String> = self
+                .p
+                .placed
+                .made
+                .get(&id)
+                .map(|m| m.reads.clone())
+                .unwrap_or_default();
+            let mut kinds: Vec<String> = Vec::new();
+            let mut sel_place = None;
+            if let Some(n) = d.networks.get(&id) {
+                names.extend(n.from.iter().filter(|s| !s.starts_with("kind:")).cloned());
+                kinds.extend(
+                    n.from
+                        .iter()
+                        .filter_map(|s| s.strip_prefix("kind:"))
+                        .map(str::to_string),
+                );
+                names.extend(n.within.clone());
+                kinds.extend(n.kind.clone());
+            }
+            if let Some(c) = d.cells.get(&id) {
+                match &c.within {
+                    crate::makers::CellsWithin::Name(n) => {
+                        names.insert(n.clone());
+                    }
+                    crate::makers::CellsWithin::Kind(k) => {
+                        kinds.push(k.clone());
+                        names.extend(d.makers_of_kind(k).into_iter().filter(|m| *m != id));
+                    }
+                    crate::makers::CellsWithin::Sel(sel) => {
+                        sel_place = Some(Place::Of(sel.clone()))
+                    }
+                }
+                for f in c.frontage.iter().flatten() {
+                    match f.strip_prefix("kind:") {
+                        Some(k) => kinds.push(k.to_string()),
+                        None => {
+                            names.insert(f.clone());
+                        }
+                    }
+                }
+                kinds.extend(c.kind.clone());
+            }
+            kinds.sort();
+            kinds.dedup();
+            // A `kind:` selector reads every feature of that kind.
+            for (fid, f) in &d.features {
+                if f.kind.as_ref().is_some_and(|k| kinds.contains(k)) {
+                    names.insert(fid.clone());
+                }
+            }
+            for n in &names {
+                if *n == id {
+                    continue;
+                }
+                for t in self.targets(n) {
+                    edges.push((format!("reads {n}"), t));
+                }
+            }
+            if let Some(p) = &sel_place {
+                self.place_edges(p, &mut edges);
+            }
+            let kind_stmts: Vec<String> = kinds.iter().map(|k| format!("kind.{k}")).collect();
+            let mut statements = self.stmts_of(
+                [format!("{top}.{id}"), "world".into()]
+                    .iter()
+                    .chain(kind_stmts.iter())
+                    .map(String::as_str),
+            );
+            statements.sort();
+            defs.push((
+                NodeId::of("op", &id),
+                Def {
+                    subject: Some(Subject::entity(top, id.clone())),
+                    statements,
+                    edges,
+                    ..Def::default()
+                },
+            ));
+        }
         // Hand instances, their footprints and heights.
         let hands: Vec<String> = d.instances.keys().cloned().collect();
         for (id, i) in &d.instances {
@@ -1150,6 +1252,15 @@ impl<'w> ModelPlan<'w> {
                         format!("overlap {other}"),
                         view(NodeId::of("instance", other)),
                     ));
+                }
+            }
+            // An instance a step returned is held by every hand edit (`identity.md` 4.1).
+            if id
+                .split_once('#')
+                .is_some_and(|(m, _)| d.steps.contains_key(m))
+            {
+                for e in d.pins.keys().chain(d.clears.keys()) {
+                    edges.push((format!("edit {e}"), view(NodeId::of("edit", e))));
                 }
             }
             defs.push((
@@ -2109,6 +2220,7 @@ impl<'w> ModelPlan<'w> {
                     "pin" if late => vec![view(NodeId::of("height", id))],
                     "pin" | "clear" if !late => vec![view(NodeId::of("edit", id))],
                     "scatter" => vec![view(NodeId::of("held", id))],
+                    "network" | "cells" => vec![NodeId::of("op", id)],
                     "asset" if late => vec![NodeId::of("facts", id)],
                     "field" if !late => self
                         .chunks
@@ -2704,6 +2816,23 @@ impl Plan for ModelPlan<'_> {
                 Self::encode_geo(&mut e, self.p.placed.shapes.get(&s));
                 Self::val(e.finish(), self.early_diags(id))
             }
+            "op" => {
+                let mut e = Enc::new();
+                e.str("via-op-1");
+                match self.p.placed.made.get(&s) {
+                    Some(m) => {
+                        e.byte(1).len(m.things.len());
+                        for t in &m.things {
+                            e.str(&t.name).str(t.class);
+                            Self::encode_geo(&mut e, Some(&t.geo));
+                        }
+                    }
+                    None => {
+                        e.byte(0);
+                    }
+                }
+                Self::val(e.finish(), self.early_diags(id))
+            }
             "footprint" => {
                 let mut e = Enc::new();
                 e.str("via-footprint-1");
@@ -2724,7 +2853,9 @@ impl Plan for ModelPlan<'_> {
                 let mut e = Enc::new();
                 e.str("via-edit-1");
                 if let Some(p) = self.p.placed.pins.get(&s) {
-                    e.byte(1).str(&format!("{p:?}"));
+                    // `by` is part of what the pin does: it says which producers it holds.
+                    let by = self.p.decls.pins.get(&s).map(|x| &x.by);
+                    e.byte(1).str(&format!("{p:?} {by:?}"));
                 } else if let Some(c) = self.p.decls.clears.get(&s) {
                     e.byte(2).str(&format!(
                         "{:?} {:?} {:?} {:?}",
@@ -2752,6 +2883,14 @@ impl Plan for ModelPlan<'_> {
                                 .u64(p.origin.y as u64)
                                 .u64(p.facing as u64);
                         }
+                    }
+                    // A selection from a network or cells table: the place it resolved to.
+                    Some(Place::Of(sel)) if self.p.decls.is_maker_table(&sel.of) => {
+                        e.byte(2).str(&format!(
+                            "{:?} {:?}",
+                            self.p.placed.clears.get(&s),
+                            self.p.placed.selections.get(&format!("clear.{s}"))
+                        ));
                     }
                     _ => {
                         e.byte(0);

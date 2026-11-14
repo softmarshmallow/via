@@ -406,6 +406,76 @@ def json_count(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) 
     return []
 
 
+# --- names_count, names_kept (geometry.md 8, identity.md 23 to 26) ---------------------------
+
+
+def _names_of(path: Path) -> dict[str, list[tuple[int, int]]]:
+    """Names in a `features.json` (`build.md` 9.1), each with its outer-ring vertices in
+    millimetres, or the lines of a text file such as `instances/names.txt`: with its origin when
+    `x.npy` and `y.npy` of the same length lie beside it, else with no vertices."""
+    if path.suffix == ".json":
+        doc = _read_json(path)
+        feats = doc.get("features") if isinstance(doc, dict) else None
+        if not isinstance(feats, list):
+            raise NamedCheckError(f"{path.name}: no `features` list")
+        out: dict[str, list[tuple[int, int]]] = {}
+        for f in feats:
+            if not isinstance(f, dict) or not isinstance(f.get("name"), str):
+                continue
+            pts: list[tuple[int, int]] = []
+            for piece in f.get("pieces") or []:
+                pts.extend((_mm(p[0]), _mm(p[1])) for p in (piece.get("outer") or []))
+            for p in f.get("points") or []:
+                pts.append((_mm(p[0]), _mm(p[1])))
+            if isinstance(f.get("at"), list):
+                pts.append((_mm(f["at"][0]), _mm(f["at"][1])))
+            out[f["name"]] = pts
+        return out
+    names = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
+    # An instance names file (build.md 9.2) has its origins beside it, in millimetres: each name
+    # carries its origin, so `except_within` applies to instances as to features.
+    xs, ys = path.parent / "x.npy", path.parent / "y.npy"
+    if path.name == "names.txt" and xs.is_file() and ys.is_file():
+        x, y = np.load(xs), np.load(ys)
+        if len(x) == len(names) == len(y):
+            return {n: [(int(x[i]), int(y[i]))] for i, n in enumerate(names)}
+    return {n: [] for n in names}
+
+
+def names_count(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """Exactly `count` names in `path` start with `prefix`."""
+    names = [n for n in _names_of(work / args["path"]) if n.startswith(args["prefix"])]
+    if len(names) != args["count"]:
+        return [(f"check.{cid}", f"{args['count']} names starting {args['prefix']!r} in {args['path']}",
+                 str(len(names)))]
+    return []
+
+
+def names_kept(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """The names starting with `prefix` are the same set in `first` and `second`, and not empty.
+    With `except_within` (`[x0, y0, x1, y1]` metres, edges excluded), a name whose feature has a
+    vertex strictly inside the box in either file is left out of both sides first."""
+    a, b = _names_of(work / args["first"]), _names_of(work / args["second"])
+    box = args.get("except_within")
+
+    def near(pts: list[tuple[int, int]]) -> bool:
+        if box is None:
+            return False
+        x0, y0, x1, y1 = (_mm(v) for v in box)
+        return any(x0 < x < x1 and y0 < y < y1 for x, y in pts)
+
+    skip = {n for n, p in list(a.items()) + list(b.items()) if near(p)}
+    sa = {n for n in a if n.startswith(args["prefix"]) and n not in skip}
+    sb = {n for n in b if n.startswith(args["prefix"]) and n not in skip}
+    if not sa:
+        return [(f"check.{cid}", f"names starting {args['prefix']!r} in {args['first']}", "none")]
+    if sa != sb:
+        gone, new = sorted(sa - sb), sorted(sb - sa)
+        return [(f"check.{cid}", f"the same names starting {args['prefix']!r}",
+                 f"{len(gone)} gone ({', '.join(gone[:3])}), {len(new)} new ({', '.join(new[:3])})")]
+    return []
+
+
 # --- run reports (graph.md 6.3) ---------------------------------------------------------------
 
 
@@ -893,6 +963,8 @@ CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Fai
     "roundtrip_t": roundtrip_t,
     "stroke_measures": stroke_measures,
     "id_rule": id_rule,
+    "names_count": names_count,
+    "names_kept": names_kept,
 }
 
 

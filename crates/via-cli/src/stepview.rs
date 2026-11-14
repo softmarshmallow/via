@@ -47,6 +47,20 @@ fn refuse(code: i64, message: impl Into<String>) -> Refusal {
     }
 }
 
+/// The columns a feature list always has (`protocol.md` 3.3, 4.3); `class` joins them when the
+/// list holds a maker's output.
+const CORE_COLUMNS: [&str; 9] = [
+    "name",
+    "kind",
+    "authority",
+    "layer",
+    "coords",
+    "geometry",
+    "pieces",
+    "rings",
+    "ring_starts",
+];
+
 fn invalid(message: impl Into<String>) -> Refusal {
     refuse(-32602, message)
 }
@@ -479,6 +493,52 @@ impl<'a> View<'a> {
                 None => Err(invalid(format!("no feature is named `{n}`"))),
             }
         };
+        // A network or cells table (`geometry.md` 8.3): what it made, as region features.
+        let maker_rows = |n: &str| -> Option<Result<Vec<Row>, Refusal>> {
+            let top = ["network", "cells"]
+                .into_iter()
+                .find(|t| self.world.entity(t, n).is_some())?;
+            let r = self.world.rank(top, n);
+            if !self.visible(r) {
+                let layer = self.world.home(top, n).unwrap_or("").to_string();
+                return Some(Err(self.outside(&format!("{top}.{n}"), &layer)));
+            }
+            let prefix = format!("{n}#");
+            Some(Ok(all
+                .iter()
+                .filter(|row| row.name.starts_with(&prefix))
+                .cloned()
+                .collect()))
+        };
+        match select {
+            Value::String(s) if !s.contains(':') && s != "*" => {
+                if let Some(rows) = maker_rows(s) {
+                    return rows;
+                }
+            }
+            Value::Array(a)
+                if a.iter()
+                    .any(|v| v.as_str().is_some_and(|n| maker_rows(n).is_some())) =>
+            {
+                let mut out = Vec::new();
+                let mut names: Vec<&str> = a.iter().filter_map(Value::as_str).collect();
+                if names.len() != a.len() {
+                    return Err(invalid("select: a list of names"));
+                }
+                names.sort_by(|x, y| x.as_bytes().cmp(y.as_bytes()));
+                names.dedup();
+                for n in names {
+                    match maker_rows(n) {
+                        Some(rows) => out.extend(rows?),
+                        None => out.push(by_name(n)?),
+                    }
+                }
+                out.sort_by(|a, b| a.name.as_bytes().cmp(b.name.as_bytes()));
+                out.dedup_by(|a, b| a.name == b.name);
+                return Ok(out);
+            }
+            _ => {}
+        }
         match select {
             Value::String(s) if s == "*" => {
                 Ok(all.into_iter().filter(|r| self.visible(r.rank)).collect())
@@ -537,11 +597,42 @@ impl<'a> View<'a> {
         }
     }
 
+    /// A network's or cells table's row carries its class: the class letter its key starts with
+    /// (`identity.md` 2.3). `None` for a plain feature.
+    fn made_class(&self, r: &Row) -> Option<String> {
+        let (maker, key) = r.name.split_once('#')?;
+        if self.world.entity("network", maker).is_none()
+            && self.world.entity("cells", maker).is_none()
+        {
+            return None;
+        }
+        Some(
+            match key.as_bytes().first() {
+                Some(b'a') => "area",
+                Some(b'c') => "cell",
+                Some(b'b') => "rest",
+                _ => "",
+            }
+            .to_string(),
+        )
+    }
+
     /// A feature list (4.3) of these rows, with these attribute columns.
     fn feature_list(&self, rows: &[Row], columns: &Value) -> Result<Value, Refusal> {
+        // The core's own columns (protocol.md 3.3): an attribute of the same name is never a
+        // column, so it cannot overwrite them. Named in `columns`, or under `*`, the name gives
+        // the core column, which is always there. `class` is a core column when any row is a
+        // maker's output.
+        let made_any = rows.iter().any(|r| self.made_class(r).is_some());
+        let reserved =
+            |a: &str| CORE_COLUMNS.contains(&a) || (made_any && a == "class") || a.ends_with('?');
         let attrs: Vec<String> = match columns {
             Value::String(s) if s == "*" => {
-                let set: BTreeSet<&String> = rows.iter().flat_map(|r| r.attrs.keys()).collect();
+                let set: BTreeSet<&String> = rows
+                    .iter()
+                    .flat_map(|r| r.attrs.keys())
+                    .filter(|a| !reserved(a))
+                    .collect();
                 set.into_iter().cloned().collect()
             }
             Value::Array(a) => {
@@ -552,6 +643,7 @@ impl<'a> View<'a> {
                     .collect();
                 v.sort_by(|x, y| x.as_bytes().cmp(y.as_bytes()));
                 v.dedup();
+                v.retain(|a| !reserved(a));
                 v
             }
             Value::Null => Vec::new(),
@@ -597,6 +689,18 @@ impl<'a> View<'a> {
             "ring_starts".into(),
             put(Shaped::flat(Column::I64(starts)))?,
         );
+        // A network's or cells table's output carries its class (`geometry.md` 8.3); in a list
+        // that mixes made things with plain features, a plain feature's class is "".
+        if made_any {
+            m.insert(
+                "class".into(),
+                put(Shaped::flat(Column::Str(
+                    rows.iter()
+                        .map(|r| self.made_class(r).unwrap_or_default())
+                        .collect(),
+                )))?,
+            );
+        }
         for (k, get) in [
             ("name", (|r: &Row| r.name.clone()) as fn(&Row) -> String),
             ("kind", |r: &Row| r.kind.clone()),

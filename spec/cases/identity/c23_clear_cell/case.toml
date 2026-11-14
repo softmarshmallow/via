@@ -1,0 +1,70 @@
+format    = "via-case-1"
+summary   = "Obligation 1: a clear on = { of = plots, class = cell, near } with no radius, over the grid whose cells each hold one thing placed by a step; the report lists exactly one removed instance, the one in that cell, cause the clear."
+milestone = 3
+actions   = ["program", "trust", "base", "clear"]
+
+# geometry.md 8.4: 72 cells, one thing each. The cell holding [37.5, 30] is the west cell of the
+# south side of the area [20, 70] x [20, 70]; homes.py stands its thing at [37.5, 30]. The clear
+# is declared in homes.toml (layer 1), so its default by reaches the step homes (identity.md 4.1).
+
+[copy.grid]
+from = "spec/vectors/cells/grid"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.check.homes]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "homes#"
+count  = 72
+
+[action.clear]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "clear_one", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.clear.diag.empty]
+code    = "identity.clear_empty"
+records = 0
+
+[action.clear.check.gone]
+fn     = "no_origin_inside"
+build  = "build/w"
+at     = [37.5, 30]
+radius = 0.5
+prefix = "homes#"
+
+[action.clear.check.rest]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "homes#"
+count  = 71
+
+[action.clear.check.one]
+fn      = "json_count"
+path    = "build/w/changes.json"
+pointer = "/entries"
+count   = 1
+
+[action.clear.check.removed]
+fn     = "changes_inside"
+path   = "build/w/changes.json"
+prefix = "homes#"
+at     = [37.5, 30]
+radius = 0.5
+what   = ["removed"]
+cause  = { cause = "clear.one" }

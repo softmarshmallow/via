@@ -1,0 +1,3 @@
+[instance.lamp]
+asset = "lamp_post"
+on    = { of = "grid", class = "field", near = [45, 71] }

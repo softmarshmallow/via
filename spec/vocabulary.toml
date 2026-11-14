@@ -257,7 +257,7 @@ sections = ["Features"]
 [key."kind"]
 takes = "name"
 chapter = "authority"
-sections = ["Features"]
+sections = ["Features", "Networks and cells"]
 
 [key."authority"]
 takes = "string"
@@ -487,7 +487,7 @@ sections = ["Rules"]
 [key."spacing"]
 takes = "length"
 chapter = "rules"
-sections = ["Rules"]
+sections = ["Rules", "Networks and cells"]
 
 [key."ends"]
 takes = "string"
@@ -547,7 +547,42 @@ sections = ["Rules"]
 [key."within"]
 takes = "name or `{ of, class, near }`"
 chapter = "rules"
-sections = ["Rules"]
+sections = ["Rules", "Networks and cells"]
+
+[key."[network.<id>]"]
+takes = "table"
+chapter = "geometry"
+sections = ["Networks and cells"]
+
+[key."from"]
+takes = "list of names and `kind:` selectors"
+chapter = "geometry"
+sections = ["Networks and cells"]
+
+[key."[cells.<id>]"]
+takes = "table"
+chapter = "geometry"
+sections = ["Networks and cells"]
+
+[key."frontage"]
+takes = "list of names and `kind:` selectors"
+chapter = "geometry"
+sections = ["Networks and cells"]
+
+[key."depth"]
+takes = "length"
+chapter = "geometry"
+sections = ["Networks and cells"]
+
+[key."min_length"]
+takes = "length"
+chapter = "geometry"
+sections = ["Networks and cells"]
+
+[key."min_area"]
+takes = "number"
+chapter = "geometry"
+sections = ["Networks and cells"]
 
 [key."[change.<name>]"]
 takes = "table"

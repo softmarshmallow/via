@@ -42,7 +42,7 @@ Two words for what makes things:
 | Word | Meaning | Chapter |
 |---|---|---|
 | producer | A `run`, a `scatter` or a step: something that makes instances the author did not write one by one. A set is not a producer: its items take the class of what places it, so `by` never names a set (`identity.not_a_producer`). | rules |
-| maker | Anything whose output is named `<maker>#<place key>`: a producer, a network, a cells table, or a feature written with `where`. | identity |
+| maker | Anything whose output is named `<maker>#<place key>`: a producer, a network (`[network]`), a cells table (`[cells]`), or a feature written with `where`. | identity |
 
 ## 2. Rules for every document
 
@@ -51,8 +51,8 @@ Two words for what makes things:
 - An id matches `[a-z][a-z0-9_]*`, at most 48 bytes. Lowercase only, so two ids never collide as
   build file names on a case-insensitive file system (R20). An id holds no `.`, `:`, `#`, `@` or
   `/`.
-- One namespace per world holds every field, feature, instance, set, run, scatter, pin, clear, lock,
-  import, step and layer. Two of them with one id is an error that names both. Kinds (in libraries)
+- One namespace per world holds every field, feature, instance, set, run, scatter, network, cells
+  table, pin, clear, lock, import, step and layer. Two of them with one id is an error that names both. Kinds (in libraries)
   and changes each have their own namespace. A pack's asset ids are the pack's own namespace
   (`assets.md` 2.1). A `let` name that equals a field name is an error.
 - Reserved ids: `world` (the world file's own layer). Reserved place names: `start` and `end` (the
@@ -335,6 +335,23 @@ One grammar for features, instances, sets, rules and hand edits.
 | `within` | name or `{ of, class, near }` | The region a scatter is confined to: a region feature, a footprint feature, or a selected `area`, `cell`, `rest` or `piece` (`identity.md` 3). Never a produced name. | rules |
 | `seed` | | See Document. | numbers |
 
+### Networks and cells (`geometry`, `identity`)
+
+Two makers with no domain noun (R13, M3): what their areas and cells are for is said by the kind a
+library gives them. Both are named in `of` and `within`; neither is a producer (`by` never names one).
+
+| Key | Takes | Meaning | Chapter |
+|---|---|---|---|
+| `[network.<id>]` | table | The paths and region outlines its `from` selects, noded, with the junctions, edges and areas between them (`geometry.md` 8.1): `from`, `within`, `kind`. | geometry |
+| `from` | list of names and `kind:` selectors | On a network: the features noded, each one source: a path or region feature by id or place name, or every path and region feature of a kind, a step's included. A point named is `geom.network_point`. | geometry |
+| `within` | | See Rules. On a network: the region feature whose outline clips it. On a cells table: the regions divided: a network's id (every area of it), a region feature, `kind:<k>`, or `{ of, class, near }`. | geometry |
+| `kind` | | See Features. On a network or a cells table: the kind every area or cell takes, as a region feature of that kind. Default none: guides. | geometry |
+| `[cells.<id>]` | table | Regions divided into cells along their frontage (`geometry.md` 3.6, 8.2): `within`, `frontage`, `spacing`, `depth`, `min_length`, `min_area`, `kind`. | geometry |
+| `frontage` | list of names and `kind:` selectors | On a cells table: the sources whose sides the cells face; on a region feature, its outline when it is itself selected. Default every source. | geometry |
+| `spacing` | | See Rules. On a cells table: the least length of a cell along its frontage; a stretch of length `L` holds `floor(L / spacing)` cells, evenly. | geometry |
+| `depth` | length | On a cells table: how deep the cells reach from their frontage, above 0. | geometry |
+| `min_length`, `min_area` | length; number | On a cells table: a cell shorter along its frontage, or smaller in square metres, merges into its neighbour. Default 0. | geometry |
+
 ### Hand edits (`identity`)
 
 | Key | Takes | Meaning | Chapter |
@@ -465,7 +482,7 @@ chapter named decides it, for M1 track A unless said.
 | Word | Meaning | Chapter |
 |---|---|---|
 | `follows` | A path written along another feature (R18): `follows = { ref, span, offset }`, decided in `geometry.md` 4; M1, `span` included. | geometry |
-| network | Paths noded where they cross, with the areas between them (R13). A maker. How one is declared, for example from a `kind:` selection: (open), decided in M3 with the user syntax for areas and cells (R33). | geometry |
+| network | Paths noded where they cross, with the areas between them (R13). A maker, declared by `[network.<id>]` with `from` naming features or `kind:` selections (Networks and cells; `geometry.md` 8.1, decided in M3, R33). | geometry |
 | area | A region bounded by a network's paths, named `<maker>#<place key>`, class `area`. Not `face`, which is orientation. | geometry |
 | cell | One part of a region divided along a frontage (R13, R23), named `<maker>#<place key>`, class `cell`; what lies deeper than a cell's depth is class `rest`. The place key of a name is not a cell. | geometry |
 | mount on a kind | `[kind.<k>.mount.<name>]` (Kinds): a place every feature of the kind has, such as a deck's two ends, so two surfaces meet at a pair of mounts (R25, `surfaces.md` 3.1). | surfaces |
@@ -481,7 +498,7 @@ The M1 parser rejects each key or value below with `doc.not_yet` at its span, na
 | Words | Milestone |
 |---|---|
 | `worker = true` (`worker = false` is accepted in M1); `when = "generate"`; `clump` and its `members`, `shrink`, `around`; a model asset's `file` and `detail`; a field `file` naming a PNG, `channel`, `range` (PNG fields); `filter = "cubic"`; class `feature`; `for_each`; `checks`; `holds`; `route`; `collision` | M2 |
-| `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, user syntax for network, area and cell, classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
+| `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, `[network]`, `[cells]` and their `from`, `frontage`, `depth`, `min_length`, `min_area` (`geometry.md` 8), classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
 | `[import]`, `changes`, `footprint` on an import, `blend`, `give`, `[given]`, `accepts`, `after`, `exit` | M4 |
 | `type = "volume"`, `hosts`, `connector`, `solidity = "passable"` | M5 |
 | `when = "export"`, `chunk`, `[budget]` | M6 |

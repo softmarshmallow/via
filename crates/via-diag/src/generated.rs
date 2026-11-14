@@ -5,7 +5,7 @@ use crate::registry::{CoveredBy, Row};
 use crate::Severity;
 
 /// Every core code, sorted bytewise by code.
-pub(crate) static ROWS: [Row; 332] = [
+pub(crate) static ROWS: [Row; 334] = [
     Row {
         code: "asset.bad_footprint",
         severity: Severity::Error,
@@ -1709,7 +1709,7 @@ pub(crate) static ROWS: [Row; 332] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A stretch of frontage is shorter than one cell length, so it holds no cell. The record gives its\nposition.\nTo fix: Shorten cell_length, or lengthen the frontage.\nBad:   a stretch of 8 m with cell_length = 12\nFixed: the same stretch with cell_length = 8\n",
+        explain: "A stretch of frontage is shorter than one cell length, so it holds no cell. The record gives its\nposition.\nTo fix: Lower `spacing` (3.6's cell_length) in the [cells] table, or lengthen the frontage.\nBad:   a stretch of 8 m with spacing = 12\nFixed: the same stretch with spacing = 8\n",
     },
     Row {
         code: "geom.cell_small",
@@ -1800,6 +1800,17 @@ pub(crate) static ROWS: [Row; 332] = [
         explain: "A path that follows another feature at an offset breaks into pieces or touches itself (the offset\nis wider than a narrow bend allows). The result is never joined silently. The record gives each\ngap and the widest offset that holds.\nTo fix: Use at most that offset, or a shorter span.\nBad:   follows = { ref = \"a\", offset = -12 }\nFixed: follows = { ref = \"a\", offset = -6 }\n",
     },
     Row {
+        code: "geom.frontage_none",
+        severity: Severity::Warning,
+        chapter: "geometry",
+        milestone: 3,
+        summary: "A cells table's `frontage` selects no side of any region it divides, so nothing is divided (8.2; M3).",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "A cells table divides regions along their frontage, and its frontage selects no side of any\nregion it divides: no edge on a selected source lies on their shells, and no divided region is\nitself selected. Nothing is divided; every region is all rest.\nTo fix: Select the sources the cells should face, or leave frontage out to face every side.\nBad:   frontage = [\"east_a\"]   (a path on no side of the divided areas)\nFixed: frontage = [\"kind:rib\"]\n",
+    },
+    Row {
         code: "geom.internal",
         severity: Severity::Error,
         chapter: "geometry",
@@ -1864,6 +1875,17 @@ pub(crate) static ROWS: [Row; 332] = [
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "starts_at or ends_at names a whole path or a region, which has no one point to meet.\nTo fix: Name an end (a.end), a mount, or place a point feature on it with on and name that.\nBad:   ends_at = \"a\"   (a is a path)\nFixed: ends_at = \"a.end\"\n",
+    },
+    Row {
+        code: "geom.network_point",
+        severity: Severity::Error,
+        chapter: "geometry",
+        milestone: 3,
+        summary: "A network's `from` names a point feature; a network is made of paths and region outlines (8.1; M3).",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "A network's from names a point feature. A network nodes paths and region outlines; a point has no\nline to node. A kind: selector leaves a kind's points out by itself; a name must name a path or a\nregion.\nTo fix: Name a path or region, or place the point on one with on.\nBad:   from = [\"frame_a\", \"well\"]   (well is a point)\nFixed: from = [\"frame_a\"]\n",
     },
     Row {
         code: "geom.no_area",
@@ -4032,387 +4054,391 @@ pub mod codes {
         pub const FACE_UNKNOWN: Code = Code::from_index(161);
         /// `geom.follow_broken` (error): A path along another feature breaks into pieces; each gap and the widest offset that holds.
         pub const FOLLOW_BROKEN: Code = Code::from_index(162);
+        /// `geom.frontage_none` (warning): A cells table's `frontage` selects no side of any region it divides, so nothing is divided (8.2; M3).
+        pub const FRONTAGE_NONE: Code = Code::from_index(163);
         /// `geom.internal` (error): A guarantee check failed inside the kernel (Euler, closure, validity). A defect of ours; exit 3.
-        pub const INTERNAL: Code = Code::from_index(163);
+        pub const INTERNAL: Code = Code::from_index(164);
         /// `geom.many_rings` (error): `on`, `follows`, `interpolate` or `substring` on a region of more than one ring, which has no `t`.
-        pub const MANY_RINGS: Code = Code::from_index(164);
+        pub const MANY_RINGS: Code = Code::from_index(165);
         /// `geom.mask_dropped` (warning): A masked piece had no area on the lattice and was dropped.
-        pub const MASK_DROPPED: Code = Code::from_index(165);
+        pub const MASK_DROPPED: Code = Code::from_index(166);
         /// `geom.mask_empty` (warning): A mask is above 0 nowhere; the formula's text and its range of values.
-        pub const MASK_EMPTY: Code = Code::from_index(166);
+        pub const MASK_EMPTY: Code = Code::from_index(167);
         /// `geom.mask_tiny` (info): A masked region has pieces smaller than one grid cell; the count and positions; kept.
-        pub const MASK_TINY: Code = Code::from_index(167);
+        pub const MASK_TINY: Code = Code::from_index(168);
         /// `geom.meet_shape` (error): `starts_at` or `ends_at` names a whole path or a region.
-        pub const MEET_SHAPE: Code = Code::from_index(168);
+        pub const MEET_SHAPE: Code = Code::from_index(169);
+        /// `geom.network_point` (error): A network's `from` names a point feature; a network is made of paths and region outlines (8.1; M3).
+        pub const NETWORK_POINT: Code = Code::from_index(170);
         /// `geom.no_area` (warning): A network encloses no area.
-        pub const NO_AREA: Code = Code::from_index(169);
+        pub const NO_AREA: Code = Code::from_index(171);
         /// `geom.no_length` (error): `t`, `offset` or `follows` on a point, a zero-length thing or an empty region. (A run's is `run.no_length`, `rules.md` 5.)
-        pub const NO_LENGTH: Code = Code::from_index(170);
+        pub const NO_LENGTH: Code = Code::from_index(172);
         /// `geom.offset_empty` (warning): An inset left nothing.
-        pub const OFFSET_EMPTY: Code = Code::from_index(171);
+        pub const OFFSET_EMPTY: Code = Code::from_index(173);
         /// `geom.offset_split` (info): An inset split a piece; the count.
-        pub const OFFSET_SPLIT: Code = Code::from_index(172);
+        pub const OFFSET_SPLIT: Code = Code::from_index(174);
         /// `geom.overlap` (info): Two sources, or one with itself, run along one another; the stretch and the ids.
-        pub const OVERLAP: Code = Code::from_index(173);
+        pub const OVERLAP: Code = Code::from_index(175);
         /// `geom.range` (error): A point the kernel computed (offset, cut, stroke, join) is outside ±(2^31 - 1) mm.
-        pub const RANGE: Code = Code::from_index(174);
+        pub const RANGE: Code = Code::from_index(176);
         /// `geom.repeated_point` (warning): A point repeats the one before it; it is removed.
-        pub const REPEATED_POINT: Code = Code::from_index(175);
+        pub const REPEATED_POINT: Code = Code::from_index(177);
         /// `geom.self_crossing` (error): A written ring crosses itself, visits a point twice or doubles back; the first fault.
-        pub const SELF_CROSSING: Code = Code::from_index(176);
+        pub const SELF_CROSSING: Code = Code::from_index(178);
         /// `geom.smooth_not_path` (error): `smooth` on a feature without `path`.
-        pub const SMOOTH_NOT_PATH: Code = Code::from_index(177);
+        pub const SMOOTH_NOT_PATH: Code = Code::from_index(179);
         /// `geom.span_order` (error): A `span` on a path whose `from` is not less than its `to`.
-        pub const SPAN_ORDER: Code = Code::from_index(178);
+        pub const SPAN_ORDER: Code = Code::from_index(180);
         /// `geom.t_range` (error): A `t` or a `span` end outside 0 to 1, or `nan`.
-        pub const T_RANGE: Code = Code::from_index(179);
+        pub const T_RANGE: Code = Code::from_index(181);
         /// `geom.unowned_crossing` (warning): Two paths with kinds cross or touch with no owner of the meeting (2.7); names both.
-        pub const UNOWNED_CROSSING: Code = Code::from_index(180);
+        pub const UNOWNED_CROSSING: Code = Code::from_index(182);
     }
     /// The group `graph`, owned by `spec/graph.md`.
     pub mod graph {
         use crate::registry::Code;
         /// `graph.build_file_restored` (info): A build file differed from its record and was written again. Run diagnostic.
-        pub const BUILD_FILE_RESTORED: Code = Code::from_index(181);
+        pub const BUILD_FILE_RESTORED: Code = Code::from_index(183);
         /// `graph.busy` (error): Another build holds this build directory's lock. Run diagnostic.
-        pub const BUSY: Code = Code::from_index(182);
+        pub const BUSY: Code = Code::from_index(184);
         /// `graph.cycle` (error): References form a loop; names one loop in source order, each member with the key that makes its edge.
-        pub const CYCLE: Code = Code::from_index(183);
+        pub const CYCLE: Code = Code::from_index(185);
         /// `graph.for_each_empty` (info): A `for_each` selector matched nothing in the step's view; the step did not run. (M3)
-        pub const FOR_EACH_EMPTY: Code = Code::from_index(184);
+        pub const FOR_EACH_EMPTY: Code = Code::from_index(186);
         /// `graph.input_missing` (error): A step's declared input (`inputs`, `protocol.md` 1) does not exist; names the path. The step does not run (5.1).
-        pub const INPUT_MISSING: Code = Code::from_index(185);
+        pub const INPUT_MISSING: Code = Code::from_index(187);
         /// `graph.read_outside` (error): A worker asked for something outside its stratum; names it and the lowest layer that could read it. (M2)
-        pub const READ_OUTSIDE: Code = Code::from_index(186);
+        pub const READ_OUTSIDE: Code = Code::from_index(188);
         /// `graph.step_unstable` (warning): Under `--rerun-step`, a step gave another value for a matching trace; names both digests. Run diagnostic.
-        pub const STEP_UNSTABLE: Code = Code::from_index(187);
+        pub const STEP_UNSTABLE: Code = Code::from_index(189);
         /// `graph.store_corrupt` (warning): A store entry did not match its name or could not be read; it was dropped and its node ran again. Run diagnostic.
-        pub const STORE_CORRUPT: Code = Code::from_index(188);
+        pub const STORE_CORRUPT: Code = Code::from_index(190);
         /// `graph.store_unavailable` (warning): The store cannot be written; this build keeps nothing more. Run diagnostic.
-        pub const STORE_UNAVAILABLE: Code = Code::from_index(189);
+        pub const STORE_UNAVAILABLE: Code = Code::from_index(191);
     }
     /// The group `identity`, owned by `spec/identity.md`.
     pub mod identity {
         use crate::registry::Code;
         /// `identity.bad_id` (error): An id breaks `[a-z][a-z0-9_]*` or is longer than 48 bytes.
-        pub const BAD_ID: Code = Code::from_index(190);
+        pub const BAD_ID: Code = Code::from_index(192);
         /// `identity.bad_key` (error): A step returned a key that breaks 2.2, or an unknown class; says which rule (M2).
-        pub const BAD_KEY: Code = Code::from_index(191);
+        pub const BAD_KEY: Code = Code::from_index(193);
         /// `identity.clear_empty` (warning): A clear removed nothing (4.3).
-        pub const CLEAR_EMPTY: Code = Code::from_index(192);
+        pub const CLEAR_EMPTY: Code = Code::from_index(194);
         /// `identity.duplicate_id` (error): Two tables in one namespace share an id; names both, with file and line, across layers too.
-        pub const DUPLICATE_ID: Code = Code::from_index(193);
+        pub const DUPLICATE_ID: Code = Code::from_index(195);
         /// `identity.key_collision` (error): One step gave two things one key; names both positions (M2).
-        pub const KEY_COLLISION: Code = Code::from_index(194);
+        pub const KEY_COLLISION: Code = Code::from_index(196);
         /// `identity.key_in_text` (error): A produced name is written in a key that takes a name.
-        pub const KEY_IN_TEXT: Code = Code::from_index(195);
+        pub const KEY_IN_TEXT: Code = Code::from_index(197);
         /// `identity.lock_asset_missing` (error): A recorded item's asset is no longer bound by the pack (M3).
-        pub const LOCK_ASSET_MISSING: Code = Code::from_index(196);
+        pub const LOCK_ASSET_MISSING: Code = Code::from_index(198);
         /// `identity.lock_differs` (info): What the producers would now do inside a lock, and live names dropped for a recorded one, as counts (M3).
-        pub const LOCK_DIFFERS: Code = Code::from_index(197);
+        pub const LOCK_DIFFERS: Code = Code::from_index(199);
         /// `identity.lock_ground_moved` (warning): Recorded items stand on ground that moved; count and largest change (M3).
-        pub const LOCK_GROUND_MOVED: Code = Code::from_index(198);
+        pub const LOCK_GROUND_MOVED: Code = Code::from_index(200);
         /// `identity.lock_pin_clash` (error): A recorded item overlaps a pin; names both (M3).
-        pub const LOCK_PIN_CLASH: Code = Code::from_index(199);
+        pub const LOCK_PIN_CLASH: Code = Code::from_index(201);
         /// `identity.lock_rerecorded` (info): A record was replaced; counts of the difference (M3).
-        pub const LOCK_RERECORDED: Code = Code::from_index(200);
+        pub const LOCK_RERECORDED: Code = Code::from_index(202);
         /// `identity.lock_unrecorded` (error): A lock has no record (M3).
-        pub const LOCK_UNRECORDED: Code = Code::from_index(201);
+        pub const LOCK_UNRECORDED: Code = Code::from_index(203);
         /// `identity.near_none` (error): A maker has no candidate of the class asked for; lists every selection left with nothing.
-        pub const NEAR_NONE: Code = Code::from_index(202);
+        pub const NEAR_NONE: Code = Code::from_index(204);
         /// `identity.no_place` (error): A selection's `class` is `field` or `row`, which have no place (2.4).
-        pub const NO_PLACE: Code = Code::from_index(203);
+        pub const NO_PLACE: Code = Code::from_index(205);
         /// `identity.no_previous` (info): No baseline to report changes against.
-        pub const NO_PREVIOUS: Code = Code::from_index(204);
+        pub const NO_PREVIOUS: Code = Code::from_index(206);
         /// `identity.not_a_producer` (error): `by` names a set, or a maker that places no instances (a network, a cells table, a `where` feature).
-        pub const NOT_A_PRODUCER: Code = Code::from_index(205);
+        pub const NOT_A_PRODUCER: Code = Code::from_index(207);
         /// `identity.of_ambiguous` (error): `of` names a maker with several classes and no `class` (M3).
-        pub const OF_AMBIGUOUS: Code = Code::from_index(206);
+        pub const OF_AMBIGUOUS: Code = Code::from_index(208);
         /// `identity.on_both` (error): `on` has both `ref` and `of`.
-        pub const ON_BOTH: Code = Code::from_index(207);
+        pub const ON_BOTH: Code = Code::from_index(209);
         /// `identity.pin_in_clear` (warning): A pin stands inside a clear; names both.
-        pub const PIN_IN_CLEAR: Code = Code::from_index(208);
+        pub const PIN_IN_CLEAR: Code = Code::from_index(210);
         /// `identity.pin_in_keep_out` (warning): A pin stands where `keep_out` is above 0; names the field.
-        pub const PIN_IN_KEEP_OUT: Code = Code::from_index(209);
+        pub const PIN_IN_KEEP_OUT: Code = Code::from_index(211);
         /// `identity.pin_overlap` (warning): A pin overlaps an instance of a producer outside its `by`; names both.
-        pub const PIN_OVERLAP: Code = Code::from_index(210);
+        pub const PIN_OVERLAP: Code = Code::from_index(212);
         /// `identity.pin_removed` (info): What a pin removed: count and names.
-        pub const PIN_REMOVED: Code = Code::from_index(211);
+        pub const PIN_REMOVED: Code = Code::from_index(213);
         /// `identity.pins_overlap` (error): Two pins' footprints overlap; names both.
-        pub const PINS_OVERLAP: Code = Code::from_index(212);
+        pub const PINS_OVERLAP: Code = Code::from_index(214);
         /// `identity.reselected` (warning): A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (`build.md` 11.1).
-        pub const RESELECTED: Code = Code::from_index(213);
+        pub const RESELECTED: Code = Code::from_index(215);
         /// `identity.reserved` (error): An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r53, `surfaces.md` 1).
-        pub const RESERVED: Code = Code::from_index(214);
+        pub const RESERVED: Code = Code::from_index(216);
         /// `identity.unknown_lock` (error): `via lock` was given an id that is no lock (M3).
-        pub const UNKNOWN_LOCK: Code = Code::from_index(215);
+        pub const UNKNOWN_LOCK: Code = Code::from_index(217);
         /// `identity.unknown_maker` (error): `of` names nothing.
-        pub const UNKNOWN_MAKER: Code = Code::from_index(216);
+        pub const UNKNOWN_MAKER: Code = Code::from_index(218);
         /// `identity.unknown_place` (error): A part of a place name names nothing.
-        pub const UNKNOWN_PLACE: Code = Code::from_index(217);
+        pub const UNKNOWN_PLACE: Code = Code::from_index(219);
         /// `identity.unknown_producer` (error): `by` names nothing.
-        pub const UNKNOWN_PRODUCER: Code = Code::from_index(218);
+        pub const UNKNOWN_PRODUCER: Code = Code::from_index(220);
     }
     /// The group `load`, owned by `spec/build.md`.
     pub mod load {
         use crate::registry::Code;
         /// `load.bad_file` (error): An array file's header, size or shape is wrong, or a listed file is missing.
-        pub const BAD_FILE: Code = Code::from_index(219);
+        pub const BAD_FILE: Code = Code::from_index(221);
         /// `load.bad_target` (warning): An output feature's camera target (a name attribute) is missing, is not the resolved form `{ "at", "name" }` of 9.1, or lies within 1 mm of the eye in plan, or its eye height is missing or not a finite number (15.1); names the feature and the attribute. That feature gets no camera. Hint: check that its kind lists the attribute in `names` (`authority.md` 1.2) and gives the eye height a default.
-        pub const BAD_TARGET: Code = Code::from_index(220);
+        pub const BAD_TARGET: Code = Code::from_index(222);
         /// `load.fields_not_drawn` (info): The fields the loader neither drew nor kept, by name.
-        pub const FIELDS_NOT_DRAWN: Code = Code::from_index(221);
+        pub const FIELDS_NOT_DRAWN: Code = Code::from_index(223);
         /// `load.format` (error): A loader found no manifest, or a `format` it does not read; names `diagnostics.json` when present.
-        pub const FORMAT: Code = Code::from_index(222);
+        pub const FORMAT: Code = Code::from_index(224);
         /// `load.too_many_materials` (warning): A chunk names more materials than this loader draws; names the chunk and its materials (`fields.md` 7.1).
-        pub const TOO_MANY_MATERIALS: Code = Code::from_index(223);
+        pub const TOO_MANY_MATERIALS: Code = Code::from_index(225);
     }
     /// The group `num`, owned by `spec/numbers.md`.
     pub mod num {
         use crate::registry::Code;
         /// `num.empty_reduction` (error): A mean, minimum or maximum over a feature with no samples. Names the feature.
-        pub const EMPTY_REDUCTION: Code = Code::from_index(224);
+        pub const EMPTY_REDUCTION: Code = Code::from_index(226);
         /// `num.extent_empty` (error): `extent` has `x1 <= x0` or `y1 <= y0`. Any other wrong form is `doc.type`.
-        pub const EXTENT_EMPTY: Code = Code::from_index(225);
+        pub const EXTENT_EMPTY: Code = Code::from_index(227);
         /// `num.extent_not_multiple` (error): The extent's width or height is not a whole multiple of `resolution`. The hint keeps `x0`, `y0` and gives `x1`, `y1` rounded down and up, and the nearest resolutions that divide both widths.
-        pub const EXTENT_NOT_MULTIPLE: Code = Code::from_index(226);
+        pub const EXTENT_NOT_MULTIPLE: Code = Code::from_index(228);
         /// `num.not_finite` (error): A number in text is `inf` or `nan`.
-        pub const NOT_FINITE: Code = Code::from_index(227);
+        pub const NOT_FINITE: Code = Code::from_index(229);
         /// `num.not_finite_result` (error): A step or a stored feature value would store an infinite or NaN value. Names the step or feature and the row or position. A formula's is `formula.not_finite`.
-        pub const NOT_FINITE_RESULT: Code = Code::from_index(228);
+        pub const NOT_FINITE_RESULT: Code = Code::from_index(230);
         /// `num.out_of_range` (error): A number in text out of range: a length beyond plus or minus `2^31 - 1` mm, a facing beyond 64 bits, a double whose nearest value is infinite. Computed positions out of range are `geom.range`.
-        pub const OUT_OF_RANGE: Code = Code::from_index(229);
+        pub const OUT_OF_RANGE: Code = Code::from_index(231);
         /// `num.overflow` (error): A checked integer operation overflowed. Names the subject and the position.
-        pub const OVERFLOW: Code = Code::from_index(230);
+        pub const OVERFLOW: Code = Code::from_index(232);
         /// `num.resolution` (error): `resolution` is below 1 mm.
-        pub const RESOLUTION: Code = Code::from_index(231);
+        pub const RESOLUTION: Code = Code::from_index(233);
         /// `num.seed_range` (error): The world `seed` is negative.
-        pub const SEED_RANGE: Code = Code::from_index(232);
+        pub const SEED_RANGE: Code = Code::from_index(234);
         /// `num.seed_type` (error): A seed of the wrong form: a world seed not an integer; a scatter seed not a name, or a name that breaks the id grammar. The hint suggests a name, or the lower-cased form.
-        pub const SEED_TYPE: Code = Code::from_index(233);
+        pub const SEED_TYPE: Code = Code::from_index(235);
         /// `num.too_many_posts` (error): `nx * ny` exceeds the post limit. Names `nx`, `ny` and the limit.
-        pub const TOO_MANY_POSTS: Code = Code::from_index(234);
+        pub const TOO_MANY_POSTS: Code = Code::from_index(236);
         /// `num.too_precise` (error): A length is not a whole number of millimetres, or a facing not a whole number of millidegrees. The hint names the two nearest values that are.
-        pub const TOO_PRECISE: Code = Code::from_index(235);
+        pub const TOO_PRECISE: Code = Code::from_index(237);
     }
     /// The group `pack`, owned by `spec/assets.md`.
     pub mod pack {
         use crate::registry::Code;
         /// `pack.accept_refused` (error): `via pack accept` found errors; nothing written.
-        pub const ACCEPT_REFUSED: Code = Code::from_index(236);
+        pub const ACCEPT_REFUSED: Code = Code::from_index(238);
         /// `pack.bad_axes` (error): `front` or `up` is not one of the six signed axes, or both name one axis.
-        pub const BAD_AXES: Code = Code::from_index(237);
+        pub const BAD_AXES: Code = Code::from_index(239);
         /// `pack.bad_facts` (error): The facts file is not readable, or not in 4.1's form.
-        pub const BAD_FACTS: Code = Code::from_index(238);
+        pub const BAD_FACTS: Code = Code::from_index(240);
         /// `pack.bad_model` (error): A model is not readable glTF 2.0, holds a non-finite number or a bad index count, or uses an extension v0 does not read.
-        pub const BAD_MODEL: Code = Code::from_index(239);
+        pub const BAD_MODEL: Code = Code::from_index(241);
         /// `pack.material_repeat` (error): A material has `file` without `repeat`, or `repeat` without `file`.
-        pub const MATERIAL_REPEAT: Code = Code::from_index(240);
+        pub const MATERIAL_REPEAT: Code = Code::from_index(242);
         /// `pack.missing_file` (error): `root`, a file the pack names, or a URI a model references, does not exist. M1 checks `root` and a material's `file`; M2 adds models, `detail` copies and their URIs.
-        pub const MISSING_FILE: Code = Code::from_index(241);
+        pub const MISSING_FILE: Code = Code::from_index(243);
         /// `pack.not_found` (error): The `pack` string names no file; the roots searched, by place.
-        pub const NOT_FOUND: Code = Code::from_index(242);
+        pub const NOT_FOUND: Code = Code::from_index(244);
         /// `pack.outside_root` (error): A file reached outside `root`: an absolute URI, a `..` out of it, a scheme other than `data:`, a symbolic link.
-        pub const OUTSIDE_ROOT: Code = Code::from_index(243);
+        pub const OUTSIDE_ROOT: Code = Code::from_index(245);
         /// `pack.range` (error): A pack number out of range: `size` or `repeat` not above 0, `triangles`, `max_relief` below 0, a `colour` part outside 0 to 1.
-        pub const RANGE: Code = Code::from_index(244);
+        pub const RANGE: Code = Code::from_index(246);
         /// `pack.shadowed` (info): A pack name found in several roots.
-        pub const SHADOWED: Code = Code::from_index(245);
+        pub const SHADOWED: Code = Code::from_index(247);
         /// `pack.stale_facts` (info): The facts file holds ids the pack no longer has.
-        pub const STALE_FACTS: Code = Code::from_index(246);
+        pub const STALE_FACTS: Code = Code::from_index(248);
         /// `pack.unaccepted` (info): The pack has model assets and no facts file; revisions cannot be reported.
-        pub const UNACCEPTED: Code = Code::from_index(247);
+        pub const UNACCEPTED: Code = Code::from_index(249);
         /// `pack.unknown_material` (error): A `paint` names a material the pack lacks.
-        pub const UNKNOWN_MATERIAL: Code = Code::from_index(248);
+        pub const UNKNOWN_MATERIAL: Code = Code::from_index(250);
         /// `pack.unknown_taxon` (error): An asset's `taxon`, a selection or a `--taxon` filter names an undeclared taxon.
-        pub const UNKNOWN_TAXON: Code = Code::from_index(249);
+        pub const UNKNOWN_TAXON: Code = Code::from_index(251);
     }
     /// The group `place`, owned by `spec/rules.md`.
     pub mod place {
         use crate::registry::Code;
         /// `place.asset_or_set` (error): A placement writes both `asset` and `set`, or neither.
-        pub const ASSET_OR_SET: Code = Code::from_index(250);
+        pub const ASSET_OR_SET: Code = Code::from_index(252);
         /// `place.crowded` (warning): Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both.
-        pub const CROWDED: Code = Code::from_index(251);
+        pub const CROWDED: Code = Code::from_index(253);
         /// `place.gave_way` (info): A producer's candidates dropped by overlap and by relief, as counts, with their box.
-        pub const GAVE_WAY: Code = Code::from_index(252);
+        pub const GAVE_WAY: Code = Code::from_index(254);
         /// `place.keep_out` (warning): An instance stands where `keep_out` is above 0; names the field and the position.
-        pub const KEEP_OUT: Code = Code::from_index(253);
+        pub const KEEP_OUT: Code = Code::from_index(255);
         /// `place.margin_alone` (error): `margin` without `ground`.
-        pub const MARGIN_ALONE: Code = Code::from_index(254);
+        pub const MARGIN_ALONE: Code = Code::from_index(256);
         /// `place.no_footprint` (error): `ground` on an asset with no footprint; only a model measures a point footprint, `assets.md` 2.4 (M2).
-        pub const NO_FOOTPRINT: Code = Code::from_index(255);
+        pub const NO_FOOTPRINT: Code = Code::from_index(257);
         /// `place.no_position` (error): An instance or pin has neither `at` nor `on`; a run has no `on`.
-        pub const NO_POSITION: Code = Code::from_index(256);
+        pub const NO_POSITION: Code = Code::from_index(258);
         /// `place.on_form` (error): `span` in an instance's `on`, or `t` in a run's `on`. (`t` or `offset` on a thing with no length is `geom.no_length`.)
-        pub const ON_FORM: Code = Code::from_index(257);
+        pub const ON_FORM: Code = Code::from_index(259);
         /// `place.outside` (error): A hand instance or set item whose origin is outside the extent; not placed (8.4).
-        pub const OUTSIDE: Code = Code::from_index(258);
+        pub const OUTSIDE: Code = Code::from_index(260);
         /// `place.overlap` (error): Two hand instances' footprints overlap; names both.
-        pub const OVERLAP: Code = Code::from_index(259);
+        pub const OVERLAP: Code = Code::from_index(261);
         /// `place.range` (error): On an instance, run or set item: `scale` not above 0, `tint` below 0, `margin` below 0, or a `[lo, hi]` pair (only a scatter draws).
-        pub const RANGE: Code = Code::from_index(260);
+        pub const RANGE: Code = Code::from_index(262);
         /// `place.relief` (warning): Relief under an instance exceeds its asset's `max_relief`; gives both numbers and the position.
-        pub const RELIEF: Code = Code::from_index(261);
+        pub const RELIEF: Code = Code::from_index(263);
     }
     /// The group `protocol`, owned by `spec/protocol.md`.
     pub mod protocol {
         use crate::registry::Code;
         /// `protocol.absolute_path` (error): `command` holds an absolute path.
-        pub const ABSOLUTE_PATH: Code = Code::from_index(262);
+        pub const ABSOLUTE_PATH: Code = Code::from_index(264);
         /// `protocol.blob_digest` (error): A blob's bytes do not match its name (M2).
-        pub const BLOB_DIGEST: Code = Code::from_index(263);
+        pub const BLOB_DIGEST: Code = Code::from_index(265);
         /// `protocol.blob_header` (error): A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2) (M2).
-        pub const BLOB_HEADER: Code = Code::from_index(264);
+        pub const BLOB_HEADER: Code = Code::from_index(266);
         /// `protocol.code_folder` (error): The code folder is or holds the world's folder; move the script into its own folder.
-        pub const CODE_FOLDER: Code = Code::from_index(265);
+        pub const CODE_FOLDER: Code = Code::from_index(267);
         /// `protocol.column_mixed` (error): One attribute has two types across the selected kinds; names both kinds.
-        pub const COLUMN_MIXED: Code = Code::from_index(266);
+        pub const COLUMN_MIXED: Code = Code::from_index(268);
         /// `protocol.commit_refused` (error): `via step commit` found errors in the build; nothing written (M2).
-        pub const COMMIT_REFUSED: Code = Code::from_index(267);
+        pub const COMMIT_REFUSED: Code = Code::from_index(269);
         /// `protocol.crashed` (error): The worker exited during a call (M2).
-        pub const CRASHED: Code = Code::from_index(268);
+        pub const CRASHED: Code = Code::from_index(270);
         /// `protocol.deadline` (error): No answer by the deadline; which phase, `data.phase` (`initialize`, `step.call` or `cancel`), and the deadline in seconds, `data.deadline`.
-        pub const DEADLINE: Code = Code::from_index(269);
+        pub const DEADLINE: Code = Code::from_index(271);
         /// `protocol.explain_differs` (warning): A step sent two `explain` texts for one code.
-        pub const EXPLAIN_DIFFERS: Code = Code::from_index(270);
+        pub const EXPLAIN_DIFFERS: Code = Code::from_index(272);
         /// `protocol.failed` (error): A plain command exited non-zero; `data.exit`.
-        pub const FAILED: Code = Code::from_index(271);
+        pub const FAILED: Code = Code::from_index(273);
         /// `protocol.field_file` (error): A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field` (M2).
-        pub const FIELD_FILE: Code = Code::from_index(272);
+        pub const FIELD_FILE: Code = Code::from_index(274);
         /// `protocol.for_each_form` (error): `for_each` is not `kind:<name>` (M2).
-        pub const FOR_EACH_FORM: Code = Code::from_index(273);
+        pub const FOR_EACH_FORM: Code = Code::from_index(275);
         /// `protocol.framing` (error): A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor (M2).
-        pub const FRAMING: Code = Code::from_index(274);
+        pub const FRAMING: Code = Code::from_index(276);
         /// `protocol.input_undeclared` (error): `input.open` named a path not in `inputs` (M2).
-        pub const INPUT_UNDECLARED: Code = Code::from_index(275);
+        pub const INPUT_UNDECLARED: Code = Code::from_index(277);
         /// `protocol.key_shadows` (error): A returned key equals a name the step can see (M2).
-        pub const KEY_SHADOWS: Code = Code::from_index(276);
+        pub const KEY_SHADOWS: Code = Code::from_index(278);
         /// `protocol.message_too_large` (error): A frame over 16 MiB, `data.bytes` long; send the data as a blob (M2).
-        pub const MESSAGE_TOO_LARGE: Code = Code::from_index(277);
+        pub const MESSAGE_TOO_LARGE: Code = Code::from_index(279);
         /// `protocol.no_entry` (error): The script has no top-level function named after `when` (M2).
-        pub const NO_ENTRY: Code = Code::from_index(278);
+        pub const NO_ENTRY: Code = Code::from_index(280);
         /// `protocol.no_explain` (warning): A step sent a code with no `explain` text.
-        pub const NO_EXPLAIN: Code = Code::from_index(279);
+        pub const NO_EXPLAIN: Code = Code::from_index(281);
         /// `protocol.no_output` (error): A generate step returned no document (M2).
-        pub const NO_OUTPUT: Code = Code::from_index(280);
+        pub const NO_OUTPUT: Code = Code::from_index(282);
         /// `protocol.no_program` (error): `command[0]` is no configured program and no file, or is a `.bat`/`.cmd`; the hint gives `via config program`.
-        pub const NO_PROGRAM: Code = Code::from_index(281);
+        pub const NO_PROGRAM: Code = Code::from_index(283);
         /// `protocol.output_file` (error): A returned `file` leaves `out` or names nothing (M2).
-        pub const OUTPUT_FILE: Code = Code::from_index(282);
+        pub const OUTPUT_FILE: Code = Code::from_index(284);
         /// `protocol.output_json` (error): A plain command's `out/diagnostics.json` is not a list of diagnostic objects.
-        pub const OUTPUT_JSON: Code = Code::from_index(283);
+        pub const OUTPUT_JSON: Code = Code::from_index(285);
         /// `protocol.output_table` (error): A returned document holds a table or key a step may not return, or a lint or export returned one.
-        pub const OUTPUT_TABLE: Code = Code::from_index(284);
+        pub const OUTPUT_TABLE: Code = Code::from_index(286);
         /// `protocol.output_twice` (error): A worker returned a document and wrote `document.toml` (M2).
-        pub const OUTPUT_TWICE: Code = Code::from_index(285);
+        pub const OUTPUT_TWICE: Code = Code::from_index(287);
         /// `protocol.raised` (error): The step raised an exception it did not catch; `data.exception` (M2).
-        pub const RAISED: Code = Code::from_index(286);
+        pub const RAISED: Code = Code::from_index(288);
         /// `protocol.slow_exit` (info): A worker had to be killed after `shutdown` (M2).
-        pub const SLOW_EXIT: Code = Code::from_index(287);
+        pub const SLOW_EXIT: Code = Code::from_index(289);
         /// `protocol.start` (error): The process could not be started; `data.kind` (6.2).
-        pub const START: Code = Code::from_index(288);
+        pub const START: Code = Code::from_index(290);
         /// `protocol.unknown_library` (error): A `lib:` element names a library not in `include`; the nearest name.
-        pub const UNKNOWN_LIBRARY: Code = Code::from_index(289);
+        pub const UNKNOWN_LIBRARY: Code = Code::from_index(291);
         /// `protocol.untrusted` (error): A generate step is not trusted and has no committed result; the hint is `via trust` (M2).
-        pub const UNTRUSTED: Code = Code::from_index(290);
+        pub const UNTRUSTED: Code = Code::from_index(292);
         /// `protocol.untrusted_result` (info): An untrusted step was built from its committed result, which matched (M2).
-        pub const UNTRUSTED_RESULT: Code = Code::from_index(291);
+        pub const UNTRUSTED_RESULT: Code = Code::from_index(293);
         /// `protocol.untrusted_skipped` (warning): An untrusted lint or export step was skipped.
-        pub const UNTRUSTED_SKIPPED: Code = Code::from_index(292);
+        pub const UNTRUSTED_SKIPPED: Code = Code::from_index(294);
         /// `protocol.untrusted_stale` (error): A committed result's static key or a read of its trace differs from the current build; names the first difference (M2).
-        pub const UNTRUSTED_STALE: Code = Code::from_index(293);
+        pub const UNTRUSTED_STALE: Code = Code::from_index(295);
         /// `protocol.version` (error): The worker speaks another protocol version; both versions, `data.engine` and `data.worker` (M2).
-        pub const VERSION: Code = Code::from_index(294);
+        pub const VERSION: Code = Code::from_index(296);
         /// `protocol.when_unserved` (error): The worker's `capabilities.when` lacks the step's `when`, `data.when` (M2).
-        pub const WHEN_UNSERVED: Code = Code::from_index(295);
+        pub const WHEN_UNSERVED: Code = Code::from_index(297);
     }
     /// The group `run`, owned by `spec/rules.md`.
     pub mod run {
         use crate::registry::Code;
         /// `run.count` (error): `count` below 1, or below 2 with `ends = "both"` on an open stretch (M3).
-        pub const COUNT: Code = Code::from_index(296);
+        pub const COUNT: Code = Code::from_index(298);
         /// `run.count_or_spacing` (error): A run writes both `count` and `spacing`, or neither (M3).
-        pub const COUNT_OR_SPACING: Code = Code::from_index(297);
+        pub const COUNT_OR_SPACING: Code = Code::from_index(299);
         /// `run.no_length` (error): The run's `on` names a thing with no length, or its stretch is zero millimetres (M3).
-        pub const NO_LENGTH: Code = Code::from_index(298);
+        pub const NO_LENGTH: Code = Code::from_index(300);
         /// `run.outside` (warning): Members fell outside the extent and were not made; gives the count (M3).
-        pub const OUTSIDE: Code = Code::from_index(299);
+        pub const OUTSIDE: Code = Code::from_index(301);
     }
     /// The group `scatter`, owned by `spec/rules.md`.
     pub mod scatter {
         use crate::registry::Code;
         /// `scatter.clump` (error): `clump` breaks 7.3: both forms, no `radius`, a value out of range, or `around` naming a non-producer (M2).
-        pub const CLUMP: Code = Code::from_index(300);
+        pub const CLUMP: Code = Code::from_index(302);
         /// `scatter.empty` (warning): A scatter placed nothing; names the stage that removed the last candidate.
-        pub const EMPTY: Code = Code::from_index(301);
+        pub const EMPTY: Code = Code::from_index(303);
         /// `scatter.keep_out_twice` (info): `density` reads a `keep_out` field, which the scatter already applies.
-        pub const KEEP_OUT_TWICE: Code = Code::from_index(302);
+        pub const KEEP_OUT_TWICE: Code = Code::from_index(304);
         /// `scatter.range` (error): A `[lo, hi]` with `lo > hi`, a `scale` not above 0, a `tint` below 0, a `jitter` outside 0 to 1, a `spacing` not above 0, or a `weight` not above 0.
-        pub const RANGE: Code = Code::from_index(303);
+        pub const RANGE: Code = Code::from_index(305);
         /// `scatter.within` (error): `within` names a path or a point.
-        pub const WITHIN: Code = Code::from_index(304);
+        pub const WITHIN: Code = Code::from_index(306);
     }
     /// The group `set`, owned by `spec/rules.md`.
     pub mod set {
         use crate::registry::Code;
         /// `set.empty` (error): A set has no items (M3).
-        pub const EMPTY: Code = Code::from_index(305);
+        pub const EMPTY: Code = Code::from_index(307);
         /// `set.unknown` (error): `set` names no set (M3).
-        pub const UNKNOWN: Code = Code::from_index(306);
+        pub const UNKNOWN: Code = Code::from_index(308);
         /// `set.unused` (info): A set nothing places (M3).
-        pub const UNUSED: Code = Code::from_index(307);
+        pub const UNUSED: Code = Code::from_index(309);
     }
     /// The group `surface`, owned by `spec/surfaces.md`.
     pub mod surface {
         use crate::registry::Code;
         /// `surface.apart` (error): Two paired mounts lie at different plan points; gives both.
-        pub const APART: Code = Code::from_index(308);
+        pub const APART: Code = Code::from_index(310);
         /// `surface.bound` (error): Its `bound` is not above 0 or not finite; gives the value.
-        pub const BOUND: Code = Code::from_index(309);
+        pub const BOUND: Code = Code::from_index(311);
         /// `surface.clipped` (info): Its bound reaches beyond the extent; the share lost.
-        pub const CLIPPED: Code = Code::from_index(310);
+        pub const CLIPPED: Code = Code::from_index(312);
         /// `surface.connector` (error): Different connectors; names both.
-        pub const CONNECTOR: Code = Code::from_index(311);
+        pub const CONNECTOR: Code = Code::from_index(313);
         /// `surface.empty_region` (error): A region given to `relief` has zero area.
-        pub const EMPTY_REGION: Code = Code::from_index(312);
+        pub const EMPTY_REGION: Code = Code::from_index(314);
         /// `surface.facing` (error): Two paired mounts do not face opposite ways; both bearings.
-        pub const FACING: Code = Code::from_index(313);
+        pub const FACING: Code = Code::from_index(315);
         /// `surface.fold` (error): Its strip overlaps itself; position and the largest bound that holds.
-        pub const FOLD: Code = Code::from_index(314);
+        pub const FOLD: Code = Code::from_index(316);
         /// `surface.gap` (error): The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: "make the two sides equal: change \<a\> or \<b\>, or add an effect of \<owner\> that sets the ground to \<z\>".
-        pub const GAP: Code = Code::from_index(315);
+        pub const GAP: Code = Code::from_index(317);
         /// `surface.ground_off_terrain` (error): `ground` on an instance that stands on a kind surface.
-        pub const GROUND_OFF_TERRAIN: Code = Code::from_index(316);
+        pub const GROUND_OFF_TERRAIN: Code = Code::from_index(318);
         /// `surface.host_missing` (error): What it is placed `on`, or the owner of the mount it is placed on, was not placed (4.1).
-        pub const HOST_MISSING: Code = Code::from_index(317);
+        pub const HOST_MISSING: Code = Code::from_index(319);
         /// `surface.meets_self` (error): `meets` names the mount itself.
-        pub const MEETS_SELF: Code = Code::from_index(318);
+        pub const MEETS_SELF: Code = Code::from_index(320);
         /// `surface.meets_twice` (error): The mount is in two `meets` pairs; names both others.
-        pub const MEETS_TWICE: Code = Code::from_index(319);
+        pub const MEETS_TWICE: Code = Code::from_index(321);
         /// `surface.mount_face` (error): A face word on a kind mount. Hint: a number, 0 along travel, 180 against.
-        pub const MOUNT_FACE: Code = Code::from_index(320);
+        pub const MOUNT_FACE: Code = Code::from_index(322);
         /// `surface.name_clash` (error): A surface and a mount share a name.
-        pub const NAME_CLASH: Code = Code::from_index(321);
+        pub const NAME_CLASH: Code = Code::from_index(323);
         /// `surface.off_bound` (warning): Part of its footprint lies outside its surface's bound; the share.
-        pub const OFF_BOUND: Code = Code::from_index(322);
+        pub const OFF_BOUND: Code = Code::from_index(324);
         /// `surface.outside` (error): Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code.
-        pub const OUTSIDE: Code = Code::from_index(323);
+        pub const OUTSIDE: Code = Code::from_index(325);
         /// `surface.owner_shape` (error): A surface on a point kind, a path owner without `bound`, or a region owner with one.
-        pub const OWNER_SHAPE: Code = Code::from_index(324);
+        pub const OWNER_SHAPE: Code = Code::from_index(326);
         /// `surface.through` (warning): Its height reaches through another surface above its origin; names it.
-        pub const THROUGH: Code = Code::from_index(325);
+        pub const THROUGH: Code = Code::from_index(327);
         /// `surface.too_early` (error): `meetings()` called at `generate`.
-        pub const TOO_EARLY: Code = Code::from_index(326);
+        pub const TOO_EARLY: Code = Code::from_index(328);
         /// `surface.two_terrains` (error): Two surface fields at the top level. Hint: make one a kind's surface.
-        pub const TWO_TERRAINS: Code = Code::from_index(327);
+        pub const TWO_TERRAINS: Code = Code::from_index(329);
         /// `surface.unknown_mount` (error): `meets` names a mount the kind lacks; lists the kind's mounts.
-        pub const UNKNOWN_MOUNT: Code = Code::from_index(328);
+        pub const UNKNOWN_MOUNT: Code = Code::from_index(330);
         /// `surface.unknown_surface` (error): `surface` names a surface the kind lacks; lists the kind's surfaces.
-        pub const UNKNOWN_SURFACE: Code = Code::from_index(329);
+        pub const UNKNOWN_SURFACE: Code = Code::from_index(331);
         /// `surface.unmet` (warning): A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector \<c\> here: `ends_at = \"<place>\"`".
-        pub const UNMET: Code = Code::from_index(330);
+        pub const UNMET: Code = Code::from_index(332);
         /// `surface.which` (error): `on` a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it `on` a mount.
-        pub const WHICH: Code = Code::from_index(331);
+        pub const WHICH: Code = Code::from_index(333);
     }
 }

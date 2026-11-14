@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = "A lamp on = { of = grid, class = edge, near }; move its rib far away (y70 to y95): the lamp lands on the next rib's edge, at [45, 98], and identity.reselected names both edges in the run report, exit 0."
+milestone = 3
+actions   = ["program", "trust", "base", "far"]
+
+# Near [45, 71], once y70 is gone, the nearest edge is ribs#y95's from [20, 95] to [70, 95], 24 m
+# away (ribs#x20's is 25 m): t = 0.5 is [45, 95], offset 3 north.
+
+[copy.grid]
+from = "spec/vectors/cells/grid"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "lamp", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.far]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "lamp", "--change", "far", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.far.diag.reselected]
+code = "identity.reselected"
+from = "run"
+
+[action.far.check.lamp]
+fn    = "instance_at"
+build = "build/w"
+name  = "lamp"
+at    = [45, 98]

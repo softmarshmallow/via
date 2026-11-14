@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "The grid of 8.4 as kernel input; network: 32 junctions, 40 edges, 9 areas, 1 component; Euler at both levels and closure exact; geom.dead_end."
+milestone = 3
+actions   = ["op"]
+
+# geometry.md 8.4's counts: 16 crossings and 16 ends; 8 ribs of 5 edges; 32 - 40 + 9 = 1.
+# The same linework a world declares with [network.grid] (n01).
+
+[action.op]
+via         = ["kernel", "network", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.dead_end]
+code    = "geom.dead_end"
+subject = "cli"
+
+[action.op.check.valid]
+fn    = "network_valid"
+path  = "out.json"
+input = "in.json"
+
+[action.op.check.junctions]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/junctions"
+count   = 32
+
+[action.op.check.edges]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/edges"
+count   = 40
+
+[action.op.check.areas]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/areas"
+count   = 9
+
+[action.op.file.components]
+path    = "out.json"
+pointer = "/components"
+value   = 1

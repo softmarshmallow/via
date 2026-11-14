@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A network whose from names a point feature: geom.network_point naming it, exit 1."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.point]
+code    = "geom.network_point"
+subject = "network.net"

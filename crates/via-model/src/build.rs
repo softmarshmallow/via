@@ -690,6 +690,7 @@ pub(crate) fn finish_from(
     }
     out.removed_by = produced.removed_by;
     let mut all: Vec<Placement> = Vec::new();
+    hand.retain(|p| !produced.stepped.contains(&p.name));
     all.append(&mut hand);
     all.append(&mut late);
     all.extend(produced.instances);
@@ -787,6 +788,37 @@ pub(crate) fn finish_from(
                 names,
                 output: kind.and_then(|k| k.output.clone()),
                 rings,
+            },
+        );
+    }
+    // A network's areas and a cells table's cells and rest pieces (`build.md` 9.1, `geometry.md`
+    // 8): region features under their produced names, of the table's kind (rest: none).
+    for (name, kind, region) in crate::makers::region_features(&placed.made) {
+        let k = kind.as_ref().and_then(|k| decls.kinds.get(k));
+        out.features.insert(
+            name,
+            FeatureOut {
+                tier: kind
+                    .as_ref()
+                    .map(|_| k.and_then(|k| k.authority).unwrap_or(Tier::Derived)),
+                kind,
+                shape: "region".into(),
+                points: ring_points(&region),
+                facing: None,
+                attrs: BTreeMap::new(),
+                attr_types: BTreeMap::new(),
+                names: BTreeMap::new(),
+                output: k.and_then(|k| k.output.clone()),
+                rings: region
+                    .pieces
+                    .iter()
+                    .map(|pc| {
+                        std::iter::once(&pc.shell)
+                            .chain(pc.holes.iter())
+                            .map(|r| r.iter().map(|q| (q.x, q.y)).collect())
+                            .collect()
+                    })
+                    .collect(),
             },
         );
     }
@@ -936,6 +968,15 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         return s;
     }
     let base = id.split('.').next().unwrap_or(id);
+    // A network's or cells table's output (`geometry.md` 8): its table and what its keys read.
+    let maker = base.split('#').next().unwrap_or(base);
+    if let Some(top) = d.maker_top(maker) {
+        s.insert(format!("{top}.{maker}"));
+        for n in d.maker_reads(maker) {
+            s.extend(feature_deps(d, &n, seen));
+        }
+        return s;
+    }
     if let Some(f) = d.features.get(base) {
         s.insert(format!("feature.{base}"));
         if let Some(k) = &f.kind {
@@ -1021,6 +1062,14 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
         let s = feature_deps(d, id, &mut BTreeSet::new());
         feature_sets.insert(id.clone(), s.clone());
         out.deps.insert(("feature".into(), id.clone()), s);
+    }
+    for m in placed.made.values() {
+        for t in &m.things {
+            if matches!(t.geo, Geo::Region { .. }) {
+                let s = feature_deps(d, &t.name, &mut BTreeSet::new());
+                out.deps.insert(("feature".into(), t.name.clone()), s);
+            }
+        }
     }
     for id in d.instances.keys().chain(d.pins.keys()) {
         let s = feature_deps(d, id, &mut BTreeSet::new());
@@ -1178,8 +1227,18 @@ fn unowned_crossings(decls: &Decls, placed: &Placed, diags: &mut Vec<Diag>) {
             .iter()
             .any(|n| matches!(a.attrs.get(n), Some(crate::decl::Attr::Text(t)) if base(t) == other))
     };
+    // Every two inputs of one network own their crossings (`geometry.md` 8.1, 2.7).
+    let in_one_network = |a: &str, b: &str| {
+        placed
+            .made
+            .values()
+            .any(|m| m.inputs.iter().any(|x| x == a) && m.inputs.iter().any(|x| x == b))
+    };
     for (k, (ia, fa, la)) in paths.iter().enumerate() {
         for (ib, fb, lb) in &paths[k + 1..] {
+            if in_one_network(ia, ib) {
+                continue;
+            }
             if follows(fa, ib) || follows(fb, ia) || names_other(fa, ib) || names_other(fb, ia) {
                 continue;
             }

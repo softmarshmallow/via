@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "of = grid (a network) with no class: identity.of_ambiguous listing junction, edge, area, exit 1. class = field: identity.no_place, exit 1."
+milestone = 3
+actions   = ["program", "trust", "ambiguous", "field"]
+
+# The two changes are change files laid in this case's folder (bare.toml, field.toml), not inline,
+# so the base world stays valid for the other grid cases (documents.md 6: unrequested inline
+# changes are checked too).
+
+[copy.grid]
+from = "spec/vectors/cells/grid"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.ambiguous]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "bare.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+# A network makes three classes (identity.md 2.3), in that order.
+[action.ambiguous.diag.ambiguous]
+code = "identity.of_ambiguous"
+data = { classes = ["junction", "edge", "area"] }
+
+[action.field]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "field.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.field.diag.no_place]
+code = "identity.no_place"

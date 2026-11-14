@@ -164,7 +164,7 @@ with no cycle: plan, then pad, then surface, then height. These are `graph.md`'s
 | Reference | Edge from | Edge to |
 |---|---|---|
 | `on.ref` | the named thing's resolved shape, or the plan node of the instance or set item it names | the placed thing's plan |
-| `on = { of, class, near }` | the producer's held output (`identity.md` 4.1) | the placed thing's plan |
+| `on = { of, class, near }` | the producer's held output (`identity.md` 4.1); for a network or a cells table, its node (`geometry.md` 8.3) | the placed thing's plan |
 | `set` on an instance or run | the set table | each item's plan |
 | `ground` | the instance's plan and its asset's footprint | the footprint feature, and so every field its kind writes |
 | (height) | the final surface | each instance's height |
@@ -523,6 +523,13 @@ Pins, clears and locks are intent at a place, never against a produced name (R3)
 defines them, their order (lock, then clear, then pin) and their two stages. This chapter fixes only
 that every producer, rules and steps alike, has its hand edits applied after it gives way and
 before anything reads its instances (`clump.around`, a step, the checks).
+
+On generated content (R13): a network or a cells table (`geometry.md` 8) is a maker, not a
+producer, so a hand edit never acts on it and `by` never names it. A hand edit acts on what
+producers place there: a clear `on` a selected cell removes the instances whose origin lies in it,
+from every producer its `by` reaches, a step's included; a pin inside a cell removes what its
+footprint overlaps and says so (`identity.md` 4.2, 4.3). The cells themselves stay, since other
+things are built on them (`identity.md` 4.1).
 
 ## 10. Library forms that lower to rules (M3, M5)
 

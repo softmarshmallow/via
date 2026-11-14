@@ -3,8 +3,8 @@ summary   = "A world on lib/packs/primitive.toml, no model files: exit 0; triang
 milestone = 1
 actions   = ["build", "list"]
 
-# assets.md 6.1's nine assets sort by id: box_small, bush_round, fence_post, fern_low, house_low,
-# lamp_post, rock_a, shed_gable, tree_oak; every shape is used. The build places one of each of
+# assets.md 6.1's ten assets sort by id: box_small, bush_round, fence_post, fern_low, house_low,
+# house_narrow, lamp_post, rock_a, shed_gable, tree_oak; every shape is used. The build places one of each of
 # seven, 7 m apart, so no two overlap.
 
 [copy.pack]
@@ -44,22 +44,28 @@ pointer = "/triangles"
 line    = 5
 value   = 12
 
-[action.list.file.t_lamp_post]
+[action.list.file.t_house_narrow]
 stream  = "stdout"
 pointer = "/triangles"
 line    = 6
+value   = 12
+
+[action.list.file.t_lamp_post]
+stream  = "stdout"
+pointer = "/triangles"
+line    = 7
 value   = 60
 
 [action.list.file.t_shed_gable]
 stream  = "stdout"
 pointer = "/triangles"
-line    = 8
+line    = 9
 value   = 8
 
 [action.list.file.t_tree_oak]
 stream  = "stdout"
 pointer = "/triangles"
-line    = 9
+line    = 10
 value   = 224
 
 [action.list.file.id_box_small]
@@ -86,20 +92,26 @@ pointer = "/id"
 line    = 5
 value   = "house_low"
 
-[action.list.file.id_lamp_post]
+[action.list.file.id_house_narrow]
 stream  = "stdout"
 pointer = "/id"
 line    = 6
+value   = "house_narrow"
+
+[action.list.file.id_lamp_post]
+stream  = "stdout"
+pointer = "/id"
+line    = 7
 value   = "lamp_post"
 
 [action.list.file.id_shed_gable]
 stream  = "stdout"
 pointer = "/id"
-line    = 8
+line    = 9
 value   = "shed_gable"
 
 [action.list.file.id_tree_oak]
 stream  = "stdout"
 pointer = "/id"
-line    = 9
+line    = 10
 value   = "tree_oak"

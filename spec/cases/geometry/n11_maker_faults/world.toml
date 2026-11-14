@@ -1,0 +1,32 @@
+# geometry.md 8.1 and 8.2: a maker's faults, each named at its key.
+
+name       = "faults"
+extent     = [0, 0, 100, 100]
+resolution = 0.5
+include    = ["zones"]
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.r]
+region = [[10, 10], [90, 10], [90, 90], [10, 90]]
+
+[instance.lamp]
+asset = "lamp_post"
+at    = [50, 50]
+
+# 8.2: every key out of range is said, each naming its key: two records.
+[cells.bad]
+within  = "r"
+spacing = 0
+depth   = -1
+
+# 8.1: a declared name that is not a path or region feature.
+[network.inst]
+from = ["r", "lamp"]
+
+# 8.1 (Open): a kind with effects given to a maker's areas is not yet.
+[network.fx]
+from = ["r"]
+kind = "wet"

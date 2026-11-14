@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "A network of guides by name (section 5's cross and a far ring); move a vertex of the far ring: 5 areas before and after, every area name unchanged."
+milestone = 3
+actions   = ["base", "moved"]
+
+# identity.md 2.3: an area is named by its sides; a ring source's inside is its left (geometry.md 3.2).
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.base.check.areas]
+fn     = "names_count"
+path   = "build/a/features.json"
+prefix = "net#a"
+count  = 5
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "move", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.moved.check.kept]
+fn     = "names_kept"
+first  = "build/a/features.json"
+second = "build/b/features.json"
+prefix = "net#a"

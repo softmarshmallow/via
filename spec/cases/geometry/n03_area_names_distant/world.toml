@@ -1,0 +1,26 @@
+name       = "distant"
+extent     = [0, 0, 200, 100]
+resolution = 0.5
+
+[field.height]
+role = "surface"
+
+# geometry.md 5's cross, and a separate ring far to the east.
+[feature.frame_a]
+region = [[0, 0], [100, 0], [100, 100], [0, 100]]
+
+[feature.cross_ew]
+path = [[0, 50], [100, 50]]
+
+[feature.cross_ns]
+path = [[50, 0], [50, 100]]
+
+[feature.far]
+region = [[150, 20], [190, 20], [190, 80], [150, 80]]
+
+[network.net]
+from = ["frame_a", "cross_ew", "cross_ns", "far"]
+
+# A distant edit: one corner of `far` moves 5 m; nothing crosses anything new.
+[change.move.feature.far]
+region = [[150, 20], [195, 25], [190, 80], [150, 80]]

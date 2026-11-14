@@ -1,0 +1,83 @@
+# Layer `town` (rank 1): what stands on the lots, and the views at the meetings. A step reads the
+# lots (a cells table) only from a layer above the one that declares it (geometry.md 8.3).
+
+[step.houses]                               # one house per lot, its front to the street or quay
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/houses.py"]
+# No `ground = "pad"`: a pad from this layer changes `height`, which the streets step below reads,
+# and a step's view of a field a higher layer changes is owed by the model (`doc.not_yet`, M3
+# report). Until then the houses stand on the slope as it lies (`place.relief`, counted in
+# expect.toml). `setback` keeps each house clear of the street's verge (lib/town: keep_out to
+# half the width and 3 m, fading by 5 m), since a lot's frontage is the street's centre line.
+params  = { lots = "lots", setback = 7.5, assets = ["house_low", "house_wide"], streets = ["high_street", "kind:street", "quay"] }
+
+# The paint (lib/land/ground.md's rows), here so its street row reads the streets the step returns
+# below this layer.
+[field.ground]                              
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.shore]                   # the harbour's bed and the deck
+paint = "gravel"
+mask  = "= max(1 - smoothstep(0, 1, f('height') - sea + 0.5), 1 - smoothstep(0, 1, dist('kind:waterfront', 12) - 8) * smoothstep(-1, 0, f('height') - quay + 0.2))"
+
+[field.ground.then.street]                  # the streets worn to earth: here, above the streets step
+paint = "earth"
+mask  = "= max(1 - smoothstep(4, 4.8, dist('kind:main_street', 8)), 1 - smoothstep(2.5, 3.3, dist('kind:street', 6)))"
+
+# ------------------------------------------------------------------------------------------ views
+# Where the build is judged: from eye height at every kind of meeting (R17). Each stands on the
+# meeting or a step off it, and looks at a guide point written for it (a bookmark's `toward` takes a
+# name, and produced names are not written in text, identity.md 3). Meetings of generated streets
+# are selected from the network (`{ of, class, near }`), so the view follows its junction when the
+# streets move (move_hill).
+
+[feature.look_harbour]                      # guides: places the views look at
+at = [112, 18]
+
+[feature.look_up_d]
+at = [125, 82]
+
+[feature.look_crest]
+at = [168, 152]
+
+[feature.look_lots]
+at = [48, 86]
+
+[feature.look_west]
+at = [80, 74]
+
+[feature.way_water]                         # way and water: the main way's foot on the quay
+kind   = "bookmark"
+on     = { ref = "high_street", t = 0.97 }
+toward = "look_harbour"
+
+[feature.street_quay]                       # street and waterfront: on the deck, up a street that ends on it
+kind   = "bookmark"
+at     = [129, 43]
+toward = "look_up_d"
+
+[feature.street_street]                     # street and street: a cross street's T on a contour street
+kind   = "bookmark"
+on     = { of = "town", class = "junction", near = [145.2, 144.3] }
+toward = "look_crest"
+
+[feature.lot_street]                        # lot and street: from the low contour street to a lot's house
+kind   = "bookmark"
+at     = [44, 70]
+toward = "look_lots"
+
+[feature.way_street]                        # way and street: the main way crossing the low contour street
+kind   = "bookmark"
+on     = { of = "town", class = "junction", near = [110.5, 70.6] }
+toward = "look_west"
+
+[feature.from_gate]                         # the town from the gate, above
+kind       = "bookmark"
+at         = [140, 208]
+toward     = "quay_head"
+eye_height = 3

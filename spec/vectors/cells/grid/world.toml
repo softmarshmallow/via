@@ -1,0 +1,49 @@
+# The grid of geometry.md 8.4, shared by the M3 cases of geometry.md 8 and identity.md 12, 13,
+# 23 to 25. A step returns eight paths of kind `rib`, keyed by place; the world nodes them into a
+# network and divides every area into cells; a step in the layer above places one thing per cell.
+# Cases copy this folder (never its `.via/` store, conformance.md 3.2) and build with
+# `--lib {work}/lib`.
+
+name       = "grid"
+extent     = [0, 0, 200, 200]
+resolution = 2
+include    = ["grid"]
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = "= 0"
+
+[step.ribs]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/ribs.py"]
+
+[step.ribs.params]
+xs   = [20, 70, 120, 170]     # metres: one rib running north at each
+ys   = [20, 70, 120, 170]     # metres: one rib running east at each
+lo   = 10                     # every rib runs from lo to hi across
+hi   = 180
+bend = 0                      # metres: the northmost rib's vertex at x = xs[0] + 25 is lifted by this
+
+[network.grid]
+from = ["kind:rib"]
+
+[cells.plots]
+within   = "grid"
+frontage = ["kind:rib"]
+spacing  = 25
+depth    = 20
+
+[layer.upper]
+file  = "homes.toml"
+owner = "the case"
+rank  = 1
+
+# A distant edit: bend the northmost rib between two crossings; nothing crosses anything new.
+[change.bend.step.ribs.params]
+bend = 2
+
+# Move the rib at y = 70 to y = 95: its key becomes `y95`, so the old rib is gone, not moved.
+[change.far.step.ribs.params]
+ys = [20, 95, 120, 170]

@@ -2116,9 +2116,9 @@ summary = "A stretch of frontage is shorter than one cell."
 explain = """
 A stretch of frontage is shorter than one cell length, so it holds no cell. The record gives its
 position.
-To fix: Shorten cell_length, or lengthen the frontage.
-Bad:   a stretch of 8 m with cell_length = 12
-Fixed: the same stretch with cell_length = 8
+To fix: Lower `spacing` (3.6's cell_length) in the [cells] table, or lengthen the frontage.
+Bad:   a stretch of 8 m with spacing = 12
+Fixed: the same stretch with spacing = 8
 """
 
 [geom.cell_small]
@@ -2230,6 +2230,20 @@ Bad:   follows = { ref = "a", offset = -12 }
 Fixed: follows = { ref = "a", offset = -6 }
 """
 
+[geom.frontage_none]
+severity = "warning"
+chapter = "geometry"
+milestone = 3
+summary = "A cells table's `frontage` selects no side of any region it divides, so nothing is divided (8.2; M3)."
+explain = """
+A cells table divides regions along their frontage, and its frontage selects no side of any
+region it divides: no edge on a selected source lies on their shells, and no divided region is
+itself selected. Nothing is divided; every region is all rest.
+To fix: Select the sources the cells should face, or leave frontage out to face every side.
+Bad:   frontage = ["east_a"]   (a path on no side of the divided areas)
+Fixed: frontage = ["kind:rib"]
+"""
+
 [geom.internal]
 severity = "error"
 chapter = "geometry"
@@ -2307,6 +2321,20 @@ starts_at or ends_at names a whole path or a region, which has no one point to m
 To fix: Name an end (a.end), a mount, or place a point feature on it with on and name that.
 Bad:   ends_at = "a"   (a is a path)
 Fixed: ends_at = "a.end"
+"""
+
+[geom.network_point]
+severity = "error"
+chapter = "geometry"
+milestone = 3
+summary = "A network's `from` names a point feature; a network is made of paths and region outlines (8.1; M3)."
+explain = """
+A network's from names a point feature. A network nodes paths and region outlines; a point has no
+line to node. A kind: selector leaves a kind's points out by itself; a name must name a path or a
+region.
+To fix: Name a path or region, or place the point on one with on.
+Bad:   from = ["frame_a", "well"]   (well is a point)
+Fixed: from = ["frame_a"]
 """
 
 [geom.no_area]

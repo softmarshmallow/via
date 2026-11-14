@@ -1,0 +1,97 @@
+name    = "quay"
+extent  = [0, 0, 256, 256]
+seed    = 7
+include = ["land", "water", "town", "review"]   # kinds as data; the core knows none of these words
+pack    = "starter"
+
+# A small harbour town on a slope down to the water (docs/plan.md, M3). The land falls south to a
+# harbour; a waterfront owns the bank (R18) and the streets end on it; one main way comes down from
+# the gate at the top of the town to the quay, written by its ends and routed over the land (R16).
+# The local streets are lib/town's step; the core nodes them, the main way and the waterfront into
+# a network whose areas are blocks, and cuts lots along the blocks' street and quay sides
+# (geometry.md 8). Houses and the views at the meetings (R17) are the layer above (layers/town.toml),
+# since a step reads a cells table only from a layer above it (geometry.md 8.3).
+
+[layer.dwellings]
+file  = "layers/town.toml"
+owner = "dwellings"
+rank  = 1
+
+[let]
+sea   = 2                                   # metres: the harbour's water
+quay  = 3.5                                 # metres: the deck, a metre and a half above the water
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                              # a slope rising north from the harbour, a hill on it
+role = "surface"
+base = "= quay + 0.15 * (y - 46) - 6 * (1 - smoothstep(30, 46, y)) + 9 * (1 - smoothstep(0, 70, dist('crest', 90))) + 1.2 * fbm(70, 3, seed = 'lumps') * smoothstep(46, 70, y)"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                            # pads, ways and the quay keep props off it (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.crest]                             # the hill's top: the height rises about it; `move_hill` moves it.
+at = [176, 150]                             # Named to sort before `high_street`: see the note at the main way
+
+[feature.harbour]                           # scenery: the water over the ground below `sea`
+kind         = "lake"
+water_height = 2
+region       = [[0, 0], [256, 0], [256, 46], [0, 46]]
+
+[feature.quay]                              # the waterfront: owns the bank; the land on its left
+kind  = "waterfront"
+level = 3.5
+path  = [[4, 46], [252, 46]]
+
+# ------------------------------------------------------------------------------------------ the town
+
+[feature.old_town]                          # the district the local streets fill; its foot is the quay
+region = [[24, 46], [232, 46], [232, 196], [24, 196]]
+
+[feature.gate]                              # where the main way comes in, above the town
+at = [140, 212]
+
+[feature.quay_head]                         # where the main way meets the quay (R18: a named meeting)
+on = { ref = "quay", t = 0.46 }
+
+# The main way: what it connects, routed over the land (R16). Its cost reads `height`, which reads
+# `crest`: a route's cost is evaluated over the features placed before it, in id order
+# (crates/via-model/src/place.rs, `make_feature`), so a feature the cost reads that sorts after the
+# path's id is not there yet and the path is dropped with no diagnostic. A core gap (M3 report).
+[feature.high_street]
+kind      = "main_street"
+starts_at = "gate"
+ends_at   = "quay_head"
+path      = []
+route     = "= 1 + 40 * slope('height')"
+
+[step.streets]                              # local streets inside the district, down to the quay
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+params  = { district = "old_town", shore = "quay", origin = [128, 122], spacing = 50, cross = 70 }
+
+[network.town]                              # the core nodes them; every area is a block
+from   = ["high_street", "kind:street", "quay"]
+within = "old_town"
+kind   = "block"
+
+[cells.lots]                                # lots along each block's street and quay sides
+within     = "town"
+frontage   = ["high_street", "kind:street", "quay"]
+spacing    = 11
+depth      = 24
+min_length = 6
+kind       = "lot"
+
+[step.review]                               # lib/review's measures; it checks the streets step (authority.md 7)
+when   = "lint"
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+checks = ["streets"]

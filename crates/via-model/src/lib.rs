@@ -49,6 +49,7 @@ mod decl;
 pub mod derived;
 pub mod derived_checks;
 mod graph;
+mod makers;
 pub mod pack;
 mod place;
 pub mod query;

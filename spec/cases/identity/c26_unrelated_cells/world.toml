@@ -1,0 +1,28 @@
+# identity.md 26: one cells table over two regions, selected by kind (geometry.md 8.2 `within =
+# "kind:<k>"`). The spike's failure was names shifting in an unrelated district of the same maker,
+# so both regions are divided by the one table `c`.
+
+name       = "unrelated"
+extent     = [0, 0, 200, 60]
+resolution = 0.5
+include    = ["plots"]
+
+[field.height]
+role = "surface"
+
+[feature.r1]
+kind   = "plot"
+region = [[10, 10], [90, 10], [90, 50], [10, 50]]
+
+[feature.r2]
+kind   = "plot"
+region = [[110, 10], [190, 10], [190, 50], [110, 50]]
+
+[cells.c]
+within  = "kind:plot"
+spacing = 20
+depth   = 10
+
+# Shorten r1 to 40 by 40 m: its cells change; r2's must not.
+[change.shorter.feature.r1]
+region = [[10, 10], [50, 10], [50, 50], [10, 50]]

@@ -386,8 +386,9 @@ one is. If no lattice point is strictly inside, the point is the shell's start v
 over the centroid, which can lie outside a bent region, and over polylabel (Agafonkin 2016), whose
 result depends on its queue order and stopping rule.
 
-How a network is declared in text, and so how its naming points are chosen, is (open): decided in
-M3 with the user syntax for areas and cells (vocabulary 5, R33).
+A network is declared in text by `[network.<id>]` (section 8, decided in M3, R33). Text gives it no
+naming points in v1: its areas are named by `sides` alone (`identity.md` 2.3), and the kernel's
+`naming` input stays for the case that reopens it (Open).
 
 | Guarantee | Statement |
 |---|---|
@@ -478,8 +479,9 @@ or `outline`, the whole shell of a region feature. Also takes, in integer millim
 **cells**, regions that divide a band of the region along its frontage, and `rest`, the region minus
 the union of the cells.
 
-The user keys for these inputs are (open): decided with the M3 syntax for cells. `width` is not used
-for them; it is a library attribute (vocabulary 6). `frontage` is a core word with the meaning above.
+The user keys for these inputs are section 8.2's: `spacing` (`cell_length`), `depth`
+(`band_depth`), `min_length` and `min_area`. `width` is not used for them; it is a library attribute
+(vocabulary 6). `frontage` is a core word with the meaning above, and the key that selects it.
 
 Mechanism (ours, after the skeleton strips of Vanegas et al. 2012, "Procedural generation of parcels
 in urban modeling", simplified to straight cuts):
@@ -855,6 +857,125 @@ via kernel <op> --in <folder>/<op>.json --out FILE
 
 reproduces it. This closes the contents left (open) in `diagnostics.md` 7.
 
+## 8. Networks and cells in text (M3)
+
+Decided in M3 (R13, R33). Two tables declare the two makers of section 3 that text could not reach
+before: `[network.<id>]` runs 3.1 and 3.2 over features the author selects, and `[cells.<id>]` runs
+3.6 over regions. Neither knows a domain noun: a network is made of whatever paths and region
+outlines its `from` selects, and what its areas and cells are for is said by the kind a library
+gives them (`kind`). Both ids are in the world namespace (vocabulary 2.1), so `of` can name them
+(`identity.md` 3). Both are makers, not producers: they place no instance, and a hand edit's `by`
+never names one (`identity.not_a_producer`). Keys reused from elsewhere keep their one meaning
+(principle 9): `within` is the region a thing is confined to, `spacing` the distance between
+neighbours, `kind` what a feature does to fields.
+
+### 8.1 `[network.<id>]`
+
+| Key | Takes | Meaning |
+|---|---|---|
+| `from` | list of names and `kind:` selectors | Required. The features noded together, each one source (3.1). A name is a path or region feature's id or place name. A `kind:<k>` selector takes every path and region feature of that kind, written or returned by a step, and leaves the kind's point features out, without a diagnostic, as a selector leaves out what does not apply. A point feature named by id is `geom.network_point` (error). A name that is declared but is not a path or region feature (an instance, a pin, a step, a scatter, a network or a cells table) is `identity.unknown_place` naming it, at the key `from` (error). A feature selected twice is one source. A region feature is its outline, as a ring source (3.2: its inside is its left); a region of more than one ring (two pieces, or a hole) is `geom.many_rings` at the key (error): its rings have no one source each to be named by. |
+| `within` | name | Optional. A region feature whose outline clips the network: 3.2's `clip`. Its outline is the source `#clip` (`identity.md` 2.3). A region of more than one ring is `geom.many_rings`; a name that is not a region feature is `identity.unknown_place`. |
+| `kind` | name | Optional. The kind every area takes: each area is then a region feature of that kind in `features.json`, at the kind's authority, and `kind:<k>` in a cells table's `within` selects it. Its effects applying to it as to any feature is owed (Open): a kind with effects is `doc.not_yet` here. Default none: the areas are guides. |
+
+- **Sources by name.** Each source carries the selected feature's name: its id, or, for a feature
+  a step returned, its produced name `<step>#<key>`. Junction, edge and area names digest those
+  names (`identity.md` 2.3), so a step that keys its paths by place keeps every area name when a
+  distant part changes, and a step that numbers its paths renames every area they bound.
+- **What it makes.** Junctions, edges and areas, 3.2's guarantees held on every build, named
+  `<id>#<key>` (`identity.md` 2.3). Its areas are region features in `features.json` under those
+  names, of the kind `kind` gives (`build.md` 9.1). Junctions and edges are not features: they are
+  selected (`on`, `within`) and reported, never written to `features.json`.
+- **Meetings.** Every two inputs of one network own their crossings (2.7), so the network's own
+  linework raises no `geom.unowned_crossing`.
+- **Empty.** A network whose `from` selects nothing, or whose linework encloses nothing, is not an
+  error: `geom.no_area` (warning), and any selection of its areas finds none
+  (`identity.near_none`).
+- **Effects of a made region (Open).** Fields are made before the makers run (a network may read
+  what a step returns, and a step may read fields), so a made area or cell cannot yet write a field,
+  nor be read by `dist('kind:…')` or another formula selector. Until the graph orders it, a
+  network's or cells table's `kind` that has effects is `doc.not_yet` at the key `kind`; a kind with
+  no effects (a guide, a `within` for another table, a `select` for a step) is fine.
+
+### 8.2 `[cells.<id>]`
+
+| Key | Takes | Meaning |
+|---|---|---|
+| `within` | name, `kind:` selector or `{ of, class, near }` | Required. The regions divided, each on its own by 3.6: a network's id (every area of it); a region feature's id; `kind:<k>` (every region feature of that kind, a step's included, and every area or cell a table gives that kind); or one selected `area`, `cell`, `rest` or `piece` (`identity.md` 3). A region of more than one piece is `geom.many_rings`: divide its pieces one by one through a selection. |
+| `frontage` | list of names and `kind:` selectors | Optional. The sources whose sides the cells face. On a network's area, every edge side on its shell or among its spurs whose edge lies on a selected source (an edge on several sources, by `follows` or overlap, when any of them is), the side facing the area. On a region feature, its whole outline when it is itself selected. Default: every source, so every side and every outline. |
+| `spacing` | length | Required. 3.6's `cell_length`: a stretch of length `L` holds `floor(L / spacing)` cells, evenly. |
+| `depth` | length | Required. 3.6's `band_depth`: how deep the cells reach from their frontage. |
+| `min_length`, `min_area` | length; number | Optional, default 0. 3.6's `min_cell_length` (metres) and `min_cell_area` (square metres, read exactly in square millimetres): a cell shorter or smaller merges into its neighbour. |
+| `kind` | name | Optional. The kind every cell takes, as on a network. Rest pieces are guides. |
+
+- Each divided region gives its cells and its rest (3.6), named `<id>#c…` and `<id>#b…`
+  (`identity.md` 2.3). Both are region features in `features.json`.
+- `spacing`, `depth` not above 0, a minimum below 0, or `min_length` above `spacing`, is
+  `geom.bad_parameter`, naming the key.
+- A divided region whose outline encloses more than one area (a returned or selected region that
+  touches itself) is `geom.self_crossing` at the key `within`, naming it; the others are divided.
+- **Spurs (Open).** 3.6 makes each side of a spur its own chain; the kernel's chains walk the shell
+  only today, so an edge side among a network area's spurs is not frontage yet, and a dead-end line
+  inside an area gets no cells on its sides. Owed with the kernel's spur chains (M3 slice 2).
+- A `frontage` that selects no side of any divided region divides nothing: `geom.frontage_none`
+  (warning), naming the table. A single region with no frontage side is all rest, and says nothing:
+  a region nothing faces is not a fault.
+- Varied lengths along one stretch (a list in place of `spacing`) stay (open): Open.
+
+### 8.3 In the graph, in layers and in steps
+
+- **Nodes.** A network or a cells table is one `op` node (`graph.md` 1), depending on every feature
+  its keys resolve to. A selection from it (`on`, `within`) depends on that node (`rules.md` 3.4).
+  A distant edit re-runs it; the names it gives do not change (`identity.md` 2.3).
+- **Layers.** A network or cells table belongs to the layer that declares it and reads downward, as
+  any reference does (`documents.md` 5). It is not a step, so it reads the features steps of its own
+  layer return; a step reads its output only from a layer above every step it depends on
+  (`protocol.md` 3.3's stratum; else `graph.read_outside`).
+- **Steps read them.** `build.features` with `select` naming a network or a cells table returns its
+  areas, or its cells and rest, as a feature list with a `class` column (`protocol.md` 3.3). So a
+  library places one thing per cell by reading the cells, never by cutting its own (R19b, R23).
+- **Steps do not return them.** A step's document may not hold `[network]` or `[cells]`
+  (`protocol.output_table`): a maker must have an id text can write in `of`, and a returned table's
+  name would be produced. A library returns paths and regions of its kinds, and the world selects
+  them by `kind:`. Reopened if `quay` shows the two tables are a burden on every town.
+
+### 8.4 Example
+
+A test library declares one kind, `rib`, with no effects. A step returns eight `rib` paths keyed by
+place (`x20`, `y70`): at 20, 70, 120 and 170 m each way, each from 10 to 180 m across.
+
+```toml
+[network.grid]
+from = ["kind:rib"]
+
+[cells.plots]
+within   = "grid"
+frontage = ["kind:rib"]
+spacing  = 25
+depth    = 20
+
+[instance.lamp]
+asset = "lamp_post"
+on    = { of = "grid", class = "edge", near = [45, 71], t = 0.5, offset = 3 }
+
+[clear.one]
+on = { of = "plots", class = "cell", near = [37.5, 30] }
+```
+
+The network has 32 junctions (16 crossings, 16 ends), 40 edges and 9 areas, one component:
+`32 - 40 + 9 = 1`, and 16 dead ends (`geom.dead_end`, count 16). Each area is a 50 m square whose
+four sides are one chain; each side holds 2 cells, cut at its middle and at the corners' bisectors,
+each a trapezoid of 300 m², and the rest is the 10 m square at the centre: 72 cells and 9 rest
+pieces. The lamp stands on the edge of `ribs#y70` between the junctions at `[20, 70]` and
+`[70, 70]`, at its middle moved 3 m to the left of travel: `[45, 73]`. The clear removes every
+instance whose origin lies in the cell holding `[37.5, 30]`, whichever producer in its layer or
+below placed it (`identity.md` 4.3). Bending `ribs#y170` between two crossings renames no area,
+rib, junction or edge, and no cell, rest piece or per-cell instance outside the area the bent edge
+bounds (3.6's Local guarantee). The cells of that area may change: with the vertex at `x = 45`
+lifted 2 m, its north side's station falls 19 mm before the vertex, and the cut there, square to its
+segment and `band_depth` plus 2 mm long, stops short of the far side the next segment sets, so the
+two cells merge (`geom.cell_merged`). A cut that always reaches its own far side is owed (Open).
+The cases are `spec/cases/geometry/n*` and `identity.md` 12, 13, 23 to 26.
+
 ## Diagnostics
 
 Each code carries the source id and a position where there is one; the caller adds subject, file
@@ -884,9 +1005,11 @@ and line (section 3, `diagnostics.md`), and `via kernel` writes them as 7.1 says
 | `geom.offset_empty` | warning | An inset left nothing. | Use a smaller distance. |
 | `geom.offset_split` | info | An inset split a piece; the count. | |
 | `geom.follow_broken` | error | A path along another feature breaks into pieces; each gap and the widest offset that holds. | Use at most that offset, or a shorter span. |
-| `geom.cell_none` | warning | A stretch of frontage is shorter than one cell. | Shorten `cell_length`. |
+| `geom.cell_none` | warning | A stretch of frontage is shorter than one cell. | Lower `spacing` (`cell_length`, 8.2), or lengthen the frontage. |
 | `geom.cell_merged` | info | A cell was merged into its neighbour, or bordered several stations. | |
 | `geom.cell_small` | warning | A short cell had no neighbour to merge into; kept. | Lower the minimum, or lengthen the frontage. |
+| `geom.network_point` | error | A network's `from` names a point feature; a network is made of paths and region outlines (8.1; M3). | Name a path or region, or place the point `on` one. |
+| `geom.frontage_none` | warning | A cells table's `frontage` selects no side of any region it divides, so nothing is divided (8.2; M3). | Select the sources the cells should face, or leave `frontage` out for every side. |
 | `geom.mask_tiny` | info | A masked region has pieces smaller than one grid cell; the count and positions; kept. | |
 | `geom.mask_dropped` | warning | A masked piece had no area on the lattice and was dropped. | |
 | `geom.mask_empty` | warning | A mask is above 0 nowhere; the formula's text and its range of values. | Check the condition against the range. |
@@ -1004,6 +1127,39 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
   counter-clockwise, in the order of 3.10.
 - Every case above; on macOS and Linux (Windows once a push is allowed), at 1 and 8 threads; same bytes.
 
+**Networks and cells in text (M3, section 8).** Through `via build`; the grid is 8.4's, the fixture
+`spec/vectors/cells/grid/`. Case folders `n01` to `n11`.
+
+- (`n01_step_paths`) A step returns the eight `rib` paths; `[network.grid] from = ["kind:rib"]`;
+  build; 9 area features named `grid#a…`, the 8 paths under `ribs#`; `geom.dead_end`; no
+  `geom.unowned_crossing`, no `geom.no_area`.
+- (`n02_grid_euler`) The same linework as `via kernel network` input; 32 junctions, 40 edges, 9 areas,
+  1 component; Euler at both levels and closure exact.
+- (`n03_area_names_distant`) Section 5's cross and a ring `far` east of it, by name in `from`; move
+  one vertex of `far`; 5 areas before and after, every area name unchanged.
+- (`n04_cells_counted`) A 100 by 60 m region feature divided with `spacing = 20`, `depth = 15`,
+  frontage left to its default; 16 cells (5, 3, 5, 3) and 1 rest piece; no `geom.cell_none`.
+- (`n05_frontage_subset`) Section 5's cross, `within` its first area by place, `frontage` the two
+  paths only, `spacing = 10`, `depth = 10`; 10 cells and 1 rest piece, as the kernel's first cells case.
+- (`n06_frontage_none`) A `frontage` naming a path on no side of any divided area;
+  `geom.frontage_none` naming the table, no cell, exit 0.
+- (`n07_network_point`) `from` naming a point feature; `geom.network_point`, exit 1.
+- (`n08_on_generated_edge`) On the grid, an instance `on = { of = "grid", class = "edge", near = [45, 71],
+  t = 0.5, offset = 3 }` stands at `[45, 73]`; one `on = { of = "ribs", class = "feature", near =
+  [100, 121], t = 0.5, offset = -2 }` stands at `[95, 118]` (R13's third obligation).
+- (`n09_within_made_kind`) A region 80 by 40 m and a path across its middle, `[network.zz]` with
+  `kind = "zone"`, `[cells.c] within = "kind:zone"`, `spacing = 20`, `depth = 10`; 2 areas written
+  with kind `zone`, 16 cells and 2 rest pieces (8.2: a table's areas taken by kind).
+- (`n10_network_clip`) Two crossing paths clipped by a 60 m square; 4 areas. The same paths with no
+  `within`; one `geom.no_area` for that network only (8.1, Empty).
+- (`n11_maker_faults`) `spacing = 0`, `depth = -1`; two `geom.bad_parameter`, one per key. `from`
+  naming an instance; `identity.unknown_place` naming it. A network `kind` with effects;
+  `doc.not_yet` (8.1, Open). Exit 1.
+- Owed (M3 slice 2): `geom.many_rings` on a `from`, `within` or divided region (only a `where`
+  region can have two rings), `protocol.output_table` for a returned `[network]` or `[cells]`,
+  `of` a cells table with no `class`, `min_length` and `min_area` merging through text, and a rest
+  piece's `kind` null in `features.json`.
+
 `geom.internal` cannot be reached from valid input; it is tested by unit tests with an injected fault.
 
 ## Changed from the spike
@@ -1029,9 +1185,9 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 - **The datum**: decided in M6 with `atlas` (2.1).
 - **`starts_at` and `ends_at` with `follows`**, and smoothing on `follows`: decided by the M3
   waterfront case.
-- **How a network is declared in text** (for example from a `kind:` selection), and its naming
-  points: decided in M3, with the user syntax for areas and cells (vocabulary 5).
-- **User keys for cells** (`cell_length`, `band_depth` and the minimums): decided with that syntax, M3.
+- **Naming points** for a network declared in text (an area named after a feature inside it):
+  none in v1 (3.2, 8.1); reopened by `quay` and the districts library if a case needs one
+  (`identity.md`, Open).
 - **Cell lengths from a list** (varied cells along one stretch) rather than even division: decided by
   the M3 `quay` world.
 - **A profile swept along a path**: decided by the first world with a wall along a path (3.12).

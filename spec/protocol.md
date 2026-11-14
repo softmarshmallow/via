@@ -235,7 +235,7 @@ that one diagnostic is the call's only report (principle 8: one fault, one messa
 | Method | Params | Result |
 |---|---|---|
 | `build.field` | `fields` (names, or `role:`/`tag:` selectors, each matching one field), `view` (`full` or `head`, default `full`; `authority.md` 4.4), `window` (`i0`, `j0`, `i1`, `j1`, `numbers.md` section 6, as an object or a list in that order; default the whole grid), `halo` (posts, default 0) | Keyed by each entry as asked: the field's `name`, its window grown by the halo and clipped to the grid, with its own `i0`, `j0`, `i1`, `j1`, as below. |
-| `build.features` | `select` (a selector, a list of names, or `"*"`), `within` (a region feature's name, or a region in millimetres), `columns` (attribute names, or `"*"`) | A feature list (4.3) with `name`, `kind`, `authority`, `layer`, and one column per attribute asked. |
+| `build.features` | `select` (a selector, a list of names, or `"*"`), `within` (a region feature's name, or a region in millimetres), `columns` (attribute names, or `"*"`) | A feature list (4.3) with `name`, `kind`, `authority`, `layer`, and one column per attribute asked. A name in `select` that names a network or a cells table (`geometry.md` 8) gives its areas, or its cells and rest pieces, under their produced names, with a `class` str column (`area`, `cell`, `rest`; M3); in a list that also holds plain features, theirs is `""`. The core's columns (`name`, `kind`, `authority`, `layer`, the geometry columns of 4.3, and `class` when present) are never attribute columns: naming one in `columns` gives the core column, which is always there, and `"*"` leaves an attribute of that name out. |
 | `build.instances` | `select` (`"*"`, a producer's name, or an `@<taxon path>`), `within`, `columns` | A table: `name`, `asset`, `by` (the producer), `x`, `y` (i32 mm), `z` (f64 metres: heights are not on the lattice, `numbers.md` 3.1), `face` (i32 millidegrees), `scale`, `tint` (f64); footprints as a feature list when asked. |
 | `input.open` | `path`, as written in `inputs` | A raw blob of the file's bytes. A path not declared is `protocol.input_undeclared`. |
 | `pack.query` (M2) | `select` (`"*"`, asset ids, or an `@<taxon path>`), `columns` (fact names, or `"*"`) | A table by asset id: `id`, `source`, `taxon`, `tags`, and one column per resolved fact asked (`assets.md` 2.4): lengths as i32 millimetres, `bounds` `(n, 6)`, `origin` `(n, 3)`, `colour` f64 `(n, 3)`, words as str, `mounts`, `params` and `footprint` (a list of `[x, y]` millimetres in the asset frame: a table's column holds one value per row, so not a feature list) as canonical JSON text. Read-only (R19b; `assets.md` 5). |
@@ -486,7 +486,9 @@ The document may hold only these tables, and never a top-level key:
 | `[set.<key>]`, `[run.<key>]`, `[scatter.<key>]` | What a library form lowers to (`rules.md` section 10). |
 
 Anything else (`[step]`, `[layer]`, `[pin]`, `[clear]`, `[lock]`, `[import]`, `[given]`,
-`[change]`, `[kind]`, `[let]`, `remove`, `unset`) is `protocol.output_table`.
+`[change]`, `[kind]`, `[let]`, `[network]`, `[cells]`, `remove`, `unset`) is `protocol.output_table`. A
+step returns paths and regions of its kinds, and a network or cells table in text selects them by
+`kind:` (`geometry.md` 8.3: a maker needs an id text can write in `of`).
 
 - **What R32 allows.** Rows on any field below it, features, and fields of its own: new names,
   declared in the document it returns. Nothing below the step is applied to a field of its own, so

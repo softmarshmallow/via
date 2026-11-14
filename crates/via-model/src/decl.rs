@@ -467,6 +467,10 @@ pub struct Decls {
     pub pins: BTreeMap<String, PinDecl>,
     pub clears: BTreeMap<String, ClearDecl>,
     pub steps: BTreeMap<String, StepDecl>,
+    /// `[network.<id>]` tables (`geometry.md` 8.1).
+    pub networks: BTreeMap<String, crate::makers::NetworkDecl>,
+    /// `[cells.<id>]` tables (`geometry.md` 8.2).
+    pub cells: BTreeMap<String, crate::makers::CellsDecl>,
     pub formulas: Formulas,
     /// Attribute formulas (`formulas.md` 6.7), worked out once per feature after the text phase.
     pub attr_formulas: Vec<AttrFormula>,
@@ -550,7 +554,7 @@ pub struct FileBase {
     pub digest: String,
 }
 
-fn table_of<'w>(root: &'w Table, top: &str) -> Vec<(&'w str, &'w Table)> {
+pub(crate) fn table_of<'w>(root: &'w Table, top: &str) -> Vec<(&'w str, &'w Table)> {
     match root.table(top) {
         Some(t) => t
             .iter()
@@ -626,6 +630,7 @@ impl Decls {
         d.read_scatters(world, root);
         d.read_edits(world, root);
         d.read_steps(root);
+        d.read_makers(world, root);
         d.declare_env();
         d.check_formulas(root);
         let upward = d.upward_reads(world);
@@ -780,7 +785,7 @@ impl Decls {
         out
     }
 
-    fn push(&mut self, diag: Diag) {
+    pub(crate) fn push(&mut self, diag: Diag) {
         self.diags.push(diag);
     }
 
@@ -1559,7 +1564,7 @@ impl Decls {
 
     /// A selection by place (`identity.md` 3): `{ of, class, near }`, with `t` and `offset` where
     /// the table takes them. `path` is the key path of the table (`on`, or `within`).
-    fn read_select(
+    pub(crate) fn read_select(
         &mut self,
         top: &str,
         id: &str,

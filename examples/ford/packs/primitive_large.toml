@@ -19,6 +19,17 @@ colour    = [0.55, 0.42, 0.33]
 [asset.house_low.mount.door]
 at = [0, 3]
 
+# A narrow town house (asked in TODO: "The pack has no small urban building; an old town is 22 m
+# boxes"): two storeys on a 5 m front, deep from its street, for lots of 6 m or more (lib/town).
+[asset.house_narrow]
+primitive = "box"
+size      = [5, 8, 7]
+taxon     = "building/house"
+colour    = [0.62, 0.5, 0.4]
+
+[asset.house_narrow.mount.door]
+at = [0, 4]
+
 [asset.shed_gable]
 primitive = "prism"
 size      = [4, 3, 3]

@@ -1,0 +1,32 @@
+# Layer 1 (rank 1): above `ribs`, `grid` and `plots`, so `homes` reads the cells (geometry.md 8.3).
+# The hand edits are inline changes here, so they are declared in this layer and their default
+# `by` reaches `homes` (identity.md 4.1; documents.md 6, "Layer of what a change writes").
+
+[step.homes]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/homes.py"]
+
+# Obligation 3: a thing on a generated edge, and on a step's generated path, by t and offset.
+[change.lamp.instance.lamp]
+asset = "lamp_post"
+on    = { of = "grid", class = "edge", near = [45, 71], t = 0.5, offset = 3 }
+
+[change.lamp.instance.post]
+asset = "fence_post"
+on    = { of = "ribs", class = "feature", near = [100, 121], t = 0.5, offset = -2 }
+
+# Obligation 1: a clear on one generated cell, no radius.
+[change.clear_one.clear.one]
+on = { of = "plots", class = "cell", near = [37.5, 30] }
+
+# Obligation 2: a pin inside one cell's thing, default by.
+[change.pin_in.pin.well]
+asset = "box_small"
+at    = [37.5, 30]
+
+# The same pin speaking only to `ribs`, which places no instance in the cell.
+[change.pin_by.pin.well]
+asset = "box_small"
+at    = [37.5, 30]
+by    = ["ribs"]

@@ -1,0 +1,29 @@
+# identity.md 14: a scatter `within` one area a network makes, selected by place.
+
+name       = "scatter_area"
+extent     = [0, 0, 100, 100]
+resolution = 0.5
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[feature.ns]
+path = [[50, 0], [50, 100]]
+
+[feature.ew]
+path = [[0, 50], [100, 50]]
+
+[feature.frame]
+region = [[20, 20], [80, 20], [80, 80], [20, 80]]
+
+[network.n]
+from   = ["ns", "ew"]
+within = "frame"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 10
+jitter  = 0
+density = 1
+within  = { of = "n", class = "area", near = [35, 35] }

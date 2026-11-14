@@ -1,0 +1,26 @@
+# geometry.md 8.2: `within = "kind:<k>"` takes every area a table gives that kind, and 8.1: the
+# network's areas are written to features.json with that kind. The network is named `zz` so its
+# areas sort last in features.json (build.md 9.1, by name bytes).
+
+name       = "made_kind"
+extent     = [0, 0, 100, 60]
+resolution = 0.5
+include    = ["zones"]
+
+[field.height]
+role = "surface"
+
+[feature.r]
+region = [[10, 10], [90, 10], [90, 50], [10, 50]]
+
+[feature.p]
+path = [[50, 10], [50, 50]]
+
+[network.zz]
+from = ["r", "p"]
+kind = "zone"
+
+[cells.c]
+within  = "kind:zone"
+spacing = 20
+depth   = 10

@@ -22,7 +22,8 @@ the same change.
 - A **maker** is anything whose output is named `<maker>#<key>`: a producer (a rule or a step,
   vocabulary section 1), a network, a cells table, or a feature written with `where`. "Producer"
   keeps its narrower meaning: a maker that places instances, so the only thing a hand edit's `by`
-  may name. How a network and a cells table are declared: `geometry.md` (open there, decided in M3, R33).
+  may name. A network is declared by `[network.<id>]` and a cells table by `[cells.<id>]`
+  (`geometry.md` 8, decided in M3, R33); the maker's id is the table's id.
 - A set item is `<instance>.<item>`. An item of a set placed by a producer is
   `<producer>#<key>.<item>`.
 - A produced name from inside an import is reported as `<import>.<produced name>`:
@@ -126,6 +127,11 @@ Each class in more detail:
   most ordinals are 0. "Node" is not used for this: it is the graph's unit of work (`graph.md`).
 - **Edge.** An edge lying on several sources (`follows`, or geometry's `overlap` fixture) has every
   one of them in its set. The ordinal separates edges with the same junctions and sources (a loop).
+- **Source names.** A source's name is the name of the feature it came from: an authored id, or
+  the produced name `<step>#<key>` of a feature a step returned (`geometry.md` 8.1). A divided
+  region feature is its own source, side `left`. So junction, edge, area and cell names are exactly
+  as stable as the names of the lines that bound them: a step that keys its paths by place keeps
+  them under a distant edit, and a step that numbers its paths renames everything they bound.
 - **Clip outline.** The outline of a network's `clip` region (`geometry.md` 3.2) is the source named
   `#clip`, a name no id or produced name can be.
 - **Area.** Its parts are `geometry.md` 3.2's `sides`, already in the set order above. The outside
@@ -204,7 +210,8 @@ on = { of = "streets", class = "edge", near = [131.5, 88.0], t = 0.5, offset = 3
 
 - `of` names a maker by its id. `class` names one class of 2.3. A maker whose output has one class
   needs no `class`; for any other, leaving it out is `identity.of_ambiguous`, whose hint lists the
-  classes. A network has three (`junction`, `edge`, `area`), so it always needs one.
+  classes. A network has three (`junction`, `edge`, `area`) and a cells table two (`cell`, `rest`), so
+  each always needs one.
 - `near` is a point in the frame of the table it is in.
 - The selection resolves to the candidate nearest `near`: distance to a point, to a path, or to a
   region (0 inside it). Distances are compared exactly in integer millimetres (`geometry.md`); ties
@@ -478,10 +485,14 @@ offered for it (R3). `identity.key_in_text` enforces this.
 
 | Spike failure (R13) | Answered by |
 |---|---|
-| A clear on a generated building did nothing. | Hand edits speak to every producer, steps included (4.1); `identity.clear_empty`. |
-| A pin landed inside a building, no message. | `identity.pin_removed` with the default `by`; `identity.pin_overlap` outside it. |
-| Nothing could be placed on a generated street. | `on = { of, class, near }` (section 3). |
-| Ids shifted when an unrelated district changed. | Place keys (section 2); conformance 25 to 28, and 47 in M1. |
+| A clear on a generated building did nothing. | Hand edits speak to every producer, steps included (4.1); a clear `on` a cell selected from a `[cells]` table (`geometry.md` 8.2) removes what stands in it; `identity.clear_empty`. Case 23. |
+| A pin landed inside a building, no message. | `identity.pin_removed` with the default `by`; `identity.pin_overlap` outside it. Case 24. |
+| Nothing could be placed on a generated street. | `on = { of, class, near }` (section 3) on an edge of a `[network]` table or on a step's path. Case 13 and `geometry.md` 8's `n08_on_generated_edge`. |
+| Ids shifted when an unrelated district changed. | Place keys (section 2) over source names (2.3); conformance 25 to 28, and 47 in M1. |
+
+The fixture these cases share is `spec/vectors/cells/grid/`, `geometry.md` 8.4's grid: a step
+returns the lines, a `[network]` and a `[cells]` table divide them, and a step in the layer above
+places one thing per cell, so every one of the four acts on generated content.
 
 ## 8. Worked example
 
@@ -644,17 +655,21 @@ carries its subject and the file and line of the text at fault.
     (run report), and the held output changes.
 23. (M3) a clear `on = { of = "lots", class = "cell", near }` with no radius over the grid of case
     25; the report lists exactly one removed instance, the building in that cell, cause the clear.
-24. (M3) a pin inside a cell's building with `by = ["trees"]`: `identity.pin_overlap`. With the
-    default `by`: the building is removed and `identity.pin_removed` names it.
+24. (M3) on the grid of case 25, a pin inside a cell's building with the default `by`: the building
+    is removed and `identity.pin_removed` names it. With `by = ["ribs"]`, a producer in its layer or
+    below that placed nothing there: nothing is removed, `identity.pin_overlap` names both.
 
 **Names under change**
 
 25. (M3) Distant edge: a 4 by 4 street grid, cells, and a building per cell placed by a generate
     step through the SDK; move one vertex of an outer street without changing what crosses what;
-    every junction, edge and area name is unchanged; no cell name outside that street's frontage and the
-    stretches beside it changes. Network and cells tables: `geometry.md` (open there).
-26. (M3) Unrelated change: two regions divided into cells; change cell `width` in one; no name in
-    the other changes.
+    every junction, edge and area name is unchanged; no cell name, and no building name, outside the
+    areas that street bounds changes (`geometry.md` 3.6, Local guarantee). Network and cells tables:
+    `geometry.md` 8; the grid of 8.4. Junction and edge names are not in `features.json`; a selection
+    of an edge that is not reselected, against a baseline shown present, shows them held.
+26. (M3) Unrelated change inside one maker: one `[cells]` table divides two regions selected by
+    `kind:`; change one region's outline; its cell count changes, and no cell or rest name of the
+    other region changes.
 27. (M3) A region outline with three stretches; lengthen one; the cells of the stretches not beside
     it keep their names.
 28. (M3) A new self-crossing on a path; its far end junction keeps its name.
@@ -745,7 +760,8 @@ check the same through a world in M3.
 - Whether a clear may remove a produced feature: decided with M3's `quay`, if a case asks to remove
   one generated street.
 - Naming an area after a feature inside it (a district, a square): decided with M3's `quay` and
-  the districts library. M1 names areas by their `sides` only.
+  the districts library. M1 names areas by their `sides` only, and the M3 syntax gives a network no
+  naming points (`geometry.md` 8.1); adding one later is a new key, not a change to these names.
 - The coarse lattice side for pieces (32 m): decided by M1's masked-region fixtures.
 - Edits to things that are not points (a path's vertex, a hand-painted field): decided in M3, with
   the first case that needs one (TODO, "From spiking the four", item 2).

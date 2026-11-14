@@ -112,6 +112,10 @@ pub enum Shape {
     Clear,
     /// `[step.<id>]`.
     Step,
+    /// `[network.<id>]` (`geometry.md` 8.1).
+    Network,
+    /// `[cells.<id>]` (`geometry.md` 8.2).
+    Cells,
     /// `on`.
     On,
     /// `follows`.
@@ -187,6 +191,8 @@ pub fn top_table(name: &str) -> Option<Rule> {
         "pin" => Rule::Ok(Takes::Ids(Shape::Pin)),
         "clear" => Rule::Ok(Takes::Ids(Shape::Clear)),
         "step" => Rule::Ok(Takes::Ids(Shape::Step)),
+        "network" => Rule::Ok(Takes::Ids(Shape::Network)),
+        "cells" => Rule::Ok(Takes::Ids(Shape::Cells)),
         "set" | "run" | "lock" => Rule::NotYet(3),
         "import" | "given" => Rule::NotYet(4),
         "params" => Rule::Fixed("write `[let]`"),
@@ -196,9 +202,9 @@ pub fn top_table(name: &str) -> Option<Rule> {
 }
 
 /// Every top table name a world lists, for nearest-word hints.
-pub const TOP_TABLES: [&str; 14] = [
-    "change", "clear", "feature", "field", "given", "import", "instance", "layer", "let", "lock",
-    "pin", "run", "scatter", "set",
+pub const TOP_TABLES: [&str; 16] = [
+    "cells", "change", "clear", "feature", "field", "given", "import", "instance", "layer", "let",
+    "lock", "network", "pin", "run", "scatter", "set",
 ];
 
 /// The world file's own top-level keys.
@@ -340,6 +346,20 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("for_each", Ok(T::Str)),
             ("checks", Ok(T::Strings)),
         ],
+        Shape::Network => &[
+            ("from", Ok(T::Names)),
+            ("within", Ok(T::Name)),
+            ("kind", Ok(T::Name)),
+        ],
+        Shape::Cells => &[
+            ("within", Ok(T::NameOrSelect)),
+            ("frontage", Ok(T::Names)),
+            ("spacing", Ok(T::Length)),
+            ("depth", Ok(T::Length)),
+            ("min_length", Ok(T::Length)),
+            ("min_area", Ok(T::Number)),
+            ("kind", Ok(T::Name)),
+        ],
         Shape::On => &[
             ("ref", Ok(T::Name)),
             ("of", Ok(T::Name)),
@@ -385,9 +405,6 @@ pub fn value_not_yet(shape: Shape, key: &str, value: &str) -> Option<u32> {
     match (shape, key, value) {
         (Shape::Step, "when", "export") => Some(6),
         (Shape::Field, "type", "volume") => Some(5),
-        (Shape::On | Shape::Select, "class", "junction" | "edge" | "area" | "cell" | "rest") => {
-            Some(3)
-        }
         _ => None,
     }
 }
@@ -420,6 +437,8 @@ pub fn in_world_namespace(top: &str) -> bool {
             | "import"
             | "step"
             | "layer"
+            | "network"
+            | "cells"
     )
 }
 
@@ -431,6 +450,8 @@ pub fn name_keys(shape: Shape) -> &'static [&'static str] {
         Shape::Scatter => &["within"],
         Shape::On | Shape::Select => &["ref", "of"],
         Shape::Follows => &["ref"],
+        Shape::Network => &["from", "within"],
+        Shape::Cells => &["within", "frontage"],
         _ => &[],
     }
 }

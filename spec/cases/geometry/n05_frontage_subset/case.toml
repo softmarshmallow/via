@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "cross's first area selected by place, frontage only the two paths (not frame_a): 10 cells, 5 per edge side, and one rest piece, as the kernel's first cells case."
+milestone = 3
+actions   = ["build"]
+
+# geometry.md Conformance, cross's first cells case: 8 squares and 2 corner triangles; with the
+# minimums at their default 0 nothing merges (8.2).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.cells]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "c#c"
+count  = 10
+
+[action.build.check.rest]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "c#b"
+count  = 1

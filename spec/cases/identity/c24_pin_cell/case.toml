@@ -1,0 +1,75 @@
+format    = "via-case-1"
+summary   = "Obligation 2: a pin inside a cell's thing with the default by: that thing is removed and identity.pin_removed names it; the pin stands. With by = [ribs]: nothing removed, identity.pin_overlap names both."
+milestone = 3
+actions   = ["program", "trust", "base", "pin", "other"]
+
+# The well (box_small, 2 m square) and the cell's shed_gable (4 by 3 m) share the origin [37.5, 30].
+# ribs places no instance, so by = ["ribs"] removes nothing (identity.md 4.2).
+
+[copy.grid]
+from = "spec/vectors/cells/grid"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.pin]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "pin_in", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.pin.diag.removed]
+code = "identity.pin_removed"
+
+[action.pin.check.well]
+fn    = "instance_at"
+build = "build/w"
+name  = "well"
+at    = [37.5, 30]
+
+[action.pin.check.gone]
+fn     = "no_origin_inside"
+build  = "build/w"
+at     = [37.5, 30]
+radius = 0.5
+prefix = "homes#"
+
+[action.pin.check.removed]
+fn     = "changes_inside"
+path   = "build/w/changes.json"
+prefix = "homes#"
+at     = [37.5, 30]
+radius = 0.5
+what   = ["removed"]
+cause  = { cause = "pin.well" }
+
+[action.other]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "pin_by", "--out", "build/v"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/v"
+
+[action.other.diag.overlap]
+code = "identity.pin_overlap"
+
+[action.other.diag.removed]
+code    = "identity.pin_removed"
+records = 0
+
+[action.other.check.homes]
+fn     = "names_count"
+path   = "build/v/instances/names.txt"
+prefix = "homes#"
+count  = 72

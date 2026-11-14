@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "Cells along a frontage counted: a 100 by 60 m region feature, its whole outline the frontage, spacing 20, depth 15: 5 + 3 + 5 + 3 = 16 cells and one rest piece."
+milestone = 3
+actions   = ["build"]
+
+# geometry.md 3.6 step 4: a stretch of L holds floor(L / spacing) cells; the four sides are
+# stretches (corners of 90 degrees). 8.2: frontage defaults to every source, here the outline.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.cells]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "strips#c"
+count  = 16
+
+[action.build.check.rest]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "strips#b"
+count  = 1
+
+[action.build.diag.none]
+code    = "geom.cell_none"
+records = 0

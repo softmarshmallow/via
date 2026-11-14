@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "A cells table whose frontage names a path on no side of any area it divides: nothing divided, geom.frontage_none naming the table, exit 0."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.none]
+code    = "geom.frontage_none"
+subject = "cells.c"
+
+[action.build.check.cells]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "c#c"
+count  = 0

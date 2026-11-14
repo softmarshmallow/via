@@ -1,0 +1,46 @@
+format    = "via-case-1"
+summary   = "A cells table with within = kind:zone divides the two areas a network gives kind zone: 16 cells and 2 rest pieces; the areas are written with kind zone."
+milestone = 3
+actions   = ["build"]
+
+# The region r (80 by 40 m) and the path p across its middle make two 40 by 40 m areas (3.2). Each
+# area's every side is frontage (default: every source): four 40 m stretches of floor(40 / 20) = 2
+# cells (3.6 step 4), 8 per area, 16 in all; each area keeps one rest piece, the 20 m square at its
+# centre. features.json in name order: 2 rest (c#b), 16 cells (c#c), p, r, then the 2 areas (zz#a)
+# from index 20.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.areas]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "zz#a"
+count  = 2
+
+[action.build.check.cells]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "c#c"
+count  = 16
+
+[action.build.check.rest]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "c#b"
+count  = 2
+
+[action.build.check.kind]
+fn       = "json_list"
+path     = "build/w/features.json"
+pointer  = "/features"
+from     = 20
+at_least = 2
+includes = { kind = "zone" }
+
+[action.build.diag.none]
+code    = "geom.frontage_none"
+records = 0

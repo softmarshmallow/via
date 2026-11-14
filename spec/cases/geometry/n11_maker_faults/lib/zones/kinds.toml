@@ -1,0 +1,8 @@
+# A test library for geometry.md 8.1: a kind with one effect, which a maker cannot give yet.
+
+[kind.wet]
+authority = "derived"
+
+[kind.wet.effect.damp]
+field = "role:surface"
+value = "= -1"

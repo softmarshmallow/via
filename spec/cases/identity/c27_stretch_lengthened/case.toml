@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "identity.md 27: a region outline with three stretches; lengthen one; the cells of the stretches not beside it keep their names."
+milestone = 3
+pending   = "owed in M3 slice 2: the world and its numbers are to be written from identity.md 2.3's cell key (stations counted along an edge side across its stretches, geometry.md 3.6 step 4), which makes a region feature's single-edge outline renumber every later stretch when one before it grows; whether 27 holds for a region feature or only for a network area of several edges needs a ruling first"
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

@@ -55,6 +55,8 @@ NAMED_CHECKS: dict[str, tuple[set[str], set[str]]] = {
     "roundtrip_t": ({"path", "input"}, {"bound"}),
     "stroke_measures": ({"path", "reference", "distance"}, set()),
     "id_rule": ({"build"}, set()),
+    "names_count": ({"path", "prefix", "count"}, set()),
+    "names_kept": ({"first", "second", "prefix"}, {"except_within"}),
 }
 
 

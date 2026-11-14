@@ -1,0 +1,135 @@
+# The town library: streets, the blocks they bound, the lots along a block's frontage, and a house
+# on each lot facing its street (docs/plan.md, M3; R13: block, lot and frontage are library words,
+# the core's are network, area and cell, geometry.md 8).
+#
+# How a world uses it (geometry.md 8.4 is the same pattern on a grid):
+#
+#     include = ["land", "town"]
+#
+#     [feature.old_town]                        # the district the local streets fill
+#     region = [[60, 60], [440, 60], [440, 380], [60, 380]]
+#
+#     [feature.high_street]                     # a main way: what it connects, routed over the land (R16)
+#     kind      = "main_street"
+#     starts_at = "west_gate"
+#     ends_at   = "east_gate"
+#     path      = []
+#     route     = "= 1 + 40 * slope('height')"
+#
+#     [step.streets]                            # local streets inside the district (lib/town/streets.py)
+#     when    = "generate"
+#     worker  = true
+#     command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+#     params  = { district = "old_town" }
+#
+#     [network.streets]                         # the core nodes them; every area is a block
+#     from   = ["kind:main_street", "kind:street"]
+#     within = "old_town"
+#     kind   = "block"
+#
+#     [cells.lots]                              # the core cuts lots along each block's street sides
+#     within   = "streets"
+#     frontage = ["kind:main_street", "kind:street"]
+#     spacing  = 9
+#     depth    = 16
+#     min_length = 5
+#     kind     = "lot"
+#
+# and, in a layer above (a step reads a cells table only from above it, geometry.md 8.3):
+#
+#     [step.houses]                             # one house per lot, facing its street (lib/town/houses.py)
+#     when    = "generate"
+#     worker  = true
+#     command = ["python", "-m", "viasdk", "lib:town/houses.py"]
+#     params  = { lots = "lots", ground = "pad" }
+#
+# Streets meet only where the network nodes them: every crossing of two of its inputs is owned by
+# the network (geometry.md 8.1, "Meetings"), so no street needs `starts_at` or `ends_at` on another.
+# A street the step lays ends on another street or runs past the district's outline (cut there by
+# the network's `within`): never a dead end of its own making (TODO, "Dead ends tripled").
+#
+# Both street kinds keep trees off the bed and the verges (`role:keep_out`), as lib/ways' road does,
+# out past a crown's reach (2.5 m for primitive's `tree_oak`, plus half a metre). Like a road, the
+# bed reads the ground `k` metres along the way (`smoothed_along(k)`): keep a street `k` metres
+# inside the world's extent (40 m for a main street, 16 m for a street), or its smoothing window
+# reads outside the field (`formula.outside_field`).
+
+[kind.main_street]                          # a way between named places, through the town
+authority = "shaped"
+radius    = 18
+
+[kind.main_street.defaults]
+width  = 8                                  # metres, wall to wall of the carriageway
+camber = 0.02                               # fall from the crown to each edge, per metre
+
+[kind.main_street.effect.bed]               # cut and filled, smoothed along a long run, crowned
+field = "role:surface"
+value = "= smoothed_along(40) - camber * d"
+mask  = "= 1 - smoothstep(width / 2 + 1, width / 2 + 9, d)"
+
+[kind.main_street.effect.verge]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"
+
+# A local street follows the land where it is steep (streets.py), so it is laid along the contour
+# and its bed has little to cut; it is smoothed along a shorter run than a main street, so it keeps
+# the bends a contour has.
+[kind.street]
+authority = "shaped"
+radius    = 12
+
+[kind.street.defaults]
+width  = 5                                  # metres
+camber = 0.02
+
+[kind.street.effect.bed]
+field = "role:surface"
+value = "= smoothed_along(16) - camber * d"
+mask  = "= 1 - smoothstep(width / 2 + 1, width / 2 + 6, d)"
+
+[kind.street.effect.verge]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"
+
+# A block is an area of the street network (`[network.<id>] kind = "block"`), a lot a cell along a
+# block's frontage (`[cells.<id>] kind = "lot"`). Neither writes a field: they are named regions,
+# so text and steps can say "this block", "the lot at [x, y]" (`{ of, class, near }`, identity.md
+# 3) and a check can ask whether a house has a street. A lot does not level its ground; the house
+# on it does, through the pad it is lent (`ground = "pad"`, lib/land), so a lot on a slope is
+# terraced only under its house (TODO, "Local streets and lots ignore the land").
+[kind.block]
+authority = "derived"
+
+[kind.lot]
+authority = "derived"
+
+# A waterfront owns the bank (R18): a path along the water's edge, the land on its left (`sd`
+# above 0, numbers.md 5.5: walk it with the water on your right hand). Streets end on its line, and
+# a network that selects it (`kind:waterfront`) nodes them there; lots may face it (`frontage`).
+# The line is the landward edge of a deck `width` metres wide, level at `level` (metres, the
+# world's: a little above its water); past the deck's water side the ground falls `wall` metres
+# at once, a quay wall, and stays at or below that. On the land side the deck's level fades into
+# the ground over `bank` metres, so streets arriving from the slope run down onto the deck.
+# Anchored: a street's bed and a house's pad give way to it (authority.md 3). The streets step
+# lays streets down to it with `shore` (lib/town/streets.py, step 6). Ours, written for `quay`.
+[kind.waterfront]
+authority = "anchored"
+requires  = ["level"]
+radius    = 30
+
+[kind.waterfront.defaults]
+width = 8                                   # metres of deck, from the line to the wall's face
+wall  = 4                                   # metres the ground drops at the deck's water side
+bank  = 12                                  # metres over which the deck fades into the land
+
+[kind.waterfront.effect.deck]
+field = "role:surface"
+value = "= if(sd < -width, min(v, level - wall), level)"
+mask  = "= if(sd < -width, 1 - smoothstep(width + 6, width + 10, d), 1 - smoothstep(0, bank, sd))"
+
+[kind.waterfront.effect.clear]              # no tree on the deck, nor by its land edge
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(3, 5, max(-sd - width, sd))"

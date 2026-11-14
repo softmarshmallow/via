@@ -1,0 +1,24 @@
+name       = "subset"
+extent     = [0, 0, 100, 100]
+resolution = 0.5
+
+[field.height]
+role = "surface"
+
+[feature.frame_a]
+region = [[0, 0], [100, 0], [100, 100], [0, 100]]
+
+[feature.cross_ew]
+path = [[0, 50], [100, 50]]
+
+[feature.cross_ns]
+path = [[50, 0], [50, 100]]
+
+[network.net]
+from = ["frame_a", "cross_ew", "cross_ns"]
+
+[cells.c]
+within   = { of = "net", class = "area", near = [25, 25] }
+frontage = ["cross_ns", "cross_ew"]
+spacing  = 10
+depth    = 10

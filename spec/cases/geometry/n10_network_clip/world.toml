@@ -1,0 +1,25 @@
+# geometry.md 8.1 `within`: a region feature's outline clips the network (3.2's `clip`).
+
+name       = "clip"
+extent     = [0, 0, 100, 100]
+resolution = 0.5
+
+[field.height]
+role = "surface"
+
+[feature.ns]
+path = [[50, 0], [50, 100]]
+
+[feature.ew]
+path = [[0, 50], [100, 50]]
+
+[feature.frame]
+region = [[20, 20], [80, 20], [80, 80], [20, 80]]
+
+[network.n]
+from   = ["ns", "ew"]
+within = "frame"
+
+# The same paths unclipped enclose nothing (8.1, Empty).
+[network.m]
+from = ["ns", "ew"]

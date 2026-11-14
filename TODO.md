@@ -204,6 +204,35 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
 - -> M3: **PNG field rows without cases**: 16-bit, inverted, orientation, channels, palette, interlaced
   and others in fields.md 4.
 
+### From building quay (2026-11-15, M3 world; examples/quay)
+
+- -> core: **A routed path vanishes silently** when its cost reads a field that reads a feature whose
+  id sorts after the path's (place.rs evaluates the cost over the features placed so far). quay names
+  its hill `crest` to dodge it. Then `shape:<path>` gave `diag.internal` (unstable) on a warm store:
+  its key misses what the cost's field reads. Lesson: a dependency read through a field is a dependency.
+- -> core: **Step diagnostics replay from the store**: `authority.unchecked` stayed after `checks` was
+  added, `step.streets.none` showed beside 11 streets; a fresh store cleared both.
+- [x] -> core: **`columns=["class"]` in build.features overwrote the core's `class` column** with an absent
+  attribute (every lot read as class ""). Fixed in the M3 review pass: a core column name in `columns` gives
+  the core column, `*` leaves such an attribute out, and a mixed list gets `class` = "" for plain features
+  (protocol.md 3.3). Lesson: a reserved column name must be reserved in code, not by convention.
+- -> via-geom (M3 slice 2): **A cell cut stops short near a convex vertex.** c25's 2 m bend puts a
+  station 19 mm before the vertex; the cut, square to its segment and `band_depth` + 2 mm long,
+  misses the far side the next segment sets, so two cells merge. Make each cut reach its own far side
+  (geometry.md 8.4, Open). Lesson: "renames nothing" was written before it was built.
+- -> via-geom (M3 slice 2): **Spur sides are not frontage.** 3.6 makes each spur side its own chain;
+  `cells_on_area` walks the shell only, and the model's `area_front` skips spurs (geometry.md 8.2,
+  Spurs: Open). A dead-end street inside a block gets no lots.
+- -> core (M3 slice 2): **A made area or cell cannot write a field.** Fields are made before makers;
+  a maker `kind` with effects is `doc.not_yet` (geometry.md 8.1, Open). Order the graph so they can.
+- -> spec/cases (M3 slice 2): owed cases `geom.many_rings` on a maker (needs a `where` region),
+  `protocol.output_table` for a returned `[network]`/`[cells]`, `of` a cells table without `class`,
+  `min_length`/`min_area` merging through text, rest `kind` null; identity 27 and 28 are pending.
+- -> core: **A pad in a layer above a step that reads the ground is `doc.not_yet`**: quay's houses are
+  unlevelled (30 of 30 `place.relief`). This blocks a town on a slope.
+- -> lib/town: **The quay reads as an earth apron on foot**; no wall face seen from eye height; main way
+  and street `d…` run 9 m apart down to it. Only 30 of 178 lots hold a house (curved, shallow lots).
+
 ## Framing
 
 - [x] Draft `docs/ledger.md` (2026-11-12): the vocabulary of a game world in 14 groups, each term with an
@@ -284,6 +313,15 @@ What the compiler understands.
   ward ends. The street tool should end a street at a junction or not lay it. Found by the measure.
 - -> M3: **Local streets and lots ignore the land.** Only main ways are routed. 163 of townland's 166
   warnings are buildings on slopes. Either the lot tool reads slope, or a lot levels its ground.
+  Started (lib/town, M3): local streets follow contours above `steep`, houses take `ground = "pad"`.
+  Not yet built on real land: needs the engine's `[network]`/`[cells]` first.
+- -> M3: **lib/town has only fake-engine tests.** Build a world with it (quay) once the core parses
+  `[network]` and `[cells]`; check every lot holds a house facing a street, on foot (R17). Also run
+  `lib/*/test_*.py` in CI: today no workflow runs the library tests. Lesson: a step written against
+  a contract is unproven until the engine answers it.
+- -> M3: **lib/town streets: open shapes.** Cross streets run straight down the fall (steep on steep
+  land: no zigzag or stair yet); long streets that converge in flat ground can cross; a contour that
+  spirals off a summit is dropped, not ended at a junction.
 - -> M6: **Put townland's authoring into `atlas`.** The city still carries hand-drawn arterials and its own
   river. It needs the parent's land and main ways handed down (`give`), and a build under a minute.
 - -> spec/identity.md: **A found course cannot be adjusted except by `via`.** Same gap as hand edits for paths.
@@ -561,7 +599,9 @@ Structural checks stay in the core; everything else is an opt-in rule.
   - [ ] -> spec/protocol.md: A step cannot ask for the pack; `lots.py` reads the committed file. Lesson: the SDK needs
         the pack and its taxonomy.
   - [ ] -> spec/diagnostics.md: `[[override]]` without `id` crashes (`KeyError`) instead of reporting.
-  - [ ] -> M3: The pack has no small urban building; an old town is 22 m boxes.
+  - [x] -> done (M3, assets.md 6.1): The pack has no small urban building; an old town is 22 m boxes.
+        `house_narrow` (5 m front, 8 m deep, two storeys) added to the primitive pack; lib/town's
+        houses step prefers it.
   - [ ] -> spec/graph.md: A part given anything rebuilds whole: `atlas` is 200 s. Partial rebuild by district.
 
 - [ ] -> by item below: Engine gaps, triaged from the ledger reading (2026-11-12). Kept only where a real request

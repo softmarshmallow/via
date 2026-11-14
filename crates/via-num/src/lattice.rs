@@ -55,6 +55,15 @@ pub fn round_to_lattice(mm: f64) -> Result<i64, NumError> {
     }
 }
 
+/// The squared distance in square millimetres between two lattice points, exact (`identity.md` 3:
+/// selection distances are compared exactly in integer millimetres). Lattice coordinates are at
+/// most `2^31` in size, so each difference fits `2^32` and the sum of squares fits an `i128`.
+pub fn distance_sq_mm(a: (i64, i64), b: (i64, i64)) -> i128 {
+    let dx = i128::from(a.0) - i128::from(b.0);
+    let dy = i128::from(a.1) - i128::from(b.1);
+    dx * dx + dy * dy
+}
+
 /// Checked lattice addition (`numbers.md` 8, rule 6). `op` names the operation for the
 /// diagnostic; the caller adds subject and position.
 pub fn checked_add(a: i64, b: i64, op: &'static str) -> Result<i64, NumError> {

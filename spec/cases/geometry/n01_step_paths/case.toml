@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "A step returns eight paths of one kind; [network] from kind: nodes them: 9 areas named by the network, the 8 paths owned as its inputs (no geom.unowned_crossing), 16 dead ends."
+milestone = 3
+actions   = ["program", "trust", "build"]
+
+# geometry.md 8.1 and 8.4: sources by kind, a step's features included; every two inputs of one
+# network own their crossings (2.7).
+
+[copy.grid]
+from = "spec/vectors/cells/grid"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.areas]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "grid#a"
+count  = 9
+
+[action.build.check.paths]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "ribs#"
+count  = 8
+
+# 16 dead ends: each of the eight ribs runs 10 m past its outer crossings at both ends (8.4).
+[action.build.diag.dead_end]
+code = "geom.dead_end"
+data = { count = 16 }
+
+[action.build.diag.owned]
+code    = "geom.unowned_crossing"
+records = 0
+
+[action.build.diag.no_area]
+code    = "geom.no_area"
+records = 0

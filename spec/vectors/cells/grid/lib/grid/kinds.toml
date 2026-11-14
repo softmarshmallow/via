@@ -1,0 +1,5 @@
+# A test library for geometry.md 8.4: one kind with no effects, so a network can select the
+# paths a step returns by `kind:rib`.
+
+[kind.rib]
+authority = "derived"

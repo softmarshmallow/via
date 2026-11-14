@@ -1,0 +1,4 @@
+# A distant edit (R13): the district's east edge comes in 6 m. Only blocks and lots at the east end
+# may change; the names of those elsewhere must not (identity.md 2.3).
+[feature.old_town]
+region = [[24, 46], [226, 46], [226, 196], [24, 196]]
