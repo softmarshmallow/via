@@ -346,8 +346,11 @@ fn kind_authority(world: &World, kind: &str) -> J {
         .unwrap_or_else(|| J::s("derived"))
 }
 
-fn asset_json(a: &via_model::pack::Asset) -> J {
+fn asset_json(a: &via_model::pack::Asset, stand_ins: bool) -> J {
     let mut m = J::obj();
+    // `build.md` 7, `assets.md` 9: a model asset built with `--stand-ins` is drawn as a box of
+    // its accepted `bounds` in its `colour`.
+    m.insert("stand_in".into(), J::Bool(stand_ins && a.model.is_some()));
     m.insert("source".into(), J::s(a.source.clone()));
     // `build.md` 7: the model, then each `detail` copy, by pack path and digest (M2).
     let files = a.model.as_ref().map_or_else(Vec::new, |md| {
@@ -593,7 +596,8 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     for i in b.instances.values() {
         if let Some(a) = input.pack.and_then(|p| p.assets.get(&i.asset)) {
             triangles.insert(a.id.clone(), a.triangles);
-            assets.insert(a.id.clone(), asset_json(a));
+            let stand_ins = input.pack.is_some_and(|p| p.stand_ins);
+            assets.insert(a.id.clone(), asset_json(a, stand_ins));
         }
     }
     head.insert("assets".into(), J::Obj(assets));

@@ -16,6 +16,9 @@ kind      = "terrain_river"
 starts_at = "spring"
 ends_at   = "haven"
 path      = [[1900, 2100], [1750, 1200]]
+width     = 14                            # metres across at its mouth, as stated (lib/terrain: the
+                                          # stated width wins); the 1 km² it drains alone gives 4 m,
+                                          # a thread across a 3.2 km world
 
 # A lake stands here at 72 m: an oval about 420 m east to west and 300 m north to south, in ground
 # that first lies above that level. The library makes it a hollow held at its shore.

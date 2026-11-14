@@ -272,6 +272,12 @@ class Step:
                   "columns": columns if isinstance(columns, str) else list(columns)}
         return table(self.call("pack.query", **params), self.objects)
 
+    def meetings(self):
+        """surface.meetings: every meeting of the finished build (surfaces.md 2.4), a table ordered
+        by ``a`` then ``b``. Answered at ``lint`` and ``export`` only; at ``generate`` the engine
+        refuses with ``surface.too_early`` naming the step, raised here as RpcError."""
+        return table(self.call("surface.meetings"), self.objects)
+
     # --- computes ------------------------------------------------------------------------------
 
     def eval(self, formula, x=None, y=None, window=None, view="full"):

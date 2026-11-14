@@ -20,7 +20,7 @@ use via_proto::worker::{CancelToken, Outcome, RpcError, Services, Worker};
 use crate::stepview::{self, View};
 
 /// The worker methods offered in `initialize` (3.2).
-pub const METHODS: [&str; 11] = [
+pub const METHODS: [&str; 12] = [
     "build.field",
     "build.features",
     "build.instances",
@@ -31,6 +31,7 @@ pub const METHODS: [&str; 11] = [
     "derive.route",
     "derive.descend",
     "derive.spill",
+    "surface.meetings",
     "diag.emit",
 ];
 
@@ -53,23 +54,34 @@ impl Pool {
     }
 }
 
-impl Drop for Pool {
-    fn drop(&mut self) {
+impl Pool {
+    /// Shuts every worker down (`protocol.md` 6.2), in step order: what a worker killed past the
+    /// deadline gave, `protocol.slow_exit`, a run diagnostic (it is about this run's timing, so
+    /// it is never recorded or replayed, `graph.md` 3.4).
+    pub fn stop(&self) -> Vec<Diag> {
         let slots = std::mem::take(
             &mut *self
                 .slots
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner),
         );
+        let mut out = Vec::new();
         for (_, s) in slots {
             if let Some(w) = s
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .take()
             {
-                let _ = w.shutdown();
+                out.extend(w.shutdown());
             }
         }
+        out
+    }
+}
+
+impl Drop for Pool {
+    fn drop(&mut self) {
+        let _ = self.stop();
     }
 }
 

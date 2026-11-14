@@ -87,7 +87,7 @@ import math
 
 PARAMS_EXPLAIN = ("A param of the uplands step is outside the range it takes: `start` is \"noise\" "
                   "or \"surface\"; `cell`, `rough_wave` and `ridge_wave` are metres above 0; "
-                  "`rounds` and `margin` are 0 or more; `creep` is 0 to 0.25.")
+                  "`rounds`, `margin`, `creep_steps` and `channel` are 0 or more; `creep` is 0 to 0.25.")
 
 
 class ParamError(ValueError):
@@ -192,6 +192,9 @@ class Params:
         self.rounds = int(params.get("rounds", 30))
         self.erode = float(params.get("erode", 0.004))
         self.creep = float(params.get("creep", 0.2))
+        self.creep_steps = int(params.get("creep_steps", 1))
+        self.channel = float(params.get("channel", 0))
+        self.channel_root = math.sqrt(self.channel) if self.channel > 0 else 0.0
         self.stream_area = float(params.get("stream_area", 3000))
         self.margin = int(params.get("margin", 16))
         self.rough = float(params.get("rough", 0.2))
@@ -207,10 +210,11 @@ class Params:
             if v <= 0:
                 raise ParamError(key, f"`{key}` is {v}: a length in metres, above 0",
                                  f"write `{key}` in metres, above 0")
-        for key, v in (("rounds", self.rounds), ("margin", self.margin)):
+        for key, v in (("rounds", self.rounds), ("margin", self.margin), ("channel", self.channel),
+                       ("creep_steps", self.creep_steps)):
             if v < 0:
-                raise ParamError(key, f"`{key}` is {v}: a count, 0 or more",
-                                 f"write `{key}` as a whole number, 0 or more")
+                raise ParamError(key, f"`{key}` is {v}: 0 or more",
+                                 f"write `{key}` as 0 or more")
         if not 0 <= self.creep <= 0.25:
             raise ParamError("creep", f"`creep` is {self.creep}: 0 to 0.25, or a round overshoots",
                              "write `creep` from 0 to 0.25; the default is 0.2")
@@ -323,10 +327,10 @@ def erode(h, cell_m, p):
                 continue
             steep = sum(d * d for _, _, d in low) / sum(d for _, _, d in low) / cell_m
             floor = min(f[b][a] for a, b, _ in low)
-            cut = p.erode * math.sqrt(area[j][i]) * steep * cell_m
+            cut = p.erode * max(0.0, math.sqrt(area[j][i]) - p.channel_root) * steep * cell_m
             z = min(out[j][i], f[j][i])
             out[j][i] = max(z - cut, z - 0.5 * (z - floor) if z > floor else z)
-    if p.creep > 0:
+    for _ in range(p.creep_steps if p.creep > 0 else 0):
         c = [row[:] for row in out]
         for j in range(1, ny - 1):
             for i in range(1, nx - 1):

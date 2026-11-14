@@ -1,12 +1,16 @@
-name       = "m2"
-extent     = [0, 0, 8, 8]
+name       = "yard"
+extent     = [0, 0, 64, 64]
 resolution = 1
-include    = ["marks"]
+pack       = "pack.toml"
 
 [field.height]
 role = "surface"
-base = "= x"
+base = 20
 
-[step.gen]
-when    = "generate"
-command = ["python", "steps/gen.py"]
+[instance.a]
+asset = "cube"
+at    = [20, 20]
+
+[instance.b]
+asset = "cube"
+at    = [40, 40]

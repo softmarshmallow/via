@@ -1,9 +1,28 @@
 format    = "via-case-1"
 summary   = "A path; project(interpolate(t)) for 1000 seeded t: |t' - t| x L at most 1 mm."
 milestone = 1
-pending   = "needs a named check that feeds one kernel output into the next call and measures the round trip (conformance.md 3.4 has none)"
-actions   = ["op"]
+actions   = ["interpolate", "feed", "project"]
 
-[action.op]
-via  = ["kernel", "project", "--in", "in.json", "--out", "out.json"]
+# in.json: the path of interpolate_roundtrip and 1000 t, 998 drawn by Python's
+# random.Random(20261116) as k / 2^53, then 0 and 1. `feed` hands each interpolated point to project
+# (conformance.md 3.3 derive); roundtrip_t measures |t' - t| x L (geometry.md 3.8).
+
+[action.interpolate]
+via  = ["kernel", "interpolate", "--in", "in.json", "--out", "points.json"]
 exit = 0
+
+[action.feed]
+derive = "back.json"
+from   = "points.json"
+as     = "project"
+input  = "in.json"
+
+[action.project]
+via  = ["kernel", "project", "--in", "back.json", "--out", "out.json"]
+exit = 0
+
+[action.project.check.near]
+fn    = "roundtrip_t"
+path  = "out.json"
+input = "in.json"
+bound = 1

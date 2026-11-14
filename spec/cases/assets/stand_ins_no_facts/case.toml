@@ -1,13 +1,14 @@
 format    = "via-case-1"
-summary   = "--stand-ins on a pack with no facts file: build.no_facts."
+summary   = "--stand-ins on a pack with model assets and no facts file: build.no_facts, exit 1."
 milestone = 2
-pending   = "`via build --stand-ins` is not built yet (assets.md 9)"
-actions   = ["build"]
+actions   = ["stand_ins"]
 
-[action.build]
-via  = ["build", "world.toml", "--out", "build/w"]
-exit = 1
-out  = "build/w"
+[action.stand_ins]
+via         = ["build", "world.toml", "--stand-ins", "--out", "build/stand"]
+exit        = 1
+out         = "build/stand"
+diagnostics = "includes"
 
-[action.build.diag.code]
+[action.stand_ins.diag.no_facts]
 code = "build.no_facts"
+from = "run"

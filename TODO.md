@@ -185,6 +185,25 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
 - -> M3: **A worker step's `exit` is always null** (graph.md 6.3 now says so): a pooled worker exits
   when the build ends, after the record. Lesson: per-call status belongs to the call, not the process.
 
+### From the M2 close (2026-11-15; the disk filled mid-run, review round lost)
+
+- -> M3: **A change still costs ~90% of a cold build** (vale move_road 49.6 s vs 54.8 s, after cap
+  bounding, no per-object fsync, one placement pass). Remaining: the `checks` lint step (~21 s,
+  re-runs whole on any features change), the whole-extent fields memo (~9 s; `distance:kind:road`
+  re-runs in all 64 chunks though far chunks are capped constant), `pre_edit`'s fourth placement.
+  Lesson: profile before guessing; the biggest cost was paid by every build.
+- -> M3: **Land look not finished.** massif: new `uplands` params (`channel`, `creep_steps`) bend the
+  streams, but rocks fell to 0 (weather sees about tan/√2 of a diagonal slope), expect.toml not
+  re-recorded, uplands docstring lacks the two params. basin: dress/land edits unbuilt (woods
+  expected ~1,000), mouth and straight course over the shelf untouched. vale after move_road: not
+  started. A wrong `role:surface matches 0 fields` error hides a road end outside the extent.
+- -> owner: **build.md 12 vs the null vector**: the id digests the canonical JSON without its final
+  line feed; build.md should say so. **ford's pack for build.md 29/32** (stand-ins on a pack with no
+  model asset) needs a ruling; `c29_flags_in_key_m2` stays pending.
+- -> M3: **The on-foot review of M2 worlds was never run** (disk full). Run it with M3's first sheet.
+- -> M3: **PNG field rows without cases**: 16-bit, inverted, orientation, channels, palette, interlaced
+  and others in fields.md 4.
+
 ## Framing
 
 - [x] Draft `docs/ledger.md` (2026-11-12): the vocabulary of a game world in 14 groups, each term with an

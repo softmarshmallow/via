@@ -603,3 +603,118 @@ def derive_cells(net: dict[str, Any], inp: dict[str, Any], params: dict[str, Any
         }
         out.append((f"a{k:0{w}d}.json", doc))
     return out
+
+
+def derive_interpolate(out: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    """A `project` output as an `interpolate` input: the input's shapes, `t` each result's `t`."""
+    ts = [r.get("t") for r in out.get("results", [])]
+    if any(not isinstance(t, (int, float)) or isinstance(t, bool) for t in ts):
+        raise KernelFileError("a project result has no t")
+    return {"@format": "via-kernel-1", "shapes": inp["shapes"], "t": ts}
+
+
+def derive_project(out: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
+    """An `interpolate` output as a `project` input: the input's shapes, `points` each result's point."""
+    return {"@format": "via-kernel-1", "shapes": inp["shapes"],
+            "points": [list(_pt(r["point"])) for r in out.get("results", [])]}
+
+
+def derive_params(inp: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    """A kernel input with its `params` replaced: the same shapes asked another way."""
+    return dict(inp, params=params)
+
+
+# --- linear referencing round trips (geometry.md 3.8) -------------------------------------------
+
+
+def _line(inp: dict[str, Any]) -> list[tuple[Pt, Pt]]:
+    """The one shape's segments, in travel order: a path's, or a ring's with the closing one."""
+    shapes = inp.get("shapes", [])
+    if len(shapes) != 1:
+        raise KernelFileError(f"the input holds {len(shapes)} shapes, not one")
+    s = shapes[0]
+    if "path" in s:
+        pts = [_pt(p) for p in s["path"]]
+        return list(zip(pts, pts[1:]))
+    if "ring" in s:
+        pts = [_pt(p) for p in s["ring"]]
+        return list(zip(pts, pts[1:] + pts[:1]))
+    raise KernelFileError("the shape is not a path or a ring")
+
+
+def exact_nearest(p: Pt, line: list[tuple[Pt, Pt]]) -> tuple[Fraction, Fraction]:
+    """The nearest point of the line to `p`, exactly; on a tie the one first along the line."""
+    best: tuple[Fraction, Fraction, Fraction] | None = None
+    for a, b in line:
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        ll = dx * dx + dy * dy
+        if ll == 0:
+            q = (Fraction(a[0]), Fraction(a[1]))
+        else:
+            u = Fraction((p[0] - a[0]) * dx + (p[1] - a[1]) * dy, ll)
+            u = min(max(u, Fraction(0)), Fraction(1))
+            q = (a[0] + u * dx, a[1] + u * dy)
+        d2 = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2
+        if best is None or d2 < best[0]:
+            best = (d2, q[0], q[1])
+    assert best is not None
+    return best[1], best[2]
+
+
+def roundtrip_point(cid: str, out: dict[str, Any], inp: dict[str, Any], bound: Fraction) -> list[Failure]:
+    """`interpolate(project(p))` lies within `bound` mm of the exact nearest point (3.8)."""
+    name = f"check.{cid}"
+    line = _line(inp)
+    pts = [_pt(p) for p in inp.get("points", [])]
+    res = out.get("results", [])
+    if len(res) != len(pts) or not pts:
+        return [(name, f"one interpolate result per point ({len(pts)})", str(len(res)))]
+    worst, at = Fraction(0), -1
+    for k, (p, r) in enumerate(zip(pts, res)):
+        q = _pt(r["point"])
+        nx, ny = exact_nearest(p, line)
+        d2 = (q[0] - nx) ** 2 + (q[1] - ny) ** 2
+        if d2 > worst:
+            worst, at = d2, k
+    if worst > bound * bound:
+        p = pts[at]
+        return [(name, f"every point within {float(bound)} mm of the exact nearest point",
+                 f"point {at} {list(p)}: {res[at]['point']} lies {math.sqrt(worst):.4f} mm from it")]
+    return []
+
+
+def roundtrip_t(cid: str, out: dict[str, Any], inp: dict[str, Any], bound: float) -> list[Failure]:
+    """`project(interpolate(t))` gives `t'` with `|t' - t| x L` at most `bound` mm (3.8)."""
+    name = f"check.{cid}"
+    line = _line(inp)
+    length = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in line)
+    ts = inp.get("t", [])
+    res = out.get("results", [])
+    if len(res) != len(ts) or not ts:
+        return [(name, f"one project result per t ({len(ts)})", str(len(res)))]
+    worst, at = 0.0, -1
+    for k, (t, r) in enumerate(zip(ts, res)):
+        if not isinstance(r.get("t"), (int, float)):
+            return [(name, "every project result has a t", f"result {k}: {r.get('t')!r}")]
+        e = abs(r["t"] - t) * length
+        if e > worst:
+            worst, at = e, k
+    if worst > bound:
+        return [(name, f"|t' - t| x L at most {bound} mm",
+                 f"t {ts[at]!r} came back as {res[at]['t']!r}: {worst:.4f} mm")]
+    return []
+
+
+def region_twice_area(region: Any) -> int:
+    """A region's twice-area: each piece's shell less its holes (holes run clockwise, 2.5)."""
+    return sum(twice_area([_pt(v) for v in ring]) for piece in region for ring in piece)
+
+
+def stroke_measures(out: dict[str, Any], reference: dict[str, Any], distance_m: float) -> str:
+    offs = [o for o in reference.get("river_offsets", {}).get("offsets", [])
+            if o.get("distance_m") == distance_m]
+    ref = offs[0].get("area_m2") if offs else None
+    areas = [float(Fraction(region_twice_area(r), 2) / 1_000_000) for r in out.get("results", [])]
+    shown = ", ".join(f"{a:.2f}" for a in areas) or "none"
+    return (f"measure (geometry.md 6, read, never tuned to): stroked area at {distance_m} m "
+            f"{shown} m2 against {ref} m2")

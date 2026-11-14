@@ -1,8 +1,22 @@
 format    = "via-case-1"
 summary   = "A frame over 16 MiB: protocol.message_too_large."
 milestone = 2
-pending   = "needs a raw worker that sends a frame over 16 MiB; the SDK sends large data as blobs"
-actions   = ["build"]
+actions   = ["program", "trust", "build"]
+
+# The raw worker (conformance.md 3.7) answers step.call with one frame of 16 MiB + 1 bytes
+# (protocol.md 3.1); data.bytes is that length.
+
+[copy.raw]
+from = "tools/conformance/raw_worker.py"
+to   = "steps/raw.py"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
 
 [action.build]
 via  = ["build", "world.toml", "--out", "build/w"]
@@ -10,4 +24,6 @@ exit = 1
 out  = "build/w"
 
 [action.build.diag.code]
-code = "protocol.message_too_large"
+code    = "protocol.message_too_large"
+subject = "step.gen"
+data    = { bytes = 16777217 }

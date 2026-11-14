@@ -39,6 +39,8 @@ pub struct Args {
     /// `--diagnostics FILE` and its argument: a `FILE` inside the build directory is refused
     /// before anything is read from or written to that directory (14).
     pub diagnostics: Option<(u32, PathBuf)>,
+    /// `--stand-ins` (`assets.md` 9): model assets drawn as boxes of their accepted facts.
+    pub stand_ins: bool,
 }
 
 /// Each library lookup the build made (`documents.md` 4, `graph.md` 6.2), one line each: the
@@ -466,7 +468,8 @@ pub fn run(a: &Args) -> Outcome {
         }
         return finish_run(records, run_diags, None, Vec::new(), Some(out_dir));
     };
-    let model_opts = via_model::Options::from_load(&a.world, &load_opts);
+    let mut model_opts = via_model::Options::from_load(&a.world, &load_opts);
+    model_opts.stand_ins = a.stand_ins;
     let roots = steps::Roots {
         world_dir: wdir.clone(),
         lib: a.lib.clone(),
@@ -602,8 +605,39 @@ pub fn run(a: &Args) -> Outcome {
             };
             let path = via_model::pack::find(&written, &r, &mut Vec::new())?;
             let (p, _) = via_model::pack::read(&path, "pack");
-            Some((p?, path))
+            let mut p = p?;
+            let mut no_facts = Vec::new();
+            if a.stand_ins {
+                // The assets' faults are the model's to raise; this copy is what the files
+                // show. `build.no_facts` is the run's (`build.md` 14).
+                no_facts = via_model::asset_facts::stand_ins(&mut p);
+            }
+            Some((p, path, no_facts))
+        })
+        .map(|(p, path, no_facts)| {
+            run_diags.extend(no_facts);
+            (p, path)
         });
+    // `--stand-ins` with no facts file (`assets.md` 9): nothing is built; as with any error, the
+    // directory holds `diagnostics.json` (13), the world's records only.
+    if run_diags
+        .iter()
+        .any(|d| *d.code() == via_diag::DiagCode::Core(codes::build::NO_FACTS))
+    {
+        let records = finish(loaded.records.clone(), &fail_on);
+        let (world_r, _) = split_world_run(records);
+        let doc = document(&world_r, &[], 1);
+        if let Some(d) = write_failed_dir(&out_dir, doc.as_bytes()) {
+            run_diags.push(d);
+        }
+        return finish_run(
+            loaded.records,
+            run_diags,
+            Some(&world),
+            Vec::new(),
+            Some(out_dir),
+        );
+    }
     // The pack's root (`assets.md` 2.2, `root`), where the files of `assets.files` lie.
     let pack_root = pack
         .as_ref()
@@ -637,6 +671,9 @@ pub fn run(a: &Args) -> Outcome {
     fail_sorted.dedup();
     for c in &fail_sorted {
         parts.flags.push(("fail_on".into(), c.clone()));
+    }
+    if a.stand_ins {
+        parts.flags.push(("stand_ins".into(), "true".into()));
     }
     let versions = versions();
     let key = via_graph::build_key(&versions, &parts);
@@ -753,7 +790,6 @@ pub fn run(a: &Args) -> Outcome {
     // the world joined so far, and what they return joins their layer before the next rank's
     // steps read it. The final graph below then reuses their results.
     let base_build = baseline.as_ref().map(|b| &b.0.build);
-    let mut model_opts = model_opts;
     let mut join_records: Vec<Record> = Vec::new();
     let mut pre_nodes: BTreeMap<NodeId, via_graph::NodeOutcome> = BTreeMap::new();
     let world = {
@@ -816,6 +852,7 @@ pub fn run(a: &Args) -> Outcome {
             // (graph.md 6.3): `no record` only when there is none.
             gopts.previous = prev_record.clone();
             let run_k = via_graph::run(&plan_k, &store, &gopts, &step_roots);
+            run_diags.extend(plan_k.stop_workers());
             for (id, o) in &run_k.nodes {
                 if id.as_str().starts_with("step:") && o.status == via_graph::Status::Ran {
                     pre_nodes.insert(id.clone(), o.clone());
@@ -915,7 +952,7 @@ pub fn run(a: &Args) -> Outcome {
         "fail_on".into(),
         J::strs(fail_sorted.iter().map(String::as_str)),
     );
-    flags.insert("stand_ins".into(), J::Bool(false));
+    flags.insert("stand_ins".into(), J::Bool(a.stand_ins));
     let mut run_members = J::obj();
     run_members.insert(
         "changes".into(),
@@ -977,6 +1014,7 @@ pub fn run(a: &Args) -> Outcome {
     gopts.rerun = a.rerun.iter().cloned().collect();
     gopts.previous = prev_record.clone();
     let mut run = via_graph::run(&plan, &store, &gopts, &plan.roots());
+    run_diags.extend(plan.stop_workers());
     // A generate step that ran in the layer-by-layer pass above is reused here: the report says
     // it ran, once, as it did in this build.
     for (id, o) in pre_nodes {

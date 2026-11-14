@@ -47,7 +47,7 @@ base = "= 0"
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:land/uplands.py"]
-params  = { relief = 70, fall = 135, erode = 0.012, rounds = 45 }
+params  = { relief = 70, fall = 135, erode = 0.03, rounds = 60, rough = 0.5, channel = 400, creep_steps = 3 }
 
 [step.checks]                             # the review library's measures (R15)
 when    = "lint"

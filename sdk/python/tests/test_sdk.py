@@ -425,6 +425,40 @@ class Document(unittest.TestCase):
             tomllib.loads(text)
 
 
+class Meetings(unittest.TestCase):
+    """Step.meetings (surfaces.md 2.4): one surface.meetings call, carrying the step.call's id,
+    its table decoded; the engine's refusal (surface.too_early at generate) raised to the step."""
+
+    class Conn:
+        def __init__(self, answer=None, error=None):
+            self.cancelled, self.sent, self.answer, self.error = set(), [], answer, error
+
+        def request(self, method, params):
+            self.sent.append((method, params))
+            if self.error is not None:
+                raise self.error
+            return self.answer
+
+    def step(self, conn, when="lint"):
+        from viasdk._step import Step
+
+        return Step({"step": "s", "when": when, "out": tempfile.mkdtemp()}, conn, 7)
+
+    def test_one_call_and_its_table(self):
+        conn = self.Conn({"a": {"dtype": "str", "values": ["m.end"]},
+                          "b": {"dtype": "str", "values": ["n.start"]},
+                          "gap": {"dtype": "i64", "values": [0]}})
+        t = self.step(conn).meetings()
+        self.assertEqual(conn.sent, [("surface.meetings", {"call": 7})])
+        self.assertEqual(list(t["a"]), ["m.end"])
+        self.assertEqual(list(t["gap"]), [0])
+
+    def test_a_refusal_is_raised(self):
+        err = viasdk.RpcError(-32006, "too early", {"code": "surface.too_early"})
+        with self.assertRaises(viasdk.RpcError):
+            self.step(self.Conn(error=err), when="generate").meetings()
+
+
 class Version(unittest.TestCase):
     def test_major_version_is_the_protocol_number(self):
         self.assertEqual(viasdk.PROTOCOL, "via-step-1")

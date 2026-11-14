@@ -1,8 +1,26 @@
 format    = "via-case-1"
 summary   = "A worker sends a blob whose bytes do not match its name: protocol.blob_digest."
 milestone = 2
-pending   = "needs a raw worker that names a blob by another digest; the SDK cannot be made to (conformance.md 3.3 has no such action)"
-actions   = ["build"]
+actions   = ["program", "trust", "build"]
+
+# The raw worker (conformance.md 3.7) returns its document as { blob = <name> }, the bytes of
+# `# raw` stored at the BLAKE3 name of `# other` (protocol.md 3.2, 4.1).
+
+[copy.raw]
+from = "tools/conformance/raw_worker.py"
+to   = "steps/raw.py"
+
+[copy.blake3]
+from = "tools/conformance/via_conformance/blake3.py"
+to   = "steps/blake3.py"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
 
 [action.build]
 via  = ["build", "world.toml", "--out", "build/w"]
@@ -10,4 +28,5 @@ exit = 1
 out  = "build/w"
 
 [action.build.diag.code]
-code = "protocol.blob_digest"
+code    = "protocol.blob_digest"
+subject = "step.gen"

@@ -115,12 +115,16 @@ impl Shaped {
 pub struct ColumnError {
     pub code: i64,
     pub message: String,
+    /// The blob's size does not match the `dtype` and `shape` its message gives: the fault the
+    /// engine reports itself as `protocol.blob_header` (4.2).
+    pub header: bool,
 }
 
 fn invalid(message: String) -> ColumnError {
     ColumnError {
         code: -32602,
         message,
+        header: false,
     }
 }
 
@@ -128,6 +132,7 @@ fn blob_error(message: String) -> ColumnError {
     ColumnError {
         code: -32002,
         message,
+        header: false,
     }
 }
 
@@ -178,6 +183,7 @@ fn finite(name: &str, row: usize, x: f64) -> Result<f64, ColumnError> {
         Err(ColumnError {
             code: -32004,
             message: format!("{name}: value {row} is not finite"),
+            header: false,
         })
     }
 }
@@ -321,10 +327,13 @@ pub fn read_shaped(name: &str, v: &Value, store: &Store) -> Result<Shaped, Colum
         .map(blob)
         .map_err(|e| blob_error(format!("{name}: {e}")))?;
     if map.len() != want {
-        return Err(blob_error(format!(
-            "{name}: blob has {} bytes, shape gives {want}",
-            map.len()
-        )));
+        return Err(ColumnError {
+            header: true,
+            ..blob_error(format!(
+                "{name}: blob has {} bytes, shape gives {want}",
+                map.len()
+            ))
+        });
     }
     let column = match dtype {
         "u8" => Column::U8(map.to_vec()),

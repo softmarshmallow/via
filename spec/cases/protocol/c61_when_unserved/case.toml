@@ -1,8 +1,22 @@
 format    = "via-case-1"
 summary   = "A worker that does not serve the step's when: protocol.when_unserved."
 milestone = 2
-pending   = "needs a raw worker whose capabilities.when lacks the step's when; the SDK serves every when the script defines"
-actions   = ["build"]
+actions   = ["program", "trust", "build"]
+
+# The raw worker (conformance.md 3.7) lists only export in capabilities.when; the step is a
+# generate step, so initialize gives protocol.when_unserved with data.when (protocol.md 3.2).
+
+[copy.raw]
+from = "tools/conformance/raw_worker.py"
+to   = "steps/raw.py"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
 
 [action.build]
 via  = ["build", "world.toml", "--out", "build/w"]
@@ -10,4 +24,6 @@ exit = 1
 out  = "build/w"
 
 [action.build.diag.code]
-code = "protocol.when_unserved"
+code    = "protocol.when_unserved"
+subject = "step.gen"
+data    = { when = "generate" }

@@ -895,6 +895,81 @@ class KernelCheckTests(unittest.TestCase):
         self.assertTrue(self.run_check(check))
 
 
+class HarnessTests(unittest.TestCase):
+    """BLAKE3, the id rule, the round trips, the stroke measure and the store flip (conformance.md
+    3.3, 3.4, 3.7), each seen to hold and to fail."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="via-harness-test-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def put(self, name: str, doc: dict) -> None:
+        (self.tmp / name).parent.mkdir(parents=True, exist_ok=True)
+        (self.tmp / name).write_bytes(canon.canonical_bytes(doc))
+
+    def run_check(self, table: dict) -> list:
+        from via_conformance import named
+        self.notes: list[str] = []
+        return named.run_named("c", table, self.tmp, {"u5": lambda: [], "stdout": b"", "note": self.notes.append})
+
+    def test_blake3_vectors(self) -> None:
+        from via_conformance.blake3 import digest
+        # The reference implementation's digests of the empty input and "abc". Inputs of several
+        # chunks (a tree of parents) are checked by test_id_rule_on_the_null_vector's engine-made
+        # id only up to one chunk; larger ones were checked against store object names by hand.
+        self.assertEqual(digest(b""), "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262")
+        self.assertEqual(digest(b"abc"), "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85")
+
+    def test_id_rule_on_the_null_vector(self) -> None:
+        null = HERE.parents[2] / "spec/cases/build/c01_null/expected"
+        (self.tmp / "b").mkdir()
+        shutil.copy(null / "manifest.json", self.tmp / "b/manifest.json")
+        self.assertEqual(self.run_check({"fn": "id_rule", "build": "b"}), [])
+        m = canon.loads((self.tmp / "b/manifest.json").read_bytes())
+        self.assertEqual(m["id"], (null / "id.txt").read_text().strip())
+        m["seed"] = "0000000000000001" if m.get("seed") != "0000000000000001" else "0000000000000002"
+        self.put("b/manifest.json", m)
+        self.assertTrue(self.run_check({"fn": "id_rule", "build": "b"}))
+
+    def test_roundtrip_point(self) -> None:
+        line = {"@format": "via-kernel-1", "points": [[5000, 3000], [12000, -50]],
+                "shapes": [{"path": [[0, 0], [10000, 0], [10000, 7000]], "source": "p"}]}
+        self.put("in.json", line)
+        self.put("out.json", {"results": [{"bearing": 0, "point": [5000, 1]}, {"bearing": 0, "point": [10000, 0]}]})
+        check = {"fn": "roundtrip_point", "path": "out.json", "input": "in.json", "bound": 1}
+        self.assertEqual(self.run_check(check), [])
+        self.put("out.json", {"results": [{"bearing": 0, "point": [5000, 2]}, {"bearing": 0, "point": [10000, 0]}]})
+        self.assertTrue(self.run_check(check))
+        self.put("out.json", {"results": [{"bearing": 0, "point": [5000, 0]}]})
+        self.assertTrue(self.run_check(check))
+
+    def test_roundtrip_t(self) -> None:
+        self.put("in.json", {"@format": "via-kernel-1", "t": [0.5],
+                             "shapes": [{"path": [[0, 0], [10000, 0]], "source": "p"}]})
+        check = {"fn": "roundtrip_t", "path": "out.json", "input": "in.json"}
+        self.put("out.json", {"results": [{"d": 0, "nearest": [5000, 0], "sd": 0, "t": 0.50009}]})
+        self.assertEqual(self.run_check(check), [])
+        self.put("out.json", {"results": [{"d": 0, "nearest": [5000, 0], "sd": 0, "t": 0.5002}]})
+        self.assertTrue(self.run_check(check))
+
+    def test_stroke_measures_never_fails(self) -> None:
+        sq = [[[[0, 0], [10000, 0], [10000, 10000], [0, 10000]], [[2000, 2000], [2000, 4000], [4000, 4000], [4000, 2000]]]]
+        self.put("out.json", {"results": [sq]})
+        self.put("ref.json", {"river_offsets": {"offsets": [{"distance_m": 8.5, "area_m2": 99}]}})
+        self.assertEqual(self.run_check({"fn": "stroke_measures", "path": "out.json", "reference": "ref.json",
+                                         "distance": 8.5}), [])
+        self.assertIn("96.00 m2 against 99 m2", self.notes[0])
+
+    def test_derive_feeds_one_call_to_the_next(self) -> None:
+        from via_conformance import kernel
+        inp = {"@format": "via-kernel-1", "points": [[1, 2]], "shapes": [{"path": [[0, 0], [9, 0]], "source": "p"}]}
+        doc = kernel.derive_interpolate({"results": [{"t": 0.25}]}, inp)
+        self.assertEqual(doc, {"@format": "via-kernel-1", "shapes": inp["shapes"], "t": [0.25]})
+        doc = kernel.derive_project({"results": [{"bearing": 0, "point": [3, 0]}]}, inp)
+        self.assertEqual(doc["points"], [[3, 0]])
+        self.assertEqual(kernel.derive_params(inp, {"left": 1})["params"], {"left": 1})
+
+
 class MatchingTests(unittest.TestCase):
     def test_assignment_needs_search(self) -> None:
         # Greedy first-fit gives the line-1 record to `any`, leaving `one` unmatched.

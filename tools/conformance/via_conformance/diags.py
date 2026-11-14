@@ -24,6 +24,7 @@ RUN_CODES = {
     "graph.store_unavailable",
     "graph.step_unstable",
     "graph.busy",
+    "protocol.slow_exit",
 }
 NOT_RUN_BUILD_CODES = {"build.chunk_not_multiple", "build.internal"}
 

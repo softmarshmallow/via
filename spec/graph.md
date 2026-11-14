@@ -258,6 +258,9 @@ The store is a folder of write-once files named by digest. Where it lives is `bu
 - An object is checked against its name when first read in a build. A mismatch, or a file that
   cannot be read, is `graph.store_corrupt`: the entry is dropped and its node runs again.
   The spike's cache trusted its outputs (`spike/FINDINGS.md`); this check is the answer.
+- An entry written once is not forced to disk before it is renamed into place. A crash may leave
+  one torn; the check above drops it on first read and its node runs again, so the store is never
+  wrong, only colder. A flush per entry cost more than the work it kept (M2, `vale`).
 - A store that cannot be written (no permission, a full disk) is `graph.store_unavailable`: the
   build goes on and keeps nothing more.
 - Deleting the store is always safe: the next build runs everything and gives the same bytes
@@ -301,8 +304,10 @@ the node had run, so an unchanged rebuild writes the same `diagnostics.json`.
   reference graph and the statuses, and are in no node value. They are a function of the text, so
   they replay the same.
 - **Run diagnostics** (`graph.store_corrupt`, `graph.store_unavailable`, `graph.build_file_restored`,
-  `graph.step_unstable`, `graph.busy`) are about the run, not the world. They are printed and kept in
-  the run report (6.3), never in `diagnostics.json`.
+  `graph.step_unstable`, `graph.busy`, `protocol.slow_exit`) are about the run, not the world. They
+  are printed and kept in the run report (6.3), never in `diagnostics.json`. A worker killed past
+  its exit deadline (`protocol.md` 6.2) is a matter of this run's timing, and a reused build starts
+  no worker, so `protocol.slow_exit` could not replay.
 
 A node whose value holds an error is stored like any other and replays its error. Its readers are
 `skipped`: they do not run and raise nothing of their own, and `diag.skipped` counts them

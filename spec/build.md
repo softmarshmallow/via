@@ -461,7 +461,7 @@ Two kinds of diagnostic, kept apart so the same text gives the same `diagnostics
 | Kind | Codes | Where |
 |---|---|---|
 | World | Every node's diagnostics (`graph.md` 3.4), the reading steps' (`documents.md` 8), and the checks'. | `diagnostics.json`; the terminal; `--json`; `--diagnostics`. |
-| Run | `identity.no_previous`, `identity.reselected`, `graph.build_file_restored`, `graph.store_corrupt`, `graph.store_unavailable`, `graph.step_unstable`, `graph.busy`, and every `build.*` code of this chapter except `build.chunk_not_multiple` and `build.internal`. | The run report (11.3); the terminal; `--json`; `--diagnostics`. Never `diagnostics.json`. |
+| Run | `identity.no_previous`, `identity.reselected`, `graph.build_file_restored`, `graph.store_corrupt`, `graph.store_unavailable`, `graph.step_unstable`, `graph.busy`, `protocol.slow_exit`, and every `build.*` code of this chapter except `build.chunk_not_multiple` and `build.internal`. | The run report (11.3); the terminal; `--json`; `--diagnostics`. Never `diagnostics.json`. |
 
 - `diagnostics.json` is `diagnostics.md` 7's document, with world diagnostics only. Its `status`
   is the exit status the world diagnostics alone give.

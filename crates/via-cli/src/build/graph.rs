@@ -402,6 +402,11 @@ impl<'a> CliPlan<'a> {
         }
     }
 
+    /// Shuts the build's workers down; what a slow exit gave (`protocol.md` 6.2).
+    pub fn stop_workers(&self) -> Vec<Diag> {
+        self.pool.stop()
+    }
+
     /// What failed or was skipped, for a traced lint; `None` for any other step.
     fn bad_for(&self, worker_lint: bool) -> Option<Arc<crate::stepview::Bad>> {
         if !worker_lint {

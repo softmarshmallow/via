@@ -27,3 +27,10 @@ uv run python -m unittest discover -s tests                        # the runner'
   rule on request (`FAKE_VIA=threads`, `incremental`, `abspath`, ...), so each check is seen both
   to pass and to fail. A `--via` ending in `.py` runs under the runner's own Python, so the
   fake binary needs no `#!` line and the self-tests run on Windows too.
+- **The raw worker** is `raw_worker.py` (`conformance.md` 3.7): a step program that speaks
+  `via-step-1` without the SDK and breaks one rule on request (`when_unserved`,
+  `message_too_large`, `blob_digest`, `blob_header`, `slow_exit`). Cases copy it in as
+  `steps/raw.py`, with `via_conformance/blake3.py` beside it when the fault names a blob.
+- **BLAKE3** is `via_conformance/blake3.py`, a pure-Python copy of the reference algorithm, for the
+  `id_rule` check, `rerecord` and the raw worker; `python -m via_conformance.blake3 FILE` prints a
+  digest as `b3sum` does.

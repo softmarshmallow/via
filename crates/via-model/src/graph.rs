@@ -49,7 +49,7 @@ use via_num::Grid;
 use via_raster::window::{effect_window, Chunks};
 use via_raster::Window;
 
-use crate::build::{finish, prepare, Build, Options, Prepared};
+use crate::build::{finish_from, prepare, Build, Options, Prepared};
 use crate::decl::{Attr, Place, Role, Selector, ShapeDecl, Tier};
 use crate::place::{Geo, Placer};
 use crate::resolve::{Fields, Resolved, View};
@@ -528,12 +528,13 @@ impl<'w> ModelPlan<'w> {
             let mut enc = Enc::new();
             enc.str("via-pack-statement-1").str(&d.hex());
             // The facts file is not among them: it decides only diagnostics (`assets.md` 4.2),
-            // which the `facts` nodes raise.
+            // which the `facts` nodes raise. With `--stand-ins` it decides every placement fact
+            // of a model asset (9), so it is.
             let leaves: Vec<_> = p
                 .pack
                 .leaves()
                 .into_iter()
-                .filter(|(path, _)| *path != p.pack.facts_display)
+                .filter(|(path, _)| p.pack.stand_ins || *path != p.pack.facts_display)
                 .collect();
             enc.len(leaves.len());
             for (path, digest) in &leaves {
@@ -1990,7 +1991,10 @@ impl<'w> ModelPlan<'w> {
     /// before anything runs (`Def::found`), so they are reported whatever else failed; the
     /// placement pass's go into the value of the node that places.
     fn route_early(&mut self) -> BTreeMap<NodeId, Vec<Diag>> {
-        let mut placing = Placer::new(&self.p.decls, &self.p.pack).run().1;
+        let mut placing = match &self.p.placing {
+            Some(d) => d.clone(),
+            None => Placer::new(&self.p.decls, &self.p.pack).run().1,
+        };
         placing.retain(|d| !self.is_superseded(d));
         let fixed = minus(&self.p.diags, &placing);
         let mut out: BTreeMap<NodeId, Vec<Diag>> = BTreeMap::new();
@@ -2252,9 +2256,16 @@ impl<'w> ModelPlan<'w> {
         let fm = self.fields_memo();
         let t0 = std::time::Instant::now();
         let seeds: BTreeMap<String, Option<Resolved>> = fm.build.clone();
-        let p = prepare(self.world, &self.options);
-        let early = p.diags.clone();
-        let build = finish(self.world, p, seeds, Vec::new(), self.baseline.as_ref());
+        // The plan's own read and placement pass: the same text and options, so the same result,
+        // taken rather than made again.
+        let early = self.p.diags.clone();
+        let build = finish_from(
+            self.world,
+            &self.p,
+            seeds,
+            Vec::new(),
+            self.baseline.as_ref(),
+        );
         let field_diags: Vec<Diag> = fm.routed.values().flatten().cloned().collect();
         let mut late = minus(&build.diagnostics, &early);
         late = minus(&late, &dedupe(field_diags));

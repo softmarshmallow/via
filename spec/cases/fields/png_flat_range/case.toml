@@ -1,13 +1,17 @@
 format    = "via-case-1"
-summary   = "range = [20, 20] on a PNG field: field.file_range."
+summary   = "range = [3, 3] on a PNG field: field.file_range, exit 1."
 milestone = 2
-pending   = "PNG field files (fields.md 4) are not read yet: the reader takes array files only"
 actions   = ["build"]
 
-[action.build]
-via  = ["build", "world.toml", "--out", "build/w"]
-exit = 1
-out  = "build/w"
+# fields.md 4.2: lo == hi is field.file_range (a constant is a `base`). h.png is a 9 by 9 8-bit
+# grey ramp.
 
-[action.build.diag.code]
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.range]
 code = "field.file_range"
+line = 9

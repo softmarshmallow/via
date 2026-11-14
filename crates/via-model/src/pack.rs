@@ -204,6 +204,8 @@ pub struct Pack {
     /// lower-detail copies. A build raises an asset's only when the world uses it; `via pack
     /// check` raises them all.
     pub asset_diags: BTreeMap<String, Vec<Diag>>,
+    /// Built with `--stand-ins` (9): each model asset is drawn as a box of its accepted facts.
+    pub stand_ins: bool,
 }
 
 impl Pack {

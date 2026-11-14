@@ -39,7 +39,7 @@ mask  = "= 1 - smoothstep(3, 3.8, dist('kind:road', 6))"
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:land/weather.py"]
-params  = { repose = 34, rounds = 60 }
+params  = { repose = 30, rounds = 60 }
 
 # ---- the road up the valley (lib/ways). It climbs the stream's north-east bank from where the
 # valley opens at the map's edge to a head up the stream. Both ends stand on the stream the

@@ -436,15 +436,6 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
             }
             extra(2)?;
             let (wa, world) = need_world(p, "build").map_err(|d| vec![d])?;
-            if let Some(a) = p.has("--stand-ins") {
-                return Err(vec![Diag::new(
-                    codes::doc::NOT_YET,
-                    Subject::Cli,
-                    Site::Argument(a),
-                    txt("`--stand-ins` arrives in milestone 2".into()),
-                    via_diag::text!("build without `--stand-ins`"),
-                )]);
-            }
             let mut fail_on = Vec::new();
             let mut faults = Vec::new();
             for (a, c) in p.values("--fail-on") {
@@ -505,6 +496,7 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
                 deadline,
                 sdk: p.one("--sdk").map(|(_, s)| PathBuf::from(s)),
                 diagnostics: p.one("--diagnostics").map(|(a, f)| (a, PathBuf::from(f))),
+                stand_ins: p.has("--stand-ins").is_some(),
             });
             Ok(Done {
                 records: o.records,
@@ -666,6 +658,7 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
                     deadline,
                     sdk: p.one("--sdk").map(|(_, s)| PathBuf::from(s)),
                     diagnostics: p.one("--diagnostics").map(|(a, f)| (a, PathBuf::from(f))),
+                    stand_ins: false,
                 },
                 &p.values("--step"),
             );

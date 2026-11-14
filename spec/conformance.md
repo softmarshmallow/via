@@ -117,8 +117,10 @@ Each action holds exactly one of these keys, which says what it is:
 | `write` | path | Writes a file: from `text` (string), or from `from` (a path under the case's `later/`). |
 | `delete` | path | Deletes a file or a folder. |
 | `flip` | path | Inverts every bit of the byte at `at` (integer, a byte offset from the start). |
+| `flip_object` | path of a run report | Inverts every bit of the byte at `at` of the store object holding the value the report names for node `node` (`graph.md` 6.3's `value`), in the store folder `store`: `<store>/objects/ab/<value>` (`graph.md` 3.2). For a store damaged after a build, which the case cannot name in advance (`graph.md`'s `corrupt`). A node with no value, or no such object, is a case error. |
+| `rerecord` | path of a file in a build directory | Rewrites that file's record in the build's `manifest` (a path): its entry in `run.reports`, else in `files`, gets the file's `bytes` and BLAKE3 `digest` as it now stands. Nothing else of the manifest changes; it stays canonical. A file the manifest does not record is a case error. For `build.md` case 10's "its record in `run.reports` updated". |
 | `truncate` | path | Cuts the file to `bytes` (integer) bytes. |
-| `derive` | path | Writes a `via kernel` input (`geometry.md` 7.1) made from the kernel output `from`, so one call feeds the next. `as = "segments"`: noding's segments, each a two-point `path` with source `s<index>` (`geometry.md` 3.1 Idempotent). `as = "cells"`: a folder of one `cells` input per area of the network output `from`, with `input`'s shapes and grid, `params` added, the area by its start vertex and as frontage every `(source, edge, side)` on its shell, the side facing the area. Nothing is computed but this rewriting. |
+| `derive` | path | Writes a `via kernel` input (`geometry.md` 7.1) made from the kernel output `from`, so one call feeds the next. `as = "segments"`: noding's segments, each a two-point `path` with source `s<index>` (`geometry.md` 3.1 Idempotent). `as = "cells"`: a folder of one `cells` input per area of the network output `from`, with `input`'s shapes and grid, `params` added, the area by its start vertex and as frontage every `(source, edge, side)` on its shell, the side facing the area. `as = "interpolate"`: the shapes of `input` with `t` each `project` result's `t`, in order. `as = "project"`: the shapes of `input` with `points` each `interpolate` result's `point`. `as = "params"`: the kernel input `from` with its `params` replaced by the action's `params` (a fixture asked with other parameters). Nothing is computed but this rewriting. |
 
 Every path is relative to the working folder. Only `via` actions carry the keys below and the
 checks of section 3.4. The others are how a case edits text between builds ("then move the lane's
@@ -236,6 +238,10 @@ check not listed is a case error. Rows are added with the cases that need them.
 | `course_valid` | `path` (a `features.json`), `feature`, `start`, `end` (metres), `min_segment` (metres); `passes` (optional, points) | The named path starts at `start` and ends at `end` exactly, has each of `passes` as a vertex, turns by no more than 90 degrees at any vertex, and has no segment shorter than `min_segment`. | `derived.md` 3 step 6, d22 |
 | `entry_causes` | `path` (a `changes.json`), `table`, `prefix`; `named` (optional, cause strings) | At least one entry of `table` has a name starting with `prefix`; every such entry's `causes` is a non-empty list holding each of `named` as a `cause`. | `build.md` 11.2 ("never `[]` for an entry"), `graph.md` 6.4 |
 | `sample_terrain` | `path` (a `sample` answer), `input` (its question), `field` (the built terrain field), `manifest` | Each row is `surfaces.md` 2.2 computed from the field's posts by `fields.md` 1.2's cell and order, in f64, bit for bit, `inside` true. | `surfaces.md` sample_edge |
+| `roundtrip_point` | `path` (an `interpolate` output), `input` (the `project` input whose results fed it, `derive as = "interpolate"`); `bound` (mm, default 1) | One result per point of `input`, each within `bound` of the exact nearest point of `input`'s one path or ring to that point, computed in rationals, ties to the first along the line. | `geometry.md` 3.8, Conformance |
+| `roundtrip_t` | `path` (a `project` output), `input` (the `interpolate` input whose results fed it, `derive as = "project"`); `bound` (mm, default 1) | One result per `t` of `input`, each with `|t' - t| × L` at most `bound`, `L` the line's length in doubles. | `geometry.md` 3.8, Conformance |
+| `stroke_measures` | `path` (a `stroke` output), `reference` (`fixtures/kernel/townland/reference.json`), `distance` (metres) | Always: a note on the outcome gives each result region's area (shells less holes) beside the reference's `river_offsets` area at that distance (a measure, never a failure). | `geometry.md` 6 Measures, `course_a` |
+| `id_rule` | `build` (a build directory) | `build.md` 12: `manifest.json` is canonical, and its `id` equals the BLAKE3 digest of the manifest less `id`, `run` and `locations`, written as canonical JSON without its closing line feed (the form the null vector's `id.txt` fixes, `build.md` 12). | `build.md` case 10 |
 
 ### 3.5 Expected diagnostics
 
@@ -368,6 +374,30 @@ path    = "build/ford"
 listing = ["diagnostics.json", ".previous"]
 ```
 
+### 3.7 The raw worker
+
+A case that needs a worker breaking a rule the SDK keeps (`protocol.md` cases 57 to 61) uses the
+raw worker, `tools/conformance/raw_worker.py`: a Python program that speaks `via-step-1` on
+descriptors 0 and 1 itself, without the SDK, and misbehaves in the one way its first argument names.
+It is a step program like any other (R34), copied in as an input (3.2) and declared by the case's
+world: `command = ["python", "steps/raw.py", "<fault>"]`, `worker = true`. It runs under the
+program the case records (`via config program python {python}`) and is trusted by the case's own
+`via trust`.
+
+| Fault | The worker |
+|---|---|
+| `none` | Breaks nothing: lists every point in `capabilities.when`, answers each `step.call` with an empty document, exits on `shutdown` and `quit`. |
+| `when_unserved` | Lists only `export` in `capabilities.when` (`protocol.md` 3.2). |
+| `message_too_large` | Answers `step.call` with one frame of 16 MiB and one byte, 16,777,217 bytes (3.1). |
+| `blob_digest` | Returns its document as a blob named by another digest: the bytes of `# raw` and a line feed, stored at the BLAKE3 name of `# other` and a line feed (4.1). |
+| `blob_header` | Calls `expr.eval` with an `i32` column `x` of shape `[2]` whose blob, named by its own digest, holds 4 bytes, not 8 (4.2, 4.3); then fails the call with -32010, as the SDK does when an engine error is not caught. |
+| `slow_exit` | Serves as `none`, then answers neither `shutdown` nor `quit` and stays alive 6 s, past the 2 s deadline (6.2). |
+
+The faults that name a blob need BLAKE3: such a case also copies the runner's
+`tools/conformance/via_conformance/blake3.py` beside the worker, as `steps/blake3.py`. The worker
+writes its engine's answers to standard error, the step's log. A fault it does not know ends it
+with status 2 before `initialize` is answered. Faults are added with the cases that need them.
+
 ## 4. Milestones and pending cases
 
 - The runner is given the milestone being worked on: `--milestone N`. A case whose `milestone` is
@@ -449,7 +479,9 @@ runners are allowed (`docs/plan.md`, "Comes back to you later").
 ## 6. Running
 
 - **Location and language.** The runner is Python, using the standard library and numpy only (this
-  is `build.md`'s "read with numpy or the standard library, never through the SDK"). It lives in
+  is `build.md`'s "read with numpy or the standard library, never through the SDK"). BLAKE3, which
+  neither has (`build.md` 3.3), is the runner's own pure-Python copy of the reference algorithm,
+  `via_conformance/blake3.py`, used on small files only (a manifest, a blob a raw worker writes). It lives in
   `tools/conformance/` (R33). It is not under `spec/`, because it is a tool, not part of the
   contract.
 - **Command.** `run --via PATH --milestone N [--chapter C] [--case ID] [--jobs N] [--record DIR]`,

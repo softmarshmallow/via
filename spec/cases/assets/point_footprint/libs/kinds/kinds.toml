@@ -1,0 +1,8 @@
+[kind.pad]
+authority = "shaped"
+radius    = 4
+
+[kind.pad.effect.level]
+field = "role:surface"
+value = "= under('mean')"
+mask  = "= 1 - smoothstep(0, 3, d)"

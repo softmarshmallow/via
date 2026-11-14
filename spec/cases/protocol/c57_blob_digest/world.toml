@@ -1,7 +1,6 @@
 name       = "m2"
 extent     = [0, 0, 8, 8]
 resolution = 1
-include    = ["marks"]
 
 [field.height]
 role = "surface"
@@ -9,4 +8,5 @@ base = "= x"
 
 [step.gen]
 when    = "generate"
-command = ["python", "steps/gen.py"]
+command = ["python", "steps/raw.py", "blob_digest"]
+worker  = true

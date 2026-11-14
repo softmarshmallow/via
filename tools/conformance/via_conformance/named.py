@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from . import canon, files, kernel
+from . import blake3, canon, files, kernel
 
 Failure = tuple[str, str, str]
 
@@ -686,6 +686,56 @@ def cells_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any])
         raise NamedCheckError(str(e)) from e
 
 
+def roundtrip_point(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    try:
+        return kernel.roundtrip_point(cid, _kread(work / args["path"]), _kread(work / args["input"]),
+                                      Fraction(str(args.get("bound", 1))))
+    except kernel.KernelFileError as e:
+        raise NamedCheckError(str(e)) from e
+
+
+def roundtrip_t(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    try:
+        return kernel.roundtrip_t(cid, _kread(work / args["path"]), _kread(work / args["input"]),
+                                  float(args.get("bound", 1)))
+    except kernel.KernelFileError as e:
+        raise NamedCheckError(str(e)) from e
+
+
+def stroke_measures(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """A measure, reported as a note and never a failure (geometry.md 6, fixtures/README.md)."""
+    note = kernel.stroke_measures(_kread(work / args["path"]), _kread(work / args["reference"]),
+                                  float(args["distance"]))
+    if "note" in ctx:
+        ctx["note"](f"{cid}: {note}")
+    return []
+
+
+# --- id_rule (build.md 12) ------------------------------------------------------------------------
+
+
+def id_digest(manifest: dict[str, Any]) -> str:
+    """build.md 12: the BLAKE3 digest of the manifest less `id`, `run` and `locations`, as canonical
+    JSON text without its closing line feed (the form the null vector's `id.txt` fixes)."""
+    rest = {k: v for k, v in manifest.items() if k not in ("id", "run", "locations")}
+    return blake3.digest(canon.canonical_bytes(rest)[:-1])
+
+
+def id_rule(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    path = work / args["build"] / "manifest.json"
+    raw = path.read_bytes()
+    m = _read_json(path)
+    name = f"check.{cid}"
+    if not isinstance(m, dict) or not isinstance(m.get("id"), str):
+        return [(name, "manifest.json has an id", canon.show(m))]
+    if canon.canonical_bytes(m) != raw:
+        return [(name, "manifest.json is canonical (documents.md 8)", "it is not")]
+    got = id_digest(m)
+    if got != m["id"]:
+        return [(name, f"id equals the digest of the manifest less id, run and locations ({got})", m["id"])]
+    return []
+
+
 # --- sample_terrain (surfaces.md 2.2, fields.md 1.2) ------------------------------------------
 
 
@@ -839,6 +889,10 @@ CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Fai
     "course_valid": course_valid,
     "entry_causes": entry_causes,
     "post_step_at_most": post_step_at_most,
+    "roundtrip_point": roundtrip_point,
+    "roundtrip_t": roundtrip_t,
+    "stroke_measures": stroke_measures,
+    "id_rule": id_rule,
 }
 
 

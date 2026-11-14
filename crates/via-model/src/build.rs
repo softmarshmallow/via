@@ -37,6 +37,8 @@ pub struct Options {
     /// Per generate step whose document is joined, the folder holding the files of its `out`
     /// (`protocol.md` 5): a returned field's `file` is read there.
     pub step_out: BTreeMap<String, PathBuf>,
+    /// `--stand-ins` (`assets.md` 9): model assets take their placement facts from the facts file.
+    pub stand_ins: bool,
 }
 
 impl Options {
@@ -60,6 +62,7 @@ impl Options {
                 .unwrap_or_default(),
             shipped_root: load.shipped_root.clone(),
             step_out: BTreeMap::new(),
+            stand_ins: false,
         }
     }
 }
@@ -245,6 +248,9 @@ pub(crate) struct Prepared {
     pub pack: Pack,
     pub placed: crate::place::Placed,
     pub diags: Vec<Diag>,
+    /// The placement pass's own diagnostics (also in `diags`), when it ran: the graph routes them
+    /// to the nodes that place without running the pass again.
+    pub placing: Option<Vec<Diag>>,
 }
 
 /// Reads the world, finds and reads the pack, resolves shapes and plans.
@@ -274,6 +280,11 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
             match p {
                 Some(p) => pk = p,
                 None => pk.failed = true,
+            }
+            if options.stand_ins {
+                // `build.no_facts` is a run diagnostic (`build.md` 14): the command line raises
+                // it before any node runs.
+                let _ = crate::asset_facts::stand_ins(&mut pk);
             }
         } else {
             pk.failed = true;
@@ -335,19 +346,20 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
             }
         }
     }
-    let placed = match decls.grid {
+    let (placed, placing) = match decls.grid {
         Some(_) => {
             let (placed, pd) = Placer::new(&decls, &pk).run();
-            diags.extend(pd);
-            placed
+            diags.extend(pd.iter().cloned());
+            (placed, Some(pd))
         }
-        None => crate::place::Placed::default(),
+        None => (crate::place::Placed::default(), None),
     };
     Prepared {
         decls,
         pack: pk,
         placed,
         diags,
+        placing,
     }
 }
 
@@ -544,29 +556,42 @@ fn png_samples(
     };
     let top = if p.depth == 8 { 255.0 } else { 65535.0 };
     let (lo, hi) = f.range.unwrap_or((0.0, 1.0));
-    if unit_m && (hi - lo).abs() / top > 0.1 {
-        diags.push(at(
+    let step = (hi - lo).abs() / top;
+    if unit_m && step > 0.1 {
+        let d = at(
             codes::field::FILE_COARSE,
             "file",
             &format!(
                 "`{}` steps {} m a level on a field in metres",
                 f.written,
-                (((hi - lo).abs() / top) * 1000.0).round_ties_even() / 1000.0
+                (step * 1000.0).round_ties_even() / 1000.0
             ),
             "use 16-bit, or a narrower range",
-        ));
+        );
+        // `fields.md` 4.3: the step, in metres.
+        diags.push(match via_diag::Finite::new(step) {
+            Some(v) => d.with("step", v),
+            None => d,
+        });
     }
     if !p.unapplied.is_empty() {
-        diags.push(at(
-            codes::field::FILE_PROFILE,
-            "file",
-            &format!(
-                "`{}`'s {} not applied: levels are read as stored",
-                f.written,
-                p.unapplied.join(", ")
+        diags.push(
+            at(
+                codes::field::FILE_PROFILE,
+                "file",
+                &format!(
+                    "`{}`'s {} not applied: levels are read as stored",
+                    f.written,
+                    p.unapplied.join(", ")
+                ),
+                "none needed; levels are read as stored",
+            )
+            // `fields.md` 4.1: what was ignored, by chunk name.
+            .with(
+                "chunks",
+                via_diag::Value::texts(p.unapplied.iter().cloned()),
             ),
-            "none needed; levels are read as stored",
-        ));
+        );
     }
     let (w, h) = (p.width as usize, p.height as usize);
     let mut values = Vec::with_capacity(w * h);
@@ -594,16 +619,25 @@ pub(crate) fn finish(
     seeded_diags: Vec<Diag>,
     baseline: Option<&Build>,
 ) -> Build {
+    finish_from(world, &p, seeds, seeded_diags, baseline)
+}
+
+/// [`finish`] reading the prepared stage in place, so the graph finishes from its own pass.
+// The body predates the borrow and keeps its `&decls`-style reads.
+#[allow(clippy::needless_borrow)]
+pub(crate) fn finish_from(
+    world: &World,
+    p: &Prepared,
+    seeds: BTreeMap<String, Option<crate::resolve::Resolved>>,
+    seeded_diags: Vec<Diag>,
+    baseline: Option<&Build>,
+) -> Build {
     let mut out = Build {
         statements: statements(world),
         ..Build::default()
     };
-    let Prepared {
-        decls,
-        pack: pk,
-        placed,
-        mut diags,
-    } = p;
+    let (decls, pk, placed) = (&p.decls, &p.pack, &p.placed);
+    let mut diags = p.diags.clone();
     diags.extend(seeded_diags);
     for (id, s) in &decls.steps {
         if s.when == "lint" {

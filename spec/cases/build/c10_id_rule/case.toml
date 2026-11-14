@@ -1,8 +1,12 @@
 format    = "via-case-1"
 summary   = "ford: the digest of manifest.json less id, run and locations equals id; changes.json rewritten with its record updated: via check passes and id is unchanged."
 milestone = 1
-pending   = "the runner reads with the standard library and numpy only (conformance.md 6), which have no BLAKE3 (build.md 3.3): a named check for the id rule waits on that choice"
-actions   = ["program", "trust", "build"]
+actions   = ["program", "trust", "build", "rewrite", "record", "check"]
+
+# id_rule recomputes build.md 12 with the runner's BLAKE3 (conformance.md 3.4). changes.json is then
+# replaced by a report with other entries (none: the report of a build with no baseline, 11.2), and
+# `rerecord` updates its bytes and digest in run.reports; the id leaves both out, so via check passes
+# and the recomputed digest still equals the id the build wrote.
 
 [copy.ford]
 from = "examples/ford"
@@ -21,3 +25,28 @@ via         = ["build", "world.toml", "--out", "build/ford"]
 exit        = 0
 diagnostics = "includes"
 out         = "build/ford"
+
+[action.build.check.id]
+fn    = "id_rule"
+build = "build/ford"
+
+[action.rewrite]
+write = "build/ford/changes.json"
+from  = "later/changes.json"
+
+[action.record]
+rerecord = "build/ford/changes.json"
+manifest = "build/ford/manifest.json"
+
+[action.check]
+via  = ["check", "build/ford"]
+exit = 0
+
+[action.check.check.id]
+fn    = "id_rule"
+build = "build/ford"
+
+[action.check.same.id]
+action = "build"
+what   = "build/ford/manifest.json"
+ignore = ["/run"]

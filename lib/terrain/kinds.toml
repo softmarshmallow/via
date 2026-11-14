@@ -115,7 +115,9 @@ authority = "anchored"                    # (`starts_at`, `path`, `ends_at`; `ro
 # statement wins). Unstated, the course takes the width from the area it drains (below).
 
 [kind.terrain_river.defaults]
-incise = 2                                # metres below the lowest ground near its line it begins
+width  = 0                                # metres at its mouth; 0 is unstated (documents.md 7: an
+                                          # attribute is declared here to be written at all)
+incise = 2                               # metres below the lowest ground near its line it begins
 fall   = 0.003                            # the least fall of its groove, rise over run
 valley = 70                               # metres over which the valley's sides meet the ground
 

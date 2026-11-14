@@ -2,7 +2,6 @@ format    = "via-case-1"
 summary   = "Accepted; a declared sink then edited in the pack: via build --stand-ins gives asset.stand_in_stale, exit 1."
 milestone = 2
 actions   = ["accept", "sink", "stand_ins"]
-pending   = "`via build --stand-ins` is not built yet (assets.md 9)"
 
 [action.accept]
 via         = ["pack", "accept", "pack.toml"]

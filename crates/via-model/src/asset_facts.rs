@@ -536,6 +536,207 @@ pub fn stale(pack: &Pack) -> Option<Diag> {
     )
 }
 
+/// A fact's text as the facts file writes it (4.1), read back as a TOML value.
+fn fact_value(text: &str) -> Option<toml::Value> {
+    format!("v = {text}")
+        .parse::<toml::Table>()
+        .ok()?
+        .remove("v")
+}
+
+/// A length the facts file writes in exact metres, in millimetres.
+fn fact_mm(v: &toml::Value) -> Option<i64> {
+    match v {
+        toml::Value::Integer(i) => i.checked_mul(1000),
+        toml::Value::Float(_) => via_num::parse_length(&v.to_string()).ok(),
+        _ => None,
+    }
+}
+
+fn fact_lengths<const N: usize>(text: &str) -> Option<[i64; N]> {
+    let v = fact_value(text)?;
+    let xs = v.as_array()?;
+    if xs.len() != N {
+        return None;
+    }
+    let mut out = [0i64; N];
+    for (o, x) in out.iter_mut().zip(xs) {
+        *o = fact_mm(x)?;
+    }
+    Some(out)
+}
+
+/// Gives a model asset whose files did not measure its accepted placement facts (9): `bounds`,
+/// `origin` (so the pivot), the footprint unless the pack text declares one, `triangles`, the
+/// copies' triangles and the bound files. `None` when the entry cannot be read back.
+fn fill_from_facts(
+    a: &mut Asset,
+    old: &BTreeMap<String, String>,
+    declared_footprint: bool,
+) -> Option<()> {
+    let bounds: [i64; 6] = fact_lengths(old.get("bounds")?)?;
+    let origin: [i64; 3] = fact_lengths(old.get("origin")?)?;
+    let footprint = if declared_footprint {
+        a.footprint.clone()
+    } else {
+        let v = fact_value(old.get("footprint")?)?;
+        v.as_array()?
+            .iter()
+            .map(|p| {
+                let p = p.as_array().filter(|p| p.len() == 2)?;
+                Some((fact_mm(&p[0])?, fact_mm(&p[1])?))
+            })
+            .collect::<Option<Vec<_>>>()?
+    };
+    let triangles = u64::try_from(fact_value(old.get("triangles")?)?.as_integer()?).ok()?;
+    let detail_triangles = match old.get("detail_triangles") {
+        None => Vec::new(),
+        Some(t) => fact_value(t)?
+            .as_array()?
+            .iter()
+            .map(|x| x.as_integer().and_then(|i| u64::try_from(i).ok()))
+            .collect::<Option<Vec<_>>>()?,
+    };
+    let files: BTreeMap<String, String> = match old.get("files") {
+        None => BTreeMap::new(),
+        Some(t) => fact_value(t)?
+            .as_table()?
+            .iter()
+            .map(|(k, v)| Some((k.clone(), v.as_str()?.to_string())))
+            .collect::<Option<_>>()?,
+    };
+    let m = a.model.as_mut()?;
+    let mut copies = Vec::new();
+    for path in std::iter::once(&m.file).chain(m.detail.iter()) {
+        let rel = path.trim_start_matches("./").replace('\\', "/");
+        if let Some(d) = files.get(&rel) {
+            copies.push((rel, d.clone()));
+        }
+    }
+    m.pivot_mm = [-origin[0], -origin[1], -origin[2]];
+    m.detail_triangles = detail_triangles;
+    m.files = files;
+    m.copies = copies;
+    a.bounds = bounds;
+    a.origin = origin;
+    a.footprint = footprint;
+    a.triangles = triangles;
+    a.size = [
+        bounds[3] - bounds[0],
+        bounds[4] - bounds[1],
+        bounds[5] - bounds[2],
+    ];
+    Some(())
+}
+
+/// `via build --stand-ins` (9): every model asset takes its placement facts from the facts file.
+/// A model whose files are absent is filled from its accepted entry and its missing-file faults
+/// are dropped; an asset the facts file lacks, or whose facts (declared in the pack text, or
+/// measured from files that are present) differ from the accepted ones, carries
+/// `asset.stand_in_stale` among its own faults, raised when the world uses it (8.3). Returns
+/// `build.no_facts` when the pack has a model asset and no facts file. A pack with no model asset
+/// needs no facts file (4), and builds as it always does.
+pub fn stand_ins(pack: &mut Pack) -> Vec<Diag> {
+    if pack.failed || !pack.assets.values().any(|a| a.model.is_some()) {
+        return Vec::new();
+    }
+    pack.stand_ins = true;
+    let accepted = match &pack.facts {
+        FactsFile::Present(m) => m.clone(),
+        // `pack.bad_facts` was raised where the file was read.
+        FactsFile::Bad => return Vec::new(),
+        FactsFile::Absent => {
+            let (subject, site) = pack_site(pack);
+            return vec![text::diag(
+                codes::build::NO_FACTS,
+                subject,
+                site,
+                &format!(
+                    "`--stand-ins` needs the facts file {}, and the pack has none",
+                    pack.facts_display
+                ),
+                &format!(
+                    "run `via pack accept {}`, then build with `--stand-ins`",
+                    pack.command_path()
+                ),
+            )];
+        }
+    };
+    let hint = format!(
+        "run `via pack accept {}` with the files present",
+        pack.command_path()
+    );
+    let ids: Vec<String> = pack
+        .assets
+        .iter()
+        .filter(|(_, a)| a.model.is_some())
+        .map(|(id, _)| id.clone())
+        .collect();
+    for id in ids {
+        let (subject, site) = header(pack, &id);
+        let stale = |message: String| {
+            text::diag(
+                codes::asset::STAND_IN_STALE,
+                subject.clone(),
+                site.clone(),
+                &message,
+                &hint,
+            )
+        };
+        let Some(old) = accepted.get(&id) else {
+            let d = stale(format!(
+                "the asset `{id}` is not in {}: it has no stand-in",
+                pack.facts_display
+            ));
+            pack.asset_diags.entry(id.clone()).or_default().push(d);
+            continue;
+        };
+        let declared_footprint = pack
+            .lines
+            .get(&id)
+            .is_some_and(|l| l.contains_key("footprint"));
+        let Some(a) = pack.assets.get_mut(&id) else {
+            continue;
+        };
+        let measured = a.model.as_ref().is_some_and(|m| m.measured);
+        if !measured {
+            if fill_from_facts(a, old, declared_footprint).is_none() {
+                let d = stale(format!(
+                    "the entry of `{id}` in {} cannot be read back",
+                    pack.facts_display
+                ));
+                pack.asset_diags.entry(id.clone()).or_default().push(d);
+                continue;
+            }
+            // The files are absent by design: their faults are not this build's.
+            if let Some(ds) = pack.asset_diags.get_mut(&id) {
+                ds.retain(|d| *d.code() != via_diag::DiagCode::Core(codes::pack::MISSING_FILE));
+            }
+        }
+        // A file re-exported with the same measures is not stale: only `files` is left out.
+        let diff = Diff::of(old, &entry(a));
+        let differ: Vec<&(String, String, String)> =
+            diff.facts.iter().filter(|(k, _, _)| k != "files").collect();
+        if !differ.is_empty() {
+            let shown: Vec<String> = differ
+                .iter()
+                .map(|(k, o, n)| format!("{k} {o} -> {n}"))
+                .collect();
+            let d = stale(format!(
+                "`{id}` differs from {}: {}",
+                pack.facts_display,
+                shown.join("; ")
+            ))
+            .with(
+                "facts",
+                Value::texts(differ.iter().map(|(k, _, _)| k.clone())),
+            );
+            pack.asset_diags.entry(id.clone()).or_default().push(d);
+        }
+    }
+    Vec::new()
+}
+
 /// What `via pack accept` did.
 pub struct Accepted {
     /// The ids whose entries changed, added or dropped, sorted.

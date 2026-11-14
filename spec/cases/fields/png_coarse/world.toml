@@ -1,12 +1,9 @@
 name       = "m2"
 extent     = [0, 0, 8, 8]
 resolution = 1
-include    = ["marks"]
 
 [field.height]
-role = "surface"
-base = "= x"
-
-[step.gen]
-when    = "generate"
-command = ["python", "steps/gen.py"]
+role    = "surface"
+file    = "h.png"
+outside = 0
+range   = [0, 66]

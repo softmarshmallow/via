@@ -1,13 +1,19 @@
 format    = "via-case-1"
-summary   = "A PNG with a gamma chunk: field.file_profile, the levels read as stored."
+summary   = "A PNG with gAMA and tRNS chunks: field.file_profile naming both, exit 0."
 milestone = 2
-pending   = "PNG field files (fields.md 4) are not read yet: the reader takes array files only"
 actions   = ["build"]
 
-[action.build]
-via  = ["build", "world.toml", "--out", "build/w"]
-exit = 1
-out  = "build/w"
+# fields.md 4.1: gamma, colour profiles and tRNS are not applied; field.file_profile (info) names
+# what was ignored. h.png is a 9 by 9 8-bit grey ramp, level 31 * column, with a gAMA chunk and a
+# grey tRNS chunk.
 
-[action.build.diag.code]
-code = "field.file_profile"
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.profile]
+code    = "field.file_profile"
+subject = "field.height"
+data    = { chunks = ["gAMA", "tRNS"] }

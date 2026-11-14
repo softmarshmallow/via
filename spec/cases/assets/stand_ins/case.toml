@@ -2,7 +2,6 @@ format    = "via-case-1"
 summary   = "A world and an accepted pack, model files deleted: via build --stand-ins; every instance transform and footprint equal to the build with the files; budgets' triangles equal."
 milestone = 2
 actions   = ["accept", "files", "drop", "stand_ins"]
-pending   = "`via build --stand-ins` is not built yet (assets.md 9)"
 
 [action.accept]
 via         = ["pack", "accept", "pack.toml"]
@@ -24,11 +23,44 @@ exit        = 0
 out         = "build/stand"
 diagnostics = "includes"
 
-[action.stand_ins.same.x]
-action = "files"
-what   = "build/files/instances/x.npy"
+[action.stand_ins.check.a]
+fn    = "instance_at"
+build = "build/stand"
+name  = "a"
+at    = [20, 20]
+
+[action.stand_ins.check.b]
+fn    = "instance_at"
+build = "build/stand"
+name  = "b"
+at    = [40, 40]
 
 [action.stand_ins.file.triangles]
 path    = "build/stand/manifest.json"
 pointer = "/assets/cube/triangles"
 value   = [12]
+
+[action.stand_ins.file.bounds]
+path    = "build/stand/manifest.json"
+pointer = "/assets/cube/bounds"
+value   = [-0.5, -0.5, 0, 0.5, 0.5, 1]
+
+[action.stand_ins.file.footprint]
+path    = "build/stand/manifest.json"
+pointer = "/assets/cube/footprint"
+value   = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+
+[action.stand_ins.file.stand_in]
+path    = "build/stand/manifest.json"
+pointer = "/assets/cube/stand_in"
+value   = true
+
+[action.stand_ins.file.flag]
+path    = "build/stand/manifest.json"
+pointer = "/run/flags/stand_ins"
+value   = true
+
+[action.files.file.stand_in]
+path    = "build/files/manifest.json"
+pointer = "/assets/cube/stand_in"
+value   = false

@@ -130,6 +130,7 @@ pub fn is_run_code(code: &str) -> bool {
         "graph.store_unavailable",
         "identity.no_previous",
         "identity.reselected",
+        "protocol.slow_exit",
     ];
     if RUN.contains(&code) {
         return true;

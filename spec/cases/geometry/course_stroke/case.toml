@@ -1,13 +1,60 @@
 format    = "via-case-1"
 summary   = "course_a; stroke 8.5 m and 17 m both sides, round: areas reported as measures against reference.json."
 milestone = 1
-pending   = "course_a.json is written (spec/vectors/geometry/import.py, no grid or params); a stroke input needs params.left, right, join, cap beside it, and the measure of each stroked area against reference.json needs a named check of conformance.md 3.4 like network_measures"
-actions   = ["op"]
+actions   = ["ask_near", "near", "ask_far", "far"]
+
+# course_a.json holds the course alone; `derive as = "params"` writes it with each stroke's params
+# (conformance.md 3.3). The areas are measures, a note on the outcome and never a failure
+# (geometry.md 6: the reference used 16 segments per quarter circle, we use 5 mm chords).
 
 [copy.fixture]
 from = "spec/vectors/geometry/course_a.json"
 to   = "course_a.json"
 
-[action.op]
-via  = ["kernel", "stroke", "--in", "course_a.json", "--out", "out.json"]
+[copy.reference]
+from = "fixtures/kernel/townland/reference.json"
+to   = "reference.json"
+
+[action.ask_near]
+derive = "near.json"
+from   = "course_a.json"
+as     = "params"
+params = { left = 8500, right = 8500, join = "round", cap = "round" }
+
+[action.near]
+via  = ["kernel", "stroke", "--in", "near.json", "--out", "near_out.json"]
 exit = 0
+
+[action.near.check.count]
+fn      = "json_count"
+path    = "near_out.json"
+pointer = "/results"
+count   = 1
+
+[action.near.check.area]
+fn        = "stroke_measures"
+path      = "near_out.json"
+reference = "reference.json"
+distance  = 8.5
+
+[action.ask_far]
+derive = "far.json"
+from   = "course_a.json"
+as     = "params"
+params = { left = 17000, right = 17000, join = "round", cap = "round" }
+
+[action.far]
+via  = ["kernel", "stroke", "--in", "far.json", "--out", "far_out.json"]
+exit = 0
+
+[action.far.check.count]
+fn      = "json_count"
+path    = "far_out.json"
+pointer = "/results"
+count   = 1
+
+[action.far.check.area]
+fn        = "stroke_measures"
+path      = "far_out.json"
+reference = "reference.json"
+distance  = 17

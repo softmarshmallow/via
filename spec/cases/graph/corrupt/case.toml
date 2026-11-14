@@ -1,8 +1,11 @@
 format    = "via-case-1"
 summary   = "A byte flipped in the stored object of a height chunk the change does not touch; build --change downstream: graph.store_corrupt in the run report; that chunk ran; same bytes as clean."
 milestone = 1
-pending   = "needs an action that flips a byte in the store object a run report names (conformance.md 3.3 flips a path the case knows)"
-actions   = ["program", "trust", "base", "changed"]
+actions   = ["program", "trust", "base", "damage", "changed"]
+
+# The chunk at posts 384..513 by 384..513 lies far from the downstream change (the beck's lower
+# reach), so without the damage it would be reused. "Same bytes as clean" is U6's re-run of
+# `changed` (conformance.md 5.1): a fresh store, the same change.
 
 [copy.ford]
 from = "examples/ford"
@@ -22,6 +25,12 @@ exit        = 0
 diagnostics = "includes"
 out         = "build/ford"
 
+[action.damage]
+flip_object = "build/ford.run.json"
+node        = "field:height/v:build/w:384.384.513.513"
+store       = "store"
+at          = 100
+
 [action.changed]
 via         = ["build", "world.toml", "--store", "store", "--change", "downstream", "--out", "build/ford"]
 exit        = 0
@@ -31,3 +40,6 @@ out         = "build/ford"
 [action.changed.diag.store_corrupt]
 code = "graph.store_corrupt"
 from = "run"
+
+[action.changed.nodes]
+ran_includes = ["field:height/v:build/w:384.384.513.513"]

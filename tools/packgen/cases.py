@@ -806,21 +806,27 @@ case(
         "junk.gltf": "{ not glTF\n",
     },
 )
-STAND_IN_PENDING = "`via build --stand-ins` is not built yet (assets.md 9)"
 case(
     "stand_ins",
     {
         "case.toml": head(
             "A world and an accepted pack, model files deleted: via build --stand-ins; every instance transform and footprint equal to the build with the files; budgets' triangles equal.",
             ["accept", "files", "drop", "stand_ins"],
-            pending=STAND_IN_PENDING,
         )
         + accept("accept")
         + build("files", "build/files")
         + '\n[action.drop]\ndelete = "cube.gltf"\n'
         + '\n[action.stand_ins]\nvia         = ["build", "world.toml", "--stand-ins", "--out", "build/stand"]\nexit        = 0\nout         = "build/stand"\ndiagnostics = "includes"\n'
-        + '\n[action.stand_ins.same.x]\naction = "files"\nwhat   = "build/files/instances/x.npy"\n'
-        + '\n[action.stand_ins.file.triangles]\npath    = "build/stand/manifest.json"\npointer = "/assets/cube/triangles"\nvalue   = [12]\n',
+        # The runner's `same` compares one path before and after; the two builds are two
+        # directories, so each fact the build with the files gave is written out here.
+        + '\n[action.stand_ins.check.a]\nfn    = "instance_at"\nbuild = "build/stand"\nname  = "a"\nat    = [20, 20]\n'
+        + '\n[action.stand_ins.check.b]\nfn    = "instance_at"\nbuild = "build/stand"\nname  = "b"\nat    = [40, 40]\n'
+        + '\n[action.stand_ins.file.triangles]\npath    = "build/stand/manifest.json"\npointer = "/assets/cube/triangles"\nvalue   = [12]\n'
+        + '\n[action.stand_ins.file.bounds]\npath    = "build/stand/manifest.json"\npointer = "/assets/cube/bounds"\nvalue   = [-0.5, -0.5, 0, 0.5, 0.5, 1]\n'
+        + '\n[action.stand_ins.file.footprint]\npath    = "build/stand/manifest.json"\npointer = "/assets/cube/footprint"\nvalue   = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]\n'
+        + '\n[action.stand_ins.file.stand_in]\npath    = "build/stand/manifest.json"\npointer = "/assets/cube/stand_in"\nvalue   = true\n'
+        + '\n[action.stand_ins.file.flag]\npath    = "build/stand/manifest.json"\npointer = "/run/flags/stand_ins"\nvalue   = true\n'
+        + '\n[action.files.file.stand_in]\npath    = "build/files/manifest.json"\npointer = "/assets/cube/stand_in"\nvalue   = false\n',
         **WORLD_FILES,
     },
 )
@@ -830,13 +836,34 @@ case(
         "case.toml": head(
             "Accepted; a declared sink then edited in the pack: via build --stand-ins gives asset.stand_in_stale, exit 1.",
             ["accept", "sink", "stand_ins"],
-            pending=STAND_IN_PENDING,
         )
         + accept("accept")
         + '\n[action.sink]\nwrite = "pack.toml"\ntext  = "[asset.cube]\\nfile = \\"cube.gltf\\"\\nsink = 0.3\\n"\n'
         + '\n[action.stand_ins]\nvia         = ["build", "world.toml", "--stand-ins", "--out", "build/stand"]\nexit        = 1\nout         = "build/stand"\ndiagnostics = "includes"\n'
         + '\n[action.stand_ins.diag.stale]\ncode    = "asset.stand_in_stale"\nsubject = "asset.cube"\n',
         **WORLD_FILES,
+    },
+)
+case(
+    "stand_ins_no_facts",
+    {
+        "case.toml": head("--stand-ins on a pack with model assets and no facts file: build.no_facts, exit 1.", ["stand_ins"])
+        + '\n[action.stand_ins]\nvia         = ["build", "world.toml", "--stand-ins", "--out", "build/stand"]\nexit        = 1\nout         = "build/stand"\ndiagnostics = "includes"\n'
+        + '\n[action.stand_ins.diag.no_facts]\ncode = "build.no_facts"\nfrom = "run"\n',
+        **WORLD_FILES,
+    },
+)
+# rules.md 2: `ground` on an asset with a point footprint. The flat card measures one (2.4).
+case(
+    "point_footprint",
+    {
+        "case.toml": head("ground on an asset whose measured footprint is a point: place.no_footprint at the instance's ground.", ["build"])
+        + '\n[action.build]\nvia         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]\nexit        = 1\nout         = "build/w"\ndiagnostics = "includes"\n'
+        + '\n[action.build.diag.no_footprint]\ncode    = "place.no_footprint"\nsubject = "instance.a"\nline    = 14\n',
+        "pack.toml": CUBE_PACK,
+        "cube.gltf": flat_card(),
+        "world.toml": WORLD.replace('pack       = "pack.toml"\n', 'pack       = "pack.toml"\ninclude    = ["kinds"]\n').replace('at    = [20, 20]\n', 'at    = [20, 20]\nground = "pad"\n', 1),
+        "libs/kinds/kinds.toml": '[kind.pad]\nauthority = "shaped"\nradius    = 4\n\n[kind.pad.effect.level]\nfield = "role:surface"\nvalue = "= under(\'mean\')"\nmask  = "= 1 - smoothstep(0, 3, d)"\n',
     },
 )
 case(

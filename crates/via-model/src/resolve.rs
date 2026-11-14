@@ -1702,7 +1702,7 @@ impl Reads for Ctx<'_> {
         feature: &str,
         measure: Measure,
         domain: &Domain,
-        _cap: Option<f64>,
+        cap: Option<f64>,
     ) -> Result<Vec<f64>, ReadError> {
         let g = self
             .f
@@ -1710,11 +1710,42 @@ impl Reads for Ctx<'_> {
             .shapes
             .get(feature)
             .ok_or_else(|| internal("a feature's shape"))?;
+        // The work the cap bounds (`formulas.md` 8.4): a post whose distance to the shape's box
+        // passes the cap has `d` past it too, so the folded and capped result is the cap (`dist`)
+        // or minus the cap (`sdist` of a region or point) whatever this returns beyond it. The box
+        // test is exact integer millimetres with one millimetre to spare, so a skipped post is one
+        // whose `d` in doubles exceeds the cap; values are bit for bit those of the full projection.
+        // A path's `sd` keeps its side, so it is never skipped; `t` has no cap. `inside` is no off
+        // the box.
+        let (bmin, bmax) = g.bbox();
+        let far = |p: P| -> bool {
+            let dx = i128::from((bmin.x - p.x).max(p.x - bmax.x).max(0));
+            let dy = i128::from((bmin.y - p.y).max(p.y - bmax.y).max(0));
+            let d2 = dx * dx + dy * dy;
+            match cap {
+                Some(c) if c.is_finite() && c >= 0.0 => {
+                    let lim = (c * 1000.0).ceil() as i128 + 1;
+                    d2 > lim * lim
+                }
+                _ => false,
+            }
+        };
+        let skip_sd = !matches!(g, Geo::Path { .. });
         Ok(domain
             .points()
             .into_iter()
             .map(|(x, y)| {
                 let p = P::new(x, y);
+                match measure {
+                    Measure::D if far(p) => return cap.unwrap_or(0.0),
+                    Measure::Sd if skip_sd && far(p) => return -cap.unwrap_or(0.0),
+                    Measure::Inside
+                        if p.x < bmin.x || p.x > bmax.x || p.y < bmin.y || p.y > bmax.y =>
+                    {
+                        return 0.0
+                    }
+                    _ => {}
+                }
                 match measure {
                     Measure::Inside => f64::from(u8::from(g.contains(p))),
                     m => {

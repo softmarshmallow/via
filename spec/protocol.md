@@ -239,6 +239,7 @@ that one diagnostic is the call's only report (principle 8: one fault, one messa
 | `build.instances` | `select` (`"*"`, a producer's name, or an `@<taxon path>`), `within`, `columns` | A table: `name`, `asset`, `by` (the producer), `x`, `y` (i32 mm), `z` (f64 metres: heights are not on the lattice, `numbers.md` 3.1), `face` (i32 millidegrees), `scale`, `tint` (f64); footprints as a feature list when asked. |
 | `input.open` | `path`, as written in `inputs` | A raw blob of the file's bytes. A path not declared is `protocol.input_undeclared`. |
 | `pack.query` (M2) | `select` (`"*"`, asset ids, or an `@<taxon path>`), `columns` (fact names, or `"*"`) | A table by asset id: `id`, `source`, `taxon`, `tags`, and one column per resolved fact asked (`assets.md` 2.4): lengths as i32 millimetres, `bounds` `(n, 6)`, `origin` `(n, 3)`, `colour` f64 `(n, 3)`, words as str, `mounts`, `params` and `footprint` (a list of `[x, y]` millimetres in the asset frame: a table's column holds one value per row, so not a feature list) as canonical JSON text. Read-only (R19b; `assets.md` 5). |
+| `surface.meetings` (M2) | none | A table, one row per meeting, ordered by `a` then `b`: the columns of `surfaces.md` 2.4, `a`, `b` str, `x`, `y`, `gap` i64 millimetres, `z_a`, `z_b` f64; `face_a`, `face_b`, `turn` i64 millidegrees and `connector_a`, `connector_b` str, each with its `<column>?` u8 beside it (0 where the value is null, as attributes have, 4.3). Answered at `lint` and `export` only (R29); at `generate` it is refused with `surface.too_early`, naming the step, error -32006 on the wire with `data` holding `code` and `subject`, which the engine reports itself as it does `graph.read_outside`. |
 
 `build.field` by field type:
 
@@ -286,6 +287,7 @@ is `protocol.no_explain` (warning); two texts for one code is `protocol.explain_
 | -32003 | `graph.read_outside`: the name lies outside the step's stratum. |
 | -32004 | A non-finite number in a column (R26). |
 | -32005 | A call outside a pending `step.call`, or for another call. |
+| -32006 | `surface.too_early`: a question that reads the finished build asked at `generate` (`surfaces.md` 2.6). |
 | -32010 | The step raised an exception it did not catch. Sent by the SDK as the answer to `step.call`, with `data.exception` and `data.traceback`. Reported as `protocol.raised`; the engine writes the traceback to the log (6.2). The worker stays up for the next call. |
 | -32800 | Cancelled. |
 

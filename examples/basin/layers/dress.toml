@@ -8,11 +8,14 @@
 [field.dry]                               # 1 on land, 0 under 2 cm of water or more
 base = "= 1 - smoothstep(0, 0.02, f('water') - f('height'))"
 
-# Woods keep to the valley sides and floors, off steep ground and the shore: where water gathers
-# (`wet`) or the ground is low in its valley, broken up by copses of their own.
+# Woods keep to the valley floors and their lower sides, off steep ground and the shore: where the
+# model's `damp` (`wet` spread over about 30 m, lib/terrain) is high, its edge broken up by copses
+# of their own. `damp` is above 0.78 on about a twentieth of the dry land, along the streams; a
+# wood over the whole of the rolling ground (`wet` and copses, 24145 trees) read as a forest the
+# spike never had (its 417 trees).
 [field.cover]
 tags = ["cover"]
-base = "= smoothstep(0.15, 0.45, 0.8 * f('tag:wet') + 0.35 * fbm(260, 3, seed = 'copses')) * (1 - smoothstep(24, 32, slope('height'))) * smoothstep(2.5, 6, f('height')) * f('dry')"
+base = "= smoothstep(0.76, 0.84, f('tag:damp') + 0.08 * fbm(260, 3, seed = 'copses')) * (1 - smoothstep(24, 32, slope('height'))) * smoothstep(2.5, 6, f('height')) * f('dry')"
 
 # Ground paint (lib/land/ground.md): grass everywhere, sand along the sea's edge, gravel in the
 # stream beds the model cut (`wet` near 1), rock where turf will not hold.
@@ -39,7 +42,7 @@ mask  = "= smoothstep(26, 34, slope('height'))"
 
 [scatter.woods]                           # trees in clumps where the cover is
 assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 2 }, { id = "tree_oak_large", weight = 0.4 }]
-spacing = 24
+spacing = 32
 density = "= f('cover')"
 scale   = [0.9, 1.4]
 clump   = { members = [2, 5], radius = 9, shrink = 0.4 }
@@ -98,8 +101,12 @@ toward = "tarn"
 
 [feature.on_shore]                        # the sea meets the land, west of the mouth
 kind   = "bookmark"
-at     = [1150, 352]                      # about 12 m inland of the water's edge
-toward = "haven"
+at     = [1150, 352]                      # about 15 m inland of the water's edge
+toward = "offshore"                       # out over the water, the haven on the left; toward the
+                                          # haven itself the walk ran along the shore, 234 m dry
+
+[feature.offshore]                        # where on_shore looks: out to sea, south-east of it
+at = [1500, 150]
 
 [feature.over_basin]                      # the whole basin from over the sea: the plan, not a judgement
 kind       = "bookmark"

@@ -1,13 +1,30 @@
 format    = "via-case-1"
 summary   = "A worker killed after shutdown: protocol.slow_exit (info)."
 milestone = 2
-pending   = "needs a raw worker that ignores shutdown for over 2 s; the SDK exits promptly"
-actions   = ["build"]
+actions   = ["program", "trust", "build"]
+
+# The raw worker (conformance.md 3.7) serves the call, then ignores shutdown and quit for 6 s; the
+# engine kills it at the 2 s deadline (protocol.md 6.2). slow_exit is an info, so the build exits 0
+# (diagnostics.md 7). It is a run diagnostic (graph.md 3.4): this run's timing, never replayed.
+
+[copy.raw]
+from = "tools/conformance/raw_worker.py"
+to   = "steps/raw.py"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
 
 [action.build]
 via  = ["build", "world.toml", "--out", "build/w"]
-exit = 1
+exit = 0
 out  = "build/w"
 
 [action.build.diag.code]
-code = "protocol.slow_exit"
+code    = "protocol.slow_exit"
+subject = "step.gen"
+from    = "run"

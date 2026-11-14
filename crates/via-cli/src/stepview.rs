@@ -143,6 +143,7 @@ pub fn traced(method: &str) -> bool {
             | "derive.route"
             | "derive.descend"
             | "derive.spill"
+            | "surface.meetings"
     )
 }
 
@@ -353,6 +354,28 @@ impl<'a> View<'a> {
             message: format!("`{subject}` lies outside the step's stratum"),
             data: Some(json!({"code": "graph.read_outside", "subject": subject, "layer": layer})),
             diag: Some(d),
+        }
+    }
+
+    /// A column the step sent that cannot be read: its wire error, and for a blob whose size does
+    /// not match its `dtype` and `shape`, the one diagnostic of the fault, `protocol.blob_header`
+    /// (4.2), which the engine reports itself.
+    fn column_fault(&self, e: column::ColumnError) -> Refusal {
+        let diag = e.header.then(|| {
+            Diag::new(
+                codes::protocol::BLOB_HEADER,
+                Subject::entity("step", self.step.id.clone()),
+                Site::Header,
+                txt(format!(
+                    "step `{}` sent a column that does not match its header: {}",
+                    self.step.id, e.message
+                )),
+                txt("send the column through the SDK's column writer".into()),
+            )
+        });
+        Refusal {
+            diag,
+            ..refuse(e.code, e.message)
         }
     }
 
@@ -747,6 +770,80 @@ impl<'a> View<'a> {
                 _ => Column::F64(rows.iter().map(|r| r.1.tint + 0.0).collect()),
             };
             m.insert(c.into(), put(col)?);
+        }
+        Ok(Value::Object(m))
+    }
+
+    // ---- surfaces --------------------------------------------------------------------------
+
+    /// `surface.meetings` (`surfaces.md` 2.4): every meeting of the finished build, as a table
+    /// ordered by `a`, then `b`. Meetings are checked after grounding, so a generate step, whose
+    /// view is a stratum, is refused with `surface.too_early` naming the step (2.6), which the
+    /// engine reports itself. Faces, turns and connectors arrive with kind mounts (M3, M5): until
+    /// then each such column is absent on every row, its `<column>?` 0.
+    fn meetings(&self) -> Result<Value, Refusal> {
+        if self.rank.is_some() || self.step.when == "generate" {
+            let d = Diag::new(
+                codes::surface::TOO_EARLY,
+                Subject::entity("step", self.step.id.clone()),
+                Site::Header,
+                txt(format!(
+                    "step `{}` asked for `meetings()` at `generate`; meetings are checked after grounding",
+                    self.step.id
+                )),
+                txt("ask for meetings from a `lint` or `export` step, which reads the finished build".into()),
+            );
+            return Err(Refusal {
+                code: -32006,
+                message: "`meetings()` is answered at `lint` and `export` only".into(),
+                data: Some(
+                    json!({"code": "surface.too_early", "subject": format!("step.{}", self.step.id)}),
+                ),
+                diag: Some(d),
+            });
+        }
+        let rows = via_model::query::meetings(self.build);
+        let n = rows.len();
+        let mut m = Map::new();
+        let put = |col: Column| -> Result<Value, Refusal> {
+            column::write_shaped(&Shaped::flat(col), self.objects)
+                .map_err(|e| refuse(-32603, format!("a column could not be stored: {e}")))
+        };
+        m.insert(
+            "a".into(),
+            put(Column::Str(rows.iter().map(|r| r.a.clone()).collect()))?,
+        );
+        m.insert(
+            "b".into(),
+            put(Column::Str(rows.iter().map(|r| r.b.clone()).collect()))?,
+        );
+        m.insert(
+            "x".into(),
+            put(Column::I64(rows.iter().map(|r| r.at.0).collect()))?,
+        );
+        m.insert(
+            "y".into(),
+            put(Column::I64(rows.iter().map(|r| r.at.1).collect()))?,
+        );
+        m.insert(
+            "z_a".into(),
+            put(Column::F64(rows.iter().map(|r| r.z_a + 0.0).collect()))?,
+        );
+        m.insert(
+            "z_b".into(),
+            put(Column::F64(rows.iter().map(|r| r.z_b + 0.0).collect()))?,
+        );
+        m.insert(
+            "gap".into(),
+            put(Column::I64(rows.iter().map(|r| r.gap).collect()))?,
+        );
+        for c in ["face_a", "face_b", "turn"] {
+            m.insert(c.into(), put(Column::I64(vec![0; n]))?);
+            m.insert(format!("{c}?"), put(Column::U8(vec![0; n]))?);
+        }
+        for c in ["connector_a", "connector_b"] {
+            m.insert(c.into(), put(Column::Str(vec![String::new(); n]))?);
+            m.insert(format!("{c}?"), put(Column::U8(vec![0; n]))?);
         }
         Ok(Value::Object(m))
     }
@@ -1268,7 +1365,7 @@ impl<'a> View<'a> {
             .get(name)
             .ok_or_else(|| invalid(format!("{name}: a column")))?;
         column::read(name, v, self.objects)
-            .map_err(|e| refuse(e.code, e.message))?
+            .map_err(|e| self.column_fault(e))?
             .as_i64()
             .ok_or_else(|| invalid(format!("{name}: an integer column")))
     }
@@ -1283,12 +1380,12 @@ impl<'a> View<'a> {
     fn derive_where(&self, p: &Value) -> Result<Value, Refusal> {
         let view = p.get("view").and_then(Value::as_str).unwrap_or("full");
         let formulas = match p.get("formulas") {
-            Some(v) => match column::read("formulas", v, self.objects)
-                .map_err(|e| refuse(e.code, e.message))?
-            {
-                Column::Str(s) => s,
-                _ => return Err(invalid("formulas: a str column")),
-            },
+            Some(v) => {
+                match column::read("formulas", v, self.objects).map_err(|e| self.column_fault(e))? {
+                    Column::Str(s) => s,
+                    _ => return Err(invalid("formulas: a str column")),
+                }
+            }
             None => return Err(invalid("formulas: a str column")),
         };
         let holds: Option<Vec<i64>> = match p.get("holds") {
@@ -1492,6 +1589,7 @@ impl<'a> View<'a> {
             "derive.route" => self.derive_route(params),
             "derive.descend" => self.derive_descend(params),
             "derive.spill" => self.derive_spill(params),
+            "surface.meetings" => self.meetings(),
             m => Err(Refusal {
                 code: -32601,
                 message: format!("unknown method {m}"),

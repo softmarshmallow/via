@@ -1,13 +1,30 @@
 format    = "via-case-1"
-summary   = "A generate step calling meetings(): surface.too_early naming the step."
+summary   = "A generate step calling meetings(): surface.too_early naming the step, exit 1."
 milestone = 2
-pending   = "the SDK has no `meetings()` yet (surfaces.md 3)"
-actions   = ["build"]
+actions   = ["program", "trust", "build"]
+
+# surfaces.md 2.6: meetings() is answered at lint and export only. The engine reports the refusal
+# itself; the step then ends by the exception, so that one diagnostic is the call's only report
+# (protocol.md 3.3, principle 8): no protocol.raised.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
 
 [action.build]
-via  = ["build", "world.toml", "--out", "build/w"]
-exit = 1
-out  = "build/w"
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+out         = "build/w"
+diagnostics = "includes"
 
-[action.build.diag.code]
-code = "surface.too_early"
+[action.build.diag.too_early]
+code    = "surface.too_early"
+subject = "step.gen"
+
+[action.build.diag.raised]
+code    = "protocol.raised"
+records = 0

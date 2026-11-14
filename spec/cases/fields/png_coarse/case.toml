@@ -1,13 +1,18 @@
 format    = "via-case-1"
-summary   = "An 8-bit PNG over a 60 m range on a field in m: field.file_coarse naming the step."
+summary   = "An 8-bit PNG over range [0, 66] on a surface without unit: field.file_coarse with the step, exit 0."
 milestone = 2
-pending   = "PNG field files (fields.md 4) are not read yet: the reader takes array files only"
 actions   = ["build"]
 
-[action.build]
-via  = ["build", "world.toml", "--out", "build/w"]
-exit = 1
-out  = "build/w"
+# fields.md 4.3: the level step abs(hi - lo) / top = 66 / 255 m exceeds 0.1 m on a field whose unit
+# is m, implied by role surface; a warning, so the build stands. h.png is a 9 by 9 8-bit grey ramp.
 
-[action.build.diag.code]
-code = "field.file_coarse"
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.coarse]
+code    = "field.file_coarse"
+subject = "field.height"
+data    = { step = 0.25882352941176473 }

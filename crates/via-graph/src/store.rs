@@ -155,7 +155,9 @@ impl Store {
             .replace('\\', "/")
     }
 
-    /// Writes `bytes` at `target` once.
+    /// Writes `bytes` at `target` once. Not forced to disk (`graph.md` 3.2): every entry is checked
+    /// when read, so one torn by a crash is dropped as `graph.store_corrupt` and its node runs again,
+    /// and a flush per entry (`F_FULLFSYNC` on macOS) cost more than the nodes it saved.
     fn write_once(&self, target: &Path, bytes: &[u8]) -> Written {
         if self.is_unavailable() {
             return Written::Failed;
@@ -175,7 +177,6 @@ impl Store {
             fs::create_dir_all(self.root.join("tmp"))?;
             let mut f = fs::File::create(&tmp)?;
             f.write_all(bytes)?;
-            f.sync_all()?;
             drop(f);
             match fs::hard_link(&tmp, target) {
                 Ok(()) => Ok(Written::Created),

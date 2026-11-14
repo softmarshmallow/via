@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import canon, diags, files, leaks, named
+from . import blake3, canon, diags, files, leaks, named
 from . import kernel as kernel_files
 from .model import Action, Case, CaseError
 
@@ -312,6 +312,10 @@ class CaseRun:
                 raise CaseError(f"{where}: byte {t['at']} is past the end of {a.target} ({len(data)} bytes)")
             data[t["at"]] ^= 0xFF
             path.write_bytes(bytes(data))
+        elif a.kind == "flip_object":
+            self.flip_object(a)
+        elif a.kind == "rerecord":
+            self.rerecord(a)
         elif a.kind == "derive":
             self.derive(a)
         elif a.kind == "truncate":
@@ -323,6 +327,51 @@ class CaseRun:
             with open(path, "r+b") as fh:
                 fh.truncate(t["bytes"])
 
+    def flip_object(self, a: Action) -> None:
+        """conformance.md 3.3 `flip_object`: inverts byte `at` of the store object holding the value
+        the run report names for `node` (graph.md 3.2: `objects/ab/<value digest>`)."""
+        t = a.table
+        where = f"action.{a.id}"
+        report = self.work / a.target
+        try:
+            nodes = canon.loads(report.read_bytes())["nodes"]
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            raise CaseError(f"{where}: {a.target} is not a run report: {e}") from e
+        found = [n for n in nodes if isinstance(n, dict) and n.get("id") == t["node"]]
+        if len(found) != 1 or not isinstance(found[0].get("value"), str):
+            raise CaseError(f"{where}: {a.target} names no value for node {t['node']!r}")
+        value = found[0]["value"]
+        path = self.work / t["store"] / "objects" / value[:2] / value
+        if not path.is_file():
+            raise CaseError(f"{where}: the store holds no object {value} for node {t['node']!r}")
+        data = bytearray(path.read_bytes())
+        if t["at"] >= len(data):
+            raise CaseError(f"{where}: byte {t['at']} is past the end of object {value} ({len(data)} bytes)")
+        data[t["at"]] ^= 0xFF
+        path.chmod(path.stat().st_mode | 0o200)
+        path.write_bytes(bytes(data))
+
+    def rerecord(self, a: Action) -> None:
+        """conformance.md 3.3 `rerecord`: rewrites the manifest's record of a file of its build
+        directory (`run.reports`, else `files`) to the file's bytes and BLAKE3 digest as they stand;
+        nothing else of the manifest changes, and it stays canonical."""
+        t = a.table
+        where = f"action.{a.id}"
+        mpath = self.work / t["manifest"]
+        fpath = self.work / a.target
+        try:
+            m = canon.loads(mpath.read_bytes())
+            rel = fpath.relative_to(mpath.parent).as_posix()
+        except (OSError, ValueError) as e:
+            raise CaseError(f"{where}: {e}") from e
+        reports = m.get("run", {}).get("reports", {}) if isinstance(m, dict) else {}
+        table = reports if rel in reports else m.get("files", {}) if isinstance(m, dict) else {}
+        if rel not in table or not fpath.is_file():
+            raise CaseError(f"{where}: {t['manifest']} records no file {rel}")
+        data = fpath.read_bytes()
+        table[rel] = dict(table[rel], bytes=len(data), digest=blake3.digest(data))
+        mpath.write_bytes(canon.canonical_bytes(m))
+
     def derive(self, a: Action) -> None:
         """conformance.md 3.3 `derive`: a kernel input written from a kernel output."""
         t = a.table
@@ -333,9 +382,19 @@ class CaseRun:
         except kernel_files.KernelFileError as e:
             raise CaseError(f"{where}: {e}") from e
         dest = self.work / t["derive"]
-        if t["as"] == "segments":
+        one = {
+            "segments": lambda: kernel_files.derive_segments(out),
+            "interpolate": lambda: kernel_files.derive_interpolate(out, inp),
+            "project": lambda: kernel_files.derive_project(out, inp),
+            "params": lambda: kernel_files.derive_params(out, t["params"]),
+        }
+        if t["as"] in one:
+            try:
+                doc = one[t["as"]]()
+            except (kernel_files.KernelFileError, KeyError, TypeError, IndexError, ValueError) as e:
+                raise CaseError(f"{where}: {t['from']} cannot be derived as {t['as']}: {e}") from e
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(canon.canonical_bytes(kernel_files.derive_segments(out)))
+            dest.write_bytes(canon.canonical_bytes(doc))
         else:
             if dest.exists():
                 raise CaseError(f"{where}: {t['derive']} already exists")

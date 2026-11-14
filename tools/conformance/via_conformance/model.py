@@ -17,8 +17,8 @@ FORMAT = "via-case-1"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 MAX_ID_BYTES = 48
 
-ACTION_KINDS = ("via", "replace", "write", "delete", "flip", "truncate", "derive")
-DERIVE_AS = ("segments", "cells")
+ACTION_KINDS = ("via", "replace", "write", "delete", "flip", "flip_object", "rerecord", "truncate", "derive")
+DERIVE_AS = ("segments", "cells", "interpolate", "project", "params")
 SAME_WHAT_WORDS = ("id", "files", "diagnostics", "stdout", "ran")
 DIAG_MODES = ("exact", "includes", "any")
 
@@ -51,6 +51,10 @@ NAMED_CHECKS: dict[str, tuple[set[str], set[str]]] = {
     "course_valid": ({"path", "feature", "start", "end", "min_segment"}, {"passes"}),
     "entry_causes": ({"path", "table", "prefix"}, {"named"}),
     "post_step_at_most": ({"path", "resolution", "window", "limit"}, {"origin"}),
+    "roundtrip_point": ({"path", "input"}, {"bound"}),
+    "roundtrip_t": ({"path", "input"}, {"bound"}),
+    "stroke_measures": ({"path", "reference", "distance"}, set()),
+    "id_rule": ({"build"}, set()),
 }
 
 
@@ -408,6 +412,8 @@ def _parse_named(t: dict[str, Any], where: str) -> None:
         _int(args["count"], f"{where}.count", 0)
     if "bound" in args:
         _number(args["bound"], f"{where}.bound")
+    if "distance" in args:
+        _number(args["distance"], f"{where}.distance")
     if "window" in args:
         win = args["window"]
         _expect_type(win, (list,), f"{where}.window", "[i0, j0, i1, j1]")
@@ -552,6 +558,14 @@ def _parse_edit(a: Action) -> None:
     elif a.kind == "flip":
         _keys(t, where, {"flip", "at"}, set())
         _int(t["at"], f"{where}.at", 0)
+    elif a.kind == "flip_object":
+        _keys(t, where, {"flip_object", "node", "store", "at"}, set())
+        _str(t["node"], f"{where}.node")
+        _relative(_str(t["store"], f"{where}.store"), f"{where}.store")
+        _int(t["at"], f"{where}.at", 0)
+    elif a.kind == "rerecord":
+        _keys(t, where, {"rerecord", "manifest"}, set())
+        _relative(_str(t["manifest"], f"{where}.manifest"), f"{where}.manifest")
     elif a.kind == "truncate":
         _keys(t, where, {"truncate", "bytes"}, set())
         _int(t["bytes"], f"{where}.bytes", 0)
@@ -562,12 +576,14 @@ def _parse_edit(a: Action) -> None:
             raise CaseError(f"{where}.as: {t['as']!r} is not one of {', '.join(DERIVE_AS)}")
         if "input" in t:
             _relative(_str(t["input"], f"{where}.input"), f"{where}.input")
-        if t["as"] == "cells":
-            if "input" not in t or "params" not in t:
-                raise CaseError(f"{where}: `as = \"cells\"` needs `input` and `params`")
+        needs = {"segments": set(), "cells": {"input", "params"}, "interpolate": {"input"},
+                 "project": {"input"}, "params": {"params"}}[t["as"]]
+        given = {k for k in ("input", "params") if k in t}
+        if given != needs:
+            want = " and ".join(f"`{k}`" for k in sorted(needs)) or "neither `input` nor `params`"
+            raise CaseError(f"{where}: `as = \"{t['as']}\"` takes {want}")
+        if "params" in t:
             _table(t["params"], f"{where}.params")
-        elif "params" in t or "input" in t:
-            raise CaseError(f"{where}: only `as = \"cells\"` takes `input` and `params`")
 
 
 def check_id(value: str, where: str) -> None:

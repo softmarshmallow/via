@@ -1,7 +1,7 @@
 format    = "via-case-1"
 summary   = "The same with --stand-ins: the second build runs, and assets.*.stand_in is true."
 milestone = 2
-pending   = "`via build --stand-ins` is not built yet (assets.md 9)"
+pending   = "--stand-ins is built; build.md 29 and 32 want ford 'with its pack accepted' and assets.*.stand_in true, but ford is on the primitive pack, which has no model asset, needs no facts file (assets.md 4) and builds as it always does (assets.md 9): a ruling on ford's pack for these rows is owed"
 actions   = ["program", "trust", "build"]
 
 [copy.ford]
