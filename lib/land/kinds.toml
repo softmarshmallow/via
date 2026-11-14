@@ -5,37 +5,80 @@
 #   it likes (`ford` calls it `height`). Libraries write it as `role:surface`, never by name.
 # - "Not here" for scatters and props is a field with role `keep_out` (rules.md 7.1). A world that
 #   wants pads to clear their ground declares one (`ford`'s `clearing`, `base = "= 0"`).
-# - Ground materials are the pack's `[material.<name>]` tables; the primitive pack ships `grass`
-#   and `rock` (assets.md 6.1). Painting them needs a `weights` field with role `material`, which
-#   `ford` does not have; no kind here paints yet.
+# - Ground paint is a world's `weights` field, role `material`, its rows in this order: `grass`
+#   (no mask), `rock` (on slope), `gravel` (at water), `earth` (on lanes); lib/land/ground.md gives
+#   the masks. A library declares no field and no kind here paints (`authority.no_field`).
 #
 # A pad is lent to an instance by `ground = "pad"` (rules.md 2.1): the footprint grown by `margin`
 # becomes a region feature of this kind, so the ground under a house is level and clear.
+#
+# The bank (asked by `glade`, `relief`, `vale`): the ground under the footprint is levelled to its
+# mean, and outside it the ground is held within `grade` (rise over run) of that level, so a pad on
+# a slope meets the land at a walkable bank and only as far out as it must; ground already within
+# the grade is left as it lies. The bank holds the grade out to 10 m; where the ground still lies
+# off that band there (a hillside steeper than `grade`), the bank fades into the ground over the
+# next 15 m, `1.5 * max_cut / grade`, so the fade adds at most `grade` to the ground's own slope
+# and never leaves a step. Levelling that moves the ground more than `max_cut` metres anywhere,
+# which is the gap at 10 m when the bank has not met the ground, is `authority.max_change`, naming
+# the house (authority.md 2.2). A world on steep land lowers `grade` or raises `max_cut` per
+# instance only by choosing another ground kind; the defaults are the library's.
+#
+# The clearing (asked by `vale`): keep_out is tested at a tree's trunk (rules.md 7.1), so a pad
+# holds it at 1 out past a crown's reach and fades beyond, as lib/ways' verge does: a tree whose
+# crown would reach over the house has no chance. The reach is the widest pack tree's crown
+# (starter's `tree_oak_large`, 4 m, 5.2 m at the scatters' largest scale 1.3) with a little to
+# spare: 5.5 m from the footprint and its margin.
 
 [kind.pad]
 authority = "shaped"
-radius    = 4                             # the mask fades by 3; the ring (fields.md 5.3) stays clear
+radius    = 26                            # the bank's 10 m and its 15 m fade
+
+[kind.pad.defaults]
+grade   = 0.3                             # the steepest bank, rise over run (17 degrees)
+max_cut = 3                               # metres the pad may cut or bank the ground, at most
 
 [kind.pad.effect.level]                   # the ground under the footprint at its mean (surfaces.md 6.1)
-field = "role:surface"
-value = "= under('mean')"
-mask  = "= 1 - smoothstep(0, 3, d)"
+field      = "role:surface"
+value      = "= clamp(v, under('mean') - grade * d, under('mean') + grade * d)"
+mask       = "= 1 - smoothstep(10, 25, d)"
+max_change = "= max_cut"
 
-[kind.pad.effect.clear]                   # no tree on the footprint
+[kind.pad.effect.clear]                   # no tree on the footprint, and no crown over it
 field = "role:keep_out"
 value = "= 1"
-mask  = "= 1 - smoothstep(0, 2, d)"
+mask  = "= 1 - smoothstep(5.5, 7.5, d)"
 
 [kind.firm_pad]                           # the firm pad of authority.md 1.3: a pad that holds
 authority = "anchored"
-radius    = 4                             # the mask fades by 3; the ring (fields.md 5.3) stays clear
+radius    = 8                             # the clearing's 7.5 m; the ring (fields.md 5.3) stays clear
 
 [kind.firm_pad.effect.level]
 field = "role:surface"
 value = "= under('mean')"
 mask  = "= 1 - smoothstep(0, 3, d)"
 
-[kind.firm_pad.effect.clear]
+[kind.firm_pad.effect.clear]                # as the pad's: past a crown's reach
 field = "role:keep_out"
 value = "= 1"
-mask  = "= 1 - smoothstep(0, 2, d)"
+mask  = "= 1 - smoothstep(5.5, 7.5, d)"
+
+# A cliff (M2, `vale`): a path along the foot of a rock face, the high ground on its left (`sd`
+# above 0, numbers.md 5.5: walk the path with the face on your left hand). The face is `drop`
+# metres high and about 2 m wide. Half of it is the land above lifted, half the land below lowered,
+# and both halves fade back into the land over `back` metres, so the cliff is a scarp in the slope:
+# no ridge behind it and no wall standing on flat ground. It tapers to nothing over the first and
+# last tenth of the path, so its ends run into the hillside. Boulders at its foot are a scatter's,
+# by `sdist('<cliff>', cap)` (rules.md 7.2): the cliff writes no "rock" field of its own
+# (principle 10).
+[kind.cliff]
+authority = "shaped"
+radius    = 54                            # the farthest `back`, 50 m, and the face
+
+[kind.cliff.defaults]
+drop = 9                                  # metres from the foot to the top of the face
+back = 30                                 # metres over which each side fades into the land (at most 50)
+
+[kind.cliff.effect.face]
+field = "role:surface"
+value = "= v + drop * smoothstep(0, 0.1, t) * (1 - smoothstep(0.9, 1, t)) * (smoothstep(-1, 1, sd) - 0.5) * (1 - smoothstep(back / 3, back, d))"
+mask  = "= 1 - smoothstep(back, back + 2, d)"

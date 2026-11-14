@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "geometry.md 2.6, limitation E1, as it binds a library: a beck of lib/water with a 45-degree bend on a valley side makes no step inside the bend. Its bank reaches 7 m from the line, far past the 1.2 m within which a frame read at such a bend stays under a metre of jump, so it reads `d` there, not `t`. Between neighbouring posts across the inside bisector, from 2.5 m to 20 m out (every post at least 2 m from the line), the ground differs by no more than the valley side and the bank's grade give: (0.2 + 0.25 + 0.2) m a metre, at 0.5 m posts."
+milestone = 2
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{repo}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.no_seam]
+fn         = "post_step_at_most"
+path       = "build/w/fields/height.npy"
+resolution = 0.5
+window     = [18, 38, 35, 46]
+limit      = 0.325

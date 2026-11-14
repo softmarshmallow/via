@@ -1,0 +1,80 @@
+# basin: a few stated facts, and an erosion model that settles the land around them (R14).
+#
+# What the author writes: the sea lies to the south, the ground rises loosely to the north, a lake
+# stands in the hills at a level, a river runs from a spring to a haven on the shore. Nothing else
+# about the land is written. The terrain library's step (lib/terrain) turns those facts into the
+# model's starting conditions, settles the valleys and their tributaries once, and its lint checks
+# every fact against the finished build, saying where and what would hold instead.
+#
+# Three layers, three owners (challenge 21): this file is the land as first stated; `land` holds
+# what the author states about it and the simulation that settles it; `dress` holds what grows on
+# the settled land and where it is judged from (R17). An edit in `dress` reads nothing the step
+# read, so the step is reused (protocol.md 4.4).
+#
+#   via config program via-terrain target/release/via-terrain     (once per machine)
+#   via trust examples/basin/world.toml
+#   via build examples/basin/world.toml --lib lib --out build/basin
+#   via build examples/basin/world.toml --lib lib --change move_haven --out build/basin+move_haven
+#   via build examples/basin/world.toml --lib lib --change examples/basin/changes/<name>.toml ...
+#
+# The changes: `move_haven` (inline, in layers/land.toml: the river's mouth 500 m east along the
+# shore), and the files in changes/: `two_ends` (state only the river's ends; its course is found
+# over the starting ground), `cannot_hold` (a lake above its hollow, a river running uphill: both
+# reported), `reseed` (a new world seed), `revised_oak` (a pack whose oak has been revised),
+# `thin_woods` (an edit to the dress layer, which the step does not read). expect.toml holds the
+# measures each build is compared by, against the spike's exported results.
+
+name       = "basin"
+extent     = [0, 0, 3200, 3200]
+resolution = 2.5
+seed       = 31
+include    = ["terrain", "review"]
+pack       = "starter"
+
+[layer.land]
+file  = "layers/land.toml"
+owner = "land: the stated facts and the simulation that settles them"
+rank  = 1
+
+[layer.dress]
+file  = "layers/dress.toml"
+owner = "dressing: growth, ground paint and the views a build is judged from"
+rank  = 2
+
+# The land as first stated, before the model works on it: below the sea in the far south, a coastal
+# shelf rising gently north, rolling ground from about 200 m inland, and high ground in the north
+# third whose height wanders by a half. It is its own field so that a course found over the land
+# (`route`, changes/two_ends.toml) reads the ground the simulation started from, never the ground
+# it returned (derived.md 3).
+[field.start]
+unit = "m"
+base = "= -14 + 0.04 * y + 70 * smoothstep(1300, 3000, y) * (0.55 + 0.45 * fbm(1100, 3, seed = 'uplands')) + 16 * smoothstep(200, 900, y) * fbm(420, 3, seed = 'rolls')"
+
+# The terrain (lib/land's convention: the field with role surface). The terrain step returns the
+# settled ground as a row on it (lib/terrain).
+[field.height]
+role = "surface"
+unit = "m"
+base = "= f('start')"
+
+# Not here (lib/land's convention: the field with role keep_out). Each river course the terrain
+# step returns and the stated lake write it over their water and banks (lib/terrain), so the woods
+# and the rocks keep out of the water.
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+# Nothing solid stands in water: the courses and the stated lake keep their own banks clear
+# (lib/terrain); this row keeps the rest of the standing water clear, the lake's shallow edge beyond
+# its stated shore and the sea's, and clump members too, which a density does not reach
+# (rules.md 7.3).
+[field.clearing.then.water]
+value = "= max(v, smoothstep(0, 0.02, f('water') - f('height')))"
+
+# The water (lib/water's convention: tagged water_level, the ground where dry). The sea stands at
+# 0 m, the terrain step's default `sea`; the step raises this field where water stands inland, and
+# each course it returns writes its channel's water here.
+[field.water]
+unit = "m"
+tags = ["water_level"]
+base = "= max(f('height'), 0)"

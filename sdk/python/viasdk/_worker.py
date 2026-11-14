@@ -125,7 +125,12 @@ def _call(module, conn, id_, request):
                           "data": {"code": "protocol.no_entry", "when": when}}}
     step = Step(request, conn, id_)
     try:
-        fn(step)
+        try:
+            fn(step)
+        finally:
+            # What the step said before it returned or raised is sent in one batch (R23).
+            if id_ not in conn.cancelled:
+                step.flush()
     except Cancelled:
         return {"error": {"code": -32800, "message": "cancelled"}}
     except Exception as e:  # noqa: BLE001 - the worker stays up for the next call (3.4)
@@ -135,5 +140,9 @@ def _call(module, conn, id_, request):
     if id_ in conn.cancelled:
         return {"error": {"code": -32800, "message": "cancelled"}}
     if when == "generate":
-        return {"result": {"document": step.out.text()}}
+        text = step.out.text()
+        if not text and os.path.exists(os.path.join(step.out.folder, "document.toml")):
+            # The script wrote document.toml itself (protocol.md 5): the engine reads it there.
+            return {"result": {"document": None}}
+        return {"result": {"document": text}}
     return {"result": None}

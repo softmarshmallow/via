@@ -22,6 +22,10 @@ quiet() { # show only what did not pass; keep the command's status
 r=$(godot --script res://tests/test_loader.gd); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
+step "walker and hand-edit marks"
+r=$(godot --script res://tests/test_walk.gd); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
 step "water in the frame at at_ford"
 godot --script res://tests/test_water.gd || fail=1
 

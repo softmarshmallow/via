@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "A model asset with no collision; one with collision = \"hul\": via pack list gives collision = \"none\"; via pack check gives doc.type, hint hull, exit 1."
+milestone = 2
+actions   = ["list", "check"]
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.list.file.collision]
+stream  = "stdout"
+pointer = "/collision"
+line    = 1
+value   = "none"
+
+[action.check]
+via         = ["pack", "check", "typo.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.type]
+code    = "doc.type"
+subject = "asset.cube.collision"
+data    = { nearest = "hull" }

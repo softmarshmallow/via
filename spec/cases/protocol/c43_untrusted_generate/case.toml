@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "A plain generate step not in trust.toml, no gen/; then trusted, and one file in its code folder edited: protocol.untrusted, exit 1, the program never started; both times."
+milestone = 2
+actions   = ["program", "untrusted", "trust", "edit", "edited"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.untrusted]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+[action.untrusted.file.never]
+path   = "started.txt"
+exists = false
+
+
+[action.untrusted.diag.no]
+code = "protocol.untrusted"
+subject = "step.gen"
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.edit]
+replace = "steps/gen.py"
+find    = "# edited: no"
+with    = "# edited: yes"
+
+[action.edited]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+[action.edited.file.never]
+path   = "started.txt"
+exists = false
+
+
+[action.edited.diag.no]
+code = "protocol.untrusted"
+subject = "step.gen"

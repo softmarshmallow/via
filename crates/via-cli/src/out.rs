@@ -191,9 +191,14 @@ pub fn attr_json(text: &str) -> J {
 
 /// A fact's text (`assets.md` 7) as JSON: a list or a number as itself, else a string.
 pub fn fact_json(text: &str) -> J {
+    // Facts are recorded as JSON text in the manifest's form (`build.md` 11.2), never a string
+    // standing for a value of another form.
     match crate::json::parse(text) {
         Ok(v) => normalise_numbers(v),
-        Err(_) => J::s(text),
+        Err(_) => {
+            debug_assert!(false, "a fact recorded as `{text}` is not JSON");
+            J::Null
+        }
     }
 }
 
@@ -308,6 +313,10 @@ pub fn feature_json(name: &str, f: &FeatureOut, layer: Option<&str>, surface: &S
         _ if !f.rings.is_empty() => {
             m.insert("pieces".into(), all_pieces(&f.rings));
         }
+        // An empty region (a `holds` that holds nothing, `derive.dry`) has no piece.
+        _ if f.points.is_empty() => {
+            m.insert("pieces".into(), J::Arr(Vec::new()));
+        }
         _ => {
             m.insert("pieces".into(), pieces(&f.points));
         }
@@ -340,31 +349,37 @@ fn kind_authority(world: &World, kind: &str) -> J {
 fn asset_json(a: &via_model::pack::Asset) -> J {
     let mut m = J::obj();
     m.insert("source".into(), J::s(a.source.clone()));
-    m.insert("files".into(), J::Arr(Vec::new()));
+    // `build.md` 7: the model, then each `detail` copy, by pack path and digest (M2).
+    let files = a.model.as_ref().map_or_else(Vec::new, |md| {
+        md.copies
+            .iter()
+            .map(|(path, digest)| {
+                obj([
+                    ("digest", J::s(digest.clone())),
+                    ("path", J::s(path.clone())),
+                ])
+            })
+            .collect()
+    });
+    m.insert("files".into(), J::Arr(files));
     m.insert("primitive".into(), J::opt(a.primitive.as_deref()));
+    // `size` is a primitive's or an engine-made asset's statement; a model's is measured.
     m.insert(
         "size".into(),
-        J::Arr(a.size.iter().map(|v| J::mm(*v)).collect()),
+        if a.model.is_some() {
+            J::Null
+        } else {
+            J::Arr(a.size.iter().map(|v| J::mm(*v)).collect())
+        },
     );
-    let one = J::int(1);
-    let zero = J::int(0);
-    m.insert(
-        "to_asset".into(),
-        J::Arr(vec![
-            one.clone(),
-            zero.clone(),
-            zero.clone(),
-            zero.clone(),
-            zero.clone(),
-            one.clone(),
-            zero.clone(),
-            zero.clone(),
-            zero.clone(),
-            zero.clone(),
-            one,
-            zero,
-        ]),
-    );
+    // The quarter turn of `front` and `up`, then minus the pivot in exact metres.
+    let mut to_asset = Vec::new();
+    for row in a.to_asset() {
+        for (k, v) in row.iter().enumerate() {
+            to_asset.push(if k == 3 { J::mm(*v) } else { J::int(*v) });
+        }
+    }
+    m.insert("to_asset".into(), J::Arr(to_asset));
     m.insert(
         "bounds".into(),
         J::Arr(a.bounds.iter().map(|v| J::mm(*v)).collect()),
@@ -375,12 +390,14 @@ fn asset_json(a: &via_model::pack::Asset) -> J {
     );
     m.insert(
         "origin".into(),
-        J::Arr(vec![J::int(0), J::int(0), J::int(0)]),
+        J::Arr(a.origin.iter().map(|v| J::mm(*v)).collect()),
     );
-    m.insert(
-        "triangles".into(),
-        J::Arr(vec![J::Num(a.triangles.to_string())]),
-    );
+    let mut triangles = vec![J::Num(a.triangles.to_string())];
+    if let Some(md) = &a.model {
+        triangles.extend(md.detail_triangles.iter().map(|t| J::Num(t.to_string())));
+    }
+    m.insert("triangles".into(), J::Arr(triangles));
+    m.insert("collision".into(), J::s(a.collision.clone()));
     let mut mounts = J::obj();
     for (n, (at, face)) in &a.mounts {
         mounts.insert(n.clone(), obj([("at", xy(*at)), ("face", J::int(*face))]));
@@ -401,7 +418,16 @@ fn asset_json(a: &via_model::pack::Asset) -> J {
     );
     m.insert("taxon".into(), J::opt(a.taxon.as_deref()));
     m.insert("tags".into(), J::strs(a.tags.iter().map(String::as_str)));
-    m.insert("params".into(), J::Obj(J::obj()));
+    m.insert(
+        "params".into(),
+        a.params.as_ref().map_or_else(
+            || J::Obj(J::obj()),
+            |p| {
+                let text = via_model::asset_facts::canonical_json(&toml::Value::Table(p.clone()));
+                crate::json::parse(&text).unwrap_or_else(|_| J::Obj(J::obj()))
+            },
+        ),
+    );
     J::Obj(m)
 }
 

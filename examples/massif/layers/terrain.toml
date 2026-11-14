@@ -1,0 +1,88 @@
+# Terrain layer: written over the land the uplands step makes in the world file. It names the
+# step's stream by place (`{ of = "uplands", class = "feature", near }`) and its fields by tag,
+# never by produced name, so all of it follows the land when the seed or the step changes.
+
+# ---- the land's cover, read by the dressing layer and handed to the engine
+
+[field.forest]                            # where a wood stands: wet ground that is not too steep
+tags = ["cover"]
+base = "= smoothstep(0.3, 0.6, f('tag:wet') + 0.25 * fbm(90, 3)) * (1 - smoothstep(26, 34, slope('height')))"
+
+[field.grass]                             # the engine's grass: off the steep ground, thin under the wood
+tags = ["vegetation"]
+base = "= (1 - smoothstep(26, 34, slope('height'))) * (1 - 0.7 * f('forest'))"
+
+[field.ground]                            # the land library's paint (lib/land/ground.md), in the
+type = "weights"                          # starter pack's materials
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.scree]                 # bare rock where turf will not hold
+paint = "rock"
+mask  = "= smoothstep(27, 34, slope('height'))"
+
+[field.ground.then.shingle]               # the stream's bed and banks (the uplands' beck, 1.5 m wide)
+paint = "gravel"
+mask  = "= 1 - smoothstep(1.75, 3.25, dist('kind:beck', 8))"
+
+[field.ground.then.track]                 # the road worn to earth (lib/ways' road, 5 m)
+paint = "earth"
+mask  = "= 1 - smoothstep(3, 3.8, dist('kind:road', 6))"
+
+# ---- weathering: ground steeper than its angle of repose sheds downhill (lib/land/weather.py).
+# It reads the terrain's head view: the land the uplands step returned, never the road's cut or a
+# pad's level, which are applied after it on the weathered ground. It returns `shed` and `talus`
+# (tag `talus`), read by the dressing layer's fallen rock.
+[step.weather]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:land/weather.py"]
+params  = { repose = 34, rounds = 60 }
+
+# ---- the road up the valley (lib/ways). It climbs the stream's north-east bank from where the
+# valley opens at the map's edge to a head up the stream. Both ends stand on the stream the
+# uplands step returns, so a new seed moves the road with the valley; between them its course is
+# found over the land (R16, derived.md 3): cheap where the ground is gentle, dear on steep ground
+# and within the stream's banks, so it keeps to one bank and never has to cross the water. Where it
+# leaves the map is owed an exit (M4, R9); until then it ends at the edge.
+
+[feature.road_entry]                      # at the stream's mouth, 22 m up its north-east bank
+on = { of = "uplands", class = "feature", near = [300, 10], t = 1, offset = 22 }
+
+[feature.road_head]                       # up the valley, above the stream's north-east bank
+on = { of = "uplands", class = "feature", near = [140, 200], t = 0.35, offset = 22 }
+
+[feature.valley_road]
+kind      = "road"
+starts_at = "road_entry"
+ends_at   = "road_head"
+path      = []
+route     = "= 1 + pow(slope('height') / 8, 2) + 40 * (1 - smoothstep(14, 22, dist('kind:beck', 22)))"
+smooth    = true
+
+# ---- the houses. Two cottages face the road from its uphill side (the stream's bank lies 22 m
+# downhill, too near for a house and its pad); the barn stands high on the far bank, away from any
+# road, which this project's own lint objects to (tools/homes.py).
+
+[instance.cottage_a]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "valley_road", t = 0.42, offset = -13 }
+face   = "toward"
+
+[instance.cottage_b]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "valley_road", t = 0.62, offset = -16 }
+face   = "toward"
+
+[instance.high_barn]
+asset  = "house_wide"
+ground = "pad"
+margin = 1
+at     = [100, 120]
+face   = 45

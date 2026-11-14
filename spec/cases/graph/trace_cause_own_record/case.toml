@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "graph.md 6.3: the `trace` cause is read against the trace the previous record names for the node, not whichever trace in the store comes first. One store holds the traces of the base build and of change b (another directory, which moved the ground); change a then moves the point in the base's directory. The ground read differs from b's trace but not from the base's, so the cause names the point's read, `build.features`."
+milestone = 2
+actions   = ["program", "trust", "base", "other", "moved"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.other]
+via         = ["build", "world.toml", "--change", "b", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.other.check.ran]
+fn       = "run_node"
+path     = "build/b.run.json"
+node     = "step:gen"
+includes = { status = "ran" }
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "a", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.check.gen]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:gen"
+includes = { status = "ran", cause = { reason = "trace", method = "build.features" } }

@@ -17,6 +17,9 @@ pub enum RasterError {
     NotFinite { at: (i64, i64), bits: u64 },
     /// A mask outside 0 to 1, or not a number (`formula.range`, `fields.md` 5).
     MaskRange { at: (i64, i64), mask: f64 },
+    /// A `route` cost at or below 0, or not finite, at a post (`formula.range`, `derived.md` 3):
+    /// a course over free ground has no least.
+    CostRange { at: (i64, i64), cost: f64 },
     /// A cap or a width outside its range (`formula.range`).
     ParameterRange { what: &'static str, value: f64 },
     /// A read beyond the extent, or with no neighbour on either side (`formula.outside_field`).
@@ -51,9 +54,9 @@ impl RasterError {
     pub fn code(&self) -> Code {
         match self {
             RasterError::NotFinite { .. } => codes::num::NOT_FINITE_RESULT,
-            RasterError::MaskRange { .. } | RasterError::ParameterRange { .. } => {
-                codes::formula::RANGE
-            }
+            RasterError::MaskRange { .. }
+            | RasterError::CostRange { .. }
+            | RasterError::ParameterRange { .. } => codes::formula::RANGE,
             RasterError::OutsideField { .. } => codes::formula::OUTSIDE_FIELD,
             RasterError::EmptySelection => codes::formula::EMPTY_SELECTION,
             RasterError::Shape { .. } => codes::formula::SHAPE,
@@ -73,6 +76,7 @@ impl RasterError {
         match self {
             RasterError::NotFinite { at, .. }
             | RasterError::MaskRange { at, .. }
+            | RasterError::CostRange { at, .. }
             | RasterError::OutsideField { at }
             | RasterError::WeightInvalid { at, .. } => Some(Position::plan(at.0, at.1)),
             _ => None,
@@ -83,6 +87,9 @@ impl RasterError {
         let s = match self {
             RasterError::NotFinite { .. } => "keep the value within the 32-bit float range",
             RasterError::MaskRange { .. } => "wrap the mask in `clamp(..., 0, 1)`",
+            RasterError::CostRange { .. } => {
+                "keep the cost above 0 everywhere, for example `= 1 + ...`"
+            }
             RasterError::ParameterRange { .. } => "give a finite value above 0",
             RasterError::OutsideField { .. } => "read inside the extent",
             RasterError::EmptySelection => "select at least one feature",
@@ -156,6 +163,12 @@ impl fmt::Display for RasterError {
             RasterError::MaskRange { at, mask } => write!(
                 f,
                 "mask {mask} at ({}, {}) is outside 0 to 1",
+                mm(at.0),
+                mm(at.1)
+            ),
+            RasterError::CostRange { at, cost } => write!(
+                f,
+                "route cost {cost} at ({}, {}) is not above 0; a course over free ground has no least",
                 mm(at.0),
                 mm(at.1)
             ),

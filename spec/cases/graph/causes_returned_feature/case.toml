@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "graph.md 5.1 and 6.4: a step returns a feature placed from a feature it read; that feature moves, the returned one moves, and its change entry names the read feature's moved key (from the step's trace)."
+milestone = 2
+actions   = ["program", "trust", "base", "moved"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "moved", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.check.found]
+fn       = "entry_causes"
+path     = "build/w/changes.json"
+table    = "feature"
+prefix   = "gen#found"
+named    = ["feature.p.at"]

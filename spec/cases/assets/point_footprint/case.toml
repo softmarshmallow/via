@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "ground on an asset whose measured footprint is a point: place.no_footprint at the instance's ground."
+milestone = 2
+pending   = "needs a pack whose model measures a footprint of no area (assets.md 2.4); no fixture holds one yet"
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.code]
+code = "place.no_footprint"

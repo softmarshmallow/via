@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "A generate step reading an anchored feature and returning a row; no lint: authority.unchecked at its when line, exit 1."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# steps/make.py reads `haven` by name and returns a feature; no lint names `make` in `checks`.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unchecked]
+code    = "authority.unchecked"
+subject = "step.make"
+file    = "world.toml"
+line    = 16

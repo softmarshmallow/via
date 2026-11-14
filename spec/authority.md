@@ -618,6 +618,7 @@ Six entries fit a 32-bit float exactly.
 | max_change | M1 | A pad on a slope past its `max_change` | build | `authority.max_change` at the largest move; entry applied in full; exit 1. |
 | range | M1 | An effect with `radius = 0` | build | `authority.range`. |
 | max_change_formula | M1 | `max_change = "= max_cut"` on a pad kind, two pads with `max_cut` 0.5 and 2 on one slope | build | `authority.max_change` for the first pad only. |
+| max_change_each | M2 | Two pads of one kind on one slope, both past their `max_change` | build | `authority.max_change` twice, one per pad (2.2: once per effect, feature and field). |
 | max_change_negative | M1 | `max_change = "= -1"` | build | `formula.range` at the feature. |
 | bare_field | M1 | An effect with `field = "height"` | build | `authority.selector`, hint `role:surface`. |
 | bad_role | M1 | An effect with `field = "role:surfce"` | build | `authority.selector`, nearest `surface`. |

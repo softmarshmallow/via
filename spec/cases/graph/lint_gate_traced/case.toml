@@ -1,0 +1,46 @@
+format    = "via-case-1"
+summary   = "One layer; a formula typo in an attribute of a feature whose effect writes height; a worker lint reading height, one reading only the features of an unrelated kind: the first skipped, its findings dropped; the second ran and reports; exit 1."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# graph.md 9, "lint gate, traced"; diagnostics.md 4: a worker's reads are traced, so a lint that
+# reads none of a failure runs beside it. `bump` writes height and `hill` holds the typo, so the
+# height chunks are skipped; `flag` is a `mark`, which has no effect.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown_name]
+code = "formula.unknown_name"
+
+[action.build.diag.marks]
+code    = "step.on_marks.counted"
+subject = "step.on_marks"
+data    = { count = 1 }
+
+[action.build.diag.height]
+code    = "step.on_height.summed"
+records = 0
+
+[action.build.check.on_height]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:on_height"
+includes = { status = "skipped" }
+
+[action.build.check.on_marks]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:on_marks"
+includes = { status = "ran" }

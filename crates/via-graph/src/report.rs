@@ -119,6 +119,9 @@ pub struct ReportHead {
     pub previous: Option<Digest>,
     /// The build's wall time in whole milliseconds.
     pub ms: u64,
+    /// Whole milliseconds the plan spent outside its nodes' own computations (6.3
+    /// `totals.memo_ms`).
+    pub memo_ms: u64,
     /// The run diagnostics as `diagnostics.md` 1 records in canonical JSON, already in the
     /// order of `diagnostics.md` 5 (`via_diag::Record::to_canonical_json`).
     pub run_records: Vec<String>,
@@ -131,6 +134,10 @@ fn node_json(id: &NodeId, n: &NodeOutcome) -> Json {
         if let crate::engine::Cause::Edge { label, node } = c {
             m.insert("edge".to_string(), Json::Str(label.clone()));
             m.insert("node".to_string(), Json::Str(node.to_string()));
+        }
+        if let crate::engine::Cause::Trace { method, request } = c {
+            m.insert("method".to_string(), Json::Str(method.clone()));
+            m.insert("request".to_string(), Json::Str(request.hex()));
         }
         Json::Obj(m)
     });
@@ -286,6 +293,7 @@ fn assemble(head: &ReportHead, complete: bool, nodes: &[(&NodeId, &NodeOutcome)]
         (
             "totals",
             obj([
+                ("memo_ms", Json::Int(head.memo_ms)),
                 ("ms", Json::Int(head.ms)),
                 ("nodes", Json::Int(nodes.len() as u64)),
                 ("ran", Json::Int(counts["ran"])),

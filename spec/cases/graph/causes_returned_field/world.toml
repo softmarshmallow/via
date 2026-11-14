@@ -1,0 +1,16 @@
+name       = "returned"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+params  = { level = 1 }
+
+[change.two.step.gen]
+params = { level = 2 }

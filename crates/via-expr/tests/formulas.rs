@@ -465,7 +465,8 @@ fn case_13_unknown_functions() {
         code(check("= under('mean')", &base())),
         "formula.unknown_function"
     );
-    assert_eq!(code(check("= ridged(10)", &base())), "doc.not_yet");
+    // `ridged` arrives in M2, which this engine reads.
+    assert!(check("= ridged(10)", &base()).is_ok());
 }
 
 #[test]

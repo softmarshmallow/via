@@ -1,0 +1,20 @@
+name       = "bend"
+extent     = [0, 0, 64, 64]
+resolution = 0.5
+include    = ["water"]
+
+# A valley falling south, its sides rising 1 in 4 from the beck's line (14 degrees), and a beck of
+# lib/water with a 45-degree bend at (16, 36): south, then south-east. The inside of the bend is to
+# the east, its bisector running 22.5 degrees north of east from the vertex.
+[field.height]
+role = "surface"
+base = "= 20 + 0.2 * y + 0.25 * dist('stream', 40)"
+
+[field.water]
+tags = ["water_level"]
+base = "= f('height')"
+
+[feature.stream]
+kind  = "beck"
+path  = [[16, 64], [16, 36], [44, 8]]
+width = 1.5

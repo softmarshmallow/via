@@ -5,8 +5,11 @@ actions   = ["program", "trust", "base", "bigger"]
 
 # assets.md's `Pack swap` row (section 7, 6.2), identity.md case 46 and the plan's ford row
 # changes/bigger.toml. The second pack is packs/primitive_large.toml, derived from assets.md 6.1
-# with the one line 6.2 changes. Entries sort by table, then name (build.md 11.2): the fields the
-# larger pad touches (clearing, height, water), then footprint cottage, then instance cottage.
+# with the one line 6.2 changes. Entries sort by table, then name (build.md 11.2): feature to_door,
+# whose `toward` names the cottage (features.json writes that place's `at` with its height, and the
+# larger pad levels the ground there to another mean, so the key `attrs.toward` differs: changed),
+# then the fields the larger pad touches (clearing, height, water), then footprint cottage, then
+# instance cottage.
 # Facts compare as manifest.json writes them; `footprint`'s value is not given by a chapter, so
 # only `bounds` and `size` are asserted. The cottage is also `moved`: the larger pad levels its
 # ground to another mean, so its height differs (assets.md 7, identity.md 5).
@@ -48,33 +51,10 @@ untouched = ["world.toml", "build/ford"]
 
 [action.bigger.file.footprint]
 path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/3"
+pointer  = "/entries/4"
 includes = { name = "cottage", table = "footprint", what = ["moved"] }
 
 [action.bigger.file.footprint_facts]
-path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/3/facts"
-includes = [
-    { fact = "bounds", before = [-4, -3, 0, 4, 3, 4], after = [-5, -4, 0, 5, 4, 4] },
-    { fact = "size", before = [8, 6, 4], after = [10, 8, 4] },
-]
-
-[action.bigger.file.footprint_cause_size]
-path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/3/causes/0"
-includes = { cause = "asset.house_low.size", file = "pack:primitive_large.toml", line = 15, in = "this" }
-
-[action.bigger.file.footprint_cause_pack]
-path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/3/causes/1"
-includes = { cause = "world.pack", file = "changes/bigger.toml", line = 1, in = "this" }
-
-[action.bigger.file.cottage]
-path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/4"
-includes = { name = "cottage", table = "instance", what = ["moved", "changed"] }
-
-[action.bigger.file.cottage_facts]
 path     = "build/ford+bigger/changes.json"
 pointer  = "/entries/4/facts"
 includes = [
@@ -82,26 +62,49 @@ includes = [
     { fact = "size", before = [8, 6, 4], after = [10, 8, 4] },
 ]
 
-[action.bigger.file.cottage_cause_size]
+[action.bigger.file.footprint_cause_size]
 path     = "build/ford+bigger/changes.json"
 pointer  = "/entries/4/causes/0"
 includes = { cause = "asset.house_low.size", file = "pack:primitive_large.toml", line = 15, in = "this" }
 
-[action.bigger.file.cottage_cause_pack]
+[action.bigger.file.footprint_cause_pack]
 path     = "build/ford+bigger/changes.json"
 pointer  = "/entries/4/causes/1"
+includes = { cause = "world.pack", file = "changes/bigger.toml", line = 1, in = "this" }
+
+[action.bigger.file.cottage]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/5"
+includes = { name = "cottage", table = "instance", what = ["moved", "changed"] }
+
+[action.bigger.file.cottage_facts]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/5/facts"
+includes = [
+    { fact = "bounds", before = [-4, -3, 0, 4, 3, 4], after = [-5, -4, 0, 5, 4, 4] },
+    { fact = "size", before = [8, 6, 4], after = [10, 8, 4] },
+]
+
+[action.bigger.file.cottage_cause_size]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/5/causes/0"
+includes = { cause = "asset.house_low.size", file = "pack:primitive_large.toml", line = 15, in = "this" }
+
+[action.bigger.file.cottage_cause_pack]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/5/causes/1"
 includes = { cause = "world.pack", file = "changes/bigger.toml", line = 1, in = "this" }
 
 [action.bigger.check.footprint_two_causes]
 fn      = "json_count"
 path    = "build/ford+bigger/changes.json"
-pointer = "/entries/3/causes"
+pointer = "/entries/4/causes"
 count   = 2
 
 [action.bigger.check.cottage_two_causes]
 fn      = "json_count"
 path    = "build/ford+bigger/changes.json"
-pointer = "/entries/4/causes"
+pointer = "/entries/5/causes"
 count   = 2
 
 # The three fields the larger pad touches (entries 0 to 2). build.md 11.2: a field's `keys` are
@@ -109,15 +112,20 @@ count   = 2
 # for an instance or footprint, so a field's is `[]`. Its cause may still be the asset's size.
 [action.bigger.file.clearing_keys]
 path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/0"
+pointer  = "/entries/1"
 includes = { name = "clearing", table = "field", keys = ["samples"], facts = [] }
 
 [action.bigger.file.height_keys]
 path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/1"
+pointer  = "/entries/2"
 includes = { name = "height", table = "field", keys = ["samples"], facts = [] }
 
 [action.bigger.file.water_keys]
 path     = "build/ford+bigger/changes.json"
-pointer  = "/entries/2"
+pointer  = "/entries/3"
 includes = { name = "water", table = "field", keys = ["samples"], facts = [] }
+
+[action.bigger.file.to_door]
+path     = "build/ford+bigger/changes.json"
+pointer  = "/entries/0"
+includes = { name = "to_door", table = "feature", what = ["changed"], keys = ["attrs.toward"] }

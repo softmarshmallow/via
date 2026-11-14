@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "range = [20, 20] on a PNG field: field.file_range."
+milestone = 2
+pending   = "PNG field files (fields.md 4) are not read yet: the reader takes array files only"
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.code]
+code = "field.file_range"

@@ -1,0 +1,12 @@
+name       = "refused"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x + nosuch(y)"
+
+[step.gen]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/gen.py"]

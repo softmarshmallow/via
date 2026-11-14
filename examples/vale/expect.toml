@@ -1,0 +1,204 @@
+# What a vale build must measure, compared with the spike's (fixtures/oracle/vale*/). Measures,
+# never bytes (R15): each row names a measure of `measure.py`, the spike's number where it exported
+# one, and the band ours must fall in. Checked by
+#
+#   python3 examples/vale/measure.py build/vale --check base
+#   python3 examples/vale/measure.py build/vale+move_road --check move_road     # built with --against build/vale
+#
+# Protocol of the numbers below: macOS arm64 (M4 Pro), the engine of the rewrite branch at
+# 2026-11-14, one build each, default threads; the spike's from its own export (fixtures/oracle).
+# A band is not a target: it says how far the new core may differ before someone looks, and why.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.steep_by_houses]                    # lib/land's pad: its bank fades into the ground, never a cliff
+measure = "steep_by_houses"
+spike   = "none exported"
+band    = [0, 0]
+
+[base.crowns_over_buildings]              # lib/land's pad keeps trees a crown's reach off the house
+measure = "crowns_over_buildings"
+spike   = "none exported"
+band    = [0, 0]
+
+[base.ground_road_south]                  # the land is the spike's: same formula, our noise (formulas.md)
+measure = "ground_at_spike_views.bm_road_south.diff_m"
+spike   = 0
+band    = [-1.5, 1.5]
+
+[base.ground_hamlet]
+measure = "ground_at_spike_views.bm_hamlet.diff_m"
+spike   = 0
+band    = [-1.5, 1.5]
+
+[base.ground_tarn]
+measure = "ground_at_spike_views.bm_tarn.diff_m"
+spike   = 0
+band    = [-1.5, 1.5]
+
+[base.ground_cliff]                       # under the cliff: the spike's cliff and ours differ in profile
+measure = "ground_at_spike_views.bm_cliff.diff_m"
+spike   = 0
+band    = [-2.5, 2.5]
+
+[base.ground_overlook]                    # on the trail: the spike's was a graded way (its height the way's
+# long profile, averaged over 16 m: cut and fill), ours is trodden in (lib/ways: cut only). Here the
+# spike filled 1.5 m above the land; ours leaves the land as it lies (58.95 m, the same with and
+# without the trail, `via eval --field height` against the bare formula). Band as under the cliff.
+measure = "ground_at_spike_views.bm_overlook.diff_m"
+spike   = 0
+band    = [-2.5, 2.5]
+
+[base.ground_mill]
+measure = "ground_at_spike_views.bm_mill.diff_m"
+spike   = 0
+band    = [-1.5, 1.5]
+
+[base.tarn_level]                         # the spill level less the freeboard, found by lib/water's fill step
+measure = "water.tarn_lake.level_m"
+spike   = 26.43
+band    = [25.9, 26.9]
+
+[base.tarn_area]                          # the spike counted wet posts within 8 m of every piece; ours, of the one piece that holds the point
+measure = "water.tarn_lake.area_m2"
+spike   = 5062
+band    = [3500, 6500]
+
+[base.tarn_max_depth]
+measure = "water.tarn_lake.max_depth_m"
+spike   = 4.58
+band    = [3.5, 5.5]
+
+[base.tarn_mean_depth]
+measure = "water.tarn_lake.mean_depth_m"
+spike   = 1.97
+band    = [1.2, 2.6]
+
+[base.tarn_islands]
+measure = "water.tarn_lake.islands"
+spike   = 1
+band    = [0, 2]
+
+[base.tarn_pieces]                        # `holds` keeps one piece (derived.md 2)
+measure = "water.tarn_lake.pieces"
+band    = [1, 1]
+
+[base.pond_level]                         # an anchored pond holds its stated level exactly
+measure = "water.mill_pond.level_m"
+spike   = 30.94
+band    = [30.9, 30.9]
+
+[base.pond_area]                          # the region is 700 m2; the spike's ground left part of it dry (524)
+measure = "water.mill_pond.area_m2"
+spike   = 524
+band    = [640, 720]
+
+[base.pond_max_depth]                     # `depth` is exact (lib/water pond)
+measure = "water.mill_pond.max_depth_m"
+spike   = 1.83
+band    = [2.1, 2.3]
+
+[base.woods]                              # the spike's woods, from vale@invalid's removals; ours keep 3 to 15 m off the shores
+measure = "instances_per_maker.woods"
+spike   = 2358
+band    = [2000, 3400]
+
+[base.underbrush]
+measure = "instances_per_maker.underbrush"
+spike   = 1897
+band    = [1500, 2900]
+
+[base.cliff_fall]                         # the spike exported its rocks by asset only (41 for both rock scatters)
+measure = "instances_per_maker.cliff_fall"
+band    = [20, 60]
+
+[base.hand]                               # four houses and the mill
+measure = "instances_per_maker.hand"
+spike   = 5
+band    = [5, 5]
+
+[base.woods_on_roads]                     # the road's verge holds trees off its bed (lib/ways)
+measure = "woods_on_roads"
+band    = [0, 0]
+
+[base.views]                              # one per meeting and two from above; the spike had eight
+measure = "features_per_kind.bookmark"
+spike   = 8
+band    = [11, 11]
+
+[base.poi]
+measure = "features_per_kind.poi"
+spike   = 2
+band    = [2, 2]
+
+[base.spawn_zone]
+measure = "features_per_kind.spawn_zone"
+spike   = 1
+band    = [1, 1]
+
+# ------------------------------------------------------------------------------------------ changes
+# Built with `--change <c> --against build/vale`; counts are of change report entries (identity.md 5).
+
+[winter.underbrush_removed]               # turf gone, so the brush that grows on it thins
+measure = "changes.underbrush.removed"
+spike   = 97
+band    = [60, 140]
+
+[winter.woods_untouched]
+measure = "instances_per_maker.woods"
+spike   = 2358
+band    = [2000, 3400]
+
+[move_road.houses_moved]                  # the four houses stand `on` the road and follow it
+measure = "changes.instance.moved"
+spike   = 4
+band    = [4, 4]
+
+[move_road.woods_added]                   # ours also moves the hamlet's green with the road (dress.toml)
+measure = "changes.woods.added"
+spike   = 16
+band    = [5, 70]
+
+[move_road.woods_removed]
+measure = "changes.woods.removed"
+spike   = 26
+band    = [10, 70]
+
+[move_road.pad_banks]                     # the spike said seam.change_exceeds on three houses; v1 says nothing (the M2 library requests)
+measure = "diagnostics.warning"
+spike   = 3
+band    = [0, 0]
+
+[bigger_house.swapped]                    # one house swapped, nothing else placed differs
+measure = "changes.instance.swapped"
+spike   = 1
+band    = [1, 1]
+
+[bigger_house.woods_untouched]
+measure = "instances_per_maker.woods"
+band    = [2000, 3400]
+
+[revised_house.instances]                 # asset.revised names the three `house_low` instances, each changed
+measure = "changes.instance.changed"
+band    = [3, 3]
+
+[add_cliff.woods_removed]                 # the spike's cliff reached 50 m back, ours 40 (the M2 library requests)
+measure = "changes.woods.removed"
+spike   = 62
+band    = [10, 80]
+
+[new_seed.tarn_moved]                     # a new seed moves the hollow, so the shore the step finds
+measure = "changes.feature.moved"
+band    = [1, 30]
+
+[new_seed.houses_moved]                   # the ground under them changed (identity.md 5: height is position)
+measure = "changes.instance.moved"
+band    = [1, 5]
+
+[dress_only.woods_relaid]                 # a new spacing is a new lattice: every tree is new
+measure = "changes.woods.added"
+band    = [1800, 3000]
+
+[dress_only.land_untouched]               # nothing below the dressing layer is made again
+measure = "changes.field.changed"
+band    = [0, 0]

@@ -1,0 +1,156 @@
+name    = "vale"
+extent  = [0, 0, 512, 512]
+seed    = 11
+include = ["land", "water", "ways", "vegetation", "map", "review"]   # kinds as data; the core knows none of these words
+pack    = "starter"
+
+# A mountain valley with a road, a tarn, a mill pond, a hamlet and a cliff. This file holds the land
+# and what is decided on it; the dressing (growth, map marks, views) is its own layer, above.
+
+[layer.dress]
+file  = "dress.toml"
+owner = "dressing"
+rank  = 1
+
+[let]
+snowline = 150                            # metres above which the ground is too cold for turf (lib/land/ground.md)
+treeline = 118                            # metres above which no wood stands
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                            # a valley floor rising north, walls that climb away from `valley`
+role = "surface"
+base = "= 16 + 20 * y / 512 + 82 * pow(smoothstep(18, 310, wall), 1.2) * (0.78 + 0.22 * fbm(340, 2, seed = 'massif')) + 26 * (1 - smoothstep(40, 330, x - 0.25 * y)) + 7 * fbm(95, 4, seed = 'crags') * smoothstep(10, 90, wall) + 1.2 * fbm(21, 3, seed = 'grain') * smoothstep(30, 110, wall) + 5 * ridged(60, 3, seed = 'ribs') * smoothstep(60, 110, rough)"
+
+[field.height.let]
+wall   = "= dist('valley', 400) + 46 * fbm(190, 3, seed = 'wall')"    # how far up the valley's side, metres
+rough  = "= dist('valley', 200) + 30 * fbm(120, 2, seed = 'rough')"
+hollow = "= dist('tarn', 120) + 24 * fbm(50, 3, seed = 'hollow')"     # a rough bowl about the tarn's point
+
+[field.height.then.hollow]                # a hollow on the east side; the tarn finds its own shore in it
+value = "= 25.6 - 3.4 * (1 - smoothstep(0, 52, hollow)) + 1.5 * fbm(30, 3, seed = 'bed') + 1.9 * ridged(40, 2, seed = 'skerries') * smoothstep(10, 34, hollow)"
+mask  = "= 1 - smoothstep(34, 84, hollow)"
+
+[field.water]                             # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                          # pads, ways and water keep props off it (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+[field.cover]                             # where a wood stands, 0 to 1 (lib/vegetation's `tag:cover`)
+# Off steep ground and above the treeline; none under water, a meadow along each shore, and an
+# apron of fallen rock at the cliff's foot (its low side, sd below 0) where nothing takes root.
+tags = ["cover"]
+base = "= smoothstep(-0.12, 0.22, fbm(130, 3, seed = 'woods') + 0.25 * smoothstep(30, 120, dist('valley', 120)) - 0.1) * (1 - smoothstep(27, 35, slope('height'))) * (1 - smoothstep(treeline - 22, treeline, f('height'))) * (1 - smoothstep(0, 0.1, f('water') - f('height'))) * smoothstep(3, 15, dist('kind:lake', 15)) * smoothstep(3, 15, dist('kind:pond', 15)) * max(smoothstep(0, 4, sdist('north_cliff', 40)), 1 - smoothstep(-34, -14, sdist('north_cliff', 40)))"
+
+[field.grass]                             # turf: off steep ground, thin under trees, gone under snow and water
+base = "= (1 - smoothstep(26, 34, slope('height'))) * (1 - 0.75 * f('cover')) * (1 - smoothstep(snowline - 14, snowline - 4, f('height'))) * (1 - smoothstep(0, 0.1, f('water') - f('height')))"
+
+[field.ground]                            # the paint; lib/land/ground.md's rows, in the starter pack's two materials
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.rock]                  # bare rock where turf will not hold
+paint = "rock"
+mask  = "= smoothstep(30, 40, slope('height') + 5 * fbm(14, 2, seed = 'scree'))"
+
+[field.ground.then.shore]                 # the tarn's and the mill pond's beaches (lib/land/ground.md)
+paint = "gravel"
+mask  = "= max(1 - smoothstep(1.5, 4, dist('kind:lake', 6)), 1 - smoothstep(1.5, 4, dist('kind:pond', 6)))"
+
+[field.ground.then.track]                 # the road and the trail worn to earth
+paint = "earth"
+mask  = "= max(1 - smoothstep(3, 3.8, dist('kind:road', 6)), 1 - smoothstep(1.1, 1.8, dist('kind:trail', 3)))"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.valley]                          # a guide: the line the valley's walls climb away from
+path = [[200, -40], [215, 90], [262, 200], [300, 300], [352, 400], [410, 552]]
+
+[feature.north_cliff]                     # the high ground on its left: the north-west wall
+kind = "cliff"
+path = [[70, 250], [112, 318], [170, 372], [236, 418]]
+
+[feature.tarn]                            # scenery: a point and a rule; the ground decides the shore
+kind      = "tarn"
+at        = [338, 186]
+fence     = 92
+max_depth = 7
+
+[feature.mill_pond]                       # a landmark: the shape is exact and the ground conforms to it
+kind         = "pond"
+water_height = 30.9
+region       = [[352, 322], [362, 316], [376, 318], [384, 327], [382, 339], [371, 344], [363, 338], [355, 340], [348, 333]]
+
+[feature.valley_road]
+kind = "road"
+path = [[187.6, 0], [200, 80], [232, 160], [252, 240], [292, 318], [338, 400], [387.6, 512]]   # edge to edge
+
+[feature.trail_foot]                      # where the east trail leaves the road (R18: a named meeting)
+on = { ref = "valley_road", t = 0.494 }
+
+[feature.east_trail]
+kind      = "trail"
+starts_at = "trail_foot"
+path      = [[318, 262], [376, 246], [424, 214], [462, 170]]
+
+# ------------------------------------------------------------------------------------------ the hamlet
+
+[instance.cottage_a]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "valley_road", t = 0.397, offset = 13 }
+face   = "toward"
+
+[instance.cottage_b]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "valley_road", t = 0.454, offset = -12.5 }
+face   = "toward"
+
+[instance.barn]
+asset  = "house_wide"
+ground = "pad"
+margin = 1
+on     = { ref = "valley_road", t = 0.47, offset = 15 }
+face   = "toward"
+
+[instance.cottage_c]                      # past the trail's foot, so the trail runs clear of it
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "valley_road", t = 0.537, offset = -14 }
+face   = "toward"
+
+[instance.mill]                           # beside the landmark, in its frame; the pond's bank holds over the pad
+asset  = "house_wide"
+ground = "pad"
+margin = 1
+on     = { ref = "mill_pond", t = 0.5, offset = -12 }
+face   = "toward"
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.fill]                               # lib/water: each tarn filled to where its hollow runs over
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:water/fill.py"]
+
+[step.checks]                             # lib/review: the measures beside the eye
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+
+# ------------------------------------------------------------------------------------------ changes
+
+[change.winter.let]                       # a season is a change (documents.md 6.5)
+snowline = 34
+
+[change.winter.field.grass]
+base = "= 0"

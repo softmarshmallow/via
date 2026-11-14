@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = "derived.md d20, R14: basin; --change move_haven: the terrain step, its `checks` lint and the river's course ran again; the dress layer's own nodes that read nothing the step returned (its views placed by coordinate or on a stated fact) did not."
+milestone = 2
+actions   = ["program", "trust", "base", "moved"]
+
+# The terrain library's step and lint are the configured program `via-terrain`
+# (examples/basin/layers/land.toml), built with `cargo build --release -p via-terrain`: the basin
+# model takes minutes in a debug build. The river's course is the feature the step returns,
+# `terrain#river_course`; its lint is `facts` (`checks = ["terrain"]`). In the dress layer,
+# `middle` and `over_basin` stand at coordinates and `tarn_shore` on the stated lake `tarn`, which
+# the change does not move: their shapes are not made again.
+
+[copy.basin]
+from = "examples/basin"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "via-terrain", "{repo}/target/release/via-terrain"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/basin"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/basin"
+no_rerun    = "the basin model takes minutes; the clean rebuilds of U6 are covered by derived/terrain_* on a small world"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "move_haven", "--out", "build/basin"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/basin"
+no_rerun    = "the basin model takes minutes; the clean rebuilds of U6 are covered by derived/terrain_* on a small world"
+
+[action.moved.nodes]
+ran_includes = ["step:terrain", "step:facts", "shape:terrain#river_course/v:build", "attr:terrain#river_course"]
+not_ran      = ["shape:middle/v:build", "shape:over_basin/v:build", "shape:tarn_shore/v:build"]

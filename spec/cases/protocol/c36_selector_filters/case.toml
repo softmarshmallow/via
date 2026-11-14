@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A worker reading kind:x where one x feature lies above its layer: that feature is absent; no diagnostic."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# The step's own info record is the only diagnostic: the selection leaves `high` out without one.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.diag.count]
+code = "step.gen.count"
+data = { names = ["low"] }

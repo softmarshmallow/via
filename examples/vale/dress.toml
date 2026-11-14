@@ -1,0 +1,123 @@
+# The dressing of vale: what grows, what the player's map marks, and where the build is judged from.
+# It reads the land below it and writes nothing the land reads, so an edit here re-runs no step of
+# the land (graph.md 5.1).
+
+# ------------------------------------------------------------------------------------------ growth
+
+[scatter.woods]
+assets  = [{ id = "tree_oak", weight = 5 }, { id = "tree_pine", weight = 3 }, { id = "tree_oak_large", weight = 0.5 }]
+spacing = 6.5
+density = "= f('cover') * (1 - smoothstep(-6, 6, sdist('green', 12)))"   # none on the green
+scale   = [0.75, 1.3]
+
+[scatter.high_conifers]                   # thin pines up to the treeline, off the steepest ground
+assets  = ["tree_pine"]
+spacing = 9
+density = "= 0.5 * smoothstep(treeline - 40, treeline - 15, f('height')) * (1 - smoothstep(treeline, treeline + 12, f('height'))) * (1 - smoothstep(28, 36, slope('height')))"
+scale   = [0.6, 0.95]
+
+[scatter.underbrush]
+assets  = ["@plant/bush", "@plant/fern"]
+spacing = 5
+density = "= (0.45 * f('cover') + 0.12 * f('grass') * smoothstep(0.1, 0.4, fbm(40, 2, seed = 'brush'))) * (1 - smoothstep(-6, 6, sdist('green', 12)))"
+scale   = [0.7, 1.5]
+
+[scatter.cliff_fall]                      # boulders gather at the foot of the cliff, its low side (sd below 0)
+assets  = [{ id = "rock_a", weight = 3 }, { id = "rock_b", weight = 1 }]
+spacing = 5.5
+density = "= 0.75 * smoothstep(-26, -6, sdist('north_cliff', 30)) * (1 - smoothstep(-5, -2, sdist('north_cliff', 30))) * smoothstep(0.08, 0.3, along('north_cliff')) * (1 - smoothstep(0.7, 0.92, along('north_cliff')))"
+scale   = [0.6, 1.5]
+tint    = [0.92, 1.05]
+
+[scatter.scree_rocks]                     # stones on slopes too steep for turf, short of bare faces
+assets  = ["rock_a"]
+spacing = 11
+density = "= 0.35 * smoothstep(24, 32, slope('height')) * (1 - smoothstep(40, 46, slope('height')))"
+scale   = [0.4, 1.1]
+tint    = [0.92, 1.05]
+
+[feature.green]                           # a guide: the hamlet's open ground, 32 m either side of the road between
+where = "= min(32 - dist('valley_road', 40), along('valley_road') - 0.37, 0.56 - along('valley_road'))"
+                                          # t 0.37 and 0.56, so it follows the road; the woods and brush read it
+                                          # (a `clearing` would warn every house on it, rules.md 8.3)
+
+# ------------------------------------------------------------------------------------------ the player's map
+
+[feature.pass]
+kind  = "poi"
+on    = { ref = "valley_road", t = 0.978 }
+label = "North Pass"
+
+[feature.tarn_shore]                      # on the shore the fill step found, wherever it turns out to be
+kind  = "poi"
+on    = { of = "fill", class = "feature", near = [338, 186], t = 0.3, offset = -3 }
+label = "The Tarn"
+
+[feature.wolf_ground]                     # its table and numbers pass through to the game unread
+kind      = "spawn_zone"
+region    = [[155, 180], [149, 197.5], [132.5, 210.3], [110, 215], [87.5, 210.3], [71, 197.5], [65, 180], [71, 162.5], [87.5, 149.7], [110, 145], [132.5, 149.7], [149, 162.5]]
+table     = "wolves"
+max_alive = 4
+
+# ------------------------------------------------------------------------------------------ views (R17)
+# One at every meeting: the road arriving, the road and the hamlet's doors, the trail leaving the
+# road, the tarn's shore, the pond and its mill, the cliff's foot, the road leaving the world. Two
+# views from above are plan views only: what they show is judged on foot.
+
+[feature.road_south]                      # arriving from the south: the road, the walls, the hamlet ahead
+kind   = "bookmark"
+on     = { ref = "valley_road", t = 0.086 }
+toward = "cottage_a"
+
+[feature.hamlet]                          # the hamlet from the road
+kind   = "bookmark"
+on     = { ref = "valley_road", t = 0.324, offset = -3.5 }
+toward = "barn"
+
+[feature.to_door]                         # from the road to a cottage's door: the pad meets the road
+kind   = "bookmark"
+on     = { ref = "valley_road", t = 0.366 }
+toward = "cottage_a.door"
+
+[feature.trail_join]                      # up the trail, back to where it leaves the road
+kind   = "bookmark"
+on     = { ref = "east_trail", t = 0.12 }
+toward = "trail_foot"
+
+[feature.tarn_side]                       # across the tarn from its southern shore
+kind   = "bookmark"
+on     = { of = "fill", class = "feature", near = [338, 186], t = 0.02, offset = -2 }
+toward = "tarn"
+
+[feature.under_cliff]                     # under the cliff, among the fallen rock
+kind   = "bookmark"
+at     = [158, 336]
+toward = "north_cliff"
+
+[feature.overlook]                        # the valley from the end of the east trail
+kind       = "bookmark"
+on         = { ref = "east_trail", t = 0.95 }
+toward     = "valley_road"
+eye_height = 3
+
+[feature.at_mill]                         # the mill pond and the mill beside it
+kind   = "bookmark"
+on     = { ref = "mill_pond", t = 0.8, offset = -14 }
+toward = "mill"
+
+[feature.to_pass]                         # the road leaving the world at the pass
+kind   = "bookmark"
+on     = { ref = "valley_road", t = 0.916 }
+toward = "valley_road.end"
+
+[feature.tarn_above]                      # plan view: the tarn's shore from above
+kind       = "bookmark"
+at         = [400, 120]
+toward     = "tarn"
+eye_height = 45
+
+[feature.aerial]                          # plan view: the whole world from the south-east
+kind       = "bookmark"
+at         = [470, 30]
+toward     = "valley_road"
+eye_height = 150

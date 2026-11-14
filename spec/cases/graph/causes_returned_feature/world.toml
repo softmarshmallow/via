@@ -1,0 +1,23 @@
+name       = "causes"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.p]
+at = [4, 4]
+
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+
+[layer.marks]
+file  = "marks.toml"
+owner = "the case"
+rank  = 1
+
+[change.moved.feature.p]
+at = [9, 9]

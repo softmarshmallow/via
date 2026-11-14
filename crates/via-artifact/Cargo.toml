@@ -3,13 +3,11 @@ name = "via-artifact"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Typed artifact store: rasters, run manifests, seeding, content hashing."
+rust-version.workspace = true
+description = "The erosion library's seed derivation, on via-num."
 
 [dependencies]
-serde = { workspace = true }
-serde_json = { workspace = true }
-blake3 = { workspace = true }
+via-num = { workspace = true }
 
-# Exempt from the workspace float-method lint until the M2 port to via-num (R26).
-[lints.clippy]
-disallowed_methods = "allow"
+[lints]
+workspace = true

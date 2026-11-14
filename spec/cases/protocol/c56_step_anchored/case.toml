@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A returned feature written anchored: authority.step_anchored at its table in document.toml; exit 1."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.anchored]
+code = "authority.step_anchored"
+file = "step:gen/document.toml"
+line = 1

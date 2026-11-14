@@ -1,0 +1,11 @@
+name       = "wave"
+extent     = [0, 0, 1280, 1280]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 0
+
+[step.gen]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/gen.py"]

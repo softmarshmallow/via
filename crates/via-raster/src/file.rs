@@ -11,6 +11,25 @@ use via_num::Grid;
 pub enum Filter {
     Nearest,
     Linear,
+    /// Keys cubic convolution, `a = -0.5` (Keys, 1981), over the 4 by 4 samples around (M2).
+    Cubic,
+}
+
+/// Keys' weights for the four samples at offsets -1, 0, 1, 2 from the cell, at fraction `t`
+/// (`a = -0.5`): 1, 0, 0, 0 at `t = 0`.
+fn keys_weights(t: f64) -> [f64; 4] {
+    let a = -0.5;
+    let k = |x: f64| {
+        let x = x.abs();
+        if x <= 1.0 {
+            ((a + 2.0) * x - (a + 3.0)) * x * x + 1.0
+        } else if x < 2.0 {
+            ((a * x - 5.0 * a) * x + 8.0 * a) * x - 4.0 * a
+        } else {
+            0.0
+        }
+    };
+    [k(1.0 + t), k(t), k(1.0 - t), k(2.0 - t)]
 }
 
 /// Where the raster's corner samples lie, in millimetres, and the value beyond it.
@@ -94,6 +113,24 @@ pub fn resample(
                 let (c, fx) = ax.linear();
                 let (r, fy) = ay.linear();
                 bilinear(s(c, r), s(c + 1, r), s(c, r + 1), s(c + 1, r + 1), fx, fy)
+            }
+            Filter::Cubic => {
+                // Rows west to east, then the four rows south to north; an index past the edge
+                // reads the edge sample (`fields.md` 4.3, step 4).
+                let (c, fx) = ax.linear();
+                let (r, fy) = ay.linear();
+                let (wx, wy) = (keys_weights(fx), keys_weights(fy));
+                let col = |k: i64| (c as i64 + k).clamp(0, samples.columns as i64 - 1) as u64;
+                let row = |k: i64| (r as i64 + k).clamp(0, samples.rows as i64 - 1) as u64;
+                let mut total = 0.0;
+                for (jy, wyj) in wy.iter().enumerate() {
+                    let mut line = 0.0;
+                    for (ix, wxi) in wx.iter().enumerate() {
+                        line += wxi * s(col(ix as i64 - 1), row(jy as i64 - 1));
+                    }
+                    total += wyj * line;
+                }
+                total
             }
         })
     })

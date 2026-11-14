@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "Flat cost route = 1 from (0, 0) to (8, 0), path = []: the nine posts of the row, simplified (derived.md 3 step 5): (0, 0), (8, 0)."
+milestone = 2
+actions   = ["build"]
+
+# Features sort by name: `course` 0, `p_end` 1, `p_start` 2. A path's `points` are [x, y, z];
+# x and y are checked. `smooth` is not written, so the course is its points (derived.md 3 step 6).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.count]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 2
+
+[action.build.file.p0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.build.file.p0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 0
+
+[action.build.file.p1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 8
+
+[action.build.file.p1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 0

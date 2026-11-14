@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "A model pack, via pack accept twice: the facts file equals the vector; the second run writes the same bytes."
+milestone = 2
+actions   = ["first", "second"]
+
+# The vector is expected/pack.facts.toml, written from assets.md 4.1 by tools/packgen/cases.py:
+# every key in 4.1's order, the primitive asset left out, the digests by an independent BLAKE3.
+
+[action.first]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.first.file.bytes]
+path   = "pack.facts.toml"
+equals = "expected/pack.facts.toml"
+
+[action.first.file.changed]
+stream = "stdout"
+text   = "cube\n"
+
+[action.second]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.second.file.bytes]
+path   = "pack.facts.toml"
+equals = "expected/pack.facts.toml"
+
+[action.second.file.changed]
+stream = "stdout"
+text   = ""

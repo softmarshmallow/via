@@ -1,0 +1,4 @@
+[step.gen]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+worker  = true

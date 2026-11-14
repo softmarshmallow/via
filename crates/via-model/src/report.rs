@@ -34,6 +34,9 @@ pub struct Entry {
     pub causes: Vec<String>,
     /// Asset facts that differ: fact to (old, new).
     pub facts: BTreeMap<String, (String, String)>,
+    /// For a feature whose draped heights differ (`build.md` 11.2): the surface field it is
+    /// draped on, whose own causes, found by the graph, are this entry's too (`identity.md` 5).
+    pub drape: Option<String>,
 }
 
 /// One summary line per maker.
@@ -78,35 +81,99 @@ fn bbox(points: &[(i64, i64)]) -> Option<[i64; 4]> {
     Some(b)
 }
 
+/// The maker of a produced name (`identity.md` 1): the part before `#`; `None` for a name
+/// written in text, which never holds `#`. A name from inside an import keeps its prefix
+/// (`a.trees#s7000_4_7` is made by `a.trees`).
+pub fn maker_of_name(name: &str) -> Option<String> {
+    name.split_once('#').map(|(m, _)| m.to_string())
+}
+
+/// A build's surface (`build.md` 11.1): the field whose role is `surface`, as `features.json`
+/// drapes points and path vertices on it.
+struct Drape(Option<(via_num::Grid, via_raster::Raster<f32>)>);
+
+impl Drape {
+    fn of(b: &Build) -> Drape {
+        Drape(b.grid.and_then(|g| {
+            let f = b
+                .fields
+                .values()
+                .find(|f| f.role.as_deref() == Some("surface"))?;
+            let r = via_raster::raster::Raster::from_values(
+                via_raster::window::Window::whole(&g),
+                f.values.clone()?,
+            )?;
+            Some((g, r))
+        }))
+    }
+
+    /// The height at each point in integer millimetres (`identity.md` 5: a position differs
+    /// only in integer millimetres), `None` where there is no surface or the point is outside.
+    fn heights(&self, points: &[(i64, i64)]) -> Vec<Option<i64>> {
+        points
+            .iter()
+            .map(|p| {
+                let (g, r) = self.0.as_ref()?;
+                via_raster::raster::read_at(g, r, p.0, p.1).ok().map(mm)
+            })
+            .collect()
+    }
+}
+
+/// The name of the build's surface field, whose statements are the causes of a draped height.
+fn surface_name(b: &Build) -> Option<&String> {
+    b.fields
+        .iter()
+        .find(|(_, f)| f.role.as_deref() == Some("surface"))
+        .map(|(n, _)| n)
+}
+
 fn mm(z: f64) -> i64 {
     via_num::round_to_lattice(z * 1000.0).unwrap_or(0)
 }
 
-/// The causes among a thing's statements (`identity.md` 5).
-fn causes(
+/// The facts of another asset a thing can depend on: a scattered instance gives way to a hand
+/// footprint (`rules.md` 7.5), which reads that asset's footprint and its size, never its mounts.
+const SHAPE_FACTS: [&str; 3] = ["bounds", "footprint", "size"];
+
+/// The causes among a thing's statements (`identity.md` 5), and the differing facts of its own
+/// assets (`own`, `build.md` 11.2): an asset's every fact is a cause for a thing of that asset; for
+/// a thing of another asset, only the facts of its shape are.
+pub fn causes_of(
     old: &Build,
     new: &Build,
     deps: &BTreeSet<String>,
+    own: &BTreeSet<String>,
 ) -> (Vec<String>, BTreeMap<String, (String, String)>) {
     let mut out: BTreeSet<String> = BTreeSet::new();
     let mut facts = BTreeMap::new();
     for s in deps {
         if let Some(asset) = s.strip_prefix("asset:") {
             let (a, b) = (old.assets.get(asset), new.assets.get(asset));
+            let mine = own.contains(asset);
             if let (Some(a), Some(b)) = (a, b) {
                 // `bounds` and `footprint` of a primitive or engine-made asset come from its
                 // declared `size` (`assets.md` 7): when `size` differs, it is the cause and they
                 // are facts only.
                 let size_differs = a.get("size") != b.get("size") && b.contains_key("size");
                 for (k, v) in b {
+                    if !mine && !SHAPE_FACTS.contains(&k.as_str()) {
+                        continue;
+                    }
                     let o = a.get(k).cloned().unwrap_or_default();
                     if &o != v {
                         if !(size_differs && (k == "bounds" || k == "footprint")) {
                             out.insert(format!("asset.{asset}.{k}"));
                         }
-                        facts.insert(k.clone(), (o, v.clone()));
+                        if mine {
+                            facts.insert(k.clone(), (o, v.clone()));
+                        }
                     }
                 }
+            } else if a.is_some() != b.is_some() {
+                // An asset added to the pack or taken from it (a scatter now draws it, or no
+                // longer can): the asset itself is the cause.
+                out.insert(format!("asset.{asset}"));
             }
             continue;
         }
@@ -170,8 +237,18 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
                     status: Status,
                     before: Option<[i64; 4]>,
                     after: Option<[i64; 4]>,
-                    deps: &BTreeSet<String>| {
-        let (causes, facts) = causes(old, new, deps);
+                    deps: &BTreeSet<String>,
+                    drape: Option<String>| {
+        // The thing's own asset, before and after (`build.md` 11.2).
+        let own: BTreeSet<String> = match table {
+            "instance" | "footprint" => [old.instances.get(name), new.instances.get(name)]
+                .into_iter()
+                .flatten()
+                .map(|i| i.asset.clone())
+                .collect(),
+            _ => BTreeSet::new(),
+        };
+        let (causes, facts) = causes_of(old, new, deps, &own);
         // `facts` belong to an instance or footprint whose asset's facts differ (`build.md`
         // 11.2); a field depends on an asset's facts, which may be its cause, but has none.
         let facts =
@@ -188,21 +265,51 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
             after,
             causes,
             facts,
+            drape,
         });
     };
     // Features.
+    let (drape_old, drape_new) = (Drape::of(old), Drape::of(new));
     let names: BTreeSet<&String> = old.features.keys().chain(new.features.keys()).collect();
     for n in names {
         let (a, b) = (old.features.get(n), new.features.get(n));
+        // Heights as `features.json` writes them (`build.md` 11.2): a point's `at` and a path's
+        // vertices are draped on the surface, so a surface edit under them moves a point (its
+        // `at`) and changes a path (its `points`) though its plan is the same.
+        let mut lifted = false;
         let status = match (a, b) {
-            (Some(a), Some(b)) => Status {
-                moved: a.points != b.points || a.rings != b.rings || a.facing != b.facing,
-                changed: a.kind != b.kind
-                    || a.attrs != b.attrs
-                    || a.names != b.names
-                    || a.tier != b.tier,
-                ..Status::default()
-            },
+            (Some(a), Some(b)) => {
+                let same_plan = a.points == b.points && a.shape == b.shape;
+                let z_differs = |pts_a: &[(i64, i64)], pts_b: &[(i64, i64)]| {
+                    drape_old.heights(pts_a) != drape_new.heights(pts_b)
+                };
+                let point_z = same_plan
+                    && a.shape == "point"
+                    && z_differs(
+                        &a.points[..a.points.len().min(1)],
+                        &b.points[..b.points.len().min(1)],
+                    );
+                let path_z = same_plan && a.shape == "path" && z_differs(&a.points, &b.points);
+                let names_z = a.names == b.names && {
+                    let pa: Vec<(i64, i64)> = a.names.values().map(|v| v.1).collect();
+                    let pb: Vec<(i64, i64)> = b.names.values().map(|v| v.1).collect();
+                    z_differs(&pa, &pb)
+                };
+                lifted = point_z || path_z || names_z;
+                Status {
+                    moved: a.points != b.points
+                        || a.rings != b.rings
+                        || a.facing != b.facing
+                        || point_z,
+                    changed: a.kind != b.kind
+                        || a.attrs != b.attrs
+                        || a.names != b.names
+                        || a.tier != b.tier
+                        || path_z
+                        || names_z,
+                    ..Status::default()
+                }
+            }
             (None, Some(_)) => Status {
                 added: true,
                 ..Status::default()
@@ -214,6 +321,13 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
             (None, None) => continue,
         };
         if status != Status::default() {
+            // The surface it is draped on is what it depends on for its heights: its causes
+            // are the surface field's, which the graph finds (the caller joins them).
+            let drape = if lifted {
+                surface_name(new).or(surface_name(old)).cloned()
+            } else {
+                None
+            };
             push(
                 "feature",
                 n,
@@ -221,6 +335,7 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
                 a.and_then(|x| bbox(&x.all_points())),
                 b.and_then(|x| bbox(&x.all_points())),
                 &deps_of("feature", n),
+                drape,
             );
         }
     }
@@ -228,7 +343,10 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
     let names: BTreeSet<&String> = old.instances.keys().chain(new.instances.keys()).collect();
     for n in names {
         let (a, b) = (old.instances.get(n), new.instances.get(n));
-        let maker = a.or(b).and_then(|x| x.maker.clone());
+        let maker = a
+            .or(b)
+            .and_then(|x| x.maker.clone())
+            .or_else(|| maker_of_name(n));
         let mut deps = deps_of("instance", n);
         let status = match (a, b) {
             (Some(a), Some(b)) => {
@@ -277,6 +395,7 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
                 a.and_then(|x| bbox(&[x.origin])),
                 b.and_then(|x| bbox(&[x.origin])),
                 &deps,
+                None,
             );
         }
     }
@@ -312,6 +431,7 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
                 a.and_then(|x| bbox(&x.ring)),
                 b.and_then(|x| bbox(&x.ring)),
                 &deps,
+                None,
             );
         }
     }
@@ -347,7 +467,15 @@ pub fn compare(baseline: Option<&Build>, new: &Build) -> ChangeReport {
             (None, None) => continue,
         };
         if status != Status::default() {
-            push("field", n, status, region, region, &deps_of("field", n));
+            push(
+                "field",
+                n,
+                status,
+                region,
+                region,
+                &deps_of("field", n),
+                None,
+            );
         }
     }
     entries.sort_by(|x, y| {

@@ -1,0 +1,18 @@
+name       = "cause"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.p]
+at = [4, 4]
+
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+
+[change.moved.feature.p]
+at = [9, 9]

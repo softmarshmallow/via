@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A plain-command generate step returning one feature; build: the feature is <step>#<key> with its step's rank."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.check.feature]
+fn       = "json_list"
+path     = "build/w/features.json"
+pointer  = "/features"
+includes = { name = "gen#k" }

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A buffer URI my%20mesh.bin beside my mesh.bin: no error."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.check.diag.missing_file]
+code    = "pack.missing_file"
+records = 0

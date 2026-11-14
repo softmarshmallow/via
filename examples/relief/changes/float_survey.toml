@@ -1,0 +1,8 @@
+# The survey read from the one float format, an array file (fields.md 4.1, challenge 31), made from
+# height16.png by inputs/make_survey_npy.py. Its samples are the PNG's levels mapped by the same
+# range and narrowed to 32-bit floats, so the land, the tarn and the bookmarks agree with the base
+# build within that narrowing. `range` is a PNG's key only, so it is unset.
+
+[field.survey]
+file  = "../inputs/survey.npy"
+unset = ["range"]

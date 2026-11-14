@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use via_model::report::{ChangeReport, Entry};
+use via_model::report::{maker_of_name, ChangeReport, Entry};
 use via_model::Build;
 
 use crate::json::{obj, J};
@@ -368,15 +368,19 @@ fn cause_json(cause: &str, new: &Side<'_>, old: &Side<'_>, via: Vec<String>) -> 
     ])
 }
 
+/// The maker of a thing (`identity.md` 1): a scatter's recorded maker, else the part of a
+/// produced name before `#` (a step's returned feature, field or instance); `None` for a thing
+/// written in text.
 fn maker_of(e: &Entry, old: &Build, new: &Build) -> Option<String> {
-    match e.table.as_str() {
+    let recorded = match e.table.as_str() {
         "instance" | "footprint" => new
             .instances
             .get(&e.name)
             .or_else(|| old.instances.get(&e.name))
             .and_then(|i| i.maker.clone()),
         _ => None,
-    }
+    };
+    recorded.or_else(|| maker_of_name(&e.name))
 }
 
 #[derive(Default)]
@@ -404,6 +408,13 @@ pub fn write(
         lines: &old.lines,
         homes: &old.homes,
     };
+    // Statements written in another layer than in the baseline.
+    let moved_home: BTreeSet<String> = new
+        .homes
+        .iter()
+        .filter(|(k, v)| old.homes.get(*k).is_some_and(|o| o != *v))
+        .map(|(k, _)| k.clone())
+        .collect();
     let mut entries: Vec<(String, String, J)> = Vec::new();
     let mut rows: BTreeMap<(Option<String>, String), Row> = BTreeMap::new();
     let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
@@ -480,8 +491,66 @@ pub fn write(
                 ])
             })
             .collect();
-        let mut causes: Vec<&String> = e.causes.iter().collect();
+        // The causes are the statements the graph finds the thing depends on, with a chain each
+        // (`graph.md` 6.4), each expanded to the keys that differ (`identity.md` 5), beside
+        // those the model names.
+        let own: BTreeSet<String> = match e.table.as_str() {
+            "instance" | "footprint" => [
+                old.build.instances.get(&e.name),
+                new.build.instances.get(&e.name),
+            ]
+            .into_iter()
+            .flatten()
+            .map(|i| i.asset.clone())
+            .collect(),
+            _ => BTreeSet::new(),
+        };
+        let found: BTreeSet<String> = chains
+            .get(&chain_key(&e.table, &e.name))
+            .map(|m| m.keys().cloned().collect())
+            .unwrap_or_default();
+        let (from_graph, _) = via_model::report::causes_of(&old.build, new.build, &found, &own);
+        let mut all: BTreeSet<String> = e.causes.iter().cloned().collect();
+        all.extend(from_graph);
+        // A feature whose draped heights differ (`build.md` 11.2) has the surface field's
+        // causes, as the graph finds them for that field, each chain extended to the feature.
+        let mut drape_via: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        if let Some(sn) = &e.drape {
+            let field_chains = chains.get(&chain_key("field", sn));
+            let field_found: BTreeSet<String> = field_chains
+                .map(|m| m.keys().cloned().collect())
+                .unwrap_or_default();
+            let (mut fc, _) =
+                via_model::report::causes_of(&old.build, new.build, &field_found, &BTreeSet::new());
+            if fc.is_empty() {
+                // No chain at hand for the field: its own entry's causes.
+                fc = report
+                    .entries
+                    .iter()
+                    .find(|f| f.table == "field" && &f.name == sn)
+                    .map(|f| f.causes.clone())
+                    .unwrap_or_default();
+            }
+            all.extend(fc);
+            for (st, v) in field_chains.into_iter().flatten() {
+                let mut v = v.clone();
+                v.push(format!("attr:{}", e.name));
+                drape_via.insert(st.clone(), v);
+            }
+        }
+        if all.is_empty() {
+            // Nothing it depends on differs in text: a statement moved to another layer, whose
+            // rank orders its rows (`authority.md` 4). The moved statement is the cause.
+            all.extend(moved_home.iter().cloned());
+        }
+        let mut causes: Vec<&String> = all.iter().collect();
         causes.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+        debug_assert!(
+            !causes_known || !causes.is_empty(),
+            "change entry {} {} has no cause (build.md 11.2)",
+            e.table,
+            e.name
+        );
         let causes_j: Vec<J> = causes
             .into_iter()
             .map(|c| {
@@ -498,6 +567,14 @@ pub fn write(
                                     .map(|(_, v)| v)
                             })
                             .cloned()
+                    })
+                    .or_else(|| {
+                        drape_via.get(c.as_str()).cloned().or_else(|| {
+                            drape_via
+                                .iter()
+                                .find(|(st, _)| names_statement(c, st))
+                                .map(|(_, v)| v.clone())
+                        })
                     })
                     .unwrap_or_default();
                 cause_json(c, new, &old_side, via)
@@ -543,16 +620,21 @@ pub fn write(
     let things = |b: &Build| -> Vec<(Option<String>, String, String)> {
         let mut v = Vec::new();
         for n in b.features.keys() {
-            v.push((None, "feature".to_string(), n.clone()));
+            v.push((maker_of_name(n), "feature".to_string(), n.clone()));
         }
         for n in b.fields.keys() {
-            v.push((None, "field".to_string(), n.clone()));
+            v.push((maker_of_name(n), "field".to_string(), n.clone()));
         }
         for (n, i) in &b.instances {
-            v.push((i.maker.clone(), "instance".to_string(), n.clone()));
+            let maker = i.maker.clone().or_else(|| maker_of_name(n));
+            v.push((maker, "instance".to_string(), n.clone()));
         }
         for n in b.footprints.keys() {
-            let maker = b.instances.get(n).and_then(|i| i.maker.clone());
+            let maker = b
+                .instances
+                .get(n)
+                .and_then(|i| i.maker.clone())
+                .or_else(|| maker_of_name(n));
             v.push((maker, "footprint".to_string(), n.clone()));
         }
         v

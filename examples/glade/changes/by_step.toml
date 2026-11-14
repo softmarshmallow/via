@@ -1,0 +1,7 @@
+[scatter.trees]
+remove = true
+[step.groves]
+when = "generate"
+worker = true
+command = ["python", "-m", "viasdk", "lib:vegetation/clumps.py"]
+params = { assets = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 2 }, { id = "tree_oak_large", weight = 0.4 }], spacing = 12, density = "= f('cover')", members = [2, 5], radius = 6.5, shrink = 0.4, scale = [0.9, 1.35] }

@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A facts file with a syntax error: via build gives pack.bad_facts, exit 1."
+milestone = 2
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.bad_facts]
+code = "pack.bad_facts"
+file = "pack:pack.facts.toml"

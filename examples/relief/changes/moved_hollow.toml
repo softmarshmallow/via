@@ -1,0 +1,7 @@
+# The stamp placed 12 m east and 8 m north. The tarn's point stays where it was written; the fill
+# finds the moved hollow's new spill level, the lake's shore follows the ground, and the bookmark
+# standing on the lake follows the shore. Nothing else is edited (M2: a moved cause resettles).
+# The fill re-runs: it read the terrain's head view, which this changes.
+
+[field.hollow]
+extent = [68, 100, 132, 164]

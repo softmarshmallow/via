@@ -1,0 +1,19 @@
+name       = "causes"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[field.grass]
+base = "= 1"
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 8
+density = "= f('grass')"
+
+[change.bare.field.grass]
+base = "= 0"

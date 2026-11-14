@@ -57,7 +57,7 @@ three suffixes are read as parts of the id.
 | `measure` | `measure:<field>/v:<view>/<feature>.<effect>/<call>` | each `under` or `smoothed_along` call (`formulas.md` 8.5), per feature | the measure, or the smoothed values along the path | yes |
 | `op` | `op:<operation>/<digest>` | an engine operation (R23): a network with its areas, cells along a frontage, a route over a cost field | its geometry and place keys | yes |
 | `step` | `step:<id>`, and `step:<id>/i:<item>` under `for_each` | a step; one call per item | its returned document, field files and diagnostics, and its trace (5.1) | yes |
-| `facts` | `facts:<asset id>` | each model asset the build uses (M2, `assets.md` 4) | the comparison of the facts file's entry with the asset's measured facts and its pack statement, and its diagnostics | digest only |
+| `facts` | `facts:<asset id>` | each model asset the build uses (M2, `assets.md` 4) | the comparison of the facts file's entry with the asset's measured facts and its pack statement, and its diagnostics; it reads the placements that can hold the asset, for `asset.revised`'s list | digest only |
 | `mesh` | `mesh:<owner>` | each generated mesh: a kind surface or a triangulated region (`surfaces.md` 5, `build.md` 10); the terrain is written as a field, not a mesh | the mesh | yes |
 | `write` | `write:<build file>` | each file of the build directory (`build.md` 2) | the file's bytes | yes |
 
@@ -370,14 +370,19 @@ node has two parts.
 
 - **Static key.** The digest of: the four versions (3.3); the step's statement digest (`command`,
   `params`, `worker`, `when`, its id and rank); its trust digest (`protocol.md` 7: `command` and
-  every file of its code folder, so `lib:` programs and a script's sibling modules are covered); the
+  every file of its code folder, so `lib:` programs and a script's sibling modules are covered);
+  for a `command` of one word naming a configured program (`via config program`, such as the terrain
+  library's `["via-terrain"]`), the digest of that program's file, since the program is then the
+  step's whole code and a revised one must run the step again; the
   frame (the `world` statement, section 1: `extent`, `resolution`, `seed`, `chunk`); the ids of the world's statements, by which the diagnostics it
   returns are mapped (`protocol.md` 5); its seed; under `for_each`, the item's id and statement digest; the digest of each declared
   input. For a plain command, also the request with its absolute paths left out: blobs are named by
   digest, so the request still names every field it hands over. This is the one definition;
   `protocol.md` 4.4 points here.
 - **Trace.** The reads the step made, in the order made, each as the request and the digest of the
-  answer. For a worker, a read is one engine call (R23), hand edits handed to it included. A plain
+  answer. For a worker, a read is one engine call (R23), hand edits handed to it included. A call
+  the engine refuses (`-32602`) is a read too: its answer is the digest of the refusal (its code,
+  message with every absolute path in it left out, and data), since a step that catches it and goes on read that the call failed. A plain
   command's trace is empty: everything it reads is in its static key.
 
 An input that is a folder (`protocol.md` 1) is digested as the sorted list, bytewise, of every file
@@ -498,7 +503,7 @@ so its report is not compared with the incremental one.
 | `nodes` | One object per node of the graph, in id order. Members below. | yes, less `ms` |
 | `steps` | One object per `step` node, in id order: the record R26 asks for. Members below. | yes, less `log` |
 | `diagnostics` | The run diagnostics (3.4, `build.md` 11.1), each a `diagnostics.md` 1 record, in the order of `diagnostics.md` 5. World diagnostics are in `diagnostics.json` and not here. | `code`, `severity`, `subject`, `data` |
-| `totals` | `{ "ms", "nodes", "ran", "recomputed", "reused", "skipped" }`: the count of nodes, the count per status, and the build's wall time in whole milliseconds. | yes, less `ms` |
+| `totals` | `{ "memo_ms", "ms", "nodes", "ran", "recomputed", "reused", "skipped" }`: the count of nodes, the count per status, the build's wall time in whole milliseconds, and `memo_ms`, the whole milliseconds the build spent evaluating the world outside any node's own inputs (a whole-world memo some nodes take their values from; 0 once every node is computed from its inputs alone, 5.1). | yes, less `ms` and `memo_ms` |
 
 A **node** object:
 
@@ -526,11 +531,13 @@ order, gives it:
 | `statements` | A statement it is made from (3.1, item 3) has another digest in the previous record's `merge` value. | |
 | `edge` | An input edge's node has another value digest than in the previous record, or is not in it. The first such edge by label. A leaf's `bytes` edge, which has no node behind it, comes after its node edges and names the leaf itself. | `edge`: the label; `node`: the input's id |
 | `key` | Its key differs from the previous record's for none of the reasons above: an edge removed, a parameter changed. | |
+| `trace` | A step whose static key (5.1) equals the previous record's key, whose stored trace no longer matches: the first read whose answer differs now (a refused call's answer is its refusal, 5.1) in the trace the previous record names for the node (its step object's `trace`); when it names none, in the first other stored trace by name, never the one this run added. | `method`: the read's method; `request`: the digest of its normalised request |
 | `not stored` | Its key equals the previous record's, but the store does not hold it: dropped as corrupt, a step that did not complete, a store that could not be written. | |
 
 The **previous build** is the one named by `build.key` of the run report this build replaces; when
 there is none, or it cannot be read, the one named by `run.key` of the directory's manifest (`build.md`
-4). The report only points into the store: the record it names is checked like any store entry
+4); when there is none and the build names `--against DIR`, the one named by `DIR`'s manifest
+`run.key`, the baseline (`build.md` 11.2). The report only points into the store: the record it names is checked like any store entry
 (3.2). `via explain NODE WORLD` prints a node's cause and the chain of causes back to a leaf (a node
 id holds `:`, a code does not).
 
@@ -543,7 +550,7 @@ A **step** object, one per `step:<id>` and `step:<id>/i:<item>` node:
 | `static_key` | Its static key (5.1). |
 | `trace` | The digest of the trace whose value it took or that this run added; `null` for a plain command, whose trace is empty, and when it did not run or match. |
 | `reads` | Each read in the order made: `{ "answer", "method", "request" }`, with `method` the engine call, and `request` and `answer` the digests of their canonical JSON. A plain command has one read, method `data`: its request without absolute paths (5.1), whose `answer` is the same digest, since what it is handed is that request. |
-| `exit` | The process's exit status when it ran in this build; `null` when it did not run (reused, skipped, killed by a signal). |
+| `exit` | A plain command's exit status when it ran in this build; `null` when it did not run (reused, skipped, killed by a signal). A worker step's is always `null`: one worker process serves every call of the step and exits only when the build ends (`protocol.md` 3.2), after the record is written; its exit, when abnormal, is a `protocol.*` diagnostic instead. |
 | `returned` | `{ "files", "value" }`: the value digest, and each file of `out` as `{ "digest", "path" }` sorted by path (`protocol.md` 5). Files a lint wrote beside its diagnostics are listed here. `null` when it returned nothing readable. |
 | `log` | The digest of its log in the store (`protocol.md` 6.2), or `null`. |
 
@@ -561,7 +568,7 @@ A short example, one line per node for reading:
  "steps":[],
  "system":{"arch":"aarch64","os":"macos"},
  "threads":8,
- "totals":{"ms":412,"nodes":61,"ran":19,"recomputed":0,"reused":42,"skipped":0}}
+ "totals":{"memo_ms":0,"ms":412,"nodes":61,"ran":19,"recomputed":0,"reused":42,"skipped":0}}
 ```
 
 The run report is about the run, not the world: it is not part of the build's bytes, and section 7
@@ -756,6 +763,13 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
 | step trace | M2 | a worker reads `height` in one window; a feature outside it moves, then one inside | rebuild each | first `reused` after its trace replays; then `ran`, a new trace added |
 | lint gate, traced | M2 | one layer; a formula typo in an attribute of a feature whose effect writes `height`; a worker lint reading `height`, one reading only the features of an unrelated kind | build | the first lint `skipped`, its findings dropped; the second ran and reports |
 | outside | M2 | a worker at layer 1 asks for a feature of layer 2 | build | `graph.read_outside` naming layer 2 |
+| returned file bytes | M2 | a worker step returning one field file whose bytes follow a param, its document text fixed; the param changed | build twice in one store | the step ran; the field holds the new bytes, as a fresh store gives |
+| refused read | M2 | a worker lint reads a field that does not exist, is refused and goes on; a change adds the field | build twice | the lint ran (its trace held the refusal) and read the field |
+| causes, let | M2 | a field whose `let` reads `dist` of a point; the point moved | rebuild | the field's entry names `feature.<point>.at` (6.4) |
+| causes, density | M2 | a scatter whose density reads a field; the field's base set to 0 | rebuild | every removed instance names `field.<field>.base` |
+| causes, of a step | M2 | a feature `on = { of = <step> }`; a feature the step read moved | rebuild | the placed feature's entry names the read feature's key (the step's trace, 5.1) |
+| causes, returned feature | M2 | the same | rebuild | the returned feature's entry names the read feature's key |
+| causes, returned field | M2 | `returned file bytes`' world | rebuild | the returned field's entry names `step.<id>.params` |
 | per item | M3 | three districts, `for_each = "kind:district"`; one moved | rebuild | exactly one `step:<id>/i:` call ran |
 | item added | M3 | a fourth district | rebuild | one call ran; the other three `reused` |
 

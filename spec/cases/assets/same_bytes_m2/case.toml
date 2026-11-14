@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "The contract revision case built at 1 and 8 threads: same build digest (R26)."
+milestone = 2
+actions   = ["accept", "widen", "one", "eight"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.widen]
+write = "cube.gltf"
+from  = "later/wider.gltf"
+
+[action.one]
+via         = ["build", "world.toml", "--threads", "1", "--out", "build/one"]
+exit        = 0
+out         = "build/one"
+diagnostics = "includes"
+
+[action.eight]
+via         = ["build", "world.toml", "--threads", "8", "--out", "build/eight"]
+exit        = 0
+out         = "build/eight"
+diagnostics = "includes"
+
+[action.eight.same.id]
+action = "one"
+what   = "id"

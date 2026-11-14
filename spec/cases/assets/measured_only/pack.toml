@@ -1,0 +1,3 @@
+[asset.cube]
+file = "cube.gltf"
+size = [1, 1, 1]

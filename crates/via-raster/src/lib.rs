@@ -23,6 +23,10 @@
 //! - [`cover`]: exact rasterising of regions and strokes from integer millimetres.
 //! - [`contour`]: mask to rings and pieces; the kernel settles them through [`contour::Settle`].
 //! - [`npy`] and [`chunk`]: the array file and a weights chunk's bytes.
+//! - Derived results (`derived.md`): [`route`], the least-cost course over the posts (3);
+//!   [`flood`], the spill level and the ground with every hollow filled by Priority-Flood (4.1);
+//!   [`descend`], the line water would follow, steepest descent over the triangulated surface
+//!   (4.2); [`flow`], D-infinity flow routing and the area draining through each post (Open).
 //!
 //! This crate evaluates no formula: callers hand it closures that do. Its errors are values
 //! ([`RasterError`]) that the caller locates with [`RasterError::diag`].
@@ -30,11 +34,16 @@
 pub mod chunk;
 pub mod contour;
 pub mod cover;
+pub mod descend;
 pub mod distance;
 mod error;
 pub mod file;
+pub mod flood;
+pub mod flow;
 pub mod npy;
+pub mod png;
 pub mod raster;
+pub mod route;
 pub mod rows;
 pub mod slope;
 pub mod window;

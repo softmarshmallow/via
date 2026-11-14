@@ -20,6 +20,14 @@ Each measure is one ``info`` record per subject, code ``step.checks.<name>``, it
 | cottage_relief    | each grounded instance   | highest less lowest ground over its footprint feature   |
 | trees_in_clearing | each scatter of trees    | trees standing where keep_out is 0.9 or more, a count;  |
 |                   |                          | a written pin or instance is not counted                |
+| water_area        | each lake and pond       | square metres of posts inside it whose water stands     |
+|                   |                          | above the ground                                        |
+| water_depth       | each lake and pond       | deepest water over the ground inside it, metres         |
+| water_islands     | each lake and pond       | holes in its region (islands), a count                  |
+| water_shore       | each lake and pond       | length of its outer ring, metres                        |
+| trees_on_way      | each road, lane and trail| trees standing within half its ``width`` of its line    |
+| crowded_view      | each bookmark            | metres from the eye to the nearest tree or rock, when   |
+|                   |                          | one stands within CROWDED_M                             |
 
 A subject whose measure cannot be taken, because a field it reads selects no field or several, gets
 one ``warning`` record instead, code ``step.checks.unmeasured``, the measure's name in
@@ -51,6 +59,12 @@ MEETS_MM = 1
 # trees thin out by design (lib/ways' verge fades from 5 m, past a crown's reach), so a tree there
 # is not counted.
 KEPT_OUT = 0.9
+# A view is crowded when a tree or a rock stands this near its eye (asked by `vale`): at eye height
+# a trunk or a boulder within 3 m fills the frame.
+CROWDED_M = 3.0
+# The kinds of standing water and of ways (lib/water, lib/ways), measured by name of kind.
+WATERS = ("lake", "pond")
+WAYS = ("road", "lane", "trail")
 
 EXPLAIN = {
     "lane_gap": "Distance in metres from a lane's nearer end to the nearest ford. A lane that "
@@ -71,6 +85,18 @@ EXPLAIN = {
     "that a kind writes to keep trees off a lane, a cottage or the water. Above 0 means that effect "
     "is not 1 far enough out: a crown can reach what it keeps clear. A written pin or instance is "
     "not counted here: the build reports it as place.keep_out.",
+    "water_area": "Square metres of a lake or pond: the posts inside its region whose water "
+    "(tag water_level) stands above the ground (role surface), each a post spacing squared.",
+    "water_depth": "The deepest water over the ground at a post inside a lake or pond, metres.",
+    "water_islands": "How many holes the lake's region has: islands the ground holds above its "
+    "level. A view stands on the outer ring (geometry.md 2.6).",
+    "water_shore": "The length of a lake's or pond's outer ring, metres: its shore as a walker "
+    "follows it from outside.",
+    "trees_on_way": "How many scattered trees stand on a way's bed: within half its `width` of its "
+    "line. A way's verge keeps trees off with keep_out; above 0 means a draw survived the fade or "
+    "the verge does not reach.",
+    "crowded_view": "Metres from a bookmark's eye to the nearest tree or rock, reported when one "
+    "stands within 3 m: at eye height it fills the view, so the build cannot be judged from there.",
     "unmeasured": "A measure that could not be taken for this subject, because a field it reads "
     "(role surface, tag water_level or role keep_out) selects no field, or several. "
     "`data.measure` names the measure. A fault in the engine or the protocol is not this: it fails "
@@ -95,6 +121,17 @@ WATER = "tag:water_level"
 KEEP_OUT = "role:keep_out"
 
 # The hint of an `unmeasured` warning, by the measure not taken.
+HINTS.update({
+    "water_area": "Informs only (R15): compare it with what the world means the water to be.",
+    "water_depth": "Change the lake's `water_height`, or the ground under it.",
+    "water_islands": "Raise the lake's `water_height` to drown a low islet, or keep it as land.",
+    "water_shore": "Informs only (R15).",
+    "trees_on_way": "Widen the way's verge (its `keep_out` effect), or thin the scatter by "
+    "`dist('<way>', cap)`.",
+    "crowded_view": "Move the bookmark a few metres, or keep its eye clear (`clear` on the "
+    "bookmark kind, lib/review).",
+})
+
 UNMEASURED_HINTS = {
     "approach_grade": "Give the world one field with `role = \"surface\"`.",
     "ford_depth": "Give the world one field with `role = \"surface\"` and one tagged "
@@ -103,6 +140,10 @@ UNMEASURED_HINTS = {
     "`water_level` (lib/water's beck writes it).",
     "cottage_relief": "Give the world one field with `role = \"surface\"`.",
     "trees_in_clearing": "Give the world one field with `role = \"keep_out\"`.",
+    "water_area": "Give the world one field with `role = \"surface\"` and one tagged "
+    "`water_level` (lib/water).",
+    "water_depth": "Give the world one field with `role = \"surface\"` and one tagged "
+    "`water_level` (lib/water).",
 }
 
 
@@ -123,10 +164,65 @@ def lint(step):
         pivots[row["name"]] = (row["x"], row["y"])
     for row in _instances(step, "@plant/tree"):
         trees.append(row)
+    rocks = _instances(step, "@rock")
     say = Sayer(step)
     for rec in measure(grid, height, water, keep_out, lanes, fords, becks, grounds, pivots, trees,
                        missing):
         say(*rec)
+    for rec in measure_more(grid, height, water, every, trees, rocks, missing):
+        say(*rec)
+
+
+def measure_more(grid, height, water, every, trees, rocks, missing=None):
+    """The valley's measures (asked by `relief` and `vale`): standing water, trees on ways and
+    crowded views, as ``measure``'s records, in a fixed order."""
+    out = []
+    missing = missing or {}
+    waters = sorted((f for f in every if f["kind"] in WATERS and f["geometry"] == 2),
+                    key=lambda f: f["name"])
+    for f in waters:
+        subject = "feature." + f["name"]
+        outer = f["rings"][0][0] if f["rings"] else []
+        pos = _m(outer[0]) if outer else None
+        if height is None or water is None:
+            sel = SURFACE if height is None else WATER
+            for name in ("water_area", "water_depth"):
+                out.append(("unmeasured", subject, name, pos,
+                            f"{name} of {subject} is not taken: {missing.get(sel, sel)}."))
+        else:
+            depths = []
+            for (h, w) in zip(_values_inside(grid, height, f["rings"]),
+                              _values_inside(grid, water, f["rings"])):
+                if w > h:
+                    depths.append(w - h)
+            area = round(len(depths) * (grid.r / 1000.0) ** 2, 1)
+            deep = round(max(depths), 3) if depths else 0.0
+            out.append(("water_area", subject, area, pos, f"{f['name']} covers {area} m2 of water."))
+            out.append(("water_depth", subject, deep, pos, f"{f['name']} is {deep} m deep at most."))
+        holes = sum(len(piece) - 1 for piece in f["rings"])
+        out.append(("water_islands", subject, holes, pos, f"{f['name']} has {holes} islands."))
+        shore = round(sum(_dist(a, b) for a, b in zip(outer, outer[1:] + outer[:1])) / 1000.0, 1)
+        out.append(("water_shore", subject, shore, pos, f"{f['name']}'s shore is {shore} m long."))
+    scattered = [t for t in trees if t["by"] and "." not in t["by"]]
+    ways = sorted((f for f in every if f["kind"] in WAYS and f["geometry"] == 1
+                   and "width" in f["attrs"]), key=lambda f: f["name"])
+    for w in ways:
+        line = w["rings"][0][0]
+        half = w["attrs"]["width"] * 500.0
+        n = sum(1 for t in scattered if _dist_to_line((t["x"], t["y"]), line) <= half)
+        out.append(("trees_on_way", "feature." + w["name"], n, _m(line[0]),
+                    f"{n} scattered trees stand on {w['name']}'s bed."))
+    solid = [(t["x"], t["y"]) for t in trees] + [(r["x"], r["y"]) for r in rocks]
+    marks = sorted((f for f in every if f["kind"] == "bookmark" and f["geometry"] == 0),
+                   key=lambda f: f["name"])
+    for b in marks:
+        eye = b["rings"][0][0][0]
+        near = min((_dist(eye, p) for p in solid), default=math.inf) / 1000.0
+        if near <= CROWDED_M:
+            value = round(near, 2)
+            out.append(("crowded_view", "feature." + b["name"], value, _m(eye),
+                        f"A tree or rock stands {value} m from {b['name']}'s eye."))
+    return out
 
 
 def measure(grid, height, water, keep_out, lanes, fords, becks, grounds, pivots, trees,
@@ -413,7 +509,8 @@ def _in_ring(p, ring):
 
 
 def _dist(a, b):
-    return math.hypot(b[0] - a[0], b[1] - a[1])
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    return math.sqrt(dx * dx + dy * dy)
 
 
 def _dist_to_line(p, line):
@@ -423,7 +520,8 @@ def _dist_to_line(p, line):
         wx, wy = p[0] - a[0], p[1] - a[1]
         ee = ex * ex + ey * ey
         t = 0.0 if ee == 0 else max(0.0, min(1.0, (wx * ex + wy * ey) / ee))
-        d = math.hypot(wx - t * ex, wy - t * ey)
+        dx, dy = wx - t * ex, wy - t * ey
+        d = math.sqrt(dx * dx + dy * dy)
         if best is None or d < best:
             best = d
     return best if best is not None else math.inf

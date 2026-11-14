@@ -3,6 +3,7 @@
 //! uplift/climate; precipitation becomes a field of its own in M2).
 
 use rayon::prelude::*;
+use via_num as num;
 
 use crate::config::TerrainConfig;
 use crate::grid::Grid;
@@ -11,7 +12,7 @@ use via_artifact::seed;
 
 #[inline]
 pub fn smoothstep(e0: f64, e1: f64, x: f64) -> f64 {
-    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
+    let t = num::clamp((x - e0) / (e1 - e0), 0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
 }
 
@@ -51,7 +52,7 @@ pub fn build_uplift(cfg: &TerrainConfig, grid: &Grid) -> Vec<f64> {
             // any noise is land, near the rim only strong highs survive, so
             // the coastline wanders between radii instead of tracing one.
             let r_t = smoothstep(0.30, 0.95, r);
-            let shaped = (guard * (2.8 * field + 0.60 - 1.25 * r_t)).clamp(-0.25, 1.0);
+            let shaped = num::clamp(guard * (2.8 * field + 0.60 - 1.25 * r_t), -0.25, 1.0);
             cfg.uplift_max_m_per_yr * shaped
         })
         .collect()

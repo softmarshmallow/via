@@ -1,0 +1,51 @@
+format    = "via-case-1"
+summary   = "A worker lint reading pack.query of @plant/tree, columns bounds and collision; then the pack's colour of one tree edited; then its collision: columns as via pack list gives them; the lint reused; then ran."
+milestone = 2
+actions   = ["program", "trust", "first", "colour", "recoloured", "collision", "collides"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+[action.first.nodes]
+ran_includes = ["step:look"]
+
+[action.first.diag.read]
+code = "step.look.read"
+data = { ids = ["tree_oak"], collision = ["hull"] }
+
+
+[action.colour]
+replace = "pack.toml"
+find    = "colour    = [0.2, 0.5, 0.2]"
+with    = "colour    = [0.3, 0.5, 0.2]"
+
+[action.recoloured]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+diagnostics = "includes"
+[action.recoloured.nodes]
+not_ran = ["step:look"]
+
+
+[action.collision]
+replace = "pack.toml"
+find    = '''collision = "hull"'''
+with    = '''collision = "box"'''
+
+[action.collides]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+diagnostics = "includes"
+[action.collides.nodes]
+ran_includes = ["step:look"]

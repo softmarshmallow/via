@@ -211,6 +211,7 @@ check not listed is a case error. Rows are added with the cases that need them.
 | `fn` | Arguments | Holds when | Asked by |
 |---|---|---|---|
 | `weights_sum_at_most` | `path`, `limit` | Every post of a weights file sums to at most `limit`. | `fields.md` "weights sum" |
+| `post_step_at_most` | `path`, `resolution`, `window`, `limit`; `origin` (default `[0, 0]`) | Between every two neighbouring posts, east or north, both inside `window` (`[x0, y0, x1, y1]`, metres, edges included), the scalar field file differs by at most `limit`: no step where a profile should run on a slope (a frame read past its bound, `geometry.md` E1). | `geometry.md` 2.6 |
 | `weights_sum_255_or_0` | `path` | Every post of a weights chunk sums to 255 or 0. | `build.md` cases 17, 18 |
 | `no_absolute_path` | (none) | Section 5's U5, on demand inside a sequence. | `build.md` case 7 |
 | `changed_within_windows` | `before`, `after` (build directories), `fields`, `kinds`, `world` | Every differing post of each named field lies in the union of the 5.3 windows of every moved feature or footprint, old shape and new, as `fields.md` defines it. | `fields.md` "change windows"; plan, ford rows `downstream`, `vertex` |
@@ -232,6 +233,8 @@ check not listed is a case error. Rows are added with the cases that need them.
 | `noding_same` | `first`, `second` (two `noding` outputs) | The same `vertices` and the same segment `ends`, byte for byte (provenance differs by construction under `derive`). | `geometry.md` 3.1 Idempotent |
 | `names_same` | `first`, `second` (two `names` outputs) | The same junction, edge and area names, as sets; none empty. | `identity.md` 47 |
 | `cells_valid` | `path` (a `cells` output), `input` (its input), `network` (the network the area came from); `bound` (mm, default 1.5) | Fronts: each cell borders its frontage edge along at least `min_cell_length`, ends within `bound` of the edge, or a `geom.cell_small` lies within 1 m of it; one cell per frontage and station; Closure: cells and `rest` sum to the area's twice-area within `2 × bound × perimeter`, what noding may move an outline; no cell gives `geom.cell_none`. | `geometry.md` 3.6, `linework_a` cells |
+| `course_valid` | `path` (a `features.json`), `feature`, `start`, `end` (metres), `min_segment` (metres); `passes` (optional, points) | The named path starts at `start` and ends at `end` exactly, has each of `passes` as a vertex, turns by no more than 90 degrees at any vertex, and has no segment shorter than `min_segment`. | `derived.md` 3 step 6, d22 |
+| `entry_causes` | `path` (a `changes.json`), `table`, `prefix`; `named` (optional, cause strings) | At least one entry of `table` has a name starting with `prefix`; every such entry's `causes` is a non-empty list holding each of `named` as a `cause`. | `build.md` 11.2 ("never `[]` for an entry"), `graph.md` 6.4 |
 | `sample_terrain` | `path` (a `sample` answer), `input` (its question), `field` (the built terrain field), `manifest` | Each row is `surfaces.md` 2.2 computed from the field's posts by `fields.md` 1.2's cell and order, in f64, bit for bit, `inside` true. | `surfaces.md` sample_edge |
 
 ### 3.5 Expected diagnostics
@@ -266,6 +269,8 @@ key not written is not compared. Messages and hints are never compared (`diagnos
 | `count` | Its `count`. |
 | `occurrences` | The number of its `occurrences`. |
 | `data` | A table: each member written equals the record's `data` member. Members not written are not compared. |
+| `data_has` | A list of names: each is a member of the record's `data`, and not `null`. For a value the chapters require but do not fix (a failed fact's "what would hold", R14). |
+| `data_below` | A table `{ a = "b" }`: the record's `data` members `a` and `b` are both numbers and `a` is less than `b`. |
 | `related` | A list of tables `{ file, line }`: each is among the record's `related`. |
 | `chain` | A list of tables `{ through, name, file, line }`: as long as the record's `chain`, in its order, and each entry includes the members written (3.4 `includes`), so an unwritten `owner` is not compared. |
 | `failed_on` | Its `failed_on`. |
@@ -385,7 +390,7 @@ These checks need no line in `case.toml`. Each comes from the chapter named.
 | U2 | Every diagnostic has a registered code, a subject, a location and a non-empty hint; a core code's severity equals the registry's; a step code has one severity in the build; `failed_on` appears only on a code `--fail-on` named. | every `via` action | `diagnostics.md` Conformance |
 | U3 | With exit status 2, nothing under the working folder is created, deleted or changed, but the `--diagnostics` file (3.5). | every `via` action | `diagnostics.md` 7 |
 | U4 | `via check <out>` exits 0. | every `build` or `lock` action that exits 0 | `build.md` case 8 |
-| U5 | No JSON or text file in the build directory (`out`), `<out>.run.json` or the `--diagnostics` file holds a path starting `/`, `\`, `//` or a drive letter, the working folder's path, the test user name, or the host name; no `..` but in `locations` and in source paths the text wrote so; no absolute path but in the run report's `steps[].command`, which repeats the text as written (`graph.md` 6.3; such text is `protocol.absolute_path`). `.config`, `.home` and the store are exempt: `config.toml` and `trust.toml` hold absolute paths by design (`protocol.md` 6.3), and `via config program` and `via trust` are checked by their own cases. | every `via` action | `build.md` case 7 |
+| U5 | No JSON or text file in the build directory (`out`), `<out>.run.json` or the `--diagnostics` file holds a path starting `/`, `\`, `//` or a drive letter, the working folder's path, the test user name, or the host name; no `..` but in `locations` and in source paths the text wrote so; no absolute path but in the run report's `steps[].command`, which repeats the text as written (`graph.md` 6.3; such text is `protocol.absolute_path`), and in a diagnostic's `data.pointer`, a JSON pointer into a model file (RFC 6901), not a path. `.config`, `.home` and the store are exempt: `config.toml` and `trust.toml` hold absolute paths by design (`protocol.md` 6.3), and `via config program` and `via trust` are checked by their own cases. | every `via` action | `build.md` case 7 |
 | U6 | Clean equals incremental, and 1 thread equals 8 (5.1). | every `build` or `lock` action, unless `no_rerun` | `graph.md` 7, 8; plan |
 | U7 | The same results on every system (5.3). | every case, unless `one_system` | R26 |
 

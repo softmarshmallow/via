@@ -1,0 +1,144 @@
+# The starter pack: small procedural models made by us (tools/packgen/packgen.py), shipped with
+# via so examples build with real model files and no download. Its ids and taxa are the primitive
+# pack's (assets.md 6.1), with a few sizes more, so a world swaps `pack = "primitive"` for
+# `pack = "starter"` and changes no other text. Its facts file, starter.facts.toml, is written by
+# `via pack accept lib/packs/starter.toml`.
+#
+# Every model is glTF's convention: +Y up, front +Z, origin at the base centre. So front, up and
+# pivot take their defaults and nothing is written for them.
+
+root = "starter"
+
+[taxon."building/house"]
+[taxon."building/shed"]
+[taxon."building/barn"]
+[taxon."building"]
+defaults = { collision = "box", max_relief = 0.6 }
+
+[taxon."plant/tree"]
+defaults = { collision = "hull" }
+
+[taxon."plant/bush"]
+[taxon."plant/fern"]
+[taxon."plant/deadwood"]
+[taxon."plant"]
+defaults = { solidity = "none" }
+
+[taxon."rock"]
+defaults = { collision = "hull" }
+
+[taxon."prop/box"]
+[taxon."prop/lamp"]
+[taxon."prop/fence"]
+[taxon."prop"]
+defaults = { collision = "box" }
+
+[asset.house_low]
+file      = "house_low.glb"
+taxon     = "building/house"
+footprint = [[-4, -3], [4, -3], [4, 3], [-4, 3]]   # the walls, not the eaves
+
+[asset.house_low.mount.door]
+at = [0, 3]
+
+[asset.house_wide]
+file      = "house_wide.glb"
+taxon     = "building/house"
+footprint = [[-5.5, -3.5], [5.5, -3.5], [5.5, 3.5], [-5.5, 3.5]]
+
+[asset.house_wide.mount.door]
+at = [0, 3.5]
+
+[asset.barn]
+file      = "barn.glb"
+taxon     = "building/barn"
+footprint = [[-7, -4.5], [7, -4.5], [7, 4.5], [-7, 4.5]]
+
+[asset.shed_gable]
+file  = "shed_gable.glb"
+taxon = "building/shed"
+
+[asset.tree_oak]
+file      = "tree_oak.glb"
+detail    = ["tree_oak_low.glb"]
+taxon     = "plant/tree"
+solidity  = "solid"
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]   # the trunk, not the crown
+
+[asset.tree_oak_large]
+file      = "tree_oak_large.glb"
+taxon     = "plant/tree"
+solidity  = "solid"
+footprint = [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]]
+tags      = ["landmark"]
+
+[asset.tree_pine]
+file      = "tree_pine.glb"
+taxon     = "plant/tree"
+solidity  = "solid"
+footprint = [[-0.4, -0.4], [0.4, -0.4], [0.4, 0.4], [-0.4, 0.4]]
+tags      = ["winter"]
+
+[asset.bush_round]
+file  = "bush_round.glb"
+taxon = "plant/bush"
+
+[asset.bush_wide]
+file  = "bush_wide.glb"
+taxon = "plant/bush"
+
+[asset.fern_low]
+file  = "fern_low.glb"
+taxon = "plant/fern"
+
+[asset.log]                       # a fallen trunk, lying along its x axis
+file     = "log.glb"
+taxon     = "plant/deadwood"
+solidity  = "solid"
+collision = "box"
+
+[asset.rock_a]
+file  = "rock_a.glb"
+taxon = "rock"
+
+[asset.rock_b]
+file  = "rock_b.glb"
+taxon = "rock"
+
+[asset.box_small]
+file  = "box_small.glb"
+taxon = "prop/box"
+
+[asset.lamp_post]
+file  = "lamp_post.glb"
+taxon = "prop/lamp"
+
+[asset.fence_post]
+file  = "fence_post.glb"
+taxon = "prop/fence"
+
+[material.grass]
+colour = [0.2, 0.4, 0.1]
+
+[material.rock]
+colour = [0.45, 0.43, 0.4]
+
+# The paints `lib/land/ground.md` names, so a world on this pack can follow the land library's
+# convention: shore and stream beds, worn ways, snow above a snowline, a wood's floor and meadow.
+[material.sand]
+colour = [0.76, 0.7, 0.5]
+
+[material.gravel]
+colour = [0.36, 0.33, 0.28]
+
+[material.earth]
+colour = [0.3, 0.22, 0.14]
+
+[material.snow]
+colour = [0.92, 0.93, 0.95]
+
+[material.litter]                  # a wood's floor: leaves and needles over earth
+colour = [0.27, 0.2, 0.12]
+
+[material.meadow]
+colour = [0.33, 0.45, 0.16]

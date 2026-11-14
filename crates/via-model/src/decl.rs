@@ -108,6 +108,10 @@ pub struct FileDecl {
     pub extent: Option<[i64; 4]>,
     pub outside: f64,
     pub filter: via_raster::file::Filter,
+    /// A PNG's `channel` (`grey`, `r`, `g`, `b`, `a`), as written (`fields.md` 4.2).
+    pub channel: Option<String>,
+    /// A PNG's `range`, `[lo, hi]`: what level 0 and the top level stand for.
+    pub range: Option<(f64, f64)>,
 }
 
 /// An effect's field selector (`authority.md` 2).
@@ -224,6 +228,10 @@ pub struct FeatureDecl {
     pub attrs: BTreeMap<String, Attr>,
     /// `smooth = true` on a path (`geometry.md` 2.4).
     pub smooth: bool,
+    /// `holds` beside `where` (`derived.md` 2): the point whose piece is kept, millimetres.
+    pub holds: Option<(i64, i64)>,
+    /// `route` on a path (`derived.md` 3): the cost per metre, a formula over posts.
+    pub route: Option<FormulaId>,
 }
 
 /// A hand instance (`rules.md` 2).
@@ -257,6 +265,20 @@ pub enum Ranged {
     Range(f64, f64),
 }
 
+/// A scatter's `clump` (`rules.md` 7.3).
+#[derive(Clone, Debug, PartialEq)]
+pub enum Clump {
+    /// Each kept candidate a parent of `lo..=hi` members within `radius` millimetres.
+    Members {
+        lo: i64,
+        hi: i64,
+        radius: i64,
+        shrink: f64,
+    },
+    /// The keep chance times `max(0, 1 - d / radius)`, `d` to the nearest of `of`'s output.
+    Around { of: String, radius: i64 },
+}
+
 /// A scatter (`rules.md` 7).
 #[derive(Clone, Debug)]
 pub struct ScatterDecl {
@@ -273,6 +295,7 @@ pub struct ScatterDecl {
     pub seed: String,
     /// Layer rank: giving way reads down only (`rules.md` 3.4).
     pub rank: i64,
+    pub clump: Option<Clump>,
 }
 
 /// A pin (`identity.md` 4.2).
@@ -326,6 +349,16 @@ impl Formulas {
             FormulaText::Number(n) => self.env.number(*n),
         };
         debug_assert_eq!(id.0 as usize, self.at.len());
+        // A formula written in a step's returned document reads the document's own keys first
+        // (`protocol.md` 5, Names): its entity, or the row under a field, has a produced name.
+        let address = subject.clone().with_keys(&path).to_string();
+        if let Some(step) = address
+            .split('.')
+            .find_map(|part| part.trim_matches('"').split_once('#').map(|(s, _)| s))
+            .filter(|s| !s.is_empty())
+        {
+            self.env.scope(id, step);
+        }
         self.at.push((subject, path));
         id
     }
@@ -608,10 +641,23 @@ impl Decls {
     /// selectors (`kind:`, `tag:`, shapes) are not named references: they leave out what lies
     /// above the reader when bound (`resolve::Sel`).
     pub fn upward_reads(&mut self, world: &World) -> Vec<Diag> {
-        for (k, (subject, _)) in self.formulas.at.iter().enumerate() {
+        for (k, (subject, path)) in self.formulas.at.iter().enumerate() {
             if let Subject::Entity { collection, id, .. } = subject {
                 if collection != "kind" {
-                    let r = world.rank(collection, id).unwrap_or(0);
+                    let mut r = world.rank(collection, id).unwrap_or(0);
+                    // A row a step returned under a lower layer's field has the step's rank
+                    // (`protocol.md` 5, Rank): its row id is `<step>#<row>`.
+                    if collection == "field" {
+                        let row = path.to_string();
+                        if let Some(step) = row
+                            .split('.')
+                            .find_map(|p| p.trim_matches('"').split_once('#').map(|(s, _)| s))
+                        {
+                            if let Some(sr) = world.rank("step", step) {
+                                r = r.max(sr);
+                            }
+                        }
+                    }
                     self.formula_rank.insert(FormulaId(k as u32), r);
                 }
             }
@@ -1183,13 +1229,18 @@ impl Decls {
                         ));
                     }
                 }
+                // A returned row has its step's layer rank (`protocol.md` 5, Rank and Order).
+                let row_rank = rid
+                    .split_once('#')
+                    .and_then(|(step, _)| world.rank("step", step))
+                    .map_or(rank, |sr| sr.max(rank));
                 rows.push(Row {
                     id: rid.to_string(),
                     value,
                     mask,
                     paint,
                     order,
-                    rank,
+                    rank: row_rank,
                 });
             }
             self.fields.insert(
@@ -1308,8 +1359,7 @@ impl Decls {
         let filter = match t.str("filter") {
             None | Some("linear") => via_raster::file::Filter::Linear,
             Some("nearest") => via_raster::file::Filter::Nearest,
-            // `cubic` is refused by the document check (M2).
-            Some("cubic") => return None,
+            Some("cubic") => via_raster::file::Filter::Cubic,
             Some(f) => {
                 self.push(text::at_own_key(
                     codes::field::FILE_KEY,
@@ -1317,7 +1367,11 @@ impl Decls {
                     name,
                     "filter",
                     &format!("`{f}` is not a filter"),
-                    &text::near_hint(f, ["nearest", "linear"], "write `nearest` or `linear`"),
+                    &text::near_hint(
+                        f,
+                        ["nearest", "linear", "cubic"],
+                        "write `nearest`, `linear` or `cubic`",
+                    ),
                 ));
                 return None;
             }
@@ -1351,12 +1405,61 @@ impl Decls {
             Some(_) => return None,
             None => None,
         };
+        let channel = t.str("channel").map(str::to_string);
+        if let Some(c) = &channel {
+            if !["grey", "r", "g", "b", "a"].contains(&c.as_str()) {
+                self.push(text::at_own_key(
+                    codes::field::FILE_KEY,
+                    "field",
+                    name,
+                    "channel",
+                    &format!("`{c}` is not a channel"),
+                    "write `grey`, `r`, `g`, `b` or `a`",
+                ));
+                return None;
+            }
+        }
+        let range = match t.value("range") {
+            Some(Value::List(xs)) if xs.len() == 2 => {
+                match (text::number(&xs[0].value), text::number(&xs[1].value)) {
+                    (Some(Ok(lo)), Some(Ok(hi))) => {
+                        if lo == hi {
+                            self.push(at_key(
+                                codes::field::FILE_RANGE,
+                                "field",
+                                name,
+                                "range",
+                                "`range` with `lo` equal to `hi`: every level reads one value",
+                                "a constant is a base: write `base` instead of `file`",
+                            ));
+                            return None;
+                        }
+                        Some((lo, hi))
+                    }
+                    _ => return None,
+                }
+            }
+            Some(_) => {
+                self.push(text::at_own_key(
+                    codes::field::FILE_KEY,
+                    "field",
+                    name,
+                    "range",
+                    "`range` is `[lo, hi]`",
+                    "write `range = [0, 1]`",
+                ));
+                return None;
+            }
+            None => None,
+        };
         Some(FileDecl {
             written: written.text.clone(),
             source: world.sources().name(e.key.src).to_string(),
             extent,
             outside,
             filter,
+            channel,
+            range,
         })
     }
 
@@ -1704,6 +1807,49 @@ impl Decls {
                 }
             };
             let face = self.read_face("feature", id, t);
+            // `holds` and `route` (`derived.md` 2 and 3), each where it stands alone said first.
+            let has_where = matches!(shape, ShapeDecl::Where(_));
+            let is_path = matches!(shape, ShapeDecl::Path(_));
+            let alone = crate::derived::shape_key_faults(
+                id,
+                has_where,
+                t.get("holds").is_some(),
+                t.get("route").is_some(),
+                is_path,
+            );
+            let alone_any = !alone.is_empty();
+            for d in alone {
+                self.push(d);
+            }
+            if alone_any {
+                continue;
+            }
+            let holds = match t.value("holds") {
+                Some(v) => match text::point(v) {
+                    Some(Ok(p)) => Some(p),
+                    Some(Err(e)) => {
+                        self.push(text::num_diag(&e, "feature", id, &["holds"]));
+                        continue;
+                    }
+                    None => continue,
+                },
+                None => None,
+            };
+            let route = match t.value("route") {
+                Some(v) => match text::formula_text(v) {
+                    Some(Ok(ft)) => Some(self.formulas.add(
+                        &ft,
+                        Subject::entity("feature", id),
+                        KeyPath::key("route"),
+                    )),
+                    Some(Err(e)) => {
+                        self.push(text::num_diag(&e, "feature", id, &["route"]));
+                        continue;
+                    }
+                    None => continue,
+                },
+                None => None,
+            };
             let smooth = match t.value("smooth") {
                 Some(Value::Bool(b)) if matches!(shape, ShapeDecl::Path(_)) => *b,
                 Some(_) => {
@@ -1865,6 +2011,8 @@ impl Decls {
                     face,
                     attrs,
                     smooth,
+                    holds,
+                    route,
                 },
             );
         }
@@ -2291,16 +2439,13 @@ impl Decls {
                 },
                 None => None,
             };
-            if t.get("clump").is_some() {
-                self.push(at_key(
-                    codes::doc::NOT_YET,
-                    "scatter",
-                    id,
-                    "clump",
-                    "`clump` arrives in M2",
-                    "remove `clump` until M2",
-                ));
-            }
+            let clump = match t.table("clump") {
+                Some(c) => match self.read_clump(id, c) {
+                    Some(c) => Some(c),
+                    None => continue,
+                },
+                None => None,
+            };
             let Some(scale) = self.read_scale_tint("scatter", id, t, "scale", true) else {
                 continue;
             };
@@ -2334,9 +2479,111 @@ impl Decls {
                     tint,
                     seed,
                     rank: world.rank("scatter", id).unwrap_or(0),
+                    clump,
                 },
             );
         }
+    }
+
+    /// `clump` (`rules.md` 7.3): one of its two forms, checked; a fault is `scatter.clump`.
+    fn read_clump(&mut self, id: &str, c: &Table) -> Option<Clump> {
+        let fault = |s: &mut Self, msg: &str, hint: &str| {
+            s.push(text::at_own_key(
+                codes::scatter::CLUMP,
+                "scatter",
+                id,
+                "clump",
+                msg,
+                hint,
+            ));
+        };
+        let members = c.get("members").is_some() || c.get("shrink").is_some();
+        let around = c.get("around").is_some();
+        if members && around {
+            fault(
+                self,
+                "`clump` holds keys of both forms",
+                "write `members` (with `shrink`) or `around`, as two scatters if both are meant",
+            );
+            return None;
+        }
+        if !members && !around {
+            fault(
+                self,
+                "`clump` has neither `members` nor `around`",
+                "write `members = [lo, hi]` or `around = \"<producer>\"`",
+            );
+            return None;
+        }
+        let radius = match c.value("radius").map(text::length) {
+            Some(Some(Ok(r))) if r > 0 => r,
+            Some(Some(Ok(_))) => {
+                fault(
+                    self,
+                    "`radius` must be above 0",
+                    "give `radius` in metres, above 0",
+                );
+                return None;
+            }
+            _ => {
+                fault(self, "`clump` has no `radius`", "write `radius = <metres>`");
+                return None;
+            }
+        };
+        if around {
+            let Some(of) = c.str("around") else {
+                fault(
+                    self,
+                    "`around` names a producer by its id",
+                    "write `around = \"<producer>\"`",
+                );
+                return None;
+            };
+            return Some(Clump::Around {
+                of: of.to_string(),
+                radius,
+            });
+        }
+        let int = |v: &Value| match text::number(v) {
+            Some(Ok(x)) if (x as i64) as f64 == x => Some(x as i64),
+            _ => None,
+        };
+        let (lo, hi) = match c.value("members") {
+            Some(Value::List(xs)) if xs.len() == 2 => {
+                match (int(&xs[0].value), int(&xs[1].value)) {
+                    (Some(a), Some(b)) => (a, b),
+                    _ => (-1, -1),
+                }
+            }
+            Some(v) => int(v).map_or((-1, -1), |n| (n, n)),
+            None => (0, 0),
+        };
+        if lo < 0 || hi < lo {
+            fault(
+                self,
+                "`members` is a whole number or `[lo, hi]`, 0 or more, lo at most hi",
+                "write `members = [2, 5]`",
+            );
+            return None;
+        }
+        let shrink = match c.value("shrink").map(text::number) {
+            None => 0.0,
+            Some(Some(Ok(x))) if (0.0..1.0).contains(&x) => x,
+            _ => {
+                fault(
+                    self,
+                    "`shrink` lies in 0 to below 1",
+                    "write `shrink = 0.4`",
+                );
+                return None;
+            }
+        };
+        Some(Clump::Members {
+            lo,
+            hi,
+            radius,
+            shrink,
+        })
     }
 
     fn read_by(&mut self, top: &str, id: &str, t: &Table) -> Option<Vec<String>> {
@@ -2453,14 +2700,14 @@ impl Decls {
                 .value("command")
                 .and_then(text::strings)
                 .unwrap_or_default();
-            if when != "lint" {
+            if when == "export" {
                 self.push(at_key(
                     codes::doc::NOT_YET,
                     "step",
                     id,
                     "when",
-                    &format!("a `{when}` step arrives in M2; M1 runs one lint"),
-                    "write `when = \"lint\"`",
+                    "an `export` step arrives in M6",
+                    "write `when = \"lint\"` or `\"generate\"`",
                 ));
             }
             self.steps.insert(
@@ -2806,6 +3053,16 @@ impl Decls {
                     Context::new(Key::Where)
                         .feature(&f.id)
                         .noise(&["noise", "feature", &f.id, "where"]),
+                ));
+            }
+            // A cost per metre at every post, read in the head view as `where` is (`derived.md`
+            // 3; `formulas.md` 6.1).
+            if let Some(r) = f.route {
+                lets.push((
+                    r,
+                    Context::new(Key::Where)
+                        .feature(&f.id)
+                        .noise(&["noise", "feature", &f.id, "route"]),
                 ));
             }
         }

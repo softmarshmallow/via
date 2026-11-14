@@ -32,7 +32,8 @@ pub const DIAGNOSTICS: &str = "write:diagnostics.json";
 pub const CHANGES: &str = "write:changes.json";
 pub const MANIFEST: &str = "write:manifest.json";
 
-/// One lint step as the plan runs it.
+/// One step as the plan runs it: a lint or a generate step, plain or worker.
+#[derive(Clone)]
 pub struct LintStep {
     pub decl: steps::StepDecl,
     pub code: Result<steps::Code, Diag>,
@@ -115,6 +116,12 @@ fn data_files(model: &ModelPlan<'_>) -> Vec<(String, FileReads)> {
 }
 
 /// The plan of `via build`: the model's nodes and the command line's.
+/// How every node settled and what each step read, kept for [`CliPlan::find_chains`].
+type ChainInputs = (
+    BTreeMap<NodeId, via_graph::Settled>,
+    BTreeMap<NodeId, Vec<via_graph::Read>>,
+);
+
 pub struct CliPlan<'a> {
     pub model: &'a ModelPlan<'a>,
     pub ctx: Ctx<'a>,
@@ -123,6 +130,18 @@ pub struct CliPlan<'a> {
     written: Mutex<Option<Arc<Result<out::Written, Diag>>>>,
     last: Mutex<BTreeMap<String, Vec<u8>>>,
     chains: Mutex<Chains>,
+    /// What the chains are found from, kept when `write:changes.json` is defined and used only
+    /// when it runs: finding them reads the whole build, which a reused report never needs.
+    chain_inputs: Mutex<Option<ChainInputs>>,
+    /// What failed or was skipped, once every ungated node settled: a traced lint's reads are
+    /// checked against it (`diagnostics.md` 4).
+    bad: Mutex<Option<Arc<crate::stepview::Bad>>>,
+    /// The generate steps some lint's `checks` names (`derived.md` 5).
+    checked: BTreeSet<String>,
+    /// The build's workers, shut down when the plan is dropped (`protocol.md` 3.2).
+    pool: crate::stepwork::Pool,
+    /// The model's build, made once: what every step call and trace replay reads.
+    build: std::sync::OnceLock<Arc<via_model::Build>>,
 }
 
 fn write_id(path: &str) -> NodeId {
@@ -139,6 +158,7 @@ impl<'a> CliPlan<'a> {
                 edges: model.file_reads(&reads),
                 gate: Gate {
                     skip_on_error: true,
+                    traced: false,
                 },
                 ..Def::default()
             };
@@ -154,7 +174,9 @@ impl<'a> CliPlan<'a> {
             let mut all: Vec<String> = Vec::new();
             for (top, ent) in ctx.world.root().iter() {
                 if let via_doc::Value::Table(t) = &ent.item.value {
-                    for id in t.keys() {
+                    // Produced names (`<step>#<key>`) are left out: a step's diagnostics map to what
+                    // was written, and a joined document must not change its own step's key.
+                    for id in t.keys().filter(|id| !id.contains('#')) {
                         all.push(format!("{top}.{id}"));
                     }
                 }
@@ -166,12 +188,87 @@ impl<'a> CliPlan<'a> {
             }
             Digest::of(&e.finish()).hex()
         };
+        let generate: Vec<&str> = ctx
+            .lints
+            .iter()
+            .filter(|l| l.decl.when == "generate")
+            .map(|l| l.decl.id.as_str())
+            .collect();
+        let mut checked: BTreeSet<String> = BTreeSet::new();
+        let infos: Vec<via_model::derived_checks::StepInfo> = ctx
+            .lints
+            .iter()
+            .map(|l| via_model::derived_checks::StepInfo {
+                id: l.decl.id.clone(),
+                when: l.decl.when.clone(),
+                checks: (!l.decl.checks.is_empty()).then(|| l.decl.checks.clone()),
+            })
+            .collect();
+        let build = ctx
+            .lints
+            .iter()
+            .any(|l| l.decl.for_each.is_some())
+            .then(|| model.build());
         for l in &ctx.lints {
             let s = &l.decl;
-            let mut edges: Vec<(String, NodeId)> = data
+            let lint = s.when == "lint";
+            // Statically found faults of the step's own keys (`derived.md` 5, `protocol.md` 1.2).
+            let mut found: Vec<Diag> = Vec::new();
+            let key_diag = |code: via_diag::Code, key: &str, msg: String, hint: String| {
+                Diag::new(
+                    code,
+                    via_diag::Subject::entity("step", s.id.clone()),
+                    via_diag::Site::Key(via_diag::KeyPath::key(key)),
+                    crate::txt(msg),
+                    crate::txt(hint),
+                )
+            };
+            // The `checks` key (`derived.md` 5): the one definition, in via-model.
+            let only_mine: Vec<via_model::derived_checks::StepInfo> = infos
                 .iter()
-                .map(|p| (format!("data {p}"), write_id(p)))
+                .map(|i| via_model::derived_checks::StepInfo {
+                    checks: if i.id == s.id { i.checks.clone() } else { None },
+                    ..i.clone()
+                })
                 .collect();
+            found.extend(via_model::derived_checks::check_keys(&only_mine));
+            if lint {
+                for c in &s.checks {
+                    if generate.contains(&c.as_str()) {
+                        checked.insert(c.clone());
+                    }
+                }
+            }
+            if s.for_each.is_some() && (s.for_each_kind().is_none() || s.when != "generate") {
+                found.push(key_diag(
+                    via_diag::codes::protocol::FOR_EACH_FORM,
+                    "for_each",
+                    format!(
+                        "step `{}`: `for_each` takes the one form `kind:<name>`, on a generate step",
+                        s.id
+                    ),
+                    "write `for_each = \"kind:<name>\"` on a generate step".into(),
+                ));
+            }
+            // A plain lint reads the finished build through the data files; a worker reads what
+            // it asks for, so its key holds no data (`graph.md` 5.1).
+            let mut edges: Vec<(String, NodeId)> = if lint && !s.worker {
+                data.iter()
+                    .map(|p| (format!("data {p}"), write_id(p)))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            if lint {
+                let mut cs: Vec<&String> = s.checks.iter().collect();
+                cs.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+                cs.dedup();
+                for c in cs {
+                    if generate.contains(&c.as_str()) {
+                        edges.push((format!("checks {c}"), NodeId::of("step", c)));
+                    }
+                }
+            }
             let mut inputs: Vec<&String> = s.inputs.iter().collect();
             inputs.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
             for i in inputs {
@@ -197,43 +294,123 @@ impl<'a> CliPlan<'a> {
                 .code
                 .as_ref()
                 .map_or("none".to_string(), |c| c.trust.hex());
-            defs.insert(
-                NodeId::of("step", &s.id),
-                Def {
-                    subject: Some(via_diag::Subject::entity("step", s.id.clone())),
-                    statements,
-                    params: vec![
-                        ("trust".into(), trust),
-                        ("trusted".into(), l.trusted.to_string()),
-                        (
-                            "sdk".into(),
-                            ctx.sdk_digest.map(Digest::hex).unwrap_or_default(),
-                        ),
-                        ("seed".into(), ctx.seed.to_string()),
-                        ("entities".into(), entities.clone()),
-                    ],
-                    edges,
-                    gate: Gate {
-                        skip_on_error: true,
-                    },
-                    step: Some(StepDef {
-                        step: s.id.clone(),
-                        command: s.command.clone(),
-                        lint: true,
-                    }),
-                    ..Def::default()
+            let mut params = vec![
+                ("trust".to_string(), trust),
+                ("trusted".to_string(), l.trusted.to_string()),
+                (
+                    "sdk".to_string(),
+                    ctx.sdk_digest.map(Digest::hex).unwrap_or_default(),
+                ),
+                ("seed".to_string(), ctx.seed.to_string()),
+            ];
+            // A command of one word, a configured program, is itself the step's code (a library
+            // shipped as a program, `protocol.md` 7): its file's digest is in the static key
+            // (`graph.md` 5.1), so a revised program runs the step again.
+            if let ([program], Some(config)) = (s.command.as_slice(), ctx.config) {
+                if !program.starts_with("lib:") && !program.contains('/') {
+                    let d = via_proto::program::resolve(program, config)
+                        .ok()
+                        .and_then(|p| std::fs::read(p).ok())
+                        .map_or_else(|| "missing".to_string(), |b| Digest::of(&b).hex());
+                    params.push(("program".to_string(), d));
+                }
+            }
+            // A plain command's findings are mapped to entities by id, so the set of ids is in
+            // its key. A worker's key is what it read (`graph.md` 5.1): a renamed entity it read
+            // changes an answer in its trace, and one it did not read leaves it reused.
+            if !s.worker {
+                params.push(("entities".to_string(), entities.clone()));
+            }
+            // A generate step this machine does not trust builds from its committed result
+            // (`protocol.md` 7.1): the folder's bytes are in its key, so a new commit is read.
+            if !l.trusted && s.when == "generate" {
+                if let Some(d) = steps::input_digest(&crate::commit::folder(&s.home, &s.id, None)) {
+                    params.push(("gen".to_string(), d.hex()));
+                }
+            }
+            let def = Def {
+                subject: Some(via_diag::Subject::entity("step", s.id.clone())),
+                statements: statements.clone(),
+                params,
+                edges,
+                // A worker lint's reads are traced, so it runs beside a failure it does not
+                // read (`diagnostics.md` 4, M2); a plain one sees the whole build.
+                gate: Gate {
+                    skip_on_error: !(s.when == "generate" || s.worker && s.when == "lint"),
+                    traced: s.worker && s.when == "lint",
                 },
-            );
+                step: Some(StepDef {
+                    step: s.id.clone(),
+                    command: s.command.clone(),
+                    lint,
+                }),
+                found,
+                ..Def::default()
+            };
+            let kind = s.for_each_kind().filter(|_| s.when == "generate");
+            match kind {
+                Some(k) if def.found.is_empty() => {
+                    // One node per item, and the join that reads them in item order (5.3).
+                    let rank = ctx.world.layer_rank(&s.layer);
+                    let list = build
+                        .as_ref()
+                        .map(|b| crate::stepview::items(ctx.world, b, rank, k))
+                        .unwrap_or_default();
+                    let mut join_edges = Vec::new();
+                    for item in &list {
+                        let id = NodeId::of("step", &s.id).item(item);
+                        let mut d = def.clone();
+                        d.params.push(("item".into(), item.clone()));
+                        if let Some(sd) = model.statements().get(&format!("feature.{item}")) {
+                            d.statements.push((format!("feature.{item}"), *sd));
+                        }
+                        join_edges.push((format!("item {item}"), id.clone()));
+                        defs.insert(id, d);
+                    }
+                    defs.insert(
+                        NodeId::of("step", &s.id),
+                        Def {
+                            subject: Some(via_diag::Subject::entity("step", s.id.clone())),
+                            statements,
+                            params: vec![
+                                ("join".into(), "true".into()),
+                                ("for_each".into(), k.to_string()),
+                            ],
+                            edges: join_edges,
+                            ..Def::default()
+                        },
+                    );
+                }
+                _ => {
+                    defs.insert(NodeId::of("step", &s.id), def);
+                }
+            }
         }
         CliPlan {
             model,
             ctx,
             defs,
             data,
+            checked,
+            pool: crate::stepwork::Pool::default(),
+            build: std::sync::OnceLock::new(),
             written: Mutex::new(None),
             last: Mutex::new(BTreeMap::new()),
             chains: Mutex::new(BTreeMap::new()),
+            chain_inputs: Mutex::new(None),
+            bad: Mutex::new(None),
         }
+    }
+
+    /// What failed or was skipped, for a traced lint; `None` for any other step.
+    fn bad_for(&self, worker_lint: bool) -> Option<Arc<crate::stepview::Bad>> {
+        if !worker_lint {
+            return None;
+        }
+        self.bad
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 
     /// Every node: the model's, the command line's, and the three defined last.
@@ -286,6 +463,7 @@ impl<'a> CliPlan<'a> {
         self.ctx
             .lints
             .iter()
+            .filter(|l| l.decl.when == "lint")
             .map(|l| {
                 let id = NodeId::of("step", &l.decl.id);
                 let ran = match settled(&id) {
@@ -345,8 +523,14 @@ impl<'a> CliPlan<'a> {
                 })
             }
             CHANGES => {
-                if let Some(prev) = &self.ctx.baseline_record {
-                    self.find_chains(prev, &|n| known.settled(n).and_then(|s| s.value));
+                if self.ctx.baseline_record.is_some() {
+                    *self
+                        .chain_inputs
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some((
+                        known.settled_all().cloned().unwrap_or_default(),
+                        known.step_reads_all().cloned().unwrap_or_default(),
+                    ));
                 }
                 // The baseline enters by what the report names of it, its `id` and `run.key`
                 // (`build.md` 11.2): a baseline rebuilt with equal text is the same baseline.
@@ -393,6 +577,7 @@ impl<'a> CliPlan<'a> {
                     ],
                     gate: Gate {
                         skip_on_error: true,
+                        traced: false,
                     },
                     ..Def::default()
                 })
@@ -430,6 +615,7 @@ impl<'a> CliPlan<'a> {
                     edges,
                     gate: Gate {
                         skip_on_error: true,
+                        traced: false,
                     },
                     ..Def::default()
                 })
@@ -452,7 +638,12 @@ impl<'a> CliPlan<'a> {
     /// footprint, and for a field its first chunk in chunk order whose value differs from the
     /// baseline's. A statement with no path in this build's graph takes its path in the
     /// baseline's, from the baseline's record. Keyed by [`changes::chain_key`].
-    fn find_chains(&self, prev: &BuildRecord, value: &dyn Fn(&NodeId) -> Option<Digest>) {
+    fn find_chains(
+        &self,
+        prev: &BuildRecord,
+        value: &dyn Fn(&NodeId) -> Option<Digest>,
+        step_reads: &dyn Fn(&NodeId) -> Option<Vec<via_graph::Read>>,
+    ) {
         let mut made_from: BTreeMap<NodeId, Vec<String>> = BTreeMap::new();
         let mut edges: BTreeMap<NodeId, Vec<(String, NodeId)>> = BTreeMap::new();
         for id in self.model.ids() {
@@ -464,6 +655,7 @@ impl<'a> CliPlan<'a> {
                 edges.insert(id.clone(), d.edges.clone());
             }
         }
+        self.step_chain_nodes(&mut made_from, &mut edges, step_reads);
         let prev_edges = prev.edges();
         let prev_made_from = prev.made_from();
         let chains_to = |targets: &[NodeId]| -> BTreeMap<String, Vec<String>> {
@@ -540,6 +732,7 @@ impl<'a> CliPlan<'a> {
         }
         let build = self.model.build();
         let base = self.ctx.baseline.as_ref().map(|b| &b.snapshot.build);
+        let mut memo: BTreeMap<Vec<NodeId>, BTreeMap<String, Vec<String>>> = BTreeMap::new();
         if let Some(report) = &build.changes {
             for e in &report.entries {
                 let v = |f: &str, n: &str| NodeId::of(f, n).view("build");
@@ -575,13 +768,196 @@ impl<'a> CliPlan<'a> {
                     }
                     _ => continue,
                 };
-                chains.insert(changes::chain_key(&e.table, &e.name), chains_to(&targets));
+                // Every instance of one producer has the same targets, its `held:` node: the
+                // chains are worked out once per set of targets (a scatter of thousands is one).
+                let mut found = memo
+                    .entry(targets.clone())
+                    .or_insert_with(|| chains_to(&targets))
+                    .clone();
+                // A hand instance stands on the ground: what moved it only up or down reaches it
+                // through its `height:` node, which a statement not found above is chained to.
+                if e.table == "instance" {
+                    let h = v("height", &e.name);
+                    if self.model.def(&h).is_some() && !targets.contains(&h) {
+                        let more = memo
+                            .entry(vec![h.clone()])
+                            .or_insert_with(|| chains_to(&[h]))
+                            .clone();
+                        for (st, path) in more {
+                            found.entry(st).or_insert(path);
+                        }
+                    }
+                }
+                chains.insert(changes::chain_key(&e.table, &e.name), found);
             }
         }
         *self
             .chains
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) = chains;
+    }
+
+    /// The steps as the chains see them (`graph.md` 5.1 and 6.4): each step node made from its
+    /// own statement and the frame, with an edge to what each read of its trace named (a field's
+    /// chunks, a feature's shapes) and made from those things' statements; and every node made
+    /// from a statement the step returned (`<table>.<step>#...`) with an edge to the step.
+    fn step_chain_nodes(
+        &self,
+        made_from: &mut BTreeMap<NodeId, Vec<String>>,
+        edges: &mut BTreeMap<NodeId, Vec<(String, NodeId)>>,
+        step_reads: &dyn Fn(&NodeId) -> Option<Vec<via_graph::Read>>,
+    ) {
+        let build = self.model.build();
+        let stmts = self.model.statements();
+        // Model nodes by family and subject, for a read that names a thing.
+        let mut by_subject: BTreeMap<(String, String), Vec<NodeId>> = BTreeMap::new();
+        for id in self.model.ids() {
+            let s = id.as_str();
+            let (fam, rest) = s.split_once(':').unwrap_or((s, ""));
+            let subject = rest.split('/').next().unwrap_or(rest);
+            by_subject
+                .entry((fam.to_string(), subject.to_string()))
+                .or_default()
+                .push(id.clone());
+        }
+        let fields_of = |sel: &str| -> Vec<String> {
+            if let Some(r) = sel.strip_prefix("role:") {
+                return build
+                    .fields
+                    .iter()
+                    .filter(|(_, f)| f.role.as_deref() == Some(r))
+                    .map(|(n, _)| n.clone())
+                    .collect();
+            }
+            if let Some(t) = sel.strip_prefix("tag:") {
+                return build
+                    .fields
+                    .iter()
+                    .filter(|(_, f)| f.tags.iter().any(|x| x == t))
+                    .map(|(n, _)| n.clone())
+                    .collect();
+            }
+            if build.fields.contains_key(sel) {
+                vec![sel.to_string()]
+            } else {
+                Vec::new()
+            }
+        };
+        let features_of = |sel: &str| -> Vec<String> {
+            if sel == "*" {
+                return build.features.keys().cloned().collect();
+            }
+            if let Some(k) = sel.strip_prefix("kind:") {
+                return build
+                    .features
+                    .iter()
+                    .filter(|(_, f)| f.kind.as_deref() == Some(k))
+                    .map(|(n, _)| n.clone())
+                    .collect();
+            }
+            let prefix = format!("{sel}#");
+            build
+                .features
+                .keys()
+                .filter(|n| *n == sel || n.starts_with(&prefix))
+                .cloned()
+                .collect()
+        };
+        let strings = |v: Option<&serde_json::Value>| -> Vec<String> {
+            match v {
+                Some(serde_json::Value::String(s)) => vec![s.clone()],
+                Some(serde_json::Value::Array(a)) => a
+                    .iter()
+                    .filter_map(|x| x.as_str().map(str::to_string))
+                    .collect(),
+                Some(_) => Vec::new(),
+                None => vec!["*".to_string()],
+            }
+        };
+        let mut step_ids: Vec<String> = self.ctx.lints.iter().map(|l| l.decl.id.clone()).collect();
+        step_ids.sort();
+        step_ids.dedup();
+        for sid in &step_ids {
+            let node = NodeId::of("step", sid);
+            let mut from: Vec<String> = [format!("step.{sid}"), "world".to_string()]
+                .into_iter()
+                .filter(|st| stmts.contains_key(st))
+                .collect();
+            let mut out: Vec<(String, NodeId)> = Vec::new();
+            for r in step_reads(&node).unwrap_or_default() {
+                let Some(bytes) = self.ctx.store.get_object(&r.request) else {
+                    continue;
+                };
+                let Ok(req) =
+                    serde_json::from_slice::<serde_json::Value>(&via_graph::object_bytes(&bytes))
+                        .or_else(|_| serde_json::from_slice::<serde_json::Value>(&bytes))
+                else {
+                    continue;
+                };
+                match r.method.as_str() {
+                    "build.field" => {
+                        for sel in strings(req.get("fields")) {
+                            for f in fields_of(&sel) {
+                                from.push(format!("field.{f}"));
+                                out.extend(
+                                    self.model
+                                        .file_reads(&FileReads::Field(f.clone()))
+                                        .into_iter()
+                                        .map(|(_, c)| (format!("read field {f}"), c)),
+                                );
+                            }
+                        }
+                    }
+                    "build.features" => {
+                        for sel in strings(req.get("select")) {
+                            for f in features_of(&sel) {
+                                from.push(format!("feature.{f}"));
+                                for fam in ["shape", "attr"] {
+                                    for n in by_subject
+                                        .get(&(fam.to_string(), f.clone()))
+                                        .into_iter()
+                                        .flatten()
+                                    {
+                                        out.push((format!("read feature {f}"), n.clone()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            from.retain(|st| stmts.contains_key(st));
+            from.sort();
+            from.dedup();
+            out.sort();
+            out.dedup();
+            made_from.insert(node.clone(), from);
+            edges.insert(node, out);
+        }
+        // What a step returned is made from its document: each such node reads the step.
+        let ids: Vec<NodeId> = made_from.keys().cloned().collect();
+        for id in ids {
+            let returned: Vec<String> = made_from[&id]
+                .iter()
+                .filter_map(|st| {
+                    let (_, rest) = st.split_once('.')?;
+                    let (step, _) = rest.split_once('#')?;
+                    step_ids
+                        .contains(&step.to_string())
+                        .then(|| step.to_string())
+                })
+                .collect();
+            for step in returned {
+                let target = NodeId::of("step", &step);
+                if target != id {
+                    edges
+                        .entry(id.clone())
+                        .or_default()
+                        .push((format!("returned by {step}"), target));
+                }
+            }
+        }
     }
 
     fn compute_changes(&self) -> Output {
@@ -621,6 +997,16 @@ impl<'a> CliPlan<'a> {
             };
             self.stash("changes.json", bytes.clone());
             return Output::of(Val::plain(bytes));
+        }
+        let kept = self
+            .chain_inputs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take();
+        if let (Some(prev), Some((settled, reads))) = (&self.ctx.baseline_record, kept) {
+            self.find_chains(prev, &|n| settled.get(n).and_then(|s| s.value), &|n| {
+                reads.get(n).cloned()
+            });
         }
         let bytes = match &build.changes {
             Some(report) => {
@@ -680,8 +1066,21 @@ impl<'a> CliPlan<'a> {
         Output::of(Val::plain(bytes))
     }
 
-    /// What a lint call is handed beyond the step.
-    fn call<'b>(&'b self, build: &'b via_model::Build) -> steps::Call<'b> {
+    /// The model's build, made once.
+    fn the_build(&self) -> Arc<via_model::Build> {
+        self.build
+            .get_or_init(|| Arc::new(self.model.build()))
+            .clone()
+    }
+
+    /// What a step call is handed beyond the step.
+    fn call<'b>(
+        &'b self,
+        build: &'b via_model::Build,
+        item: Option<&'b str>,
+        checks: J,
+        bad: Option<&'b crate::stepview::Bad>,
+    ) -> steps::Call<'b> {
         steps::Call {
             world: self.ctx.world,
             build,
@@ -694,6 +1093,11 @@ impl<'a> CliPlan<'a> {
             deadline: self.ctx.deadline,
             pack: self.ctx.pack,
             trust_command: &self.ctx.trust_command,
+            pool: Some(&self.pool),
+            item,
+            checks,
+            stratum: Some(self.model),
+            bad,
         }
     }
 
@@ -704,23 +1108,281 @@ impl<'a> CliPlan<'a> {
     /// (untrusted, or its code not found) is handed nothing, and its key says why already.
     fn step_def(&self, id: &NodeId, def: &Def) -> Def {
         let mut def = def.clone();
-        let sid = &id.as_str()["step:".len()..];
-        let request = self
-            .ctx
-            .lints
-            .iter()
-            .find(|l| l.decl.id == sid)
-            .filter(|l| l.trusted && l.code.is_ok())
-            .map_or(Digest::of(b"via-request-1 not started"), |l| {
-                let build = self.model.build();
-                steps::request_key(&l.decl, &self.call(&build))
-            });
+        if def.step.is_none() {
+            return def;
+        }
+        let (sid, item) = split_step(id);
+        let Some(l) = self.ctx.lints.iter().find(|l| l.decl.id == sid) else {
+            return def;
+        };
+        if l.decl.worker {
+            // A worker's key holds no request: what it reads is its trace (`graph.md` 5.1).
+            return def;
+        }
+        // A plain generate step with a committed result is held to the request a trusted build
+        // makes (`protocol.md` 7.1), so it is made too.
+        let committed = !l.trusted
+            && l.decl.when == "generate"
+            && crate::commit::folder(&l.decl.home, &sid, None).is_dir();
+        let request = if (l.trusted || committed) && l.code.is_ok() {
+            let build = self.the_build();
+            steps::request_key(&l.decl, &self.call(&build, item.as_deref(), J::Null, None))
+        } else {
+            Digest::of(b"via-request-1 not started")
+        };
         def.direct.push(("request".into(), request));
         def
     }
 
-    fn compute_step(&self, id: &NodeId) -> Output {
-        let sid = &id.as_str()["step:".len()..];
+    /// A lint's `checks` member (`derived.md` 5): per named step, sorted by id, the stated facts
+    /// that step read, from its value.
+    fn checks_member(&self, s: &steps::StepDecl, inputs: &Inputs<'_>) -> J {
+        if s.checks.is_empty() {
+            return J::Null;
+        }
+        let facts: BTreeMap<String, BTreeSet<String>> = s
+            .checks
+            .iter()
+            .filter_map(|g| {
+                let f = inputs
+                    .get(&format!("checks {g}"))
+                    .and_then(|v| step_facts(&v.bytes))?;
+                Some((g.clone(), f.into_iter().collect()))
+            })
+            .collect();
+        let info = via_model::derived_checks::StepInfo {
+            id: s.id.clone(),
+            when: s.when.clone(),
+            checks: Some(s.checks.clone()),
+        };
+        J::Arr(
+            via_model::derived_checks::checks_member(&info, &facts)
+                .into_iter()
+                .map(|c| {
+                    obj([
+                        ("facts", J::strs(c.facts.iter().map(String::as_str))),
+                        ("step", J::s(c.step)),
+                    ])
+                })
+                .collect(),
+        )
+    }
+
+    /// The join of a `for_each` step (5.3): every item's call in item order; the keys two items
+    /// both returned are `identity.key_collision`; none matched is `graph.for_each_empty`.
+    fn compute_join(&self, id: &NodeId, def: &Def, inputs: &Inputs<'_>) -> Output {
+        let (sid, _) = split_step(id);
+        let mut diags: Vec<Diag> = Vec::new();
+        let mut explains: Vec<(String, Option<String>)> = Vec::new();
+        let mut facts: BTreeSet<String> = BTreeSet::new();
+        let mut owners: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
+        let mut ran = false;
+        let mut unjoined = false;
+        let mut returns = false;
+        for (label, _, v) in inputs.all() {
+            let item = label.trim_start_matches("item ").to_string();
+            let Ok(j) = parse(std::str::from_utf8(&v.bytes).unwrap_or("")) else {
+                continue;
+            };
+            ran |= matches!(j.get("ran"), Some(J::Bool(true)));
+            unjoined |= matches!(j.get("unjoined"), Some(J::Bool(true)));
+            returns |= matches!(j.get("returns"), Some(J::Bool(true)));
+            if let Some((_, e)) = step_value(&v.bytes) {
+                explains.extend(e);
+            }
+            facts.extend(step_facts(&v.bytes).unwrap_or_default());
+            if let Some(J::Obj(keys)) = j.get("keys") {
+                for (table, ks) in keys {
+                    for k in ks.as_arr().unwrap_or(&[]) {
+                        if let Some(k) = k.as_str() {
+                            owners
+                                .entry((table.clone(), k.to_string()))
+                                .or_default()
+                                .push(item.clone());
+                        }
+                    }
+                }
+            }
+        }
+        for ((table, key), who) in &owners {
+            if who.len() > 1 {
+                diags.push(Diag::new(
+                    via_diag::codes::identity::KEY_COLLISION,
+                    via_diag::Subject::entity("step", sid.clone()),
+                    via_diag::Site::Header,
+                    crate::txt(format!(
+                        "step `{sid}`: the items `{}` and `{}` both returned `[{table}.{key}]`",
+                        who[0], who[1]
+                    )),
+                    crate::txt("build each returned key from the item's name, so keys differ between items".into()),
+                ));
+            }
+        }
+        let _ = unjoined;
+        // `derived.md` 5, over the items: the union of the facts they read.
+        if returns && !facts.is_empty() && !self.checked.contains(&sid) {
+            diags.push(unchecked(&sid, &facts.iter().cloned().collect::<Vec<_>>()));
+        }
+        if inputs.all().is_empty() {
+            let kind = def
+                .params
+                .iter()
+                .find(|(k, _)| k == "for_each")
+                .map_or("", |(_, v)| v.as_str());
+            diags.push(Diag::new(
+                via_diag::codes::graph::FOR_EACH_EMPTY,
+                via_diag::Subject::entity("step", sid.clone()),
+                via_diag::Site::Key(via_diag::KeyPath::key("for_each")),
+                crate::txt(format!(
+                    "step `{sid}`: `for_each = \"kind:{kind}\"` matches no feature in its view; the step did not run"
+                )),
+                crate::txt(format!("add a feature of kind `{kind}` at or below the step's layer, or remove the step")),
+            ));
+        }
+        let facts: Vec<String> = facts.into_iter().collect();
+        Output::of(Val {
+            bytes: Arc::new(
+                obj([
+                    (
+                        "explains",
+                        J::Arr(
+                            explains
+                                .iter()
+                                .map(|(c, e)| J::Arr(vec![J::s(c.clone()), J::opt(e.as_deref())]))
+                                .collect(),
+                        ),
+                    ),
+                    ("facts", J::strs(facts.iter().map(String::as_str))),
+                    ("files", J::Arr(Vec::new())),
+                    ("ran", J::Bool(ran)),
+                ])
+                .file(),
+            ),
+            diags: Arc::new(diags),
+        })
+    }
+
+    /// An untrusted generate step's committed result (`protocol.md` 7.1): `None` when it has
+    /// none (the step is `protocol.untrusted`); else the result as a completed call when its
+    /// static key and every read of its trace match this build, answered from the current graph
+    /// as reuse is, with `protocol.untrusted_result`; else `protocol.untrusted_stale`, naming the
+    /// first difference, not completed. Nothing runs.
+    fn committed_result(
+        &self,
+        id: &NodeId,
+        l: &LintStep,
+        code: &steps::Code,
+        item: Option<&str>,
+        key_parts: &BTreeMap<String, String>,
+        build: &via_model::Build,
+    ) -> Option<steps::Ran> {
+        let sid = &l.decl.id;
+        let dir = crate::commit::folder(&l.decl.home, sid, item);
+        let read = crate::commit::Committed::read(&dir)?;
+        let mut ran = steps::Ran::new();
+        let label = crate::commit::label(sid, item);
+        let stale = |why: &str| crate::commit::stale(sid, &label, why, &self.ctx.trust_command);
+        let c = match read {
+            Ok(c) => c,
+            Err(why) => {
+                ran.diags.push(stale(&why));
+                return Some(ran);
+            }
+        };
+        if let Some(why) = c.key_difference(&code.trust, key_parts) {
+            ran.diags.push(stale(&why));
+            return Some(ran);
+        }
+        // The blobs the trace's requests name, into this machine's store (`protocol.md` 7.1).
+        let restored = via_proto::store::Store::open(self.ctx.store.root().join("objects"))
+            .map_err(|_| "the store's objects cannot be opened".to_string())
+            .and_then(|objects| crate::commit::restore_blobs(&dir, &objects));
+        if let Err(why) = restored {
+            ran.diags.push(stale(&why));
+            return Some(ran);
+        }
+        let mut reads = Vec::new();
+        for (method, request, answer) in c.trace() {
+            let req = self.ctx.store.put_object(request.canonical().as_bytes());
+            let rd = via_graph::Read {
+                method: method.clone(),
+                request: req,
+                answer: answer.unwrap_or(Digest::of(b"\0no answer")),
+            };
+            if answer.is_none() || self.answer(id, &rd) != answer {
+                ran.diags.push(stale(&format!(
+                    "the read `{method}` of request {} gives another answer now",
+                    req.hex()
+                )));
+                return Some(ran);
+            }
+            reads.push(rd);
+        }
+        let grid = build.grid?;
+        let got = crate::stepout::collect(
+            &dir,
+            sid,
+            "generate",
+            None,
+            &grid,
+            &crate::stepout::Names {
+                world: self.ctx.world,
+                rank: self.ctx.world.layer_rank(&l.decl.layer),
+            },
+            self.ctx.store,
+        );
+        let files: Vec<(String, Digest)> = got
+            .files
+            .iter()
+            .filter(|(p, _)| {
+                p != "result.json" && !p.starts_with(&format!("{}/", crate::commit::BLOBS))
+            })
+            .cloned()
+            .collect();
+        let want = c.files();
+        let have: BTreeMap<String, Option<Digest>> = files
+            .iter()
+            .filter(|(p, _)| p != "document.toml")
+            .map(|(p, d)| (p.clone(), Some(*d)))
+            .collect();
+        if want != have {
+            ran.diags
+                .push(stale("its files differ from those `result.json` lists"));
+            return Some(ran);
+        }
+        // What the step raised itself when it ran, and its explain texts, replayed: the build
+        // uses the result exactly as a trusted build does, plus `protocol.untrusted_result`.
+        let Some(emitted) = c.diags() else {
+            ran.diags
+                .push(stale("its `diags` cannot be read as the build's records"));
+            return Some(ran);
+        };
+        ran.diags.extend(emitted.iter().cloned());
+        ran.emitted = emitted;
+        ran.explains = c.explains();
+        ran.diags.extend(got.diags.iter().cloned());
+        ran.diags.push(crate::commit::used(sid, &label));
+        ran.rows_or_features = got.returns_rows_or_features();
+        ran.keys = got.keys.clone();
+        ran.unjoined = got.ok && got.has_tables();
+        ran.document = got.document.clone();
+        ran.facts = c.facts();
+        ran.reads = reads;
+        ran.complete = got.ok;
+        ran.record = obj([(
+            "returned",
+            J::Arr(
+                files
+                    .iter()
+                    .map(|(p, d)| obj([("digest", J::s(d.hex())), ("path", J::s(p.clone()))]))
+                    .collect(),
+            ),
+        )]);
+        Some(ran)
+    }
+
+    fn compute_step(&self, id: &NodeId, def: &Def, inputs: &Inputs<'_>) -> Output {
+        let (sid, item) = split_step(id);
         let Some(l) = self.ctx.lints.iter().find(|l| l.decl.id == sid) else {
             return Output::of(Val::plain(Vec::new()));
         };
@@ -736,11 +1398,54 @@ impl<'a> CliPlan<'a> {
                     },
                     complete: false,
                     step: Some(StepRun::default()),
+                    skipped: false,
                 };
             }
         };
-        let build = self.model.build();
-        let r = steps::run_lint(&l.decl, code, l.trusted, &self.call(&build));
+        let build = self.the_build();
+        let checks = self.checks_member(&l.decl, inputs);
+        let bad = self.bad_for(l.decl.worker && l.decl.when == "lint");
+        let key_parts = crate::commit::key_parts(def, inputs);
+        // An untrusted generate step with a committed result (`protocol.md` 7.1).
+        let committed = if !l.trusted && l.decl.when == "generate" {
+            self.committed_result(id, l, code, item.as_deref(), &key_parts, &build)
+        } else {
+            None
+        };
+        let from_gen = committed.as_ref().is_some_and(|r| r.complete);
+        let mut r = match committed {
+            Some(r) => r,
+            None => steps::run_step(
+                &l.decl,
+                code,
+                l.trusted,
+                &self.call(&build, item.as_deref(), checks, bad.as_deref()),
+            ),
+        };
+        if r.skipped {
+            return Output {
+                value: Val::plain(Vec::new()),
+                complete: false,
+                step: Some(StepRun::default()),
+                skipped: true,
+            };
+        }
+        // `derived.md` 5: a generate step that read a stated fact and returned rows or features,
+        // which no lint checks.
+        if l.decl.when == "generate"
+            && item.is_none()
+            && (r.ran || from_gen)
+            && !r.facts.is_empty()
+            && r.rows_or_features
+            && !self.checked.contains(&sid)
+        {
+            r.diags.push(unchecked(&sid, &r.facts));
+        }
+        // The returned document is kept in the store, so the build joins it to the step's layer
+        // from the step's value (`protocol.md` 5, Its layer).
+        if let Some(d) = &r.document {
+            self.ctx.store.put_object(d.as_bytes());
+        }
         let exit = r.record.get("exit").and_then(J::as_i64);
         let files: Vec<(String, Digest)> = r
             .record
@@ -770,10 +1475,10 @@ impl<'a> CliPlan<'a> {
             && r.diags
                 .iter()
                 .all(|d| *d.code() == DiagCode::Core(via_diag::codes::graph::INPUT_MISSING));
-        let complete = if r.ran {
+        let complete = if r.ran || from_gen {
             r.complete
         } else {
-            !l.trusted || input_missing
+            (!l.trusted && l.decl.when != "generate") || input_missing
         };
         // A plain command's one read, method `data`: its request without absolute paths, which
         // is also all it is answered.
@@ -782,9 +1487,124 @@ impl<'a> CliPlan<'a> {
             request: d,
             answer: d,
         });
+        let mut value = parse(
+            std::str::from_utf8(&step_bytes(r.ran || from_gen, &r.explains, &files))
+                .unwrap_or("{}"),
+        )
+        .unwrap_or(J::Null);
+        if let J::Obj(m) = &mut value {
+            if l.decl.when == "generate" {
+                m.insert("facts".into(), J::strs(r.facts.iter().map(String::as_str)));
+                // Each fact's statement as read: a moved fact changes this value, so a lint that
+                // `checks` the step runs again even when the step returns the same document
+                // (`derived.md` 5: the fact is checked again).
+                m.insert(
+                    "fact_statements".into(),
+                    J::Arr(
+                        r.facts
+                            .iter()
+                            .map(|f| {
+                                J::s(
+                                    self.model
+                                        .statements()
+                                        .get(&format!("feature.{f}"))
+                                        .map_or_else(String::new, Digest::hex),
+                                )
+                            })
+                            .collect(),
+                    ),
+                );
+                m.insert(
+                    "keys".into(),
+                    J::Obj(
+                        r.keys
+                            .iter()
+                            .map(|(t, ks)| (t.clone(), J::strs(ks.iter().map(String::as_str))))
+                            .collect(),
+                    ),
+                );
+                m.insert("unjoined".into(), J::Bool(r.unjoined));
+                m.insert("returns".into(), J::Bool(r.rows_or_features));
+                m.insert(
+                    "document".into(),
+                    r.document
+                        .as_ref()
+                        .map_or(J::Null, |d| J::s(Digest::of(d.as_bytes()).hex())),
+                );
+                // What `via step commit` writes to `result.json` (`protocol.md` 7.1).
+                m.insert(
+                    "commit".into(),
+                    obj([
+                        (
+                            "key",
+                            J::Obj(
+                                key_parts
+                                    .iter()
+                                    .map(|(k, v)| (k.clone(), J::s(v.clone())))
+                                    .collect(),
+                            ),
+                        ),
+                        (
+                            "static_key",
+                            J::s(crate::commit::static_key(&key_parts).hex()),
+                        ),
+                        (
+                            "trace",
+                            J::Arr(
+                                r.reads
+                                    .iter()
+                                    .map(|rd| {
+                                        obj([
+                                            ("answer", J::s(rd.answer.hex())),
+                                            ("request", J::s(rd.request.hex())),
+                                        ])
+                                    })
+                                    .collect(),
+                            ),
+                        ),
+                        ("trust_digest", J::s(code.trust.hex())),
+                        // What the step raised itself and its explain texts, so a build that
+                        // uses the committed result reports them as a trusted build does: the
+                        // records as the build holds them (`diags`, replayed), and each as text
+                        // for the reviewer (`diagnostics`).
+                        (
+                            "diags",
+                            J::s(crate::commit::encode_diags(&r.emitted).unwrap_or_default()),
+                        ),
+                        (
+                            "diagnostics",
+                            J::Arr(
+                                r.emitted
+                                    .iter()
+                                    .map(|d| {
+                                        obj([
+                                            ("code", J::s(d.code().to_string())),
+                                            ("message", J::s(d.message().as_str().to_string())),
+                                            ("severity", J::s(d.severity().as_str())),
+                                            ("subject", J::s(d.subject().to_string())),
+                                        ])
+                                    })
+                                    .collect(),
+                            ),
+                        ),
+                        (
+                            "explains",
+                            J::Arr(
+                                r.explains
+                                    .iter()
+                                    .map(|(c, e)| {
+                                        J::Arr(vec![J::s(c.clone()), J::opt(e.as_deref())])
+                                    })
+                                    .collect(),
+                            ),
+                        ),
+                    ]),
+                );
+            }
+        }
         Output {
             value: Val {
-                bytes: Arc::new(step_bytes(r.ran, &r.explains, &files)),
+                bytes: Arc::new(value.file()),
                 diags: Arc::new(r.diags),
             },
             complete,
@@ -793,10 +1613,57 @@ impl<'a> CliPlan<'a> {
                 files,
                 log,
                 data,
-                ..StepRun::default()
+                reads: r.reads,
             }),
+            skipped: false,
         }
     }
+}
+
+/// `authority.unchecked` (`derived.md` 5) for one generate step that read `facts`, returned rows
+/// or features and is checked by no lint: the one definition, in via-model.
+fn unchecked(sid: &str, facts: &[String]) -> Diag {
+    let step = via_model::derived_checks::StepInfo {
+        id: sid.to_string(),
+        when: "generate".into(),
+        checks: None,
+    };
+    let read: BTreeMap<String, BTreeSet<String>> =
+        [(sid.to_string(), facts.iter().cloned().collect())].into();
+    let returned: BTreeSet<String> = [sid.to_string()].into();
+    via_model::derived_checks::unchecked(&[step], &read, &returned)
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| {
+            Diag::new(
+                via_diag::codes::diag::INTERNAL,
+                via_diag::Subject::entity("step", sid),
+                via_diag::Site::Header,
+                crate::txt("the unchecked step gave no diagnostic".into()),
+                crate::txt("report this as a bug in via".into()),
+            )
+        })
+}
+
+/// A step node's id as (step, item).
+pub fn split_step(id: &NodeId) -> (String, Option<String>) {
+    let rest = id.as_str().strip_prefix("step:").unwrap_or(id.as_str());
+    match rest.split_once("/i:") {
+        Some((s, i)) => (s.to_string(), Some(i.to_string())),
+        None => (rest.to_string(), None),
+    }
+}
+
+/// The stated facts a generate step's value records (`derived.md` 5).
+fn step_facts(bytes: &[u8]) -> Option<Vec<String>> {
+    let j = parse(std::str::from_utf8(bytes).ok()?).ok()?;
+    Some(
+        j.get("facts")?
+            .as_arr()?
+            .iter()
+            .filter_map(|f| f.as_str().map(str::to_string))
+            .collect(),
+    )
 }
 
 /// A lint step's value: whether its process was started, the explain text of each of its
@@ -830,6 +1697,26 @@ fn step_bytes(
         ("ran", J::Bool(ran)),
     ])
     .file()
+}
+
+/// A generate call's returned document and the files of its `out`, from its value: the
+/// document's digest and each file as (path, digest). `None` when it returned no document.
+pub fn returned(bytes: &[u8]) -> Option<(Digest, Vec<(String, Digest)>)> {
+    let j = parse(std::str::from_utf8(bytes).ok()?).ok()?;
+    let doc = Digest::from_hex(j.get("document")?.as_str()?)?;
+    let files = j
+        .get("files")
+        .and_then(J::as_arr)
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|f| {
+            Some((
+                f.get("path")?.as_str()?.to_string(),
+                Digest::from_hex(f.get("digest")?.as_str()?)?,
+            ))
+        })
+        .collect();
+    Some((doc, files))
 }
 
 /// How a node settled: its status and, when it has one, its value's digest.
@@ -931,6 +1818,38 @@ pub fn manifest_bytes(
 }
 
 impl Plan for CliPlan<'_> {
+    fn answer(&self, step: &NodeId, read: &via_graph::Read) -> Option<Digest> {
+        let (sid, _) = split_step(step);
+        let l = self.ctx.lints.iter().find(|l| l.decl.id == sid)?;
+        let build = self.the_build();
+        let grid = build.grid?;
+        let objects = via_proto::store::Store::open(self.ctx.store.root().join("objects")).ok()?;
+        let bad = self.bad_for(l.decl.worker && l.decl.when == "lint");
+        let view = crate::stepview::View {
+            world: self.ctx.world,
+            build: &build,
+            grid,
+            objects: &objects,
+            pack: self.ctx.pack,
+            step: &l.decl,
+            rank: (l.decl.when == "generate")
+                .then(|| self.ctx.world.layer_rank(&l.decl.layer))
+                .flatten(),
+            seed: via_num::world_seed(i64::try_from(self.ctx.seed).unwrap_or(0)).unwrap_or(0),
+            stratum: Some(self.model),
+            bad: bad.as_deref(),
+        };
+        crate::stepwork::replay(&view, self.ctx.store, read)
+    }
+
+    fn note_bad(&self, bad: &BTreeSet<NodeId>) {
+        *self
+            .bad
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) =
+            Some(Arc::new(crate::stepview::Bad::of(bad)));
+    }
+
     fn define(&self, id: &NodeId, known: &Known<'_>) -> Defined {
         if self.model.def(id).is_some() {
             return self.model.define(id, known);
@@ -955,7 +1874,10 @@ impl Plan for CliPlan<'_> {
                     .map(|(_, d)| d.bytes().to_vec())
                     .unwrap_or_default(),
             )),
-            "step" => self.compute_step(id),
+            "step" if def.params.iter().any(|(k, _)| k == "join") => {
+                self.compute_join(id, def, inputs)
+            }
+            "step" => self.compute_step(id, def, inputs),
             "write" => match id.as_str() {
                 DIAGNOSTICS => Output::of(Val::plain(
                     self.last_bytes("diagnostics.json").unwrap_or_default(),

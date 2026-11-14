@@ -1,0 +1,19 @@
+name       = "derived"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= min(abs(x - 2) + abs(y - 4), abs(x - 6) + abs(y - 4))"
+
+[feature.course]
+starts_at = "p_start"
+ends_at   = "p_end"
+path      = []
+route     = 1
+
+[feature.p_end]
+at = [8, 0]
+
+[feature.p_start]
+at = [0, 0]

@@ -207,6 +207,9 @@ author's float raster are one format.
 - **PNG.** Its top row is north. Adam7 interlaced pictures are read. 16-bit levels are read as
   stored. Gamma, colour profiles and a `tRNS` chunk are not applied: levels are read as stored, and
   `field.file_profile` (info) names what was ignored.
+- **Float pictures** are array files. EXR, TIFF and every other float format are refused, with the
+  hint to save the array with `numpy.save` as `<f4` (challenge 31): one float format, which a step
+  also returns, keeps two readers from disagreeing.
 - **Refused.** Any other format, a palette PNG, a 1-, 2- or 4-bit PNG, or a raster with either
   dimension under 2 samples is `field.file_format`. The path is found as any `file` in text
   (`documents.md` 7.2): `doc.file_missing`, `doc.path_case` or `doc.file_unreadable`.
@@ -420,24 +423,22 @@ A diagnostic that must say what set a field's value at a point (M3: `surface.gap
 
 ## 7. What a step returns (M2)
 
-A step exchanges whole fields as data (R19c) but returns rows and features, never a whole field
-(R21), and its rows are rows like any other in the field's order (R29). Whether it may declare a
-new field of its own is (open: needs ruling): R21 as written forbids it; `protocol.md` 5 asks the
-lead to amend R21 so that a new field the step declares is allowed and a field that already exists
-never is. The lead decides before M2; until then the rows, example and cases marked so below hang on it.
+A step exchanges whole arrays as data, never per point (R19c as R32 reads it). It returns rows on
+any field below it, features, and fields of its own; it never replaces a field that already exists
+(R32). Its rows are rows like any other in the field's order (R29).
 
 In the document it returns (`protocol.md` 5) a step may write:
 
 | May | May not |
 |---|---|
 | `then` rows on any field in its stratum, with `value` and `mask` formulas. They take the step's layer rank in the head (`authority.md` 4.1). | A row on a field of a higher layer: `field.step_layer`. |
-| (open: needs ruling, R21) A new field of its own, `base` or `file`, for its rows to read. Its `role` follows 2.1 like any field: a `keep_out` is legal; a second terrain is `surface.two_terrains`; a second `material` is `field.role_twice`. | `base`, `file`, `role`, `type`, `unit` or `tags` on a field declared outside its document: `field.step_base`. |
+| A new field of its own, `base` or `file`, for its rows to read. Its `role` follows 2.1 like any field: a `keep_out` is legal; a second terrain is `surface.two_terrains`; a second `material` is `field.role_twice`. | `base`, `file`, `role`, `type`, `unit` or `tags` on a field declared outside its document: `field.step_base`. |
 | Features, whose kinds write fields by their effects. | |
 
 A returned row's id is named `<step>#<id>` by the build (`identity.md` 2.4), so it cannot collide
 with a row the world wrote.
 
-Example (open: needs ruling, R21, for `[field.eroded]`): an erosion step at layer 1 reads `height` with `view = "head"` (the base, layer 0's `then`
+Example: an erosion step at layer 1 reads `height` with `view = "head"` (the base, layer 0's `then`
 rows and layer 1's written `then` rows), returns `[field.eroded]` with `file` set to its output, and
 `[field.height.then.erosion]` with `value = "= f('eroded')"`. That row sits in the head, before
 every effect (`authority.md` 4.1). It must sort after every row it read, else
@@ -638,13 +639,17 @@ in `fields/<name>.npy` differs between the builds lies in the union of those win
 | too small | a 1 by 4 PNG | `field.file_format` |
 | palette | palette PNG | `field.file_format` |
 | cubic | a 4 by 4 array file with one spike, `filter = "cubic"`, resolution half the raster's | values below 0 next to the spike, not clamped; edge posts read the edge sample repeated (vector in the fixture) |
-| step view | (open: needs ruling, R21, for field `seen`) base 10; a layer-0 kind effect `value = "= v + 2"`; a layer-1 step reads `height` with `view = "head"`, writes it as field `seen`, returns `value = "= f('seen')"` | 12, not 14: the effect is applied once |
+| step view | base 10; a layer-0 kind effect `value = "= v + 2"`; a layer-1 step reads `height` with `view = "head"`, writes it as field `seen`, returns `value = "= f('seen')"` | 12, not 14: the effect is applied once |
 | step two rows | a layer-1 step returns rows `p` (order 1) and `q` (order -1) on `height` | both read the same head view; `q` applies before `p` |
 | step full view | the step of "step view" reads `height` with `view = "full"` and returns rows on `height` | `authority.step_view` |
 | step neutral | step reads `height`, returns a row `value = "= v"` | equal to the build without the step |
 | step base | step returns `base` on `height`; `tags` on `height` | `field.step_base` each |
 | step layer | a layer-0 step returns a row on a field declared in layer 1 | `field.step_layer` |
-| step keep_out | (open: needs ruling, R21) step returns a new field with `role = "keep_out"` | builds; a scatter reads it |
+| step keep_out | step returns a new field with `role = "keep_out"` | builds; a scatter reads it |
+| step replaces | step returns `[field.height]` with `file`, `height` declared in the world | `field.step_base` |
+| float picture | `file = "h.tif"`, a 32-bit float TIFF | `field.file_format`, the hint naming `numpy.save` |
+| 16-bit extent | a 16-bit grey PNG, `range = [0, 50]`, `extent` the world's west half, `outside = -1` | west posts read their levels by `range`; east posts read -1 |
+| channel b | an RGB picture, `channel = "b"`, `nearest` | each post reads its sample's blue level by `range` |
 
 **M3**
 
@@ -680,10 +685,6 @@ effect; the replay's values equal the build's bit for bit. With base 3 and no ro
 
 ## Open
 
-- **Float pictures beyond our array file** (EXR, float TIFF). Decided by the first world that needs
-  one; challenge 31, `relief` in M2.
-- **A picture painting a material directly**, without a scalar field between. Decided by `relief`
-  in M2: does the extra field cost a reader anything.
 - **A picture passed through to the engine as a texture.** Decided in `build.md`.
 - **How a formula reads one material's weight.** Decided in `formulas.md` (a function, since a
   bare weights name has no single value).
@@ -691,14 +692,9 @@ effect; the replay's values equal the build's bit for bit. With base 3 and no ro
 - **Thresholds** 0.02 (mask on the ring), 0.1 m (coarse level) and 1e-6 (weights sum). Decided by
   M1 measures on `ford`.
 - **The post-count limit** for rasters (4.1). Decided by the M0 probe (`numbers.md`).
-- **Derived features** (a flood fill, a contour, a flow line made from a field). `authority.md` 8
-  holds the rules; whether a step or an engine operation makes them is decided in M2 by `vale`
-  and `basin`.
 - **Whole-map distance** (the spike's ten-minute compile). `formulas.md`'s `dist` cap bounds it per
   formula; whether a whole-extent distance field is an engine operation, and how it is computed per
   window, is decided by M1's `ford` timings.
-- **Routing over a cost field** (`geometry.md` 3.11 names this chapter as its default home).
-  Decided when M2 or M3 first needs a found course.
 - **Resampling an import's fields onto the parent's posts** (`numbers.md` 5.3). Decided in M4 by
   `strait`.
 - **Cross-references.** Section numbers in other chapters cited here are re-checked by the lead

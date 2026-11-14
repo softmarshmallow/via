@@ -1,0 +1,131 @@
+{
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 8,
+   "max": [
+    0.5,
+    1.0,
+    0.5
+   ],
+   "min": [
+    -0.5,
+    0.0,
+    -0.5
+   ],
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5121,
+   "count": 8,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 8,
+   "type": "VEC4"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5126,
+   "count": 1,
+   "type": "MAT4"
+  },
+  {
+   "bufferView": 4,
+   "componentType": 5123,
+   "count": 36,
+   "type": "SCALAR"
+  }
+ ],
+ "asset": {
+  "version": "2.0"
+ },
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteLength": 96,
+   "byteOffset": 0
+  },
+  {
+   "buffer": 0,
+   "byteLength": 32,
+   "byteOffset": 96
+  },
+  {
+   "buffer": 0,
+   "byteLength": 128,
+   "byteOffset": 128
+  },
+  {
+   "buffer": 0,
+   "byteLength": 64,
+   "byteOffset": 256
+  },
+  {
+   "buffer": 0,
+   "byteLength": 72,
+   "byteOffset": 320
+  }
+ ],
+ "buffers": [
+  {
+   "byteLength": 392,
+   "uri": "data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAgD8AAAC/AAAAvwAAgD8AAAC/AAAAvwAAAAAAAAA/AAAAPwAAAAAAAAA/AAAAPwAAgD8AAAA/AAAAvwAAgD8AAAA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAgD8AAAIAAQAAAAMAAgAEAAUABgAEAAYABwAAAAEABQAAAAUABAADAAcABgADAAYAAgAAAAQABwAAAAcAAwABAAIABgABAAYABQA="
+  }
+ ],
+ "meshes": [
+  {
+   "primitives": [
+    {
+     "attributes": {
+      "JOINTS_0": 1,
+      "POSITION": 0,
+      "WEIGHTS_0": 2
+     },
+     "indices": 4,
+     "mode": 4
+    }
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "skin": 0,
+   "translation": [
+    5,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "joint",
+   "translation": [
+    0,
+    3,
+    0
+   ]
+  }
+ ],
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0,
+    1
+   ]
+  }
+ ],
+ "skins": [
+  {
+   "inverseBindMatrices": 3,
+   "joints": [
+    1
+   ]
+  }
+ ]
+}

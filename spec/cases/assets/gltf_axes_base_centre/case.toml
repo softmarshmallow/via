@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "The same cube, default pivot: bounds [-0.5, -0.5, 0, 0.5, 0.5, 1], origin [1, 0, 0], asset.pivot_moved."
+milestone = 2
+actions   = ["list"]
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.list.file.bounds]
+stream  = "stdout"
+pointer = "/bounds"
+line    = 1
+value   = [-0.5, -0.5, 0, 0.5, 0.5, 1]
+
+[action.list.file.origin]
+stream  = "stdout"
+pointer = "/origin"
+line    = 1
+value   = [1, 0, 0]
+
+[action.list.diag.pivot_moved]
+code    = "asset.pivot_moved"
+subject = "asset.cube"

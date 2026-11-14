@@ -1,0 +1,9 @@
+[feature.east_cliff]
+kind = "cliff"
+drop = 11
+back = 40
+path = [[418, 320], [410, 250], [432, 176], [470, 120]]
+[feature.east_cliff_view]
+kind = "bookmark"
+at = [372, 236]
+toward = "east_cliff"

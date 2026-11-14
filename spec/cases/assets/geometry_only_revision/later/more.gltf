@@ -1,0 +1,101 @@
+{
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 8,
+   "max": [
+    0.5,
+    1.0,
+    0.5
+   ],
+   "min": [
+    -0.5,
+    0.0,
+    -0.5
+   ],
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 8,
+   "max": [
+    0.20000000298023224,
+    0.6000000238418579,
+    0.20000000298023224
+   ],
+   "min": [
+    -0.20000000298023224,
+    0.20000000298023224,
+    -0.20000000298023224
+   ],
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5123,
+   "count": 36,
+   "type": "SCALAR"
+  }
+ ],
+ "asset": {
+  "version": "2.0"
+ },
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteLength": 96,
+   "byteOffset": 0
+  },
+  {
+   "buffer": 0,
+   "byteLength": 96,
+   "byteOffset": 96
+  },
+  {
+   "buffer": 0,
+   "byteLength": 72,
+   "byteOffset": 192
+  }
+ ],
+ "buffers": [
+  {
+   "byteLength": 264,
+   "uri": "data:application/octet-stream;base64,AAAAvwAAAAAAAAC/AAAAPwAAAAAAAAC/AAAAPwAAgD8AAAC/AAAAvwAAgD8AAAC/AAAAvwAAAAAAAAA/AAAAPwAAAAAAAAA/AAAAPwAAgD8AAAA/AAAAvwAAgD8AAAA/zcxMvs3MTD7NzEy+zcxMPs3MTD7NzEy+zcxMPpqZGT/NzEy+zcxMvpqZGT/NzEy+zcxMvs3MTD7NzEw+zcxMPs3MTD7NzEw+zcxMPpqZGT/NzEw+zcxMvpqZGT/NzEw+AAACAAEAAAADAAIABAAFAAYABAAGAAcAAAABAAUAAAAFAAQAAwAHAAYAAwAGAAIAAAAEAAcAAAAHAAMAAQACAAYAAQAGAAUA"
+  }
+ ],
+ "meshes": [
+  {
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0
+     },
+     "indices": 2,
+     "mode": 4
+    },
+    {
+     "attributes": {
+      "POSITION": 1
+     },
+     "indices": 2,
+     "mode": 4
+    }
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0
+  }
+ ],
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ]
+}

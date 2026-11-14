@@ -1,0 +1,162 @@
+# Massif's expectations: measures, never bytes (R15; plan.md, "Measures compared with the oracle's
+# exported numbers, each with its protocol"). The oracle is fixtures/oracle/massif/ (the spike,
+# `worldc`, macOS arm64, one run). The spike's land was its own (numpy FFT noise, 45 rounds of
+# stream power); v1's is lib/land/uplands.py, so counts are compared as ranges, never equal.
+#
+# `measured` is what the example gave on 2026-11-15 on the M2 engine (release build, macOS arm64,
+# one run each, default threads, one fresh store, each change built `--against` the base into it),
+# read by
+# `python examples/massif/measure.py BUILD_ROOT`, which also holds each measure to `expect`. A value
+# outside `expect` is a question for the eye before it is a fault.
+#
+# Each table: what is counted, where it is read, the oracle's value, the range this example must
+# fall in, and the measured value.
+
+[protocol]
+build    = "via build examples/massif/world.toml [--change changes/<name>.toml]"
+read     = "manifest.json chunks[].instances (counts); features.json (kinds, bookmarks); diagnostics.json (codes)"
+machine  = "macOS arm64"
+oracle   = "fixtures/oracle/massif/summary.json, measures.json, diagnostics.json"
+
+# ---- the base build
+
+[measure.trees]
+what     = "instances of tree_oak and tree_pine (the spike's tree.broadleaf and tree.conifer)"
+oracle   = 68
+expect   = [60, 500]
+measured = 308      # 320 before lib/water's beck bank met the valley side (2026-11-15)
+
+[measure.tree_mix]
+what     = "tree_oak share of the trees: the scatter's weights are 4 to 2"
+oracle   = 0.53
+expect   = [0.55, 0.78]
+measured = 0.68
+
+[measure.rocks]
+what     = "instances of rock_a and rock_b (the spike's rock.boulder and rock.large)"
+oracle   = 15
+expect   = [5, 150]
+measured = 9       # 67 while lib/land/weather.py took tan(34 * pi / 180) of degrees, a slope of 1 in 97:
+                   # nearly every slope shed. With the repose angle read as degrees (the function table's
+                   # `tan`), only ground steeper than 34 degrees sheds, and 9 boulders stand on its talus
+
+[measure.houses]
+what     = "instances of house_low and house_wide (the spike's house.small and barn)"
+oracle   = 3
+expect   = [3, 3]
+measured = 3
+
+[measure.features]
+what     = "features by kind: bookmark, beck (the step's stream; the spike's guide), road"
+oracle   = { bookmark = 2, guide = 1, road = 1 }
+expect   = { bookmark = 6, beck = 1, road = 1 }
+measured = { bookmark = 6, beck = 1, road = 1 }
+
+[measure.relief]
+what     = "lowest and highest `height` over the extent, metres"
+oracle   = "none exported; the spike's bookmarks stand at 25.5 m (low on the lane) and 52.8 m (its head)"
+expect   = [[5, 25], [70, 100]]
+measured = [10.2, 87.9]
+
+[measure.road_eye]
+what     = "eye height above the datum of up_the_road (the spike's bm_lane, a quarter up the lane), metres"
+oracle   = 25.45
+expect   = [15, 45]
+measured = 30.72
+
+[measure.overlook_eye]
+what     = "eye height above the datum of over_valley (the spike's bm_over, 6 m up at the lane's head), metres"
+oracle   = 58.78
+expect   = [40, 80]
+measured = 62.34
+
+[measure.far_home]
+what     = "step.homes.far_from_road warnings: the barn, and only the barn (the spike's homes:far_from_road)"
+oracle   = ["high_barn"]
+expect   = ["high_barn"]
+measured = ["high_barn"]
+
+[measure.seam_grade]
+what     = "the spike's seam.grade warning on its lane at a stitched seam"
+oracle   = 1
+expect   = 0
+measured = 0
+why      = "v1 has no seams: the road's bed is one effect over the whole course"
+
+[measure.trees_in_clearing]
+what     = "step.checks.trees_in_clearing for woods (lib/review)"
+expect   = 0
+measured = 0
+
+[measure.pad_relief]
+what     = "step.checks.cottage_relief for each grounded house, metres (lib/review)"
+expect   = [0, 0.05]
+measured = { cottage_a = 0, cottage_b = 0, high_barn = 0 }
+
+[measure.beck_wet_ratio]
+what     = "the beck's water area within 8 m of its line over its length times its width (lib/water: the water held to the channel the bed cut)"
+expect   = [0.5, 1.2]
+measured = 1.13
+
+[measure.water_step]
+what     = "step.checks.water_step for the stream, metres (lib/review)"
+expect   = [0, 0.6]
+measured = 0.389
+
+# ---- the changes: what must follow, what must hold (the M2 acceptance rows that apply)
+#
+# measure.py holds each row's `steps` (each step node's status in BUILD_ROOT/<change>.run.json),
+# `counts` (instance counts after the change) and `revised` (instances per asset.revised finding);
+# `measured` is the prose of the same build. The lints (homes, checks) read the build, so they run
+# whenever anything they read changed.
+
+[change.new_seed]
+file     = "changes/new_seed.toml"
+row      = "A new seed moves the valley and what stands on it."
+follows  = "uplands and weather run again; the stream, the road (both ends stand on the stream), both cottages, every bookmark standing on the road or the stream, the woods and the fallen rock all move; the barn, written `at`, stays"
+holds    = "every bookmark is still at its meeting; the barn is still the only far home"
+steps    = { uplands = "ran", weather = "ran", homes = "ran", checks = "ran" }
+counts   = { trees = 283, rocks = 4 }
+measured = "every step ran (cause statements: the seed); trees 308 -> 283, rocks 9 -> 4; the barn still the only far home"
+
+[change.steeper_repose]
+file     = "changes/steeper_repose.toml"
+row      = "A step re-runs only when what it read changed: the edit is a param the weather step reads."
+follows  = "weather runs again; uplands is reused (its request and trace are unchanged); talus and the fallen rock follow"
+holds    = "uplands' land and stream byte for byte"
+steps    = { uplands = "reused", weather = "ran", homes = "ran", checks = "ran" }
+counts   = { trees = 311, rocks = 11 }
+measured = "weather ran (cause statements: its param), uplands reused; the talus moves the ground, so features.json changes (uplands#stream's draped heights, at_mouth, by_water) and both lints ran; rocks 9 -> 11, trees 308 -> 311"
+
+[change.cottage_moved]
+file     = "changes/cottage_moved.toml"
+row      = "A step re-runs only when what it read changed: an edit in the weather step's own layer that it does not read."
+follows  = "cottage_b, its pad and the fields the pad writes; the lints"
+holds    = "uplands and weather reused: weather reads the terrain's head view, and a pad is an effect, outside it"
+steps    = { uplands = "reused", weather = "reused", homes = "ran", checks = "ran" }
+counts   = { trees = 309, rocks = 9 }
+measured = "cottage_b moved along the road from t 0.62 to 0.7; uplands and weather reused, homes and checks ran; trees 308 -> 309 (its pad's keep-out moved)"
+
+[change.denser_wood]
+file     = "changes/denser_wood.toml"
+row      = "A step re-runs only when what it read changed: an edit to a layer no step reads."
+follows  = "every woods instance removed and re-laid on the 6 m lattice (s7000_ to s6000_); the lints"
+holds    = "uplands, weather and every terrain-layer node reused"
+steps    = { uplands = "reused", weather = "reused", homes = "ran", checks = "ran" }
+counts   = { trees = 354, rocks = 9 }
+measured = "trees 308 -> 354; uplands and weather reused, homes and checks ran"
+
+[change.revised]
+file     = "changes/revised.toml"
+row      = "A revised asset names every instance it affects."
+follows  = "asset.revised for house_low (2 instances: cottage_a, cottage_b) and tree_pine (every woods pine), each fact old and new; both cottages' pads grow; trees that now overlap give way; the lints, which read the build, run"
+holds    = "world text untouched; no generate step runs again"
+steps    = { uplands = "reused", weather = "reused", homes = "ran", checks = "ran" }
+counts   = { trees = 307, rocks = 9 }
+revised  = { house_low = 2, tree_pine = 100 }
+measured = "asset.revised: house_low 2 instances, tree_pine 100 instances, both named in full; trees 308 -> 307 (one tree gives way to a grown pad or pine); uplands and weather reused, homes and checks ran"
+
+[change.moved_mouth]
+row      = "A moved river mouth resettles."
+applies  = false
+why      = "massif states no river: its stream is derived by the uplands step, and moves only with the land (new_seed moves the mouth 64 m along the edge). The stated-river row is basin's (`move_haven`). Moving the land's fall instead (`fall = 180`) leaves the mouth within 6 m and shows lib/land's rows-and-columns drainage (the M2 library requests, TODO.md)."

@@ -1,0 +1,51 @@
+format    = "via-case-1"
+summary   = "A worker reading height only through derive.route; a row on height below its layer edited; then a feature above its layer moved: ran; then reused."
+milestone = 2
+actions   = ["program", "trust", "first", "row", "row_edited", "move", "moved"]
+
+# derived.md 4: each field a compute reads is traced as a build.field read of that view, so the
+# edited row runs the step again even where the course would not change.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+[action.first.nodes]
+ran_includes = ["step:gen"]
+
+
+[action.row]
+replace = "world.toml"
+find    = '''base = "= x"'''
+with    = '''base = "= x"
+
+[field.height.then.lift]
+value = "= v + 1"'''
+
+[action.row_edited]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+[action.row_edited.nodes]
+ran_includes = ["step:gen"]
+
+
+[action.move]
+replace = "top.toml"
+find    = "at   = [1, 1]"
+with    = "at   = [6, 6]"
+
+[action.moved]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+[action.moved.nodes]
+not_ran = ["step:gen"]

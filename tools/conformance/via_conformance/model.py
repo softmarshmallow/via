@@ -48,6 +48,9 @@ NAMED_CHECKS: dict[str, tuple[set[str], set[str]]] = {
     "names_same": ({"first", "second"}, set()),
     "cells_valid": ({"path", "input", "network"}, {"bound"}),
     "sample_terrain": ({"path", "input", "field", "manifest"}, set()),
+    "course_valid": ({"path", "feature", "start", "end", "min_segment"}, {"passes"}),
+    "entry_causes": ({"path", "table", "prefix"}, {"named"}),
+    "post_step_at_most": ({"path", "resolution", "window", "limit"}, {"origin"}),
 }
 
 
@@ -277,7 +280,8 @@ def _parse_file_check(t: dict[str, Any], where: str) -> None:
 def _parse_diag(t: dict[str, Any], where: str) -> None:
     allowed = {
         "code", "severity", "subject", "file", "line", "column", "bytes", "argument", "position",
-        "position_within", "count", "occurrences", "data", "related", "chain", "failed_on", "records", "from",
+        "position_within", "count", "occurrences", "data", "data_has", "data_below", "related", "chain",
+        "failed_on", "records", "from",
     }
     _keys(t, where, {"code"}, allowed - {"code"})
     _str(t["code"], f"{where}.code")
@@ -317,6 +321,13 @@ def _parse_diag(t: dict[str, Any], where: str) -> None:
     if "data" in t:
         _table(t["data"], f"{where}.data")
         _check_value_like(t["data"], f"{where}.data")
+    if "data_has" in t:
+        _expect_type(t["data_has"], (list,), f"{where}.data_has", "a list of member names")
+        for i, n in enumerate(t["data_has"]):
+            _str(n, f"{where}.data_has[{i}]")
+    if "data_below" in t:
+        for k, v in _table(t["data_below"], f"{where}.data_below").items():
+            _str(v, f"{where}.data_below.{k}")
     if "related" in t:
         _expect_type(t["related"], (list,), f"{where}.related", "a list of tables")
         for i, r in enumerate(t["related"]):

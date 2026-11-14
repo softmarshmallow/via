@@ -1,0 +1,118 @@
+{
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 6,
+   "max": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "min": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5123,
+   "count": 9,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5123,
+   "count": 5,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5123,
+   "count": 4,
+   "type": "SCALAR"
+  }
+ ],
+ "asset": {
+  "version": "2.0"
+ },
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteLength": 72,
+   "byteOffset": 0
+  },
+  {
+   "buffer": 0,
+   "byteLength": 18,
+   "byteOffset": 72
+  },
+  {
+   "buffer": 0,
+   "byteLength": 10,
+   "byteOffset": 92
+  },
+  {
+   "buffer": 0,
+   "byteLength": 8,
+   "byteOffset": 104
+  }
+ ],
+ "buffers": [
+  {
+   "byteLength": 112,
+   "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAAAAAAIA/AACAPwAAAAAAAIA/AAABAAIAAAACAAMAAAAEAAUAAAAAAAEAAgADAAQAAAAAAAEAAgADAA=="
+  }
+ ],
+ "meshes": [
+  {
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0
+     },
+     "indices": 1,
+     "mode": 4
+    },
+    {
+     "attributes": {
+      "POSITION": 0
+     },
+     "indices": 2,
+     "mode": 5
+    },
+    {
+     "attributes": {
+      "POSITION": 0
+     },
+     "indices": 3,
+     "mode": 6
+    }
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0
+  },
+  {
+   "mesh": 0,
+   "translation": [
+    2,
+    0,
+    0
+   ]
+  }
+ ],
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0,
+    1
+   ]
+  }
+ ]
+}

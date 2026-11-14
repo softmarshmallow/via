@@ -1,0 +1,74 @@
+format    = "via-case-1"
+summary   = "A worker returning derive.where and derive.route results as features beside the same where, holds and route in text, all over height's head view with no rows: each returned shape equals its text twin."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# Features sort by name: `course` 0, `found#leg` 1, `found#pond` 2, `lake` 3 (the step's keys
+# differ from the text's names, which it sees: protocol.md 5, `protocol.key_shadows`). The step's
+# lake is returned as a one-ring region; its outer ring's first vertex is compared with the text
+# lake's. (open) "byte for byte" is asserted by these members only: no check compares two
+# members of one file.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.text_lake_shore]
+path    = "build/w/features.json"
+pointer = "/features/3/pieces/0/outer/0"
+value   = [0.5, 4]
+
+[action.build.file.step_lake_shore]
+path    = "build/w/features.json"
+pointer = "/features/2/pieces/0/outer/0"
+value   = [0.5, 4]
+
+[action.build.file.text_0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.build.file.text_0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 0
+
+[action.build.file.text_1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 2
+
+[action.build.file.text_1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 1
+
+[action.build.file.step_0_x]
+path    = "build/w/features.json"
+pointer = "/features/1/points/0/0"
+value   = 0
+
+[action.build.file.step_0_y]
+path    = "build/w/features.json"
+pointer = "/features/1/points/0/1"
+value   = 0
+
+[action.build.file.step_1_x]
+path    = "build/w/features.json"
+pointer = "/features/1/points/1/0"
+value   = 2
+
+[action.build.file.step_1_y]
+path    = "build/w/features.json"
+pointer = "/features/1/points/1/1"
+value   = 1

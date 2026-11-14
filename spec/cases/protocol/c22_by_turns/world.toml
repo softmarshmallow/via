@@ -1,0 +1,16 @@
+name       = "m2"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[step.look]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/look.py"]
+worker  = true
+
+[change.bump.field.height.then.lift]
+value = "= v + 1"

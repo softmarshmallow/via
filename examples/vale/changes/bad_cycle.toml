@@ -1,0 +1,2 @@
+[field.cover]
+base = "= f('grass') * 0.5"

@@ -1,0 +1,68 @@
+format    = "via-case-1"
+summary   = "Build with and without a change by turns, three times: the step runs twice in all."
+milestone = 2
+actions   = ["program", "trust", "plain0", "bumped0", "plain1", "bumped1", "plain2", "bumped2"]
+
+# Both traces are kept under the one static key (graph.md 5.1), so each later build finds the one
+# whose answers match.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.plain0]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/a"]
+exit = 0
+out  = "build/a"
+diagnostics = "includes"
+[action.plain0.nodes]
+ran_includes = ["step:look"]
+
+
+[action.bumped0]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--change", "bump", "--out", "build/b"]
+exit = 0
+out  = "build/b"
+diagnostics = "includes"
+[action.bumped0.nodes]
+ran_includes = ["step:look"]
+
+
+[action.plain1]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/a"]
+exit = 0
+out  = "build/a"
+diagnostics = "includes"
+[action.plain1.nodes]
+not_ran = ["step:look"]
+
+
+[action.bumped1]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--change", "bump", "--out", "build/b"]
+exit = 0
+out  = "build/b"
+diagnostics = "includes"
+[action.bumped1.nodes]
+not_ran = ["step:look"]
+
+
+[action.plain2]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/a"]
+exit = 0
+out  = "build/a"
+diagnostics = "includes"
+[action.plain2.nodes]
+not_ran = ["step:look"]
+
+
+[action.bumped2]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--change", "bump", "--out", "build/b"]
+exit = 0
+out  = "build/b"
+diagnostics = "includes"
+[action.bumped2.nodes]
+not_ran = ["step:look"]

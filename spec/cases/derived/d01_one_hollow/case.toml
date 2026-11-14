@@ -1,0 +1,46 @@
+format    = "via-case-1"
+summary   = "twin; lake with where = 1.5 - height and holds = [2, 4]: one piece, holding (2, 4) and not (6, 4), its rings those of the piece holding (2, 4) of the same where without holds."
+milestone = 2
+actions   = ["build"]
+
+# Features sort by name: `all` (the where alone) is 0, `lake` 1. The hollow round (2, 4) is
+# the diamond |x - 2| + |y - 4| < 1.5; its least vertex is the crossing at (0.5, 4), and the
+# other hollow's would be (4.5, 4), so the first outer vertex says which piece was kept. (open)
+# "its rings equal" is asserted by that vertex and the piece counts: no check compares two
+# members of one file.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.all_pieces]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/pieces"
+count   = 2
+
+[action.build.check.lake_pieces]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/1/pieces"
+count   = 1
+
+[action.build.file.lake_west]
+path    = "build/w/features.json"
+pointer = "/features/1/pieces/0/outer/0"
+value   = [0.5, 4]
+
+[action.build.file.all_west]
+path    = "build/w/features.json"
+pointer = "/features/0/pieces/0/outer/0"
+value   = [0.5, 4]
+
+[action.build.diag.no_dry]
+code    = "derive.dry"
+records = 0
+
+[action.build.diag.no_open]
+code    = "derive.open"
+records = 0

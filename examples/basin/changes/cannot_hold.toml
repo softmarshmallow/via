@@ -1,0 +1,10 @@
+# Two statements the land cannot honour: a lake 24 m above the level its hollow holds, and a river
+# stated from the shore up into the hills. The build says so for each, with where and what would
+# hold instead (R14; lib/terrain's lint), and exits 1.
+[feature.tarn]
+level = 96
+
+[feature.river]
+starts_at = "haven"
+ends_at   = "spring"
+path      = [[1750, 1200], [1900, 2100]]

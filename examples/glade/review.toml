@@ -1,0 +1,50 @@
+# The review layer: a ground view at each meeting (R17), and the one lint that holds a project rule.
+# Bookmarks stand at the review library's eye height (1.7 m) unless they say otherwise.
+
+[feature.deep_wood]                       # a guide: the point the wood's view looks at
+at = [30, 150]
+
+[feature.upstream]                        # a guide on the stream, so the bank's view follows it
+on = { ref = "stream", t = 0.42 }
+
+[feature.in_trees]                        # the track where it comes out of the wood
+kind   = "bookmark"
+on     = { ref = "track", t = 0.25 }
+toward = "track.end"
+
+[feature.to_door]                         # from the track to the cottage
+kind   = "bookmark"
+on     = { ref = "track", t = 0.75 }
+toward = "cottage"
+
+[feature.yard]                            # from the track's end across the yard to the shed
+kind   = "bookmark"
+on     = { ref = "track", t = 0.97 }
+toward = "shed"
+
+[feature.wood_edge]                       # from the glade into the wood
+kind   = "bookmark"
+at     = [60, 120]
+toward = "deep_wood"
+
+[feature.on_bank]                         # up the stream from its west bank
+kind   = "bookmark"
+on     = { ref = "stream", t = 0.57, offset = -8 }
+toward = "upstream"
+
+[feature.at_mouth]                        # down the stream to where it leaves the world
+kind   = "bookmark"
+on     = { ref = "stream", t = 0.85, offset = 3 }    # inside the beck's bank keep_out: no tree at the eye
+toward = "stream.end"
+
+[feature.over]                            # the plan, from above (R17: the plan only)
+kind       = "bookmark"
+at         = [150, 6]
+toward     = "middle"
+eye_height = 75
+
+[step.homes]                              # every building within reach of the track (lib/review/near.py)
+when    = "lint"
+worker  = true                            # its reads are traced: an edit it does not read re-runs nothing
+command = ["python", "-m", "viasdk", "lib:review/near.py"]
+params  = { assets = ["@building"], kinds = ["lane"], within = 30 }

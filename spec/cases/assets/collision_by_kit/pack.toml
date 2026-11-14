@@ -1,0 +1,13 @@
+[taxon."building"]
+defaults = { collision = "mesh" }
+
+[taxon."building/house"]
+
+[asset.house]
+file  = "cube.gltf"
+taxon = "building/house"
+
+[asset.box]
+primitive = "box"
+size      = [1, 1, 1]
+collision = "box"

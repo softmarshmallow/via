@@ -1,0 +1,11 @@
+[asset.cube]
+primitive = "box"
+size      = [1, 1, 1]
+
+[asset.post]
+primitive = "box"
+size      = [0.2, 0.2, 1]
+
+[asset.stone]
+primitive = "sphere"
+size      = [1, 1, 1]

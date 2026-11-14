@@ -6,6 +6,7 @@
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use via_num as num;
 
 use rayon::prelude::*;
 
@@ -93,7 +94,7 @@ pub fn merge_shallow_depressions(
         while let Some(c) = queue.pop_front() {
             let cu = c as usize;
             component.push(c);
-            max_depth = max_depth.max(h_route[cu] - h_true[cu]);
+            max_depth = num::max(max_depth, h_route[cu] - h_true[cu]);
             grid.for_neighbors(c, |nb, _| {
                 let nbu = nb as usize;
                 if !seen[nbu] && h_route[nbu] - h_true[nbu] > 0.0 {
@@ -186,7 +187,7 @@ impl MfdGraph {
                     let drop = hi - h_route[nb as usize];
                     if drop > 0.0 {
                         let dist = fac * grid.dx;
-                        edges.push((nb, (drop / dist).powf(exponent), dist));
+                        edges.push((nb, num::pow(drop / dist, exponent), dist));
                     }
                 });
                 // A loud assert, not debug-only: a stranded cell would be a
@@ -205,6 +206,17 @@ impl MfdGraph {
                     q[i as usize] >= q_min && !flooded[i as usize]
                 });
                 if channelized {
+                    // Convergent, but not locked to the grid: the flow
+                    // takes the surface's own downhill direction and is
+                    // split between the two lower neighbours 45 degrees
+                    // apart that bracket it, by how it decomposes onto
+                    // them (Tarboton 1997's D-infinity, in vector form, so
+                    // no trigonometry). A channel on a smooth slope then
+                    // runs the slope's way, not along a row, a column or a
+                    // diagonal, as a single steepest edge (D8) would make it.
+                    if let Some(split) = bracketing_split(grid, h_route, i, &edges) {
+                        return split;
+                    }
                     // Convergent: single steepest edge (max weight; ties to
                     // the lower index, the project-wide tie policy).
                     let mut best = 0usize;
@@ -313,6 +325,69 @@ impl MfdGraph {
         &self.donor_list
             [self.donor_off[c as usize] as usize..self.donor_off[c as usize + 1] as usize]
     }
+}
+
+/// The downhill direction of `h` at cell `i` (central differences, one-sided at the border), split
+/// onto the two lower neighbours among `edges` (target, weight, distance) 45 degrees apart whose
+/// cone holds it: weights proportional to the direction's components along each, summing to 1.
+/// `None` when the surface is flat there or no such pair holds it.
+fn bracketing_split(
+    grid: &Grid,
+    h: &[f64],
+    i: u32,
+    edges: &[(u32, f64, f64)],
+) -> Option<Vec<(u32, f64, f64)>> {
+    let (x, y) = grid.xy(i);
+    let at = |xx: u32, yy: u32| h[grid.idx(xx, yy) as usize];
+    let (xl, xr) = (x.saturating_sub(1), (x + 1).min(grid.w - 1));
+    let (yl, yr) = (y.saturating_sub(1), (y + 1).min(grid.h - 1));
+    if xr == xl || yr == yl {
+        return None;
+    }
+    let gx = (at(xr, y) - at(xl, y)) / (f64::from(xr - xl) * grid.dx);
+    let gy = (at(x, yr) - at(x, yl)) / (f64::from(yr - yl) * grid.dx);
+    let (fx, fy) = (-gx, -gy);
+    if fx == 0.0 && fy == 0.0 {
+        return None;
+    }
+    let offset = |nb: u32| {
+        let (nx, ny) = grid.xy(nb);
+        (i64::from(nx) - i64::from(x), i64::from(ny) - i64::from(y))
+    };
+    for (a, ea) in edges.iter().enumerate() {
+        for eb in &edges[a + 1..] {
+            let (oa, ob) = (offset(ea.0), offset(eb.0));
+            // One along an axis, one diagonal, 45 degrees apart.
+            let (la, lb) = (oa.0 * oa.0 + oa.1 * oa.1, ob.0 * ob.0 + ob.1 * ob.1);
+            if la == lb || oa.0 * ob.0 + oa.1 * ob.1 <= 0 {
+                continue;
+            }
+            let len = |l: i64| {
+                if l == 1 {
+                    1.0
+                } else {
+                    std::f64::consts::SQRT_2
+                }
+            };
+            let ua = (oa.0 as f64 / len(la), oa.1 as f64 / len(la));
+            let ub = (ob.0 as f64 / len(lb), ob.1 as f64 / len(lb));
+            let det = ua.0 * ub.1 - ua.1 * ub.0;
+            let ca = (fx * ub.1 - fy * ub.0) / det;
+            let cb = (ua.0 * fy - ua.1 * fx) / det;
+            if ca >= 0.0 && cb >= 0.0 && ca + cb > 0.0 {
+                let s = ca + cb;
+                let mut out = Vec::with_capacity(2);
+                if ca > 0.0 {
+                    out.push((ea.0, ca / s, ea.2));
+                }
+                if cb > 0.0 {
+                    out.push((eb.0, cb / s, eb.2));
+                }
+                return Some(out);
+            }
+        }
+    }
+    None
 }
 
 /// MFD discharge: each cell's weight plus all upstream flux, split along
@@ -461,7 +536,7 @@ mod tests {
             } else {
                 let cx = (x as f64 - 3.5).abs();
                 let cy = (y as f64 - 3.5).abs();
-                h[i as usize] = 10.0 - cx.max(cy); // rim high, pit at centre
+                h[i as usize] = 10.0 - num::max(cx, cy); // rim high, pit at centre
             }
         }
         (grid, h, seed)
@@ -492,5 +567,46 @@ mod tests {
             .map(|i| area[i])
             .sum();
         assert_eq!(total_at_bases, grid.n() as u64);
+    }
+
+    #[test]
+    fn a_channel_on_a_slope_off_the_grid_splits_its_water_the_slope_s_way() {
+        // A plane falling toward +y and a little toward +x (about 20 degrees off the column):
+        // a single steepest edge would send every channel straight down the column; the split
+        // sends most down the column and the rest down the diagonal beside it.
+        let grid = Grid::new(16, 10.0);
+        let n = grid.n();
+        let (ex, ey) = (0.342, 0.940);
+        let h: Vec<f64> = (0..n as u32)
+            .map(|i| {
+                let (x, y) = grid.xy(i);
+                100.0 - ex * f64::from(x) - ey * f64::from(y)
+            })
+            .collect();
+        let base: Vec<bool> = (0..n as u32).map(|i| grid.is_border(i)).collect();
+        let q = vec![1.0e9; n];
+        let flooded = vec![false; n];
+        let g = MfdGraph::build_hybrid(&grid, &h, &base, 1.1, &q, 1.0, &flooded);
+        let c = grid.idx(8, 8);
+        let edges: Vec<(u32, f64, f64)> = g.edges(c).collect();
+        assert_eq!(edges.len(), 2, "{edges:?}");
+        let down = edges
+            .iter()
+            .find(|e| e.0 == grid.idx(8, 9))
+            .expect("down the column");
+        let diag = edges
+            .iter()
+            .find(|e| e.0 == grid.idx(9, 9))
+            .expect("down the diagonal");
+        assert!(down.1 > diag.1 && diag.1 > 0.2, "{edges:?}");
+        assert!((down.1 + diag.1 - 1.0).abs() < 1e-12);
+        // Falling exactly down the column, all of it goes down the column.
+        let col: Vec<f64> = (0..n as u32)
+            .map(|i| 100.0 - f64::from(grid.xy(i).1))
+            .collect();
+        let g = MfdGraph::build_hybrid(&grid, &col, &base, 1.1, &q, 1.0, &flooded);
+        let edges: Vec<(u32, f64, f64)> = g.edges(c).collect();
+        assert_eq!(edges.len(), 1, "{edges:?}");
+        assert_eq!(edges[0].0, grid.idx(8, 9));
     }
 }

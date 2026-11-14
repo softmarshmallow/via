@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "via step commit on a build with an error: protocol.commit_refused (error), exit 1; nothing written."
+milestone = 2
+actions   = ["program", "trust", "commit"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.commit]
+via         = ["step", "commit", "world.toml", "--out", "build/c"]
+exit        = 1
+diagnostics = "includes"
+
+[action.commit.diag.refused]
+code     = "protocol.commit_refused"
+severity = "error"
+
+[action.commit.file.gen]
+path   = "gen/gen"
+exists = false

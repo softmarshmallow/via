@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "d01, a guide on = { ref = lake, t = 0.25 }; a change moving holds to [6, 4]: the region is the other hollow; the guide moved, its cause feature.lake.holds."
+milestone = 2
+actions   = ["base", "east"]
+
+# Features sort by name: `buoy` 0, `lake` 1. The eastern hollow's least vertex is (4.5, 4).
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.east]
+via         = ["build", "world.toml", "--change", "east", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.east.file.lake_east]
+path    = "build/w/features.json"
+pointer = "/features/1/pieces/0/outer/0"
+value   = [4.5, 4]
+
+[action.east.check.buoy]
+fn     = "changes_inside"
+path   = "build/w/changes.json"
+prefix = "buoy"
+at     = [4, 4]
+radius = 6
+what   = ["moved"]
+cause  = { cause = "feature.lake.holds" }

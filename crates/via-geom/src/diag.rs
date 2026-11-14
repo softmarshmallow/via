@@ -42,6 +42,8 @@ pub enum Code {
     PinsOverlap,
     NearNone,
     NumOutOfRange,
+    DeriveDry,
+    DeriveOpen,
 }
 
 impl Code {
@@ -80,6 +82,8 @@ impl Code {
             Code::PinsOverlap => id::PINS_OVERLAP,
             Code::NearNone => id::NEAR_NONE,
             Code::NumOutOfRange => codes::num::OUT_OF_RANGE,
+            Code::DeriveDry => codes::derive::DRY,
+            Code::DeriveOpen => codes::derive::OPEN,
         }
     }
 
@@ -119,6 +123,10 @@ impl Code {
             Code::PinsOverlap => "Move one of the pins.",
             Code::NearNone => "Move `near` onto a thing the maker made.",
             Code::NumOutOfRange => "Use coordinates within plus or minus 2147483647 mm.",
+            Code::DeriveDry => "Move `holds` into a piece, or change the condition.",
+            Code::DeriveOpen => {
+                "Change the condition so the piece closes inside; `derive.spill` gives a level that does."
+            }
             Code::Overlap
             | Code::DeadEnd
             | Code::OffsetSplit

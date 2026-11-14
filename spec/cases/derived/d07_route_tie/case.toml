@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "As d06, ends at (0, 0) and (2, 1): the search keeps (0, 0), (1, 0), (2, 1) by its tie rule, and simplified the course is (0, 0), (2, 1)."
+milestone = 2
+actions   = ["build"]
+
+# Features sort by name: `course` 0, `p_end` 1, `p_start` 2. A path's `points` are [x, y, z];
+# x and y are checked. `smooth` is not written, so the course is its points (derived.md 3 step 6).
+# Both courses cost 1 + sqrt(2); (1, 0) is settled before (1, 1), and (2, 1)'s predecessor
+# changes only on a strictly smaller distance. (1, 0) lies 1/sqrt(5) m from the line (0, 0) to (2, 1),
+# within half a spacing, so step 5 drops it.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.count]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 2
+
+[action.build.file.p0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.build.file.p0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 0
+
+[action.build.file.p1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 2
+
+[action.build.file.p1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 1

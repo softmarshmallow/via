@@ -1,0 +1,4 @@
+# The same starter models, through a pack whose oak has been revised since its facts were accepted:
+# its trunk's footprint is wider. The build names every oak it places (asset.revised), and the
+# change report names each one with the fact old and new (docs/plan.md M2; assets.md 4.2, 7).
+pack = "packs/revised.toml"

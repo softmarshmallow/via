@@ -916,6 +916,15 @@ class MatchingTests(unittest.TestCase):
         doc = diags.DiagDoc(0, [{"code": "a.b"}], [])
         self.assertEqual(diags.match({"x": {"code": "a.b", "count": 1}}, doc, "exact"), [])
 
+    def test_data_has_and_below(self) -> None:
+        doc = diags.DiagDoc(1, [{"code": "a.b", "data": {"level": 12, "would_hold": 2.5, "gone": None}}], [])
+        self.assertEqual(diags.match({"x": {"code": "a.b", "data_has": ["would_hold"]}}, doc, "includes"), [])
+        self.assertTrue(diags.match({"x": {"code": "a.b", "data_has": ["gone"]}}, doc, "includes"))
+        self.assertTrue(diags.match({"x": {"code": "a.b", "data_has": ["missing"]}}, doc, "includes"))
+        self.assertEqual(diags.match({"x": {"code": "a.b", "data_below": {"would_hold": "level"}}}, doc, "includes"), [])
+        self.assertTrue(diags.match({"x": {"code": "a.b", "data_below": {"level": "would_hold"}}}, doc, "includes"))
+        self.assertTrue(diags.match({"x": {"code": "a.b", "data_below": {"would_hold": "missing"}}}, doc, "includes"))
+
     def test_position_within(self) -> None:
         doc = diags.DiagDoc(1, [{"code": "a.b", "position": [143, 178.4]}, {"code": "a.c"}], [])
         self.assertEqual(diags.match({"x": {"code": "a.b", "position_within": [135, 170, 151, 187]}}, doc, "includes"), [])

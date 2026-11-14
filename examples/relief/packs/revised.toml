@@ -1,0 +1,115 @@
+# relief's revised pack: lib/packs/starter's models, with two declared facts revised since they
+# were accepted (marked `revised`).
+# Its facts file, revised.facts.toml, was written by `via pack accept packs/revised.toml` from this
+# text as it was then; the changes/revised_assets.toml change swaps it in after the revision below,
+# so the build compares the revised text with what was accepted (assets.md 4.2).
+
+root = "../../../lib/packs/starter"
+
+[taxon."building/house"]
+[taxon."building/shed"]
+[taxon."building"]
+defaults = { collision = "box", max_relief = 0.6 }
+
+[taxon."plant/tree"]
+defaults = { collision = "hull" }
+
+[taxon."plant/bush"]
+[taxon."plant/fern"]
+[taxon."plant"]
+defaults = { solidity = "none" }
+
+[taxon."rock"]
+defaults = { collision = "hull" }
+
+[taxon."prop/box"]
+[taxon."prop/lamp"]
+[taxon."prop/fence"]
+[taxon."prop"]
+defaults = { collision = "box" }
+
+[asset.house_low]                         # revised: the walls are now drawn at the eaves' line
+file      = "house_low.glb"
+taxon     = "building/house"
+footprint = [[-4.3, -3.3], [4.3, -3.3], [4.3, 3.3], [-4.3, 3.3]]
+
+[asset.house_low.mount.door]              # revised: the door with the wall
+at = [0, 3.3]
+
+[asset.house_wide]
+file      = "house_wide.glb"
+taxon     = "building/house"
+footprint = [[-5.5, -3.5], [5.5, -3.5], [5.5, 3.5], [-5.5, 3.5]]
+
+[asset.house_wide.mount.door]
+at = [0, 3.5]
+
+[asset.shed_gable]
+file  = "shed_gable.glb"
+taxon = "building/shed"
+
+[asset.tree_oak]
+file      = "tree_oak.glb"
+detail    = ["tree_oak_low.glb"]
+taxon     = "plant/tree"
+solidity  = "solid"
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]   # the trunk, not the crown
+
+[asset.tree_oak_large]
+file      = "tree_oak_large.glb"
+taxon     = "plant/tree"
+solidity  = "solid"
+footprint = [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]]
+tags      = ["landmark"]
+
+[asset.tree_pine]
+file      = "tree_pine.glb"
+taxon     = "plant/tree"
+solidity  = "solid"
+footprint = [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]]   # revised: a thicker trunk
+tags      = ["winter"]
+
+[asset.bush_round]
+file  = "bush_round.glb"
+taxon = "plant/bush"
+
+[asset.bush_wide]
+file  = "bush_wide.glb"
+taxon = "plant/bush"
+
+[asset.fern_low]
+file  = "fern_low.glb"
+taxon = "plant/fern"
+
+[asset.rock_a]
+file  = "rock_a.glb"
+taxon = "rock"
+
+[asset.rock_b]
+file  = "rock_b.glb"
+taxon = "rock"
+
+[asset.box_small]
+file  = "box_small.glb"
+taxon = "prop/box"
+
+[asset.lamp_post]
+file  = "lamp_post.glb"
+taxon = "prop/lamp"
+
+[asset.fence_post]
+file  = "fence_post.glb"
+taxon = "prop/fence"
+
+[material.grass]
+colour = [0.2, 0.4, 0.1]
+
+[material.rock]
+colour = [0.45, 0.43, 0.4]
+
+# The starter pack's paints that lib/land/ground.md's shore, shingle and track rows use.
+[material.gravel]
+colour = [0.36, 0.33, 0.28]
+
+[material.earth]
+colour = [0.3, 0.22, 0.14]

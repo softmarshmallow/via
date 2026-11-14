@@ -611,7 +611,8 @@ carries its subject and the file and line of the text at fault.
 **Selection**
 
 10. (M1) two pins `on = { of = "stones", near }`, where `stones` has density 0; one
-    `identity.near_none` at `stones` listing both pins, exit 1.
+    `identity.near_none` at `stones` listing both pins, exit 1. (M2) two features `on = { of =
+    "stones", class = "piece", near }`; the same, one record listing both (case `near_none_once`).
 11. (M1) a pin `on = { of = "trees", near }`; thin `density` so the selected tree goes; build;
     `identity.reselected` names both trees in the run report, not in `diagnostics.json`, exit 0. The
     same world built in a fresh directory gives the same `diagnostics.json`.

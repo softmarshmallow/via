@@ -49,6 +49,11 @@ pub struct Gate {
     /// Skipped when the build has any error (export steps, `write` nodes but the diagnostics
     /// file). Such a node waits until every ungated node is settled.
     pub skip_on_error: bool,
+    /// A lint whose reads are traced (`diagnostics.md` 4, M2): it waits as a gated node does,
+    /// but runs though the build has an error. The plan is told which nodes failed or were
+    /// skipped ([`Plan::note_bad`]); a read that reaches one makes its output
+    /// [`Output::skipped`], and the node is skipped with its findings dropped.
+    pub traced: bool,
 }
 
 /// A step node's facts for the run report (6.3, the step object).
@@ -145,6 +150,9 @@ pub struct Output {
     pub complete: bool,
     /// For a step node: its reads and returns.
     pub step: Option<StepRun>,
+    /// For a traced lint: a read reached a failed or skipped node, so the node is skipped and
+    /// what it found is dropped (`diagnostics.md` 4).
+    pub skipped: bool,
 }
 
 impl Output {
@@ -154,6 +162,7 @@ impl Output {
             value,
             complete: true,
             step: None,
+            skipped: false,
         }
     }
 }
@@ -165,6 +174,7 @@ pub struct Known<'a> {
     pub(crate) world: Option<&'a [Diag]>,
     pub(crate) has_error: bool,
     pub(crate) settled: Option<&'a BTreeMap<NodeId, Settled>>,
+    pub(crate) step_reads: Option<&'a BTreeMap<NodeId, Vec<crate::Read>>>,
 }
 
 /// What a node defined last may know of another node: how it settled (6.1), its value digest,
@@ -189,6 +199,24 @@ impl Known<'_> {
     /// settled by then. `None` before the last stage, or for a node not in the run.
     pub fn settled(&self, id: &NodeId) -> Option<Settled> {
         self.settled?.get(id).copied()
+    }
+
+    /// For a node defined last: the reads a settled step node made or matched (its trace,
+    /// `graph.md` 5.1), the reads of its trace's `data` first. `None` before the last stage, or
+    /// for a node that is no step.
+    pub fn step_reads(&self, id: &NodeId) -> Option<&[crate::Read]> {
+        self.step_reads?.get(id).map(Vec::as_slice)
+    }
+
+    /// For a node defined last: how every node settled, by id, to keep for later. `None` before
+    /// the last stage.
+    pub fn settled_all(&self) -> Option<&BTreeMap<NodeId, Settled>> {
+        self.settled
+    }
+
+    /// For a node defined last: every settled step node's reads ([`Known::step_reads`]), by id.
+    pub fn step_reads_all(&self) -> Option<&BTreeMap<NodeId, Vec<crate::Read>>> {
+        self.step_reads
     }
 
     /// The build's world diagnostics, for a node defined last; `None` otherwise.
@@ -253,4 +281,8 @@ pub trait Plan: Sync {
     fn answer(&self, _step: &NodeId, _read: &Read) -> Option<Digest> {
         None
     }
+
+    /// The nodes that failed or were skipped, told once every ungated node has settled and
+    /// before any traced lint ([`Gate::traced`]) is looked up or computed.
+    fn note_bad(&self, _bad: &std::collections::BTreeSet<NodeId>) {}
 }

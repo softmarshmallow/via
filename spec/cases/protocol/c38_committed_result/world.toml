@@ -1,0 +1,17 @@
+name       = "committed"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x + 0.5 * y"
+
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+params  = { east = 2 }
+
+[change.further.step.gen]
+params = { east = 3 }

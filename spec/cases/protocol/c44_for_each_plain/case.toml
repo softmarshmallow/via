@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "Case 39 as a plain command: all three calls ran."
+milestone = 2
+actions   = ["program", "trust", "first", "move", "moved"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+[action.first.nodes]
+ran_includes = ["step:gen/i:a", "step:gen/i:b", "step:gen/i:c"]
+
+
+[action.move]
+replace = "world.toml"
+find    = "at   = [3, 3]"
+with    = "at   = [4, 3]"
+
+[action.moved]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+[action.moved.nodes]
+ran_includes = ["step:gen/i:a", "step:gen/i:b", "step:gen/i:c"]

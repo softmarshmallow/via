@@ -3,9 +3,13 @@ attr:ford
 attr:in_trees
 attr:on_bank
 attr:to_door
+distance:cottage.ground/v:build/w:128.0.257.129
 distance:cottage.ground/v:build/w:128.128.257.257
+distance:cottage.ground/v:build/w:256.0.385.129
+distance:cottage.ground/v:build/w:256.128.385.257
 distance:ford/v:build/w:256.0.385.129
 distance:ford/v:build/w:256.128.385.257
+distance:kind:beck/v:build/w:256.0.385.129
 distance:lane_east/v:build/w:256.0.385.129
 distance:lane_east/v:build/w:256.128.385.257
 distance:lane_east/v:build/w:256.256.385.385
@@ -72,6 +76,7 @@ measure:height/v:build/lane_west.bed/*
 measure:water/v:build/beck.level/*
 merge
 rule:trees/v:build
+select:kind:beck/v:build
 shape:at_ford/v:build
 shape:ford/v:build
 shape:in_trees/v:build

@@ -1,0 +1,4 @@
+# A new world seed. The starting ground's noise is drawn from it, so the model settles other land
+# under the same facts: the valley and what stands on it move, and every fact still holds
+# (docs/plan.md M2).
+seed = 32

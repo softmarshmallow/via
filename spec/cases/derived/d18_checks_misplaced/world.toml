@@ -1,0 +1,21 @@
+name       = "derived"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= min(abs(x - 2) + abs(y - 4), abs(x - 6) + abs(y - 4))"
+
+[step.make]
+when    = "generate"
+command = ["python", "steps/make.py"]
+checks  = ["make"]
+
+[step.tidy]
+when    = "lint"
+command = ["python", "steps/tidy.py"]
+
+[step.facts]
+when    = "lint"
+command = ["python", "steps/tidy.py"]
+checks  = ["tidy"]

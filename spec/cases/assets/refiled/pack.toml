@@ -1,0 +1,6 @@
+[taxon."plant/tree"]
+[taxon."plant/bush"]
+
+[asset.cube]
+file = "cube.gltf"
+taxon = "plant/tree"

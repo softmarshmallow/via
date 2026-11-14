@@ -27,6 +27,8 @@ actions   = ["program", "trust", "base", "downstream"]
 # - water: the beck's columns (its level measure), and where height's value changed: (0, 1),
 #   (3, 1), (3, 2). (0, 0), (3, 0) and (0, 2) lie beyond every lane's mask (d >= 8 m), so height
 #   ran there with an unchanged value and water is reused (early cutoff).
+# - the ford's approach reads its distance to the beck (lib/ways' `beck_reach`): that distance in
+#   the ford's new chunk (2, 0), and the selection of becks it reads.
 # - step:checks reads the finished build; every write but .previous (graph.md shuffle row).
 
 [copy.ford]

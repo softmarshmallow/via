@@ -142,7 +142,7 @@ pub const PLACEMENT: [&str; 6] = ["at", "on", "path", "region", "where", "follow
 pub const PATH_ONLY: [&str; 3] = ["starts_at", "ends_at", "smooth"];
 
 /// Reserved keys of a feature (`vocabulary.md` 2.3).
-pub const FEATURE_RESERVED: [&str; 14] = [
+pub const FEATURE_RESERVED: [&str; 16] = [
     "kind",
     "authority",
     "at",
@@ -155,6 +155,8 @@ pub const FEATURE_RESERVED: [&str; 14] = [
     "starts_at",
     "ends_at",
     "face",
+    "holds",
+    "route",
     "remove",
     "unset",
 ];
@@ -229,8 +231,8 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("type", Ok(T::Str)),
             ("base", Ok(T::Formula)),
             ("file", Ok(T::Str)),
-            ("channel", NotYet(2)),
-            ("range", NotYet(2)),
+            ("channel", Ok(T::Str)),
+            ("range", Ok(T::Numbers(2))),
             ("extent", Ok(T::Lengths(4))),
             ("outside", Ok(T::Number)),
             ("filter", Ok(T::Str)),
@@ -259,6 +261,8 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("starts_at", Ok(T::Name)),
             ("ends_at", Ok(T::Name)),
             ("face", Ok(T::Facing)),
+            ("holds", Ok(T::Point)),
+            ("route", Ok(T::Formula)),
             ("over", Fixed("`over` was dropped; change one decision, see `authority.md` 5")),
             ("joins", Fixed("write `starts_at` or `ends_at`")),
         ],
@@ -309,7 +313,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("within", Ok(T::NameOrSelect)),
             ("scale", Ok(T::NumberOrPair)),
             ("tint", Ok(T::NumberOrPair)),
-            ("clump", NotYet(2)),
+            ("clump", Ok(T::Free)),
             ("seed", Ok(T::RuleSeed)),
         ],
         Shape::Pin => &[
@@ -333,7 +337,8 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("worker", Ok(T::Bool)),
             ("params", Ok(T::Free)),
             ("inputs", Ok(T::Strings)),
-            ("for_each", NotYet(3)),
+            ("for_each", Ok(T::Str)),
+            ("checks", Ok(T::Strings)),
         ],
         Shape::On => &[
             ("ref", Ok(T::Name)),
@@ -378,15 +383,11 @@ pub fn listed(shape: Shape) -> impl Iterator<Item = &'static str> {
 /// Values of a key that the vocabulary puts in a later milestone (`vocabulary.md` 5).
 pub fn value_not_yet(shape: Shape, key: &str, value: &str) -> Option<u32> {
     match (shape, key, value) {
-        (Shape::Step, "when", "generate") => Some(2),
         (Shape::Step, "when", "export") => Some(6),
-        (Shape::Field, "filter", "cubic") => Some(2),
         (Shape::Field, "type", "volume") => Some(5),
-        (Shape::On | Shape::Select, "class", "feature") => Some(2),
         (Shape::On | Shape::Select, "class", "junction" | "edge" | "area" | "cell" | "rest") => {
             Some(3)
         }
-        (Shape::Field, "file", f) if f.to_ascii_lowercase().ends_with(".png") => Some(2),
         _ => None,
     }
 }

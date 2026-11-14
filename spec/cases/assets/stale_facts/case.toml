@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "Accept, then delete an asset from the pack: via pack check gives pack.stale_facts naming it, exit 0."
+milestone = 2
+actions   = ["accept", "drop", "check"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.drop]
+replace = "pack.toml"
+find    = "[asset.post]\nfile = \"post.gltf\"\n"
+with    = ""
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.check.diag.stale]
+code = "pack.stale_facts"
+data = { ids = ["post"] }

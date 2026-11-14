@@ -1,0 +1,16 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 20
+
+[instance.a]
+asset = "cube"
+at    = [20, 20]
+
+[instance.b]
+asset = "cube"
+at    = [40, 40]

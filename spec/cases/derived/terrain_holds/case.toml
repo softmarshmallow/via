@@ -1,0 +1,84 @@
+format    = "via-case-1"
+milestone = 2
+summary   = "derived.md 5 with the terrain library: facts in, the settled ground, water and the found course out, every fact checked after and holding."
+actions   = ["program", "trust", "base"]
+
+# The terrain library's step (lib/terrain) through the command line. Its program is built with
+# `cargo build -p via-terrain`; the case names it as a configured program, as a world's user does.
+# The world: land rising north from a sea in the south, a hollow at (200, 560) with a lake stated
+# in it at 2.5 m (its ground lies below 2.2 m over most of the region and above 1.4 m all round
+# it), and a river stated from the hills to the sea.
+
+[action.program]
+via  = ["config", "program", "via-terrain", "{repo}/target/debug/via-terrain"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{repo}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.nodes]
+ran_includes = ["step:terrain", "step:facts"]
+
+# The course the water took, returned as a feature named by the step (identity.md 2.4); the
+# features sort by name: mouth, river, spring, tarn, terrain#river_course.
+[action.base.file.course_name]
+path    = "build/w/features.json"
+pointer = "/features/4/name"
+value   = "terrain#river_course"
+
+[action.base.file.course_kind]
+path    = "build/w/features.json"
+pointer = "/features/4/kind"
+value   = "terrain_course"
+
+[action.base.file.course_ends]
+path    = "build/w/features.json"
+pointer = "/features/4/attrs/ends"
+value   = "sea"
+
+[action.base.diag.no_lake_perched]
+code    = "step.facts.lake_perched"
+records = 0
+
+[action.base.diag.no_lake_dry]
+code    = "step.facts.lake_dry"
+records = 0
+
+[action.base.diag.no_lake_level]
+code    = "step.facts.lake_level"
+records = 0
+
+[action.base.diag.no_river_uphill]
+code    = "step.facts.river_uphill"
+records = 0
+
+[action.base.diag.no_river_leaves]
+code    = "step.facts.river_leaves"
+records = 0
+
+[action.base.diag.no_river_lost]
+code    = "step.facts.river_lost"
+records = 0
+
+[action.base.diag.no_river_wanders]
+code    = "step.facts.river_wanders"
+records = 0
+
+[action.base.diag.no_river_dry]
+code    = "step.facts.river_dry"
+records = 0
+
+[action.base.diag.no_hold_moved]
+code    = "step.facts.hold_moved"
+records = 0
+
+[action.base.diag.no_no_water]
+code    = "step.facts.no_water"
+records = 0

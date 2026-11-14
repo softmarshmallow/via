@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A model of one quad in the asset x-z plane: a point footprint, asset.point_footprint."
+milestone = 2
+actions   = ["list"]
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.list.file.footprint]
+stream  = "stdout"
+pointer = "/footprint"
+line    = 1
+value   = []
+
+[action.list.diag.point_footprint]
+code    = "asset.point_footprint"
+subject = "asset.cube"

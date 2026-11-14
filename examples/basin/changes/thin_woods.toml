@@ -1,0 +1,5 @@
+# An edit to the dress layer: the woods thinned by two fifths. The terrain step reads nothing in
+# that layer, so it is reused and the land is unchanged; only the scatters that read the woods run
+# again (docs/plan.md M2: a step re-runs only when what it read changed).
+[scatter.woods]
+density = "= 0.6 * f('cover')"

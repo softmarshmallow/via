@@ -1,6 +1,7 @@
 //! The three terms of ∂h/∂t = U − K·A^½·S + κ∇²h.
 
 use rayon::prelude::*;
+use via_num as num;
 
 use crate::grid::Grid;
 
@@ -16,7 +17,7 @@ pub fn apply_uplift(h: &mut [f64], uplift: &[f64], dt: f64, floor_m: f64) {
             if u >= 0.0 {
                 *hi += u * dt;
             } else if *hi > floor_m {
-                *hi = (*hi + u * dt).max(floor_m);
+                *hi = num::max(*hi + u * dt, floor_m);
             }
         });
 }
@@ -69,7 +70,7 @@ pub fn erode_stream_power(
         for (r, w, dist) in mfd.edges(i) {
             let ru = r as usize;
             let hr = if is_base[ru] {
-                h[ru].max(sea_level)
+                num::max(h[ru], sea_level)
             } else if flooded[ru] {
                 water_level[ru]
             } else {
@@ -97,7 +98,7 @@ pub fn diffuse(grid: &Grid, h: &mut [f64], is_base: &[bool], kappa: f64, dt: f64
     if alpha == 0.0 {
         return;
     }
-    let cycles = (alpha / 0.24).ceil().max(1.0) as u32;
+    let cycles = num::max((alpha / 0.24).ceil(), 1.0) as u32;
     let a = alpha / cycles as f64;
     let (w, hh) = (grid.w as i64, grid.h as i64);
     for _ in 0..cycles {
@@ -126,7 +127,7 @@ pub fn max_abs_diff(a: &[f64], b: &[f64]) -> f64 {
     a.par_iter()
         .zip(b.par_iter())
         .map(|(x, y)| (x - y).abs())
-        .reduce(|| 0.0, f64::max)
+        .reduce(|| 0.0, num::max)
 }
 
 /// mean |a − b|, summed sequentially: the value reaches stats output, so

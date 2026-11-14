@@ -1,0 +1,6 @@
+# A new world seed. The land is the author's picture, so the valley does not move: only what is
+# drawn from the seed does, the terrain's 0.25 m grain (`fbm(..., seed = 'grain')`) and every tree
+# of the woods. The tarn's level moves by the grain alone, and the fill re-runs because the
+# terrain's head view changed.
+
+seed = 4

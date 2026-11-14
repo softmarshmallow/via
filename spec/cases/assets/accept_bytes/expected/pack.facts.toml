@@ -1,0 +1,20 @@
+# Written by via pack accept. Do not edit.
+
+[asset.cube]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 1]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "hull"
+sink = 0.2
+max_relief = 0.6
+colour = [0.8, 0.8, 0.8]
+taxon = "building/house"
+tags = ["landmark"]
+mounts = { door = { at = [0, 0.5], face = 0 } }
+params = "78bea2600e56b800d49eac5f9dc72aef997c3c0b3d1ddb3b924b1b69a3128d4b"
+files = { "cube.gltf" = "4b602ec8d772f6dd067a9cf716c7c465eb5b1afa6687f666588bd305dc0d9ca9" }

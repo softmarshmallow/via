@@ -1,0 +1,3 @@
+[asset.cube]
+file = "cube.gltf"
+pivot = "base_corner"

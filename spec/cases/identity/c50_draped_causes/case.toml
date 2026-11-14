@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "identity.md 5, build.md 11.2: a point whose plan is the same but whose draped height differs is moved, with the surface's causes (moving `p` lifts the ground under `q`: cause feature.p.at). A surface edit that moves the ground under a point by under 1 mm leaves it untouched: `r` has no entry."
+milestone = 2
+actions   = ["base", "moved", "nudge"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "moved", "--against", "build/w", "--out", "build/moved"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/moved"
+
+[action.moved.check.q]
+fn     = "entry_causes"
+path   = "build/moved/changes.json"
+table  = "feature"
+prefix = "q"
+named  = ["feature.p.at"]
+
+[action.moved.check.r]
+fn           = "changes_absent"
+path         = "build/moved/changes.json"
+entry_names  = ["r"]
+
+[action.nudge]
+via         = ["build", "world.toml", "--change", "nudge", "--against", "build/w", "--out", "build/nudge"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/nudge"
+
+[action.nudge.check.r]
+fn           = "changes_absent"
+path         = "build/nudge/changes.json"
+entry_names  = ["q", "r"]

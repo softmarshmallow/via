@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "checks on a generate step; checks naming a lint step: derive.checks_when; derive.checks_target, nearest the generate step."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.when]
+code    = "derive.checks_when"
+subject = "step.make"
+file    = "world.toml"
+line    = 12
+
+[action.build.diag.target]
+code    = "derive.checks_target"
+subject = "step.facts"
+data    = { nearest = "make" }
+file    = "world.toml"
+line    = 21

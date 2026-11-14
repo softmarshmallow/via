@@ -12,6 +12,7 @@
 
 use crate::flow::MfdGraph;
 use crate::grid::Grid;
+use via_num as num;
 
 /// Water depth (m) above which a cell counts as flooded for the physics.
 /// A numerical guard, not an interpretation threshold: ε-fill raises
@@ -93,16 +94,16 @@ pub fn route_sediment(
             // up to the water level. The first flooded cell along the
             // routed path aggrades to level and becomes land next step —
             // delta progradation into the lake.
-            phi.min(((water_level[iu] - h[iu]) * area).max(0.0))
+            num::min(phi, num::max((water_level[iu] - h[iu]) * area, 0.0))
         } else if discharge_cells[iu] >= fluvial_min_cells {
             // Dry channel: keep the G-fraction of the incoming flux,
             // capped so the cell stays below its lowest MFD donor.
             let mut donor_floor = f64::INFINITY;
             for &d in mfd.donors(i) {
-                donor_floor = donor_floor.min(h[d as usize]);
+                donor_floor = num::min(donor_floor, h[d as usize]);
             }
-            let headroom = ((donor_floor - DONOR_MARGIN_M) - h[iu]).max(0.0) * area;
-            (phi * (g / discharge_cells[iu]).min(1.0)).min(headroom)
+            let headroom = num::max((donor_floor - DONOR_MARGIN_M) - h[iu], 0.0) * area;
+            num::min(phi * num::min(g / discharge_cells[iu], 1.0), headroom)
         } else {
             // Dry hillslope: pass through.
             0.0

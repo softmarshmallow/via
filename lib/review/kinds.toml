@@ -12,7 +12,13 @@
 #   when = "lint"
 #   command = ["python", "-m", "viasdk", "lib:review/checks.py"]
 
-[kind.bookmark]                           # derived, the default: it writes no field
+#
+# A bookmark writes no field, so it cannot keep its eye clear (asked by `glade`): a bookmark that
+# wrote `role:keep_out` would loop through every instance it looks at, since an instance's
+# placement reads keep_out (rules.md 8.3) and the bookmark's `toward` reads the instance
+# (graph.cycle, seen on `vale`). Stand a view on a way or a bank whose own keep_out clears it.
+
+[kind.bookmark]                           # derived, the default
 output   = "bookmark"
 requires = ["toward"]                     # the place looked at: a feature, an end, a mount
 names    = ["toward"]

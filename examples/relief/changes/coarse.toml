@@ -1,0 +1,5 @@
+# The survey read from the 8-bit copy of the heightmap. 256 levels over 66 m are steps of 0.26 m,
+# so the build warns `field.file_coarse`, and on foot the slopes show as terraces.
+
+[field.survey]
+file = "../inputs/height8.png"

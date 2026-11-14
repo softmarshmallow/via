@@ -1,0 +1,195 @@
+# relief's expectations: what each build should say and measure, compared with the spike's oracle
+# (fixtures/oracle/relief/) as measures, never as bytes (fixtures/README.md, R15: a measure informs,
+# it is never a target).
+#
+# The oracle's land is not this land. The spike's pictures were never committed (they are made by
+# its script, which is not ours to copy), so relief draws its own with inputs/make_inputs.py: the
+# same kind of inputs (a 16-bit heightmap, an 8-bit copy, a two-channel cover mask, a round stamp),
+# a different moor. So the oracle bounds the order of each measure, and the `expect` ranges are this
+# world's own, from the preview below.
+#
+# Protocol of every number under `preview`: macOS arm64 (Apple M4 Pro), engine 0.1.0 at dd4390b
+# with the M2 work in progress, which still refuses PNG bases, `cubic`, generate steps, workers and
+# `class = "feature"` (doc.not_yet). The preview is a scratch copy of this world that the M1 engine
+# builds: each picture sampled to the posts by fields.md 4.3 (cubic for the survey) and saved as an
+# array file; the fill step replaced by the lake it would return, its level found by derived.md
+# 4.1's definition and its piece by `holds`, both computed outside the engine; `pack = "primitive"`
+# for the renders (the Godot loader then stopped on starter's model records; it now draws them) and `starter` for the
+# counts. One run each, default threads. Areas count posts (0.25 m² each), not polygon area.
+#
+# Checked on the M2 engine (2026-11-14, macOS arm64, release build, one run each, default threads,
+# each change built `--against` the base): every measure below is within `expect` but on_shore,
+# whose point is now the real build's (the preview emulated the fill). Run:
+#   VIA=target/release/via VIA_LIB=lib python examples/relief/measure.py BUILD_ROOT
+#
+# How to check by hand:
+#   via config program python <python 3>
+#   via trust examples/relief/world.toml --yes
+#   via build examples/relief/world.toml                         # then each change below
+#   engines/godot/sheet.sh --before <base> --after <change> --out <dir> \
+#       --option water=tag:water_level --option paths=kind:trail
+
+[world]
+oracle = "fixtures/oracle/relief"
+spike_words = "lake (flood level = spill) -> tarn + step fill; road -> trail; pad kind on an instance -> ground = \"pad\"; [[feature]] -> [feature.<id>]; [look], [export] -> loader options (doctrine 6); max_grade -> none"
+
+# ---- the base build
+
+[build.base]
+command = "via build examples/relief/world.toml"
+exit = 0
+errors = 0
+warnings = 0
+diagnostics = ["step.checks.cottage_relief", "step.checks.trees_in_clearing"]   # infos; plus identity.no_previous on a first build
+oracle_diagnostics = "authority.conforms (info, tarn), scatter.count (info), bookmark.crowded (warning): spike codes with no v1 producer; no v1 lint measures a crowded view"
+steps_ran = ["fill", "checks"]
+
+[measure.tarn_level]                      # the lake's water_height, fill#tarn_lake in features.json
+build = "base"
+oracle = 33.85                            # measures.json report.water[tarn].level_m
+preview = 32.73
+expect = [32.68, 32.78]
+how = "max_depth binds: the ground at (88, 124) is 27.73 m, so ground + 5 = 32.73, below spill 35.48 - freeboard 0.3"
+
+[measure.tarn_area]
+build = "base"
+oracle = 842                              # m², report.water[tarn].area_m2
+preview = 798
+expect = [720, 880]
+
+[measure.tarn_max_depth]
+build = "base"
+oracle = 3.36
+preview = 5.36
+expect = [5.2, 5.5]
+how = "deeper than the oracle's: the stamp sits in a natural hollow of this moor"
+
+[measure.tarn_mean_depth]
+build = "base"
+oracle = 1.31
+preview = 2.37
+expect = [2.2, 2.5]
+
+[measure.tarn_shallow_share]              # share of the water less than 1 m deep
+build = "base"
+oracle = 0.43
+preview = 0.25
+expect = [0.2, 0.3]
+
+[measure.tarn_islands]
+build = "base"
+oracle = 0
+preview = 0
+expect = [0, 0]
+
+[measure.tarn_shore]                      # metres of shoreline; shoreline development is shore / (2 sqrt(pi area))
+build = "base"
+oracle = 156                              # development 1.52
+preview = 101                             # post edges x 0.5 m x pi / 4; development 1.0: the stamp is round
+expect = [90, 120]
+
+[measure.trees]                           # instances of scatter.trees
+build = "base"
+oracle = 687                              # budgets.total.instances 688, less the bothy; summary.json counts 30 (two asset ids only)
+preview = 412
+expect = [370, 450]
+how = "the painted woods cover 28% of this cover.png; spacing 6.5 m"
+
+[measure.bothy]
+build = "base"
+oracle = 1                                # instances_per_asset house.small
+preview = 1
+expect = [1, 1]
+
+[measure.bothy_relief]                    # step.checks.cottage_relief data.value
+build = "base"
+preview = 0
+expect = [0, 0]
+
+[measure.trees_in_clearing]               # step.checks.trees_in_clearing data.value
+build = "base"
+preview = 0
+expect = [0, 0]
+
+[measure.steep_by_houses]                 # posts steeper than 40 degrees within 15 m of a house: lib/land's
+build = "base"                            # pad bank fades into the ground, never a cliff
+expect = [0, 0]
+
+[measure.crowns_over_houses]              # trees whose crown (bounds times scale) meets a house's bounds:
+build = "base"                            # the pad keeps trees a crown's reach off
+expect = [0, 0]
+
+[measure.bookmarks]                       # outputs.bookmark; at, in metres (plan), from the preview
+build = "base"
+oracle = 1                                # bm_track only
+expect = 5
+from_edge = [1.82, 93.89]
+up_track = [16.66, 92.96]
+at_door = [54.06, 96.73]
+on_shore = [96.28, 103.91]                # the M2 build; the preview's emulated fill put it at [94.43, 103.47]
+to_tarn = [66, 104]
+eye_height = 1.7                          # the spike's was 1.8
+
+[measure.track_to_ground]                 # the trail's bed less the base ground, over its whole length
+build = "base"
+preview = [-0.4, 0.1]
+expect = [-0.6, 0.2]
+how = "a trail cuts and never fills, so it lies at or a little below the ground; the end, where the 8 m smoothing is one-sided, is lowest"
+
+# ---- the changes (each built over the base; M2 acceptance where marked)
+
+[build.moved_hollow]                      # M2 acceptance: a moved cause resettles
+command = "via build examples/relief/world.toml --change examples/relief/changes/moved_hollow.toml"
+exit = 0
+errors = 0
+steps_ran = ["fill"]
+tarn_level = [35.1, 35.3]                 # preview 35.192: spill 35.492 - 0.3 now binds
+tarn_area = [1250, 1500]                  # preview 1373
+on_shore = [98.71, 101.93]                # preview; moved about 4.5 m with the shore, by no edit of its own
+unchanged = ["from_edge", "up_track", "at_door", "to_tarn", "bothy"]
+
+[build.new_seed]                          # M2 acceptance, as it applies here: the seed moves what is drawn from it
+command = "via build examples/relief/world.toml --change examples/relief/changes/new_seed.toml"
+exit = 0
+errors = 0
+steps_ran = ["fill"]
+tarn_level = [32.59, 32.69]               # preview 32.639: the grain under the point moved 9 cm
+trees = [360, 450]                        # preview 403; the change report moves, adds and removes trees
+how = "the valley does not move: it is the author's picture, not the seed's (this world's answer to the acceptance line)"
+
+[build.denser]                            # M2 acceptance: a step re-runs only when what it read changed
+command = "via build examples/relief/world.toml --change examples/relief/changes/denser.toml"
+exit = 0
+errors = 0
+steps_reused = ["fill"]                   # the dressing layer is above the fill's stratum
+steps_ran = ["checks"]
+trees = [500, 620]                        # preview 559
+
+[build.revised_assets]                    # M2 acceptance: a revised asset names every instance it affects
+command = "via build examples/relief/world.toml --change examples/relief/changes/revised_assets.toml"
+exit = 0
+warnings = 2
+diagnostics = ["asset.revised"]           # one per asset: house_low, tree_pine
+house_low_instances = ["bothy"]
+house_low_facts = ["footprint", "mounts"]
+tree_pine_instances = "every pine of scatter.trees, by place name, none left out (preview: 151)"
+tree_pine_facts = ["footprint"]
+steps_reused = ["fill"]
+fail_on = "with --fail-on asset.revised: exit 1, the same two records as errors"
+
+[build.coarse]
+command = "via build examples/relief/world.toml --change examples/relief/changes/coarse.toml"
+exit = 0
+warnings = 1
+diagnostics = ["field.file_coarse"]       # data: the level step, 66 / 255 = 0.2588 m
+steps_ran = ["fill"]
+tarn_level = [32.65, 32.75]               # preview 32.699
+on_foot = "terraces show as rock paint on every step steeper than 30 degrees, and a stepped shore"
+
+[build.float_survey]
+command = "via build examples/relief/world.toml --change examples/relief/changes/float_survey.toml"
+exit = 0
+errors = 0
+warnings = 0
+tarn_level = [32.729, 32.731]             # the same land, narrowed to 32-bit floats
+bookmarks = "every bookmark within 0.001 m of the base build"

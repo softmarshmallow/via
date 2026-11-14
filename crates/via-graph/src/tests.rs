@@ -313,12 +313,14 @@ impl Plan for Toy {
                         },
                         complete: false,
                         step: Some(run),
+                        skipped: false,
                     };
                 }
                 Output {
                     value: Val::plain(text.into_bytes()),
                     complete: true,
                     step: Some(run),
+                    skipped: false,
                 }
             }
             _ => match s {
@@ -536,6 +538,7 @@ fn null_build_touches_nothing() {
         null: true,
         previous: Some(bk),
         ms: 0,
+        memo_ms: 0,
         run_records: vec![],
     };
     let text = null_report(&head, &null);
@@ -935,6 +938,7 @@ fn the_run_report_has_every_member() {
         null: false,
         previous: None,
         ms: 3,
+        memo_ms: 0,
         run_records: vec![],
     };
     let text = report(&head, &run);
@@ -944,7 +948,7 @@ fn the_run_report_has_every_member() {
         "\"format\":\"via-run-0\"",
         "\"engine\":{\"epoch\":1,\"version\":\"0.1.0\"}",
         "\"system\":{\"arch\":",
-        "\"totals\":{\"ms\":3,\"nodes\":14,\"ran\":14,\"recomputed\":0,\"reused\":0,\"skipped\":0}",
+        "\"totals\":{\"memo_ms\":0,\"ms\":3,\"nodes\":14,\"ran\":14,\"recomputed\":0,\"reused\":0,\"skipped\":0}",
         "\"cause\":{\"reason\":\"no record\"}",
         "\"command\":[\"toy\",\"lint\"]",
         "\"reads\":[{\"answer\":",

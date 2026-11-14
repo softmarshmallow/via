@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "d17; the anchored feature moved; then a feature in a layer above the step moved: step and lint ran; then the step reused."
+milestone = 2
+actions   = ["program", "trust", "base", "moved", "above"]
+
+# `make` stands in the world file's layer (rank 0); `flag` is in `dress`, rank 1, above it, so
+# no answer in make's trace changes when it moves (protocol.md 4.4).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "move", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.above]
+via         = ["build", "world.toml", "--change", "move", "--change", "wave", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.nodes]
+ran_includes = ["step:make", "step:facts"]
+
+[action.above.nodes]
+reused = ["step:make"]

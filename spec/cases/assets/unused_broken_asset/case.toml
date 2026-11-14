@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A pack with one unreadable model the world does not use: build exit 0; check exit 1 with pack.bad_model."
+milestone = 2
+actions   = ["build", "check"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.bad_model]
+code    = "pack.bad_model"
+records = 0
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.bad_model]
+code    = "pack.bad_model"
+subject = "asset.junk"

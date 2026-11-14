@@ -79,22 +79,91 @@ class PlainStep(Step):
             return sorted(fields)
         return []
 
+    def _view(self, view):
+        # A plain command is handed one view (protocol.md 2.2): a generate step's stratum in the
+        # full view, a lint's or export's finished build, where nothing stands above it and the
+        # head view is the same. Any other is not in ``data``: refused, never answered with
+        # another.
+        if view == "full" or (view == "head" and self.when != "generate"):
+            return
+        raise NotAWorker(
+            f"view={view!r}: a plain {self.when} step is handed only the full view; "
+            "read the head view from a worker (worker = true)"
+        )
+
+    def _window(self, window, halo):
+        g = self.grid or {}
+        nx, ny = int(g.get("nx", 0)), int(g.get("ny", 0))
+        if window is None:
+            w = [0, 0, nx, ny]
+        elif isinstance(window, dict):
+            w = [int(window[k]) for k in ("i0", "j0", "i1", "j1")]
+        else:
+            w = [int(v) for v in window]
+            if len(w) != 4:
+                raise ValueError("window: give i0, j0, i1, j1")
+        h = max(int(halo or 0), 0)
+        i0, j0 = max(w[0] - h, 0), max(w[1] - h, 0)
+        i1, j1 = min(w[2] + h, nx), min(w[3] + h, ny)
+        if i1 <= i0 or j1 <= j0:
+            raise ValueError("window: empty, or outside the grid")
+        return i0, j0, i1, j1
+
     def fields(self, names, view="full", window=None, halo=0):
-        """Read-only mapped arrays (rows from the south), one per selector. A selector matching no
-        field raises ``LookupError``; one matching several, ``LookupError`` too."""
+        """Read-only mapped arrays (rows from the south), one per selector, each cut to ``window``
+        grown by ``halo`` and clipped to the grid, as a worker's read is (protocol.md 3.3). A
+        selector matching no field, or several, raises ``LookupError``; a view the request does
+        not hold raises ``NotAWorker``."""
         import numpy as np
 
+        self._view(view)
         out = []
         for sel in names:
             got = self._field_names(sel)
             if len(got) != 1:
                 raise LookupError(f"`{sel}` selects {len(got)} fields; a read needs exactly one")
             f = self.data["fields"][got[0]]
-            out.append(np.load(f["path"], mmap_mode="r"))
+            whole = np.load(f["path"], mmap_mode="r")
+            if self.grid:
+                i0, j0, i1, j1 = self._window(window, halo)
+            elif window is None:
+                i0, j0, i1, j1 = 0, 0, whole.shape[-1], whole.shape[-2]
+            else:
+                raise ValueError("window: the request has no grid to cut it from")
+            a = whole[..., j0:j1, i0:i1]
+            a.window = (i0, j0, i1, j1)
+            a.name = got[0]
+            a.materials = f.get("materials")
+            out.append(a)
         return out
 
+    def _region(self, within, dec):
+        """``within`` as rings of integer millimetres: a region feature's name, or a ring."""
+        if within is None:
+            return None
+        if isinstance(within, str):
+            names = list(dec.get("name", []))
+            if within not in names:
+                raise LookupError(f"no feature is named `{within}`")
+            f = names.index(within)
+            geom = list(dec.get("geometry", []))
+            if geom and int(geom[f]) != 2:
+                raise ValueError(f"`within`: `{within}` is not a region")
+            pieces = [int(v) for v in dec.get("pieces", [0])]
+            rings = [int(v) for v in dec.get("rings", [0])]
+            starts = [int(v) for v in dec.get("ring_starts", [0])]
+            coords = dec.get("coords")
+            out = []
+            for p in range(pieces[f], pieces[f + 1]):
+                for r in range(rings[p], rings[p + 1]):
+                    out.append([(int(coords[c][0]), int(coords[c][1]))
+                                for c in range(starts[r], starts[r + 1])])
+            return out
+        return [[(int(p[0]), int(p[1])) for p in within]]
+
     def features(self, select, within=None, columns=()):
-        """The feature list of 4.3, filtered to ``select`` (``*``, ``kind:<kind>`` or a name)."""
+        """The feature list of 4.3, filtered to ``select`` (``*``, ``kind:<kind>`` or a name) and,
+        with ``within``, to features with a vertex in that region (its edge included)."""
         cols = self.data.get("features") or {}
         dec = {k: _column(v, self.objects) for k, v in cols.items()}
         names = list(dec.get("name", []))
@@ -108,10 +177,25 @@ class PlainStep(Step):
             rows = [r for r, n in enumerate(names) if n == select]
         if not rows and select != "*":
             raise LookupError(f"`{select}` selects no feature")
+        region = self._region(within, dec)
+        if region is not None:
+            pieces = [int(v) for v in dec.get("pieces", [0])]
+            rings = [int(v) for v in dec.get("rings", [0])]
+            starts = [int(v) for v in dec.get("ring_starts", [0])]
+            coords = dec.get("coords")
+
+            def vertices(f):
+                for p in range(pieces[f], pieces[f + 1]):
+                    for r in range(rings[p], rings[p + 1]):
+                        for c in range(starts[r], starts[r + 1]):
+                            yield int(coords[c][0]), int(coords[c][1])
+
+            rows = [f for f in rows if any(_inside(region, v) for v in vertices(f))]
         return _subset_features(dec, rows)
 
     def instances(self, select="*", within=None, columns=()):
-        """The instance table of 3.3, filtered to ``select`` (``*``, a producer or ``@<taxon>``)."""
+        """The instance table of 3.3, filtered to ``select`` (``*``, a producer or ``@<taxon>``)
+        and, with ``within``, to instances whose origin lies in that region (its edge included)."""
         cols = self.data.get("instances") or {}
         dec = {k: _column(v, self.objects) for k, v in cols.items()}
         n = len(dec.get("name", []))
@@ -124,6 +208,12 @@ class PlainStep(Step):
         else:
             by = dec.get("by", [""] * n)
             rows = [r for r in range(n) if by[r] == select]
+        if within is not None:
+            fcols = self.data.get("features") or {}
+            fdec = {k: _column(v, self.objects) for k, v in fcols.items()}
+            region = self._region(within, fdec)
+            xs, ys = dec.get("x", []), dec.get("y", [])
+            rows = [r for r in rows if _inside(region, (int(xs[r]), int(ys[r])))]
         return {k: _take(v, rows) for k, v in dec.items()}
 
     def input(self, path):
@@ -133,10 +223,27 @@ class PlainStep(Step):
                     return f.read()
         raise LookupError(f"`{path}` is not a declared input")
 
+    def pack(self, select="*", columns=()):
+        """The pack's table (``data.pack``, protocol.md 2.2), filtered to ``select``."""
+        cols = self.data.get("pack") or {}
+        dec = {k: _column(v, self.objects) for k, v in cols.items()}
+        ids = list(dec.get("id", []))
+        if select == "*":
+            rows = list(range(len(ids)))
+        elif isinstance(select, str) and select.startswith("@"):
+            want = select[1:]
+            taxa = dec.get("taxon", [""] * len(ids))
+            rows = [r for r in range(len(ids)) if taxa[r] == want or taxa[r].startswith(want + "/")]
+        else:
+            want = {select} if isinstance(select, str) else set(select)
+            rows = [r for r in range(len(ids)) if ids[r] in want]
+        keep = None if columns in ("*", ()) else {"id", "source", "taxon", "tags", *columns}
+        return {k: _take(v, rows) for k, v in dec.items() if keep is None or k in keep}
+
     def call(self, method, **params):
         raise NotAWorker(f"{method} needs a worker (worker = true)")
 
-    def eval(self, formula, x=None, y=None, window=None):
+    def eval(self, formula, x=None, y=None, window=None, view="full"):
         raise NotAWorker("expr.eval needs a worker (worker = true)")
 
     # --- diagnostics -------------------------------------------------------------------------
@@ -171,11 +278,44 @@ class PlainStep(Step):
         folder = self.request["out"]
         os.makedirs(folder, exist_ok=True)
         if self.when == "generate":
-            with open(os.path.join(folder, "document.toml"), "w", encoding="utf-8") as f:
-                f.write(self.out.text())
+            # A script that wrote document.toml itself, and returned nothing through step.out,
+            # keeps its own file (protocol.md 5).
+            doc = os.path.join(folder, "document.toml")
+            if self.out.text() or not os.path.exists(doc):
+                with open(doc, "w", encoding="utf-8") as f:
+                    f.write(self.out.text())
         if self.diagnostics:
             with open(os.path.join(folder, "diagnostics.json"), "w", encoding="utf-8") as f:
                 json.dump(self.diagnostics, f, ensure_ascii=False, sort_keys=True)
+
+
+def _in_ring(ring, p):
+    """Whether ``p`` lies in ``ring``: ``None`` on its edge, exactly, in integers (geometry.md)."""
+    n = len(ring)
+    inside = False
+    for k in range(n):
+        a, b = ring[k], ring[(k + 1) % n]
+        cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+        if (cross == 0 and min(a[0], b[0]) <= p[0] <= max(a[0], b[0])
+                and min(a[1], b[1]) <= p[1] <= max(a[1], b[1])):
+            return None
+        if (a[1] > p[1]) != (b[1] > p[1]):
+            lhs = (p[0] - a[0]) * (b[1] - a[1])
+            rhs = (b[0] - a[0]) * (p[1] - a[1])
+            if (lhs < rhs) if b[1] > a[1] else (lhs > rhs):
+                inside = not inside
+    return inside
+
+
+def _inside(rings, p):
+    """Whether ``p`` lies in these rings read as one region by even-odd, edges included."""
+    n = 0
+    for r in rings:
+        got = _in_ring(r, p)
+        if got is None:
+            return True
+        n += int(got)
+    return n % 2 == 1
 
 
 def _subset_features(dec, rows):

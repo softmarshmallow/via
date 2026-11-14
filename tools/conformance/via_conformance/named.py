@@ -732,6 +732,86 @@ def sample_terrain(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, An
     return fails
 
 
+def course_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """`derived.md` 3 step 6: the feature named `feature` in a `features.json` is a path whose
+    first point is `start` and last is `end` (metres, exactly), that passes each of `passes`, that
+    turns by no more than 90 degrees at any vertex, and whose every segment is at least
+    `min_segment` metres long."""
+    doc = _read_json(work / args["path"])
+    feats = [f for f in doc.get("features", []) if f.get("name") == args["feature"]]
+    if len(feats) != 1:
+        return [(f"check.{cid}", f"one feature {args['feature']}", str(len(feats)))]
+    pts = [(Fraction(str(p[0])), Fraction(str(p[1]))) for p in feats[0].get("points", [])]
+    want = lambda p: (Fraction(str(p[0])), Fraction(str(p[1])))
+    fails: list[Failure] = []
+    if not pts or pts[0] != want(args["start"]):
+        fails.append((f"check.{cid}", f"first point {args['start']}", canon.show([float(v) for v in pts[0]] if pts else None)))
+    if not pts or pts[-1] != want(args["end"]):
+        fails.append((f"check.{cid}", f"last point {args['end']}", canon.show([float(v) for v in pts[-1]] if pts else None)))
+    for p in args.get("passes", []):
+        if want(p) not in pts:
+            fails.append((f"check.{cid}", f"passes {p}", "not a vertex"))
+    m2 = Fraction(str(args["min_segment"])) ** 2
+    for k in range(1, len(pts)):
+        d2 = (pts[k][0] - pts[k - 1][0]) ** 2 + (pts[k][1] - pts[k - 1][1]) ** 2
+        if d2 < m2:
+            fails.append((f"check.{cid}", f"segment {k} at least {args['min_segment']} m", f"{float(d2) ** 0.5:.3f} m"))
+    for k in range(1, len(pts) - 1):
+        a, b, c = pts[k - 1], pts[k], pts[k + 1]
+        dot = (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1])
+        if dot < 0:
+            fails.append((f"check.{cid}", f"no turn over 90 degrees at vertex {k}", f"({float(b[0])}, {float(b[1])})"))
+    return fails
+
+
+def entry_causes(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """`build.md` 11.2, `graph.md` 6.4: at least one entry of `table` in a `changes.json` has a name
+    starting with `prefix`, and every such entry has causes (never `[]` or `null`) among which is
+    each cause of `named`."""
+    doc = _read_json(work / args["path"])
+    hits = [e for e in doc.get("entries", []) if e.get("table") == args["table"]
+            and str(e.get("name", "")).startswith(args["prefix"])]
+    if not hits:
+        return [(f"check.{cid}", f"an entry of {args['table']} named {args['prefix']}...", "none")]
+    fails: list[Failure] = []
+    for e in hits:
+        causes = e.get("causes")
+        if not causes:
+            fails.append((f"check.{cid}", f"{e['name']} has causes", canon.show(causes)))
+            continue
+        got = {c.get("cause") for c in causes}
+        for want in args.get("named", []):
+            if want not in got:
+                fails.append((f"check.{cid}", f"{e['name']} has cause {want}", ", ".join(sorted(got))))
+    return fails[:5]
+
+
+def post_step_at_most(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """Between every two neighbouring posts (east or north) with both inside `window` (metres,
+    `[x0, y0, x1, y1]`, edges included), a scalar field file's values differ by at most `limit`."""
+    a = np.load(work / args["path"]).astype(np.float64)
+    if a.ndim != 2:
+        raise NamedCheckError(f"{args['path']} is not a scalar field file")
+    r = float(args["resolution"])
+    ox, oy = (float(v) for v in args.get("origin", [0, 0]))
+    x0, y0, x1, y1 = (float(v) for v in args["window"])
+    i0, i1 = max(0, int(np.ceil((x0 - ox) / r))), min(a.shape[1] - 1, int(np.floor((x1 - ox) / r)))
+    j0, j1 = max(0, int(np.ceil((y0 - oy) / r))), min(a.shape[0] - 1, int(np.floor((y1 - oy) / r)))
+    if i1 <= i0 or j1 <= j0:
+        raise NamedCheckError("the window holds fewer than two posts on an axis")
+    w = a[j0:j1 + 1, i0:i1 + 1]
+    worst, at = 0.0, None
+    for axis, (di, dj) in ((1, (1, 0)), (0, (0, 1))):
+        d = np.abs(np.diff(w, axis=axis))
+        k = np.unravel_index(int(np.argmax(d)), d.shape)
+        if d[k] > worst:
+            worst, at = float(d[k]), ((i0 + k[1]) * r + ox, (j0 + k[0]) * r + oy, di, dj)
+    if worst > float(args["limit"]):
+        return [(f"check.{cid}", f"no step between neighbouring posts in {args['window']} exceeds {args['limit']}",
+                 f"{worst:.4f} from the post at ({at[0]}, {at[1]}) to its neighbour ({at[2]}, {at[3]}) posts on")]
+    return []
+
+
 CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Failure]]] = {
     "weights_sum_at_most": weights_sum_at_most,
     "weights_sum_255_or_0": weights_sum_255_or_0,
@@ -756,6 +836,9 @@ CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Fai
     "names_same": names_same,
     "cells_valid": cells_valid,
     "sample_terrain": sample_terrain,
+    "course_valid": course_valid,
+    "entry_causes": entry_causes,
+    "post_step_at_most": post_step_at_most,
 }
 
 

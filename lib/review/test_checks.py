@@ -88,7 +88,7 @@ class FakeStep:
         return feature_list(self._features[select])
 
     def instances(self, select):
-        return table(self._instances[select])
+        return table(self._instances.get(select, []))
 
     def info(self, **kw):
         self.records.append(dict(kw, severity="info"))
@@ -230,3 +230,44 @@ class ChecksTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MoreTest(unittest.TestCase):
+    """The valley's measures: standing water, trees on ways and crowded views."""
+
+    def grid(self):
+        return CHECKS["Grid"]({"extent_mm": [0, 0, 40000, 40000], "resolution_mm": 1000,
+                               "nx": N, "ny": N})
+
+    def test_lake_area_depth_islands_shore(self):
+        height = [[10.0] * N for _ in range(N)]
+        water = [[10.0] * N for _ in range(N)]
+        for j in range(10, 21):
+            for i in range(10, 21):
+                water[j][i] = 11.5
+        height[15][15] = 12.0   # an islet stands above the water
+        water[15][15] = 12.0
+        outer = [(10000, 10000), (20000, 10000), (20000, 20000), (10000, 20000)]
+        hole = [(15000, 15000), (15000, 16000), (16000, 16000), (16000, 15000)]
+        lake = {"name": "tarn", "kind": "lake", "geometry": 2, "rings": [[outer, hole]],
+                "attrs": {}}
+        recs = CHECKS["measure_more"](self.grid(), height, water, [lake], [], [])
+        by = {r[0]: r[2] for r in recs}
+        self.assertEqual(by["water_islands"], 1)
+        self.assertEqual(by["water_depth"], 1.5)
+        self.assertEqual(by["water_shore"], 40.0)
+        self.assertEqual(by["water_area"], 120.0)   # 121 posts, the islet dry
+
+    def test_trees_on_way_and_crowded_view(self):
+        way = {"name": "track", "kind": "trail", "geometry": 1,
+               "rings": [[[(0, 5000), (40000, 5000)]]], "attrs": {"width": 2.0}}
+        mark = {"name": "look", "kind": "bookmark", "geometry": 0,
+                "rings": [[[(30000, 30000)]]], "attrs": {}}
+        trees = [{"name": "t#a", "asset": "tree_oak", "by": "trees", "x": 10000, "y": 5500},
+                 {"name": "t#b", "asset": "tree_oak", "by": "trees", "x": 10000, "y": 9000},
+                 {"name": "t#c", "asset": "tree_oak", "by": "trees", "x": 31000, "y": 31000}]
+        recs = CHECKS["measure_more"](self.grid(), None, None, [way, mark], trees, [])
+        by = {r[0]: r[2] for r in recs}
+        self.assertEqual(by["trees_on_way"], 1)
+        self.assertEqual(by["crowded_view"], 1.41)
+

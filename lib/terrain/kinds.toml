@@ -1,0 +1,174 @@
+# The terrain library: the land settled under a few stated facts (R14).
+#
+# The author states what matters about the land: a lake stands here at this level, a river runs
+# from here to there, this ground stays as it lies. Nothing else about the land is written. The
+# library's step hands those facts to an erosion model (crates/via-terrain, its program
+# `via-terrain`) as starting conditions, the model settles the rest once, and a lint checks every
+# fact against the finished build. The core knows none of these words (principle 5).
+#
+# How a fact becomes a condition is this library's knowledge, not the author's (R14):
+# - a lake is a hollow under its region, and its shore is held at its level: held cells end water,
+#   so the hollow floods to the shore and the streams that reach it stop there;
+# - a river is a groove in the starting surface that only ever falls, cut below all ground near its
+#   line, reaching the sea (or the lake it ends in) at its mouth. Never held cells: a river held cell
+#   by cell is a row of sinks;
+# - a hold is held as it lies, and water ends at it: a sea wall, a quay, ground another library owns.
+# - the land at the world's edge carries on as it lies (`edge = "held"`), so water leaves there.
+#
+# Conventions for a world that includes this library:
+# - The terrain is the field with role `surface` (lib/land). The step reads its head view (the base
+#   and the rows below the step's layer) and returns a row on it, `[field.<surface>.then.erosion]`,
+#   `= f('eroded')`, which sits before every effect (authority.md 4.1).
+# - Water is a field tagged `water_level` whose base is the ground, `base = "= f('height')"`
+#   (lib/water). The step returns a row on it raising it to the level the model's water stands at,
+#   `= max(v, f('level'))`, so the water is written only where it stands above a post's own ground
+#   and the shore is where the settled ground meets the level, at post resolution (asked by
+#   `basin`); each course's kind writes its channel's water on it. A world with a `terrain_river`
+#   must declare such a field, or the course's `level` effect matches nothing (authority.no_field).
+# - Fields of the step's own, read above its layer by tag (protocol.md 5, Names): `tag:eroded`
+#   (the settled ground), `tag:standing_water` (metres of water standing over it),
+#   `tag:standing_level` (the level a lake stands at, constant over it; a metre below the ground where
+#   no water stands near), `tag:wet` (how much water passes, 0 to 1: 1 where a stream runs, a thin
+#   line elsewhere), `tag:damp` (0 to 1: `wet` spread over about 30 m, high on valley floors and
+#   their lower sides, low on ridges: what a wood along the valleys reads, asked by `basin`),
+#   `tag:silt` (metres of sediment settled), `tag:settled_from` (`before`: the ground the step read and
+#   started from, which the lint checks each hold against: R14, every stated fact checked after).
+# - The course the water took from each river's source is returned as a feature
+#   `<step>#<river>_course` of kind `terrain_course`, so text stands on it by
+#   `{ of = "<step>", class = "feature", near = [x, y] }` and it follows when the river moves.
+#
+# The step and its lint. A library declares no step (protocol.md 1), so a world restates these
+# tables, in the layer that holds the facts or one above it (the step reads its stratum). The
+# program is named once on each machine: `via config program via-terrain <path to via-terrain>`
+# (`cargo build --release -p via-terrain`).
+#
+#   [step.terrain]
+#   when    = "generate"
+#   worker  = true                 # reads only the surface, water and these kinds; a plain command
+#                                  # (no `worker`) also works, and re-runs on any edit in its view
+#   command = ["via-terrain"]
+#   params  = { sea = 0 }          # every key optional, below
+#
+#   [step.facts]
+#   when    = "lint"
+#   worker  = true
+#   command = ["via-terrain"]
+#   checks  = ["terrain"]          # derived.md 5: the facts the terrain step read are checked here
+#
+# The generate step's `params`:
+#   sea          the sea's level, metres (0)
+#   cell         the model's cell, metres, a whole number of post spacings (about 256 cells across)
+#   margin       cells simulated beyond each edge, so the model's own edge is out of sight (16)
+#   edge         "held": the land at the edge carries on as it lies; "open": an ocean all round
+#   hold_cells   a river's groove lies below all ground within this many cells of its line (3)
+#   steps, erodibility, diffusivity, deposition, timestep
+#                the model's own numbers; by default derived from the cell size, through the two
+#                scales they were calibrated at, 200 m and 12.5 m (crates/via-terrain/src/scale.rs)
+#   order        the returned rows' `order` (authority.md 4.4: above every row the step read)
+#
+# The generate step warns `step.<id>.grid_locked` when more than a quarter of the model's channels
+# run straight along its grid for more than 8 cells (its gate `axis_runs`): the gullies and the
+# `wet` ground painted from them would read as ruler-straight trenches. Channels take the land's
+# own downhill direction, split between the two neighbours that bracket it (D-infinity), so this
+# is rare.
+#
+# The lint's `params`, each a limit beyond which a fact does not hold:
+#   level_within   how far from its stated level a lake may stand, metres (1.5)
+#   follow_within  how far the water may stray from a river's line, metres (50)
+#   min_catchment  the least share of the land a river should gather (0.02)
+#   hold_within    how far the finished ground under a hold may stand from where it was held,
+#                  metres (0.5): from its `level`, else from the ground the step started from
+#   sea            the sea's level, metres (0), as the generate step's `sea`: a river's water,
+#                  traced again over the finished ground and water, ends where it reaches ground
+#                  at or below it
+#
+# The lint's codes are `step.<lint id>.<name>`, each with where and what would hold instead:
+# `lake_perched` (the level this ground holds), `lake_dry` (a level that would hold water),
+# `lake_level` (the level it stands at), `river_uphill` (swap its ends), `river_leaves` (where the
+# water left the line, and the course it took), `river_wanders`, `river_dry` (the catchment it has
+# and the one the lint accepts), `river_lost` (where the source's water goes, and the nearest point
+# of the line whose water reaches the mouth), `no_water` (at the first lake), `hold_moved` (the
+# height the ground under a hold has and the one it was held at), `hold_unchecked`. `via explain step.facts.<name> <world>` prints each one's text.
+
+[kind.terrain_lake]                       # "a lake stands here, at this level": a region
+authority = "anchored"
+requires  = ["level"]                     # the water's surface, metres
+radius    = 14                            # its shore's keep_out, below, and a ring of 2.5 m posts
+
+# No tree or rock in a stated lake nor on its shore (lib/land's `role:keep_out`; a world that wants
+# that declares the field, as `basin` does): 1 over the region and 8 m past it, fading by 10 m,
+# since the settled water's edge lies a few metres either side of the stated shore.
+[kind.terrain_lake.effect.shore]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(8, 10, d)"
+
+[kind.terrain_lake.defaults]
+depth = 4                                 # metres of bed below the level, away from the shore
+shore = 30                                # metres over which the bed shelves from the shore
+
+[kind.terrain_river]                      # "a river runs from here to there": a path, source first
+authority = "anchored"                    # (`starts_at`, `path`, `ends_at`; `route` finds a course
+                                          # over the land between them, derived.md 3)
+
+# A stated `width` (metres, optional) is the width its course takes at its mouth (R14: the author's
+# statement wins). Unstated, the course takes the width from the area it drains (below).
+
+[kind.terrain_river.defaults]
+incise = 2                                # metres below the lowest ground near its line it begins
+fall   = 0.003                            # the least fall of its groove, rise over run
+valley = 70                               # metres over which the valley's sides meet the ground
+
+[kind.terrain_hold]                       # "this ground stays as it lies": a point, path or region
+authority = "anchored"
+
+# What the step returns: the course the water took from a river's source, with its channel. The
+# step writes every attribute; the defaults only declare them.
+[kind.terrain_course]
+radius = 48                               # a channel at most 60 m wide; its banks within 18 m
+names  = ["fact"]                         # the river it was followed from: a course found from a
+                                          # river owns every meeting with it (geometry.md 2.7)
+
+[kind.terrain_course.defaults]
+fact      = ""                            # the river it was followed from
+ends      = ""                            # where the water went: sea, lake, held, edge or pit
+catchment = 0                             # the share of the land that drains through it
+width     = 4                             # metres across the water at its mouth: the river's stated
+                                          # `width`, else 5 * sqrt(km2 drained), 1.5 to 60 m
+                                          # (our own fit of the width-discharge rule of Leopold and
+                                          # Maddock 1953, width growing as the root of discharge)
+depth     = 0.5                           # metres the channel's floor lies below the ground on its
+                                          # line: 0.3 + 0.06 * width, 0.3 to 3 m
+channel   = 4                             # metres across the channel drawn: `width`, held to three
+                                          # post spacings so the water field has three wet posts
+                                          # across it (a narrower one draws as a thread); `width`
+                                          # stays the fact the lint checks
+
+[kind.terrain_course.let]
+flow  = "= 0.6 * depth"                   # metres of water over the floor on the line
+toe   = "= max(0.5, channel / 2 - flow / 0.3)" # where the floor ends and the bank (grade 0.3) begins
+bank  = "= 12"                            # metres from the toe the bank runs at grade 0.3
+side  = "= 0.8"                           # the grade past it until it meets the ground (lib/water's beck)
+
+# As lib/water's beck: the floor is level across the channel at `depth` below the ground on the
+# line (smoothed along it), and the bank rises from the toe at 0.3 until it meets the ground. A bank
+# that has not met it `bank` metres from the toe (a valley side steeper than about 1 in 4 across the
+# course) rises on at `side` until it does, so the cut meets the ground as a slope a walker climbs,
+# never as a wall. It cuts and never fills.
+[kind.terrain_course.effect.bed]
+field = "role:surface"
+value = "= min(v, smoothed_along(12) - depth + 0.3 * clamp(d - toe, 0, bank) + side * max(0, d - toe - bank))"
+mask  = "= 1 - smoothstep(42, 44, d)"                # 0 from 4 m inside `radius` (fields.md, the ring)
+
+# No tree or rock in the channel nor on its banks, as lib/water's beck keeps its own (lib/land's
+# `role:keep_out`): 1 out to 4 m past the water's edge, fading by 6 m. Clump members are not tested
+# against density again (rules.md 7.3) but are against keep_out, so a wood's clumps stop here too.
+[kind.terrain_course.effect.banks]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(channel / 2 + 4, channel / 2 + 6, d)"
+
+[kind.terrain_course.effect.level]        # the water surface: `flow` over the floor on the line
+field = "tag:water_level"
+value = "= max(v, smoothed_along(12) + flow)"
+mask  = "= 1 - smoothstep(channel / 2 + 3, channel / 2 + 4, d)"

@@ -1,0 +1,51 @@
+# relief's dressing: what stands on the land the pictures make. Owner `dressing`, rank 1, so it
+# reads the land layer and nothing there reads it back: an edit here never re-runs the fill.
+
+[feature.track]                           # a moorland track in from the west edge along the contour
+kind  = "trail"                           # lib/ways: trodden in, cut only, close to the ground
+width = 2.6
+path  = [[0, 94], [32, 92], [60, 98]]
+
+# The bothy stands by the track's end, on its low side, facing it: placed `on` the track, it moves
+# with it. On the high side its levelled pad stood on a 2 m bank above the track's end. The track
+# does not `ends_at = "bothy.door"`: the door's height reads the ground the track writes, a loop
+# (graph.cycle; recorded in TODO.md, "From the M2 integration").
+[instance.bothy]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "track", t = 1, offset = -7.5 }
+face   = "toward"
+
+[scatter.trees]                           # the painted woods; the track, the pad and the shore keep out
+assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 2 }]
+spacing = 6.5
+density = "= f('cover')"
+scale   = [0.75, 1.3]
+
+# ---- ground views at every meeting (R17)
+
+[feature.from_edge]                       # where the track comes in at the world's edge
+kind   = "bookmark"
+on     = { ref = "track", t = 0.03 }
+toward = "bothy"
+
+[feature.up_track]                        # where the track runs through the woods
+kind   = "bookmark"
+on     = { ref = "track", t = 0.275 }
+toward = "bothy"
+
+[feature.at_door]                         # where the track ends at the bothy's door
+kind   = "bookmark"
+on     = { ref = "track", t = 0.9 }
+toward = "bothy.door"
+
+[feature.on_shore]                        # on the tarn's bank, wherever the fill puts its shore
+kind   = "bookmark"
+on     = { of = "fill", class = "feature", near = [88, 124], t = 0.3, offset = -3 }
+toward = "tarn"
+
+[feature.to_tarn]                         # from the bothy's pad down to the water
+kind   = "bookmark"
+at     = [66, 104]
+toward = "tarn"

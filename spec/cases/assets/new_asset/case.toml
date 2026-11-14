@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "Accept, then add a used model asset: via build gives asset.unaccepted for it."
+milestone = 2
+actions   = ["accept", "add", "use", "build"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.add]
+write = "pack.toml"
+text  = "[asset.cube]\nfile = \"cube.gltf\"\n\n[asset.post]\nfile = \"post.gltf\"\n"
+
+[action.use]
+replace = "world.toml"
+find    = "[instance.b]\nasset = \"cube\""
+with    = "[instance.b]\nasset = \"post\""
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.unaccepted]
+code    = "asset.unaccepted"
+subject = "asset.post"
+
+[action.build.diag.cube]
+code    = "asset.unaccepted"
+subject = "asset.cube"
+records = 0

@@ -33,8 +33,24 @@ pub struct StepDecl {
     pub worker: bool,
     pub params: J,
     pub inputs: Vec<String>,
+    /// `for_each` as written (`protocol.md` 1.2).
+    pub for_each: Option<String>,
+    /// `checks`: the generate steps a lint checks (`derived.md` 5).
+    pub checks: Vec<String>,
+    /// The layer the step belongs to (`protocol.md` 1, "Which layer").
+    pub layer: String,
     /// The folder of the declaring document.
     pub home: PathBuf,
+}
+
+impl StepDecl {
+    /// The kind a `for_each = "kind:<k>"` selects; `None` without `for_each` or in another form.
+    pub fn for_each_kind(&self) -> Option<&str> {
+        self.for_each
+            .as_deref()?
+            .strip_prefix("kind:")
+            .filter(|k| !k.is_empty())
+    }
 }
 
 /// `p` made absolute against the caller's folder, as given when that fails.
@@ -161,6 +177,12 @@ pub fn declared(world: &World, world_dir: &Path) -> Vec<StepDecl> {
             worker: matches!(get("worker"), Some(Value::Bool(true))),
             params: get("params").map_or_else(|| J::Obj(J::obj()), value_json),
             inputs: strings(get("inputs")),
+            for_each: match get("for_each") {
+                Some(Value::Str(s)) => Some(s.text.clone()),
+                _ => None,
+            },
+            checks: strings(get("checks")),
+            layer: world.home("step", id).unwrap_or("world").to_string(),
             home,
         });
     }
@@ -272,7 +294,7 @@ pub fn folder_digest(dir: &Path) -> (Digest, usize) {
     (Digest::of(&e.finish()), files.len())
 }
 
-fn step_diag(step: &str, code: via_diag::Code, message: String, hint: String) -> Diag {
+pub(crate) fn step_diag(step: &str, code: via_diag::Code, message: String, hint: String) -> Diag {
     Diag::new(
         code,
         Subject::entity("step", step),
@@ -427,7 +449,7 @@ pub fn sdk_folder(store: &Store, sdk: Option<&Path>) -> Result<PathBuf, (PathBuf
     Ok(absolute(dir))
 }
 
-fn slash(p: &Path) -> String {
+pub(crate) fn slash(p: &Path) -> String {
     p.to_string_lossy().replace('\\', "/")
 }
 
@@ -515,7 +537,11 @@ pub(crate) struct Mixed {
 
 /// `data.features` (2.2, 4.3): every feature and footprint feature as one feature list. An
 /// attribute that two kinds give two types cannot be one column: `Err`, `protocol.column_mixed`.
-fn features_data(store: &Store, b: &Build, world: &World) -> Result<J, Mixed> {
+fn features_data(store: &Store, b: &Build, world: &World, rank: Option<i64>) -> Result<J, Mixed> {
+    let sees = |r: Option<i64>| match (rank, r) {
+        (Some(own), Some(r)) => r <= own,
+        _ => true,
+    };
     struct Row {
         name: String,
         kind: String,
@@ -528,6 +554,9 @@ fn features_data(store: &Store, b: &Build, world: &World) -> Result<J, Mixed> {
     }
     let mut rows: Vec<Row> = Vec::new();
     for (n, f) in &b.features {
+        if !sees(crate::stepview::view_rank(world, "feature", n)) {
+            continue;
+        }
         let mut attrs = f.attrs.clone();
         let mut types = f.attr_types.clone();
         for (a, (place, _)) in &f.names {
@@ -562,6 +591,9 @@ fn features_data(store: &Store, b: &Build, world: &World) -> Result<J, Mixed> {
         });
     }
     for (inst, f) in &b.footprints {
+        if !sees(world.rank("instance", inst)) {
+            continue;
+        }
         rows.push(Row {
             name: format!("{inst}.ground"),
             kind: f.kind.clone(),
@@ -692,8 +724,27 @@ fn features_data(store: &Store, b: &Build, world: &World) -> Result<J, Mixed> {
 }
 
 /// `data.instances` (2.2): one table, rows by name.
-fn instances_data(store: &Store, b: &Build, pack: Option<&via_model::pack::Pack>) -> J {
-    let rows: Vec<(&String, &via_model::InstanceOut)> = b.instances.iter().collect();
+fn instances_data(
+    store: &Store,
+    b: &Build,
+    pack: Option<&via_model::pack::Pack>,
+    world: &World,
+    rank: Option<i64>,
+) -> J {
+    let rows: Vec<(&String, &via_model::InstanceOut)> = b
+        .instances
+        .iter()
+        .filter(|(n, i)| {
+            let r = match &i.maker {
+                Some(p) => crate::stepview::maker_rank(world, p),
+                None => world.rank("instance", n),
+            };
+            match (rank, r) {
+                (Some(own), Some(r)) => r <= own,
+                _ => true,
+            }
+        })
+        .collect();
     let i32col = |f: &dyn Fn(&via_model::InstanceOut) -> i64| {
         let v: Vec<i32> = rows
             .iter()
@@ -779,13 +830,18 @@ fn instances_data(store: &Store, b: &Build, pack: Option<&via_model::pack::Pack>
 }
 
 /// `data.fields` (2.2): every field as a field file in the store.
-fn fields_data(store: &Store, b: &Build, grid: &Grid) -> J {
+fn fields_data(store: &Store, b: &Build, grid: &Grid, world: &World, rank: Option<i64>) -> J {
     let (nx, ny) = (
         usize::try_from(grid.nx).unwrap_or(0),
         usize::try_from(grid.ny).unwrap_or(0),
     );
     let mut m = J::obj();
     for (name, f) in &b.fields {
+        if let (Some(own), Some(r)) = (rank, crate::stepview::view_rank(world, "field", name)) {
+            if r > own {
+                continue;
+            }
+        }
         let (bytes, ty, mats) = match &f.values {
             Some(v) => (crate::npy::f4(&[ny, nx], v), "scalar", None),
             None => {
@@ -836,6 +892,45 @@ pub struct Ran {
     /// output. A call that never started, failed, was killed or returned nothing readable did
     /// not, and is not stored.
     pub complete: bool,
+    /// A worker's traced reads, in the order made (`graph.md` 5.1).
+    pub reads: Vec<via_graph::Read>,
+    /// The stated facts it read (`derived.md` 5), sorted.
+    pub facts: Vec<String>,
+    /// A generate step's document, checked.
+    pub document: Option<String>,
+    /// Whether it returned rows or features.
+    pub rows_or_features: bool,
+    /// The keys it returned, by table, for `identity.key_collision` across items.
+    pub keys: BTreeMap<String, Vec<String>>,
+    /// Whether it returned a checked document with tables, which cannot join the build yet.
+    pub unjoined: bool,
+    /// A traced lint whose read reached a failed or skipped node: skipped, findings dropped.
+    pub skipped: bool,
+    /// The diagnostics the step raised itself (a worker's `diag.emit` records as served, a plain
+    /// command's `diagnostics.json`), as the build holds them: what a committed result replays
+    /// (`protocol.md` 7.1).
+    pub emitted: Vec<Diag>,
+}
+
+impl Ran {
+    pub(crate) fn new() -> Ran {
+        Ran {
+            diags: Vec::new(),
+            ran: false,
+            explains: Vec::new(),
+            record: J::Null,
+            data: None,
+            complete: false,
+            reads: Vec::new(),
+            facts: Vec::new(),
+            document: None,
+            rows_or_features: false,
+            keys: BTreeMap::new(),
+            unjoined: false,
+            skipped: false,
+            emitted: Vec::new(),
+        }
+    }
 }
 
 /// What a lint call is handed beyond the step.
@@ -854,6 +949,50 @@ pub struct Call<'a> {
     /// `via trust` and, in words, this build's flags that enter the trust digest (`--lib`,
     /// `--sdk`, `--change`, `protocol.md` 7): [`trust_command`].
     pub trust_command: &'a str,
+    /// The build's running workers (`protocol.md` 3.2).
+    pub pool: Option<&'a crate::stepwork::Pool>,
+    /// Under `for_each`, the item of this call.
+    pub item: Option<&'a str>,
+    /// A lint's `checks` member (`derived.md` 5), `null` otherwise.
+    pub checks: J,
+    /// The model, for a generate step's head view of its stratum (`protocol.md` 1).
+    pub stratum: Option<&'a via_model::ModelPlan<'a>>,
+    /// For a traced lint: what failed or was skipped in this build (`diagnostics.md` 4).
+    pub bad: Option<&'a crate::stepview::Bad>,
+}
+
+impl Call<'_> {
+    /// The rank whose stratum a step reads: its layer's for a generate step, `None` (the
+    /// finished build) for a lint or export.
+    pub fn rank(&self, s: &StepDecl) -> Option<i64> {
+        (s.when == "generate")
+            .then(|| self.world.layer_rank(&s.layer))
+            .flatten()
+    }
+
+    /// The request's seed (`protocol.md` 2): the step's stream, and the item's under `for_each`.
+    pub fn seed_of(&self, s: &StepDecl) -> u64 {
+        via_num::world_seed(i64::try_from(self.seed).unwrap_or(0))
+            .map(|w| match self.item {
+                Some(i) => via_num::stream(w, &["step", s.id.as_str(), i]),
+                None => via_num::stream(w, &["step", s.id.as_str()]),
+            })
+            .unwrap_or(0)
+    }
+
+    /// The world's grid as the request gives it.
+    pub fn grid_json(grid: &Grid) -> J {
+        let [x0, y0, x1, y1] = grid.extent;
+        obj([
+            (
+                "extent_mm",
+                J::Arr(vec![J::int(x0), J::int(y0), J::int(x1), J::int(y1)]),
+            ),
+            ("nx", J::Num(grid.nx.to_string())),
+            ("ny", J::Num(grid.ny.to_string())),
+            ("resolution_mm", J::int(grid.resolution)),
+        ])
+    }
 }
 
 /// `via trust WORLD` as a world record may say it: no machine path (`diagnostics.md` 5, R26). The
@@ -892,9 +1031,9 @@ pub fn trust_command(
     out
 }
 
-struct Mapper<'a> {
-    world: &'a World,
-    grid: Option<Grid>,
+pub(crate) struct Mapper<'a> {
+    pub(crate) world: &'a World,
+    pub(crate) grid: Option<Grid>,
 }
 
 impl Mapper<'_> {
@@ -926,6 +1065,14 @@ impl Mapper<'_> {
 
 impl StepWorld for Mapper<'_> {
     fn map_subject(&self, written: &str) -> Option<Mapped> {
+        // The world as a whole (`diagnostics.md` 1.1).
+        if written == "world" {
+            return Some(Mapped {
+                subject: Subject::World,
+                produced: None,
+                place: None,
+            });
+        }
         // A selector subject must select something of this world (`diagnostics.md` 6): a kind
         // the merge declares, a role some field holds, a tag some field carries.
         if let Some((class, name)) = written.split_once(':') {
@@ -1056,7 +1203,7 @@ fn step_in(o: &J) -> StepDiagIn {
     }
 }
 
-fn resolve_program(name: &str, s: &StepDecl, call: &Call<'_>) -> Result<PathBuf, Diag> {
+pub(crate) fn resolve_program(name: &str, s: &StepDecl, call: &Call<'_>) -> Result<PathBuf, Diag> {
     if let Some(rest) = name.strip_prefix("lib:") {
         let (lib, path) = rest.split_once('/').unwrap_or((rest, ""));
         return call
@@ -1108,55 +1255,87 @@ fn resolve_program(name: &str, s: &StepDecl, call: &Call<'_>) -> Result<PathBuf,
     })
 }
 
-/// The request of a lint call (`protocol.md` 2), given its `data.features`, its inputs, the
-/// objects folder and the call's `out` folder.
+/// The request of a call (`protocol.md` 2), given its `data.features` (a plain command's; `None`
+/// for a worker, which is handed no `data`), its inputs, the objects folder and the call's `out`.
 fn make_request(
     s: &StepDecl,
     call: &Call<'_>,
     grid: &Grid,
-    features: J,
+    features: Option<J>,
     inputs: Vec<J>,
     objects: String,
     out: String,
 ) -> J {
-    let seed = via_num::world_seed(i64::try_from(call.seed).unwrap_or(0))
-        .map(|w| via_num::stream(w, &["step", s.id.as_str()]))
-        .unwrap_or(0);
-    let [x0, y0, x1, y1] = grid.extent;
-    obj([
-        (
-            "data",
-            obj([
-                ("features", features),
-                ("fields", fields_data(call.store, call.build, grid)),
-                ("inputs", J::Arr(inputs)),
-                (
-                    "instances",
-                    instances_data(call.store, call.build, call.pack),
-                ),
-            ]),
-        ),
-        ("for_each_item", J::Null),
-        (
-            "grid",
-            obj([
-                (
-                    "extent_mm",
-                    J::Arr(vec![J::int(x0), J::int(y0), J::int(x1), J::int(y1)]),
-                ),
-                ("nx", J::Num(grid.nx.to_string())),
-                ("ny", J::Num(grid.ny.to_string())),
-                ("resolution_mm", J::int(grid.resolution)),
-            ]),
-        ),
-        ("objects", J::s(objects)),
-        ("out", J::s(out)),
-        ("params", s.params.clone()),
-        ("protocol", J::s(via_proto::PROTOCOL)),
-        ("seed", J::s(format!("{seed:016x}"))),
-        ("step", J::s(s.id.clone())),
-        ("when", J::s(s.when.clone())),
-    ])
+    let seed = call.seed_of(s);
+    let rank = call.rank(s);
+    let mut m = J::obj();
+    if let Some(features) = features {
+        let mut data = obj([
+            ("features", features),
+            (
+                "fields",
+                fields_data(call.store, call.build, grid, call.world, rank),
+            ),
+            ("inputs", J::Arr(inputs)),
+            (
+                "instances",
+                instances_data(call.store, call.build, call.pack, call.world, rank),
+            ),
+        ]);
+        // `data.pack` (2.2, M2): every asset, every fact, as `pack.query` gives it.
+        if let (Some(pack_table), J::Obj(d)) = (pack_data(s, call, grid), &mut data) {
+            d.insert("pack".into(), pack_table);
+        }
+        m.insert("data".into(), data);
+    }
+    m.insert("checks".into(), call.checks.clone());
+    m.insert("for_each_item".into(), J::opt(call.item));
+    m.insert("grid".into(), Call::grid_json(grid));
+    m.insert("objects".into(), J::s(objects));
+    m.insert("out".into(), J::s(out));
+    m.insert("params".into(), s.params.clone());
+    m.insert("protocol".into(), J::s(via_proto::PROTOCOL));
+    m.insert("seed".into(), J::s(format!("{seed:016x}")));
+    m.insert("step".into(), J::s(s.id.clone()));
+    m.insert("when".into(), J::s(s.when.clone()));
+    J::Obj(m)
+}
+
+/// `data.pack` (2.2): `pack.query`'s table of every asset with every fact; `None` without a pack.
+fn pack_data(s: &StepDecl, call: &Call<'_>, grid: &Grid) -> Option<J> {
+    call.pack?;
+    let objects = via_proto::store::Store::open(call.store.root().join("objects")).ok()?;
+    let view = crate::stepview::View {
+        world: call.world,
+        build: call.build,
+        grid: *grid,
+        objects: &objects,
+        pack: call.pack,
+        step: s,
+        rank: None,
+        seed: 0,
+        stratum: None,
+        bad: None,
+    };
+    let v = view
+        .answer(
+            "pack.query",
+            &serde_json::json!({"select": "*", "columns": "*"}),
+        )
+        .ok()?;
+    let text = serde_json::to_string(&v).ok()?;
+    crate::json::parse(&text).ok()
+}
+
+/// A worker's request (3.2): the request without `data`.
+pub(crate) fn request_for_worker(
+    s: &StepDecl,
+    call: &Call<'_>,
+    grid: &Grid,
+    objects: String,
+    out: String,
+) -> J {
+    make_request(s, call, grid, None, Vec::new(), objects, out)
 }
 
 /// The digest of the request a lint would be handed, its absolute paths left out (`graph.md`
@@ -1167,7 +1346,7 @@ pub fn request_key(s: &StepDecl, call: &Call<'_>) -> Digest {
     let Some(grid) = call.build.grid else {
         return Digest::of(b"via-request-1 no grid");
     };
-    let features = match features_data(call.store, call.build, call.world) {
+    let features = match features_data(call.store, call.build, call.world, call.rank(s)) {
         Ok(f) => f,
         Err(m) => {
             return Digest::of(format!("via-request-1 mixed {}", m.attr).as_bytes());
@@ -1186,7 +1365,7 @@ pub fn request_key(s: &StepDecl, call: &Call<'_>) -> Digest {
         s,
         call,
         &grid,
-        features,
+        Some(features),
         inputs,
         String::new(),
         String::new(),
@@ -1241,7 +1420,7 @@ fn drop_blob_paths(j: &mut J) {
 
 /// `build.write_failed` for a step's call folder or request, at the step: the path and the
 /// system's error.
-fn write_failed(step: &str, path: &Path, e: &std::io::Error) -> Diag {
+pub(crate) fn write_failed(step: &str, path: &Path, e: &std::io::Error) -> Diag {
     step_diag(
         step,
         codes::build::WRITE_FAILED,
@@ -1341,31 +1520,94 @@ impl Capture {
     }
 }
 
-/// Runs one lint step as a plain command (2.2), when it is trusted.
-pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ran {
-    let mut ran = Ran {
-        diags: Vec::new(),
-        ran: false,
-        explains: Vec::new(),
-        record: J::Null,
-        data: None,
-        complete: false,
-    };
+/// The stated facts among these feature names (`derived.md` 5): written in text, shaped or
+/// anchored, sorted.
+pub(crate) fn stated_facts(call: &Call<'_>, names: &[String]) -> Vec<String> {
+    let mut v: Vec<String> = names
+        .iter()
+        .filter(|n| {
+            // A produced feature (`<step>#<key>`) was found, not stated (`derived.md` 5).
+            !n.contains('#')
+                && call.world.entity("feature", n).is_some()
+                && call.build.features.get(*n).is_some_and(|f| {
+                    matches!(
+                        f.tier,
+                        Some(via_model::Tier::Shaped | via_model::Tier::Anchored)
+                    )
+                })
+        })
+        .cloned()
+        .collect();
+    v.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+    v.dedup();
+    v
+}
+
+/// Runs one call of a step, when it is trusted: a worker (3) or a plain command (2.2).
+pub fn run_step(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ran {
+    let mut ran = Ran::new();
     if !trusted {
-        ran.diags.push(
-            step_diag(
+        if s.when == "generate" {
+            ran.diags.push(step_diag(
                 &s.id,
-                codes::protocol::UNTRUSTED_SKIPPED,
+                codes::protocol::UNTRUSTED,
                 format!(
-                    "lint step `{}` is not trusted on this machine and was skipped",
+                    "generate step `{}` is not trusted on this machine and has no committed result",
                     s.id
                 ),
                 format!("run {}, after reading its code folder", call.trust_command),
-            )
-            .with("trust", code.trust.hex()),
-        );
+            ));
+        } else {
+            ran.diags.push(step_diag(
+                &s.id,
+                codes::protocol::UNTRUSTED_SKIPPED,
+                format!(
+                    "{} step `{}` is not trusted on this machine and was skipped",
+                    s.when, s.id
+                ),
+                format!("run {}, after reading its code folder", call.trust_command),
+            ));
+        }
         return ran;
     }
+    if let Some(rank) = call.rank(s) {
+        if !s.worker && crate::stepview::stratum_inexact(call.world, call.build, rank) {
+            ran.diags.push(step_diag(
+                &s.id,
+                codes::doc::NOT_YET,
+                format!(
+                    "plain generate step `{}` reads the view of layer `{}`, which statements of a higher layer change; that view is owed by the model",
+                    s.id, s.layer
+                ),
+                "make the step a worker that reads only what it needs, or move it to the top layer".into(),
+            ));
+            return ran;
+        }
+    }
+    if s.worker {
+        return crate::steprun::run_worker(s, code, call);
+    }
+    run_plain(s, code, call)
+}
+
+/// A call folder's name past the step id: the process, the clock and a count kept for the
+/// process, so two `for_each` items of one step that start in the same clock tick (macOS gives
+/// microseconds) never share a folder.
+pub(crate) fn call_nonce() -> String {
+    static CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    format!(
+        "{}-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos()),
+        CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    )
+}
+
+/// Runs one call of a step as a plain command (2.2).
+fn run_plain(s: &StepDecl, code: &Code, call: &Call<'_>) -> Ran {
+    let mut ran = Ran::new();
     let Some(grid) = call.build.grid else {
         return ran;
     };
@@ -1409,7 +1651,7 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
         }
     };
     // `data.features` first: an attribute two kinds type differently cannot be handed (4.3).
-    let features = match features_data(call.store, call.build, call.world) {
+    let features = match features_data(call.store, call.build, call.world, call.rank(s)) {
         Ok(f) => f,
         Err(m) => {
             let kind_related = |k: &str, note: &str| via_diag::Related {
@@ -1442,13 +1684,7 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
         }
     };
     // The call folder (6.3) and the request (2).
-    let nonce = format!(
-        "{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    );
+    let nonce = call_nonce();
     let folder = call
         .store
         .root()
@@ -1493,7 +1729,7 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
         s,
         call,
         &grid,
-        features,
+        Some(features),
         inputs,
         slash(&call.store.root().join("objects")),
         slash(&out),
@@ -1670,42 +1906,50 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
         }
     }
     // What it returned (5).
-    let mut returned: Vec<J> = Vec::new();
-    let (files, links) = crate::dir::listing_with_links(&out);
-    // A step returns files, never links: a link is not followed, read or stored, so nothing
-    // outside the call folder enters the store or the run report (5).
-    for l in &links {
-        ran.diags.push(
-            step_diag(
-                &s.id,
-                codes::protocol::OUTPUT_FILE,
-                format!(
-                    "step `{}` left `out/{l}`, a symbolic link; a step returns files, not links",
-                    s.id
-                ),
-                "write the file itself into `out`".into(),
-            )
-            .with("path", l.clone()),
-        );
+    let returned_out = crate::stepout::collect(
+        &out,
+        &s.id,
+        &s.when,
+        None,
+        &grid,
+        &crate::stepout::Names {
+            world: call.world,
+            rank: call.rank(s),
+        },
+        call.store,
+    );
+    let returned: Vec<J> = returned_out
+        .files
+        .iter()
+        .map(|(p, d)| obj([("digest", J::s(d.hex())), ("path", J::s(p.clone()))]))
+        .collect();
+    let links: Vec<String> = Vec::new();
+    let generated = exit == Some(0) && s.when == "generate";
+    if exit == Some(0) {
+        ran.diags.extend(returned_out.diags.iter().cloned());
     }
-    for f in files {
-        if let Ok(b) = std::fs::read(out.join(&f)) {
-            let d = call.store.put_object(&b);
-            returned.push(obj([("digest", J::s(d.hex())), ("path", J::s(f.clone()))]));
-        }
-        if f == "document.toml" {
-            ran.diags.push(step_diag(
-                &s.id,
-                codes::protocol::OUTPUT_TABLE,
-                format!(
-                    "lint step `{}` wrote a document; a lint returns diagnostics only",
-                    s.id
-                ),
-                "remove `document.toml` from what the step writes".into(),
-            ));
-        }
+    if generated {
+        ran.rows_or_features = returned_out.returns_rows_or_features();
+        ran.keys = returned_out.keys.clone();
+        ran.unjoined = returned_out.ok && returned_out.has_tables();
+        ran.document = returned_out.document.clone();
+        // A plain command read every stated fact in its stratum (`derived.md` 5).
+        let view_rows: Vec<String> = call
+            .build
+            .features
+            .keys()
+            .filter(|n| {
+                let r = call.world.rank("feature", n);
+                match (call.rank(s), r) {
+                    (Some(own), Some(r)) => r <= own,
+                    _ => true,
+                }
+            })
+            .cloned()
+            .collect();
+        ran.facts = stated_facts(call, &view_rows);
     }
-    ran.complete = status.is_some() && exit == Some(0) && links.is_empty();
+    ran.complete = status.is_some() && exit == Some(0) && links.is_empty() && returned_out.ok;
     let diagnostics_file = out.join("diagnostics.json");
     let is_link =
         std::fs::symlink_metadata(&diagnostics_file).is_ok_and(|m| m.file_type().is_symlink());
@@ -1729,7 +1973,9 @@ pub fn run_lint(s: &StepDecl, code: &Code, trusted: bool, call: &Call<'_>) -> Ra
                         }
                         ds.push(via_diag::step::arrive(&s.id, &d, &mapper));
                     }
-                    ran.diags.extend(via_diag::step::settle(ds));
+                    let settled = via_diag::step::settle(ds);
+                    ran.emitted.clone_from(&settled);
+                    ran.diags.extend(settled);
                     ran.explains = ex
                         .entries()
                         .map(|(c, e)| (c.to_string(), e.map(str::to_string)))

@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "A pack with an unreadable model: via pack accept gives pack.accept_refused, exit 1, no facts file written."
+milestone = 2
+actions   = ["accept"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.accept.diag.refused]
+code = "pack.accept_refused"
+
+[action.accept.file.none]
+path   = "pack.facts.toml"
+exists = false

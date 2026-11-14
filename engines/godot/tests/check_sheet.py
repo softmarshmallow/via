@@ -7,7 +7,7 @@ build; with the build directories, each cell's eye and target are its own build'
 `at` raised by `eye_height`, and its `toward`), so the camera of the before cell looks at the before
 build's target and the after cell at the after build's;
 sheet.png is 1280 (640 with --one) by
-48 + 384 * ROWS; sheet.json is canonical and has the keys 15.1 lists; diagnostics.json is
+48 + 384 * ROWS, walks.png by 48 + 768 * ROWS, each walk's two views 1280 by 720; sheet.json is canonical and has the keys 15.1 lists; diagnostics.json is
 diagnostics.md 7's document. Images are never compared byte for byte: renderers differ.
 Prints one line per check; exit 0 when all pass.
 """
@@ -120,7 +120,20 @@ def main():
     doc = json.loads(text)
     canon = json.dumps(_norm(doc), sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
     check("sheet.json is canonical", text == canon)
-    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "godot", "light", "renderer", "size"])
+    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "godot", "light", "renderer", "size", "walk", "walks"])
+    check("edits lists pins and cleared", isinstance(doc.get("edits"), dict) and sorted(doc["edits"]) == ["against", "cleared", "pins"])
+    check("one walk per bookmark, in name order", [w["name"] for w in doc.get("walks", [])] == [b["name"] for b in doc["bookmarks"]])
+    walk_keys = ["by", "deepest", "drop", "eye", "from", "left", "outcome", "plan", "slope", "stop", "through", "toward", "walked"]
+    for w in doc.get("walks", []):
+        for side in ("before", "after"):
+            r = w[side]
+            if r is None:
+                continue
+            check(f"walk {w['name']} {side}: a report", sorted(r) == walk_keys
+                  and r["outcome"] in ("arrived", "blocked", "fell", "timed_out"), str(r.get("outcome")))
+            for view in ("plan", "eye"):
+                ww, hh, rr, bb = png(out / r[view])
+                check(f"{r[view]} is 1280 by 720 and not one colour", (ww, hh) == (1280, 720) and not one_colour(rr, bb), f"{ww}x{hh}")
     check("one entry per row, in name order", [b["name"] for b in doc["bookmarks"]] == sorted(b["name"] for b in doc["bookmarks"])
           and len(doc["bookmarks"]) == n_rows)
     check("after is null without --after", (doc["after"] is None) == one)
@@ -150,6 +163,9 @@ def main():
     w, h, rows, bpp = png(out / "sheet.png")
     want = (640 if one else 1280, 48 + 384 * n_rows)
     check(f"sheet.png is {want[0]} by {want[1]}", (w, h) == want, f"{w}x{h}")
+    w, h, rows, bpp = png(out / "walks.png")
+    want = (640 if one else 1280, 48 + 384 * 2 * n_rows)
+    check(f"walks.png is {want[0]} by {want[1]}", (w, h) == want, f"{w}x{h}")
     diag = json.loads((out / "diagnostics.json").read_text())
     check("diagnostics.json is diagnostics.md 7's document", diag.get("format") == "via-diagnostics-1"
           and set(diag) == {"counts", "diagnostics", "format", "lints", "status"})

@@ -373,8 +373,8 @@ fields and features; a clump reads other candidates' draws and a producer's inst
 R7 puts such reads in a step. `clump` is the exception, kept in core because R5 makes placement by
 cause the default to teach, so it must work with no code, and because it reads only draws and a
 named producer's output within `radius`, both of which the graph already holds (principle 10: one
-key, no new mechanism). Whether it should move to a library step once the SDK can draw the same streams
-is (open), section 15.
+key, no new mechanism). It stays in core: `glade` writes its clumps as a step as a demonstration,
+not a gate.
 
 ### 7.3 `clump` (M2)
 
@@ -394,6 +394,19 @@ and `around()` (`glade`, `spike/FINDINGS.md`, "Placement by cause").
 - Writing keys of both forms in one `clump`, a missing `radius`, a `radius` not above 0, `members`
   below 0, `shrink` outside `[0, 1)`, or `around` naming something that is not a producer, is
   `scatter.clump`. `radius` keeps its one meaning: beyond it, nothing.
+
+**Around another scatter.** `around` names any producer in the scatter's layer or below
+(`documents.md` 5.1): usually another scatter, also a run or a step. It reads that producer's held
+output (`identity.md` 4.1), so a cleared tree takes its bushes' chance with it and a thinned wood
+thins its undergrowth (r43). A pin whose written `by` names the producer counts as one of its
+instances: a pinned tree is a tree bushes grow beside. A pin with `by` left to its default counts
+for none, since it would make every pin in the layer count for every producer.
+
+**Two causes on one thing** are two scatters, never one `clump`: undergrowth that grows beside the
+trees and gathers in tufts is `bushes` with `clump = { around = "trees", radius = 5 }`, and
+`tufts` with `clump = { around = "bushes", radius = 1.6 }` (`glade`). Each radius keeps its one
+meaning, and each cause is a line a reviewer reads. A chain reads down the graph, so a loop is
+`graph.cycle` (r44).
 
 ### 7.4 Assets by taxon
 
@@ -427,8 +440,11 @@ A scatter is derived (principle 3). After choosing, a candidate or clump member 
   `vocabulary.md`, never `keep_out`, which is a field role (principle 9). Hand instances that stand on this scatter's output (3.4) are excluded; or
 - `relief(surface, footprint)` (`surfaces.md` 2.3), `high - low`, exceeds its asset's `max_relief`.
 
-Scattered instances are not tested against each other (section 15). Each producer reports what gave
-way in one `place.gave_way` info: counts by cause (overlap, relief) and their bounding box. A
+A clump member is also dropped when it is solid and its footprint overlaps the footprint of its
+parent (when the parent was kept) or of an earlier kept member of the same parent, by member index
+`m` (7.3), in 8.1's sense. So a clump never grows through itself, the order is fixed by the draws
+and every member keeps its name. Other scattered instances are not tested against each other
+(section 15). Each producer reports what gave way in one `place.gave_way` info: counts by cause (overlap, relief) and their bounding box. A
 producer from which nothing gave way raises no `place.gave_way`.
 
 **Which producer places first.** Hand instances first. Then runs and steps, each giving way to hand
@@ -705,6 +721,11 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 | r43 around | `bushes` around `trees`, radius 6 | thin `trees` | Only removals of bushes, each within 6 m of a removed tree; graph edge recorded. |
 | r44 around_cycle | Two scatters each `around` the other | build | Graph cycle error, exit 1. |
 | r45 clump_bad | Each of: both forms; no `radius`; `shrink = 1`; `around` a feature | build | `scatter.clump`, exit 1. |
+| r46 around_pin | r43 with `trees` thinned to nothing; a pin with `by = ["trees"]` at `[60, 60]`; then the same pin with no `by` | build each | Bushes only within 6 m of `[60, 60]`; then no bush. |
+| r47 around_chain | r43 plus `tufts` around `bushes`, radius 1.6 | thin `trees` | Only removals, of bushes and of tufts; each removed tuft within 1.6 m of a removed bush. |
+| r48 around_up | `around` naming a scatter of a higher layer | build | `doc.upward_ref` naming both layers, exit 1. |
+| r49 around_step | A generate step returning instances in a layer below; a scatter `around` the step | build; then the step's output moved | Candidates beside the step's instances only; then the scatter changed only near the moved ones. |
+| r50 member_gives_to_parent | r31 without the crate, `clump = { members = 2, radius = 0.2 }` | build | Every member stands inside its parent's trunk and gives way (`place.gave_way`); the parent of cell (8, 18) stands at (59.5, 129.5) and no member of it is left within 1 m. |
 
 **M3: sets and runs**
 
@@ -751,10 +772,7 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 | Question | What decides it |
 |---|---|
 | Whether a scatter may take `face` (fixed, or along a feature). | A case that needs it; none in M1. |
-| Whether scattered instances are tested against each other, and whether any producer keeps a distance beyond footprint overlap (a new asset fact through `assets.md`, never `keep_out`). | `glade` with real assets in M2: are interpenetrating trunks seen at eye height, or trunks hard against a house? |
-| Whether one `clump` may hold both forms, and with which radius. | `glade`'s `by_cause` rebuilt in M2. |
-| Whether `clump` moves to a library step (R7). | `glade` in M2: the same clumps written as a step through the SDK, compared. |
-| Whether a pin counts as an instance of the producers in its `by` for `clump.around`. | The `glade` case with a pinned tree. |
+| Whether scattered instances of different parents or different scatters are tested against each other (a clump's members are, 7.5, decided by M2's measures: 342 interpenetrating footprints in `basin`, most within clumps), for example a scatter giving way to the held output of scatters in lower layers; and whether any producer keeps a distance beyond footprint overlap (a new asset fact through `assets.md`, never `keep_out`). | `glade` and `basin` at eye height: logs through trunks, rocks inside trunks. |
 | Whether lower derived things give way to firmer things in higher layers (R21 extended to placement). Today they do not, and the overlap is `place.crowded`. Queued for the doctrine. | `townland`'s layers in M3: how many `place.crowded` a natural layering gives. |
 | How text reaches a mount of a selected produced instance. | A case in M3 (a lamp on a fence post of a run). |
 | Whether instances tilt to the slope. | `surfaces.md`, with the four questions. |

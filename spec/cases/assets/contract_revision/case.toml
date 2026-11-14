@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "Accepted; model re-exported 0.5 m wider: asset.revised listing every instance of it; change report entries with cause asset.<asset id>.bounds."
+milestone = 2
+actions   = ["accept", "base", "widen", "build"]
+
+# Instances a and b stand on no ground, so they have no footprint feature: the change report's
+# entries are the two instances, `changed` (assets.md 7), entry 0 being instance a.
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+out         = "build/base"
+diagnostics = "includes"
+
+[action.widen]
+write = "cube.gltf"
+from  = "later/wider.gltf"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+out         = "build/next"
+diagnostics = "includes"
+
+[action.build.diag.revised]
+code    = "asset.revised"
+subject = "asset.cube"
+data    = { count = 2, instances = ["a", "b"] }
+
+[action.build.check.changed]
+fn     = "changes_by_prefix"
+path   = "build/next/changes.json"
+prefix = "a"
+what   = ["changed"]
+
+[action.build.file.cause]
+path     = "build/next/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "asset.cube.bounds" }

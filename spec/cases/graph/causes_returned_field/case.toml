@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "graph.md 6.4: a field a step returns changes when the step's params change; its change entry names the step's changed key."
+milestone = 2
+actions   = ["program", "trust", "one", "two"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.one]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.two]
+via  = ["build", "world.toml", "--change", "two", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.two.check.wave]
+fn       = "entry_causes"
+path     = "build/w/changes.json"
+table    = "field"
+prefix   = "gen#wave"
+named    = ["step.gen.params"]

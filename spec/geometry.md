@@ -159,7 +159,7 @@ What `numbers.md` leaves to this chapter:
 |---|---|
 | `t = 0` on a written region | Its first written point. |
 | `t = 0` on a produced region (an area, a cell, a piece) | Its shell's start vertex (2.5). |
-| `t` on a region of more than one ring (several pieces, or holes) | Undefined, as in `numbers.md` 5.5: there is no single outline to measure along. `on`, `follows`, `interpolate` and `substring` on such a region are `geom.many_rings`; in a formula, `t` is `formula.shape`. `d` and `sd` are defined and measure to every ring. |
+| `t` on a region of more than one ring (several pieces, or holes) | Undefined, as in `numbers.md` 5.5: there is no single outline to measure along. One exception: on a region of one piece with holes, `on` and `follows` measure `t` and `offset` along its outer ring, the outline a walker meets from outside, so a thing standing on a lake's shore keeps its place when an island appears (asked by `relief` and `vale`). `on` and `follows` on several pieces, and `interpolate` and `substring` on more than one ring, are `geom.many_rings`; in a formula, `t` is `formula.shape`. `d` and `sd` are defined and measure to every ring. |
 | Offset at a vertex | The normal of the segment that holds `t`. A segment holds `[t_i, t_i+1)`; `t = 1` is held by the last segment. So at a vertex the outgoing segment's normal is used, never the bisector. This closes `numbers.md`'s open line: one segment's normal keeps `offset` a true distance from that segment, and the ford cottage on a bend is its case (Conformance). |
 
 A point placed `on = { ref, t, offset }` is the point at `t`, moved `offset` metres along the left
@@ -283,8 +283,10 @@ not a mount means that place's default mount. The point each kind of name gives:
 
 The check: the build nodes every path feature that has a kind (guides are left out) and reads the
 provenance (3.1). A point where two such paths cross or touch is owned when it is the end of one
-named onto the other or onto a point on it (`starts_at`, `ends_at`), when one `follows` the other, or
-when both are inputs of one network, which owns its junctions. Any other is `geom.unowned_crossing`
+named onto the other or onto a point on it (`starts_at`, `ends_at`), when one `follows` the other,
+when one names the other in an attribute its kind lists in `names` (one was found from the other,
+as a course returned by a step names the river it was followed from), or when both are inputs of
+one network, which owns its junctions. Any other is `geom.unowned_crossing`
 (warning) at the point, naming both, with the hint to end one on the other or on a named owner.
 This is R18's "a meeting nobody owns shows as a stub, a doubled deck"; ford's lanes end on the ford,
 so ford raises none.

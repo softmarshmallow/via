@@ -1,0 +1,15 @@
+# The road swings west through the middle of the valley (the spike's `move_road`). The houses stand
+# `on` it, so they follow; so do the trail's foot, the green and the views on the road.
+[feature.valley_road]
+path = [[187.1, 0], [196, 80], [196, 165], [214, 250], [276, 322], [338, 400], [387.6, 512]]
+
+# On the moved road the west side is the foot of the valley wall: the barn's pad would cut 3.1 m and
+# cottage_a's 4.0 m where the library's pad allows 3 (`authority.max_change`, one record each; the
+# spike said `seam.change_exceeds` on three houses). So the change also does what the author does
+# once the build has named them: it crosses the two to the east side of the road, the valley floor,
+# where their pads cut at most 2.1 m (evaluated with `via eval --field height` before the pads).
+[instance.cottage_a]
+on = { ref = "valley_road", t = 0.385, offset = -13 }
+
+[instance.barn]
+on = { ref = "valley_road", t = 0.418, offset = -15 }

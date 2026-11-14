@@ -1,0 +1,15 @@
+name       = "refused"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[step.probe]
+when    = "lint"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/probe.py"]
+
+[change.add.field.extra]
+base = "= 1"

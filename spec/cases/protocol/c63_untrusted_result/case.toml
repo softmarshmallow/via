@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "An untrusted plain generate step built from its matching committed result: protocol.untrusted_result (info), exit 0, the trusted build's id."
+milestone = 2
+actions   = ["program", "trust", "base", "commit", "untrusted"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.commit]
+via         = ["step", "commit", "world.toml", "--out", "build/c"]
+exit        = 0
+diagnostics = "includes"
+
+[action.untrusted]
+via         = ["build", "world.toml", "--out", "build/u"]
+env         = { VIA_CONFIG_DIR = "{work}/.untrusted" }
+exit        = 0
+out         = "build/u"
+diagnostics = "includes"
+
+[action.untrusted.diag.used]
+code     = "protocol.untrusted_result"
+severity = "info"
+subject  = "step.gen"
+
+[action.untrusted.same.id]
+action = "base"
+what   = "id"

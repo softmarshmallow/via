@@ -192,6 +192,8 @@ fn check(step_id: &str, d: &StepDiagIn, world: &dyn StepWorld) -> Result<Diag, S
 fn site_for(step_id: &str, subject: &Subject, world: &dyn StepWorld) -> Site {
     match subject {
         Subject::Selector(s) => world.selector_site(step_id, s),
+        // The world as a whole is located at the world file (`diagnostics.md` 1.1).
+        Subject::World => Site::World,
         s => s.key_path().map_or(Site::Header, Site::Key),
     }
 }

@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "EXT_mesh_gpu_instancing in extensionsUsed only: pack.bad_model naming it."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.bad_model]
+code    = "pack.bad_model"
+subject = "asset.cube"
+data    = { pointer = "/extensionsUsed/0" }

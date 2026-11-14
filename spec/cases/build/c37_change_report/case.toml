@@ -5,16 +5,18 @@ actions   = ["program", "trust", "base", "downstream"]
 
 # build.md case 37 and the plan's ford row `downstream` ("Must follow, and be reported").
 # Entries are sorted by table, then name (build.md 11.2): the seven written features that follow the
-# ford (beck is the one untouched, as build.md 11.2's example summary counts: ~6, changed 3,
-# 1 untouched), then the fields clearing, height, water, the cottage's footprint, the cottage, and
+# ford (beck is the one untouched: ~6, changed 4, 1 untouched), then the fields clearing, height, water, the cottage's footprint, the cottage, and
 # the trees. Every entry's one cause is the one edited statement, feature.ford.on, written in
 # world.toml line 74. The positions of entries past the cottage are the trees', not asserted here.
 #
 # Nothing beyond what follows is listed (build.md 11.2's worked example, derived, not recorded):
 # - Features: lane_west, lane_east and in_trees stand on or arrive at the ford, so they moved;
 #   at_ford and to_door moved and changed (their `toward` names the ford, the cottage); on_bank
-#   stands on the beck, which did not move, so it only changed (its `toward` names the ford). The
-#   ford moved. So ~6, changed 3; beck has no entry and is the 1 untouched.
+#   stands on the beck, which did not move, so it only changed (its `toward` names the ford).
+#   in_trees moved, and changed too: its `toward` names lane_east.end, whose plan is the same but
+#   whose ground the lane's bed, laid again from the moved ford, sets to another height, and
+#   features.json writes that place's `at` with its height (build.md 11.2: heights count). The ford moved. So ~6, changed 4; beck has no entry and is the
+#   1 untouched.
 # - Fields: height, clearing and water all changed (the ford's approach, the pad); 0 untouched.
 # - The cottage stands on lane_west, so it and its footprint moved (~1 each). Trees have no
 #   `ground`, so no footprint row of theirs.
@@ -189,7 +191,7 @@ count   = 5
 [action.downstream.file.summary_feature]
 path    = "build/ford/changes.json"
 pointer = "/summary/0/line"
-value   = "feature (written): +0 -0 ~6 swapped 0 changed 3, 1 untouched"
+value   = "feature (written): +0 -0 ~6 swapped 0 changed 4, 1 untouched"
 
 [action.downstream.file.summary_field]
 path    = "build/ford/changes.json"

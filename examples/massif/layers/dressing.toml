@@ -1,0 +1,47 @@
+# Dressing layer: above the weathering step, so it reads the `talus` that step returns; and the
+# ground bookmarks, one at each place two kinds meet (R17).
+
+[scatter.woods]                           # the wood stands on wet ground off the steep slopes
+assets  = [{ id = "tree_oak", weight = 4 }, { id = "tree_pine", weight = 2 }]
+spacing = 7
+density = "= f('forest')"
+scale   = [0.75, 1.3]
+
+[scatter.fallen_rock]                     # boulders lie where the weathering says material came to rest
+assets  = [{ id = "rock_a", weight = 3 }, { id = "rock_b", weight = 1 }]
+spacing = 5
+density = "= 0.5 * smoothstep(0.5, 0.95, f('tag:talus'))"
+scale   = [0.5, 1.4]
+
+# ---- bookmarks (lib/review): eye height 1.7 m unless written
+
+[feature.up_the_road]                     # the road and the wood: up the road toward the cottages
+kind   = "bookmark"
+on     = { ref = "valley_road", t = 0.25 }
+toward = "cottage_a"
+
+[feature.to_door]                         # the road and a house: from the road to cottage_b's front
+kind   = "bookmark"
+on     = { ref = "valley_road", t = 0.62 }
+toward = "cottage_b"
+
+[feature.by_water]                        # the road and the water: on the far bank, across to the road
+kind   = "bookmark"
+on     = { of = "uplands", class = "feature", near = [200, 130], t = 0.6, offset = -8 }
+toward = "cottage_a"
+
+[feature.at_mouth]                        # the water and the world's edge: where the stream leaves, on its bank (inside the beck's keep_out, so no trunk at the eye)
+kind   = "bookmark"
+on     = { of = "uplands", class = "feature", near = [290, 20], t = 0.88, offset = 2.5 }
+toward = "road_entry"
+
+[feature.to_barn]                         # a house on the open hillside, far from any road
+kind   = "bookmark"
+on     = { of = "uplands", class = "feature", near = [180, 150], t = 0.5, offset = -20 }
+toward = "high_barn"
+
+[feature.over_valley]                     # the valley from the head of the road, raised (the spike's `bm_over`)
+kind       = "bookmark"
+on         = { ref = "valley_road", t = 0.97, offset = 10 }
+toward     = "cottage_a"
+eye_height = 6

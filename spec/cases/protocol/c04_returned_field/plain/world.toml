@@ -1,0 +1,10 @@
+name       = "wave"
+extent     = [0, 0, 1280, 1280]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.height.then.w]
+value = "= x + 0.5 * y"

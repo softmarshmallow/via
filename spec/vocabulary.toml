@@ -47,6 +47,10 @@ words = [
     "profile",
     "reach",
     "headroom",
+    "cliff",
+    "trail",
+    "wood",
+    "spawn zone",
 ]
 crates = ["via-num", "via-diag", "via-doc", "via-expr", "via-geom", "via-raster", "via-graph", "via-model", "via-proto", "via-cli", "via-step"]
 excluded = ["via-terrain"]
@@ -293,6 +297,16 @@ sections = ["Features"]
 [key."starts_at"]
 takes = "name"
 chapter = "geometry"
+sections = ["Features"]
+
+[key."holds"]
+takes = "point"
+chapter = "derived"
+sections = ["Features"]
+
+[key."route"]
+takes = "formula"
+chapter = "derived"
 sections = ["Features"]
 
 [key."ends_at"]
@@ -635,6 +649,11 @@ takes = "selector"
 chapter = "graph"
 sections = ["Steps"]
 
+[key."checks"]
+takes = "list of strings"
+chapter = "derived"
+sections = ["Steps"]
+
 [key."root"]
 takes = "string"
 chapter = "assets"
@@ -696,6 +715,11 @@ chapter = "assets"
 sections = ["Pack"]
 
 [key."solidity"]
+takes = "string"
+chapter = "assets"
+sections = ["Pack"]
+
+[key."collision"]
 takes = "string"
 chapter = "assets"
 sections = ["Pack"]

@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "A step added by an inline change in layer shaping, and one by a change file: ranks of shaping and world."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# A returned feature carries its step's layer: `a` in `shaping`, `b` in `world`. The ranks are read
+# from the run report once returned documents join their layers.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs", "--change", "more", "--change", "extra.toml"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--change", "more", "--change", "extra.toml", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.build.file.a]
+path     = "build/w/features.json"
+pointer  = "/features/0"
+includes = { name = "a#k", layer = "shaping" }
+
+[action.build.file.b]
+path     = "build/w/features.json"
+pointer  = "/features/1"
+includes = { name = "b#j", layer = "world" }

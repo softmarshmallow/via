@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A model pack with no facts file: via build gives pack.unaccepted once, exit 0."
+milestone = 2
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.unaccepted]
+code = "pack.unaccepted"

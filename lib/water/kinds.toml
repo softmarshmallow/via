@@ -12,30 +12,35 @@
 # - What the beck keeps free of trees and props it writes on the field with role `keep_out`.
 #
 # Cross profiles read `d` only, never `t` (geometry.md 2.6: the beck bends, so a frame read far
-# from its line would jump). The water's fall along the beck comes from the floor on its line,
-# read by `smoothed_along`, so it is level across the channel and falls as the floor falls.
+# from its line jumps across the bisector inside each bend, limitation E1). Only the channel reads
+# `t`: the floor is level across the water at `smoothed_along(4) - depth`, within `width / 2` of the
+# line, where a bend's jump is a fraction of a post. The banks read `d` alone. The water's fall
+# along the beck comes from the same floor, so it is level across the channel and falls as the
+# floor falls.
 
 [kind.beck]
 authority = "shaped"                      # a world that means it firmly writes "anchored" (ford does)
-radius    = 16
+radius    = 24                            # the bank's whole reach, `reach` and the fade past it
 
 [kind.beck.defaults]
 width = 6                                 # metres across the water
 depth = 1.2                               # metres the floor lies below the ground it was cut into
 flow  = 0.3                               # metres of water over the floor on the beck's line
-bank_grade = 0.2                          # the steepest bank, rise over run: a walker climbs out anywhere
+bank_grade = 0.2                          # how fast the cut shallows from the water's edge, rise over run
 
 [kind.beck.let]
-toe  = "= width / 2 - flow / bank_grade"  # where the floor ends and the bank begins, from the line, so
+toe   = "= width / 2 - flow / bank_grade" # where the floor ends and the bank begins, from the line, so
                                           # the water meets the bank `width / 2` from the line
-bank = "= 11"                             # metres from the toe within which the bank meets the ground
+reach = "= max(toe, 0) + depth / bank_grade"   # where the bank's cut has run out to the ground
 
 # The floor is level across the channel at `depth` below the ground on the beck's line (smoothed
-# along it), and the bank rises from the toe at `bank_grade` until it meets the ground. It cuts and
-# never fills, so on a hillside the high side is a wider cutting and the slope stays `bank_grade`:
-# a bank cut as a share of the ground above would add the hill's own slope to it. A bank that has
-# not met the ground `bank` metres from the toe (at the defaults, a hill rising more than about 1 in
-# 13 across the beck) fades into it over the next metre, and is steeper there.
+# along it). Past the water's edge the cut shallows by `bank_grade` a metre until it meets the
+# ground at `reach` (7.5 m at the defaults), and reads only `d`: so the bank is the ground's own
+# shape lowered, the same on both sides of a bend, with no step where the frame jumps. On a hillside
+# the high bank stands at the hill's slope plus `bank_grade` (a 14 degree valley side gives a
+# 24 degree bank, walkable) and the low bank follows the hill down. The two meet in the first metre
+# past the water's edge, blended by `smoothstep`, where the floor's `t` is still near the line. It
+# cuts and never fills.
 #
 # A crossing that stands on the beck (lib/ways' `ford`) reads this bank where it lies under its own
 # approach, so the approach is no steeper than `bank_grade` within the beck's reach. Keep it at or
@@ -43,8 +48,8 @@ bank = "= 11"                             # metres from the toe within which the
 # statements would disagree (authority.md 5).
 [kind.beck.effect.bed]                    # lowers the ground: the floor across the water, the banks above it
 field = "role:surface"
-value = "= min(v, smoothed_along(4) - depth + bank_grade * max(0, d - toe))"
-mask  = "= 1 - smoothstep(toe + bank, toe + bank + 1, d)"
+value = "= min(v, mix(v - max(0, depth - bank_grade * max(0, d - toe)), smoothed_along(4) - depth + bank_grade * max(0, d - toe), 1 - smoothstep(width / 2, width / 2 + 1, d)))"
+mask  = "= 1 - smoothstep(reach + 1, reach + 3, d)"   # 0 well inside `radius`, so no ring post is cut (fields.md)
 
 [kind.beck.effect.bank]                   # no tree on the floor or the bank
 field = "role:keep_out"
@@ -54,5 +59,108 @@ mask  = "= 1 - smoothstep(width / 2 + 2, width / 2 + 4, d)"
 [kind.beck.effect.level]                  # the water surface: `flow` over the floor on the line, level across
 field = "tag:water_level"
 value = "= max(v, smoothed_along(4) + flow)"
-mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 4, d)"   # up the bank, well above the water's edge;
-                                                               # beyond, a cutting below the level stays dry
+mask  = "= 1 - smoothstep(width / 2, width / 2 + 0.1, d)"     # the channel the bed cut: the water meets
+# the bank `width / 2` from the line. Held to the cut, never beyond it: where the cut is shallow
+# (a narrow stream whose `depth` is less than `flow + bank_grade * (flow / bank_grade - width / 2)`,
+# its toe on the line), the ground beside the channel can lie below the level, and a wider mask
+# spread the water over it as a sheet (`massif`: 2,760 m² of water on a 389 m stream 1.5 m wide).
+
+# Standing water (M2, `vale`). Three kinds, by how firmly the author means the water's shape:
+#
+# - `lake`: scenery. The ground decides the shore. A world writes it as a derived shape
+#   (derived.md 2): the one hollow below `water_height` that holds a point,
+#
+#     [feature.tarn]
+#     kind         = "lake"
+#     water_height = 26.4
+#     where        = "= water_height - f('height')"    # the world's terrain, by name
+#     holds        = [338, 186]
+#
+#   so a new seed, a moved hollow or an edited row moves the shore, and whatever stands `on` the lake
+#   follows. The lake writes the water and keeps props off its shore; it never moves the ground.
+# - `tarn`: a point that asks for a lake filled to where its hollow would run over. That level is
+#   a search, not a condition (derived.md 2), so this library's step finds it and returns the
+#   `lake` above, with `water_height` set. A world that wants tarns restates this table (a library
+#   declares no step, protocol.md 1), in the layer of its tarns or one above:
+#
+#     [step.fill]
+#     when    = "generate"
+#     worker  = true
+#     command = ["python", "-m", "viasdk", "lib:water/fill.py"]
+#
+#   It reads the terrain's head view (authority.md 4.4), so a tarn fills the ground the base and
+#   the rows made, never the cuts of a lane or a pad. A tarn is derived: it asks nothing to hold, so
+#   no lint checks it (derived.md 5). The lake it returns is `fill#<tarn>_lake`; text stands on it
+#   by `on = { of = "fill", class = "feature", near = [x, y], t = 0.3, offset = 3 }`.
+#   A lake with an island (asked by `vale`): its region is one piece with a hole, and `t` and
+#   `offset` are measured along its outer ring, the shore a walker meets from outside
+#   (geometry.md 2.6), so a view on the shore keeps its place when an islet appears. A lake of
+#   several pieces has no single shore: `geom.many_rings` at the `on`; stand on it by `holds`'s
+#   piece (a `where` lake keeps one) or by a point.
+# - `pond`: a landmark. Its region is exact and the ground conforms to it: the bed is cut or built
+#   to the shape, the banks are shaped to hold the water, and every derived and shaped thing gives
+#   way to it (authority.md 3).
+#
+# The water surface is written on the field tagged `water_level`, whose base is the ground (above):
+# `max(v, water_height)` over the water, so a lake also fills a hole another kind cut in it, and
+# where the ground stands above the level the field stays the ground.
+
+[kind.lake]                               # derived, the default: the ground decides its shore
+requires = ["water_height"]               # metres: the water's surface
+radius   = 6
+
+[kind.lake.defaults]
+margin = 1.5                              # metres beyond the water kept clear of props and trees
+
+[kind.lake.effect.level]                  # the water surface over the region; the shore is the ground's
+field = "tag:water_level"
+value = "= max(v, water_height)"
+mask  = "= 1 - smoothstep(1, 2, d)"       # a post past the outline stands above the level: max keeps it
+
+[kind.lake.effect.shore]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(margin, margin + 2, d)"
+
+[kind.tarn]                               # derived: a point where a lake fills its hollow (lib:water/fill.py)
+radius = 1                                # it writes no field
+
+[kind.tarn.defaults]
+freeboard = 0.35                          # metres the water stands below the level it would run over at
+fence     = 0                             # metres: the hollow is looked for within this of the point (0: the world)
+max_depth = 0                             # metres: the deepest water over the ground at the point (0: no limit)
+
+[kind.pond]
+authority = "anchored"
+requires  = ["water_height"]
+radius    = 18                            # `rim` and 2 m: the mask is 0 from `rim`, a post inside the ring
+
+[kind.pond.defaults]
+depth      = 2.2                          # metres of water in the middle
+shore      = 7                            # metres over which the bed shelves from the edge to `depth`
+lip        = 0.3                          # metres the bank stands above the water at the edge
+bank_grade = 0.25                         # the steepest bank down to the water, rise over run
+
+[kind.pond.let]
+rim = "= 16"                              # metres from the edge within which the bank meets the ground
+
+# Inside, the bed is exactly the shape: `water_height` at the edge, shelving to `depth` over
+# `shore`. Outside, the bank holds the water and slopes to it: no lower than `lip` above the water
+# and no higher than `bank_grade` above that, both rising from the water's own level over the first
+# 2 m, so the ground is continuous at the edge and the shore crosses the level on a slope, between
+# posts, not at a step of `lip`; ground between the two is kept as it lies. So a pond on a hillside is cut into the slope above it and banked below,
+# and a pond in a hollow fills nothing it does not need to.
+[kind.pond.effect.bed]
+field = "role:surface"
+value = "= if(sd > 0, water_height - depth * smoothstep(0, shore, sd), clamp(v, water_height + lip * smoothstep(0, 2, d), water_height + lip * smoothstep(0, 2, d) + bank_grade * d))"
+mask  = "= 1 - smoothstep(rim - 4, rim, d)"
+
+[kind.pond.effect.level]
+field = "tag:water_level"
+value = "= max(v, water_height)"
+mask  = "= 1 - smoothstep(0.5, 1, d)"
+
+[kind.pond.effect.shore]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(3, 5, d)"

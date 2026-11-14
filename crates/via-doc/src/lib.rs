@@ -22,6 +22,7 @@
 mod change;
 mod check;
 mod ids;
+mod join;
 mod json;
 mod load;
 mod path;
@@ -34,6 +35,7 @@ mod world;
 
 pub use change::free_name;
 pub use ids::{is_id, repair as repair_id};
+pub use join::{document_file, Returned};
 pub use json::FORMAT;
 pub use load::{load, ChangeRequest, LoadOptions, Loaded};
 pub use path::open_file;

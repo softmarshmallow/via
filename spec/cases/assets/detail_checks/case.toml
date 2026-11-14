@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A detail copy 0.1 m wider; another shifted 0.5 m up; detail naming file: asset.detail_bounds, asset.detail_pivot, asset.detail_duplicate."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.detail_duplicate]
+code    = "asset.detail_duplicate"
+subject = "asset.cube.detail"
+
+[action.check.diag.detail_bounds]
+code    = "asset.detail_bounds"
+subject = "asset.cube.detail"
+data    = { index = 0 }
+
+[action.check.diag.detail_pivot]
+code    = "asset.detail_pivot"
+subject = "asset.cube.detail"
+data    = { index = 1 }

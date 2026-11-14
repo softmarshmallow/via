@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "graph.md 6.2: a lint's warning names a feature a generate step returned; built twice, the second build is null (nothing runs, exit 0) and replays the same diagnostics, located on the returned statement."
+milestone = 2
+actions   = ["program", "trust", "first", "second"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.first.diag.returned]
+code    = "step.look.returned"
+subject = 'feature."gen#found"'
+
+[action.second]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.second.diag.returned]
+code    = "step.look.returned"
+subject = 'feature."gen#found"'
+
+[action.second.nodes]
+ran = []
+
+[action.second.same.diagnostics]
+action = "first"
+what   = "diagnostics"

@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "A field file written by numpy.save from a C-order float32 array of the grid's shape: the build accepts it."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+[action.build.file.wave]
+path  = "build/w/fields/gen#wave.npy"
+exists = true

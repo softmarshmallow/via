@@ -558,7 +558,7 @@ pub(crate) fn not_yet(subject: Subject, at: At, word: &str, milestone: u32) -> F
         codes::doc::NOT_YET,
         subject,
         at,
-        format!("`{word}` arrives in milestone M{milestone}; this engine reads M1"),
+        format!("`{word}` arrives in milestone M{milestone}; this engine reads M2"),
         format!("remove `{word}` until M{milestone}"),
     )
 }
@@ -566,7 +566,6 @@ pub(crate) fn not_yet(subject: Subject, at: At, word: &str, milestone: u32) -> F
 fn word_not_yet(shape: Shape, key: &str, e: &Entry) -> Option<u32> {
     match &e.item.value {
         Value::Str(s) => schema::value_not_yet(shape, key, &s.text),
-        Value::Bool(true) if shape == Shape::Step && key == "worker" => Some(2),
         _ => None,
     }
 }

@@ -1,0 +1,7 @@
+# Ground stated to stay as it lies, across the river where it runs south through the middle of the
+# basin: a hold the terrain step honours (water ends at it), and the river's channel, cut after the
+# step (lib/terrain's `terrain_course`), lowers. The lint checks the hold after every effect (R14)
+# and says where it moved and the height it has now: `step.facts.hold_moved`, exit 1.
+[feature.green]
+kind   = "terrain_hold"
+region = [[1790, 1540], [1830, 1540], [1830, 1570], [1790, 1570]]

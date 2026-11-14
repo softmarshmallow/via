@@ -322,7 +322,8 @@ sheet passes `--option water=tag:water_level` (15.1). The spike's `water` raster
 | `mounts` | `{ <name>: { "at": [x, y], "face" } }`, sorted by name: each asset mount (`assets.md` 2.7) in the asset frame, `at` in exact metres, `face` in integer millidegrees. `{}` when it has none. A loader finds an instance's mount from this and the instance columns (15.1). |
 | `solidity` | As declared (`solid`, `none`). What the core's own checks took it to be; a loader need not read it. |
 | `colour` | As resolved (`assets.md` 2.4): the colour of a primitive or stand-in. |
-| `taxon`, `tags`, `params` | Passed through. Collision is a loader convention inside `params` (`assets.md` 2.2); the core has no collision key. |
+| `collision` | As resolved (`assets.md` 2.4, M2): `none`, `box`, `hull` or `mesh`, for the loader to map to the engine's shapes. The core reads it for nothing. |
+| `taxon`, `tags`, `params` | Passed through. |
 | `stand_in` | `true` when built with `--stand-ins` (M2): draw a `box` of `bounds` in `colour` (`assets.md` 9). |
 
 `materials` holds every pack material a `weights` field names: `colour`, `file` (a pack path, with
@@ -499,7 +500,7 @@ is integer millidegrees.
 | `name` | string | The thing's name: an id, a produced name, a footprint's instance name, or a field's name. |
 | `table` | string | `feature`, `footprint`, `field` or `instance`. A guide is a `feature`. |
 | `what` | list of strings | `["added"]`, `["removed"]`, or one or more of `moved`, `swapped`, `changed`, in that order. |
-| `keys` | list of strings | For `changed`: what differs beyond position, facing and asset, sorted: a `features.json` key (`kind`, `authority`, `layer`, `points`, `pieces`), `attrs.<attribute>`, `scale`, `tint`, `facts`, or for a field `samples` and any key of its manifest entry that differs (`role`, `tags`, ...). `[]` otherwise. A path whose vertices change inside the same box is `changed` with `points`. |
+| `keys` | list of strings | For `changed`: what differs beyond position, facing and asset, sorted: a `features.json` key (`kind`, `authority`, `layer`, `points`, `pieces`), `attrs.<attribute>`, `scale`, `tint`, `facts`, or for a field `samples` and any key of its manifest entry that differs (`role`, `tags`, ...). `[]` otherwise. A path whose vertices change inside the same box is `changed` with `points`; heights count, as `features.json` writes them, so a surface edit under a path's vertices is `changed` with `points`, and under a point's `at` is `moved`. |
 | `before`, `after` | object or `null` | The thing in the baseline and in this build (the position object, below). `before` is `null` when added, `after` when removed; both are `null` for a field. |
 | `facts` | list | For an instance or footprint whose asset's resolved facts differ (`assets.md` 7): `[{ "after", "before", "fact" }]`, sorted by `fact`, each value as `manifest.json` writes it (section 7). |
 | `region` | object or `null` | For a field present in both builds: where its samples differ (below). `null` for anything else. |
@@ -546,7 +547,7 @@ bounded field (M3), when its cover differs or a sample under cover 1 differs. Wh
 
 | Key | Type | Holds |
 |---|---|---|
-| `maker` | string or `null` | The maker's id; `null` for things written in text. |
+| `maker` | string or `null` | The maker's id: the part of a produced name before `#` (`identity.md` 1), so a step's returned features, fields and instances count under the step; `null` for things written in text. |
 | `table` | string | The table counted. A maker filling two tables (a scatter's instances and their footprints) has a row for each. |
 | `added`, `removed`, `moved`, `swapped`, `changed` | integer | Entries with that word in `what`. An entry with two words counts under each. |
 | `untouched` | integer | Things of that maker and table in both builds with no entry. |
@@ -584,7 +585,7 @@ the M1 build records the real report as a vector.
   ],
   "format": "via-changes-0",
   "summary": [
-    {"added": 0, "box": [0, 51.606, 256, 140], "changed": 3, "line": "feature (written): +0 -0 ~6 swapped 0 changed 3, 1 untouched", "maker": null, "moved": 6, "removed": 0, "swapped": 0, "table": "feature", "untouched": 1},
+    {"added": 0, "box": [0, 51.606, 256, 140], "changed": 4, "line": "feature (written): +0 -0 ~6 swapped 0 changed 4, 1 untouched", "maker": null, "moved": 6, "removed": 0, "swapped": 0, "table": "feature", "untouched": 1},
     {"added": 0, "box": [138.5, 33, 168, 126], "changed": 3, "line": "field (written): +0 -0 ~0 swapped 0 changed 3, 0 untouched", "maker": null, "moved": 0, "removed": 0, "swapped": 0, "table": "field", "untouched": 0},
     {"added": 0, "box": [80.1, 44.2, 101.9, 77.8], "changed": 0, "line": "footprint (written): +0 -0 ~1 swapped 0 changed 0, 0 untouched", "maker": null, "moved": 1, "removed": 0, "swapped": 0, "table": "footprint", "untouched": 0},
     {"added": 0, "box": [85.1, 49.2, 96.9, 72.8], "changed": 0, "line": "instance (written): +0 -0 ~1 swapped 0 changed 0, 0 untouched", "maker": null, "moved": 1, "removed": 0, "swapped": 0, "table": "instance", "untouched": 0},
@@ -595,8 +596,9 @@ the M1 build records the real report as a vector.
 
 `at_ford` stands on `lane_west`, which ends at the ford, so it moved; its `toward` names the ford,
 so it changed too. Its one cause reaches it by the shorter of two chains: through its name
-attribute, not through `lane_west`. In the summary, `at_ford` and `to_door` count under both
-`moved` and `changed`; `beck` is the one untouched feature.
+attribute, not through `lane_west`. In the summary, `at_ford`, `to_door` and `in_trees` count under both
+`moved` and `changed` (`in_trees`'s `toward` names `lane_east.end`, whose height the lane's bed,
+laid again from the moved ford, changes); `beck` is the one untouched feature.
 
 - **`.previous`** is canonical JSON, `{"format":"via-previous-0","id":…,"manifest":…}`: the `id`
   and the manifest digest of the last complete build written to this directory, or `null` for
@@ -700,7 +702,9 @@ to either without a new `format` or `epoch` fails `graph.md`'s epoch guard.
   it.
 - **With an error,** the directory is replaced by one holding `diagnostics.json` and `.previous`
   only (`diagnostics.md` 4): nothing a loader reads describes other text as if current. A loader
-  that finds no manifest says so and points to `diagnostics.json`.
+  that finds no manifest says so and points to `diagnostics.json`. A world file that does not
+  exist is the one exception: `doc.file_missing` is printed and nothing is written, no directory
+  and no lock, since no world names one (`via build --help` prints the usage, as `via help`).
 - **On Windows** a file open in another program (a loader holding a mapped field) blocks the rename.
   That is `build.dir_busy` (error), naming the file. Nothing is half replaced; the partial folder is
   kept for inspection and deleted by the next build. R20's recorded failures were Windows ones; this
@@ -851,7 +855,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | `fields` | Fields to keep as data in the root's metadata. |
 | `water` | One selector naming a water surface height field (6.4) to draw as water. |
 | `features` | Make nodes for features (below). |
-| `paths` | Feature selectors (a name or `kind:<kind>`): draw each path feature they select as a strip on the ground, `width` metres across (its attribute, else 1 m), in the loader's path colour. A view aid until a world paints its ways; a selector matching no path feature is an option error. |
+| `paths` | Feature selectors (a name or `kind:<kind>`): draw each path feature they select as a strip on the ground, `width` metres across (its attribute, else 1 m), in the loader's path colour, above the ground mesh everywhere: no ground post or bend of the ground mesh stands above a strip triangle. A view aid until a world paints its ways; a selector matching no path feature is an option error. |
 | `diagnostics` | A path: write the loader's diagnostics there as `diagnostics.md` 7's document, for unattended runs. Without it, they go to Godot's output. A loader reads no text, so each record has the `file` form (`diagnostics.md` 1.2): `file` is a build path (3.4), or `pack:` and the pack path for a pack file. |
 
 | Build | Becomes in Godot |
@@ -860,11 +864,11 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | A chunk | A `Node3D` `c_<cx>_<cy>` under it. Streaming chunks in and out is the engine's (M6). |
 | The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. |
 | A `material` weights field | Per chunk: a `ShaderMaterial` on that mesh, its planes as one `Texture2DArray` (format `R8`, one Godot texture layer per material), and each material's `colour`, `file` and `repeat` from `materials`. The shader loops over the chunk's count; there is no fixed number. A chunk naming more materials than the loader draws is `load.too_many_materials`, naming the chunk and its materials (`fields.md` 7.1). |
-| The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0. At a dry post of a drawn quad the surface takes the mean height of the wet posts among its eight neighbours (never above that post's ground), so it runs on under the bank and the ground hides it: the water's edge is where the bank meets the surface, not a quad's edge. Not collided. |
+| The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0. At a dry post of a drawn quad the surface lies strictly below that post's ground: at the mean height of the wet posts among its eight neighbours where that is at least 0.02 m below the ground (it runs on level under the bank), else at the ground less the mean depth of those wet posts (at least 0.02 m), as on a falling stream whose upstream posts stand above the bank. The ground hides what runs under it, so the water's edge is where the ground mesh crosses the surface, between posts on every quad edge from a wet post to a dry one, never on a post or a quad's edge. Not collided. |
 | A bounded field (6.3) | Not drawn; a kind surface is drawn from its mesh. Kept as data when `fields` names it. |
 | Any other field | Not drawn. Taken as an `Image` (`FORMAT_RF`) in the root's metadata when `fields` names it. Every field neither drawn nor kept is listed once in `load.fields_not_drawn` (info). |
 | Instances of one asset in one chunk | A `MultiMeshInstance3D` named after the asset id, its `MultiMesh` holding one transform per row and `tint` as instance custom data. The mesh comes from the asset's glTF through `GLTFDocument`, made with `to_asset`, which takes the file's node space as stored; a primitive or stand-in is made by the loader from `assets.md` 6. |
-| Collision of an instance | Read from the asset's `params` by the loader's convention (`assets.md` 2.2): `box` from `bounds`, `hull` a `ConvexPolygonShape3D`, `mesh` a `ConcavePolygonShape3D`, each on a `StaticBody3D` named after the instance. No `params.collision`, no body. A `passable` asset (M5, `assets.md` 10) will get no blocking body. |
+| Collision of an instance | Read from the asset record's `collision` (`assets.md` 2.4, M2); a record without it (an M1 build) is read from `params.collision`, the M1 convention: `box` from `bounds`, `hull` a `ConvexPolygonShape3D`, `mesh` a `ConcavePolygonShape3D`, each on a `StaticBody3D` named after the instance. `none`, or neither key, no body. A `passable` asset (M5, `assets.md` 10) will get no blocking body. |
 | An instance name | The node name where the instance has a node. `.` becomes `-`, since a Godot node name may not hold `.`; names never hold `-`, so the mapping reverses. `#` and `_` are kept. Names in `names.txt` keep each `MultiMesh` row findable. |
 | Re-import (M6) | Nodes are matched by name: a name in both builds keeps its node and its editor-set properties the loader does not own; a name gone removes its node. |
 | A feature | Nothing by default. With `features`: a `Path3D` with a `Curve3D` for a path, a `Marker3D` for a point, a `Polygon` in metadata for a region; `attrs` as metadata. |
@@ -892,7 +896,8 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   by `,`, `features` takes `true` or `false`. `diagnostics` is not taken: the tool writes its own
   (below). An unknown name or a bad value is exit 2. `ford`'s viewer settings are exactly
   `--option water=tag:water_level --option paths=kind:lane`: the tag the water library documents, and
-  the lanes drawn on the ground, since `ford` paints no material; the Godot loader suite and the
+  the lanes drawn on the ground, since `ford` paints no material (`lib/land/ground.md` gives the
+  rows that would paint it); the Godot loader suite and the
   milestone sheet pass them.
 - `--before` and `--after` are build directories (`build/ford` and `build/ford+downstream`).
   `--pack` names the pack's root when a manifest's `pack_root` is `null`. `--out` is written whole,
@@ -912,8 +917,37 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   sheet is 1280 pixels wide and `48 + 384 * rows` high: 1584 for `ford`'s four. Without `--after`
   it is one column, 640 wide. A bookmark in one build only has a grey cell (`#808080`) marked
   "absent" in the other.
+- **Hand edits are marked** in every render (ours). They are read from the change report of the
+  after build (of the one build without `--after`) when it has a baseline (11.2), never from world
+  text: an instance added with a `pin.<id>` cause is a pin, drawn as a magenta pole 9 m tall with a
+  ball on top and a ring; an instance removed with a `clear.<id>` cause is drawn where it stood as a
+  cyan ring, cross and 2.5 m square post; one removed by a `pin.<id>` likewise, in magenta. Unshaded,
+  in colours no pack colour should take, and the same in both builds' renders.
+- **Walks** (ours; challenge 3, "walk it in the engine"). From each bookmark's point a scripted
+  walker, a `CharacterBody3D` capsule 0.3 m in radius and 1.8 m tall, walks straight in plan toward
+  the bookmark's `toward` at 1.4 m/s under gravity, one `move_and_slide` per 1/60 s, colliding with
+  the ground body and every instance body the loader made. It stops `arrived` within 1 m of the
+  target or against the target's own body; `blocked` when it gains less than 0.1 m in 1 s, naming
+  what it pressed against (an instance, or `ground` with the slope, walkable up to 40 degrees);
+  `fell` after a drop through the air of more than 1 m beyond what the ground falls under its path
+  (a ledge), or below the lowest ground, a descent down ground too steep to walk with no ledge being
+  `blocked` by `ground` with its slope, as going up; at the shore of water deeper than a person
+  wades (0.7 m, the walker's `wade`), `blocked` by `water`, or `arrived` (by `water`) when the
+  target itself stands in such water, as a walk to a house ends at its wall; `timed_out` at three
+  times the straight line's time plus 5 s. It records the deepest water it waded and every `solid` instance
+  whose footprint it walked through because its asset collides as nothing. Each walk is rendered
+  from above with its trail (`<side>/walk/<bookmark>_plan.png`) and at the walker's eye 6 m short
+  of where it stopped, facing on, or back where the extent ends within 25 m ahead, and never
+  less than 0.2 m above the water surface where it stands in water (the walker's `above_water`)
+  (`<side>/walk/<bookmark>_eye.png`), 1280 by 720, and laid out in `<out>/walks.png`: two rows per
+  bookmark, `48 + 768 * rows` high, in `sheet.png`'s columns.
 - `<out>/sheet.json` is the protocol beside the images, canonical JSON:
-  `{ "after", "before", "bookmarks", "camera", "godot", "light", "renderer", "size" }`. `before`
+  `{ "after", "before", "bookmarks", "camera", "edits", "godot", "light", "renderer", "size",
+  "walk", "walks" }`. `edits` is `{ "against", "cleared", "pins" }`, each mark `{ "at", "cause",
+  "name" }`; `walk` the walker's constants (`above_water`, `arrive`, `eye`, `fall`, `height`,
+  `max_slope`, `radius`, `speed`, `wade`); each of `walks` is `{ "after", "before", "name" }`, a
+  report per build (`null` where absent): `{ "by", "deepest", "drop", "eye", "from", "left",
+  "outcome", "plan", "slope", "stop", "through", "toward", "walked" }`. `before`
   and `after` are `{ "id", "world" }` (`after` `null` without one); each of `bookmarks` is
   `{ "after", "before", "eye", "name", "target" }`, with the two image paths (`null` where absent),
   `eye` as `{ "after", "before" }`, each build's eye point (`null` where absent), and `target` as

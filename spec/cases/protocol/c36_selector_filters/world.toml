@@ -1,0 +1,22 @@
+name       = "m2"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[step.gen]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+worker  = true
+
+[feature.low]
+kind = "mark"
+at   = [1, 1]
+
+[layer.top]
+file  = "top.toml"
+owner = "tests"
+rank  = 1

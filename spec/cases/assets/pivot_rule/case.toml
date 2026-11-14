@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "A model centred in plan, its origin 2 m above its base, base_centre: origin [0, 0, 2], asset.pivot_moved; the lowest point at the placing point minus sink."
+milestone = 2
+actions   = ["build"]
+
+# The asset frame from the model (build.md 7 `to_asset`): rows x = -mx, y = mz, z = my, then
+# minus the pivot. Under base_centre the pivot is the lowest point, 2 m below the origin, so the
+# translation lifts the model by 2 m onto the placing point; under origin it lifts nothing.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.file.origin]
+path    = "build/w/manifest.json"
+pointer = "/assets/cube/origin"
+value   = [0, 0, 2]
+
+[action.build.file.to_asset]
+path    = "build/w/manifest.json"
+pointer = "/assets/cube/to_asset"
+value   = [-1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 2]
+
+[action.build.diag.pivot_moved]
+code    = "asset.pivot_moved"
+subject = "asset.cube"
+records = 1

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "KHR_materials_emissive_strength required: no error."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.check.diag.bad_model]
+code    = "pack.bad_model"
+records = 0

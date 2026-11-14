@@ -1,0 +1,87 @@
+# A small place in a wood, built to judge placement by eye (challenge 50). The base spreads its
+# growth evenly, as a first attempt would; `changes/by_cause.toml` places the same things where
+# they would gather (R5). The land and what is built on it are here; the growth is the planting
+# layer's, the views the review layer's.
+name    = "glade"
+extent  = [0, 0, 192, 192]
+seed    = 14
+include = ["land", "water", "ways", "vegetation", "review"]
+pack    = "starter"
+
+[layer.planting]
+file  = "planting.toml"
+owner = "planting"
+rank  = 1
+
+[layer.review]
+file  = "review.toml"
+owner = "review"
+rank  = 2
+
+[field.height]
+role = "surface"
+base = "= 20 + 0.07 * y + 0.03 * x + 5 * fbm(110, 3, seed = 'hills') + 0.7 * fbm(24, 3, seed = 'bumps')"
+
+[field.clearing]                          # pads, the lane and the stream write it (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+[field.water]                             # the stream writes it (tag:water_level); dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.cover]                             # the wood round the glade: open within 34 m of its middle,
+tags = ["cover"]                          # in stands beyond, thin on steep ground
+base = "= smoothstep(34, 58, dist('middle', 80) + 14 * fbm(40, 2, seed = 'edge')) * smoothstep(-0.25, 0.15, fbm(80, 3, seed = 'stands')) * (1 - smoothstep(26, 34, slope('height')))"
+
+[field.ground]                            # lib/land/ground.md's rows, and a woodland floor under cover
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.litter]                # leaves and needles where the wood is thick
+paint = "litter"
+mask  = "= smoothstep(0.45, 0.8, f('cover'))"
+
+[field.ground.then.scree]
+paint = "rock"
+mask  = "= smoothstep(27, 34, slope('height'))"
+
+[field.ground.then.shingle]               # the stream's bed and banks (lib/water's beck, 4 m here)
+paint = "gravel"
+mask  = "= 1 - smoothstep(3, 4.5, dist('stream', 8))"
+
+[field.ground.then.track]                 # the lane worn to earth (3 m here)
+paint = "earth"
+mask  = "= 1 - smoothstep(1, 1.8, dist('kind:lane', 4))"
+
+[feature.middle]                          # the glade is open around this point
+at = [96, 90]
+
+[feature.stream]
+kind   = "beck"
+smooth = true
+width  = 4
+depth  = 1.6
+path   = [[148, 192], [138, 150], [150, 100], [136, 50], [144, 0]]
+
+[feature.track]
+kind  = "lane"
+width = 3
+path  = [[0, 71], [50, 78], [90, 85]]
+
+[instance.cottage]                        # at the track's end, facing it, clear of its verge
+asset  = "house_low"
+ground = "pad"
+margin = 1.5
+on     = { ref = "track", t = 1, offset = 10 }
+face   = "toward"
+
+[instance.shed]
+asset  = "shed_gable"
+ground = "pad"
+margin = 1
+at     = [108, 104]
+face   = 250

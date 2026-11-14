@@ -312,8 +312,71 @@ pub fn scatter_all(
     let keep_out = f.keep_out(View::Build);
     let mut raw: Vec<held::Instance> = Vec::new();
     let mut facts: BTreeMap<String, (f64, f64)> = BTreeMap::new();
-    for s in d.scatters.values() {
+    // Scatters in an order where one grown `around` another comes after it (`rules.md` 7.3),
+    // ties by id; a loop is left in id order (the graph says `graph.cycle`).
+    let mut order: Vec<&crate::decl::ScatterDecl> = Vec::new();
+    {
+        let mut done: BTreeSet<&str> = BTreeSet::new();
+        let all: Vec<&crate::decl::ScatterDecl> = d.scatters.values().collect();
+        while order.len() < all.len() {
+            let before = order.len();
+            for s in &all {
+                if done.contains(s.id.as_str()) {
+                    continue;
+                }
+                let ready = match &s.clump {
+                    Some(crate::decl::Clump::Around { of, .. }) => {
+                        !d.scatters.contains_key(of) || done.contains(of.as_str()) || of == &s.id
+                    }
+                    _ => true,
+                };
+                if ready {
+                    done.insert(&s.id);
+                    order.push(s);
+                }
+            }
+            if order.len() == before {
+                for s in &all {
+                    if done.insert(&s.id) {
+                        order.push(s);
+                    }
+                }
+            }
+        }
+    }
+    for s in order {
         out.makers.insert(s.id.clone());
+        // `around` (7.3): the origins of the named producer's output, scatter or hand.
+        let around: Option<(Vec<P>, i64)> = match &s.clump {
+            Some(crate::decl::Clump::Around { of, radius }) => {
+                let producer = d.scatters.contains_key(of)
+                    || d.steps.contains_key(of)
+                    || d.instances.contains_key(of);
+                if !producer {
+                    out.diags.push(text::at_own_key(
+                        codes::scatter::CLUMP,
+                        "scatter",
+                        &s.id,
+                        "clump",
+                        &format!("`around` names `{of}`, which is no producer"),
+                        "name a scatter, a run or a step",
+                    ));
+                    continue;
+                }
+                let mut pts: Vec<P> = raw
+                    .iter()
+                    .filter(|r| &r.producer == of)
+                    .map(|r| r.origin)
+                    .collect();
+                pts.extend(
+                    hand.iter()
+                        .filter(|h| h.name.starts_with(&format!("{of}#")) || &h.name == of)
+                        .map(|h| h.origin),
+                );
+                Some((pts, *radius))
+            }
+            _ => None,
+        };
         let Some(lists) = choice_lists(s, pack, &mut out.diags) else {
             continue;
         };
@@ -469,12 +532,40 @@ pub fn scatter_all(
         let mut kept = 0usize;
         let mut gave = (0u64, 0u64);
         let mut gave_box: Option<(P, P)> = None;
-        for (k, (i, j, (x, y))) in cands.iter().enumerate() {
-            let ko = keep_out
+        let ko_at = |x: i64, y: i64| {
+            keep_out
                 .as_ref()
-                .and_then(|r| read_at(&grid, r, *x, *y).ok())
-                .unwrap_or(0.0);
-            let p = density[k] * (1.0 - ko);
+                .and_then(|r| read_at(&grid, r, x, y).ok())
+                .unwrap_or(0.0)
+        };
+        // Steps 3 to 5: the kept parents and their clump members, each (name, asset, origin,
+        // facing, scale, tint), parents in candidate order with their members after each.
+        let mut todo: Vec<(String, String, P, i64, f64, f64, bool)> = Vec::new();
+        let (sc, smr, sma, smk, smf, sms, smt) = (
+            st("clump_count"),
+            st("member_r"),
+            st("member_a"),
+            st("member_keep"),
+            st("member_face"),
+            st("member_scale"),
+            st("member_tint"),
+        );
+        for (k, (i, j, (x, y))) in cands.iter().enumerate() {
+            let ko = ko_at(*x, *y);
+            let near = match &around {
+                Some((pts, radius)) => {
+                    let dmin = pts
+                        .iter()
+                        .map(|q| {
+                            let (dx, dy) = ((q.x - x) as f64, (q.y - y) as f64);
+                            (dx * dx + dy * dy).sqrt()
+                        })
+                        .fold(f64::INFINITY, via_num::min);
+                    via_num::max(0.0, 1.0 - dmin / *radius as f64)
+                }
+                None => 1.0,
+            };
+            let p = density[k] * (1.0 - ko) * near;
             if via_num::unit(via_num::draw(sk, &[*i, *j])) >= p {
                 continue;
             }
@@ -483,13 +574,82 @@ pub fn scatter_all(
             let facing = ((u128::from(via_num::draw(sf, &[*i, *j])) * 360_000) >> 64) as i64;
             let scale = ranged(s.scale, via_num::draw(ss, &[*i, *j]));
             let tint = ranged(s.tint, via_num::draw(stt, &[*i, *j]));
+            let name = scatter_name(&s.id, sp, *i, *j);
+            todo.push((
+                name.clone(),
+                asset.clone(),
+                P::new(*x, *y),
+                facing,
+                scale,
+                tint,
+                false,
+            ));
+            if let Some(crate::decl::Clump::Members {
+                lo,
+                hi,
+                radius,
+                shrink,
+            }) = &s.clump
+            {
+                let span = (hi - lo + 1) as u128;
+                let count = lo + ((u128::from(via_num::draw(sc, &[*i, *j])) * span) >> 64) as i64;
+                for m in 0..count {
+                    let key = [*i, *j, m];
+                    let rr = *radius as f64 * via_num::unit(via_num::draw(smr, &key)).sqrt();
+                    let bearing = ((u128::from(via_num::draw(sma, &key)) * 360_000) >> 64) as i64;
+                    let (sn, cs) = via_num::facing_sin_cos(bearing);
+                    let mx = x + (rr * sn).round_ties_even() as i64;
+                    let my = y + (rr * cs).round_ties_even() as i64;
+                    if mx < ex0 || mx > ex1 || my < ey0 || my > ey1 {
+                        continue;
+                    }
+                    if let Some(r) = &within {
+                        if r.side(P::new(mx, my)) == via_geom::pred::Side::Out {
+                            continue;
+                        }
+                    }
+                    if via_num::unit(via_num::draw(smk, &key)) >= 1.0 - ko_at(mx, my) {
+                        continue;
+                    }
+                    let mf = ((u128::from(via_num::draw(smf, &key)) * 360_000) >> 64) as i64;
+                    let ms = ranged(s.scale, via_num::draw(sms, &key)) * (1.0 - shrink);
+                    let mt = ranged(s.tint, via_num::draw(smt, &key));
+                    todo.push((
+                        format!("{name}_m{m}"),
+                        asset.clone(),
+                        P::new(mx, my),
+                        mf,
+                        ms,
+                        mt,
+                        true,
+                    ));
+                }
+            }
+        }
+        // The solid footprints of the current parent (when kept) and of its kept members, in
+        // member order: a member gives way to them (7.5).
+        let mut group: Vec<via_geom::Region> = Vec::new();
+        for (name, asset, origin, facing, scale, tint, member) in todo {
+            if !member {
+                group.clear();
+            }
             let Some(a) = pack.assets.get(&asset) else {
                 continue;
             };
-            let origin = P::new(*x, *y);
             let Some(fp) = footprint(a, origin, facing, scale) else {
                 continue;
             };
+            if member && a.solid && group.iter().any(|g| overlaps(g, &fp)) {
+                gave.0 += 1;
+                gave_box = Some(match gave_box {
+                    None => (origin, origin),
+                    Some((a, b)) => (
+                        P::new(a.x.min(origin.x), a.y.min(origin.y)),
+                        P::new(b.x.max(origin.x), b.y.max(origin.y)),
+                    ),
+                });
+                continue;
+            }
             // Give way (7.5): solid hand instances, then relief.
             // Neither asset `none` (rules.md 7.5, as 8.1 and 3.4's edges read).
             // Pins are hand edits, applied to the held output, not given way to (identity.md 4.1).
@@ -526,7 +686,9 @@ pub fn scatter_all(
                 });
                 continue;
             }
-            let name = scatter_name(&s.id, sp, *i, *j);
+            if a.solid {
+                group.push(fp.clone());
+            }
             facts.insert(name.clone(), (scale, tint));
             raw.push(held::Instance {
                 name,
@@ -831,6 +993,34 @@ impl via_expr::Reads for DensityReads<'_, '_> {
             .points()
             .into_iter()
             .map(|(x, y)| read_at(&g, &s, x, y).ok())
+            .collect())
+    }
+    /// `slope` at the candidates (`formulas.md`: from the slope at the four posts around).
+    fn slope(
+        &self,
+        field: &str,
+        points: &[(i64, i64)],
+    ) -> Result<Vec<Option<f64>>, via_expr::ReadError> {
+        let g = self.f.grid;
+        let r = self.f.get(field, View::Build).ok_or_else(|| {
+            via_expr::ReadError::new(
+                codes::diag::SKIPPED,
+                format!("`{field}` could not be resolved"),
+                "see the field's own diagnostic",
+            )
+        })?;
+        let s = r.scalar.as_ref().ok_or_else(|| {
+            via_expr::ReadError::new(
+                codes::formula::TYPE,
+                "a weights field is not a number",
+                "read a scalar field",
+            )
+        })?;
+        let sl = via_raster::slope::slope(&g, s, via_raster::Window::whole(&g))
+            .map_err(|_| via_expr::ReadError::new(codes::diag::INTERNAL, "a slope", "report it"))?;
+        Ok(points
+            .iter()
+            .map(|&(x, y)| via_raster::slope::slope_at(&g, &sl, x, y).ok())
             .collect())
     }
     fn measure(

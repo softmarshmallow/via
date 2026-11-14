@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A model referencing a missing image: pack.missing_file naming the URI and the asset."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.missing_file]
+code    = "pack.missing_file"
+subject = "asset.cube"
+file    = "pack:cube.gltf"
+data    = { pointer = "/images/0/uri" }

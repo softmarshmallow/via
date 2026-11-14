@@ -1,0 +1,81 @@
+# The vegetation library: where things grow, by cause (R5, rules.md 7.2).
+#
+# Growth is written as scatters in the world, each with a cause a reviewer can read: a density over
+# fields (`density = "= f('tag:cover')"`), a clump (`clump = { members = [2, 5], radius = 6.5,
+# shrink = 0.4 }`), growth beside another scatter (`clump = { around = "trees", radius = 5 }`), and
+# `keep_out` for every "not here" a kind writes. The kinds below give a world places to grow and
+# places to stay open, as regions an author draws, so the cover is a statement and not a noise
+# field tuned by eye. The core knows none of these words (principle 5).
+#
+# Conventions for a world that includes this library:
+# - Cover is a field tagged `cover`, 0 to 1, with `base = "= 0"` (or a formula of the world's own
+#   for cover that is not drawn). A `wood` raises it; a scatter reads it, `f('tag:cover')` or by name.
+# - "Not here" is the field with role `keep_out` (lib/land); a `clearing` writes it.
+#
+# The step `clumps.py` places clumps by a step instead of by `clump`, as a demonstration that our
+# libraries reach no further than a user's step (R19b; rules.md 7.2 keeps `clump` in core). A
+# library declares no step (protocol.md 1), so a world restates it; its `params` are the scatter's
+# keys, and a formula in them is evaluated by the engine (R23):
+#
+#   [step.groves]
+#   when    = "generate"
+#   worker  = true
+#   command = ["python", "-m", "viasdk", "lib:vegetation/clumps.py"]
+#   params  = { assets = ["@plant/tree"], spacing = 12, density = "= f('cover')",
+#               members = [2, 5], radius = 6.5, shrink = 0.4, scale = [0.9, 1.35] }
+#
+# `clumps.py`'s params:
+#   assets    asset ids or `@<taxon path>`, as a scatter's `assets` (rules.md 7.4); `{ id, weight }`
+#   spacing   metres between candidate parents, one per cell of a grid at this spacing
+#   density   a formula, 0 to 1: the chance a parent is kept (keep_out is applied as a scatter does)
+#   members   a number or [lo, hi]: members drawn around each parent, inclusive (default 0)
+#   radius    metres: the disc members fall in (default spacing / 2)
+#   shrink    0 to below 1: a member's scale is its draw times 1 - shrink * (its distance / radius)
+#   scale     [lo, hi]: the scale drawn for each thing (default [1, 1])
+#   around    `{ of = "<producer>", radius = <metres> }`: a parent's chance is also multiplied by
+#             `max(0, 1 - d / radius)`, d its distance to the nearest of that producer's instances
+#   within    a region feature's name: only parents inside it (default the whole world)
+#   gap       metres: a thing within this of one already kept gives way, parents first, then
+#             members, each in key order (default 2.4, two of the starter pack's trunks at the
+#             largest scale), so no two returned instances overlap (`place.overlap`)
+# Each instance is `<step>#<key>`, keyed by place (identity.md 2.2): `s<spacing mm>_<i>_<j>` for a
+# parent in grid cell (i, j), `_m<k>` after it for its members, so moving one parent's cause never
+# renames another.
+
+[kind.wood]                               # a region where a wood stands; its cover thins at the edge
+radius = 2
+
+[kind.wood.defaults]
+cover = 1                                 # the cover well inside, 0 to 1
+edge  = 12                                # metres inside the outline over which it thins to 0
+
+[kind.wood.effect.cover]
+field = "tag:cover"
+value = "= max(v, cover * smoothstep(0, edge, sd))"
+mask  = "= 1 - smoothstep(0, 1, d)"
+
+[kind.clearing]                           # a region kept open: nothing grows inside, thinning at the edge
+radius = 2
+
+[kind.clearing.defaults]
+edge = 6                                  # metres inside the outline over which it opens
+
+[kind.clearing.effect.open]
+field = "role:keep_out"
+value = "= max(v, smoothstep(0, edge, sd))"
+mask  = "= 1 - smoothstep(0, 1, d)"
+
+# A region kept open to growth that is not a "not here" (asked by `vale`): a hamlet's green, a
+# garden. It lowers `tag:cover` toward 0 inside, so every scatter that reads cover thins there, but
+# writes no `role:keep_out`, so a house or a pin may stand on it without `place.keep_out`. A scatter
+# that does not read cover is not thinned by it: that is the world's choice, written in its density.
+[kind.green]
+radius = 2
+
+[kind.green.defaults]
+edge = 6                                  # metres inside the outline over which cover falls to 0
+
+[kind.green.effect.thin]
+field = "tag:cover"
+value = "= min(v, 1 - smoothstep(0, edge, sd))"
+mask  = "= 1 - smoothstep(0, 1, d)"

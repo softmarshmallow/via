@@ -17,6 +17,8 @@ const Diagnostics := preload("res://addons/via_loader/diagnostics.gd")
 const CJson := preload("res://addons/via_loader/cjson.gd")
 const Compose := preload("res://compose.gd")
 const Rig := preload("res://rig.gd")
+const Walk := preload("res://walk.gd")
+const Marks := preload("res://marks.gd")
 
 const SHOT := Vector2i(1280, 720)
 const SETTLE_FRAMES := 4
@@ -30,6 +32,7 @@ var out := ""
 var pack := ""
 var options := {}
 var diags := Diagnostics.new()
+var edits := {"against": null, "pins": [], "cleared": []}
 var _done := false
 
 
@@ -140,11 +143,13 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 	loader.diags.build_label = label
 	var root := loader.make(dir, options)
 	diags.records.append_array(loader.diags.records)
-	var res := {"id": null, "world": null, "shots": {}, "far": null, "option_error": loader.option_error}
+	var res := {"id": null, "world": null, "shots": {}, "walks": {}, "far": null, "option_error": loader.option_error}
 	if root == null:
 		return res
 	res.id = root.get_meta("id")
 	res.world = root.get_meta("world")
+	if Marks.count(edits) > 0:
+		root.add_child(Marks.node(edits, loader))
 	vp.add_child(root)
 	DirAccess.make_dir_recursive_absolute(folder)
 	for cam in root.get_node("bookmarks").get_children():
@@ -162,9 +167,47 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 			res["write_failed"] = true
 			continue
 		res.shots[String(c.get_meta("feature"))] = {"file": file, "eye": c.get_meta("eye"), "toward": c.get_meta("toward"), "image": img}
+	await _walks(vp, root, loader, label, folder, res)
 	root.queue_free()
 	await RenderingServer.frame_post_draw
 	return res
+
+
+func _walks(vp: SubViewport, root: Node3D, loader, label: String, folder: String, res: Dictionary) -> void:
+	## Walks from each bookmark toward its target (walk.gd), then renders the walk from above with
+	## its trail and from the walker's eye where it stopped: <label>/walk/<name>_plan.png and
+	## <label>/walk/<name>_eye.png.
+	var unbodied: Array = loader.solid_without_body()
+	DirAccess.make_dir_recursive_absolute(folder + "/walk")
+	for cam in root.get_node("bookmarks").get_children():
+		var name := String(cam.get_meta("feature"))
+		var e: Array = cam.get_meta("eye")
+		var t: Dictionary = cam.get_meta("toward")
+		var r: Dictionary = await Walk.walk(root, loader, Vector3(e[0], e[1], e[2]), Vector3(t.at[0], t.at[1], t.at[2]), String(t.name), unbodied)
+		var trail := Walk.trail_node(r)
+		root.add_child(trail)
+		var shots := {}
+		for view in ["plan", "eye"]:
+			var vcam: Camera3D = Walk.overhead(r, float(SHOT.x) / SHOT.y) if view == "plan" else Walk.eye(r, root.get_meta("frame").extent, loader)
+			root.add_child(vcam)
+			vcam.make_current()
+			for f in SETTLE_FRAMES:
+				await RenderingServer.frame_post_draw
+			var img := vp.get_texture().get_image()
+			img.convert(Image.FORMAT_RGB8)
+			var file := "%s/walk/%s_%s.png" % [label, cam.name, view]
+			if img.save_png(out + ".partial/" + file) != OK:
+				printerr("sheet: cannot write %s" % file)
+				res["write_failed"] = true
+			shots[view] = {"file": file, "image": img}
+			vcam.queue_free()
+		root.remove_child(trail)
+		trail.free()
+		r.erase("trail")
+		r.erase("facing")
+		r["plan"] = shots.plan.file
+		r["eye"] = shots.eye.file
+		res.walks[name] = {"report": r, "plan": shots.plan.image, "eye": shots.eye.image}
 
 
 func _run() -> void:
@@ -179,8 +222,11 @@ func _run() -> void:
 	add_child(vp)
 	Rig.rig(vp)
 	var two := after != ""
+	var edited := Marks.read(after if two else before)
+	if edited.against != null:
+		edits = edited
 	var b: Dictionary = await _render(vp, before, "before", partial + "/before")
-	var a: Dictionary = {"shots": {}, "id": null, "world": null, "far": null, "option_error": ""}
+	var a: Dictionary = {"shots": {}, "walks": {}, "id": null, "world": null, "far": null, "option_error": ""}
 	if two:
 		a = await _render(vp, after, "after", partial + "/after")
 	vp.queue_free()
@@ -228,15 +274,40 @@ func _run() -> void:
 	header += "    Godot %s" % godot
 	var sheet: Image = await Compose.compose(self, header, rows, two)
 	var failed := sheet.save_png(partial + "/sheet.png") != OK or b.has("write_failed") or a.has("write_failed")
+	# the walks: one row from above and one at the walker's eye per bookmark, before and after
+	var wrows: Array = []
+	var walks: Array = []
+	for n in order:
+		var wb = b.walks.get(n)
+		var wa = a.walks.get(n)
+		var rb = wb.report if wb != null else null
+		var ra = wa.report if wa != null else null
+		var line := "walk %s toward %s    before: %s" % [n, (rb if rb != null else ra).toward, Walk.summary(rb)]
+		if two:
+			line += "    after: %s" % Walk.summary(ra)
+		wrows.append({"label": line + "    (from above)",
+			"before": wb.plan if wb != null else null, "after": wa.plan if wa != null else null})
+		wrows.append({"label": "walk %s    at the walker's eye, %.0f m short of where it stopped, facing on (back, at the world's edge)" % [n, Walk.BACK],
+			"before": wb.eye if wb != null else null, "after": wa.eye if wa != null else null})
+		walks.append({"after": ra if two else null, "before": rb, "name": n})
+	var wheader := "%s    walks    pins %d, cleared %d" % [world if world != null else "(no build)",
+		edits.pins.size(), edits.cleared.size()]
+	var wsheet: Image = await Compose.compose(self, wheader, wrows, two)
+	failed = failed or wsheet.save_png(partial + "/walks.png") != OK
 	var doc := {
 		"after": {"id": a.id, "world": a.world} if two else null,
 		"before": {"id": b.id, "world": b.world},
 		"bookmarks": marks,
 		"camera": {"far": b.far if b.far != null else a.far, "fov": 75.0, "near": 0.05},
+		"edits": edits,
 		"godot": godot,
 		"light": {"bearing": Rig.LIGHT_BEARING, "elevation": Rig.LIGHT_ELEVATION},
 		"renderer": RenderingServer.get_current_rendering_method(),
 		"size": [SHOT.x, SHOT.y],
+		"walk": {"arrive": Walk.ARRIVE, "eye": Walk.EYE, "fall": Walk.FALL, "height": Walk.HEIGHT,
+			"max_slope": Walk.MAX_SLOPE, "radius": Walk.RADIUS, "speed": Walk.SPEED, "wade": Walk.WADE,
+			"above_water": Walk.ABOVE_WATER},
+		"walks": walks,
 	}
 	var f := FileAccess.open(partial + "/sheet.json", FileAccess.WRITE)
 	f.store_string(CJson.text(doc))

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A model whose material has only a base colour factor: asset.untextured, exit 0."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.check.diag.untextured]
+code    = "asset.untextured"
+subject = "asset.cube"

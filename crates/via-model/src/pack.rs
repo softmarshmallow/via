@@ -22,7 +22,8 @@ const PRIMITIVES: [(&str, u64); 5] = [
     ("sphere", 224),
 ];
 
-const ASSET_KEYS: [&str; 18] = [
+const ASSET_KEYS: [&str; 19] = [
+    "collision",
     "colour",
     "detail",
     "engine",
@@ -50,7 +51,7 @@ pub struct Asset {
     /// `primitive` or `engine`.
     pub source: String,
     pub primitive: Option<String>,
-    /// `size` in millimetres.
+    /// `size` in millimetres; for a model, the extent of its measured `bounds`.
     pub size: [i64; 3],
     pub triangles: u64,
     /// `[x0, y0, z0, x1, y1, z1]` in millimetres.
@@ -66,14 +67,45 @@ pub struct Asset {
     pub mounts: BTreeMap<String, ((i64, i64), i64)>,
     pub taxon: Option<String>,
     pub tags: Vec<String>,
+    /// `collision` (2.4): `none`, `box`, `hull` or `mesh`. Carried to the loader; the core reads it
+    /// for nothing.
+    pub collision: String,
+    /// Where the model's own origin lies in the asset frame, millimetres (2.4); `[0, 0, 0]` for a
+    /// primitive or engine-made asset.
+    pub origin: [i64; 3],
+    /// What a model asset holds besides (2.2, 3); `None` for a primitive or engine-made asset.
+    pub model: Option<crate::asset::ModelFacts>,
+    /// The resolved `params` (2.5: the nearest one taken whole), handed to the loader unread.
+    pub params: Option<toml::Table>,
 }
 
 impl Asset {
+    /// The 3 by 4 matrix, row by row, taking a point of the model file's node space to the asset
+    /// frame (`build.md` 7 `to_asset`): the quarter turn of `front` and `up`, then minus the
+    /// pivot, in millimetres. Identity for a primitive or engine-made asset.
+    pub fn to_asset(&self) -> [[i64; 4]; 3] {
+        match &self.model {
+            None => [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]],
+            Some(m) => {
+                let mut out = [[0; 4]; 3];
+                for (i, row) in out.iter_mut().enumerate() {
+                    row[..3].copy_from_slice(&m.rows[i]);
+                    row[3] = -m.pivot_mm[i];
+                }
+                out
+            }
+        }
+    }
+
     /// The facts the change report compares (7), each as canonical text.
     pub fn facts(&self) -> BTreeMap<String, String> {
         let mut f = BTreeMap::new();
         let mm = |v: i64| via_num::write_length(v);
-        f.insert("size".into(), format!("[{}]", self.size.map(mm).join(", ")));
+        // `size` is the declared statement of a primitive or engine-made asset (7); a model's is
+        // measured, and its `bounds` are the fact.
+        if self.model.is_none() {
+            f.insert("size".into(), format!("[{}]", self.size.map(mm).join(", ")));
+        }
         f.insert(
             "bounds".into(),
             format!("[{}]", self.bounds.map(mm).join(", ")),
@@ -84,25 +116,52 @@ impl Asset {
             .map(|(x, y)| format!("[{}, {}]", mm(*x), mm(*y)))
             .collect();
         f.insert("footprint".into(), format!("[{}]", fp.join(", ")));
-        f.insert("origin".into(), "[0, 0, 0]".into());
+        f.insert(
+            "origin".into(),
+            format!("[{}]", self.origin.map(mm).join(", ")),
+        );
         f.insert("sink".into(), crate::text::dbl(self.sink));
+        // Each value is JSON text, in the form the manifest writes it (`build.md` 11.2): a
+        // number, a list, `null`, a string, or for `mounts` the manifest's object.
         f.insert(
             "max_relief".into(),
             self.max_relief
-                .map_or_else(|| "none".to_string(), crate::text::dbl),
+                .map_or_else(|| "null".to_string(), crate::text::dbl),
         );
         f.insert(
             "solidity".into(),
-            if self.solid { "solid" } else { "none" }.into(),
+            if self.solid { "\"solid\"" } else { "\"none\"" }.into(),
         );
         let mounts: Vec<String> = self
             .mounts
             .iter()
-            .map(|(n, ((x, y), face))| format!("{n}@[{}, {}]/{face}", mm(*x), mm(*y)))
+            .map(|(n, ((x, y), face))| {
+                format!(
+                    "{}:{{\"at\":[{},{}],\"face\":{face}}}",
+                    serde_json_str(n),
+                    mm(*x),
+                    mm(*y)
+                )
+            })
             .collect();
-        f.insert("mounts".into(), format!("[{}]", mounts.join(", ")));
+        f.insert("mounts".into(), format!("{{{}}}", mounts.join(",")));
         f
     }
+}
+
+/// A string as JSON text: quoted, with `"` and `\\` and control characters escaped.
+fn serde_json_str(s: &str) -> String {
+    let mut o = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => o.push_str("\\\""),
+            '\\' => o.push_str("\\\\"),
+            c if (c as u32) < 0x20 => o.push_str(&format!("\\u{:04x}", c as u32)),
+            c => o.push(c),
+        }
+    }
+    o.push('"');
+    o
 }
 
 /// A material (2.6).
@@ -130,9 +189,110 @@ pub struct Pack {
     /// (`diagnostics.md` 1.3): `asset.<id>`, `material.<name>`, `taxon.<path>` (a taxon implied
     /// by a longer path is declared by the first such path) to its subject and header site.
     pub declared: BTreeMap<String, (Subject, Site)>,
+    /// The pack file as found.
+    pub path: PathBuf,
+    /// Where the pack's files are (2.1 `root`).
+    pub root: crate::asset::RootOf,
+    /// The facts file (4) as read, its path, and its name as records write it.
+    pub facts: crate::asset_facts::FactsFile,
+    pub facts_path: PathBuf,
+    pub facts_display: String,
+    /// The pack path a hint names: as the command line gave it, or the pack file's path when it
+    /// is relative, else its file name (a record names no absolute path).
+    pub command: String,
+    /// Faults of one asset each (8.3): its bound files, reading and measuring its model and its
+    /// lower-detail copies. A build raises an asset's only when the world uses it; `via pack
+    /// check` raises them all.
+    pub asset_diags: BTreeMap<String, Vec<Diag>>,
 }
 
 impl Pack {
+    /// The pack path a hint names.
+    pub fn command_path(&self) -> &str {
+        &self.command
+    }
+
+    /// What a build raises about the assets it uses (8.3, 4.2): each used asset's own faults,
+    /// `pack.unaccepted` once, and the comparison with the facts file, naming every instance of a
+    /// revised asset. `instances` is each instance's name and asset.
+    pub fn used_diagnostics<'a>(
+        &self,
+        used: &BTreeSet<String>,
+        instances: impl IntoIterator<Item = (&'a str, &'a str)>,
+    ) -> Vec<Diag> {
+        if self.failed {
+            return Vec::new();
+        }
+        let mut out = Vec::new();
+        for id in used {
+            if let Some(d) = self.asset_diags.get(id) {
+                out.extend(d.iter().cloned());
+            }
+        }
+        let uses_model = used
+            .iter()
+            .any(|id| self.assets.get(id).is_some_and(|a| a.model.is_some()));
+        if uses_model {
+            out.extend(crate::asset_facts::unaccepted(self));
+        }
+        let mut by_asset: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for (name, asset) in instances {
+            by_asset
+                .entry(asset.to_string())
+                .or_default()
+                .push(name.to_string());
+        }
+        for v in by_asset.values_mut() {
+            v.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+        }
+        out.extend(crate::asset_facts::compare(
+            self,
+            used.iter().map(String::as_str),
+            &by_asset,
+        ));
+        out
+    }
+
+    /// What `via pack check` raises beyond the pack-wide faults (8.1): every asset's own faults,
+    /// `pack.unaccepted`, the comparison with the facts file (no instances: there is no world)
+    /// and `pack.stale_facts`.
+    pub fn check_diagnostics(&self) -> Vec<Diag> {
+        let mut out: Vec<Diag> = self.asset_diags.values().flatten().cloned().collect();
+        out.extend(crate::asset_facts::unaccepted(self));
+        out.extend(crate::asset_facts::compare(
+            self,
+            self.assets.keys().map(String::as_str),
+            &BTreeMap::new(),
+        ));
+        out.extend(crate::asset_facts::stale(self));
+        out
+    }
+
+    /// The files a build reads through the pack besides the pack file (`graph.md` 1, 2.2 "Bound
+    /// files", 4 "An input"): every bound file of every model asset, by its pack path, and the
+    /// facts file, absent or not.
+    /// A pack with no model asset binds no file and needs no facts file: it has no leaves.
+    pub fn leaves(&self) -> Vec<(String, via_graph::Digest)> {
+        let mut out: BTreeMap<String, via_graph::Digest> = BTreeMap::new();
+        if !self.assets.values().any(|a| a.model.is_some()) {
+            return Vec::new();
+        }
+        for a in self.assets.values() {
+            let Some(m) = &a.model else { continue };
+            for (rel, d) in &m.files {
+                let digest = via_graph::Digest::from_hex(d)
+                    .unwrap_or_else(|| via_graph::Digest::of(d.as_bytes()));
+                out.insert(self.root.pack_path(rel), digest);
+            }
+        }
+        let facts = match std::fs::read(&self.facts_path) {
+            Ok(b) => via_graph::Digest::of(&b),
+            Err(_) => via_graph::Digest::of(b"\0absent"),
+        };
+        out.insert(self.facts_display.clone(), facts);
+        out.into_iter().collect()
+    }
+
     /// The declaration of a pack name, `class` one of `asset`, `material`, `taxon`.
     pub fn declaration(&self, class: &str, name: &str) -> Option<(Subject, Site)> {
         self.declared.get(&format!("{class}.{name}")).cloned()
@@ -149,6 +309,102 @@ impl Pack {
                     .is_some_and(|t| t == taxon || t.starts_with(&below))
             })
             .collect()
+    }
+
+    /// The assets a taxonomy query selects (`protocol.md` 3.3 `pack.query`, 8.2's `--taxon`):
+    /// `"*"` for every asset, an `@<taxon path>` for those at or below it, or asset ids; with
+    /// `tag`, only those carrying it. Ordered by id, each once. Read-only (R19b).
+    ///
+    /// The fault is a code, a message, a hint and the nearest name: `pack.unknown_taxon` for an
+    /// undeclared taxon, `asset.unknown` for an id the pack lacks, `asset.empty_selection` for a
+    /// declared taxon or a tag that keeps no asset.
+    pub fn query(
+        &self,
+        select: &[String],
+        tag: Option<&str>,
+    ) -> Result<Vec<&Asset>, (Code, String, String, Option<String>)> {
+        let near = |w: &str, names: Vec<String>| {
+            via_diag::nearest::nearest(w, names.iter().map(String::as_str))
+                .found()
+                .map(str::to_string)
+        };
+        let mut keep: BTreeSet<&str> = BTreeSet::new();
+        for s in select {
+            if s == "*" {
+                keep.extend(self.assets.keys().map(String::as_str));
+            } else if let Some(t) = s.strip_prefix('@') {
+                if !self.taxa.contains(t) {
+                    let n = near(t, self.taxa.iter().cloned().collect());
+                    return Err((
+                        codes::pack::UNKNOWN_TAXON,
+                        format!("the taxon `@{t}` is not declared in the pack"),
+                        n.as_ref().map_or_else(
+                            || "declare `[taxon.\"<path>\"]` in the pack".to_string(),
+                            |n| format!("write `@{n}`"),
+                        ),
+                        n,
+                    ));
+                }
+                let found = self.select(t);
+                if found.is_empty() {
+                    let with: Vec<String> = self
+                        .taxa
+                        .iter()
+                        .filter(|x| !self.select(x).is_empty())
+                        .cloned()
+                        .collect();
+                    let n = near(t, with);
+                    return Err((
+                        codes::asset::EMPTY_SELECTION,
+                        format!("`@{t}` keeps no asset of the pack"),
+                        n.as_ref().map_or_else(
+                            || "name a taxon that has assets".to_string(),
+                            |n| format!("write `@{n}`"),
+                        ),
+                        n,
+                    ));
+                }
+                keep.extend(found.iter().map(|a| a.id.as_str()));
+            } else if self.assets.contains_key(s) {
+                keep.insert(s.as_str());
+            } else {
+                let n = near(s, self.assets.keys().cloned().collect());
+                return Err((
+                    codes::asset::UNKNOWN,
+                    format!("the pack has no asset `{s}`"),
+                    n.as_ref().map_or_else(
+                        || "name an asset of the pack".to_string(),
+                        |n| format!("write `{n}`"),
+                    ),
+                    n,
+                ));
+            }
+        }
+        let mut out: Vec<&Asset> = keep
+            .into_iter()
+            .filter_map(|id| self.assets.get(id))
+            .collect();
+        if let Some(g) = tag {
+            out.retain(|a| a.tags.iter().any(|x| x == g));
+            if out.is_empty() {
+                let mut with: Vec<String> =
+                    self.assets.values().flat_map(|a| a.tags.clone()).collect();
+                with.sort();
+                with.dedup();
+                let n = near(g, with);
+                return Err((
+                    codes::asset::EMPTY_SELECTION,
+                    format!("the tag `{g}` keeps no asset of the selection"),
+                    n.as_ref().map_or_else(
+                        || "name a tag that assets carry".to_string(),
+                        |n| format!("write `{n}`"),
+                    ),
+                    n,
+                ));
+            }
+        }
+        out.sort_by(|a, b| a.id.as_bytes().cmp(b.id.as_bytes()));
+        Ok(out)
     }
 }
 
@@ -584,12 +840,32 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
             return (None, r.diags);
         }
     };
+    let facts_path = crate::asset_facts::path_of(path);
     let mut pack = Pack {
         display: display.to_string(),
+        path: path.to_path_buf(),
+        facts_display: format!(
+            "pack:{}",
+            facts_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("facts.toml")
+        ),
+        facts_path,
+        command: if path.is_relative() {
+            path.to_string_lossy().replace('\\', "/")
+        } else {
+            path.file_name()
+                .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
+        },
         ..Pack::default()
     };
     // 2.1: `root`, relative to the pack file; the pack file's folder by default.
-    let here = path.parent().map(Path::to_path_buf).unwrap_or_default();
+    // A pack named with no folder (`pack.toml`) is in the working folder, `.`.
+    let here = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
     let root = match table.get("root") {
         None => Some(here),
         Some(toml::Value::String(s)) => {
@@ -603,9 +879,44 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
                     "write `root` relative to the pack file, or create the folder",
                 );
             }
+            pack.root.written = s
+                .split('/')
+                .filter(|p| !p.is_empty() && *p != ".")
+                .map(str::to_string)
+                .collect();
             Some(dir)
         }
         Some(_) => None,
+    };
+    if let Some(dir) = &root {
+        pack.root.root = dir.clone();
+    }
+    // 4: the facts file, a pack-wide input (8.3: a malformed one fails every build).
+    pack.facts = match std::fs::read(&pack.facts_path) {
+        Err(_) => crate::asset_facts::FactsFile::Absent,
+        Ok(bytes) => {
+            let parsed = String::from_utf8(bytes)
+                .map_err(|_| ("the facts file is not UTF-8".to_string(), 1))
+                .and_then(|t| crate::asset_facts::parse(&t));
+            match parsed {
+                Ok(m) => crate::asset_facts::FactsFile::Present(m),
+                Err((why, line)) => {
+                    r.diags.push(text::diag(
+                        codes::pack::BAD_FACTS,
+                        Subject::parse("pack").unwrap_or(Subject::World),
+                        Site::Text {
+                            file: pack.facts_display.clone(),
+                            line,
+                            column: 1,
+                            bytes: [0, 0],
+                        },
+                        &format!("{} is not in its form: {why}", pack.facts_display),
+                        &format!("delete it and run `via pack accept {}`", pack.command),
+                    ));
+                    crate::asset_facts::FactsFile::Bad
+                }
+            }
+        }
     };
     // 2.5: `[defaults]` and each taxon's `defaults`.
     let mut taxon_defaults: BTreeMap<String, toml::Table> = BTreeMap::new();
@@ -694,7 +1005,11 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
                 pack: &pack_defaults,
                 taxa: &taxon_defaults,
             };
-            if let Some(asset) = read_asset(&mut r, id, a, &pack.taxa, &inherited) {
+            let files = root.as_ref().filter(|d| d.is_dir()).map(|_| &pack.root);
+            if let Some((asset, own)) = read_asset(&mut r, id, a, &pack.taxa, &inherited, files) {
+                if !own.is_empty() {
+                    pack.asset_diags.insert(id.clone(), own);
+                }
                 pack.assets.insert(id.clone(), asset);
             }
         }
@@ -763,7 +1078,8 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
 }
 
 /// The keys `defaults` may hold (2.5).
-const DEFAULT_KEYS: [&str; 8] = [
+const DEFAULT_KEYS: [&str; 9] = [
+    "collision",
     "colour",
     "front",
     "max_relief",
@@ -852,7 +1168,8 @@ fn read_asset(
     a: &toml::Table,
     taxa: &BTreeSet<String>,
     inherited: &Inherited<'_>,
-) -> Option<Asset> {
+    files: Option<&crate::asset::RootOf>,
+) -> Option<(Asset, Vec<Diag>)> {
     let subject = format!("asset.{id}");
     if !via_doc::is_id(id) {
         r.fault(
@@ -876,18 +1193,6 @@ fn read_asset(
             r.near(k, ASSET_KEYS, text::undeclared);
         }
     }
-    for k in ["file", "detail"] {
-        if a.contains_key(k) {
-            r.fault(
-                codes::doc::NOT_YET,
-                &subject,
-                Some(k),
-                &format!("`{k}` on an asset arrives in M2"),
-                "use a primitive or an engine-made asset in M1",
-            );
-            return None;
-        }
-    }
     let primitive = a
         .get("primitive")
         .and_then(|v| v.as_str())
@@ -896,105 +1201,305 @@ fn read_asset(
         .get("engine")
         .and_then(toml::Value::as_bool)
         .unwrap_or(false);
-    if primitive.is_some() == engine {
+    let file = match a.get("file") {
+        None => None,
+        Some(toml::Value::String(f)) => Some(f.clone()),
+        Some(v) => {
+            r.fault(
+                codes::doc::TYPE,
+                &subject,
+                Some("file"),
+                &format!("`file` takes a string; found {}", form_word(v)),
+                "write `file = \"<path under root>\"`",
+            );
+            return None;
+        }
+    };
+    let markers =
+        usize::from(file.is_some()) + usize::from(primitive.is_some()) + usize::from(engine);
+    if markers != 1 {
         r.fault(
             codes::asset::SOURCE,
             &subject,
             None,
-            "an asset needs exactly one source: `primitive` or `engine = true`",
+            "an asset needs exactly one source: `file`, `primitive` or `engine = true`",
             "write exactly one of `file`, `primitive`, `engine = true`",
         );
         return None;
     }
-    // 2.2: `front`, `up` and `pivot` are fixed on a primitive and an engine-made asset, and
-    // `triangles` on a primitive; only the asset's own table can write one (defaults skip it).
-    for k in ["front", "up", "pivot", "triangles"] {
-        if a.contains_key(k) && (k != "triangles" || primitive.is_some()) {
+    // 2.2: `detail` is a model's key only.
+    if file.is_none() && a.contains_key("detail") {
+        r.fault(
+            codes::doc::UNKNOWN_KEY,
+            &subject,
+            Some("detail"),
+            "`detail` is a key of a model asset only",
+            "remove `detail`, or give the asset a `file`",
+        );
+        return None;
+    }
+    // 2.2: a fact the source measures or fixes; only the asset's own table can write one
+    // (defaults skip it). A model measures `size` and `triangles`; a primitive fixes `front`, `up`,
+    // `pivot` and `triangles`; an engine-made asset fixes `front`, `up` and `pivot`.
+    let fixed: &[&str] = if file.is_some() {
+        &["size", "triangles"]
+    } else if engine {
+        &["front", "up", "pivot"]
+    } else {
+        &["front", "up", "pivot", "triangles"]
+    };
+    for k in fixed {
+        if a.contains_key(*k) {
+            let what = if file.is_some() {
+                "measured from a model asset's file"
+            } else if engine {
+                "fixed on an engine-made asset"
+            } else {
+                "fixed on a primitive asset"
+            };
             r.fault(
                 codes::asset::DECLARED_MEASURED,
                 &subject,
                 Some(k),
-                &format!(
-                    "`{k}` is fixed on a {} asset",
-                    if engine { "engine-made" } else { "primitive" }
-                ),
-                &format!("remove `{k}`"),
+                &format!("`{k}` is {what}"),
+                &if file.is_some() {
+                    format!("remove `{k}`; `via pack list` shows the measured value")
+                } else {
+                    format!("remove `{k}`")
+                },
             );
         }
     }
     let taxon_of = a.get("taxon").and_then(|v| v.as_str());
     // A declared fact: the asset's own value, else an inherited one (2.5).
     let declared = |k: &str| a.get(k).or_else(|| inherited.get(taxon_of, k));
-    // 8.1: an absent `size` is the source's fault; a present one of the wrong form is `doc.type`,
-    // and a length off the lattice `num.too_precise` (`numbers.md` 3.1), as in a world file.
-    let size = match a.get("size") {
-        None => {
-            r.fault(
-                codes::asset::SOURCE,
-                &subject,
-                None,
-                "the asset lacks `size`, three lengths",
-                "write `size = [x, y, z]` in metres",
-            );
-            return None;
-        }
-        Some(v) => match size_of(v) {
-            Ok(s) => s,
-            Err((code, message, hint)) => {
-                r.fault(code, &subject, Some("size"), &message, &hint);
-                return None;
-            }
-        },
-    };
-    if size.iter().any(|v| *v <= 0) {
-        r.fault(
-            codes::pack::RANGE,
-            &subject,
-            Some("size"),
-            "`size` must be above 0 on every axis",
-            "write lengths above 0",
-        );
-        return None;
-    }
-    let triangles = match &primitive {
-        Some(p) => match PRIMITIVES.iter().find(|(n, _)| n == p) {
-            Some((_, t)) => *t,
-            None => {
+    let collision = enum_fact(
+        r,
+        &subject,
+        "collision",
+        declared("collision"),
+        &crate::asset::COLLISIONS,
+        "none",
+    );
+    let header = r.declared("asset", id).unwrap_or_else(|| {
+        (
+            Subject::parse(&subject).unwrap_or(Subject::World),
+            Site::World,
+        )
+    });
+    // Faults of this asset alone (8.3): kept apart by the caller.
+    let mut own: Vec<Diag> = Vec::new();
+    let mut model: Option<crate::asset::ModelFacts> = None;
+    let mut origin = [0i64; 3];
+    let mut measured = false;
+    let (size, triangles, bounds) = if let Some(file) = &file {
+        let detail: Vec<String> = match a.get("detail") {
+            None => Vec::new(),
+            Some(toml::Value::Array(xs)) if xs.iter().all(toml::Value::is_str) => xs
+                .iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect(),
+            Some(v) => {
                 r.fault(
-                    codes::asset::UNKNOWN_PRIMITIVE,
+                    codes::doc::TYPE,
                     &subject,
-                    Some("primitive"),
-                    &format!("`{p}` is not a primitive shape"),
-                    &text::near_hint(p, PRIMITIVES.iter().map(|(n, _)| *n), "see assets.md 6"),
+                    Some("detail"),
+                    &format!("`detail` takes a list of strings; found {}", form_word(v)),
+                    "write `detail = [\"<path under root>\", ...]`, finest first",
                 );
-                r.near(p, PRIMITIVES.iter().map(|(n, _)| *n), text::undeclared);
                 return None;
             }
-        },
-        None => match a.get("triangles").and_then(toml::Value::as_integer) {
-            Some(t) if t >= 0 => t as u64,
-            _ => {
-                // A missing key is located at the table that should hold it (1.2).
+        };
+        // 2.2: naming `file` again, or one path twice.
+        let mut seen: BTreeSet<&str> = BTreeSet::from([file.as_str()]);
+        let mut kept: Vec<String> = Vec::new();
+        for d in &detail {
+            if seen.insert(d.as_str()) {
+                kept.push(d.clone());
+            } else {
+                r.fault(
+                    codes::asset::DETAIL_DUPLICATE,
+                    &subject,
+                    Some("detail"),
+                    &format!("`detail` names `{d}` again, or names `file`"),
+                    "remove the repeat",
+                );
+            }
+        }
+        let word = |k: &str, default: &'static str| -> String {
+            declared(k)
+                .and_then(|v| v.as_str())
+                .unwrap_or(default)
+                .to_string()
+        };
+        let (front, up) = (word("front", "+z"), word("up", "+y"));
+        // 2.3: the resolved pair; a word inherited and wrong was reported where it is written.
+        let words_ok = AXES.contains(&front.as_str()) && AXES.contains(&up.as_str());
+        if a.contains_key("front") || a.contains_key("up") || words_ok {
+            let mut t = toml::Table::new();
+            t.insert("front".into(), toml::Value::String(front.clone()));
+            t.insert("up".into(), toml::Value::String(up.clone()));
+            check_axes(r, &subject, &t);
+        }
+        let pivot = enum_fact(
+            r,
+            &subject,
+            "pivot",
+            declared("pivot"),
+            &crate::asset::PIVOTS,
+            "base_centre",
+        );
+        let m = match files {
+            Some(files) => {
+                let reader: &Reader<'_> = r;
+                let site_of = |k: &str| -> Site {
+                    let span = reader
+                        .spans
+                        .as_ref()
+                        .and_then(|t| span_in(t.get_ref(), &subject, Some(k)))
+                        .unwrap_or(0..0);
+                    reader.text_site(&span)
+                };
+                let mut f = crate::asset::Faults {
+                    subject: &subject,
+                    diags: Vec::new(),
+                    site_of: &site_of,
+                };
+                let m = crate::asset::measure(files, file, &kept, &front, &up, &pivot, &mut f);
+                own.extend(f.diags);
+                m
+            }
+            // A missing `root` is reported once, pack-wide; its models are not measured.
+            None => crate::asset::Measured {
+                facts: crate::asset::ModelFacts {
+                    file: file.clone(),
+                    detail: kept.clone(),
+                    front: front.clone(),
+                    up: up.clone(),
+                    pivot: pivot.clone(),
+                    rows: crate::asset_gltf::Axes::parse(&front, &up)
+                        .map_or([[-1, 0, 0], [0, 0, 1], [0, 1, 0]], |x| x.rows()),
+                    pivot_mm: [0; 3],
+                    detail_triangles: Vec::new(),
+                    files: BTreeMap::new(),
+                    copies: Vec::new(),
+                    measured: false,
+                },
+                raw: None,
+                triangles: 0,
+            },
+        };
+        let bounds = match m.raw {
+            Some(raw) => {
+                let p = m.facts.pivot_mm;
+                origin = [-p[0], -p[1], -p[2]];
+                measured = true;
+                [
+                    raw[0] - p[0],
+                    raw[1] - p[1],
+                    raw[2] - p[2],
+                    raw[3] - p[0],
+                    raw[4] - p[1],
+                    raw[5] - p[2],
+                ]
+            }
+            None => [0; 6],
+        };
+        if measured && origin != [0, 0, 0] {
+            let shown: Vec<String> = origin.iter().map(|v| via_num::write_length(*v)).collect();
+            own.push(text::diag(
+                codes::asset::PIVOT_MOVED,
+                header.0.clone(),
+                header.1.clone(),
+                &format!(
+                    "the model's origin is not at its `{pivot}` pivot; the build moved it: origin = [{}]",
+                    shown.join(", ")
+                ),
+                "write `pivot = \"origin\"` to keep the model's own origin",
+            ));
+        }
+        let size = [
+            bounds[3] - bounds[0],
+            bounds[4] - bounds[1],
+            bounds[5] - bounds[2],
+        ];
+        let triangles = m.triangles;
+        model = Some(m.facts);
+        (size, triangles, bounds)
+    } else {
+        // 8.1: an absent `size` is the source's fault; a present one of the wrong form is
+        // `doc.type`, and a length off the lattice `num.too_precise` (`numbers.md` 3.1), as in a
+        // world file.
+        let size = match a.get("size") {
+            None => {
                 r.fault(
                     codes::asset::SOURCE,
                     &subject,
-                    a.contains_key("triangles").then_some("triangles"),
-                    "an engine-made asset needs `triangles`, 0 or more",
-                    "write `triangles = <count>`",
+                    None,
+                    "the asset lacks `size`, three lengths",
+                    "write `size = [x, y, z]` in metres",
                 );
                 return None;
             }
-        },
+            Some(v) => match size_of(v) {
+                Ok(s) => s,
+                Err((code, message, hint)) => {
+                    r.fault(code, &subject, Some("size"), &message, &hint);
+                    return None;
+                }
+            },
+        };
+        if size.iter().any(|v| *v <= 0) {
+            r.fault(
+                codes::pack::RANGE,
+                &subject,
+                Some("size"),
+                "`size` must be above 0 on every axis",
+                "write lengths above 0",
+            );
+            return None;
+        }
+        let triangles = match &primitive {
+            Some(p) => match PRIMITIVES.iter().find(|(n, _)| n == p) {
+                Some((_, t)) => *t,
+                None => {
+                    r.fault(
+                        codes::asset::UNKNOWN_PRIMITIVE,
+                        &subject,
+                        Some("primitive"),
+                        &format!("`{p}` is not a primitive shape"),
+                        &text::near_hint(p, PRIMITIVES.iter().map(|(n, _)| *n), "see assets.md 6"),
+                    );
+                    r.near(p, PRIMITIVES.iter().map(|(n, _)| *n), text::undeclared);
+                    return None;
+                }
+            },
+            None => match a.get("triangles").and_then(toml::Value::as_integer) {
+                Some(t) if t >= 0 => t as u64,
+                _ => {
+                    // A missing key is located at the table that should hold it (1.2).
+                    r.fault(
+                        codes::asset::SOURCE,
+                        &subject,
+                        a.contains_key("triangles").then_some("triangles"),
+                        "an engine-made asset needs `triangles`, 0 or more",
+                        "write `triangles = <count>`",
+                    );
+                    return None;
+                }
+            },
+        };
+        let [x, y, z] = size;
+        let bounds = [
+            -x.div_euclid(2),
+            -y.div_euclid(2),
+            0,
+            x - x.div_euclid(2),
+            y - y.div_euclid(2),
+            z,
+        ];
+        (size, triangles, bounds)
     };
-    let [x, y, z] = size;
-    let bounds = [
-        -x.div_euclid(2),
-        -y.div_euclid(2),
-        0,
-        x - x.div_euclid(2),
-        y - y.div_euclid(2),
-        z,
-    ];
     let footprint = match a.get("footprint") {
         Some(v) => {
             let pts: Option<Vec<(i64, i64)>> = match v {
@@ -1020,6 +1525,19 @@ fn read_asset(
         }
         None => match primitive.as_deref() {
             Some("cylinder" | "cone" | "sphere") => ring16(&bounds),
+            // 2.4: a measured footprint of zero area is a point footprint at the pivot.
+            _ if model.is_some() && (bounds[0] == bounds[3] || bounds[1] == bounds[4]) => {
+                if measured {
+                    own.push(text::diag(
+                        codes::asset::POINT_FOOTPRINT,
+                        header.0.clone(),
+                        header.1.clone(),
+                        "the model has no extent in plan; the asset has a point footprint",
+                        "declare `footprint` if it should claim ground",
+                    ));
+                }
+                Vec::new()
+            }
             _ => vec![
                 (bounds[0], bounds[1]),
                 (bounds[3], bounds[1]),
@@ -1159,9 +1677,17 @@ fn read_asset(
             }
         }
     }
-    Some(Asset {
+    let params = declared("params").and_then(|v| v.as_table()).cloned();
+    let asset = Asset {
         id: id.to_string(),
-        source: if engine { "engine" } else { "primitive" }.into(),
+        source: if model.is_some() {
+            "model"
+        } else if engine {
+            "engine"
+        } else {
+            "primitive"
+        }
+        .into(),
         primitive,
         size,
         triangles,
@@ -1174,12 +1700,148 @@ fn read_asset(
         mounts,
         taxon,
         tags,
-    })
+        collision,
+        origin,
+        model,
+        params,
+    };
+    Some((asset, own))
+}
+
+/// An enumerated declared fact (2.4: `pivot`, `collision`): one of `words`, else `doc.type`
+/// naming the allowed words and the nearest; absent, its default.
+fn enum_fact(
+    r: &mut Reader<'_>,
+    subject: &str,
+    key: &str,
+    v: Option<&toml::Value>,
+    words: &[&str],
+    default: &str,
+) -> String {
+    let allowed = words
+        .iter()
+        .map(|w| format!("`{w}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    match v {
+        None => default.to_string(),
+        Some(toml::Value::String(w)) if words.contains(&w.as_str()) => w.clone(),
+        Some(toml::Value::String(w)) => {
+            r.fault(
+                codes::doc::TYPE,
+                subject,
+                Some(key),
+                &format!("`{w}` is not a `{key}`; one of {allowed}"),
+                &text::near_hint(w, words.iter().copied(), &format!("write one of {allowed}")),
+            );
+            r.near(w, words.iter().copied(), text::undeclared);
+            default.to_string()
+        }
+        Some(other) => {
+            r.fault(
+                codes::doc::TYPE,
+                subject,
+                Some(key),
+                &format!("`{key}` takes one of {allowed}; found {}", form_word(other)),
+                &format!("write one of {allowed}"),
+            );
+            default.to_string()
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn shipped(name: &str) -> Pack {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../lib/packs")
+            .join(name);
+        let (p, diags) = read(&path, "pack:test.toml");
+        assert!(
+            diags
+                .iter()
+                .all(|d| d.severity() != via_diag::Severity::Error),
+            "{diags:?}"
+        );
+        p.expect("the pack reads")
+    }
+
+    #[test]
+    fn the_starter_pack_measures() {
+        let p = shipped("starter.toml");
+        assert!(p
+            .asset_diags
+            .values()
+            .flatten()
+            .all(|d| d.severity() != via_diag::Severity::Error));
+        let oak = &p.assets["tree_oak"];
+        assert_eq!(oak.source, "model");
+        assert_eq!(oak.bounds, [-2500, -2500, 0, 2500, 2500, 7000]);
+        assert_eq!(oak.origin, [0, 0, 0]);
+        assert_eq!(oak.collision, "hull");
+        let m = oak.model.as_ref().expect("a model");
+        assert_eq!(m.detail_triangles.len(), 1);
+        assert!(m.detail_triangles[0] < oak.triangles);
+        assert_eq!(p.assets["bush_round"].collision, "none");
+        assert!(!p.assets["bush_round"].solid);
+        assert_eq!(p.assets["house_low"].collision, "box");
+        assert_eq!(p.assets["house_low"].max_relief, Some(0.6));
+        // The shipped facts file is current: nothing to report.
+        assert!(p
+            .check_diagnostics()
+            .iter()
+            .all(|d| d.severity() == via_diag::Severity::Info
+                && *d.code() != via_diag::DiagCode::Core(codes::asset::REMODELLED)
+                && *d.code() != via_diag::DiagCode::Core(codes::asset::REFILED)));
+        assert!(matches!(p.facts, crate::asset_facts::FactsFile::Present(_)));
+    }
+
+    #[test]
+    fn taxonomy_queries() {
+        let dir = std::env::temp_dir().join(format!("via-pack-query-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("a temporary folder");
+        let path = dir.join("q.toml");
+        std::fs::write(
+            &path,
+            "[taxon.\"kit/arch\"]\n[taxon.\"kit/wall\"]\n[taxon.\"loose\"]\n\n\
+             [asset.b]\nprimitive = \"box\"\nsize = [1, 1, 1]\ntaxon = \"kit/wall\"\ntags = [\"old\"]\n\n\
+             [asset.a]\nprimitive = \"box\"\nsize = [1, 1, 1]\ntaxon = \"kit/arch\"\n\n\
+             [asset.c]\nprimitive = \"box\"\nsize = [1, 1, 1]\ntaxon = \"kit\"\n\n\
+             [asset.d]\nprimitive = \"box\"\nsize = [1, 1, 1]\n",
+        )
+        .expect("the pack is written");
+        let (p, _) = read(&path, "pack:q.toml");
+        let _ = std::fs::remove_dir_all(&dir);
+        let p = p.expect("the pack reads");
+        let ids = |v: Vec<&Asset>| v.iter().map(|a| a.id.clone()).collect::<Vec<_>>();
+        assert_eq!(
+            ids(p.query(&["@kit".into()], None).unwrap()),
+            ["a", "b", "c"]
+        );
+        assert_eq!(
+            ids(p.query(&["d".into(), "@kit/wall".into()], None).unwrap()),
+            ["b", "d"]
+        );
+        assert_eq!(p.query(&["*".into()], None).unwrap().len(), 4);
+        assert_eq!(ids(p.query(&["*".into()], Some("old")).unwrap()), ["b"]);
+        let e = p.query(&["@kit/wal".into()], None).unwrap_err();
+        assert_eq!(e.0, codes::pack::UNKNOWN_TAXON);
+        assert_eq!(e.3.as_deref(), Some("kit/wall"));
+        assert_eq!(
+            p.query(&["@loose".into()], None).unwrap_err().0,
+            codes::asset::EMPTY_SELECTION
+        );
+        assert_eq!(
+            p.query(&["e".into()], None).unwrap_err().0,
+            codes::asset::UNKNOWN
+        );
+        assert_eq!(
+            p.query(&["*".into()], Some("new")).unwrap_err().0,
+            codes::asset::EMPTY_SELECTION
+        );
+    }
 
     #[test]
     fn box_bounds_and_ring() {

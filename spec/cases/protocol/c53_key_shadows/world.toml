@@ -1,0 +1,15 @@
+name       = "m2"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[feature.post]                 # a guide: no kind, so no stated fact the step must have checked
+at = [2, 2]
+
+[step.gen]
+when    = "generate"
+command = ["python", "steps/gen.py"]

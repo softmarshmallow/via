@@ -23,13 +23,14 @@
 //! | `steps` | `protocol.md` 2, 6, 7, 8.1: lint steps as plain commands, trust, the carried SDK |
 //! | `cmds` | 14: `merge`, `explain`, `eval`, `vectors`, `trust`, `config program` |
 //! | `kernel` | 14, `geometry.md` 7: `via kernel` |
-//! | `pack` | 14, `assets.md` 8: `via pack check`, `via pack list` |
+//! | `pack` | 14, `assets.md` 8, 4.3: `via pack check`, `via pack list`, `via pack accept` |
 //! | `query` | 14, `surfaces.md` 7: `via query` |
 
 mod build;
 mod changes;
 mod check;
 mod cmds;
+mod commit;
 mod dir;
 mod filebase;
 mod interrupt;
@@ -41,7 +42,11 @@ mod out;
 mod pack;
 mod query;
 mod snap;
+mod stepout;
+mod steprun;
 mod steps;
+mod stepview;
+mod stepwork;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -74,11 +79,14 @@ commands:
   kernel OP --in FILE --out FILE
                    run one geometry operation on the shapes in a file
   pack check PACK  check a pack without a world; writes nothing
-  pack list PACK [--taxon @PATH] [--tag TAG]
+  pack list PACK [--taxon @PATH] [--tag TAG] [--build DIR]
                    print each asset's resolved facts as JSON Lines
+  pack accept PACK write the pack's facts file
   query WORLD surfaces_at|sample|relief|meetings [--in FILE] --out FILE
                    answer one surface question over the whole world
   trust WORLD      list the world's steps and record trust
+  step commit WORLD [--change C]... [--step ID]...
+                   build, then write each generate step's result to gen/<id>/
   config program NAME PATH   record a named program's path
   help             print this text
   --version        print the engine version
@@ -105,7 +113,7 @@ pub(crate) fn usage(argument: u32, message: String, hint: String) -> Diag {
     )
 }
 
-const COMMANDS: [&str; 14] = [
+const COMMANDS: [&str; 15] = [
     "--help",
     "--version",
     "build",
@@ -118,12 +126,14 @@ const COMMANDS: [&str; 14] = [
     "merge",
     "pack",
     "query",
+    "step",
     "trust",
     "vectors",
 ];
 
 /// Flags that take a value.
-const VALUED: [&str; 18] = [
+const VALUED: [&str; 20] = [
+    "--build",
     "--tag",
     "--taxon",
     "--against",
@@ -136,6 +146,7 @@ const VALUED: [&str; 18] = [
     "--out",
     "--rerun-step",
     "--sdk",
+    "--step",
     "--step-deadline",
     "--store",
     "--threads",
@@ -271,7 +282,7 @@ fn allowed(command: &str) -> &'static [&'static str] {
         ],
         "vectors" => &["--diagnostics"],
         "kernel" => &["--diagnostics", "--in", "--out"],
-        "pack" => &["--diagnostics", "--tag", "--taxon"],
+        "pack" => &["--build", "--diagnostics", "--tag", "--taxon"],
         "query" => &[
             "--change",
             "--diagnostics",
@@ -279,6 +290,18 @@ fn allowed(command: &str) -> &'static [&'static str] {
             "--lib",
             "--out",
             "--sdk",
+            "--store",
+        ],
+        "step" => &[
+            "--change",
+            "--diagnostics",
+            "--info",
+            "--json",
+            "--lib",
+            "--out",
+            "--sdk",
+            "--step",
+            "--step-deadline",
             "--store",
         ],
         "trust" => &[
@@ -406,6 +429,11 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
             Ok(Done::of(Vec::new()))
         }
         "build" => {
+            if matches!(p.words.get(1), Some((_, w)) if w == "--help" || w == "-h") {
+                extra(2)?;
+                print!("{HELP}");
+                return Ok(Done::of(Vec::new()));
+            }
             extra(2)?;
             let (wa, world) = need_world(p, "build").map_err(|d| vec![d])?;
             if let Some(a) = p.has("--stand-ins") {
@@ -589,6 +617,66 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
             };
             Ok(Done::of(cmds::vectors(Path::new(f), *a)))
         }
+        "step" => {
+            extra(3)?;
+            match p.words.get(1) {
+                Some((_, w)) if w == "commit" => {}
+                other => {
+                    return Err(vec![usage(
+                        other.map_or(1, |(a, _)| *a),
+                        "`via step` takes `commit WORLD`".into(),
+                        "write `via step commit WORLD`".into(),
+                    )])
+                }
+            }
+            let Some((wa, world)) = p.words.get(2).map(|(a, w)| (*a, PathBuf::from(w))) else {
+                return Err(vec![usage(
+                    2,
+                    "`via step commit` needs a world file".into(),
+                    "write `via step commit WORLD`".into(),
+                )]);
+            };
+            let deadline = match p.one("--step-deadline") {
+                Some((a, t)) => match t.parse::<u64>() {
+                    Ok(n) if (1..=MAX_STEP_DEADLINE).contains(&n) => Some(n),
+                    _ => {
+                        return Err(vec![usage(
+                            a,
+                            format!(
+                                "`--step-deadline {t}` is not a whole number of seconds from 1 to {MAX_STEP_DEADLINE}"
+                            ),
+                            "write `--step-deadline SECONDS`, at most 86400".into(),
+                        )])
+                    }
+                },
+                None => None,
+            };
+            let o = commit::run(
+                &build::Args {
+                    world,
+                    world_arg: wa,
+                    changes: changes_of(p),
+                    out: p.one("--out").map(|(_, o)| PathBuf::from(o)),
+                    lib: libs_of(p),
+                    threads: None,
+                    store: p.one("--store").map(|(_, s)| PathBuf::from(s)),
+                    against: None,
+                    fail_on: Vec::new(),
+                    rerun: Vec::new(),
+                    deadline,
+                    sdk: p.one("--sdk").map(|(_, s)| PathBuf::from(s)),
+                    diagnostics: p.one("--diagnostics").map(|(a, f)| (a, PathBuf::from(f))),
+                },
+                &p.values("--step"),
+            );
+            Ok(Done {
+                records: o.records,
+                lints: o.lints,
+                status: None,
+                out: o.out,
+                document: None,
+            })
+        }
         "trust" => {
             extra(2)?;
             let (wa, world) = need_world(p, "trust").map_err(|d| vec![d])?;
@@ -644,37 +732,43 @@ fn dispatch(p: &Parsed) -> Result<Done, Vec<Diag>> {
             let (Some((sa, sub)), Some((pa, pk))) = (p.words.get(1), p.words.get(2)) else {
                 return Err(vec![usage(
                     1,
-                    "`via pack` takes `check PACK` or `list PACK`".into(),
-                    "write `via pack check PACK` or `via pack list PACK`".into(),
+                    "`via pack` takes `check PACK`, `list PACK` or `accept PACK`".into(),
+                    "write `via pack check PACK`, `via pack list PACK` or `via pack accept PACK`"
+                        .into(),
                 )]);
             };
             match sub.as_str() {
-                "check" => {
+                "check" | "accept" => {
                     if let Some((a, f, _)) = p
                         .flags
                         .iter()
-                        .find(|(_, f, _)| f == "--taxon" || f == "--tag")
+                        .find(|(_, f, _)| f == "--taxon" || f == "--tag" || f == "--build")
                     {
                         return Err(vec![usage(
                             *a,
-                            format!("`via pack check` takes no `{f}`"),
+                            format!("`via pack {sub}` takes no `{f}`"),
                             "run `via pack list` to select".into(),
                         )]);
                     }
-                    Ok(Done::of(pack::check(Path::new(pk), *pa)))
+                    Ok(Done::of(if sub == "check" {
+                        pack::check(Path::new(pk), *pa)
+                    } else {
+                        pack::accept(Path::new(pk), *pa)
+                    }))
                 }
                 "list" => Ok(Done::of(pack::list(
                     Path::new(pk),
                     *pa,
                     p.one("--taxon"),
                     p.one("--tag"),
+                    p.one("--build"),
                 ))),
                 other => {
-                    let near = nearest(other, ["check", "list"]);
+                    let near = nearest(other, ["accept", "check", "list"]);
                     let mut d = usage(
                         *sa,
                         format!("`via pack {other}` is not a command"),
-                        near.hint("write `check` or `list`"),
+                        near.hint("write `check`, `list` or `accept`"),
                     );
                     if let Some(n) = near.found() {
                         d = d.with("nearest", n);

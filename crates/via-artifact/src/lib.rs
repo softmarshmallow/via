@@ -1,12 +1,8 @@
-//! Typed artifacts: the only channel stages may communicate through.
+//! The erosion library's seed derivation, carried over from the old workspace (`docs/plan.md`,
+//! "Carried over"). The `.vrast` rasters and run manifests it also held are retired: a step returns
+//! field files (`spec/protocol.md` 4.2), and the store names them by digest.
 //!
-//! See ADR 0001 for the format. A run is a directory of `.vrast` binary
-//! rasters plus JSON manifests; blake3 content hashes are the determinism
-//! witness.
+//! The mixing function is `via-num`'s SplitMix64 (`spec/numbers.md` 7.2), so the whole library
+//! draws from the one maths module (R26).
 
-pub mod manifest;
-pub mod raster;
 pub mod seed;
-
-pub use manifest::{ArtifactEntry, RunManifest};
-pub use raster::{Raster, Scalar};

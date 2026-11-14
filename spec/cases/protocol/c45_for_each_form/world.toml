@@ -1,0 +1,26 @@
+name       = "m2"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[step.gen]
+when     = "generate"
+command  = ["python", "-m", "viasdk", "steps/gen.py"]
+for_each = "tag:x"
+worker   = true
+
+[feature.a]
+kind = "mark"
+at   = [1, 1]
+
+[feature.b]
+kind = "mark"
+at   = [3, 3]
+
+[feature.c]
+kind = "mark"
+at   = [5, 5]

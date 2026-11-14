@@ -1,0 +1,63 @@
+format    = "via-case-1"
+summary   = "After the contract revision, via pack accept, then an incremental via build: no asset.revised; only the source: node of the facts file, the facts: nodes and the changes and manifest writes ran; the facts file diff shows only that asset."
+milestone = 2
+actions   = ["accept", "base", "widen", "build", "again", "after"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+out         = "build/base"
+diagnostics = "includes"
+
+[action.widen]
+write = "cube.gltf"
+from  = "later/wider.gltf"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+out         = "build/next"
+diagnostics = "includes"
+
+[action.build.diag.revised]
+code    = "asset.revised"
+subject = "asset.cube"
+data    = { count = 2, instances = ["a", "b"] }
+
+[action.build.check.changed]
+fn     = "changes_by_prefix"
+path   = "build/next/changes.json"
+prefix = "a"
+what   = ["changed"]
+
+[action.build.file.cause]
+path     = "build/next/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "asset.cube.bounds" }
+
+[action.again]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.again.file.changed]
+stream = "stdout"
+text   = "cube\n"
+
+[action.after]
+via         = ["build", "world.toml", "--against", "build/next", "--out", "build/next"]
+exit        = 0
+out         = "build/next"
+diagnostics = "includes"
+
+[action.after.diag.revised]
+code    = "asset.revised"
+records = 0
+
+[action.after.nodes]
+ran = ["source:pack:pack.facts.toml", "facts:*", "write:changes.json", "write:manifest.json"]

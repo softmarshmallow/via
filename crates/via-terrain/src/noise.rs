@@ -2,7 +2,7 @@
 //! simulation input is a pure function of (seed, coordinates) — no external
 //! noise crate whose internals could drift under us.
 
-use via_artifact::seed::splitmix64;
+use via_num::splitmix64;
 
 #[inline]
 fn hash2(seed: u64, x: i64, y: i64) -> u64 {
@@ -65,6 +65,7 @@ pub fn cell_jitter(seed: u64, cell_index: u32) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use via_num as num;
 
     #[test]
     fn value_noise_is_bounded_and_stable() {
@@ -72,8 +73,8 @@ mod tests {
         let mut max = f64::NEG_INFINITY;
         for i in 0..10_000 {
             let v = fbm(7, (i % 100) as f64 * 0.13, (i / 100) as f64 * 0.17, 5);
-            min = min.min(v);
-            max = max.max(v);
+            min = num::min(min, v);
+            max = num::max(max, v);
         }
         assert!(
             min >= -1.0 && max <= 1.0,

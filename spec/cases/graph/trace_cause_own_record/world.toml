@@ -1,0 +1,22 @@
+name       = "tracecause"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.p]
+at = [4, 4]
+
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+
+# Change b raises the ground the step reads first; change a moves the point it reads second.
+[change.b.field.height]
+base = 12
+
+[change.a.feature.p]
+at = [9, 9]

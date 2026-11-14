@@ -1,0 +1,57 @@
+format    = "via-case-1"
+milestone = 2
+summary   = "R14: facts that cannot hold are each reported after the simulation with where and what would hold instead (derived.md 5, principle 8): a lake far above its hollow, with the level the ground would hold below its own; a river from the sea to the hills, with both ends' heights and the rise; and, held to within 1 m of its line, a river whose water leaves the line, with the course the water took and where it ends."
+actions   = ["program", "trust", "bad", "strict"]
+
+# The terrain library's step (lib/terrain) through the command line. Its program is built with
+# `cargo build -p via-terrain`; the case names it as a configured program, as a world's user does.
+# The world: land rising north from a sea in the south, a hollow at (200, 560) with a lake stated
+# in it at 2.5 m (its ground lies below 2.2 m over most of the region and above 1.4 m all round
+# it), and a river stated from the hills to the sea.
+
+[action.program]
+via  = ["config", "program", "via-terrain", "{repo}/target/debug/via-terrain"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.bad]
+via         = ["build", "world.toml", "--lib", "{repo}/lib", "--change", "cannot_hold", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.bad.diag.perched]                  # with the level this ground would hold, below its own
+code       = "step.facts.lake_perched"
+severity   = "error"
+subject    = "feature.tarn"
+data       = { level = 12 }
+data_has   = ["would_hold"]
+data_below = { would_hold = "level" }
+
+[action.bad.diag.uphill]                   # with both ends' heights and the rise; its hint says to swap them
+code       = "step.facts.river_uphill"
+severity   = "error"
+subject    = "feature.river"
+position   = [520, 620]
+data_has   = ["mouth", "source", "rise"]
+data_below = { source = "mouth" }
+
+[action.strict]
+via         = ["build", "world.toml", "--lib", "{repo}/lib", "--out", "build/s"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/s"
+
+[action.strict.diag.leaves]
+code     = "step.strict.river_leaves"
+severity = "error"
+subject  = "feature.river"
+data     = { course = "terrain#river_course", stops = "sea" }
+data_has = ["ends", "followed", "stated"]
+
+[action.strict.diag.facts_holds]
+code    = "step.facts.river_leaves"
+records = 0

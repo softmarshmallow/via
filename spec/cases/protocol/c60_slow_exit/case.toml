@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A worker killed after shutdown: protocol.slow_exit (info)."
+milestone = 2
+pending   = "needs a raw worker that ignores shutdown for over 2 s; the SDK exits promptly"
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.code]
+code = "protocol.slow_exit"

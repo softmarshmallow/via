@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "protocol.md 7.1: a committed worker generate step whose trace holds a derive.spill batch of 5000 points (its columns travel as blobs, 4.2) is used by an untrusted build on a fresh store: the blobs are committed with the result, so every read answers as recorded, and the build has the trusted build's id."
+milestone = 2
+actions   = ["program", "trust", "base", "commit", "fresh"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.commit]
+via         = ["step", "commit", "world.toml", "--out", "build/c"]
+exit        = 0
+diagnostics = "includes"
+
+[action.fresh]
+via         = ["build", "world.toml", "--store", "fresh", "--out", "build/u"]
+env         = { VIA_CONFIG_DIR = "{work}/.untrusted" }
+exit        = 0
+out         = "build/u"
+diagnostics = "includes"
+
+[action.fresh.diag.used]
+code     = "protocol.untrusted_result"
+severity = "info"
+subject  = "step.gen"
+
+[action.fresh.diag.not_stale]
+code    = "protocol.untrusted_stale"
+records = 0
+
+[action.fresh.same.id]
+action = "base"
+what   = "id"

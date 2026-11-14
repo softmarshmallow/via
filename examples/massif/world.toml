@@ -1,0 +1,59 @@
+# Massif: a hillside made by code, with a road found up its stream's valley and houses on it.
+#
+# User code joins the build through the one public door (R19b): the land and its weathering are the
+# land library's steps (lib/land), and the rule that every home stands near a road is this
+# project's own lint (tools/homes.py). Nothing here names where the valley is: the step makes it
+# from the seed, and what stands on it is placed on the stream it returns, so a new seed moves the
+# valley and everything on it (changes/new_seed.toml).
+#
+# Layers, lowest first: this file (the land and the checks), terrain (the road, the houses, the
+# ground's paint and the weathering), dressing (the woods, fallen rock and the bookmarks).
+
+name    = "massif"
+extent  = [0, 0, 384, 384]
+seed    = 23
+include = ["land", "water", "ways", "review"]
+pack    = "starter"
+
+[layer.world]
+owner = "land"
+
+[layer.terrain]
+file  = "layers/terrain.toml"
+owner = "level design"
+rank  = 1
+
+[layer.dressing]
+file  = "layers/dressing.toml"
+owner = "set dressing"
+rank  = 2
+
+[field.height]                            # the terrain (R31); the uplands step adds its land as a row
+role = "surface"
+base = "= 0"
+
+[field.water]                             # the stream writes it (lib/water); dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                          # the road, the pads and the stream keep trees off it
+role = "keep_out"
+base = "= 0"
+
+# The land: noise falling to the south-east, cut by running water (lib/land/uplands.py). It
+# returns the land as a row on `height`, `wet` (tag `wet`), and the main stream as a `beck`
+# (lib/water), derived, which the layers above stand on by `{ of = "uplands", class = "feature" }`.
+[step.uplands]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:land/uplands.py"]
+params  = { relief = 70, fall = 135, erode = 0.012, rounds = 45 }
+
+[step.checks]                             # the review library's measures (R15)
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+
+[step.homes]                              # this project's own rule: a home stands near a road
+when    = "lint"
+command = ["python", "-m", "viasdk", "tools/homes.py"]
+params  = { assets = ["house_low", "house_wide"], road_kinds = ["road"], max_m = 30 }

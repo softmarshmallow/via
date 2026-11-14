@@ -12,7 +12,7 @@ actions   = ["program", "trust", "bad"]
 # comes later (4.3, 4.5): B, the subject. A footprint feature has no id of its own and is named by
 # its instance (identity.md 5, build.md 8), so the subject is `instance.cottage` (authority.md 5).
 # The record gives each one's `authority` line, the kind's when inherited: the footprint's is
-# `firm_pad`'s, lib:land/kinds.toml line 30; the beck's, world.toml line 20, is in `related`. The
+# `firm_pad`'s, lib:land/kinds.toml line 52 (its `authority`); the beck's, world.toml line 20, is in `related`. The
 # post of largest difference lies where both masks are 1: inside the pad (10 m by 8 m around the
 # cottage at beck t = 0.3, 2 m left of travel, near (143.0, 178.4)) and within the floor (toe 2 m)
 # of the beck's line. Its exact post depends on measured ground, so it is boxed, not pinned.
@@ -45,7 +45,7 @@ diagnostics = "includes"
 code            = "authority.conflict"
 subject         = "instance.cottage"
 file            = "lib:land/kinds.toml"
-line            = 30
+line            = 52
 related         = [{ file = "world.toml", line = 20 }]
 position_within = [135, 170, 151, 187]
 

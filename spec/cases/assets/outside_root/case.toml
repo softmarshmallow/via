@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A model with a ../ buffer URI out of root: pack.outside_root."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.outside_root]
+code    = "pack.outside_root"
+subject = "asset.cube"
+file    = "pack:models/cube.gltf"
+data    = { pointer = "/buffers/0/uri" }

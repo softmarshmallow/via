@@ -1,0 +1,26 @@
+name       = "draped"
+extent     = [0, 0, 32, 32]
+resolution = 1
+
+# The surface rises by up to 3 m within 4 m of `p`, and by 0.1 mm per metre of distance from `s`.
+[field.height]
+role = "surface"
+base = "= 10 + 3 * (1 - smoothstep(0, 4, dist('p', 8))) + 0.0001 * dist('s', 64)"
+
+[feature.p]
+at = [4, 4]
+
+[feature.s]
+at = [2, 2]
+
+[feature.q]                     # draped on the surface; `p` moves next to it
+at = [10, 10]
+
+[feature.r]                     # draped on the surface; `s` moves the ground under it by about 0.1 mm, inside one millimetre
+at = [14, 14]
+
+[change.moved.feature.p]
+at = [9, 9]
+
+[change.nudge.feature.s]
+at = [2, 4]

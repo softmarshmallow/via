@@ -214,7 +214,7 @@ class Launcher(unittest.TestCase):
 class PlainCommand(unittest.TestCase):
     """protocol.md 2.2 and 8: ``python -m viasdk <script>`` with VIA_STEP set."""
 
-    def _run(self, script_text, data):
+    def _run(self, script_text, data, when="lint"):
         d = tempfile.mkdtemp()
         objects = os.path.join(d, "objects")
         out = os.path.join(d, "out")
@@ -225,7 +225,7 @@ class PlainCommand(unittest.TestCase):
         data.setdefault("fields", {"height": {
             "type": "scalar", "role": "surface", "tags": ["ground"], "unit": "m",
             "blob": "x", "path": field, "i0": 0, "j0": 0, "i1": 3, "j1": 2}})
-        req = {"protocol": "via-step-1", "step": "checks", "when": "lint", "for_each_item": None,
+        req = {"protocol": "via-step-1", "step": "checks", "when": when, "for_each_item": None,
                "params": {}, "grid": {"extent_mm": [0, 0, 2000, 1000], "resolution_mm": 1000,
                                       "nx": 3, "ny": 2},
                "seed": "0" * 16, "out": out, "objects": objects, "data": data}
@@ -276,6 +276,61 @@ class PlainCommand(unittest.TestCase):
         self.assertEqual(recs[0]["data"], {"v": 7.0, "n": 1, "c": [[500, 500]], "t": ["t#1"]})
         self.assertEqual(recs[0]["explain"], "e")
 
+    def test_window_halo_and_within_are_honoured(self):
+        # protocol.md 8: the same script runs as a worker or a plain command, and gets the same
+        # posts and the same rows either way.
+        data = {
+            "features": {
+                "name": {"dtype": "str", "values": ["a", "b", "zone"]},
+                "kind": {"dtype": "str", "values": ["lane", "ford", "area"]},
+                "geometry": {"dtype": "u8", "values": [0, 0, 2]},
+                "pieces": {"dtype": "i64", "values": [0, 1, 2, 3]},
+                "rings": {"dtype": "i64", "values": [0, 1, 2, 3]},
+                "ring_starts": {"dtype": "i64", "values": [0, 1, 2, 6]},
+                "coords": {"dtype": "i32", "shape": [6, 2],
+                           "values": [[100, 100], [1500, 900], [0, 0], [1000, 0], [1000, 1000],
+                                      [0, 1000]]},
+            },
+            "instances": {
+                "name": {"dtype": "str", "values": ["in", "out"]},
+                "by": {"dtype": "str", "values": ["t", "t"]},
+                "x": {"dtype": "i32", "values": [500, 1800]},
+                "y": {"dtype": "i32", "values": [500, 500]},
+            },
+        }
+        p, out = self._run("""
+            def lint(step):
+                (w,) = step.fields(["height"], window=[1, 1, 2, 2], halo=1)
+                f = step.features("*", within="zone")
+                g = step.features("*", within=[[1200, 0], [2000, 0], [2000, 1000], [1200, 1000]])
+                t = step.instances("*", within="zone")
+                step.info(code="m", subject="feature.b", message="m", hint="h",
+                          data={"w": w.tolist(), "win": list(w.window), "f": list(f["name"]),
+                                "g": list(g["name"]), "t": list(t["name"])})
+        """, data)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        with open(os.path.join(out, "diagnostics.json")) as f:
+            recs = json.load(f)
+        self.assertEqual(recs[0]["data"], {"w": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+                                           "win": [0, 0, 3, 2], "f": ["a", "zone"], "g": ["b"],
+                                           "t": ["in"]})
+        p, out = self._run("""
+            def lint(step):
+                (w,) = step.fields(["height"], window=[2, 0, 3, 1])
+                step.info(code="m", subject="feature.b", message="m", hint="h",
+                          data={"w": w.tolist()})
+        """, {})
+        with open(os.path.join(out, "diagnostics.json")) as f:
+            self.assertEqual(json.load(f)[0]["data"], {"w": [[3.0]]})
+
+    def test_a_view_it_was_not_handed_is_refused(self):
+        p, _ = self._run("""
+            def generate(step):
+                step.fields(["height"], view="head")
+        """, {}, when="generate")
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("view='head'", p.stderr)
+
     def test_missing_function_and_exception_exit_1(self):
         p, _ = self._run("x = 1\n", {})
         self.assertEqual(p.returncode, 1)
@@ -286,6 +341,88 @@ class PlainCommand(unittest.TestCase):
         p, _ = self._run("def lint(step):\n    step.fields(['role:none'])\n", {})
         self.assertEqual(p.returncode, 1)
         self.assertIn("LookupError", p.stderr)
+
+
+class Blake3(unittest.TestCase):
+    """The official test vectors' input (byte i is i mod 251), checked at the lengths where the
+    chunk tree changes shape; digests from the reference implementation."""
+
+    VECTORS = {
+        0: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262",
+        1: "2d3adedff11b61f14c886e35afa036736dcd87a74d27b5c1510225d0f592e213",
+        1023: "10108970eeda3eb932baac1428c7a2163b0e924c9a9e25b35bba72b28f70bd11",
+        1024: "42214739f095a406f3fc83deb889744ac00df831c10daa55189b5d121c855af7",
+        1025: "d00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b8444",
+        2049: "5f4d72f40d7a5f82b15ca2b2e44b1de3c2ef86c426c95c1af0b6879522563030",
+        2048: "e776b6028c7cd22a4d0ba182a8bf62205d2ef576467e838ed6f2529b85fba24a",
+        3072: "b98cb0ff3623be03326b373de6b9095218513e64f1ee2edd2525c7ad1e5cffd2",
+        3073: "7124b49501012f81cc7f11ca069ec9226cecb8a2c850cfe644e327d22d3e1cd3",
+    }
+
+    def test_vectors_at_tree_shapes(self):
+        from viasdk import _blake3
+
+        for n, want in self.VECTORS.items():
+            self.assertEqual(_blake3.digest(bytes(i % 251 for i in range(n))), want, n)
+
+    def test_a_blob_is_named_by_its_digest(self):
+        from viasdk import _blake3, _columns
+
+        with tempfile.TemporaryDirectory() as d:
+            data = bytes(i % 251 for i in range(9000))
+            name = _columns.put_blob(d, data)
+            self.assertEqual(name, _blake3.digest(data))
+            with open(os.path.join(d, name[:2], name), "rb") as f:
+                self.assertEqual(f.read(), data)
+            self.assertEqual(_columns.put_blob(d, data), name)  # kept, never replaced
+
+
+class Columns(unittest.TestCase):
+    def test_round_trip_inline_and_blob(self):
+        from viasdk import _columns
+
+        with tempfile.TemporaryDirectory() as d:
+            for n in (3, 5000):
+                a = np.arange(n, dtype=np.int32)
+                col = _columns.to_wire(a, "i32", d)
+                self.assertEqual("blob" in col, n > 4096)
+                self.assertTrue(np.array_equal(_columns.from_wire(col, d), a))
+                s = ["é%d" % k for k in range(n)]
+                self.assertEqual(_columns.from_wire(_columns.to_wire(s, "str", d), d), s)
+            two = _columns.to_wire(np.array([[1, 2], [3, 4]]), "i32", d)
+            self.assertEqual(two["shape"], [2, 2])
+            f = _columns.to_wire([-0.0, 1.5], "f64")
+            self.assertEqual(f["values"], [0.0, 1.5])
+            self.assertFalse(str(f["values"][0]).startswith("-"))
+            with self.assertRaises(ValueError):
+                _columns.to_wire([float("nan")], "f64")
+
+
+class Document(unittest.TestCase):
+    def test_metres_are_exact_from_millimetres(self):
+        self.assertEqual(viasdk.metres(1500), "1.5")
+        self.assertEqual(viasdk.metres(1), "0.001")
+        self.assertEqual(viasdk.metres(-2000), "-2")
+        self.assertEqual(viasdk.metres(0), "0")
+
+    def test_out_writes_tables_and_field_files(self):
+        from viasdk._step import Out
+
+        with tempfile.TemporaryDirectory() as d:
+            out = Out(d)
+            out.field("soft", np.zeros((2, 3), dtype=np.float32), tags=["soft"])
+            out.row("height", "soften", value="= mix(v, f('soft'), 0.3)")
+            out.feature("k", "mark", at=(1500, 2000), width=2.5)
+            out.instance("i", "tree_oak", at=(0, 1), face=90)
+            text = out.text()
+            self.assertIn('[field.soft]\nfile = "soft.npy"\ntags = ["soft"]\noutside = 0\n', text)
+            self.assertIn("[field.height.then.soften]\nvalue = \"= mix(v, f('soft'), 0.3)\"", text)
+            self.assertIn('[feature.k]\nkind = "mark"\nat = [1.5, 2]\nwidth = 2.5', text)
+            self.assertIn('[instance.i]\nasset = "tree_oak"\nat = [0, 0.001]\nface = 90', text)
+            self.assertTrue(os.path.exists(os.path.join(d, "soft.npy")))
+            import tomllib
+
+            tomllib.loads(text)
 
 
 class Version(unittest.TestCase):

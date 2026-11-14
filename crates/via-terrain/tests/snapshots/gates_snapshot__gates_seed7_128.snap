@@ -1,21 +1,28 @@
 ---
 source: crates/via-terrain/tests/gates_snapshot.rs
-assertion_line: 41
+assertion_line: 37
 expression: gates
 ---
 {
   "artifact_blake3": {
-    "area_cells": "148d59eead6860e6c6b87bd05b1a65a5b808b6a60439eaa9c6cf3025629f4d4d",
-    "basin": "88807e1dca8b7fe38a3178f3b147de9b92cbf88d6f00182a1234bf1a34f602f4",
-    "discharge": "453d56145667ce4b29a434fcd4b7af238113685eb5d4381c2bca59096b14e022",
-    "heights_cm": "27c5a025d851818bb0fc9ae5827676380a19229cec284bdb46f889d1723c6c23",
-    "precip": "722ec1f7fde214be31375ef142cfd3b02a044e7eb61e134a763261cb7877d467",
-    "receivers": "b0ac41851c2303142d30b7e8f8ffa45e9a4d1695e725fc8a234e7abb0d197a0b",
-    "sediment": "d74bf9d7868d4c081ec32ae4eed7bd905117f6e37c326a44a25d967bb41d4901",
-    "strahler": "7203eb00f71cdab566285b3fa414bf33de67769f5d28e98e0f0153dd4e26ff41",
-    "temperature": "36bd18c5dad74163df808f5da237fecb0bff3bf6a698f901de322d5b9068ddc4",
-    "uplift": "4f97fb1e07b04d99608c0ebe7a32fa647987be1092e0d126fa46780b5ae73a5f",
-    "water_depth": "b151b9ea8d0113c36464d779652548b2bc7f53ca9a7e1dcb9d6877ad5aa53512"
+    "area_cells": "5aeb7640a9a11ff7c5804c7aa9b1ff21eb97e5c61a510edf73b6cf77cd12a0b0",
+    "basin": "9733a4b00dc8d6a02104a286ac2a4043318d0058c1341f2b494016a9a0145533",
+    "discharge": "a13a1c2fee1f29305960a92cd94017562ab76a7eb30cd9625f775e8a939612ea",
+    "heights": "5a953fb6c5374347eff2cacf7a0fd5971fb3ccd6393aaa016c6ac6f9b3f7f5c0",
+    "precip": "072ef507ffe3c54822000ace284a36318192dc0b1564729ba9cd9bd47746ccc9",
+    "receivers": "03265abde497971f1cfe033712a1316268d6a732c8dcf5a6ee589c405a20e7f0",
+    "sediment": "b4241516ddd9c8cfefdf990da34df83c7ecb106c16ab63ef524946cab47a20fe",
+    "strahler": "0d3e971fc24e9fe6a4bb000b710349c068f25393d5bf88f438ca8ac16ddb1eb6",
+    "temperature": "70ae27b8bca57b95cace23720a5cd68901eb45d02785497b288bfe356668deca",
+    "uplift": "fba01f67e446e6685244bc81067f7e2e962ce0b712d4207fa6e88cbc65e7af07",
+    "water_depth": "33badd2c738dbf1cbeebf3279bf6da04ee43995276f786ef8dd30fb708f16e95"
+  },
+  "axis_runs": {
+    "advisory": true,
+    "hi": 0.25,
+    "lo": 0.0,
+    "pass": true,
+    "value": 0.0
   },
   "drainage_completeness": {
     "advisory": false,
@@ -29,17 +36,17 @@ expression: gates
     "hi": 1.0,
     "lo": 0.0,
     "pass": true,
-    "value": 0.002393295108
+    "value": 0.007527785841
   },
   "hack_exponent": {
     "advisory": false,
     "hi": 0.7,
     "lo": 0.45,
     "pass": false,
-    "value": 0.4042490093
+    "value": 0.3647674892
   },
-  "hack_n_basins": 35,
-  "hack_r2": 0.7451569942,
+  "hack_n_basins": 30,
+  "hack_r2": 0.5649982544,
   "horton_bifurcation": null,
   "horton_length_ratio": null,
   "hypsometric_integral": {
@@ -47,7 +54,7 @@ expression: gates
     "hi": 0.6,
     "lo": 0.35,
     "pass": false,
-    "value": 0.2424826841
+    "value": 0.2431050041
   },
   "interior_water_cells": 0,
   "lake_cells": 0,
@@ -59,7 +66,7 @@ expression: gates
     "value": 0.0
   },
   "land_fraction": 0.1196289062,
-  "max_elevation_m": 146.1555878,
+  "max_elevation_m": 146.4509766,
   "overall_pass": false,
   "pit_cells": {
     "advisory": false,
@@ -68,42 +75,42 @@ expression: gates
     "pass": true,
     "value": 0.0
   },
-  "pond_merge_m3": 1305323.175,
+  "pond_merge_m3": 1093357.805,
   "rain_shadow_ratio": {
     "advisory": true,
     "hi": 100.0,
     "lo": 1.05,
     "pass": true,
-    "value": 1.082592902
+    "value": 1.08364412
   },
-  "relief_m": 146.1555878,
-  "sediment_deposited_m3": 61202172.84,
-  "sediment_detached_m3": 1581770097.0,
-  "sediment_exported_m3": 1520567924.0,
+  "relief_m": 146.4509766,
+  "sediment_deposited_m3": 73682070.21,
+  "sediment_detached_m3": 1581215647.0,
+  "sediment_exported_m3": 1507533577.0,
   "sediment_mass_closure": {
     "advisory": false,
     "hi": 0.000000001,
     "lo": 0.0,
     "pass": true,
-    "value": 0.0
+    "value": 0.0000000000000003015636476
   },
-  "sediment_mean_land_m": 0.2356918315,
-  "slope_area_flat_cells_excluded": 1,
-  "slope_area_n_cells": 28,
-  "slope_area_r2": 0.6691503682,
+  "sediment_mean_land_m": 0.2490297549,
+  "slope_area_flat_cells_excluded": 3,
+  "slope_area_n_cells": 35,
+  "slope_area_r2": 0.517522649,
   "slope_area_theta": {
     "advisory": false,
     "hi": 0.6,
     "lo": 0.4,
     "pass": false,
-    "value": 0.3295637983
+    "value": 0.3823456618
   },
   "spl_residual_median": {
     "advisory": false,
     "hi": 0.35,
     "lo": 0.0,
-    "pass": true,
-    "value": 0.295621844
+    "pass": false,
+    "value": 0.3713049126
   },
   "wind": [
     0,

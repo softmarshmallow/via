@@ -401,13 +401,21 @@ fn not_yet() {
     let l = merge(&simple(&format!("chunk = 64\n{HEAD}")), &[]);
     assert_eq!(codes(&l), ["doc.not_yet"]);
     assert!(l.records[0].message().contains("M6"));
+    // M2's words are read: a worker generate step is no longer `doc.not_yet`; an export step is.
     let l = merge(
         &simple(&format!(
             "{HEAD}[step.s]\nwhen = \"generate\"\ncommand = [\"x\"]\nworker = true\n"
         )),
         &[],
     );
-    assert_eq!(codes(&l), ["doc.not_yet", "doc.not_yet"]);
+    assert!(codes(&l).is_empty(), "{:?}", codes(&l));
+    let l = merge(
+        &simple(&format!(
+            "{HEAD}[step.s]\nwhen = \"export\"\ncommand = [\"x\"]\n"
+        )),
+        &[],
+    );
+    assert_eq!(codes(&l), ["doc.not_yet"]);
 }
 
 #[test]

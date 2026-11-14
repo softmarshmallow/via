@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "d16 with a worker lint, checks = [make]: no authority.unchecked; the lint's request holds checks = [{facts: [haven], step: make}]."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# The lint echoes each entry of its request's `checks` member as one warning.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.none]
+code    = "authority.unchecked"
+records = 0
+
+[action.build.diag.member]
+code = "step.facts.checks_0"
+data = { step = "make", facts = ["haven"] }
+
+[action.build.diag.one]
+code    = "step.facts.checks_1"
+records = 0

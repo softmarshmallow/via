@@ -1,0 +1,52 @@
+format    = "via-case-1"
+summary   = "graph.md 6.3: a worker generate step reads a feature that then moves; with the previous build's record in the store, the step runs again with cause `trace`, naming the read's method, never `no record`. What it returns counts in the change report's summary under the step (build.md 11.2: a produced name's maker is the part before `#`), not as written text."
+milestone = 2
+actions   = ["program", "trust", "base", "moved"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.check.first]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:gen"
+includes = { status = "ran", cause = { reason = "no record" } }
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "moved", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.check.valid]
+fn   = "run_report_valid"
+path = "build/w.run.json"
+
+[action.moved.check.gen]
+fn       = "run_node"
+path     = "build/w.run.json"
+node     = "step:gen"
+includes = { status = "ran", cause = { reason = "trace", method = "build.features" } }
+
+# Summary rows sort by maker, null first, then by table (build.md 11.2): the written feature p, the
+# written field height, then the step's returned feature gen#found.
+[action.moved.file.written]
+path     = "build/w/changes.json"
+pointer  = "/summary/0"
+includes = { table = "feature", moved = 1, line = "feature (written): +0 -0 ~1 swapped 0 changed 0, 0 untouched" }
+
+[action.moved.file.step_row]
+path     = "build/w/changes.json"
+pointer  = "/summary/2"
+includes = { maker = "gen", table = "feature", moved = 1, line = "gen: +0 -0 ~1 swapped 0 changed 0, 0 untouched" }

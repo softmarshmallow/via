@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "d06; then the end point moved to (8, 4): the course re-found; the change report's entry for it names the end's cause."
+milestone = 2
+actions   = ["base", "north"]
+
+# Features sort by name: `course` 0, `p_end` 1, `p_start` 2. A path's `points` are [x, y, z];
+# x and y are checked. `smooth` is not written, so the course is its points (derived.md 3 step 6).
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.north]
+via         = ["build", "world.toml", "--change", "north", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.north.file.course]
+path     = "build/w/changes.json"
+pointer  = "/entries/0"
+includes = { name = "course", what = ["moved"] }
+
+[action.north.file.course_cause]
+path     = "build/w/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "feature.p_end.at" }
+
+[action.north.check.course]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "course"
+start       = [0, 0]
+end         = [8, 4]
+min_segment = 0.5

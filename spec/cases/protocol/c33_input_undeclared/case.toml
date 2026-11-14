@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "A worker reading through input.open a file not in inputs: protocol.input_undeclared."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# The step lets the refusal's exception end it; the engine's own diagnostic is then the call's only
+# report (protocol.md 3.3).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.undeclared]
+code = "protocol.input_undeclared"
+subject = "step.look"

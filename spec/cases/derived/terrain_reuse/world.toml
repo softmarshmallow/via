@@ -1,0 +1,48 @@
+name       = "terrain"
+extent     = [0, 0, 640, 640]
+resolution = 4
+seed       = 7
+include    = ["terrain"]
+
+# Land rising north from a sea in the south, with a hollow at (200, 560).
+[field.height]
+role = "surface"
+base = "= -4 + 0.03 * y + fbm(120, 3) - 20 * exp(-((x - 200) * (x - 200) + (y - 560) * (y - 560)) / 6400)"
+
+[field.water]
+tags = ["water_level"]
+base = "= f('height')"
+
+[feature.spring]
+at = [520, 620]
+
+[feature.mouth]
+at = [440, 40]
+
+[feature.river]
+kind      = "terrain_river"
+starts_at = "spring"
+ends_at   = "mouth"
+path      = [[480, 320]]
+
+[feature.tarn]
+kind   = "terrain_lake"
+level  = 2.5
+region = [[260, 560], [252, 590], [230, 612], [200, 620], [170, 612], [148, 590], [140, 560], [148, 530], [170, 508], [200, 500], [230, 508], [252, 530]]
+
+[step.terrain]
+when    = "generate"
+worker  = true
+command = ["via-terrain"]
+
+[step.facts]
+when    = "lint"
+worker  = true
+command = ["via-terrain"]
+checks  = ["terrain"]
+
+[change.marker.feature.marker]              # a guide far from every fact: no terrain fact, no field
+at = [600, 600]
+
+[change.raise_lake.feature.tarn]
+level = 3

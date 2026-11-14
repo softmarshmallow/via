@@ -169,7 +169,8 @@ fn every_row_dispatches() {
             .kind("k")
             .noise(&["noise", "t"]);
         let r = env.check(id, &ctx);
-        if f.milestone == 1 {
+        // This engine reads M2: every row up to M2 checks; a later one is `doc.not_yet`.
+        if f.milestone <= 2 {
             assert!(r.is_ok(), "{}: {:?}", f.name, r.err());
         } else {
             assert_eq!(

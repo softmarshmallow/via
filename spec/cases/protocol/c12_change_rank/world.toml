@@ -1,0 +1,13 @@
+name       = "m2"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[layer.shaping]
+file  = "shaping.toml"
+owner = "tests"
+rank  = 1

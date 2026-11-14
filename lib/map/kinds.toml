@@ -1,0 +1,39 @@
+# The map library: things a game reads from the world that change no field (M2, `vale`;
+# challenge 40). The core knows none of these words (principle 5): each kind hands its features to
+# the loader under an `output` name of this library's choosing (build.md 9.2), with every attribute
+# the feature writes, and the game decides what they mean. A kind with no effects asks nothing of
+# the land, so its features are derived and give way to everything (authority.md 3).
+#
+# A point of interest is a named place on the player's map:
+#
+#   [feature.pass]
+#   kind  = "poi"
+#   on    = { ref = "valley_road", t = 0.96 }
+#   label = "North Pass"
+#
+# A spawn zone is a region where the game spawns something; its table and numbers pass through
+# untouched, for the game's own spawner to read:
+#
+#   [feature.wolf_ground]
+#   kind      = "spawn_zone"
+#   region    = [[65, 145], [155, 145], [155, 215], [65, 215]]
+#   table     = "wolves"
+#   max_alive = 4
+#
+# Placed `on` a derived shape (a lake's shore, a found course), a point of interest follows it
+# when the shape moves: `on = { of = "fill", class = "feature", near = [338, 186], t = 0.3,
+# offset = 3 }`.
+
+[kind.poi]
+output   = "poi"
+requires = ["label"]                      # the name shown on the player's map
+
+[kind.poi.defaults]
+icon = ""                                 # the game's own icon id; "" for its default
+
+[kind.spawn_zone]
+output   = "spawn_zone"
+requires = ["table"]                      # the game's spawn table, by its own id
+
+[kind.spawn_zone.defaults]
+max_alive = 1                             # the most alive at once

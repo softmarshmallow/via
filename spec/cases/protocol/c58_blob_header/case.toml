@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A column blob whose size does not match its dtype and shape: protocol.blob_header."
+milestone = 2
+pending   = "needs a raw worker that sends a column blob of the wrong size; the SDK cannot be made to"
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.code]
+code = "protocol.blob_header"

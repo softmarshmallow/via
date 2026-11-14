@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "A plain step returns field wave = i + 0.5 j as f32 and the row value = f('wave'): height's bytes equal those of the world with value = x + 0.5 * y."
+milestone = 2
+actions   = ["program", "trust", "build", "plain"]
+
+# The `same` check compares the two height files byte for byte; the plain world has no step.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+
+[action.plain]
+via  = ["build", "plain/world.toml", "--out", "build/plain"]
+exit = 0
+out  = "build/plain"
+
+[action.plain.same.height]
+action = "build"
+what   = "fields/height.npy"

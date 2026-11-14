@@ -34,6 +34,9 @@ pub struct Options {
     pub via_lib: Vec<PathBuf>,
     /// The shipped root.
     pub shipped_root: Option<PathBuf>,
+    /// Per generate step whose document is joined, the folder holding the files of its `out`
+    /// (`protocol.md` 5): a returned field's `file` is read there.
+    pub step_out: BTreeMap<String, PathBuf>,
 }
 
 impl Options {
@@ -56,6 +59,7 @@ impl Options {
                 })
                 .unwrap_or_default(),
             shipped_root: load.shipped_root.clone(),
+            step_out: BTreeMap::new(),
         }
     }
 }
@@ -368,6 +372,11 @@ fn source_folder(source: &str, options: &Options) -> Option<PathBuf> {
         let parent = std::path::Path::new(file).parent().map(PathBuf::from);
         return Some(parent.map_or(root.clone(), |p| root.join(p)));
     }
+    if let Some(rest) = source.strip_prefix("step:") {
+        // A returned document's files lie in its step's `out` (`protocol.md` 5).
+        let step = rest.split_once('/').map_or(rest, |(s, _)| s);
+        return options.step_out.get(step).cloned();
+    }
     if source.contains(':') {
         // A change file names its folder on the command line only; text in it is read
         // against the world's folder.
@@ -413,18 +422,32 @@ fn read_files(decls: &mut Decls, options: &Options, diags: &mut Vec<Diag>) {
                 continue;
             }
         };
-        let samples = match via_raster::npy::read_samples(&bytes, via_num::POST_LIMIT) {
-            Ok(s) => s,
-            Err(e) => {
-                let hint = match e.code() {
-                    c if c == codes::field::FILE_TOO_LARGE => {
-                        "use a coarser raster, or tile the world"
-                    }
-                    c if c == codes::field::FILE_NONFINITE => "write a finite value at that sample",
-                    _ => "write a 2-D array file of `<f4`, at least 2 by 2 (`build.md` 3.2)",
-                };
-                diags.push(fault(e.code(), &format!("`{}`: {e}", f.written), hint));
-                continue;
+        let png = f.written.to_ascii_lowercase().ends_with(".png");
+        let samples = if png {
+            let unit_m = decls.fields.get(name).is_some_and(|fd| {
+                fd.unit.as_deref() == Some("m")
+                    || (fd.unit.is_none() && fd.role == Some(crate::decl::Role::Surface))
+            });
+            match png_samples(name, f, &bytes, unit_m, diags) {
+                Some(s) => s,
+                None => continue,
+            }
+        } else {
+            match via_raster::npy::read_samples(&bytes, via_num::POST_LIMIT) {
+                Ok(s) => s,
+                Err(e) => {
+                    let hint = match e.code() {
+                        c if c == codes::field::FILE_TOO_LARGE => {
+                            "use a coarser raster, or tile the world"
+                        }
+                        c if c == codes::field::FILE_NONFINITE => {
+                            "write a finite value at that sample"
+                        }
+                        _ => "write a 2-D array file of `<f4`, at least 2 by 2 (`build.md` 3.2)",
+                    };
+                    diags.push(fault(e.code(), &format!("`{}`: {e}", f.written), hint));
+                    continue;
+                }
             }
         };
         let extent = f.extent.unwrap_or(grid.extent);
@@ -452,6 +475,114 @@ fn read_files(decls: &mut Decls, options: &Options, diags: &mut Vec<Diag>) {
         );
     }
     decls.files = found;
+}
+
+/// A PNG field file's samples (`fields.md` 4.1, 4.2): the one channel, its levels mapped by
+/// `range`, rows from the south. Faults are said at the field's keys; `None` when it is not read.
+fn png_samples(
+    name: &str,
+    f: &crate::decl::FileDecl,
+    bytes: &[u8],
+    unit_m: bool,
+    diags: &mut Vec<Diag>,
+) -> Option<via_raster::npy::Samples> {
+    let at = |code, key: &str, message: &str, hint: &str| {
+        text::at_key(code, "field", name, key, message, hint)
+    };
+    let p = match via_raster::png::read(bytes, via_num::POST_LIMIT) {
+        Ok(p) => p,
+        Err(e) => {
+            diags.push(at(
+                codes::field::FILE_FORMAT,
+                "file",
+                &format!("`{}`: {e}", f.written),
+                "save as an 8- or 16-bit grey PNG, or an array file",
+            ));
+            return None;
+        }
+    };
+    if p.width < 2 || p.height < 2 {
+        diags.push(at(
+            codes::field::FILE_FORMAT,
+            "file",
+            &format!(
+                "`{}` is {} by {}: a raster is at least 2 by 2",
+                f.written, p.width, p.height
+            ),
+            "save a picture at least 2 by 2",
+        ));
+        return None;
+    }
+    let ch = match (f.channel.as_deref(), p.channels) {
+        (None | Some("grey"), 1 | 2) => 0,
+        (Some("a"), 2) => 1,
+        (Some("r"), 3 | 4) => 0,
+        (Some("g"), 3 | 4) => 1,
+        (Some("b"), 3 | 4) => 2,
+        (Some("a"), 4) => 3,
+        (None, _) => {
+            diags.push(at(
+                codes::field::FILE_KEY,
+                "file",
+                &format!(
+                    "`{}` has colour channels and the field names none",
+                    f.written
+                ),
+                "write `channel = \"r\"`, `\"g\"`, `\"b\"` or `\"a\"`",
+            ));
+            return None;
+        }
+        (Some(c), _) => {
+            diags.push(at(
+                codes::field::FILE_KEY,
+                "channel",
+                &format!("`{}` has no channel `{c}`", f.written),
+                "name a channel the picture has",
+            ));
+            return None;
+        }
+    };
+    let top = if p.depth == 8 { 255.0 } else { 65535.0 };
+    let (lo, hi) = f.range.unwrap_or((0.0, 1.0));
+    if unit_m && (hi - lo).abs() / top > 0.1 {
+        diags.push(at(
+            codes::field::FILE_COARSE,
+            "file",
+            &format!(
+                "`{}` steps {} m a level on a field in metres",
+                f.written,
+                (((hi - lo).abs() / top) * 1000.0).round_ties_even() / 1000.0
+            ),
+            "use 16-bit, or a narrower range",
+        ));
+    }
+    if !p.unapplied.is_empty() {
+        diags.push(at(
+            codes::field::FILE_PROFILE,
+            "file",
+            &format!(
+                "`{}`'s {} not applied: levels are read as stored",
+                f.written,
+                p.unapplied.join(", ")
+            ),
+            "none needed; levels are read as stored",
+        ));
+    }
+    let (w, h) = (p.width as usize, p.height as usize);
+    let mut values = Vec::with_capacity(w * h);
+    // Row 0 of the samples is the south: the picture's bottom row.
+    for r in (0..h).rev() {
+        for c in 0..w {
+            let level = f64::from(p.levels[(r * w + c) * p.channels + ch]);
+            let v = lo + (hi - lo) * (level / top);
+            values.push(via_num::store_f32(v).unwrap_or(0.0));
+        }
+    }
+    Some(via_raster::npy::Samples {
+        rows: p.height,
+        columns: p.width,
+        values,
+    })
 }
 
 /// The rest of a build, with fields already resolved elsewhere (`seeds`, from the graph's
@@ -653,6 +784,16 @@ pub(crate) fn finish(
             },
         );
     }
+    // `assets.md` 8.3 and 4.2: each used asset's own faults, and its revision against the facts
+    // file, naming every instance of it in this build.
+    diags.extend(
+        pk.used_diagnostics(
+            &used,
+            out.instances
+                .iter()
+                .map(|(n, i)| (n.as_str(), i.asset.as_str())),
+        ),
+    );
     for a in &used {
         if let Some(asset) = pk.assets.get(a) {
             out.assets.insert(a.clone(), asset.facts());
@@ -771,8 +912,12 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
             ShapeDecl::Point(crate::decl::Place::On(o)) => refs.push(o.reference.clone()),
             ShapeDecl::Point(crate::decl::Place::Of(o)) => refs.push(o.of.clone()),
             ShapeDecl::Follows(fl) => refs.push(fl.reference.clone()),
-            ShapeDecl::Where(w) => {
-                if let Some(p) = d.formulas.programs.get(w) {
+            ShapeDecl::Where(_) | ShapeDecl::Path(_) => {
+                let w = match &f.shape {
+                    ShapeDecl::Where(w) => Some(*w),
+                    _ => f.route,
+                };
+                if let Some(p) = w.and_then(|w| d.formulas.programs.get(&w)) {
                     for (class, sel) in &p.reads.selectors {
                         match class {
                             via_expr::Class::Field => {
@@ -989,9 +1134,19 @@ fn unowned_crossings(decls: &Decls, placed: &Placed, diags: &mut Vec<Diag>) {
         out
     };
     let follows = |a: &crate::decl::FeatureDecl, other: &str| matches!(&a.shape, ShapeDecl::Follows(fl) if base(&fl.reference) == other);
+    // A path that names the other in an attribute its kind lists in `names` owns every meeting
+    // with it: one was found from the other (a course and the river it was followed from).
+    let names_other = |a: &crate::decl::FeatureDecl, other: &str| {
+        let Some(k) = a.kind.as_ref().and_then(|k| decls.kinds.get(k)) else {
+            return false;
+        };
+        k.names
+            .iter()
+            .any(|n| matches!(a.attrs.get(n), Some(crate::decl::Attr::Text(t)) if base(t) == other))
+    };
     for (k, (ia, fa, la)) in paths.iter().enumerate() {
         for (ib, fb, lb) in &paths[k + 1..] {
-            if follows(fa, ib) || follows(fb, ia) {
+            if follows(fa, ib) || follows(fb, ia) || names_other(fa, ib) || names_other(fb, ia) {
                 continue;
             }
             let mut points: BTreeSet<(i64, i64)> = BTreeSet::new();

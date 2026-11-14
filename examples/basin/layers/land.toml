@@ -1,0 +1,46 @@
+# The land layer: everything the author states about the land, and the simulation that settles
+# the land under them. Four features and two steps. The terrain step reads this layer and the world
+# file below it (its stratum, protocol.md 1), so nothing in `dress` can change what it settles.
+
+[feature.spring]                          # where the river rises, high in the north-east
+at = [2250, 2850]
+
+[feature.haven]                           # where it meets the sea
+at = [1500, 330]
+
+# A rough line: two named ends and two places it passes. The library cuts it as a groove that only
+# ever falls into the starting ground, and the model makes the valley (lib/terrain: a river is a
+# groove, never held cells).
+[feature.river]
+kind      = "terrain_river"
+starts_at = "spring"
+ends_at   = "haven"
+path      = [[1900, 2100], [1750, 1200]]
+
+# A lake stands here at 72 m: an oval about 420 m east to west and 300 m north to south, in ground
+# that first lies above that level. The library makes it a hollow held at its shore.
+[feature.tarn]
+kind   = "terrain_lake"
+level  = 72
+region = [[690, 2000], [706, 1943], [752, 1894], [820, 1861], [900, 1850], [980, 1861], [1048, 1894], [1094, 1943], [1110, 2000], [1094, 2057], [1048, 2106], [980, 2139], [900, 2150], [820, 2139], [752, 2106], [706, 2057]]
+
+# The terrain library's step and lint, restated as lib/terrain documents (a library declares no
+# step, protocol.md 1). Every parameter of the model takes the library's default for this cell size.
+[step.terrain]
+when    = "generate"
+worker  = true
+command = ["via-terrain"]
+params  = { sea = 0 }
+
+[step.facts]
+when    = "lint"
+worker  = true
+command = ["via-terrain"]
+checks  = ["terrain"]
+params  = { min_catchment = 0.08 }        # the river should gather at least a twelfth of the land
+
+# The river's mouth moves 500 m east along the shore. Nothing else is edited: the model runs again
+# under the new fact, and the valley, what grows in it and the views on the river follow
+# (docs/plan.md M2: a moved river mouth resettles; derived.md d20).
+[change.move_haven.feature.haven]
+at = [2000, 330]

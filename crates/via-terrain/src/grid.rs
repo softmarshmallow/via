@@ -1,4 +1,4 @@
-/// Regular square grid. Cell (x, y) ↔ index `y * w + x`; y grows southward.
+/// Regular grid of square cells. Cell (x, y) ↔ index `y * w + x`; y grows southward.
 #[derive(Clone, Copy, Debug)]
 pub struct Grid {
     pub w: u32,
@@ -22,11 +22,12 @@ pub const D8: [(i32, i32, f64); 8] = [
 
 impl Grid {
     pub fn new(size: u32, dx: f64) -> Self {
-        Self {
-            w: size,
-            h: size,
-            dx,
-        }
+        Self::rect(size, size, dx)
+    }
+
+    /// A grid of `w` columns and `h` rows.
+    pub fn rect(w: u32, h: u32, dx: f64) -> Self {
+        Self { w, h, dx }
     }
 
     #[inline]

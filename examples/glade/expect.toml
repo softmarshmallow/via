@@ -1,0 +1,61 @@
+# Measures glade's builds are held to, beside the spike's (fixtures/oracle/glade*/). Measures, never
+# bytes (R15): a number outside its range is read and explained, not tuned away. `expect.py` reads
+# the build directories and prints each measure with its range and the oracle's value.
+#
+#   via build world.toml --out build/glade
+#   via build world.toml --out build/glade+mouth --change changes/mouth.toml --against build/glade
+#   (likewise seed, look, revised; by_cause and by_step need M2's `clump` and generate steps)
+#   python3 expect.py build
+#
+# Protocol of the values written here: macOS arm64, via 0.1.0 from the working tree, 2026-11-14,
+# one run each, 1 thread default. The spike's numbers come from the summary and measures files.
+
+[base]
+build    = "glade"
+errors   = [0, 0]
+warnings = [0, 0]
+# the spike placed 881 instances with 14 m logs (the starter pack had no log then; `logs` now scatters its `log`)
+instances = { range = [700, 950], measured = 810, oracle = 881 }
+trees     = { range = [350, 520], measured = 439 }
+bushes    = { range = [220, 320], measured = 267 }
+stones    = { range = [80, 130], measured = 102 }
+# The ground under the spike's four bookmark points: its eye less its eye height. Our noise is not
+# the spike's (fbm by name, numbers.md 7), so only the lie of the land is compared, within 3.5 m.
+ground = [
+    { at = [70, 70], oracle = 27.578, within = 3.5 },
+    { at = [60, 120], oracle = 30.646, within = 3.5 },
+    { at = [128, 82], oracle = 29.726, within = 3.5 },
+    { at = [150, 6], oracle = 26.369, within = 3.5 },     # 6 m from the stream's line: its bank cut
+]
+
+[mouth]                                   # M2: a moved river mouth resettles
+build     = "glade+mouth"
+errors    = [0, 0]
+# Only what stands near the moved reach changes: every changed field region lies east of x = 100.
+field_box_min_x = 100
+scattered_untouched_share = { range = [0.9, 1.0], measured = 0.95 }
+# `over` is written `at` [150, 6], 6 m from the old reach: the bank cut there fills back, so its
+# height rises 0.29 m and its `at` moves (build.md 11.2: heights count, 2026-11-15).
+moved_features = ["stream", "upstream", "on_bank", "at_mouth", "over"]
+
+[seed]                                    # M2: a new seed moves the valley and what stands on it
+build     = "glade+seed"
+errors    = [0, 0]
+scattered_untouched_share = { range = [0.0, 0.0], measured = 0.0 }
+fields_changed = ["cover", "ground", "height", "water"]   # not clearing: only features write it, and none moved in plan
+
+[look]                                    # M2: an edit nothing below the review layer reads
+build   = "glade+look"
+errors  = [0, 0]
+entries = ["feature:wood_edge"]           # the change report holds this one entry
+ran_producers = []                        # no scatter or generate step ran (the plain lint does: protocol.md 1)
+
+[revised]                                 # M2: a revised asset names every instance it affects
+build    = "glade+revised"
+errors   = [0, 0]
+revised  = { asset = "tree_oak", instances_equal_base = true, measured = 252 }
+
+[by_cause]                                # clump arrived with M2's core
+build     = "glade+by_cause"
+errors    = [0, 0]
+instances = { range = [600, 1100], oracle = 872 }

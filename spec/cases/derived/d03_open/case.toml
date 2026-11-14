@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "d01 with = 3.5 - height: derive.open at the first vertex on the outline."
+milestone = 2
+actions   = ["build"]
+
+# height < 3.5 joins both hollows and reaches x = 0 and x = 8 for 2.5 < y < 5.5; in post
+# order (least y, then least x) the first vertex on the outline is (0, 2.5).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.open]
+code     = "derive.open"
+severity = "warning"
+subject  = "feature.lake"
+position = [0, 2.5]

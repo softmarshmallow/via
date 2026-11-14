@@ -1,0 +1,248 @@
+# Written by via pack accept. Do not edit.
+
+[asset.box_small]
+bounds = [-1, -1, 0, 1, 1, 2]
+origin = [0, 0, 0]
+footprint = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "prop/box"
+tags = []
+files = { "box_small.glb" = "195332a8e6db14f0088d50342c4543a6626064aacd9e76b03aeb2e264f799932" }
+
+[asset.bush_round]
+bounds = [-0.75, -0.713, 0, 0.75, 0.713, 1.2]
+origin = [0, 0, 0]
+footprint = [[-0.75, -0.713], [0.75, -0.713], [0.75, 0.713], [-0.75, 0.713]]
+triangles = 100
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "none"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "plant/bush"
+tags = []
+files = { "bush_round.glb" = "e70934ee8592b0054f4b9125cbe9c70c4a94b3173a15e3595731a73753f12895" }
+
+[asset.bush_wide]
+bounds = [-1.3, -1.3, 0, 1.3, 1.3, 1.6]
+origin = [0, 0, 0]
+footprint = [[-1.3, -1.3], [1.3, -1.3], [1.3, 1.3], [-1.3, 1.3]]
+triangles = 120
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "none"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "plant/bush"
+tags = []
+files = { "bush_wide.glb" = "26d41794c7f2a44f5051e968085b50908c308ba2a6da432d3b51f35fa28c131b" }
+
+[asset.fence_post]
+bounds = [-0.075, -0.075, 0, 0.075, 0.075, 1.2]
+origin = [0, 0, 0]
+footprint = [[-0.075, -0.075], [0.075, -0.075], [0.075, 0.075], [-0.075, 0.075]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "prop/fence"
+tags = []
+files = { "fence_post.glb" = "2aa0cc84932021aace8e2a0a1f307a979f91502206217dede2ddbe16f007ff68" }
+
+[asset.fern_low]
+bounds = [-0.4, -0.38, 0, 0.4, 0.38, 0.5]
+origin = [0, 0, 0]
+footprint = [[-0.4, -0.38], [0.4, -0.38], [0.4, 0.38], [-0.4, 0.38]]
+triangles = 20
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "none"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "plant/fern"
+tags = []
+files = { "fern_low.glb" = "b83541362caa4ccb4b935e614027a28769f15d1d387111372881464ca3ee90e5" }
+
+[asset.house_low]
+bounds = [-4.3, -3.3, 0, 4.3, 3.3, 4.6]
+origin = [0, 0, 0]
+footprint = [[-4, -3], [4, -3], [4, 3], [-4, 3]]
+triangles = 32
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+max_relief = 0.6
+colour = [0.8, 0.8, 0.8]
+taxon = "building/house"
+tags = []
+mounts = { door = { at = [0, 3], face = 0 } }
+files = { "house_low.glb" = "d3ad5573b342ef2edb416eba4bed701b5b1397c7ea017bd5054b87c851684018" }
+
+[asset.house_wide]
+bounds = [-5.8, -3.8, 0, 5.8, 3.8, 5.4]
+origin = [0, 0, 0]
+footprint = [[-5.5, -3.5], [5.5, -3.5], [5.5, 3.5], [-5.5, 3.5]]
+triangles = 32
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+max_relief = 0.6
+colour = [0.8, 0.8, 0.8]
+taxon = "building/house"
+tags = []
+mounts = { door = { at = [0, 3.5], face = 0 } }
+files = { "house_wide.glb" = "e2422455e1bdd14c125a110e0042cf61b306d2d4d3017e12788479debe68f53c" }
+
+[asset.lamp_post]
+bounds = [-0.1, -0.1, 0, 0.1, 0.1, 3]
+origin = [0, 0, 0]
+footprint = [[-0.1, -0.1], [0.1, -0.1], [0.1, 0.1], [-0.1, 0.1]]
+triangles = 44
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "prop/lamp"
+tags = []
+files = { "lamp_post.glb" = "3cbb7aec1aa9d5ec8158684cc0d4ea221f072ae8fc3924568c803cf33a33c02e" }
+
+[asset.log]
+bounds = [-1.5, -0.238, 0, 1.5, 0.238, 0.5]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.238], [1.5, -0.238], [1.5, 0.238], [-1.5, 0.238]]
+triangles = 40
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "plant/deadwood"
+tags = []
+files = { "log.glb" = "25ba137decb516716a038948eecd527eeed294e53fb348b8b3e62dfe3bbc5666" }
+
+
+[asset.rock_a]
+bounds = [-0.576, -0.53, 0, 0.576, 0.53, 1.2]
+origin = [0, 0, 0]
+footprint = [[-0.576, -0.53], [0.576, -0.53], [0.576, 0.53], [-0.576, 0.53]]
+triangles = 100
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "hull"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "rock"
+tags = []
+files = { "rock_a.glb" = "9b4a26d896159606f208642d0cc5b84ceeb53a3246304f16ea7e3dceec55f43f" }
+
+[asset.rock_b]
+bounds = [-1.176, -0.921, 0, 1.176, 0.921, 2.6]
+origin = [0, 0, 0]
+footprint = [[-1.176, -0.921], [1.176, -0.921], [1.176, 0.921], [-1.176, 0.921]]
+triangles = 100
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "hull"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "rock"
+tags = []
+files = { "rock_b.glb" = "1f10c4ef006965e1a08038a88d1f314d1eb395b6bd0ebbbabc65660eda2d4bc6" }
+
+[asset.shed_gable]
+bounds = [-2, -1.5, 0, 2, 1.5, 3]
+origin = [0, 0, 0]
+footprint = [[-2, -1.5], [2, -1.5], [2, 1.5], [-2, 1.5]]
+triangles = 20
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+max_relief = 0.6
+colour = [0.8, 0.8, 0.8]
+taxon = "building/shed"
+tags = []
+files = { "shed_gable.glb" = "7af03f1b3ce0984b29f961537b9b696d6bf10163c7c33fedac7bc3cb03bdb1f0" }
+
+[asset.tree_oak]
+bounds = [-2.5, -2.5, 0, 2.5, 2.5, 7]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 256
+detail_triangles = [72]
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "hull"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "plant/tree"
+tags = []
+files = { "tree_oak.glb" = "728232e2c84dc41db3a0e125f05509fcd7f1755f45499d0214d296e9b7e95bae", "tree_oak_low.glb" = "ac0b6e0912bc56206698f6b69d1a2afaa116ca6e63e7b712d6659e7976416b3d" }
+
+[asset.tree_oak_large]
+bounds = [-4, -4, 0, 4, 4, 11]
+origin = [0, 0, 0]
+footprint = [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]]
+triangles = 256
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "hull"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "plant/tree"
+tags = ["landmark"]
+files = { "tree_oak_large.glb" = "3d1764a3a1a7607cc83b1d071bc1d31e14b9d74d366f978b670dc24a6602431b" }
+
+[asset.tree_pine]
+bounds = [-1.8, -1.8, 0, 1.8, 1.8, 9]
+origin = [0, 0, 0]
+footprint = [[-0.4, -0.4], [0.4, -0.4], [0.4, 0.4], [-0.4, 0.4]]
+triangles = 48
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "hull"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "plant/tree"
+tags = ["winter"]
+files = { "tree_pine.glb" = "0441f7aed37e88b1bca4aac400ba96ac238ec063712e9ebf6873788be614ed26" }

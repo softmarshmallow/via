@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "graph.md 5.1: a refused traced read is a read. A worker lint reads a field that does not exist, is refused, and goes on; a change adds the field: the lint runs again and reads it."
+milestone = 2
+actions   = ["program", "trust", "base", "added"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.base.diag.refused]
+code = "step.probe.refused"
+
+[action.added]
+via         = ["build", "world.toml", "--change", "add", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.added.nodes]
+ran_includes = ["step:probe"]
+[action.added.diag.found]
+code = "step.probe.found"

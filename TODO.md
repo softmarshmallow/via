@@ -129,6 +129,62 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
 - -> M6: **`atlas` should take its plain from this**: the river that bends and the land under the city
   were the reason the original library was brought up.
 
+### From the M2 integration (2026-11-14, the five M2 worlds' library requests)
+
+- -> M2: **Engine version in the build key.** A changed engine with the same `CARGO_PKG_VERSION`
+  replays a stored build (vale kept a fixed `diag.internal` until its store was cleared). Lesson:
+  the key must name the engine build, or every engine change during a milestone needs a version bump.
+- -> M2: **Distance to large regions is slow.** A fill lake from marching squares has thousands
+  of vertices; exact `project_region` per post made vale take ~6 min. A box bound now prunes
+  segments; a grid of segments per region is the next step if it is still slow.
+- -> M3: **A way that ends at a door** (relief A): `ends_at = "bothy.door"` reads the instance's
+  height and loops through the trail's own effect (`graph.cycle`). Proposed: the `height` edge
+  only for a read of the mount's height (`graph.md` 2, `mount` row). Not done.
+- -> set aside until a world needs it (relief C): `smoothed_along` shrinking its window
+  symmetrically at a path's end. It changes ford's bytes and formulas.md 8.5's vectors; the road
+  kind's 1.7 m step at an end stays, and `lib/ways` documents keeping 40 m from the edge.
+- -> M3: **A bookmark cannot keep its eye clear** (glade 4): writing keep_out from a bookmark loops
+  through the instance it looks at. Lesson: a view's clearance is a placement fact, not a field.
+- -> M2: **`facts:` nodes for every model asset of the pack**, not only those the build uses
+  (graph.md 1). Which assets a build uses is known only after placement; the nodes are defined
+  before. Harmless (an unused asset's node raises nothing) but each runs on a facts-file edit.
+- -> M2: **A traced lint cannot see a feature that failed late.** Late feature errors (e.g.
+  `identity.near_none`) are routed to `merge`, so a lint reading that feature is not skipped. Lesson:
+  a late error should fail its own `shape:` node, as an early one does.
+- -> M3: **Consequential errors in basin `cannot_hold`.** With the river stated uphill the step
+  returns no course, and the five views standing on it said `identity.near_none` each: one fault,
+  six reports. Now one `identity.near_none` at the step listing the five (identity.md 3, "said
+  once, at its maker"), so two reports. Left: the generate step knows why it made no course, but
+  failing it would skip the lint that names the cause. Lesson: a step needs a way to say "made
+  nothing, because" that its readers' selections defer to.
+- -> done (2026-11-14): **`authority.max_change` said once per build, not per feature.** The
+  resolver's "once" key was code, subject and site, and every pad shares the kind's site, so a
+  second pad past its cut merged into the first (vale `move_road` named the barn, not cottage_a).
+  The key now holds the feature for that code and `field.effect_cut` (authority.md 2.2).
+- -> M3: **Incremental builds recompute every field over the whole extent** (`fields_memo`): a vale
+  change costs 4 to 8 minutes though the graph reuses most nodes. The change report's chains were
+  worked out per instance (basin 30 min+); now once per producer.
+- -> M2: **Measures beyond `checks.py`.** `water_*`, `trees_on_way` and `crowded_view` landed in
+  lib/review (relief 2, vale 5); worlds' `expect.toml` still read their own scripts.
+
+### From the M2 review fixes (2026-11-14)
+
+- -> owner (doctrine): **The terrain library is a Rust program, not a `viasdk` step** (R19a/b). It
+  links `via-num`, the seed derivation and the store, and computes its own noise. Recorded in
+  protocol.md 8 and challenge 58 ("no private door" not met). Rule: publish `via-step` and friends
+  as a door, or port the library to Python. Meanwhile a one-word configured program's file digest
+  is in the step's static key (graph.md 5.1), so a revised binary re-runs basin.
+- -> M3: **`uplands` traces its stream over its own cells.** `derive.descend` and `derive.spill`
+  read fields of the build; a step's own land is in none while it runs. Lesson: a library that wants
+  the engine's line over its returned land needs a second step above it.
+- -> M3: **Clumps of different parents and scatters still interpenetrate** (rules.md 15). Members now
+  give way to their parent and earlier siblings; a scatter giving way to lower layers' scatters is
+  the next question, decided at eye height.
+- -> M2: **`d20_basin` stays pending**: the runner configures only `python`, and basin's step is the
+  `via-terrain` program. Lesson: a case that needs a configured program needs a runner key for it.
+- -> M3: **A worker step's `exit` is always null** (graph.md 6.3 now says so): a pooled worker exits
+  when the build ends, after the record. Lesson: per-call status belongs to the call, not the process.
+
 ## Framing
 
 - [x] Draft `docs/ledger.md` (2026-11-12): the vocabulary of a game world in 14 groups, each term with an

@@ -119,8 +119,32 @@ pub struct Nearest {
 /// The nearest place on a line to `p`; ties to the lower `t`.
 pub fn nearest(line: &Line, p: P) -> Nearest {
     let mut best: Option<Nearest> = None;
+    // An exact integer bound on the best distance squared so far (to a vertex seen), so a segment
+    // whose box lies strictly farther is skipped without its exact test. Skipping never changes
+    // the answer: such a segment is strictly worse than the best, ties included.
+    let sq = |a: P| {
+        let (dx, dy) = (i128::from(a.x - p.x), i128::from(a.y - p.y));
+        dx * dx + dy * dy
+    };
+    let mut upper: Option<i128> = None;
     for k in 0..line.segments() {
         let (a, b) = line.seg(k);
+        let gap = |lo: i64, hi: i64, v: i64| -> i128 {
+            if v < lo {
+                i128::from(lo - v)
+            } else if v > hi {
+                i128::from(v - hi)
+            } else {
+                0
+            }
+        };
+        let gx = gap(a.x.min(b.x), a.x.max(b.x), p.x);
+        let gy = gap(a.y.min(b.y), a.y.max(b.y), p.y);
+        if upper.is_some_and(|u| gx * gx + gy * gy > u) {
+            continue;
+        }
+        let near_end = sq(a).min(sq(b));
+        upper = Some(upper.map_or(near_end, |u| u.min(near_end)));
         let (d, foot) = pred::dist2_segment(p, a, b);
         let better = match &best {
             None => true,

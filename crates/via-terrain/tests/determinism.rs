@@ -30,7 +30,7 @@ fn bitwise_identical_across_thread_counts() {
     // exercised, or this test silently stops covering it (ADR 0005).
     let fluvial_min = (cfg.fluvial_min_area_km2 * 1.0e6) / cfg.cell_area_m2();
     assert!(
-        a.discharge_cells.iter().cloned().fold(0.0, f64::max) >= fluvial_min,
+        a.discharge_cells.iter().cloned().fold(0.0, via_num::max) >= fluvial_min,
         "no channelized cells in the determinism scenario; pick a new config"
     );
 
@@ -102,32 +102,4 @@ fn bitwise_identical_with_final_lakes() {
         serde_json::to_string(&b.gates).unwrap(),
         "gates differ across thread counts (lake run)"
     );
-}
-
-#[test]
-fn write_run_roundtrip_matches_embedded_hashes() {
-    let cfg = small_cfg();
-    let out = run(&cfg, &mut |_, _| {});
-    let dir = std::env::temp_dir().join(format!("via-roundtrip-{}", std::process::id()));
-    let manifest = via_terrain::write_run(&dir, &out).unwrap();
-
-    // The hashes embedded in gates.json, the manifest hashes, and the bytes
-    // on disk must all agree.
-    for (name, entry) in &manifest.artifacts {
-        let bytes = std::fs::read(dir.join(&entry.file)).unwrap();
-        let disk_hash = blake3::hash(&bytes).to_hex().to_string();
-        assert_eq!(
-            &disk_hash, &entry.blake3,
-            "manifest hash != disk bytes for {name}"
-        );
-        assert_eq!(
-            Some(&disk_hash),
-            out.gates.artifact_blake3.get(name),
-            "gates.json hash != disk bytes for {name}"
-        );
-    }
-    // Heights survive the write/read cycle exactly.
-    let back = via_artifact::Raster::<i32>::read_file(&dir.join("heights_cm.vrast")).unwrap();
-    assert_eq!(back, via_terrain::stage::raster_heights_cm(&out));
-    std::fs::remove_dir_all(&dir).ok();
 }

@@ -3,18 +3,28 @@ name = "via-terrain"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Stage 1: stream-power landscape evolution → heightfield, drainage, rivers, basins, gates."
+rust-version.workspace = true
+description = "The erosion library: stream-power landscape evolution, run as a step under stated facts (R14)."
 
 [dependencies]
 rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+blake3 = { workspace = true }
 via-artifact = { workspace = true }
+via-num = { workspace = true }
+via-proto = { workspace = true }
+via-step = { path = "../via-step" }
 
 [dev-dependencies]
-blake3 = { workspace = true }
+tempfile = "3.27"
+toml = "1.1"
 insta = { workspace = true }
 
-# Exempt from the workspace float-method lint until the M2 port to via-num (R26).
-[lints.clippy]
-disallowed_methods = "allow"
+[lints]
+workspace = true
+
+# The terrain step: one program, a worker or a plain command (spec/protocol.md, R22).
+[[bin]]
+name = "via-terrain"
+path = "src/bin/via-terrain.rs"

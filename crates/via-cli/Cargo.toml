@@ -20,6 +20,9 @@ via-graph = { workspace = true }
 via-model = { workspace = true }
 via-geom = { workspace = true }
 via-proto = { workspace = true }
+via-expr = { workspace = true }
+# The worker's messages (protocol.md 3), as via-proto speaks them.
+serde_json = { version = "1.0", features = ["float_roundtrip"] }
 # `config.toml` and `trust.toml` (protocol.md 6.3), files of the machine the command line writes.
 toml = "1.1"
 # Ctrl+C and SIGTERM while a step runs (protocol.md 6.2), as via-proto uses it.

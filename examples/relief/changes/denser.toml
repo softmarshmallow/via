@@ -1,0 +1,5 @@
+# Denser woods: an edit in the dressing layer (rank 1), which the fill (world layer, rank 0) does
+# not read. The trees are drawn again; the fill is reused, not run (protocol.md 1, documents.md 6.5).
+
+[scatter.trees]
+spacing = 5.5

@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "Accepted; one asset's taxon changed: asset.refiled; no asset.revised."
+milestone = 2
+actions   = ["accept", "refile", "build"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.refile]
+replace = "pack.toml"
+find    = "taxon = \"plant/tree\""
+with    = "taxon = \"plant/bush\""
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.refiled]
+code    = "asset.refiled"
+subject = "asset.cube"
+
+[action.build.diag.revised]
+code    = "asset.revised"
+records = 0

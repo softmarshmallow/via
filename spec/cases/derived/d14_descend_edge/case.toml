@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "height base = x; derive.descend from (4, 4): (4, 4), (3, 4), (2, 4), (1, 4), (0, 4), end edge."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# The worker lint (steps/probe.py) calls the operation and sends one warning per answer, its
+# facts in `data`.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.descend_0]
+code = "step.probe.descend_0"
+data = { points = [4000, 4000, 3000, 4000, 2000, 4000, 1000, 4000, 0, 4000], end = "edge", geometry = 1 }

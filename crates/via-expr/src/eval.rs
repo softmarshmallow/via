@@ -986,7 +986,13 @@ impl Evaluator<'_> {
                 gain,
                 lacunarity,
                 ref seed,
+                ridged,
             } => {
+                let noise = if ridged {
+                    crate::noise::ridged
+                } else {
+                    crate::noise::fbm
+                };
                 let stream = self.stream(seed);
                 let (w, o, g, l) = (
                     self.col(wavelength).clone(),
@@ -1018,7 +1024,7 @@ impl Evaluator<'_> {
                         out.push(0.0);
                         continue;
                     }
-                    match crate::noise::fbm(
+                    match noise(
                         stream,
                         metres(px),
                         metres(py),

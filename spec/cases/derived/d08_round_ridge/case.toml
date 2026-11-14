@@ -1,0 +1,53 @@
+format    = "via-case-1"
+summary   = "route = if(height > 1, 100, 1) over a ridge between the ends: no vertex of the course on a post of cost 100 where a way round exists."
+milestone = 2
+actions   = ["build"]
+
+# Features sort by name: `course` 0, `p_end` 1, `p_start` 2. A path's `points` are [x, y, z];
+# x and y are checked. `smooth` is not written, so the course is its points (derived.md 3 step 6).
+# The ridge is x = 4 for y < 8, cost 100; the one post of x = 4 with cost 1 is (4, 8). Eight
+# diagonal steps through it, 8 sqrt(2), is the only least course: any course needs eight steps
+# east and four up and four down. Simplified (step 5): (0, 4), (4, 8), (8, 4), the turn at (4, 8)
+# exactly 90 degrees, so kept.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.count]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 3
+
+[action.build.file.p0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.build.file.p0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 4
+
+[action.build.file.p1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 4
+
+[action.build.file.p1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 8
+
+[action.build.file.p2_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/0"
+value   = 8
+
+[action.build.file.p2_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/1"
+value   = 4

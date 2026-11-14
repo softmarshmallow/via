@@ -127,7 +127,10 @@ def _exempt_dotdot(trail: tuple[str, ...]) -> bool:
 
 def _exempt_absolute(trail: tuple[str, ...]) -> bool:
     """The run report's `steps[].command` repeats the step's statement as written (graph.md 6.3);
-    an absolute path there is the text's own fault, protocol.absolute_path, not a leak."""
+    an absolute path there is the text's own fault, protocol.absolute_path, not a leak. A
+    diagnostic's `data.pointer` is a JSON pointer into a model file (RFC 6901), not a path."""
+    if len(trail) >= 2 and trail[-1] == "pointer" and trail[-2] == "data":
+        return True
     return len(trail) >= 3 and trail[0] == "steps" and trail[2] == "command"
 
 

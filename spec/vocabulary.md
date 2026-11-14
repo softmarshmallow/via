@@ -5,7 +5,7 @@ key means one thing in every table it appears in (principle 9); where it appears
 one row and the others point to it. A chapter may not use a key, table or selector this page does
 not list; a new one is added here first. Exempt: formula function names (listed in `formulas`),
 diagnostic codes (listed in `diagnostics`), and anything inside `params` (handed on unread).
-Authority: `docs/doctrine.md` (principles 1-13, rulings R1-R31, section 6 applied as recommended on
+Authority: `docs/doctrine.md` (principles 1-13, rulings R1-R33, section 6 applied as recommended on
 2026-11-13).
 
 Every example is flat TOML keyed by id (R1): `[feature.mill]`, never `[[feature]]`. A list whose
@@ -84,7 +84,7 @@ A feature's keys are the reserved keys below plus the attributes its kind declar
 attribute. A kind that declares an attribute named as a reserved key is an error.
 
 Reserved on a feature: `kind`, `authority`, `at`, `on`, `path`, `region`, `where`, `follows`,
-`smooth`, `starts_at`, `ends_at`, `face`, `remove`, `unset`.
+`smooth`, `starts_at`, `ends_at`, `holds`, `route`, `face`, `remove`, `unset`.
 
 ### 2.4 Values (`numbers`, `formulas`)
 
@@ -140,7 +140,8 @@ is built (`documents.md` 5, 6).
   `doc.remove_missing` (`documents.md` 6.1).
 - The placement keys `at`, `on`, `path`, `region`, `where` and `follows` exclude each other. Writing
   one in a change deletes the others in that table; writing one other than `path` also deletes
-  `starts_at`, `ends_at` and `smooth` (`documents.md` 6.1).
+  `starts_at`, `ends_at`, `smooth` and `route`, and one other than `where` deletes `holds`
+  (`documents.md` 6.1).
 - Changes commute: they apply all at once to the base. Two requested changes whose write sets share
   a key path, or where one path is a prefix of the other, are `doc.change_conflict` naming both, even
   when the values are equal (`documents.md` 6.3).
@@ -242,6 +243,8 @@ placement of the head is ours; `authority.md` 4 is the source and this summary f
 | `where` | formula | A region written as a condition: where the formula is above 0 (a yes/no means where it is yes). Every piece is kept, with its holes; a piece smaller than one grid cell is kept and reported (`geom.mask_tiny`, info). The only piece dropped is one whose rings have zero area after rounding to the 1 mm lattice (`geom.mask_dropped`, warning; `geometry.md` 3.7). | geometry |
 | `smooth` | bool | Smooth a path through its written points by centripetal Catmull-Rom (Yuksel, Schaefer and Keyser, 2011). `t` is measured along the final curve. Default `false`; a kind cannot change it. Taken only with `path`, else `geom.smooth_not_path` (`geometry.md` 2.4). | geometry |
 | `starts_at`, `ends_at` | name | The place a path begins or ends at. A path meets another thing at its ends or by `follows`, nowhere else. | geometry |
+| `holds` | point | With `where` only: keep the one piece that holds this point, such as a hollow filled to a level (M2). | derived |
+| `route` | formula | On a path only: the cost per metre of travel, above 0; the course between its written points is found over the posts (R16, M2). | derived |
 
 Axes: `x` east, `y` north, metres; heights up. A `face` in degrees is a bearing: clockwise from
 north, 0 north, 90 east. The loader maps these to the engine's axes. This convention is ours.
@@ -379,7 +382,14 @@ One grammar for features, instances, sets, rules and hand edits.
 | `worker` | bool | `true`: the step speaks the protocol on stdio and may call the engine; `false` (default): a plain command. | protocol |
 | `params` | table | Handed to the step unread. Any keys. On an asset or material: handed to the loader unread. | protocol |
 | `inputs` | list of strings | Outside files or folders whose change re-runs it (principle 7). | graph |
-| `for_each` | selector | Run once per item, for example `"kind:district"`. | graph |
+| `for_each` | selector | Run once per item: `"kind:<name>"`, the one form (`protocol.md` 1.2). | graph |
+| `checks` | list of strings | On a lint step only: the generate steps whose stated facts it checks after they run (R14, R31). | derived |
+
+| Word | Meaning | Chapter |
+|---|---|---|
+| stated fact | A feature written in text whose tier is `shaped` or `anchored`: what a simulation step must honour, and a lint with `checks` checks (`derived.md` 5). | derived |
+
+Command: `via step commit` writes committed step results to `gen/` (`protocol.md` 7.1).
 
 ### Pack (`assets`)
 
@@ -398,6 +408,7 @@ A pack is a document users write. It may name files; a world may not (principle 
 | `triangles` | integer | Triangle count, 0 or more. Written on an engine-made asset; fixed or measured otherwise. | assets |
 | `front`, `up`, `pivot` | string | On a model: its front and up axes (`"+z"`, `"+y"` by default), and the rule that puts the pivot (`base_centre`, `base_corner`, `origin`) (`assets.md` 2.3). | assets |
 | `solidity` | string | `solid` or `none` (`passable` M5): whether the footprint is claimed. | assets |
+| `collision` | string | `none` (default), `box`, `hull` or `mesh`: what the engine makes the instance collide as. The core never reads it; the loader maps it (M2). | assets |
 | `sink` | number | How far an instance is lowered below its placing point, metres. Default 0; may be negative. A height, so not a length (`assets.md` 2.4). | assets |
 | `max_relief` | number | The largest difference in surface height under the footprint the asset tolerates, metres, 0 or more. No default: without it nothing is checked (`place.relief`). | assets |
 | `colour` | 3 numbers | On an asset or material: linear red, green, blue, each 0 to 1. Required on a material. | assets |
@@ -469,8 +480,8 @@ The M1 parser rejects each key or value below with `doc.not_yet` at its span, na
 
 | Words | Milestone |
 |---|---|
-| `worker = true` (`worker = false` is accepted in M1); `when = "generate"`; `clump` and its `members`, `shrink`, `around`; a model asset's `file` and `detail`; a field `file` naming a PNG, `channel`, `range` (PNG fields); `filter = "cubic"`; class `feature` | M2 |
-| `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, `for_each`, user syntax for network, area and cell, classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
+| `worker = true` (`worker = false` is accepted in M1); `when = "generate"`; `clump` and its `members`, `shrink`, `around`; a model asset's `file` and `detail`; a field `file` naming a PNG, `channel`, `range` (PNG fields); `filter = "cubic"`; class `feature`; `for_each`; `checks`; `holds`; `route`; `collision` | M2 |
+| `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, user syntax for network, area and cell, classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
 | `[import]`, `changes`, `footprint` on an import, `blend`, `give`, `[given]`, `accepts`, `after`, `exit` | M4 |
 | `type = "volume"`, `hosts`, `connector`, `solidity = "passable"` | M5 |
 | `when = "export"`, `chunk`, `[budget]` | M6 |
@@ -547,7 +558,8 @@ A second top-level `surface` field is not here: it is `surface.two_terrains` in 
 Words that belong to libraries under `lib/`, written as data in the same format a user writes:
 road, lane, street, main way, crossing, ford, bridge, deck, river, beck, lake, water, shore,
 district, square, axis, ward, lot, block, building, storey, room, door, window, stair, wall, roof,
-pad, tree, plant, bookmark, poi, waterfront, expect, profile, reach, headroom.
+pad, tree, plant, bookmark, poi, waterfront, expect, profile, reach, headroom, cliff, trail, wood,
+spawn zone.
 
 `exit` is not on the list: the core owns the flag and the word (R9); a library owns the kind's name.
 

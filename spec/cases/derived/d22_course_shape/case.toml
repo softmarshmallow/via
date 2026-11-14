@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "derived.md 3 steps 5 and 6: a course through written points off the posts starts and ends at them, passes the one between, never turns by more than 90 degrees, and has no segment shorter than half a spacing; over a flat cost and over one that rises east."
+milestone = 2
+actions   = ["build"]
+
+# The written ends lie off the posts: (0.3, 0.2) is nearest (0, 0) and (7.6, 6.7) nearest (8, 7).
+# Their nearest posts give way to them (step 6), so the course never runs on to a post and back.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.flat]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "flat"
+start       = [0.3, 0.2]
+end         = [7.6, 6.7]
+passes      = [[5, 1]]
+min_segment = 0.5
+
+[action.build.check.slope]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "slope"
+start       = [0.3, 0.2]
+end         = [7.6, 6.7]
+passes      = [[5, 1]]
+min_segment = 0.5

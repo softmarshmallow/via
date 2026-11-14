@@ -1,0 +1,17 @@
+name       = "names"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+
+[scatter.stones]
+assets  = ["rock_a"]
+spacing = 5
+
+[feature.a]
+on = { of = "stones", class = "piece", near = [10, 10] }
+
+[feature.b]
+on = { of = "stones", class = "piece", near = [40, 40] }

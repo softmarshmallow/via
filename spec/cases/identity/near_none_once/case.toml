@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "Two features on = { of = \"stones\", class = \"piece\", near } where stones makes no piece: one identity.near_none at stones listing both features, exit 1."
+milestone = 2
+actions   = ["build"]
+
+# identity.md 3: a maker with no candidate of the class is one identity.near_none for that maker and
+# class, listing every selection it left with nothing. c10 covers pins (resolved after the scatter);
+# this covers features, resolved during placement one at a time.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.near_none]
+code    = "identity.near_none"
+subject = "scatter.stones"
+records = 1

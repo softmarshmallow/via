@@ -1347,7 +1347,7 @@ fn include_names(root: &Table) -> Vec<(String, Span)> {
     }
 }
 
-fn top_mut<'t>(root: &'t mut Table, top: &str, span: Span) -> Option<&'t mut Table> {
+pub(crate) fn top_mut<'t>(root: &'t mut Table, top: &str, span: Span) -> Option<&'t mut Table> {
     if root.get(top).is_none() {
         root.insert(
             top.to_string(),

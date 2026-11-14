@@ -17,7 +17,7 @@ milestone one). Asset facts measured from model files arrive in M2 (plan, order 
 | Milestone | Sections |
 |---|---|
 | M1 | 1 (the rule, finding a pack), 2 (a pack; the `primitive` and `engine` sources), 5 (taxonomy), 6 (primitives), 7 (pack swaps in the change report), 8 (`via pack check`, `via pack list`) |
-| M2 | 3 (measuring a model, lower-detail copies), 4 (the facts file, `via pack accept`), 9 (stand-ins) |
+| M2 | 3 (measuring a model, lower-detail copies), 4 (the facts file, `via pack accept`), 9 (stand-ins); `collision` (2.4); `via pack list --build` (8.2) |
 | M5 | 10 (forward pointers) |
 
 In M1, `file` and `detail` on an asset are `doc.not_yet`, naming M2.
@@ -32,7 +32,7 @@ In M1, `file` and `detail` on an asset are `doc.not_yet`, naming M2.
 - Swapping the pack changes no world text.
 
 **What a swap may change (R30).** Swapping the pack swaps the look and the facts the look carries
-(`bounds`, `footprint`, `origin`, `sink`, `max_relief`, mounts, `solidity`). What follows from those
+(`bounds`, `footprint`, `origin`, `sink`, `max_relief`, mounts, `solidity`, `collision`). What follows from those
 facts settles and is reported: in `ford`, a larger house grows its `ground` footprint feature
 (section 7). Nothing the author wrote changes. A field's `file` is a declared outside input
 (principle 7, `fields.md` 4), not an asset, so this chapter does not govern it.
@@ -44,7 +44,7 @@ word below is added there, with the Takes and Meaning this chapter gives, before
 
 - top level: `[defaults]`, `[taxon."<path>"]` (keyed by path: an exception to R1, recorded there);
 - on an asset: `engine`, `primitive`, `size`, `detail`, `front`, `up`, `pivot`, `solidity`, `sink`,
-  `max_relief`, `colour`, `params`; `triangles` on an engine-made asset;
+  `max_relief`, `colour`, `params`; `triangles` on an engine-made asset; `collision` (M2);
 - on a taxon: `defaults`;
 - on a material: `colour`, `repeat`, `params`;
 - terms: facts file, measured fact, declared fact, stand-in;
@@ -118,7 +118,7 @@ works out; writing one is `asset.declared_measured`. Any key not in this table i
 | `triangles` | integer | measured | fixed | required |
 | `front`, `up`, `pivot` | string | optional | fixed | fixed |
 | `footprint` | list of points | optional | optional | optional |
-| `solidity`, `sink`, `max_relief`, `colour` | 2.4 | optional | optional | optional |
+| `solidity`, `collision`, `sink`, `max_relief`, `colour` | 2.4 | optional | optional | optional |
 | `taxon`, `tags` | section 5 | optional | optional | optional |
 | `params` | table | optional | optional | optional |
 
@@ -133,9 +133,7 @@ works out; writing one is `asset.declared_measured`. Any key not in this table i
 - `triangles`: an integer, 0 or greater (`pack.range`). On an engine-made asset it is what budgets
   count (`build.md`).
 - `params`: a table handed to the loader unread, on any asset. Same meaning as on a step: data the
-  core passes through without reading. What an engine makes for collision is a loader convention
-  inside `params` (for example `params = { collision = "hull" }`); the core has no collision key
-  (principle 12: gameplay is the engine's).
+  core passes through without reading.
 
 **Defaults reach only what a source declares.** A value from `[defaults]` or a taxon's `defaults`
 (2.5) applies to an asset only for a key its source takes as optional. It is silently not applied
@@ -196,12 +194,13 @@ held on the integer millimetre lattice (R24).
 | `front`, `up` | declared (model) | string | Model axes, 2.3. Default `"+z"`, `"+y"`. |
 | `pivot` | declared (model) | string | The rule that puts the pivot: `"base_centre"` (default), `"base_corner"`, `"origin"`. |
 | `solidity` | declared | string | `"solid"` (default) or `"none"`. See below. |
+| `collision` | declared | string | What the engine makes the instance collide as: `"none"` (default), `"box"` (the box of `bounds`), `"hull"` (the convex hull of the model's vertices), `"mesh"` (its triangles, static). See below. |
 | `sink` | declared | number | How far an instance is lowered below its placing point, metres. Default 0. May be negative. |
 | `max_relief` | declared | number | The largest difference in surface height under the footprint the asset tolerates, metres, 0 or greater (`pack.range`). No default: without it, nothing is checked. |
 | `colour` | declared | 3 numbers | Linear red, green, blue, each 0 to 1 (`pack.range`). Default `[0.8, 0.8, 0.8]` (ours). The colour a primitive or stand-in is drawn in; `tint` (`rules.md`) multiplies it. A model draws in its own materials, which `tint` multiplies. |
 
-An enumerated value outside its list (`pivot`, `solidity`) is `doc.type`, naming the allowed words
-and the nearest.
+An enumerated value outside its list (`pivot`, `solidity`, `collision`) is `doc.type`, naming the
+allowed words and the nearest.
 
 **Bounds of a box from `size`.** For a primitive or engine-made asset, with `size = [X, Y, Z]` in
 millimetres, `bounds` is `[-floor(X/2), -floor(Y/2), 0, X - floor(X/2), Y - floor(Y/2), Z]`, floor
@@ -233,6 +232,14 @@ the overlap check and scatters give way to it (`rules.md` 7.5, 8.1). `none`: cla
 litter). `passable` (a gate, an arcade: claims ground but a walk passes through) is reserved for M5
 (section 10); only the walk lint, a library's, would read it. In M1 and M2 it is `doc.not_yet`.
 
+**Collision (M2).** What the engine builds for physics, carried to the loader (`build.md` 7) and
+mapped there to the engine's own shapes (principle 12: physics is the engine's; the fact is ours to
+carry, since a pack is where the author says it once per kit). The core reads it for nothing:
+`solidity` is what its own checks read, and the two differ (a bush claims nothing and collides as
+nothing; an arcade, M5, claims ground and collides as `mesh`). A pack writes it once per kit through
+`[defaults]` or a taxon. A library lint reads it through `pack.query` (`protocol.md` 3.3) to warn of
+a large solid asset left at `none` (challenge 16). On a primitive, `hull` and `mesh` are its shape.
+
 **Spacing between assets.** v0 has no asset fact for a distance kept around a footprint. Scatters
 give way by solid footprint overlap (`rules.md` 7.5), and a clearing is a `keep_out` field that a
 kind writes (`rules.md` 2.1, 8.3). The spike's fixed 1 m distance is gone. Whether scattered
@@ -263,7 +270,8 @@ For each declared fact, first found wins:
 3. the pack's `[defaults]`;
 4. the default in 2.4.
 
-`defaults` may hold `front`, `up`, `pivot`, `solidity`, `sink`, `max_relief`, `colour` and `params`.
+`defaults` may hold `front`, `up`, `pivot`, `solidity`, `collision`, `sink`, `max_relief`, `colour`
+and `params`.
 Any other key there is `doc.unknown_key`, naming the nearest allowed one. This is the
 pack-lookup rule `documents.md` 6.2 defers to: the nearest `params` default is taken whole, never
 merged with a farther one. A value reaches an asset
@@ -378,7 +386,9 @@ and 5.6); this mechanism is ours.
   When it does not exist, the node's value is the fixed digest of "absent" (`graph.md` fixes the
   bytes), so creating or deleting it re-runs what read it. One node per used model asset,
   `facts:<asset id>`, reads that source, the asset's measured facts and its pack statement, and
-  holds the comparison below and its diagnostics. After `via pack accept`, an incremental build
+  the placements that can hold that asset (the `height:` nodes of its hand instances and pins, and
+  of each scatter that chooses it by id or by a taxon), whose names `asset.revised` lists (4.2); it
+  holds the comparison below and its diagnostics. A placement of another asset does not re-run it. After `via pack accept`, an incremental build
   re-runs only those nodes.
 
 ### 4.1 What it holds, byte for byte
@@ -388,8 +398,8 @@ Two correct implementations write the same bytes.
 - First line: `# Written by via pack accept. Do not edit.`, then one blank line.
 - One table `[asset.<id>]` per model asset, sorted by id bytewise, separated by one blank line.
 - Keys in this order, each `key = value` on one line, absent facts omitted: `bounds`, `origin`,
-  `footprint`, `triangles`, `detail_triangles`, `front`, `up`, `pivot`, `solidity`, `sink`,
-  `max_relief`, `colour`, `taxon`, `tags`, `mounts`, `params`, `files`.
+  `footprint`, `triangles`, `detail_triangles`, `front`, `up`, `pivot`, `solidity`, `collision`,
+  `sink`, `max_relief`, `colour`, `taxon`, `tags`, `mounts`, `params`, `files`.
 - Lattice values are written in `numbers.md` 3.4's exact metre form; `colour` components as
   `numbers.md` 3.4 writes a double; integers as decimal digits. Lists as `[a, b]` with `, ` between
   items; strings as TOML basic strings.
@@ -413,6 +423,7 @@ front = "-y"
 up = "+z"
 pivot = "base_centre"
 solidity = "solid"
+collision = "hull"
 sink = 0
 max_relief = 0.6
 colour = [0.8, 0.8, 0.8]
@@ -435,7 +446,7 @@ facts file.
 | A used asset the facts file lacks | `asset.unaccepted` (info) | Builds. |
 | Any of `bounds`, `origin`, `footprint`, `front`, `up`, `pivot`, `solidity`, `sink`, `max_relief`, `mounts` | `asset.revised` (warning), one per asset | Builds with the new facts. Lists each fact old and new, then every instance of the asset in this build. |
 | `taxon` or `tags`, and no fact of the row above | `asset.refiled` (info) | Builds. What a selection now picks shows in the change report as swaps. |
-| Only `files`, `triangles`, `detail_triangles`, `colour` or `params` | `asset.remodelled` (info), with old and new triangles | Builds. Nothing moves: a geometry-only revision passes. |
+| Only `files`, `triangles`, `detail_triangles`, `collision`, `colour` or `params` | `asset.remodelled` (info), with old and new triangles | Builds. Nothing moves: a geometry-only revision passes. |
 | An unreadable or malformed facts file | `pack.bad_facts` (error) | Stops. Hint: delete it and run `via pack accept`. |
 
 - The build uses the current files and text for every result. Outside stand-ins (section 9), the
@@ -484,8 +495,8 @@ classifies assets only. A field's `taxon` is not checked against it: the core gi
   "unknown-asset error" for a path with no match is `asset.empty_selection`.
 - Selection by tag in a world is not in v0: (open), decided by the first case that needs it (a biome
   or a season swap).
-- The SDK sees the pack, its tree, tags and resolved facts, read-only (R19b: no private door; TODO,
-  "a step cannot ask for the pack").
+- The SDK sees the pack, its tree, tags and resolved facts, read-only, through `pack.query`
+  (`protocol.md` 3.3, M2) (R19b: no private door; TODO, "a step cannot ask for the pack").
 
 ## 6. Primitives and the primitive pack (M1)
 
@@ -711,8 +722,10 @@ pack hold" without a renderer (challenge 45).
   tag. Both may be given; an asset must pass both.
 - An undeclared taxon is `pack.unknown_taxon` (exit 1). A declared taxon or a tag that keeps no asset
   is `asset.empty_selection` (exit 1), with the nearest taxon or tag that has assets.
-- Otherwise exit 0. Which builds use an asset is (open), decided in M2 with the build directory's
-  instance list.
+- `--build DIR` (M2) adds `instances` to each object: how many instances of the asset that build
+  directory's instance list holds, 0 for none, read from its record without building (challenge 45:
+  usage). A folder that is no build directory is `cli.usage`.
+- Otherwise exit 0.
 
 ### 8.3 What fails every build, and what only a used asset
 
@@ -730,7 +743,8 @@ check` covers the rest.
 
 `via build --stand-ins` (`build.md` 14) builds a world whose model files are absent, for a review or
 a machine without the art. Each model asset is drawn as a `box` of its accepted `bounds`, in its
-accepted `colour`, keeping its accepted footprint, origin, solidity, mounts and every other fact.
+accepted `colour`, keeping its accepted footprint, origin, solidity, collision, mounts and every
+other fact.
 Primitive and engine-made assets build as they always do. This is ours.
 
 - In this mode the facts file is a declared input that decides the result: every placement fact of a
@@ -942,10 +956,14 @@ checks that a clean build equals the incremental one.
 | Geometry-only revision | 2 | Accepted; model re-exported with more triangles, same bounds | `via build` | `asset.remodelled` with old and new triangles; no instance moved in the change report. |
 | Contract revision | 2 | Accepted; model re-exported 0.5 m wider | `via build` | `asset.revised` listing every instance of it; change report entries with cause `asset.<asset id>.bounds`. |
 | Refiled | 2 | Accepted; one asset's `taxon` changed | `via build` | `asset.refiled`; no `asset.revised`. |
-| Accept | 2 | After the contract revision | `via pack accept`, then an incremental `via build` | No `asset.revised`; only the `source:` node of the facts file and the `facts:` nodes ran; the facts file diff shows only that asset. |
+| Accept | 2 | After the contract revision | `via pack accept`, then an incremental `via build` | No `asset.revised`; only the `source:` node of the facts file, the `facts:` nodes and the `write:` nodes of `changes.json` and `manifest.json` (which read every source and the baseline) ran; the facts file diff shows only that asset. |
 | Unused broken asset | 2 | A pack with one unreadable model the world does not use | `via build`; `via pack check` | Build exit 0; check exit 1 with `pack.bad_model`. |
 | Stand-ins | 2 | A world and an accepted pack, model files deleted | `via build --stand-ins` | Every instance transform and footprint equal to the build with the files; budgets' `triangles` equal. |
 | Stand-ins stale | 2 | Accepted; a declared `sink` then edited in the pack | `via build --stand-ins` | `asset.stand_in_stale`, exit 1. |
+| Collision default | 2 | A model asset with no `collision`; one with `collision = "hul"` | `via pack list`; `via pack check` | `collision = "none"`; `doc.type`, hint `hull`, exit 1. |
+| Collision by kit | 2 | `[taxon."building"] defaults = { collision = "mesh" }`, a house under it, a primitive box with `collision = "box"` | `via pack list` | `mesh` for the house, `box` for the box; no `asset.declared_measured`. |
+| Collision revised | 2 | Accepted; one asset's `collision` edited `none` to `hull` | `via build` | `asset.remodelled`; no `asset.revised`; no instance moved in the change report; the build's asset record holds `hull`. |
+| Usage | 2 | A pack of three assets, a build placing two of them | `via pack list PACK --build DIR` | Each line holds `instances`: the two counts, and 0 for the third; nothing built. |
 | Same bytes | 1 | The primitive pack case; from M2 the contract revision case | Built at 1 and 8 threads, on each system | Same build digest (`build.md` 12) (R26). |
 
 ## Changed from the spike
@@ -960,8 +978,8 @@ checks that a clean build equals the incremental one.
 - `solid` (bool) is `solidity` (`solid`, `none`; `passable` reserved for M5). The spike's `avoid` (a
   list of fields) is gone: the `keep_out` field role covers it. The spike's fixed 1 m distance is
   gone: scatters give way by footprint overlap. `clearance` (never read) is gone. The viewer
-  `color` is `colour`, used by primitives and stand-ins. Collision is a loader convention in
-  `params`.
+  `color` is `colour`, used by primitives and stand-ins. Collision, never said, is the declared fact
+  `collision`.
 - `labels` is `tags`. A taxonomy is declared in the pack and checked; `@path` works wherever assets
   are listed, not only in a kit run.
 - `[ground.<n>]` is `[material.<n>]`; `[surface.<n>]` is gone (R25). `module_m` waits for M5.
@@ -983,8 +1001,6 @@ checks that a clean build equals the incremental one.
 - **A selection as an instance's or run's `asset`** (the spike's kit run): decided by the town kit's
   run in M3, with `rules.md`.
 - **Selection by tag in a world:** decided by the first case that needs it.
-- **Usage** (which builds place an asset; which assets nothing places): decided in M2 with
-  `build.md`'s instance list.
 - **Revisions across imports** (an asset revised in an imported world's pack): `documents.md`, M4.
 - **Formats other than glTF** (FBX, USD): converted outside the build; reopened only by a user case.
 - **Passable, connectors, module per axis, kit table, states:** M5 (section 10).

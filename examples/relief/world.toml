@@ -1,0 +1,95 @@
+# relief: land and cover read from pictures the author already has (challenge 31).
+#
+# A picture is a field's base, and from then on it is a field like any other: read by name in a
+# formula, written over by rows and kinds. The pictures in inputs/ stand in for an author's own: a
+# 16-bit heightmap out of a terrain tool (and an 8-bit copy of it), a painted mask whose red and
+# green channels mean different things, and a small stamp placed where it is wanted.
+#
+# The land is the world's layer; what stands on it (the track, the bothy, the woods, the bookmarks)
+# is the dressing layer's, so an edit there never re-runs the tarn's fill (protocol.md 1).
+
+name    = "relief"
+extent  = [0, 0, 256, 256]
+seed    = 3
+include = ["land", "water", "ways", "vegetation", "review"]
+pack    = "starter"
+
+[layer.dressing]
+file  = "dressing.toml"
+owner = "dressing"
+rank  = 1
+
+# ---- pictures as fields
+
+[field.survey]                            # 257 samples across 513 posts: every other post exact
+unit    = "m"
+file    = "inputs/height16.png"
+range   = [8, 74]                         # what level 0 and level 65535 stand for
+outside = 8                               # never read: the picture covers the world
+filter  = "cubic"
+
+[field.woods]                             # the mask's red channel: where woods stand
+file    = "inputs/cover.png"
+channel = "r"
+outside = 0
+
+[field.stone]                             # its green channel: bare stone
+file    = "inputs/cover.png"
+channel = "g"
+outside = 0
+
+[field.hollow]                            # a stamp, 64 m across, placed here and nowhere else
+file    = "inputs/hollow.png"
+extent  = [56, 92, 120, 156]
+outside = 0
+
+# ---- the world's own fields read them by name
+
+[field.height]
+role = "surface"
+base = "= f('survey') - 6 * f('hollow') + 0.25 * fbm(9, 3, seed = 'grain')"
+
+[field.water]                             # lib/water: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                          # lib/land: what pads, lakes and the track keep clear
+role = "keep_out"
+base = "= 0"
+
+[field.cover]                             # lib/vegetation: the painted woods, thinned off the crags
+tags = ["cover"]
+base = "= smoothstep(0.3, 0.7, f('woods')) * (1 - smoothstep(26, 34, slope('height')))"
+
+[field.ground]                            # lib/land/ground.md, with the two materials the pack binds
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.rock]                  # the painted stone, and crags too steep for turf
+paint = "rock"
+mask  = "= max(f('stone'), smoothstep(30, 40, slope('height')))"
+
+[field.ground.then.shore]                 # the tarn's beach (lib/land/ground.md)
+paint = "gravel"
+mask  = "= 1 - smoothstep(1.5, 4, dist('kind:lake', 6))"
+
+# ---- the tarn: a point that asks for a lake filled to where the stamp's hollow runs over
+
+[feature.tarn]                            # at the stamp's middle
+kind      = "tarn"
+at        = [88, 124]
+fence     = 40                            # the hollow is looked for within 40 m of the point
+max_depth = 5                             # no deeper than 5 m at the point: here the water stands
+freeboard = 0.3                           # about 2.5 m below the rim, in a bowl of turf
+
+[step.fill]                               # lib/water's fill (lib/water/kinds.toml): returns fill#tarn_lake
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:water/fill.py"]
+
+[step.checks]                             # lib/review's measures, on the finished build
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]

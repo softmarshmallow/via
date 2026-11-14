@@ -1,1 +1,0 @@
-{"counts":{"error":1,"failed_on":0,"info":0,"warning":0},"diagnostics":[{"argument":2,"code":"doc.file_missing","hint":"names visible here include `.DS_Store`, `.claude`, `.git`, `.gitattributes`, `.github`","message":"the world file `--help` is not found","severity":"error","subject":"cli"}],"format":"via-diagnostics-1","lints":[],"status":1}

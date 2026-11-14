@@ -1,0 +1,16 @@
+name       = "drape"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.lane]
+path = [[2, 2], [8, 6], [14, 12]]
+
+[feature.mark]
+at = [4, 4]
+
+[change.lift.field.height]
+base = 12

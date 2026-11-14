@@ -1,0 +1,67 @@
+format    = "via-case-1"
+summary   = "A field file big-endian, in Fortran order, as .npy 2.0, or with a wrong magic: protocol.field_file for each."
+milestone = 2
+actions   = ["program", "trust", "big", "to_fortran", "fortran", "to_v2", "v2", "to_magic", "magic"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.big]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.big.diag.file]
+code = "protocol.field_file"
+file = "step:gen/document.toml"
+line = 1
+
+[action.to_fortran]
+replace = "world.toml"
+find    = '''mode = "big"'''
+with    = '''mode = "fortran"'''
+
+[action.fortran]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.fortran.diag.file]
+code = "protocol.field_file"
+file = "step:gen/document.toml"
+line = 1
+
+[action.to_v2]
+replace = "world.toml"
+find    = '''mode = "fortran"'''
+with    = '''mode = "v2"'''
+
+[action.v2]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.v2.diag.file]
+code = "protocol.field_file"
+file = "step:gen/document.toml"
+line = 1
+
+[action.to_magic]
+replace = "world.toml"
+find    = '''mode = "v2"'''
+with    = '''mode = "magic"'''
+
+[action.magic]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.magic.diag.file]
+code = "protocol.field_file"
+file = "step:gen/document.toml"
+line = 1

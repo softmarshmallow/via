@@ -2,13 +2,9 @@
 //! final surface, and artifact emission.
 
 use std::collections::{BTreeMap, VecDeque};
-use std::io;
-use std::path::Path;
+use via_num as num;
 
 use rayon::prelude::*;
-
-use via_artifact::manifest::{ArtifactEntry, RunManifest};
-use via_artifact::raster::Raster;
 
 use crate::climate;
 use crate::config::TerrainConfig;
@@ -144,7 +140,7 @@ pub fn run_given(
     if let Err(msg) = cfg.validate() {
         panic!("{msg}");
     }
-    let grid = Grid::new(cfg.size, cfg.cell_size_m);
+    let grid = Grid::rect(cfg.size, cfg.row_count(), cfg.cell_size_m);
     for (name, f) in [
         ("initial_m", &given.initial_m),
         ("uplift_m_per_yr", &given.uplift_m_per_yr),
@@ -180,7 +176,7 @@ pub fn run_given(
         // still routes a trickle rather than a zero-discharge channel.
         precip
             .iter()
-            .map(|&p| (p / cfg.precip_mean_m_per_yr).max(0.05))
+            .map(|&p| num::max(p / cfg.precip_mean_m_per_yr, 0.05))
             .collect()
     };
 
@@ -242,7 +238,7 @@ pub fn run_given(
         sediment_m
             .par_iter_mut()
             .zip(detached.par_iter())
-            .for_each(|(s, &d)| *s = (*s - d).max(0.0));
+            .for_each(|(s, &d)| *s = num::max(*s - d, 0.0));
         let budget = sediment::route_sediment(
             &grid,
             &mut h,
@@ -268,7 +264,7 @@ pub fn run_given(
             .par_iter_mut()
             .zip(h.par_iter())
             .zip(h_before_diff.par_iter())
-            .for_each(|((s, &after), &before)| *s = (*s + (after - before)).max(0.0));
+            .for_each(|((s, &after), &before)| *s = num::max(*s + (after - before), 0.0));
         let max_dh = erosion::max_abs_diff(&h, &h_prev);
         let mean_dh = erosion::mean_abs_diff(&h, &h_prev);
         convergence.push((step, max_dh, mean_dh));
@@ -426,162 +422,35 @@ pub fn run_given(
     out
 }
 
-fn cell_size_cm(cfg: &TerrainConfig) -> u32 {
-    (cfg.cell_size_m * 100.0).round() as u32
-}
-
-pub fn raster_heights_cm(o: &TerrainOutput) -> Raster<i32> {
-    let data = o
-        .heights_m
-        .iter()
-        .map(|&v| (v * 100.0).round() as i32)
-        .collect();
-    Raster::from_data(o.grid.w, o.grid.h, cell_size_cm(&o.cfg), data)
-}
-
-pub fn raster_receivers(o: &TerrainOutput) -> Raster<u32> {
-    Raster::from_data(
-        o.grid.w,
-        o.grid.h,
-        cell_size_cm(&o.cfg),
-        o.receivers.clone(),
-    )
-}
-
-pub fn raster_area_cells(o: &TerrainOutput) -> Raster<u64> {
-    Raster::from_data(
-        o.grid.w,
-        o.grid.h,
-        cell_size_cm(&o.cfg),
-        o.area_cells.clone(),
-    )
-}
-
-pub fn raster_strahler(o: &TerrainOutput) -> Raster<u32> {
-    Raster::from_data(o.grid.w, o.grid.h, cell_size_cm(&o.cfg), o.strahler.clone())
-}
-
-pub fn raster_basin(o: &TerrainOutput) -> Raster<u32> {
-    Raster::from_data(o.grid.w, o.grid.h, cell_size_cm(&o.cfg), o.basin.clone())
-}
-
-pub fn raster_uplift(o: &TerrainOutput) -> Raster<f32> {
-    let data = o.uplift_m_per_yr.iter().map(|&v| v as f32).collect();
-    Raster::from_data(o.grid.w, o.grid.h, cell_size_cm(&o.cfg), data)
-}
-
-fn f32_raster(o: &TerrainOutput, src: &[f64]) -> Raster<f32> {
-    let data = src.iter().map(|&v| v as f32).collect();
-    Raster::from_data(o.grid.w, o.grid.h, cell_size_cm(&o.cfg), data)
-}
-
-pub fn raster_precip(o: &TerrainOutput) -> Raster<f32> {
-    f32_raster(o, &o.precip_m_per_yr)
-}
-
-pub fn raster_temperature(o: &TerrainOutput) -> Raster<f32> {
-    f32_raster(o, &o.temperature_c)
-}
-
-pub fn raster_discharge(o: &TerrainOutput) -> Raster<f32> {
-    f32_raster(o, &o.discharge_cells)
-}
-
-pub fn raster_water_depth(o: &TerrainOutput) -> Raster<f32> {
-    f32_raster(o, &o.water_depth_m)
-}
-
-pub fn raster_sediment(o: &TerrainOutput) -> Raster<f32> {
-    f32_raster(o, &o.sediment_m)
-}
-
-/// blake3 of every artifact raster — the determinism witness recorded in
-/// both gates.json and the manifest.
+/// The digest of a run's outputs, one entry per array: BLAKE3 of the values as little-endian bytes,
+/// in post order. The determinism witness recorded in the gates report.
 pub fn artifact_hashes(o: &TerrainOutput) -> BTreeMap<String, String> {
-    let mut m = BTreeMap::new();
-    m.insert("heights_cm".into(), raster_heights_cm(o).blake3_hex());
-    m.insert("receivers".into(), raster_receivers(o).blake3_hex());
-    m.insert("area_cells".into(), raster_area_cells(o).blake3_hex());
-    m.insert("strahler".into(), raster_strahler(o).blake3_hex());
-    m.insert("basin".into(), raster_basin(o).blake3_hex());
-    m.insert("uplift".into(), raster_uplift(o).blake3_hex());
-    m.insert("precip".into(), raster_precip(o).blake3_hex());
-    m.insert("temperature".into(), raster_temperature(o).blake3_hex());
-    m.insert("discharge".into(), raster_discharge(o).blake3_hex());
-    m.insert("water_depth".into(), raster_water_depth(o).blake3_hex());
-    m.insert("sediment".into(), raster_sediment(o).blake3_hex());
-    m
-}
-
-/// Write the run directory: rasters, gates.json, qa_samples.json, manifest.
-pub fn write_run(dir: &Path, o: &TerrainOutput) -> io::Result<RunManifest> {
-    std::fs::create_dir_all(dir)?;
-    let mut artifacts = BTreeMap::new();
-    {
-        let mut put = |name: &str, file: &str, bytes_hash: String| {
-            artifacts.insert(
-                name.to_string(),
-                ArtifactEntry {
-                    file: file.to_string(),
-                    blake3: bytes_hash,
-                },
-            );
-        };
-        let r = raster_heights_cm(o);
-        r.write_file(&dir.join("heights_cm.vrast"))?;
-        put("heights_cm", "heights_cm.vrast", r.blake3_hex());
-        let r = raster_receivers(o);
-        r.write_file(&dir.join("receivers.vrast"))?;
-        put("receivers", "receivers.vrast", r.blake3_hex());
-        let r = raster_area_cells(o);
-        r.write_file(&dir.join("area_cells.vrast"))?;
-        put("area_cells", "area_cells.vrast", r.blake3_hex());
-        let r = raster_strahler(o);
-        r.write_file(&dir.join("strahler.vrast"))?;
-        put("strahler", "strahler.vrast", r.blake3_hex());
-        let r = raster_basin(o);
-        r.write_file(&dir.join("basin.vrast"))?;
-        put("basin", "basin.vrast", r.blake3_hex());
-        let r = raster_uplift(o);
-        r.write_file(&dir.join("uplift.vrast"))?;
-        put("uplift", "uplift.vrast", r.blake3_hex());
-        let r = raster_precip(o);
-        r.write_file(&dir.join("precip.vrast"))?;
-        put("precip", "precip.vrast", r.blake3_hex());
-        let r = raster_temperature(o);
-        r.write_file(&dir.join("temperature.vrast"))?;
-        put("temperature", "temperature.vrast", r.blake3_hex());
-        let r = raster_discharge(o);
-        r.write_file(&dir.join("discharge.vrast"))?;
-        put("discharge", "discharge.vrast", r.blake3_hex());
-        let r = raster_water_depth(o);
-        r.write_file(&dir.join("water_depth.vrast"))?;
-        put("water_depth", "water_depth.vrast", r.blake3_hex());
-        let r = raster_sediment(o);
-        r.write_file(&dir.join("sediment.vrast"))?;
-        put("sediment", "sediment.vrast", r.blake3_hex());
+    fn f64s(v: &[f64]) -> String {
+        let mut h = blake3::Hasher::new();
+        for x in v {
+            h.update(&x.to_le_bytes());
+        }
+        h.finalize().to_hex().to_string()
     }
-
-    let gates_json = serde_json::to_string_pretty(&o.gates)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    std::fs::write(dir.join("gates.json"), gates_json + "\n")?;
-    let samples_json = serde_json::to_string_pretty(&o.samples)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    std::fs::write(dir.join("qa_samples.json"), samples_json + "\n")?;
-
-    let mut crate_versions = BTreeMap::new();
-    crate_versions.insert(
-        "via-terrain".to_string(),
-        env!("CARGO_PKG_VERSION").to_string(),
-    );
-    let manifest = RunManifest {
-        stage: "terrain".to_string(),
-        seed: o.cfg.seed,
-        config: serde_json::to_value(&o.cfg)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
-        crate_versions,
-        artifacts,
-    };
-    manifest.save(&dir.join("manifest.json"))?;
-    Ok(manifest)
+    fn u32s(v: &[u32]) -> String {
+        let mut h = blake3::Hasher::new();
+        for x in v {
+            h.update(&x.to_le_bytes());
+        }
+        h.finalize().to_hex().to_string()
+    }
+    let mut m = BTreeMap::new();
+    m.insert("heights".into(), f64s(&o.heights_m));
+    m.insert("receivers".into(), u32s(&o.receivers));
+    let area: Vec<u32> = o.area_cells.iter().map(|&a| a as u32).collect();
+    m.insert("area_cells".into(), u32s(&area));
+    m.insert("strahler".into(), u32s(&o.strahler));
+    m.insert("basin".into(), u32s(&o.basin));
+    m.insert("uplift".into(), f64s(&o.uplift_m_per_yr));
+    m.insert("precip".into(), f64s(&o.precip_m_per_yr));
+    m.insert("temperature".into(), f64s(&o.temperature_c));
+    m.insert("discharge".into(), f64s(&o.discharge_cells));
+    m.insert("water_depth".into(), f64s(&o.water_depth_m));
+    m.insert("sediment".into(), f64s(&o.sediment_m));
+    m
 }

@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "A .gltf whose buffer is a data: URI: no error; no bound file besides the model."
+milestone = 2
+actions   = ["check", "list"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.check.diag.missing_file]
+code    = "pack.missing_file"
+records = 0
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.list.file.files]
+stream  = "stdout"
+pointer = "/files"
+line    = 1
+value   = { "cube.gltf" = "4b602ec8d772f6dd067a9cf716c7c465eb5b1afa6687f666588bd305dc0d9ca9" }

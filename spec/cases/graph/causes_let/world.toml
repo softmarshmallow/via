@@ -1,0 +1,16 @@
+name       = "causes"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= 10 - 3 * (1 - smoothstep(0, 6, near))"
+
+[field.height.let]
+near = "= dist('spot', 20)"                # a hollow about the spot: the field reads the feature in a let
+
+[feature.spot]
+at = [5, 5]
+
+[change.moved.feature.spot]
+at = [10, 10]

@@ -1,0 +1,3 @@
+# A mark on what the step returned, by place (identity.md 4.1).
+[feature.mark]
+on = { of = "gen", class = "feature", near = [5, 4] }

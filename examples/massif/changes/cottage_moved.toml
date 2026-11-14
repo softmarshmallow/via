@@ -1,0 +1,2 @@
+[instance.cottage_b]
+on = { ref = "valley_road", t = 0.7, offset = -16 }

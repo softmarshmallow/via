@@ -1,0 +1,27 @@
+name       = "traced"
+extent     = [0, 0, 32, 32]
+resolution = 1
+include    = ["g"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.hill]
+kind = "bump"
+at   = [16, 16]
+rise = "= 1 + xx"
+
+[feature.flag]
+kind = "mark"
+at   = [4, 4]
+
+[step.on_height]
+when    = "lint"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/look.py"]
+
+[step.on_marks]
+when    = "lint"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/marks.py"]

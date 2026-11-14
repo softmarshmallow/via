@@ -3,6 +3,7 @@
 //! empirical norms for fluvial landscapes; see the reading list.
 
 use std::collections::{BTreeMap, VecDeque};
+use via_num as num;
 
 use serde::Serialize;
 
@@ -95,6 +96,12 @@ pub struct GatesReport {
     /// slope: floodplains should lie flatter than the channels feeding them.
     /// None when the run built no floodplains to measure.
     pub floodplain_slope_ratio: Option<Gate>,
+    /// Share of channel cells (dry land gathering at least the fluvial threshold along the
+    /// channel tree) that send all their water one grid step (row, column or diagonal) although
+    /// the land falls more than `AXIS_LOCK_DEG` another way, at the end of a run of more than
+    /// `AXIS_RUN_CELLS` such steps alike: channels locked to the grid read on foot as ruler
+    /// straight trenches, not drainage. Advisory.
+    pub axis_runs: Gate,
     pub wind: (i32, i32),
     pub land_fraction: f64,
     pub max_elevation_m: f64,
@@ -201,6 +208,12 @@ fn linfit(points: impl Iterator<Item = (f64, f64)>) -> Option<(f64, f64, f64, u6
     Some((slope, intercept, r2, n))
 }
 
+/// Steps in one grid direction beyond which a channel's run counts as locked to the grid.
+pub const AXIS_RUN_CELLS: u32 = 8;
+/// How far, in degrees, the land's own downhill direction may lie from a channel's one step before
+/// the step is the grid's choice, not the land's.
+pub const AXIS_LOCK_DEG: f64 = 5.0;
+
 pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
     let n = inp.grid.n();
     let cell_m2 = inp.cfg.cell_area_m2();
@@ -228,8 +241,10 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
     // physical with M4's erodibility contrast (ADR 0004).
     // Persistent floodplains for the advisory gate are cells well above the
     // in-transit layer.
-    let alluvial_sed_m =
-        (2.0 * inp.cfg.g_deposition * inp.cfg.uplift_max_m_per_yr * inp.cfg.dt_years).max(0.5);
+    let alluvial_sed_m = num::max(
+        2.0 * inp.cfg.g_deposition * inp.cfg.uplift_max_m_per_yr * inp.cfg.dt_years,
+        0.5,
+    );
     // (discharge m²-equivalent, slope, uplift) for every fluvial cell above
     // the floor, with the cell index kept for the residual's Laplacian.
     let mut fluvial: Vec<(f64, f64, f64)> = Vec::new();
@@ -247,7 +262,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         // coast, the water surface at a lake, the bed elsewhere — matching
         // the effective receiver elevation the erosion solve uses.
         let hr_eff = if !inp.land[r] {
-            inp.h[r].max(sea)
+            num::max(inp.h[r], sea)
         } else if inp.water_depth[r] > FLOOD_EPS_M {
             inp.h[r] + inp.water_depth[r]
         } else {
@@ -275,7 +290,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         Some(um) => fluvial
             .iter()
             .filter(|&&(_, _, u)| u >= UPLIFT_BAND.0 * um && u <= UPLIFT_BAND.1 * um)
-            .map(|&(a, s, _)| (a.log10(), s.log10()))
+            .map(|&(a, s, _)| (num::log10(a), num::log10(s)))
             .collect(),
         None => Vec::new(),
     };
@@ -314,7 +329,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
             for (r, w, dist) in inp.mfd.edges(idx as u32) {
                 let ru = r as usize;
                 let hr = if !inp.land[ru] {
-                    inp.h[ru].max(sea)
+                    num::max(inp.h[ru], sea)
                 } else if inp.water_depth[ru] > FLOOD_EPS_M {
                     inp.h[ru] + inp.water_depth[ru]
                 } else {
@@ -352,7 +367,11 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         hack_all.push((a_km2, l_km));
     }
     let hack_fit = if hack_all.len() >= 10 {
-        linfit(hack_all.iter().map(|&(a, l)| (a.log10(), l.log10())))
+        linfit(
+            hack_all
+                .iter()
+                .map(|&(a, l)| (num::log10(a), num::log10(l))),
+        )
     } else {
         None
     };
@@ -428,41 +447,41 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         linfit(
             horton
                 .iter()
-                .map(|row| (row.order as f64, (row.streams as f64).ln())),
+                .map(|row| (row.order as f64, num::ln(row.streams as f64))),
         )
     } else {
         None
     };
     let horton_bifurcation =
-        rb_fit.map(|(slope, _, _, _)| Gate::new((-slope).exp(), 3.0, 5.0, false));
+        rb_fit.map(|(slope, _, _, _)| Gate::new(num::exp(-slope), 3.0, 5.0, false));
     let rl_fit = if horton.len() >= 3 {
         linfit(
             horton
                 .iter()
                 .filter(|row| row.mean_length_km > 0.0)
-                .map(|row| (row.order as f64, row.mean_length_km.ln())),
+                .map(|row| (row.order as f64, num::ln(row.mean_length_km))),
         )
     } else {
         None
     };
-    let horton_length_ratio = rl_fit.map(|(slope, _, _, _)| slope.exp());
+    let horton_length_ratio = rl_fit.map(|(slope, _, _, _)| num::exp(slope));
 
     // --- Hypsometry -------------------------------------------------------
     let mut h_min = f64::INFINITY;
     let mut h_max = f64::NEG_INFINITY;
     for i in 0..n {
         if inp.land[i] {
-            h_min = h_min.min(inp.h[i]);
-            h_max = h_max.max(inp.h[i]);
+            h_min = num::min(h_min, inp.h[i]);
+            h_max = num::max(h_max, inp.h[i]);
         }
     }
-    let range = (h_max - h_min).max(1e-9);
+    let range = num::max(h_max - h_min, 1e-9);
     const BINS: usize = 1024;
     let mut hist = vec![0u64; BINS];
     let mut norm_sum = 0.0f64;
     for i in 0..n {
         if inp.land[i] {
-            let t = ((inp.h[i] - h_min) / range).clamp(0.0, 1.0);
+            let t = num::clamp((inp.h[i] - h_min) / range, 0.0, 1.0);
             norm_sum += t;
             let b = ((t * (BINS as f64 - 1.0)) as usize).min(BINS - 1);
             hist[b] += 1;
@@ -596,8 +615,8 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
             while let Some(c) = queue.pop_front() {
                 let cu = c as usize;
                 let surf = inp.h[cu] + inp.water_depth[cu];
-                lo_s = lo_s.min(surf);
-                hi_s = hi_s.max(surf);
+                lo_s = num::min(lo_s, surf);
+                hi_s = num::max(hi_s, surf);
                 inp.grid.for_neighbors(c, |nb, _| {
                     let nbu = nb as usize;
                     if !seen[nbu] && inp.water_depth[nbu] > FLOOD_EPS_M {
@@ -606,7 +625,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
                     }
                 });
             }
-            lake_spread = lake_spread.max(hi_s - lo_s);
+            lake_spread = num::max(lake_spread, hi_s - lo_s);
         }
     }
 
@@ -626,13 +645,84 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         {
             continue;
         }
-        let s = (inp.h[i] - inp.h[r]).max(0.0) / inp.grid.step_dist_m(i as u32, r as u32);
+        let s = num::max(inp.h[i] - inp.h[r], 0.0) / inp.grid.step_dist_m(i as u32, r as u32);
         flood_slopes.push(s);
     }
     let mut bedrock_slopes: Vec<f64> = fluvial.iter().map(|&(_, s, _)| s).collect();
     let floodplain_slope_ratio = match (median(&mut flood_slopes), median(&mut bedrock_slopes)) {
         (Some(f), Some(b)) if b > 0.0 => Some(Gate::new(f / b, 0.0, 1.0, true)),
         _ => None,
+    };
+
+    // --- Channels locked to the grid ---------------------------------------
+    // A channel cell is locked when all its water goes to one neighbour although the land there
+    // falls another way, by more than `AXIS_LOCK_DEG` (central differences): the grid, not the
+    // land, chose its way. A run of such cells stepping one way is followed down the stack,
+    // receivers first, so each cell's run is its receiver's plus one when both step alike.
+    let cos_lock = num::cos(AXIS_LOCK_DEG * std::f64::consts::PI / 180.0);
+    let downhill = |c: usize| {
+        let (x, y) = inp.grid.xy(c as u32);
+        let (xl, xr) = (x.saturating_sub(1), (x + 1).min(inp.grid.w - 1));
+        let (yl, yr) = (y.saturating_sub(1), (y + 1).min(inp.grid.h - 1));
+        let at = |xx: u32, yy: u32| inp.h[inp.grid.idx(xx, yy) as usize];
+        let gx = (at(xr, y) - at(xl, y)) / f64::from((xr - xl).max(1));
+        let gy = (at(x, yr) - at(x, yl)) / f64::from((yr - yl).max(1));
+        (-gx, -gy)
+    };
+    let step_of = |c: usize, r: usize| {
+        let (cx, cy) = inp.grid.xy(c as u32);
+        let (rx, ry) = inp.grid.xy(r as u32);
+        (i64::from(rx) - i64::from(cx), i64::from(ry) - i64::from(cy))
+    };
+    let locked_cell = |c: usize| {
+        let r = inp.receivers[c] as usize;
+        if !inp.land[c]
+            || r == c
+            || inp.tree_discharge_cells[c] < fluvial_min_cells
+            || inp.water_depth[c] > FLOOD_EPS_M
+            || inp.mfd.edges(c as u32).count() != 1
+        {
+            return false;
+        }
+        let (fx, fy) = downhill(c);
+        let (sx, sy) = step_of(c, r);
+        let (sx, sy) = (sx as f64, sy as f64);
+        let norm = ((fx * fx + fy * fy) * (sx * sx + sy * sy)).sqrt();
+        norm > 0.0 && (fx * sx + fy * sy) / norm < cos_lock
+    };
+    let channel = |c: usize| {
+        let r = inp.receivers[c] as usize;
+        inp.land[c]
+            && r != c
+            && inp.tree_discharge_cells[c] >= fluvial_min_cells
+            && inp.water_depth[c] <= FLOOD_EPS_M
+    };
+    let mut run = vec![0u32; n];
+    let (mut channel_cells, mut locked) = (0u64, 0u64);
+    for &c in inp.stack {
+        let c = c as usize;
+        if !channel(c) {
+            continue;
+        }
+        channel_cells += 1;
+        if !locked_cell(c) {
+            continue;
+        }
+        let r = inp.receivers[c] as usize;
+        let rr = inp.receivers[r] as usize;
+        run[c] = if run[r] > 0 && step_of(c, r) == step_of(r, rr) {
+            run[r] + 1
+        } else {
+            1
+        };
+        if run[c] > AXIS_RUN_CELLS {
+            locked += 1;
+        }
+    }
+    let axis_share = if channel_cells > 0 {
+        locked as f64 / channel_cells as f64
+    } else {
+        0.0
     };
 
     let report = GatesReport {
@@ -663,6 +753,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         lake_level_spread_m: Gate::new(lake_spread, 0.0, 0.05, false),
         lake_cells,
         floodplain_slope_ratio,
+        axis_runs: Gate::new(axis_share, 0.0, 0.25, true),
         wind: (inp.wind.dx, inp.wind.dy),
         land_fraction,
         max_elevation_m: h_max,

@@ -1,0 +1,4 @@
+[instance.hut_on_scarp]
+asset = "house_low"
+ground = "pad"
+at = [150, 356]

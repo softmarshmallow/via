@@ -10,7 +10,7 @@ use via_diag::{
     Site, Subject,
 };
 
-mod graph;
+pub(crate) mod graph;
 use via_doc::{ChangeRequest, LoadOptions, World};
 use via_graph::{BuildKeyParts, BuildRecord, Digest, NodeId, Store, Versions};
 
@@ -262,7 +262,7 @@ fn record_json(path: &str, bytes: &[u8]) -> (String, J) {
 }
 
 /// The baseline manifest's `(id, run.key)` and its digest.
-fn manifest_ids(bytes: &[u8]) -> Option<(J, String, String)> {
+pub(crate) fn manifest_ids(bytes: &[u8]) -> Option<(J, String, String)> {
     let m = parse(std::str::from_utf8(bytes).ok()?).ok()?;
     if !m
         .get("format")
@@ -367,6 +367,17 @@ pub fn run(a: &Args) -> Outcome {
             out,
         }
     };
+    // A world file that does not exist names no build: nothing is written, no directory and
+    // no lock (13).
+    if !a.world.is_file() {
+        return finish_run(
+            loaded.records,
+            run_diags,
+            loaded.world.as_ref(),
+            Vec::new(),
+            None,
+        );
+    }
     // The store may not live inside the directory every build replaces (13).
     if absolute(&store_root).starts_with(absolute(&out_dir)) {
         run_diags.push(run_diag(
@@ -513,7 +524,11 @@ pub fn run(a: &Args) -> Outcome {
     let sdk_digest = a.sdk.as_deref().map(|d| steps::folder_digest(d).0);
     let decls = steps::declared(&world, &wdir);
     let mut lint_steps: Vec<graph::LintStep> = Vec::new();
-    for s in decls.iter().filter(|s| s.when == "lint" && !s.worker) {
+    // Lint and generate steps, plain or worker; export steps arrive with M6.
+    for s in decls
+        .iter()
+        .filter(|s| matches!(s.when.as_str(), "lint" | "generate"))
+    {
         let code = steps::code_of(s, &roots, &wdir, sdk_digest.as_ref());
         let is_trusted = code
             .as_ref()
@@ -550,6 +565,12 @@ pub fn run(a: &Args) -> Outcome {
         if let Ok(c) = &l.code {
             parts.trust.push((s.id.clone(), c.trust));
         }
+        // An untrusted generate step's committed result is read (`protocol.md` 7.1).
+        if !l.trusted && s.when == "generate" {
+            if let Some(d) = steps::input_digest(&crate::commit::folder(&s.home, &s.id, None)) {
+                parts.files.push((format!("gen {}", s.id), d));
+            }
+        }
         // Trust is recorded on this machine (`protocol.md` 7): a newly trusted lint must run.
         parts
             .flags
@@ -583,10 +604,22 @@ pub fn run(a: &Args) -> Outcome {
             let (p, _) = via_model::pack::read(&path, "pack");
             Some((p?, path))
         });
+    // The pack's root (`assets.md` 2.2, `root`), where the files of `assets.files` lie.
     let pack_root = pack
         .as_ref()
-        .and_then(|(_, p)| p.parent())
-        .and_then(|p| relative(&out_dir, p));
+        .and_then(|(pk, p)| {
+            let mut dir = p.parent()?.to_path_buf();
+            // `root` may climb (`../`): each `..` takes off the part before it.
+            for part in &pk.root.written {
+                if part == ".." && dir.file_name().is_some() {
+                    dir.pop();
+                } else if part != "." {
+                    dir.push(part);
+                }
+            }
+            Some(dir)
+        })
+        .and_then(|p| relative(&out_dir, &p));
     let pack_far = pack.is_some() && pack_root.is_none();
     // The manifest's `locations.pack_root` is the path from this directory to the pack's root:
     // relative, so it enters by place (`graph.md` 6.2), and a directory at another depth has
@@ -628,8 +661,18 @@ pub fn run(a: &Args) -> Outcome {
                 .and_then(Digest::from_hex)
         })
         .filter(|k| BuildRecord::get(&store, k).is_some())
-        .or(manifest_key);
+        .or(manifest_key)
+        .or_else(|| {
+            // A new directory built `--against` a baseline: the baseline's record is the previous
+            // build (`graph.md` 6.3), so each cause names what differs from it.
+            a.against.as_ref()?;
+            baseline
+                .as_ref()
+                .and_then(|(_, _, _, k)| Digest::from_hex(k))
+                .filter(|k| BuildRecord::get(&store, k).is_some())
+        });
     let prev_record = previous_key.and_then(|k| BuildRecord::get(&store, &k));
+    let memo_at_start = via_model::memo_ms();
     let head = |id: Option<String>, null: bool, run_records: Vec<String>| via_graph::ReportHead {
         epoch: epoch(),
         version: env!("CARGO_PKG_VERSION").to_string(),
@@ -639,6 +682,7 @@ pub fn run(a: &Args) -> Outcome {
         null,
         previous: prev_record.as_ref().and(previous_key),
         ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+        memo_ms: via_model::memo_ms().saturating_sub(memo_at_start),
         run_records,
     };
     // The null build (`graph.md` 6.2): nothing is touched; the record is the build.
@@ -652,6 +696,13 @@ pub fn run(a: &Args) -> Outcome {
         ) {
             let (diags, lints, restored) = null;
             run_diags.extend(store.take_run_diags());
+            // The world the recorded diagnostics were emitted against: the merged text joined
+            // with what each generate step returned, read back from the record (`graph.md` 6.2),
+            // so a diagnostic on a returned statement keeps its span.
+            let world = match BuildRecord::get(&store, &key) {
+                Some(rec) => join_recorded(&world, &lint_steps, &rec, &store),
+                None => world,
+            };
             let mut all = loaded.records;
             for d in &diags {
                 all.push(d.emit(&world));
@@ -698,8 +749,156 @@ pub fn run(a: &Args) -> Outcome {
             };
         }
     }
-    // The graph.
+    // Generate steps, layer by layer (`protocol.md` 5, Its layer): each rank's steps run over
+    // the world joined so far, and what they return joins their layer before the next rank's
+    // steps read it. The final graph below then reuses their results.
     let base_build = baseline.as_ref().map(|b| &b.0.build);
+    let mut model_opts = model_opts;
+    let mut join_records: Vec<Record> = Vec::new();
+    let mut pre_nodes: BTreeMap<NodeId, via_graph::NodeOutcome> = BTreeMap::new();
+    let world = {
+        let mut ranks: Vec<i64> = lint_steps
+            .iter()
+            .filter(|l| l.decl.when == "generate")
+            .filter_map(|l| world.layer_rank(&l.decl.layer))
+            .collect();
+        ranks.sort_unstable();
+        ranks.dedup();
+        let mut returned: Vec<via_doc::Returned> = Vec::new();
+        let mut joined = world.clone();
+        for rank in ranks {
+            let model_k = via_model::ModelPlan::new(&joined, &model_opts, base_build);
+            let ctx_k = graph::Ctx {
+                world: &joined,
+                store: &store,
+                roots: &roots,
+                config: config.as_deref(),
+                sdk: a.sdk.as_deref(),
+                sdk_digest: sdk_digest.as_ref(),
+                seed: world_seed(&joined),
+                deadline: Duration::from_secs(a.deadline.unwrap_or(600)),
+                pack: pack.as_ref().map(|p| &p.0),
+                trust_command: steps::trust_command(
+                    &a.world,
+                    &a.lib,
+                    a.sdk.as_deref(),
+                    &a.changes
+                        .iter()
+                        .map(|c| c.written.clone())
+                        .collect::<Vec<_>>(),
+                ),
+                name: &name,
+                fail_on: &fail_on,
+                loaded: &loaded.records,
+                extra: Vec::new(),
+                lints: lint_steps.clone(),
+                baseline: None,
+                baseline_record: None,
+                key,
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                pack_root: pack_root.clone(),
+                run_members: BTreeMap::new(),
+            };
+            let plan_k = graph::CliPlan::new(&model_k, ctx_k);
+            let at_rank: Vec<&graph::LintStep> = lint_steps
+                .iter()
+                .filter(|l| l.decl.when == "generate")
+                .filter(|l| joined.layer_rank(&l.decl.layer) == Some(rank))
+                .collect();
+            let step_roots: Vec<NodeId> = at_rank
+                .iter()
+                .map(|l| NodeId::of("step", &l.decl.id))
+                .collect();
+            let mut gopts = via_graph::Options::new(versions.clone());
+            gopts.threads = threads;
+            gopts.rerun = a.rerun.iter().cloned().collect();
+            // The previous build's record, so a step that runs here gives its cause against it
+            // (graph.md 6.3): `no record` only when there is none.
+            gopts.previous = prev_record.clone();
+            let run_k = via_graph::run(&plan_k, &store, &gopts, &step_roots);
+            for (id, o) in &run_k.nodes {
+                if id.as_str().starts_with("step:") && o.status == via_graph::Status::Ran {
+                    pre_nodes.insert(id.clone(), o.clone());
+                }
+            }
+            for l in &at_rank {
+                // A step's own value, or each item's under `for_each`, in item order.
+                let mut ids: Vec<&NodeId> = run_k
+                    .nodes
+                    .keys()
+                    .filter(|n| graph::split_step(n).0 == l.decl.id)
+                    .filter(|n| l.decl.for_each.is_none() || graph::split_step(n).1.is_some())
+                    .collect();
+                ids.sort();
+                let mut text = String::new();
+                let mut files: Vec<(String, Digest)> = Vec::new();
+                for n in ids {
+                    let Some(v) = run_k.value(n, &store, &plan_k) else {
+                        continue;
+                    };
+                    if v.diags
+                        .iter()
+                        .any(|d| d.severity() == via_diag::Severity::Error)
+                    {
+                        continue;
+                    }
+                    let Some((doc, fs)) = graph::returned(&v.bytes) else {
+                        continue;
+                    };
+                    let Some(bytes) = store.get_object(&doc) else {
+                        continue;
+                    };
+                    text.push_str(&String::from_utf8_lossy(&via_graph::object_bytes(&bytes)));
+                    text.push('\n');
+                    files.extend(fs);
+                }
+                if text.trim().is_empty() {
+                    continue;
+                }
+                // The files of `out`, where a returned field's `file` is read. The folder is
+                // keyed by the document text and every returned file's digest, so a run that
+                // returns new file bytes under the same text never reads an older run's files.
+                let mut key = text.clone().into_bytes();
+                for (p, d) in &files {
+                    key.push(0);
+                    key.extend_from_slice(p.as_bytes());
+                    key.push(0);
+                    key.extend_from_slice(d.hex().as_bytes());
+                }
+                let dir = store.root().join("returned").join(Digest::of(&key).hex());
+                let mut ok = std::fs::create_dir_all(&dir).is_ok();
+                for (p, d) in &files {
+                    let target = dir.join(p);
+                    if target.is_file() {
+                        continue;
+                    }
+                    ok &= match store.get_object(d) {
+                        Some(b) => {
+                            if let Some(parent) = target.parent() {
+                                let _ = std::fs::create_dir_all(parent);
+                            }
+                            std::fs::write(&target, via_graph::object_bytes(&b)).is_ok()
+                        }
+                        None => false,
+                    };
+                }
+                if !ok {
+                    continue;
+                }
+                model_opts.step_out.insert(l.decl.id.clone(), dir);
+                returned.push(via_doc::Returned {
+                    step: l.decl.id.clone(),
+                    layer: l.decl.layer.clone(),
+                    text,
+                });
+            }
+            let (w, recs) = world.join(&returned);
+            joined = w;
+            join_records = recs;
+        }
+        joined
+    };
+    // The graph.
     let model = via_model::ModelPlan::new(&world, &model_opts, base_build);
     let mut extra: Vec<Diag> = Vec::new();
     if baseline.is_none() && !baseline_missing {
@@ -777,7 +976,16 @@ pub fn run(a: &Args) -> Outcome {
     gopts.threads = threads;
     gopts.rerun = a.rerun.iter().cloned().collect();
     gopts.previous = prev_record.clone();
-    let run = via_graph::run(&plan, &store, &gopts, &plan.roots());
+    let mut run = via_graph::run(&plan, &store, &gopts, &plan.roots());
+    // A generate step that ran in the layer-by-layer pass above is reused here: the report says
+    // it ran, once, as it did in this build.
+    for (id, o) in pre_nodes {
+        if let Some(n) = run.nodes.get_mut(&id) {
+            if n.status == via_graph::Status::Reused && n.key == o.key {
+                *n = o;
+            }
+        }
+    }
     run_diags.extend(run.run_diags.iter().cloned());
     run_diags.extend(store.take_run_diags());
     // Every record, finished once.
@@ -785,6 +993,7 @@ pub fn run(a: &Args) -> Outcome {
     let world_records = plan.world_records(&node_diags);
     let lints = plan.lints(&|n| run.nodes.get(n).map(|o| (o.status, o.value)));
     let mut all = world_records;
+    all.extend(join_records);
     for d in &run_diags {
         all.push(d.emit(&world));
     }
@@ -996,6 +1205,71 @@ pub fn run(a: &Args) -> Outcome {
 /// that key. The manifest and the reports also depend on where the directory is and on its
 /// baseline, so they are checked against this directory's own manifest: the one its `.previous`
 /// names, kept in the store by digest. Another directory's record never overwrites them.
+/// The world joined with every generate step's returned document as the record holds it, in
+/// the order the full build joins them (rank by rank, each rank's steps in declared order, each
+/// step's items in id order).
+fn join_recorded(
+    world: &via_doc::World,
+    lint_steps: &[graph::LintStep],
+    rec: &BuildRecord,
+    store: &Store,
+) -> via_doc::World {
+    let mut ranks: Vec<i64> = lint_steps
+        .iter()
+        .filter(|l| l.decl.when == "generate")
+        .filter_map(|l| world.layer_rank(&l.decl.layer))
+        .collect();
+    ranks.sort_unstable();
+    ranks.dedup();
+    let mut returned: Vec<via_doc::Returned> = Vec::new();
+    for rank in ranks {
+        for l in lint_steps
+            .iter()
+            .filter(|l| l.decl.when == "generate")
+            .filter(|l| world.layer_rank(&l.decl.layer) == Some(rank))
+        {
+            let mut ids: Vec<&NodeId> = rec
+                .nodes
+                .keys()
+                .filter(|n| n.as_str().starts_with("step:"))
+                .filter(|n| graph::split_step(n).0 == l.decl.id)
+                .filter(|n| l.decl.for_each.is_none() || graph::split_step(n).1.is_some())
+                .collect();
+            ids.sort();
+            let mut text = String::new();
+            for n in ids {
+                let Some(bytes) = rec.nodes[n]
+                    .value
+                    .and_then(|d| store.get_object(&d))
+                    .map(|o| via_graph::object_bytes(&o))
+                else {
+                    continue;
+                };
+                let Some((doc, _)) = graph::returned(&bytes) else {
+                    continue;
+                };
+                let Some(b) = store.get_object(&doc) else {
+                    continue;
+                };
+                text.push_str(&String::from_utf8_lossy(&via_graph::object_bytes(&b)));
+                text.push('\n');
+            }
+            if text.trim().is_empty() {
+                continue;
+            }
+            returned.push(via_doc::Returned {
+                step: l.decl.id.clone(),
+                layer: l.decl.layer.clone(),
+                text,
+            });
+        }
+    }
+    if returned.is_empty() {
+        return world.clone();
+    }
+    world.join(&returned).0
+}
+
 fn null_build(
     store: &Store,
     key: &Digest,

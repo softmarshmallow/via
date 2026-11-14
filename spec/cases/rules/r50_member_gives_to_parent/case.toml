@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "rules.md 7.5: a clump member gives way to its parent's footprint. Every member of a solid tree stands within 0.2 m of its parent's trunk, so every member gives way, counted in place.gave_way, and the parents stand."
+milestone = 2
+actions   = ["build"]
+
+# As r31 without the crate: jitter 0, the tree of cell (8, 18) stands at (59.5, 129.5). Its members
+# are drawn within 0.2 m of it (7.3), inside its trunk.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.gave_way]
+code = "place.gave_way"
+
+[action.build.check.parent]
+fn    = "instance_at"
+build = "build/w"
+name  = "trees#s7000_8_18"
+at    = [59.5, 129.5]
+
+[action.build.check.members]
+fn     = "no_origin_inside"
+build  = "build/w"
+prefix = "trees#s7000_8_18_m"
+at     = [59.5, 129.5]
+radius = 1

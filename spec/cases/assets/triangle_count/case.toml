@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "A mesh with a list of 9 indices, a strip of 5 and a fan of 4, used by two glTF nodes: triangles = 16 (3 + 3 + 2, twice)."
+milestone = 2
+actions   = ["list"]
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.list.file.triangles]
+stream  = "stdout"
+pointer = "/triangles"
+line    = 1
+value   = 16

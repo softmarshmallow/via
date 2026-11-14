@@ -1,0 +1,4 @@
+[feature.hunting_ground]
+kind = "spawn_zone"
+region = [[880, 880], [920, 880], [920, 920], [880, 920]]
+table = "wolves"

@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "The cube with KHR_mesh_quantization required: the same bounds as the float cube."
+milestone = 2
+actions   = ["list"]
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.list.file.bounds]
+stream  = "stdout"
+pointer = "/bounds"
+line    = 1
+value   = [-0.5, -0.5, 0, 0.5, 0.5, 1]

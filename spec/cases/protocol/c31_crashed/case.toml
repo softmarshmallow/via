@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "A worker killed by the fixture mid-call: protocol.crashed."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.gone]
+code = "protocol.crashed"
+subject = "step.look"

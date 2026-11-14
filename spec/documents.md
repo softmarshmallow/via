@@ -288,6 +288,12 @@ declared in one document, and no document writes onto an entity declared in anot
   allowing both would be two ways to say one thing (principle 10), and would spread one thing over
   several files (principle 11).
 
+**What a step returns** (M2) joins its step's layer (`protocol.md` 5): declared in that layer, at
+its rank, with its owner in the chain of every diagnostic, and spans in `step:<id>/document.toml`
+(2.1). So a layer's owner answers for its text and for what its steps make, and no output of a
+build is without an owner (challenge 21). A step's own layer is where it is declared, never where
+its output is read.
+
 Output per layer, that a game may load or replace on its own (TODO, Layers): every output record
 carries its `layer` (`build.md` 9.1); a separate file per layer is `build.md`'s, (open) until M6.
 
@@ -359,7 +365,7 @@ is `identity.duplicate_id`.
 | a table for an id that does not exist | Adds the entity. If an existing id in the same top table is its nearest name (`diagnostics.md` 1.4), `doc.change_adds_near` (warning) names it: a typo would otherwise add a guide silently. |
 | `remove = true` | Deletes the entity, or the sub-table it is written in. No other key may sit beside it (`doc.remove_with_keys`). |
 | `unset = ["k", ...]` | Deletes those keys from the table it is written in. In `[change.<c>.let]` it deletes `let` names. A key named in `unset` and also written in the same table is `doc.remove_with_keys`. |
-| one placement key (`at`, `on`, `path`, `region`, `where`, `follows`) | Sets it and deletes the other placement keys of that table. If the key is not `path`, it also deletes `starts_at`, `ends_at` and `smooth`, which only a path takes (`geometry.md` 2.2, 2.3). |
+| one placement key (`at`, `on`, `path`, `region`, `where`, `follows`) | Sets it and deletes the other placement keys of that table. If the key is not `path`, it also deletes `starts_at`, `ends_at`, `smooth` and `route`, which only a path takes (`geometry.md` 2.2, 2.3, `derived.md` 3); if it is not `where`, it deletes `holds` (`derived.md` 2). |
 | the top-level keys `pack`, `seed`, `extent`, `resolution` | Sets them. `pack` is the ford pack-swap case: a change file holding `pack = "<other>"` leaves the world's text untouched and swaps the look, the facts it carries (size, footprint, mounts) and what follows from them, which settles and is reported (R30, `assets.md` 1). |
 
 What a change body may not hold:
@@ -416,8 +422,8 @@ Each change has a write set of key paths:
 - every key it writes;
 - for an entity it adds, the entity's address;
 - for `remove`, the address of what it removes; for `unset`, each key named;
-- for a placement key, all six placement keys of that table, and `starts_at`, `ends_at` and
-  `smooth` when it deletes them.
+- for a placement key, all six placement keys of that table, and `starts_at`, `ends_at`, `smooth`,
+  `route` and `holds` when it deletes them.
 
 Two requested changes conflict when a path of one equals, or is a prefix of, a path of the other.
 That is `doc.change_conflict`, naming both changes, the path and both spans, even when the two values
@@ -434,6 +440,33 @@ constants live in its kinds, so including a library adds no world names.
 A key that takes `number` or `integer` takes a literal only; it cannot name a constant. Whether it
 should: (open), decided by the first example where one change must move several such literals
 together.
+
+### 6.5 Seasons and variants (M2)
+
+A season, a variant or a "what if" is a change: one name, written once, over any layer's entities
+(6). Nothing else is needed (challenge 40):
+
+```toml
+[change.winter.let]                  # in the world file; the layers read the name
+snowline = 34
+
+[change.winter.field.grass]          # a field the dressing layer declares
+base = 0
+
+[change.winter.step.weather.params]  # a step's params merge key by key (6.2)
+snow = true
+```
+
+- **What it may write** is 6.1's list: `let` names, field bases and rows, features, rules, a step's
+  `params`, and `pack` for a winter pack (R30).
+- **One build per set of changes.** Each set requested is its own build directory. The game chooses
+  which to load (principle 12); a world never holds two seasons at once.
+- **What it costs.** Keys are by content (`graph.md` 3.1), so a second build shares every node the
+  change does not reach. A step runs again only when an answer in its trace differs, so a change
+  that writes above a step's layer never re-runs it, and building with and without a change by
+  turns runs each step once per distinct reading (`protocol.md` case 22).
+- **Checked unrequested.** An inline season not asked for is checked all the same (6.1,
+  `doc.idle_change`), so it does not rot between winters.
 
 ## 7. Closed keys and free attributes
 
@@ -763,6 +796,10 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 | formula_span | A formula with an unknown name, in a basic string with an escape before it | merge | The diagnostic's column is the name's column in the file. |
 | params_free | A step with nested `params` of any keys | merge | No diagnostic; `params` in the JSON as written. |
 | json_escape | A `name` holding `é`, a tab and `"` | merge | `é` as raw UTF-8; `\u0009`; `\"`. |
+| season_layers (M2) | 6.5's `winter` over a world and a layer `dressing` (owner `props`) | merge with `winter` | `let.snowline` 34, `field.grass` `base` 0 with `@layer` `dressing`, `step.weather` `params` merged; origins' chain ends with change `winter`. |
+| season_reuse (M2) | 6.5's world, its generate step `weather` in `dressing`, and a generate step in the world layer that reads neither `snowline` nor `grass` | build, `--change winter`, build, `--change winter` | The world layer's step ran once; `weather` ran twice; the third and fourth builds run no step. |
+| step_owner (M2) | A step in `dressing` returning a feature of an unknown kind | build | `authority.unknown_kind`, `file` `step:<id>/document.toml`, chain naming layer `dressing` and owner `props`. |
+| placement_clear_derived (M2) | A change writes `at` on a feature with `where` and `holds`; another writes `region` on a path with `route` | merge | `holds` gone; `route`, `starts_at`, `ends_at` gone. |
 
 ## Changed from the spike
 

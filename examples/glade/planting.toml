@@ -1,0 +1,25 @@
+# The planting layer: the first attempt, everything spread evenly where it is allowed. Every
+# scatter applies keep_out itself (the stream's banks, the lane's verge, the pads).
+
+[scatter.trees]
+assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 2 }, { id = "tree_oak_large", weight = 0.4 }]
+spacing = 6
+density = "= f('cover')"
+scale   = [0.8, 1.2]
+
+[scatter.bushes]
+assets  = ["@plant/bush"]
+spacing = 6
+density = "= 0.28"
+scale   = [0.8, 1.2]
+
+[scatter.stones]
+assets  = [{ id = "rock_a", weight = 2 }, { id = "rock_b", weight = 1 }]
+spacing = 10
+density = "= 0.3"
+scale   = [0.6, 1.2]
+
+[scatter.logs]                            # dead wood lying in the wood (the starter pack's `log`)
+assets  = ["log"]
+spacing = 14
+density = "= 0.3"

@@ -20,6 +20,8 @@
 //! | Module | Chapter |
 //! |---|---|
 //! | [`pack`] | `assets.md` 1, 2, 5, 6: finding and reading a pack, primitive facts |
+//! | [`asset`], `asset_gltf`, `asset_json` | `assets.md` 2.2, 2.3, 3: model assets, their bound files, measuring glTF |
+//! | [`asset_facts`] | `assets.md` 4, 8.1: the facts file, `via pack accept`, revisions |
 //! | `decl` | the merged world read: fields, kinds, features, instances, scatters, hand edits; formulas checked |
 //! | `place` | `geometry.md` 2, `rules.md` 2 and 3: shapes, plans, place names, footprint features |
 //! | `resolve` | `fields.md` 5 and 6, `authority.md` 2 to 5: entries in R21 order, views, conflicts |
@@ -38,8 +40,14 @@
 //! `starts_at` and `ends_at` with `follows` are `doc.not_yet` until the M3 waterfront case
 //! decides them (`geometry.md` 4).
 
+pub mod asset;
+pub mod asset_facts;
+mod asset_gltf;
+mod asset_json;
 mod build;
 mod decl;
+pub mod derived;
+pub mod derived_checks;
 mod graph;
 pub mod pack;
 mod place;
@@ -51,7 +59,7 @@ mod text;
 
 pub use build::{build, Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Options};
 pub use decl::Tier;
-pub use graph::{build_graph, dedupe, leaves, FileReads, ModelPlan};
+pub use graph::{build_graph, dedupe, leaves, memo_ms, FileReads, ModelPlan};
 pub use rules::scatter_name;
 
 /// `documents.md` 5.1 at merge: the names formulas read that lie above the reader

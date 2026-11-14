@@ -1,0 +1,52 @@
+format    = "via-case-1"
+summary   = "protocol.md 7.1, case 48: a trusted generate step; via step commit; then the world built where the step is not trusted: gen/gen/ holds document.toml, the field file and canonical result.json; the untrusted build uses it with protocol.untrusted_result and the first build's id."
+milestone = 2
+actions   = ["program", "trust", "base", "commit", "untrusted"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.commit]
+via         = ["step", "commit", "world.toml", "--out", "build/c"]
+exit        = 0
+diagnostics = "includes"
+
+[action.commit.file.document]
+path   = "gen/gen/document.toml"
+exists = true
+
+[action.commit.file.protocol]
+path    = "gen/gen/result.json"
+pointer = "/protocol"
+value   = "via-step-1"
+
+[action.commit.file.trace]
+path    = "gen/gen/result.json"
+pointer = "/trace/0/request/method"
+value   = "build.field"
+
+[action.untrusted]
+via         = ["build", "world.toml", "--out", "build/u"]
+env         = { VIA_CONFIG_DIR = "{work}/.untrusted" }
+exit        = 0
+out         = "build/u"
+diagnostics = "includes"
+
+[action.untrusted.diag.used]
+code    = "protocol.untrusted_result"
+subject = "step.gen"
+
+[action.untrusted.same.id]
+action = "base"
+what   = "id"

@@ -1,0 +1,108 @@
+# The dress layer: what grows on the settled land, its ground paint, and the places it is judged
+# from. It sits above the terrain step, so it reads what the model made, by the tags lib/terrain
+# gives its fields: `wet` (how much water passes, 1 where a stream runs), `silt` (metres of
+# sediment settled), and the course the water took (`kind:terrain_course`). The step reads nothing
+# here, so no edit in this file runs the model again. Nothing here is placed by coordinate except
+# two views of the coast and the whole basin.
+
+[field.dry]                               # 1 on land, 0 under 2 cm of water or more
+base = "= 1 - smoothstep(0, 0.02, f('water') - f('height'))"
+
+# Woods keep to the valley sides and floors, off steep ground and the shore: where water gathers
+# (`wet`) or the ground is low in its valley, broken up by copses of their own.
+[field.cover]
+tags = ["cover"]
+base = "= smoothstep(0.15, 0.45, 0.8 * f('tag:wet') + 0.35 * fbm(260, 3, seed = 'copses')) * (1 - smoothstep(24, 32, slope('height'))) * smoothstep(2.5, 6, f('height')) * f('dry')"
+
+# Ground paint (lib/land/ground.md): grass everywhere, sand along the sea's edge, gravel in the
+# stream beds the model cut (`wet` near 1), rock where turf will not hold.
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.shore]
+paint = "sand"
+mask  = "= (1 - smoothstep(1.5, 3, f('height'))) * smoothstep(-1, 0, f('height'))"
+
+[field.ground.then.shingle]
+paint = "gravel"
+mask  = "= smoothstep(0.75, 0.9, f('tag:wet')) * f('dry')"
+
+[field.ground.then.scree]
+paint = "rock"
+mask  = "= smoothstep(26, 34, slope('height'))"
+
+# ---- growth by cause (R5)
+
+[scatter.woods]                           # trees in clumps where the cover is
+assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 2 }, { id = "tree_oak_large", weight = 0.4 }]
+spacing = 24
+density = "= f('cover')"
+scale   = [0.9, 1.4]
+clump   = { members = [2, 5], radius = 9, shrink = 0.4 }
+
+[scatter.undergrowth]                     # bushes beside the trees, out to 8 m
+assets  = ["bush_round", "fern_low"]
+spacing = 14
+density = "= 0.5 * f('dry')"
+scale   = [0.7, 1.3]
+clump   = { around = "woods", radius = 8 }
+
+[scatter.streamside]                      # bushes along the streams
+assets  = ["bush_wide", "fern_low"]
+spacing = 14
+density = "= 0.6 * smoothstep(0.5, 0.8, f('tag:wet')) * f('dry')"
+scale   = [0.7, 1.3]
+
+[scatter.stones]                          # in the stream beds and below steep ground
+assets  = [{ id = "rock_a", weight = 2 }, { id = "rock_b", weight = 1 }]
+spacing = 16
+density = "= f('dry') * (0.5 * smoothstep(0.6, 0.85, f('tag:wet')) + 0.5 * smoothstep(24, 32, slope('height')))"
+scale   = [0.6, 1.4]
+
+# ---- where the build is judged from (R17): eye height at each meeting. The views on the river
+# stand on the course the water took, so they follow it when it moves; the places they look at are
+# guides on that course.
+
+[feature.upstream]                        # the river a little above its middle
+on = { of = "terrain", class = "feature", near = [1850, 1900], t = 0.4 }
+
+[feature.valley_head]                     # the upper valley
+on = { of = "terrain", class = "feature", near = [2100, 2500], t = 0.25 }
+
+[feature.middle]                          # the middle of the basin, for the one view from above
+at = [1500, 1800]
+
+[feature.at_mouth]                        # the river meets the sea: on its bank short of the mouth
+kind   = "bookmark"
+on     = { of = "terrain", class = "feature", near = [1550, 600], t = 0.95, offset = 20 }
+toward = "haven"
+
+[feature.on_bank]                         # water and land: on the bank, looking up the valley
+kind   = "bookmark"
+on     = { of = "terrain", class = "feature", near = [1800, 1500], t = 0.55, offset = 14 }
+toward = "upstream"
+
+[feature.at_spring]                       # where the river rises: beside the head, down the valley
+kind   = "bookmark"
+on     = { of = "terrain", class = "feature", near = [2250, 2800], t = 0.03, offset = -30 }
+toward = "valley_head"
+
+[feature.tarn_shore]                      # the lake meets the land: above its south-east shore, across the water
+kind   = "bookmark"
+on     = { ref = "tarn", t = 0.375, offset = -25 }
+toward = "tarn"
+
+[feature.on_shore]                        # the sea meets the land, west of the mouth
+kind   = "bookmark"
+at     = [1150, 352]                      # about 12 m inland of the water's edge
+toward = "haven"
+
+[feature.over_basin]                      # the whole basin from over the sea: the plan, not a judgement
+kind       = "bookmark"
+at         = [2950, 150]
+eye_height = 420
+toward     = "middle"

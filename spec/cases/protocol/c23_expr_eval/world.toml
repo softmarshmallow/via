@@ -1,0 +1,16 @@
+name       = "m2"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[field.mix]
+base = "= 0.5 * x + y * y / 3 + slope('height')"
+
+[step.look]
+when    = "lint"
+command = ["python", "-m", "viasdk", "steps/look.py"]
+worker  = true

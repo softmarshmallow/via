@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A step returning [field.height] with file, where height exists: field.step_base."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.base]
+code = "field.step_base"
+file = "step:gen/document.toml"
+line = 1

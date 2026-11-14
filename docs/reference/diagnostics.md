@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-324 codes in 21 groups. 89 have no bad and fixed example yet; their explain text is the
+332 codes in 22 groups. 37 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -21,6 +21,7 @@ chapter's summary and hint.
 | [`build`](#build) | `spec/build.md` | 10 |
 | [`check`](#check) | `spec/build.md` | 14 |
 | [`cli`](#cli) | `spec/diagnostics.md` | 3 |
+| [`derive`](#derive) | `spec/derived.md` | 6 |
 | [`diag`](#diag) | `spec/diagnostics.md` | 3 |
 | [`doc`](#doc) | `spec/documents.md` | 32 |
 | [`field`](#field) | `spec/fields.md` | 26 |
@@ -32,7 +33,7 @@ chapter's summary and hint.
 | [`num`](#num) | `spec/numbers.md` | 12 |
 | [`pack`](#pack) | `spec/assets.md` | 14 |
 | [`place`](#place) | `spec/rules.md` | 12 |
-| [`protocol`](#protocol) | `spec/protocol.md` | 32 |
+| [`protocol`](#protocol) | `spec/protocol.md` | 34 |
 | [`run`](#run) | `spec/rules.md` | 4 |
 | [`scatter`](#scatter) | `spec/rules.md` | 5 |
 | [`set`](#set) | `spec/rules.md` | 3 |
@@ -96,6 +97,8 @@ warning, milestone 2, `spec/assets.md`.
 ```text
 A lower-detail copy reaches outside the main model's plan bounds.
 To fix: Re-export the copy inside the main model.
+Bad:   detail = ["oak_low.glb"]   (its crown 0.4 m wider than oak.glb)
+Fixed: oak_low.glb re-exported inside oak.glb's bounds
 ```
 
 ### `asset.detail_duplicate`
@@ -105,6 +108,9 @@ error, milestone 2, `spec/assets.md`.
 ```text
 detail names file, or one path twice.
 To fix: Remove the repeat.
+Bad:   file = "oak.glb"
+       detail = ["oak.glb"]
+Fixed: detail = ["oak_low.glb"]
 ```
 
 ### `asset.detail_pivot`
@@ -114,6 +120,8 @@ warning, milestone 2, `spec/assets.md`.
 ```text
 A lower-detail copy's pivot differs from the main model's by more than 1 mm.
 To fix: Re-export the copy with the main model's origin.
+Bad:   oak_low.glb exported with its origin 0.3 m off the trunk
+Fixed: oak_low.glb exported with oak.glb's origin
 ```
 
 ### `asset.empty`
@@ -123,6 +131,8 @@ error, milestone 2, `spec/assets.md`.
 ```text
 A model has no scene or no triangles.
 To fix: Export the mesh into the default scene.
+Bad:   file = "crate.glb"   (an empty scene)
+Fixed: crate.glb with its mesh in the default scene
 ```
 
 ### `asset.empty_selection`
@@ -145,6 +155,8 @@ info, milestone 2, `spec/assets.md`.
 ```text
 A model's origin is not where its pivot rule puts the pivot; the build moved it by origin.
 To fix: Write pivot = "origin" to keep the model's own origin.
+Bad:   a model whose origin is at a corner, pivot left at "base_centre"
+Fixed: pivot = "origin"
 ```
 
 ### `asset.point_footprint`
@@ -154,6 +166,9 @@ info, milestone 2, `spec/assets.md`.
 ```text
 A measured footprint has zero area; the asset has a point footprint.
 To fix: Declare footprint if it should claim ground.
+Bad:   [asset.lamp]   (measured footprint has no area)
+       ground = "pad" on its instances
+Fixed: footprint = [[-0.2, -0.2], [0.2, -0.2], [0.2, 0.2], [-0.2, 0.2]]
 ```
 
 ### `asset.refiled`
@@ -163,6 +178,8 @@ info, milestone 2, `spec/assets.md`.
 ```text
 An asset's taxon or tags differ from the facts file.
 To fix: Review what selections now pick, then accept.
+Bad:   taxon = "prop/crate"   (the facts file says "prop/box")
+Fixed: via pack accept PACK, after reading what `@prop/box` now selects
 ```
 
 ### `asset.remodelled`
@@ -172,6 +189,8 @@ info, milestone 2, `spec/assets.md`.
 ```text
 An asset's files, triangles, colour or params changed and its placement facts did not.
 To fix: None needed; accept to record it.
+Bad:   oak.glb repainted, its facts not accepted
+Fixed: via pack accept PACK
 ```
 
 ### `asset.revised`
@@ -181,6 +200,8 @@ warning, milestone 2, `spec/assets.md`.
 ```text
 An asset's placement facts differ from the facts file; names every instance in the build.
 To fix: Review the change report, then run via pack accept PACK.
+Bad:   house.glb re-exported 1 m wider, its facts not accepted
+Fixed: via pack accept PACK, after reading the instances the record names
 ```
 
 ### `asset.source`
@@ -206,6 +227,8 @@ error, milestone 2, `spec/assets.md`.
 ```text
 With --stand-ins, the facts file is missing a used asset or disagrees with the pack.
 To fix: Run via pack accept PACK with the files present.
+Bad:   via build --stand-ins with oak.glb missing from the facts file
+Fixed: via pack accept PACK with oak.glb present, then build with --stand-ins
 ```
 
 ### `asset.unaccepted`
@@ -215,6 +238,8 @@ info, milestone 2, `spec/assets.md`.
 ```text
 An asset the build uses is missing from the facts file.
 To fix: Run via pack accept PACK.
+Bad:   [asset.log] added to the pack, not accepted
+Fixed: via pack accept PACK
 ```
 
 ### `asset.unknown`
@@ -248,6 +273,8 @@ info, milestone 2, `spec/assets.md`.
 ```text
 No material of a model has a base colour texture.
 To fix: Bind the texture in the model if it should have one.
+Bad:   a model whose materials carry only factors
+Fixed: the base colour texture bound in the model, or nothing if flat colour is meant
 ```
 
 ## authority
@@ -462,6 +489,9 @@ error, milestone 2, `spec/authority.md`.
 
 ```text
 A step returned an anchored feature. M2.
+To fix: Return the feature as shaped or derived; a fact the author holds is written in text.
+Bad:   step.out.feature("quay", "wall", path=..., authority="anchored")
+Fixed: step.out.feature("quay", "wall", path=..., authority="derived")
 ```
 
 ### `authority.step_view`
@@ -470,6 +500,9 @@ error, milestone 2, `spec/authority.md`.
 
 ```text
 A step returned rows on a field whose full view it read, or a row sorting before a row of its head view. M2.
+To fix: Read the field's head view (`view = "head"`), or return a row with a higher `order`.
+Bad:   step.fields(["role:surface"])   then a row on the surface
+Fixed: step.fields(["role:surface"], view="head")
 ```
 
 ### `authority.unchecked`
@@ -478,6 +511,10 @@ error, milestone 2, `spec/authority.md`.
 
 ```text
 A generate step that read stated features and returned rows or features is named by no lint step's checks. M2, (open: queued by R31).
+To fix: Add a lint step whose `checks` names the generate step.
+Bad:   [step.terrain] when = "generate" ...   (no lint names it)
+Fixed: [step.facts] when = "lint"
+       checks = ["terrain"]
 ```
 
 ### `authority.unknown`
@@ -583,6 +620,9 @@ error, milestone 2, `spec/build.md`.
 
 ```text
 --stand-ins was asked for and the pack has no facts file. Hint: run via pack accept. (M2.)
+To fix: Run `via pack accept PACK`, then build with --stand-ins.
+Bad:   via build world.toml --stand-ins   (no starter.facts.toml)
+Fixed: via pack accept lib/packs/starter.toml; via build world.toml --stand-ins
 ```
 
 ### `build.not_a_build`
@@ -860,6 +900,92 @@ the program name. No build is attempted and the exit status is 2.
 To fix: Write the flag as `via help` lists it; data.nearest gives the nearest one.
 Bad:   via build world.toml --chnage a
 Fixed: via build world.toml --change a
+```
+
+## derive
+
+| Code | Severity | M | Data | Summary |
+|---|---|---|---|---|
+| `derive.checks_target` | error | 2 | `nearest` | `checks` names something that is not a generate step of this world; the nearest generate step. |
+| `derive.checks_when` | error | 2 |  | `checks` on a step whose `when` is not `lint`. |
+| `derive.dry` | warning | 2 |  | A `holds` point lies in no piece of its `where` region, so the region is empty; the condition's value at the point. |
+| `derive.holds_alone` | error | 2 |  | `holds` is written without `where`. |
+| `derive.open` | warning | 2 |  | The piece `holds` keeps touches the extent's outline; its first vertex there. |
+| `derive.route_alone` | error | 2 |  | `route` is written on a feature without `path`. |
+
+### `derive.checks_target`
+
+error, milestone 2, `spec/derived.md`.
+
+```text
+checks names something that is not a generate step of this world; the nearest generate step.
+To fix: The nearest generate step id.
+Bad:   checks = ["terain"]
+Fixed: checks = ["terrain"]
+```
+
+### `derive.checks_when`
+
+error, milestone 2, `spec/derived.md`.
+
+```text
+checks on a step whose when is not lint.
+To fix: Move checks to a lint step.
+Bad:   [step.terrain] when = "generate"
+       checks = ["terrain"]
+Fixed: [step.facts] when = "lint"
+       checks = ["terrain"]
+```
+
+### `derive.dry`
+
+warning, milestone 2, `spec/derived.md`.
+
+```text
+A holds point lies in no piece of its where region, so the region is empty; the condition's value at the point.
+To fix: Move holds into a piece, or change the condition.
+Bad:   where = "= 26 - f('height')"
+       holds = [12, 90]   (the ground there is above 26 m)
+Fixed: holds = [338, 186]   (a point in the hollow)
+```
+
+### `derive.holds_alone`
+
+error, milestone 2, `spec/derived.md`.
+
+```text
+holds is written without where.
+To fix: Write where, or remove holds.
+Bad:   region = [[0, 0], [10, 0], [10, 10]]
+       holds = [5, 2]
+Fixed: where = "= 26 - f('height')"
+       holds = [5, 2]
+```
+
+### `derive.open`
+
+warning, milestone 2, `spec/derived.md`.
+
+```text
+The piece holds keeps touches the extent's outline; its first vertex there.
+To fix: Change the condition so the piece closes inside; derive.spill gives a level that does.
+Bad:   where = "= 30 - f('height')"   (spills over the world's edge)
+Fixed: where = "= 26.4 - f('height')"   (a level the hollow holds)
+```
+
+### `derive.route_alone`
+
+error, milestone 2, `spec/derived.md`.
+
+```text
+route is written on a feature without path.
+To fix: Give the path its ends with starts_at and ends_at, or remove route.
+Bad:   at = [10, 10]
+       route = "= 1 + slope('height')"
+Fixed: starts_at = "spring"
+       ends_at = "mouth"
+       path = []
+       route = "= 1 + slope('height')"
 ```
 
 ## diag
@@ -1425,6 +1551,8 @@ warning, milestone 2, `spec/fields.md`.
 ```text
 A level step above 0.1 m on a field in m; the step.
 To fix: Use 16-bit, or a narrower range.
+Bad:   file = "height8.png"   (8-bit over 60 m: 0.24 m steps)
+Fixed: file = "height16.png"
 ```
 
 ### `field.file_format`
@@ -1502,6 +1630,8 @@ info, milestone 2, `spec/fields.md`.
 ```text
 A PNG's gamma, colour profile or tRNS was not applied.
 To fix: None needed; levels are read as stored.
+Bad:   file = "mask.png" saved with a gamma chunk
+Fixed: mask.png saved without gamma, profile or tRNS
 ```
 
 ### `field.file_range`
@@ -1511,6 +1641,8 @@ error, milestone 2, `spec/fields.md`.
 ```text
 range with lo == hi.
 To fix: A constant is a base.
+Bad:   range = [20, 20]
+Fixed: base = "= 20"   (no file)
 ```
 
 ### `field.file_too_large`
@@ -1640,6 +1772,10 @@ error, milestone 2, `spec/fields.md`.
 ```text
 A step's document sets base, file, role, type, unit or tags on a field it did not declare.
 To fix: Return rows on the field instead.
+Bad:   [field.height]
+       base = "= 0"   (returned; height is the world's)
+Fixed: [field.height.then.rise]
+       value = "= v + f('land')"
 ```
 
 ### `field.step_layer`
@@ -1649,6 +1785,8 @@ error, milestone 2, `spec/fields.md`.
 ```text
 A step's row on a field of a higher layer.
 To fix: Move the step up, or the field down.
+Bad:   a step of layer `world` returning [field.cover.then.x], cover declared in `planting`
+Fixed: the step declared in `planting`, or cover declared in `world`
 ```
 
 ### `field.type_unknown`
@@ -2460,6 +2598,9 @@ error, milestone 2, `spec/graph.md`.
 
 ```text
 A worker asked for something outside its stratum; names it and the lowest layer that could read it. (M2)
+To fix: Move the step to the named layer, or read only what its stratum holds.
+Bad:   step.features("kind:mark") in a step of `world`, marks declared in `review`
+Fixed: the step declared in `review`, or no read of marks
 ```
 
 ### `graph.step_unstable`
@@ -2552,6 +2693,8 @@ error, milestone 2, `spec/identity.md`.
 ```text
 A step returned a key that breaks 2.2, or an unknown class; says which rule.
 To fix: The repaired key, as for bad_id, or the class list.
+Bad:   step.out.feature("Pool 1", ...)
+Fixed: step.out.feature("pool_1", ...)
 ```
 
 ### `identity.clear_empty`
@@ -2590,6 +2733,8 @@ error, milestone 2, `spec/identity.md`.
 ```text
 One step gave two things one key; names both positions.
 To fix: Build the key from place, with the SDK's naming calls.
+Bad:   step.out.feature("pool", ...) twice
+Fixed: step.out.feature(f"pool_{i}_{j}", ...)   (a key from its place)
 ```
 
 ### `identity.key_in_text`
@@ -3113,6 +3258,8 @@ error, milestone 2, `spec/assets.md`.
 ```text
 via pack accept found errors; nothing written.
 To fix: Fix the listed errors, then accept again.
+Bad:   via pack accept PACK with a broken oak.glb
+Fixed: oak.glb repaired, then via pack accept PACK
 ```
 
 ### `pack.bad_axes`
@@ -3136,6 +3283,8 @@ error, milestone 2, `spec/assets.md`.
 ```text
 The facts file is not readable, or not in 4.1's form.
 To fix: Delete it and run via pack accept PACK.
+Bad:   starter.facts.toml edited by hand
+Fixed: the file deleted, then via pack accept PACK
 ```
 
 ### `pack.bad_model`
@@ -3145,6 +3294,8 @@ error, milestone 2, `spec/assets.md`.
 ```text
 A model is not readable glTF 2.0, holds a non-finite number or a bad index count, or uses an extension v0 does not read.
 To fix: Re-export without the named extension, or fix the pointed part.
+Bad:   oak.glb using KHR_draco_mesh_compression
+Fixed: oak.glb exported without compression
 ```
 
 ### `pack.material_repeat`
@@ -3193,6 +3344,8 @@ error, milestone 2, `spec/assets.md`.
 ```text
 A file reached outside root: an absolute URI, a .. out of it, a scheme other than data:, a symbolic link.
 To fix: Move the file under root, or move root.
+Bad:   file = "../shared/oak.glb"
+Fixed: oak.glb moved under root, file = "oak.glb"
 ```
 
 ### `pack.range`
@@ -3226,6 +3379,8 @@ info, milestone 2, `spec/assets.md`.
 ```text
 The facts file holds ids the pack no longer has.
 To fix: Run via pack accept PACK to drop them.
+Bad:   [asset.old_oak] removed from the pack, still in the facts file
+Fixed: via pack accept PACK
 ```
 
 ### `pack.unaccepted`
@@ -3235,6 +3390,8 @@ info, milestone 2, `spec/assets.md`.
 ```text
 The pack has model assets and no facts file; revisions cannot be reported.
 To fix: Run via pack accept PACK.
+Bad:   a pack of model assets with no facts file
+Fixed: via pack accept PACK
 ```
 
 ### `pack.unknown_material`
@@ -3354,6 +3511,9 @@ error, milestone 2, `spec/rules.md`.
 ```text
 ground on an asset with no footprint.
 To fix: Declare the asset's footprint, or remove ground.
+Bad:   asset = "lamp_post"   (no footprint)
+       ground = "pad"
+Fixed: the asset given a footprint, or `ground` removed
 ```
 
 ### `place.no_position`
@@ -3446,11 +3606,13 @@ Fixed: [instance.a]
 | `protocol.blob_header` | error | 2 |  | A column blob whose header or size does not match the `dtype` and `shape` its message gives. A non-finite sample is `num.not_finite_result` (4.2) (M2). |
 | `protocol.code_folder` | error | 1 |  | The code folder is or holds the world's folder; move the script into its own folder. |
 | `protocol.column_mixed` | error | 1 |  | One attribute has two types across the selected kinds; names both kinds. |
+| `protocol.commit_refused` | error | 2 |  | `via step commit` found errors in the build; nothing written (M2). |
 | `protocol.crashed` | error | 2 |  | The worker exited during a call (M2). |
 | `protocol.deadline` | error | 1 | `phase`, `deadline` | No answer by the deadline; which phase, `data.phase` (`initialize`, `step.call` or `cancel`), and the deadline in seconds, `data.deadline`. |
 | `protocol.explain_differs` | warning | 1 |  | A step sent two `explain` texts for one code. |
 | `protocol.failed` | error | 1 | `exit` | A plain command exited non-zero; `data.exit`. |
 | `protocol.field_file` | error | 2 |  | A returned field file is outside 4.2's `.npy` subset, or has the wrong `descr` or `shape` for its field; the hint is `step.out.field` (M2). |
+| `protocol.for_each_form` | error | 2 |  | `for_each` is not `kind:<name>` (M2). |
 | `protocol.framing` | error | 2 |  | A frame was not `Content-Length` and JSON; likely output written to the protocol descriptor (M2). |
 | `protocol.input_undeclared` | error | 2 |  | `input.open` named a path not in `inputs` (M2). |
 | `protocol.key_shadows` | error | 2 |  | A returned key equals a name the step can see (M2). |
@@ -3491,6 +3653,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A blob's bytes do not match its name.
+To fix: A defect of the SDK or the transport: report it with the step.
+Bad:   a blob named by one digest holding other bytes
+Fixed: the blob written through the SDK, named by its own digest
 ```
 
 ### `protocol.blob_header`
@@ -3499,6 +3664,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A column blob whose header or size does not match the dtype and shape its message gives. A non-finite sample is num.not_finite_result (4.2).
+To fix: Send the column through the SDK's column writer.
+Bad:   {"dtype": "f4", "shape": [10]} over 36 bytes
+Fixed: {"dtype": "f4", "shape": [9]} over 36 bytes
 ```
 
 ### `protocol.code_folder`
@@ -3525,12 +3693,26 @@ Bad:   [kind.a]  defaults = { w = 1 }   and   [kind.b]  defaults = { w = "1" }
 Fixed: [kind.b]  defaults = { w = 1 }
 ```
 
+### `protocol.commit_refused`
+
+error, milestone 2, `spec/protocol.md`.
+
+```text
+via step commit found errors in the build; nothing written (M2).
+To fix: Fix the build's errors, then commit again.
+Bad:   via step commit world.toml   (the build has an error)
+Fixed: the error fixed, then via step commit world.toml
+```
+
 ### `protocol.crashed`
 
 error, milestone 2, `spec/protocol.md`.
 
 ```text
 The worker exited during a call.
+To fix: Read the step's log in the run report; fix what ended the process.
+Bad:   a worker that calls sys.exit() inside generate
+Fixed: generate returns; errors are raised or sent as diagnostics
 ```
 
 ### `protocol.deadline`
@@ -3575,6 +3757,20 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A returned field file is outside 4.2's .npy subset, or has the wrong descr or shape for its field; the hint is step.out.field.
+To fix: Write it with `step.out.field`.
+Bad:   numpy.save("out/land.npy", land.astype("float64"))
+Fixed: step.out.field("land", land)
+```
+
+### `protocol.for_each_form`
+
+error, milestone 2, `spec/protocol.md`.
+
+```text
+for_each is not kind:<name> (M2).
+To fix: Write `for_each = "kind:<name>"` on a generate step.
+Bad:   for_each = "tarns"
+Fixed: for_each = "kind:tarn"
 ```
 
 ### `protocol.framing`
@@ -3583,6 +3779,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A frame was not Content-Length and JSON; likely output written to the protocol descriptor.
+To fix: Print to standard error, never to the protocol's output.
+Bad:   print("done")   in a worker
+Fixed: print("done", file=sys.stderr)
 ```
 
 ### `protocol.input_undeclared`
@@ -3591,6 +3790,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 input.open named a path not in inputs.
+To fix: Add the path to the step's `inputs`.
+Bad:   step.input("survey.png") with inputs = []
+Fixed: inputs = ["survey.png"]
 ```
 
 ### `protocol.key_shadows`
@@ -3599,6 +3801,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A returned key equals a name the step can see.
+To fix: Name the returned table other than the name it shadows.
+Bad:   step.out.feature("pool", ...)   (a written feature `pool` is in its stratum)
+Fixed: step.out.feature("found_pool", ...)
 ```
 
 ### `protocol.message_too_large`
@@ -3607,6 +3812,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A frame over 16 MiB; send the data as a blob.
+To fix: Send the data as a blob (the SDK's columns do).
+Bad:   one call carrying 40 MiB of JSON numbers
+Fixed: the same values as an f4 column blob
 ```
 
 ### `protocol.no_entry`
@@ -3615,6 +3823,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 The script has no top-level function named after when.
+To fix: Define the function the step's `when` names.
+Bad:   when = "generate", and the script defines only lint(step)
+Fixed: def generate(step): ...
 ```
 
 ### `protocol.no_explain`
@@ -3634,6 +3845,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A generate step returned no document.
+To fix: Return a document; an empty one when there is nothing to return.
+Bad:   a generate step that writes nothing into out
+Fixed: out/document.toml written, empty if need be (the SDK writes it)
 ```
 
 ### `protocol.no_program`
@@ -3654,6 +3868,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A returned file leaves out or names nothing.
+To fix: Write the file into `out` and name it relative to `out`.
+Bad:   file = "/tmp/land.npy"
+Fixed: file = "land.npy"
 ```
 
 ### `protocol.output_json`
@@ -3686,6 +3903,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A worker returned a document and wrote document.toml.
+To fix: Return the document one way.
+Bad:   the call's result holds a document and out/document.toml is written
+Fixed: only the SDK's step.out
 ```
 
 ### `protocol.raised`
@@ -3694,6 +3914,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 The step raised an exception it did not catch; data.exception.
+To fix: Read `data.exception`; fix the step, or catch and report what you mean to say.
+Bad:   a step dividing by a zero area
+Fixed: the case checked, sent as a diagnostic with a hint
 ```
 
 ### `protocol.slow_exit`
@@ -3702,6 +3925,9 @@ info, milestone 2, `spec/protocol.md`.
 
 ```text
 A worker had to be killed after shutdown.
+To fix: Return from the step promptly after `shutdown`; close threads and files.
+Bad:   a worker that keeps a thread running after the build
+Fixed: the thread joined before the step returns
 ```
 
 ### `protocol.start`
@@ -3734,6 +3960,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A generate step is not trusted and has no committed result; the hint is via trust.
+To fix: Read the step's code folder, then run `via trust WORLD`.
+Bad:   via build world.toml   (the step never trusted on this machine)
+Fixed: via trust world.toml, then via build world.toml
 ```
 
 ### `protocol.untrusted_result`
@@ -3742,6 +3971,9 @@ info, milestone 2, `spec/protocol.md`.
 
 ```text
 An untrusted step was built from its committed result, which matched (M2).
+To fix: None needed; trust the step to run it here.
+Bad:   (nothing wrong) a committed result used for an untrusted step
+Fixed: via trust world.toml, to run the step instead
 ```
 
 ### `protocol.untrusted_skipped`
@@ -3761,6 +3993,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 A committed result's static key or a read of its trace differs from the current build; names the first difference (M2).
+To fix: Trust the step and build, or commit a new result from a trusted build.
+Bad:   gen/terrain/ committed before a fact it read moved
+Fixed: via trust world.toml; via build; via step commit world.toml
 ```
 
 ### `protocol.version`
@@ -3769,6 +4004,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 The worker speaks another protocol version; both versions.
+To fix: Use the SDK carried with this engine.
+Bad:   an SDK of another protocol version on the path
+Fixed: python -m viasdk with the engine's own SDK first on PYTHONPATH
 ```
 
 ### `protocol.when_unserved`
@@ -3777,6 +4015,9 @@ error, milestone 2, `spec/protocol.md`.
 
 ```text
 The worker's capabilities.when lacks the step's when.
+To fix: Serve the step's `when` from the program, or change `when`.
+Bad:   when = "lint" on a program that serves only generate
+Fixed: when = "generate"
 ```
 
 ## run
@@ -3841,6 +4082,8 @@ error, milestone 2, `spec/rules.md`.
 ```text
 clump breaks 7.3: both forms, no radius, a value out of range, or around naming a non-producer.
 To fix: The key to remove or change.
+Bad:   clump = { members = [2, 5] }   (no radius)
+Fixed: clump = { members = [2, 5], radius = 6.5 }
 ```
 
 ### `scatter.empty`
@@ -4112,6 +4355,9 @@ error, milestone 2, `spec/surfaces.md`.
 
 ```text
 meetings() called at generate.
+To fix: Call meetings() from a lint step, which reads the finished build.
+Bad:   step.meetings() inside generate(step)
+Fixed: step.meetings() inside lint(step)
 ```
 
 ### `surface.two_terrains`

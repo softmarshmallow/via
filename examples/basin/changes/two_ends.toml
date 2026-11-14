@@ -1,0 +1,6 @@
+# State only the river's two ends. Its course between them is found over the starting ground,
+# where travel costs more the higher and steeper the ground, so it goes round high ground instead
+# of through it; the library then holds it as it holds a written line (derived.md 3).
+[feature.river]
+path  = []
+route = "= 1 + 0.05 * max(f('start'), 0) + 0.5 * slope('start')"

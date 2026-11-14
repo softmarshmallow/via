@@ -136,6 +136,9 @@ struct FieldInfo {
 }
 
 /// Fields over the whole extent, made once per process (`fields.md` 6.1).
+/// Fields in a step's head view, by (field, layer rank).
+type StratumMemo = BTreeMap<(String, i64), Option<Vec<f32>>>;
+
 struct FieldsMemo {
     build: BTreeMap<String, Option<Resolved>>,
     head: BTreeMap<String, Option<Resolved>>,
@@ -144,6 +147,22 @@ struct FieldsMemo {
 }
 
 /// The rest of the build, made once per process.
+/// Time spent evaluating the world as a whole, outside any node's own inputs: the field memo, the
+/// whole build, the pre-edit scatter and the step strata, in nanoseconds, over the process. Not
+/// a node's cost (graph.md 6.3 `totals.memo_ms`): the gap between the nodes' times and the wall.
+static MEMO_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// [`MEMO_NS`] in whole milliseconds.
+pub fn memo_ms() -> u64 {
+    MEMO_NS.load(std::sync::atomic::Ordering::Relaxed) / 1_000_000
+}
+
+/// Adds the time since `t0` to [`MEMO_NS`].
+fn memo_spent(t0: std::time::Instant) {
+    let ns = u64::try_from(t0.elapsed().as_nanos()).unwrap_or(u64::MAX);
+    MEMO_NS.fetch_add(ns, std::sync::atomic::Ordering::Relaxed);
+}
+
 struct Whole {
     build: Build,
     routed: BTreeMap<NodeId, Vec<Diag>>,
@@ -275,6 +294,8 @@ pub struct ModelPlan<'w> {
     defs: BTreeMap<NodeId, Def>,
     early: BTreeMap<NodeId, Vec<Diag>>,
     field_memo: Mutex<Option<Arc<FieldsMemo>>>,
+    /// Fields in a generate step's head view, by (field, layer rank), made once per process.
+    stratum: Mutex<StratumMemo>,
     whole: Mutex<Option<Arc<Whole>>>,
     pre: Mutex<Option<Arc<PreEdit>>>,
     /// Members of a loop the reference graph reported (`graph.md` 2.2): the passes' own loop
@@ -438,6 +459,15 @@ fn leaves_of(p: &Prepared, options: &Options) -> Vec<(String, NodeId, Digest)> {
                     NodeId::of("source", &name),
                     Digest::of(&bytes),
                 ));
+                // `assets.md` 2.2 and 4: the files the pack binds, and its facts file.
+                for (leaf, d) in p.pack.leaves() {
+                    let family = if leaf == p.pack.facts_display {
+                        "source"
+                    } else {
+                        "input"
+                    };
+                    out.push((leaf.clone(), NodeId::of(family, &leaf), d));
+                }
             }
         }
     }
@@ -491,7 +521,26 @@ impl<'w> ModelPlan<'w> {
     /// The plan of a world: every node defined from the text and the placement pass.
     pub fn new(world: &'w World, options: &Options, baseline: Option<&Build>) -> ModelPlan<'w> {
         let p = prepare(world, options);
-        let stmts = statement_digests(world, &p);
+        let mut stmts = statement_digests(world, &p);
+        // The pack statement is what every node that resolves an asset reads: its files and
+        // facts enter it, so a revised model re-runs them (`assets.md` 4, `asset.revised`).
+        if let Some(d) = stmts.get(PACK).copied() {
+            let mut enc = Enc::new();
+            enc.str("via-pack-statement-1").str(&d.hex());
+            // The facts file is not among them: it decides only diagnostics (`assets.md` 4.2),
+            // which the `facts` nodes raise.
+            let leaves: Vec<_> = p
+                .pack
+                .leaves()
+                .into_iter()
+                .filter(|(path, _)| *path != p.pack.facts_display)
+                .collect();
+            enc.len(leaves.len());
+            for (path, digest) in &leaves {
+                enc.str(path).str(&digest.hex());
+            }
+            stmts.insert(PACK.into(), Digest::of(&enc.finish()));
+        }
         let grid = p.decls.grid;
         let tiling = grid.as_ref().map(Chunks::new);
         let chunks = tiling.map(|t| t.list()).unwrap_or_default();
@@ -508,6 +557,7 @@ impl<'w> ModelPlan<'w> {
             defs: BTreeMap::new(),
             early: BTreeMap::new(),
             field_memo: Mutex::new(None),
+            stratum: Mutex::new(BTreeMap::new()),
             whole: Mutex::new(None),
             pre: Mutex::new(None),
             superseded: BTreeSet::new(),
@@ -878,8 +928,25 @@ impl<'w> ModelPlan<'w> {
             // A selection by place (`identity.md` 4.1) reads what the maker made: a scatter's
             // rule run, which hand edits never change, so the edit cannot read itself.
             Place::Of(sel) => {
+                let prefix = format!("{}#", sel.of);
                 if self.p.decls.scatters.contains_key(&sel.of) {
                     out.push(("of".into(), view(NodeId::of("rule", &sel.of))));
+                } else if self.p.decls.steps.contains_key(&sel.of) {
+                    // A step's returned features (`identity.md` 2.4, class `feature`): each one
+                    // the selection may land on.
+                    let ids: Vec<String> = self
+                        .p
+                        .decls
+                        .features
+                        .keys()
+                        .filter(|k| k.starts_with(&prefix))
+                        .cloned()
+                        .collect();
+                    for f in ids {
+                        for t in self.targets(&f) {
+                            out.push(("of".into(), t));
+                        }
+                    }
                 } else {
                     for t in self.targets(&sel.of) {
                         out.push(("of".into(), t));
@@ -916,7 +983,9 @@ impl<'w> ModelPlan<'w> {
         }
         let leaves = leaves_of(&self.p, &self.options);
         for (path, id, digest) in &leaves {
-            if id.family() == "source" {
+            // The facts file decides no instance, field or mesh (`assets.md` 4.2): only the
+            // `facts` nodes read it.
+            if id.family() == "source" && *path != self.p.pack.facts_display {
                 merge_edges.push((format!("source {path}"), id.clone()));
             }
             self.defs.insert(
@@ -950,11 +1019,16 @@ impl<'w> ModelPlan<'w> {
             if let ShapeDecl::Point(p) = &f.shape {
                 self.place_edges(p, &mut shape_edges);
             }
-            if let ShapeDecl::Where(w) = &f.shape {
-                // A `where` region reads fields in their head view over the whole extent
-                // (`graph.md` 1, "Views"; `authority.md` 2.3), and the shapes it names.
+            let shape_formula = match &f.shape {
+                ShapeDecl::Where(w) => Some(*w),
+                _ => f.route,
+            };
+            if let Some(w) = shape_formula {
+                // A `where` region, or a `route`'s cost, reads fields in their head view over the
+                // whole extent (`graph.md` 1, "Views"; `authority.md` 2.3), and the shapes it
+                // names (`derived.md` 1, "Head, not effects").
                 let mut r = FReads::default();
-                self.freads(Some(*w), &mut r);
+                self.freads(Some(w), &mut r);
                 for fname in &r.fields {
                     for (_, c) in &self.chunks {
                         shape_edges
@@ -1217,6 +1291,12 @@ impl<'w> ModelPlan<'w> {
                     edges.push((format!("gives way {h}"), view(NodeId::of("instance", h))));
                 }
             }
+            // `clump.around` (`rules.md` 7.3) reads the named scatter's output.
+            if let Some(crate::decl::Clump::Around { of, .. }) = &s.clump {
+                if d.scatters.contains_key(of) && of != id {
+                    edges.push(("around".into(), view(NodeId::of("rule", of))));
+                }
+            }
             if let Some(w) = &s.within {
                 for t in self.targets(w) {
                     edges.push(("within".into(), t));
@@ -1427,6 +1507,82 @@ impl<'w> ModelPlan<'w> {
             }
         }
         for (id, def) in defs {
+            self.put(id, def);
+        }
+        // `graph.md` 1, `facts`: each model asset's comparison with the facts file. It reads the
+        // asset's files, the facts file, the pack, and the placements that can hold that asset,
+        // whose names `asset.revised` lists (`assets.md` 4.2): the hand instances and pins of the
+        // asset, and the scatters that choose it (by id, or any taxon). So a re-exported model
+        // re-runs it though no text changed, and a placement of another asset does not.
+        let d = &self.p.decls;
+        let placed_of = |aid: &str| -> Vec<NodeId> {
+            self.defs
+                .keys()
+                .filter(|n| n.family() == "height")
+                .filter(|n| {
+                    let s = n.as_str();
+                    let subject = s[s.find(':').map_or(0, |k| k + 1)..]
+                        .split('/')
+                        .next()
+                        .unwrap_or("");
+                    if let Some(i) = d.instances.get(subject) {
+                        return i.asset == aid;
+                    }
+                    if let Some(p) = d.pins.get(subject) {
+                        return p.asset == aid;
+                    }
+                    if let Some(sc) = d.scatters.get(subject) {
+                        return sc
+                            .choices
+                            .iter()
+                            .any(|c| c.what == aid || c.what.starts_with('@'));
+                    }
+                    true
+                })
+                .cloned()
+                .collect()
+        };
+        let facts_src = NodeId::of("source", &self.p.pack.facts_display);
+        // The pack file itself: a declared fact edited in its text is a revision too (4.2).
+        let pack_srcs: Vec<NodeId> = self
+            .defs
+            .keys()
+            .filter(|n| {
+                n.family() == "source" && **n != facts_src && n.as_str().starts_with("source:pack:")
+            })
+            .cloned()
+            .collect();
+        let mut facts_defs = Vec::new();
+        for (aid, a) in &self.p.pack.assets {
+            let Some(m) = &a.model else { continue };
+            let mut edges = Vec::new();
+            for rel in m.files.keys() {
+                let path = self.p.pack.root.pack_path(rel);
+                let n = NodeId::of("input", &path);
+                if self.defs.contains_key(&n) {
+                    edges.push((format!("input {path}"), n));
+                }
+            }
+            if self.defs.contains_key(&facts_src) {
+                edges.push(("facts file".to_string(), facts_src.clone()));
+            }
+            for s in &pack_srcs {
+                edges.push((format!("pack {s}"), s.clone()));
+            }
+            for h in placed_of(aid) {
+                edges.push((format!("placed {h}"), h));
+            }
+            facts_defs.push((
+                NodeId::of("facts", aid),
+                Def {
+                    subject: Some(Subject::entity("asset", aid.clone())),
+                    statements: self.stmts_of([format!("asset:{aid}").as_str(), PACK]),
+                    edges,
+                    ..Def::default()
+                },
+            ));
+        }
+        for (id, def) in facts_defs {
             self.put(id, def);
         }
     }
@@ -1888,6 +2044,20 @@ impl<'w> ModelPlan<'w> {
                 }
             }
         }
+        // What the facts file decides alone (`assets.md` 4.2, 8.1) belongs to the comparison,
+        // which reads that file; the merge does not (`graph.md` 1, `facts`).
+        if [
+            codes::pack::UNACCEPTED,
+            codes::pack::STALE_FACTS,
+            codes::pack::BAD_FACTS,
+        ]
+        .iter()
+        .any(|c| *d.code() == via_diag::DiagCode::Core(*c))
+        {
+            if let Some(f) = self.defs.keys().find(|n| n.family() == "facts") {
+                return vec![f.clone()];
+            }
+        }
         let mut v: Vec<NodeId> = match d.subject() {
             Subject::Entity {
                 collection,
@@ -1935,6 +2105,7 @@ impl<'w> ModelPlan<'w> {
                     "pin" if late => vec![view(NodeId::of("height", id))],
                     "pin" | "clear" if !late => vec![view(NodeId::of("edit", id))],
                     "scatter" => vec![view(NodeId::of("held", id))],
+                    "asset" if late => vec![NodeId::of("facts", id)],
                     "field" if !late => self
                         .chunks
                         .iter()
@@ -1961,6 +2132,7 @@ impl<'w> ModelPlan<'w> {
         if let Some(m) = slot.as_ref() {
             return m.clone();
         }
+        let t0 = std::time::Instant::now();
         let mut memo = FieldsMemo {
             build: BTreeMap::new(),
             head: BTreeMap::new(),
@@ -2013,6 +2185,7 @@ impl<'w> ModelPlan<'w> {
         }
         let m = Arc::new(memo);
         *slot = Some(m.clone());
+        memo_spent(t0);
         m
     }
 
@@ -2077,6 +2250,7 @@ impl<'w> ModelPlan<'w> {
             return w.clone();
         }
         let fm = self.fields_memo();
+        let t0 = std::time::Instant::now();
         let seeds: BTreeMap<String, Option<Resolved>> = fm.build.clone();
         let p = prepare(self.world, &self.options);
         let early = p.diags.clone();
@@ -2093,7 +2267,34 @@ impl<'w> ModelPlan<'w> {
         }
         let w = Arc::new(Whole { build, routed });
         *slot = Some(w.clone());
+        memo_spent(t0);
         w
+    }
+
+    /// A scalar field's values in the head view of a generate step of layer rank `rank`
+    /// ([`View::Stratum`]), post order; `None` for a weights field or one that does not resolve.
+    pub fn stratum_values(&self, field: &str, rank: i64) -> Option<Vec<f32>> {
+        let key = (field.to_string(), rank);
+        if let Some(v) = self
+            .stratum
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&key)
+        {
+            return v.clone();
+        }
+        let grid = self.grid?;
+        let t0 = std::time::Instant::now();
+        let fields = Fields::new(&self.p.decls, &self.p.placed, grid);
+        let v = fields
+            .get(field, View::Stratum(rank))
+            .and_then(|r| r.scalar.as_ref().map(|s| s.values().to_vec()));
+        memo_spent(t0);
+        self.stratum
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(key, v.clone());
+        v
     }
 
     /// The build in memory, for the command line's files and steps.
@@ -2114,6 +2315,7 @@ impl<'w> ModelPlan<'w> {
         let mut out: BTreeMap<String, Vec<Placement>> = BTreeMap::new();
         if let Some(grid) = self.grid {
             let fm = self.fields_memo();
+            let t0 = std::time::Instant::now();
             let mut d = crate::decl::Decls::read(self.world);
             d.pins.clear();
             d.clears.clear();
@@ -2130,6 +2332,7 @@ impl<'w> ModelPlan<'w> {
                     out.entry(m.clone()).or_default().push(p);
                 }
             }
+            memo_spent(t0);
         }
         let a = Arc::new(out);
         *slot = Some(a.clone());
@@ -2563,6 +2766,17 @@ impl Plan for ModelPlan<'_> {
             }
             "held" => self.compute_held(id, false),
             "height" => self.compute_height(id),
+            "facts" => {
+                let w = self.whole();
+                let mut diags = self.early_diags(id);
+                diags.extend(w.routed.get(id).cloned().unwrap_or_default());
+                let mut e = Enc::new();
+                e.str("via-facts-1").len(diags.len());
+                for d in &diags {
+                    e.str(&format!("{d:?}"));
+                }
+                Self::val(e.finish(), diags)
+            }
             "field" => self.compute_chunk(id),
             "distance" => self.compute_distance(id),
             "measure" => {

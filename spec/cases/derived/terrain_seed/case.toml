@@ -1,0 +1,48 @@
+format    = "via-case-1"
+milestone = 2
+summary   = "A new seed moves the valley and what stands on it (plan, M2): the world's seed changes the ground the step reads, so the step and its lint run again and the settled ground differs."
+actions   = ["program", "trust", "base", "edit", "reseeded"]
+
+# The terrain library's step (lib/terrain) through the command line. Its program is built with
+# `cargo build -p via-terrain`; the case names it as a configured program, as a world's user does.
+# The world: land rising north from a sea in the south, a hollow at (200, 560) with a lake stated
+# in it at 2.5 m (its ground lies below 2.2 m over most of the region and above 1.4 m all round
+# it), and a river stated from the hills to the sea.
+
+[action.program]
+via  = ["config", "program", "via-terrain", "{repo}/target/debug/via-terrain"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{repo}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.edit]
+replace = "world.toml"
+find    = "seed       = 7"
+with    = "seed       = 8"
+
+[action.reseeded]
+via         = ["build", "world.toml", "--lib", "{repo}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.reseeded.nodes]
+ran_includes = ["step:terrain", "step:facts"]
+
+[action.reseeded.same.ground]
+action = "base"
+what   = "build/w/fields/height.npy"
+differ = true
+
+[action.reseeded.same.features]
+action = "base"
+what   = "build/w/features.json"
+differ = true

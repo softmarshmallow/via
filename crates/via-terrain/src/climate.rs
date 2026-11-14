@@ -12,6 +12,7 @@
 //! and low-amplitude noise. Mean-annual values; no seasonality.
 
 use rayon::prelude::*;
+use via_num as num;
 
 use crate::config::TerrainConfig;
 use crate::grid::Grid;
@@ -80,7 +81,7 @@ pub fn compute_precipitation(cfg: &TerrainConfig, grid: &Grid, h: &[f64], wind: 
     } else {
         grid.dx
     };
-    let ema_alpha = 1.0 - (-step_m / cfg.airflow_smooth_m).exp();
+    let ema_alpha = 1.0 - num::exp(-step_m / cfg.airflow_smooth_m);
     let (evap, convective, oro_per_100m) = (
         cfg.evaporation_per_cell,
         cfg.convective_rainout_per_cell,
@@ -95,16 +96,16 @@ pub fn compute_precipitation(cfg: &TerrainConfig, grid: &Grid, h: &[f64], wind: 
             let (mut x, mut y) = (x0, y0);
             while x >= 0 && y >= 0 && x < w && y < hh {
                 let i = (y * w + x) as u32;
-                let hc = h[i as usize].max(sea);
+                let hc = num::max(h[i as usize], sea);
                 let air_prev = air_h;
                 air_h += ema_alpha * (hc - air_h);
                 if h[i as usize] < sea {
                     humidity += evap * (HUMIDITY_CAPACITY - humidity);
                     out.push((i, convective * humidity));
                 } else {
-                    let lift = (air_h - air_prev).max(0.0);
+                    let lift = num::max(air_h - air_prev, 0.0);
                     let rainout = convective + oro_per_100m * (lift / 100.0);
-                    let p = (rainout * humidity).min(humidity);
+                    let p = num::min(rainout * humidity, humidity);
                     humidity -= p;
                     out.push((i, p));
                 }
@@ -180,7 +181,7 @@ pub fn compute_temperature(cfg: &TerrainConfig, grid: &Grid, h: &[f64]) -> Vec<f
             let (x, y) = grid.xy(i);
             let u = (x as f64 + 0.5) / w;
             let v = (y as f64 + 0.5) / hh;
-            let elev = (h[i as usize] - sea).max(0.0);
+            let elev = num::max(h[i as usize] - sea, 0.0);
             cfg.t_sea_level_c - cfg.lapse_c_per_km * elev / 1000.0
                 + cfg.t_meridional_delta_c * (v - 0.5)
                 + 0.6 * noise::fbm(s_noise, u * 8.0, v * 8.0, 3)

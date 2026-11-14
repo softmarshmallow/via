@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "height base = 2 * x + y, a plane falling at a bearing on no post line; derive.descend from (4, 4) runs straight down the plane, crossing cell sides between posts: (4, 4), (3, 3.5), (2, 3), (1, 2.5), (0, 2), end edge."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# derived.md 4.2: the triangle west-south-west of (4, 4), split by the (i, j)-(i+1, j+1)
+# diagonal, falls at sqrt(5) per metre, steeper than any of the post's six sides (2 to the west,
+# 3/sqrt(2) along the diagonal), and its gradient (-2, -1) points strictly inside it. The line
+# meets x = 3 at y = 3.5, a point that is no post; an eight-way walk would go (3, 3) or (3, 4).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.descend_0]
+code = "step.probe.descend_0"
+data = { points = [4000, 4000, 3000, 3500, 2000, 3000, 1000, 2500, 0, 2000], end = "edge", geometry = 1 }

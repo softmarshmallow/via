@@ -1,0 +1,52 @@
+format    = "via-case-1"
+summary   = "A returned file = ../x.npy; then a .npy of <f8 by numpy.save; then <f4 of shape (ny - 1, nx): protocol.output_file; then protocol.field_file twice."
+milestone = 2
+actions   = ["program", "trust", "escape", "to_f8", "f8", "to_short", "short"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.escape]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.escape.diag.file]
+code = "protocol.output_file"
+file = "step:gen/document.toml"
+line = 1
+
+[action.to_f8]
+replace = "world.toml"
+find    = '''mode = "escape"'''
+with    = '''mode = "f8"'''
+
+[action.f8]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.f8.diag.file]
+code = "protocol.field_file"
+file = "step:gen/document.toml"
+line = 1
+
+[action.to_short]
+replace = "world.toml"
+find    = '''mode = "f8"'''
+with    = '''mode = "short"'''
+
+[action.short]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.short.diag.file]
+code = "protocol.field_file"
+file = "step:gen/document.toml"
+line = 1

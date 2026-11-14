@@ -1,0 +1,19 @@
+name       = "order"
+extent     = [0, 0, 32, 16]
+resolution = 1
+include    = ["tiers"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = "= 0.2 * x"
+
+[feature.west]
+kind    = "padm"
+region  = [[2, 3], [12, 3], [12, 13], [2, 13]]
+max_cut = 0.5
+
+[feature.east]
+kind    = "padm"
+region  = [[18, 3], [28, 3], [28, 13], [18, 13]]
+max_cut = 0.5

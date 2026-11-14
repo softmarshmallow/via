@@ -1,0 +1,5 @@
+[asset.cube]
+file = "cube.gltf"
+pivot = "origin"
+up   = "+z"
+front = "-y"

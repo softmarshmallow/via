@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "build.md 11.2: a field edit that lifts the surface under a path and a point, their plans unchanged: the path is `changed` with key `points` and its new heights in `values.points`, the point is `moved` with its new `at`, both caused by the edited key."
+milestone = 2
+actions   = ["base", "lift"]
+
+# Heights count as features.json writes them (build.md 11.1: a point's `at` and a path's points
+# are [x, y, z] on the surface). Entries sort by table then name (11.2): feature lane, feature
+# mark, then field height. The surface is a constant 10, then 12, so every height is exact.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.lift]
+via         = ["build", "world.toml", "--change", "lift", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.lift.file.lane]
+path     = "build/w/changes.json"
+pointer  = "/entries/0"
+includes = { name = "lane", table = "feature", what = ["changed"], keys = ["points"] }
+
+[action.lift.file.lane_points]
+path     = "build/w/changes.json"
+pointer  = "/entries/0/after/values"
+includes = { points = [[2, 2, 12], [8, 6, 12], [14, 12, 12]] }
+
+[action.lift.file.lane_cause]
+path     = "build/w/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "field.height.base", in = "this" }
+
+[action.lift.file.mark]
+path     = "build/w/changes.json"
+pointer  = "/entries/1"
+includes = { name = "mark", table = "feature", what = ["moved"] }
+
+[action.lift.file.mark_at]
+path     = "build/w/changes.json"
+pointer  = "/entries/1/after"
+includes = { at = [4, 4, 12] }
+
+[action.lift.file.mark_cause]
+path     = "build/w/changes.json"
+pointer  = "/entries/1/causes/0"
+includes = { cause = "field.height.base", in = "this" }

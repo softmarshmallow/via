@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A returned feature with an unknown attribute, its step in a layer whose owner is land: doc.unknown_key at its line in step:<id>/document.toml, the chain naming the layer and land."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.unknown]
+code = "doc.unknown_key"
+file = "step:gen/document.toml"
+line = 4
+chain = [{ through = "layer", name = "shaping", owner = "land" }]

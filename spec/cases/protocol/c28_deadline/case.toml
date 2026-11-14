@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "A worker that sleeps past --step-deadline 2: protocol.deadline; no process remains."
+milestone = 2
+actions   = ["program", "trust", "build"]
+
+# The worker never answers, so $/cancelRequest goes unanswered and the cancel deadline kills it
+# (protocol.md 6.2: data.phase names the phase that missed).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--step-deadline", "2", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+pids_gone = "pids.txt"
+no_rerun = "the step sleeps past its deadline on every run"
+
+[action.build.diag.late]
+code = "protocol.deadline"
+data = { phase = "cancel" }

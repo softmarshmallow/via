@@ -1,0 +1,4 @@
+root = "models"
+
+[asset.cube]
+file = "cube.gltf"

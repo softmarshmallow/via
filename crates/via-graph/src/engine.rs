@@ -70,6 +70,14 @@ pub enum Cause {
     },
     /// Its key differs for none of the reasons above.
     Key,
+    /// A step whose static key equals the previous record's, whose stored trace no longer
+    /// matches: the first recorded read whose answer differs now.
+    Trace {
+        /// The read's method.
+        method: String,
+        /// The digest of its normalised request.
+        request: Digest,
+    },
     /// Its key equals the previous record's, but the store does not hold it.
     NotStored,
 }
@@ -85,6 +93,7 @@ impl Cause {
             Cause::Statements => "statements",
             Cause::Edge { .. } => "edge",
             Cause::Key => "key",
+            Cause::Trace { .. } => "trace",
             Cause::NotStored => "not stored",
         }
     }
@@ -479,6 +488,13 @@ impl Engine<'_> {
             if !self.gates_open && self.ungated_settled() {
                 self.gates_open = true;
                 self.has_error |= self.st.values().any(|s| s.failed);
+                let bad: std::collections::BTreeSet<NodeId> = self
+                    .st
+                    .iter()
+                    .filter(|(_, s)| s.failed || s.status == Some(Status::Skipped))
+                    .map(|(id, _)| id.clone())
+                    .collect();
+                self.plan.note_bad(&bad);
                 continue;
             }
             if self.world.is_none() && self.gates_open && self.non_last_settled() {
@@ -516,7 +532,9 @@ impl Engine<'_> {
             s.settled()
                 || s.phase == Phase::Last
                 || s.last
-                || s.def.as_ref().is_some_and(|d| d.gate.skip_on_error)
+                || s.def
+                    .as_ref()
+                    .is_some_and(|d| d.gate.skip_on_error || d.gate.traced)
         })
     }
 
@@ -556,12 +574,20 @@ impl Engine<'_> {
                 })
                 .collect()
         });
+        let step_reads: Option<BTreeMap<NodeId, Vec<Read>>> = in_last.then(|| {
+            self.st
+                .iter()
+                .filter(|(_, s)| s.status.is_some())
+                .filter_map(|(n, s)| s.step.as_ref().map(|so| (n.clone(), so.reads.clone())))
+                .collect()
+        });
         let defined = {
             let known = Known {
                 values: &values,
                 world: self.world.as_deref(),
                 has_error: self.has_error,
                 settled: settled.as_ref(),
+                step_reads: step_reads.as_ref(),
             };
             self.plan.define(id, &known)
         };
@@ -602,7 +628,7 @@ impl Engine<'_> {
         let Some(def) = s.def.clone() else {
             return false;
         };
-        if def.gate.skip_on_error && !self.gates_open {
+        if (def.gate.skip_on_error || def.gate.traced) && !self.gates_open {
             return false;
         }
         if def.found.iter().any(|d| d.severity() == Severity::Error) {
@@ -939,6 +965,11 @@ impl Engine<'_> {
     }
 
     fn settle(&mut self, id: &NodeId, out: Output, ms: u64, how: Settle) {
+        // A traced lint whose read reached a failed or skipped node: skipped, nothing kept.
+        if out.skipped {
+            self.skip(id);
+            return;
+        }
         let codec = self.plan.codec();
         let enc = encode_val(&out.value, codec);
         let Some(s) = self.st.get(id) else {
@@ -1231,6 +1262,59 @@ impl Engine<'_> {
         }
         if pn.key != s.key {
             return Cause::Key;
+        }
+        // A step's trace that no longer matches (5.1): its first read whose answer differs, in
+        // the trace the previous record names for this node; when it names none, in the first
+        // other stored trace by name. The trace this run has just added is never the one.
+        if def.step.is_some() {
+            if let Some(k) = s.key {
+                let mine = s.step.as_ref().and_then(|so| so.trace);
+                let named = prev.steps.get(id).and_then(|so| so.trace);
+                let mut stored = self.store.traces(&k);
+                stored.sort_by(|a, b| a.0.hex().cmp(&b.0.hex()));
+                let differs = |reads: &[Read]| {
+                    reads
+                        .iter()
+                        .find(|r| self.plan.answer(id, r) != Some(r.answer))
+                        .map(|r| Cause::Trace {
+                            method: r.method.clone(),
+                            request: r.request,
+                        })
+                };
+                if let Some(td) = named {
+                    let entry = stored
+                        .iter()
+                        .find(|(n, _)| *n == td)
+                        .and_then(|(_, b)| TraceEntry::decode(b));
+                    let found = match entry {
+                        Some(e) => differs(&e.reads),
+                        None => prev.steps.get(id).and_then(|so| {
+                            let reads: Vec<Read> = so
+                                .reads
+                                .iter()
+                                .filter(|r| r.method != "data")
+                                .cloned()
+                                .collect();
+                            differs(&reads)
+                        }),
+                    };
+                    if let Some(c) = found {
+                        return c;
+                    }
+                } else {
+                    for (name, bytes) in &stored {
+                        if Some(*name) == mine {
+                            continue;
+                        }
+                        let Some(entry) = TraceEntry::decode(bytes) else {
+                            continue;
+                        };
+                        if let Some(c) = differs(&entry.reads) {
+                            return c;
+                        }
+                    }
+                }
+            }
         }
         Cause::NotStored
     }

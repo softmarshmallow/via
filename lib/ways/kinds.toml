@@ -37,19 +37,74 @@ radius    = 21                             # the mask fades by 20; the ring (fie
 [kind.ford.defaults]
 grade = 0.25                              # the steepest approach, rise over run, from the ford's bed;
                                           # a feature may set its own
+beck_reach = 8                            # metres from a beck within which the beck's banks stand
 
 # The ford cuts any ground that stands above a slope of `grade` rising from its bed (the ground at
 # the ford, `under('mean')`), so the banks come down to the bed within 16 m; it never fills.
 #
-# Where the beck writes the ground, the ford must agree with it (authority.md 5 and 6). It reads
-# the ground the beck left (`v`) and keeps it wherever that lies below the slope, so it reads the
-# overlap itself rather than a copied distance: a wider beck or a changed bank moves the overlap
-# with it. lib/water's beck cuts its banks at `bank_grade` (0.2), below `grade`, so they lie under
-# the slope and the two agree; the approach is then no steeper than `bank_grade` within the beck's
-# reach and `grade` beyond it. A ford whose `grade` is below the beck's `bank_grade` would cut the
-# beck's bank: `authority.squeezed` or `authority.conflict` names both, and one of the two
-# decisions changes in text.
+# Where the beck writes the ground, the ford must agree with it (authority.md 5 and 6). Within
+# `beck_reach` of a beck (lib/water: its bank's cut has run out to the ground by `reach`, 7.5 m at
+# its defaults) the ford keeps the ground the beck left (`v`): the beck's banks are cut from the
+# ground beside them, so on a hillside the high bank stands at the hill's slope plus the beck's
+# `bank_grade`, which may be steeper than `grade`, and cutting it would make the two anchored
+# statements disagree. Past `beck_reach` the approach is no steeper than `grade`. A beck wider or
+# deeper than the defaults reaches further: give the ford a larger `beck_reach`, or
+# `authority.conflict` names both.
 [kind.ford.effect.approach]
 field = "role:surface"
-value = "= min(v, under('mean') + grade * d)"
+value = "= min(v, under('mean') + grade * d + 1000 * (1 - smoothstep(beck_reach, beck_reach + 2, dist('kind:beck', 40))))"
 mask  = "= 1 - smoothstep(16, 20, d)"
+
+# Roads and trails (M2, `vale`, `relief`, `massif`). A road is the valley's way: wider than a lane,
+# its bed smoothed along a longer run, and laid in both directions, cut through rises and built over
+# dips, since a road that only cuts follows every hollow of a valley floor. A trail is a path
+# trodden into the hillside: narrow, cut only, following the ground closely. A way that branches
+# from another ends at it by name (`starts_at = "valley_road"`, geometry.md 2.7); where a way meets
+# water a named thing owns the meeting, as the lane's ford does (R18).
+#
+# Road and lane keep trees off the bed and verges (`role:keep_out`, out past a crown's reach). A
+# trail keeps only its tread clear, to `width / 2 + 0.5`, fading by `width / 2 + 2`: it is walked
+# through trees, so crowns may meet over it, and a tree may stand 2 m from its line (asked by
+# `relief`). A world that wants the sky open over a trail writes a `road`, or a wood that ends short
+# of it.
+#
+# Keep clear of the edge (asked by `massif`). `smoothed_along(k)` reads the ground `k` metres along
+# the way on each side, so a way's line should stay `k` metres inside the world's extent: 40 m for a
+# road, 24 m for a lane, 8 m for a trail. Nearer, its smoothing window reads outside the field and
+# the bed is `formula.outside_field` at those nodes. A way that leaves the world ends on the extent's
+# outline, never runs along it.
+
+[kind.road]
+authority = "shaped"
+radius    = 16
+
+[kind.road.defaults]
+width  = 5                                # metres
+camber = 0.02                             # fall from the crown to each edge, per metre
+
+[kind.road.effect.bed]                    # a bed smoothed along the road, crowned across it, cut and filled
+field = "role:surface"
+value = "= smoothed_along(40) - camber * d"
+mask  = "= 1 - smoothstep(width / 2 + 1, width / 2 + 9, d)"   # the shoulders run out 9 m past the edge
+
+[kind.road.effect.verge]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"
+
+[kind.trail]
+authority = "shaped"
+radius    = 8
+
+[kind.trail.defaults]
+width = 2.2                               # metres
+
+[kind.trail.effect.bed]                   # trodden in: cut a little below the ground smoothed along it
+field = "role:surface"
+value = "= min(v, smoothed_along(8))"
+mask  = "= 1 - smoothstep(width / 2, width / 2 + 3, d)"
+
+[kind.trail.effect.verge]                 # a trail is walked through trees; only its tread is kept clear
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 2, d)"

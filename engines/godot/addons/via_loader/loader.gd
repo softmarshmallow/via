@@ -37,6 +37,9 @@ const WATER_COLOUR := Color(0.12, 0.3, 0.38, 0.85)
 ## WATER_COLOUR's alpha.
 const WATER_CLEAR := 0.3
 const WATER_THICKEN := 1.2
+## The least a dry post at the water's edge stands above the surface drawn there, metres
+## (_shore_level), so the edge always falls between posts.
+const SHORE_GAP := 0.02
 ## The `paths` option (build.md 15.1): a path feature drawn as a strip on the ground, until a world
 ## paints its ways. Its `width` attribute in metres when it has one, else PATH_WIDTH; raised
 ## PATH_LIFT over the ground mesh so it does not hide it; linear, as a pack colour is. Paths that
@@ -48,6 +51,8 @@ const PATH_LIFT := 0.04
 ## a round join of JOIN_SEGMENTS sides.
 const JOIN_TOLERANCE := 0.001
 const JOIN_SEGMENTS := 32
+## Degrees a path's line turns at a vertex beyond which its strip adds a disc there (_strip).
+const TURN_DISC := 30.0
 const OPTION_NAMES := ["diagnostics", "features", "fields", "paths", "water"]
 
 var diags := Diagnostics.new()
@@ -541,12 +546,17 @@ func _water_mesh(i0: int, j0: int, i1: int, j1: int) -> MeshInstance3D:
 
 
 func _shore_level(i: int, j: int, ground: float) -> float:
-	## A dry post at the water's edge: the mean water height of its wet neighbours (the eight
-	## around it, in the whole field, so chunks agree at their seams), never above its own ground.
-	## The surface runs on level under the bank and the ground mesh hides it, so the water's edge
-	## is where the bank meets the surface, not a quad's edge (build.md 15.1). A post with no wet
-	## neighbour keeps its own height.
+	## A dry post at the water's edge, always strictly below its own ground, so the water's edge
+	## crosses each quad edge from a wet post to it between the two posts, never on the post
+	## (build.md 15.1). Where the mean height of its wet neighbours (the eight around it, in the
+	## whole field, so chunks agree at their seams) lies at least SHORE_GAP below its ground, the
+	## surface runs on level under the bank at that mean, and the edge is where the bank meets it.
+	## Otherwise (a falling stream, whose upstream neighbours stand above this post's ground) it
+	## takes its ground less the wet neighbours' mean depth, at least SHORE_GAP: depth runs from
+	## +d at the wet post to -d here, so the edge falls about half way between them. A post with
+	## no wet neighbour keeps its own height.
 	var sum := 0.0
+	var deep := 0.0
 	var n := 0
 	for dj in [-1, 0, 1]:
 		for di in [-1, 0, 1]:
@@ -557,10 +567,14 @@ func _shore_level(i: int, j: int, ground: float) -> float:
 			var k := b * _nx + a
 			if _water[k] > _height[k]:
 				sum += _water[k]
+				deep += _water[k] - _height[k]
 				n += 1
 	if n == 0:
 		return ground
-	return minf(sum / n, ground)
+	var level := sum / n
+	if level <= ground - SHORE_GAP:
+		return level
+	return ground - maxf(deep / n, SHORE_GAP)
 
 
 func water_material() -> StandardMaterial3D:
@@ -571,6 +585,8 @@ func water_material() -> StandardMaterial3D:
 		_water_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_water_material.roughness = 0.25
 		_water_material.metallic_specular = 0.3
+		# Seen from below too: an eye under the surface sees water, never an empty pit.
+		_water_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return _water_material
 
 
@@ -623,7 +639,11 @@ func _asset_mesh_of(id: String) -> Mesh:
 		mesh = Primitives.mesh("box", bounds)       # a stand-in is a box of its bounds (assets.md 9)
 	elif a.get("source") == "primitive" and bounds.size() == 6:
 		mesh = Primitives.mesh(String(a.get("primitive", "")), bounds)
-	# A model's glTF (M2) and an engine-made asset have no mesh here; their rows are still held.
+	elif a.get("source") == "model":
+		mesh = _model_mesh(a)
+		_asset_mesh[id] = mesh
+		return mesh   # drawn with the model's own materials
+	# An engine-made asset has no mesh here; its rows are still held.
 	_asset_mesh[id] = mesh
 	if mesh != null:
 		var mat := ShaderMaterial.new()
@@ -632,6 +652,77 @@ func _asset_mesh_of(id: String) -> Mesh:
 		mat.set_shader_parameter("colour", Color(c[0], c[1], c[2]))
 		_asset_material[id] = mat
 	return mesh
+
+
+func _model_mesh(a: Dictionary) -> Mesh:
+	## A model asset's mesh (build.md 7): its first file read as glTF from the pack's root, every
+	## surface's vertices taken by `to_asset` from the file's node space to the asset frame, then
+	## to Godot's axes. Null, with load.bad_file, when the file is missing or unreadable.
+	var files: Array = a.get("files", [])
+	if files.is_empty() or not files[0] is Dictionary:
+		return null
+	var rel := String(files[0].get("path", ""))
+	var root := _pack_root()
+	var path := root + "/" + rel
+	if root == "" or not FileAccess.file_exists(path):
+		_bad_file("pack:" + rel, "missing" if root != "" else "the manifest's pack_root is null and no pack directory was given")
+		return null
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	if doc.append_from_file(path, state) != OK:
+		_bad_file("pack:" + rel, "not glTF Godot reads")
+		return null
+	var scene: Node = doc.generate_scene(state)
+	if scene == null:
+		_bad_file("pack:" + rel, "no scene")
+		return null
+	var m: Array = a.get("to_asset", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0])
+	var out := ArrayMesh.new()
+	_add_model_surfaces(scene, Transform3D.IDENTITY, m, out)
+	scene.free()
+	return out if out.get_surface_count() > 0 else null
+
+
+static func _to_godot(m: Array, v: Vector3, translate: bool) -> Vector3:
+	## `to_asset` (3 by 4, row by row) on a point (or a direction), then the world frame to Godot.
+	var t := 1.0 if translate else 0.0
+	var x: float = m[0] * v.x + m[1] * v.y + m[2] * v.z + m[3] * t
+	var y: float = m[4] * v.x + m[5] * v.y + m[6] * v.z + m[7] * t
+	var z: float = m[8] * v.x + m[9] * v.y + m[10] * v.z + m[11] * t
+	return g(x, y, z)
+
+
+func _add_model_surfaces(node: Node, parent: Transform3D, m: Array, out: ArrayMesh) -> void:
+	var xf := parent
+	if node is Node3D:
+		xf = parent * (node as Node3D).transform
+	if node is MeshInstance3D and (node as MeshInstance3D).mesh != null:
+		var src: Mesh = (node as MeshInstance3D).mesh
+		for si in src.get_surface_count():
+			var arrays := src.surface_get_arrays(si)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			for k in verts.size():
+				verts[k] = _to_godot(m, xf * verts[k], true)
+			arrays[Mesh.ARRAY_VERTEX] = verts
+			if arrays[Mesh.ARRAY_NORMAL] is PackedVector3Array:
+				var nrm: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+				for k in nrm.size():
+					nrm[k] = _to_godot(m, xf.basis * nrm[k], false).normalized()
+				arrays[Mesh.ARRAY_NORMAL] = nrm
+			arrays[Mesh.ARRAY_TANGENT] = null
+			# A turn of axes may flip the winding: keep the faces' fronts outward.
+			var det := Basis(Vector3(m[0], m[4], m[8]), Vector3(m[1], m[5], m[9]), Vector3(m[2], m[6], m[10])).determinant()
+			if det < 0.0 and arrays[Mesh.ARRAY_INDEX] is PackedInt32Array:
+				var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+				for k in range(0, idx.size() - 2, 3):
+					var tmp := idx[k + 1]
+					idx[k + 1] = idx[k + 2]
+					idx[k + 2] = tmp
+				arrays[Mesh.ARRAY_INDEX] = idx
+			out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			out.surface_set_material(out.get_surface_count() - 1, src.surface_get_material(si))
+	for c in node.get_children():
+		_add_model_surfaces(c, xf, m, out)
 
 
 func _multimesh(asset: String, first: int, count: int, cols: Dictionary) -> MultiMeshInstance3D:
@@ -658,19 +749,29 @@ func _multimesh(asset: String, first: int, count: int, cols: Dictionary) -> Mult
 	return mmi
 
 
+static func collision_of(a: Dictionary):
+	## What an asset collides as: its `collision` fact (assets.md 2.4, M2), else the M1 convention
+	## `params.collision`; null for none. `none` and any other word make no body.
+	var kind = a.get("collision")
+	if kind == null:
+		var params = a.get("params", {})
+		kind = params.get("collision") if params is Dictionary else null
+	return kind if kind in ["box", "hull", "mesh"] else null
+
+
 func _bodies(node: Node3D, asset: String, first: int, count: int, cols: Dictionary) -> void:
-	## Collision from the asset's params by the loader's convention (assets.md 2.2): box from
-	## bounds, hull a convex shape, mesh a concave one, each on a StaticBody3D named after the
-	## instance. No params.collision, no body. The scale is put into the shape, not the body.
+	## Collision from the asset's record (collision_of): box from bounds, hull a convex shape,
+	## mesh a concave one, each on a StaticBody3D named after the instance. No collision, no
+	## body. The scale is put into the shape, not the body.
 	var a: Dictionary = _manifest.get("assets", {}).get(asset, {})
-	var params = a.get("params", {})
-	var kind = params.get("collision") if params is Dictionary else null
-	if not kind in ["box", "hull", "mesh"] or not cols.has("names"):
+	var kind = collision_of(a)
+	if kind == null or not cols.has("names"):
 		return
 	var bounds: Array = a.get("bounds", [])
 	if bounds.size() != 6:
 		return
-	var prim := "box" if a.get("stand_in", false) else String(a.get("primitive", ""))
+	var p = a.get("primitive")
+	var prim := "box" if a.get("stand_in", false) else (String(p) if p is String else "")
 	for k in count:
 		var n := first + k
 		var s: float = cols.scale[n]
@@ -847,17 +948,76 @@ func ground_at(x: float, y: float) -> float:
 	## the triangle of its quad that holds the point, each quad split from its south-west to its
 	## north-east post (_ground_mesh). Not bilinear: a strip draped on the bilinear surface sinks
 	## under the mesh wherever the quad's diagonal is a ridge.
+	return _on_mesh(_height, x, y)
+
+
+func has_ground() -> bool:
+	return not _height.is_empty()
+
+
+func ground_min() -> float:
+	## The lowest post of the ground; INF without one.
+	var m := INF
+	for h in _height:
+		m = minf(m, h)
+	return m
+
+
+func depth_at(x: float, y: float) -> float:
+	## Water above the ground at a plan point, read as the meshes draw both (ground_at); 0 where
+	## dry, and 0 when no water is drawn.
+	if _water.is_empty() or _height.is_empty():
+		return 0.0
+	return maxf(0.0, _on_mesh(_water, x, y) - _on_mesh(_height, x, y))
+
+
+func _on_mesh(a: PackedFloat32Array, x: float, y: float) -> float:
 	var fx := clampf((x - _x0) / _res, 0.0, _nx - 1.0)
 	var fy := clampf((y - _y0) / _res, 0.0, _ny - 1.0)
 	var i := mini(int(fx), _nx - 2)
 	var j := mini(int(fy), _ny - 2)
 	var ax := fx - i
 	var ay := fy - j
-	var sw := _h(i, j)
-	var ne := _h(i + 1, j + 1)
+	var at := func(p: int, q: int) -> float: return a[clampi(q, 0, _ny - 1) * _nx + clampi(p, 0, _nx - 1)]
+	var sw: float = at.call(i, j)
+	var ne: float = at.call(i + 1, j + 1)
 	if ax >= ay:   # sw, se, ne
-		return sw + ax * (_h(i + 1, j) - sw) + ay * (ne - _h(i + 1, j))
-	return sw + ay * (_h(i, j + 1) - sw) + ax * (ne - _h(i, j + 1))   # sw, nw, ne
+		var se: float = at.call(i + 1, j)
+		return sw + ax * (se - sw) + ay * (ne - se)
+	var nw: float = at.call(i, j + 1)
+	return sw + ay * (nw - sw) + ax * (ne - nw)   # sw, nw, ne
+
+
+func solid_without_body() -> Array:
+	## Each instance of a `solid` asset (assets.md 2.4) that collides as nothing: { "name", "plan" },
+	## its footprint in plan metres, placed by its transform (build.md 8). The walker reports one
+	## it walks through, since the core keeps things off it while the engine lets a body pass.
+	var out: Array = []
+	var cols := _instance_columns()
+	if not cols.has("names"):
+		return out
+	var assets: Dictionary = _manifest.get("assets", {})
+	for chunk in _manifest.get("chunks", []):
+		var groups: Dictionary = chunk.get("instances", {})
+		for asset in groups:
+			var a: Dictionary = assets.get(asset, {})
+			if a.get("solidity", "solid") != "solid" or collision_of(a) != null:
+				continue
+			var fp: Array = a.get("footprint", [])
+			if fp.size() < 3:
+				continue
+			var r: Array = groups[asset]
+			for k in int(r[1]):
+				var n := int(r[0]) + k
+				var b := deg_to_rad(float(cols.face[n]) / 1000.0)   # clockwise from north
+				var s: float = cols.scale[n]
+				var o := Vector2(cols.x[n] / 1000.0, cols.y[n] / 1000.0)
+				var plan := PackedVector2Array()
+				for p in fp:
+					var v := Vector2(float(p[0]), float(p[1])) * s
+					plan.append(o + Vector2(v.x * cos(b) + v.y * sin(b), -v.x * sin(b) + v.y * cos(b)))
+				out.append({"name": cols.names[n], "plan": plan})
+	return out
 
 
 static func across_count(width: float, res: float) -> int:
@@ -868,39 +1028,58 @@ static func across_count(width: float, res: float) -> int:
 
 
 func _strip(points: Array, width: float, joins: Array = []) -> ArrayMesh:
-	## A strip along the polyline, sampled every half post spacing along and at most one post
-	## spacing across (across_count), each vertex on the ground mesh (ground_at) plus PATH_LIFT.
-	## Across, the strip is perpendicular to the segment it lies on; at a vertex it takes the mean
-	## of the two segments' directions. Each of `joins`, [point, radius], adds a disc there.
+	## A strip along the polyline, sampled every half post spacing of arc length and at most one
+	## post spacing across (across_count), each vertex on the ground mesh (ground_at), raised by
+	## the most the ground mesh rises over any ribbon triangle it is a corner of (_rise_over), plus
+	## PATH_LIFT. Across, each cross-section is perpendicular to the line's direction over a window
+	## of half the width on either side, so a turn made of short segments (a found course's kink)
+	## is spread over the strip's own width and the cross-sections inside it do not cross. A
+	## cross-section whose inner end would fall behind the one before keeps the one before's
+	## direction. At a vertex where the line turns by more than TURN_DISC degrees a round disc of
+	## half the width covers the corner. Each of `joins`, [point, radius], adds a disc there.
 	var line: Array[Vector2] = []
 	for p in points:
-		line.append(Vector2(float(p[0]), float(p[1])))
+		var q := Vector2(float(p[0]), float(p[1]))
+		if line.is_empty() or line[-1] != q:
+			line.append(q)
+	var cum: Array[float] = [0.0]
+	for k in range(1, line.size()):
+		cum.append(cum[-1] + (line[k] - line[k - 1]).length())
+	var total: float = cum[-1]
 	var step := _res * 0.5
 	var at: Array[Vector2] = []
 	var dirs: Array[Vector2] = []
-	for k in line.size() - 1:
-		var a := line[k]
-		var b := line[k + 1]
-		var d := b - a
+	var n := maxi(1, ceili(total / step))
+	var half := maxf(width * 0.5, step)
+	for s in n + 1:
+		var u := total * float(s) / n
+		at.append(_along(line, cum, u))
+		var d := _along(line, cum, minf(total, u + half)) - _along(line, cum, maxf(0.0, u - half))
 		if d.length() == 0.0:
-			continue
-		var n := maxi(1, ceili(d.length() / step))
-		for s in n:
-			at.append(a + d * (float(s) / n))
-			dirs.append(d.normalized())
-	at.append(line[-1])
-	dirs.append(dirs[-1] if not dirs.is_empty() else Vector2.RIGHT)
+			d = (line[-1] - line[0]) if line.size() > 1 else Vector2.RIGHT
+		dirs.append(d.normalized() if d.length() > 0.0 else Vector2.RIGHT)
+	# Keep each cross-section from passing the one before it on either side.
+	for r in range(1, at.size()):
+		var prev_side := Vector2(-dirs[r - 1].y, dirs[r - 1].x) * width * 0.5
+		var side := Vector2(-dirs[r].y, dirs[r].x) * width * 0.5
+		for sg in [-1.0, 1.0]:
+			var q0: Vector2 = at[r - 1] + prev_side * sg
+			var q1: Vector2 = at[r] + side * sg
+			if (q1 - q0).dot(dirs[r - 1]) < 0.0:
+				dirs[r] = dirs[r - 1]
+				side = prev_side
 	var across := across_count(width, _res)
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var plan: Array[Vector2] = []
+	var zs := PackedFloat32Array()
 	for r in at.size():
 		var d := dirs[r]
-		if r > 0 and dirs[r - 1] != d:
-			d = (dirs[r - 1] + d).normalized()
 		var side := Vector2(-d.y, d.x)
 		for c in across:
 			var q := at[r] + side * width * (float(c) / (across - 1) - 0.5)
-			verts.append(g(q.x, q.y, ground_at(q.x, q.y) + PATH_LIFT))
+			plan.append(q)
+			zs.append(ground_at(q.x, q.y))
 			normals.append(Vector3.UP)
 	var idx := PackedInt32Array()
 	for r in at.size() - 1:
@@ -910,8 +1089,30 @@ func _strip(points: Array, width: float, joins: Array = []) -> ArrayMesh:
 			var e := a + across
 			var f := e + 1
 			idx.append_array([a, e, b, b, e, f])
+	# The ribbon's vertices are not the ground mesh's posts: where the ground bends between them
+	# (a road's camber, a cut's edge) it can stand above a flat ribbon triangle. Each vertex is
+	# raised by the most the ground rises over any triangle it is a corner of, then PATH_LIFT.
+	var lift := PackedFloat32Array()
+	lift.resize(plan.size())
+	for t in range(0, idx.size(), 3):
+		var k0 := idx[t]
+		var k1 := idx[t + 1]
+		var k2 := idx[t + 2]
+		var rise := _rise_over(plan[k0], plan[k1], plan[k2], zs[k0], zs[k1], zs[k2])
+		for k in [k0, k1, k2]:
+			lift[k] = maxf(lift[k], rise)
+	for k in plan.size():
+		verts.append(g(plan[k].x, plan[k].y, zs[k] + lift[k] + PATH_LIFT))
+	for k in range(1, line.size() - 1):
+		var d0 := (line[k] - line[k - 1]).normalized()
+		var d1 := (line[k + 1] - line[k]).normalized()
+		if rad_to_deg(absf(d0.angle_to(d1))) > TURN_DISC:
+			_disc(verts, normals, idx, line[k], width * 0.5)
 	for j in joins:
 		_disc(verts, normals, idx, j[0], j[1])
+	# A strip or a disc near the world's edge would hang past it, over nothing: what lies past the
+	# extent is brought onto its edge.
+	verts = _to_extent(verts)
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
@@ -920,6 +1121,67 @@ func _strip(points: Array, width: float, joins: Array = []) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+
+
+func _to_extent(verts: PackedVector3Array) -> PackedVector3Array:
+	## `verts` with every vertex that lies past the world's extent in plan (Godot X is x, -Z is y)
+	## moved onto its edge, at the same height over the ground there. The strip's rows and the
+	## discs' rings keep their order, so a strip or disc that reaches past the edge ends along it.
+	if _nx < 2 or _ny < 2:
+		return verts
+	var lo := Vector2(_x0, _y0)
+	var hi := Vector2(_x0 + (_nx - 1) * _res, _y0 + (_ny - 1) * _res)
+	var out := verts.duplicate()
+	for k in out.size():
+		var v := out[k]
+		var q := Vector2(v.x, -v.z)
+		var c := q.clamp(lo, hi)
+		if c != q:
+			var over := v.y - ground_at(q.x, q.y)
+			out[k] = g(c.x, c.y, ground_at(c.x, c.y) + over)
+	return out
+
+
+func _rise_over(p0: Vector2, p1: Vector2, p2: Vector2, z0: float, z1: float, z2: float) -> float:
+	## The most the ground mesh stands above the flat triangle (p0, p1, p2) at heights (z0, z1, z2),
+	## 0 when it stands nowhere above: sampled at the triangle's centre, at quarters along each
+	## edge (where the mesh's quad edges and diagonals cross it), and at every ground post inside
+	## it, where a bend of the ground mesh peaks.
+	var den := (p1.y - p2.y) * (p0.x - p2.x) + (p2.x - p1.x) * (p0.y - p2.y)
+	if absf(den) < 1e-12:
+		return 0.0
+	var plane := func(q: Vector2) -> float:
+		var w0 := ((p1.y - p2.y) * (q.x - p2.x) + (p2.x - p1.x) * (q.y - p2.y)) / den
+		var w1 := ((p2.y - p0.y) * (q.x - p2.x) + (p0.x - p2.x) * (q.y - p2.y)) / den
+		return w0 * z0 + w1 * z1 + (1.0 - w0 - w1) * z2
+	var samples: Array[Vector2] = [(p0 + p1 + p2) / 3.0]
+	for e in [[p0, p1], [p1, p2], [p2, p0]]:
+		for f in [0.25, 0.5, 0.75]:
+			samples.append((e[0] as Vector2).lerp(e[1], f))
+	var lo := Vector2(minf(p0.x, minf(p1.x, p2.x)), minf(p0.y, minf(p1.y, p2.y)))
+	var hi := Vector2(maxf(p0.x, maxf(p1.x, p2.x)), maxf(p0.y, maxf(p1.y, p2.y)))
+	for j in range(ceili((lo.y - _y0) / _res), floori((hi.y - _y0) / _res) + 1):
+		for i in range(ceili((lo.x - _x0) / _res), floori((hi.x - _x0) / _res) + 1):
+			var q := Vector2(_x0 + i * _res, _y0 + j * _res)
+			var w0 := ((p1.y - p2.y) * (q.x - p2.x) + (p2.x - p1.x) * (q.y - p2.y)) / den
+			var w1 := ((p2.y - p0.y) * (q.x - p2.x) + (p0.x - p2.x) * (q.y - p2.y)) / den
+			if w0 >= 0.0 and w1 >= 0.0 and w0 + w1 <= 1.0:
+				samples.append(q)
+	var most := 0.0
+	for q in samples:
+		most = maxf(most, ground_at(q.x, q.y) - plane.call(q))
+	return most
+
+
+static func _along(line: Array[Vector2], cum: Array[float], u: float) -> Vector2:
+	## The point at arc length `u` along the polyline (`cum` its running lengths).
+	if line.size() == 1:
+		return line[0]
+	var k := cum.bsearch(u, true)
+	k = clampi(k, 1, line.size() - 1)
+	var seg: float = cum[k] - cum[k - 1]
+	var f := 0.0 if seg == 0.0 else clampf((u - cum[k - 1]) / seg, 0.0, 1.0)
+	return line[k - 1].lerp(line[k], f)
 
 
 func _disc(verts: PackedVector3Array, normals: PackedVector3Array, idx: PackedInt32Array, centre: Vector2, radius: float) -> void:

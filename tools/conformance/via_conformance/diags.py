@@ -188,6 +188,20 @@ def _agrees(exp: dict[str, Any], r: dict[str, Any]) -> bool:
             for dk, dv in v.items():
                 if dk not in data or not canon.values_equal(dv, data[dk]):
                     return False
+        elif k == "data_has":
+            data = r.get("data")
+            if not isinstance(data, dict) or any(n not in data or data[n] is None for n in v):
+                return False
+        elif k == "data_below":
+            data = r.get("data")
+            if not isinstance(data, dict):
+                return False
+            for lo, hi in v.items():
+                a, b = data.get(lo), data.get(hi)
+                if not all(isinstance(n, (int, float)) and not isinstance(n, bool) for n in (a, b)):
+                    return False
+                if not Fraction(a) < Fraction(b):
+                    return False
         elif k == "related":
             rel = r.get("related")
             if not isinstance(rel, list):

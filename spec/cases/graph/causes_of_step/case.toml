@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "graph.md 5.1 and 6.4: a feature placed `on = { of = <step> }` moves when the step's returned feature moves because a feature the step read moved; its change entry names that feature's moved key."
+milestone = 2
+actions   = ["program", "trust", "base", "moved"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "moved", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.check.mark]
+fn       = "entry_causes"
+path     = "build/w/changes.json"
+table    = "feature"
+prefix   = "mark"
+named    = ["feature.p.at"]

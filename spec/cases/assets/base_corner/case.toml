@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "A model with bounds [2, 3, 1] to [4, 5, 2] before the pivot, pivot = \"base_corner\": bounds [0, 0, 0, 2, 2, 1], origin [-2, -3, -1]."
+milestone = 2
+actions   = ["list"]
+
+[action.list]
+via         = ["pack", "list", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.list.file.bounds]
+stream  = "stdout"
+pointer = "/bounds"
+line    = 1
+value   = [0, 0, 0, 2, 2, 1]
+
+[action.list.file.origin]
+stream  = "stdout"
+pointer = "/origin"
+line    = 1
+value   = [-2, -3, -1]

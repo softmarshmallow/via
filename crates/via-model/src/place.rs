@@ -194,6 +194,9 @@ pub struct Placer<'a> {
     failed: BTreeSet<String>,
     pub diags: Vec<Diag>,
     cycles: BTreeSet<Vec<String>>,
+    /// Each `identity.near_none` said so far, by maker and class: its index in `diags` and the
+    /// selections it lists (`identity.md` 3: one record per maker and class).
+    near: BTreeMap<(String, String), (usize, Vec<String>)>,
 }
 
 fn pt(p: (i64, i64)) -> P {
@@ -253,6 +256,7 @@ impl<'a> Placer<'a> {
             failed: BTreeSet::new(),
             diags: Vec::new(),
             cycles: BTreeSet::new(),
+            near: BTreeMap::new(),
         }
     }
 
@@ -350,6 +354,39 @@ impl<'a> Placer<'a> {
                 if let Some(e) = &f.ends_at {
                     let p = self.end_point(&f.id, "ends_at", e)?;
                     v.push(p);
+                }
+                if let Some(cost) = f.route {
+                    // `route` (`derived.md` 3): the least-cost course through the written points,
+                    // over the cost in the head view; smoothed when `smooth` is written.
+                    let grid = self.d.grid?;
+                    let snapshot = self.out.clone();
+                    let fields = Fields::new(self.d, &snapshot, grid);
+                    let values = fields.eval_where(cost, &f.id);
+                    self.diags.extend(fields.diags.borrow().iter().cloned());
+                    let values = values?;
+                    return match crate::derived::route_path(&f.id, &grid, &values, &v, f.smooth) {
+                        Ok(points) => {
+                            let mut gd = Vec::new();
+                            let path = read_path(&f.id, &points, &mut gd);
+                            for g in gd {
+                                self.geom_fault("feature", &f.id, "route", g);
+                            }
+                            path.map(|p| Geo::Path {
+                                line: Line::new(p, false),
+                            })
+                        }
+                        Err(crate::derived::RouteFault::Raster(e)) => {
+                            self.diags.push(e.diag(
+                                Subject::entity("feature", f.id.clone()),
+                                Site::Key(KeyPath::key("route")),
+                            ));
+                            None
+                        }
+                        Err(crate::derived::RouteFault::Geom(e)) => {
+                            self.geom_fault("feature", &f.id, "smooth", e);
+                            None
+                        }
+                    };
                 }
                 let mut gd = Vec::new();
                 let path = read_path(&f.id, &v, &mut gd);
@@ -892,7 +929,7 @@ impl<'a> Placer<'a> {
                 match offset(id, &plan.footprint, i.margin, Join::Mitre(2.0)) {
                     Ok((r, _)) => {
                         let name = format!("{id}.ground");
-                        let line = (r.ring_count() == 1)
+                        let line = (r.pieces.len() == 1)
                             .then(|| Line::new(r.pieces[0].shell.clone(), true));
                         self.out
                             .shapes
@@ -939,7 +976,7 @@ impl<'a> Placer<'a> {
     fn follows_path(&mut self, f: &FeatureDecl, fl: &Follows) -> Option<Geo> {
         let reference = match self.spot("feature", &f.id, "follows", &fl.reference)? {
             Spot::Long(Geo::Path { line }) => Reference::Path(line.pts.clone()),
-            Spot::Long(Geo::Region { region, .. }) if region.ring_count() == 1 => {
+            Spot::Long(Geo::Region { region, .. }) if region.pieces.len() == 1 => {
                 Reference::Ring(region.pieces[0].shell.clone())
             }
             Spot::Long(Geo::Region { region, .. }) => {
@@ -1048,21 +1085,49 @@ impl<'a> Placer<'a> {
             ny: usize::try_from(grid.ny).ok()?,
         };
         let text = self.d.formulas.env.value(formula).unwrap_or("").to_string();
-        let region = match mask(mg, &values, &text, None) {
-            Ok((r, gd)) => {
-                for g in gd {
-                    self.geom_fault("feature", &f.id, "where", g);
+        let region = match f.holds {
+            // `holds` (`derived.md` 2): the one piece holding the point.
+            Some((x, y)) => {
+                match crate::derived::where_region(&grid, &values, &text, Some(P::new(x, y))) {
+                    Ok(found) => {
+                        for g in found.diags {
+                            let key = if matches!(
+                                g.code,
+                                via_geom::Code::DeriveDry | via_geom::Code::DeriveOpen
+                            ) {
+                                "holds"
+                            } else {
+                                "where"
+                            };
+                            self.geom_fault("feature", &f.id, key, g);
+                        }
+                        found.region
+                    }
+                    Err(e) => {
+                        self.geom_fault("feature", &f.id, "holds", e);
+                        return None;
+                    }
                 }
-                r
             }
-            Err(e) => {
-                self.geom_fault("feature", &f.id, "where", e);
-                return None;
-            }
+            None => match mask(mg, &values, &text, None) {
+                Ok((r, gd)) => {
+                    for g in gd {
+                        self.geom_fault("feature", &f.id, "where", g);
+                    }
+                    r
+                }
+                Err(e) => {
+                    self.geom_fault("feature", &f.id, "where", e);
+                    return None;
+                }
+            },
         };
+        if region.is_empty() {
+            return Some(Geo::Region { region, line: None });
+        }
         self.name_pieces(&f.id, &region, grid);
         let line =
-            (region.ring_count() == 1).then(|| Line::new(region.pieces[0].shell.clone(), true));
+            (region.pieces.len() == 1).then(|| Line::new(region.pieces[0].shell.clone(), true));
         Some(Geo::Region { region, line })
     }
 
@@ -1121,6 +1186,54 @@ impl<'a> Placer<'a> {
             &["on", "of"]
         };
         let near = pt(sel.near);
+        // A step's returned features (`identity.md` 2.4): the class `feature` of a maker that is
+        // a step, nearest `near`; ties to the bytewise-least name.
+        if self.d.steps.contains_key(&sel.of) {
+            if sel.class.as_deref().is_some_and(|c| c != "feature") {
+                self.near_none(&sel.of, sel.class.as_deref().unwrap_or(""), &[(top, id)]);
+                return None;
+            }
+            let prefix = format!("{}#", sel.of);
+            let ids: Vec<String> = self
+                .d
+                .features
+                .keys()
+                .filter(|k| k.starts_with(&prefix))
+                .cloned()
+                .collect();
+            let mut best: Option<(f64, String, Geo)> = None;
+            for f in ids {
+                let Some(g) = self.feature(&f) else { continue };
+                let d = if g.contains(near) {
+                    0.0
+                } else {
+                    g.project(near).d
+                };
+                if best.as_ref().is_none_or(|(b, _, _)| d < *b) {
+                    best = Some((d, f, g));
+                }
+            }
+            let Some((_, name, geo)) = best else {
+                self.near_none(&sel.of, "feature", &[(top, id)]);
+                return None;
+            };
+            let m = geo.project(near);
+            let at = P::new(
+                m.nearest.0.round_ties_even() as i64,
+                m.nearest.1.round_ties_even() as i64,
+            );
+            self.out
+                .selections
+                .insert(format!("{top}.{id}"), (name, at));
+            return Some(match geo {
+                Geo::Point { p, facing } => Spot::At {
+                    p,
+                    facing,
+                    end: false,
+                },
+                g => Spot::Long(g),
+            });
+        }
         let is_where = self
             .d
             .features
@@ -1228,7 +1341,7 @@ impl<'a> Placer<'a> {
             .selections
             .insert(format!("{top}.{id}"), (pc.name.clone(), pc.point));
         let line = Line::new(pc.region.pieces[0].shell.clone(), true);
-        let single = pc.region.ring_count() == 1;
+        let single = pc.region.pieces.len() == 1;
         Some(Spot::Long(Geo::Region {
             region: pc.region.clone(),
             line: single.then_some(line),
@@ -1240,23 +1353,42 @@ impl<'a> Placer<'a> {
     pub(crate) fn near_none(&mut self, maker: &str, class: &str, who: &[(&str, &str)]) {
         let top = if self.d.scatters.contains_key(maker) {
             "scatter"
+        } else if self.d.steps.contains_key(maker) {
+            "step"
         } else {
             "feature"
         };
-        let list: Vec<String> = who.iter().map(|(t, i)| format!("{t}.{i}")).collect();
-        self.diags.push(
-            text::at_header(
-                codes::identity::NEAR_NONE,
-                top,
-                maker,
-                &format!(
-                    "`{maker}` has no `{class}` to select; left with nothing: {}",
-                    list.join(", ")
-                ),
-                "select from a maker that makes that class, or change what it makes",
-            )
-            .with("selections", DValue::texts(list.iter().map(String::as_str))),
-        );
+        let key = (maker.to_string(), class.to_string());
+        let mut list = self.near.get(&key).map(|n| n.1.clone()).unwrap_or_default();
+        for (t, i) in who {
+            let s = format!("{t}.{i}");
+            if !list.contains(&s) {
+                list.push(s);
+            }
+        }
+        list.sort();
+        let d = text::at_header(
+            codes::identity::NEAR_NONE,
+            top,
+            maker,
+            &format!(
+                "`{maker}` has no `{class}` to select; left with nothing: {}",
+                list.join(", ")
+            ),
+            "select from a maker that makes that class, or change what it makes",
+        )
+        .with("selections", DValue::texts(list.iter().map(String::as_str)));
+        match self.near.get(&key).map(|n| n.0) {
+            Some(i) => self.diags[i] = d,
+            None => {
+                self.near
+                    .insert(key.clone(), (self.diags.len(), Vec::new()));
+                self.diags.push(d);
+            }
+        }
+        if let Some(n) = self.near.get_mut(&key) {
+            n.1 = list;
+        }
     }
 
     /// A clear's place (`identity.md` 4.3).

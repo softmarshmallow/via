@@ -6,8 +6,10 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct TerrainConfig {
     pub seed: u64,
-    /// Grid side length in cells (the grid is square).
+    /// Grid width in cells (columns).
     pub size: u32,
+    /// Grid height in cells (rows); 0 means `size`, a square grid.
+    pub rows: u32,
     /// Cell edge length in metres.
     pub cell_size_m: f64,
     /// Timestep in years (the implicit fluvial solve is unconditionally
@@ -70,6 +72,7 @@ impl Default for TerrainConfig {
         Self {
             seed: 42,
             size: 512,
+            rows: 0,
             cell_size_m: 200.0,
             // The explicit deposition pass bounds dt: G·U·dt must stay
             // small against valley relief or the erode/deposit splitting
@@ -111,26 +114,19 @@ impl Default for TerrainConfig {
 }
 
 impl TerrainConfig {
-    /// Load a config from a JSON file. Omitted fields take defaults
-    /// (`#[serde(default)]`), so experiment configs state only what they
-    /// change. The core carries no named presets: scale- or game-specific
-    /// parameter sets live outside the workspace crates, as files.
-    pub fn from_json_file(path: &std::path::Path) -> Result<Self, String> {
-        let bytes = std::fs::read(path)
-            .map_err(|e| format!("cannot read config {}: {e}", path.display()))?;
-        serde_json::from_slice(&bytes)
-            .map_err(|e| format!("cannot parse config {}: {e}", path.display()))
-    }
-
     /// A stage that cannot work with what it was given fails loudly
     /// (CONTRIBUTING) — but with a diagnosis, not a numeric symptom.
     pub fn validate(&self) -> Result<(), String> {
         let bad = |msg: &str| Err(format!("invalid terrain config: {msg}"));
-        if self.size < 16 {
-            return bad("size must be at least 16 cells");
-        }
-        if self.size > 16384 {
-            return bad("size above 16384 cells is not supported (memory)");
+        for (name, n) in [("size", self.size), ("rows", self.row_count())] {
+            if n < 16 {
+                return bad(&format!("{name} must be at least 16 cells"));
+            }
+            if n > 16384 {
+                return bad(&format!(
+                    "{name} above 16384 cells is not supported (memory)"
+                ));
+            }
         }
         if !(self.cell_size_m.is_finite() && self.cell_size_m > 0.0) {
             return bad("cell_size_m must be finite and positive");
@@ -199,6 +195,15 @@ impl TerrainConfig {
             return bad("airflow_smooth_m must be finite and positive");
         }
         Ok(())
+    }
+
+    /// Rows of the grid: `rows`, or `size` when it is 0.
+    pub fn row_count(&self) -> u32 {
+        if self.rows == 0 {
+            self.size
+        } else {
+            self.rows
+        }
     }
 
     pub fn cell_area_m2(&self) -> f64 {

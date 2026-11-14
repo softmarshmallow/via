@@ -1,0 +1,4 @@
+[instance.shed_overlapping]
+asset = "house_low"
+ground = "pad"
+on = { ref = "valley_road", t = 0.474, offset = 17 }

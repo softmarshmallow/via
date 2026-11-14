@@ -86,10 +86,8 @@ fn attr_text(v: &J) -> String {
 
 /// A fact's value as text, the form `out::fact_json` reads back.
 fn fact_text(v: &J) -> String {
-    match v {
-        J::Str(s) => s.clone(),
-        other => other.canonical(),
-    }
+    // As the model records a fact: JSON text (`build.md` 11.2).
+    v.canonical()
 }
 
 /// The facts of an asset the manifest writes (`assets.md` 7).

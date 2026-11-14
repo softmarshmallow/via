@@ -420,9 +420,7 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 name = "via-artifact"
 version = "0.1.0"
 dependencies = [
- "blake3",
- "serde",
- "serde_json",
+ "via-num",
 ]
 
 [[package]]
@@ -430,9 +428,11 @@ name = "via-cli"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "serde_json",
  "toml",
  "via-diag",
  "via-doc",
+ "via-expr",
  "via-geom",
  "via-graph",
  "via-model",
@@ -548,7 +548,12 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "tempfile",
+ "toml",
  "via-artifact",
+ "via-num",
+ "via-proto",
+ "via-step",
 ]
 
 [[package]]

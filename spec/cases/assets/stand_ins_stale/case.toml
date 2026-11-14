@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "Accepted; a declared sink then edited in the pack: via build --stand-ins gives asset.stand_in_stale, exit 1."
+milestone = 2
+actions   = ["accept", "sink", "stand_ins"]
+pending   = "`via build --stand-ins` is not built yet (assets.md 9)"
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.sink]
+write = "pack.toml"
+text  = "[asset.cube]\nfile = \"cube.gltf\"\nsink = 0.3\n"
+
+[action.stand_ins]
+via         = ["build", "world.toml", "--stand-ins", "--out", "build/stand"]
+exit        = 1
+out         = "build/stand"
+diagnostics = "includes"
+
+[action.stand_ins.diag.stale]
+code    = "asset.stand_in_stale"
+subject = "asset.cube"

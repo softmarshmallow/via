@@ -9,7 +9,7 @@ const Npy := preload("res://addons/via_loader/npy.gd")
 const CJson := preload("res://addons/via_loader/cjson.gd")
 const Primitives := preload("res://addons/via_loader/primitives.gd")
 
-const EXPECTED := 66
+const EXPECTED := 74
 var failed := 0
 var ran := 0
 var tests_dir := ""
@@ -24,6 +24,9 @@ func _initialize() -> void:
 	_after()
 	_colours()
 	_paths()
+	_staircase()
+	_edge_corner()
+	_sloping_channel()
 	_no_manifest()
 	_bad_format()
 	_options()
@@ -163,9 +166,17 @@ func _before() -> void:
 						n += 1
 			if n > 0:
 				shore += 1
-				shore_ok = shore_ok and is_equal_approx(z, minf(s / n, h[k])) and z <= h[k]
+				var deep := 0.0
+				for dj in [-1, 0, 1]:
+					for di in [-1, 0, 1]:
+						var a: int = i + di
+						var b: int = j + dj
+						if (di != 0 or dj != 0) and a >= 0 and b >= 0 and a < 97 and b < 81 and wf[b * 97 + a] > h[b * 97 + a]:
+							deep += wf[b * 97 + a] - h[b * 97 + a]
+				var want: float = s / n if s / n <= h[k] - Loader.SHORE_GAP else h[k] - maxf(deep / n, Loader.SHORE_GAP)
+				shore_ok = shore_ok and is_equal_approx(z, want) and z < h[k]
 	check("before: water at wet posts is the field's value", wet_ok)
-	check("before: water at the shore runs level under the bank", shore > 0 and shore_ok, "%d shore posts" % shore)
+	check("before: water at the shore runs under the bank, below every dry post's ground", shore > 0 and shore_ok, "%d shore posts" % shore)
 	# features, footprints, bookmarks, meetings
 	check("before: features as Path3D, Marker3D and polygon metadata", root.get_node("features/beck") is Path3D
 		and root.get_node("features/ford") is Marker3D and root.get_node("features/meadow").get_meta("polygon").size() == 1
@@ -239,6 +250,149 @@ func _colours() -> void:
 	root.free()
 
 
+func _sloping_channel() -> void:
+	# A beck three posts wide at 0.5 m (massif's), falling 0.3 m a post along its line, banks
+	# rising 0.04 m a post: each dry post beside the channel stands below the level of its wet
+	# neighbours. Its surface must still lie strictly below its own ground, so the water's edge
+	# crosses each quad edge from a wet post to it between the two posts, never on the post
+	# (build.md 15.1), and the edge does not follow the posts as a row of teeth.
+	var loader := Loader.new()
+	loader._nx = 9
+	loader._ny = 12
+	loader._res = 0.5
+	loader._x0 = 0.0
+	loader._y0 = 0.0
+	loader._height.resize(9 * 12)
+	loader._water.resize(9 * 12)
+	for j in 12:
+		for i in 9:
+			var base := 10.0 - 0.3 * j
+			var ground := base + 0.04 * absi(i - 4)
+			loader._height[j * 9 + i] = ground
+			loader._water[j * 9 + i] = base + 0.1 if absi(i - 4) <= 1 else ground
+	var mi: MeshInstance3D = loader._water_mesh(0, 0, 8, 11)
+	check("sloping channel: water drawn", mi != null)
+	if mi == null:
+		return
+	var arr := mi.mesh.surface_get_arrays(0)
+	var wv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var widx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	var used := {}
+	for k in widx:
+		used[k] = true
+	var dry := 0
+	var below := true
+	for k in used:
+		var h: float = loader._height[k]
+		if loader._water[k] > h:
+			continue
+		dry += 1
+		below = below and wv[k].y < h - 1e-4
+	check("sloping channel: every dry post of a drawn quad lies below its ground", dry > 0 and below, "%d dry posts" % dry)
+	# Along each drawn edge from a wet post to a dry one, the depth crosses zero strictly between
+	# the posts, and nowhere within a tenth of the way of the dry post.
+	var between := true
+	for t in range(0, widx.size(), 3):
+		for e in [[0, 1], [1, 2], [2, 0]]:
+			var p: int = widx[t + e[0]]
+			var q: int = widx[t + e[1]]
+			var dp: float = wv[p].y - loader._height[p]
+			var dq: float = wv[q].y - loader._height[q]
+			if (dp > 0.0) == (dq > 0.0):
+				continue
+			var f := dp / (dp - dq)
+			var to_dry := f if dq <= 0.0 else 1.0 - f
+			between = between and to_dry > 0.0 and to_dry < 0.9
+	check("sloping channel: the edge falls between posts, not on them", between)
+	mi.free()
+
+
+func _staircase() -> void:
+	# A found course's staircase: 0.2 m steps alternating east and north-east, then a 45-degree
+	# turn within half a metre, under a strip 5 m wide (massif's road). No triangle of the strip may
+	# turn over: every one keeps the winding of the first, seen from above.
+	var dir := tests_dir + "/fixture_build"
+	var loader := Loader.new()
+	var root := loader.make(dir, {})
+	if root == null:
+		check("staircase: loads", false, loader.option_error)
+		return
+	var x0: float = loader._x0 + 20.0
+	var y0: float = loader._y0 + 20.0
+	var pts: Array = []
+	var p := Vector2(x0, y0)
+	for k in 30:
+		pts.append([p.x, p.y])
+		p += Vector2(0.2, 0.0) if k % 2 == 0 else Vector2(0.15, 0.15)
+	for k in 20:
+		pts.append([p.x, p.y])
+		p += Vector2(0.0, 0.25)
+	pts.append([p.x, p.y])
+	var mesh: ArrayMesh = loader._strip(pts, 5.0)
+	var arr := mesh.surface_get_arrays(0)
+	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	var across := Loader.across_count(5.0, loader._res)
+	# The strip's rows: every half post spacing of the line's length, both ends included; its
+	# triangles come first in the index list, the corner discs after.
+	var length := 0.0
+	for k in range(1, pts.size()):
+		length += Vector2(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]).length()
+	var rows := maxi(1, ceili(length / (loader._res * 0.5))) + 1
+	var tris := (rows - 1) * (across - 1) * 2
+	var first := 0.0
+	var flipped := 0
+	for t in tris:
+		var a3 := v[idx[3 * t]]
+		var b3 := v[idx[3 * t + 1]]
+		var c3 := v[idx[3 * t + 2]]
+		# in plan, (x, y) = (X, -Z)
+		var cr := (b3.x - a3.x) * (a3.z - c3.z) - (a3.z - b3.z) * (c3.x - a3.x)
+		if first == 0.0:
+			first = signf(cr)
+		elif signf(cr) != first and absf(cr) > 1e-9:
+			flipped += 1
+	check("staircase: the strip has its rows", idx.size() >= 3 * tris and tris > 0, str([tris, idx.size() / 3]))
+	check("staircase: no triangle of the strip turns over", flipped == 0, "%d of %d" % [flipped, tris])
+	root.free()
+
+
+func _edge_corner() -> void:
+	# A path that starts on the world's south edge and turns sharply one metre in, within half its
+	# width of the edge (massif's valley_road at (314, 0)): no vertex of its strip or of the corner
+	# disc lies outside the extent, and the strip still covers the corner.
+	var dir := tests_dir + "/fixture_build"
+	var loader := Loader.new()
+	var root := loader.make(dir, {})
+	if root == null:
+		check("edge corner: loads", false, loader.option_error)
+		return
+	var x0: float = loader._x0
+	var y0: float = loader._y0
+	var x1: float = x0 + (loader._nx - 1) * loader._res
+	var y1: float = y0 + (loader._ny - 1) * loader._res
+	var cx := x0 + 0.5 * (x1 - x0)
+	var pts: Array = [[cx, y0], [cx, y0 + 1.0], [cx + 6.0, y0 + 4.5]]
+	var mesh: ArrayMesh = loader._strip(pts, 5.0)
+	var v: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var outside := 0
+	var worst := 0.0
+	for q in v:
+		var px := q.x
+		var py := -q.z
+		var d := maxf(maxf(x0 - px, px - x1), maxf(y0 - py, py - y1))
+		if d > 1e-4:
+			outside += 1
+			worst = maxf(worst, d)
+	check("edge corner: no path vertex outside the extent", outside == 0, "%d, by %.3f m" % [outside, worst])
+	var on_edge := false
+	for q in v:
+		if absf(-q.z - y0) < 1e-4 and absf(q.x - cx) < 2.6:
+			on_edge = true
+	check("edge corner: the strip reaches the edge it starts on", on_edge)
+	root.free()
+
+
 func _paths() -> void:
 	var dir := tests_dir + "/fixture_build"
 	var feats: Array = _json(dir + "/features.json").features
@@ -258,10 +412,39 @@ func _paths() -> void:
 		n >= 3 and n % 2 == 1 and float(west.attrs.width) / (n - 1) <= res + 1e-6, str([n, res]))
 	var p0: Array = west.points[0]
 	var mid := v[(n - 1) / 2]
-	check("paths: the strip runs from the lane's first point, on the ground plus the lift",
+	check("paths: the strip runs from the lane's first point, at least the lift over the ground",
 		is_equal_approx(mid.x, float(p0[0])) and is_equal_approx(-mid.z, float(p0[1]))
-		and is_equal_approx(mid.y, loader.ground_at(float(p0[0]), float(p0[1])) + Loader.PATH_LIFT), str(mid))
-	check("paths: as wide as the lane's width attribute", is_equal_approx(Vector2(v[0].x - v[n - 1].x, v[0].z - v[n - 1].z).length(), float(west.attrs.width)))
+		and mid.y >= loader.ground_at(float(p0[0]), float(p0[1])) + Loader.PATH_LIFT - 1e-5, str(mid))
+	# No ground post stands above the ribbon: at every post inside a ribbon triangle, and at its
+	# centre, the triangle is above the ground mesh.
+	var widx: PackedInt32Array = west_mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_INDEX]
+	var tris_w := (v.size() / n - 1) * (n - 1) * 2
+	var through := 0
+	for t in tris_w:
+		var a3 := v[widx[3 * t]]
+		var b3 := v[widx[3 * t + 1]]
+		var c3 := v[widx[3 * t + 2]]
+		var pa := Vector2(a3.x, -a3.z)
+		var pb := Vector2(b3.x, -b3.z)
+		var pc := Vector2(c3.x, -c3.z)
+		var den := (pb.y - pc.y) * (pa.x - pc.x) + (pc.x - pb.x) * (pa.y - pc.y)
+		if absf(den) < 1e-12:
+			continue
+		var qs: Array[Vector2] = [(pa + pb + pc) / 3.0]
+		for j in range(floori((minf(pa.y, minf(pb.y, pc.y)) - loader._y0) / res), ceili((maxf(pa.y, maxf(pb.y, pc.y)) - loader._y0) / res) + 1):
+			for i in range(floori((minf(pa.x, minf(pb.x, pc.x)) - loader._x0) / res), ceili((maxf(pa.x, maxf(pb.x, pc.x)) - loader._x0) / res) + 1):
+				qs.append(Vector2(loader._x0 + i * res, loader._y0 + j * res))
+		for q in qs:
+			var w0 := ((pb.y - pc.y) * (q.x - pc.x) + (pc.x - pb.x) * (q.y - pc.y)) / den
+			var w1 := ((pc.y - pa.y) * (q.x - pc.x) + (pa.x - pc.x) * (q.y - pc.y)) / den
+			if w0 < 0.0 or w1 < 0.0 or w0 + w1 > 1.0:
+				continue
+			if loader.ground_at(q.x, q.y) > w0 * a3.y + w1 * b3.y + (1.0 - w0 - w1) * c3.y + 1e-4:
+				through += 1
+	check("paths: no ground post stands above the ribbon", through == 0, "%d" % through)
+	# Measured a few rows in: the lane starts on the world's edge, where its first rows end along it.
+	var r4 := 4 * n
+	check("paths: as wide as the lane's width attribute", is_equal_approx(Vector2(v[r4].x - v[r4 + n - 1].x, v[r4].z - v[r4 + n - 1].z).length(), float(west.attrs.width)))
 	var pe: Array = west.points[-1]
 	var last := v[v.size() - n + (n - 1) / 2]
 	check("paths: the strip ends at the lane's last point", is_equal_approx(last.x, float(pe[0])) and is_equal_approx(-last.z, float(pe[1])), str(last))

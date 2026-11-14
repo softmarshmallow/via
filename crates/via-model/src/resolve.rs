@@ -35,6 +35,10 @@ pub enum View {
     Build,
     Head,
     NoFootprint,
+    /// The head view a generate step of layer rank `r` reads (`protocol.md` 1, its stratum): the
+    /// base and the rows of rank `r` or below, without the rows a step of rank `r` or above
+    /// returned (`<step>#<row>`), and no effect.
+    Stratum(i64),
 }
 
 /// A resolved field: one raster over the whole grid, or one per painted material.
@@ -379,9 +383,15 @@ impl<'a> Fields<'a> {
             let (ra, rb) = (&fd.rows[*a], &fd.rows[*b]);
             (ra.order, ra.rank, ra.id.as_bytes()).cmp(&(rb.order, rb.rank, rb.id.as_bytes()))
         });
+        if let View::Stratum(r) = view {
+            rows.retain(|i| {
+                let row = &fd.rows[*i];
+                row.rank <= r && !(row.id.contains('#') && row.rank >= r)
+            });
+        }
         let mut out: Vec<Entry> = rows.into_iter().map(Entry::Row).collect();
         let mut diags = Vec::new();
-        if view == View::Head {
+        if matches!(view, View::Head | View::Stratum(_)) {
             return (out, diags);
         }
         // Effects, by tier, then nesting, then (order, rank, place name, effect id).
@@ -600,7 +610,14 @@ impl<'a> Fields<'a> {
     fn report(&self, view: View, d: Diag) {
         // A fault is the build's to report; another view reports errors only (graph.md 3.4).
         if view == View::Build || d.severity() == via_diag::Severity::Error {
-            let tag = format!("{:?}{:?}{:?}", d.code(), d.subject(), d.site());
+            // A fault a kind's effect finds is reported once per feature it finds it on
+            // (`authority.md` 2.2: once per effect, feature and field), so the feature it names
+            // is part of what makes two records the same.
+            let per_feature = [codes::authority::MAX_CHANGE, codes::field::EFFECT_CUT]
+                .iter()
+                .any(|c| *d.code() == via_diag::DiagCode::Core(*c));
+            let feature = d.data().get("feature").filter(|_| per_feature);
+            let tag = format!("{:?}{:?}{:?}{:?}", d.code(), d.subject(), d.site(), feature);
             if self.reported.borrow_mut().insert(tag) {
                 self.push(d);
             } else {
@@ -608,7 +625,10 @@ impl<'a> Fields<'a> {
                 // (`formulas.md` 9, a fault inside a `let` read by two formulas).
                 let mut diags = self.diags.borrow_mut();
                 let same = diags.iter_mut().enumerate().find(|(_, o)| {
-                    o.code() == d.code() && o.subject() == d.subject() && o.site() == d.site()
+                    o.code() == d.code()
+                        && o.subject() == d.subject()
+                        && o.site() == d.site()
+                        && o.data().get("feature").filter(|_| per_feature) == feature
                 });
                 if let Some((i, o)) = same {
                     for r in d.related_list() {
@@ -1508,6 +1528,7 @@ impl Ctx<'_> {
     fn read_view(&self) -> View {
         match self.view {
             View::Head => View::Head,
+            View::Stratum(r) => View::Stratum(r),
             _ => View::Build,
         }
     }

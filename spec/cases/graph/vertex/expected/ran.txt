@@ -11,10 +11,14 @@ distance:beck/v:build/w:256.0.385.129
 distance:beck/v:build/w:256.128.385.257
 distance:beck/v:build/w:256.256.385.385
 distance:beck/v:build/w:256.384.385.513
+distance:cottage.ground/v:build/w:0.128.129.257
+distance:cottage.ground/v:build/w:0.256.129.385
 distance:cottage.ground/v:build/w:128.128.257.257
 distance:cottage.ground/v:build/w:128.256.257.385
 distance:ford/v:build/w:256.128.385.257
 distance:ford/v:build/w:256.256.385.385
+distance:kind:beck/v:build/w:256.128.385.257
+distance:kind:beck/v:build/w:256.256.385.385
 distance:lane_east/v:build/w:256.128.385.257
 distance:lane_east/v:build/w:256.256.385.385
 distance:lane_east/v:build/w:384.128.513.257
@@ -73,6 +77,7 @@ measure:height/v:build/lane_west.bed/*
 measure:water/v:build/beck.level/*
 merge
 rule:trees/v:build
+select:kind:beck/v:build
 shape:at_ford/v:build
 shape:beck/v:build
 shape:ford/v:build

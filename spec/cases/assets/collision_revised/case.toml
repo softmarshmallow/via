@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "Accepted; one asset's collision edited none to hull: asset.remodelled; no asset.revised; no instance moved in the change report; the build's asset record holds hull."
+milestone = 2
+actions   = ["accept", "base", "edit", "build"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+out         = "build/base"
+diagnostics = "includes"
+
+[action.edit]
+write = "pack.toml"
+text  = "[asset.cube]\nfile = \"cube.gltf\"\ncollision = \"hull\"\n"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+out         = "build/next"
+diagnostics = "includes"
+
+[action.build.diag.remodelled]
+code    = "asset.remodelled"
+subject = "asset.cube"
+
+[action.build.diag.revised]
+code    = "asset.revised"
+records = 0
+
+[action.build.check.unmoved]
+fn          = "changes_absent"
+path        = "build/next/changes.json"
+entry_names = ["a", "b"]
+
+[action.build.file.hull]
+path    = "build/next/manifest.json"
+pointer = "/assets/cube/collision"
+value   = "hull"

@@ -1,0 +1,7 @@
+# The pack swapped for packs/revised.toml: the same models, whose house and pine have had declared
+# facts revised since `via pack accept` wrote packs/revised.facts.toml. The build warns once per
+# revised asset, `asset.revised`, listing the old and new facts and every instance of it in this
+# build: the bothy for the house, each pine of the woods by its place name (assets.md 4.2).
+# `via build --fail-on asset.revised` makes the same build fail an unattended check.
+
+pack = "packs/revised.toml"            # relative to the world file, as every pack path (assets.md 1.2)

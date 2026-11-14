@@ -1,0 +1,17 @@
+name       = "derived"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= min(abs(x - 2) + abs(y - 4), abs(x - 6) + abs(y - 4))"
+
+[feature.lake]
+where = "= 1.5 - f('height')"
+holds = [2, 4]
+
+[feature.buoy]
+on = { ref = "lake", t = 0.25 }
+
+[change.east.feature.lake]
+holds = [6, 4]

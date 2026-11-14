@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "A URI Oak.png beside oak.png: doc.path_case, on every system."
+milestone = 2
+actions   = ["check"]
+
+[action.check]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check.diag.path_case]
+code    = "doc.path_case"
+subject = "asset.cube"
+data    = { pointer = "/images/0/uri" }

@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "graph.md 6.4, build.md 11.2: a scatter's density reads a field; the field's base changes to 0 and every tree is removed, each entry naming the field's base."
+milestone = 2
+actions   = ["base", "bare"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.bare]
+via         = ["build", "world.toml", "--change", "bare", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.bare.check.trees]
+fn       = "entry_causes"
+path     = "build/w/changes.json"
+table    = "instance"
+prefix   = "trees#"
+named    = ["field.grass.base"]

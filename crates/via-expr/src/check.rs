@@ -792,7 +792,7 @@ impl Compiler<'_> {
             }
             return Err(err);
         };
-        if func.milestone > 1 {
+        if func.milestone > 2 {
             return Err(ExprError::new(
                 doc::NOT_YET,
                 name_at,
@@ -1077,7 +1077,23 @@ impl Compiler<'_> {
             }
         };
         let at = self.at(frame, span.clone());
-        if s.contains('#') {
+        // In a returned document a name resolves first to the document's own keys (`protocol.md`
+        // 5, Names): `'eroded'` there is `'<step>#eroded'`.
+        let s = match self.env.scopes.get(&frame.formula) {
+            Some(step) if !s.contains('#') && !s.contains(':') => {
+                let own = format!("{step}#{s}");
+                if self.env.fields.contains(&own) || self.env.features.contains_key(&own) {
+                    own
+                } else {
+                    s
+                }
+            }
+            _ => s,
+        };
+        let produced = self.env.scopes.contains_key(&frame.formula)
+            && s.split_once('#')
+                .is_some_and(|(p, _)| self.env.scopes.get(&frame.formula).is_some_and(|q| q == p));
+        if s.contains('#') && !produced {
             return Err(ExprError::new(
                 identity::KEY_IN_TEXT,
                 at,
@@ -1335,6 +1351,7 @@ impl Compiler<'_> {
                         gain,
                         lacunarity,
                         seed,
+                        ridged: func.fun == Fun::Ridged,
                     },
                     Type::Number,
                     own,

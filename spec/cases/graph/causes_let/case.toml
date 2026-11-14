@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "graph.md 6.4, build.md 11.2: a field whose let reads a feature (dist) changes when the feature moves; its change entry names the feature's moved key."
+milestone = 2
+actions   = ["base", "moved"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "moved", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.check.height]
+fn       = "entry_causes"
+path     = "build/w/changes.json"
+table    = "field"
+prefix   = "height"
+named    = ["feature.spot.at"]

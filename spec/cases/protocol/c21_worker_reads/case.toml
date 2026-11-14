@@ -1,0 +1,54 @@
+format    = "via-case-1"
+summary   = "A worker reading height in a layer; edit a layer above it; then add a then row below it: not re-run; then re-run."
+milestone = 2
+actions   = ["program", "trust", "first", "move_above", "above", "row_below", "below"]
+
+# The kind `mark` has no effect, so moving `flag` in the layer above changes no answer in the step's
+# trace (protocol.md 4.4); the row below changes `height`.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+diagnostics = "includes"
+[action.first.nodes]
+ran_includes = ["step:look"]
+
+
+[action.move_above]
+replace = "top.toml"
+find    = "at   = [1, 1]"
+with    = "at   = [5, 5]"
+
+[action.above]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+diagnostics = "includes"
+[action.above.nodes]
+not_ran = ["step:look"]
+
+
+[action.row_below]
+replace = "world.toml"
+find    = "[layer.mid]"
+with    = """[field.height.then.lift]
+value = "= v + 1"
+
+[layer.mid]"""
+
+[action.below]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+diagnostics = "includes"
+[action.below.nodes]
+ran_includes = ["step:look"]

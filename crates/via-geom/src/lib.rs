@@ -23,6 +23,7 @@
 //! | [`follow`] | 3.5, a path along another feature |
 //! | [`cells`] | 3.6, cells along a frontage |
 //! | [`mask`] | 3.7, mask to regions |
+//! | [`hollow`] | `derived.md` 2, `holds`: the one piece holding a point |
 //! | [`triangulate`] | 3.10, triangulation for export |
 //! | [`names`] | identity.md 2: place keys of junctions, edges, areas, cells |
 //! | [`held`] | identity.md 4: pins and clears on a producer's instances |
@@ -38,6 +39,7 @@ pub mod curve;
 pub mod diag;
 pub mod follow;
 pub mod held;
+pub mod hollow;
 pub mod json;
 pub mod kernel;
 pub mod lineref;

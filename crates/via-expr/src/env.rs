@@ -74,6 +74,9 @@ pub struct Env {
     pub(crate) fields: BTreeSet<String>,
     /// Kind `let` names also given as attributes, in declaration order, for `formula.shadow`.
     duplicates: Vec<(String, String)>,
+    /// Formulas written in a step's returned document, by the step: a name in them resolves first
+    /// to the document's own keys, `<step>#<name>` (`protocol.md` 5, Names).
+    pub(crate) scopes: BTreeMap<FormulaId, String>,
 }
 
 impl Env {
@@ -91,6 +94,11 @@ impl Env {
             parsed,
         });
         id
+    }
+
+    /// Marks a registered formula as written in step `step`'s returned document.
+    pub fn scope(&mut self, id: FormulaId, step: &str) {
+        self.scopes.insert(id, step.to_string());
     }
 
     /// Registers a TOML number written in a formula key: a constant formula.

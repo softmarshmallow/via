@@ -1,0 +1,16 @@
+[taxon."building/house"]
+defaults = { max_relief = 0.6, collision = "hull" }
+
+[asset.cube]
+file   = "cube.gltf"
+taxon  = "building/house"
+tags   = ["landmark"]
+sink   = 0.2
+params = { tint = "red" }
+
+[asset.cube.mount.door]
+at = [0, 0.5]
+
+[asset.marker]
+primitive = "box"
+size      = [1, 1, 1]

@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "for_each = tag:x; then kind:x with no x feature: protocol.for_each_form; then graph.for_each_empty and the step did not run."
+milestone = 2
+actions   = ["program", "trust", "tag", "to_kind", "empty"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.tag]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.tag.diag.form]
+code = "protocol.for_each_form"
+subject = "step.gen"
+
+[action.to_kind]
+replace = "world.toml"
+find    = '''for_each = "tag:x"'''
+with    = '''for_each = "kind:none"'''
+
+[action.empty]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.empty.diag.empty]
+code = "graph.for_each_empty"
+subject = "step.gen"

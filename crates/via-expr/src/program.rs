@@ -106,6 +106,8 @@ pub enum Op {
         gain: usize,
         lacunarity: usize,
         seed: Seed,
+        /// `ridged` rather than `fbm` (`formulas.md` 8.2).
+        ridged: bool,
     },
     /// `f(field)`: selector index.
     Field(usize),

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A worker sends a blob whose bytes do not match its name: protocol.blob_digest."
+milestone = 2
+pending   = "needs a raw worker that names a blob by another digest; the SDK cannot be made to (conformance.md 3.3 has no such action)"
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.code]
+code = "protocol.blob_digest"

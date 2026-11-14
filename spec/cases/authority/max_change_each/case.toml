@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "Two pads of one kind on one slope, both past their max_change: authority.max_change once for each pad (once per effect, feature and field)."
+milestone = 2
+actions   = ["build"]
+
+# Each pad moves the ground by up to 1.0 at its edges, past its max_cut of 0.5. Both features share
+# the kind's `max_change` line; the record is per feature (authority.md 2.2), so two.
+
+[action.build]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.max_change]
+code    = "authority.max_change"
+records = 2

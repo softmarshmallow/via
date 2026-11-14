@@ -1,0 +1,3 @@
+[step.b]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/gen.py"]

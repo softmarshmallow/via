@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A frame over 16 MiB: protocol.message_too_large."
+milestone = 2
+pending   = "needs a raw worker that sends a frame over 16 MiB; the SDK sends large data as blobs"
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/w"]
+exit = 1
+out  = "build/w"
+
+[action.build.diag.code]
+code = "protocol.message_too_large"
