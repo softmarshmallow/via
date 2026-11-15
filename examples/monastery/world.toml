@@ -1,0 +1,163 @@
+name       = "monastery"
+extent     = [0, 0, 320, 320]               # metres: x east, y north
+resolution = 1                              # metres between posts
+seed       = 14
+include    = ["land", "water", "ways", "town", "review"]   # kinds as data; the core knows none of these words
+pack       = "starter"
+
+# A walled compound on a shelf above a gorge (docs/plan.md, M3), the spike's `monastery` rebuilt in
+# the v1 vocabulary on the new core. The mountainside rises north; a gorge with a stream in it runs
+# from the north edge to the south edge, widening at its head into a hollow a tarn fills. The road
+# comes in at the south edge east of the gorge and climbs in switchbacks to a stone bridge; past the
+# bridge a short approach runs west across the shelf to the compound's gate.
+#
+# The author writes the land (its rise, the shelf and the gorge, by the stream's line), the stream,
+# the tarn's point, the crossing's two ends on the stream, the road by what it connects and the
+# places it turns (R16), the compound as one region of lib/town's `enclosure` with its gate as a
+# point on the outline, and what stands inside. The tarn's level is found (lib/water's fill step),
+# the road's course is found over the land between its turns, the walls stand by the outline.
+#
+#   layers/compound.toml   rank 1: the hall, cells, gardens, lamps, paint, the views, the lints
+
+[layer.compound]
+file  = "layers/compound.toml"
+owner = "compound"
+rank  = 1
+
+[let]
+treeline = 70                               # metres: grass below, bare rock above
+
+# ------------------------------------------------------------------------------------------ fields
+
+# The land: 18 m at the south edge, rising 0.17 m a metre north and steepening into the mountain
+# from y = 235; a shelf round `shelf` (the compound's ground) where the rise is eased to 30 %; lumps.
+# The gorge is cut into it by the stream's line: inside `w` metres of the stream the ground is the
+# gorge's floor (`fl`, 8 m at the south edge, rising 0.15 m a metre), and the wall to the land above
+# is sheer, from one post to the next: a wall eased over a few metres is walked down obliquely,
+# along a row of posts nearly parallel to it (lib/review reach: `not_sealed` twice, at a smoothstep
+# over 3 m and over 0.6 m); at its head round `tarn_site` the floor widens and sinks 8 m into a hollow the tarn fills.
+# The gorge is written by its line, so moving the stream moves it (`dist('stream')` reads five
+# vertices: cheap).
+[field.height]
+role = "surface"
+base = "= if(dist('stream', 40) < w, min(g, fl), g)"
+
+[field.height.let]
+g  = "= 18 + 0.17 * y + 24 * smoothstep(235, 320, y) + 1.2 * fbm(60, 3, seed = 'lumps') - 0.7 * 0.17 * (y - 190) * (1 - smoothstep(50, 80, dist('shelf', 90)))"
+fl = "= 8 + 0.15 * y + 20 * smoothstep(235, 320, y) - 8 * (1 - smoothstep(4, 24, dist('tarn_site', 40)))"
+w  = "= 5 + 12 * (1 - smoothstep(8, 28, dist('tarn_site', 40)))"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                            # ways, decks, pads keep props off it (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.shelf]                             # the eased ground the compound stands on
+at = [100, 190]
+
+[feature.stream]                            # the gorge's stream, edge to edge (lib/water)
+kind       = "beck"
+width      = 3
+depth      = 1
+flow       = 0.3
+path       = [[196, 320], [198, 250], [202, 180], [206, 100], [204, 0]]
+
+[feature.tarn_site]                         # where the gorge's head widens; the tarn's hollow
+on = { ref = "stream", t = 0.2 }
+
+[feature.tarn]                              # derived: the fill step finds the level its hollow runs over at
+kind      = "tarn"
+at        = [198, 256]
+fence     = 30
+max_depth = 5
+freeboard = 0.3
+
+[step.fill]                                 # lib/water: each tarn filled to where its hollow runs over
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:water/fill.py"]
+
+# ------------------------------------------------------------------------------------------ the ways
+
+# The crossing (R18, lib/ways): its two ends stand on the gorge's rims, 14 m either side of the
+# stream, so it is square to the gorge and moves with it. It owns its deck and its two ends; the
+# road arrives at its start and the approach leaves from its end, by name. `deck_z` is the rims'
+# ground at its ends (`via eval --field height`).
+[feature.bridge_east]
+on = { ref = "stream", t = 0.39, offset = 14 }
+
+[feature.bridge_west]
+on = { ref = "stream", t = 0.39, offset = -14 }
+
+[feature.bridge]
+kind      = "crossing"
+starts_at = "bridge_east"
+ends_at   = "bridge_west"
+path      = []
+crosses   = "stream"
+width     = 5
+deck_z    = 51.3
+freeboard = 12                              # the water under the deck lies at the stream's level
+
+# The road: what it connects, by name (where it enters at the south edge, the bridge's start), and
+# the six places it turns (`path`, typed points: a path's waypoints take coordinates, not names);
+# the course between them is found over the land (R16, derived.md 3). The vocabulary cannot say
+# "climb from here to there at no more than 10 %": a route's cost is per post, the same whichever
+# way the course crosses it, so it cannot tell a climb across the slope from one straight up it (a
+# direction-aware cost is owed). The author places the turns so each leg climbs at about 6 %, and
+# measure.py reports the grade the build holds (expect.toml). Measured: with four turns (legs at
+# 8.5 %) the course bowed round the lumps and climbed 12.3 % for 102 m; with the spike's slope
+# weight (0.12) it kept to flat ground and then climbed. A light slope weight (0.02) keeps each leg
+# near its straight line. The cost rises within 8 m of the extent, or the first leg runs along the
+# south edge (an edge post's slope is read one-sided and is lower). Each leg is walked flat first,
+# then diagonally (a lattice walk), so the first two legs ran on top of each other at (256, 20)
+# until slice 4: the first turn is now at y = 12 and the second leg passes (240, 26), climbing at
+# once; (240, 26) is a place it passes, not a turn.
+[feature.road_entry]
+at = [292, 0]
+
+[feature.road_up]
+kind      = "road"
+width     = 4
+starts_at = "road_entry"
+ends_at   = "bridge.start"
+path      = [[228, 12], [240, 26], [300, 44], [228, 74], [300, 104], [228, 134], [300, 164]]
+route     = "= 1 + 0.02 * pow(slope('height'), 2) + 40 * (1 - smoothstep(3, 8, min(min(x, 320 - x), min(y, 320 - y))))"
+smooth    = true
+
+# The compound: one enclosure (lib/town), its outline starting at the gate's north jamb; the gate
+# is a point on the outline, so the wall's gap is where the gate stands.
+[feature.court]
+kind   = "enclosure"
+region = [[145, 196], [145, 220], [55, 220], [55, 160], [145, 160], [145, 190]]
+
+[feature.gate]
+kind = "gate"
+on   = { ref = "court", t = 0.99 }
+
+[feature.approach]                          # the last stretch, bridge to gate
+kind      = "road"
+width     = 4
+starts_at = "bridge.end"
+ends_at   = "gate"
+path      = []
+
+# ------------------------------------------------------------------------------------------ changes
+# Winter is a change, written inline (documents.md 6.5): `via build ... --change winter`. The
+# stream runs low and snow lies on everything not steep and not wet, but the road.
+
+[change.winter.feature.stream]
+flow = 0.05
+
+[change.winter.field.ground.then.snow]
+order = 3                                   # over every other row
+paint = "snow"
+mask  = "= (1 - smoothstep(30, 38, slope('height'))) * (1 - smoothstep(0.02, 0.1, f('water') - f('height')))"
+
+[change.winter.field.ground.then.road]      # the road stays trodden: drawn over the snow
+order = 4

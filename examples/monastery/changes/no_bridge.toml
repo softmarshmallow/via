@@ -1,0 +1,36 @@
+# Without the bridge: is it the only way over? The crossing is removed; the road ends on the east
+# rim and the approach starts on the west rim, where the bridge's ends stood. The reach lint then
+# states the hall, the gate and the well sealed from the road: if any is reached the gorge has a
+# way round, and `not_sealed` says where.
+[feature.bridge]
+remove = true
+
+[feature.road_up]
+ends_at = "bridge_east"
+
+[feature.approach]
+starts_at = "bridge_west"
+
+[step.reach.params]
+reach  = [
+  { profile = "walker", from = "road_entry", to = ["bridge_east"] },
+  { profile = "walker", from = "bridge_west", to = ["gate", "hall_door", "well"] },
+]
+sealed = [
+  { profile = "walker", from = "road_entry", to = ["bridge_west", "gate", "hall_door", "well", "gorge_floor"] },
+]
+
+# What named the bridge goes with it: the two views on it and its paint; the gorge's view stands on
+# the stream where the bridge stood and looks up the gorge.
+[feature.bm_bridge_end]
+remove = true
+
+[feature.bm_deck]
+remove = true
+
+[feature.bm_gorge]
+on     = { ref = "stream", t = 0.42 }
+toward = "look_tarn"
+
+[field.ground.then.deck]
+remove = true

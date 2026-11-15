@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "derived.md 3 step 6: a course found along the extent's edge and smoothed is held to the extent, so a kind effect reading the field along it (`smoothed_along`) reads no sample beyond it: exit 0, no formula.outside_field."
+milestone = 3
+actions   = ["build"]
+
+# Without the hold, the centripetal Catmull-Rom curve through (0, 7), (1, 8), (7, 8), (8, 7) rises
+# past y = 8 next to (1, 8) and (7, 8), and the bed fails with formula.outside_field (exit 1).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+# The row's second claim: every smoothed sample stays within the extent (y <= 8), and the written
+# waypoints stay where they are written. The smoothed curve turns gently and its samples are close,
+# so the turn and segment rules of course_valid hold with a small min_segment.
+[action.build.check.held]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "course"
+start       = [0, 7]
+end         = [8, 7]
+min_segment = 0.001
+within      = [0, 0, 8, 8]

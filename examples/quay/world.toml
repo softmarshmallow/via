@@ -104,6 +104,11 @@ when   = "lint"
 command = ["python", "-m", "viasdk", "lib:review/checks.py"]
 checks = ["streets"]
 
+[step.form]                                 # lib/review's street form (R15): the one definition of a
+when    = "lint"                            # dead end and an edge end (form.py), which measure.py reads
+command = ["python", "-m", "viasdk", "lib:review/form.py"]
+params  = { ways = ["main_street", "street"], meets = ["waterfront"], edges = ["old_town"], gates = ["gate"] }
+
 # lib/review's reach lint (reach.py): a walker's body, and the places it must reach from the quay's
 # head: every house's door, every view on land and the gate. The harbour's guide point must stay
 # out of a walker's reach. Every profile key is stated; the lint assumes no body.

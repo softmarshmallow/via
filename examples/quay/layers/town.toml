@@ -38,6 +38,10 @@ paint = "grass"
 paint = "flags"
 mask  = "= max(1 - smoothstep(5.0, 5.5, dist('kind:main_street', 8)), 1 - smoothstep(3.5, 4.0, dist('kind:street', 6)))"
 
+[field.ground.then.paved_apron]             # each terrace and the metre of apron it carries out
+paint = "flags"                             # to the footway: a door opens onto flags, not grass
+mask  = "= 1 - smoothstep(0, 0.5, dist('kind:terrace', 2))"
+
 [field.ground.then.street]                  # the carriageway, kerb to kerb
 paint = "setts"
 mask  = "= max(1 - smoothstep(3.0, 3.5, dist('kind:main_street', 8)), 1 - smoothstep(2.0, 2.5, dist('kind:street', 6)))"

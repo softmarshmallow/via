@@ -1,0 +1,189 @@
+# Layer `dress` (rank 2): growth, the player's map, the views and the checks. It reads the land and
+# the hamlet below it, and the `wet` field the moisture step returned there; nothing below reads
+# it, so an edit here re-runs no step below (graph.md 5.1).
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.cover]                               # where a wood would stand: wet ground, not steep, below
+tags = ["cover"]                            # the treeline, and not in the orchard or its margin
+base = "= smoothstep(0.25, 0.6, f('tag:wet') + 0.3 * fbm(70, 3, seed = 'wood')) * (1 - smoothstep(26, 34, slope('height'))) * (1 - smoothstep(treeline - 8, treeline, f('height'))) * smoothstep(8, 24, dist('orchard', 24))"
+
+[field.danger]                              # this project's own field, raised by its `lair` kind
+tags = ["danger"]                           # (lib/hollow); the game reads it, the engine does not
+base = "= 0"
+
+# ------------------------------------------------------------------------------------------ growth
+# Rules that lower to plain instances, each with a cause a reviewer can read (R5). A scatter's
+# density is multiplied by `1 - keep_out` by the engine itself (lanes, pads, water, plots).
+
+[scatter.woods]
+assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 1 }]
+spacing = 7
+density = "= f('cover')"
+scale   = [0.8, 1.3]
+
+[scatter.underbrush]                        # a taxon path picks every asset filed under it
+assets  = ["@plant/bush", "@plant/fern"]
+spacing = 4
+density = "= 0.4 * f('cover')"
+scale   = [0.7, 1.4]
+
+[scatter.orchard_trees]                     # close spacing, little jitter, full density inside an
+assets  = ["tree_oak"]                      # outline: planted rows
+spacing = 8
+jitter  = 0.1
+density = "= 1"
+within  = "orchard"
+scale   = [0.45, 0.55]
+
+[scatter.fallen_rock]                       # boulders gather at the crag's foot (its low side, sd below 0)
+assets  = [{ id = "rock_a", weight = 2 }, { id = "rock_b", weight = 1 }]
+spacing = 6
+density = "= 0.7 * smoothstep(-22, -6, sdist('crag', 30)) * (1 - smoothstep(-5, -1, sdist('crag', 30)))"
+scale   = [0.6, 1.5]
+
+# ------------------------------------------------------------------------------------------ the game's data
+# Kinds that change no field the land reads: their features and every attribute they write reach
+# the loader under the kind's `output` (build.md 9.2).
+
+[feature.wolf_ground]                       # this project's kind: raises `danger`, output `spawn_zone`
+kind      = "lair"
+creature  = "wolf"
+max_alive = 3
+region    = [[244, 208], [239.7, 219.5], [228, 227.9], [212, 231], [196, 227.9], [184.3, 219.5], [180, 208], [184.3, 196.5], [196, 188.1], [212, 185], [228, 188.1], [239.7, 196.5]]
+
+[feature.inn_sign]                          # lib/map: a name on the player's map
+kind  = "poi"
+on    = { ref = "green", t = 0.62, offset = 1 }
+label = "The Tarn Inn"
+
+[feature.crag_top]
+kind  = "poi"
+at    = [222, 232]
+label = "Wolf Crag"
+
+[feature.tarn_name]                         # on the shore the fill step found, wherever it turns out to be
+kind  = "poi"
+on    = { of = "fill", class = "feature", near = [70, 190], t = 0.3, offset = -3 }
+label = "The Tarn"
+
+# ------------------------------------------------------------------------------------------ views (R17)
+# Where the build is judged: from eye height at every meeting of two things. Each stands on the
+# meeting or a step off it, and looks at a place by name (`toward`), so it follows what it looks at.
+
+[feature.arrive]                            # the lane coming in from the west edge
+kind   = "bookmark"
+on     = { ref = "lane_west", t = 0.06 }
+toward = "church_foot"
+
+[feature.to_door]                           # lane and house: from the lane to a cottage's door
+kind   = "bookmark"
+on     = { ref = "lane_west", t = 0.18 }
+toward = "cottage_a.door"
+
+[feature.orchard_edge]                      # lane and orchard
+kind   = "bookmark"
+on     = { ref = "lane_west", t = 0.12, offset = -6 }
+toward = "orchard"
+
+[feature.church_turn]                       # lane and lane: the church path leaving the lane
+kind   = "bookmark"
+on     = { ref = "lane_west", t = 0.56, offset = -2 }
+toward = "church"
+
+[feature.on_green]                          # green and lane: across the green to the well and the inn
+kind   = "bookmark"
+on     = { ref = "green", t = 0.03, offset = 3 }
+toward = "well"
+
+[feature.lane_bridge]                       # lane and crossing: the lane arriving at the deck
+kind   = "bookmark"
+on     = { ref = "lane_west", t = 0.9 }
+toward = "bridge_east"
+
+[feature.under_bridge]                      # crossing and water: from the west bank, upstream of the deck
+kind   = "bookmark"
+on     = { ref = "beck", t = 0.52, offset = -4 }          # on the bank, inside its keep_out: at 7 m out
+                                            # a tree stood 2 m from the eye (`crowded_view`)
+toward = "footbridge"
+
+[feature.at_mill]                           # house and water: the mill across the beck
+kind   = "bookmark"
+on     = { ref = "beck", t = 0.43, offset = 9 }
+toward = "mill"
+
+[feature.tarn_shore]                        # land and water: across the tarn from its shore
+kind   = "bookmark"
+on     = { of = "fill", class = "feature", near = [70, 190], t = 0.02, offset = -2 }
+toward = "tarn"
+
+[feature.fields]                            # lane and plot: the barley from the lane
+kind   = "bookmark"
+on     = { ref = "lane_east", t = 0.7, offset = -4 }      # east of the farm, which hid the field nearer
+toward = "barley"
+
+[feature.east_row_view]                     # lane and row: the row of houses over the bridge
+kind   = "bookmark"
+on     = { ref = "lane_east", t = 0.45 }
+toward = "lane_east.end"
+
+[feature.under_crag]                        # cliff and land: at the crag's foot, among the fallen rock
+kind   = "bookmark"
+at     = [203, 209]
+toward = "crag_top"
+
+[feature.over]                              # plan view only: the whole hollow from the south-east
+kind       = "bookmark"
+at         = [240, 6]
+toward     = "green"
+eye_height = 120
+
+# ------------------------------------------------------------------------------------------ lints
+# Checks that run on the finished build and only report (R22). Codes are `step.<id>.<code>`.
+
+[step.checks]                               # lib/review: the measures beside the eye (R15)
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+
+[step.homes]                                # this project's own rule (tools/homes_near_lane.py)
+when    = "lint"
+command = ["python", "-m", "viasdk", "../tools/homes_near_lane.py"]
+params  = { assets = ["house_low", "house_wide", "house_row"], ways = ["lane"], max_m = 30 }
+
+# lib/review's reach lint: a walker's body, and what it must reach from where the lane comes in:
+# every house's door (the row's over the footbridge too), the meetings and the crag's top. The
+# tarn's point lies under deep water: no walker stands there.
+[step.reach]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach = [
+  { profile = "walker", from = "lane_west.start", to = [{ mount = "door", assets = ["@building/house"] }] },
+  { profile = "walker", from = "lane_west.start", to = ["church_foot", "bridge_east", "lane_east.end", "crag_top", "arrive", "to_door", "church_turn", "on_green", "lane_bridge", "under_bridge", "at_mill", "tarn_shore", "fields", "east_row_view", "under_crag"] },
+]
+sealed = [{ profile = "walker", from = "lane_west.start", to = ["tarn"] }]
+
+[step.reach.params.profiles.walker]         # metres; every key is stated, the lint assumes no body
+grade = 0.5                                 # about 27 degrees, a steep path
+step  = 0.2                                 # a stair's riser
+width = 0.6                                 # shoulders
+wade  = 0.3                                 # boots
+reach = 2                                   # a door's step, a view's few paces
+
+# ------------------------------------------------------------------------------------------ hand edits
+# A clear and a pin (R13), each an inline change in this layer: `--change clear_one`, `--change
+# pin_one`. They are written here, not as change files, because an entity a change file adds is
+# declared in layer `world`, and `world` may not name a scatter of this layer (`doc.upward_ref`);
+# which layer a change file's entities belong to is open (documents.md 6, "Which layer a change
+# file's added entities belong to"), and this world is the first that needs it (README, "Gaps").
+
+[change.clear_one.clear.crag_foot]          # the fallen rock within 10 m of a point under the crag
+at     = [205, 212]                         # goes, whatever the scatter does: `under_crag` looks
+radius = 10                                 # up an open slope
+by     = ["fallen_rock"]
+
+[change.pin_one.pin.shed]                   # a shed in the middle of the orchard: it stands whatever
+asset = "shed_gable"                        # the scatter does, and removes every orchard tree whose
+at    = [36, 60]                            # footprint it overlaps (identity.md 4.2)
+by    = ["orchard_trees"]

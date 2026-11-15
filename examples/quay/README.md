@@ -49,6 +49,19 @@ quayside are flagged, the wall face stone. Base: 123 houses on 74 of 135 lots (w
 
 ## Known faults (M3 slice 2 walk, 2026-11-15)
 
+- (s4 town pass) 8 `place.relief` in base: on a down street each house of a row is its own floor,
+  and the step under the party wall falls within one 0.5 m post cell of the footprint, so the
+  exact relief reads part of the neighbour's floor. A raised floor (`doors_off`) has no steps.
+- (s4 town pass) 60 of 135 lots still empty in base: by the frontage frame, 16 triangles, 4
+  quads and 36 polygons whose frontage and depth would hold a house but no rectangle stands inside
+  the outline (or the corner house falls in a cross street's keep_out), and 5 too shallow. A
+  shallower `fallback` asset (houses.py rule 2b, `house_low`) filled none: it is 8 m wide. A
+  corner house facing both streets is owed.
+- (s4 town pass) `move_hill`: `d105` now runs down from `s0` and ends on the main way where it
+  crosses it (streets.py step 6), a street of 23 m between the way's hairpin and s0.
+- Dead ends are lib/review/form.py's (`dead_end_count` 0, `edge_ends` 5 in base: ends on the
+  district's edge and at the gate are counted apart, form.py "Dead end and edge end").
+
 - (Fixed) Lots facing the quay beside a cross street were 12.4 m deep: the cross street's first
   station cut ran square across the quay's band (geometry.md 3.6 step 5 now stops a cut at the
   corner's bisector, case `cells_corner`). Base now has 52 houses, 9 of them fronting the quay.
@@ -67,7 +80,12 @@ quayside are flagged, the wall face stone. Base: 123 houses on 74 of 135 lots (w
   small zigzags `smooth` leaves.
 - `move_hill`: `s0` ends on the main way where the way runs along the contour, so the east half of
   the town has no streets, only lots along the way.
-- (quay-walk, 2026-11-15) Doors do not meet the footway: each row's terrace is level at its own
+- (Fixed, s4 town pass) Doors do not meet the footway: each terrace now stands at the footway's
+  height read 2.5 m out from its doors (houses.py rule 8), cut into steps where the footway climbs
+  more than 0.6 m, and carries a metre of flagged apron out to it; base 103 of 125 doors within
+  0.3 m of the ground 3 m out (`doors_level`, measure.py), 12 more than 1 m off: rows whose floor
+  rule 7 raised (up to 1.5 m) to keep the terrace's cut within `max_cut`, which have no front
+  steps yet. Was: each row's terrace is level at its own
   ground, not at the footway's, so 1 m out from the door the land already falls or rises 0.5 m and
   on the footway (3 m out) it is more than 1 m off the floor for 91 of 123 doors in base (59 above
   the street, 32 below; 10 within 0.3 m). On foot the doors stand over grass banks.

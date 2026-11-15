@@ -48,12 +48,19 @@ How it lays them (ours, written for this library):
    `cross` metres along it (offset by half a `cross` from its cross streets above), so streets end
    on the waterfront and the network nodes them there. Each ends exactly on the shore's line; one
    shorter than a metre or longer than `2 * spacing`, or whose start or middle lies outside the
-   district, or which passes
-   within `spacing / 2` of a main way (`ways`: the way already goes down there), is not laid. Named
-   `d<m>`, `m` the metres along that long street where it starts.
+   district, is not laid. One that crosses a main way (`ways`) ends on the way where it first
+   meets it (the network nodes the T), if that leaves it a metre or more and its start lies `join`
+   metres or more from every main way (not a cut across a way's own bend); one that passes within
+   `spacing / 2` of a main way without crossing it is not laid (the way already goes down there).
+   Named `d<m>`, `m` the metres along that long street where it starts.
 7. **Thinned.** Each long street is thinned to the points that stray more than 0.25 m from a
    straight line (Douglas and Peucker 1973) before its junction points are written into it.
-8. **Length.** Every street carries `length`, its path's length in metres (from the millimetre
+8. **Joined.** A street end that meets nothing (not another street, a main way, the shore, nor
+   the district's outline) and has another street or a main way within `spacing / 2` ahead of it
+   (the join turns less than 90 degrees from the street's last segment, and its middle lies in the
+   district) runs on straight to that line's nearest point, written into a street it joins as a
+   vertex. So no street stops a few metres short of a junction (quay-walk).
+9. **Length.** Every street carries `length`, its path's length in metres (from the millimetre
    points returned), so the kind's bed can fade to nothing over its last metres and stop at its
    ends instead of cutting a round cap past them (lib/town/kinds.toml, `street`).
 
@@ -388,7 +395,50 @@ def lay(p, ring, land, shore=None, ways=()):
         crosses.update(down_to(p, ring, land, longs, shore, ways))
     out = {f"s{_tag(k)}": pts for k, pts in longs.items()}
     out.update(crosses)
-    return out
+    return join_ends(p, ring, out, ways, shore)
+
+
+ON_LINE = 0.002                                       # metres: an end this near a line lies on it
+
+
+def join_ends(p, ring, streets, ways=(), shore=None):
+    """Step 8: every free end within `spacing / 2` of another street or a main way, ahead of it,
+    runs on to that line's nearest point. ``streets``: key -> points, changed in place and
+    returned. Ends are taken in key order, the first end before the last."""
+    def free(key, end):
+        pt = streets[key][end]
+        if not inside(ring, pt):
+            return False                               # on the outline, cut there (step 4)
+        lines = [v for k, v in streets.items() if k != key] + list(ways)
+        lines += [shore] if shore else []
+        return all(_dist_to(line, pt) > ON_LINE for line in lines)
+
+    for key in sorted(streets):
+        for end in (0, -1):
+            pts = streets[key]
+            if len(pts) < 2 or pts[0] == pts[-1] or not free(key, end):   # a loop has no end
+                continue
+            tip, prev = pts[end], pts[1 if end == 0 else -2]
+            ahead = _unit((tip[0] - prev[0], tip[1] - prev[1]))
+            best = None                                # (distance, point, street key or None)
+            for k, line in [(k, v) for k, v in sorted(streets.items()) if k != key] + \
+                    [(None, w) for w in ways]:
+                q = nearest_on(line, tip)
+                dq = math.dist(q, tip)
+                mid = ((q[0] + tip[0]) / 2, (q[1] + tip[1]) / 2)
+                if (ON_LINE < dq <= p.spacing / 2 and inside(ring, mid)
+                        and (q[0] - tip[0]) * ahead[0] + (q[1] - tip[1]) * ahead[1] > 0
+                        and (best is None or dq < best[0])):
+                    best = (dq, q, k)
+            if best is None:
+                continue
+            _, q, k = best
+            if k is None:
+                q = (round(q[0], 3), round(q[1], 3))
+            else:
+                q, streets[k] = insert_nearest(streets[k], q)
+            streets[key] = pts + [q] if end == -1 else [q] + pts
+    return streets
 
 
 def near_shore(p, ring, shore, pts):
@@ -414,12 +464,36 @@ def down_to(p, ring, land, longs, shore, ways=()):
         b = nearest_on(shore, a)
         b = (round(b[0], 3), round(b[1], 3))
         mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-        if (1 <= math.dist(a, b) <= 2 * p.spacing and inside(ring, a) and inside(ring, mid)
-                and not any(_seg_to_line(a, b, w) < p.spacing / 2 for w in ways)):
-            a, longs[low] = insert_nearest(longs[low], a)
-            out[f"d{int(round(m))}"] = [a, b]
+        if 1 <= math.dist(a, b) <= 2 * p.spacing and inside(ring, a) and inside(ring, mid):
+            hit = first_crossing(a, b, ways)
+            if hit is not None:                        # it meets a main way: it ends there
+                b = (round(hit[0], 3), round(hit[1], 3))
+            if (hit is not None and math.dist(a, b) >= 1
+                    and all(_dist_to(w, a) >= p.join for w in ways)) or (
+                    hit is None and not any(_seg_to_line(a, b, w) < p.spacing / 2 for w in ways)):
+                a, longs[low] = insert_nearest(longs[low], a)
+                out[f"d{int(round(m))}"] = [a, b]
         m += p.cross
     return out
+
+
+def first_crossing(a, b, lines):
+    """The point nearest ``a`` where segment ``a``-``b`` crosses or touches one of ``lines``, or
+    None."""
+    best, bt = None, math.inf
+    r = (b[0] - a[0], b[1] - a[1])
+    for pts in lines:
+        for c, e in zip(pts, pts[1:]):
+            s_ = (e[0] - c[0], e[1] - c[1])
+            den = r[0] * s_[1] - r[1] * s_[0]
+            if den == 0:
+                continue
+            w = (c[0] - a[0], c[1] - a[1])
+            t = (w[0] * s_[1] - w[1] * s_[0]) / den
+            u = (w[0] * r[1] - w[1] * r[0]) / den
+            if 0 <= t <= 1 and 0 <= u <= 1 and t < bt:
+                best, bt = (a[0] + t * r[0], a[1] + t * r[1]), t
+    return best
 
 
 def trace(p, ring, land, start, direction, steep, laid, ways=()):

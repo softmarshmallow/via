@@ -18,9 +18,21 @@ region of the cells table with no kind; a house an instance named `houses#...`; 
 is named by its pin id. A centre is the mean of a region's outer ring's vertices. `lots_held` is the
 houses step's own count (its `step.houses.rows` info: lots with at least one house of a row on them),
 `terraces` the regions of kind `terrace` it returns (one per run of houses wall to wall).
+Dead ends are lib/review/form.py's (`step.form.*` records, data.value; the world declares the lint):
+`dead_end_count` the ends on nothing inside the town, `edge_ends` those on the district's outline
+or at the gate, apart (form.py, "Dead end and edge end"); `geom.dead_end` stays the number of the
+core's records and `geom.dead_end_count` the count they carry.
+
+Doors (quay-walk, 2026-11-15; ours): for each house (`houses#...`) whose asset has a `door` mount,
+its floor is the ground at its origin plus its `z`, and its door the mount's point turned by the
+instance's `face`; the ground is read 3 m out from the door along the facing direction, on the
+footway or the quayside, bilinear between the 0.5 m posts of `fields/height.npy`. `doors_level`
+counts doors whose floor lies within 0.3 m of that ground, `doors_off` those more than 1 m off it,
+`doors` all of them; `doors_off_median` is the median of |floor - ground| in centimetres.
 """
 
 import json
+import math
 import struct
 import sys
 from collections import Counter
@@ -37,10 +49,68 @@ def load(d):
 
 
 def _i32(path):
+    """A 1-D .npy of millimetres (or millidegrees), int32 or float32, in metres (or degrees)."""
     raw = path.read_bytes()
     hlen = struct.unpack("<H", raw[8:10])[0]
+    code = "f" if "<f4" in raw[10:10 + hlen].decode() else "i"
     body = raw[10 + hlen:]
-    return [v / 1000.0 for v in struct.unpack(f"<{len(body) // 4}i", body)]
+    return [v / 1000.0 for v in struct.unpack(f"<{len(body) // 4}{code}", body)]
+
+
+def _f32_grid(path):
+    """A 2-D little-endian float32 .npy: (rows, columns, flat values)."""
+    raw = path.read_bytes()
+    hlen = struct.unpack("<H", raw[8:10])[0]
+    head = raw[10:10 + hlen].decode()
+    rows, cols = (int(v) for v in head.split("'shape': (")[1].split(")")[0].split(",")[:2])
+    body = raw[10 + hlen:]
+    return rows, cols, struct.unpack(f"<{len(body) // 4}f", body)
+
+
+DOOR_OUT = 3.0                  # metres out from the door the ground is read (the footway)
+DOOR_LEVEL = 0.3                # a door this near that ground is level with it
+DOOR_OFF = 1.0                  # one farther off stands over a bank
+
+
+def doors(d):
+    """(level, off, count, median |floor - ground| in cm) of the houses' doors (module doc)."""
+    d = Path(d)
+    man = json.loads((d / "manifest.json").read_text())
+    res = man["frame"]["resolution"]
+    ox, oy = man["frame"]["extent"][:2]
+    rows, cols, h = _f32_grid(d / "fields/height.npy")
+    names = [n for n in (d / "instances/names.txt").read_text().splitlines() if n]
+    x, y, z, face = (_i32(d / f"instances/{k}.npy") for k in ("x", "y", "z", "face"))
+    asset = [None] * len(names)
+    for ch in man["chunks"]:
+        for a, (s, n) in ch.get("instances", {}).items():
+            for k in range(s, s + n):
+                asset[k] = a
+
+    def ground(px, py):
+        i = min(max((px - ox) / res, 0.0), cols - 1.000001)
+        j = min(max((py - oy) / res, 0.0), rows - 1.000001)
+        i0, j0 = int(i), int(j)
+        u, v = i - i0, j - j0
+        at = lambda a, b: h[b * cols + a]
+        return ((at(i0, j0) * (1 - u) + at(i0 + 1, j0) * u) * (1 - v)
+                + (at(i0, j0 + 1) * (1 - u) + at(i0 + 1, j0 + 1) * u) * v)
+
+    off = []
+    for k, n in enumerate(names):
+        door = ((man["assets"].get(asset[k]) or {}).get("mounts") or {}).get("door")
+        if not n.startswith("houses#") or door is None:
+            continue
+        m = math.radians(face[k])
+        s, c = math.sin(m), math.cos(m)
+        dx = x[k] + door["at"][0] * c + door["at"][1] * s
+        dy = y[k] - door["at"][0] * s + door["at"][1] * c
+        floor = ground(x[k], y[k]) + z[k]
+        off.append(abs(floor - ground(dx + DOOR_OUT * s, dy + DOOR_OUT * c)))
+    off.sort()
+    med = round(100 * off[len(off) // 2]) if off else None
+    return (sum(1 for v in off if v <= DOOR_LEVEL), sum(1 for v in off if v > DOOR_OFF),
+            len(off), med)
 
 
 def centre(f):
@@ -78,9 +148,18 @@ def measures(d):
     rows = [x.get("data") or {} for x in diags if x["code"] == "step.houses.rows"]
     m["lots_held"] = rows[0].get("lots_held") if rows else None      # lots with a house on them
     for code in ("place.relief", "place.keep_out", "geom.dead_end", "geom.unowned_crossing",
-                 "identity.pin_removed", "identity.reselected", "step.streets.none"):
+                 "identity.pin_removed", "step.streets.none"):
         m[code] = codes.get(code, 0)
+    # `identity.reselected` is a run diagnostic, never in diagnostics.json: it is measured only from
+    # --run, and without it stays None, so a row on it fails rather than reading 0.
     m["errors"] = sum(1 for x in diags if x["severity"] == "error")
+    m["doors_level"], m["doors_off"], m["doors"], m["doors_off_median"] = doors(d)
+    for x in diags:                                   # lib/review/form.py's records (step.form.*)
+        data = x.get("data") or {}
+        if x["code"].startswith("step.form.") and "value" in data:
+            m[x["code"][len("step.form."):]] = data["value"]
+    m["geom.dead_end_count"] = sum((x.get("data") or {}).get("count", 0) for x in diags
+                                   if x["code"] == "geom.dead_end")
     return m, c, set(names)
 
 

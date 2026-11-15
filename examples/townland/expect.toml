@@ -5,44 +5,54 @@
 #   python3 examples/townland/measure.py BUILD+<c> --base BUILD      # a change, built with --against
 #   python3.11 examples/townland/measure.py BUILD --check base       # each row against its band
 #
-# Protocol: macOS arm64, the `via` release binary of the rewrite branch at 2026-11-15 16:00 KST
-# (uncommitted tree after 579475e, with the core pass's made-kind effects and give-way), Python 3.12
-# (sdk/python/.venv), one cold store for base, the changes on the same store with --against base,
-# default threads, VIA_LIB=lib. One build each, so a band is the measured number: where someone
-# looks, not a target. Cold base 105.8 s; each change 104 to 107 s (move_hill fails, below).
+# Protocol: macOS arm64, a `via` release binary built from the rewrite branch's working tree at
+# 2026-11-15 18:00 KST (after cbecb9d, with the other M3 agents' uncommitted core, lib/town and
+# lib/review changes of that hour), Python 3.12 (sdk/python/.venv), one store, base built warm on
+# it, each change with --against base, default threads, VIA_LIB=lib, a machine shared with other
+# builds (base about 100 s). One build each, so a band is the measured number: where someone looks,
+# not a target. lib/town and lib/review were being changed while these were taken: re-record when
+# they land. Checked on the settled tree (M3 slice 4, 2026-11-15 20:10 KST, release binary of the
+# working tree, one fresh store, base cold 27 s, each change --against base): base 17/17,
+# move_crossing, move_hill and edit_west every row in band; nothing re-recorded.
 #
-# Against the spike (FINDINGS 2026-11-13, R18): dead ends 39% before R18, 15% after; decks at the old
-# bridge 3 then 1. Here: dead ends 53% (18 of 34; 15 on a district's outline into open land, 3 at
-# gates, 0 inside the town), 1 deck, 0 doubled, 0 ways over the water. Worse on dead ends: see README.
-#
-# move_hill is not recorded: it fails (`formula.outside_field`, north_road's bed sample beyond the
-# extent) although the route cost keeps 26 m off the edge and the north gate is 56 m in.
+# This pass (townland agent, 2026-11-15): the crossing holds the water under its deck (deck_wet 56
+# of 192 posts, up to 0.61 m, to 0); the beck's level no longer smooths the deck into the river
+# (3.1 m over the line at the deck, 1.6 m beside it, to 0.25 m at most); east_road by two way points
+# (484 m to 263 m for a 194 m gap); the old town's streets seeded lower (origin x 258, lot_depth 15,
+# cross 45), so one street now ends on the embankment (was 0). Dead ends: lib/review/form.py now
+# counts a street ending on a district's outline as `edge_ends` (16), not a dead end (0).
+# move_hill builds (0 errors) on this tree; HEAD's world builds too, so its formula.outside_field
+# was not the world's.
 
 # ------------------------------------------------------------------------------------------ base
 
 [base.blocks]
 measure = "block"
-band    = [14, 14]
+band    = [20, 20]
 
 [base.lots]
 measure = "lot"
-band    = [99, 99]
+band    = [152, 152]
 
 [base.streets]
 measure = "street"
-band    = [11, 11]
+band    = [14, 14]
 
 [base.houses]
 measure = "houses"
-band    = [66, 66]
+band    = [99, 99]
 
 [base.lots_held]
 measure = "lots_held"
-band    = [39, 39]
+band    = [60, 60]
 
 [base.dead_ends]
 measure = "dead_end_count"
-band    = [18, 18]
+band    = [0, 0]
+
+[base.edge_ends]
+measure = "edge_ends"
+band    = [16, 16]
 
 [base.dead_ends_inside]
 measure = "dead_end_inside"
@@ -66,15 +76,41 @@ band    = [0, 0]
 
 [base.reach]
 measure = "reach_held"
-band    = [70, 70]
+band    = [103, 103]
 
 [base.relief]
 measure = "place.relief"
+band    = [4, 4]
+
+[base.deck_dry]                             # no post of the deck under water (lib/ways crossing `water`)
+measure = "deck_wet"
 band    = [0, 0]
+
+[base.street_ends_on_embankment]            # the old town's streets end on the waterfront (R18)
+measure = "ends_on_embankment"
+band    = [1, 1]
 
 [base.errors]
 measure = "errors"
 band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ move_hill
+
+[move_hill.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_hill.deck_dry]
+measure = "deck_wet"
+band    = [0, 0]
+
+[move_hill.houses]
+measure = "houses"
+band    = [55, 55]
+
+[move_hill.reach]
+measure = "reach_held"
+band    = [59, 59]
 
 # ------------------------------------------------------------------------------------------ move_crossing
 
@@ -96,11 +132,15 @@ band    = [0, 0]
 
 [move_crossing.houses]
 measure = "houses"
-band    = [67, 67]
+band    = [100, 100]
 
 [move_crossing.reach]
 measure = "reach_held"
-band    = [71, 71]
+band    = [104, 104]
+
+[move_crossing.deck_dry]
+measure = "deck_wet"
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ edit_west
 

@@ -856,7 +856,8 @@ def course_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]
     """`derived.md` 3 step 6: the feature named `feature` in a `features.json` is a path whose
     first point is `start` and last is `end` (metres, exactly), that passes each of `passes`, that
     turns by no more than 90 degrees at any vertex, and whose every segment is at least
-    `min_segment` metres long."""
+    `min_segment` metres long; with `within` ([x0, y0, x1, y1] metres), every vertex lies in that
+    box, edges included (d25)."""
     doc = _read_json(work / args["path"])
     feats = [f for f in doc.get("features", []) if f.get("name") == args["feature"]]
     if len(feats) != 1:
@@ -881,6 +882,12 @@ def course_valid(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]
         dot = (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1])
         if dot < 0:
             fails.append((f"check.{cid}", f"no turn over 90 degrees at vertex {k}", f"({float(b[0])}, {float(b[1])})"))
+    if "within" in args:
+        x0, y0, x1, y1 = (Fraction(str(v)) for v in args["within"])
+        for k, (x, y) in enumerate(pts):
+            if not (x0 <= x <= x1 and y0 <= y <= y1):
+                fails.append((f"check.{cid}", f"vertex {k} within {args['within']}", f"({float(x)}, {float(y)})"))
+                break
     return fails
 
 

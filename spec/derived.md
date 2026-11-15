@@ -120,7 +120,12 @@ route     = "= 1 + 40 * slope('start')"          # 'start' is the ground before 
    not a waypoint is dropped where the course turns by more than 90 degrees (it would double back)
    or where it stands closer than `r / 2` to a neighbour. With `smooth = true` on the feature,
    `smooth` (`geometry.md` 2.4) then smooths through these points; as for any path its default is
-   `false` (principle 2). `t` is measured on the result.
+   `false` (principle 2). The smoothed course is held to the extent it was found over: a sample
+   that is not a waypoint and lies beyond the extent moves onto its edge (each coordinate clamped
+   to the extent's), and consecutive repeats are removed. A course along the extent's edge
+   otherwise bulges past it, and a kind's `smoothed_along` or `under` on the way would read the
+   field beyond it (`formula.outside_field`, case d25). The hold is ours. `t` is
+   measured on the result.
 
 Every post has a finite cost and the grid is connected, so a course always exists. Moving an end
 (`haven`) finds a new course with no other edit (`basin`). The cost here reads `start`, a field the
@@ -285,6 +290,7 @@ incremental one. Cases live in `spec/cases/derived/<case>/`. Unless a row says o
 | d22 | Flat cost, `starts_at` a point at (0.3, 0.2), a waypoint at (5, 1), `ends_at` one at (7.6, 6.7); then the same over `route = "= 1 + 0.25 * x"` | build | The course starts and ends at the written points and passes (5, 1); no turn of more than 90 degrees and no segment shorter than 0.5 m. |
 | d23 | d16, then d17's world (the same with the lint) on one store | build each | First `authority.unchecked`; then `step:make` reused and no `authority.unchecked` (M3). |
 | d24 | d08's ridge written as `dist('wall', 2) < 0.5` in `height`'s base, `wall` a path whose id sorts after the routed `course`; a change moving `wall` 1 m north | build, again warm, with the change, then without on one store | The course is in `features.json` each time: d08's three points, then round by (4, 0), then d08's again; no `diag.internal` (M3). |
+| d25 | Extent (0, 0) to (8, 8); `route = "= if(y > 7.5, 1, 100)"` from (0, 7) to (8, 7), `smooth = true`, a kind whose effect reads `smoothed_along(2)` | build | Exit 0, no `formula.outside_field`: the course runs along the top edge and its smoothed samples stay within y = 8 (M3). |
 
 ## Changed from the spike
 

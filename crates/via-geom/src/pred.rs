@@ -65,10 +65,18 @@ pub enum Side {
 /// scaled by `k` against the ring (so a segment midpoint is tested with `k = 2`).
 pub fn winding_scaled(p: (i128, i128), k: i128, ring: &[P]) -> Option<i32> {
     let n = ring.len();
+    winding_of_edges(p, k, (0..n).map(|i| (ring[i], ring[(i + 1) % n])))
+}
+
+/// [`winding_scaled`] summed over a set of directed edges, or `None` on one of them. An edge whose
+/// `y` span leaves out the point's adds nothing, so a caller may pass only the edges that span it.
+pub fn winding_of_edges(
+    p: (i128, i128),
+    k: i128,
+    edges: impl Iterator<Item = (P, P)>,
+) -> Option<i32> {
     let mut w = 0i32;
-    for i in 0..n {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
+    for (a, b) in edges {
         let (ax, ay) = (i128::from(a.x) * k, i128::from(a.y) * k);
         let (bx, by) = (i128::from(b.x) * k, i128::from(b.y) * k);
         let o = (bx - ax) * (p.1 - ay) - (by - ay) * (p.0 - ax);
@@ -207,10 +215,14 @@ impl Wide {
 
     /// The product, which must fit in 384 bits (it always does for the chapter's widths).
     pub fn mul_wide(self, o: Wide) -> Wide {
+        // Only the significant limbs: a zero limb adds nothing to the schoolbook sum, so the
+        // product is the same, and most operands hold two limbs of six.
+        let used = |w: &Wide| w.0.iter().rposition(|&l| l != 0).map_or(0, |i| i + 1);
+        let (ni, nj) = (used(&self), used(&o));
         let mut r = [0u64; 12];
-        for i in 0..6 {
+        for i in 0..ni {
             let mut carry: u128 = 0;
-            for j in 0..6 {
+            for j in 0..nj {
                 if i + j >= 12 {
                     break;
                 }
@@ -218,7 +230,7 @@ impl Wide {
                 r[i + j] = cur as u64;
                 carry = cur >> 64;
             }
-            let mut k = i + 6;
+            let mut k = i + nj;
             while carry != 0 && k < 12 {
                 let cur = u128::from(r[k]) + carry;
                 r[k] = cur as u64;
@@ -263,6 +275,16 @@ impl Dist2 {
     /// Exact comparison by cross-multiplication.
     pub fn cmp_exact(&self, o: &Dist2) -> Ordering {
         self.num.mul_wide(o.den).cmp(&o.num.mul_wide(self.den))
+    }
+
+    /// The least integer at or above `num / den`, when both fit in 127 bits; else `None`.
+    pub fn ceil(&self) -> Option<i128> {
+        let small = |w: &Wide| {
+            (w.0[2..].iter().all(|&l| l == 0) && w.0[1] >> 63 == 0)
+                .then(|| i128::from(w.0[0]) | (i128::from(w.0[1]) << 64))
+        };
+        let (n, d) = (small(&self.num)?, small(&self.den)?);
+        (d > 0).then(|| n / d + i128::from(n % d != 0))
     }
 }
 

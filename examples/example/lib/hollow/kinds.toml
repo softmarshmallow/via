@@ -1,0 +1,44 @@
+# This project's own kinds: the library `hollow`, found because it sits in lib/ beside the world
+# file (documents.md 4). A kind is what a feature does to fields, written as data in the same
+# format the shipped libraries use; the engine knows none of these words.
+#
+# Inside an effect: `v` is the field so far, `d` the distance outside the shape, `sd` the signed
+# distance (above 0 inside a region), `t` the fraction along a path; a feature's attributes are
+# names. An effect writes fields by role or tag, never by name, so the kind works in any world
+# that has fields with those roles and tags.
+
+# A tilled field: its own ground, and nothing grows wild on it. The land is left as it lies. The
+# `crop` attribute is declared here only so a feature may write it; nothing reads it, and it
+# reaches the build untouched for the game.
+[kind.plot]
+radius = 4
+
+[kind.plot.defaults]
+crop = "none"
+
+[kind.plot.effect.tilled]                   # earth inside, a ragged edge
+field = "role:material"
+paint = "earth"
+mask  = "= 1 - smoothstep(-1.5, 0.5, -sd + 0.6 * fbm(4, 2, seed = 'furrow'))"
+
+[kind.plot.effect.bare]                     # no tree, no bush: the scatters read keep_out
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 2, d)"
+
+# A lair: where the game spawns a creature. It raises this project's `danger` field (tag
+# `danger`, declared in layers/dress.toml), which the game reads, and hands its features to the
+# loader under the output `spawn_zone`, the same list lib/map's `spawn_zone` kind fills
+# (build.md 9.2): two kinds, one output.
+[kind.lair]
+output   = "spawn_zone"
+requires = ["creature"]
+radius   = 8
+
+[kind.lair.defaults]
+max_alive = 1
+
+[kind.lair.effect.danger]
+field = "tag:danger"
+value = "= max(v, smoothstep(-6, 6, sd))"
+mask  = "= 1 - smoothstep(4, 6, d)"

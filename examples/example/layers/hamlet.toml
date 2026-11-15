@@ -1,0 +1,93 @@
+# Layer `hamlet` (rank 1): what is built. It stands on the land (layer `world`) and may name what
+# is there; the land may not name anything here (a layer refers downward only, documents.md 5).
+# Every table is keyed by its id (R1), so a change names exactly one thing.
+
+# ------------------------------------------------------------------------------------------ by hand
+# Each house is placed by the thing it belongs to, so it follows when that thing moves. `ground =
+# "pad"` lends its footprint, grown by `margin`, to lib/land's pad kind as the feature
+# `<instance>.ground`: the ground under it is levelled and kept clear of trees.
+
+[instance.cottage_a]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "lane_west", t = 0.22, offset = 12 }   # 12 m to the left of the lane, going east
+face   = "toward"                                       # its front to the lane
+
+[instance.cottage_b]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "lane_west", t = 0.30, offset = -12 }
+face   = "toward"
+
+[instance.church]                           # at the head of its path, its door down the path
+asset  = "house_wide"                       # (the starter pack has no church: gap, README)
+ground = "pad"
+margin = 1
+at     = [108.5, 166]
+face   = 204                                # a bearing: clockwise from north
+
+[instance.mill]                             # by the beck, turned to the water; on it, so it follows the beck
+asset  = "barn"
+ground = "pad"
+margin = 1
+on     = { ref = "beck", t = 0.43, offset = -12 }
+face   = "toward"
+
+[instance.farm]                             # over the bridge, by the barley
+asset  = "barn"
+ground = "pad"
+margin = 1
+on     = { ref = "lane_east", t = 0.32, offset = -14 }
+face   = "toward"
+
+[instance.inn]                              # on the green's own level: the green is its ground,
+asset = "house_wide"                        # so it asks for no pad (a region's `offset` is inward)
+on    = { ref = "green", t = 0.62, offset = 7 }
+face  = "toward"
+
+# ------------------------------------------------------------------------------------------ the row
+# A row of town houses over the bridge, fronts to the lane. The vocabulary says this as one `run`
+# (`[run.east_row]`, four `house_row` along `lane_east` over `span = [0.55, 0.95]`), and a well
+# with its bench as a `set`; this engine reads both only from M3 (`doc.not_yet`), so the row is
+# written house by house and the well alone (README, "Gaps"). Each house is `on` the lane, so the
+# row still follows it.
+
+[instance.row_1]
+asset  = "house_row"
+ground = "pad"
+on     = { ref = "lane_east", t = 0.6, offset = 11 }
+face   = "toward"
+
+[instance.row_2]
+asset  = "house_row"
+ground = "pad"
+on     = { ref = "lane_east", t = 0.7, offset = 11 }
+face   = "toward"
+
+[instance.row_3]
+asset  = "house_row"
+ground = "pad"
+on     = { ref = "lane_east", t = 0.8, offset = 11 }
+face   = "toward"
+
+[instance.row_4]
+asset  = "house_row"
+ground = "pad"
+on     = { ref = "lane_east", t = 0.9, offset = 11 }
+face   = "toward"
+
+[instance.well]                             # on the green (stand-in: no well in the starter pack)
+asset = "box_small"
+at    = [96, 92]
+
+# ------------------------------------------------------------------------------------------ steps
+
+# This project's own generate step (tools/moisture.py): the distance to water, as a field `wet`.
+# Declared here, it reads this layer and those below it; the dress layer above reads its field.
+[step.moisture]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "../tools/moisture.py"]
+params  = { reach = 40 }

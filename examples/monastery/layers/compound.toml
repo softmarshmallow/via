@@ -1,0 +1,176 @@
+# Layer `compound` (rank 1): what stands in and by the compound, the paint, the views at the
+# meetings (R17) and the lints that read the whole world.
+
+# ------------------------------------------------------------------------------------------ inside
+
+[instance.hall]                             # the main hall, against the west wall, facing the gate
+asset  = "barn"
+ground = "pad"
+margin = 1
+on     = { ref = "court", t = 0.48, offset = 12 }
+face   = "away"
+
+[feature.hall_door]                         # the step before the hall: where a walker must arrive
+on = { ref = "court", t = 0.48, offset = 21 }
+
+[instance.cell_a]                           # monks' cells along the south wall, doors to the court
+asset  = "house_low"
+ground = "pad"
+margin = 0.5
+on     = { ref = "court", t = 0.66, offset = 6 }
+face   = "away"
+
+[instance.cell_b]
+asset  = "house_low"
+ground = "pad"
+margin = 0.5
+on     = { ref = "court", t = 0.70, offset = 6 }
+face   = "away"
+
+[instance.cell_c]
+asset  = "house_low"
+ground = "pad"
+margin = 0.5
+on     = { ref = "court", t = 0.74, offset = 6 }
+face   = "away"
+
+[feature.well]                              # the court's middle
+at = [100, 192]
+
+# ------------------------------------------------------------------------------------------ outside
+
+[feature.garden_upper]                      # two garden terraces below the south wall (lib/town)
+kind   = "terrace"
+region = [[68, 150], [132, 150], [132, 139], [68, 139]]
+
+[feature.garden_lower]                      # where the shelf runs out: a deeper cut, on purpose
+kind    = "terrace"
+max_cut = 4.5
+region = [[68, 135], [132, 135], [132, 124], [68, 124]]
+
+[instance.lamp_a]                           # lamps along the approach
+asset = "lamp_post"
+on    = { ref = "approach", t = 0.3, offset = -9 }
+
+[instance.lamp_b]
+asset = "lamp_post"
+on    = { ref = "approach", t = 0.7, offset = -9 }
+
+# ------------------------------------------------------------------------------------------ paint
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.rock]                    # steep faces and the bare mountain above the treeline
+paint = "rock"
+mask  = "= max(smoothstep(30, 38, slope('height')), smoothstep(treeline - 2, treeline + 6, f('height')))"
+
+[field.ground.then.shore]                   # the stream's bed and the tarn's shore
+paint = "gravel"
+mask  = "= max(1 - smoothstep(3, 4.5, dist('stream', 8)), smoothstep(0.02, 0.1, f('water') - f('height')))"
+
+[field.ground.then.road]
+order = 1
+paint = "earth"
+mask  = "= 1 - smoothstep(2, 2.6, dist('kind:road', 6))"
+
+[field.ground.then.garden]
+order = 1
+paint = "earth"
+mask  = "= if(inside('kind:terrace'), 1, 0)"
+
+[field.ground.then.court]                   # the court flagged inside its wall
+order = 2
+paint = "flags"
+mask  = "= if(inside('court'), 1, 0)"
+
+[field.ground.then.deck]
+order = 2
+paint = "flags"
+mask  = "= 1 - smoothstep(2.5, 3, dist('bridge', 6))"
+
+# ------------------------------------------------------------------------------------------ views
+# From eye height at every kind of meeting (R17): way and crossing, the deck over the gorge, way and
+# wall at the gate, the road's own turns, the tarn and the gorge from its floor.
+
+[feature.look_tarn]
+at = [198, 262]
+
+[feature.bm_arrive]                         # where the road enters, looking up the first leg
+kind   = "bookmark"
+on     = { ref = "road_up", t = 0.02 }
+toward = "look_turn_1"
+
+[feature.look_turn_1]
+at = [232, 22]
+
+[feature.bm_turn]                           # on the second turn, down the leg below and the one above
+kind   = "bookmark"
+at     = [292, 62]
+toward = "look_turn_1"
+
+[feature.bm_bridge_end]                     # way and crossing: the road arriving at the bridge's start
+kind   = "bookmark"
+on     = { ref = "road_up", t = 0.95 }
+toward = "bridge.end"
+
+[feature.bm_deck]                           # on the deck, up the gorge to the tarn
+kind   = "bookmark"
+on     = { ref = "bridge", t = 0.5 }
+toward = "look_tarn"
+
+[feature.bm_gate]                           # way and wall: the approach at the gate
+kind   = "bookmark"
+on     = { ref = "approach", t = 0.4 }
+toward = "gate"
+
+[feature.bm_court]                          # inside the gate, toward the hall
+kind   = "bookmark"
+on     = { ref = "court", t = 0.99, offset = 4 }
+toward = "hall_door"
+
+[feature.gorge_floor]                       # on the gorge's floor below the bridge, beside the stream
+on = { ref = "stream", t = 0.46, offset = 4 }
+
+[feature.bm_gorge]                          # from the floor 20 m downstream, up at the deck's face; on the
+kind   = "bookmark"                         # bridge, so it moves with it (typed at [205, 172] it stood
+on     = { ref = "bridge", t = 0.5, offset = 20 }   # inside the moved bridge's causeway)
+toward = "bridge"
+
+[feature.bm_tarn]                           # the tarn from the gorge's rim beside it (from the outflow's
+kind   = "bookmark"                         # rim, t 0.27, the gorge's lip hid it)
+on     = { ref = "stream", t = 0.2, offset = 19 }
+toward = "look_tarn"
+eye_height = 12                             # at 1.7 m the rim hides the water below it
+
+# ------------------------------------------------------------------------------------------ lints
+
+# lib/review's reach lint: from where the road enters, a walker reaches the bridge, the gate, the
+# hall's step, the well and every house door (the cells; the guesthouse in its change). The gorge's
+# floor is sealed from the road and from the court: its walls are too steep to climb down. With the
+# bridge removed (changes/no_bridge.toml) the hall is stated sealed from the road: the bridge is the
+# only way over.
+[step.reach]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach  = [
+  { profile = "walker", from = "road_entry", to = ["bridge.start", "bridge.end", "gate", "hall_door", "well"] },
+  { profile = "walker", from = "road_entry", to = [{ mount = "door", assets = ["@building/house"] }] },
+]
+sealed = [
+  { profile = "walker", from = "road_entry", to = ["gorge_floor"] },
+  { profile = "walker", from = "hall_door", to = ["gorge_floor"] },
+]
+
+[step.reach.params.profiles.walker]         # metres; quay's walker
+grade = 0.5
+step  = 0.2
+width = 0.6
+wade  = 0.3
+reach = 2

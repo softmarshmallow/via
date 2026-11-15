@@ -1,0 +1,222 @@
+# What an example build must measure (measure.py says how each is taken). Checked by
+#
+#   python3.11 examples/example/measure.py build/example --check base
+#   python3.11 examples/example/measure.py build/example+move_tarn --check move_tarn   # built --against build/example
+#
+# Protocol of the numbers below: Apple M4 Pro, 14 cores, default threads, release build of the
+# rewrite branch's working tree on 2026-11-15 (after cbecb9d), one build each, a fresh store
+# (`--store`), the cold base first and each change `--against` it on the same store, other agents
+# building at the same time (load average 6 to 8). `equals` is exact; a `band` says how far a
+# measure may move before someone looks, and why. A band is never a target (R15). The spike's
+# example exported no measures, so there is no oracle column.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.errors]
+measure = "errors"
+equals  = 0
+
+[base.warnings]                             # nothing stands on a keep_out, nothing on a lane
+measure = "warnings"
+equals  = 0
+
+[base.by_hand]                              # 6 houses, 4 of the row, the well: the run and set
+measure = "instances.by_hand"               # are written by hand until M3 reads them (README, Gaps)
+equals  = 11
+
+[base.woods]                                # wet, not steep, below the treeline: one build's count
+measure = "instances.woods"
+band    = [240, 310]
+
+[base.orchard]                              # planted rows inside the outline, 8 m apart
+measure = "instances.orchard_trees"
+band    = [26, 32]
+
+[base.fallen_rock]
+measure = "instances.fallen_rock"
+band    = [20, 40]
+
+[base.bookmarks]                            # one view at every meeting (R17), one plan view
+measure = "outputs.bookmark"
+equals  = 13
+
+[base.poi]
+measure = "outputs.poi"
+equals  = 3
+
+[base.spawn_zone]                           # this project's `lair` shares lib/map's output
+measure = "outputs.spawn_zone"
+equals  = 1
+
+[base.tarn_area]                            # the fill step's level: 43.503 m; 1225.8 m2 in this build
+measure = "tarn.area_m2"
+band    = [1000, 1450]
+
+[base.tarn_depth]                           # `max_depth = 4` caps it; the hollow's own spill decides
+measure = "tarn.depth_max"
+band    = [2, 4]
+
+[base.deck_wet]                             # the stand-in deck stands dry over the beck
+measure = "deck.wet"
+equals  = 0
+
+[base.deck_step]                            # deck end to the lane 4 m out: the head's 1:2 bank
+measure = "deck.step_m"
+band    = [0, 1]
+
+[base.reach_held]                           # every door (7) and every stated place, from the lane's
+measure = "reach.held"                      # west end, the row's over the footbridge included
+equals  = 24
+
+[base.reach_unreached]
+measure = "reach.unreached"
+equals  = 0
+
+[base.tarn_sealed]                          # the tarn's point is under deep water
+measure = "reach.not_sealed"
+equals  = 0
+
+[base.homes_far]                            # the project's own rule (`max_m = 30`)
+measure = "homes.far_m"
+band    = [0, 30]
+
+[base.trees_on_lanes]
+measure = "trees_on_lanes"
+equals  = 0
+
+# ------------------------------------------------------------------------------------------ third_cottage
+# One house and its pad, nothing else made again but what stood on the pad.
+
+[third_cottage.errors]
+measure = "errors"
+equals  = 0
+
+[third_cottage.warnings]                    # doc.change_adds_near: `cottage_c` is a near name of
+measure = "warnings"                        # `cottage_a`, a typo guard; meant here (README)
+equals  = 1
+
+[third_cottage.added]
+measure = "change.added.instance"
+equals  = 1
+
+[third_cottage.nothing_moved]               # no written thing and no produced thing moved
+measure = "change.moved.instance"
+equals  = 0
+
+[third_cottage.trees_removed]               # the pad's clearing takes the trees it covers: 3 here
+measure = "change.removed.woods"
+band    = [0, 8]
+
+[third_cottage.fill_reused]                 # the fill step reads the ground's head view: no pad in it
+measure = "change.steps_ran"
+equals  = ["moisture"]                      # moisture reads the full view, the new pad in it
+
+[third_cottage.reach]                       # its door is one more place reached
+measure = "reach.held"
+equals  = 25
+
+# ------------------------------------------------------------------------------------------ move_tarn
+
+[move_tarn.errors]
+measure = "errors"
+equals  = 0
+
+[move_tarn.steps]                           # the fill step reads the point; moisture reads the water
+measure = "change.steps_ran"
+equals  = ["fill", "moisture"]
+
+[move_tarn.tarn_x]                          # the water follows the point to [100, 202]
+measure = "tarn.x"
+band    = [90, 106]
+
+[move_tarn.tarn_y]
+measure = "tarn.y"
+band    = [195, 210]
+
+[move_tarn.tarn_area]
+measure = "tarn.area_m2"
+band    = [1000, 1600]
+
+[move_tarn.lake_moved]                      # the lake the step returned, reported as moved
+measure = "change.moved.fill"
+equals  = 1
+
+[move_tarn.reach]
+measure = "reach.held"
+equals  = 24
+
+# ------------------------------------------------------------------------------------------ move_beck
+
+[move_beck.errors]
+measure = "errors"
+equals  = 0
+
+[move_beck.fill_reused]                     # the tarn reads no beck: only moisture runs again
+measure = "change.steps_ran"
+equals  = ["moisture"]
+
+[move_beck.followers]                       # the beck, its bridge ends, the bridge, both lanes, the
+measure = "change.moved.feature"            # church path and its foot, and the views on them: 17
+band    = [12, 20]
+
+[move_beck.houses_follow]                   # the two cottages, the farm and the row: on the lanes; the mill: on the beck (slice 4)
+measure = "change.moved.instance"
+equals  = 8
+
+[move_beck.deck_wet]
+measure = "deck.wet"
+equals  = 0
+
+[move_beck.reach]                           # the walk still crosses the moved bridge
+measure = "reach.held"
+equals  = 24
+
+[move_beck.tarn_area]                       # the tarn is untouched
+measure = "tarn.area_m2"
+band    = [1225.8, 1225.8]
+
+# ------------------------------------------------------------------------------------------ clear_one
+
+[clear_one.removed]                         # the fallen rock within 10 m of [205, 212]
+measure = "change.removed.fallen_rock"
+band    = [1, 12]
+
+[clear_one.nothing_else]
+measure = "change.removed.woods"
+equals  = 0
+
+[clear_one.no_step]
+measure = "change.steps_ran"
+equals  = []
+
+# ------------------------------------------------------------------------------------------ pin_one
+
+[pin_one.added]                             # the shed
+measure = "change.added.instance"
+equals  = 1
+
+[pin_one.removed]                           # the one orchard tree its footprint overlaps
+measure = "change.removed.orchard_trees"
+equals  = 1
+
+[pin_one.warnings]
+measure = "warnings"
+equals  = 0
+
+# ------------------------------------------------------------------------------------------ winter
+
+[winter.errors]
+measure = "errors"
+equals  = 0
+
+[winter.woods]                              # the treeline at 40 m: most of the wood is above it
+measure = "instances.woods"
+band    = [20, 90]
+
+[winter.no_step]                            # a season re-runs no step: neither reads the treeline
+measure = "change.steps_ran"
+equals  = []
+
+[winter.nothing_built_moved]
+measure = "change.moved.instance"
+equals  = 0

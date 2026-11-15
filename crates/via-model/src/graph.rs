@@ -236,6 +236,48 @@ fn f32s(e: &mut Enc, v: &[f32]) {
     }
 }
 
+/// Each member's box, for a lower bound on its distance in [`nearest_member`]; `None` for an empty
+/// region, which measures 0 everywhere and so has no bound.
+fn member_boxes(geos: &[&Geo]) -> Vec<Option<[i64; 4]>> {
+    geos.iter()
+        .map(|g| match g {
+            Geo::Region { region, .. } if region.bbox().is_none() => None,
+            g => Some(bbox_of(g)),
+        })
+        .collect()
+}
+
+/// The `(d, sd)` of the first member in order with the least distance to `at`: the values of
+/// projecting every member. A member whose box bound passes the distance of the member nearest by
+/// box (with a margin far wider than the doubles' error) cannot be the least, nor tie it, so it
+/// is not projected.
+fn nearest_member(geos: &[&Geo], boxes: &[Option<[i64; 4]>], at: P) -> Option<(f64, f64)> {
+    let lower = |b: &Option<[i64; 4]>| -> f64 {
+        let Some(b) = b else { return 0.0 };
+        let gap = |lo: i64, hi: i64, v: i64| (lo - v).max(v - hi).max(0) as f64;
+        let (gx, gy) = (gap(b[0], b[2], at.x), gap(b[1], b[3], at.y));
+        (gx * gx + gy * gy).sqrt() / 1000.0
+    };
+    let bounds: Vec<f64> = boxes.iter().map(lower).collect();
+    let reach = bounds
+        .iter()
+        .enumerate()
+        .min_by(|a, b| a.1.total_cmp(b.1))
+        .map(|(k, _)| geos[k].project(at).d)
+        .map_or(f64::INFINITY, |d| d * (1.0 + 1e-9) + 1e-6);
+    let mut best: Option<(f64, f64)> = None;
+    for (g, lb) in geos.iter().zip(&bounds) {
+        if *lb > reach {
+            continue;
+        }
+        let m = g.project(at);
+        if best.is_none_or(|b| m.d < b.0) {
+            best = Some((m.d, m.sd));
+        }
+    }
+    best
+}
+
 fn bbox_of(g: &Geo) -> [i64; 4] {
     let (a, b) = g.bbox();
     [a.x, a.y, b.x, b.y]
@@ -2695,17 +2737,12 @@ impl<'w> ModelPlan<'w> {
                 .filter_map(|m| self.p.placed.shape(m))
                 .collect(),
         };
+        let boxes = member_boxes(&geos);
         if let (Some(grid), Some(w)) = (self.grid, window_of(id)) {
             e.len(w.len());
             for (i, j) in w.posts() {
                 let (x, y) = via_raster::window::post_mm(&grid, i, j);
-                let mut best: Option<(f64, f64)> = None;
-                for g in &geos {
-                    let m = g.project(P::new(x, y));
-                    if best.is_none_or(|b| m.d < b.0) {
-                        best = Some((m.d, m.sd));
-                    }
-                }
+                let best = nearest_member(&geos, &boxes, P::new(x, y));
                 let (d, sd) = best.unwrap_or((f64::INFINITY, f64::INFINITY));
                 e.u64((d as f32).to_bits().into())
                     .u64((sd as f32).to_bits().into());
@@ -3150,6 +3187,92 @@ mod input_path_tests {
         assert_ne!(
             input_path("world.toml", "../shared/h.npy"),
             input_path("world.toml", "shared/h.npy")
+        );
+    }
+}
+
+#[cfg(test)]
+mod distance_tests {
+    use super::{member_boxes, nearest_member};
+    use crate::place::Geo;
+    use via_geom::lineref::Line;
+    use via_geom::shape::{Piece, Region};
+    use via_geom::P;
+
+    fn path(pts: &[(i64, i64)]) -> Geo {
+        Geo::Path {
+            line: Line::new(pts.iter().map(|&(x, y)| P::new(x, y)).collect(), false),
+        }
+    }
+
+    /// The plain scan the pruning must equal: every member projected, the first least kept.
+    fn scan(geos: &[&Geo], at: P) -> Option<(f64, f64)> {
+        let mut best: Option<(f64, f64)> = None;
+        for g in geos {
+            let m = g.project(at);
+            if best.is_none_or(|b| m.d < b.0) {
+                best = Some((m.d, m.sd));
+            }
+        }
+        best
+    }
+
+    fn bits(v: Option<(f64, f64)>) -> Option<(u32, u32)> {
+        v.map(|(d, sd)| ((d as f32).to_bits(), (sd as f32).to_bits()))
+    }
+
+    fn check(geos: &[&Geo]) {
+        let boxes = member_boxes(geos);
+        for i in -10..=50 {
+            for j in -10..=50 {
+                let at = P::new(i * 1_000, j * 1_000);
+                let (got, want) = (nearest_member(geos, &boxes, at), scan(geos, at));
+                assert_eq!(got, want, "at {at:?}");
+                assert_eq!(bits(got), bits(want), "at {at:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn pruning_keeps_every_value_of_a_plain_scan() {
+        // Two paths at equal distance either side of y = 20, one doubled (a tie of equal
+        // members), a far path, and a square with a square hole.
+        let a = path(&[(0, 10_000), (40_000, 10_000)]);
+        let b = path(&[(40_000, 30_000), (0, 30_000)]);
+        let b2 = path(&[(40_000, 30_000), (0, 30_000)]);
+        let far = path(&[(0, 45_000), (5_000, 45_000)]);
+        let ring = |x0: i64, y0: i64, x1: i64, y1: i64| {
+            vec![
+                P::new(x0, y0),
+                P::new(x1, y0),
+                P::new(x1, y1),
+                P::new(x0, y1),
+            ]
+        };
+        let mut hole = ring(25_000, 15_000, 35_000, 25_000);
+        hole.reverse();
+        let holed = Geo::Region {
+            region: Region {
+                pieces: vec![Piece {
+                    shell: ring(20_000, 12_000, 40_000, 28_000),
+                    holes: vec![hole],
+                }],
+            },
+            line: None,
+        };
+        check(&[&a, &b, &b2, &far, &holed]);
+        check(&[&far, &holed, &b2, &b, &a]);
+        // An empty region measures 0 everywhere: it is never pruned, and wins every post.
+        let empty = Geo::Region {
+            region: Region { pieces: vec![] },
+            line: None,
+        };
+        check(&[&a, &far, &empty]);
+        let boxes = member_boxes(&[&a, &far, &empty]);
+        assert_eq!(boxes[2], None);
+        assert_eq!(
+            nearest_member(&[&a, &far, &empty], &boxes, P::new(-9_000, 49_000)),
+            Some((0.0, 0.0))
         );
     }
 }

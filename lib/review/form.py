@@ -27,10 +27,13 @@ it was taken). The first record of each code carries ``explain``.
 |                 | every way alike                                                            |
 | four_way        | share of junctions where four or more ways meet                            |
 | three_way       | share where three meet                                                     |
-| dead_ends       | share of ends of a way on nothing (degree 1), of every junction and end    |
-| dead_end_count  | how many; ``data`` also gives ``at_edge`` (an end on a district outline,   |
-|                 | ``edges``), ``at_gate`` (within 2 m of a ``gates`` point) and ``stubs``    |
-|                 | (a dead end whose piece of way back to its first junction is under 40 m)   |
+| dead_ends       | share of dead ends (below) of every junction and end                       |
+| dead_end_count  | how many dead ends; ``data`` also gives ``stubs`` (a dead end whose piece  |
+|                 | of way back to its first junction is under 40 m) and ``inside`` (all of    |
+|                 | them, kept for older readers)                                              |
+| edge_ends       | ends where a way leaves the town: ``data`` gives ``at_edge`` (on a         |
+|                 | district outline, ``edges``) and ``at_gate`` (within 2 m of a ``gates``    |
+|                 | point)                                                                     |
 | decks           | for each water path, how many crossings stand over it: subject the water   |
 | doubled_decks   | for each water path, pairs of crossings whose decks lie within 10 m        |
 | ways_over_water | for each water path, places a way (``ways``) crosses its line that are not |
@@ -44,6 +47,19 @@ of line leaving it: 2 where a line passes through, 1 where it ends. Degree 2 (a 
 running on into another) is not a junction and is not counted. A line of ``meets`` (the waterfront,
 the crossing) counts as a way here: a street ending on the quay or at a bridge's end is a T, not a
 dead end. Bearings are taken from ``ways`` only.
+
+**Dead end and edge end** (one definition, ours, 2026-11-15; examples/quay/measure.py reads these
+records rather than counting its own). An end (degree 1) within 1 m of a district outline named in
+``edges``, or within 2 m of a ``gates`` point, is an *edge end*: the way leaves the town there
+into open land or off the map, which is the town's edge and not a street stopping on nothing; it
+is counted in ``edge_ends`` and in no dead-end number (an end on both counts at the edge). An end
+of a ``meets`` line where no way ends (the waterfront's own ends) is not counted at all. Every
+other end is a *dead end*, counted in ``dead_ends`` and ``dead_end_count``. The core's
+``geom.dead_end`` counts a network's junctions of degree 1 after its ``within`` cut, where an end
+on the outline is a junction with the outline, so it agrees on edge ends; it differs only in
+taking the network's own nodes rather than this graph's 5 cm and 0.5 m snapping. Before
+2026-11-15 ``dead_end_count`` included edge ends and gave ``at_edge`` and ``at_gate`` in its data
+(townland: 18 dead ends, 15 at the edge).
 
 **References** (``data.reference``). The spike's own numbers are measured and fixed (FINDINGS,
 2026-11-13: townland 39% dead ends before R18, 15% after; the city alone 10%). The real-town ranges
@@ -61,6 +77,7 @@ import math
 SNAP_M = 0.5            # meeting points this close are one junction
 TOUCH_M = 0.05          # an end this close to another line meets it
 GATE_M = 2.0            # an end this close to a gate is at the gate
+EDGE_M = 1.0            # an end this close to a district outline (``edges``) is on it
 STUB_M = 40.0           # a dead end's piece shorter than this is a stub (the spike's)
 DOUBLED_M = 10.0        # two crossings' decks this close are one deck laid twice
 
@@ -75,7 +92,9 @@ REF = {
     "three_way": "spike townland 19% before R18, 38% after",
     "dead_ends": "spike townland 39% before R18, 15% after (R18); the city alone 10%; Boeing 2019, "
                  "recalled: about 5 to 30% of nodes",
-    "dead_end_count": "spike townland 120 before R18, 35 after (9 stubs, 5 at gates)",
+    "dead_end_count": "spike townland 120 before R18, 35 after (9 stubs, 5 at gates; the spike "
+                      "counted ends at gates and edges as dead ends)",
+    "edge_ends": "no reference: how many ways the town's edge cuts",
     "decks": "one per crossing; spike townland had 3 overlapping at its old bridge before R18, 1 after",
     "doubled_decks": "0 (R18)",
     "ways_over_water": "0 (R18: ways arrive at a crossing's ends)",
@@ -90,7 +109,9 @@ EXPLAIN = {
     "three_way": "The share of junctions where three ways meet.",
     "dead_ends": "The share of junctions and ends that are a way ending on nothing (R18: a meeting "
     "nobody owns shows as a stub or a blunt end).",
-    "dead_end_count": "How many ways end on nothing; at the town's edge, at a gate, and stubs.",
+    "dead_end_count": "How many ways end on nothing inside the town, and how many are stubs.",
+    "edge_ends": "How many ways end where they leave the town: on a district's edge or at a gate. "
+    "Not dead ends (lib/review/form.py, 'Dead end and edge end').",
     "decks": "How many crossings stand over this water (R18: one deck per crossing).",
     "doubled_decks": "Pairs of crossings whose decks lie on one another: a deck laid twice.",
     "ways_over_water": "Places a way crosses the water's line with no crossing: a deck nobody owns.",
@@ -140,12 +161,25 @@ def measure(lines, bear, main, outlines, gates, subject="town"):
     out.append(("order", subject, od, {}, f"Orientation order {od:.2f}."))
     nodes = junctions([pts for _, _, pts in lines])
     counted = [n for n in nodes if n["degree"] != 2]
+    # An end of a `meets` line alone (the waterfront's ends, a crossing's) is that line's own
+    # extent, not a way ending on nothing: it is neither a dead end nor counted among the ends.
+    # By name (a feature's name is unique), so a caller may pass copies of the lines.
+    bearing = {name for name, _, _ in bear}
+    own = [pts for name, _, pts in lines if name not in bearing]
+    tips = [pts[i] for pts in own for i in (0, -1)]
+    way_tips = [pts[i] for _, _, pts in bear for i in (0, -1)]
+    counted = [n for n in counted if n["degree"] != 1
+               or not any(math.dist(n["at"], t) <= SNAP_M for t in tips)
+               or any(math.dist(n["at"], t) <= SNAP_M for t in way_tips)]
     total = len(counted) or 1
     four = sum(1 for n in counted if n["degree"] >= 4)
     three = sum(1 for n in counted if n["degree"] == 3)
-    dead = [n for n in counted if n["degree"] == 1]
-    at_edge = sum(1 for n in dead if any(_dist_ring(n["at"], r) <= 1.0 for r in outlines))
-    at_gate = sum(1 for n in dead if any(math.dist(n["at"], g) <= GATE_M for g in gates))
+    ends = [n for n in counted if n["degree"] == 1]
+    on_edge = [any(_dist_ring(n["at"], r) <= EDGE_M for r in outlines) for n in ends]
+    on_gate = [not e and any(math.dist(n["at"], g) <= GATE_M for g in gates)
+               for n, e in zip(ends, on_edge)]
+    at_edge, at_gate = sum(on_edge), sum(on_gate)
+    dead = [n for n, e, g in zip(ends, on_edge, on_gate) if not e and not g]
     stubs = sum(1 for n in dead if n["piece"] < STUB_M)
     out.append(("four_way", subject, round(four / total, 4), {"count": four, "junctions": len(counted)},
                 f"{four} of {len(counted)} junctions are four-way or more."))
@@ -154,10 +188,11 @@ def measure(lines, bear, main, outlines, gates, subject="town"):
     out.append(("dead_ends", subject, round(len(dead) / total, 4),
                 {"count": len(dead), "junctions": len(counted)},
                 f"{len(dead)} of {len(counted)} junctions and ends are dead ends."))
-    out.append(("dead_end_count", subject, len(dead),
-                {"at_edge": at_edge, "at_gate": at_gate, "stubs": stubs,
-                 "inside": len(dead) - at_edge - at_gate},
-                f"{len(dead)} dead ends: {at_edge} on a district's edge, {at_gate} at a gate, {stubs} stubs."))
+    out.append(("dead_end_count", subject, len(dead), {"stubs": stubs, "inside": len(dead)},
+                f"{len(dead)} dead ends, {stubs} of them stubs."))
+    out.append(("edge_ends", subject, at_edge + at_gate, {"at_edge": at_edge, "at_gate": at_gate},
+                f"{at_edge + at_gate} ends where a way leaves the town: {at_edge} on a district's "
+                f"edge, {at_gate} at a gate."))
     return out
 
 

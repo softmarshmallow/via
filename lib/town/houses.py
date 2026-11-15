@@ -11,7 +11,9 @@ How it places (ours, written for this library):
 1. **The frontage side.** Of a lot's outline edges, the longest run of edges on a street
    (`streets`, default every `main_street` and `street`) is its frontage, and its chord stands for
    it; with no edge on a street, the edge whose middle lies nearest one. A lot is cut along its
-   block's frontage (geometry.md 3.6), so that side lies on the street's side of the block.
+   block's frontage (geometry.md 3.6), so that side lies on the street's side of the block. A lot
+   that is a cell of several pieces (a cell cut in two by a way) stands for its largest piece; the
+   others take no house, and the lots so read are counted (`split`, info, with the first 20 names).
 2. **A row, not a house.** A town's houses front their street side by side (a terrace), so the
    step fills the frontage with a row of `assets` standing wall to wall: of every row of at most
    `MAX_ROW` houses whose widths (and `PARTY`, 1 cm, between each two: touching walls that a
@@ -24,6 +26,10 @@ How it places (ours, written for this library):
    49 such lots empty). A row that stands inside the lot no way is passed over for the next; a lot no house fits is left empty, and
    counted (`small`, info). quay (M3 slice 2) placed one detached house per lot, so a street read
    as houses in fields; with `assets` holding one asset this is that rule with the row's count.
+   **2b. A shallower house at a corner.** With `fallback` (asset names), a lot where no row of
+   `assets` stands (a corner triangle or wedge, too shallow for the row's depth) is tried again
+   with those assets alone, so a corner holds a lower, shallower house rather than nothing
+   (quay: 61 of 135 lots empty with rows of 8 m deep houses).
 3. **Where and which way.** Every house of the row faces the street: `face` is the bearing of the
    frontage chord's outward normal, clockwise from north, in whole millidegrees. Their fronts (the
    asset frame's `+y` bound, assets.md) stand on one line `setback` metres in from the chord.
@@ -39,9 +45,10 @@ How it places (ours, written for this library):
    width written here (TODO: "setback by frontage width (keep_out)", the S-bend house in quay
    `move_hill`). Without a `keep_out` field the row stands at `setback`.
 5. **Ground.** With `terrace` (a ground kind of regions, lib/town's `terrace`), each run of houses
-   standing wall to wall (a row, or the part of it left when a house was dropped) stands on one
-   region of that kind the step returns, named `t<digest>_<station>` (with `_<i>` when the run
-   starts at the row's `i`th house), so the row has one floor; the houses take no `ground`.
+   standing wall to wall (a row, or the part of it left when a house was dropped) is cut into
+   pieces by rule 8, and each piece stands on one region of that kind the step returns, named
+   `t<digest>_<station>` (with `_<i>` when the piece starts at the row's `i`th house), so the
+   piece has one floor; the houses take no `ground`.
    With `ground` instead (say `"pad"`, lib/land), each house is lent that ground kind (rules.md
    2.1) and levelled at its own mean: on a fall, two neighbours each bank the other's footprint
    (quay: 50 `place.relief` between neighbours), so `ground` suits detached houses.
@@ -56,8 +63,12 @@ How it places (ours, written for this library):
    `(1 - smoothstep(10, 25, d)) * max(0, |h - mean| - grade * d)`. The land is read at the
    footprint's corners and middle, and on a 2 m lattice round it out to 24 m, in one batch; a
    house whose pad would move a reading by more than `max_cut` is not placed (`steep`, info); with
-   `terrace`, the same is read round each run with the terrace's fade (4 to 8 m) and a run past
-   `max_cut` is left out whole: an
+   `terrace`, the same is read round each piece (rule 8) with the terrace's fade (4 to 8 m), at
+   the piece's level, against `max_cut` less `CUT_MARGIN` (0.25 m: the 2 m lattice reads between
+   the core's posts and can miss the worst one). A piece past it is tried again with its floor
+   moved `RAISE_STEP` (0.25 m) at a time towards the land's own mean under it, up to `RAISE_MAX`
+   (1.5 m off its footway: the doors then have front steps or a sunk area), all tries in one
+   batch, and the first level that holds is taken; a piece no level holds is left out whole: an
    edit beside a cut would otherwise stop the build (`authority.max_change`). `grade` (default
    0.3) and `max_cut` are the ground kind's own defaults, which a step cannot read; write them as
    the kind has them. This is a prediction, not the core's check. The core now gives way for a
@@ -65,6 +76,15 @@ How it places (ours, written for this library):
    authority.md 2.2), so for houses grounded one by one the prediction can go, with `max_cut`.
    A terrace is a returned feature, which stays `authority.max_change` (error), so the prediction
    stays for terraces (TODO, lib/town rule 7).
+8. **A floor at its footway.** With `terrace`, a run's floor is set by the street in front, not
+   the land under it: the land is read `FOOTWAY_OUT` (2.5 m) out from each house's front middle,
+   and the run is cut, in order from its start, where the footway has risen or fallen more than
+   `STEP_SPAN` (0.6 m) since the piece began. Each piece's terrace is held at the middle of its
+   footway's range (`level`, `set_level`), so a door stands at most 0.3 m off the footway in
+   front of it. The terrace is the piece's footprints carried `APRON` (1 m) out in front (a paved
+   apron to the footway), `BACK` (0.5 m) behind, and `SIDE` (0.25 m) past each end of the run
+   (not at a cut between two pieces), so the footprint's edges read the terrace, not a bank
+   beyond it. quay doors within 0.3 m of the ground 3 m out: 10 of 125 before, 103 after.
 
 Names are by place (identity.md 2.2): a lot `lots#c<digest>_<station>` gives its row's first house
 (from the frontage chord's start) `h<digest>_<station>` and the others `h<digest>_<station>_<i>`,
@@ -74,6 +94,8 @@ near }`) reaches them.
 
 `params`: `lots` (required, the cells table's id); `streets` (selectors, default
 `["kind:main_street", "kind:street"]`); `assets` (default `["house_narrow", "house_low"]`);
+`fallback` (optional, assets tried alone where `assets` fit no row, rule 2b; when written it is a
+list of at least one name, and an empty list is refused like `assets`);
 `setback` (1 m: the least, rule 4 pushes it back); `gap` (0.5 m, at each end of a lot's row); `ground` (optional, a ground kind lent to each house); `terrace` (optional, a region kind under
 each run; not with `ground`); `max_relief` (optional,
 metres, 0 or more); `max_cut` and `grade` (optional, with `ground` or `terrace`: that kind's).
@@ -94,6 +116,8 @@ EXPLAIN = {
     "many of the lots; `small` lots fit no house, `steep` houses were left out for the land.",
     "small": "The houses step left some lots empty: no asset in `assets` fits the lot's frontage "
     "less `gap` on each side and its depth less `setback`.",
+    "split": "Some lots are cells of more than one piece; the houses step fills only the largest "
+    "piece of each, and names them here.",
     "no_street": "The houses step found no street to face; it placed nothing.",
     "steep": "The houses step left some houses out: the land under the house rises more than "
     "`max_relief` across its footprint, and no `ground` levels it; or its `ground` pad would move "
@@ -114,6 +138,8 @@ class Params:
             raise ParamError("lots", "`lots` is missing", "name the cells table the lots are")
         self.streets = _names(raw, "streets", ["kind:main_street", "kind:street"])
         self.assets = _names(raw, "assets", ["house_narrow", "house_low"])
+        # Written: a list of at least one name (`_names` refuses an empty one); absent: none.
+        self.fallback = _names(raw, "fallback", None) if "fallback" in raw else []
         self.setback = _number(raw, "setback", 1.0)
         self.gap = _number(raw, "gap", 0.5)
         self.ground = raw.get("ground")
@@ -149,7 +175,13 @@ def generate(step):
         step.error("params", f"step.{step.id}.params.{e.key}", e.message, e.hint,
                    explain=PARAMS_EXPLAIN)
         return
-    lots = read_lots(step, p.lots)
+    split = []
+    lots = read_lots(step, p.lots, split)
+    if split:
+        step.info("split", "step." + step.id,
+                  f"{len(split)} lots are of several pieces; each stands for its largest.",
+                  "A junction's corner cut the lot in two; the smaller pieces stay empty.",
+                  data={"count": len(split), "lots": split[:20]}, explain=EXPLAIN["split"])
     streets = read_streets(step, p.streets)
     if not streets:
         step.warning("no_street", "step." + step.id, "No street to face; no house placed.",
@@ -157,13 +189,19 @@ def generate(step):
                      explain=EXPLAIN["no_street"])
         return
     sizes = asset_sizes(step, p.assets)
+    spare = asset_sizes(step, p.fallback) if p.fallback else []
     rows = []                                          # (lot, [(offset, [house]) per push])
     for name, ring in lots:
         frame = lot_frame(ring, streets)
-        tries = [] if frame is None else [
-            (k, fit_row(ring, frame, sizes, p.setback + k * SETBACK_STEP, p.gap))
-            for k in range(int(round(MAX_PUSH / SETBACK_STEP)) + 1)]
-        rows.append((name, [(k, r) for k, r in tries if r]))
+        fits = []
+        for these in (sizes, spare):                   # rule 2b: `fallback` where `assets` fit none
+            tries = [] if frame is None or not these else [
+                (k, fit_row(ring, frame, these, p.setback + k * SETBACK_STEP, p.gap))
+                for k in range(int(round(MAX_PUSH / SETBACK_STEP)) + 1)]
+            fits = [(k, r) for k, r in tries if r]
+            if fits:
+                break
+        rows.append((name, fits))
     chosen = clear_rows(step, rows)
     small = [name for name, row in chosen if not row]
     if p.terrace is not None:
@@ -369,28 +407,147 @@ def run_outline(run):
 
 
 TERRACE_FADE = (4.0, 8.0)                             # lib/town `terrace`: its hold fades out here
+FOOTWAY_OUT = 2.5                                     # metres out from a house's front the footway is read
+STEP_SPAN = 0.6                                       # metres of footway rise one floor takes, at most
+APRON = 1.0                                           # metres of paved apron in front of a run
+BACK = 0.5                                            # metres of terrace behind a run (one post)
+SIDE = 0.25                                           # metres past a run's end (half the gap between lots)
+
+
+def fronts(run):
+    """Each house's front middle and its outward unit normal: [(point, front)]."""
+    out = []
+    for _, h in run:
+        c = h[3]                                       # (x0, y0), (x1, y0), (x1, y1), (x0, y1)
+        mid = ((c[2][0] + c[3][0]) / 2, (c[2][1] + c[3][1]) / 2)
+        out.append((mid, _unit((c[3][0] - c[0][0], c[3][1] - c[0][1]))))
+    return out
+
+
+def split_by_level(run, heights, span=STEP_SPAN):
+    """Rule 8: a run cut where the footway in front has risen or fallen more than `span` since the
+    piece began: [(piece, level)], each piece's level the middle of its footway's range."""
+    pieces = []
+    for ih, z in zip(run, heights):
+        if pieces:
+            piece, zs = pieces[-1]
+            if max(zs + [z]) - min(zs + [z]) <= span + 1e-9:
+                piece.append(ih)
+                zs.append(z)
+                continue
+        pieces.append(([ih], [z]))
+    return [(piece, (max(zs) + min(zs)) / 2) for piece, zs in pieces]
+
+
+def terrace_outline(piece, run_start=True, run_end=True, apron=APRON, back=BACK, side=SIDE):
+    """The piece's rectangle (run_outline) carried `apron` metres out in front (the door apron),
+    `back` metres behind, and `side` metres past each end that is an end of its run (not a step
+    to the next piece): the land a footprint's edge is read over (surfaces.md 2.3 interpolates
+    between posts) is then the terrace's, not the bank of whatever lies beyond."""
+    first, last = piece[0][1][3], piece[-1][1][3]
+    f = _unit((first[3][0] - first[0][0], first[3][1] - first[0][1]))
+    a = _unit((last[0][0] - first[1][0], last[0][1] - first[1][1]))
+    s0, s1 = (side if run_start else 0.0), (side if run_end else 0.0)
+    mv = lambda q, ka, kf: (q[0] + a[0] * ka + f[0] * kf, q[1] + a[1] * ka + f[1] * kf)
+    ring = [mv(first[1], -s0, -back), mv(last[0], s1, -back), mv(last[3], s1, apron),
+            mv(first[2], -s0, apron)]
+    return ring if _area2(ring) > 0 else ring[::-1]
+
+
+RAISE_STEP = 0.25                                     # metres a floor moves off its footway per try
+RAISE_MAX = 1.5                                       # metres off the footway, at most (front steps)
+CUT_MARGIN = 0.25                                     # metres under `max_cut` the 2 m lattice keeps
+
+
+def within_cut(step, p, pieces):
+    """Rule 7 per piece, with the terrace's own fade, at the piece's level. A piece whose terrace
+    would cut or bank the land by more than `max_cut` at its footway's level is tried again
+    `RAISE_STEP` metres at a time towards the ground's own mean under it, up to `RAISE_MAX` (its
+    doors then have front steps or a sunk area), in one batch; one that still does not hold is left
+    out. Returns (kept pieces, the left-out houses' keys)."""
+    outlines = [ring for _, _, _, ring in pieces]
+    limit = p.max_cut - CUT_MARGIN
+    moved, means = pad_moves(step, outlines, p.grade, fade=TERRACE_FADE, reach=TERRACE_FADE[1],
+                             levels=[z for _, _, z, _ in pieces], means=True)
+    if moved is None:
+        return pieces, []
+    tries = []                                         # (piece index, level)
+    for k, ((_, _, z, _), m) in enumerate(zip(pieces, moved)):
+        if m > limit and z is not None:
+            toward = means[k] - z
+            n = int(min(abs(toward), RAISE_MAX) / RAISE_STEP + 1e-9)
+            tries += [(k, z + math.copysign(RAISE_STEP * j, toward)) for j in range(1, n + 1)]
+    again = pad_moves(step, [outlines[k] for k, _ in tries], p.grade, fade=TERRACE_FADE,
+                      reach=TERRACE_FADE[1], levels=[z for _, z in tries]) if tries else []
+    better = {}
+    for (k, z), m in zip(tries, again):
+        if m <= limit and k not in better:
+            better[k] = z
+    kept, steep = [], []
+    for k, ((n, r, z, ring), m) in enumerate(zip(pieces, moved)):
+        if m <= limit:
+            kept.append((n, r, z, ring))
+        elif k in better:
+            kept.append((n, r, better[k], ring))
+        else:
+            steep += [house_key(n, i) for i, _ in r]
+    return kept, steep
+
+
+def footway_heights(step, runs_):
+    """The land `FOOTWAY_OUT` metres out from each house's front middle, per run, in one batch;
+    None when the world has no surface field."""
+    try:
+        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+    except (LookupError, RpcError):
+        return None
+    ext = (step.grid or {}).get("extent_mm")
+    px, py, sizes = [], [], []
+    for run in runs_:
+        fr = fronts(run)
+        sizes.append(len(fr))
+        for (m, f) in fr:
+            x, y = _mm((m[0] + f[0] * FOOTWAY_OUT, m[1] + f[1] * FOOTWAY_OUT))
+            if ext:
+                x, y = min(max(x, ext[0]), ext[2]), min(max(y, ext[1]), ext[3])
+            px.append(x)
+            py.append(y)
+    if not px:
+        return [[] for _ in runs_]
+    h = [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=px, y=py))]
+    out, k = [], 0
+    for n in sizes:
+        out.append(h[k:k + n])
+        k += n
+    return out
 
 
 def place_terraces(step, p, chosen, small, nlots):
-    """Rule 5 with `terrace`: each run of houses stands on one terrace (a region of that kind the
-    step returns), and rule 7 is taken per run with the terrace's own fade."""
+    """Rules 5, 7 and 8 with `terrace`: each run of houses is levelled at its footway (cut into
+    pieces where the footway climbs), each piece on one terrace with its apron, and rule 7 is taken
+    per piece with the terrace's own fade and level."""
     all_runs = [(name, run) for name, row in chosen for run in runs(row)]
+    heights = footway_heights(step, [r for _, r in all_runs])
+    pieces = []                                        # (lot, piece, level or None, outline)
+    for k, (name, run) in enumerate(all_runs):
+        if heights is None:
+            pieces.append((name, run, None, run_outline(run)))
+            continue
+        cut = split_by_level(run, heights[k])
+        pieces.extend((name, piece, z, terrace_outline(piece, j == 0, j == len(cut) - 1))
+                      for j, (piece, z) in enumerate(cut))
     steep = []
-    if p.max_cut is not None and all_runs:
-        moved = pad_moves(step, [run_outline(r) for _, r in all_runs], p.grade,
-                          fade=TERRACE_FADE, reach=TERRACE_FADE[1])
-        if moved is not None:
-            steep = [house_key(n, i) for (n, r), m in zip(all_runs, moved) if m > p.max_cut
-                     for i, _ in r]
-            all_runs = [nr for nr, m in zip(all_runs, moved) if m <= p.max_cut]
+    if p.max_cut is not None and pieces:
+        pieces, steep = within_cut(step, p, pieces)
     houses = 0
-    for name, run in all_runs:
+    for name, run, z, ring in pieces:
         key = "t" + house_key(name, run[0][0])[1:]
-        step.out.feature(key, p.terrace, region=[_mm(q) for q in run_outline(run)])
+        level = {} if z is None else {"level": round(z, 3), "set_level": 1}
+        step.out.feature(key, p.terrace, region=[_mm(q) for q in ring], **level)
         for i, (asset, at, face, _) in run:
             step.out.instance(house_key(name, i), asset, at=_mm(at), face=face)
             houses += 1
-    say(step, houses, len({n for n, _ in all_runs}), nlots, small, steep, len(all_runs))
+    say(step, houses, len({n for n, _, _, _ in pieces}), nlots, small, steep, len(pieces))
 
 
 def footprint_relief(step, footprints):
@@ -418,14 +575,17 @@ PAD_STEP = 2.0                                       # metres between readings r
 PAD_REACH = 24.0                                     # metres off the footprint read, at most
 
 
-def pad_moves(step, footprints, grade, fade=(10.0, 25.0), reach=PAD_REACH):
+def pad_moves(step, footprints, grade, fade=(10.0, 25.0), reach=PAD_REACH, levels=None,
+              means=False):
     """For each footprint, the most its pad would move the land at the readings of rule 7; None
     when the world has no surface field (nothing is skipped then). `fade` is the pad kind's (lib/land
-    `pad` 10 to 25 m, lib/town `terrace` 4 to 8 m), `reach` the metres read round it."""
+    `pad` 10 to 25 m, lib/town `terrace` 4 to 8 m), `reach` the metres read round it; `levels`, a
+    level per footprint (None: its mean), the height the pad holds. With `means`, (moves, the
+    land's mean under each footprint), and (None, None) without a surface field."""
     try:
         (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
     except (LookupError, RpcError):
-        return None
+        return (None, None) if means else None
     ext = (step.grid or {}).get("extent_mm")
     px, py, at = [], [], []                              # at: (footprint, d), d None under it
     for i, corners in enumerate(footprints):
@@ -453,14 +613,15 @@ def pad_moves(step, footprints, grade, fade=(10.0, 25.0), reach=PAD_REACH):
     for (i, d), v in zip(at, h):
         if d is None:
             under[i].append(v)
-    mean = [sum(u) / len(u) for u in under]
+    ground = [sum(u) / len(u) for u in under]
+    mean = ground if levels is None else [g if z is None else z for g, z in zip(ground, levels)]
     fade_in, fade_out = fade
     out = [0.0] * len(footprints)
     for (i, d), v in zip(at, h):
         d = d or 0.0                                   # under the footprint: levelled whole
         fade = 1.0 - _smoothstep(fade_in, fade_out, d)
         out[i] = max(out[i], fade * max(0.0, abs(v - mean[i]) - grade * d))
-    return out
+    return (out, ground) if means else out
 
 
 def _off(corners, q):
@@ -480,8 +641,11 @@ def _smoothstep(a, b, x):
     return t * t * (3.0 - 2.0 * t)
 
 
-def read_lots(step, table):
-    """(name, outer ring in metres, counter-clockwise) of every cell of the table."""
+def read_lots(step, table, split=None):
+    """(name, outer ring in metres, counter-clockwise) of every cell of the table. A lot of several
+    pieces (a cell cut in two by a junction's corner) stands for its largest piece; its name goes
+    into `split` (a list) when one is given, so the step reports it (`split`, info) instead of
+    passing it over in silence."""
     # The core adds the `class` column to a cells table's list by itself (protocol.md 3.3); asking
     # for it in `columns` asks for an attribute of that name instead, which no lot has.
     fl = step.features(select=[table])
@@ -490,12 +654,16 @@ def read_lots(step, table):
     for f, name in enumerate(fl.names):
         if cls is not None and str(_list(cls)[f]) != "cell":
             continue
-        pieces = fl.rings(f)
-        if len(pieces) != 1:
+        rings = []
+        for piece in fl.rings(f):
+            ring = _open([(float(v[0]) / 1000.0, float(v[1]) / 1000.0) for v in _list(piece[0])])
+            if len(ring) >= 3:
+                rings.append(ring)
+        if not rings:
             continue
-        ring = _open([(float(v[0]) / 1000.0, float(v[1]) / 1000.0) for v in _list(pieces[0][0])])
-        if len(ring) < 3:
-            continue
+        if len(rings) > 1 and split is not None:
+            split.append(name)
+        ring = max(rings, key=lambda r: abs(_area2(r)))
         if _area2(ring) < 0:
             ring.reverse()
         out.append((name, ring))

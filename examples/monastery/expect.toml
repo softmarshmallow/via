@@ -1,0 +1,186 @@
+# What a monastery build must measure (docs/plan.md, M3; R13, R15, R16, R18). Measures, never bytes
+# (R15): each row names a measure of measure.py and the band it falls in. Taken by
+#
+#   python3 examples/monastery/measure.py BUILD                       # base
+#   python3 examples/monastery/measure.py BUILD+<c> --base BUILD      # a change, built with --against
+#   sdk/python/.venv/bin/python examples/monastery/measure.py BUILD+<c> --base BUILD --check <c>   # 3.11+
+#
+# Protocol: Apple M4 Pro, macOS arm64, a `via` release binary built at 2026-11-15 18:34 KST from the
+# rewrite branch's working tree (after cbecb9d, with the other M3 agents' uncommitted core, lib/town,
+# lib/ways and lib/review changes of that hour), VIA_LIB=lib, Python 3.12 (sdk/python/.venv), one
+# fresh store, base built cold on it (3.1 s wall), each change with --against base (2.4 to 2.5 s),
+# default threads, a machine shared with other builds. One build each, so a band is the measured
+# number, widened only where the row says why: where someone looks, not a target.
+# Re-taken 2026-11-15 (M3 slice 4) for the road's rows after its first turn moved to (228, 12) and
+# the place (240, 26) was added: same machine and protocol, a release binary of the working tree of
+# that hour (epoch 2), base 3 s, each change 2 to 3 s; every other row measured unchanged.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.reach]                                # 5 places and 3 cell doors reached, 2 sealed pairs held (the gorge floor)
+measure = "reach_held"
+band    = [10, 10]
+
+[base.reach_pairs]
+measure = "reach_pairs"
+band    = [10, 10]
+
+[base.not_sealed]
+measure = "not_sealed"
+band    = [0, 0]
+
+[base.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[base.road_grade]                           # the steepest 10 m of the built road, %; 10.14 measured (11.21 before slice 4, where the first two legs crossed)
+measure = "road_grade_max"
+band    = [0, 11.5]
+
+[base.road_over_10]                         # metres of road whose 10 m climbs over 10 %; 6 measured
+measure = "road_over_10"
+band    = [0, 10]
+
+[base.road_turns]                           # six written turns; 7 counted (one turn counted twice by the 15 m heading test)
+measure = "road_turns"
+band    = [6, 7]
+
+[base.road_self_near]                       # station pairs 40 m apart along the road closer than 6 m; 13 measured, all at the
+measure = "road_self_near"                  # (300, 44) turn, legs 4.8 m apart (0.8 m between beds); 199 before slice 4 (legs 1 and 2 on top of each other)
+band    = [0, 13]
+
+[base.decks]
+measure = "decks"
+band    = [1, 1]
+
+[base.deck_wet]
+measure = "deck_wet"
+band    = [0, 0]
+
+[base.unowned]
+measure = "geom.unowned_crossing"
+band    = [0, 0]
+
+[base.wall_low]                             # no metre of wall, away from the gate, under 3.5 m above the court
+measure = "wall_low"
+band    = [0, 0]
+
+[base.gate_step]                            # cm between the court and the ground across the gate; 31 measured (walker's step 20 cm, its grade 0.5)
+measure = "gate_step"
+band    = [0, 40]
+
+[base.tarn]                                 # the fill step's lake
+measure = "lakes"
+band    = [1, 1]
+
+[base.relief]
+measure = "place.relief"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ guesthouse
+
+[guesthouse.errors]
+measure = "errors"
+band    = [0, 0]
+
+[guesthouse.added]
+measure = "instances_added"
+band    = [1, 1]
+
+[guesthouse.removed]
+measure = "instances_removed"
+band    = [0, 0]
+
+[guesthouse.reach]                          # the guesthouse's door reached from the road over the bridge
+measure = "reach_held"
+band    = [11, 11]
+
+[guesthouse.reach_pairs]
+measure = "reach_pairs"
+band    = [11, 11]
+
+[guesthouse.road_kept]                      # the road's course unchanged, every point
+measure = "road_kept"
+band    = [2393, 2393]
+
+# ------------------------------------------------------------------------------------------ move_bridge
+
+[move_bridge.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_bridge.decks]
+measure = "decks"
+band    = [1, 1]
+
+[move_bridge.deck_wet]
+measure = "deck_wet"
+band    = [0, 0]
+
+[move_bridge.unowned]
+measure = "geom.unowned_crossing"
+band    = [0, 0]
+
+[move_bridge.reach]
+measure = "reach_held"
+band    = [10, 10]
+
+[move_bridge.reach_pairs]
+measure = "reach_pairs"
+band    = [10, 10]
+
+[move_bridge.road_kept]                     # the course up to the last turn kept (2082 of the base's 2393 points); only the last leg is found again
+measure = "road_kept"
+band    = [2000, 2100]
+
+[move_bridge.road_grade]
+measure = "road_grade_max"
+band    = [0, 11.5]
+
+[move_bridge.removed]
+measure = "instances_removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ no_bridge
+
+[no_bridge.errors]
+measure = "errors"
+band    = [0, 0]
+
+[no_bridge.decks]
+measure = "decks"
+band    = [0, 0]
+
+[no_bridge.reach]                           # each rim walked to its own places, and the hall, the gate, the well, the west rim and the gorge floor sealed from the road: the bridge was the only way over (the same statement with the bridge standing gives 4 not_sealed)
+measure = "reach_held"
+band    = [9, 9]
+
+[no_bridge.reach_pairs]
+measure = "reach_pairs"
+band    = [9, 9]
+
+[no_bridge.not_sealed]
+measure = "not_sealed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ winter
+
+[winter.errors]
+measure = "errors"
+band    = [0, 0]
+
+[winter.reach]
+measure = "reach_held"
+band    = [10, 10]
+
+[winter.road_kept]
+measure = "road_kept"
+band    = [2393, 2393]

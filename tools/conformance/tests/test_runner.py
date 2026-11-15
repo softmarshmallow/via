@@ -816,6 +816,17 @@ class KernelCheckTests(unittest.TestCase):
         self.put("out.json", bad)
         self.assertTrue(self.run_check(check))
 
+    def test_course_valid_within(self) -> None:
+        feat = {"name": "course", "points": [[0, 7], [1, 7.9], [7, 8], [8, 7]]}
+        self.put("f.json", {"features": [feat]})
+        check = {"fn": "course_valid", "path": "f.json", "feature": "course", "start": [0, 7],
+                 "end": [8, 7], "min_segment": 0.001, "within": [0, 0, 8, 8]}
+        self.assertEqual(self.run_check(check), [])  # y = 8 is on the edge: inside
+        feat["points"][2] = [7, 8.01]
+        self.put("f.json", {"features": [feat]})
+        got = self.run_check(check)
+        self.assertTrue(any("vertex 2 within" in g[1] for g in got), got)
+
     def test_network_measures_never_fails(self) -> None:
         self.put("out.json", _cross_network())
         self.put("ref.json", {"streets": {"faces": 5, "total_area_m2": 1}})

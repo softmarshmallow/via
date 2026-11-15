@@ -309,6 +309,51 @@ class StreetsTest(unittest.TestCase):
         self.assertTrue(with_way)
         self.assertEqual(near(with_way), [])
 
+    def test_down_street_crossing_a_way_ends_on_it(self):
+        # Step 6: a down street that crosses a main way ends where it first meets it, instead of
+        # being dropped; one that only passes near the way is still not laid.
+        p = S["Params"]({"district": "old_town", "cross": 90, "spacing": 40})
+        land = S["Land"].flat(DISTRICT, 4)
+        shore = [(40, 60), (480, 60)]
+        longs = {0: [(60, 100), (440, 100)]}
+        way = [(130, 40), (80, 120)]                        # crosses x = 105 at y = 80
+        downs = S["down_to"](p, DISTRICT, land, longs, shore, [way])
+        self.assertEqual(downs["d45"], [(105, 100), (105.0, 80.0)])
+        self.assertIn("d135", downs)                        # 30 m off the way: laid to the shore
+        self.assertEqual(downs["d135"][-1], (195.0, 60.0))
+        bend = S["down_to"](p, DISTRICT, land, {0: [(60, 100), (440, 100)]}, shore,
+                            [[(100, 100), (110, 100), (110, 60)]])   # starts on the way's bend
+        self.assertNotIn("d45", bend)
+        near = [(118, 40), (118, 120)]                      # 13 m from x = 105, not crossing it
+        downs = S["down_to"](p, DISTRICT, land, {0: [(60, 100), (440, 100)]}, shore, [near])
+        self.assertNotIn("d45", downs)
+
+    def test_free_end_runs_on_to_a_street_or_way(self):
+        # Step 8: an end 10 m short of another street, heading for it, runs on and meets it at a
+        # vertex written into both; one heading away, or farther than spacing / 2, stays.
+        p = S["Params"]({"district": "old_town", "spacing": 40})
+        streets = {"a": [(100, 100), (200, 100)], "b": [(150, 200), (150, 110)]}
+        out = S["join_ends"](p, DISTRICT, streets)
+        self.assertEqual(out["b"][-1], (150.0, 100.0))
+        self.assertIn((150.0, 100.0), out["a"])
+        away = S["join_ends"](p, DISTRICT, {"a": [(100, 100), (200, 100)],     # beside it, 10 m
+                                            "b": [(150, 110), (250, 110)]})   # off: not ahead
+        self.assertEqual(away["b"], [(150, 110), (250, 110)])
+        far = S["join_ends"](p, DISTRICT, {"a": [(100, 100), (200, 100)],
+                                           "b": [(150, 200), (150, 125)]})
+        self.assertEqual(far["b"][-1], (150, 125))
+        way = S["join_ends"](p, DISTRICT, {"b": [(150, 200), (150, 112)]},
+                             ways=[[(60, 100), (440, 100)]])
+        self.assertEqual(way["b"][-1], (150.0, 100.0))
+
+    def test_end_on_the_outline_or_a_street_not_joined(self):
+        p = S["Params"]({"district": "old_town", "spacing": 40})
+        streets = {"a": [(100, 100), (200, 100)], "b": [(150, 300), (150, 100)],
+                   "c": [(300, 370), (300, 380.005)]}            # past the outline: cut there
+        out = S["join_ends"](p, DISTRICT, {k: list(v) for k, v in streets.items()},
+                             ways=[[(60, 385), (440, 385)]])
+        self.assertEqual(out, streets)
+
     def test_lowest_contour_leaves_two_lots_to_the_shore(self):
         # quay's waterfront had no houses: the lowest contour lay 26 to 29 m above the shore and
         # its 24 m lots took the band. With `lot_depth`, no long street comes nearer the shore than
@@ -358,6 +403,18 @@ BOUNDS = {"house_narrow": [-2500, -4000, 0, 2500, 4000, 7000],
 def pack_table(select):
     ids = [a for a in select if a in BOUNDS]
     return {"id": ids, "bounds": [BOUNDS[a] for a in ids]}
+
+
+def _two_piece_lot():
+    """One cell `lots#cp_0` of two pieces: an 11 m by 16 m lot on the street, and a 2 m sliver."""
+    big = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+    sliver = [(40, 3), (42, 3), (42, 5), (40, 5)]
+    coords, starts = [], [0]
+    for ring in (big, sliver):
+        coords.extend([int(round(x * 1000)), int(round(y * 1000))] for x, y in ring)
+        starts.append(len(coords))
+    return _FL({"name": ["lots#cp_0"], "geometry": [2], "pieces": [0, 2], "rings": [0, 1, 2],
+                "ring_starts": starts, "coords": coords, "class": ["cell"]})
 
 
 class FakeHouses(FakeStep):
@@ -533,6 +590,53 @@ class RowsTest(unittest.TestCase):
         self.assertEqual(step.out.instances, [])
         steep = [x for x in step.said if x[1] == "steep"][0][3]
         self.assertEqual(steep["count"], 2)
+
+    def test_lot_of_two_pieces_stands_for_its_largest_and_is_said(self):
+        fl = {"lots": _two_piece_lot(),
+              "kind:main_street": feature_list([("streets#a", 1, [(0, 0), (100, 0)], "feature")]),
+              "kind:street": feature_list([("streets#b", 1, [(0, 0), (0, 100)], "feature")])}
+        step = FakeHouses({"lots": "lots", "assets": ["house_narrow"]}, features=fl)
+        step.id = "houses"
+        H["generate"](step)
+        self.assertEqual(len(step.out.instances), 2)            # on the 11 m piece, not the sliver
+        split = [x for x in step.said if x[1] == "split"][0][3]
+        self.assertEqual(split, {"count": 1, "lots": ["lots#cp_0"]})
+
+    def test_fallback_fills_a_shallow_corner(self):
+        # Rule 2b: a lot 7 m deep takes no 8 m deep house_narrow; with `fallback` it takes a
+        # house_low (6 m deep) instead of standing empty.
+        lot = [(20, 3), (30, 3), (30, 10), (20, 10)]
+        step = houses_step([("lots#cs_0", 2, lot, "cell")], assets=["house_narrow"], setback=0.5)
+        self.assertEqual(step.out.instances, [])
+        step = houses_step([("lots#cs_0", 2, lot, "cell")], assets=["house_narrow"], setback=0.5,
+                           fallback=["house_low"])
+        self.assertEqual([i[1] for i in step.out.instances], ["house_low"])
+
+    def test_terrace_level_at_the_footway(self):
+        # Rule 8: on land rising north from a street along y = 0, the terrace is written at the
+        # footway's height in front of the doors, not the land's mean under the run, and it
+        # carries the door apron out to the footway.
+        lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+        step = houses_step([("lots#cf_0", 2, lot, "cell")], height=lambda x, y: 0.1 * y,
+                           assets=["house_narrow"], terrace="terrace", max_cut=3, grade=0.7)
+        attrs = step.out.attrs["tf_0"]
+        self.assertEqual(attrs["set_level"], 1)
+        fronts = H["fronts"]([(0, h) for _, h in H["fit_row"](
+            lot, H["lot_frame"](lot, [((0, 0), (100, 0))]), [("house_narrow", -2.5, -4, 2.5, 4)],
+            1.0, 0.5)])
+        foot = [0.1 * (m[1] + f[1] * H["FOOTWAY_OUT"]) for m, f in fronts]
+        self.assertAlmostEqual(attrs["level"], sum(foot) / len(foot), places=3)
+
+    def test_steep_footway_steps_the_row(self):
+        # A footway climbing 1 m a metre along the row: each house its own floor (a stepped
+        # terrace), each within half of STEP_SPAN of its own footway.
+        run = [(i, ("n", (0, 0), 0, [(5 * i, 0), (5 * i + 5, 0), (5 * i + 5, 8), (5 * i, 8)]))
+               for i in range(3)]
+        pieces = H["split_by_level"](run, [0.0, 0.3, 0.5])
+        self.assertEqual([([i for i, _ in r], z) for r, z in pieces], [([0, 1, 2], 0.25)])
+        pieces = H["split_by_level"](run, [0.0, 1.0, 2.0])
+        self.assertEqual([([i for i, _ in r], z) for r, z in pieces],
+                         [([0], 0.0), ([1], 1.0), ([2], 2.0)])
 
     def test_terrace_and_ground_refused(self):
         step = houses_step([], terrace="terrace", ground="pad")

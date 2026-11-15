@@ -48,7 +48,7 @@ NAMED_CHECKS: dict[str, tuple[set[str], set[str]]] = {
     "names_same": ({"first", "second"}, set()),
     "cells_valid": ({"path", "input", "network"}, {"bound"}),
     "sample_terrain": ({"path", "input", "field", "manifest"}, set()),
-    "course_valid": ({"path", "feature", "start", "end", "min_segment"}, {"passes"}),
+    "course_valid": ({"path", "feature", "start", "end", "min_segment"}, {"passes", "within"}),
     "entry_causes": ({"path", "table", "prefix"}, {"named"}),
     "post_step_at_most": ({"path", "resolution", "window", "limit"}, {"origin"}),
     "roundtrip_point": ({"path", "input"}, {"bound"}),

@@ -117,27 +117,26 @@ pub struct Nearest {
 }
 
 /// The nearest place on a line to `p`; ties to the lower `t`.
+///
+/// The segments are scanned in increasing order with `upper` an integer bound on the least
+/// squared distance (to a vertex, or the ceiling of the best exact distance so far): a segment
+/// whose box lies strictly farther is skipped without its exact test. Skipping never changes the
+/// answer: such a segment is strictly worse than the best, ties included.
 pub fn nearest(line: &Line, p: P) -> Nearest {
-    let mut best: Option<Nearest> = None;
-    // An exact integer bound on the best distance squared so far (to a vertex seen), so a segment
-    // whose box lies strictly farther is skipped without its exact test. Skipping never changes
-    // the answer: such a segment is strictly worse than the best, ties included.
     let sq = |a: P| {
         let (dx, dy) = (i128::from(a.x - p.x), i128::from(a.y - p.y));
         dx * dx + dy * dy
     };
-    let mut upper: Option<i128> = None;
+    // The nearest vertex first, so the bound prunes from the first segment on: a scan in order
+    // would test exactly every segment until it came near the point.
+    let mut upper: Option<i128> = line.pts.iter().map(|&a| sq(a)).min();
+    let mut best: Option<Nearest> = None;
+    let sq = |a: P| {
+        let (dx, dy) = (i128::from(a.x - p.x), i128::from(a.y - p.y));
+        dx * dx + dy * dy
+    };
     for k in 0..line.segments() {
         let (a, b) = line.seg(k);
-        let gap = |lo: i64, hi: i64, v: i64| -> i128 {
-            if v < lo {
-                i128::from(lo - v)
-            } else if v > hi {
-                i128::from(v - hi)
-            } else {
-                0
-            }
-        };
         let gx = gap(a.x.min(b.x), a.x.max(b.x), p.x);
         let gy = gap(a.y.min(b.y), a.y.max(b.y), p.y);
         if upper.is_some_and(|u| gx * gx + gy * gy > u) {
@@ -151,6 +150,11 @@ pub fn nearest(line: &Line, p: P) -> Nearest {
             Some(bst) => d.cmp_exact(&bst.dist) == Ordering::Less,
         };
         if better {
+            // A segment whose box lies strictly beyond the ceiling of this distance is strictly
+            // farther than it.
+            if let (Some(c), Some(u)) = (d.ceil(), upper) {
+                upper = Some(u.min(c));
+            }
             best = Some(Nearest { k, foot, dist: d });
         }
     }
@@ -160,6 +164,17 @@ pub fn nearest(line: &Line, p: P) -> Nearest {
         foot: Foot::Start,
         dist: pred::dist2_segment(p, line.pts[0], line.pts[0]).0,
     })
+}
+
+/// How far `v` lies outside `[lo, hi]`, millimetres.
+fn gap(lo: i64, hi: i64, v: i64) -> i128 {
+    if v < lo {
+        i128::from(lo - v)
+    } else if v > hi {
+        i128::from(v - hi)
+    } else {
+        0
+    }
 }
 
 /// `e` (metres), `t` and the nearest point for a nearest place.

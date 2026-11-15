@@ -138,8 +138,12 @@ mask  = "= 1 - smoothstep(width / 2 + footway, width / 2 + footway + 0.5, d)"
 # on it does, through the pad it is lent (`ground = "pad"`, lib/land), so a lot on a slope is
 # terraced only under its house (TODO, "Local streets and lots ignore the land").
 # A terrace: the level ground under one row of houses (lib/town/houses.py, `terrace`), a region the
-# houses step returns round each run of houses standing wall to wall. It levels the run at its
-# mean, so the houses of a row stand on one floor; one pad per house (lib/land `pad`, lent by
+# houses step returns round each run of houses standing wall to wall. It levels the run at `level`
+# when `set_level` is 1 (the houses step writes the footway's height in front of the doors, and
+# carries the region a metre out over the door apron, so a door opens level onto its footway and
+# the bank behind takes up the fall: quay-walk found 91 of 123 doors more than 1 m off the footway
+# when each terrace stood at its own mean), else at its mean, so the houses of a row stand on one
+# floor; one pad per house (lib/land `pad`, lent by
 # `ground`) levelled each house at its own mean, and on a fall two neighbours 1 cm apart each
 # banked the other's footprint: quay had 50 `place.relief` of 0.6 to 1 m, all between neighbours.
 # Past the run the ground is held within a bank of `grade` (0.7, 35 degrees: no steeper, TODO
@@ -153,11 +157,16 @@ radius    = 9                               # the fade's 8 m and a post
 [kind.terrace.defaults]
 grade   = 0.7                               # the bank, rise over run (35 degrees)
 max_cut = 3                                 # metres it may cut or bank the ground, at most
+level   = 0                                 # metres: the floor, read only with `set_level = 1`
+set_level = 0                               # 1: level at `level`; 0: at the ground's mean
+
+[kind.terrace.let]
+top = "= if(set_level > 0, level, under('mean'))"
 
 [kind.terrace.effect.level]
 field      = "role:surface"
-value      = "= clamp(v, under('mean') - grade * d, under('mean') + grade * d)"
-mask       = "= 1 - smoothstep(4, 8, d)"
+value      = "= clamp(v, top - grade * d, top + grade * d)"
+mask       = "= if(d > 0, if(inside('kind:terrace'), 0, 1 - smoothstep(4, 8, d)), 1)"
 max_change = "= max_cut"
 
 [kind.block]
@@ -195,3 +204,49 @@ mask  = "= if(sd < -width, 1 - smoothstep(width + 6, width + 10, d), 1 - smooths
 field = "role:keep_out"                     # behind it (a house facing the quay stands there:
 value = "= 1"                               # houses.py rule 4); 3 to 5 m past the wall, over the water
 mask  = "= 1 - if(sd > 0, smoothstep(apron, apron + 0.5, sd), smoothstep(3, 5, -sd - width))"
+
+# An enclosure: a walled yard (a monastery's court, a castle ward, a farmyard), a region. Its ground
+# is levelled at its mean, and outside it the ground is held within a bank of `grade` (rise over
+# run; 0.4 is walkable at lib/review's walker's 0.5) out to 10 m, fading back into the land by
+# 20 m; levelling that moves the ground more than `max_cut` metres is `authority.max_change`. A wall
+# `wall` metres high and `thick` metres thick stands just inside the outline, all round, except
+# within `gate_width / 2` of a `gate`: a point of that kind placed on the outline by `on` (`on = {
+# ref = "court", t = 0.99 }`), so the gap moves with the outline and a second gate is a second
+# point. The wall opens at any gate within that distance, the enclosure's own or a neighbour's.
+#
+# `wall`: STAND-IN, as lib/ways' crossing deck is. Kind surfaces (surfaces.md) are `doc.not_yet`, so
+# the wall is written on the terrain: the ground stands `wall` metres above the yard across its
+# thickness and falls sheer on both sides. On foot it shuts the yard (lib/review's reach reads it as
+# a rise no walker takes); a loader draws it as a grassed bank, not as masonry, until walls are an
+# asset run or a surface (TODO).
+#
+# Anchored, so a way that ends at the gate (its bed and its round cap) and a house's pad inside the
+# yard give way to the level and the wall (authority.md 3). Ours, written for `monastery` (M3).
+[kind.enclosure]
+authority = "anchored"
+radius    = 22                              # the bank's 20 m fade and a post
+
+[kind.enclosure.defaults]
+grade      = 0.4                            # the bank outside the yard, rise over run (22 degrees)
+max_cut    = 6                              # metres the yard may cut or bank the ground, at most
+wall       = 4                              # metres the wall stands above the yard
+thick      = 1.5                            # metres of wall, inward from the outline
+gate_width = 4                              # metres of gap at each gate
+
+[kind.enclosure.let]
+top  = "= under('mean')"
+gate = "= 1 - smoothstep(gate_width / 2, gate_width / 2 + 0.5, dist('kind:gate', 8))"
+
+[kind.enclosure.effect.level]               # the yard at its mean, a walkable bank outside
+field      = "role:surface"
+value      = "= clamp(v, top - grade * d, top + grade * d)"
+mask       = "= 1 - smoothstep(10, 20, d)"
+max_change = "= max_cut"
+
+[kind.enclosure.effect.wall]                # stand-in: the wall on the terrain (above)
+field = "role:surface"
+value = "= top + wall"
+mask  = "= if(sd >= 0, (1 - smoothstep(thick, thick + 0.25, sd)) * (1 - gate), 0)"
+
+[kind.gate]                                 # a point on an enclosure's outline where its wall opens
+radius = 1                                  # it writes no field

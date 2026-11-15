@@ -144,11 +144,27 @@ pub fn route_path(
     smooth: bool,
 ) -> Result<Vec<P>, RouteFault> {
     let c = route(grid, cost, waypoints).map_err(RouteFault::Raster)?;
-    if smooth {
-        via_geom::curve::smooth(source, &c.points).map_err(RouteFault::Geom)
-    } else {
-        Ok(c.points)
+    if !smooth {
+        return Ok(c.points);
     }
+    // `derived.md` 3 step 6: the curve is held to the extent the course was found over. Through
+    // a course along the extent's edge it bulges past the edge (case d25), and a kind's
+    // `smoothed_along` would read the field beyond it. A written waypoint stays where it
+    // is written; a sample beyond the extent moves onto its edge.
+    let s = via_geom::curve::smooth(source, &c.points).map_err(RouteFault::Geom)?;
+    let [x0, y0, x1, y1] = grid.extent;
+    let mut out: Vec<P> = Vec::with_capacity(s.len());
+    for p in s {
+        let q = if waypoints.contains(&p) {
+            p
+        } else {
+            P::new(p.x.clamp(x0, x1), p.y.clamp(y0, y1))
+        };
+        if out.last() != Some(&q) {
+            out.push(q);
+        }
+    }
+    Ok(out)
 }
 
 /// One row of `derive.descend` (`derived.md` 4.2).

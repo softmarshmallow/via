@@ -112,7 +112,8 @@ starts_at = "bridge_west"
 ends_at   = "bridge_east"
 path      = []
 deck_z    = 8.5
-crosses   = "river"
+freeboard = 2.5                             # the water under the deck at 6.0 m, the river's own
+crosses   = "river"                         # level there (5.9 to 6.2): drawn flat beneath it
 
 # The main ways: what each connects, routed over the land (R16). The cost is convex in the slope
 # (quay's) and the river is 400 a metre within 14 m of the valley's line, so no way crosses it but at the
@@ -143,12 +144,13 @@ path      = []
 route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
 smooth    = true
 
-[feature.east_road]
-kind      = "main_street"
-starts_at = "market"
+[feature.east_road]                         # up the hill's south shoulder by two way points and
+kind      = "main_street"                   # a third of the others' slope cost: with neither it
+starts_at = "market"                        # went down to the river and round by the south edge,
+                                            # 484 m for a 194 m gap, through the old town's foot
 ends_at   = "east_gate"
-path      = []
-route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
+path      = [[318, 200], [405, 152]]
+route     = "= 1 + 0.04 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
 smooth    = true
 
 [feature.north_road]
@@ -176,7 +178,7 @@ region = [[232, 320], [370, 312], [380, 430], [240, 440]]
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:town/streets.py"]
-params  = { district = "old_town", shore = "embankment", origin = [282, 236], spacing = 42, cross = 60, lot_depth = 20 }
+params  = { district = "old_town", shore = "embankment", origin = [258, 236], spacing = 42, cross = 45, lot_depth = 15 }
 
 [step.west_streets]                         # flatter: long streets straight along the district
 when    = "generate"

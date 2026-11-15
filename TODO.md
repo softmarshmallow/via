@@ -134,9 +134,21 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
 - -> M2: **Engine version in the build key.** A changed engine with the same `CARGO_PKG_VERSION`
   replays a stored build (vale kept a fixed `diag.internal` until its store was cleared). Lesson:
   the key must name the engine build, or every engine change during a milestone needs a version bump.
+  M3 slice 4: the epoch is raised to 2 for the smoothed course held to the extent (`derived.md` 3
+  step 6), so stores built before it rebuild; `epoch guard` covers only the null world, so a missed
+  raise is caught by nothing. Until the key names the build, raise `EPOCH` with every change that
+  moves bytes.
 - -> M2: **Distance to large regions is slow.** A fill lake from marching squares has thousands
   of vertices; exact `project_region` per post made vale take ~6 min. A box bound now prunes
   segments; a grid of segments per region is the next step if it is still slow.
+  M3 slice 4, measured: the kernel's fast paths (nearest vertex first in `nearest`, the wide
+  product over significant limbs, winding from the edges that span a row) and `distance`'s member
+  pruning. Cold `via build` of the working tree's townland and vale (same lib/ and examples/ for
+  both binaries), fresh store per run, release, default threads, Apple M4 Pro shared with other
+  agents (load average about 9), 3 runs each, alternating: townland 93.1 / 94.3 / 93.2 s at
+  cbecb9d against 27.1 / 26.9 / 26.9 s now (3.5x); vale 39.1 / 38.9 / 38.9 s against 32.6 / 32.7 /
+  32.5 s (1.2x). Values unchanged by the paths: `crates/via-geom/tests/exact_fast.rs` and
+  `graph.rs` `distance_tests` compare each with the plain scan.
 - -> M3: **A way that ends at a door** (relief A): `ends_at = "bothy.door"` reads the instance's
   height and loops through the trail's own effect (`graph.cycle`). Proposed: the `height` edge
   only for a read of the mount's height (`graph.md` 2, `mount` row). Not done.
@@ -223,6 +235,36 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
   Lesson: a weights row's id orders it: `footway` sorted before `grass` and was painted over.
 - [ ] -> lib/town: **61 of quay's 135 lots stay empty**: corner triangles (bisector cuts) and wedges
   fit no 8.6 m deep house. A corner house facing both streets, or a shallower asset, is owed.
+- [ ] -> lib/town (s4 town pass): **Doors level with the footway, stepped rows.** Done: terraces at the
+  footway (houses.py rule 8), stepped, aprons; quay doors within 0.3 m 10 -> 103 of 125. Left: a raised
+  floor (12 rows, rule 7) has no front steps; a party-wall step reads as `place.relief` (8) because the
+  step falls in one post cell. Corner lots: 60 still empty, `fallback` (rule 2b) fills none in quay; a
+  corner house facing both streets is owed. Lesson: a level read from the right place (the footway, not
+  the ground under the house) fixed 90 doors; the measure from the walk named it.
+- [ ] -> examples/townland (s4 town pass): lib/review/form.py now counts ends on a district edge or at a
+  gate as `edge_ends`, apart from `dead_end_count`; townland expect `base.dead_ends` (18) must be
+  re-recorded (18 were 15 at the edge and the rest at gates or inside) and `dead_end_at_edge` read from
+  `edge_ends`. Done (townland pass): `base.dead_ends` [0, 0], `base.edge_ends` [16, 16].
+- [ ] -> lib/town (townland pass): **The waterfront's ends are sheer and its level is one number.**
+  Its `deck` effect's wall branch (`sd < -width`, mask to `width + 10`) runs round each end, so past an
+  end the ground is cut to `level - wall` in a ring: townland's south end is a 71 degree face into a
+  dry pit at 3.6 m, below the river beside it (4.5 m); the north end a 0.9 m step into the land. Fade
+  the deck and the wall over the ends as lib/ways' `crossing` does (`ends` from `t`), with a 1:2
+  return; and give it `level_end` (or `start_at`/`end_at` by name) so it can run up to
+  `old_bridge.end` at 8.5 m. A world cannot do it: an anchored ramp there is `authority.conflict`
+  with the wall. Lesson: an end is a meeting too (R18); a kind that owns a line owns how it stops.
+- [ ] -> examples/townland: **One old-town street ends on the embankment** (`d68`). Step 6 drops the
+  rest within `spacing / 2` of `quay_road` and `high_street`; `cross = 30` gave an `authority.max_change`
+  of a terrace (3.10 m against 3, at (299, 198)) on the lib/town of that hour. Re-try with the town
+  pass's end-on-a-main-way rule landed. `from_east_gate` sees no town over the hill's shoulder; move
+  it to the east road's crest. move_hill empties the old town (52 houses): the districts are written
+  where the hill was.
+- [x] -> lib/ways + lib/water (townland pass): **The crossing's deck stood under water** (56 of 192
+  posts, 0.61 m; the beck's level smoothed the stand-in deck into the river, 3.1 m over its line).
+  Crossing `water` effect holds the level at `deck_z - freeboard` under the deck; the beck's level
+  takes the lower of its smoothed floor and the floor it cut at the post, plus 0.25 m (ford and glade
+  water byte for byte unchanged, `via eval`). Lesson: a smoothing window that reads the build's ground
+  reads whatever was written after it; read what you cut.
 - [ ] -> lib/town: houses.py rule 7 (was 6) predicts the pad's `max_change` on a 2 m lattice so a lot beside a
   deep cut stays empty; the move_hill error it hides was `authority.max_change` 3.15 m at (109, 99.5).
   The core's `authority.gave_way` landed (M3, after slice 2; authority.md 2.2) for returned instances with
@@ -344,6 +386,56 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
   shows only as a grey band from the water.
 - -> core (derived.md 3): a route cost of the course's own grade (direction-aware), so a main way can
   take a fall in switchbacks; a slope-only cost cannot.
+
+### From building monastery (2026-11-15, M3 world; examples/monastery)
+
+- [x] -> monastery: **the switchback's first two legs ran on top of each other** (0.27 m at (256, 20)):
+  each leg is a lattice walk, flat first. First turn to (228, 12), the place (240, 26) added;
+  `road_self_near` 199 -> 13 (the (300, 44) turn, 4.8 m apart). The real fix is the any-angle course.
+- -> massif, basin: **expect rows OUT at cbecb9d and now alike** (slice 4 re-check): massif `rocks`
+  0 (`scatter.empty` fallen_rock) and every change's counts; basin `ground_tarn_view` 44.4,
+  `ground_middle` 55.8, `mouth_moves` (1866.6, 804.2). Not from slice 4: owed a look.
+
+- -> lib/review (reach): **`not_sealed` says no place.** A sealed pair that holds a route names only
+  the `to` place; finding the way in took a throwaway walk over the build's fields (twice, as in the
+  spike's LOG entry 2). Give the walked route's first post past the `from` side's piece, or the
+  narrowest stretch, as `unreached` gives its stop.
+- [x] -> lib/ways: **A bridgehead filled the gorge beside the deck.** `heads` held the ground within
+  1:2 of the deck out to 12 m beside it, a ramp a walker took into the gorge. Now behind each end and
+  a metre past the deck's edge only; townland's expect passes unchanged. Lesson: a hold meant for the
+  way's ends must not read as a hold on everything near them.
+- -> lib/land or a kind: **A wall eased over a few metres is walkable obliquely** along a row of posts
+  nearly parallel to it (monastery's gorge: 3 m and 0.6 m eases both leaked). Sheer faces are steps
+  from post to post and draw stair-stepped; a cliff or gorge kind that says "sheer" should own this.
+- -> core (derived.md 3): **a path's waypoints by name.** R16 says "the places it passes, by name",
+  but `path` takes coordinates; monastery's six turns are typed numbers.
+- -> lib/ways: **`deck_z` is typed from `via eval`**; a moved crossing must rewrite it. Read the rims'
+  ground at the ends (`under` at the ends, or a default from the ends' heights).
+- -> lib/town (`enclosure`, new, stand-in): **the wall is ground**, as the deck is; a wall as an asset
+  run or a surface, a gatehouse at the gate, is owed with kind surfaces (M5).
+- [x] -> examples/townland measure.py: `deck_and_ends` read `bridge.get("width", 6)` at the feature's
+  top level, but features.json keeps it in `attrs`; it always used 6. Now reads `attrs` (slice 4).
+
+### From building example (2026-11-15, M3 world; examples/example)
+
+- -> lib/ways or core (R18): **the church path cannot reach the door.** Ending it 2.5 or 3.8 m short
+  of `church.door` puts the church in the lane's `keep_out` (`place.keep_out`); `ends_at =
+  "church.door"` is `doc.upward_ref` (the path is in `world`, the church in `hamlet`). It stays
+  7.5 m short. Lesson: a way that ends at a door must own that meeting, not be kept off it.
+- [x] -> example: **the mill stood 29 m from the beck** and stayed put when the beck moved. Now `on`
+  the beck with `face = "toward"`, viewed from the far bank (slice 4); `move_beck` moves 8.
+
+- -> owner, documents.md 6: **which layer a change file's added entities belong to** is now asked.
+  `[pin.shed] by = ["orchard_trees"]` in a change file is `doc.upward_ref` (added in `world`, the
+  scatter in `dress`); example's clear and pin are inline changes in `dress` until it is decided.
+  Proposal: a change file may write top-level `layer = "<id>"` for what it adds.
+- -> M3 core: **`run` and `set` are still `doc.not_yet`** though their milestone is M3; example's
+  row of houses is written house by house and its lamps, stalls and bench are left out.
+- -> lib/ways: **the stand-in deck dams the beck** (example `under_bridge`): water above it pools
+  against a grey causeway. Owed with kind surfaces; until then say so in the crossing's comment.
+- -> core (documents.md 7): a `doc.change_adds_near` warning on example's `third_cottage` (`cottage_c` near
+  `cottage_a`): a typo guard firing on a numbered family of names is noise; consider not warning
+  when the two names differ only in a trailing letter or digit.
 
 ## Framing
 

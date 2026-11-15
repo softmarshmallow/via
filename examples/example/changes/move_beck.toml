@@ -1,0 +1,5 @@
+# The beck is redrawn 10 m to the west below its source. The footbridge's two ends stand on it
+# (`on = { ref = "beck", ... }`), so the bridge moves with it, and the lanes, which end at the
+# bridge's ends by name, follow; the views by the water follow the beck.
+[feature.beck]
+path = [[150, 256], [138, 180], [150, 110], [140, 0]]

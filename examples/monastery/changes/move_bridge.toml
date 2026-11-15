@@ -1,0 +1,12 @@
+# The moved bridge (R18): the crossing stands 19 m downstream. Its two ends are points on the
+# stream, so it moves whole and stays square to the gorge; the road's last leg and the approach
+# arrive at its new ends by name and are found again; no other line is written. The deck is set to
+# the rims' ground there (`via eval --field height`).
+[feature.bridge_east]
+on = { ref = "stream", t = 0.45, offset = 14 }
+
+[feature.bridge_west]
+on = { ref = "stream", t = 0.45, offset = -14 }
+
+[feature.bridge]
+deck_z = 48.0

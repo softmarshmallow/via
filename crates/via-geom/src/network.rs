@@ -492,10 +492,21 @@ pub fn representative(region: &Region, grid: PostGrid) -> P {
         let mut cands: Vec<(f64, P)> = Vec::new();
         let mut y = fy;
         while y <= hi.y {
+            // The side of each post on the row from the edges whose span holds the row: the
+            // others add nothing to the winding number (`pred::winding_of_edges`).
+            let row: Vec<(P, P)> = segs
+                .iter()
+                .filter(|(a, b)| a.y.min(b.y) <= y && y <= a.y.max(b.y))
+                .copied()
+                .collect();
+            let inside = |p: P| {
+                pred::winding_of_edges((i128::from(p.x), i128::from(p.y)), 1, row.iter().copied())
+                    .is_some_and(|w| w != 0)
+            };
             let mut x = fx;
             while x <= hi.x {
                 let p = P::new(x, y);
-                if x > lo.x && x < hi.x && y > lo.y && y < hi.y && region.side(p) == PSide::In {
+                if x > lo.x && x < hi.x && y > lo.y && y < hi.y && inside(p) {
                     cands.push((approx_dist2(p, &segs), p));
                 }
                 x += s;

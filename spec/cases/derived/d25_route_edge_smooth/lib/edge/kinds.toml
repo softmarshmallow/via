@@ -1,0 +1,10 @@
+# A way whose bed reads the field along it (case d25).
+
+[kind.way]
+authority = "shaped"
+radius    = 2
+
+[kind.way.effect.bed]
+field = "role:surface"
+value = "= smoothed_along(2)"
+mask  = "= 1 - smoothstep(0.5, 1, d)"

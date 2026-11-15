@@ -94,14 +94,17 @@ at = [208, 140]
 [feature.look_quay]
 at = [214, 200]
 
-[feature.look_hill]
-at = [360, 250]
-
-[feature.look_west]
-at = [80, 280]
-
 [feature.look_up_town]
 at = [300, 420]
+
+[feature.look_up_old_town]                  # up the old town's down street from the embankment
+at = [262, 213]
+
+[feature.look_up_street]                    # along the upper town's first long street
+at = [304, 373]
+
+[feature.look_down_west]                    # south along the west end's east street
+at = [162, 222]
 
 [feature.way_bridge]                        # way and crossing: the west road at the bridge's west end
 kind   = "bookmark"
@@ -113,9 +116,9 @@ kind   = "bookmark"
 on     = { ref = "old_bridge", t = 0.5 }
 toward = "look_downriver"
 
-[feature.bridge_bank]                       # on the west bank below the bridge, looking at it
-kind   = "bookmark"
-at     = [182, 300]
+[feature.bridge_bank]                       # on the west bank 18 m below the bridge, at the water's
+kind   = "bookmark"                         # edge, looking at the deck's face and the water at it
+at     = [190, 312]
 toward = "old_bridge"
 
 [feature.ways_meet]                         # way and way: the bridge's east end, where the high
@@ -138,23 +141,22 @@ kind   = "bookmark"
 on     = { ref = "east_road", t = 0.04 }
 toward = "market"
 
-[feature.up_old_town]                       # street and street, up the old town's slope
-kind   = "bookmark"
-at     = [240, 220]
-toward = "look_hill"
+[feature.up_old_town]                       # street and waterfront: at the foot of the old town's down
+kind   = "bookmark"                         # street on the embankment, looking up it
+at     = [218, 213]
+toward = "look_up_old_town"
 
-[feature.west_streets_view]                 # the west end's streets, flat ground
-kind   = "bookmark"
-at     = [165, 280]
-toward = "look_west"
+[feature.west_streets_view]                 # the west end's streets, flat ground: from the east
+kind   = "bookmark"                         # street's north end, down it
+at     = [162, 346]
+toward = "look_down_west"
 
-[feature.upper_view]                        # the upper town from the bridge road
-kind   = "bookmark"
-on     = { ref = "north_road", t = 0.8 }
-toward = "look_up_town"
+[feature.upper_view]                        # the upper town: from its first long street's foot by the
+kind   = "bookmark"                         # bridge road, up it
+at     = [286, 321]
+toward = "look_up_street"
 
-[feature.from_east_gate]                    # the town from the east gate, above
+[feature.from_east_gate]                    # the town from the east gate, down the east road
 kind       = "bookmark"
-on         = { ref = "east_road", t = 0.9 }
+on         = { ref = "east_road", t = 0.99 }
 toward     = "market"
-eye_height = 3

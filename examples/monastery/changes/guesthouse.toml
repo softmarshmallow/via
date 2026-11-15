@@ -1,0 +1,8 @@
+# A proposed change (the spike's): a guesthouse outside the gate, on the north side of the
+# approach, facing it. Its pad banks the shelf; the walker must still reach its door from the road.
+[instance.guesthouse]
+asset  = "house_wide"
+ground = "pad"
+margin = 1
+on     = { ref = "approach", t = 0.45, offset = 13 }
+face   = "toward"

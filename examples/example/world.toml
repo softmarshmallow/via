@@ -1,0 +1,181 @@
+name    = "example"
+extent  = [0, 0, 256, 256]                  # metres: x east, y north
+seed    = 9
+include = ["land", "water", "ways", "town", "map", "review", "hollow"]
+pack    = "starter"                         # asset ids are bound by the pack; a world never names a file
+
+# A village in a hollow: a tarn that finds its own shore, a beck down the middle with a footbridge
+# over it, a crag, a green, two farm plots and an orchard. The canonical project: one of everything
+# a user writes (README.md walks through each file). This file is the layer `world` (rank 0): the
+# frame, the land and what is decided on it. Two layers stand on it, each its own document:
+#
+#   layers/hamlet.toml   rank 1: what is built, and the project's own moisture step
+#   layers/dress.toml    rank 2: growth, the player's map, the views, the lints
+#
+# `include` names libraries, never paths: `land`, `water`, `ways`, `town`, `map` and `review` are
+# shipped in lib/; `hollow` is this project's own, found in lib/ beside this file (documents.md 4).
+
+[layer.hamlet]
+file  = "layers/hamlet.toml"
+owner = "hamlet"
+rank  = 1
+
+[layer.dress]
+file  = "layers/dress.toml"
+owner = "dressing"
+rank  = 2
+
+[let]                                       # names every formula may read
+treeline = 62                               # metres above which no wood stands
+
+# ------------------------------------------------------------------------------------------ fields
+# A value at every post (0.5 m apart, the default). The core reads a field only through its role.
+
+[field.height]                              # the terrain: a slope rising north, a hollow for the tarn
+role = "surface"
+base = "= 30 + 0.08 * y + 6 * fbm(120, 3, seed = 'swell') + 0.6 * fbm(22, 3, seed = 'lumps')"
+
+[field.height.let]                          # the hollow is measured from the tarn's point, so it moves with it
+hollow = "= dist('tarn', 60) + 8 * fbm(30, 2, seed = 'hollow')"
+
+[field.height.then.hollow]                  # a row: the ground near the tarn's point eased down into a bowl
+value = "= 44 - 3 * (1 - smoothstep(0, 26, hollow))"
+mask  = "= 1 - smoothstep(18, 44, hollow)"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                            # "not here" for scatters: ways, pads and water raise it
+role = "keep_out"
+base = "= 0"
+
+# The paint (lib/land/ground.md's rows): grass, rock on steep ground, gravel at water, earth on the
+# lanes. A `then` row is a table with an id, so a change adds or edits one row (the winter change).
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.meadow]
+paint = "meadow"
+mask  = "= smoothstep(-0.1, 0.25, fbm(60, 3, seed = 'meadow'))"
+
+[field.ground.then.rock]
+paint = "rock"
+mask  = "= smoothstep(27, 34, slope('height'))"
+
+[field.ground.then.shore]
+paint = "gravel"
+mask  = "= max(1 - smoothstep(1.5, 4, dist('kind:lake', 6)), 1 - smoothstep(3, 4, dist('kind:beck', 6)))"
+
+[field.ground.then.track]
+paint = "earth"
+mask  = "= 1 - smoothstep(1.5, 2.2, dist('kind:lane', 4))"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.tarn]                              # derived: a point; the fill step finds the level its
+kind      = "tarn"                          # hollow runs over at, and the shore is what results
+at        = [70, 190]
+fence     = 46
+max_depth = 4
+freeboard = 0.3
+
+[feature.beck]                              # running water down the hollow's east side, edge to edge
+kind = "beck"
+path = [[150, 256], [146, 180], [160, 110], [150, 0]]
+
+[feature.crag]                              # a shared kind with two attributes changed
+kind = "cliff"
+drop = 9
+back = 46
+path = [[176, 250], [214, 226], [246, 186]]
+
+# ------------------------------------------------------------------------------------------ the ways
+# The lane is two ways and a crossing (R18): the footbridge owns its deck and its two ends, and the
+# lanes arrive at those ends by name. The ends stand on the beck's banks, so the bridge is square to
+# the water and follows it when the beck moves (changes/move_beck.toml).
+
+[feature.bridge_west]
+on = { ref = "beck", t = 0.548, offset = -9 }
+
+[feature.bridge_east]
+on = { ref = "beck", t = 0.548, offset = 9 }
+
+[feature.footbridge]
+kind      = "crossing"
+starts_at = "bridge_west"
+ends_at   = "bridge_east"
+path      = []
+crosses   = "beck"
+width     = 3
+deck_z    = 38.5                            # metres: the banks' ground at its ends, about (measured)
+freeboard = 1.5                             # the water under it at 37.0 m, the beck's own level there,
+                                            # so the stand-in deck has no sheet of water beneath it
+
+[feature.lane_west]                         # in from the west edge, ending at the bridge
+kind    = "lane"
+width   = 3.5
+path    = [[0, 120], [60, 112]]
+ends_at = "footbridge.start"
+
+[feature.lane_east]                         # from the bridge out to the east edge
+kind      = "lane"
+width     = 3.5
+starts_at = "footbridge.end"
+path      = [[215, 122], [256, 133]]
+
+[feature.church_foot]                       # where the church path leaves the lane (a named meeting)
+on = { ref = "lane_west", t = 0.62 }
+
+[feature.church_path]
+kind      = "lane"
+width     = 2
+starts_at = "church_foot"
+path      = [[96, 138], [104, 156]]
+
+# ------------------------------------------------------------------------------------------ open ground
+
+[feature.green]                             # a level court the village gives way to (lib/town)
+kind    = "terrace"
+max_cut = 3
+region  = [[70, 78], [124, 80], [122, 106], [72, 106]]
+
+[feature.barley]                            # this project's kind (lib/hollow): tilled, nothing grows wild
+kind = "plot"
+crop = "barley"                             # the engine does not know this word; it reaches the build
+region = [[188, 58], [252, 62], [250, 94], [190, 90]]
+
+[feature.fallow]
+kind = "plot"
+crop = "none"
+region = [[192, 14], [250, 16], [252, 52], [190, 50]]
+
+[feature.orchard]                           # a guide: an outline the dress layer plants in
+region = [[64, 62], [60.2, 73], [50, 81], [36, 84], [22, 81], [11.8, 73], [8, 62], [11.8, 51], [22, 43], [36, 40], [50, 43], [60.2, 51]]
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.fill]                                 # lib/water: each tarn filled to where its hollow runs over
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:water/fill.py"]
+
+# ------------------------------------------------------------------------------------------ changes
+# A season is a change, written inline (documents.md 6.5): `via build ... --change winter`. It merges
+# key by key over the base: the treeline drops, the meadow row goes, a snow row is added after the
+# others. Change files (changes/) hold the same tables at their top.
+
+[change.winter.let]
+treeline = 40
+
+[change.winter.field.ground.then.meadow]
+remove = true
+
+[change.winter.field.ground.then.snow]
+order = 1                                   # after every row of order 0
+paint = "snow"
+mask  = "= (1 - smoothstep(27, 34, slope('height'))) * (1 - smoothstep(0.02, 0.1, f('water') - f('height'))) * smoothstep(1.5, 2.2, dist('kind:lane', 4))"   # not on open water, nor on the trodden lanes

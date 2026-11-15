@@ -1,0 +1,9 @@
+# A proposed house, kept apart: a change file holds the same tables as a world, at its top, and
+# merges onto the base only when asked (`--change changes/third_cottage.toml`). The base files are
+# untouched. It must add one house and its pad, and move nothing else (the change report).
+[instance.cottage_c]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "lane_east", t = 0.2, offset = 12 }
+face   = "toward"

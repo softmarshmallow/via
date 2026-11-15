@@ -1,0 +1,6 @@
+# The tarn's point moves 30 m east and 12 m north. The hollow is measured from it (world.toml,
+# `hollow`), so the ground moves; the fill step reads the ground and the point, so it runs again
+# and finds a new level; the moisture step reads the water, so `wet`, the woods and the views and
+# the name on the shore follow. Nothing else is written again.
+[feature.tarn]
+at = [100, 202]

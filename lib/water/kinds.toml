@@ -58,12 +58,22 @@ mask  = "= 1 - smoothstep(width / 2 + 2, width / 2 + 4, d)"
 
 [kind.beck.effect.level]                  # the water surface: `flow` over the floor on the line, level across
 field = "tag:water_level"
-value = "= max(v, smoothed_along(4) + flow)"
+value = "= max(v, min(smoothed_along(4), v - bank_grade * max(0, d - toe) + 0.25) + flow)"
 mask  = "= 1 - smoothstep(width / 2, width / 2 + 0.1, d)"     # the channel the bed cut: the water meets
 # the bank `width / 2` from the line. Held to the cut, never beyond it: where the cut is shallow
 # (a narrow stream whose `depth` is less than `flow + bank_grade * (flow / bank_grade - width / 2)`,
 # its toe on the line), the ground beside the channel can lie below the level, and a wider mask
 # spread the water over it as a sheet (`massif`: 2,760 m² of water on a 389 m stream 1.5 m wide).
+#
+# The floor is read where the beck cut it, not only smoothed along the line: the ground the level
+# reads is the build's (the world's water base is the ground), so a thing anchored after the beck
+# that raises the ground on its line (lib/ways' `crossing` deck, a stand-in on the terrain) would
+# otherwise be smoothed into the water for `4` metres either side, lifting it over the channel's
+# edge (`townland`: 3.3 m over the line at the deck, 1.6 m at 4 m from it). Inside the channel
+# `v - bank_grade * max(0, d - toe)` is the floor the bed wrote at that post; the level takes the
+# lower of it and the smoothed floor, with 0.25 m of slack so that where nothing raised the ground
+# the smoothed floor decides and the water is as before (`ford`, `glade`: byte for byte). Over a
+# deck the level is still above the deck; the crossing caps it there (lib/ways).
 
 # Standing water (M2, `vale`). Three kinds, by how firmly the author means the water's shape:
 #

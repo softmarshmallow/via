@@ -26,30 +26,40 @@ engines/godot/sheet.sh --before build/townland --after build/townland+move_cross
     --out review/townland --option water=tag:water_level
 ```
 
+A cold build takes about 27 s at 1 m posts (release, fresh store, 3 runs, M3 slice 4; 93 s at
+cbecb9d before the kernel's fast paths, TODO.md "Distance to large regions is slow").
+
 ## What it shows (2026-11-15)
 
 - R16: five main ways written by their ends, routed over the land; they arrive at the crossing's
   ends by name (`old_bridge.start`, `old_bridge.end`) and meet at the market.
 - R18: one crossing, one deck, 0 doubled, 0 ways over the water (spike: 3 overlapping decks, then
   1); `move_crossing` moves the bridge whole and the ways follow it. The embankment owns the east
-  bank and the old town's streets end on it. 0 `geom.unowned_crossing`.
-- R15: lib/review/form.py reports bearing spread 0.86 (main ways 0.87), orientation order 0.29,
-  four-way 12%, three-way 35%, dead ends 53% (18 of 34), each record with its reference and protocol.
+  bank and one of the old town's streets ends on it. 0 `geom.unowned_crossing`.
+- R15: lib/review/form.py reports the street form with its reference and protocol in each record;
+  16 street ends on a district's outline are counted as edge ends, 0 dead ends inside the town.
 - R13: `edit_west` changes no block, lot, street or house name on the east bank.
 - The reach lint: a walker from the west gate reaches the market and the other gates over the
-  crossing, and every door from the market (70 of 70).
+  crossing, and every door from the market (103 of 103).
 
-## Known faults (read from the sheet, on foot)
+## Known faults (read from the sheet, on foot; townland pass 2026-11-15 evening)
 
-- **The deck is a causeway.** Kind surfaces are `doc.not_yet`, so lib/ways' `crossing` writes its
-  deck on the terrain (a stand-in, said in the kind): the water stops at both sides of it.
-- **Dead ends 53%, worse than the spike's 15%.** 15 of the 18 are streets ending on a district's
-  outline into open land; none inside the town. The districts are apart from one another; nothing
-  owns the town's edge (an edge lane, or districts that meet along a main way).
-- **It reads as fields with a few houses.** 66 houses on 39 of 99 lots; 11 streets. At 1 m posts
-  the paint smears: ways are wide grey smudges with no kerb.
-- **`move_hill` fails**: `formula.outside_field` on `north_road`'s bed, cause not found.
-- `west_streets_view` stands against a house wall; `from_east_gate` sees no town. Re-aim them.
+- **The deck is still a causeway**, though no longer under water. Kind surfaces are `doc.not_yet`,
+  so lib/ways' `crossing` writes its deck on the terrain (a stand-in). Its new `water` effect holds
+  the level under the deck at `deck_z - freeboard` (here 6.0 m, the river's level): 0 of 192 deck
+  posts wet (was 56, up to 0.61 m), and the water meets the deck's two faces flat. lib/water's beck
+  reads the floor where it cut it, so the deck is no longer smoothed into the river (water 3.1 m
+  over the line at the deck, now 0.25 m at most beside it). Nothing passes under it yet.
+- **The embankment's ends are sheer** (71 degrees at the south end into a dry pit at 3.6 m, below
+  the water beside it; 0.9 m step at the north) and it stops 34 m short of `old_bridge.end`. Both are
+  in lib/town's `waterfront` kind (its wall mask runs round the ends; its `level` is one number), not
+  fixable from the world without an `authority.conflict` against it: TODO.
+- **One street of the old town ends on the embankment** (`old_streets#d68`; was none). The others
+  that step 6 lays fall within `spacing / 2` of `quay_road` or `high_street`.
+- **`from_east_gate` sees no town**: from the gate down the east road the hill's south shoulder
+  hides it. A view from the east road's crest (t about 0.55) would.
+- **move_hill empties the old town**: 52 of its houses go, `up_old_town` and `upper_view` look at
+  grass. The district regions stay where the hill was.
+- **4 `place.relief`** (1.6 m at most) on houses along the east road's steeper new course.
 - The river is a written course and the valley is a formula of its line (`dist('river')` at every
   post, read by five route costs, took over ten minutes); a river found round the hill is not shown.
-- A cold build is 106 s at 1 m posts; at 0.5 m it was 390 s.
