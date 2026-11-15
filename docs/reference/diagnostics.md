@@ -11,13 +11,13 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-334 codes in 22 groups. 37 have no bad and fixed example yet; their explain text is the
+335 codes in 22 groups. 37 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
 |---|---|---|
 | [`asset`](#asset) | `spec/assets.md` | 18 |
-| [`authority`](#authority) | `spec/authority.md` | 18 |
+| [`authority`](#authority) | `spec/authority.md` | 19 |
 | [`build`](#build) | `spec/build.md` | 10 |
 | [`check`](#check) | `spec/build.md` | 14 |
 | [`cli`](#cli) | `spec/diagnostics.md` | 3 |
@@ -283,6 +283,7 @@ Fixed: the base colour texture bound in the model, or nothing if flat colour is 
 |---|---|---|---|---|
 | `authority.attribute_twice` | error | 1 |  | An attribute declared in both `defaults` and `requires`. |
 | `authority.conflict` | error | 1 | `field`, `both_full`, `both_partial` | Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`. |
+| `authority.gave_way` | warning | 3 |  | A produced instance's footprint would move a value more than its kind's `max_change`, so the instance is not placed (M3, 2.2); the instance, field, amount, limit and post. |
 | `authority.ground_requires` | error | 1 |  | An instance grounds with a kind that has `requires`; the instance's `ground` line and the kind's `requires` line. |
 | `authority.hidden` | info | 1 |  | An entry left no trace: later entries with mask 1 cover all of it; once per feature and field. |
 | `authority.max_change` | error | 1 |  | An entry moves a value more than `max_change`; post of the largest move, amount, limit, `v` and `value`. |
@@ -329,6 +330,19 @@ Bad:   [feature.a]  authority = "anchored", value 10 here
        [feature.b]  authority = "anchored", value 12 on the same posts
 Fixed: [feature.b]
        authority = "shaped"
+```
+
+### `authority.gave_way`
+
+warning, milestone 3, `spec/authority.md`.
+
+```text
+An instance a step returned or a producer placed has a ground footprint whose kind would move a
+field further than its max_change allows, so the instance is not placed. The record gives the
+field, the amount, the limit and the post of the largest move. A written instance stays an error.
+To fix: Nothing if a gap is fine; otherwise widen max_change, or offer the place elsewhere.
+Bad:   max_change = "= 1"   (the pad cuts 3 m into a slope)
+Fixed: max_change = "= 3"
 ```
 
 ### `authority.ground_requires`

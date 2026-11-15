@@ -26,7 +26,7 @@ depth   = -1
 [network.inst]
 from = ["r", "lamp"]
 
-# 8.1 (Open): a kind with effects given to a maker's areas is not yet.
+# 8.1: a kind with effects given to a maker's areas writes its fields; no fault.
 [network.fx]
 from = ["r"]
 kind = "wet"

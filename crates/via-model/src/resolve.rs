@@ -151,6 +151,15 @@ pub struct Fields<'a> {
     /// Indices into `diags` of records a later evaluation reached again and added a reader to,
     /// in order: so a caller that gives each field its own records gives them to every reader.
     pub touched: RefCell<Vec<usize>>,
+    /// Each produced instance whose footprint passed its kind's `max_change` (`authority.md`
+    /// 2.2, A produced instance gives way), to its `authority.gave_way` record; the first entry
+    /// found per instance.
+    pub gave_way: RefCell<BTreeMap<String, Diag>>,
+    /// Whether this resolution decides who gives way (the build's probe, before the graph). Off,
+    /// a produced footprint past its limit is `authority.max_change` like any other: the probe
+    /// already took every such instance out, so one here means the two resolutions disagree, and
+    /// it must not pass silently (principle 3).
+    pub collect_gave_way: bool,
 }
 
 fn post_index(grid: &Grid, i: u64, j: u64) -> usize {
@@ -181,6 +190,20 @@ impl<'a> Fields<'a> {
                 footprint: false,
             });
         }
+        // What a network or cells table made with a kind (`geometry.md` 8.1): it writes as a
+        // step's returned feature does, at its table's layer, its kind's tier and defaults.
+        for (name, (maker, kind, _)) in &placed.made_writers {
+            let Some(k) = d.kinds.get(kind) else { continue };
+            writers.push(Writer {
+                name: name.clone(),
+                kind: kind.clone(),
+                tier: k.authority.unwrap_or(Tier::Derived),
+                rank: d.maker_table_rank(maker).unwrap_or(0),
+                links: Vec::new(),
+                attrs: k.defaults.clone(),
+                footprint: false,
+            });
+        }
         for (name, (inst, kind)) in &placed.footprints {
             let Some(k) = d.kinds.get(kind) else { continue };
             writers.push(Writer {
@@ -205,6 +228,8 @@ impl<'a> Fields<'a> {
             keep_out: RefCell::new(BTreeMap::new()),
             reported: RefCell::new(BTreeSet::new()),
             touched: RefCell::new(Vec::new()),
+            gave_way: RefCell::new(BTreeMap::new()),
+            collect_gave_way: false,
         };
         f.link();
         f
@@ -388,7 +413,7 @@ impl<'a> Fields<'a> {
             // The build's order, filtered; its faults are the build's to report.
             let (all, _) = self.ordered(field, View::Build);
             let below =
-                |rank: i64, name: &str| rank <= r && !(self.d.step_returned(name) && rank >= r);
+                |rank: i64, name: &str| rank <= r && !(self.d.stands_returned(name) && rank >= r);
             let kept = all
                 .into_iter()
                 .filter(|e| match e {
@@ -409,7 +434,7 @@ impl<'a> Fields<'a> {
         if let View::Stratum(r) = view {
             rows.retain(|i| {
                 let row = &fd.rows[*i];
-                row.rank <= r && !(self.d.step_returned(&row.id) && row.rank >= r)
+                row.rank <= r && !(self.d.stands_returned(&row.id) && row.rank >= r)
             });
         }
         let mut out: Vec<Entry> = rows.into_iter().map(Entry::Row).collect();
@@ -465,8 +490,12 @@ impl<'a> Fields<'a> {
                         continue;
                     }
                     let (ga, gb) = (
-                        &self.placed.shapes[&self.writers[a].name],
-                        &self.placed.shapes[&self.writers[b].name],
+                        self.placed
+                            .shape(&self.writers[a].name)
+                            .expect("a writer's shape"),
+                        self.placed
+                            .shape(&self.writers[b].name)
+                            .expect("a writer's shape"),
                     );
                     if inside(gb, ga) {
                         edges.insert((a, b, "inside"));
@@ -665,7 +694,7 @@ impl<'a> Fields<'a> {
         }
     }
 
-    fn binding(&self, f: FormulaId, served: Option<&str>) -> Option<Binding> {
+    fn binding(&self, f: FormulaId, served: Option<&str>, view: View) -> Option<Binding> {
         let p = self.d.formulas.programs.get(&f)?;
         // A feature that was declared but not placed said why (a cycle, a bad shape); a formula
         // reading it says nothing more (`graph.md` 3.4).
@@ -678,7 +707,10 @@ impl<'a> Fields<'a> {
         if unplaced {
             return None;
         }
-        let sel = self.selector(f, served);
+        let mut sel = self.selector(f, served);
+        if let View::Stratum(r) | View::StratumFull(r) = view {
+            sel.cut = Some(r);
+        }
         match bind(p, &sel) {
             Ok(b) => {
                 for w in &b.warnings {
@@ -705,6 +737,7 @@ impl<'a> Fields<'a> {
             fields: self,
             own: served,
             rank,
+            cut: None,
         }
     }
 
@@ -734,7 +767,7 @@ impl<'a> Fields<'a> {
         served: Option<&str>,
     ) -> Option<Vec<f64>> {
         let p = self.d.formulas.programs.get(&f)?;
-        let b = self.binding(f, served)?;
+        let b = self.binding(f, served, view)?;
         let setup = Setup {
             world_seed: self.d.seed,
             feature: served,
@@ -772,7 +805,7 @@ impl<'a> Fields<'a> {
             window: ww,
         };
         let p = self.d.formulas.programs.get(&formula)?;
-        let b = self.binding(formula, None)?;
+        let b = self.binding(formula, None, View::Build)?;
         let setup = Setup {
             world_seed: self.d.seed,
             feature: Some(feature),
@@ -887,7 +920,7 @@ impl<'a> Fields<'a> {
                     let w = &self.writers[*writer];
                     let k = &self.d.kinds[&w.kind];
                     let e = &k.effects[effect];
-                    let geo = &self.placed.shapes[&w.name];
+                    let geo = self.placed.shape(&w.name).expect("a writer's shape");
                     writers.insert(w.name.clone());
                     // The posts within the radius (fields.md 5.3), and the feature's measures there.
                     let (bmin, bmax) = geo.bbox();
@@ -1042,9 +1075,45 @@ impl<'a> Fields<'a> {
                                         }
                                     }
                                 }
-                                if let Some((k, moved)) = worst.filter(|(_, m)| *m > limit) {
+                                let produced = w.name.strip_suffix(".ground").filter(|i| {
+                                    self.collect_gave_way
+                                        && w.footprint
+                                        && self.d.produced_instance(i)
+                                });
+                                if let (Some(inst), Some((k, moved))) =
+                                    (produced, worst.filter(|(_, m)| *m > limit))
+                                {
+                                    // A produced instance gives way (`authority.md` 2.2): said
+                                    // once per instance, and the build places it no more.
                                     let (x, y) = pts[k];
-                                    let mut d = at_path(codes::authority::MAX_CHANGE, "kind", &w.kind, &["effect", effect, "max_change"], &format!("`{}` moves `{field}` by {} where `max_change` allows {}", w.name, text::dbl(moved), text::dbl(limit)), &format!("at this post `v` is {} and `value` {}; widen `max_change` or change `value`", text::dbl(cur[posts[k]]), text::dbl(value[k]))).at(text::pos(x, y)).with("feature", DValue::text(w.name.clone()));
+                                    let mut d = text::diag(
+                                        codes::authority::GAVE_WAY,
+                                        Subject::entity("instance", inst.to_string()),
+                                        Site::Header,
+                                        &format!(
+                                            "`{inst}` is not placed: its footprint would move `{field}` by {} where `max_change` of `{}` allows {}",
+                                            text::amount(moved),
+                                            w.kind,
+                                            text::amount(limit)
+                                        ),
+                                        "nothing if a gap is fine; otherwise widen `max_change`, or offer the place elsewhere",
+                                    )
+                                    .at(text::pos(x, y))
+                                    .with("field", DValue::text(field))
+                                    .with("instance", DValue::text(inst));
+                                    if let Some(v) = DValue::double(moved) {
+                                        d = d.with("amount", v);
+                                    }
+                                    if let Some(v) = DValue::double(limit) {
+                                        d = d.with("limit", v);
+                                    }
+                                    self.gave_way
+                                        .borrow_mut()
+                                        .entry(inst.to_string())
+                                        .or_insert(d);
+                                } else if let Some((k, moved)) = worst.filter(|(_, m)| *m > limit) {
+                                    let (x, y) = pts[k];
+                                    let mut d = at_path(codes::authority::MAX_CHANGE, "kind", &w.kind, &["effect", effect, "max_change"], &format!("`{}` moves `{field}` by {} where `max_change` allows {}", w.name, text::amount(moved), text::amount(limit)), &format!("at this post `v` is {} and `value` {}; widen `max_change` or change `value`", text::amount(cur[posts[k]]), text::amount(value[k]))).at(text::pos(x, y)).with("feature", DValue::text(w.name.clone()));
                                     if let Some(v) = DValue::double(moved) {
                                         d = d.with("amount", v);
                                     }
@@ -1372,8 +1441,13 @@ impl<'a> Fields<'a> {
 }
 
 fn writer_subject(d: &Decls, name: &str) -> (&'static str, String) {
+    let made = name
+        .split_once('#')
+        .and_then(|(m, _)| Some((d.maker_top(m)?, m)));
     if d.features.contains_key(name) {
         ("feature", name.to_string())
+    } else if let Some((top, maker)) = made {
+        (top, maker.to_string())
     } else {
         ("instance", name.trim_end_matches(".ground").to_string())
     }
@@ -1447,11 +1521,24 @@ pub(crate) struct Sel<'f, 'a> {
     fields: &'f Fields<'a>,
     own: Option<&'f str>,
     rank: Option<i64>,
+    /// In a generate step's view at layer rank `r` (`View::Stratum`, `View::StratumFull`): what
+    /// stands outside it, a step's return or a maker table's made thing at `r` or above
+    /// (`Decls::stands_returned`, `geometry.md` 8.1, `authority.md` 4.4), is no member of a
+    /// shape selector.
+    cut: Option<i64>,
 }
 
 impl Sel<'_, '_> {
     fn sees(&self, rank: i64) -> bool {
         self.rank.is_none_or(|r| rank <= r)
+    }
+
+    /// Whether a shape selector's member `name`, of layer rank `rank`, is in this view.
+    fn sees_shape(&self, rank: i64, name: &str) -> bool {
+        self.sees(rank)
+            && !self
+                .cut
+                .is_some_and(|r| rank >= r && self.fields.d.stands_returned(name))
     }
 }
 
@@ -1490,18 +1577,20 @@ impl Select for Sel<'_, '_> {
                 .fields
                 .writers
                 .iter()
-                .filter(|w| w.kind == k && self.sees(w.rank))
+                .filter(|w| w.kind == k && self.sees_shape(w.rank, &w.name))
                 .filter_map(|w| {
-                    p.shapes.get(&w.name).map(|g| ShapeInfo {
+                    p.shape(&w.name).map(|g| ShapeInfo {
                         id: w.name.clone(),
                         shape: shape_of(g),
                     })
                 })
                 .collect(),
             None => p
-                .shapes
-                .get(selector)
-                .filter(|_| self.sees(self.fields.shape_rank(selector)))
+                .shape(selector)
+                .filter(|_| {
+                    let base = selector.split('.').next().unwrap_or(selector);
+                    self.sees_shape(self.fields.shape_rank(selector), base)
+                })
                 .map(|g| {
                     vec![ShapeInfo {
                         id: selector.to_string(),
@@ -1512,16 +1601,43 @@ impl Select for Sel<'_, '_> {
         }
     }
 
+    fn empty_hint(&self, selector: &str) -> Option<String> {
+        let k = selector.strip_prefix("kind:")?;
+        let d = self.fields.d;
+        let maker = d
+            .networks
+            .iter()
+            .filter(|(_, n)| n.kind.as_deref() == Some(k))
+            .map(|(id, _)| format!("`[network.{id}]`"))
+            .chain(
+                d.cells
+                    .iter()
+                    .filter(|(_, c)| c.kind.as_deref() == Some(k))
+                    .map(|(id, _)| format!("`[cells.{id}]`")),
+            )
+            .next()?;
+        Some(format!(
+            "{maker} makes `{k}`, but what a maker table makes is not in the head view or a view at its own layer (geometry.md 8.1); the build reads it"
+        ))
+    }
+
     fn own_shape(&self) -> Option<Shape> {
         self.own
-            .and_then(|o| self.fields.placed.shapes.get(o))
+            .and_then(|o| self.fields.placed.shape(o))
             .map(shape_of)
     }
 
     fn names(&self, class: via_expr::Class) -> Vec<String> {
         match class {
             via_expr::Class::Field => self.fields.d.fields.keys().cloned().collect(),
-            _ => self.fields.placed.shapes.keys().cloned().collect(),
+            _ => {
+                let p = self.fields.placed;
+                p.shapes
+                    .keys()
+                    .chain(p.made_writers.keys())
+                    .cloned()
+                    .collect()
+            }
         }
     }
 }
@@ -1731,8 +1847,7 @@ impl Reads for Ctx<'_> {
         let g = self
             .f
             .placed
-            .shapes
-            .get(feature)
+            .shape(feature)
             .ok_or_else(|| internal("a feature's shape"))?;
         // The work the cap bounds (`formulas.md` 8.4): a post whose distance to the shape's box
         // passes the cap has `d` past it too, so the folded and capped result is the cap (`dist`)

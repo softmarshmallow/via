@@ -5,7 +5,8 @@ harbour; a waterfront (`quay`, lib/town's `waterfront`) owns the bank and the st
 (R18); one main way (`high_street`) comes down from the gate to a named point on the quay, written
 by its ends and routed over the land (R16); lib/town's streets step lays contour streets, cross
 streets and streets down to the quay; the core nodes them into the network `town` (blocks) and cuts
-the lots (`lots`); the houses step puts a house on each lot that fits one. Eight views stand at the
+the lots (`lots`); the houses step fills each lot's frontage with a row of town houses wall to wall, on one level
+terrace per row. Eight views stand at the
 meetings (R17): way and water, street and waterfront, street and street, lot and street, way and
 street, the town from the gate, and two at the quay wall (along its top, and at its face from the
 water).
@@ -36,14 +37,26 @@ engines/godot/sheet.sh --before build/quay --after build/quay+move_hill --out re
 No `--option paths=…`: quay paints its own ways (the `street` and `shore` rows), and the loader's
 paths overlay draws each chosen path as a brown strip its width wide, which hides the deck's gravel.
 
+## Town-lib pass (2026-11-15)
+
+Rows of `house_row` (7 m, stone) and `house_narrow` (5 m, render) stand wall to wall along each
+lot's frontage, fronts on the footway's back edge (the street's own `keep_out`), doors on the
+street; gaps fall at lot edges (0.5 m) and junctions. Each run stands on one `terrace`. Streets are
+setts kerb to kerb (4.5 m, main way 6.5 m) with flagged footways (1.5 m, 2 m); the deck and 3 m of
+quayside are flagged, the wall face stone. Base: 123 houses on 74 of 135 lots (was 52 on 52),
+`place.keep_out` 0 (was 7), `place.relief` 9. The 61 empty lots are corner triangles and wedges no
+8.6 m deep house fits, and corner houses inside a cross street's keep_out.
+
 ## Known faults (M3 slice 2 walk, 2026-11-15)
 
 - (Fixed) Lots facing the quay beside a cross street were 12.4 m deep: the cross street's first
   station cut ran square across the quay's band (geometry.md 3.6 step 5 now stops a cut at the
   corner's bisector, case `cells_corner`). Base now has 52 houses, 9 of them fronting the quay.
-- 9 houses on pads still show `place.relief`; the houses step leaves a lot empty where its pad
-  would move the land beside it past `max_cut` (houses.py rule 6), which is a prediction, not the
-  core's own check.
+- 9 houses still show `place.relief` on their terraces; the houses step leaves a run out where
+  its terrace would move the land past `max_cut` (houses.py rule 7), a prediction, not the core's
+  own check.
+- The paint's edge to the grass blends over about a metre at 0.5 m posts: crisper than the earth
+  smudge, not a kerb line.
 - The deck read as earth on the slice-2 walk because the sheet command drew the paths overlay
   over it, and because the shore row sorted before the street row by id (fixed: `order = 1`).
 - The wall face shows from the water (`wall_face`) only as a low grey band; there is no face.
@@ -54,3 +67,11 @@ paths overlay draws each chosen path as a brown strip its width wide, which hide
   small zigzags `smooth` leaves.
 - `move_hill`: `s0` ends on the main way where the way runs along the contour, so the east half of
   the town has no streets, only lots along the way.
+- (quay-walk, 2026-11-15) Doors do not meet the footway: each row's terrace is level at its own
+  ground, not at the footway's, so 1 m out from the door the land already falls or rises 0.5 m and
+  on the footway (3 m out) it is more than 1 m off the floor for 91 of 123 doors in base (59 above
+  the street, 32 below; 10 within 0.3 m). On foot the doors stand over grass banks.
+- (quay-walk) `street_quay` is written at a point, so in `move_hill`, where no street reaches the
+  quay at x = 198, it looks into the quay row's back walls; it does not follow a street end.
+- (quay-walk) Rows wall to wall close their blocks: the reach lint's walker finds 12 separate
+  pieces of open ground in base (back gardens no one can walk into), though all 132 stated pairs hold.

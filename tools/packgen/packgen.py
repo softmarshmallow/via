@@ -157,6 +157,8 @@ MATERIALS = {
     "roof": [0.45, 0.2, 0.15, 1.0],
     "timber": [0.5, 0.36, 0.24, 1.0],
     "stone": [0.48, 0.46, 0.43, 1.0],
+    "render": [0.86, 0.83, 0.76, 1.0],
+    "slate": [0.27, 0.28, 0.31, 1.0],
     "iron": [0.15, 0.15, 0.15, 1.0],
     "fern": [0.25, 0.45, 0.18, 1.0],
 }
@@ -290,6 +292,18 @@ def house(width: float, depth: float, wall: float, ridge: float) -> list[tuple[s
     ]
 
 
+def row_house(width: float, depth: float, wall: float, ridge: float, walls: str, roofs: str) -> list[tuple[str, list[Tri]]]:
+    """A town house that stands in a row: two storeys, gables flush with the side walls (no eaves
+    over a neighbour), eaves only front and back, a door on the front (+z) at the middle."""
+    w, d = width / 2, depth / 2
+    door = box(-0.5, 0.0, d, 0.5, 2.1, d + 0.05)
+    return [
+        (walls, box(-w, 0.0, -d, w, wall, d)),
+        (roofs, roof(-w, w, wall, ridge, -d - 0.3, d + 0.3)),
+        ("timber", door),
+    ]
+
+
 def shed(width: float, depth: float, ridge: float) -> list[tuple[str, list[Tri]]]:
     w, d = width / 2, depth / 2
     return [
@@ -351,6 +365,8 @@ def crate(size: float) -> list[tuple[str, list[Tri]]]:
 FILES = {
     "house_low.glb": house(8.0, 6.0, 3.0, 4.6),
     "house_wide.glb": house(11.0, 7.0, 3.2, 5.4),
+    "house_narrow.glb": row_house(5.0, 8.0, 5.6, 7.6, "render", "slate"),
+    "house_row.glb": row_house(7.0, 8.0, 5.8, 8.0, "stone", "roof"),
     "shed_gable.glb": shed(4.0, 3.0, 3.0),
     "tree_oak.glb": broadleaf(7.0, 5.0, 16, 8),
     "tree_oak_low.glb": broadleaf(7.0, 5.0, 8, 4),

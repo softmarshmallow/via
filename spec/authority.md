@@ -177,8 +177,27 @@ reported once per (effect, feature, field) at the post of the largest move (ties
 lines and gives `v` and `value` at that post. The entry is still applied in full, so the build
 shows what was asked.
 
+**A produced instance gives way (M3).** When the entry past its limit is the footprint feature
+(`rules.md` 2.1) of a produced instance, one a step returned or a producer placed
+(`<producer>#<key>`, `identity.md` 2), the instance gives way: it is not placed, its footprint
+writes nothing, and the build says `authority.gave_way` (warning), subject the instance, with the
+field, the amount, the limit and the post of the largest move. A producer offers places; a limit
+the author set on the ground decides which hold, so the producer need not predict the field (a
+library that did would read the ground twice). Rounds, before anything is grounded: the fields
+are resolved with every placed footprint, every produced instance whose pad passes its limit
+gives way at once, and the fields are resolved again without them, until a round gives way to
+none. A round is the whole set found, so the outcome follows no name order. Nothing written
+stands on a produced instance by name: text never writes a produced name (`identity.key_in_text`),
+a step's document names only the stratum in `on`, and a selection `on = { of = "<producer>",
+near }` chooses among the instances that stand, so it never falls on one that gave way. Should an
+engine path still reach one, what stands on it, and on that, is not placed either and says
+nothing; the instance's `authority.gave_way` is the cause. A written
+instance, and a written or produced feature, past its limit stays `authority.max_change`
+(error): it is what the author wrote, and only the author moves it.
+
 The ruling between error and clamp is error (principle 3: a limit the author set is a firm
-statement, and a clamp would be a silent winner). `max_change` takes a per-feature formula, worked
+statement, and a clamp would be a silent winner); a produced instance gives way rather than clamp,
+so the limit still holds wherever anything stands. `max_change` takes a per-feature formula, worked
 out once per feature, so a kind can tie it to an attribute (the spike's pad read `max_cut`); it
 reads no `v`, `d`, `sd` or `t` (`formulas.md` 6.1). The spike's `check_where` is dropped.
 
@@ -352,8 +371,12 @@ rows such a step returns, or the entries of features it returns.
   `ground` pad, `<step>#<key>.ground`). A `#` name another maker made (a scatter's instance,
   `identity.md` 2) has its maker's rank and is in the views of its layer like a written entry.
   The head view, the full view and the step's view of features and instances apply this one rule.
-  Made things of a `[network]` or `[cells]` table that write fields join it when their order is
-  built (`geometry.md` 8.1, Open), by naming their makers here.
+  What a `[network]` or `[cells]` table made (`<table>#…`, `geometry.md` 8.1) counts as returned
+  too: it stands where a step's return stands, at its table's layer, and is outside the views of
+  every step at that layer (a step of a higher layer sees it). The rule holds for the members of a
+  shape selector too: a field whose formula reads `kind:<k>` has the made things in the build and
+  not in such a step's view (`geometry.md` case `n14`). A plain command is handed the build's fields, in which a
+  made thing of its own layer is part of its layer, as its own returns are (above).
 
 ### 4.5 Footprint features
 
@@ -589,6 +612,7 @@ would not change.
 | `authority.no_field` | info | A well-formed selector matches no field, and the kind has a feature; once per kind and effect. |
 | `authority.range` | error | `radius` at or below 0; the key, value and range. |
 | `authority.max_change` | error | An entry moves a value more than `max_change`; post of the largest move, amount, limit, `v` and `value`. |
+| `authority.gave_way` | warning | A produced instance's footprint would move a value more than its kind's `max_change`, so the instance is not placed (M3, 2.2); the instance, field, amount, limit and post. |
 | `authority.unknown` | error | `authority` is not `derived`, `shaped` or `anchored`; nearest tier. |
 | `authority.unknown_kind` | error | A feature's `kind` or an instance's `ground` names no kind in the world's kind namespace; nearest kind. |
 | `authority.no_kind` | error | `authority` on a guide. |
@@ -641,6 +665,7 @@ Six entries fit a 32-bit float exactly.
 | range | M1 | An effect with `radius = 0` | build | `authority.range`. |
 | max_change_formula | M1 | `max_change = "= max_cut"` on a pad kind, two pads with `max_cut` 0.5 and 2 on one slope | build | `authority.max_change` for the first pad only. |
 | max_change_each | M2 | Two pads of one kind on one slope, both past their `max_change` | build | `authority.max_change` twice, one per pad (2.2: once per effect, feature and field). |
+| gave_way | M3 | A step returns two `pad` houses on a slope, one past `max_change`, and the world writes a third past it by hand | build | `authority.gave_way` for the produced one past its limit, which is not placed; the other produced one stands; `authority.max_change` for the written one; exit 1. |
 | max_change_negative | M1 | `max_change = "= -1"` | build | `formula.range` at the feature. |
 | bare_field | M1 | An effect with `field = "height"` | build | `authority.selector`, hint `role:surface`. |
 | bad_role | M1 | An effect with `field = "role:surfce"` | build | `authority.selector`, nearest `surface`. |

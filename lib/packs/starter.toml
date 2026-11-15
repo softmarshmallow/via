@@ -49,6 +49,25 @@ footprint = [[-5.5, -3.5], [5.5, -3.5], [5.5, 3.5], [-5.5, 3.5]]
 [asset.house_wide.mount.door]
 at = [0, 3.5]
 
+# Town houses that stand in a row (lib/town's houses step fills a lot's frontage side by side):
+# two storeys, gables flush with the side walls, a door at the front's middle. `house_narrow` is the
+# primitive pack's 5 m front, 8 m deep; `house_row` a 7 m front in stone.
+[asset.house_narrow]
+file      = "house_narrow.glb"
+taxon     = "building/house"
+footprint = [[-2.5, -4], [2.5, -4], [2.5, 4], [-2.5, 4]]
+
+[asset.house_narrow.mount.door]
+at = [0, 4]
+
+[asset.house_row]
+file      = "house_row.glb"
+taxon     = "building/house"
+footprint = [[-3.5, -4], [3.5, -4], [3.5, 4], [-3.5, 4]]
+
+[asset.house_row.mount.door]
+at = [0, 4]
+
 [asset.barn]
 file      = "barn.glb"
 taxon     = "building/barn"
@@ -139,6 +158,14 @@ colour = [0.92, 0.93, 0.95]
 
 [material.litter]                  # a wood's floor: leaves and needles over earth
 colour = [0.27, 0.2, 0.12]
+
+# A town's paved ways (lib/town): stone setts on the carriageway, flags on the footway and the
+# quay's deck; darker and greyer than `gravel`, so a street reads as paved, not worn earth.
+[material.setts]
+colour = [0.33, 0.32, 0.31]
+
+[material.flags]
+colour = [0.55, 0.53, 0.49]
 
 [material.meadow]
 colour = [0.33, 0.45, 0.16]

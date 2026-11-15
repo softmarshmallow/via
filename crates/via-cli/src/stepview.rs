@@ -100,7 +100,7 @@ impl Bad {
                 "field" => {
                     b.fields.insert(subject);
                 }
-                "shape" | "attr" | "distance" | "measure" => {
+                "shape" | "attr" | "distance" | "measure" | "made" => {
                     b.features.insert(subject);
                 }
                 "instance" | "held" | "height" | "footprint" | "edit" | "rule" => {
@@ -956,8 +956,12 @@ impl<'a> View<'a> {
     // ---- fields ----------------------------------------------------------------------------
 
     fn field_inexact(&self, field: &str) -> bool {
-        self.rank
-            .is_some_and(|own| field_inexact(self.world, self.build, field, own, true))
+        self.rank.is_some_and(|own| {
+            field_inexact(self.world, self.build, field, own, true)
+                || self
+                    .stratum
+                    .is_some_and(|m| m.reads_returned_shape(field, own))
+        })
     }
 
     /// The fields a formula reads, as checked in the view; none when it does not check.
@@ -1893,12 +1897,19 @@ fn rank_of(world: &World, top: &str, name: &str) -> Option<i64> {
 
 /// The rank a thing has in a generate step's view (`protocol.md` 1, 3.3): its layer's, except that
 /// what a generate step returned is outside the stratum of every step of that layer, so it counts
-/// as one above it: a step of a higher layer sees it, a step of its own layer does not. The rule
-/// is the resolver's (`Decls::step_returned`): only a step's `#` names count, not a scatter's.
+/// as one above it: a step of a higher layer sees it, a step of its own layer does not. What a
+/// network or cells table made stands where a step's return stands (`geometry.md` 8.1). The rule
+/// is the resolver's (`Decls::stands_returned`): a step's or a maker table's `#` names count, not
+/// a scatter's.
 pub fn view_rank(world: &World, top: &str, name: &str) -> Option<i64> {
     let r = rank_of(world, top, name)?;
+    let returned = |m: &str| {
+        ["step", "network", "cells"]
+            .iter()
+            .any(|t| world.entity(t, m).is_some())
+    };
     Some(match name.split_once('#') {
-        Some((maker, _)) if world.entity("step", maker).is_some() => r + 1,
+        Some((maker, _)) if returned(maker) => r + 1,
         _ => r,
     })
 }

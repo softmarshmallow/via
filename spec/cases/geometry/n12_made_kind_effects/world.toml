@@ -1,0 +1,45 @@
+# geometry.md 8.1, Effects of a made region: a network's areas and a cells table's cells take a
+# kind with effects. They write fields as a step's returned features do, and `dist('kind:block')`
+# counts them. The region r (80 by 40 m) and the path p down its middle make two 40 m square
+# areas, kind `block`; each area's four 40 m sides hold two 20 m cells, 10 m deep, kind `lot`, and
+# keep the 20 m square at its centre as rest.
+
+name       = "made_effects"
+extent     = [0, 0, 100, 60]
+resolution = 1
+pack       = "pack.toml"
+include    = ["zones"]
+
+[field.height]
+role = "surface"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+mask  = 1
+
+[field.mark]
+tags = ["lot"]
+base = "= 0"
+
+[field.gap]
+base = "= dist('kind:block', 20)"
+
+[feature.r]
+region = [[10, 10], [90, 10], [90, 50], [10, 50]]
+
+[feature.p]
+path = [[50, 10], [50, 50]]
+
+[network.blk]
+from = ["r", "p"]
+kind = "block"
+
+[cells.c]
+within  = "blk"
+spacing = 20
+depth   = 10
+kind    = "lot"

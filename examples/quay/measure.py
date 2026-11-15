@@ -15,7 +15,9 @@ Standard library only.
 
 How each is taken (ours): a block is a feature of kind `block`, a lot of kind `lot`, a rest piece a
 region of the cells table with no kind; a house an instance named `houses#...`; a pin's instance
-is named by its pin id. A centre is the mean of a region's outer ring's vertices.
+is named by its pin id. A centre is the mean of a region's outer ring's vertices. `lots_held` is the
+houses step's own count (its `step.houses.rows` info: lots with at least one house of a row on them),
+`terraces` the regions of kind `terrace` it returns (one per run of houses wall to wall).
 """
 
 import json
@@ -72,6 +74,9 @@ def measures(d):
     m["houses"] = sum(1 for n in names if n.startswith("houses#"))
     m["instances"] = len(names)
     m["bookmarks"] = sum(1 for f in fs if f.get("kind") == "bookmark")
+    m["terraces"] = sum(1 for f in fs if f.get("kind") == "terrace")
+    rows = [x.get("data") or {} for x in diags if x["code"] == "step.houses.rows"]
+    m["lots_held"] = rows[0].get("lots_held") if rows else None      # lots with a house on them
     for code in ("place.relief", "place.keep_out", "geom.dead_end", "geom.unowned_crossing",
                  "identity.pin_removed", "identity.reselected", "step.streets.none"):
         m[code] = codes.get(code, 0)

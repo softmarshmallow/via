@@ -1061,7 +1061,7 @@ impl via_expr::Reads for DensityReads<'_, '_> {
         domain: &Domain,
         _cap: Option<f64>,
     ) -> Result<Vec<f64>, via_expr::ReadError> {
-        let g = self.f.placed.shapes.get(feature).ok_or_else(|| {
+        let g = self.f.placed.shape(feature).ok_or_else(|| {
             via_expr::ReadError::new(codes::diag::INTERNAL, "no shape", "report it")
         })?;
         Ok(domain

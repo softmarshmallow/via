@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "Three made areas of kind block paint the ground; moving street b re-runs the chunks of the two areas it bounds and reuses chunk 0, which only the west area reaches."
+milestone = 3
+actions   = ["first", "move_b", "moved"]
+
+# geometry.md 8.1 and graph.md 1: each area that writes fields is a `made` node reading its
+# network's `op` node, and a field chunk reads the made things whose windows meet it. Moving b from
+# x = 150 to x = 154 re-runs `op:blk` and every `made` node; the west area's value is unchanged, so
+# chunk 0 (posts 0 to 64), which no other area reaches, is reused. The area names digest their
+# sources' names (identity.md 2.3), so none is renamed.
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.first.nodes]
+ran_includes = ["op:blk", "field:ground/v:build/w:0.0.65.65"]
+
+[action.move_b]
+replace = "world.toml"
+find    = "path = [[150, 4], [150, 60]]"
+with    = "path = [[154, 4], [154, 60]]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.nodes]
+ran_includes = ["op:blk", "field:ground/v:build/w:64.0.129.65", "field:ground/v:build/w:128.0.193.65"]
+not_ran      = ["field:ground/v:build/w:0.0.65.65"]
+
+[action.moved.diag.not_yet]
+code    = "doc.not_yet"
+records = 0

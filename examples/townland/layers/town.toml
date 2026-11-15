@@ -1,0 +1,160 @@
+# Layer `dwellings` (rank 1): what stands on the lots, the paint, the lints that read the whole
+# town, and the views at the meetings. A step reads the lots (a cells table) only from a layer above
+# the one that declares it (geometry.md 8.3).
+
+[step.houses]                               # rows of town houses along each lot's frontage (quay's)
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/houses.py"]
+params  = { lots = "lots", setback = 0.5, gap = 0.25, terrace = "terrace", max_cut = 3, grade = 0.7, assets = ["house_row", "house_narrow"], streets = ["kind:main_street", "kind:street", "embankment"] }
+
+[step.review_houses]                        # the houses step returns terraces, which change the
+when    = "lint"                            # ground: a lint must check it (authority.md 7)
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+checks  = ["houses"]
+
+# lib/review's street form (form.py, R15): bearing spread and orientation order, the junction mix
+# and the dead-end share, with their reference ranges and the protocol in each record; and the
+# decks over the river (R18). The district outlines are named so a street ending on one is counted
+# as the town's edge, and still counted as a dead end, as the spike counted it.
+[step.form]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/form.py"]
+params  = { ways = ["main_street", "street"], meets = ["waterfront", "crossing"], edges = ["old_town", "west_end", "upper_town"], gates = ["west_gate", "east_gate", "north_gate"], water = ["beck"], crossings = ["crossing"] }
+
+# lib/review's reach lint: a walker from the west gate reaches the other gates and the market, so
+# across the crossing; every house's door from the market.
+[step.reach]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach = [
+  { profile = "walker", from = "west_gate", to = ["market", "east_gate", "north_gate", "quay_head"] },
+  { profile = "walker", from = "market", to = [{ mount = "door", assets = ["@building/house"] }] },
+]
+
+[step.reach.params.profiles.walker]         # metres; quay's walker
+grade = 0.5
+step  = 0.2
+width = 0.6
+wade  = 0.3
+reach = 2
+
+# ------------------------------------------------------------------------------------------ paint
+# quay's rows: setts kerb to kerb, flags on the footways, the deck and the quayside; the river's
+# bed gravel; the crossing's deck flags.
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.pavement]
+paint = "flags"
+mask  = "= max(1 - smoothstep(5.0, 5.5, dist('kind:main_street', 8)), 1 - smoothstep(3.5, 4.0, dist('kind:street', 6)))"
+
+[field.ground.then.street]
+paint = "setts"
+mask  = "= max(1 - smoothstep(3.0, 3.5, dist('kind:main_street', 8)), 1 - smoothstep(2.0, 2.5, dist('kind:street', 6)))"
+
+[field.ground.then.shore]                   # the river's bed and banks below the water's edge
+                                            # (the valley's line, world.toml, not dist('river'))
+order = 1
+paint = "gravel"
+mask  = "= (1 - smoothstep(7, 9, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) * (1 - smoothstep(0, 0.5, f('height') - f('water') - 0.6))"
+
+[field.ground.then.wall]                    # the embankment's wall face, from the deck's water edge down
+order = 1
+paint = "rock"
+mask  = "= (1 - smoothstep(1, 1.5, abs(sdist('embankment', 20) + 8.75))) * (1 - smoothstep(0, 1, dist('embankment', 20) - abs(sdist('embankment', 20))))"
+
+[field.ground.then.wharf]                   # the embankment's deck and 3 m of quayside
+order = 1
+paint = "flags"
+mask  = "= smoothstep(-8.25, -7.75, sdist('embankment', 20)) * (1 - smoothstep(3, 3.5, sdist('embankment', 20))) * (1 - smoothstep(0, 0.5, dist('embankment', 20) - abs(sdist('embankment', 20))))"
+
+[field.ground.then.deck]                    # the crossing's deck
+order = 2
+paint = "flags"
+mask  = "= 1 - smoothstep(3, 3.5, dist('old_bridge', 8))"
+
+# ------------------------------------------------------------------------------------------ views
+# From eye height at every kind of meeting (R17). Guides are the places views look at. Junctions
+# of generated streets are selected from the networks (`{ of, class, near }`), so a view follows its
+# junction when the streets move.
+
+[feature.look_upriver]
+at = [180, 420]
+
+[feature.look_downriver]
+at = [208, 140]
+
+[feature.look_quay]
+at = [214, 200]
+
+[feature.look_hill]
+at = [360, 250]
+
+[feature.look_west]
+at = [80, 280]
+
+[feature.look_up_town]
+at = [300, 420]
+
+[feature.way_bridge]                        # way and crossing: the west road at the bridge's west end
+kind   = "bookmark"
+on     = { ref = "west_road", t = 0.93 }
+toward = "old_bridge.end"
+
+[feature.on_bridge]                         # on the deck, looking downriver along the quay
+kind   = "bookmark"
+on     = { ref = "old_bridge", t = 0.5 }
+toward = "look_downriver"
+
+[feature.bridge_bank]                       # on the west bank below the bridge, looking at it
+kind   = "bookmark"
+at     = [182, 300]
+toward = "old_bridge"
+
+[feature.ways_meet]                         # way and way: the bridge's east end, where the high
+kind   = "bookmark"                         # street and the north road start
+on     = { ref = "high_street", t = 0.12 }
+toward = "old_bridge.start"
+
+[feature.quay_from_bridge]                  # street and waterfront: on the embankment's deck at its north end
+kind   = "bookmark"
+at     = [211, 292]
+toward = "look_quay"
+
+[feature.road_quay]                         # way and waterfront: the quay road's foot on the quay
+kind   = "bookmark"
+on     = { ref = "quay_road", t = 0.95 }
+toward = "look_downriver"
+
+[feature.market_view]                       # three ways meet: the market
+kind   = "bookmark"
+on     = { ref = "east_road", t = 0.04 }
+toward = "market"
+
+[feature.up_old_town]                       # street and street, up the old town's slope
+kind   = "bookmark"
+at     = [240, 220]
+toward = "look_hill"
+
+[feature.west_streets_view]                 # the west end's streets, flat ground
+kind   = "bookmark"
+at     = [165, 280]
+toward = "look_west"
+
+[feature.upper_view]                        # the upper town from the bridge road
+kind   = "bookmark"
+on     = { ref = "north_road", t = 0.8 }
+toward = "look_up_town"
+
+[feature.from_east_gate]                    # the town from the east gate, above
+kind       = "bookmark"
+on         = { ref = "east_road", t = 0.9 }
+toward     = "market"
+eye_height = 3

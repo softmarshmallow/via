@@ -1,0 +1,39 @@
+# geometry.md 8.1 and authority.md 4.4: what a network makes stands outside the view of every step
+# at its layer. The region r (80 by 40 m) and the path p down its middle make two 40 m square
+# areas of kind `block`, at the world's layer; the field `gap` reads them as
+# dist('kind:block', 20), and the step `look`, at the same layer, reads `gap`.
+
+name       = "made_view"
+extent     = [0, 0, 100, 60]
+resolution = 1
+pack       = "pack.toml"
+include    = ["zones"]
+
+[field.height]
+role = "surface"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+mask  = 1
+
+[field.gap]
+base = "= dist('kind:block', 20)"
+
+[feature.r]
+region = [[10, 10], [90, 10], [90, 50], [10, 50]]
+
+[feature.p]
+path = [[50, 10], [50, 50]]
+
+[network.blk]
+from = ["r", "p"]
+kind = "block"
+
+[step.look]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/look.py"]

@@ -108,3 +108,53 @@ mask  = "= 1 - smoothstep(width / 2, width / 2 + 3, d)"
 field = "role:keep_out"
 value = "= 1"
 mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 2, d)"
+
+# A crossing: the named thing that owns where a way meets running water too deep to ford (R18,
+# surfaces.md 3.5 and 6.3). It is a straight path from bank to bank; it owns its deck and its two
+# ends, and ways arrive at those ends by name (`ends_at = "old_bridge.start"`, `starts_at =
+# "old_bridge.end"`), so no way is graded across the bed and no way lays a deck of its own: one deck
+# per crossing, never one per way that happens to cross (the three overlapping decks of challenge
+# 63). `crosses` names the water it crosses, so the core counts the crossing of the two lines as owned
+# (geometry.md 2.7). A world writes its two ends as points on the water (`on = { ref = "river", t,
+# offset }`), so the crossing stands square to the water and moves with it.
+#
+# `heads`: each bridgehead is raised by the crossing's own effect, in the document and under
+# authority (TODO "Bridgeheads are raised by a step writing height"): behind each end, and under
+# the deck's first and last metres, the ground is held within a bank of `grade` (1:2) of `deck_z`
+# out to `head` metres, so a way arriving over lower or higher ground ramps to the deck.
+#
+# `deck`: STAND-IN. surfaces.md's kind surface (`[kind.crossing.surface.deck]`) is `doc.not_yet`
+# (M3, not built), so the deck is written on the terrain: the ground is `deck_z` across the strip,
+# `width` metres wide, falling sheer at its sides. The water stands on either side and not under
+# it: on foot it reads as a solid causeway, not a bridge, and nothing can pass beneath it. When kind
+# surfaces land this effect becomes `[kind.crossing.surface.deck]` and the water runs under. Ours,
+# written for `townland` (M3).
+[kind.crossing]
+authority = "anchored"
+requires  = ["deck_z", "crosses"]            # metres: the deck's level; the water it crosses
+names     = ["crosses"]
+radius    = 16                              # `head` and its 2 m fade, and a post
+
+[kind.crossing.defaults]
+width = 6                                   # metres of deck, parapet to parapet
+head  = 12                                  # metres behind each end the bridgehead holds the ground
+grade = 0.5                                 # the bridgehead's bank, rise over run (1:2)
+
+[kind.crossing.let]
+ends = "= max(1 - smoothstep(0, 0.12, t), smoothstep(0.88, 1, t))"
+bank = "= grade * max(d - width / 2, 0)"
+
+[kind.crossing.effect.deck]                 # stand-in: the deck on the terrain (above)
+field = "role:surface"
+value = "= deck_z"
+mask  = "= 1 - smoothstep(width / 2, width / 2 + 0.25, d)"
+
+[kind.crossing.effect.heads]
+field = "role:surface"
+value = "= clamp(v, deck_z - bank, deck_z + bank)"
+mask  = "= ends * (1 - smoothstep(head, head + 2, d))"
+
+[kind.crossing.effect.clear]                # nothing stands on the deck or its heads
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 1, d)"

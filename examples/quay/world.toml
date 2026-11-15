@@ -48,7 +48,10 @@ region       = [[0, 0], [256, 0], [256, 46], [0, 46]]
 [feature.quay]                              # the waterfront: owns the bank; the land on its left
 kind  = "waterfront"
 level = 3.5
-path  = [[4, 46], [252, 46]]
+bank  = 3                                   # the land meets the deck's level at its line here, so
+path  = [[4, 46], [252, 46]]                # the deck's fade stays within the apron (3 m): the
+                                            # houses facing the quay stand on their own terraces
+                                            # (anchored, the fade overrode them: 18 `place.relief`)
 
 # ------------------------------------------------------------------------------------------ the town
 
@@ -100,3 +103,24 @@ kind       = "lot"
 when   = "lint"
 command = ["python", "-m", "viasdk", "lib:review/checks.py"]
 checks = ["streets"]
+
+# lib/review's reach lint (reach.py): a walker's body, and the places it must reach from the quay's
+# head: every house's door, every view on land and the gate. The harbour's guide point must stay
+# out of a walker's reach. Every profile key is stated; the lint assumes no body.
+[step.reach]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach = [
+  { profile = "walker", from = "quay_head", to = [{ mount = "door", assets = ["@building/house"] }] },
+  { profile = "walker", from = "quay_head", to = ["gate", "way_water", "street_quay", "street_street", "lot_street", "way_street", "from_gate", "wall_deck"] },
+]
+sealed = [{ profile = "walker", from = "quay_head", to = ["look_harbour"] }]
+
+[step.reach.params.profiles.walker]         # metres
+grade = 0.5                                 # about 27 degrees, a steep path
+step  = 0.2                                 # a stair's riser
+width = 0.6                                 # shoulders
+wade  = 0.3                                 # boots
+reach = 2                                   # a door's step, a view's few paces

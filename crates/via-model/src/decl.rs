@@ -463,6 +463,9 @@ pub struct Decls {
     /// visible: a reference to it reads the failed entity, it is never `names nothing`.
     pub declared: BTreeMap<String, &'static str>,
     pub instances: BTreeMap<String, InstanceDecl>,
+    /// Produced instances that gave way (`authority.md` 2.2), taken out of `instances`: what
+    /// stands on one is not placed either, and says nothing.
+    pub gave_way: BTreeSet<String>,
     pub scatters: BTreeMap<String, ScatterDecl>,
     pub pins: BTreeMap<String, PinDecl>,
     pub clears: BTreeMap<String, ClearDecl>,
@@ -586,6 +589,32 @@ impl Decls {
     pub fn step_returned(&self, name: &str) -> bool {
         name.split_once('#')
             .is_some_and(|(maker, _)| self.steps.contains_key(maker))
+    }
+
+    /// Whether a name is a step's return or a thing a `[network]` or `[cells]` table made: both
+    /// stand outside the views of every step at their layer (`geometry.md` 8.1,
+    /// Effects of a made region; `authority.md` 4.4, What counts as returned).
+    pub fn stands_returned(&self, name: &str) -> bool {
+        self.step_returned(name)
+            || name
+                .split_once('#')
+                .is_some_and(|(maker, _)| self.is_maker_table(maker))
+    }
+
+    /// Whether an instance id is produced: a step returned it or a producer placed it
+    /// (`<producer>#<key>`), not written by hand (`authority.md` 2.2, A produced instance gives
+    /// way).
+    pub fn produced_instance(&self, id: &str) -> bool {
+        id.split_once('#')
+            .is_some_and(|(m, _)| self.steps.contains_key(m) || self.scatters.contains_key(m))
+    }
+
+    /// The layer rank of a network or cells table.
+    pub(crate) fn maker_table_rank(&self, id: &str) -> Option<i64> {
+        self.networks
+            .get(id)
+            .map(|n| n.rank)
+            .or_else(|| self.cells.get(id).map(|c| c.rank))
     }
 
     /// What a `where` reads (`authority.md` 2.3: "reads" is transitive): the fields, through the

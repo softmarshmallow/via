@@ -54,6 +54,10 @@ class Named(list):
     name = "height"
 
 
+class Clearing(list):
+    name = "clearing"
+
+
 class Out:
     def __init__(self):
         self.features, self.instances = {}, []
@@ -77,14 +81,19 @@ class FakeStep:
         self.said = []
         self.evals = 0
 
+    keep_out = None                                    # a function of (x, y) in metres, or None
+
     def fields(self, names, view="full", window=None):
+        if names == ["role:keep_out"]:                 # as the engine: no such field, none listed
+            return [] if self.keep_out is None else [Clearing()]
         if self.height is None:
             raise LookupError("no surface")
         return [Named()]
 
     def eval(self, formula, x=None, y=None, view="full"):
         self.evals += 1
-        return [self.height(a / 1000.0, b / 1000.0) for a, b in zip(x, y)]
+        fn = self.keep_out if "clearing" in formula else self.height
+        return [fn(a / 1000.0, b / 1000.0) for a, b in zip(x, y)]
 
     def features(self, select, within=None, columns=()):
         # As the engine (protocol.md 3.3): `kind:<k>` alone, or a list of names.
@@ -341,6 +350,7 @@ class StreetsTest(unittest.TestCase):
 # --- houses -------------------------------------------------------------------------------------
 
 BOUNDS = {"house_narrow": [-2500, -4000, 0, 2500, 4000, 7000],
+          "house_row": [-3500, -4000, 0, 3500, 4000, 7000],
           "house_low": [-4000, -3000, 0, 4000, 3000, 4000],
           "house_wide": [-6000, -4000, 0, 6000, 4000, 6000]}
 
@@ -355,11 +365,12 @@ class FakeHouses(FakeStep):
         return pack_table(select)
 
 
-def houses_step(cells, height=None, **params):
+def houses_step(cells, height=None, keep_out=None, **params):
     fl = {"lots": feature_list(cells),
           "kind:main_street": feature_list([("streets#a", 1, [(0, 0), (100, 0)], "feature")]),
           "kind:street": feature_list([("streets#b", 1, [(0, 0), (0, 100)], "feature")])}
     step = FakeHouses(dict({"lots": "lots"}, **params), height=height, features=fl)
+    step.keep_out = keep_out
     step.id = "houses"
     H["generate"](step)
     return step
@@ -391,8 +402,9 @@ class HousesTest(unittest.TestCase):
         tiny = [(60, 3), (64, 3), (64, 20), (60, 20)]        # 4 m front: nothing fits
         step = houses_step([("lots#cw_0", 2, wide, "cell"), ("lots#ct_0", 2, tiny, "cell")])
         self.assertEqual([i[1] for i in step.out.instances], ["house_low"])
-        self.assertEqual(step.said[0][:3], ("info", "small", "step.houses"))
-        self.assertEqual(step.said[0][3]["count"], 1)
+        small = [s for s in step.said if s[1] == "small"]
+        self.assertEqual(small[0][:3], ("info", "small", "step.houses"))
+        self.assertEqual(small[0][3]["count"], 1)
 
     def test_largest_that_fits(self):
         # quay never placed house_wide, written second: the largest footprint that fits is taken,
@@ -416,7 +428,7 @@ class HousesTest(unittest.TestCase):
         self.assertEqual([i[0] for i in step.out.instances], ["hf_0"])
         self.assertEqual(step.evals, 1)                       # one batch for every house (R23)
         info = [s for s in step.said if s[1] == "steep"]
-        self.assertEqual(info[0][3], {"count": 1, "lots": ["lots#cs_0"]})
+        self.assertEqual(info[0][3], {"count": 1, "houses": ["hs_0"]})
         step = houses_step(cells, height=h, max_relief=1.5, ground="pad")
         self.assertEqual([i[0] for i in step.out.instances], ["hf_0", "hs_0"])
         self.assertEqual(step.evals, 0)
@@ -426,6 +438,113 @@ class HousesTest(unittest.TestCase):
         lot = [(20, 3), (20, 19), (29, 19), (29, 3), (20, 3)]
         step = houses_step([("lots#cab12_3", 2, lot, "cell")])
         self.assertEqual(step.out.instances[0][3], 180.0)
+
+
+class RowsTest(unittest.TestCase):
+    """Rules 2 and 4: a lot's frontage holds a row of houses wall to wall, pushed back clear of the
+    street's keep_out, the setback following the street's own width."""
+
+    def test_row_fills_the_frontage(self):
+        # An 11.01 m frontage on the street at y = 0: two house_narrow (5 m) wall to wall (1 cm
+        # apart, PARTY), 0.5 m gaps at the lot's edges, named by the lot and their place in the row.
+        lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+        step = houses_step([("lots#cab_3", 2, lot, "cell")])
+        got = sorted((k, a, at) for k, a, at, _, _ in step.out.instances)
+        self.assertEqual(got, [("hab_3", "house_narrow", (23000, 8000)),       # from the chord's
+                               ("hab_3_1", "house_narrow", (28010, 8000))])    # start, west
+        rows = [s for s in step.said if s[1] == "rows"][0][3]
+        self.assertEqual((rows["houses"], rows["lots_held"], rows["lots"]), (2, 1, 1))
+
+    def test_row_covers_most_mixed(self):
+        # 13 m less two 0.5 m gaps: house_narrow + house_row (12 m) covers more than two narrow.
+        lot = [(20, 3), (33.01, 3), (33.01, 19), (20, 19)]
+        step = houses_step([("lots#cm_0", 2, lot, "cell")], assets=["house_narrow", "house_row"])
+        self.assertEqual(sorted(i[1] for i in step.out.instances), ["house_narrow", "house_row"])
+        xs = sorted(i[2][0] for i in step.out.instances)
+        self.assertEqual(xs[1] - xs[0], 6010)             # 2.5 + 3.5 and PARTY: wall to wall
+
+    def test_keep_out_pushes_the_row_back(self):
+        # The street's keep_out reaches 4.2 m from its centre line (y = 0): the row's front (each
+        # house's +y bound, 4 m from its origin) stands at the first 0.5 m step past it, 4.5 m.
+        lot = [(20, 0), (31.01, 0), (31.01, 19), (20, 19)]
+        step = houses_step([("lots#ck_0", 2, lot, "cell")], setback=1, assets=["house_narrow"],
+                           keep_out=lambda x, y: 1.0 if y < 4.2 else 0.0)
+        self.assertEqual({i[2][1] for i in step.out.instances}, {4500 + 4000})
+        self.assertEqual(len(step.out.instances), 2)
+        self.assertEqual(sum(1 for _ in range(step.evals)), 1)   # one batch for every lot (R23)
+
+    def test_corner_house_beside_a_cross_street_dropped(self):
+        # A corner lot: a cross street's keep_out covers x < 24.5 at any depth. Pushing back does not
+        # clear the west house, so it is dropped and the gap falls at the junction.
+        lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+        step = houses_step([("lots#cc_0", 2, lot, "cell")], assets=["house_narrow"],
+                           keep_out=lambda x, y: 1.0 if x < 24.5 else 0.0)
+        self.assertEqual([(i[0], i[2]) for i in step.out.instances], [("hc_0_1", (28010, 8000))])
+
+    def test_wedge_lot_takes_a_shorter_row(self):
+        # The lot's back narrows to 7 m: two narrow houses' back corners stand outside it, so the
+        # row of one is taken; narrowed to 3 m, none fits.
+        lot = [(20, 3), (31.01, 3), (29, 13), (22, 13)]
+        step = houses_step([("lots#cw_0", 2, lot, "cell")], assets=["house_narrow"])
+        self.assertEqual([i[0] for i in step.out.instances], ["hw_0"])
+        lot = [(20, 3), (31, 3), (27, 13), (24, 13)]
+        step = houses_step([("lots#cw_0", 2, lot, "cell")], assets=["house_narrow"])
+        self.assertEqual(len(step.out.instances), 0)
+
+    def test_corner_triangle_takes_a_row_at_its_square_end(self):
+        # A corner lot cut as a right triangle, its square corner at the frontage's start (west):
+        # centred, the row's back corners stand outside; set against the start, one house fits.
+        lot = [(20, 3), (36, 3), (20, 19)]
+        step = houses_step([("lots#cq_0", 2, lot, "cell")], assets=["house_narrow"])
+        self.assertEqual([(i[0], i[2]) for i in step.out.instances], [("hq_0", (23000, 8000))])
+
+    def test_terrace_under_each_run(self):
+        # With `terrace`, a run of houses stands on one region of that kind, named after the lot and
+        # the run's first house; the houses take no ground. A corner house dropped by keep_out
+        # leaves a run starting at place 1: `tc_0_1`.
+        lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+        step = houses_step([("lots#ct_0", 2, lot, "cell")], assets=["house_narrow"],
+                           terrace="terrace")
+        self.assertEqual(sorted(step.out.features), ["tt_0"])
+        kind, _ = step.out.features["tt_0"]
+        self.assertEqual(kind, "terrace")
+        self.assertTrue(all(i[4] == {} for i in step.out.instances))
+        rows = [x for x in step.said if x[1] == "rows"][0][3]
+        self.assertEqual((rows["houses"], rows["terraces"]), (2, 1))
+        step = houses_step([("lots#cc_0", 2, lot, "cell")], assets=["house_narrow"],
+                           terrace="terrace", keep_out=lambda x, y: 1.0 if x < 24.5 else 0.0)
+        self.assertEqual(sorted(step.out.features), ["tc_0_1"])
+
+    def test_terrace_outline_covers_the_run(self):
+        lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+        frame = H["lot_frame"](lot, [((0, 0), (100, 0))])
+        sizes = [("house_narrow", -2.5, -4, 2.5, 4)]
+        row = H["fit_row"](lot, frame, sizes, 1.0, 0.5)
+        ring = H["run_outline"](row)
+        xs, ys = sorted({round(x, 3) for x, _ in ring}), sorted({round(y, 3) for _, y in ring})
+        self.assertEqual((xs, ys), ([20.5, 30.51], [4.0, 12.0]))
+        self.assertGreater(H["_area2"](ring), 0)            # counter-clockwise
+
+    def test_terrace_run_past_max_cut_left_out(self):
+        # Land falling 1 m a metre east: a 10 m run's terrace cuts about 5 m at its ends.
+        lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+        step = houses_step([("lots#cs_0", 2, lot, "cell")], height=lambda x, y: -x,
+                           assets=["house_narrow"], terrace="terrace", max_cut=3, grade=0.7)
+        self.assertEqual(step.out.instances, [])
+        steep = [x for x in step.said if x[1] == "steep"][0][3]
+        self.assertEqual(steep["count"], 2)
+
+    def test_terrace_and_ground_refused(self):
+        step = houses_step([], terrace="terrace", ground="pad")
+        self.assertEqual(step.said[0][:2], ("error", "params"))
+
+    def test_rows_by_cover_order(self):
+        sizes = [("n", -2.5, -4, 2.5, 4), ("r", -3.5, -4, 3.5, 4)]
+        rows = H["rows_by_cover"](12.01, sizes, 9.0)
+        self.assertEqual(rows[0], (0, 1))                 # 12 m and a PARTY
+        self.assertEqual(rows[1], (0, 0))                 # 10 m and a PARTY
+        self.assertNotIn((0, 1), H["rows_by_cover"](12.0, sizes, 9.0))   # no room for the PARTY
+        self.assertEqual(H["rows_by_cover"](12.0, sizes, 7.0), [])   # too deep for every asset
 
 
 if __name__ == "__main__":

@@ -1,0 +1,5 @@
+# The moved hill (docs/plan.md, M3): `tor` moves 140 m north, from beside the old town to beside
+# the upper town. A height change: the main ways are found again over the new land, the contour
+# streets of both east-bank districts follow it, and their blocks, lots and houses settle.
+[feature.tor]
+at = [380, 400]

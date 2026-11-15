@@ -115,6 +115,42 @@ tags = []
 mounts = { door = { at = [0, 3], face = 0 } }
 files = { "house_low.glb" = "d3ad5573b342ef2edb416eba4bed701b5b1397c7ea017bd5054b87c851684018" }
 
+[asset.house_narrow]
+bounds = [-2.5, -4.3, 0, 2.5, 4.3, 7.6]
+origin = [0, 0, 0]
+footprint = [[-2.5, -4], [2.5, -4], [2.5, 4], [-2.5, 4]]
+triangles = 32
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+max_relief = 0.6
+colour = [0.8, 0.8, 0.8]
+taxon = "building/house"
+tags = []
+mounts = { door = { at = [0, 4], face = 0 } }
+files = { "house_narrow.glb" = "7dee46f6907cb99b99d14c9b86be111ff54bef643c002b5e7b2c317e1c1ab015" }
+
+[asset.house_row]
+bounds = [-3.5, -4.3, 0, 3.5, 4.3, 8]
+origin = [0, 0, 0]
+footprint = [[-3.5, -4], [3.5, -4], [3.5, 4], [-3.5, 4]]
+triangles = 32
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+max_relief = 0.6
+colour = [0.8, 0.8, 0.8]
+taxon = "building/house"
+tags = []
+mounts = { door = { at = [0, 4], face = 0 } }
+files = { "house_row.glb" = "082610f9705b674c0c17e04083e24f2a786caf5b638fc22f9520effeb7b4f9fd" }
+
 [asset.house_wide]
 bounds = [-5.8, -3.8, 0, 5.8, 3.8, 5.4]
 origin = [0, 0, 0]

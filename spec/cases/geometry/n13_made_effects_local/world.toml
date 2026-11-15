@@ -1,0 +1,35 @@
+# geometry.md 8.1 and graph.md 1 (`made`): a made area writes only the chunks its window meets.
+# The region r and the streets a (x = 70) and b (x = 150) make three areas, kind `block`, which
+# paints `paved` within 2 m of each. 64 m chunks: posts 0 to 64, 64 to 128, 128 to 192. Only the
+# west area [4, 70] reaches chunk 0; the middle [70, 150] and east [150, 188] areas, grown by the
+# radius, start at x = 68.
+
+name       = "made_local"
+extent     = [0, 0, 192, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["zones"]
+
+[field.height]
+role = "surface"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+mask  = 1
+
+[feature.r]
+region = [[4, 4], [188, 4], [188, 60], [4, 60]]
+
+[feature.a]
+path = [[70, 4], [70, 60]]
+
+[feature.b]
+path = [[150, 4], [150, 60]]
+
+[network.blk]
+from = ["r", "a", "b"]
+kind = "block"

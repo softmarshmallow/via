@@ -1,0 +1,23 @@
+# authority.md 2.2, A produced instance gives way. The ground rises 0.2 m per metre east. A pad
+# levels its footprint to the mean, so it cuts half the footprint's width times 0.2: a 4 m hut
+# 0.4 m, within the kind's 0.5; a 10 m hall 1.0 m, past it.
+
+name       = "giveway"
+extent     = [0, 0, 64, 16]
+resolution = 1
+include    = ["pads"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = "= 0.2 * x"
+
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+
+[instance.own]
+asset  = "hall"
+at     = [52, 8]
+ground = "pad"

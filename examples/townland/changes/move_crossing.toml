@@ -1,0 +1,8 @@
+# The moved crossing (R18): the bridge stands 23 m upstream. Its two ends are points on the river,
+# so the crossing moves whole; the west road, the high street and the north road arrive at its new
+# ends by name, so they are found again, and no other line is written.
+[feature.bridge_west]
+on = { ref = "river", t = 0.31, offset = -16 }
+
+[feature.bridge_east]
+on = { ref = "river", t = 0.31, offset = 16 }

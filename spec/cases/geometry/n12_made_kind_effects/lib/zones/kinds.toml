@@ -1,0 +1,20 @@
+# A test library for geometry.md 8.1, Effects of a made region: `block` paints the ground under
+# a network's areas, `lot` marks a cells table's cells. Neither knows what reads it.
+
+[kind.block]
+authority = "derived"
+radius    = 2
+
+[kind.block.effect.pave]
+field = "role:material"
+paint = "paved"
+mask  = "= 1 - smoothstep(0, 1, d)"
+
+[kind.lot]
+authority = "derived"
+radius    = 2
+
+[kind.lot.effect.mark]
+field = "tag:lot"
+value = "= 1"
+mask  = "= 1 - smoothstep(0, 1, d)"

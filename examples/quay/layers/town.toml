@@ -1,38 +1,62 @@
 # Layer `town` (rank 1): what stands on the lots, and the views at the meetings. A step reads the
 # lots (a cells table) only from a layer above the one that declares it (geometry.md 8.3).
 
-[step.houses]                               # one house per lot, its front to the street or quay
+[step.houses]                               # rows of town houses along each lot's frontage
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:town/houses.py"]
-# `ground = "pad"` (lib/land) levels each house on its lot: a pad of this layer changes `height`,
-# which the streets step below reads in its own layer's view, where the pad is not (authority.md
-# 4.4). `setback` keeps each house clear of the street's verge (lib/town: keep_out to half the
-# width and 3 m, fading by 5 m), since a lot's frontage is the street's centre line. `max_cut`
-# and `grade` are lib/land `pad`'s own: a lot whose pad would move the land beside it by more
-# than the pad's `max_change` stays empty (lib/town/houses.py rule 6).
-params  = { lots = "lots", setback = 7.5, ground = "pad", max_cut = 3, grade = 0.3, assets = ["house_wide", "house_low"], streets = ["high_street", "kind:street", "quay"] }
+# Each lot's frontage holds a row of `house_row` and `house_narrow` wall to wall, the gaps at the
+# lots' edges (`gap` each end) and at junctions (lib/town/houses.py rules 2 and 4). `setback` is the
+# least: each row stands back from its street's centre line until it is clear of the street's
+# keep_out (the carriageway and its footways, lib/town `verge`), so a house's front is on the
+# footway's back edge whatever the street's width. `terrace` (lib/town) levels each run of houses
+# on one floor: a terrace of this layer changes `height`, which the streets step below reads in its
+# own layer's view, where the terrace is not (authority.md 4.4). `max_cut` and `grade` are the
+# terrace kind's own: a run whose terrace would move the land beside it by more than its
+# `max_change` is left out (houses.py rule 7).
+params  = { lots = "lots", setback = 0.5, gap = 0.25, terrace = "terrace", max_cut = 3, grade = 0.7, assets = ["house_row", "house_narrow"], streets = ["high_street", "kind:street", "quay"] }
 
-# The paint (lib/land/ground.md's rows), here so its street row reads the streets the step returns
-# below this layer.
-[field.ground]                              
+[step.review_houses]                        # the houses step returns terraces, which change the
+when    = "lint"                            # ground: a lint must check it (authority.md 7)
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+checks  = ["houses"]
+
+# The paint (lib/land/ground.md's rows, lib/town's paved rows), here so its street rows read the
+# streets the step returns below this layer. A street paints its carriageway in setts and its
+# footways in flags, each edge over one post (0.5 m), from the kinds' widths: `main_street` 6.5 m
+# with 2 m footways, `street` 4.5 m with 1.5 m (lib/town/kinds.toml).
+[field.ground]
 type = "weights"
 role = "material"
 
 [field.ground.then.grass]
 paint = "grass"
 
-[field.ground.then.street]                  # the streets worn to earth: here, above the streets step
-paint = "earth"
-mask  = "= max(1 - smoothstep(4, 4.8, dist('kind:main_street', 8)), 1 - smoothstep(2.5, 3.3, dist('kind:street', 6)))"
+[field.ground.then.pavement]                # the footways, to the house fronts (rows go by order,
+                                            # rank, then id: `footway` sorted before `grass`, which
+                                            # painted over it)
+paint = "flags"
+mask  = "= max(1 - smoothstep(5.0, 5.5, dist('kind:main_street', 8)), 1 - smoothstep(3.5, 4.0, dist('kind:street', 6)))"
 
-[field.ground.then.shore]                   # the harbour's bed and the deck: `order = 1` puts it
-                                            # after the street row (authority.md 4.1 orders rows by
-                                            # order, rank, then id, and `shore` < `street`), so the
-                                            # streets' earth stops at the deck
+[field.ground.then.street]                  # the carriageway, kerb to kerb
+paint = "setts"
+mask  = "= max(1 - smoothstep(3.0, 3.5, dist('kind:main_street', 8)), 1 - smoothstep(2.0, 2.5, dist('kind:street', 6)))"
+
+[field.ground.then.shore]                   # the harbour's bed: `order = 1` puts it and the rows
+                                            # below after the street rows (authority.md 4.1 orders
+order = 1                                   # rows by order, rank, then id), so a street stops at
+paint = "gravel"                            # the deck
+mask  = "= 1 - smoothstep(0, 1, f('height') - sea + 0.5)"
+
+[field.ground.then.wall]                    # the quay wall's face: stone from the deck's water edge
+order = 1                                   # (sd = -8) down to its foot; the deck's flags come after
+paint = "rock"
+mask  = "= 1 - smoothstep(1, 1.5, abs(sdist('quay', 20) + 8.75))"
+
+[field.ground.then.wharf]                   # the deck and `apron` metres of quayside behind it, flagged
 order = 1
-paint = "gravel"
-mask  = "= max(1 - smoothstep(0, 1, f('height') - sea + 0.5), 1 - smoothstep(0, 1, dist('kind:waterfront', 12) - 8) * smoothstep(-1, 0, f('height') - quay + 0.2))"
+paint = "flags"
+mask  = "= smoothstep(-8.25, -7.75, sdist('quay', 20)) * (1 - smoothstep(3, 3.5, sdist('quay', 20)))"
 
 # ------------------------------------------------------------------------------------------ views
 # Where the build is judged: from eye height at every kind of meeting (R17). Each stands on the
@@ -89,8 +113,8 @@ eye_height = 3
 
 # The quay wall: the deck's water side drops `wall` metres (lib/town, `waterfront`). One view on the
 # deck looks along the wall's top; one from the water, at a boat's eye, looks at its face.
-[feature.look_wall_east]
-at = [236, 37]
+[feature.look_wall_east]                    # on the deck, 2 m in from the wall's edge (was 37: in
+at = [236, 40]                              # the water, so the view looked down past the wall)
 
 [feature.look_wall_face]
 at = [104, 40]

@@ -1,0 +1,7 @@
+[asset.hut]
+primitive = "box"
+size      = [4, 4, 2]
+
+[asset.hall]
+primitive = "box"
+size      = [10, 10, 2]

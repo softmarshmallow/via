@@ -347,10 +347,42 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
         }
     }
     let (placed, placing) = match decls.grid {
-        Some(_) => {
-            let (placed, pd) = Placer::new(&decls, &pk).run();
-            diags.extend(pd.iter().cloned());
-            (placed, Some(pd))
+        Some(grid) => {
+            // `authority.md` 2.2, A produced instance gives way: rounds of placing and resolving
+            // until no produced instance's footprint passes its kind's `max_change`. Each round
+            // removes every instance found at once. A round must remove one, or the next would
+            // find the same: a found name that is no declared instance (a scatter's, should its
+            // footprints ever write here) ends the rounds with `diag.internal` instead.
+            let mut gave: Vec<Diag> = Vec::new();
+            loop {
+                let (placed, mut pd) = Placer::new(&decls, &pk).run();
+                let found = give_way(&decls, &placed, grid);
+                let mut removed = 0;
+                let mut stuck = Vec::new();
+                for (inst, d) in found {
+                    if decls.instances.remove(&inst).is_some() {
+                        decls.gave_way.insert(inst);
+                        gave.push(d);
+                        removed += 1;
+                    } else {
+                        stuck.push(inst);
+                    }
+                }
+                if removed == 0 {
+                    for inst in stuck {
+                        pd.push(text::diag(
+                            codes::diag::INTERNAL,
+                            Subject::entity("instance", inst.clone()),
+                            Site::Header,
+                            &format!("`{inst}` passes its kind's `max_change` but cannot give way: it is no declared instance"),
+                            "report it: this is a defect of the engine",
+                        ));
+                    }
+                    pd.extend(gave);
+                    diags.extend(pd.iter().cloned());
+                    break (placed, Some(pd));
+                }
+            }
         }
         None => (crate::place::Placed::default(), None),
     };
@@ -361,6 +393,37 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
         diags,
         placing,
     }
+}
+
+/// The produced instances whose footprints pass their kind's `max_change` (`authority.md` 2.2),
+/// by name, each with its `authority.gave_way` record. Only the fields such a footprint writes
+/// through an effect with `max_change` are resolved, and only when there is one.
+fn give_way(decls: &Decls, placed: &Placed, grid: Grid) -> BTreeMap<String, Diag> {
+    let mut fields: BTreeSet<&str> = BTreeSet::new();
+    let mut probe = Fields::new(decls, placed, grid);
+    probe.collect_gave_way = true;
+    for (name, (inst, kind)) in &placed.footprints {
+        if !decls.produced_instance(inst) || !placed.shapes.contains_key(name) {
+            continue;
+        }
+        let Some(k) = decls.kinds.get(kind) else {
+            continue;
+        };
+        for e in k.effects.values().filter(|e| e.max_change.is_some()) {
+            for f in probe.matching(&e.selector) {
+                if let Some((n, _)) = decls.fields.get_key_value(f.as_str()) {
+                    fields.insert(n.as_str());
+                }
+            }
+        }
+    }
+    if fields.is_empty() {
+        return BTreeMap::new();
+    }
+    for f in fields {
+        let _ = probe.get(f, View::Build);
+    }
+    probe.gave_way.into_inner()
 }
 
 /// The folder of the document a record names `source` (`documents.md` 2.1): a path under the

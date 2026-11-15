@@ -1,0 +1,220 @@
+name    = "townland"
+extent     = [0, 0, 512, 512]
+resolution = 1                              # metres between posts: at 0.5 a cold build took 390 s
+seed    = 12
+include = ["land", "water", "ways", "town", "review"]   # kinds as data; the core knows none of these words
+pack    = "starter"
+
+# A river town of three districts on hilly land (docs/plan.md, M3; R15 to R18). The land falls
+# gently south and climbs away from a river that comes in at the north edge and leaves at the south;
+# a hill (`tor`) stands east of it. The author writes the land, the river's course, one crossing,
+# the waterfront on the east bank, the places the main ways join, five main ways by what they
+# connect, and three districts. Nobody writes a street, a block, a lot or a house.
+#
+# - The main ways are written by their ends and routed over the land (R16): from the west gate to
+#   the crossing's west end, from its east end to the market, from the market to the quay, the east
+#   gate and the north gate.
+# - The crossing (`old_bridge`, lib/ways) owns its deck and its two ends; the ways arrive at those
+#   ends by name, so there is one deck and no way is graded across the bed (R18).
+# - The waterfront (`embankment`, lib/town) owns the east bank along the town's reach; the old
+#   town's streets run down to it and end on it (R18).
+# - Each district's local streets are lib/town's streets step; the core nodes them with the main
+#   ways (and the embankment) into one network per district whose areas are blocks, and cuts lots
+#   along every block's street sides (geometry.md 8). Houses, the paint and the views at the
+#   meetings (R17) are the layer above (layers/town.toml).
+#
+# The spike's townland was 1.6 km over an erosion model's land and took 52 to 60 s at 2 m posts.
+# This one is 512 m at 1 m posts, on a written surface: the town, not the simulation, is what M3
+# shows. Its river is a written course (R16 allows a typed course; it is then anchored), so the
+# valley can be written from it; a found river bending round the hill is not shown here.
+
+[layer.dwellings]
+file  = "layers/town.toml"
+owner = "dwellings"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ fields
+
+# The land: 4 m at the south edge rising 1 m per 100 m north, climbing 5 m per 100 m away from the
+# valley's line (`abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y))`: the river's course, x = 200 along the town's reach, bending to 230 at the
+# south edge and 175 at the north, as the river's written points do), a hill of 16 m round `tor`,
+# and lumps away from the banks. The valley is written by its line, not as `dist('river')`: a
+# distance to the river's 2,000-odd smoothed vertices at every post, read again by every main way's
+# route cost, took over ten minutes before the first route was found (release, one thread).
+[field.height]
+role = "surface"
+base = "= 4 + 0.01 * y + 0.05 * min(abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)), 250) + 16 * (1 - smoothstep(20, 170, dist('tor', 250))) + 1.0 * fbm(60, 3, seed = 'lumps') * smoothstep(20, 40, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                            # ways, decks and the quay keep props off it (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.tor]                               # the hill's top; `move_hill` moves it
+at = [400, 260]
+
+# The river: a written course from the north edge to the south (lib/water's `beck`, wider and
+# deeper). Its reach past the town is straight (three collinear points keep the curve straight
+# between them, geometry.md 2.4), the reach an embankment was built along.
+[feature.river]
+kind       = "beck"                        # shaped (the kind's): the embankment and the crossing,
+                                            # anchored, hold where they meet it
+width      = 14
+depth      = 2.5
+flow       = 1.2
+bank_grade = 0.3
+smooth     = true
+path       = [[175, 512], [185, 440], [200, 360], [200, 300], [200, 240], [200, 180], [200, 120], [215, 60], [230, 0]]
+
+# The waterfront owns the east bank along the straight reach (R18): its line is 15 m east of the
+# river's, so its 8 m deck ends at the water's edge (7 m) in a wall. Walk it south with the water
+# on your right hand: the land is on its left (lib/town).
+[feature.embankment]
+kind  = "waterfront"
+level = 6.6
+wall  = 3
+bank  = 6
+path  = [[215, 296], [215, 184]]
+
+# ------------------------------------------------------------------------------------------ the skeleton
+
+[feature.west_gate]                         # where ways come in; 40 m inside the edge, so a main
+at = [40, 300]                              # street's smoothing reads inside the field (lib/town)
+
+[feature.east_gate]
+at = [472, 200]
+
+[feature.north_gate]
+at = [320, 456]                             # 56 m in: with the hill moved the road leaves it northward
+
+[feature.market]                            # the old heart, on the hill's lower slope
+at = [285, 250]
+
+[feature.quay_head]                         # where the quay road meets the embankment (R18)
+on = { ref = "embankment", t = 0.5 }
+
+# The crossing: its two ends stand on the river's banks, 16 m either side of its line, so it is
+# square to the water and moves with it; `move_crossing` moves it upstream.
+[feature.bridge_west]
+on = { ref = "river", t = 0.355, offset = -16 }
+
+[feature.bridge_east]
+on = { ref = "river", t = 0.355, offset = 16 }
+
+[feature.old_bridge]
+kind      = "crossing"
+starts_at = "bridge_west"
+ends_at   = "bridge_east"
+path      = []
+deck_z    = 8.5
+crosses   = "river"
+
+# The main ways: what each connects, routed over the land (R16). The cost is convex in the slope
+# (quay's) and the river is 400 a metre within 14 m of the valley's line, so no way crosses it but at the
+# crossing's ends; and 400 a metre within 26 m of the extent, so a way's smoothing (40 m along it)
+# reads inside the field (`move_hill` sent the north road along the north edge: formula.outside_field).
+
+[feature.west_road]
+kind      = "main_street"
+starts_at = "west_gate"
+ends_at   = "old_bridge.start"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
+smooth    = true
+
+[feature.high_street]
+kind      = "main_street"
+starts_at = "old_bridge.end"
+ends_at   = "market"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
+smooth    = true
+
+[feature.quay_road]
+kind      = "main_street"
+starts_at = "market"
+ends_at   = "quay_head"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
+smooth    = true
+
+[feature.east_road]
+kind      = "main_street"
+starts_at = "market"
+ends_at   = "east_gate"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
+smooth    = true
+
+[feature.north_road]
+kind      = "main_street"
+starts_at = "north_gate"
+ends_at   = "old_bridge.end"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(13, 14, abs(x - 200 - 30 * (1 - smoothstep(0, 120, y)) + 25 * smoothstep(360, 512, y)))) + 400 * (1 - smoothstep(26, 30, min(min(x, 512 - x), min(y, 512 - y))))"
+smooth    = true
+
+# ------------------------------------------------------------------------------------------ the districts
+
+# Three districts, apart from each other, each written as a region; their characters are the
+# streets step's params. The old town's foot is the embankment's line.
+[feature.old_town]                          # east bank, between the quay and the hill
+region = [[215, 184], [340, 170], [350, 300], [215, 296]]
+
+[feature.west_end]                          # west bank, on the gentle side of the valley
+region = [[70, 210], [172, 210], [172, 350], [70, 350]]
+
+[feature.upper_town]                        # east bank, north of the bridge road, up the hill's north side
+region = [[232, 320], [370, 312], [380, 430], [240, 440]]
+
+[step.old_streets]                          # contour streets on the hill's slope, down to the quay
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+params  = { district = "old_town", shore = "embankment", origin = [282, 236], spacing = 42, cross = 60, lot_depth = 20 }
+
+[step.west_streets]                         # flatter: long streets straight along the district
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+params  = { district = "west_end", origin = [120, 280], spacing = 42, cross = 60 }
+
+[step.upper_streets]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+params  = { district = "upper_town", origin = [306, 376], spacing = 42, cross = 60 }
+
+[network.old]                               # one network per district: the core nodes its streets,
+from   = ["kind:main_street", "kind:street", "embankment"]   # the main ways and the quay; every
+within = "old_town"                         # area is a block
+kind   = "block"
+
+[network.west]
+from   = ["kind:main_street", "kind:street"]
+within = "west_end"
+kind   = "block"
+
+[network.upper]
+from   = ["kind:main_street", "kind:street"]
+within = "upper_town"
+kind   = "block"
+
+[cells.lots]                                # lots along every block's street and quay sides
+within     = "kind:block"
+frontage   = ["kind:main_street", "kind:street", "embankment"]
+spacing    = 11
+depth      = 20
+min_length = 6
+min_area   = 60
+kind       = "lot"
+
+[step.review]                               # lib/review's measures; it checks the streets steps
+when   = "lint"                             # (authority.md 7)
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+checks = ["old_streets", "west_streets", "upper_streets"]

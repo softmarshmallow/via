@@ -1,0 +1,64 @@
+format    = "via-case-1"
+summary   = "A network's areas take kind block (paints paved) and a cells table's cells kind lot (writes tag:lot): both write their fields, and dist('kind:block') counts the areas; no doc.not_yet."
+milestone = 3
+actions   = ["build"]
+
+# geometry.md 8.1, Effects of a made region. The two areas are the 40 m squares [10, 50] and
+# [50, 90] by [10, 50]. `block` paints `paved` with mask 1 - smoothstep(0, 1, d): 1 inside an
+# area, so the post (30, 30) is all paved (plane 1 of grass, paved: 255) and (5, 5), 5 m outside
+# both areas and past the kind's 2 m radius, stays grass. `gap` = dist('kind:block', 20): 0 inside
+# an area, 5 at (5, 30) (5 m west of x = 10), (95, 30) and (50, 55) (5 m north of y = 50). Each
+# area's cells are 10 m deep along its sides; (15, 30) lies in the cell on the west side, so
+# `mark` is 1 there; (30, 30) is in the rest square [20, 40], 10 m from any cell, so it is 0.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.paved]
+path  = "build/w/weights/ground/0_0.npy"
+post  = [30, 30]
+plane = 1
+value = 255
+
+[action.build.file.grass]
+path  = "build/w/weights/ground/0_0.npy"
+post  = [5, 5]
+plane = 0
+value = 255
+
+[action.build.file.gap_in]
+path  = "build/w/fields/gap.npy"
+post  = [30, 30]
+value = 0
+
+[action.build.file.gap_west]
+path  = "build/w/fields/gap.npy"
+post  = [5, 30]
+value = 5
+
+[action.build.file.gap_east]
+path  = "build/w/fields/gap.npy"
+post  = [95, 30]
+value = 5
+
+[action.build.file.gap_north]
+path  = "build/w/fields/gap.npy"
+post  = [50, 55]
+value = 5
+
+[action.build.file.lot]
+path  = "build/w/fields/mark.npy"
+post  = [15, 30]
+value = 1
+
+[action.build.file.rest]
+path  = "build/w/fields/mark.npy"
+post  = [30, 30]
+value = 0
+
+[action.build.diag.not_yet]
+code    = "doc.not_yet"
+records = 0

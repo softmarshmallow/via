@@ -49,7 +49,7 @@
 # the network's `within`): never a dead end of its own making (TODO, "Dead ends tripled").
 #
 # The bed of both street kinds (ours, written for this library after quay's walk): level across to
-# `edge` (half the width and a metre) at the height smoothed along the way, cambered; past `edge`
+# `edge` (half the width and the footway) at the height smoothed along the way, cambered; past `edge`
 # the ground is held within a bank of `grade` (rise over run, 0.5: no steeper than 1:2) from the
 # bed's edge, so a cut of 3 m makes a bank 6 m wide and a cut of 0.3 m one of 0.6 m: the bank grows
 # with the cut instead of fading over a fixed width, which left 2 to 4 m walls at 40 to 50 degrees
@@ -62,24 +62,31 @@
 # write; the core naming a path's length in formulas is owed (lib/town TODO), so a main way's ends
 # keep the round cap, now with a 1:2 bank.
 #
-# Both street kinds keep trees off the bed and the verges (`role:keep_out`), as lib/ways' road does,
-# out past a crown's reach (2.5 m for primitive's `tree_oak`, plus half a metre). Like a road, the
+# A town street is a carriageway `width` metres wide with a footway `footway` metres wide each side
+# (the bed is level across both). Both street kinds keep the carriageway and the footways clear
+# (`role:keep_out`, `verge`), fading to 0 over half a metre past the footway: a house stands at the
+# footway's back edge (lib/town/houses.py rule 4 reads this keep_out to set each row's setback), and
+# no tree stands on the way. That is narrower than lib/ways' road, which keeps a crown's reach (3 m)
+# past its edge: a tree's crown may reach over a town footway, as it does in a town. (quay, M3 slice
+# 2: the verge reached `width / 2 + 5`, so every house stood 7.5 m back and a street read as a 15 m
+# gap between detached houses.) Like a road, the
 # bed reads the ground `k` metres along the way (`smoothed_along(k)`): keep a street `k` metres
 # inside the world's extent (40 m for a main street, 16 m for a street), or its smoothing window
 # reads outside the field (`formula.outside_field`).
 
 [kind.main_street]                          # a way between named places, through the town
 authority = "shaped"
-radius    = 24                              # a 1:2 bank from the edge (5 m) holds a cut of 9.5 m
+radius    = 24                              # a 1:2 bank from the edge (5.25 m) holds a cut of 9.4 m
 
 [kind.main_street.defaults]
-width  = 8                                  # metres, wall to wall of the carriageway
+width   = 6.5                               # metres, kerb to kerb of the carriageway
+footway = 2                                 # metres of footway each side, to the house fronts
 camber = 0.02                               # fall from the crown to each edge, per metre
 grade  = 0.5                                # the bank past the bed's edge, rise over run (1:2)
 length = 0                                  # metres of path; above 0, the bed fades out at its ends
 
 [kind.main_street.let]
-edge  = "= width / 2 + 1"
+edge  = "= width / 2 + footway"
 level = "= smoothed_along(40) - camber * min(d, edge)"
 bank  = "= grade * max(d - edge, 0)"
 ends  = "= if(length > 0, smoothstep(0, max(width, 3 * abs(v - level)), min(t, 1 - t) * length), 1)"
@@ -92,23 +99,24 @@ mask  = "= ends * if(abs(v - level) > bank, 1, 0)"
 [kind.main_street.effect.verge]
 field = "role:keep_out"
 value = "= 1"
-mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"
+mask  = "= 1 - smoothstep(width / 2 + footway, width / 2 + footway + 0.5, d)"
 
 # A local street follows the land where it is steep (streets.py), so it is laid along the contour
 # and its bed has little to cut; it is smoothed along a shorter run than a main street, so it keeps
 # the bends a contour has.
 [kind.street]
 authority = "shaped"
-radius    = 20                              # a 1:2 bank from the edge (3.5 m) holds a cut of 8 m
+radius    = 20                              # a 1:2 bank from the edge (3.75 m) holds a cut of 8 m
 
 [kind.street.defaults]
-width  = 5                                  # metres
+width   = 4.5                               # metres, kerb to kerb
+footway = 1.5                               # metres each side
 camber = 0.02
 grade  = 0.5
 length = 0                                  # the streets step writes each street's own
 
 [kind.street.let]
-edge  = "= width / 2 + 1"
+edge  = "= width / 2 + footway"
 level = "= smoothed_along(16) - camber * min(d, edge)"
 bank  = "= grade * max(d - edge, 0)"
 ends  = "= if(length > 0, smoothstep(0, max(width, 3 * abs(v - level)), min(t, 1 - t) * length), 1)"
@@ -121,7 +129,7 @@ mask  = "= ends * if(abs(v - level) > bank, 1, 0)"
 [kind.street.effect.verge]
 field = "role:keep_out"
 value = "= 1"
-mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"
+mask  = "= 1 - smoothstep(width / 2 + footway, width / 2 + footway + 0.5, d)"
 
 # A block is an area of the street network (`[network.<id>] kind = "block"`), a lot a cell along a
 # block's frontage (`[cells.<id>] kind = "lot"`). Neither writes a field: they are named regions,
@@ -129,6 +137,29 @@ mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"
 # 3) and a check can ask whether a house has a street. A lot does not level its ground; the house
 # on it does, through the pad it is lent (`ground = "pad"`, lib/land), so a lot on a slope is
 # terraced only under its house (TODO, "Local streets and lots ignore the land").
+# A terrace: the level ground under one row of houses (lib/town/houses.py, `terrace`), a region the
+# houses step returns round each run of houses standing wall to wall. It levels the run at its
+# mean, so the houses of a row stand on one floor; one pad per house (lib/land `pad`, lent by
+# `ground`) levelled each house at its own mean, and on a fall two neighbours 1 cm apart each
+# banked the other's footprint: quay had 50 `place.relief` of 0.6 to 1 m, all between neighbours.
+# Past the run the ground is held within a bank of `grade` (0.7, 35 degrees: no steeper, TODO
+# "banks over 35 degrees") and the hold fades out between 4 and 8 m, so the footway in front is
+# barely touched. It keeps nothing out (no `keep_out`): it is ground, and its houses stand on it.
+# Ours, written for quay.
+[kind.terrace]
+authority = "shaped"
+radius    = 9                               # the fade's 8 m and a post
+
+[kind.terrace.defaults]
+grade   = 0.7                               # the bank, rise over run (35 degrees)
+max_cut = 3                                 # metres it may cut or bank the ground, at most
+
+[kind.terrace.effect.level]
+field      = "role:surface"
+value      = "= clamp(v, under('mean') - grade * d, under('mean') + grade * d)"
+mask       = "= 1 - smoothstep(4, 8, d)"
+max_change = "= max_cut"
+
 [kind.block]
 authority = "derived"
 
@@ -153,13 +184,14 @@ radius    = 30
 width = 8                                   # metres of deck, from the line to the wall's face
 wall  = 4                                   # metres the ground drops at the deck's water side
 bank  = 12                                  # metres over which the deck fades into the land
+apron = 3                                   # metres of open quayside kept clear on the land side
 
 [kind.waterfront.effect.deck]
 field = "role:surface"
 value = "= if(sd < -width, min(v, level - wall), level)"
 mask  = "= if(sd < -width, 1 - smoothstep(width + 6, width + 10, d), 1 - smoothstep(0, bank, sd))"
 
-[kind.waterfront.effect.clear]              # no tree on the deck, nor by its land edge
-field = "role:keep_out"
-value = "= 1"
-mask  = "= 1 - smoothstep(3, 5, max(-sd - width, sd))"
+[kind.waterfront.effect.clear]              # nothing on the deck, nor on `apron` metres of quayside
+field = "role:keep_out"                     # behind it (a house facing the quay stands there:
+value = "= 1"                               # houses.py rule 4); 3 to 5 m past the wall, over the water
+mask  = "= 1 - if(sd > 0, smoothstep(apron, apron + 0.5, sd), smoothstep(3, 5, -sd - width))"

@@ -1,0 +1,15 @@
+# A test library for authority.md 2.2: a pad that levels the ground under a footprint to its mean,
+# cutting at most `max_cut` (0.5 m).
+
+[kind.pad]
+authority = "shaped"
+radius    = 3
+
+[kind.pad.defaults]
+max_cut = 0.5
+
+[kind.pad.effect.level]
+field      = "role:surface"
+value      = "= under('mean')"
+mask       = "= 1 - smoothstep(0, 2, d)"
+max_change = "= max_cut"

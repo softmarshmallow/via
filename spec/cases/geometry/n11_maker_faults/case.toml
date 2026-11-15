@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "Maker faults: spacing 0 and depth -1 give two geom.bad_parameter naming each key; from naming an instance is identity.unknown_place naming it; a network kind with effects is doc.not_yet; exit 1."
+summary   = "Maker faults: spacing 0 and depth -1 give two geom.bad_parameter naming each key; from naming an instance is identity.unknown_place naming it; a network kind with effects is no longer doc.not_yet (geometry.md 8.1); exit 1."
 milestone = 3
 actions   = ["build"]
 
@@ -26,5 +26,4 @@ data    = { name = "lamp" }
 
 [action.build.diag.effects]
 code    = "doc.not_yet"
-subject = "network.fx"
-data    = { kind = "wet" }
+records = 0

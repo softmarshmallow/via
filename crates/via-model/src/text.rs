@@ -240,3 +240,10 @@ pub fn formula_text(v: &Value) -> Option<Result<FormulaText, NumError>> {
 pub fn dbl(x: f64) -> String {
     via_num::write_double(x).unwrap_or_else(|_| "a non-finite number".to_string())
 }
+
+/// A worked-out amount for a message: [`dbl`] of it to nine significant digits, so float noise
+/// (`1.0000000000000018`) reads as the number meant. The record's data keeps the double.
+pub fn amount(x: f64) -> String {
+    let r = format!("{x:.8e}").parse::<f64>().unwrap_or(x);
+    dbl(r)
+}

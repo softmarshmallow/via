@@ -1,0 +1,5 @@
+# A district edit far from the others (R13): the west end's west edge comes in 8 m. Only the west
+# end's blocks and lots may change; every block, lot and house name in the old town and the upper
+# town must stay (identity.md 2.3).
+[feature.west_end]
+region = [[78, 210], [172, 210], [172, 350], [78, 350]]

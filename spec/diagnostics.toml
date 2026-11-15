@@ -274,6 +274,20 @@ Fixed: [feature.b]
        authority = "shaped"
 """
 
+[authority.gave_way]
+severity = "warning"
+chapter = "authority"
+milestone = 3
+summary = "A produced instance's footprint would move a value more than its kind's `max_change`, so the instance is not placed (M3, 2.2); the instance, field, amount, limit and post."
+explain = """
+An instance a step returned or a producer placed has a ground footprint whose kind would move a
+field further than its max_change allows, so the instance is not placed. The record gives the
+field, the amount, the limit and the post of the largest move. A written instance stays an error.
+To fix: Nothing if a gap is fine; otherwise widen max_change, or offer the place elsewhere.
+Bad:   max_change = "= 1"   (the pad cuts 3 m into a slope)
+Fixed: max_change = "= 3"
+"""
+
 [authority.ground_requires]
 severity = "error"
 chapter = "authority"

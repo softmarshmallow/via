@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "A network's areas of kind block, at the world's layer, are outside the view of a step at that layer: the build's gap = dist('kind:block', 20) is 0 at (30, 30); the step reads 20 there."
+milestone = 3
+actions   = ["program", "trust", "build"]
+
+# geometry.md 8.1, Effects of a made region, and authority.md 4.4: a made thing stands where a
+# step's return stands, outside the views of every step at its layer: a step of a higher layer
+# sees it, one of its own does not. (30, 30) lies inside the west area [10, 50] by
+# [10, 50]: the build's `gap` is 0 there; in `look`'s view `kind:block` holds nothing, so `dist`
+# gives its cap, 20.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.gap_build]
+path  = "build/w/fields/gap.npy"
+post  = [30, 30]
+value = 0
+
+[action.build.diag.seen]
+code = "step.look.gap"
+data = { at = 20 }

@@ -8,8 +8,8 @@
 #                                                                # the run's records (R13 obligation 3)
 #
 # Protocol of the numbers below: macOS arm64 (M4 Pro), the `via` of the rewrite branch at
-# 2026-11-15 (uncommitted M3 slice 2 tree, after the cut-stops-at-bisector fix; dev profile, which
-# is optimised), Python 3.12 (sdk/python/.venv) for the steps, a fresh store for
+# 2026-11-15 (uncommitted tree after 579475e, M3 slice 2, with the town-lib pass: rows, terraces,
+# footways; release profile), Python 3.12 (sdk/python/.venv) for the steps, a fresh store for
 # base, the changes on the same store with --against base, one build each, default threads; VIA_LIB=lib. Measured once, so the bands are the measured number:
 # a band is not a target, it says where someone looks.
 
@@ -25,15 +25,27 @@ band    = [135, 135]
 
 [base.rest]                                 # what no frontage reaches (cells' rest pieces)
 measure = "rest"
-band    = [27, 27]
+band    = [26, 26]
 
 [base.streets]                              # 2 contour streets, 2 cross streets, 2 down to the quay
 measure = "street"
 band    = [6, 6]
 
-[base.houses]                               # lots a house fits on; the rest are `step.houses.small`
-measure = "houses"                          # (32 before cuts stopped at the corner bisectors: the
-band    = [52, 52]                          # quay's lots were cut to 12.4 m by a cross street's cuts)
+[base.houses]                               # houses in rows along the lots' frontage (lib/town
+measure = "houses"                          # houses.py rules 2 and 4): 52 detached houses, one per
+band    = [123, 123]                        # lot, before the rows
+
+[base.lots_held]                            # lots with a house; the rest are `step.houses.small`:
+measure = "lots_held"                       # corner triangles and wedges no 8.6 m deep house fits,
+band    = [74, 74]                          # and corner houses inside a cross street's keep_out
+
+[base.terraces]                             # one level terrace per run of houses wall to wall
+measure = "terraces"
+band    = [74, 74]
+
+[base.keep_out]                             # every row clear of its street's carriageway and
+measure = "place.keep_out"                  # footways (7 before the rows were pushed back by the
+band    = [0, 0]                            # keep_out they read)
 
 [base.unowned]                              # every meeting is owned by the network or a named point (R18)
 measure = "geom.unowned_crossing"
@@ -47,23 +59,24 @@ band    = [0, 0]
 measure = "bookmarks"
 band    = [8, 8]
 
-[base.unlevelled]                           # houses on pads (`ground = "pad"`); 9 still stand on
-measure = "place.relief"                    # more relief than their asset allows (0.6 m): 3 before
-band    = [9, 9]                            # the deeper lots took more houses on the slope
+[base.unlevelled]                           # houses on terraces (lib/town `terrace`, one per run)
+measure = "place.relief"                    # standing on more relief than their asset allows
+band    = [9, 9]                            # (0.6 m); 50 with one lib/land pad per house in rows
 
 # ------------------------------------------------------------------------------------------ R13
 
-[clear_one.house_gone]                      # 1. a clear on a generated house removes it
+[clear_one.house_gone]                      # 1. a clear on a lot removes its row (two houses)
 measure = "houses_removed"
-band    = [1, 1]
+band    = [2, 2]
 
 [clear_one.lots_kept]
 measure = "lot_removed"
 band    = [0, 0]
 
-[pin_one.house_replaced]                    # 2. a pin inside a cell replaces the house it overlaps
+[pin_one.house_replaced]                    # 2. a pin inside a cell replaces the houses it overlaps
+                                            # (the shed stands across a party wall: two)
 measure = "houses_removed"
-band    = [1, 1]
+band    = [2, 2]
 
 [pin_one.reported]                          # and says so (identity.pin_removed)
 measure = "identity.pin_removed"
@@ -108,11 +121,11 @@ band    = [99, 99]
 
 [move_hill.lots_new]
 measure = "lot_added"
-band    = [65, 65]
+band    = [63, 63]
 
 [move_hill.houses_moved_out]                # of base's 52
 measure = "houses_removed"
-band    = [44, 44]
+band    = [92, 92]
 
 [move_hill.views_reselected]                # `way_street` follows its junction 14.3 m and says so
 measure = "identity.reselected"             # a run diagnostic: measured from --run (build --diagnostics)

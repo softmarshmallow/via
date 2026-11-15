@@ -209,6 +209,19 @@ pub struct Placed {
     pub made: BTreeMap<String, crate::makers::Made>,
     /// Each network, kept for the cells tables that divide its areas.
     pub nets: BTreeMap<String, crate::makers::KeptNet>,
+    /// The made things that write fields and that shape selectors count (`geometry.md` 8.1,
+    /// Effects of a made region): every area or cell a table gives a declared kind, by its
+    /// produced name, to (its maker table's id, the kind, its region).
+    pub made_writers: BTreeMap<String, (String, String, Geo)>,
+}
+
+impl Placed {
+    /// A placed thing's shape by place name: a feature's or footprint's, else a made writer's.
+    pub fn shape(&self, name: &str) -> Option<&Geo> {
+        self.shapes
+            .get(name)
+            .or_else(|| self.made_writers.get(name).map(|(_, _, g)| g))
+    }
 }
 
 pub struct Placer<'a> {
@@ -219,6 +232,9 @@ pub struct Placer<'a> {
     pub(crate) failed: BTreeSet<String>,
     pub diags: Vec<Diag>,
     cycles: BTreeSet<Vec<String>>,
+    /// What stands, directly or not, on a produced instance that gave way (`authority.md` 2.2):
+    /// not placed, with no record.
+    gone: BTreeSet<String>,
     /// Each `identity.near_none` said so far, by maker and class: its index in `diags` and the
     /// selections it lists (`identity.md` 3: one record per maker and class).
     near: BTreeMap<(String, String), (usize, Vec<String>)>,
@@ -279,6 +295,7 @@ impl<'a> Placer<'a> {
             out: Placed::default(),
             visiting: Vec::new(),
             failed: BTreeSet::new(),
+            gone: BTreeSet::new(),
             diags: Vec::new(),
             cycles: BTreeSet::new(),
             near: BTreeMap::new(),
@@ -291,6 +308,7 @@ impl<'a> Placer<'a> {
             self.feature(id);
         }
         self.make_all();
+        self.out.made_writers = crate::makers::made_writers(self.d, &self.out.made);
         for id in self.d.instances.keys() {
             self.instance(id);
         }
@@ -537,6 +555,10 @@ impl<'a> Placer<'a> {
                 g => Spot::Long(g),
             });
         }
+        if self.d.gave_way.contains(name) {
+            self.host_missing(top, id, key, name);
+            return None;
+        }
         if self.d.instances.contains_key(name) || self.d.pins.contains_key(name) {
             let plan = if self.d.instances.contains_key(name) {
                 self.instance(name)
@@ -556,6 +578,10 @@ impl<'a> Placer<'a> {
             };
         }
         if let Some((host, part)) = name.split_once('.') {
+            if self.d.gave_way.contains(host) {
+                self.host_missing(top, id, key, host);
+                return None;
+            }
             if self.d.instances.contains_key(host) {
                 let Some(pl) = self.instance(host) else {
                     self.host_missing(top, id, key, host);
@@ -652,6 +678,10 @@ impl<'a> Placer<'a> {
     }
 
     fn host_missing(&mut self, top: &str, id: &str, key: &str, host: &str) {
+        if self.d.gave_way.contains(host) || self.gone.contains(host) {
+            self.gone.insert(id.to_string());
+            return;
+        }
         if self.failed.contains(host) && !self.out.missing.contains(host) {
             return;
         }

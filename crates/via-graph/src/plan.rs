@@ -28,7 +28,7 @@ pub enum Persist {
 pub fn default_persist(family: &str) -> Persist {
     match family {
         "source" | "input" | "attr" | "select" | "shape" | "instance" | "rule" | "edit"
-        | "held" | "footprint" | "height" | "facts" => Persist::DigestOnly,
+        | "held" | "footprint" | "made" | "height" | "facts" => Persist::DigestOnly,
         _ => Persist::Kept,
     }
 }

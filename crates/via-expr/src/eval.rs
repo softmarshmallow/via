@@ -245,6 +245,12 @@ pub trait Select {
         let _ = class;
         Vec::new()
     }
+    /// The hint for a shape selector that holds nothing here, when the caller knows better than
+    /// the default (things of the kind exist, but not in this view).
+    fn empty_hint(&self, selector: &str) -> Option<String> {
+        let _ = selector;
+        None
+    }
 }
 
 /// What one selector resolved to.
@@ -375,7 +381,10 @@ pub fn bind(program: &Program, select: &dyn Select) -> Result<Binding, ExprError
                             &u.at,
                             formula::EMPTY_SELECTION,
                             format!("`'{}'` holds no feature here; `{f}` gives {used}", u.text),
-                            "add a feature of that kind below this node, or drop the term".into(),
+                            select.empty_hint(&u.text).unwrap_or_else(|| {
+                                "add a feature of that kind below this node, or drop the term"
+                                    .into()
+                            }),
                         ));
                     }
                 }

@@ -32,7 +32,8 @@ pub struct NetworkDecl {
     /// A region feature whose outline clips the network.
     pub within: Option<String>,
     pub kind: Option<String>,
-    #[allow(dead_code)] // the layer rank: a reference reads downward (`documents.md` 5)
+    /// The layer rank: a reference reads downward (`documents.md` 5), and what it makes stands
+    /// at it (`geometry.md` 8.1).
     pub rank: i64,
 }
 
@@ -57,7 +58,8 @@ pub struct CellsDecl {
     pub frontage: Option<Vec<String>>,
     pub params: CellParams,
     pub kind: Option<String>,
-    #[allow(dead_code)] // the layer rank: a reference reads downward (`documents.md` 5)
+    /// The layer rank: a reference reads downward (`documents.md` 5), and what it makes stands
+    /// at it (`geometry.md` 8.1).
     pub rank: i64,
 }
 
@@ -117,7 +119,6 @@ impl Decls {
                 ));
                 continue;
             };
-            self.maker_kind_effects("network", id, t.str("kind"));
             self.networks.insert(
                 id.to_string(),
                 NetworkDecl {
@@ -228,7 +229,6 @@ impl Decls {
             if !bad.is_empty() {
                 continue;
             }
-            self.maker_kind_effects("cells", id, t.str("kind"));
             self.cells.insert(
                 id.to_string(),
                 CellsDecl {
@@ -244,31 +244,6 @@ impl Decls {
                     kind: t.str("kind").map(str::to_string),
                     rank: world.rank("cells", id).unwrap_or(0),
                 },
-            );
-        }
-    }
-
-    /// `geometry.md` 8.1, Open: a made area or cell is written to `features.json` with its kind,
-    /// but the kind's effects do not reach it yet (fields are made before the makers run). A
-    /// maker's `kind` with effects is `doc.not_yet`, never a silent no-op.
-    fn maker_kind_effects(&mut self, top: &str, id: &str, kind: Option<&str>) {
-        let Some(k) = kind else { return };
-        let Some(effects) = self.kinds.get(k).map(|k| k.effects.len()) else {
-            return;
-        };
-        if effects > 0 {
-            self.push(
-                at_key(
-                    codes::doc::NOT_YET,
-                    top,
-                    id,
-                    "kind",
-                    &format!(
-                        "kind `{k}` has {effects} effect(s); effects on a maker's areas and cells arrive in a later M3 slice"
-                    ),
-                    "give the maker a kind with no effects, or return the regions from a step with that kind",
-                )
-                .with("kind", k.to_string()),
             );
         }
     }
@@ -1083,6 +1058,27 @@ impl Placer<'_> {
             let _ = self.made(&id);
         }
     }
+}
+
+/// The made things that write fields (`geometry.md` 8.1, Effects of a made region): every area
+/// or cell whose table gives it a declared kind, by produced name, to (table id, kind, region).
+/// A rest piece is a guide and takes no kind (8.2).
+pub(crate) fn made_writers(
+    d: &Decls,
+    made: &BTreeMap<String, Made>,
+) -> BTreeMap<String, (String, String, Geo)> {
+    let mut out = BTreeMap::new();
+    for (id, m) in made {
+        let Some(k) = m.kind.as_ref().filter(|k| d.kinds.contains_key(*k)) else {
+            continue;
+        };
+        for t in &m.things {
+            if matches!(t.class, "area" | "cell") && matches!(t.geo, Geo::Region { .. }) {
+                out.insert(t.name.clone(), (id.clone(), k.clone(), t.geo.clone()));
+            }
+        }
+    }
+    out
 }
 
 /// The produced region features of every maker, by name: (kind, region).

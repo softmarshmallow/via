@@ -901,7 +901,7 @@ neighbours, `kind` what a feature does to fields.
 |---|---|---|
 | `from` | list of names and `kind:` selectors | Required. The features noded together, each one source (3.1). A name is a path or region feature's id or place name. A `kind:<k>` selector takes every path and region feature of that kind, written or returned by a step, and leaves the kind's point features out, without a diagnostic, as a selector leaves out what does not apply. A point feature named by id is `geom.network_point` (error). A name that is declared but is not a path or region feature (an instance, a pin, a step, a scatter, a network or a cells table) is `identity.unknown_place` naming it, at the key `from` (error). A feature selected twice is one source. A region feature is its outline, as a ring source (3.2: its inside is its left); a region of more than one ring (two pieces, or a hole) is `geom.many_rings` at the key (error): its rings have no one source each to be named by. |
 | `within` | name | Optional. A region feature whose outline clips the network: 3.2's `clip`. Its outline is the source `#clip` (`identity.md` 2.3). A region of more than one ring is `geom.many_rings`; a name that is not a region feature is `identity.unknown_place`. |
-| `kind` | name | Optional. The kind every area takes: each area is then a region feature of that kind in `features.json`, at the kind's authority, and `kind:<k>` in a cells table's `within` selects it. Its effects applying to it as to any feature is owed (Open): a kind with effects is `doc.not_yet` here. Default none: the areas are guides. |
+| `kind` | name | Optional. The kind every area takes: each area is then a region feature of that kind in `features.json`, at the kind's authority, and `kind:<k>` in a cells table's `within` selects it. Its effects apply to each area as to a step's returned feature (Effects of a made region, below), and `kind:<k>` in a formula's shape selector counts the areas. Default none: the areas are guides. |
 
 - **Sources by name.** Each source carries the selected feature's name: its id, or, for a feature
   a step returned, its produced name `<step>#<key>`. Junction, edge and area names digest those
@@ -916,22 +916,25 @@ neighbours, `kind` what a feature does to fields.
 - **Empty.** A network whose `from` selects nothing, or whose linework encloses nothing, is not an
   error: `geom.no_area` (warning), and any selection of its areas finds none
   (`identity.near_none`).
-- **Effects of a made region (Open; the order decided in M3).** Fields are made before the makers
-  run (a network may read what a step returns, and a step may read fields), so a made area or cell
-  cannot yet write a field, nor be read by `dist('kind:…')` or another formula selector. Until the
-  graph orders it, a network's or cells table's `kind` that has effects is `doc.not_yet` at the key
-  `kind`; a kind with no effects (a guide, a `within` for another table, a `select` for a step) is
-  fine.
-  The order that lifts it is decided: a made thing (`<id>#…`) stands where a step's returned
-  feature stands. Its entries take its table's layer and tier (`authority.md` 4), and they are
-  outside the views of every step at that layer and above, as returned features are
-  (`authority.md` 4.4, What counts as returned: the views leave out a step's `#` names of rank L
-  and above, and made things join that rule by name when this order is built). So no step reads
-  what a maker of its layer makes, and the order is fields' head views, steps, makers, then the
-  fields' build views: no cycle. What stays Open is the implementation, which is not contained in
-  M3 slice 1's fixes: a field's chunk nodes must read the maker nodes, the resolver must take made
-  things as writers, and a shape selector must count them as members (nesting, `dist`). Owed to M3
-  slice 2 (TODO, "From building quay").
+- **Effects of a made region (M3).** A made area or cell with a kind stands where a step's
+  returned feature stands. It writes fields through its kind's effects at its table's layer and its
+  kind's tier and defaults (`authority.md` 4), ordered among the other entries as any feature is
+  (R21; its name orders it where names do). A shape selector counts it: `dist('kind:<k>')`,
+  `inside`, `near` and the rest take every area and cell a table gives kind `k`, and a produced
+  name (`blk#a…`) selects the one. Rest pieces take no kind (8.2), so they write nothing.
+  It is outside the views of every step at its layer, as returned features are
+  (`authority.md` 4.4, What counts as returned: the views leave out a step's or a maker table's
+  `#` names of rank L and above, as members of a shape selector too: a field of layer L whose
+  formula reads `kind:<k>` holds the made things in the build, and not in the view of a step of
+  layer L, case `n14`). So no step reads what a maker of its layer makes, and the order
+  is fields' head views, steps, makers, then the fields' build views: no cycle. A `where` region or
+  a route's cost reads the head view, which holds no effect, and is placed before the makers run,
+  so it does not see made things through a selector either.
+  In the graph (`graph.md` 1) each made thing that writes is a `made` node reading its table's
+  `op` node; a field chunk, a distance and a selector read the `made` nodes whose windows meet
+  them. So moving one street re-runs its network and the chunks of the areas it bounds, and a
+  chunk only unchanged areas reach is reused (case `n13_made_effects_local`). Cases `n12` to
+  `n14`.
 
 ### 8.2 `[cells.<id>]`
 
@@ -1191,8 +1194,21 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 - (`n10_network_clip`) Two crossing paths clipped by a 60 m square; 4 areas. The same paths with no
   `within`; one `geom.no_area` for that network only (8.1, Empty).
 - (`n11_maker_faults`) `spacing = 0`, `depth = -1`; two `geom.bad_parameter`, one per key. `from`
-  naming an instance; `identity.unknown_place` naming it. A network `kind` with effects;
-  `doc.not_yet` (8.1, Open). Exit 1.
+  naming an instance; `identity.unknown_place` naming it. A network `kind` with effects is no
+  fault: no `doc.not_yet` (8.1, Effects of a made region). Exit 1.
+- (`n12_made_kind_effects`) A region 80 by 40 m and a path down its middle, `[network.blk]` with
+  `kind = "block"` (paints `paved` within 2 m), `[cells.c] within = "blk"`, `spacing = 20`,
+  `depth = 10`, `kind = "lot"` (writes `tag:lot` = 1), and a field `gap = dist('kind:block', 20)`:
+  the ground at `[30, 30]` is all `paved` (plane 1 is 255) and at `[5, 5]` all grass; `gap` is 0
+  at `[30, 30]` and 5 at `[5, 30]`, `[95, 30]` and `[50, 55]`; the `tag:lot` field is 1 at
+  `[15, 30]` (a cell) and 0 at `[30, 30]` (the rest); no `doc.not_yet` (8.1).
+- (`n13_made_effects_local`) A region `[4, 188]` by `[4, 60]` cut by streets `a` (x = 70) and `b`
+  (x = 150) into three `block` areas, 64 m chunks: the first build runs `op:blk` and chunk 0 of the
+  ground; moving `b` to x = 154 runs `op:blk` and the chunks at 64 and 128, and not chunk 0, which
+  only the unchanged west area reaches (8.1, graph.md 1 `made`).
+- (`n14_made_outside_own_view`) The `n12` areas at the world's layer, `gap = dist('kind:block',
+  20)`, and a worker step at the same layer reading `gap`: the build's `gap` is 0 at `[30, 30]`;
+  the step reads 20 there, since the areas stand outside its view (8.1, `authority.md` 4.4).
 - Owed (M3 slice 2): `geom.many_rings` on a `from`, `within` or divided region (only a `where`
   region can have two rings), `protocol.output_table` for a returned `[network]` or `[cells]`,
   `of` a cells table with no `class`, `min_length` and `min_area` merging through text, and a rest

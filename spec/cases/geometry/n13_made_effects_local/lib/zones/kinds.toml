@@ -1,0 +1,11 @@
+# A test library for geometry.md 8.1 and graph.md 1 (`made`): `block` paints the ground within
+# 2 m of a network's area.
+
+[kind.block]
+authority = "derived"
+radius    = 2
+
+[kind.block.effect.pave]
+field = "role:material"
+paint = "paved"
+mask  = "= 1 - smoothstep(0, 1, d)"

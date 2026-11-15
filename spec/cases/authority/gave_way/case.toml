@@ -1,0 +1,61 @@
+format    = "via-case-1"
+summary   = "A step offers a 4 m hut and a 10 m hall with pad on a slope, max_cut 0.5: the hall gives way (authority.gave_way, not placed), the hut stands; a written hall past the limit stays authority.max_change, exit 1; written as a hut, the build exits 0 without gen#big."
+milestone = 3
+actions   = ["program", "trust", "written", "own_hut", "produced"]
+
+# authority.md 2.2, A produced instance gives way. On `0.2 * x` a pad levelling a footprint of
+# width w to its mean moves the ground by 0.1 w at its edges: 0.4 for the hut, 1.0 for a hall,
+# past 0.5. `gen#big` gives way; `own`, written by hand, is an error as before.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.written]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.written.diag.own]
+code = "authority.max_change"
+data = { feature = "own.ground" }
+
+[action.written.diag.big]
+code     = "authority.gave_way"
+severity = "warning"
+data     = { instance = "gen#big", field = "height", limit = 0.5 }
+
+[action.own_hut]
+replace = "world.toml"
+find    = "asset  = \"hall\""
+with    = "asset  = \"hut\""
+
+[action.produced]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.produced.diag.big]
+code     = "authority.gave_way"
+severity = "warning"
+data     = { instance = "gen#big" }
+
+[action.produced.diag.no_error]
+code    = "authority.max_change"
+records = 0
+
+[action.produced.file.names]
+path = "build/w/instances/names.txt"
+text = "gen#small\nown\n"
+
+[action.produced.check.small]
+fn    = "instance_at"
+build = "build/w"
+name  = "gen#small"
+at    = [12, 8]

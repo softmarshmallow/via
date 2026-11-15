@@ -95,6 +95,11 @@ ground under a house. The feature, its **footprint feature**:
   and follows the asset's footprint, so a pack swap that grows the footprint grows the pad, which
   settles and is reported (R30).
 
+A produced instance whose footprint feature would move a field past its kind's `max_change` gives
+way: it is not placed, with `authority.gave_way` (warning); a written instance past it stays
+`authority.max_change` (error). `authority.md` 2.2 gives the rounds. So a producer offers places
+and need not predict the ground.
+
 `ground` on an asset with a point footprint is `place.no_footprint`. `ground` naming no kind is the
 unknown-kind error of `authority.md`. `margin` without `ground` is `place.margin_alone`.
 

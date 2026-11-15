@@ -213,12 +213,37 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
 - [x] -> kernel: **Quay lots 12.4 m deep**: a cross street's first station cut ran square across the
   quay's band to the 2x depth cap. Fixed: a station's cut stops at the first stretch-end bisector it
   crosses (geometry.md 3.6 step 5, case `cells_corner`); base houses 32 -> 52.
-- [ ] -> lib/town: houses.py rule 6 predicts the pad's `max_change` on a 2 m lattice so a lot beside a
+- [x] -> lib/town (town-lib pass): **quay read as detached houses in fields with 10 m brown roads.**
+  Done: houses.py fills a lot's frontage with a row wall to wall (rule 2; start/end alignment for
+  corner triangles), pushes each row back until clear of the street's `keep_out` (rule 4: setback
+  from the street's own width, no `place.keep_out`), and stands each run on one lib/town `terrace`
+  (one lib/land pad per house in a row gave 50 `place.relief` between neighbours). Streets carry a
+  `footway`; the verge keeps out only carriageway and footways. Starter pack: `house_narrow`,
+  `house_row`, materials `setts` and `flags`. quay: 123 houses on 74 of 135 lots (was 52).
+  Lesson: a weights row's id orders it: `footway` sorted before `grass` and was painted over.
+- [ ] -> lib/town: **61 of quay's 135 lots stay empty**: corner triangles (bisector cuts) and wedges
+  fit no 8.6 m deep house. A corner house facing both streets, or a shallower asset, is owed.
+- [ ] -> lib/town: houses.py rule 7 (was 6) predicts the pad's `max_change` on a 2 m lattice so a lot beside a
   deep cut stays empty; the move_hill error it hides was `authority.max_change` 3.15 m at (109, 99.5).
-  A pad that gives way (or a core-side "steep for this ground" skip) would replace the prediction.
-- [ ] -> lib/town: on-foot slice-2 items not taken here: setback by frontage width (keep_out), cross
-  street grade limit, banks over 35 degrees, door aprons, s0's kink, the gate bowl, wall face paint,
-  `wall_deck` target in the water. 9 houses show `place.relief` in base.
+  The core's `authority.gave_way` landed (M3, after slice 2; authority.md 2.2) for returned instances with
+  `ground` only: houses grounded one by one can drop the prediction and `max_cut`. Terraces are
+  returned features, which stay `authority.max_change`, so for them the prediction stays.
+- [ ] -> core: **Giving way resolves outside the graph.** When a returned instance's `ground` kind has
+  an effect with `max_change`, `prepare` (build.rs `give_way`) resolves those fields in full at the
+  build view, outside the graph, once per round, and re-runs the whole Placer each round, warm builds
+  included: keys stay right, but the warm-store saving is lost for such worlds (any step-returned
+  instance on lib/land `pad`; quay is not one, its terraces are features). Measured on the gave_way
+  case world grown to 2048 by 2048 posts (height `0.2 * x`, release, one change build after an
+  unrelated edit): 0.49 s with the pad's `max_change`, 0.45 s without; it grows with the cost of the
+  fields the pad writes, so measure again on a world with a returned pad on eroded land. Then move
+  the decision into a graph node. Lesson: a decision that changes what is
+  placed was put before the graph because placing is; it costs every build its cache.
+- [ ] -> lib/town: on-foot slice-2 items still open: cross street grade limit, banks over 35 degrees
+  (cause not found), s0's kink in move_hill, the gate bowl, the main way's grade onto the quay and
+  its bed raising the harbour floor (needs a path `length` in formulas), `way_water` still looks
+  over a grey bump. Done in the town-lib pass: setback by keep_out (the S-bend house), door aprons
+  (fronts on the footway), wall face paint (stone), `wall_deck` aimed along the deck, quay `bank = 3`
+  (the anchored deck fade overrode the quay row's terraces: 18 `place.relief`).
 
 - [x] -> core: **A routed path vanishes silently** when its cost reads a field that reads a feature whose
   id sorts after the path's (place.rs evaluates the cost over the features placed so far). quay names
@@ -253,11 +278,14 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
   slivers (geometry.md 3.6 step 5, Open). Owed: a far side at the middle (skeleton). Meanwhile
   lib/town keeps `depth` under half its narrowest block. Lesson: the far-side guarantee held only
   between `depth` and `2 depth` wide; nobody had tried narrower.
-- -> core (M3 slice 2): **A made area or cell cannot write a field.** Fields are made before makers;
-  a maker `kind` with effects is `doc.not_yet` (geometry.md 8.1, Open). Order the graph so they can.
-  Order decided (core-gaps, geometry.md 8.1): made things stand as a step's returns, outside the views
-  of steps at their layer and above, so head views, steps, makers, build views is acyclic. Owed: field
-  chunk nodes reading maker nodes, made things as writers and selector members.
+- [x] -> core (M3 slice 2): **A made area or cell cannot write a field.** Landed (M3, after slice 2): made
+  things stand as a step's returns, outside the views of steps at their layer, so head views, steps,
+  makers, build views is acyclic; each made thing that writes is a `made` node reading its table's
+  `op` node (graph.md 1), it writes as a feature and counts in `kind:<k>` (`Decls::stands_returned`),
+  and a step's view leaves it out of shape selectors too (`Sel::sees_shape`, stepview
+  `reads_returned_shape`). Cases n12, n13, n14. Lesson: the exclusion was first written for field
+  entries only; a selector's members are a second door into the same view, and the review found the
+  step saw the areas through `dist('kind:block')` (n14 failed before the fix: 0 where 20).
 - -> spec/cases (M3 slice 2): owed cases `geom.many_rings` on a maker (needs a `where` region),
   `protocol.output_table` for a returned `[network]`/`[cells]`, `of` a cells table without `class`,
   `min_length`/`min_area` merging through text, rest `kind` null; identity 27 and 28 are pending.

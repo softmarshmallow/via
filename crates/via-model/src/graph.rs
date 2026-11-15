@@ -91,6 +91,8 @@ struct Eff {
     writer: String,
     /// For a footprint feature, its instance.
     instance: Option<String>,
+    /// For a made thing (`geometry.md` 8.1), its network or cells table.
+    maker: Option<String>,
     kind: String,
     effect: String,
     /// The effect's window (`fields.md` 5.3); the whole extent without a radius.
@@ -112,17 +114,29 @@ impl Eff {
 
     /// The node that holds the writer's shape.
     fn shape_node(&self) -> NodeId {
-        match &self.instance {
-            Some(i) => view(NodeId::of("footprint", i)),
-            None => view(NodeId::of("shape", &self.writer)),
+        match (&self.instance, &self.maker) {
+            (Some(i), _) => view(NodeId::of("footprint", i)),
+            (None, Some(_)) => view(NodeId::of("made", &self.writer)),
+            (None, None) => view(NodeId::of("shape", &self.writer)),
         }
     }
 
-    /// The node that holds the writer's attributes.
+    /// The node that holds the writer's attributes: a made thing's are its kind's defaults, in
+    /// its `made` node beside its shape.
     fn attr_node(&self) -> NodeId {
-        match &self.instance {
-            Some(i) => view(NodeId::of("footprint", i)),
-            None => NodeId::of("attr", &self.writer),
+        match (&self.instance, &self.maker) {
+            (Some(i), _) => view(NodeId::of("footprint", i)),
+            (None, Some(_)) => view(NodeId::of("made", &self.writer)),
+            (None, None) => NodeId::of("attr", &self.writer),
+        }
+    }
+
+    /// The statement subject of a node about this writer.
+    fn subject(&self, d: &crate::decl::Decls) -> Subject {
+        match (&self.instance, &self.maker) {
+            (Some(i), _) => Subject::entity("instance", i.clone()),
+            (None, Some(m)) => Subject::entity(d.maker_top(m).unwrap_or("network"), m.clone()),
+            (None, None) => Subject::entity("feature", self.writer.clone()),
         }
     }
 }
@@ -797,19 +811,32 @@ impl<'w> ModelPlan<'w> {
         }
     }
 
-    /// The features a shape selector names: `kind:<k>` or a feature id.
+    /// The features a shape selector names: `kind:<k>` (the made things a table gives that kind
+    /// included, `geometry.md` 8.1) or a feature id.
     fn shape_members(&self, sel: &str) -> Vec<String> {
         match sel.strip_prefix("kind:") {
-            Some(k) => self
-                .p
-                .decls
-                .features
-                .iter()
-                .filter(|(id, f)| {
-                    f.kind.as_deref() == Some(k) && self.p.placed.shapes.contains_key(*id)
-                })
-                .map(|(id, _)| id.clone())
-                .collect(),
+            Some(k) => {
+                let mut out: Vec<String> = self
+                    .p
+                    .decls
+                    .features
+                    .iter()
+                    .filter(|(id, f)| {
+                        f.kind.as_deref() == Some(k) && self.p.placed.shapes.contains_key(*id)
+                    })
+                    .map(|(id, _)| id.clone())
+                    .collect();
+                out.extend(
+                    self.p
+                        .placed
+                        .made_writers
+                        .iter()
+                        .filter(|(_, (_, mk, _))| mk == k)
+                        .map(|(n, _)| n.clone()),
+                );
+                out.sort();
+                out
+            }
             None => vec![sel.to_string()],
         }
     }
@@ -817,19 +844,24 @@ impl<'w> ModelPlan<'w> {
     /// Each field's base and rows, and every effect on it with its window.
     fn field_infos(&self) -> BTreeMap<String, FieldInfo> {
         let d = &self.p.decls;
-        // Writers: features with a kind and a shape, and footprint features.
-        let mut writers: Vec<(String, Option<String>, String)> = Vec::new();
+        // Writers: features with a kind and a shape, footprint features, and what a network or
+        // cells table made with a kind (`geometry.md` 8.1).
+        type W = (String, Option<String>, Option<String>, String);
+        let mut writers: Vec<W> = Vec::new();
         for (id, f) in &d.features {
             if let Some(k) = &f.kind {
                 if d.kinds.contains_key(k) && self.p.placed.shapes.contains_key(id) {
-                    writers.push((id.clone(), None, k.clone()));
+                    writers.push((id.clone(), None, None, k.clone()));
                 }
             }
         }
         for (name, (inst, kind)) in &self.p.placed.footprints {
             if d.kinds.contains_key(kind) && self.p.placed.shapes.contains_key(name) {
-                writers.push((name.clone(), Some(inst.clone()), kind.clone()));
+                writers.push((name.clone(), Some(inst.clone()), None, kind.clone()));
             }
+        }
+        for (name, (maker, kind, _)) in &self.p.placed.made_writers {
+            writers.push((name.clone(), None, Some(maker.clone()), kind.clone()));
         }
         let mut out = BTreeMap::new();
         for (name, fd) in &d.fields {
@@ -839,7 +871,7 @@ impl<'w> ModelPlan<'w> {
                 self.freads(r.value, &mut info.own);
                 self.freads(r.mask, &mut info.own);
             }
-            for (wname, inst, kind) in &writers {
+            for (wname, inst, maker, kind) in &writers {
                 let k = &d.kinds[kind];
                 for e in k.effects.values() {
                     let hit = match &e.selector {
@@ -849,7 +881,7 @@ impl<'w> ModelPlan<'w> {
                     if !hit {
                         continue;
                     }
-                    let geo = &self.p.placed.shapes[wname];
+                    let geo = self.p.placed.shape(wname).expect("a writer's shape");
                     let window = match (self.grid, e.radius.or(k.radius)) {
                         (Some(g), Some(r)) => effect_window(&g, bbox_of(geo), r).ok().flatten(),
                         (Some(g), None) => Some(Window::whole(&g)),
@@ -861,13 +893,15 @@ impl<'w> ModelPlan<'w> {
                     self.freads(e.max_change, &mut reads);
                     // As rows are ordered (`authority.md` 3): a feature's own rank, a
                     // footprint's its instance's.
-                    let rank = match inst {
-                        Some(i) => d.instances.get(i).map_or(0, |x| x.rank),
-                        None => d.features.get(wname).map_or(0, |f| f.rank),
+                    let rank = match (inst, maker) {
+                        (Some(i), _) => d.instances.get(i).map_or(0, |x| x.rank),
+                        (None, Some(m)) => d.maker_table_rank(m).unwrap_or(0),
+                        (None, None) => d.features.get(wname).map_or(0, |f| f.rank),
                     };
                     info.effs.push(Eff {
                         writer: wname.clone(),
                         instance: inst.clone(),
+                        maker: maker.clone(),
                         kind: kind.clone(),
                         effect: e.id.clone(),
                         window,
@@ -1179,6 +1213,27 @@ impl<'w> ModelPlan<'w> {
                     subject: Some(Subject::entity(top, id.clone())),
                     statements,
                     edges,
+                    ..Def::default()
+                },
+            ));
+        }
+        // Each made thing that writes fields (`geometry.md` 8.1): one `made` node reading its
+        // table's `op` node, so a field chunk reads only the things whose windows meet it.
+        for (name, (maker, kind, _)) in &self.p.placed.made_writers {
+            let top = d.maker_top(maker).unwrap_or("network");
+            defs.push((
+                view(NodeId::of("made", name)),
+                Def {
+                    subject: Some(Subject::entity(top, maker.clone())),
+                    statements: self.stmts_of(
+                        [format!("{top}.{maker}"), format!("kind.{kind}")]
+                            .iter()
+                            .map(String::as_str),
+                    ),
+                    // Its name is its key's own argument: two things of one maker share every
+                    // edge and statement.
+                    params: vec![("name".into(), name.clone())],
+                    edges: vec![("made by".into(), NodeId::of("op", maker))],
                     ..Def::default()
                 },
             ));
@@ -1550,10 +1605,7 @@ impl<'w> ModelPlan<'w> {
                         defs.push((
                             dist_id(&e.writer, w),
                             Def {
-                                subject: Some(match &e.instance {
-                                    Some(i) => Subject::entity("instance", i.clone()),
-                                    None => Subject::entity("feature", e.writer.clone()),
-                                }),
+                                subject: Some(e.subject(d)),
                                 statements: self.stmts_of(["world"]),
                                 params: vec![("window".into(), win_text(w))],
                                 edges: vec![("shape".into(), e.shape_node())],
@@ -1941,10 +1993,7 @@ impl<'w> ModelPlan<'w> {
         edges.sort();
         edges.dedup();
         Def {
-            subject: Some(match &e.instance {
-                Some(i) => Subject::entity("instance", i.clone()),
-                None => Subject::entity("feature", e.writer.clone()),
-            }),
+            subject: Some(e.subject(&self.p.decls)),
             statements: self.stmts_of(st.iter().map(String::as_str)),
             params,
             edges,
@@ -1955,6 +2004,9 @@ impl<'w> ModelPlan<'w> {
     /// The node that makes a selector member's shape: an instance's footprint (`<id>.ground`,
     /// placed or not), else the feature's shape.
     fn member_node(&self, m: &str) -> NodeId {
+        if self.p.placed.made_writers.contains_key(m) {
+            return view(NodeId::of("made", m));
+        }
         if let Some((inst, _)) = self.p.placed.footprints.get(m) {
             return view(NodeId::of("footprint", inst));
         }
@@ -2394,6 +2446,45 @@ impl<'w> ModelPlan<'w> {
         w
     }
 
+    /// Whether `field`'s base or rows read, directly or through the fields they read, a shape
+    /// selector one of whose members stands outside the view of a generate step of layer rank
+    /// `rank`: a step's return or a maker table's made thing at `rank` or above
+    /// (`Decls::stands_returned`, `geometry.md` 8.1). Then the build's values are not the step's.
+    pub fn reads_returned_shape(&self, field: &str, rank: i64) -> bool {
+        let d = &self.p.decls;
+        let placed = &self.p.placed;
+        let Some(fd) = d.fields.get(field) else {
+            return false;
+        };
+        let mut shapes = BTreeSet::new();
+        let formulas = fd.base.into_iter().chain(
+            fd.rows
+                .iter()
+                .flat_map(|r| r.value.into_iter().chain(r.mask)),
+        );
+        for f in formulas {
+            shapes.extend(d.where_reads(f).1);
+        }
+        let out = |name: &str, r: i64| r >= rank && d.stands_returned(name);
+        shapes.iter().any(|sel| match sel.strip_prefix("kind:") {
+            Some(k) => {
+                placed.made_writers.iter().any(|(n, (m, kind, _))| {
+                    kind == k && out(n, d.maker_table_rank(m).unwrap_or(0))
+                }) || d
+                    .features
+                    .iter()
+                    .any(|(n, f)| f.kind.as_deref() == Some(k) && out(n, f.rank))
+                    || placed.footprints.values().any(|(inst, kind)| {
+                        kind == k && out(inst, d.instances.get(inst).map_or(0, |i| i.rank))
+                    })
+            }
+            None => {
+                let base = sel.split('.').next().unwrap_or(sel);
+                d.stands_returned(base)
+            }
+        })
+    }
+
     /// A scalar field's values in the head view of a generate step of layer rank `rank`
     /// ([`View::Stratum`]), post order; `None` for a weights field or one that does not resolve.
     pub fn stratum_values(&self, field: &str, rank: i64) -> Option<Vec<f32>> {
@@ -2596,13 +2687,13 @@ impl<'w> ModelPlan<'w> {
         let mut e = Enc::new();
         e.str("via-distance-1");
         let of = subject_of(id);
-        let geos: Vec<&Geo> = if self.p.placed.shapes.contains_key(&of) {
-            vec![&self.p.placed.shapes[&of]]
-        } else {
-            self.shape_members(&of)
+        let geos: Vec<&Geo> = match self.p.placed.shape(&of) {
+            Some(g) => vec![g],
+            None => self
+                .shape_members(&of)
                 .iter()
-                .filter_map(|m| self.p.placed.shapes.get(m))
-                .collect()
+                .filter_map(|m| self.p.placed.shape(m))
+                .collect(),
         };
         if let (Some(grid), Some(w)) = (self.grid, window_of(id)) {
             e.len(w.len());
@@ -2860,6 +2951,22 @@ impl Plan for ModelPlan<'_> {
                     }
                 }
                 Self::val(e.finish(), self.early_diags(id))
+            }
+            "made" => {
+                // One made thing that writes fields (`geometry.md` 8.1): its kind and region, so
+                // a chunk it does not reach keeps its key when a distant part of its maker moves.
+                let mut e = Enc::new();
+                e.str("via-made-1");
+                match self.p.placed.made_writers.get(&s) {
+                    Some((_, kind, g)) => {
+                        e.byte(1).str(kind);
+                        Self::encode_geo(&mut e, Some(g));
+                    }
+                    None => {
+                        e.byte(0);
+                    }
+                }
+                Self::val(e.finish(), Vec::new())
             }
             "footprint" => {
                 let mut e = Enc::new();
