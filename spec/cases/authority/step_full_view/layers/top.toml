@@ -1,0 +1,4 @@
+[instance.hut]
+asset  = "block"
+at     = [12, 8]
+ground = "pad"

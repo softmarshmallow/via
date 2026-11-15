@@ -579,6 +579,15 @@ fn kind_noise(feature_scope: &str, effect: &str, key: &str) -> Vec<NoisePart> {
 }
 
 impl Decls {
+    /// Whether a name is something a generate step returned, `<step>#<key>` or a part of one
+    /// (`<step>#<key>.ground`): what `authority.md` 4.4 leaves out of the views of every step at
+    /// its layer and above. A `#` name another maker made (a scatter's instance) is not. The step
+    /// view's `view_rank` (via-cli) holds the same rule; the two change together.
+    pub fn step_returned(&self, name: &str) -> bool {
+        name.split_once('#')
+            .is_some_and(|(maker, _)| self.steps.contains_key(maker))
+    }
+
     /// What a `where` reads (`authority.md` 2.3: "reads" is transitive): the fields, through the
     /// bases and rows of the fields it reads, and the shape selectors (feature ids, place names,
     /// `kind:<k>`). A shape node of a `where` region has an edge to each field's head view and

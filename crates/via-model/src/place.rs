@@ -385,6 +385,10 @@ impl<'a> Placer<'a> {
                     // `route` (`derived.md` 3): the least-cost course through the written points,
                     // over the cost in the head view; smoothed when `smooth` is written.
                     let grid = self.d.grid?;
+                    // The features its cost reads, through fields too, are placed first.
+                    if !self.place_reads(&f.id, cost) {
+                        return None;
+                    }
                     let snapshot = self.out.clone();
                     let fields = Fields::new(self.d, &snapshot, grid);
                     let values = fields.eval_where(cost, &f.id);
@@ -1059,11 +1063,10 @@ impl<'a> Placer<'a> {
         }
     }
 
-    /// A region written as a condition (`geometry.md` 3.7): the formula in the head view at every
-    /// post, masked, every piece kept and named by place (`identity.md` 2.3).
-    fn where_region(&mut self, f: &FeatureDecl, formula: via_expr::FormulaId) -> Option<Geo> {
-        let grid = self.d.grid?;
-        // What the shape reads is resolved first; reading itself is a cycle (`formulas.md` 6.6).
+    /// Places every shape a shape formula reads, through the fields it reads too (a `where`
+    /// region, a route's cost), before the formula is evaluated: dependency order, not id order
+    /// (`graph.md` 2). False when the feature itself failed, as in a cycle through its own read.
+    fn place_reads(&mut self, id: &str, formula: via_expr::FormulaId) -> bool {
         for sel in self.d.where_reads(formula).1 {
             match sel.strip_prefix("kind:") {
                 Some(k) => {
@@ -1094,9 +1097,17 @@ impl<'a> Placer<'a> {
                     }
                 }
             }
-            if self.failed.contains(&f.id) {
-                return None;
-            }
+        }
+        !self.failed.contains(id)
+    }
+
+    /// A region written as a condition (`geometry.md` 3.7): the formula in the head view at every
+    /// post, masked, every piece kept and named by place (`identity.md` 2.3).
+    fn where_region(&mut self, f: &FeatureDecl, formula: via_expr::FormulaId) -> Option<Geo> {
+        let grid = self.d.grid?;
+        // What the shape reads is resolved first; reading itself is a cycle (`formulas.md` 6.6).
+        if !self.place_reads(&f.id, formula) {
+            return None;
         }
         let snapshot = self.out.clone();
         let fields = Fields::new(self.d, &snapshot, grid);

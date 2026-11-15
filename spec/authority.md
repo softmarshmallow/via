@@ -332,6 +332,28 @@ rows such a step returns, or the entries of features it returns.
   would sit before effects the step already saw. The hint: read the head view, or return features.
 - A step that read a field's full view may return features whose kinds write that field. Their
   entries were not in its view, and they take their place in the order by section 4.
+- **The full view is the build's order, filtered (M3).** Its entries are those of the finished
+  field, in the order section 4 gives them over the whole world (R21, R29: one order across the
+  layers), keeping each row and effect of rank L or below and leaving out every entry of a higher
+  layer and every entry of what a step at L or above returned. The kept entries are never ordered
+  again among themselves: nesting with a left-out feature still places them as it does in the
+  build. A footprint (4.5) has its instance's rank, so a `ground` pad of an instance in a layer
+  above L, written by hand or produced by a step, is outside the view: the step at L reads the
+  ground as it lies below that layer, and runs (case `step_full_view`). A step's own returns are
+  outside its view too, though they join its layer (case `step_own_returns`). A worker's formula calls
+  (`expr.eval`, `derive.*`) read each field in the view the call names, as `build.field` does.
+  A plain command is handed the build's fields, not a view; one at a layer below an entry that
+  changes a field it is handed stays `doc.not_yet` until the files it is handed are its view's.
+  For a plain command its own returns are not such an entry: they join its layer, and it reads
+  nothing after returning, so a plain step at the only layer that returns a feature whose kind
+  writes a field it is handed runs (case `step_plain_own_returns`).
+- **What counts as returned.** "What a step returned" is every name `<step>#…` whose maker is a
+  generate step: its returned rows, features and instances, and their parts (an instance's
+  `ground` pad, `<step>#<key>.ground`). A `#` name another maker made (a scatter's instance,
+  `identity.md` 2) has its maker's rank and is in the views of its layer like a written entry.
+  The head view, the full view and the step's view of features and instances apply this one rule.
+  Made things of a `[network]` or `[cells]` table that write fields join it when their order is
+  built (`geometry.md` 8.1, Open), by naming their makers here.
 
 ### 4.5 Footprint features
 
@@ -642,6 +664,8 @@ Six entries fit a 32-bit float exactly.
 | step_order | M2 | A step that reads `height`'s head view, holding a text row with `order` 1, and returns a row with `order` 0 | build | `authority.step_view` naming both rows. |
 | step_features | M2 | A step that reads `height`'s full view and returns a feature whose kind writes `height` | build | No diagnostic; the feature's entry in its tier's place. |
 | step_anchored | M2 | A step that returns an anchored feature | build | `authority.step_anchored`. |
+| step_full_view | M3 | A worker in layer 0 reading `height`'s full view; a feature of layer 0 whose kind adds 1 at one place; an instance in layer 1 with `ground = "pad"` whose kind adds 10 at another; the step returns what it read as its own field | build | No `doc.not_yet`; the returned field holds 1 at the feature and 0 under the pad; `height` holds 1 and 10. |
+| step_own_returns | M3 | A worker in layer 0 reading `height`'s full view and returning a feature whose kind adds 1 at one place | build | No `diag.internal` on a cold store; the returned field holds 0 at the feature; `height` holds 1. |
 | unchecked | M2 | A generate step that reads anchored features and returns rows, with no lint step naming it | build | `authority.unchecked`. |
 
 ## Changed from the spike

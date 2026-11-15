@@ -1,0 +1,195 @@
+format    = "via-case-1"
+summary   = "d08's ridge made by a field reading `wall`, a feature whose id sorts after the routed `course`: the course is made, over the ridge's way round; built again warm, then with `wall` moved, then back, on one store."
+milestone = 3
+actions   = ["base", "warm", "shifted", "back"]
+
+# A route's cost reads fields, and a field's formula may read shapes (`dist('wall', 2)`): the
+# shapes it reads are placed before the cost is evaluated, in dependency order, never id order
+# (graph.md 2; derived.md 3 step 1). `course` sorts before `wall`. Before M3 the course was left
+# out of features.json with no diagnostic, and on a warm store its shape node could fail
+# `diag.internal` ("not stable"). The courses are d08's: the ridge is the posts of x = 4 within
+# 0.5 m of `wall`; the way round is (4, 8) for the base wall and (4, 0) for the shifted one.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.base.check.count]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 3
+
+[action.base.file.p0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.base.file.p0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 4
+
+[action.base.file.p1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 4
+
+[action.base.file.p1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 8
+
+[action.base.file.p2_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/0"
+value   = 8
+
+[action.base.file.p2_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/1"
+value   = 4
+
+[action.warm]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.warm.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.warm.check.count]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 3
+
+[action.warm.file.p0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.warm.file.p0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 4
+
+[action.warm.file.p1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 4
+
+[action.warm.file.p1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 8
+
+[action.warm.file.p2_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/0"
+value   = 8
+
+[action.warm.file.p2_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/1"
+value   = 4
+
+[action.shifted]
+via         = ["build", "world.toml", "--change", "shift", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.shifted.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.shifted.check.count]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 3
+
+[action.shifted.file.p0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.shifted.file.p0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 4
+
+[action.shifted.file.p1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 4
+
+[action.shifted.file.p1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 0
+
+[action.shifted.file.p2_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/0"
+value   = 8
+
+[action.shifted.file.p2_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/1"
+value   = 4
+
+[action.back]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.back.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.back.check.count]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/0/points"
+count   = 3
+
+[action.back.file.p0_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/0"
+value   = 0
+
+[action.back.file.p0_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/0/1"
+value   = 4
+
+[action.back.file.p1_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/0"
+value   = 4
+
+[action.back.file.p1_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/1/1"
+value   = 8
+
+[action.back.file.p2_x]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/0"
+value   = 8
+
+[action.back.file.p2_y]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/1"
+value   = 4

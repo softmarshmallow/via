@@ -257,3 +257,174 @@ fn linework_every_cell_fronts() {
     assert_eq!(areas_done, net.areas.len());
     assert!(total > 0);
 }
+
+/// A square with a dead-end line from its south side: the network's one area has the line as a
+/// spur. With the spur's two sides in the frontage, each side is walked and gets its own cells
+/// (3.6 step 1; geometry.md 8.2): 3 cells a side along its 30 m, besides the shell's 19.
+fn spur_net() -> Network {
+    network(
+        vec![
+            ring("sq", &[(0, 0), (50, 0), (50, 50), (0, 50)]),
+            path("spur", &[(25, 0), (25, 30)]),
+        ],
+        None,
+        &[],
+        grid100(),
+    )
+    .unwrap()
+}
+
+fn spur_front(net: &Network, sides: &[Side]) -> Vec<FrontEdge> {
+    let sq = net.noded.sources.iter().position(|s| s == "sq").unwrap();
+    let sp = net.noded.sources.iter().position(|s| s == "spur").unwrap();
+    let mut out = Vec::new();
+    for (e, ed) in net.edges.iter().enumerate() {
+        if ed.sources.contains(&sq) {
+            out.push(FrontEdge {
+                edge: e,
+                side: Side::Left,
+                source: sq,
+            });
+        }
+        if ed.sources.contains(&sp) {
+            for &side in sides {
+                out.push(FrontEdge {
+                    edge: e,
+                    side,
+                    source: sp,
+                });
+            }
+        }
+    }
+    out
+}
+
+fn spur_params() -> CellParams {
+    CellParams {
+        cell_length: 10_000,
+        band_depth: 5_000,
+        min_cell_length: 0,
+        min_cell_area: 0,
+    }
+}
+
+#[test]
+fn spur_sides_are_frontage() {
+    let net = spur_net();
+    assert_eq!(net.areas.len(), 1);
+    assert_eq!(net.areas[0].spurs.len(), 1);
+    let c = cells_on_area(
+        &net,
+        0,
+        &spur_front(&net, &[Side::Left, Side::Right]),
+        spur_params(),
+        grid100(),
+    )
+    .unwrap();
+    assert!(
+        !c.diags.iter().any(|d| d.code == Code::CellMerged),
+        "{:?}",
+        c.diags
+    );
+    assert_eq!(c.cells.len(), 25);
+    let sp = net.noded.sources.iter().position(|s| s == "spur").unwrap();
+    for side in [Side::Left, Side::Right] {
+        let on: Vec<_> = c
+            .cells
+            .iter()
+            .filter(|x| matches!(x.front, Front::Edge(f) if f.source == sp && f.side == side))
+            .collect();
+        assert_eq!(on.len(), 3, "{side:?}");
+        let mut st: Vec<usize> = on.iter().map(|x| x.station).collect();
+        st.sort();
+        assert_eq!(st, vec![0, 1, 2]);
+        for cell in &on {
+            // West of the line for its left side, east for its right.
+            let west = cell.point.x < 25_000;
+            assert_eq!(west, side == Side::Left);
+            assert!(
+                (cell.front_len - 10_000.0).abs() < 2.0,
+                "{}",
+                cell.front_len
+            );
+        }
+        // The two cells away from the foot are 10 m by 5 m; the foot's loses the corner
+        // triangle to the shell's cell.
+        let mut areas: Vec<i128> = on.iter().map(|x| x.region.twice_area()).collect();
+        areas.sort();
+        assert_eq!(areas, vec![75_000_000, 100_000_000, 100_000_000]);
+    }
+    let sum: i128 =
+        c.cells.iter().map(|x| x.region.twice_area()).sum::<i128>() + c.rest.twice_area();
+    assert_eq!(sum, c.noded_area);
+    assert_eq!(c.noded_area, c.region.twice_area());
+}
+
+/// One side of a spur alone: that side's cells, none across the line.
+#[test]
+fn spur_one_side() {
+    let net = spur_net();
+    let c = cells_on_area(
+        &net,
+        0,
+        &spur_front(&net, &[Side::Right]),
+        spur_params(),
+        grid100(),
+    )
+    .unwrap();
+    assert!(!c.diags.iter().any(|d| d.code == Code::CellMerged));
+    assert_eq!(c.cells.len(), 22);
+    let sp = net.noded.sources.iter().position(|s| s == "spur").unwrap();
+    let on: Vec<_> = c
+        .cells
+        .iter()
+        .filter(|x| matches!(x.front, Front::Edge(f) if f.source == sp))
+        .collect();
+    assert_eq!(on.len(), 3);
+    assert!(on.iter().all(|x| x.point.x > 25_000));
+    let sum: i128 =
+        c.cells.iter().map(|x| x.region.twice_area()).sum::<i128>() + c.rest.twice_area();
+    assert_eq!(sum, c.noded_area);
+}
+
+/// Without the spur in the frontage, the area divides as before: its shell's 19 cells.
+#[test]
+fn spur_not_selected() {
+    let net = spur_net();
+    let c = cells_on_area(&net, 0, &spur_front(&net, &[]), spur_params(), grid100()).unwrap();
+    assert!(!c.diags.iter().any(|d| d.code == Code::CellMerged));
+    assert_eq!(c.cells.len(), 19);
+}
+
+fn grid_params() -> CellParams {
+    CellParams {
+        cell_length: 25_000,
+        band_depth: 20_000,
+        min_cell_length: 0,
+        min_cell_area: 0,
+    }
+}
+
+/// 3.6 step 5: a station just before a slight convex bend (9 degrees, not a corner) is cut square
+/// to its segment; the cut reaches the far side the next segment sets, so the two cells of that
+/// side stay two (geometry.md 8.4).
+#[test]
+fn cut_reaches_far_side_past_a_bend() {
+    let c = cells_on_outline(
+        "bent",
+        &[m(0, 0), m(50, 0), m(50, 50), m(24, 52), m(0, 50)],
+        grid_params(),
+        grid100(),
+    )
+    .unwrap();
+    let merged = c
+        .diags
+        .iter()
+        .filter(|d| d.code == Code::CellMerged)
+        .count();
+    assert_eq!(merged, 0, "{:?}", c.diags);
+    assert_eq!(c.cells.len(), 8);
+    let sum: i128 =
+        c.cells.iter().map(|x| x.region.twice_area()).sum::<i128>() + c.rest.twice_area();
+    assert_eq!(sum, c.noded_area);
+}

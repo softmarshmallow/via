@@ -156,12 +156,7 @@ pub fn cells_on_area(
     let region = a.region.clone();
     let c = a.cycle;
     let in_face = |h: usize| arr.face_left(h) == Some(c);
-    let shell: Vec<usize> = arr.cycles[c]
-        .iter()
-        .copied()
-        .filter(|&h| !in_face(h ^ 1))
-        .collect();
-    // Which shell half-edges front, and by which entry.
+    // Which half-edges front, and by which entry; the area is on each one's left.
     let entry_of = |h: usize| -> Option<usize> {
         let e = net.edge_of_half[h];
         for p in &net.noded.segments[h / 2].prov {
@@ -176,38 +171,91 @@ pub fn cells_on_area(
         }
         None
     };
+    // The walk: the shell's half-edges and the fronting sides of its spurs, in the cycle's order,
+    // so a spur's sides are walked up and back down between the shell edges at its foot (1).
+    let is_spur = |h: usize| in_face(h ^ 1);
+    let shell: Vec<usize> = arr.cycles[c]
+        .iter()
+        .copied()
+        .filter(|&h| !is_spur(h) || entry_of(h).is_some())
+        .collect();
     let fr: Vec<Option<usize>> = shell.iter().map(|&h| entry_of(h)).collect();
     if fr.iter().all(Option::is_none) {
         return Err(GeomDiag::new(
             Code::BadParameter,
-            "no frontage entry lies on the region's shell",
+            "no frontage entry lies on the region's shell or its spurs",
         )
         .with("parameter", "frontage"));
     }
-    // Chains: maximal runs of fronting half-edges, cyclically.
+    // Chains: maximal runs of fronting half-edges, each starting where the one before ends,
+    // cyclically. A spur with one side fronting breaks the walk at its foot.
     let n = shell.len();
+    let joined = |i: usize| arr.dst(shell[(i + n - 1) % n]) == arr.org(shell[i]);
     let mut chains: Vec<Vec<usize>> = Vec::new();
-    if fr.iter().all(Option::is_some) {
+    let closed_chain = fr.iter().all(Option::is_some) && (0..n).all(joined);
+    if closed_chain {
         chains.push((0..n).collect());
     } else {
-        let start = (0..n).find(|&i| fr[i].is_none()).unwrap_or(0);
+        let start = (0..n).find(|&i| fr[i].is_none() || !joined(i)).unwrap_or(0);
         let mut cur: Vec<usize> = Vec::new();
-        for s in 1..=n {
+        for s in 0..n {
             let i = (start + s) % n;
+            if !cur.is_empty() && (fr[i].is_none() || !joined(i)) {
+                chains.push(std::mem::take(&mut cur));
+            }
             if fr[i].is_some() {
                 cur.push(i);
-            } else if !cur.is_empty() {
-                chains.push(std::mem::take(&mut cur));
             }
         }
         if !cur.is_empty() {
             chains.push(cur);
         }
     }
-    let closed_chain = chains.len() == 1 && chains[0].len() == n && fr.iter().all(Option::is_some);
-    // Band.
+    // Band. The shell's part is as before: the region less its inward offset when the whole shell
+    // fronts, else one stroke per chain along its shell edges. Each spur run (up one side, or down
+    // the other) is stroked on its own, butt-capped at the spur's foot and tip.
     let src = "#band";
-    let band = if closed_chain {
+    let mut strokes = Vec::new();
+    let one_stroke = |run: &[usize]| -> Result<Region, GeomDiag> {
+        let mut pts: Vec<P> = run.iter().map(|&h| arr.org(h)).collect();
+        pts.push(arr.dst(run[run.len() - 1]));
+        stroke(src, &pts, params.band_depth, 0, Join::Mitre(2.0), Cap::Butt)
+    };
+    for ch in &chains {
+        let mut shell_run: Vec<usize> = Vec::new();
+        let mut spur_run: Vec<usize> = Vec::new();
+        for &i in ch {
+            let h = shell[i];
+            if is_spur(h) {
+                let back = spur_run.last().is_some_and(|&g| g == (h ^ 1));
+                if back {
+                    strokes.push(one_stroke(&spur_run)?);
+                    spur_run.clear();
+                }
+                spur_run.push(h);
+            } else {
+                if !spur_run.is_empty() {
+                    strokes.push(one_stroke(&spur_run)?);
+                    spur_run.clear();
+                }
+                if closed_chain {
+                    continue;
+                }
+                if shell_run.last().is_some_and(|&g| arr.dst(g) != arr.org(h)) {
+                    strokes.push(one_stroke(&shell_run)?);
+                    shell_run.clear();
+                }
+                shell_run.push(h);
+            }
+        }
+        for run in [shell_run, spur_run] {
+            if !run.is_empty() {
+                strokes.push(one_stroke(&run)?);
+            }
+        }
+    }
+    let mut parts = Vec::new();
+    if closed_chain {
         let shell_region = Region {
             pieces: vec![Piece {
                 shell: region.pieces[0].shell.clone(),
@@ -215,23 +263,16 @@ pub fn cells_on_area(
             }],
         };
         let (inner, _) = offset(src, &shell_region, -params.band_depth, Join::Mitre(2.0))?;
-        boolean(BoolOp::Difference, &[region.clone(), inner])?
-    } else {
-        let mut strokes = Vec::new();
-        for ch in &chains {
-            let mut pts: Vec<P> = ch.iter().map(|&i| arr.org(shell[i])).collect();
-            pts.push(arr.dst(shell[*ch.last().unwrap_or(&0)]));
-            strokes.push(stroke(
-                src,
-                &pts,
-                params.band_depth,
-                0,
-                Join::Mitre(2.0),
-                Cap::Butt,
-            )?);
-        }
+        parts.push(boolean(BoolOp::Difference, &[region.clone(), inner])?);
+    }
+    if !strokes.is_empty() {
         let u = boolean(BoolOp::Union, &strokes)?;
-        boolean(BoolOp::Intersection, &[u, region.clone()])?
+        parts.push(boolean(BoolOp::Intersection, &[u, region.clone()])?);
+    }
+    let band = if parts.len() == 1 {
+        parts.pop().unwrap_or_default()
+    } else {
+        boolean(BoolOp::Union, &parts)?
     };
     // Frontage paths, one per entry that appears on the shell.
     let mut used: Vec<usize> = fr.iter().flatten().copied().collect();
@@ -262,6 +303,29 @@ pub fn cells_on_area(
             &mut diags,
         )?);
     }
+    // The far side of each chain's band: its frontage offset inward by `band_depth`, mitre limit
+    // 2, as the band's own outline runs there (2). It closes each cell where bands of two
+    // frontages meet across a region narrower than twice the depth; what lies past it borders no
+    // frontage and is `rest`. Each frontage entry's cuts end at its own chain's far side (5).
+    let mut fars: Vec<Option<Vec<P>>> = Vec::with_capacity(chains.len());
+    let mut chain_of: BTreeMap<usize, usize> = BTreeMap::new();
+    for (k, ch) in chains.iter().enumerate() {
+        for &i in ch {
+            if let Some(e) = fr[i] {
+                chain_of.entry(e).or_insert(k);
+            }
+        }
+        let mut pts: Vec<P> = ch.iter().map(|&i| arr.org(shell[i])).collect();
+        if !closed_chain {
+            pts.push(arr.dst(shell[*ch.last().unwrap_or(&0)]));
+        }
+        pts.dedup();
+        fars.push(if pts.len() < 2 {
+            None
+        } else {
+            Some(far_line(src, &pts, closed_chain, params.band_depth as f64)?)
+        });
+    }
     // Cuts.
     let mut inputs: Vec<Input> = Vec::new();
     for (k, r) in band.rings().into_iter().enumerate() {
@@ -271,48 +335,13 @@ pub fn cells_on_area(
             closed: true,
         });
     }
-    // A cut reaches its own band's far side and stops just past it (5): never into the band of
-    // another frontage across a narrow region.
+    // A cut reaches its own chain's far side and stops just past it (5): never into the band of
+    // another frontage across a narrow region, and never short of its own far side where the next
+    // segment sets it (a station just before a convex bend).
     let depth = params.band_depth as f64;
-    let reach = depth + CUT_PAST;
-    let mut ncut = 0usize;
-    for (fi, fp) in fpaths.iter().enumerate() {
-        inputs.push(Input {
-            source: format!("#f{fi:06}"),
-            pts: fp.line.pts.clone(),
-            closed: false,
-        });
-        for (si, &(s0, s1, cnt)) in fp.stretches.iter().enumerate() {
-            let _ = si;
-            if cnt == 0 {
-                continue;
-            }
-            for k in 1..cnt {
-                let s = s0 + ((s1 - s0) * (k as f64)) / (cnt as f64);
-                let at = at_length(&fp.line, src, s, false, 0)?;
-                let (a0, b0) = fp.line.seg(at.k);
-                let nl = left_normal(dir(a0, b0));
-                let nin = if fp.inward_left { nl } else { (-nl.0, -nl.1) };
-                let st = pt(
-                    src,
-                    (at.point.x as f64) - (nin.0 * 10.0),
-                    (at.point.y as f64) - (nin.1 * 10.0),
-                )?;
-                let en = pt(
-                    src,
-                    (at.point.x as f64) + (nin.0 * reach),
-                    (at.point.y as f64) + (nin.1 * reach),
-                )?;
-                inputs.push(Input {
-                    source: format!("#cut{ncut:06}"),
-                    pts: vec![st, en],
-                    closed: false,
-                });
-                ncut += 1;
-            }
-        }
-    }
-    // Bisector cuts at stretch ends inside chains: corners and changes of edge.
+    // Bisector cuts at stretch ends inside chains: corners and changes of edge (5). Found before
+    // the stations' cuts, which stop at the first of them they cross.
+    let mut bisectors: Vec<(P, P)> = Vec::new();
     for ch in &chains {
         let m = ch.len();
         let inner: Vec<usize> = if closed_chain {
@@ -325,7 +354,9 @@ pub fn cells_on_area(
             let hout = shell[ch[j]];
             let v = arr.org(hout);
             let (din, dout) = (dir(arr.org(hin), v), dir(v, arr.dst(hout)));
-            let change = net.edge_of_half[hin] != net.edge_of_half[hout];
+            // A change of edge, or the junction where an edge that is a loop meets itself.
+            let change = net.edge_of_half[hin] != net.edge_of_half[hout]
+                || net.junctions.binary_search(&v).is_ok();
             if !(change || is_corner(din, dout)) {
                 continue;
             }
@@ -343,33 +374,65 @@ pub fn cells_on_area(
                 (v.x as f64) + ((s.0 / sl) * to_mitre),
                 (v.y as f64) + ((s.1 / sl) * to_mitre),
             )?;
-            inputs.push(Input {
-                source: format!("#cut{ncut:06}"),
-                pts: vec![v, en],
-                closed: false,
-            });
-            ncut += 1;
+            bisectors.push((v, en));
         }
     }
-    // The far side of each chain's band: its frontage offset inward by `band_depth`, mitre limit
-    // 2, as the band's own outline runs there (2). It closes each cell where bands of two
-    // frontages meet across a region narrower than twice the depth; what lies past it borders no
-    // frontage and is `rest`.
-    for (k, ch) in chains.iter().enumerate() {
-        let mut pts: Vec<P> = ch.iter().map(|&i| arr.org(shell[i])).collect();
-        if !closed_chain {
-            pts.push(arr.dst(shell[*ch.last().unwrap_or(&0)]));
-        }
-        pts.dedup();
-        if pts.len() < 2 {
-            continue;
-        }
-        let far_pts = far_line(src, &pts, closed_chain, depth)?;
+    let mut ncut = 0usize;
+    for (fi, fp) in fpaths.iter().enumerate() {
         inputs.push(Input {
-            source: format!("#cut_far{k:06}"),
-            pts: far_pts,
+            source: format!("#f{fi:06}"),
+            pts: fp.line.pts.clone(),
             closed: false,
         });
+        let far = chain_of
+            .get(&used[fi])
+            .and_then(|&k| fars[k].as_deref())
+            .unwrap_or(&[]);
+        for &(s0, s1, cnt) in &fp.stretches {
+            if cnt == 0 {
+                continue;
+            }
+            for k in 1..cnt {
+                let s = s0 + ((s1 - s0) * (k as f64)) / (cnt as f64);
+                let at = at_length(&fp.line, src, s, false, 0)?;
+                let (a0, b0) = fp.line.seg(at.k);
+                let nl = left_normal(dir(a0, b0));
+                let nin = if fp.inward_left { nl } else { (-nl.0, -nl.1) };
+                let o = (at.point.x as f64, at.point.y as f64);
+                // It stops at a stretch end's bisector it crosses first (5): past it lie the
+                // cells of the next stretch, which a square cut near a convex corner would
+                // otherwise divide.
+                let reach = via_num::min(
+                    far_reach(o, nin, far, depth),
+                    bisector_reach(o, nin, &bisectors),
+                ) + CUT_PAST;
+                let st = pt(src, o.0 - (nin.0 * 10.0), o.1 - (nin.1 * 10.0))?;
+                let en = pt(src, o.0 + (nin.0 * reach), o.1 + (nin.1 * reach))?;
+                inputs.push(Input {
+                    source: format!("#cut{ncut:06}"),
+                    pts: vec![st, en],
+                    closed: false,
+                });
+                ncut += 1;
+            }
+        }
+    }
+    for &(v, en) in &bisectors {
+        inputs.push(Input {
+            source: format!("#cut{ncut:06}"),
+            pts: vec![v, en],
+            closed: false,
+        });
+        ncut += 1;
+    }
+    for (k, far) in fars.into_iter().enumerate() {
+        if let Some(far_pts) = far {
+            inputs.push(Input {
+                source: format!("#cut_far{k:06}"),
+                pts: far_pts,
+                closed: false,
+            });
+        }
     }
     // The region's own outline joins the band and the cuts, so the areas partition the noded
     // region: the cells, and the rest. Segments of cuts outside the band are dropped.
@@ -463,6 +526,11 @@ pub fn cells_on_area(
             for p in &seg.prov {
                 if let Some(&fi) = fsrc.get(&p.source) {
                     let fp = &fpaths[fi];
+                    // Only the side the frontage faces: both sides of a spur run along one line.
+                    let along = h.is_multiple_of(2) != p.reversed;
+                    if along != fp.inward_left {
+                        continue;
+                    }
                     let l = fp.line.length();
                     let tm = (p.t[0] + p.t[1]) / 2.0;
                     let sm = tm * l;
@@ -673,6 +741,65 @@ fn far_line(src: &str, pts: &[P], closed: bool, depth: f64) -> Result<Vec<P>, Ge
     out.dedup();
     Ok(out)
 }
+
+/// How far a station's cut runs from `o` along the unit inward normal `d` to its chain's far side
+/// (5): the first crossing of `far` at least `depth` away (less the lattice's rounding), at most the
+/// mitre limit's `2 depth`; `depth` when the far side is not crossed there.
+fn far_reach(o: (f64, f64), d: (f64, f64), far: &[P], depth: f64) -> f64 {
+    let lo = depth - FAR_SLACK;
+    let mut best = f64::INFINITY;
+    for w in far.windows(2) {
+        let (p, q) = (
+            (w[0].x as f64, w[0].y as f64),
+            (w[1].x as f64, w[1].y as f64),
+        );
+        let e = (q.0 - p.0, q.1 - p.1);
+        let den = (d.0 * e.1) - (d.1 * e.0);
+        if den == 0.0 {
+            continue;
+        }
+        let w0 = (p.0 - o.0, p.1 - o.1);
+        let r = ((w0.0 * e.1) - (w0.1 * e.0)) / den;
+        let u = ((w0.0 * d.1) - (w0.1 * d.0)) / den;
+        if (-1e-9..=1.0 + 1e-9).contains(&u) && r >= lo && r < best {
+            best = r;
+        }
+    }
+    if best.is_finite() {
+        via_num::min(via_num::max(best, depth), 2.0 * depth)
+    } else {
+        depth
+    }
+}
+
+/// How far from `o` along the unit inward normal `d` a station's cut first crosses a stretch end's
+/// bisector cut (5); infinite when it crosses none ahead of `o`.
+fn bisector_reach(o: (f64, f64), d: (f64, f64), bisectors: &[(P, P)]) -> f64 {
+    let mut best = f64::INFINITY;
+    for &(a, b) in bisectors {
+        let (p, q) = ((a.x as f64, a.y as f64), (b.x as f64, b.y as f64));
+        let e = (q.0 - p.0, q.1 - p.1);
+        let den = (d.0 * e.1) - (d.1 * e.0);
+        if den == 0.0 {
+            continue;
+        }
+        let w0 = (p.0 - o.0, p.1 - o.1);
+        let r = ((w0.0 * e.1) - (w0.1 * e.0)) / den;
+        let u = ((w0.0 * d.1) - (w0.1 * d.0)) / den;
+        if (0.0..=1.0).contains(&u) && r > BISECTOR_SLACK && r < best {
+            best = r;
+        }
+    }
+    best
+}
+
+/// How close ahead of a station a bisector crossing is ignored, millimetres: a station on the
+/// frontage is never on a bisector, which starts at a stretch end.
+const BISECTOR_SLACK: f64 = 1.0;
+
+/// How far short of `band_depth` a crossing of the far side may lie and still be the cut's own:
+/// the far side's points are rounded to the lattice.
+const FAR_SLACK: f64 = 2.0;
 
 /// How far a cut runs past its band's far side, millimetres: enough that a cut rounded to the
 /// lattice still crosses the far line it ends at.

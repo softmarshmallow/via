@@ -12,7 +12,9 @@ How it lays them (ours, written for this library):
 1. **The land, once.** The world's surface (`role:surface`) is sampled every `sample` metres over
    the district's bounds in one `expr.eval` batch (R23). Height and its gradient between samples
    are bilinear, in doubles.
-2. **Which way the long streets run.** The district's mean gradient gives the fall of its land.
+2. **Which way the long streets run.** The district's mean gradient gives the fall of its land
+   (with `origin` written, the mean within `spacing` of the origin only, so an edit at the
+   district's far edge turns no seed line: R13).
    Where the land is steeper than `steep` (degrees, as `slope()` in formulas.md reads), a long street
    follows the contour: it runs across the fall and is pulled back to its starting height after
    every `step` metres (one Newton step along the gradient), so it neither climbs nor drops. Where
@@ -25,11 +27,17 @@ How it lays them (ours, written for this library):
 4. **Ends.** A long street that comes back to its seed (a contour round a knoll) is one loop,
    ending where it began; one shorter than `2 * cross` is not laid, nor one that comes round
    within `0.4 * spacing` of itself anywhere else (a spiral off a summit). Any other ends
-   one step past the district's outline (the network's `within` cuts it there, and its outline
-   is a source, so the end is a junction), or, where it comes within
+   on the district's outline, 5 mm past the crossing (the network's `within` cuts it there, and its
+   outline is a source, so the end is a junction; the bed and the paint read the path the step
+   returns, so it must not run on into the fields), or, where it comes within
    `0.4 * spacing` of a street already laid, on that street: its last point is the nearest point of
    the other street, written into both, so the two meet at a vertex (TODO, "Dead ends tripled":
-   a street ends at a junction or is not laid).
+   a street ends at a junction or is not laid). Where it comes within `join` metres of a main way
+   (`ways`) while running beside it (within 30 degrees of the way's direction there), it ends on
+   the way's nearest point; one that crosses a main way runs on across it (the network nodes the
+   crossing). The main ways are taken as given: the step never moves or splits them.
+   With `shore` and `lot_depth`, a long street that comes nearer the shore than `2 * lot_depth`
+   is not laid, so a row of lots faces the waterfront and another faces the lowest long street.
 5. **Cross streets.** Between each two neighbouring long streets, every `cross` metres along the
    lower one (staggered by half a `cross` on alternate pairs, so they meet as T junctions rather
    than in a line), a short street runs straight to the nearest point of the other: on a contour
@@ -39,10 +47,15 @@ How it lays them (ours, written for this library):
    from the long street lowest on the land straight to the nearest point of the shore, every
    `cross` metres along it (offset by half a `cross` from its cross streets above), so streets end
    on the waterfront and the network nodes them there. Each ends exactly on the shore's line; one
-   longer than `2 * spacing`, or whose start or middle lies outside the district, is not laid. Named
+   shorter than a metre or longer than `2 * spacing`, or whose start or middle lies outside the
+   district, or which passes
+   within `spacing / 2` of a main way (`ways`: the way already goes down there), is not laid. Named
    `d<m>`, `m` the metres along that long street where it starts.
 7. **Thinned.** Each long street is thinned to the points that stray more than 0.25 m from a
    straight line (Douglas and Peucker 1973) before its junction points are written into it.
+8. **Length.** Every street carries `length`, its path's length in metres (from the millimetre
+   points returned), so the kind's bed can fade to nothing over its last metres and stop at its
+   ends instead of cutting a round cap past them (lib/town/kinds.toml, `street`).
 
 Names are by place (identity.md 2.2): a long street is `s<k>` where `k` is its seed's place on the
 line across, in whole spacings from the centre (`s0`, `s1`, `sm1`); a cross street is
@@ -54,7 +67,11 @@ names follow (identity.md 2.3).
 name: the line streets run down to); `origin` (optional, [x, y] metres: the seed line's origin);
 `spacing` (40 m between long streets);
 `cross` (90 m between cross streets); `steep` (4 degrees); `bearing` (degrees, optional); `step`
-(4 m, the tracing step); `sample` (4 m); `min_length` (24 m: a shorter long street is not laid).
+(4 m, the tracing step); `sample` (4 m); `min_length` (24 m: a shorter long street is not laid);
+`ways` (selectors of the main ways, default `["kind:main_street"]`; none found is no error);
+`join` (8 m: a long street running beside a main way this near ends on it); `lot_depth` (0 m, off:
+with `shore`, the depth of the lots, so the lowest long street keeps `2 * lot_depth` from the
+shore).
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -64,8 +81,9 @@ import math
 from viasdk import RpcError
 
 PARAMS_EXPLAIN = ("A param of the streets step is outside what it takes: `district` names one "
-                  "region feature; `spacing`, `cross`, `step` and `sample` are above 0; `steep` is "
-                  "0 or more; `bearing` is a number of degrees.")
+                  "region feature; `spacing`, `cross`, `step` and `sample` are above 0; `steep`, "
+                  "`join` and `lot_depth` are 0 or more; `bearing` is a number of degrees; `ways` "
+                  "is a list of names and `kind:` selectors.")
 
 EXPLAIN = {
     "no_surface": "The streets step found no field with role `surface`, so it cannot read the "
@@ -77,6 +95,9 @@ EXPLAIN = {
 
 CLOSED = "\0closed"                                   # trace's answer for a loop back to its seed
 SELF = "\0self"                                       # for one that comes round on itself elsewhere
+WAY = "\0way"                                         # for one that ends on a main way beside it
+BESIDE = math.cos(math.radians(30))                   # within 30 degrees of a way's direction
+PAST = 0.005                                          # metres an end runs past the outline it is cut on
 
 
 class ParamError(ValueError):
@@ -109,6 +130,14 @@ class Params:
         self.shore = raw.get("shore")
         if self.shore is not None and (not isinstance(self.shore, str) or not self.shore):
             raise ParamError("shore", "`shore` is not a name", "name one path feature")
+        self.ways = raw.get("ways", ["kind:main_street"])
+        if not isinstance(self.ways, list) or not all(isinstance(w, str) and w for w in self.ways):
+            raise ParamError("ways", "`ways` is not a list of names", "write a list of selectors")
+        self.join = _number(raw, "join", 8)
+        self.lot_depth = _number(raw, "lot_depth", 0)
+        for key in ("join", "lot_depth"):
+            if getattr(self, key) < 0:
+                raise ParamError(key, f"`{key}` is {getattr(self, key)}", "write 0 or more metres")
 
 
 def _number(raw, key, default):
@@ -139,14 +168,16 @@ def generate(step):
         step.warning("no_surface", "step." + step.id, "No surface field; streets are straight.",
                      "Declare a field with role `surface`.", explain=EXPLAIN["no_surface"])
         land = Land.flat(ring, p.sample)
-    streets = lay(p, ring, land, shore)
+    streets = lay(p, ring, land, shore, read_ways(step, p.ways))
     if not streets:
         step.warning("none", "step." + step.id, "No street was laid.",
                      "Lower `spacing` or `min_length`, or widen the district.",
                      explain=EXPLAIN["none"])
         return
     for key in sorted(streets):
-        step.out.feature(key, "street", path=[_mm(pt) for pt in streets[key]])
+        mm = [_mm(pt) for pt in streets[key]]
+        length = sum(math.dist(a, b) for a, b in zip(mm, mm[1:])) / 1000.0
+        step.out.feature(key, "street", path=mm, length=round(length, 3))
 
 
 def district_ring(step, name):
@@ -171,6 +202,30 @@ def shore_line(step, name):
     if len(pts) < 2:
         raise ParamError("shore", f"`{name}` has fewer than two points", "name a path")
     return pts
+
+
+def read_ways(step, selectors):
+    """Every main way's points, in metres: each path piece one polyline. A selector that selects
+    nothing gives none (a district may have no main way). `build.features` takes `kind:<k>` alone,
+    or a list of names (protocol.md 3.3)."""
+    kinds = [s for s in selectors if s.startswith("kind:")]
+    names = [s for s in selectors if not s.startswith("kind:")]
+    asks = list(kinds) + ([names] if names else [])
+    out = []
+    for sel in asks:
+        try:
+            fl = step.features(select=sel)
+        except (LookupError, RpcError):
+            continue
+        geom = _list(fl["geometry"])
+        for f in range(len(fl)):
+            if int(geom[f]) != 1:
+                continue
+            for piece in fl.rings(f):
+                pts = [(float(v[0]) / 1000.0, float(v[1]) / 1000.0) for v in _list(piece[0])]
+                if len(pts) >= 2:
+                    out.append(pts)
+    return out
 
 
 # --- the land ---------------------------------------------------------------------------------
@@ -251,8 +306,8 @@ def _surface(step):
 # --- laying -----------------------------------------------------------------------------------
 
 
-def lay(p, ring, land, shore=None):
-    """Every street, by key: a list of points in metres."""
+def lay(p, ring, land, shore=None, ways=()):
+    """Every street, by key: a list of points in metres. ``ways``: the main ways' polylines."""
     steep = math.tan(math.radians(p.steep))
     # The seed line's origin: `origin` when written, else the district's centre snapped to whole
     # `spacing`s of the world frame. A written origin is the one an edit at the district's edge
@@ -265,7 +320,9 @@ def lay(p, ring, land, shore=None):
         cx = math.floor(cx / p.spacing + 0.5) * p.spacing
         cy = math.floor(cy / p.spacing + 0.5) * p.spacing
     along = _unit(_bearing_vec(p.bearing if p.bearing is not None else long_side(ring)))
-    gx, gy = mean_gradient(ring, land)
+    # The fall: with a written origin, the land's mean gradient within `spacing` of it (a disc
+    # inside the district), so an edit at the district's far edge turns no seed line either.
+    gx, gy = mean_gradient(ring, land, (cx, cy, p.spacing) if p.origin is not None else None)
     if math.hypot(gx, gy) >= steep and math.hypot(gx, gy) > 0:
         across = _unit((gx, gy))
         along = _orient((-across[1], across[0]), along)
@@ -283,28 +340,28 @@ def lay(p, ring, land, shore=None):
     for k, s in seeds:
         if any(_dist_to(longs[o], s) < 0.4 * p.spacing for o in longs):
             continue
-        fwd, hit_f = trace(p, ring, land, s, along, steep, longs)
+        fwd, hit_f = trace(p, ring, land, s, along, steep, longs, ways)
         if hit_f is SELF:
             continue
         if hit_f is CLOSED:                           # round a knoll: one loop, from its seed
             pts = [s] + fwd
-            if _length(pts) < 2 * p.cross:            # a loop too small for a cross street
-                continue
+            if _length(pts) < 2 * p.cross or near_shore(p, ring, shore, pts):
+                continue                              # too small for a cross street, or the shore's
             longs[k] = thin(pts, 0.25)
             continue
-        back, hit_b = trace(p, ring, land, s, (-along[0], -along[1]), steep, longs)
+        back, hit_b = trace(p, ring, land, s, (-along[0], -along[1]), steep, longs, ways)
         if hit_b is SELF:
             continue
         if hit_b is CLOSED:                           # cannot close going back and not forward
             hit_b = None
         pts = list(reversed(back)) + [s] + fwd
-        if _length(pts) < p.min_length:
+        if _length(pts) < p.min_length or near_shore(p, ring, shore, pts):
             continue
         pts = thin(pts, 0.25)
         longs[k] = pts
-        if hit_b is not None:
+        if hit_b is not None and hit_b is not WAY:
             meets.append((k, hit_b, 0))
-        if hit_f is not None:
+        if hit_f is not None and hit_f is not WAY:
             meets.append((k, hit_f, -1))
     # A long street that ends on another: its end is written into the other as a vertex.
     for k, other, end in meets:
@@ -328,15 +385,23 @@ def lay(p, ring, land, shore=None):
                 crosses[f"x{_tag(k)}_{int(round(m))}"] = [a, b]
             m += p.cross
     if shore and longs:
-        crosses.update(down_to(p, ring, land, longs, shore))
+        crosses.update(down_to(p, ring, land, longs, shore, ways))
     out = {f"s{_tag(k)}": pts for k, pts in longs.items()}
     out.update(crosses)
     return out
 
 
-def down_to(p, ring, land, longs, shore):
+def near_shore(p, ring, shore, pts):
+    """Whether a long street comes nearer the shore than `2 * lot_depth` inside the district."""
+    if not shore or p.lot_depth <= 0:
+        return False
+    return any(_dist_to(shore, q) < 2 * p.lot_depth for q in pts if inside(ring, q))
+
+
+def down_to(p, ring, land, longs, shore, ways=()):
     """Streets from the long street lowest on the land to the shore (step 6); each start written
-    into that long street, each end on the shore's line, to the millimetre."""
+    into that long street, each end on the shore's line, to the millimetre. One passing within
+    `spacing / 2` of a main way is not laid: the way goes down there already."""
     def mean_height(pts):
         return sum(land.height(*v) for v in pts) / len(pts)
 
@@ -349,16 +414,18 @@ def down_to(p, ring, land, longs, shore):
         b = nearest_on(shore, a)
         b = (round(b[0], 3), round(b[1], 3))
         mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-        if math.dist(a, b) <= 2 * p.spacing and inside(ring, a) and inside(ring, mid):
+        if (1 <= math.dist(a, b) <= 2 * p.spacing and inside(ring, a) and inside(ring, mid)
+                and not any(_seg_to_line(a, b, w) < p.spacing / 2 for w in ways)):
             a, longs[low] = insert_nearest(longs[low], a)
             out[f"d{int(round(m))}"] = [a, b]
         m += p.cross
     return out
 
 
-def trace(p, ring, land, start, direction, steep, laid):
-    """Points from ``start`` (not included) in ``direction``, until one step past the outline or
-    onto a street in ``laid``; the street's key when it ends on one, else None."""
+def trace(p, ring, land, start, direction, steep, laid, ways=()):
+    """Points from ``start`` (not included) in ``direction``, until the outline (ending `PAST`
+    beyond its crossing), onto a street in ``laid`` (its key returned), or onto a main way it runs
+    beside (`WAY`); else None."""
     level = land.height(*start)
     pts = []
     pos, d = start, direction
@@ -385,8 +452,15 @@ def trace(p, ring, land, start, direction, steep, laid):
         if len(pts) > recent + 1 and _dist_to(pts[:-recent], nxt) < 0.4 * p.spacing:
             return pts, SELF                          # it comes round on itself, not to its seed
         if not inside(ring, nxt):
-            pts.append(nxt)                           # one step past: the clip cuts it there
+            pts.append(exit_point(ring, pos, nxt))    # on the outline: the clip cuts it there
             return pts, None
+        for way in ways:                              # beside a main way: end on it
+            q, tangent = nearest_with_tangent(way, nxt)
+            step_dir = _unit((nxt[0] - pos[0], nxt[1] - pos[1]))
+            if (math.dist(q, nxt) < p.join
+                    and abs(step_dir[0] * tangent[0] + step_dir[1] * tangent[1]) >= BESIDE):
+                pts.append((round(q[0], 3), round(q[1], 3)))
+                return pts, WAY
         for o, other in laid.items():
             if _dist_to(other, nxt) < 0.4 * p.spacing:
                 pts.append(nearest_on(other, nxt))
@@ -424,15 +498,21 @@ def diameter(ring):
     return math.hypot(max(xs) - min(xs), max(ys) - min(ys))
 
 
-def mean_gradient(ring, land):
+def mean_gradient(ring, land, disc=None):
+    """The mean gradient over the samples inside ``ring``; with ``disc`` (x, y, r), only those
+    within ``r`` of (x, y), falling back to the whole ring when the disc holds none."""
     sx = sy = 0.0
     n = 0
     for j in range(land.ny):
         for i in range(land.nx):
             pt = (land.x0 + i * land.d, land.y0 + j * land.d)
+            if disc is not None and math.dist(pt, disc[:2]) > disc[2]:
+                continue
             if inside(ring, pt):
                 gx, gy = land.gradient(*pt)
                 sx, sy, n = sx + gx, sy + gy, n + 1
+    if not n and disc is not None:
+        return mean_gradient(ring, land)
     return (sx / n, sy / n) if n else (0.0, 0.0)
 
 
@@ -443,6 +523,44 @@ def inside(ring, pt):
         if (y0 > y) != (y1 > y) and x < (x1 - x0) * (y - y0) / (y1 - y0) + x0:
             c = not c
     return c
+
+
+def exit_point(ring, a, b):
+    """Where the step from ``a`` (inside) to ``b`` (outside) first crosses the outline, carried
+    `PAST` metres on along the step, so the end lies just outside and the clip makes the junction."""
+    best = 1.0
+    for c, e in zip(ring, ring[1:] + ring[:1]):
+        r = (b[0] - a[0], b[1] - a[1])
+        s = (e[0] - c[0], e[1] - c[1])
+        den = r[0] * s[1] - r[1] * s[0]
+        if den == 0:
+            continue
+        w = (c[0] - a[0], c[1] - a[1])
+        t = (w[0] * s[1] - w[1] * s[0]) / den
+        u = (w[0] * r[1] - w[1] * r[0]) / den
+        if 0 <= t <= 1 and 0 <= u <= 1:
+            best = min(best, t)
+    L = math.dist(a, b)
+    t = min(1.0, best + (PAST / L if L else 0))
+    return (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))
+
+
+def nearest_with_tangent(pts, p):
+    """The nearest point of a polyline to ``p`` and the unit direction of its segment there."""
+    best, bd, tan = pts[0], math.inf, (1.0, 0.0)
+    for a, b in zip(pts, pts[1:]):
+        q, _ = _seg_nearest(a, b, p)
+        d = math.dist(q, p)
+        if d < bd:
+            best, bd, tan = q, d, _unit((b[0] - a[0], b[1] - a[1]))
+    return best, tan
+
+
+def _seg_to_line(a, b, pts):
+    """The least distance from segment ``a``-``b`` to a polyline, sampled every metre."""
+    n = max(1, int(math.ceil(math.dist(a, b))))
+    return min(_dist_to(pts, (a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n))
+               for i in range(n + 1))
 
 
 def _seg_nearest(a, b, p):

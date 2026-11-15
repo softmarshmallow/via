@@ -1,0 +1,25 @@
+name       = "derived"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= if(dist('wall', 2) < 0.5, 2, 0)"
+
+[feature.course]
+starts_at = "p_start"
+ends_at   = "p_end"
+path      = []
+route     = "= if(f('height') > 1, 100, 1)"
+
+[feature.p_end]
+at = [8, 4]
+
+[feature.p_start]
+at = [0, 4]
+
+[feature.wall]
+path = [[4, 0], [4, 7]]
+
+[change.shift.feature.wall]
+path = [[4, 1], [4, 8]]

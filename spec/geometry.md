@@ -486,33 +486,59 @@ The user keys for these inputs are section 8.2's: `spacing` (`cell_length`), `de
 Mechanism (ours, after the skeleton strips of Vanegas et al. 2012, "Procedural generation of parcels
 in urban modeling", simplified to straight cuts):
 
-1. **Chains.** Consecutive frontage edge sides along the region's shell, walked counter-clockwise,
-   form a chain. Each side of a spur is a chain of its own.
+1. **Chains.** The region's shell is walked counter-clockwise with the area on the left, and a spur
+   in the frontage is walked where it leaves the shell: up its one side, round its tip, down its
+   other side, back to its foot. Consecutive frontage edge sides along that walk form a chain. A
+   spur side not in the frontage is left out of the walk; where that leaves the walk broken (a spur
+   with one side in the frontage), the chain breaks there too. A spur on a component inside the
+   area (a hole's) is walked with that component, whose outline is not frontage (Open).
 2. **Band.** The union of each chain's one-sided stroke (3.4) toward the region, width
-   `band_depth`, join `mitre` with limit 2, caps `butt`, intersected with the region. Parts of the
+   `band_depth`, join `mitre` with limit 2, caps `butt`, intersected with the region. A chain's
+   shell edges are one stroke, and each run along one side of a spur another, butt-capped at the
+   spur's foot and tip. Parts of the
    region near outline that is not frontage are not in the band; they fall in `rest`.
 3. **Stretches.** Each frontage edge side is split at its corners into stretches. A corner is a vertex
    where the direction turns by more than 30 degrees, decided exactly: with incoming direction `a`
    and outgoing `b`, a corner when `dot(a, b) <= 0` or `4 dot(a, b)² < 3 |a|² |b|²`. Exactly 30
-   degrees is not a corner. A junction between two frontage edges is a stretch end too.
+   degrees is not a corner. A junction is a stretch end too: between two frontage edges, and
+   where an edge that is a loop meets itself.
 4. **Stations.** A stretch of length `L` (section 1) holds `n = floor(L / cell_length)` cells, with
    stations at `k L / n` for `k = 1 .. n - 1`, each point found by `interpolate`. A stretch shorter
    than `cell_length` holds no cell: `geom.cell_none` (warning, with its position). Stations are
    numbered along the edge side from 0, counted from the edge's start in its source's direction,
    across its stretches.
-5. **Cuts.** At each station a cut runs into the band, square to the segment that holds it (2.6), of
-   length `band_depth` plus 2 mm. At a stretch end inside a chain the cut runs along the corner's
+5. **Cuts.** At each station a cut runs into the band, square to the segment that holds it (2.6), to
+   its own chain's far side (below) and 2 mm past it: its length is the distance to the first
+   crossing of that far side at least `band_depth` less 2 mm away, at least `band_depth` and at most
+   `2 × band_depth`, plus 2 mm; `band_depth` plus 2 mm where the far side is not crossed. So a station
+   just before a convex bend, whose square cut meets the far side the next segment sets a little past
+   `band_depth`, still divides its two cells. A station's cut stops sooner, 2 mm past the first
+   stretch-end cut (the bisectors below) it crosses ahead of its station: past that bisector lie the
+   next stretch's cells, which a square cut near a convex corner would otherwise divide across their
+   depth (an L corner of a 50 m and a 90 m frontage, `cell_length` 11 m, `band_depth` 24 m: the
+   long side's cells keep their whole depth; case `cells_corner`). Crossings are found in doubles,
+   as the far side's. At a stretch end inside a chain the cut runs along the corner's
    bisector: the direction is the sum `s` of the two segments' unit inward normals, in doubles, and
    the length `min(2 / |s|, 2) × band_depth` plus 2 mm, to the corner of the band's far side. Cut
    ends are rounded to the lattice. Chain ends need no cut: the butt caps bound the band. Each
    chain's **far side**, its frontage offset `band_depth` inward, consecutive segments joined where
-   their offset lines cross (bevelled past ratio 2), is built in with the cuts, so a cut never
-   divides the cells of a frontage across a region narrower than `2 × band_depth`.
+   their offset lines cross (bevelled past ratio 2; at a spur's tip, the two offsets' ends joined
+   straight, through the tip), is built in with the cuts, so a cut never divides the cells of a
+   frontage across a region between `band_depth` and `2 × band_depth` wide: what lies past both
+   far sides is `rest`. **A region narrower than `band_depth` (Open).** Its far sides lie outside
+   it, so they stop no cut: the cuts of its two frontages cross it whole, every strip between two
+   cuts borders a station of each (`geom.cell_merged`), and two near cuts leave a sliver cell (a
+   17 m wide rectangle fronted all round, `cell_length` 11 m, `band_depth` 24 m: 11 cells, 3
+   merged, two of 12 m²; with `band_depth` 8 m, 12 cells, none merged). Owed: a far side at the
+   middle between frontages (the skeleton of Vanegas et al.); until then a caller keeps
+   `band_depth` under half the narrowest width it divides.
 6. **Cells.** The band's outline and the cuts are built into a network with `clip` = the band (3.1,
    3.2). An area of it that borders the frontage between two stations of one edge side is that
    station's cell; when several areas take one station, they are joined into its one cell. An area
    that borders several such portions is one cell, takes the lowest (edge, side, station), and is
-   reported by `geom.cell_merged`. An area that borders none is part of `rest`. A cut that meets another near a concave bend so splits cleanly instead of crossing.
+   reported by `geom.cell_merged`. An area that borders none is part of `rest`. An area borders a
+   frontage only on the side the frontage faces: a spur's two sides run along one line, and the
+   cells of each lie on its own side. A cut that meets another near a concave bend so splits cleanly instead of crossing.
 7. **Short cells.** A cell is short when its frontage portion is shorter than `min_cell_length` or its
    area is under `min_cell_area`. Repeat until none can merge: take the first short cell in output
    order that has a neighbour on its edge side, and merge it into the one before it (the one after,
@@ -890,11 +916,22 @@ neighbours, `kind` what a feature does to fields.
 - **Empty.** A network whose `from` selects nothing, or whose linework encloses nothing, is not an
   error: `geom.no_area` (warning), and any selection of its areas finds none
   (`identity.near_none`).
-- **Effects of a made region (Open).** Fields are made before the makers run (a network may read
-  what a step returns, and a step may read fields), so a made area or cell cannot yet write a field,
-  nor be read by `dist('kind:…')` or another formula selector. Until the graph orders it, a
-  network's or cells table's `kind` that has effects is `doc.not_yet` at the key `kind`; a kind with
-  no effects (a guide, a `within` for another table, a `select` for a step) is fine.
+- **Effects of a made region (Open; the order decided in M3).** Fields are made before the makers
+  run (a network may read what a step returns, and a step may read fields), so a made area or cell
+  cannot yet write a field, nor be read by `dist('kind:…')` or another formula selector. Until the
+  graph orders it, a network's or cells table's `kind` that has effects is `doc.not_yet` at the key
+  `kind`; a kind with no effects (a guide, a `within` for another table, a `select` for a step) is
+  fine.
+  The order that lifts it is decided: a made thing (`<id>#…`) stands where a step's returned
+  feature stands. Its entries take its table's layer and tier (`authority.md` 4), and they are
+  outside the views of every step at that layer and above, as returned features are
+  (`authority.md` 4.4, What counts as returned: the views leave out a step's `#` names of rank L
+  and above, and made things join that rule by name when this order is built). So no step reads
+  what a maker of its layer makes, and the order is fields' head views, steps, makers, then the
+  fields' build views: no cycle. What stays Open is the implementation, which is not contained in
+  M3 slice 1's fixes: a field's chunk nodes must read the maker nodes, the resolver must take made
+  things as writers, and a shape selector must count them as members (nesting, `dist`). Owed to M3
+  slice 2 (TODO, "From building quay").
 
 ### 8.2 `[cells.<id>]`
 
@@ -913,9 +950,10 @@ neighbours, `kind` what a feature does to fields.
   `geom.bad_parameter`, naming the key.
 - A divided region whose outline encloses more than one area (a returned or selected region that
   touches itself) is `geom.self_crossing` at the key `within`, naming it; the others are divided.
-- **Spurs (Open).** 3.6 makes each side of a spur its own chain; the kernel's chains walk the shell
-  only today, so an edge side among a network area's spurs is not frontage yet, and a dead-end line
-  inside an area gets no cells on its sides. Owed with the kernel's spur chains (M3 slice 2).
+- **Spurs (Open in text).** The kernel walks a spur's sides when they are in the frontage it is
+  given (3.6 step 1; `via kernel cells` takes them, case `cells_spur`). The core does not pass them
+  yet: its frontage of a network's area is the shell's edge sides only, so a dead-end line inside
+  an area still gets no cells on its sides through `[cells]`. Owed in the core (M3 slice 2).
 - A `frontage` that selects no side of any divided region divides nothing: `geom.frontage_none`
   (warning), naming the table. A single region with no frontage side is all rest, and says nothing:
   a region nothing faces is not a fault.
@@ -969,11 +1007,11 @@ pieces. The lamp stands on the edge of `ribs#y70` between the junctions at `[20,
 `[70, 70]`, at its middle moved 3 m to the left of travel: `[45, 73]`. The clear removes every
 instance whose origin lies in the cell holding `[37.5, 30]`, whichever producer in its layer or
 below placed it (`identity.md` 4.3). Bending `ribs#y170` between two crossings renames no area,
-rib, junction or edge, and no cell, rest piece or per-cell instance outside the area the bent edge
-bounds (3.6's Local guarantee). The cells of that area may change: with the vertex at `x = 45`
-lifted 2 m, its north side's station falls 19 mm before the vertex, and the cut there, square to its
-segment and `band_depth` plus 2 mm long, stops short of the far side the next segment sets, so the
-two cells merge (`geom.cell_merged`). A cut that always reaches its own far side is owed (Open).
+rib, junction or edge, and no cell, rest piece or per-cell instance, the bent area's included: with
+the vertex at `x = 45` lifted 2 m, its north side's station falls 19 mm before the vertex, and the
+cut there, square to its segment, runs on to the far side the next segment sets (3.6 step 5), so
+that side keeps its two cells and nothing merges. 3.6's Local guarantee allows the bent area's
+cells to change shape; here their names hold.
 The cases are `spec/cases/geometry/n*` and `identity.md` 12, 13, 23 to 26.
 
 ## Diagnostics

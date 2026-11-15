@@ -349,6 +349,14 @@ A worker that asks for anything outside its stratum (a feature of a higher layer
 `graph.read_outside`, naming the thing and the lowest layer a step would need to stand in to read
 it (M2).
 
+Generate steps run layer by layer: each layer's steps over the world joined so far, their returns
+joined before the next layer's steps read (`protocol.md` 5). The final graph then reuses each of
+them, since a stratum's answers do not change when a higher layer joins. A worker that the final
+graph runs again and that gives another value is `diag.internal` naming the step's node, never
+passed: the world joined the first value, so the build would show one value beside the other's
+diagnostics (M3). A plain command is handed the build's files, not its stratum's (`authority.md`
+4.4), so it may run again in the final graph; that is owed with its view.
+
 A lint or export step reads the finished build (R29), whatever layer declares it. It runs after
 every generate step, and every node it reads is in view `build`, so its reads share keys with the
 build's nodes and cost nothing. Which of them run after an error is `diagnostics.md` 4: a lint that

@@ -11,16 +11,34 @@ How it places (ours, written for this library):
 1. **The frontage side.** Of a lot's outline edges, the one whose middle lies nearest a street
    (`streets`, default every `main_street` and `street`) is its frontage; a lot is cut along its
    block's frontage (geometry.md 3.6), so that edge lies on the street's side of the block.
-2. **The house.** The first asset of `assets` (in the order written: the preferred first) that
-   fits: its width across the frontage at most the frontage's length less `gap` on each side, its
-   depth at most the lot's depth from that edge less `setback`, and its footprint's four corners
-   inside the lot. A lot no asset fits is left empty, and counted (`small`, info).
+2. **The house.** The largest asset of `assets` (by footprint area; ties in the order written)
+   that fits: its width across the frontage at most the frontage's length less `gap` on each side,
+   its depth at most the lot's depth from that edge less `setback`, and its footprint's four
+   corners inside the lot. A lot no asset fits is left empty, and counted (`small`, info). The
+   largest first, so a wide lot gets the wide house rather than the first one written (quay placed
+   no `house_wide` when it was written second).
 3. **Where and which way.** The house's front (its asset frame's `+y`, assets.md) faces the street:
    `face` is the bearing of the frontage edge's outward normal, clockwise from north, in whole
    millidegrees. Its front stands `setback` metres in from the frontage edge's middle.
 4. **Ground.** With `ground` (say `"pad"`, lib/land), each house is lent that ground kind
    (rules.md 2.1), so a house on a slope stands on a levelled bank, not on the hillside (TODO,
    "Local streets and lots ignore the land").
+5. **Relief.** Without `ground`, and with `max_relief` (metres), the land (`role:surface`) is read
+   at the footprint's four corners and its middle, every house in one `expr.eval` batch (R23); a
+   house whose highest and lowest reading differ by more than `max_relief` is not placed, and
+   counted (`steep`, info): a house left on a slope shows a floor in the air or buried. With
+   `ground` the pad levels it, so relief is not read. When pads from a layer above a step that reads
+   the ground work (TODO, core), a world sets `ground = "pad"` and drops `max_relief`.
+6. **What a pad can level.** With `ground` and `max_cut` (metres), the house is placed only where
+   its pad stays within the kind's `max_change`: the pad holds the land at the footprint's mean,
+   less or more `grade` (rise over run) per metre out, fading out between `reach` 10 and 25 m
+   (lib/land `pad`), so at a reading `d` metres off the footprint it moves the land by
+   `(1 - smoothstep(10, 25, d)) * max(0, |h - mean| - grade * d)`. The land is read at the
+   footprint's corners and middle, and on a 2 m lattice round it out to 24 m, in one batch; a
+   house whose pad would move a reading by more than `max_cut` is not placed (`steep`, info): an
+   edit beside a cut would otherwise stop the build (`authority.max_change`). `grade` (default
+   0.3) and `max_cut` are the ground kind's own defaults, which a step cannot read; write them as
+   the kind has them.
 
 Names are by place (identity.md 2.2): a lot `lots#c<digest>_<station>` gives the house
 `h<digest>_<station>`, so a house keeps its name exactly when its lot does (identity.md 2.3), and a
@@ -28,21 +46,27 @@ hand edit at a lot (`clear` with `{ of = "lots", class = "cell", near }`) reache
 
 `params`: `lots` (required, the cells table's id); `streets` (selectors, default
 `["kind:main_street", "kind:street"]`); `assets` (default `["house_narrow", "house_low"]`);
-`setback` (1 m); `gap` (0.5 m); `ground` (optional, a ground kind).
+`setback` (1 m); `gap` (0.5 m); `ground` (optional, a ground kind); `max_relief` (optional,
+metres, 0 or more); `max_cut` and `grade` (optional, with `ground`: the ground kind's).
 
 Library code imports only viasdk and the standard library (R19b).
 """
 
 import math
 
+from viasdk import RpcError
+
 PARAMS_EXPLAIN = ("A param of the houses step is outside what it takes: `lots` names one cells "
-                  "table; `streets` and `assets` are lists of names; `setback` and `gap` are 0 or "
-                  "more; `ground` names a ground kind.")
+                  "table; `streets` and `assets` are lists of names; `setback`, `gap` and "
+                  "`max_relief` are 0 or more; `ground` names a ground kind.")
 
 EXPLAIN = {
     "small": "The houses step left some lots empty: no asset in `assets` fits the lot's frontage "
     "less `gap` on each side and its depth less `setback`.",
     "no_street": "The houses step found no street to face; it placed nothing.",
+    "steep": "The houses step left some lots empty: the land under the house rises more than "
+    "`max_relief` across its footprint, and no `ground` levels it; or its `ground` pad would move "
+    "the land near it by more than `max_cut`.",
 }
 
 
@@ -64,6 +88,9 @@ class Params:
         self.ground = raw.get("ground")
         if self.ground is not None and not isinstance(self.ground, str):
             raise ParamError("ground", "`ground` is not a name", "name a ground kind, as `pad`")
+        self.max_relief = None if raw.get("max_relief") is None else _number(raw, "max_relief", 0)
+        self.max_cut = None if raw.get("max_cut") is None else _number(raw, "max_cut", 0)
+        self.grade = _number(raw, "grade", 0.3)
 
 
 def _names(raw, key, default):
@@ -95,19 +122,121 @@ def generate(step):
                      explain=EXPLAIN["no_street"])
         return
     sizes = asset_sizes(step, p.assets)
-    small = []
+    small, placed = [], []
     for name, ring in lots:
         got = place(ring, streets, sizes, p)
         if got is None:
             small.append(name)
             continue
-        asset, at, face = got
+        placed.append((name, got))
+    steep = []
+    if p.ground is None and p.max_relief is not None and placed:
+        relief = footprint_relief(step, [got[3] for _, got in placed])
+        if relief is not None:
+            steep = [name for (name, _), r in zip(placed, relief) if r > p.max_relief]
+            placed = [pg for pg, r in zip(placed, relief) if r <= p.max_relief]
+    if p.ground is not None and p.max_cut is not None and placed:
+        moved = pad_moves(step, [got[3] for _, got in placed], p.grade)
+        if moved is not None:
+            steep = [name for (name, _), m in zip(placed, moved) if m > p.max_cut]
+            placed = [pg for pg, m in zip(placed, moved) if m <= p.max_cut]
+    for name, (asset, at, face, _) in placed:
         keys = {"ground": p.ground} if p.ground else {}
         step.out.instance(house_key(name), asset, at=_mm(at), face=face, **keys)
     if small:
         step.info("small", "step." + step.id, f"{len(small)} lots too small for a house.",
                   "Lower `gap` or `setback`, add a narrower asset, or lengthen the lots' `spacing`.",
                   data={"count": len(small), "lots": small[:20]}, explain=EXPLAIN["small"])
+    if steep:
+        step.info("steep", "step." + step.id,
+                  f"{len(steep)} lots too steep for an unlevelled house, or for its pad.",
+                  "Set `ground` to a levelling kind (`pad`), or raise `max_relief` or `max_cut`.",
+                  data={"count": len(steep), "lots": steep[:20]}, explain=EXPLAIN["steep"])
+
+
+def footprint_relief(step, footprints):
+    """Highest less lowest land height over each footprint's corners and middle, in one batch;
+    None when the world has no surface field (nothing is skipped then)."""
+    try:
+        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+    except (LookupError, RpcError):
+        return None
+    ext = (step.grid or {}).get("extent_mm")
+    px, py = [], []
+    for corners in footprints:
+        mid = (sum(c[0] for c in corners) / 4, sum(c[1] for c in corners) / 4)
+        for c in list(corners) + [mid]:
+            x, y = _mm(c)
+            if ext:                                    # a reading beyond the world reads its edge
+                x, y = min(max(x, ext[0]), ext[2]), min(max(y, ext[1]), ext[3])
+            px.append(x)
+            py.append(y)
+    h = [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=px, y=py))]
+    return [max(h[5 * i:5 * i + 5]) - min(h[5 * i:5 * i + 5]) for i in range(len(footprints))]
+
+
+PAD_STEP = 2.0                                       # metres between readings round a footprint
+PAD_REACH = 24.0                                     # metres off the footprint read, at most
+
+
+def pad_moves(step, footprints, grade):
+    """For each footprint, the most its pad would move the land at the readings of rule 6; None
+    when the world has no surface field (nothing is skipped then)."""
+    try:
+        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+    except (LookupError, RpcError):
+        return None
+    ext = (step.grid or {}).get("extent_mm")
+    px, py, at = [], [], []                              # at: (footprint, d), d None under it
+    for i, corners in enumerate(footprints):
+        mid = (sum(c[0] for c in corners) / 4, sum(c[1] for c in corners) / 4)
+        pts = [(c, None) for c in list(corners) + [mid]]
+        x0 = min(c[0] for c in corners) - PAD_REACH
+        y0 = min(c[1] for c in corners) - PAD_REACH
+        nx = int((max(c[0] for c in corners) + PAD_REACH - x0) // PAD_STEP) + 1
+        ny = int((max(c[1] for c in corners) + PAD_REACH - y0) // PAD_STEP) + 1
+        for j in range(ny):
+            for k in range(nx):
+                q = (x0 + k * PAD_STEP, y0 + j * PAD_STEP)
+                d = _off(corners, q)
+                if d <= PAD_REACH:
+                    pts.append((q, d))
+        for c, d in pts:
+            x, y = _mm(c)
+            if ext:                                    # a reading beyond the world reads its edge
+                x, y = min(max(x, ext[0]), ext[2]), min(max(y, ext[1]), ext[3])
+            px.append(x)
+            py.append(y)
+            at.append((i, d))
+    h = [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=px, y=py))]
+    under = [[] for _ in footprints]
+    for (i, d), v in zip(at, h):
+        if d is None:
+            under[i].append(v)
+    mean = [sum(u) / len(u) for u in under]
+    out = [0.0] * len(footprints)
+    for (i, d), v in zip(at, h):
+        d = d or 0.0                                   # under the footprint: levelled whole
+        fade = 1.0 - _smoothstep(10.0, 25.0, d)
+        out[i] = max(out[i], fade * max(0.0, abs(v - mean[i]) - grade * d))
+    return out
+
+
+def _off(corners, q):
+    """Metres from q to the footprint (a convex quadrilateral); 0 inside it."""
+    if inside(corners, q):
+        return 0.0
+    return min(_seg_dist(corners[k], corners[(k + 1) % 4], q) for k in range(4))
+
+
+def _unit(v):
+    n = math.hypot(v[0], v[1])
+    return (v[0] / n, v[1] / n) if n else (0.0, 0.0)
+
+
+def _smoothstep(a, b, x):
+    t = min(max((x - a) / (b - a), 0.0), 1.0)
+    return t * t * (3.0 - 2.0 * t)
 
 
 def read_lots(step, table):
@@ -151,7 +280,8 @@ def read_streets(step, selectors):
 
 
 def asset_sizes(step, assets):
-    """(asset, x0, y0, x1, y1) in metres in the asset frame, in the order written."""
+    """(asset, x0, y0, x1, y1) in metres in the asset frame, the largest footprint first; ties
+    in the order written."""
     t = step.pack(select=assets, columns=["bounds"])
     by = {str(i): b for i, b in zip(_list(t["id"]), _list(t["bounds"]))}
     out = []
@@ -159,11 +289,12 @@ def asset_sizes(step, assets):
         if a in by:
             b = [float(v) / 1000.0 for v in _list(by[a])]
             out.append((a, b[0], b[1], b[3], b[4]))
-    return out
+    return sorted(out, key=lambda s: -(s[3] - s[1]) * (s[4] - s[2]))   # stable: ties as written
 
 
 def place(ring, segs, sizes, p):
-    """(asset, origin in metres, face in degrees) for one lot, or None when nothing fits."""
+    """(asset, origin in metres, face in degrees, footprint corners) for one lot, or None when
+    nothing fits."""
     a, b = frontage_chord(ring, segs)
     length = math.dist(a, b)
     if length == 0:
@@ -186,7 +317,7 @@ def place(ring, segs, sizes, p):
         corners = [(o[0] + right[0] * x + front[0] * y, o[1] + right[1] * x + front[1] * y)
                    for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
         if all(inside(ring, c) for c in corners):
-            return asset, o, face
+            return asset, o, face, corners
     return None
 
 

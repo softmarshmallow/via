@@ -1,0 +1,6 @@
+[asset.block]
+primitive = "box"
+size      = [2, 2, 2]
+
+[material.stone]
+colour = [0.5, 0.5, 0.5]

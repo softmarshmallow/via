@@ -206,32 +206,116 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
 
 ### From building quay (2026-11-15, M3 world; examples/quay)
 
-- -> core: **A routed path vanishes silently** when its cost reads a field that reads a feature whose
+- [x] -> core: **A plain step's own returns refused it** (`doc.not_yet`) once `field_inexact` took the
+  worker's view rank. Fixed: a plain command's own returns are no higher layer (authority.md 4.4, case
+  `step_plain_own_returns`); the resolver and the step view share one `#` rule, "a step's `#` names"
+  (`Decls::step_returned`, authority.md 4.4 What counts as returned). Lesson: one gate, two callers.
+- [x] -> kernel: **Quay lots 12.4 m deep**: a cross street's first station cut ran square across the
+  quay's band to the 2x depth cap. Fixed: a station's cut stops at the first stretch-end bisector it
+  crosses (geometry.md 3.6 step 5, case `cells_corner`); base houses 32 -> 52.
+- [ ] -> lib/town: houses.py rule 6 predicts the pad's `max_change` on a 2 m lattice so a lot beside a
+  deep cut stays empty; the move_hill error it hides was `authority.max_change` 3.15 m at (109, 99.5).
+  A pad that gives way (or a core-side "steep for this ground" skip) would replace the prediction.
+- [ ] -> lib/town: on-foot slice-2 items not taken here: setback by frontage width (keep_out), cross
+  street grade limit, banks over 35 degrees, door aprons, s0's kink, the gate bowl, wall face paint,
+  `wall_deck` target in the water. 9 houses show `place.relief` in base.
+
+- [x] -> core: **A routed path vanishes silently** when its cost reads a field that reads a feature whose
   id sorts after the path's (place.rs evaluates the cost over the features placed so far). quay names
   its hill `crest` to dodge it. Then `shape:<path>` gave `diag.internal` (unstable) on a warm store:
   its key misses what the cost's field reads. Lesson: a dependency read through a field is a dependency.
-- -> core: **Step diagnostics replay from the store**: `authority.unchecked` stayed after `checks` was
-  added, `step.streets.none` showed beside 11 streets; a fresh store cleared both.
+  Fixed (core-gaps): the placer places every shape the cost reads, through fields, first (as `where`
+  did); derived.md 3 step 1, case d24 (cold, warm, moved, back). quay may rename `crest` back.
+- [x] -> core: **Step diagnostics replay from the store**: `authority.unchecked` stayed after `checks` was
+  added, `step.streets.none` showed beside 11 streets; a fresh store cleared both. Fixed (core-gaps):
+  `authority.unchecked` is said after the run from each step's value and the build's lints, never
+  kept in its trace (derived.md 5, case d23). The streets one was the pad gap below: the final graph's
+  answers to `streets` differed from its layer pass's (a `doc.not_yet` refusal), so it ran again and
+  laid none while the world had joined the first run's streets. A worker whose value differs between
+  the two passes is now `diag.internal` (graph.md 4). Lesson: two passes over one step must agree, or say so.
 - [x] -> core: **`columns=["class"]` in build.features overwrote the core's `class` column** with an absent
   attribute (every lot read as class ""). Fixed in the M3 review pass: a core column name in `columns` gives
   the core column, `*` leaves such an attribute out, and a mixed list gets `class` = "" for plain features
   (protocol.md 3.3). Lesson: a reserved column name must be reserved in code, not by convention.
-- -> via-geom (M3 slice 2): **A cell cut stops short near a convex vertex.** c25's 2 m bend puts a
+- [x] -> via-geom (M3 slice 2): **A cell cut stops short near a convex vertex.** c25's 2 m bend puts a
   station 19 mm before the vertex; the cut, square to its segment and `band_depth` + 2 mm long,
-  misses the far side the next segment sets, so two cells merge. Make each cut reach its own far side
-  (geometry.md 8.4, Open). Lesson: "renames nothing" was written before it was built.
-- -> via-geom (M3 slice 2): **Spur sides are not frontage.** 3.6 makes each spur side its own chain;
-  `cells_on_area` walks the shell only, and the model's `area_front` skips spurs (geometry.md 8.2,
-  Spurs: Open). A dead-end street inside a block gets no lots.
+  misses the far side the next segment sets, so two cells merge. Fixed: a station cut runs to its own
+  chain's far side (3.6 step 5); c25 now checks every cell name and no `geom.cell_merged`.
+  Lesson: "renames nothing" was written before it was built.
+- [x] -> via-geom (M3 slice 2): **Spur sides are not frontage.** The kernel now walks a fronting spur
+  up one side and down the other (3.6 step 1; case `cells_spur`). Also fixed on the way: a loop
+  edge's own junction had no cut, merging its first and last cells.
+- -> core (M3 slice 2): **Pass spur sides as frontage.** via-model's `area_front` still skips spur
+  half-edges (geometry.md 8.2, Spurs: Open in text); drop that skip and add a text case. A dead-end
+  street inside a block gets no lots until then.
+- -> via-geom: **A block narrower than `depth` gives slivers** (quay: 17 m blocks, depth 24): both far
+  sides lie outside, the two frontages' cuts cross it whole, strips merge and near cuts leave 1 m
+  slivers (geometry.md 3.6 step 5, Open). Owed: a far side at the middle (skeleton). Meanwhile
+  lib/town keeps `depth` under half its narrowest block. Lesson: the far-side guarantee held only
+  between `depth` and `2 depth` wide; nobody had tried narrower.
 - -> core (M3 slice 2): **A made area or cell cannot write a field.** Fields are made before makers;
   a maker `kind` with effects is `doc.not_yet` (geometry.md 8.1, Open). Order the graph so they can.
+  Order decided (core-gaps, geometry.md 8.1): made things stand as a step's returns, outside the views
+  of steps at their layer and above, so head views, steps, makers, build views is acyclic. Owed: field
+  chunk nodes reading maker nodes, made things as writers and selector members.
 - -> spec/cases (M3 slice 2): owed cases `geom.many_rings` on a maker (needs a `where` region),
   `protocol.output_table` for a returned `[network]`/`[cells]`, `of` a cells table without `class`,
   `min_length`/`min_area` merging through text, rest `kind` null; identity 27 and 28 are pending.
-- -> core: **A pad in a layer above a step that reads the ground is `doc.not_yet`**: quay's houses are
-  unlevelled (30 of 30 `place.relief`). This blocks a town on a slope.
+- [x] -> core: **A pad in a layer above a step that reads the ground is `doc.not_yet`**: quay's houses are
+  unlevelled (30 of 30 `place.relief`). This blocks a town on a slope. Fixed for workers (core-gaps):
+  a full-view read is the build's order filtered to the layer and below (authority.md 4.4, case
+  `step_full_view`). A scratch quay with `ground = "pad"` on `houses` builds warm and cold with no
+  `place.relief`, but one house cuts 3.05 m against lib/land's `max_cut = 3` (`authority.max_change`
+  at (196, 107)): quay's call. Still owed: plain commands (handed build files, not a view) and
+  weights fields in a view stay `doc.not_yet`.
 - -> lib/town: **The quay reads as an earth apron on foot**; no wall face seen from eye height; main way
   and street `d…` run 9 m apart down to it. Only 30 of 178 lots hold a house (curved, shallow lots).
+  Partly done (town-lib pass, 2026-11-15): a down street within `spacing / 2` of a main way is not
+  laid (`d105` gone); `lot_depth` keeps the lowest contour `2 * lot_depth` from the shore (a scratch
+  quay with `lot_depth = 24`: 5 houses within 30 m of the quay, was 0); houses take the largest
+  asset that fits (3 `house_wide`, was 0). The apron and the wall face are not touched.
+- -> core (spec/formulas.md 6.5): **A path's length has no name in a kind's formula.** lib/town's
+  bed fades out over a street's ends with `min(t, 1 - t) * length`, `length` an attribute the
+  streets step writes; a routed main way has none an author can write, so its ends keep a round
+  cap (now a 1:2 bank, not a wall). On quay the main way's cap at `quay_head` fills the harbour
+  floor in a 1:2 cone past the waterfront's reach: `field.effect_cut` at (113.5, 22.5). A built-in
+  per-feature `length` (metres) would let both kinds drop the attribute. Lesson: a cap is shape, not
+  style; what an effect cannot see along its path it cannot stop at.
+- -> examples/quay: **Set `lot_depth = 24` and `max_relief` in quay and re-measure expect.toml.**
+  The town-lib pass changed only lib/town; quay as written now gives 15 blocks, 174 lots, 10 streets,
+  29 houses (expect.toml: 16, 178, 11, 30; HEAD's lib/town on today's crates already gives 181 lots).
+- -> lib/town: **Street banks at 1:2.** Done (town-lib pass): beds hold the ground within a `grade`
+  0.5 bank of the bed's edge, so the bank grows with the cut. quay, posts 0.5 to 14 m past the bed's
+  edge inside the district: street banks max 55.2 to 42.0 degrees, p99 38.0 to 26.6, posts over 30
+  degrees 3369 to 22; main way p99 33.6 to 26.7; within 20 m of the gate, posts over 30 degrees 269
+  to 2 (release `via`, one build each, fresh store). The few left over 30 lie where two banks meet.
+- [x] -> core: **A worker's full view held its own layer's step returns** (quay, cold store:
+  `diag.internal`, `step:streets` differed between the layer pass and the final graph). `field_inexact`
+  ranked a step-returned feature or footprint at its layer, not one above it, so a field the step's own
+  returns write (streets' beds on `height`) was read from the build. Fixed (world pass): it uses
+  `view_rank`; case `authority/step_own_returns`. Lesson: the new two-pass check found it on the first
+  real world; keep such checks.
+- [x] -> lib/town: **A far edge edit turned every contour street** (quay `unrelated`: 28 lots renamed
+  west of 200 m). The seed line followed the whole district's mean gradient. Fixed (world pass): with
+  `origin` written the fall is read within `spacing` of it; test `test_far_edge_edit_turns_no_seed_line`.
+  `unrelated` now renames no lot west of 200 m. Lesson: a written origin pins a point, not a direction.
+- [x] -> examples/quay (world pass): `ground = "pad"` on houses, `hill` renamed back, `lot_depth = 24`
+  with the seed origin at y 98 (the quay block is 50 m deep), `min_area = 60`, convex route cost and
+  `smooth`, `quay_head` where the way lands straight (t 0.42), shore paint after street paint, two wall
+  views, views re-aimed, R13 changes on a lot with a house; expect.toml re-recorded, `measure.py --check`.
+- -> kernel or core: **Quay-facing lots stop 12.4 m deep** between the main way and `d175` at `depth`
+  24 and 30 alike (and `d35`/`d175` lots about 11 m): no house fits. Not explained; the block's shell is
+  plain (108 to 198 by 46 to about 96). Find what bounds them at y 58.4.
+- -> lib/town: **Thinning is global**: Douglas and Peucker over a whole contour keeps other vertices when
+  its far end moves, so a lot near the middle keeps its name but changes shape and loses its house
+  (quay `unrelated`: 1 house west of 200 m). Thin per stretch between junctions, or snap kept vertices.
+- -> lib/town: **A contour that meets a main way running beside it ends there for good** (quay
+  `move_hill`: `s0` ends at x 140, the east half has no streets). Continue past the way on the other side.
+- -> examples/quay: on foot the deck still reads earth at the eye (`way_water`, `street_quay`,
+  `wall_deck`) though the shore row comes after the street row; check how rows combine. The wall face
+  shows only as a grey band from the water.
+- -> core (derived.md 3): a route cost of the course's own grade (direction-aware), so a main way can
+  take a fall in switchbacks; a slope-only cost cannot.
 
 ## Framing
 

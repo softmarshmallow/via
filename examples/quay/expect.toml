@@ -3,33 +3,37 @@
 #
 #   python3 examples/quay/measure.py BUILD                      # base
 #   python3 examples/quay/measure.py BUILD+<c> --base BUILD     # a change, built with --against
+#   python3.11 examples/quay/measure.py BUILD --check base       # each row against its band
+#   ... --run FILE                                               # FILE from build --diagnostics FILE:
+#                                                                # the run's records (R13 obligation 3)
 #
-# Protocol of the numbers below: macOS arm64 (M4 Pro), the release `via` of the rewrite branch at
-# 2026-11-15 (uncommitted M3 tree), Python 3.12 (sdk/python/.venv) for the steps, a fresh store, one
-# build each, default threads; VIA_LIB=lib. Measured once, so the bands are the measured number:
+# Protocol of the numbers below: macOS arm64 (M4 Pro), the `via` of the rewrite branch at
+# 2026-11-15 (uncommitted M3 slice 2 tree, after the cut-stops-at-bisector fix; dev profile, which
+# is optimised), Python 3.12 (sdk/python/.venv) for the steps, a fresh store for
+# base, the changes on the same store with --against base, one build each, default threads; VIA_LIB=lib. Measured once, so the bands are the measured number:
 # a band is not a target, it says where someone looks.
 
 # ------------------------------------------------------------------------------------------ base
 
 [base.blocks]                               # areas of `town`: the streets, the main way and the quay
 measure = "block"
-band    = [16, 16]
+band    = [11, 11]
 
 [base.lots]
 measure = "lot"
-band    = [178, 178]
+band    = [135, 135]
 
 [base.rest]                                 # what no frontage reaches (cells' rest pieces)
 measure = "rest"
-band    = [31, 31]
+band    = [27, 27]
 
-[base.streets]                              # 3 contour streets, 5 cross streets, 3 down to the quay
+[base.streets]                              # 2 contour streets, 2 cross streets, 2 down to the quay
 measure = "street"
-band    = [11, 11]
+band    = [6, 6]
 
 [base.houses]                               # lots a house fits on; the rest are `step.houses.small`
-measure = "houses"
-band    = [30, 30]
+measure = "houses"                          # (32 before cuts stopped at the corner bisectors: the
+band    = [52, 52]                          # quay's lots were cut to 12.4 m by a cross street's cuts)
 
 [base.unowned]                              # every meeting is owned by the network or a named point (R18)
 measure = "geom.unowned_crossing"
@@ -39,13 +43,13 @@ band    = [0, 0]
 measure = "geom.dead_end"
 band    = [0, 0]
 
-[base.views]                                # one per kind of meeting, and one from the gate (R17)
+[base.views]                                # one per kind of meeting, one from the gate, two at the wall
 measure = "bookmarks"
-band    = [6, 6]
+band    = [8, 8]
 
-[base.unlevelled]                           # no pad from the houses' layer yet (core gap): every house
-measure = "place.relief"                    # stands on the slope as it lies. Should be 0.
-band    = [30, 30]
+[base.unlevelled]                           # houses on pads (`ground = "pad"`); 9 still stand on
+measure = "place.relief"                    # more relief than their asset allows (0.6 m): 3 before
+band    = [9, 9]                            # the deeper lots took more houses on the slope
 
 # ------------------------------------------------------------------------------------------ R13
 
@@ -76,9 +80,9 @@ band    = [0, 0]
 measure = "lot_removed_west"
 band    = [0, 0]
 
-[unrelated.rest_west]                       # one rest piece west of 200 m is new: a piece of an
-measure = "rest_added_west"                 # east-touching block whose centre lies west of 200 m
-band    = [1, 1]
+[unrelated.rest_west]
+measure = "rest_added_west"
+band    = [0, 0]
 
 [unrelated.blocks]
 measure = "block_removed"
@@ -86,26 +90,30 @@ band    = [0, 0]
 
 [unrelated.lots_east]                       # the east end does change
 measure = "lot_removed"
-band    = [6, 6]
+band    = [3, 3]
+
+[unrelated.houses_west]                     # one house west of 200 m goes: its lot (175.9, 139.7)
+measure = "houses_removed_west"             # keeps its name but its shape moves with `s1`'s thinned
+band    = [1, 1]                            # points, and the house no longer fits. Should be 0.
 
 # ------------------------------------------------------------------------------------------ move_hill
 
-[move_hill.streets_kept]                    # the streets keep their names (keyed by place)
-measure = "street_removed"
-band    = [0, 0]
+[move_hill.streets_kept]                    # the hill moves under the town: `s0` now ends on the main
+measure = "street_removed"                  # way, which goes round the hill's east side, and the east
+band    = [2, 2]                            # streets `d175` and `x0_140` are not laid
 
 [move_hill.lots_resettled]                  # the contours move, so the lots between them do
 measure = "lot_removed"
-band    = [73, 73]
+band    = [99, 99]
 
 [move_hill.lots_new]
 measure = "lot_added"
-band    = [51, 51]
+band    = [65, 65]
 
-[move_hill.houses_moved_out]
+[move_hill.houses_moved_out]                # of base's 52
 measure = "houses_removed"
-band    = [15, 15]
+band    = [44, 44]
 
-[move_hill.views_reselected]                # the two junction views follow their junction and say so
-measure = "identity.reselected"
-band    = [0, 0]                            # run diagnostic: on the terminal (2), not in diagnostics.json
+[move_hill.views_reselected]                # `way_street` follows its junction 14.3 m and says so
+measure = "identity.reselected"             # a run diagnostic: measured from --run (build --diagnostics)
+band    = [1, 1]

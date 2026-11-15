@@ -39,6 +39,12 @@ pub enum View {
     /// base and the rows of rank `r` or below, without the rows a step of rank `r` or above
     /// returned (`<step>#<row>`), and no effect.
     Stratum(i64),
+    /// The full view a generate step of layer rank `r` reads (`authority.md` 4.4): the world's
+    /// order of every entry (rows and effects, R21), keeping those of rank `r` or below and
+    /// leaving out what a step of rank `r` or above returned (`<step>#...`, their footprints
+    /// included). Filtering the one order, never ordering the kept entries again, so an entry
+    /// stands where it stands in the build.
+    StratumFull(i64),
 }
 
 /// A resolved field: one raster over the whole grid, or one per painted material.
@@ -378,6 +384,23 @@ impl<'a> Fields<'a> {
 
     fn ordered(&self, field: &str, view: View) -> (Vec<Entry>, Vec<Diag>) {
         let fd = &self.d.fields[field];
+        if let View::StratumFull(r) = view {
+            // The build's order, filtered; its faults are the build's to report.
+            let (all, _) = self.ordered(field, View::Build);
+            let below =
+                |rank: i64, name: &str| rank <= r && !(self.d.step_returned(name) && rank >= r);
+            let kept = all
+                .into_iter()
+                .filter(|e| match e {
+                    Entry::Row(i) => below(fd.rows[*i].rank, &fd.rows[*i].id),
+                    Entry::Effect { writer, .. } => {
+                        let w = &self.writers[*writer];
+                        below(w.rank, &w.name)
+                    }
+                })
+                .collect();
+            return (kept, Vec::new());
+        }
         let mut rows: Vec<usize> = (0..fd.rows.len()).collect();
         rows.sort_by(|a, b| {
             let (ra, rb) = (&fd.rows[*a], &fd.rows[*b]);
@@ -386,7 +409,7 @@ impl<'a> Fields<'a> {
         if let View::Stratum(r) = view {
             rows.retain(|i| {
                 let row = &fd.rows[*i];
-                row.rank <= r && !(row.id.contains('#') && row.rank >= r)
+                row.rank <= r && !(self.d.step_returned(&row.id) && row.rank >= r)
             });
         }
         let mut out: Vec<Entry> = rows.into_iter().map(Entry::Row).collect();
@@ -1529,6 +1552,7 @@ impl Ctx<'_> {
         match self.view {
             View::Head => View::Head,
             View::Stratum(r) => View::Stratum(r),
+            View::StratumFull(r) => View::StratumFull(r),
             _ => View::Build,
         }
     }

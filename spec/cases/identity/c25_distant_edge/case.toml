@@ -1,15 +1,14 @@
 format    = "via-case-1"
-summary   = "Obligation 4: the grid with cells and a thing per cell placed by a step; bend the northmost rib between two crossings; every area and rib name is unchanged, every cell, rest and per-cell instance name outside the bent edge's area is unchanged (3.6's Local guarantee, geometry.md 8.4), and the lamp's edge is not reselected against a baseline that is present."
+summary   = "Obligation 4: the grid with cells and a thing per cell placed by a step; bend the northmost rib between two crossings; every area, rib, cell, rest and per-cell instance name is unchanged, the bent area's included, with no geom.cell_merged (geometry.md 8.4), and the lamp's edge is not reselected against a baseline that is present."
 milestone = 3
 actions   = ["program", "trust", "base", "bent", "again"]
 
 # The bent edge is ribs#y170's from [20, 170] to [70, 170]: the rib's vertex at x = 45 is lifted
-# 2 m (geometry.md 8.4). 3.6's Local guarantee lets the cells of the areas that edge bounds change,
-# and only those: the box [20, 120, 70, 180] is that area, edges excluded (conformance.md, names_kept),
-# so a neighbour's cell that only shares the line x = 20, x = 70 or y = 120 is still checked. The
-# per-cell instances are checked by origin with the same box. Junction and edge names are not written
-# to features.json (geometry.md 8.1): the lamp's selection not reselecting, against a baseline shown
-# present, is how an edge name is seen to hold.
+# 2 m (geometry.md 8.4). The bent area's north side still holds 2 cells: the cut at its station, 19 mm
+# before the vertex, reaches the far side the next segment sets (3.6 step 5), so no two cells merge
+# and every cell, rest and per-cell instance name holds, the bent area's too. Junction and edge names
+# are not written to features.json (geometry.md 8.1): the lamp's selection not reselecting, against a
+# baseline shown present, is how an edge name is seen to hold.
 
 [copy.grid]
 from = "spec/vectors/cells/grid"
@@ -42,18 +41,20 @@ second = "build/b/features.json"
 prefix = "grid#a"
 
 [action.bent.check.cells]
-fn            = "names_kept"
-first         = "build/a/features.json"
-second        = "build/b/features.json"
-prefix        = "plots#"
-except_within = [20, 120, 70, 180]
+fn     = "names_kept"
+first  = "build/a/features.json"
+second = "build/b/features.json"
+prefix = "plots#"
 
 [action.bent.check.homes]
-fn            = "names_kept"
-first         = "build/a/instances/names.txt"
-second        = "build/b/instances/names.txt"
-prefix        = "homes#"
-except_within = [20, 120, 70, 180]
+fn     = "names_kept"
+first  = "build/a/instances/names.txt"
+second = "build/b/instances/names.txt"
+prefix = "homes#"
+
+[action.bent.diag.merged]
+code    = "geom.cell_merged"
+records = 0
 
 [action.bent.check.ribs]
 fn     = "names_kept"

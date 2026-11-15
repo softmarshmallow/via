@@ -2420,6 +2420,34 @@ impl<'w> ModelPlan<'w> {
         v
     }
 
+    /// A scalar field's values in the full view of a generate step of layer rank `rank`
+    /// ([`View::StratumFull`], `authority.md` 4.4): every entry of rank `rank` or below in the
+    /// build's order, without what steps of that rank or above returned. Post order; `None` for a
+    /// weights field or one that does not resolve.
+    pub fn stratum_full_values(&self, field: &str, rank: i64) -> Option<Vec<f32>> {
+        let key = (format!("full {field}"), rank);
+        if let Some(v) = self
+            .stratum
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&key)
+        {
+            return v.clone();
+        }
+        let grid = self.grid?;
+        let t0 = std::time::Instant::now();
+        let fields = Fields::new(&self.p.decls, &self.p.placed, grid);
+        let v = fields
+            .get(field, View::StratumFull(rank))
+            .and_then(|r| r.scalar.as_ref().map(|s| s.values().to_vec()));
+        memo_spent(t0);
+        self.stratum
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(key, v.clone());
+        v
+    }
+
     /// The build in memory, for the command line's files and steps.
     pub fn build(&self) -> Build {
         self.whole().build.clone()

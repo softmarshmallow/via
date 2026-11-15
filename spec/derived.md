@@ -94,7 +94,9 @@ route     = "= 1 + 40 * slope('start')"          # 'start' is the ground before 
 ```
 
 1. **Cost.** The formula is evaluated at every post, with the names and head view of a `where`
-   (`formulas.md` 6.6). It must be above 0 everywhere: a value at or below 0 is `formula.range` at
+   (`formulas.md` 6.6). Every shape it reads, directly or through the base and rows of a field it
+   reads, is placed before it is evaluated: dependency order, never the order of ids (M3; case
+   d24). A shape that reads itself this way is `graph.cycle`. It must be above 0 everywhere: a value at or below 0 is `formula.range` at
    the first such post, since a course over free ground has no least.
 2. **Ends.** Each waypoint is joined to its nearest post: least squared distance in integer
    millimetres, ties to the lower post in post order.
@@ -220,7 +222,13 @@ checks  = ["terrain"]
   member is part of the lint's static key, so the lint runs again when the facts read change.
 - A generate step that read a stated fact and returned rows or features, which no lint step's
   `checks` names, is `authority.unchecked` (error, at its `when` line). The hint is a lint step with
-  `checks = ["<id>"]`.
+  `checks = ["<id>"]`. It is said by each build from the step's value (whether it ran, the facts it
+  read, whether it returned rows or features) and that build's lints, never kept with the step:
+  which lints check a step is in no key of the step, so adding one reuses the step and the error
+  goes (case d23, M3). It is the build's verdict, not a failure of the step's node: the step's
+  returns still join its layer and its readers still run, so their own errors are reported in the
+  same build (`diagnostics.md` 4: one run reports every independent error). The build has an
+  error, so it writes no outputs but `diagnostics.json` (`diagnostics.md` 4, Writing).
 - The lint reports each fact that does not hold with its own code `step.<id>.<name>`, subject the
   fact, a position, and in `data` what would hold instead (principle 8): the level the lake keeps,
   the course the water took.
@@ -275,6 +283,8 @@ incremental one. Cases live in `spec/cases/derived/<case>/`. Unless a row says o
 | d20 | `basin` (example); `--change move_haven` | build, then with the change | The step, the river's course and the lint ran again; the dress layer's own nodes that read nothing the step returned (its views placed by coordinate or on a stated fact the change leaves) did not. The rest of the dress layer reads the settled land, so it runs again. |
 | d21 | `height` `base = "= 2 * x + y"`; `derive.descend` from (4, 4) | build | (4, 4), (3, 3.5), (2, 3), (1, 2.5), (0, 2), `end` `edge`: the line crosses cell sides between posts (4.2). |
 | d22 | Flat cost, `starts_at` a point at (0.3, 0.2), a waypoint at (5, 1), `ends_at` one at (7.6, 6.7); then the same over `route = "= 1 + 0.25 * x"` | build | The course starts and ends at the written points and passes (5, 1); no turn of more than 90 degrees and no segment shorter than 0.5 m. |
+| d23 | d16, then d17's world (the same with the lint) on one store | build each | First `authority.unchecked`; then `step:make` reused and no `authority.unchecked` (M3). |
+| d24 | d08's ridge written as `dist('wall', 2) < 0.5` in `height`'s base, `wall` a path whose id sorts after the routed `course`; a change moving `wall` 1 m north | build, again warm, with the change, then without on one store | The course is in `features.json` each time: d08's three points, then round by (4, 0), then d08's again; no `diag.internal` (M3). |
 
 ## Changed from the spike
 

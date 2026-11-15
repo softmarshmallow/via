@@ -5,12 +5,13 @@
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:town/houses.py"]
-# No `ground = "pad"`: a pad from this layer changes `height`, which the streets step below reads,
-# and a step's view of a field a higher layer changes is owed by the model (`doc.not_yet`, M3
-# report). Until then the houses stand on the slope as it lies (`place.relief`, counted in
-# expect.toml). `setback` keeps each house clear of the street's verge (lib/town: keep_out to
-# half the width and 3 m, fading by 5 m), since a lot's frontage is the street's centre line.
-params  = { lots = "lots", setback = 7.5, assets = ["house_low", "house_wide"], streets = ["high_street", "kind:street", "quay"] }
+# `ground = "pad"` (lib/land) levels each house on its lot: a pad of this layer changes `height`,
+# which the streets step below reads in its own layer's view, where the pad is not (authority.md
+# 4.4). `setback` keeps each house clear of the street's verge (lib/town: keep_out to half the
+# width and 3 m, fading by 5 m), since a lot's frontage is the street's centre line. `max_cut`
+# and `grade` are lib/land `pad`'s own: a lot whose pad would move the land beside it by more
+# than the pad's `max_change` stays empty (lib/town/houses.py rule 6).
+params  = { lots = "lots", setback = 7.5, ground = "pad", max_cut = 3, grade = 0.3, assets = ["house_wide", "house_low"], streets = ["high_street", "kind:street", "quay"] }
 
 # The paint (lib/land/ground.md's rows), here so its street row reads the streets the step returns
 # below this layer.
@@ -21,13 +22,17 @@ role = "material"
 [field.ground.then.grass]
 paint = "grass"
 
-[field.ground.then.shore]                   # the harbour's bed and the deck
-paint = "gravel"
-mask  = "= max(1 - smoothstep(0, 1, f('height') - sea + 0.5), 1 - smoothstep(0, 1, dist('kind:waterfront', 12) - 8) * smoothstep(-1, 0, f('height') - quay + 0.2))"
-
 [field.ground.then.street]                  # the streets worn to earth: here, above the streets step
 paint = "earth"
 mask  = "= max(1 - smoothstep(4, 4.8, dist('kind:main_street', 8)), 1 - smoothstep(2.5, 3.3, dist('kind:street', 6)))"
+
+[field.ground.then.shore]                   # the harbour's bed and the deck: `order = 1` puts it
+                                            # after the street row (authority.md 4.1 orders rows by
+                                            # order, rank, then id, and `shore` < `street`), so the
+                                            # streets' earth stops at the deck
+order = 1
+paint = "gravel"
+mask  = "= max(1 - smoothstep(0, 1, f('height') - sea + 0.5), 1 - smoothstep(0, 1, dist('kind:waterfront', 12) - 8) * smoothstep(-1, 0, f('height') - quay + 0.2))"
 
 # ------------------------------------------------------------------------------------------ views
 # Where the build is judged: from eye height at every kind of meeting (R17). Each stands on the
@@ -40,16 +45,16 @@ mask  = "= max(1 - smoothstep(4, 4.8, dist('kind:main_street', 8)), 1 - smoothst
 at = [112, 18]
 
 [feature.look_up_d]
-at = [125, 82]
+at = [198, 84]
 
-[feature.look_crest]
-at = [168, 152]
+[feature.look_along]
+at = [162, 127]
 
 [feature.look_lots]
-at = [48, 86]
+at = [70, 64]
 
 [feature.look_west]
-at = [80, 74]
+at = [60, 99]
 
 [feature.way_water]                         # way and water: the main way's foot on the quay
 kind   = "bookmark"
@@ -58,22 +63,22 @@ toward = "look_harbour"
 
 [feature.street_quay]                       # street and waterfront: on the deck, up a street that ends on it
 kind   = "bookmark"
-at     = [129, 43]
+at     = [198, 42]
 toward = "look_up_d"
 
-[feature.street_street]                     # street and street: a cross street's T on a contour street
-kind   = "bookmark"
-on     = { of = "town", class = "junction", near = [145.2, 144.3] }
-toward = "look_crest"
+[feature.street_street]                     # street and street: a cross street's T on a contour street,
+kind   = "bookmark"                         # looking along the contour street past the T
+on     = { of = "town", class = "junction", near = [134.3, 142.4] }
+toward = "look_along"
 
-[feature.lot_street]                        # lot and street: from the low contour street to a lot's house
+[feature.lot_street]                        # lot and street: from a street down to the quay, to a lot's house
 kind   = "bookmark"
-at     = [44, 70]
+at     = [58.8, 80]
 toward = "look_lots"
 
 [feature.way_street]                        # way and street: the main way crossing the low contour street
 kind   = "bookmark"
-on     = { of = "town", class = "junction", near = [110.5, 70.6] }
+on     = { of = "town", class = "junction", near = [106, 100] }
 toward = "look_west"
 
 [feature.from_gate]                         # the town from the gate, above
@@ -81,3 +86,22 @@ kind       = "bookmark"
 at         = [140, 208]
 toward     = "quay_head"
 eye_height = 3
+
+# The quay wall: the deck's water side drops `wall` metres (lib/town, `waterfront`). One view on the
+# deck looks along the wall's top; one from the water, at a boat's eye, looks at its face.
+[feature.look_wall_east]
+at = [236, 37]
+
+[feature.look_wall_face]
+at = [104, 40]
+
+[feature.wall_deck]                         # on the deck, by its water edge, along the wall
+kind   = "bookmark"
+at     = [40, 40]
+toward = "look_wall_east"
+
+[feature.wall_face]                         # from the water, 13 m out: the ground there is the
+kind       = "bookmark"                     # harbour's bed, so the eye is raised to a metre over
+at         = [92, 25]                       # the water (`sea`)
+toward     = "look_wall_face"
+eye_height = 9

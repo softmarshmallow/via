@@ -1,0 +1,23 @@
+name       = "stratum"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["marks"]
+pack       = "pack.toml"
+
+[layer.top]
+file  = "layers/top.toml"
+owner = "top"
+rank  = 1
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.low]
+kind = "lift"
+at   = [4, 8]
+
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]

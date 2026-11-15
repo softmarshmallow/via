@@ -60,6 +60,8 @@ class Out:
 
     def feature(self, key, kind, at=None, path=None, region=None, **attrs):
         self.features[key] = (kind, path)
+        self.attrs = getattr(self, "attrs", {})
+        self.attrs[key] = attrs
 
     def instance(self, key, asset, at, face=None, **keys):
         self.instances.append((key, asset, at, face, keys))
@@ -192,6 +194,7 @@ class StreetsTest(unittest.TestCase):
         self.assertTrue(downs)
         for k, pts in downs.items():
             self.assertAlmostEqual(pts[-1][1], 60.0, places=3, msg=k)
+            self.assertGreater(S["_length"](pts), 1, k)        # none of no length (a street on the shore)
 
     def test_knoll_loops_once(self):
         # Round a knoll the contours close: each is one loop from its seed back to it, never a
@@ -208,6 +211,114 @@ class StreetsTest(unittest.TestCase):
             for a, b in zip(pts, pts[1:]):
                 angle += math.remainder(math.atan2(b[1] - 220, b[0] - 250) - math.atan2(a[1] - 220, a[0] - 250), 2 * math.pi)
             self.assertAlmostEqual(abs(angle), 2 * math.pi, delta=0.01)
+
+    def test_ends_on_the_outline_not_past_it(self):
+        # quay's walk: contour streets ran a step past the district into the fields (the network
+        # clips, but bed and paint read the whole path). An end outside the district lies on its
+        # outline, 5 mm past the crossing, so the clip still makes the junction.
+        step = run_streets(lambda x, y: 0.15 * y + 6 * math.sin(x / 70.0))
+        ends = 0
+        for k, (_, path) in step.out.features.items():
+            for end in (path[0], path[-1]):
+                q = (end[0] / 1000.0, end[1] / 1000.0)
+                if not S["inside"](DISTRICT, q):
+                    ends += 1
+                    edge = min(H["_seg_dist"](a, b, q) for a, b in zip(DISTRICT, DISTRICT[1:] + DISTRICT[:1]))
+                    self.assertLessEqual(edge, 0.0065, (k, q))
+        self.assertGreater(ends, 4)
+
+    def test_length_written(self):
+        # Every street carries `length`, its returned path's length in metres, for the bed's taper.
+        step = run_streets(lambda x, y: 0.15 * y)
+        for k, (_, path) in step.out.features.items():
+            self.assertAlmostEqual(step.out.attrs[k]["length"], S["_length"](metres(path)), places=3)
+
+    def test_contour_ends_on_a_way_beside_it_and_crosses_one_across(self):
+        # A main way along the contour at y = 145 east of x = 300: the contour street at y = 140
+        # ends on it instead of running beside it 5 m off. A main way down the fall at x = 200:
+        # the contour streets run across it (the network nodes the crossing).
+        fl = district()
+        fl["kind:main_street"] = feature_list([
+            ("beside", 1, [(300, 145), (440, 145)], "feature"),
+            ("down", 1, [(200, 60), (200, 380)], "feature")])
+        step = FakeStep({"district": "old_town", "origin": [250, 220]},
+                        height=lambda x, y: 0.15 * y, features=fl)
+        S["generate"](step)
+        low = metres(step.out.features["sm2"][1])
+        self.assertAlmostEqual(min(abs(p[1] - 140) for p in low), 0, delta=0.05)
+        east = max(low, key=lambda p: p[0])
+        self.assertLess(H["_seg_dist"]((300, 145), (440, 145), east), 0.001)
+        self.assertLess(east[0], 301)
+        for k in ("s0", "s1", "sm1"):
+            xs = [p[0] for p in metres(step.out.features[k][1])]
+            self.assertLess(min(xs), 190, k)
+            self.assertGreater(max(xs), 210, k)
+
+    def test_far_edge_edit_turns_no_seed_line(self):
+        # quay's `unrelated`: the district's east edge comes in 40 m on land whose fall turns from
+        # west to east. With `origin` written, the fall is read near the origin, so the seed line,
+        # and the contour streets' western halves, stay where they were. Without it, the
+        # district's mean gradient turns and every long street moves.
+        def h(x, y):
+            return 0.15 * y + 0.00025 * (x - 60) ** 2
+
+        def run(east, origin):
+            fl = district()
+            ring = [(60, 60), (east, 60), (east, 380), (60, 380)]
+            fl["old_town"] = feature_list([("old_town", 2, ring, "feature")])
+            params = {"district": "old_town", "spacing": 50}
+            if origin:
+                params["origin"] = [200, 220]
+            step = FakeStep(params, height=h, features=fl)
+            S["generate"](step)
+            return {k: metres(v[1]) for k, v in step.out.features.items() if k.startswith("s")}
+
+        def west_off(a, b):                         # metres a's points west of x = 300 lie off b's
+            return max((S["_dist_to"](b[k], p) if k in b else math.inf)
+                       for k in a for p in a[k] if p[0] < 300)
+
+        a, b = run(440, True), run(400, True)
+        self.assertTrue(a)
+        self.assertLess(west_off(a, b), 0.3)        # the thinning's tolerance, 0.25 m
+        self.assertGreater(west_off(*[run(e, False) for e in (440, 400)]), 1)
+
+    def test_down_street_beside_the_way_dropped(self):
+        # quay's doubled ends: a down street within spacing / 2 of the main way to the quay is not
+        # laid; the way goes down there already. Without the way one is laid there.
+        def run(ways):
+            fl = district()
+            fl["quay"] = feature_list([("quay", 1, [(40, 60), (480, 60)], "feature")])
+            if ways:
+                fl["kind:main_street"] = feature_list([("way", 1, [(290, 60), (290, 380)], "feature")])
+            step = FakeStep({"district": "old_town", "shore": "quay", "origin": [250, 250]},
+                            height=lambda x, y: 0.15 * y, features=fl)
+            S["generate"](step)
+            return {k: metres(v[1]) for k, v in step.out.features.items() if k.startswith("d")}
+        near = lambda downs: [k for k, p in downs.items() if min(abs(q[0] - 290) for q in p) < 20]  # noqa: E731
+        self.assertTrue(near(run(False)))
+        with_way = run(True)
+        self.assertTrue(with_way)
+        self.assertEqual(near(with_way), [])
+
+    def test_lowest_contour_leaves_two_lots_to_the_shore(self):
+        # quay's waterfront had no houses: the lowest contour lay 26 to 29 m above the shore and
+        # its 24 m lots took the band. With `lot_depth`, no long street comes nearer the shore than
+        # two lot depths; the streets down to the shore still reach it.
+        def run(**extra):
+            fl = district()
+            fl["quay"] = feature_list([("quay", 1, [(40, 60), (480, 60)], "feature")])
+            step = FakeStep(dict({"district": "old_town", "shore": "quay", "origin": [250, 220],
+                                  "spacing": 50}, **extra),
+                            height=lambda x, y: 0.15 * y, features=fl)
+            S["generate"](step)
+            return step.out.features
+        def nearest(out):
+            return min(p[1] - 60 for k, v in out.items() if k.startswith("s")
+                       for p in metres(v[1]) if S["inside"](DISTRICT, p))
+        self.assertLess(nearest(run()), 48)
+        out = run(lot_depth=24)
+        self.assertGreaterEqual(nearest(out), 48)
+        self.assertTrue(any(k.startswith("d") for k in out))
 
     def test_rerun_identical(self):
         h = lambda x, y: 0.15 * y + 4 * math.cos(x / 50.0)  # noqa: E731
@@ -230,7 +341,8 @@ class StreetsTest(unittest.TestCase):
 # --- houses -------------------------------------------------------------------------------------
 
 BOUNDS = {"house_narrow": [-2500, -4000, 0, 2500, 4000, 7000],
-          "house_low": [-4000, -3000, 0, 4000, 3000, 4000]}
+          "house_low": [-4000, -3000, 0, 4000, 3000, 4000],
+          "house_wide": [-6000, -4000, 0, 6000, 4000, 6000]}
 
 
 def pack_table(select):
@@ -243,11 +355,11 @@ class FakeHouses(FakeStep):
         return pack_table(select)
 
 
-def houses_step(cells, **params):
+def houses_step(cells, height=None, **params):
     fl = {"lots": feature_list(cells),
           "kind:main_street": feature_list([("streets#a", 1, [(0, 0), (100, 0)], "feature")]),
           "kind:street": feature_list([("streets#b", 1, [(0, 0), (0, 100)], "feature")])}
-    step = FakeHouses(dict({"lots": "lots"}, **params), features=fl)
+    step = FakeHouses(dict({"lots": "lots"}, **params), height=height, features=fl)
     step.id = "houses"
     H["generate"](step)
     return step
@@ -255,23 +367,23 @@ def houses_step(cells, **params):
 
 class HousesTest(unittest.TestCase):
     def test_faces_its_street(self):
-        # A lot 9 m along the east-west street at y = 0, 16 m deep, north of it: the house's front
-        # faces south (180), its front 1 m in from the frontage.
-        lot = [(20, 3), (29, 3), (29, 19), (20, 19)]
+        # A lot 8.6 m along the east-west street at y = 0, 16 m deep, north of it: the house's front
+        # faces south (180), its front 1 m in from the frontage. Only house_narrow fits 7.6 m.
+        lot = [(20, 3), (28.6, 3), (28.6, 19), (20, 19)]
         step = houses_step([("lots#cab12_3", 2, lot, "cell"), ("lots#bzz_0", 2, lot, "rest")])
         self.assertEqual(len(step.out.instances), 1)
         key, asset, at, face, keys = step.out.instances[0]
         self.assertEqual((key, asset, face), ("hab12_3", "house_narrow", 180.0))
-        self.assertEqual(at, (24500, 3000 + 1000 + 4000))
+        self.assertEqual(at, (24300, 3000 + 1000 + 4000))
         self.assertEqual(keys, {})
 
     def test_faces_the_nearer_street_and_ground(self):
         # A lot beside the north-south street at x = 0: the house faces west (270).
-        lot = [(3, 40), (19, 40), (19, 49), (3, 49)]
+        lot = [(3, 40), (19, 40), (19, 48.6), (3, 48.6)]
         step = houses_step([("lots#cq_0", 2, lot, "cell")], ground="pad")
         key, asset, at, face, keys = step.out.instances[0]
         self.assertEqual(face, 270.0)
-        self.assertEqual(at, (3000 + 1000 + 4000, 44500))
+        self.assertEqual(at, (3000 + 1000 + 4000, 44300))
         self.assertEqual(keys, {"ground": "pad"})
 
     def test_prefers_in_order_and_skips_small(self):
@@ -281,6 +393,34 @@ class HousesTest(unittest.TestCase):
         self.assertEqual([i[1] for i in step.out.instances], ["house_low"])
         self.assertEqual(step.said[0][:3], ("info", "small", "step.houses"))
         self.assertEqual(step.said[0][3]["count"], 1)
+
+    def test_largest_that_fits(self):
+        # quay never placed house_wide, written second: the largest footprint that fits is taken,
+        # whatever the order written. A 13 m lot takes house_wide (12 m), a 9 m lot house_low (8 m,
+        # larger than house_narrow), whichever is written first.
+        wide = [(20, 3), (33, 3), (33, 19), (20, 19)]
+        mid = [(40, 3), (49, 3), (49, 19), (40, 19)]
+        step = houses_step([("lots#cw_0", 2, wide, "cell"), ("lots#cm_0", 2, mid, "cell")],
+                           assets=["house_narrow", "house_low", "house_wide"])
+        self.assertEqual([i[1] for i in step.out.instances], ["house_wide", "house_low"])
+
+    def test_max_relief_skips_steep_lots_unless_padded(self):
+        # Until pads work above a step that reads the ground, a house on more relief than
+        # `max_relief` is left out (counted, `steep`); with `ground` the pad levels it and relief is
+        # not read. Land rises 0.5 a metre north from x = 40: the east lot spans 6 m of it.
+        h = lambda x, y: 0.0 if x < 40 else 0.5 * y  # noqa: E731
+        flat = [(20, 3), (28.6, 3), (28.6, 19), (20, 19)]
+        steep = [(50, 3), (58.6, 3), (58.6, 19), (50, 19)]
+        cells = [("lots#cf_0", 2, flat, "cell"), ("lots#cs_0", 2, steep, "cell")]
+        step = houses_step(cells, height=h, max_relief=1.5)
+        self.assertEqual([i[0] for i in step.out.instances], ["hf_0"])
+        self.assertEqual(step.evals, 1)                       # one batch for every house (R23)
+        info = [s for s in step.said if s[1] == "steep"]
+        self.assertEqual(info[0][3], {"count": 1, "lots": ["lots#cs_0"]})
+        step = houses_step(cells, height=h, max_relief=1.5, ground="pad")
+        self.assertEqual([i[0] for i in step.out.instances], ["hf_0", "hs_0"])
+        self.assertEqual(step.evals, 0)
+        self.assertTrue(all(i[4] == {"ground": "pad"} for i in step.out.instances))
 
     def test_clockwise_ring_and_closing_point(self):
         lot = [(20, 3), (20, 19), (29, 19), (29, 3), (20, 3)]

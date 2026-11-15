@@ -1,0 +1,13 @@
+name       = "plain_own_returns"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["marks"]
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[step.gen]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/gen.py"]

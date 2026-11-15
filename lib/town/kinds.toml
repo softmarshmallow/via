@@ -48,6 +48,20 @@
 # A street the step lays ends on another street or runs past the district's outline (cut there by
 # the network's `within`): never a dead end of its own making (TODO, "Dead ends tripled").
 #
+# The bed of both street kinds (ours, written for this library after quay's walk): level across to
+# `edge` (half the width and a metre) at the height smoothed along the way, cambered; past `edge`
+# the ground is held within a bank of `grade` (rise over run, 0.5: no steeper than 1:2) from the
+# bed's edge, so a cut of 3 m makes a bank 6 m wide and a cut of 0.3 m one of 0.6 m: the bank grows
+# with the cut instead of fading over a fixed width, which left 2 to 4 m walls at 40 to 50 degrees
+# on quay's contour streets. Where the ground already lies within the bank the mask is 0 (nothing
+# written). A cut deeper than `grade * (radius - edge)` meets the radius: `field.effect_cut` says so.
+# With `length` (metres, the path's own; the streets step writes it, 0 leaves it off), the bed fades
+# to the ground over its last metres (over the width, or three times the cut, whichever is longer,
+# so the fade along the way is no steeper than 1:2 either) and does nothing past its ends: no round
+# cap cut into the land beyond a street's end. A routed main way has no `length` an author can
+# write; the core naming a path's length in formulas is owed (lib/town TODO), so a main way's ends
+# keep the round cap, now with a 1:2 bank.
+#
 # Both street kinds keep trees off the bed and the verges (`role:keep_out`), as lib/ways' road does,
 # out past a crown's reach (2.5 m for primitive's `tree_oak`, plus half a metre). Like a road, the
 # bed reads the ground `k` metres along the way (`smoothed_along(k)`): keep a street `k` metres
@@ -56,16 +70,24 @@
 
 [kind.main_street]                          # a way between named places, through the town
 authority = "shaped"
-radius    = 18
+radius    = 24                              # a 1:2 bank from the edge (5 m) holds a cut of 9.5 m
 
 [kind.main_street.defaults]
 width  = 8                                  # metres, wall to wall of the carriageway
 camber = 0.02                               # fall from the crown to each edge, per metre
+grade  = 0.5                                # the bank past the bed's edge, rise over run (1:2)
+length = 0                                  # metres of path; above 0, the bed fades out at its ends
+
+[kind.main_street.let]
+edge  = "= width / 2 + 1"
+level = "= smoothed_along(40) - camber * min(d, edge)"
+bank  = "= grade * max(d - edge, 0)"
+ends  = "= if(length > 0, smoothstep(0, max(width, 3 * abs(v - level)), min(t, 1 - t) * length), 1)"
 
 [kind.main_street.effect.bed]               # cut and filled, smoothed along a long run, crowned
 field = "role:surface"
-value = "= smoothed_along(40) - camber * d"
-mask  = "= 1 - smoothstep(width / 2 + 1, width / 2 + 9, d)"
+value = "= clamp(v, level - bank, level + bank)"
+mask  = "= ends * if(abs(v - level) > bank, 1, 0)"
 
 [kind.main_street.effect.verge]
 field = "role:keep_out"
@@ -77,16 +99,24 @@ mask  = "= 1 - smoothstep(width / 2 + 3, width / 2 + 5, d)"
 # the bends a contour has.
 [kind.street]
 authority = "shaped"
-radius    = 12
+radius    = 20                              # a 1:2 bank from the edge (3.5 m) holds a cut of 8 m
 
 [kind.street.defaults]
 width  = 5                                  # metres
 camber = 0.02
+grade  = 0.5
+length = 0                                  # the streets step writes each street's own
+
+[kind.street.let]
+edge  = "= width / 2 + 1"
+level = "= smoothed_along(16) - camber * min(d, edge)"
+bank  = "= grade * max(d - edge, 0)"
+ends  = "= if(length > 0, smoothstep(0, max(width, 3 * abs(v - level)), min(t, 1 - t) * length), 1)"
 
 [kind.street.effect.bed]
 field = "role:surface"
-value = "= smoothed_along(16) - camber * d"
-mask  = "= 1 - smoothstep(width / 2 + 1, width / 2 + 6, d)"
+value = "= clamp(v, level - bank, level + bank)"
+mask  = "= ends * if(abs(v - level) > bank, 1, 0)"
 
 [kind.street.effect.verge]
 field = "role:keep_out"

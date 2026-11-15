@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "A plain generate step at the only layer returns a feature whose kind writes a field it is handed: its own return is no higher layer, so it runs and the build exits 0."
+milestone = 3
+actions   = ["program", "trust", "build"]
+
+# authority.md 4.4: a plain command is handed the build's fields; it is `doc.not_yet` only below
+# an entry of a higher layer that changes a field it is handed, and a step's own returns are not
+# a higher layer for it. `gen` (plain, rank 0, the only layer) returns `bump`, kind `lift` (adds 1
+# at (12, 8)).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.not_yet]
+code    = "doc.not_yet"
+records = 0
+
+[action.build.file.height_bump]
+path  = "build/w/fields/height.npy"
+post  = [12, 8]
+value = 1

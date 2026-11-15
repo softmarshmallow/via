@@ -1,0 +1,47 @@
+format    = "via-case-1"
+summary   = "A worker in the world file's layer reads height's full view; a pad of an instance in a layer above writes height: the step sees the rank-0 feature's entry and not the pad's, and runs."
+milestone = 3
+actions   = ["program", "trust", "build"]
+
+# authority.md 4.4: the full view of a step at layer L holds every entry from layers at or below
+# L, in the build's order, and nothing of a higher layer. `low` (rank 0, kind `lift`) adds 1 at
+# (4, 8); `hut`'s footprint (rank 1, kind `pad`) adds 10 at (12, 8). The step returns what it
+# read as its own field `seen` (protocol.md 5). Before M3 the read was `doc.not_yet`.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.not_yet]
+code    = "doc.not_yet"
+records = 0
+
+[action.build.file.seen_low]
+path  = "build/w/fields/gen#seen.npy"
+post  = [4, 8]
+value = 1
+
+[action.build.file.seen_pad]
+path  = "build/w/fields/gen#seen.npy"
+post  = [12, 8]
+value = 0
+
+[action.build.file.height_pad]
+path  = "build/w/fields/height.npy"
+post  = [12, 8]
+value = 10
+
+[action.build.file.height_low]
+path  = "build/w/fields/height.npy"
+post  = [4, 8]
+value = 1

@@ -1,0 +1,59 @@
+format    = "via-case-1"
+summary   = "An L corner of two frontages, 50 m (east) and 90 m (north) on a 90 x 50 m area, cell_length 11 m, band_depth 24 m: a station's cut stops at the corner's bisector (3.6 step 5), so the long side's last cells keep their depth: 12 cells, none merged."
+milestone = 3
+actions   = ["op"]
+
+# The area is [0, 0]-[90, 50]. East side (cross_ns, north from [90, 0], area on its left): 50 m, 4
+# cells, stations at y 12.5, 25 and 37.5. North side (cross_ew, east from [0, 50], area on its
+# right): 90 m, 8 cells, stations at x 11.25 k. The corner [90, 50] is a change of edge: its
+# bisector runs to [66, 26]. The east side's station at y 37.5 cuts west and stops at the bisector,
+# at [77.5, 37.5]; were it to run its full 24 m to x 66 it would split the north side's station-6
+# cell at y 37.5 and leave its lower part in `rest`.
+# Cells by (edge, side, station): the north side's edge sorts first (its ends [0, 50], [90, 50]
+# before [90, 0], [90, 50]), so 0 to 7 are the north side's, 8 to 11 the east side's.
+# North station 6 is [67.5, 78.75] along the side, bounded by the bisector y = x - 40: the
+# quadrilateral [67.5, 50], [78.75, 50], [78.75, 38.75], [67.5, 27.5], twice-area
+# 11.25 (22.5 + 11.25) = 379.6875 m2. East station 3 is the triangle [90, 37.5], [90, 50],
+# [77.5, 37.5], twice-area 12.5 * 12.5 = 156.25 m2. North station 0 is [0, 26]-[11.25, 50], whole:
+# twice-area 2 * 11.25 * 24 = 540 m2.
+
+[action.op]
+via         = ["kernel", "cells", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.merged]
+code    = "geom.cell_merged"
+subject = "cli"
+records = 0
+
+[action.op.check.n]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/cells"
+count   = 12
+
+[action.op.file.east_last_side]
+path    = "out.json"
+pointer = "/cells/11/frontage/source"
+value   = "cross_ns"
+
+[action.op.file.east_last_area]
+path    = "out.json"
+pointer = "/cells/11/twice_area"
+value   = 156250000
+
+[action.op.file.north_first_area]
+path    = "out.json"
+pointer = "/cells/0/twice_area"
+value   = 540000000
+
+[action.op.file.north_six_station]
+path    = "out.json"
+pointer = "/cells/6/station"
+value   = 6
+
+[action.op.file.north_six_area]
+path    = "out.json"
+pointer = "/cells/6/twice_area"
+value   = 379687500

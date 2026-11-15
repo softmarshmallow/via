@@ -1,3 +1,3 @@
-# Clear one generated house (R13): the lot holding [48, 82], on the low contour street, west.
+# Clear one generated house (R13): the lot holding [40, 89], below the low contour street, west.
 [clear.one]
-on = { of = "lots", class = "cell", near = [48, 82] }
+on = { of = "lots", class = "cell", near = [40, 89] }

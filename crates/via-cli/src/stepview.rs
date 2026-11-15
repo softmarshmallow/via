@@ -9,10 +9,11 @@
 //! **The view.** A lint or export step reads the finished build (view `build`). A generate step
 //! reads its stratum: what its layer and the layers below state. Features, instances and fields
 //! declared above its layer are left out of every selector and refused by name
-//! (`graph.read_outside`). Field values are the finished build's: where a statement above the
-//! step's layer changes a field the step reads, the stratum's values are not known yet (the
-//! model's per-layer view is owed) and the read is refused with `doc.not_yet`, never answered
-//! with the wrong values.
+//! (`graph.read_outside`). Field values are the finished build's, except where a statement above
+//! the step's layer changes a field the step reads: then a scalar field's full view is the
+//! model's stratum view (`authority.md` 4.4, the build's order filtered to the layer and below),
+//! and a read the model cannot give in the view (a weights field) is refused with
+//! `doc.not_yet`, never answered with the wrong values.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -956,7 +957,7 @@ impl<'a> View<'a> {
 
     fn field_inexact(&self, field: &str) -> bool {
         self.rank
-            .is_some_and(|own| field_inexact(self.world, self.build, field, own))
+            .is_some_and(|own| field_inexact(self.world, self.build, field, own, true))
     }
 
     /// The fields a formula reads, as checked in the view; none when it does not check.
@@ -1059,7 +1060,20 @@ impl<'a> View<'a> {
                 return Some(v);
             }
         }
+        if view == "full" && self.field_inexact(name) {
+            if let Some(v) = self.stratum_full(name) {
+                return Some(v);
+            }
+        }
         self.build.fields.get(name)?.values.clone()
+    }
+
+    /// A scalar field in the full view of this generate step's stratum (`authority.md` 4.4):
+    /// the build's order of entries, keeping those of its layer and below, without what steps
+    /// of its layer and above returned. `None` for a lint, a weights field, or no model.
+    fn stratum_full(&self, name: &str) -> Option<Vec<f32>> {
+        let rank = self.rank?;
+        self.stratum?.stratum_full_values(name, rank)
     }
 
     fn view_ok(&self, name: &str, view: &str) -> Result<(), Refusal> {
@@ -1075,7 +1089,7 @@ impl<'a> View<'a> {
                 "the head view of `{name}`, which a kind's effect writes, is owed by the model"
             )));
         }
-        if self.field_inexact(name) {
+        if self.field_inexact(name) && (view != "full" || self.stratum_full(name).is_none()) {
             return Err(self.not_yet(format!(
                 "`{name}` in the view of layer `{}`, which a statement of a higher layer changes, is owed by the model",
                 self.step.layer
@@ -1422,8 +1436,17 @@ impl<'a> View<'a> {
             world_seed: self.seed,
             feature: None,
         };
-        via_expr::evaluate(&program, &binding, &Reads { view: self }, &setup, domain)
-            .map_err(|f| expr_refusal(&f.error))
+        via_expr::evaluate(
+            &program,
+            &binding,
+            &Reads {
+                view: self,
+                which: view,
+            },
+            &setup,
+            domain,
+        )
+        .map_err(|f| expr_refusal(&f.error))
     }
 
     fn expr_eval(&self, p: &Value) -> Result<Value, Refusal> {
@@ -1870,7 +1893,8 @@ fn rank_of(world: &World, top: &str, name: &str) -> Option<i64> {
 
 /// The rank a thing has in a generate step's view (`protocol.md` 1, 3.3): its layer's, except that
 /// what a generate step returned is outside the stratum of every step of that layer, so it counts
-/// as one above it: a step of a higher layer sees it, a step of its own layer does not.
+/// as one above it: a step of a higher layer sees it, a step of its own layer does not. The rule
+/// is the resolver's (`Decls::step_returned`): only a step's `#` names count, not a scatter's.
 pub fn view_rank(world: &World, top: &str, name: &str) -> Option<i64> {
     let r = rank_of(world, top, name)?;
     Some(match name.split_once('#') {
@@ -1893,15 +1917,33 @@ pub fn maker_rank(world: &World, maker: &str) -> Option<i64> {
 /// Whether a statement above layer rank `own` writes this field, so the finished build's values
 /// of it are not that layer's stratum's: a feature or footprint above whose kind has an effect
 /// on it, or a `then` row a higher layer added.
-pub fn field_inexact(world: &World, build: &Build, field: &str, own: i64) -> bool {
+///
+/// `returns_above` says whether what a step returned counts one layer above its own (as
+/// [`view_rank`]): true for a worker's view, which leaves a step's returns out. A plain command is
+/// handed the build's fields whole, and its own returns are part of its layer there, so for it
+/// they are not a higher layer (`authority.md` 4.4).
+pub fn field_inexact(
+    world: &World,
+    build: &Build,
+    field: &str,
+    own: i64,
+    returns_above: bool,
+) -> bool {
+    let rank = |top: &str, n: &str| {
+        if returns_above {
+            view_rank(world, top, n)
+        } else {
+            rank_of(world, top, n)
+        }
+    };
     let above = |r: Option<i64>| r.is_some_and(|r| r > own);
     let kinds = effect_kinds(world, build, field);
     if build.features.iter().any(|(n, f)| {
-        f.kind.as_deref().is_some_and(|k| kinds.contains(k)) && above(rank_of(world, "feature", n))
+        f.kind.as_deref().is_some_and(|k| kinds.contains(k)) && above(rank("feature", n))
     }) || build
         .footprints
         .iter()
-        .any(|(n, f)| kinds.contains(f.kind.as_str()) && above(rank_of(world, "instance", n)))
+        .any(|(n, f)| kinds.contains(f.kind.as_str()) && above(rank("instance", n)))
     {
         return true;
     }
@@ -1920,7 +1962,8 @@ pub fn field_inexact(world: &World, build: &Build, field: &str, own: i64) -> boo
 /// Whether any field a plain command at layer rank `own` is handed is written from above it.
 pub fn stratum_inexact(world: &World, build: &Build, own: i64) -> bool {
     build.fields.keys().any(|f| {
-        world.rank("field", f).is_none_or(|r| r <= own) && field_inexact(world, build, f, own)
+        world.rank("field", f).is_none_or(|r| r <= own)
+            && field_inexact(world, build, f, own, false)
     })
 }
 
@@ -2091,6 +2134,9 @@ impl via_expr::Select for Sel<'_, '_> {
 /// Field values for the evaluator: at posts by index, between posts by `fields.md` 1.2.
 struct Reads<'v, 'a> {
     view: &'v View<'a>,
+    /// The view the call names (`full` or `head`): each field is read in it, as `build.field`
+    /// reads it.
+    which: &'v str,
 }
 
 impl via_expr::Reads for Reads<'_, '_> {
@@ -2106,6 +2152,7 @@ impl via_expr::Reads for Reads<'_, '_> {
             .fields
             .get(field)
             .and_then(|f| f.values.as_ref())
+            .and_then(|_| self.view.scalar_values(field, self.which))
         else {
             return Err(via_expr::ReadError::new(
                 codes::formula::SELECTOR,

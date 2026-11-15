@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "A worker reads height's full view and returns a feature whose kind writes height: its read never holds its own return, cold, so the layer pass and the final graph agree."
+milestone = 3
+actions   = ["program", "trust", "build"]
+
+# authority.md 4.4: the full view leaves out every entry of what a step at L or above returned,
+# the step's own returns included; graph.md 4: the layer pass and the final graph give a worker
+# the same answers. `gen` (rank 0) reads `height` (base 0) and returns `bump`, kind `lift` (adds 1
+# at (12, 8)). The finished `height` holds the bump; what the step read does not.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.build.file.seen_bump]
+path  = "build/w/fields/gen#seen.npy"
+post  = [12, 8]
+value = 0
+
+[action.build.file.height_bump]
+path  = "build/w/fields/height.npy"
+post  = [12, 8]
+value = 1

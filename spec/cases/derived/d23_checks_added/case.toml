@@ -1,0 +1,45 @@
+format    = "via-case-1"
+summary   = "d16, then the same world with a lint that checks `make`, on one store: make is reused and authority.unchecked is gone."
+milestone = 3
+
+actions   = ["program", "trust", "trust_checked", "unchecked", "checked"]
+
+# `world.toml` is d16's world; `checked.toml` is d17's, the same world with the lint `facts`
+# (`checks = ["make"]`). Both sit in one folder, so the second build reads the first's store.
+# Whether a lint checks a step is in no key of the step (derived.md 5), so the step is reused;
+# `authority.unchecked` is said from the build's lints, never replayed with the step.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.trust_checked]
+via  = ["trust", "checked.toml", "--yes"]
+exit = 0
+
+[action.unchecked]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.unchecked.diag.unchecked]
+code    = "authority.unchecked"
+subject = "step.make"
+
+[action.checked]
+via         = ["build", "checked.toml", "--out", "build/c"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/c"
+
+[action.checked.nodes]
+reused = ["step:make"]
+
+[action.checked.diag.none]
+code    = "authority.unchecked"
+records = 0

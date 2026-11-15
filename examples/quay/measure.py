@@ -1,11 +1,17 @@
 """Measures of a quay build, for expect.toml (R13's four obligations; R18's meetings).
 
-    python3 examples/quay/measure.py BUILD_DIR [--base BASE_DIR]
+    python3 examples/quay/measure.py BUILD_DIR [--base BASE_DIR] [--run FILE] [--check SECTION]
 
-Prints the measures as JSON. With --base, also what changed against the base build, by name:
+Prints the measures as JSON. With --check, compares them against expect.toml's rows under
+SECTION (`base`, `clear_one`, `pin_one`, `unrelated`, `move_hill`): prints each row and its
+measure, and exits 1 when one falls outside its band or names a measure not taken (Python 3.11+,
+for tomllib). With --base, also what changed against the base build, by name:
 blocks, lots and houses added and removed, and of those, the ones whose centre lies west of
 x = 200 m (`*_west`: far from the east-edge edit of `unrelated`). Reads only the build directory
-(spec/build.md): features.json, instances/names.txt and diagnostics.json. Standard library only.
+(spec/build.md): features.json, instances/names.txt and diagnostics.json, and with --run the file
+`via build --diagnostics FILE` wrote: run diagnostics (`identity.reselected` among them) are never
+in diagnostics.json (spec/build.md 11.1), so R13's obligation 3 is counted from that file.
+Standard library only.
 
 How each is taken (ours): a block is a feature of kind `block`, a lot of kind `lot`, a rest piece a
 region of the cells table with no kind; a house an instance named `houses#...`; a pin's instance
@@ -73,8 +79,18 @@ def measures(d):
     return m, c, set(names)
 
 
+def run_codes(path):
+    """Counts by code in a `--diagnostics FILE` document (diagnostics.md 7): its `diagnostics`
+    hold the world's records and the run's."""
+    doc = json.loads(Path(path).read_text())
+    return Counter(x["code"] for x in doc["diagnostics"])
+
+
 def main(argv):
     m, c, names = measures(argv[0])
+    if "--run" in argv:
+        rc = run_codes(argv[argv.index("--run") + 1])
+        m["identity.reselected"] = rc.get("identity.reselected", 0)
     if "--base" in argv:
         mb, cb, nb = measures(argv[argv.index("--base") + 1])
         for k in ("block", "lot", "rest", "street"):
@@ -85,8 +101,27 @@ def main(argv):
             m[f"{k}_removed_west"] = len(west(b - a, cb[k]))
         m["houses_added"] = len({n for n in names - nb if n.startswith("houses#")})
         m["houses_removed"] = len({n for n in nb - names if n.startswith("houses#")})
+        _, names_b, _, xs_b = load(argv[argv.index("--base") + 1])
+        xb = dict(zip(names_b, xs_b))
+        m["houses_removed_west"] = len({n for n in nb - names
+                                        if n.startswith("houses#") and xb[n] < 200})
         m["other_added"] = sorted(n for n in names - nb if not n.startswith("houses#"))
+    if "--check" in argv:
+        sys.exit(check(m, argv[argv.index("--check") + 1]))
     print(json.dumps(m, indent=1, sort_keys=True))
+
+
+def check(m, section):
+    import tomllib
+    rows = tomllib.loads((Path(__file__).parent / "expect.toml").read_text())[section]
+    bad = 0
+    for name, row in rows.items():
+        v = m.get(row["measure"])
+        lo, hi = row["band"]
+        ok = v is not None and lo <= v <= hi
+        bad += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} {section}.{name}: {row['measure']} = {v}, band [{lo}, {hi}]")
+    return 1 if bad else 0
 
 
 if __name__ == "__main__":

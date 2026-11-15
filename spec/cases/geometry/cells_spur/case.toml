@@ -1,0 +1,59 @@
+format    = "via-case-1"
+summary   = "A 50 m square with a 30 m dead-end line up from its south side, the line's two sides in the frontage (3.6 step 1): cell_length 10 m, band_depth 5 m: 19 cells on the square's outline and 3 on each side of the line, none merged; the rest is the inner square less the line's band."
+milestone = 3
+actions   = ["op"]
+
+# The square is one edge, a loop from the junction [25, 0] where the line meets it; the line is
+# the area's spur. The walk goes east from the junction, round the square, back to the junction,
+# up the line's west side (its left), round its tip and down its east side. Stretches: 25, 50, 50,
+# 50 and 25 m on the square (2 + 5 + 5 + 5 + 2 cells) and 30 m on each side of the line (3 cells
+# each): 25 cells. The band is 5 m deep along the square and 5 m each side of the line up to its
+# tip, butt-capped there, so the rest is the square [5, 5]-[45, 45] less [20, 5]-[30, 30].
+
+[action.op]
+via         = ["kernel", "cells", "--in", "in.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.op.diag.merged]
+code    = "geom.cell_merged"
+subject = "cli"
+records = 0
+
+[action.op.check.n]
+fn      = "json_count"
+path    = "out.json"
+pointer = "/cells"
+count   = 25
+
+[action.op.file.rest]
+path    = "out.json"
+pointer = "/rest"
+value   = [[[[5000, 5000], [20000, 5000], [20000, 30000], [30000, 30000], [30000, 5000], [45000, 5000], [45000, 45000], [5000, 45000]]]]
+
+# The line's west side is its left (it runs north from [25, 0]). Its first west cell is
+# [25, 0]-[25, 10]-[20, 10]-[20, 5] (the junction's corner bisector cuts [20, 0]-[25, 0]-[20, 5]
+# off); its representative point (3.2, 0.5 m posts) is 2.5 m from both long sides at x 22.5, and
+# the lowest such post clear of the bisector (x + y >= 25 + 2.5 sqrt 2) and the top is y 6.5.
+# The east cell mirrors it at x 27.5. Cells are listed by (edge, side, station): 19 is the left
+# side's station 0, 22 the right side's.
+
+[action.op.file.west_side]
+path    = "out.json"
+pointer = "/cells/19/frontage/side"
+value   = "left"
+
+[action.op.file.west_point]
+path    = "out.json"
+pointer = "/cells/19/point"
+value   = [22500, 6500]
+
+[action.op.file.east_side]
+path    = "out.json"
+pointer = "/cells/22/frontage/side"
+value   = "right"
+
+[action.op.file.east_point]
+path    = "out.json"
+pointer = "/cells/22/point"
+value   = [27500, 6500]

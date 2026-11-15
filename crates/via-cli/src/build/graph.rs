@@ -489,6 +489,33 @@ impl<'a> CliPlan<'a> {
             .collect()
     }
 
+    /// `authority.unchecked` (`derived.md` 5) for each generate step that ran (or used its
+    /// committed result), read a stated fact, returned rows or features, and is checked by no
+    /// lint of this build. Said from each step's settled value after the run, never kept with the
+    /// step's trace: adding or removing a `checks` lint changes no key of the step, so a
+    /// diagnostic stored with the step would replay stale (TODO, "From building quay").
+    pub fn unchecked_diags(&self, value: &dyn Fn(&NodeId) -> Option<Vec<u8>>) -> Vec<Diag> {
+        let mut out = Vec::new();
+        for l in &self.ctx.lints {
+            if l.decl.when != "generate" || self.checked.contains(&l.decl.id) {
+                continue;
+            }
+            let Some(bytes) = value(&NodeId::of("step", &l.decl.id)) else {
+                continue;
+            };
+            let Ok(j) = parse(std::str::from_utf8(&bytes).unwrap_or("")) else {
+                continue;
+            };
+            let ran = matches!(j.get("ran"), Some(J::Bool(true)));
+            let returns = matches!(j.get("returns"), Some(J::Bool(true)));
+            let facts = step_facts(&bytes).unwrap_or_default();
+            if ran && returns && !facts.is_empty() {
+                out.push(unchecked(&l.decl.id, &facts));
+            }
+        }
+        out
+    }
+
     /// Every world record of the build, finished: the reading stage's, the nodes' (each once),
     /// and the command line's own.
     pub fn world_records(&self, node_diags: &[Diag]) -> Vec<Record> {
@@ -1224,10 +1251,8 @@ impl<'a> CliPlan<'a> {
             }
         }
         let _ = unjoined;
-        // `derived.md` 5, over the items: the union of the facts they read.
-        if returns && !facts.is_empty() && !self.checked.contains(&sid) {
-            diags.push(unchecked(&sid, &facts.iter().cloned().collect::<Vec<_>>()));
-        }
+        // `derived.md` 5, over the items (the union of the facts they read), is said after the
+        // run from this value's `facts` and `returns` ([`CliPlan::unchecked_diags`]).
         if inputs.all().is_empty() {
             let kind = def
                 .params
@@ -1260,6 +1285,7 @@ impl<'a> CliPlan<'a> {
                     ("facts", J::strs(facts.iter().map(String::as_str))),
                     ("files", J::Arr(Vec::new())),
                     ("ran", J::Bool(ran)),
+                    ("returns", J::Bool(returns)),
                 ])
                 .file(),
             ),
@@ -1418,7 +1444,7 @@ impl<'a> CliPlan<'a> {
             None
         };
         let from_gen = committed.as_ref().is_some_and(|r| r.complete);
-        let mut r = match committed {
+        let r = match committed {
             Some(r) => r,
             None => steps::run_step(
                 &l.decl,
@@ -1435,17 +1461,9 @@ impl<'a> CliPlan<'a> {
                 skipped: true,
             };
         }
-        // `derived.md` 5: a generate step that read a stated fact and returned rows or features,
-        // which no lint checks.
-        if l.decl.when == "generate"
-            && item.is_none()
-            && (r.ran || from_gen)
-            && !r.facts.is_empty()
-            && r.rows_or_features
-            && !self.checked.contains(&sid)
-        {
-            r.diags.push(unchecked(&sid, &r.facts));
-        }
+        // `derived.md` 5 (`authority.unchecked`) is said after the run, from the step's value
+        // ([`CliPlan::unchecked_diags`]): whether a lint checks the step is in no key of the
+        // step, so a diagnostic kept with its trace would replay after a lint was added.
         // The returned document is kept in the store, so the build joins it to the step's layer
         // from the step's value (`protocol.md` 5, Its layer).
         if let Some(d) = &r.document {

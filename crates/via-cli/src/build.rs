@@ -121,6 +121,35 @@ pub struct Outcome {
     pub out: Option<PathBuf>,
 }
 
+/// `diag.internal` when a worker node (`checked`: a worker, not re-run on request) gave the final
+/// graph another value than its layer's pass gave: what joined its layer is the first value
+/// (`graph.md` 4). Either the worker answers differently to the same reads, or the two graphs
+/// asked it different things, which a stratum forbids; the record names both.
+fn worker_drift<V: PartialEq>(
+    id: &str,
+    now: Option<&V>,
+    first: Option<&V>,
+    checked: bool,
+) -> Option<Diag> {
+    let (Some(now), Some(first)) = (now, first) else {
+        return None;
+    };
+    if !checked || now == first {
+        return None;
+    }
+    let message = format!(
+        "`{id}` gave another value in the final graph than in its layer's pass: the value of its layer's pass is the one that joined"
+    );
+    Some(
+        run_diag(
+            codes::diag::INTERNAL,
+            message.clone(),
+            "if the worker's code gives the same answers to the same reads, this is a defect of ours: report it with the world that gives it; otherwise make the worker deterministic",
+        )
+        .with("message", message),
+    )
+}
+
 fn run_diag(code: via_diag::Code, message: String, hint: &'static str) -> Diag {
     Diag::new(
         code,
@@ -1017,17 +1046,38 @@ pub fn run(a: &Args) -> Outcome {
     run_diags.extend(plan.stop_workers());
     // A generate step that ran in the layer-by-layer pass above is reused here: the report says
     // it ran, once, as it did in this build.
+    // A worker that the final graph ran again and that gave another value is a defect: what joined
+    // its layer is the first value, so the build would show the one beside the other's
+    // diagnostics. Its answers differ between the two graphs, which a stratum forbids
+    // (`graph.md` 4); said, never passed (TODO, "From building quay").
     for (id, o) in pre_nodes {
         if let Some(n) = run.nodes.get_mut(&id) {
             if n.status == via_graph::Status::Reused && n.key == o.key {
                 *n = o;
+            } else if let Some(d) = worker_drift(
+                &id.to_string(),
+                n.value.as_ref(),
+                o.value.as_ref(),
+                !a.rerun.contains(&graph::split_step(&id).0)
+                    && plan
+                        .ctx
+                        .lints
+                        .iter()
+                        .any(|l| l.decl.worker && l.decl.id == graph::split_step(&id).0),
+            ) {
+                run_diags.push(d);
             }
         }
     }
     run_diags.extend(run.run_diags.iter().cloned());
     run_diags.extend(store.take_run_diags());
     // Every record, finished once.
-    let node_diags = via_model::dedupe(run.world_diags.clone());
+    let mut node_diags = run.world_diags.clone();
+    node_diags.extend(plan.unchecked_diags(&|n| {
+        run.value(n, &store, &plan)
+            .map(|v| v.bytes.as_ref().clone())
+    }));
+    let node_diags = via_model::dedupe(node_diags);
     let world_records = plan.world_records(&node_diags);
     let lints = plan.lints(&|n| run.nodes.get(n).map(|o| (o.status, o.value)));
     let mut all = world_records;
@@ -1378,4 +1428,24 @@ fn null_build(
         }
     }
     Some((diags, lints, restored))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::worker_drift;
+
+    #[test]
+    fn worker_drift_fires_only_on_a_checked_differing_value() {
+        let (a, b) = (vec![1u8], vec![2u8]);
+        let d = worker_drift("gen#0", Some(&a), Some(&b), true).expect("a differing value");
+        assert_eq!(
+            d.code(),
+            &via_diag::DiagCode::Core(via_diag::codes::diag::INTERNAL)
+        );
+        let hint = d.hint().as_str();
+        assert!(hint.contains("deterministic") && hint.contains("defect of ours"));
+        assert!(worker_drift("gen#0", Some(&a), Some(&a), true).is_none());
+        assert!(worker_drift("gen#0", Some(&a), Some(&b), false).is_none());
+        assert!(worker_drift("gen#0", None, Some(&b), true).is_none());
+    }
 }

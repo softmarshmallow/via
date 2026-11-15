@@ -1,5 +1,5 @@
-# A pin inside a cell (R13): a shed on the lot holding [48, 82]. It removes the house whose
+# A pin inside a cell (R13): a shed on the lot holding [40, 89]. It removes the house whose
 # footprint it overlaps (identity.md 4.2).
 [pin.shed]
 asset = "shed_gable"
-at    = [48, 82]
+at    = [40, 89]
