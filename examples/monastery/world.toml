@@ -105,8 +105,9 @@ deck_z    = 51.3
 freeboard = 12                              # the water under the deck lies at the stream's level
 
 # The road: what it connects, by name (where it enters at the south edge, the bridge's start), and
-# the six places it turns (`path`, typed points: a path's waypoints take coordinates, not names);
-# the course between them is found over the land (R16, derived.md 3). The vocabulary cannot say
+# the six places it turns, by name (`turn_1` to `turn_6`, way points by name, derived.md 3); the
+# course between them is found over the land (R16). A view or a change names a turn, never its
+# coordinates. The vocabulary cannot say
 # "climb from here to there at no more than 10 %": a route's cost is per post, the same whichever
 # way the course crosses it, so it cannot tell a climb across the slope from one straight up it (a
 # direction-aware cost is owed). The author places the turns so each leg climbs at about 6 %, and
@@ -121,12 +122,30 @@ freeboard = 12                              # the water under the deck lies at t
 [feature.road_entry]
 at = [292, 0]
 
+[feature.turn_1]                            # west of the entry, low on the slope
+at = [228, 12]
+
+[feature.turn_2]                            # each turn after it 30 m higher up the slope, east then west
+at = [300, 44]
+
+[feature.turn_3]
+at = [228, 74]
+
+[feature.turn_4]
+at = [300, 104]
+
+[feature.turn_5]
+at = [228, 134]
+
+[feature.turn_6]
+at = [300, 164]
+
 [feature.road_up]
 kind      = "road"
 width     = 4
 starts_at = "road_entry"
 ends_at   = "bridge.start"
-path      = [[228, 12], [240, 26], [300, 44], [228, 74], [300, 104], [228, 134], [300, 164]]
+path      = ["turn_1", [240, 26], "turn_2", "turn_3", "turn_4", "turn_5", "turn_6"]
 route     = "= 1 + 0.02 * pow(slope('height'), 2) + 40 * (1 - smoothstep(3, 8, min(min(x, 320 - x), min(y, 320 - y))))"
 smooth    = true
 

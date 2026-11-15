@@ -1,0 +1,82 @@
+format    = "via-case-1"
+summary   = "rules.md 5.1 and 11: spacing = 3, ends = both on a 30 m stretch: 11 members, at 10000 to 40000 mm every 3000."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+
+[action.build.check.r0]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r0"
+at = [10, 116]
+
+[action.build.check.r1]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r1"
+at = [13, 116]
+
+[action.build.check.r2]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r2"
+at = [16, 116]
+
+[action.build.check.r3]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r3"
+at = [19, 116]
+
+[action.build.check.r4]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r4"
+at = [22, 116]
+
+[action.build.check.r5]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r5"
+at = [25, 116]
+
+[action.build.check.r6]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r6"
+at = [28, 116]
+
+[action.build.check.r7]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r7"
+at = [31, 116]
+
+[action.build.check.r8]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r8"
+at = [34, 116]
+
+[action.build.check.r9]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r9"
+at = [37, 116]
+
+[action.build.check.r10]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r10"
+at = [40, 116]
+
+[action.build.check.eleven]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r11"
+at = [43, 116]
+absent = true

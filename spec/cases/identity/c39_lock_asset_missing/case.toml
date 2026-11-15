@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "identity.md 39: a recorded item's asset unbound from the pack: identity.lock_asset_missing, exit 1."
+milestone = 3
+pending   = "owed: `[lock]` is still `doc.not_yet` and `via lock` is not written (identity.md 4.4, TODO M4 core); the world, its record and the actions are written with the lock code"
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.lock_asset_missing]
+code = "identity.lock_asset_missing"

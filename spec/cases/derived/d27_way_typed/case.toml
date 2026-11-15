@@ -1,0 +1,58 @@
+format    = "via-case-1"
+summary   = "derived.md 3, way points by name on a typed path: the names give their points in order; a way point is passed, not met (no meeting record); moving a named point moves the path, its cause the point."
+milestone = 4
+actions   = ["base", "east"]
+
+# Features sort by name: `a` 0, `b` 1, `lane` 2. The change report lists `a` then `lane`.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.check.lane]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "lane"
+start       = [1, 1]
+end         = [7, 2]
+passes      = [[4, 4]]
+min_segment = 0.5
+
+[action.base.check.lane_points]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/2/points"
+count   = 3
+
+[action.base.file.no_meetings]
+path    = "build/w/meets.json"
+pointer = "/meets"
+value   = []
+
+[action.east]
+via         = ["build", "world.toml", "--change", "east", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.east.check.lane]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "lane"
+start       = [2, 1]
+end         = [7, 2]
+passes      = [[4, 4]]
+min_segment = 0.5
+
+[action.east.check.lane_points]
+fn      = "json_count"
+path    = "build/w/features.json"
+pointer = "/features/2/points"
+count   = 3
+
+[action.east.file.lane_cause]
+path     = "build/w/changes.json"
+pointer  = "/entries/1"
+includes = { name = "lane", what = ["moved"] }

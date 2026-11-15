@@ -1095,7 +1095,11 @@ impl StepWorld for Mapper<'_> {
                 }
             }
         }
-        if let Some((producer, _)) = written.split_once('#') {
+        if let Some((head, _)) = written.split_once('#') {
+            // `instance.<producer>#<key>`, as a hand instance is written, names the same produced
+            // instance as the bare `<producer>#<key>` (a run's member, a scatter's tree).
+            let cut = head.find('.').map_or(0, |k| k + 1);
+            let (producer, written) = (&head[cut..], &written[cut..]);
             let (top, _) = self.world.find(producer)?;
             return Some(Mapped {
                 subject: Subject::entity(top, producer),

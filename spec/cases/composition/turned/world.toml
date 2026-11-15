@@ -1,0 +1,23 @@
+name       = "turned"
+extent     = [0, 0, 32, 32]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.a]
+file = "a/world.toml"
+at   = [20, 20]
+face = 90
+
+[feature.o]
+at = [10, 16]
+
+[feature.p]
+kind      = "way"
+path      = []
+starts_at = "o"
+ends_at   = "a.spot"

@@ -72,18 +72,17 @@ engines/godot/sheet.sh --before build/example --after build/example+third_cottag
 | `winter` | inline, world.toml | Snow paint; the treeline at 40 m takes 220 of 273 trees; no step runs again. |
 
 Numbers (protocol in expect.toml; one build each): cold base 6.9 s, each change 5.9 to 7.0 s.
-Base: 680 instances, 0 errors, 0 warnings, reach 24 of 24 pairs (every door, the row's over the
+Base: 686 instances (2026-11-16, with the run and set), 0 errors, 0 warnings, reach 24 of 24 pairs (every door, the row's over the
 bridge, every view and the crag's top; the tarn's point sealed), deck 0 wet posts.
 
 ## Gaps: what the vocabulary cannot say yet here
 
 Written down, not worked around in the core:
 
-1. **`run` and `set` are read only from M3** (`doc.not_yet`, crates/via-doc schema). The spike's
-   row of houses (`kitrun`), its lamps and stalls (`run`) and its well with a bench (`set`) would
-   be `[run.east_row]`, `[run.lamps]`, `[run.stalls]` and `[set.well_corner.item.*]` with
-   `[instance.square] set = "well_corner"`. The row is written house by house (`row_1` to
-   `row_4`, each `on` the lane), the well alone; lamps, stalls and the bench are left out.
+1. **(Done, 2026-11-16) `run` and `set`.** The row is `[run.east_row]` (four `house_row`, each
+   `east_row#r<k>` with its pad), lane_east's lamps `[run.lamps]`, the green's stalls
+   `[run.stalls]`, and the well with its bench `[set.well_corner]`, placed by `[instance.square]`
+   (items `square.well`, `square.bench`). The spike's `kitrun` fit check is not written (rules.md 10).
 2. **A change file cannot hold a hand edit that speaks to a producer above `world`.** An entity
    a change file adds is declared in layer `world` (documents.md 6), so `[pin.shed] by =
    ["orchard_trees"]` in a change file is `doc.upward_ref`. documents.md leaves "which layer a
@@ -113,10 +112,11 @@ Read from the sheets at every view (scratch renders, not committed):
   bridgehead's 1:2 bank: the lanes now reach the deck at 1:10 (`approach`; steepest metre of the
   last 20 m 0.49 to 0.10). The lane's own cut-only bed still sags 0.47 m below the deck 7 m back.
 - `east_row_view`: the four row houses stand in a line, doors to the lane, gables a metre or two
-  apart: a row by hand, not a terrace (houses.py's rows stand wall to wall).
+  apart: one run of four, not a terrace (houses.py's rows stand wall to wall). Lamps along the
+  lane's far side since 2026-11-16 (not yet seen at eye height).
 - `under_crag`: the crag reads as a grey wall with a flat top, the cliff kind's scarp.
 - `on_green`: the green is a level court but painted grass like the field round it, with a grey
-  smear along its north side not yet traced; nothing on it but the well (the stalls are a `run`).
+  smear along its north side not yet traced; the well and its bench (a set) and four stand-in stalls (a run) since 2026-11-16, not yet seen at eye height.
 - `fields`: from east of the farm the barley's earth is a thin brown band beyond the grass; the
   plots lie lower than the lane and the view sees little of them.
 - `winter`: snow everywhere but the water and the lanes; no snow on roofs or trees (the loader

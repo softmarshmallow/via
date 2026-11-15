@@ -1,0 +1,15 @@
+name       = "derived"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[feature.a]
+at = [1, 1]
+
+[feature.b]
+path = [[7, 6], [7, 2]]
+
+[feature.lane]                              # typed: no route; a name, a point, a path's end
+path = ["a", [4, 4], "b.end"]
+
+[change.east.feature.a]
+at = [2, 1]

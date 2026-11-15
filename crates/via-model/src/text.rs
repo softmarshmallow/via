@@ -170,6 +170,22 @@ pub fn points(v: &Value) -> Option<Result<Vec<(i64, i64)>, NumError>> {
     Some(Ok(out))
 }
 
+/// A path's way points (`derived.md` 3): each a point in millimetres or a name.
+pub fn ways(v: &Value) -> Option<Result<Vec<crate::decl::WayDecl>, NumError>> {
+    let Value::List(xs) = v else { return None };
+    let mut out = Vec::with_capacity(xs.len());
+    for x in xs {
+        match &x.value {
+            Value::Str(s) => out.push(crate::decl::WayDecl::Name(s.text.clone())),
+            v => match point(v)? {
+                Ok(p) => out.push(crate::decl::WayDecl::At(p)),
+                Err(e) => return Some(Err(e)),
+            },
+        }
+    }
+    Some(Ok(out))
+}
+
 /// A list of strings.
 pub fn strings(v: &Value) -> Option<Vec<String>> {
     let Value::List(xs) = v else { return None };

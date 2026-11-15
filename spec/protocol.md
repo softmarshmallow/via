@@ -95,7 +95,7 @@ file; a worker receives it as the params of `step.call`. Its members:
 | `when` | As declared. |
 | `for_each_item` | Under `for_each`, the selected item's name; otherwise `null`. |
 | `params` | The declared `params` as JSON (2.1). |
-| `grid` | `extent_mm` (4 integers), `resolution_mm`, `nx`, `ny` (`numbers.md` section 4). The world frame's grid; a step in another frame is (open), decided with imports in M4. |
+| `grid` | `extent_mm` (4 integers), `resolution_mm`, `nx`, `ny` (`numbers.md` section 4). The world frame's grid; a step runs in the frame of the world that declares it, an import's step in the import's (`composition.md` 3). |
 | `seed` | `stream(world seed, ["step", <id>])`, or `stream(world seed, ["step", <id>, <item>])` under `for_each` (`numbers.md` 7.2), as 16 lower-case hexadecimal digits. A test vector for each form is owed to `numbers.md` 10. |
 | `out` | An absolute path to an empty folder the step writes into. |
 | `objects` | An absolute path to the store's folder of objects (`graph.md` 3.2), where blobs live (section 4). |
@@ -956,7 +956,6 @@ by code, severity, subject, location and `data`.
 | Windows behaviour (Job Object, binary stdio, mapping, no-replace move). | Hosted runners, once a push is allowed (plan, "Comes back to you later"). |
 | Waivers for lint findings (`diagnostics.md`, Severity). | The first library lint whose finding a world must accept at one place; M3. |
 | A fresh process per call. | The first case where carried state matters. |
-| A step in a frame other than the world's. | Imports, M4. |
 
 ## Owed by other chapters
 

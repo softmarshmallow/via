@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "Two places a and b and a parent path from a.quay.end to b.landing.start; b moved 4 m east: the path's ends follow, nothing inside either import ran, placed:b ran."
+milestone = 4
+actions   = ["first", "move", "moved"]
+
+# a's quay ends at (8, 4) in a, so (8, 8) in the parent; b's landing starts at (0, 4) in b, so
+# (40, 8), then (44, 8). Both imports hold the parent's height, so no seam.
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.first.check.ends]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "link"
+start       = [8, 8]
+end         = [40, 8]
+min_segment = 0.001
+
+[action.move]
+replace = "world.toml"
+find    = "at   = [40, 4]"
+with    = "at   = [44, 4]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.moved.nodes]
+ran_includes = ["placed:b"]
+reused       = ["import:a", "import:b"]
+not_ran      = ["a.shape:quay/v:build", "b.shape:landing/v:build"]
+
+[action.moved.check.ends]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "link"
+start       = [8, 8]
+end         = [44, 8]
+min_segment = 0.001

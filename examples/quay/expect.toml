@@ -29,6 +29,14 @@
 # 102 -> 110, lot_added 66 -> 70, houses_removed 96 -> 84, identity.reselected 1 -> 2; unrelated
 # lot_removed 3 -> 4, houses_removed_west 1 -> 0.
 
+# M4 slice 1 (names): `names.rs` gives a cut its roles by travel, so 18 more of base's 136 lots
+# keep their names across move_hill (44 kept against 26; every kept lot's outline is byte-identical
+# in base and change: the review on foot, 2026-11-16). Only move_hill's three name-diff rows moved:
+# lot_removed 110 -> 92, lot_added 70 -> 52, houses_removed 84 -> 67. Same protocol, release `via`
+# of the working tree after 7056fc3 with the M4 slice 1 diff, 2026-11-16, one fresh store, one
+# build each, other agents building at the same time; the review on foot measured the same three
+# numbers on its own build.
+
 # ------------------------------------------------------------------------------------------ base
 
 [base.blocks]                               # areas of `town`: the streets, the main way and the quay
@@ -169,11 +177,11 @@ band    = [2, 2]                            # streets `d175` and `x0_140` are no
 
 [move_hill.lots_resettled]                  # the contours move, so the lots between them do
 measure = "lot_removed"
-band    = [110, 110]
+band    = [92, 92]
 
 [move_hill.lots_new]                        # 63 before the s4 town pass: `d105`, a street down
 measure = "lot_added"                       # from s0 that crosses the main way, now ends on the
-band    = [70, 70]                          # way (streets.py step 6) instead of being dropped
+band    = [52, 52]                          # way (streets.py step 6) instead of being dropped
 
 [move_hill.street_down_to_way]              # that street
 measure = "street_added"
@@ -181,7 +189,7 @@ band    = [1, 1]
 
 [move_hill.houses_moved_out]                # of base's 125 (92 before the s4 town pass)
 measure = "houses_removed"
-band    = [84, 84]
+band    = [67, 67]
 
 [move_hill.views_reselected]                # `way_street` follows its junction 14.3 m and says so;
 measure = "identity.reselected"             # since slice 5 two views resolve to one new block

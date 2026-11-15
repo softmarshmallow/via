@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "identity.md 37: the scatter thinned under a lock: the record kept whole, identity.lock_differs with counts; the ground raised under it: identity.lock_ground_moved."
+milestone = 3
+pending   = "owed: `[lock]` is still `doc.not_yet` and `via lock` is not written (identity.md 4.4, TODO M4 core); the world, its record and the actions are written with the lock code"
+actions   = ["thin", "raise"]
+
+[action.thin]
+via         = ["build", "world.toml", "--change", "thin", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.thin.diag.lock_differs]
+code = "identity.lock_differs"
+
+[action.raise]
+via         = ["build", "world.toml", "--change", "raise", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.raise.diag.lock_ground_moved]
+code = "identity.lock_ground_moved"

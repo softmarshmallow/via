@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A parent field probe with base = a.height reads the import's height 3 inside its footprint and 0 outside."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.inside]
+path  = "build/w/fields/probe.npy"
+post  = [12, 4]
+value = 3
+
+[action.build.file.outside]
+path  = "build/w/fields/probe.npy"
+post  = [2, 4]
+value = 0

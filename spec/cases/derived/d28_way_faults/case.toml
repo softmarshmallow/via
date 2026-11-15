@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "derived.md 3, way points by name: a region named in `path` is geom.meet_shape, a name of nothing identity.unknown_place with the nearest name, a produced name identity.key_in_text; each said in one build."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.region]
+code    = "geom.meet_shape"
+subject = "feature.lane"
+file    = "world.toml"
+line    = 12
+
+[action.build.diag.nothing]
+code    = "identity.unknown_place"
+subject = "feature.lane"
+file    = "world.toml"
+line    = 12
+data    = { nearest = "post" }
+
+[action.build.diag.produced]
+code    = "identity.key_in_text"
+subject = "feature.track"
+file    = "world.toml"
+line    = 15

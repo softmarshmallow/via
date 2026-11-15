@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = '''Parent and import both datum = "sea": no datum diagnostic, heights as the import's; lift = 2 added is import.lift_on_datum.'''
+milestone = 4
+actions   = ["build", "lift", "lifted"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.h]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 0
+
+[action.lift]
+replace = "world.toml"
+find    = "max_grade = 10"
+with    = """max_grade = 10
+lift = 2"""
+
+[action.lifted]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.lifted.diag.lift]
+code = "import.lift_on_datum"

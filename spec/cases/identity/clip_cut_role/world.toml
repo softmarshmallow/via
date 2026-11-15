@@ -1,0 +1,34 @@
+# identity.md 2.3, Junction (roles by travel): where a network's `clip` cuts a source, the kept part
+# starts or ends there, so the junction is named by the source, not by the outline alone.
+
+name       = "clipcut"
+extent     = [0, 0, 200, 100]
+resolution = 0.5
+
+[field.height]
+role = "surface"
+
+[feature.district]                          # the clip; its outline runs counter-clockwise from (10, 10)
+region = [[10, 10], [190, 10], [190, 90], [10, 90]]
+
+[feature.a]
+path = [[50, 0], [50, 100]]
+
+[feature.b]
+path = [[150, 0], [150, 100]]
+
+[network.blocks]
+from   = ["a", "b"]
+within = "district"
+
+[cells.lots]
+within  = "blocks"
+spacing = 20
+depth   = 10
+
+# A street across the outline west of `a`: its crossing lies first along the outline.
+[change.west.feature.c]
+path = [[30, 0], [30, 100]]
+
+[change.west.network.blocks]
+from = ["a", "b", "c"]

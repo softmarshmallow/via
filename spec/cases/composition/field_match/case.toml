@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "An import field moss the parent lacks: import.field_unmatched, data.field moss; the parent declares moss with role keep_out: import.field_differs, exit 1."
+milestone = 4
+actions   = ["build", "declare", "declared"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.diag.unmatched]
+code     = "import.field_unmatched"
+data     = { field = "moss" }
+data_has = ["write"]
+
+[action.declare]
+replace = "world.toml"
+find    = "[import.a]"
+with    = """[field.moss]
+role = "keep_out"
+base = 0
+
+[import.a]"""
+
+[action.declared]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.declared.diag.differs]
+code = "import.field_differs"
+data = { field = "moss" }

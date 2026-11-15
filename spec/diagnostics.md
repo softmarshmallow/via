@@ -80,7 +80,8 @@ construction or on arrival.
   rest of the place name goes in `data.place`.
 - A produced name (`trees#s7000_12_n3`) maps to its producer (`scatter.trees`) and the name goes in
   `occurrences`, so that aggregation (5) works.
-- A subject inside an import is prefixed with the import's id (`a.feature.quay_road`; M4).
+- A subject inside an import is prefixed with the import's id (`a.feature.quay_road`; M4,
+  `composition.md` 4).
 
 A **node's subject** is the address of the statement that made it (`graph.md` 1, "Made from"):
 `rule:trees` has `scatter.trees`, `step:lints/i:north` has `step.lints`. A node made from no one
@@ -140,7 +141,8 @@ file's own text is the layer `world`, which has no owner and no entry.
 | `change` | The change's name | Where the change wrote the value. |
 | `defaults` | The address of the feature or instance that took the value from its kind: a `defaults` attribute, or a kind key it inherits (`authority`, `authority.md` 5) | The feature's or instance's header. |
 
-Imports add `import` (M4). A value written in layer `roads` and written over by the change
+Imports add `import` (M4): `{ "through": "import", "name": "<id>" }` with the file and line of the
+`[import.<id>]` table, one entry per import passed through, outermost first (`composition.md` 4). A value written in layer `roads` and written over by the change
 `downstream`:
 
 ```json
@@ -577,6 +579,7 @@ Each group's codes are in its chapter's Diagnostics table.
 | `check` | `build.md` | What `via check` finds wrong in a build directory: manifest, digests, array headers, names, canonical JSON. |
 | `load` | `build.md` | What a loader (the Godot loader) finds wrong. `covered_by = "reader"` (section 2). |
 | `protocol` | `protocol.md` | A step's run: start, crash, timeout, bad reply. |
+| `import` | `composition.md` | Imports: cycles, datums, exits, fields at the join, seams, packs across imports, `give` (M4). |
 | `diag`, `cli` | this chapter | Above. |
 | `step` | none | A step's own codes, `step.<id>.<name>`. |
 

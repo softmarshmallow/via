@@ -281,11 +281,34 @@ footway   = 4
 route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
 smooth    = true
 
+# The grand avenue runs on its line between its gates, the edge the rows and downtown are drawn 15 m
+# off: it passes four places on that line by name (derived.md 3), at 1/4, 1/2, 3/4 and 7/8 of the
+# way along a guide from gate to gate. Moving the gates (`move_avenue`) moves the guide and the
+# places with it, so the change writes the gates only. With no way point the course strayed 39 m
+# west into the rows and 28 m east into downtown, round the land's lumps; with the first three it
+# still bowed 28 m east between 3/4 and the north gate, so the fourth holds that leg.
+[feature.grand_ave_line]                    # a guide: no kind, so nothing stands on it
+starts_at = "grand_ave_s"
+ends_at   = "grand_ave_n"
+path      = []
+
+[feature.grand_ave_q1]
+on = { ref = "grand_ave_line", t = 0.25 }
+
+[feature.grand_ave_mid]
+on = { ref = "grand_ave_line", t = 0.5 }
+
+[feature.grand_ave_q3]
+on = { ref = "grand_ave_line", t = 0.75 }
+
+[feature.grand_ave_upper]
+on = { ref = "grand_ave_line", t = 0.875 }
+
 [feature.grand_ave]                         # between the rows and downtown; `move_avenue` moves it
 kind      = "main_street"
 starts_at = "grand_ave_s"
 ends_at   = "grand_ave_n"
-path      = []
+path      = ["grand_ave_q1", "grand_ave_mid", "grand_ave_q3", "grand_ave_upper"]
 width     = 13
 footway   = 4
 route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"

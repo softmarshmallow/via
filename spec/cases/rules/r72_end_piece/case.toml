@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "rules.md 3.4 and 5: a hand end piece overlapping the run's last bay: that bay gave way, place.gave_way counts 1; no error."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.gave_way]
+code = "place.gave_way"
+subject = "run.row"
+
+[action.build.check.last]
+fn = "instance_at"
+build = "build/w"
+name = "row#r4"
+at = [45, 50]
+absent = true
+
+[action.build.check.kept]
+fn = "instance_at"
+build = "build/w"
+name = "row#r3"
+at = [35, 50]
+
+[action.build.check.end]
+fn = "instance_at"
+build = "build/w"
+name = "end_piece"
+at = [45.5, 50]

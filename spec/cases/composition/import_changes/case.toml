@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = '''changes = ["high"] applies the import's change setting its height to 4; changes = ["hgih"] is doc.unknown_change nearest high.'''
+milestone = 4
+actions   = ["build", "typo", "typoed"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.h]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 4
+
+[action.typo]
+replace = "world.toml"
+find    = '''changes = ["high"]'''
+with    = '''changes = ["hgih"]'''
+
+[action.typoed]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.typoed.diag.unknown]
+code = "doc.unknown_change"
+data = { nearest = "high" }

@@ -1,0 +1,43 @@
+format    = "via-case-1"
+summary   = "rules.md 5.1: region [[0, 0], [10, 0], [10, 10], [0, 10]], count = 4, ends = both: the four corners, none twice."
+milestone = 3
+actions   = ["build"]
+
+# The outline starts at its least vertex and runs counter-clockwise (identity.md 2.3, geometry.md
+# 2.5); a closed outline places s_k = a + floor(k * L' / n), so (0, 0) is not used twice.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+
+[action.build.check.r0]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r0"
+at = [0, 0]
+
+[action.build.check.r1]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r1"
+at = [10, 0]
+
+[action.build.check.r2]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r2"
+at = [10, 10]
+
+[action.build.check.r3]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r3"
+at = [0, 10]
+
+[action.build.check.four]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r4"
+at = [0, 0]
+absent = true

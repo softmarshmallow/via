@@ -1,0 +1,15 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.base]
+kind      = "pad"
+authority = "anchored"
+level     = 3
+region    = [[2, 2], [6, 2], [6, 6], [2, 6]]

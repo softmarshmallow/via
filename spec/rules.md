@@ -275,6 +275,12 @@ arc length, with `s` in whole millimetres.
 Members are named `<run>#r<k>` (`identity.md` 2.3). A member whose origin falls outside the extent
 is not made, with one `run.outside` warning for the run.
 
+A member gives way as any produced instance (3.4): one whose solid footprint, or a solid item of the
+set it places, overlaps a solid hand instance of its layer or below is not made, with its items,
+counted in one `place.gave_way` for the run. Neighbours of one run are never tested. A `span` value
+outside 0 to 1 is `geom.t_range`; an `ends` word other than `"half"` or `"both"` is `doc.type`.
+Ours.
+
 ## 6. Grounding (M1)
 
 A placement is plan only. Height comes from the surface beneath the origin, by `surfaces.md`'s four
@@ -743,18 +749,19 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 
 | Case | Input | Action | Must hold |
 |---|---|---|---|
-| r50 set_mount | Set of two items `on` a mount | turn the host 90 | Both items turn with it; names `<instance>.<item>`. |
-| r51 set_scale | Set placed with `scale = 2` | build | Item positions and sizes doubled. |
-| r52 set_cycle | Set containing itself | build | Graph cycle error naming the set, exit 1. |
-| r53 set_bad | Unknown set; unused set; empty set; item named `ground` | build | `set.unknown`, `set.unused`, `set.empty`, `identity.reserved`. |
-| r54 run_half | `count = 4`, `ends = "half"`, 100 m path | build | Members at 12500, 37500, 62500, 87500 mm. |
-| r55 run_both | `spacing = 3`, `ends = "both"`, 30 m stretch | build | 11 members, at 10000 to 40000 mm every 3000. |
-| r56 run_vertex | Path `[[0, 0], [30, 0], [30, 30]]`, `count = 3`, `ends = "both"`, `offset = 1` | build | Members at `(0, 1000)` facing 90000, `(29000, 0)` facing 0, `(29000, 30000)` facing 0. |
-| r57 run_closed | Region `[[0, 0], [10, 0], [10, 10], [0, 10]]`, `count = 4`, `ends = "both"` | build | Members at the four corners, none twice. |
-| r58 run_bad | Each of: `count` and `spacing`; `count = 1` with `"both"`; `on` a point; a run past the extent; `t` in `on`; `seed = "x"` | build | `run.count_or_spacing`, `run.count`, `run.no_length`, `run.outside`, `place.on_form`, `doc.unknown_key`. |
-| r59 kit_curve | 12 bays at exact pitch, abutting, on a curve | build | No `place.crowded`. |
-| r60 end_piece | A hand end piece overlapping the run's last bay | build | That bay gave way, `place.gave_way` 1; no error. |
-| r61 clear_member | A clear over `fence#r3` | build | That member removed; neighbours unmoved. |
+| r62 set_mount | Set of two items `on` a mount | turn the host 90 | Both items turn with it; names `<instance>.<item>`. |
+| r63 set_scale | Set placed with `scale = 2` | build | Item positions and sizes doubled. |
+| r64 set_cycle | Set containing itself | build | Graph cycle error naming the set, exit 1. |
+| r65 set_bad | Unknown set; unused set; empty set; item named `ground` | build | `set.unknown`, `set.unused`, `set.empty`, `identity.reserved`. |
+| r66 run_half | `count = 4`, `ends = "half"`, 100 m path | build | Members at 12500, 37500, 62500, 87500 mm. |
+| r67 run_both | `spacing = 3`, `ends = "both"`, 30 m stretch | build | 11 members, at 10000 to 40000 mm every 3000. |
+| r68 run_vertex | Path `[[0, 0], [30, 0], [30, 30]]`, `count = 3`, `ends = "both"`, `offset = 1` | build | Members at `(0, 1000)` facing 90000, `(29000, 0)` facing 0, `(29000, 30000)` facing 0. |
+| r69 run_closed | Region `[[0, 0], [10, 0], [10, 10], [0, 10]]`, `count = 4`, `ends = "both"` | build | Members at the four corners, none twice. |
+| r70 run_bad | Each of: `count` and `spacing`; `count = 1` with `"both"`; `on` a point; a run past the extent; `t` in `on`; `seed = "x"` | build | `run.count_or_spacing`, `run.count`, `run.no_length`, `run.outside`, `place.on_form`, `doc.unknown_key`. |
+| r71 kit_curve | 12 bays at exact pitch, abutting, on a curve | build | No `place.crowded`. |
+| r72 end_piece | A hand end piece overlapping the run's last bay | build | That bay gave way, `place.gave_way` 1; no error. |
+| r73 clear_member | A clear over `fence#r3` | build | That member removed; neighbours unmoved. |
+| r74 member_keys | A run of four members on pads; then a hand instance added, built again in the same store | build; add; build | No `diag.internal`; the warm build equals a clean one (each member's nodes are keyed by its name, `graph.md` 3.1). |
 
 ## 14. Changed from the spike
 

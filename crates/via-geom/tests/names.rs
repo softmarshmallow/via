@@ -304,3 +304,49 @@ fn pin_in_cell() {
     assert!(diags.iter().any(|d| d.code == Code::PinOverlap));
     assert!(!diags.iter().any(|d| d.code == Code::PinRemoved));
 }
+
+/// identity.md 2.3, roles by travel: where the clip cuts a source, the kept part starts or ends
+/// there, so a junction on the outline is named by that source; a crossing added earlier along the
+/// outline renames none of the others (case `clip_cut_role`).
+#[test]
+fn clip_cut_source_names_its_junction() {
+    let square = ring("frame", &[(10, 10), (190, 10), (190, 90), (10, 90)]);
+    let a = path("a", &[(50, 0), (50, 100)]);
+    let b = path("b", &[(150, 0), (150, 100)]);
+    let c = path("c", &[(30, 0), (30, 100)]);
+    let keyed = |inputs: Vec<via_geom::noding::Input>| {
+        let clip = inputs.len() - 1;
+        let grid = grid_over(&inputs, 2000);
+        let net = network(inputs, Some(clip), &[], grid).unwrap();
+        names(&net).0
+    };
+    let base = keyed(vec![a.clone(), b.clone(), square.clone()]);
+    let more = keyed(vec![c, a, b, square]);
+    let pair = |n: &str, r: Role| Part::pair(Part::name(n), Part::Role(r));
+    let want = |n: &str, r: Role| {
+        format!(
+            "j{}_0",
+            hex(digest(
+                "junction",
+                &[Part::Set(vec![pair("#clip", Role::Pass), pair(n, r)])]
+            ))
+        )
+    };
+    let at = |js: &[(P, String)], x: i64, y: i64| {
+        js.iter()
+            .find(|(p, _)| *p == P::new(x, y))
+            .map(|(_, k)| k.clone())
+            .unwrap()
+    };
+    assert_eq!(at(&base, 50_000, 10_000), want("a", Role::Start));
+    assert_eq!(at(&base, 50_000, 90_000), want("a", Role::End));
+    assert_eq!(at(&base, 150_000, 10_000), want("b", Role::Start));
+    for (x, y) in [
+        (50_000, 10_000),
+        (50_000, 90_000),
+        (150_000, 10_000),
+        (150_000, 90_000),
+    ] {
+        assert_eq!(at(&base, x, y), at(&more, x, y), "({x}, {y})");
+    }
+}

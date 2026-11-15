@@ -177,6 +177,226 @@ fn gap(lo: i64, hi: i64, v: i64) -> i128 {
     }
 }
 
+/// Segments by square cell of the line's box, to find the nearest place to many points
+/// (geometry.md 3.8, How the nearest is found). A search only: [`Index::nearest`] returns what
+/// [`nearest`] returns, segment, foot and exact distance, for every point.
+#[derive(Clone, Debug)]
+pub struct Index {
+    /// The box's low corner, millimetres.
+    x0: i64,
+    y0: i64,
+    /// The cell side, millimetres (at least 1).
+    c: i64,
+    nx: i64,
+    ny: i64,
+    /// Cell `(i, j)`'s segments are `items[start[j * nx + i]..start[j * nx + i + 1]]`, in
+    /// increasing order; `None` for a line short enough to scan.
+    cells: Option<(Vec<u32>, Vec<u32>)>,
+}
+
+/// Lines of at most this many segments are scanned, not indexed.
+const SCAN_MAX: usize = 16;
+
+impl Index {
+    /// The index of `line`'s segments.
+    pub fn new(line: &Line) -> Index {
+        let n = line.segments();
+        let (mut x0, mut y0, mut x1, mut y1) = (i64::MAX, i64::MAX, i64::MIN, i64::MIN);
+        for q in &line.pts {
+            x0 = x0.min(q.x);
+            y0 = y0.min(q.y);
+            x1 = x1.max(q.x);
+            y1 = y1.max(q.y);
+        }
+        let scan = Index {
+            x0,
+            y0,
+            c: 1,
+            nx: 1,
+            ny: 1,
+            cells: None,
+        };
+        if n <= SCAN_MAX || u32::try_from(n).is_err() {
+            return scan;
+        }
+        let (w, h) = (
+            u128::try_from(x1 - x0).unwrap_or(0) + 1,
+            u128::try_from(y1 - y0).unwrap_or(0) + 1,
+        );
+        // About one cell per segment: the side of a square of the box's area over `n`, and never
+        // so small that the long side holds more than `4 n` cells.
+        let n128 = n as u128;
+        let by_area = isqrt((w * h).div_ceil(n128)).max(1);
+        let by_side = w.max(h).div_ceil(4 * n128).max(1);
+        let c = i64::try_from(by_area.max(by_side)).unwrap_or(i64::MAX);
+        let nx = (x1 - x0) / c + 1;
+        let ny = (y1 - y0) / c + 1;
+        let Some(cells) = usize::try_from(nx)
+            .ok()
+            .zip(usize::try_from(ny).ok())
+            .and_then(|(a, b)| a.checked_mul(b))
+            .filter(|&k| k <= 16 * n + 16)
+        else {
+            return scan;
+        };
+        let span = |k: usize| {
+            let (a, b) = line.seg(k);
+            (
+                (a.x.min(b.x) - x0) / c,
+                (a.x.max(b.x) - x0) / c,
+                (a.y.min(b.y) - y0) / c,
+                (a.y.max(b.y) - y0) / c,
+            )
+        };
+        let mut count = vec![0u32; cells + 1];
+        for k in 0..n {
+            let (i0, i1, j0, j1) = span(k);
+            for j in j0..=j1 {
+                for i in i0..=i1 {
+                    count[(j * nx + i) as usize + 1] += 1;
+                }
+            }
+        }
+        for i in 0..cells {
+            count[i + 1] += count[i];
+        }
+        let mut fill = count.clone();
+        let mut items = vec![0u32; count[cells] as usize];
+        for k in 0..n {
+            let (i0, i1, j0, j1) = span(k);
+            for j in j0..=j1 {
+                for i in i0..=i1 {
+                    let cell = (j * nx + i) as usize;
+                    items[fill[cell] as usize] = k as u32;
+                    fill[cell] += 1;
+                }
+            }
+        }
+        Index {
+            x0,
+            y0,
+            c,
+            nx,
+            ny,
+            cells: Some((count, items)),
+        }
+    }
+
+    /// The nearest place on `line` (the line this index was built over) to `p`: [`nearest`]'s
+    /// answer, the least exact distance with ties to the lower segment.
+    ///
+    /// Cells are visited in square rings around `p`'s cell. A segment not yet met lies wholly in
+    /// cells outside the square visited, so its box, and the segment, is at least the gap from
+    /// `p` to the square's nearest open side; once the best exact distance is strictly below
+    /// that gap squared, no unmet segment can equal it.
+    pub fn nearest(&self, line: &Line, p: P) -> Nearest {
+        let Some((start, items)) = &self.cells else {
+            return nearest(line, p);
+        };
+        let c = self.c;
+        let ci = (p.x - self.x0).div_euclid(c);
+        let cj = (p.y - self.y0).div_euclid(c);
+        let mut best: Option<Nearest> = None;
+        let mut ceil: Option<i128> = None;
+        let mut visit = |cell: i64, best: &mut Option<Nearest>| {
+            let (a0, a1) = (
+                start[cell as usize] as usize,
+                start[cell as usize + 1] as usize,
+            );
+            for &k in &items[a0..a1] {
+                let k = k as usize;
+                let (a, b) = line.seg(k);
+                let gx = gap(a.x.min(b.x), a.x.max(b.x), p.x);
+                let gy = gap(a.y.min(b.y), a.y.max(b.y), p.y);
+                if ceil.is_some_and(|u| gx * gx + gy * gy > u) {
+                    continue;
+                }
+                let (d, foot) = pred::dist2_segment(p, a, b);
+                let better = match best.as_ref() {
+                    None => true,
+                    Some(bst) => match d.cmp_exact(&bst.dist) {
+                        Ordering::Less => true,
+                        Ordering::Equal => k < bst.k,
+                        Ordering::Greater => false,
+                    },
+                };
+                if better {
+                    ceil = d.ceil();
+                    *best = Some(Nearest { k, foot, dist: d });
+                }
+            }
+        };
+        // Rings that hold no cell of the grid are passed over.
+        let r0 = 0
+            .max(-ci)
+            .max(ci - (self.nx - 1))
+            .max(-cj)
+            .max(cj - (self.ny - 1));
+        let mut r = r0;
+        loop {
+            let (lo_i, hi_i) = ((ci - r).max(0), (ci + r).min(self.nx - 1));
+            let (lo_j, hi_j) = ((cj - r).max(0), (cj + r).min(self.ny - 1));
+            for j in [cj - r, cj + r] {
+                if (0..self.ny).contains(&j) {
+                    for i in lo_i..=hi_i {
+                        visit(j * self.nx + i, &mut best);
+                    }
+                }
+                if r == 0 {
+                    break;
+                }
+            }
+            if r > 0 {
+                for i in [ci - r, ci + r] {
+                    if (0..self.nx).contains(&i) {
+                        for j in (cj - r + 1).max(lo_j)..=(cj + r - 1).min(hi_j) {
+                            visit(j * self.nx + i, &mut best);
+                        }
+                    }
+                }
+            }
+            // The gap from `p` to each side of the square with grid cells beyond it.
+            let mut bound: Option<i128> = None;
+            let mut side = |open: bool, g: i64| {
+                if open {
+                    let g = i128::from(g);
+                    bound = Some(bound.map_or(g, |b| b.min(g)));
+                }
+            };
+            side(ci - r > 0, p.x - (self.x0 + (ci - r) * c));
+            side(ci + r < self.nx - 1, self.x0 + (ci + r + 1) * c - p.x);
+            side(cj - r > 0, p.y - (self.y0 + (cj - r) * c));
+            side(cj + r < self.ny - 1, self.y0 + (cj + r + 1) * c - p.y);
+            let Some(b) = bound else {
+                break;
+            };
+            if let Some(bst) = &best {
+                let b2 = pred::Dist2 {
+                    num: pred::Wide::from_u128((b * b) as u128),
+                    den: pred::Wide::from_u128(1),
+                };
+                if bst.dist.cmp_exact(&b2) == Ordering::Less {
+                    break;
+                }
+            }
+            r += 1;
+        }
+        best.unwrap_or_else(|| nearest(line, p))
+    }
+}
+
+/// The integer square root, rounded down.
+fn isqrt(v: u128) -> u128 {
+    let mut x = (v as f64).sqrt() as u128;
+    while x * x > v {
+        x -= 1;
+    }
+    while (x + 1) * (x + 1) <= v {
+        x += 1;
+    }
+    x
+}
+
 /// `e` (metres), `t` and the nearest point for a nearest place.
 fn e_t(line: &Line, p: P, n: &Nearest) -> (f64, f64, (f64, f64)) {
     let (a, b) = line.seg(n.k);
@@ -246,9 +466,18 @@ fn path_side(line: &Line, p: P, n: &Nearest) -> i32 {
 
 /// `project` on a path (3.8).
 pub fn project_path(line: &Line, p: P) -> Measure {
-    let n = nearest(line, p);
-    let (e, t, q) = e_t(line, p, &n);
-    let s = path_side(line, p, &n);
+    path_measure(line, p, &nearest(line, p))
+}
+
+/// [`project_path`] with the nearest place found through `index`, built over `line`: the same
+/// measures, bit for bit (geometry.md 3.8, How the nearest is found).
+pub fn project_path_in(line: &Line, index: &Index, p: P) -> Measure {
+    path_measure(line, p, &index.nearest(line, p))
+}
+
+fn path_measure(line: &Line, p: P, n: &Nearest) -> Measure {
+    let (e, t, q) = e_t(line, p, n);
+    let s = path_side(line, p, n);
     // No negative zero leaves the kernel (`numbers.md` 8, rule 8): on the path, `sd` is `+0`.
     let sd = if s < 0 && e != 0.0 { -e } else { e };
     Measure {
@@ -261,10 +490,44 @@ pub fn project_path(line: &Line, p: P) -> Measure {
 
 /// `project` on a region: `t` only when it has one ring.
 pub fn project_region(region: &Region, p: P) -> Option<Measure> {
-    let mut best: Option<(Line, Nearest)> = None;
-    for ring in region.rings() {
-        let line = Line::new(ring.to_vec(), true);
-        let n = nearest(&line, p);
+    let rings: Vec<Line> = region
+        .rings()
+        .into_iter()
+        .map(|ring| Line::new(ring.to_vec(), true))
+        .collect();
+    region_measure(region, &rings, p, |_, line| nearest(line, p))
+}
+
+/// A region's rings as lines, each with its [`Index`]: what [`project_region_in`] reads.
+pub fn region_rings(region: &Region) -> Vec<(Line, Index)> {
+    region
+        .rings()
+        .into_iter()
+        .map(|ring| {
+            let line = Line::new(ring.to_vec(), true);
+            let index = Index::new(&line);
+            (line, index)
+        })
+        .collect()
+}
+
+/// [`project_region`] with each ring's nearest place found through its index ([`region_rings`]):
+/// the same measures, bit for bit.
+pub fn project_region_in(region: &Region, rings: &[(Line, Index)], p: P) -> Option<Measure> {
+    let lines: Vec<&Line> = rings.iter().map(|(l, _)| l).collect();
+    region_measure(region, &lines, p, |i, line| rings[i].1.nearest(line, p))
+}
+
+fn region_measure<L: std::borrow::Borrow<Line>>(
+    region: &Region,
+    rings: &[L],
+    p: P,
+    near: impl Fn(usize, &Line) -> Nearest,
+) -> Option<Measure> {
+    let mut best: Option<(&Line, Nearest)> = None;
+    for (i, line) in rings.iter().enumerate() {
+        let line = line.borrow();
+        let n = near(i, line);
         let better = match &best {
             None => true,
             Some((_, b)) => n.dist.cmp_exact(&b.dist) == Ordering::Less,
@@ -274,7 +537,7 @@ pub fn project_region(region: &Region, p: P) -> Option<Measure> {
         }
     }
     let (line, n) = best?;
-    let (e, t, q) = e_t(&line, p, &n);
+    let (e, t, q) = e_t(line, p, &n);
     let inside = region.side(p) != pred::Side::Out;
     let (sd, d) = if inside { (e, 0.0) } else { (-e, e) };
     Some(Measure {

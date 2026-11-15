@@ -208,8 +208,8 @@ loader is then told where the pack is. Copying asset files into the build is (op
 "frame": {"axes":"x east, y north, z up","bearing":"degrees clockwise from north","extent":[0,0,256,256],"posts":[513,513],"resolution":0.5,"unit":"m"}
 ```
 
-`frame` repeats `numbers.md` 4 and is the only place a reader finds where the posts lie. The world's
-datum, once `geometry.md` declares one, is added here (open in `vocabulary.md` section 4).
+`frame` repeats `numbers.md` 4 and is the only place a reader finds where the posts lie. From M4 it
+also holds `"datum"`: the world's `datum` (`composition.md` 5), or `null` when none is declared.
 
 **Chunks.** The build's tiling is a grid of square chunks. `fields.md` and `graph.md` say "tile" for
 the same thing; `chunk` is the vocabulary's word, and those chapters are asked to use it (Answers).

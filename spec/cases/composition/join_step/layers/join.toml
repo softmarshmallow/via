@@ -1,0 +1,4 @@
+[step.look]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/look.py"]
+worker  = true

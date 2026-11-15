@@ -1,0 +1,15 @@
+name       = "derived"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[feature.yard]
+region = [[1, 1], [3, 1], [3, 3], [1, 3]]
+
+[feature.post]
+at = [6, 6]
+
+[feature.lane]
+path = ["yard", [4, 4], "pots"]
+
+[feature.track]
+path = [[0, 0], "lots#c0_0"]

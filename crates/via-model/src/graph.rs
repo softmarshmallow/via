@@ -628,6 +628,39 @@ impl<'w> ModelPlan<'w> {
         plan
     }
 
+    /// Pairs of nodes of one family whose keys are made from the same parts (`graph.md` 3.1):
+    /// statements, parameters, edges by label and input, and direct digests. Such a pair shares
+    /// one key while it may compute two values, so the store hands one's value to the other.
+    #[cfg(test)]
+    pub(crate) fn key_clashes(&self) -> Vec<(NodeId, NodeId)> {
+        let mut seen: BTreeMap<String, NodeId> = BTreeMap::new();
+        let mut out = Vec::new();
+        for (id, def) in &self.defs {
+            let mut st: Vec<String> = def
+                .statements
+                .iter()
+                .map(|s| format!("{:?}", s.1))
+                .collect();
+            st.sort();
+            let mut params = def.params.clone();
+            params.sort();
+            let mut edges = def.edges.clone();
+            edges.sort();
+            let parts = format!(
+                "{} {st:?} {params:?} {edges:?} {:?}",
+                id.family(),
+                def.direct
+            );
+            match seen.get(&parts) {
+                Some(first) => out.push((first.clone(), id.clone())),
+                None => {
+                    seen.insert(parts, id.clone());
+                }
+            }
+        }
+        out
+    }
+
     /// Every node the model defines, in id order.
     pub fn ids(&self) -> Vec<NodeId> {
         self.defs.keys().cloned().collect()
@@ -936,7 +969,7 @@ impl<'w> ModelPlan<'w> {
                     // As rows are ordered (`authority.md` 3): a feature's own rank, a
                     // footprint's its instance's.
                     let rank = match (inst, maker) {
-                        (Some(i), _) => d.instances.get(i).map_or(0, |x| x.rank),
+                        (Some(i), _) => d.placed_rank(i),
                         (None, Some(m)) => d.maker_table_rank(m).unwrap_or(0),
                         (None, None) => d.features.get(wname).map_or(0, |f| f.rank),
                     };
@@ -1140,6 +1173,12 @@ impl<'w> ModelPlan<'w> {
                     }
                 }
             }
+            // A named way point (`derived.md` 3): the shape reads the place it passes.
+            for at in f.way_names() {
+                for t in self.targets(at) {
+                    shape_edges.push(("path".to_string(), t));
+                }
+            }
             defs.push((
                 view(NodeId::of("shape", id)),
                 Def {
@@ -1287,16 +1326,14 @@ impl<'w> ModelPlan<'w> {
             let subject = Some(Subject::entity("instance", id.clone()));
             let mut edges = Vec::new();
             self.place_edges(&i.place, &mut edges);
-            let statements = self.stmts_of(
-                [
-                    format!("instance.{id}"),
-                    "world".into(),
-                    PACK.into(),
-                    asset.clone(),
-                ]
-                .iter()
-                .map(String::as_str),
-            );
+            let mut stmts = vec![
+                format!("instance.{id}"),
+                "world".into(),
+                PACK.into(),
+                asset.clone(),
+            ];
+            stmts.extend(d.set_stmts(i.set.as_deref()));
+            let statements = self.stmts_of(stmts.iter().map(String::as_str));
             defs.push((
                 view(NodeId::of("instance", id)),
                 Def {
@@ -1365,6 +1402,36 @@ impl<'w> ModelPlan<'w> {
                 Def {
                     subject,
                     statements,
+                    edges,
+                    ..Def::default()
+                },
+            ));
+        }
+        // A run's members' footprint features (`rules.md` 5): each reads the run and its stretch.
+        for (inst, kind) in self.p.placed.footprints.values() {
+            let Some(run) = d.run_of(inst).and_then(|r| d.runs.get(r).map(|x| (r, x))) else {
+                continue;
+            };
+            let mut stmts = vec![
+                format!("run.{}", run.0),
+                "world".into(),
+                PACK.into(),
+                format!("kind.{kind}"),
+            ];
+            if let crate::sets::What::Set(s) = &run.1.what {
+                stmts.extend(d.set_stmts(Some(s)));
+            }
+            let mut edges = Vec::new();
+            self.place_edges(&run.1.place, &mut edges);
+            defs.push((
+                view(NodeId::of("footprint", inst)),
+                Def {
+                    subject: Some(Subject::entity("run", run.0)),
+                    statements: self.stmts_of(stmts.iter().map(String::as_str)),
+                    // Its member is its key's own argument: the members of one run share every
+                    // statement and edge, and a key without it gave one member's footprint to
+                    // all four (example `third_cottage`, `move_tarn`: `diag.internal`).
+                    params: vec![("member".into(), inst.clone())],
                     edges,
                     ..Def::default()
                 },
@@ -2516,9 +2583,10 @@ impl<'w> ModelPlan<'w> {
                     .features
                     .iter()
                     .any(|(n, f)| f.kind.as_deref() == Some(k) && out(n, f.rank))
-                    || placed.footprints.values().any(|(inst, kind)| {
-                        kind == k && out(inst, d.instances.get(inst).map_or(0, |i| i.rank))
-                    })
+                    || placed
+                        .footprints
+                        .values()
+                        .any(|(inst, kind)| kind == k && out(inst, d.placed_rank(inst)))
             }
             None => {
                 let base = sel.split('.').next().unwrap_or(sel);
@@ -2609,7 +2677,8 @@ impl<'w> ModelPlan<'w> {
                 fields.seed(name, View::Build, r.clone());
             }
             let mut dd = Vec::new();
-            let hand = rules::hand(&d, &placed, &grid, &mut dd);
+            let mut hand = rules::hand(&d, &placed, &grid, &mut dd);
+            crate::sets::runs_give_way(&d, &self.p.pack, &mut hand, &mut dd);
             let produced = rules::scatter_all(&d, &self.p.pack, &placed, &fields, &hand);
             for p in produced.instances {
                 if let Some(m) = &p.maker {

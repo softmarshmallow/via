@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "rules.md 5.1: count = 4, ends = half on a 100 m path: members at 12500, 37500, 62500, 87500 mm."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+
+[action.build.check.r0]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r0"
+at = [12.5, 10]
+face = 90000
+
+[action.build.check.r1]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r1"
+at = [37.5, 10]
+face = 90000
+
+[action.build.check.r2]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r2"
+at = [62.5, 10]
+face = 90000
+
+[action.build.check.r3]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r3"
+at = [87.5, 10]
+face = 90000
+
+[action.build.check.four]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r4"
+at = [112.5, 10]
+absent = true

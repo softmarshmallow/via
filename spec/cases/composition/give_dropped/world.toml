@@ -1,0 +1,19 @@
+name       = "give_dropped"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.town]
+file = "town/world.toml"
+at   = [8, 0]
+give = { districts = "kind:district" }
+
+[feature.d1]
+kind   = "district"
+tone   = 2
+region = [[8, 0], [16, 0], [16, 8], [8, 8]]

@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "rules.md 4: an unknown set; an unused set; an empty set; an item named ground: set.unknown, set.unused (info, exit 0), set.empty, identity.reserved."
+milestone = 3
+actions   = ["unknown", "unused", "empty", "reserved"]
+
+[action.unknown]
+via         = ["build", "unknown/world.toml", "--out", "unknown/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "unknown/build/w"
+
+[action.unknown.diag.unknown]
+code = "set.unknown"
+subject = "instance.x"
+
+[action.unused]
+via         = ["build", "unused/world.toml", "--out", "unused/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "unused/build/w"
+
+[action.unused.diag.unused]
+code = "set.unused"
+subject = "set.lamps"
+
+[action.empty]
+via         = ["build", "empty/world.toml", "--out", "empty/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "empty/build/w"
+
+[action.empty.diag.empty]
+code = "set.empty"
+subject = "set.lamps"
+
+[action.reserved]
+via         = ["build", "reserved/world.toml", "--out", "reserved/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "reserved/build/w"
+
+[action.reserved.diag.reserved]
+code = "identity.reserved"
+subject = "set.lamps"

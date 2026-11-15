@@ -695,7 +695,5 @@ effect; the replay's values equal the build's bit for bit. With base 3 and no ro
 - **Whole-map distance** (the spike's ten-minute compile). `formulas.md`'s `dist` cap bounds it per
   formula; whether a whole-extent distance field is an engine operation, and how it is computed per
   window, is decided by M1's `ford` timings.
-- **Resampling an import's fields onto the parent's posts** (`numbers.md` 5.3). Decided in M4 by
-  `strait`.
 - **Cross-references.** Section numbers in other chapters cited here are re-checked by the lead
   once every chapter has landed.

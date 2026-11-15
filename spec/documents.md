@@ -34,7 +34,7 @@ be LF or CRLF; both read the same. Every file is flat and keyed by id (R1): `[fe
 
 | File kind | Holds at its top | Named by | Found at |
 |---|---|---|---|
-| world | `name`, `extent`, `resolution`, `seed`, `include`, `pack`, `chunk` (M6), `[budget]` (M6), `[layer.<id>]`, and any world table (below) | the command line (`build.md`) | the path given |
+| world | `name`, `extent`, `resolution`, `seed`, `datum` (M4), `include`, `pack`, `chunk` (M6), `[budget]` (M6), `[layer.<id>]`, and any world table (below) | the command line (`build.md`) | the path given |
 | layer | world tables only | `[layer.<id>] file` in the world file | relative to the world file |
 | kinds file | `include`, `[kind.<name>]` | a library name in an `include` list | section 4 |
 | pack | the keys `assets.md` 2.1 lists (`root`, `[defaults]`, `[taxon."<path>"]`, `[asset.<id>]`, `[material.<name>]`) | `pack` | `assets.md` |
@@ -48,8 +48,8 @@ Required keys, and what an absent optional key means:
 
 | Table | Required | Optional, and its absence |
 |---|---|---|
-| world file | `name`, `extent` | `resolution`: 0.5 (`numbers.md` 4). `seed`: 0 (`numbers.md` 7). `include`: no libraries. `pack`: none; what an asset id with no pack gives is `assets.md`'s. |
-| `[layer.<id>]` | `file`, `owner`, `rank` | `after` (M4). |
+| world file | `name`, `extent` | `resolution`: 0.5 (`numbers.md` 4). `seed`: 0 (`numbers.md` 7). `datum`: none (`composition.md` 5). `include`: no libraries. `pack`: none; what an asset id with no pack gives is `assets.md`'s. |
+| `[layer.<id>]` | `file`, `owner`, `rank` | none. `after` was dropped in M4: a layer ranked above the import's applies after it (`composition.md` 6.5). |
 | `[layer.world]` | nothing | `owner`: none. `rank`: 0. `file` is `doc.unknown_key`: the world file is its file. |
 
 A required key that is absent is `doc.missing_key`, naming the table and the key, located at the
@@ -235,7 +235,7 @@ letter case included, by the algorithm of 7.2 (`doc.path_case`).
 - Libraries add their kinds to the world's one kind namespace. A world never writes keys onto an
   included kind; it changes one only through a change (section 6). Two libraries that declare one
   kind are `identity.duplicate_id`, naming both files. Order in `include` changes nothing.
-- An import resolves its own `include` from its own world file. (M4.)
+- An import resolves its own `include` from its own world file, with the same roots (M4, `composition.md` 2).
 - Each file read is a declared input of the build, by digest (`graph.md`), so a library edit
   re-runs what read it.
 - Versions of a library: (open). Decided when the first shipped library makes a change that breaks a
@@ -300,7 +300,7 @@ carries its `layer` (`build.md` 9.1); a separate file per layer is `build.md`'s,
 ### 5.1 Direction
 
 A layer refers downward only. Direction is checked on **named references**: a name written in a
-name key (`on.ref`, `of` in `on` and `within`, `starts_at`, `ends_at`, `follows`, `within`, `set`,
+name key (`on.ref`, `of` in `on` and `within`, `starts_at`, `ends_at`, a name in `path`, `follows`, `within`, `set`,
 `by` when written, `clump.around`, `give`, and every attribute a kind lists in `names`, checked at
 the feature's rank, `authority.md` 1.2), a name a formula reads (`formulas.md` reports the names
 it reads), or an effect's `field` selector (`role:`, `tag:`), checked at the rank of each feature of
@@ -388,7 +388,7 @@ leaves `doc.missing_key`. `remove` or `unset` that names nothing in the base is
 layer. An entity an inline change adds is declared in the layer that declares the change. One a
 change file adds is declared in the highest-ranked of `world` and the layers that declare the
 names it writes as named references (section 5: `by`, `on.ref`, `on.of`, `within`, `from`,
-`frontage`, `starts_at`, `ends_at`, `follows.ref`, a kind's `names`): the lowest layer from which
+`frontage`, `starts_at`, `ends_at`, a name in `path`, `follows.ref`, a kind's `names`): the lowest layer from which
 it names downward only. So `[clear.gap] by = ["trees"]` in a change file, where `trees` is a scatter of layer
 `dressing`, is declared in `dressing` and is no `doc.upward_ref`; a pin that names nothing above
 rank 0 stays in `world`. An entity naming another the same file adds takes that one's layer, found
@@ -498,6 +498,7 @@ hint. A removed or forbidden word has a fixed hint instead, which replaces the n
 | `joins` | a feature | "write `starts_at` or `ends_at`" |
 | `[params]` | top level | "write `[let]`" |
 | `[variant.<n>]` | top level | "write `[change.<n>]`" |
+| `after` | a layer | "`after` was dropped: rank the layer above the layer that declares the import (`composition.md` 6.5)" |
 
 The other dropped words of `vocabulary.md` section 6 take the nearest-word hint. A word the
 vocabulary lists for a later milestone is `doc.not_yet`, naming the milestone. A
@@ -618,20 +619,13 @@ declared translation into this form, following `vocabulary.md` section 6. Where 
 
 ## 9. Imports (M4)
 
-What is decided: an import is a world built apart, with its own files, namespaces and includes
-(section 3). The parent names its places, never its coordinates (R8), and requests its changes by
-name in `changes`. A parent's change may write the parent's `[import.<id>]` table, never the
-imported world's own tables: a difference inside an import is one of the import's changes. A place
-is built alone and joined at its edge (R11): the parent changes imported ground only through a layer
-with `after = "imports"` (R10), and a fill that must read its parent takes it through `give`. An
-import's own imports are followed or rejected with a diagnostic, never ignored; which: (open),
-decided here in M4 by `county`. Whatever is decided about an import's pack, one asset id bound to
-two different files is an error. Every import key is `doc.not_yet` in M1.
-
-`exit` (a kind key, R9) marks a kind's point features as places where something leaves the world;
-the core owns the flag and the word. Which of an exit's attributes the core compares when two
-worlds meet: (open), decided here in M4 by the first import whose exits must match (challenge 55
-records `width`). `exit` is `doc.not_yet` in M1.
+Imports are `composition.md`'s: `[import.<id>]`, its frame, scoped names (R8), the datum, exits
+(R9), the join at the edge (R10), `give` and `[given]` (R11), nested imports, packs across imports
+and the graph of a moved import. What this chapter keeps: an import is a world built apart, with its
+own files, namespaces and includes (sections 3, 4); a parent's change may write the parent's
+`[import.<id>]` table, never the imported world's own tables, so a difference inside an import is
+one of the import's changes, requested in `changes` (`composition.md` 11). Every import key is
+`doc.not_yet` in M1 to M3.
 
 ## 10. Worked example
 
@@ -844,4 +838,3 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 | How a world keeps an included kind with a local difference, other than an always-requested change or a copy under a new name. | The first example that needs it. |
 | A separate output file per layer, for a game to load or replace. | `build.md`, M6. |
 | Building or swapping one layer alone (a spike lesson). | The first case that needs it; not before M6. |
-| Whether an import may bring its own pack; whether an import's imports are followed or rejected; which exit attributes the core compares (challenge 55 records `width`); change files requested by an import. | M4, in this chapter, by `county`. |

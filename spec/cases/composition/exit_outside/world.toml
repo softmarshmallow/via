@@ -1,0 +1,19 @@
+name       = "exit_outside"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.a]
+file = "a/world.toml"
+at   = [0, 4]
+footprint = [[0, 0], [4, 0], [4, 8], [0, 8]]
+
+[feature.out]
+kind      = "way"
+starts_at = "a.east"
+path      = [[20, 8]]

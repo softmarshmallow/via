@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, apart: meets between mounts at t = 0 and t = 0.1: surface.apart."
+milestone = 3
+pending   = "owed: kind surfaces and kind mounts (`[kind.<k>.surface.<name>]`, `meets`, surfaces.md 1 and 3) are not implemented; the world, from section 6.3's kinds, is written with that code"
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.apart]
+code = "surface.apart"

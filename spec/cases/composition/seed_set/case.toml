@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = '''seed = 7 on the import changes its noise in the parent; seed = "x" is num.seed_type.'''
+milestone = 4
+actions   = ["plain", "seeded", "seeded_build", "bad", "bad_build"]
+
+# The same check compares the parent's height of the seeded build with the plain build's.
+
+[action.plain]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.seeded]
+replace = "world.toml"
+find    = "max_grade = 100"
+with    = """max_grade = 100
+seed = 7"""
+
+[action.seeded_build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.seeded_build.same.noise]
+action = "plain"
+what   = "build/p/fields/height.npy"
+differ = true
+
+[action.bad]
+replace = "world.toml"
+find    = "seed = 7"
+with    = '''seed = "x"'''
+
+[action.bad_build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.bad_build.diag.seed]
+code = "num.seed_type"

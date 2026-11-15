@@ -1,0 +1,47 @@
+format    = "via-case-1"
+summary   = "derived.md 3, way points by name: a course through a named point `on` a guide equals d22's; moving the guide moves the course through the point's new place, with no edit to the course."
+milestone = 4
+actions   = ["base", "north"]
+
+# Features sort by name: `course` is entry 0 of the change report. The course's cause is the
+# guide's `path`, reached through `mid`, which the course names in its `path`.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.check.course]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "course"
+start       = [0.3, 0.2]
+end         = [7.6, 6.7]
+passes      = [[5, 1]]
+min_segment = 0.5
+
+[action.north]
+via         = ["build", "world.toml", "--change", "north", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.north.check.course]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "course"
+start       = [0.3, 0.2]
+end         = [7.6, 6.7]
+passes      = [[5, 3]]
+min_segment = 0.5
+
+[action.north.file.course]
+path     = "build/w/changes.json"
+pointer  = "/entries/0"
+includes = { name = "course", what = ["moved"] }
+
+[action.north.file.course_cause]
+path     = "build/w/changes.json"
+pointer  = "/entries/0/causes/0"
+includes = { cause = "feature.guide.path" }

@@ -1,0 +1,46 @@
+format    = "via-case-1"
+summary   = "rules.md 4: a set of two items on the mount door of house_low, then the host turned 90: items named cottage_lamps.l and .r turn with it."
+milestone = 3
+actions   = ["build", "turn"]
+
+# The door is at [0, 3] in house_low's frame (assets.md 6.1). Turned to bearing 90 (east), the
+# frame's +y runs east and +x south, so the door is at (103, 100) and item l at [-1.8, 0.9] of the
+# door's frame lands at (103.9, 101.8).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+
+[action.build.check.l]
+fn = "instance_at"
+build = "build/w"
+name = "cottage_lamps.l"
+at = [98.2, 103.9]
+face = 0
+
+[action.build.check.r]
+fn = "instance_at"
+build = "build/w"
+name = "cottage_lamps.r"
+at = [101.8, 103.9]
+face = 0
+
+[action.turn]
+via         = ["build", "world.toml", "--change", "turn", "--out", "build/t"]
+exit        = 0
+out         = "build/t"
+
+[action.turn.check.l]
+fn = "instance_at"
+build = "build/t"
+name = "cottage_lamps.l"
+at = [103.9, 101.8]
+face = 90000
+
+[action.turn.check.r]
+fn = "instance_at"
+build = "build/t"
+name = "cottage_lamps.r"
+at = [103.9, 98.2]
+face = 90000

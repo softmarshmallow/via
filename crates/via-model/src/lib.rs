@@ -26,6 +26,7 @@
 //! | `place` | `geometry.md` 2, `rules.md` 2 and 3: shapes, plans, place names, footprint features |
 //! | `resolve` | `fields.md` 5 and 6, `authority.md` 2 to 5: entries in R21 order, views, conflicts |
 //! | `rules` | `rules.md` 6 to 8, `identity.md` 4: scatter, hand edits, grounding, checks |
+//! | `sets` | `rules.md` 4 and 5: sets and runs, read and placed as plans |
 //! | [`report`] | `identity.md` 5, `assets.md` 7: the change report |
 //! | [`query`] | `surfaces.md` 2: the four surface questions over a build, on the terrain |
 //!
@@ -56,6 +57,7 @@ pub mod query;
 pub mod report;
 mod resolve;
 mod rules;
+mod sets;
 mod text;
 
 pub use build::{build, Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Options};

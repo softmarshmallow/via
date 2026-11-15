@@ -1,0 +1,11 @@
+format    = "via-case-1"
+summary   = "a/world.toml imports ../world.toml, which imports a: import.cycle naming both files; exit 1."
+milestone = 4
+actions   = ["merge"]
+
+[action.merge]
+via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+exit        = 1
+diagnostics = "includes"
+[action.merge.diag.cycle]
+code = "import.cycle"

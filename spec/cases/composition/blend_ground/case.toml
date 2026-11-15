@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "blend = smoothstep(-1, 0, a.height) with the import's ground -3 west and 2 east, the parent's -5: -5 where the import is under, 2 where it is land."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.under]
+path  = "build/w/fields/height.npy"
+post  = [10, 4]
+value = -5
+
+[action.build.file.land]
+path  = "build/w/fields/height.npy"
+post  = [14, 4]
+value = 2

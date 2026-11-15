@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "An exit at (7, 4) and a footprint of the import's west half: import.exit_outside, subject a.feature.east; exit 1."
+milestone = 4
+actions   = ["build"]
+
+# The parent answers the exit, so only where it lies is wrong; place_blended may also be raised,
+# since the answered place stands where the weight is 0.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.outside]
+code    = "import.exit_outside"
+subject = "a.feature.east"

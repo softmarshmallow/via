@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A shaped import of height 2 and a parent anchored pad setting 5 over part of it: 5 under the pad, 2 elsewhere in the footprint."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.pad]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 5
+
+[action.build.file.rest]
+path  = "build/w/fields/height.npy"
+post  = [9, 7]
+value = 2

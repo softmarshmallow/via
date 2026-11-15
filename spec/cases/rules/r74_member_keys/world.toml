@@ -1,0 +1,26 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+include    = ["kinds"]
+
+[field.height]
+role = "surface"
+base = "= 20 + 0.1 * x"
+
+[field.clearing]
+role = "keep_out"
+
+[feature.lane]
+path = [[20, 50], [120, 50]]
+
+# Four members of one run, each on its own pad: every member's footprint node has the same
+# statements and edges, so only its name tells their keys apart (graph.md 3.1).
+[run.row]
+asset  = "house_low"
+ground = "pad"
+on     = { ref = "lane", offset = 10 }
+count  = 4
+face   = "toward"
+
+# hand instances below

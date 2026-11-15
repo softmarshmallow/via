@@ -1,0 +1,17 @@
+name       = "give_cycle"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.town]
+file = "town/world.toml"
+at   = [8, 0]
+give = { limits = "town_limits" }
+
+[feature.town_limits]
+where = "= dist('town.edge', 8) < 2"

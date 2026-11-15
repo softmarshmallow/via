@@ -99,7 +99,7 @@ spans; the engine reads `merge` to build the graph.
 
 | Reference | Written as | Edge from the reader to |
 |---|---|---|
-| placement | `on.ref`, `starts_at`, `ends_at`, `follows` | the named thing's `shape`, `instance`, `held` or `edit` |
+| placement | `on.ref`, `starts_at`, `ends_at`, a name in `path` (`derived.md` 3), `follows` | the named thing's `shape`, `instance`, `held` or `edit` |
 | name attribute | an attribute listed in its kind's `names` (`authority.md` 1.2) | from the feature's `attr` to the named thing's `shape`, `instance`, `held` or `edit` |
 | ends | `starts_at` / `ends_at` naming a path's end or an exit | that path's `shape` |
 | selection by place | `{ of, near }` (`identity.md` 3) | the maker's `held`, `op` or `step`; a hand edit's own selection reads the maker's `rule` or `step` (`identity.md` 4.1) |
@@ -117,7 +117,7 @@ spans; the engine reads `merge` to build the graph.
 | step, declared | `inputs`, `for_each` | `input`, `select` |
 | step, recorded | each read the step made (5.1) | the node that answered it |
 | write | a build file | the nodes whose values it holds; `write:manifest.json` also reads every other `write`, `source` and `input` |
-| give (M4) | `give = { <name> = "<ours>" }` | section 9 |
+| give (M4) | `give = { <name> = "<ours>" }` | the parent's node it names, from the import's `given` node (`composition.md` 12) |
 
 An edge's **label** names the key that made it and, where one reader has several edges from one key,
 the statement it reads through: `on.ref`, `base reads b`, `effect lane_a.bed`. A label is part of
@@ -643,9 +643,11 @@ An import is a graph of its own, its node ids prefixed `<import>.`. The prefix i
 world imported twice, or built alone, shares its results in one store; M1 keeps room for the
 prefix. A `give` may read any node of the import that does not reach the given node; reading one
 that does is `graph.cycle`. So a parent may draw a fill's limits along the import's arterials or
-river. The `given` and blend node families, and a layer with `after = "imports"` reading the
-imports' surface, are (open), decided by `county` in M4, which also answers the TODO "Let the parent
-see the part before it gives". All of this is `doc.not_yet` in M1.
+river: a scoped name reads one node per name (`placed:<id>/<name>`), never the whole import. The
+families `import`, `placed`, `brought`, `given` and `joincheck`, their edges, and what a moved import
+or a moved given thing re-runs are `composition.md` 12. There is no `after`: a layer ranked above
+the layer that declares an import reads the joined ground (`composition.md` 6.5). All of this is
+`doc.not_yet` in M1 to M3.
 
 ## Worked example
 
@@ -812,4 +814,3 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
   in M1.
 - **Which view a shape in a step's view reads a returned field in** (section 4). Decided by `basin`
   in M2.
-- **Imports, `given`, blends and `after`** (section 9). Decided by `county` in M4.

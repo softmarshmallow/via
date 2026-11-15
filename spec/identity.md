@@ -29,6 +29,9 @@ the same change.
 - A produced name from inside an import is reported as `<import>.<produced name>`:
   `a.trees#s7000_4_7`. This form appears only in diagnostics, the change report and lock records;
   it is never written in text (section 3), so the place-name grammar of vocabulary 2.1 is unchanged.
+  How a parent names an import's places (`<import>.<place>`, `<import>.footprint`, nested
+  `a.b.<place>`) and how a given feature is named inside a fill (`<given>.<parent id>`) are
+  `composition.md` 4 and 8.
 - Names exist for the change report, for diagnostics and for lock records. They never hold a hand
   edit (R3; section 6).
 
@@ -125,6 +128,17 @@ Each class in more detail:
   all have distinct parts, so a new self-crossing does not rename the path's far end. When a source
   passes one point twice, the lower `t` orders it. Most junctions are unique by their parts, so
   most ordinals are 0. "Node" is not used for this: it is the graph's unit of work (`graph.md`).
+- **Roles are read from the network, by travel.** At a junction, each of a source's segments
+  either leaves it along the source's travel or arrives. A written end is `start` (it leaves) or
+  `end` (it arrives); each arrival paired with a leaving is a pass; a leaving or an arrival left
+  over is where the network's `clip` cut the source, and the kept part `start`s or `end`s there.
+  So a junction on the clip outline is named by the source the outline cuts, `{(#clip, pass),
+  (central_mid, end)}`, never by the outline alone. A rule that dropped the cut source (an odd
+  count, no pair) named every crossing of an outline `{(#clip, pass)}`, and their ordinals then
+  counted round the outline: a counter in all but name (2.1). M3's city measured it: 106 junctions
+  on its district outlines shared one digest, and moving the grand avenue across one outline
+  renumbered them, which renamed the cells anchored on them, 212 lots in blocks kept whole on the
+  far side (case `clip_cut_role`). Ours.
 - **Edge.** An edge lying on several sources (`follows`, or geometry's `overlap` fixture) has every
   one of them in its set. The ordinal separates edges with the same junctions and sources (a loop).
 - **Source names.** A source's name is the name of the feature it came from: an authored id, or
@@ -250,7 +264,7 @@ on = { of = "streets", class = "edge", near = [131.5, 88.0], t = 0.5, offset = 3
 **Produced names are never written in text** (R3). A value containing `#` in any key that takes a
 name or a list of names, in world text, layers, change files or libraries, is
 `identity.key_in_text`, whose hint gives the `{ of, class, near }` form at the thing's current
-position. That covers `ref`, `within`, `starts_at`, `ends_at`, `follows`, `by`, `of`,
+position. That covers `ref`, `within`, `starts_at`, `ends_at`, a name in `path`, `follows`, `by`, `of`,
 `clump.around`, `give` and formula selectors (`formulas.md` 7). Produced names appear only where
 nothing is placed: diagnostics, the change report, lock records (4.4), the command line and the
 messages between the engine and a step (`protocol.md`). A step's own parameters are
@@ -568,7 +582,7 @@ table, and `position` is the item's place.
 | Code | Severity | Says | Hint |
 |---|---|---|---|
 | `identity.bad_id` | error | An id breaks `[a-z][a-z0-9_]*` or is longer than 48 bytes. | The repaired id: lowercased, each invalid character replaced by `_`, `x` in front if the first character is not a letter, cut to 48 bytes (`mill.a` to `mill_a`, `9x` to `x9x`). |
-| `identity.reserved` | error | An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r53, `surfaces.md` 1). | Another name; the nearest free one. |
+| `identity.reserved` | error | An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1). | Another name; the nearest free one. |
 | `identity.duplicate_id` | error | Two tables in one namespace share an id; names both, with file and line, across layers too. | Rename one, or merge them in one layer. |
 | `identity.unknown_place` | error | A part of a place name names nothing. | The nearest match. |
 | `identity.unknown_producer` | error | `by` names nothing. | The nearest producer id. |
@@ -672,7 +686,10 @@ carries its subject and the file and line of the text at fault.
     other region changes.
 27. (M3) A region outline with three stretches; lengthen one; the cells of the stretches not beside
     it keep their names.
-28. (M3) A new self-crossing on a path; its far end junction keeps its name.
+28. (M3) A new self-crossing on a path; its far end junction keeps its name. (M4) A network
+    clipped by a region, two paths crossing its outline; a third path added across the outline
+    before them along it; every cell away from the new path keeps its name (case `clip_cut_role`,
+    2.3 roles by travel).
 29. (M1) Extent grown on all sides; every old scatter name keeps its position, facing and asset;
     only new lattice indices add names.
 30. (M1) Seed changed, a scatter with density 1 and nothing to give way to: every name is kept, and
@@ -697,6 +714,7 @@ carries its subject and the file and line of the text at fault.
     counts. Raise the ground under it; items settle, are reported moved on that build only, and
     `identity.lock_ground_moved` is given on that build and the next.
 38. A pin onto a locked tree; `identity.lock_pin_clash`, exit 1; the tree is not removed.
+39. A recorded item's asset removed from the pack; `identity.lock_asset_missing`, exit 1.
 39. Unbind a recorded asset in the pack; `identity.lock_asset_missing`, exit 1.
 40. Change the seed under a lock so a recorded name falls outside the region; the build holds that
     name once, at its recorded place; `identity.lock_differs` counts one dropped.

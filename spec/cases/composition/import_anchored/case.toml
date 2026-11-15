@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "An import's anchored pad setting 3 and a parent shaped pad setting 9 over it: 3 there, the import's anchored ground holds."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.held]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 3

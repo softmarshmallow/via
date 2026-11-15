@@ -515,17 +515,67 @@ name, lot names at size) that its worlds needed and did not get; carry them firs
   fields memo runs once per plan, three plans a build (3.7 s of quay's 10). Owed: (a) a windowed
   `Fields` resolve per chunk; (b) `answer`, `define`, `compute_step` reading only what they need;
   (c) one plan for the three strata; (d) houses and lints split per item (`for_each`).
+  M4 slice 1 (cost): profiled first (release, `sample`); the memo's top was `lineref::nearest`, a
+  scan per post per path. Segments now indexed by cell, exact (geometry.md 3.8 How the nearest is
+  found), and `representative` prunes its estimates; same bytes, same node keys and values. quay
+  (3 runs, medians, warm store, `--against` cold, new directory): cold 11.9 -> 8.3 s, unchanged
+  6.1 -> 4.1 s, `unrelated` 9.4 -> 7.5 s, `clear_one` 6.5 -> 4.7 s, memo 3.9 -> 2.4 s. city (1 run):
+  cold 176 -> 124 s, unchanged 63 -> 34 s, `move_avenue` 194 -> 159 s, memo 40 -> 11 s (single
+  runs, mixed trees). Re-measured by the fix pass, 3 runs each, medians, interleaved, release `via`
+  of HEAD 7056fc3 (a worktree, its own city) against the working tree with all of slice 1, a fresh
+  store per run, unchanged and `move_avenue` `--against` cold, `totals.ms`, load 6 to 9 from
+  other agents: cold 152.0 -> 102.6 s, unchanged 62.8 -> 34.1 s (41% -> 33% of cold),
+  `move_avenue` 182.8 -> 100.2 s (120% -> 98%), memo 36.1 -> 9.8 s; spread under 0.6% each. Ratios
+  barely moved (quay unchanged ~50%, `unrelated` ~90% of cold): every rebuild still makes the
+  whole build per plan, because a worker's trace replay (`answer`) and a plain step's request key
+  read `ModelPlan::build()`. The cut owed is (b): graph.md 5.1 says answering a read computes only
+  what it names. Lesson: an algorithmic win lowers cold too; ratios need the structural cut.
 - [ ] **Selector members read whole per chunk** (`define_all`, graph.md 8.1): terraces are quadratic,
   so the city has none (190 `place.relief`, doors to 0.5 m off). Then terraces in `city`.
-- [ ] **R13 for lots at size**: city `move_avenue` renames 212 lots in kept blocks, `move_bridge` 16
-  (expect rows marked FAULT). Diagnose the cell key's stretch anchor and ordinal (identity.md 2.3).
-- [ ] **`run` and `set`** still `doc.not_yet` (rules.md 4, 5 specify them; cases r50-r61 owed):
-  example's row is written house by house, lamps, stalls and bench left out.
-- [ ] **Path way points by name** (derived.md 3, R16): monastery's turns typed; city grand avenue
-  strays 39 m off its line.
-- [ ] `network::representative` scans the bounding box per segment (top of the city profile).
-- [ ] `xtask check --milestone 3`: `cases` 31 and `explain` 33 findings (M3 codes `run.*`, `set.*`,
-  `identity.lock_*`, `surface.*` with no case or explain line). Same on HEAD; not from slice 5.
+- [x] **R13 for lots at size** (M4 slice 1): city `move_avenue` renamed 212 lots in kept blocks,
+  `move_bridge` 16; now 0 and 0. Cause: the anchor's ordinal. A source cut by a network's `within`
+  outline was dropped from the junction's parts (odd count, no pair), so every outline crossing was
+  `{(#clip, pass)}` and numbered round the outline (106 in the city). Roles are now read by travel
+  (identity.md 2.3; case `clip_cut_role`). Lesson: an ordinal over a digest that leaves a part out
+  is a counter; check what a digest drops, not only what it holds.
+- [x] **`run` and `set`** (M4 slice 1, 2026-11-16): read and placed (crates/via-model/src/sets.rs),
+  cases r62 to r73 pass (renumbered from r50 to r61: r50 was taken); example's row is `[run.east_row]`, with `[run.lamps]`, `[run.stalls]` and
+  the well and bench as `[set.well_corner]`. Lesson: lowering to plans let grounding, checks and
+  hand edits read runs and sets unchanged; the graph's nodes did not follow by themselves.
+  Left (each -> M4 core):
+  - [x] **`third_cottage` and `move_tarn` failed** with `diag.internal`: `footprint:east_row#r1`
+    gave another value under one key. Cause: the four members' footprint nodes had the same
+    statements and edges and no parameter, so one key; the store gave r0's value to r1..r3 (they
+    were never computed in base). Fixed: the member's name is the key's parameter, as `made` does.
+    Unit test `no_two_nodes_share_a_key` (any two nodes of one family keyed on the same parts) and
+    case r74 `member_keys`, both failing before. Lesson: a node family made per item needs the
+    item in its key; check plans for key clashes, not only values.
+  - [ ] A run member's pad past its kind's `max_change` is `authority.max_change` (as written),
+    not given way: `Decls::produced_instance` and the give-way rounds know scatters and steps only.
+  - [x] A run member's pad ordered its rows at rank 0 (`Eff`, the resolver's writers and
+    `shape_rank` read `instances` only; set items too). Now `Decls::placed_rank`: the host
+    instance's rank, a run member's its run's; scatters give way to run members by that rank.
+    east_row is in `hamlet` (rank 1); every example row still passes, so none read that order.
+  - [ ] `[pin] set` still `doc.not_yet`; `on = { of = "<run>", near }` (select a member) and the
+    mount of a member (rules.md 15, "a lamp on a fence post") are not written.
+  - [ ] Run members are not tested against other producers (`place.crowded`); the `kitrun` fit
+    lint (rules.md 10) is not written; identity.md case 33's run half (cut by the extent) owed.
+  - [x] Two rows were numbered r50 in rules.md 13: the run and set cases are now r62 to r73.
+  - [ ] A store keeps a lint's diagnostics across a rebuilt binary: after a fix to step subjects
+    the old `diag.malformed` came back until the store was wiped (node keys hold no engine version).
+- [x] **Path way points by name** (M4 slice 1; derived.md 3, cases d26 to d28): a `path` entry may
+  name a place. Monastery's six turns are named points (every row as before); city's grand avenue
+  passes four named places on a guide between its gates and lies on its line (39 m off before).
+- [ ] Way points by name, left: an inline `{ ref, t, offset }` entry in `path` (today a point
+  feature `on` it, then its name); `holds` naming a point feature (derived.md Open).
+- [x] `network::representative` scans the bounding box per segment (top of the city profile).
+  Pruned (M4 slice 1): an estimate below the floor of the greatest so far stops early, trying the
+  last candidate's nearest segment first; equal to the unpruned search (unit test). The winding
+  scan per post is untouched; not re-profiled on the city alone.
+- [x] `xtask check --milestone 3`: `cases` and `explain` clear (2026-11-16). Lock (identity.md 35 to
+  39) and kind-surface cases are written as `pending` manifests with no world: locks and kind
+  surfaces are not implemented. Lesson: an explain's example is compiled into via-diag, so it is
+  held to the deny-list: write it with neutral names.
 - [ ] Plan step 6 for M3: a fresh agent builds a small variation from the documents alone. Not run.
 
 **-> M4, library (lib/town, lib/ways, lib/review)**
@@ -567,6 +617,41 @@ name, lot names at size) that its worlds needed and did not get; carry them firs
 **-> later**
 - [ ] A railway (row 36) is in no v1 world.
 - [ ] Monastery `no_bridge` floods the floor at the bridge site (seen, not measured).
+
+### From M4 slice 1 (2026-11-16; the change, on-foot and gate reviews, and the fix pass)
+
+The fix pass fixed: run members' footprint keys (example `third_cottage`, `move_tarn`), run and
+set-item ranks, the duplicate r50, quay `move_hill`'s three name rows (the names fix keeps 18 more
+lots), and composition.md's graph (one `placed` node per scoped name, statements without `file`,
+`joincheck` nodes), brought-entry order, given feature names and attributes, R13 across imports
+(9.1), R36 recording R10's amendment. Lesson: two reviews from different angles (diff, on foot)
+found different blockers; the gate alone found none of them.
+
+**-> M4 slice 2**
+- [ ] `after` on a layer: still `NotYet(4)` in via-doc's schema; R36 and composition.md 6.5 want
+  `doc.unknown_key` with the fixed hint (case `after_dropped`).
+- [ ] Composition cases owed (composition.md Conformance, the paragraph before "Changed from the
+  spike"): 16 rules with no case, each to be written able to fail.
+- [ ] Case details that depend on the implementation: the line numbers in `anchored_clash` and
+  `after_dropped`, the node ids in `moved` and `moved_square` (`town.step:lay/i:districts.d1`);
+  settle them against the first implementation, not the other way round.
+- [ ] A run member's pad past its kind's `max_change` raises `authority.max_change` instead of
+  giving way: `Decls::produced_instance` and the give-way rounds know scatters and steps only.
+- [ ] The store kept a step's old `diag.malformed` after the binary was rebuilt: node keys hold the
+  engine version string, not the engine's code, so a warm store is not clean across two builds of
+  one version. Decide: a build id in `Versions`, or say in graph.md 3.3 that a dev rebuild needs a
+  fresh store.
+- [ ] Undeclared exits (R9; composition.md Open): `atlas`'s river at the edge decides between
+  `import.exit_undeclared` and nothing.
+
+**-> later**
+- [ ] city `look_grand_central` is `at = [700, 830]`, so after `move_avenue` the view looks 40 m
+  off the avenue: put it `on` `grand_ave_line` (review on foot, PNGs in its scratch `keep/`).
+- [ ] monastery `bm_turn` (`at = [292, 62]`) stands on grass beside the road: `on` `road_up` near
+  `turn_2`.
+- [ ] Field matching by role as well as name across imports (composition.md Open).
+- [ ] The key-clash test covers one small world; run `key_clashes` over every example's plan
+  (crates/via-model/src/graph.rs, test-only) when a world adds a new per-item family.
 
 ## Framing
 
@@ -703,6 +788,8 @@ How one world is built from several documents.
 - [ ] -> M4: Make the master a layer above its parts by default, not below. Context: `border` needed
       `after = "parts"` so a ridge on the join was not blended away (7 m kept 4.1 m without it).
       Lesson: the order was an accident of the spike; one graph of layers and parts should set it.
+      Decided (M4 slice 1, composition.md 6.4, R36): no default by origin; the join content is a
+      layer ranked above the import's, and R29 orders the rest.
 - [ ] -> M4: Name the sides of a part's outline, and "the sides facing part X". Context: `border` writes
       `wild.edge.2`. Lesson: a number breaks when the outline gains a point.
 - [ ] -> M4: Let a master name a point along a part's path, not only its ends. Context: the west walk in

@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 120], [100, 120]]
+
+[run.fence]
+asset   = "fence_post"
+on      = { ref = "lane", span = [0.1, 0.4], offset = -4 }
+spacing = 3
+ends    = "both"

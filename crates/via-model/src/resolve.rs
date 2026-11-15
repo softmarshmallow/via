@@ -210,7 +210,7 @@ impl<'a> Fields<'a> {
                 name: name.clone(),
                 kind: kind.clone(),
                 tier: k.authority.unwrap_or(Tier::Derived),
-                rank: d.instances.get(inst).map_or(0, |i| i.rank),
+                rank: d.placed_rank(inst),
                 links: Vec::new(),
                 attrs: k.defaults.clone(),
                 footprint: true,
@@ -753,8 +753,7 @@ impl<'a> Fields<'a> {
         if let Some(f) = self.d.features.get(base) {
             return f.rank;
         }
-        let host = base.split('.').next().unwrap_or(base);
-        self.d.instances.get(host).map_or(0, |i| i.rank)
+        self.d.placed_rank(base)
     }
 
     /// Evaluates a formula over a domain; a failure is reported and gives `None`.
@@ -939,9 +938,10 @@ impl<'a> Fields<'a> {
                     let mut pts: Vec<(i64, i64)> = Vec::new();
                     let mut cols: Vec<lineref_cols::Cols> = Vec::new();
                     let mut ring: Vec<bool> = Vec::new();
+                    let pj = geo.projector();
                     for (i, j) in window.posts() {
                         let (x, y) = via_raster::window::post_mm(&grid, i, j);
-                        let m = geo.project(P::new(x, y));
+                        let m = pj.project(P::new(x, y));
                         if let Some(r) = e.radius {
                             if m.d > via_num::metres(r) {
                                 continue;
@@ -1822,11 +1822,12 @@ impl Reads for Ctx<'_> {
                 })
                 .collect());
         }
+        let pj = s.geo.projector();
         Ok(domain
             .points()
             .into_iter()
             .map(|(x, y)| {
-                let m = s.geo.project(P::new(x, y));
+                let m = pj.project(P::new(x, y));
                 match measure {
                     Measure::D => m.d,
                     Measure::Sd => m.sd,
@@ -1870,6 +1871,7 @@ impl Reads for Ctx<'_> {
             }
         };
         let skip_sd = !matches!(g, Geo::Path { .. });
+        let pj = g.projector();
         Ok(domain
             .points()
             .into_iter()
@@ -1888,7 +1890,7 @@ impl Reads for Ctx<'_> {
                 match measure {
                     Measure::Inside => f64::from(u8::from(g.contains(p))),
                     m => {
-                        let pr = g.project(p);
+                        let pr = pj.project(p);
                         match m {
                             Measure::D => pr.d,
                             Measure::Sd => pr.sd,

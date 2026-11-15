@@ -27,6 +27,8 @@ pub enum Takes {
     Point,
     /// A list of points.
     Points,
+    /// A path's way points: each a point or a name (`derived.md` 3).
+    Ways,
     /// So many lengths.
     Lengths(usize),
     /// So many numbers.
@@ -69,6 +71,7 @@ impl Takes {
             Takes::Formula => "a formula string or a number",
             Takes::Point => "a point `[x, y]`",
             Takes::Points => "a list of points",
+            Takes::Ways => "a list of points and names",
             Takes::Lengths(4) => "4 lengths",
             Takes::Lengths(3) => "3 lengths",
             Takes::Lengths(_) => "a list of lengths",
@@ -116,6 +119,12 @@ pub enum Shape {
     Network,
     /// `[cells.<id>]` (`geometry.md` 8.2).
     Cells,
+    /// `[set.<id>]` (`rules.md` 4).
+    Set,
+    /// `[set.<id>.item.<name>]`.
+    Item,
+    /// `[run.<id>]` (`rules.md` 5).
+    Run,
     /// `on`.
     On,
     /// `follows`.
@@ -193,7 +202,9 @@ pub fn top_table(name: &str) -> Option<Rule> {
         "step" => Rule::Ok(Takes::Ids(Shape::Step)),
         "network" => Rule::Ok(Takes::Ids(Shape::Network)),
         "cells" => Rule::Ok(Takes::Ids(Shape::Cells)),
-        "set" | "run" | "lock" => Rule::NotYet(3),
+        "set" => Rule::Ok(Takes::Ids(Shape::Set)),
+        "run" => Rule::Ok(Takes::Ids(Shape::Run)),
+        "lock" => Rule::NotYet(3),
         "import" | "given" => Rule::NotYet(4),
         "params" => Rule::Fixed("write `[let]`"),
         "variant" => Rule::Fixed("write `[change.<n>]`"),
@@ -259,7 +270,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("authority", Ok(T::Str)),
             ("at", Ok(T::Point)),
             ("on", Ok(T::Table(Shape::On))),
-            ("path", Ok(T::Points)),
+            ("path", Ok(T::Ways)),
             ("region", Ok(T::Points)),
             ("where", Ok(T::Formula)),
             ("follows", Ok(T::Table(Shape::Follows))),
@@ -296,7 +307,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
         ],
         Shape::Instance => &[
             ("asset", Ok(T::Name)),
-            ("set", NotYet(3)),
+            ("set", Ok(T::Name)),
             ("at", Ok(T::Point)),
             ("on", Ok(T::Table(Shape::On))),
             ("face", Ok(T::Facing)),
@@ -359,6 +370,29 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("min_length", Ok(T::Length)),
             ("min_area", Ok(T::Number)),
             ("kind", Ok(T::Name)),
+        ],
+        Shape::Set => &[("item", Ok(T::Ids(Shape::Item)))],
+        Shape::Item => &[
+            ("asset", Ok(T::Name)),
+            ("set", Ok(T::Name)),
+            ("at", Ok(T::Point)),
+            ("face", Ok(T::Facing)),
+            ("scale", Ok(T::NumberOrPair)),
+            ("tint", Ok(T::NumberOrPair)),
+        ],
+        // No `seed`: a run draws nothing (`rules.md` 5), so `seed` is `doc.unknown_key`.
+        Shape::Run => &[
+            ("asset", Ok(T::Name)),
+            ("set", Ok(T::Name)),
+            ("on", Ok(T::Table(Shape::On))),
+            ("count", Ok(T::Integer)),
+            ("spacing", Ok(T::Length)),
+            ("ends", Ok(T::Str)),
+            ("face", Ok(T::Facing)),
+            ("scale", Ok(T::NumberOrPair)),
+            ("tint", Ok(T::NumberOrPair)),
+            ("ground", Ok(T::Name)),
+            ("margin", Ok(T::Length)),
         ],
         Shape::On => &[
             ("ref", Ok(T::Name)),
@@ -445,7 +479,7 @@ pub fn in_world_namespace(top: &str) -> bool {
 /// The named-reference keys of a shape (`documents.md` 5.1), each with whether it holds a list.
 pub fn name_keys(shape: Shape) -> &'static [&'static str] {
     match shape {
-        Shape::Feature => &["starts_at", "ends_at"],
+        Shape::Feature => &["starts_at", "ends_at", "path"],
         Shape::Pin | Shape::Clear => &["by"],
         Shape::Scatter => &["within"],
         Shape::On | Shape::Select => &["ref", "of"],

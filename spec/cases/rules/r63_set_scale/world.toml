@@ -1,0 +1,22 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[set.two.item.a]
+asset = "box_small"
+at    = [3, 0]
+
+[set.two.item.b]
+asset = "box_small"
+at    = [-3, 0]
+scale = 0.5
+
+[instance.pair]
+set   = "two"
+at    = [100, 100]
+scale = 2

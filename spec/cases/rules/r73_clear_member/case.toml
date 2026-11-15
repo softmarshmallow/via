@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "rules.md 9: a clear over fence#r3 removes that member; its neighbours keep their names and places."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+
+[action.build.check.gone]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r3"
+at = [35, 10]
+absent = true
+
+[action.build.check.r2]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r2"
+at = [25, 10]
+
+[action.build.check.r4]
+fn = "instance_at"
+build = "build/w"
+name = "fence#r4"
+at = [45, 10]

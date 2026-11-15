@@ -38,7 +38,7 @@ NAMED_CHECKS: dict[str, tuple[set[str], set[str]]] = {
     "run_report_valid": ({"path"}, set()),
     "pack_root_resolves": ({"build"}, set()),
     "json_list": ({"path", "pointer"}, {"from", "at_least", "includes", "starts", "last", "nulls"}),
-    "instance_at": ({"build", "name", "at"}, set()),
+    "instance_at": ({"build", "name", "at"}, {"face", "scale", "absent"}),
     "changes_inside": ({"path", "prefix", "at", "radius", "what", "cause"}, set()),
     "changes_absent": ({"path"}, {"entry_names", "causes"}),
     "network_valid": ({"path", "input"}, set()),

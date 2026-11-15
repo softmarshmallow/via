@@ -723,6 +723,7 @@ pub(crate) fn finish_from(
     }
     // Producers and hand edits, then heights and checks.
     let mut hand = rules::hand(&decls, &placed, &grid, &mut diags);
+    crate::sets::runs_give_way(&decls, &pk, &mut hand, &mut diags);
     let produced = rules::scatter_all(&decls, &pk, &placed, &fields, &hand);
     diags.extend(produced.diags);
     // Pins placed on a scatter's instance stand where any pin does (`rules::hand`'s check).
@@ -1081,6 +1082,7 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         }
         refs.extend(f.starts_at.clone());
         refs.extend(f.ends_at.clone());
+        refs.extend(f.way_names().into_iter().map(str::to_string));
         if let Some(k) = f.kind.as_ref().and_then(|k| d.kinds.get(k)) {
             for n in &k.names {
                 if let Some(Attr::Text(t)) = f.attrs.get(n) {
@@ -1093,6 +1095,7 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         }
     } else if let Some(i) = d.instances.get(base) {
         s.insert(format!("instance.{base}"));
+        s.extend(d.set_stmts(i.set.as_deref()));
         s.insert(crate::graph::PACK.to_string());
         s.insert(format!("asset:{}", i.asset));
         if let Some(g) = &i.ground {
@@ -1192,7 +1195,22 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
         let mut s = match &maker {
             Some(m) => {
                 let mut s = frame_deps();
-                s.insert(format!("scatter.{m}"));
+                match d.runs.get(m) {
+                    // A run's member reads the run, the sets it places and its stretch.
+                    Some(r) => {
+                        s.insert(format!("run.{m}"));
+                        if let crate::sets::What::Set(set) = &r.what {
+                            s.extend(d.set_stmts(Some(set)));
+                        }
+                        if let Some(g) = &r.ground {
+                            s.insert(format!("kind.{g}"));
+                        }
+                        s.extend(feature_deps(d, r.reference(), &mut BTreeSet::new()));
+                    }
+                    None => {
+                        s.insert(format!("scatter.{m}"));
+                    }
+                }
                 s.insert(crate::graph::PACK.to_string());
                 s.extend(ground_fields.iter().cloned());
                 for i in d.instances.keys() {
@@ -1215,9 +1233,14 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
                 }
                 s
             }
+            // A set's item reads what its placing instance reads (`rules.md` 4).
             None => out
                 .deps
                 .get(&("instance".to_string(), name.clone()))
+                .or_else(|| {
+                    let root = name.split('.').next().unwrap_or(&name);
+                    out.deps.get(&("instance".to_string(), root.to_string()))
+                })
                 .cloned()
                 .unwrap_or_default(),
         };

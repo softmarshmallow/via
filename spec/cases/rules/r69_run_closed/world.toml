@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.yard]
+region = [[0, 0], [10, 0], [10, 10], [0, 10]]
+
+[run.posts]
+asset = "fence_post"
+on    = { ref = "yard" }
+count = 4
+ends  = "both"

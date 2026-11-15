@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = '''An import's exit east that no parent reference names: import.exit_unanswered, subject a.feature.east, data.write ends_at = "a.east"; exit 1.'''
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/w"
+[action.build.diag.forgotten]
+code    = "import.exit_unanswered"
+subject = "a.feature.east"
+data    = { write = 'ends_at = "a.east"' }

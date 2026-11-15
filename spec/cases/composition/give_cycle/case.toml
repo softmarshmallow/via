@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "A parent region given to town as limits, written as a condition on the distance to town.edge, a path that follows limits: graph.cycle; exit 1."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.cycle]
+code = "graph.cycle"

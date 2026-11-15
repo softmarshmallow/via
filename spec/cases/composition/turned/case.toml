@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "An import turned face = 90 at (20, 20): its instance at (2, 2) stands at (22, 18) facing 90 degrees; a path ending at a.spot (4, 0) ends at (20, 16)."
+milestone = 4
+actions   = ["build"]
+
+# face = 90 turns a's +y to the east: (qx, qy) goes to at + (qy, -qx).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.check.hut]
+fn    = "instance_at"
+build = "build/w"
+name  = "a.hut"
+at    = [22, 18]
+
+[action.build.file.face]
+path = "build/w/instances/face.npy"
+all  = 90000
+
+[action.build.check.ends]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "p"
+start       = [10, 16]
+end         = [20, 16]
+min_segment = 0.001

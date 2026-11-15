@@ -343,6 +343,9 @@ impl<'w> Checker<'w> {
             (Takes::Points, Value::List(xs)) => {
                 xs.iter().all(|x| self.item_ok(Takes::Point, x, e, ctx))
             }
+            (Takes::Ways, Value::List(xs)) => xs
+                .iter()
+                .all(|x| matches!(x.value, Value::Str(_)) || self.item_ok(Takes::Point, x, e, ctx)),
             (Takes::Lengths(n), Value::List(xs)) => {
                 xs.len() == n && xs.iter().all(|x| self.item_ok(Takes::Length, x, e, ctx))
             }
@@ -717,7 +720,7 @@ pub(crate) fn find_id<'b>(
 fn named_refs<'a>(root: &Table, top: &str, ent: &'a Table) -> Vec<Named<'a>> {
     let mut refs: Vec<Named<'a>> = Vec::new();
     let simple: &[&str] = match top {
-        "feature" => &["starts_at", "ends_at"],
+        "feature" => &["starts_at", "ends_at", "path"],
         "pin" | "clear" => &["by"],
         "scatter" => &["within"],
         "network" => &["from", "within"],

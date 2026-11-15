@@ -79,9 +79,35 @@ condition: a step finds it with `derive.spill` (4.1) and returns the lake.
 ## 3. A found course: `route`
 
 `route` takes a formula, the cost per metre of travel at a point, written only on a path. The
-path's written points are its waypoints: `starts_at`, every point of `path`, then `ends_at`
+path's written points are its waypoints: `starts_at`, every entry of `path`, then `ends_at`
 (`geometry.md` 2.7). Between each two in turn, the course is the least-cost way over the posts. A
 typed course is a path without `route` (R16).
+
+**Way points by name.** An entry of `path` is a point `[x, y]` or a name, on any path, routed or
+typed. A name gives the point `starts_at` would give it (`geometry.md` 2.7's table): a point
+feature (however it is placed: `at`, `on`, `{ of, near }`), a path's end (`beck.end`), an instance
+or set item, a mount. A whole path or a region is `geom.meet_shape` at `path`; a name that names
+nothing is `identity.unknown_place`; a produced name is `identity.key_in_text` (select it by place
+on a point feature, and name that). Every named entry is resolved in the same build, so each that
+fails says so. A way point is passed, not met: it is no meeting (no pair of mounts, `surfaces.md`
+3.3) and owns no crossing (`geometry.md` 2.7). It is a named reference (`documents.md` 5.1) and an
+edge of the path's shape node (`graph.md` 2), so the course is found again when the place moves,
+and the change report names the cause. So a course follows the places it is written through: turns
+written as point features `on` a guide between the course's ends move when those ends move, with no
+edit to the turns (the city's grand avenue, case d26). Ours: the spike's `path` took coordinates
+only.
+
+```toml
+[feature.turn_1]
+at = [228, 12]
+
+[feature.road_up]
+kind      = "road"
+starts_at = "road_entry"
+ends_at   = "bridge.start"
+path      = ["turn_1", [240, 26], "turn_2"]          # names and points, in order
+route     = "= 1 + 0.02 * pow(slope('height'), 2)"
+```
 
 ```toml
 [feature.river]
@@ -291,6 +317,9 @@ incremental one. Cases live in `spec/cases/derived/<case>/`. Unless a row says o
 | d23 | d16, then d17's world (the same with the lint) on one store | build each | First `authority.unchecked`; then `step:make` reused and no `authority.unchecked` (M3). |
 | d24 | d08's ridge written as `dist('wall', 2) < 0.5` in `height`'s base, `wall` a path whose id sorts after the routed `course`; a change moving `wall` 1 m north | build, again warm, with the change, then without on one store | The course is in `features.json` each time: d08's three points, then round by (4, 0), then d08's again; no `diag.internal` (M3). |
 | d25 | Extent (0, 0) to (8, 8); `route = "= if(y > 7.5, 1, 100)"` from (0, 7) to (8, 7), `smooth = true`, a kind whose effect reads `smoothed_along(2)` | build | Exit 0, no `formula.outside_field`: the course runs along the top edge and its smoothed samples stay within y = 8 (M3). |
+| d26 | d22's flat cost with the waypoint written as `"mid"`, a point feature `on` a guide path `[[0, 1], [8, 1]]` at `t = 0.625`; a change moving the guide to `[[0, 3], [8, 3]]` | build, then with the change | The course equals d22's (it passes (5, 1)); with the change it passes (5, 3), the guide's edit its cause; no edit to the course (M4). |
+| d27 | A typed path `path = ["a", [4, 4], "b.end"]`, `a` a point feature at (1, 1), `b` a path ending at (7, 2) | build | The path is (1, 1), (4, 4), (7, 2); no meeting record for `a` or `b`; a change moving `a` to (2, 1) gives (2, 1), (4, 4), (7, 2), its cause `feature.a` (M4). |
+| d28 | `path` naming a region, a name of nothing, and `"x#k"` | build | `geom.meet_shape` at `path`; `identity.unknown_place` with the nearest name; `identity.key_in_text`; exit 1 (M4). |
 
 ## Changed from the spike
 
@@ -298,6 +327,7 @@ incremental one. Cases live in `spec/cases/derived/<case>/`. Unless a row says o
 |---|---|---|
 | `flood = { field, level = "spill", fence, max_depth, freeboard }` on a lake | `where` with `holds`; the spill level from a step's `derive.spill` | One mask (`geometry.md` 3.7); a search is a step's (R7, R23). |
 | `course = "find"` with an empty path | `route`, a cost per metre, through the written points | Ends and passes by name (R16); the cost is the author's. |
+| `path` of coordinates only | A `path` entry may be a name (section 3) | A turn written as a named place moves with it (R16). |
 | Effects on a field a flood read never reached it, unsaid | A shape reads the head, by rule; a step above reads effects | `authority.md` 2.3. |
 | A held river cell; a lake held by its region | Facts become conditions in the library; checked after by a lint with `checks` | R14: "a river is a groove, not held cells". |
 | Drainage from post to eight-way post, in rows and diagonals | `derive.descend` follows the triangulated surface at any bearing (4.2) | The rectilinear drainage was a recorded failure. |

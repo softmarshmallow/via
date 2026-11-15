@@ -48,39 +48,47 @@ on    = { ref = "green", t = 0.62, offset = 7 }
 face  = "toward"
 
 # ------------------------------------------------------------------------------------------ the row
-# A row of town houses over the bridge, fronts to the lane. The vocabulary says this as one `run`
-# (`[run.east_row]`, four `house_row` along `lane_east` over `span = [0.55, 0.95]`), and a well
-# with its bench as a `set`; this engine reads both only from M3 (`doc.not_yet`), so the row is
-# written house by house and the well alone (README, "Gaps"). Each house is `on` the lane, so the
-# row still follows it.
+# A row of town houses over the bridge, fronts to the lane: one `run` (rules.md 5), four members
+# with half a step free at each end of `span`, so at t = 0.6, 0.7, 0.8 and 0.9 of the lane. Each
+# member is `east_row#r<k>` and has its own pad; the row follows the lane when it moves.
 
-[instance.row_1]
+[run.east_row]
 asset  = "house_row"
 ground = "pad"
-on     = { ref = "lane_east", t = 0.6, offset = 11 }
+on     = { ref = "lane_east", span = [0.55, 0.95], offset = 11 }
+count  = 4
 face   = "toward"
 
-[instance.row_2]
-asset  = "house_row"
-ground = "pad"
-on     = { ref = "lane_east", t = 0.7, offset = 11 }
-face   = "toward"
+# Lamps along the far side of the same lane, about every 10 m, one at each end (`ends = "both"`):
+# `spacing` is stretched so they fill the stretch evenly.
+[run.lamps]
+asset   = "lamp_post"
+on      = { ref = "lane_east", span = [0.05, 0.95], offset = -3 }
+spacing = 10
+ends    = "both"
 
-[instance.row_3]
-asset  = "house_row"
-ground = "pad"
-on     = { ref = "lane_east", t = 0.8, offset = 11 }
-face   = "toward"
-
-[instance.row_4]
-asset  = "house_row"
-ground = "pad"
-on     = { ref = "lane_east", t = 0.9, offset = 11 }
-face   = "toward"
-
-[instance.well]                             # on the green (stand-in: no well in the starter pack)
+# Market stalls along the green's south edge, 3 m in from it (a region's outline runs
+# counter-clockwise from its least vertex, so its left is inward). Stand-ins: the starter pack has
+# no stall (README, gaps).
+[run.stalls]
 asset = "box_small"
-at    = [96, 92]
+on    = { ref = "green", span = [0.08, 0.3], offset = 3 }
+count = 4
+face  = "along"
+
+# The well with its bench, as one unit (rules.md 4): placed by `square`, its items are
+# `square.well` and `square.bench`, in the square's frame. Stand-ins: a box for the well, a log
+# for the bench (no well or bench in the starter pack).
+[set.well_corner.item.well]
+asset = "box_small"
+
+[set.well_corner.item.bench]
+asset = "log"
+at    = [0, -3]
+
+[instance.square]                           # on the green
+set = "well_corner"
+at  = [96, 92]
 
 # ------------------------------------------------------------------------------------------ steps
 

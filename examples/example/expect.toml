@@ -7,7 +7,9 @@
 # rewrite branch's working tree on 2026-11-15 (after cbecb9d), one build each, a fresh store
 # (`--store`), the cold base first and each change `--against` it on the same store, other agents
 # building at the same time (load average 6 to 8). `equals` is exact; a `band` says how far a
-# measure may move before someone looks, and why. A band is never a target (R15). The spike's
+# measure may move before someone looks, and why. A band is never a target (R15). The rows of
+# the run and set (`by_hand`, `east_row`, `lamps`, `stalls`, `row_follows`) were taken the same way
+# on 2026-11-16 (working tree after 7056fc3), a fresh store under the scratch folder. The spike's
 # example exported no measures, so there is no oracle column.
 
 # ------------------------------------------------------------------------------------------ base
@@ -20,9 +22,21 @@ equals  = 0
 measure = "warnings"
 equals  = 0
 
-[base.by_hand]                              # 6 houses, 4 of the row, the well: the run and set
-measure = "instances.by_hand"               # are written by hand until M3 reads them (README, Gaps)
-equals  = 11
+[base.by_hand]                              # 6 houses, the well and bench of `square`'s set
+measure = "instances.by_hand"               # (rules.md 4: items are hand instances)
+equals  = 8
+
+[base.east_row]                             # the row: one run of 4 (rules.md 5)
+measure = "instances.east_row"
+equals  = 4
+
+[base.lamps]                                # lane_east's lamps, `spacing = 10`, both ends: 9 in this build
+measure = "instances.lamps"
+equals  = 9
+
+[base.stalls]                               # 4 along the green's south edge
+measure = "instances.stalls"
+equals  = 4
 
 [base.woods]                                # wet, not steep, below the treeline: one build's count
 measure = "instances.woods"
@@ -168,8 +182,12 @@ equals  = ["moisture"]
 measure = "change.moved.feature"            # church path and its foot, and the views on them: 17
 band    = [12, 20]
 
-[move_beck.houses_follow]                   # the two cottages, the farm and the row: on the lanes; the mill: on the beck (slice 4)
-measure = "change.moved.instance"
+[move_beck.houses_follow]                   # the two cottages and the farm: on the lanes; the mill: on the beck (slice 4)
+measure = "change.moved.instance"           # written instances only; the row is the run's, below
+equals  = 4
+
+[move_beck.row_follows]                     # the run's four houses, and their pads, on lane_east
+measure = "change.moved.east_row"
 equals  = 8
 
 [move_beck.deck_wet]

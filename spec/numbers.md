@@ -221,7 +221,7 @@ makes, its noise included. Lesson (spike FINDINGS, "Parts"): a piece placed in a
 world's seed and coordinates, and moving it changed its noise. How the import's fields are
 resampled onto the parent's posts is `fields.md`; its datum and lift, `geometry.md`. An import placed
 with `on` (an interior on a mount, `vocabulary.md` section 6) resolves to an origin and facing as an
-instance does: (open), decided in `documents.md` with imports, M4. Whether an import takes `scale`:
+instance does (`composition.md` 3). Whether an import takes `scale`:
 no; a world is built at its own size. Not in M1 (`vocabulary.md` section 5).
 
 ### 5.4 Nested frames
@@ -363,7 +363,7 @@ generator whose output depends on how many draws came before.
 | A noise function in a formula | `seed` argument | a name (`formulas.md` 8.2) | none: the stream is named by owner and place (`formulas.md` 8.2) |
 
 Only a scatter draws among the rules. A `run` and a `set` draw nothing, so `seed` on either is
-`doc.unknown_key` (`rules.md` 4 and 5, case r58).
+`doc.unknown_key` (`rules.md` 4 and 5, case r70).
 
 - The world seed is a TOML integer, used as an unsigned 64-bit value. A negative one is
   `num.seed_range`. One above `2^63 - 1` is not a TOML integer and fails at parse (`doc.syntax`).
@@ -373,7 +373,8 @@ Only a scatter draws among the rules. A `run` and a `set` draw nothing, so `seed
   `formula.seed`, which points here for the form.
 - A scatter writes `seed` only to change its draws. Two scatters that write one seed name draw the same
   streams, which is how an author says "draw these alike".
-- An imported world uses its own world seed (5.3). Whether a parent may set it is (open), below.
+- An imported world uses its own world seed (5.3), unless the parent writes `seed` on the import
+  (`composition.md` 2).
 - Measures are reported over several seeds (TODO, working rules). An ensemble is a set of requested
   changes, each setting the world `seed`, built side by side (`build.md`, `--change`); the text stays
   the only truth.
@@ -820,9 +821,6 @@ it has no vector tests.
 - **Height on the lattice.** Whether a surface at a fixed level (a deck, a floor) holds `z` in
   millimetres. Decided in `surfaces.md` for M5, by whether two surfaces meeting at a pair of mounts
   must compare heights exactly.
-- **An import placed `on`.** Decided in `documents.md` for M4, with imports.
-- **A parent setting an import's seed.** Decided in `documents.md` for M4, by whether `county`
-  needs two copies of one place that differ.
 - **The post limit.** `2^26` is provisional. Decided by the M0 probe: the largest grid that builds
   within the budget the plan sets for ford.
 - **Windows bytes.** Decided by the first run on hosted runners, once a push is allowed.

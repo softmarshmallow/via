@@ -1,0 +1,28 @@
+name       = "derived"
+extent     = [0, 0, 8, 8]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= min(abs(x - 2) + abs(y - 4), abs(x - 6) + abs(y - 4))"
+
+[feature.course]
+starts_at = "p_start"
+ends_at   = "p_end"
+path      = ["mid"]
+route     = 1
+
+[feature.guide]                             # a guide (no kind): where the course's turn lies
+path = [[0, 1], [8, 1]]
+
+[feature.mid]                               # the turn, by name: 0.625 along the guide is (5, 1)
+on = { ref = "guide", t = 0.625 }
+
+[feature.p_end]
+at = [7.6, 6.7]
+
+[feature.p_start]
+at = [0.3, 0.2]
+
+[change.north.feature.guide]
+path = [[0, 3], [8, 3]]

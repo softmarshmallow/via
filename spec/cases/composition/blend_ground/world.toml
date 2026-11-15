@@ -1,0 +1,15 @@
+name       = "blend_ground"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = -5
+
+[import.a]
+file = "a/world.toml"
+at   = [8, 0]
+max_grade = 10
+blend = "= smoothstep(-1, 0, a.height)"

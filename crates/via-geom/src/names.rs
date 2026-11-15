@@ -152,12 +152,19 @@ pub fn network_keys(net: &Network) -> NetworkKeys {
     for &jp in &net.junctions {
         let v = net.arr.vid(jp).unwrap_or(0);
         // Incident entries per source, and the t of this vertex on each.
-        let mut count: BTreeMap<usize, usize> = BTreeMap::new();
+        // Per source: how many of its entries here leave the vertex along its travel, and how
+        // many arrive (2.3, Junction).
+        let mut count: BTreeMap<usize, (usize, usize)> = BTreeMap::new();
         let mut tmin: BTreeMap<usize, f64> = BTreeMap::new();
         for &h in &net.arr.out[v] {
             let seg = &net.noded.segments[h / 2];
             for p in &seg.prov {
-                *count.entry(p.source).or_insert(0) += 1;
+                let e = count.entry(p.source).or_insert((0, 0));
+                if h.is_multiple_of(2) != p.reversed {
+                    e.0 += 1;
+                } else {
+                    e.1 += 1;
+                }
                 let t = if seg.a == jp { p.t[0] } else { p.t[1] };
                 let e = tmin.entry(p.source).or_insert(t);
                 if t < *e {
@@ -166,21 +173,31 @@ pub fn network_keys(net: &Network) -> NetworkKeys {
             }
         }
         let mut members = Vec::new();
-        for (&s, &c) in &count {
+        for (&s, &(leave, arrive)) in &count {
             let inp = &net.noded.inputs[s];
-            let mut c = c;
+            let (mut leave, mut arrive) = (leave, arrive);
+            let pair = |r: Role| Part::pair(Part::name(&srcs[s]), Part::Role(r));
             if !inp.closed {
-                if inp.pts.first() == Some(&jp) {
-                    members.push(Part::pair(Part::name(&srcs[s]), Part::Role(Role::Start)));
-                    c = c.saturating_sub(1);
+                if inp.pts.first() == Some(&jp) && leave > 0 {
+                    members.push(pair(Role::Start));
+                    leave -= 1;
                 }
-                if inp.pts.last() == Some(&jp) {
-                    members.push(Part::pair(Part::name(&srcs[s]), Part::Role(Role::End)));
-                    c = c.saturating_sub(1);
+                if inp.pts.last() == Some(&jp) && arrive > 0 {
+                    members.push(pair(Role::End));
+                    arrive -= 1;
                 }
             }
-            for _ in 0..(c / 2) {
-                members.push(Part::pair(Part::name(&srcs[s]), Part::Role(Role::Pass)));
+            // Each arrival paired with a leaving is a pass; what is left is where the network's
+            // `clip` cut the source: its kept part starts or ends here.
+            let passes = leave.min(arrive);
+            for _ in 0..passes {
+                members.push(pair(Role::Pass));
+            }
+            for _ in passes..leave {
+                members.push(pair(Role::Start));
+            }
+            for _ in passes..arrive {
+                members.push(pair(Role::End));
             }
         }
         jbase.push(format!(

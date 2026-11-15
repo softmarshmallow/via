@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "An import of height 4 on parent ground 0 with blend 1: import.seam, data.grade 4; with max_grade = 5 none; with an anchored keep over the whole edge none."
+milestone = 4
+actions   = ["build", "raise", "raised", "own", "owned"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.diag.seam]
+code = "import.seam"
+data = { grade = 4 }
+
+[action.raise]
+replace = "world.toml"
+find    = """at   = [8, 4]
+"""
+with    = """at   = [8, 4]
+max_grade = 5
+"""
+
+[action.raised]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.own]
+replace = "world.toml"
+find    = """max_grade = 5
+"""
+with    = """
+[feature.own]
+kind      = "keep"
+authority = "anchored"
+region    = [[0, 0], [32, 0], [32, 16], [0, 16]]
+"""
+
+[action.owned]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"

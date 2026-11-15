@@ -1,0 +1,66 @@
+format    = "via-case-1"
+summary   = "rules.md 5: count and spacing; count = 1 with both; on a point; a run past the extent; t in on; seed: run.count_or_spacing, run.count, run.no_length, run.outside (warning, exit 0), place.on_form, doc.unknown_key."
+milestone = 3
+actions   = ["both_keys", "count_one", "on_point", "past_extent", "t_in_on", "seed"]
+
+# past_extent: the members at 262.5 and 287.5 m fall outside the extent [0, 256] and are not made;
+# the two inside stand.
+
+[action.both_keys]
+via         = ["build", "both_keys/world.toml", "--out", "both_keys/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "both_keys/build/w"
+
+[action.both_keys.diag.both_keys]
+code = "run.count_or_spacing"
+subject = "run.posts"
+
+[action.count_one]
+via         = ["build", "count_one/world.toml", "--out", "count_one/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "count_one/build/w"
+
+[action.count_one.diag.count_one]
+code = "run.count"
+subject = "run.posts"
+
+[action.on_point]
+via         = ["build", "on_point/world.toml", "--out", "on_point/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "on_point/build/w"
+
+[action.on_point.diag.on_point]
+code = "run.no_length"
+subject = "run.posts"
+
+[action.past_extent]
+via         = ["build", "past_extent/world.toml", "--out", "past_extent/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "past_extent/build/w"
+
+[action.past_extent.diag.past_extent]
+code = "run.outside"
+subject = "run.posts"
+
+[action.t_in_on]
+via         = ["build", "t_in_on/world.toml", "--out", "t_in_on/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "t_in_on/build/w"
+
+[action.t_in_on.diag.t_in_on]
+code = "place.on_form"
+subject = "run.posts"
+
+[action.seed]
+via         = ["build", "seed/world.toml", "--out", "seed/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "seed/build/w"
+
+[action.seed.diag.seed]
+code = "doc.unknown_key"

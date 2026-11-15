@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = '''An import on = { ref = "spot" } with face = 180, spot at (10, 10): its instance at (2, 2) stands at (8, 8).'''
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.check.hut]
+fn    = "instance_at"
+build = "build/w"
+name  = "a.hut"
+at    = [8, 8]

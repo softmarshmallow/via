@@ -1,0 +1,49 @@
+format    = "via-case-1"
+summary   = "A parent and an import each holding instance hut: no duplicate, both built; on.ref a.hutt is identity.unknown_place nearest a.hut; on.ref hut2 (only in the import) is identity.unknown_place with nearest a.hut2."
+milestone = 4
+actions   = ["build", "typo", "typo_merge", "bare", "bare_merge"]
+
+# names_count counts by prefix: "a.hut" matches a.hut and a.hut2, so 2.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.check.own]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "hut"
+count  = 1
+
+[action.build.check.theirs]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "a.hut"
+count  = 2
+
+[action.typo]
+replace = "world.toml"
+find    = '''ref = "a.hut" }'''
+with    = '''ref = "a.hutt" }'''
+
+[action.typo_merge]
+via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+exit        = 1
+diagnostics = "exact"
+[action.typo_merge.diag.unknown]
+code = "identity.unknown_place"
+data = { nearest = "a.hut" }
+
+[action.bare]
+replace = "world.toml"
+find    = '''ref = "a.hutt" }'''
+with    = '''ref = "hut2" }'''
+
+[action.bare_merge]
+via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+exit        = 1
+diagnostics = "exact"
+[action.bare_merge.diag.unknown]
+code = "identity.unknown_place"
+data = { nearest = "a.hut2" }

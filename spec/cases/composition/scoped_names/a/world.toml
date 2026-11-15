@@ -1,0 +1,18 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+datum      = "sea"
+pack       = "primitive"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.hut]
+asset = "box_small"
+at    = [2, 2]
+
+[instance.hut2]
+asset = "box_small"
+at    = [5, 5]

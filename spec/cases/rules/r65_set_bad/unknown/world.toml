@@ -1,0 +1,19 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[set.lamps.item.l]
+asset = "lamp_post"
+
+[instance.x]
+set = "lampz"
+at  = [100, 100]
+
+[instance.y]
+set = "lamps"
+at  = [120, 100]

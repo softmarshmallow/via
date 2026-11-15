@@ -27,7 +27,7 @@ nothing else; a library's own steps read every attribute (R19b).
 | `let` | Named formulas its effects read. | `formulas.md` |
 | `names` | Lists the attributes whose values are place names (1.2). | this |
 | `[kind.<k>.effect.<id>]` | One effect (section 2). | this |
-| `exit` | Marks its point features as exits (R9). M4. | `documents.md` |
+| `exit` | Marks its point features as exits (R9): `true`, or the attributes an answer must match. M4. | `composition.md` 7 |
 | `output` | Hands its features to the loader under a name. | `build.md` |
 
 A kind may also own a bounded surface and mounts (R25). Those tables are `surfaces.md`'s, listed in
@@ -727,4 +727,3 @@ Six entries fit a 32-bit float exactly.
 | Whether a derived feature is made by a step or by an engine operation. | M2, `vale` and `basin`. |
 | Whether effects on `volume` fields obey the tiers. | M5, `coast`. |
 | The lint key `checks` and `authority.unchecked` (section 7). | Queued for M2 by R31; `basin`. |
-| Whether a parent may overrule ground an import anchored (the spike only warned). | M4, `documents.md`, `border`. |

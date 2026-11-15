@@ -490,6 +490,8 @@ pub fn representative(region: &Region, grid: PostGrid) -> P {
         let first = |o: i64, v: i64| o + (v - o).div_euclid(s) * s;
         let (fx, fy) = (first(x0, lo.x), first(y0, lo.y));
         let mut cands: Vec<(f64, P)> = Vec::new();
+        // The greatest estimate so far, and the segment nearest the last candidate (tried first).
+        let (mut most, mut hint) = (0.0f64, 0usize);
         let mut y = fy;
         while y <= hi.y {
             // The side of each post on the row from the edges whose span holds the row: the
@@ -507,7 +509,15 @@ pub fn representative(region: &Region, grid: PostGrid) -> P {
             while x <= hi.x {
                 let p = P::new(x, y);
                 if x > lo.x && x < hi.x && y > lo.y && y < hi.y && inside(p) {
-                    cands.push((approx_dist2(p, &segs), p));
+                    // A candidate whose estimate falls below the floor of the greatest so far is
+                    // below the final floor too (the floor only rises): it is left out unmeasured,
+                    // and the candidates kept below are the same.
+                    if let Some(d) = approx_dist2_above(p, &segs, &mut hint, most * (1.0 - 1e-9)) {
+                        if d > most {
+                            most = d;
+                        }
+                        cands.push((d, p));
+                    }
                 }
                 x += s;
             }
@@ -541,27 +551,39 @@ pub fn representative(region: &Region, grid: PostGrid) -> P {
     }
 }
 
-fn approx_dist2(p: P, segs: &[(P, P)]) -> f64 {
+/// [`approx_dist2`] when it is at or above `cut`, else `None`, found by trying segment `hint`
+/// first and stopping once the least so far is below `cut`; `hint` becomes the nearest segment.
+fn approx_dist2_above(p: P, segs: &[(P, P)], hint: &mut usize, cut: f64) -> Option<f64> {
+    let h = (*hint).min(segs.len().saturating_sub(1));
     let mut best = f64::INFINITY;
-    for &(a, b) in segs {
-        let (ux, uy) = ((b.x - a.x) as f64, (b.y - a.y) as f64);
-        let (wx, wy) = ((p.x - a.x) as f64, (p.y - a.y) as f64);
-        let t = (ux * wx) + (uy * wy);
-        let uu = (ux * ux) + (uy * uy);
-        let d = if t <= 0.0 {
-            (wx * wx) + (wy * wy)
-        } else if t >= uu {
-            let (vx, vy) = ((p.x - b.x) as f64, (p.y - b.y) as f64);
-            (vx * vx) + (vy * vy)
-        } else {
-            let c = (ux * wy) - (uy * wx);
-            (c * c) / uu
-        };
+    for k in std::iter::once(h).chain((0..segs.len()).filter(|&k| k != h)) {
+        let d = approx_seg2(p, segs[k]);
         if d < best {
             best = d;
+            *hint = k;
+            if best < cut {
+                return None;
+            }
         }
     }
-    best
+    Some(best)
+}
+
+/// The double estimate of the squared distance from `p` to one segment.
+fn approx_seg2(p: P, (a, b): (P, P)) -> f64 {
+    let (ux, uy) = ((b.x - a.x) as f64, (b.y - a.y) as f64);
+    let (wx, wy) = ((p.x - a.x) as f64, (p.y - a.y) as f64);
+    let t = (ux * wx) + (uy * wy);
+    let uu = (ux * ux) + (uy * uy);
+    if t <= 0.0 {
+        (wx * wx) + (wy * wy)
+    } else if t >= uu {
+        let (vx, vy) = ((p.x - b.x) as f64, (p.y - b.y) as f64);
+        (vx * vx) + (vy * vy)
+    } else {
+        let c = (ux * wy) - (uy * wx);
+        (c * c) / uu
+    }
 }
 
 /// The network's areas, keyed by start vertex, for lookups.
@@ -571,4 +593,147 @@ pub fn area_by_start(n: &Network) -> BTreeMap<P, usize> {
         .enumerate()
         .map(|(i, a)| (a.region.pieces[0].shell[0], i))
         .collect()
+}
+
+#[cfg(test)]
+mod representative_tests {
+    use super::*;
+
+    fn approx_dist2(p: P, segs: &[(P, P)]) -> f64 {
+        let mut best = f64::INFINITY;
+        for &(a, b) in segs {
+            let (ux, uy) = ((b.x - a.x) as f64, (b.y - a.y) as f64);
+            let (wx, wy) = ((p.x - a.x) as f64, (p.y - a.y) as f64);
+            let t = (ux * wx) + (uy * wy);
+            let uu = (ux * ux) + (uy * uy);
+            let d = if t <= 0.0 {
+                (wx * wx) + (wy * wy)
+            } else if t >= uu {
+                let (vx, vy) = ((p.x - b.x) as f64, (p.y - b.y) as f64);
+                (vx * vx) + (vy * vy)
+            } else {
+                let c = (ux * wy) - (uy * wx);
+                (c * c) / uu
+            };
+            if d < best {
+                best = d;
+            }
+        }
+        best
+    }
+
+    /// The search as written before the estimates were pruned: every candidate measured.
+    fn representative_scan(region: &Region, grid: PostGrid) -> P {
+        let (lo, hi) = region.bbox().unwrap();
+        let rings = region.rings();
+        let segs: Vec<(P, P)> = rings
+            .iter()
+            .flat_map(|r| (0..r.len()).map(move |i| (r[i], r[(i + 1) % r.len()])))
+            .collect();
+        let (x0, y0) = (grid.extent[0], grid.extent[1]);
+        let mut s = grid.resolution.max(1);
+        loop {
+            let first = |o: i64, v: i64| o + (v - o).div_euclid(s) * s;
+            let mut cands: Vec<(f64, P)> = Vec::new();
+            let mut y = first(y0, lo.y);
+            while y <= hi.y {
+                let mut x = first(x0, lo.x);
+                while x <= hi.x {
+                    let p = P::new(x, y);
+                    if x > lo.x
+                        && x < hi.x
+                        && y > lo.y
+                        && y < hi.y
+                        && region.side(p) == pred::Side::In
+                    {
+                        cands.push((approx_dist2(p, &segs), p));
+                    }
+                    x += s;
+                }
+                y += s;
+            }
+            if !cands.is_empty() {
+                let best = cands
+                    .iter()
+                    .map(|c| c.0)
+                    .fold(0.0f64, |m, d| if d > m { d } else { m });
+                let floor = best * (1.0 - 1e-9);
+                let mut close: Vec<P> =
+                    cands.iter().filter(|c| c.0 >= floor).map(|c| c.1).collect();
+                close.sort_by(|a, b| a.y.cmp(&b.y).then(a.x.cmp(&b.x)));
+                let mut win = close[0];
+                let mut wd = pred::dist2_rings(win, &rings);
+                for &p in &close[1..] {
+                    let d = pred::dist2_rings(p, &rings);
+                    if let (Some(dn), Some(dw)) = (&d, &wd) {
+                        if dn.cmp_exact(dw) == Ordering::Greater {
+                            win = p;
+                            wd = d;
+                        }
+                    }
+                }
+                return win;
+            }
+            if s == 1 {
+                return region.pieces[0].shell[0];
+            }
+            s /= 2;
+        }
+    }
+
+    /// The pruned search names the post the full one does, on seeded stars, squares (whose
+    /// centre rows tie) and thin slivers.
+    #[test]
+    fn pruned_equals_scan() {
+        let mut seed = 5u64;
+        let mut next = |n: i64| {
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((seed >> 33) % n as u64) as i64
+        };
+        let grid = PostGrid {
+            extent: [0, 0, 256_000, 256_000],
+            resolution: 1000,
+        };
+        let mut shapes: Vec<Vec<P>> = vec![
+            vec![
+                P::new(10_000, 10_000),
+                P::new(50_000, 10_000),
+                P::new(50_000, 50_000),
+                P::new(10_000, 50_000),
+            ],
+            vec![
+                P::new(0, 0),
+                P::new(90_000, 0),
+                P::new(90_000, 1_500),
+                P::new(0, 1_200),
+            ],
+        ];
+        for _ in 0..40 {
+            let n = 5 + next(60) as usize;
+            let (cx, cy) = (60_000 + next(100_000), 60_000 + next(100_000));
+            shapes.push(
+                (0..n)
+                    .map(|i| {
+                        // A point of a square's outline, pulled toward the centre.
+                        let q = n as i64;
+                        let side = (4 * i as i64) / q;
+                        let u = (4 * i as i64 % q) * 96_000 / q - 48_000;
+                        let (dx, dy) =
+                            [(u, -48_000), (48_000, u), (-u, 48_000), (-48_000, -u)][side as usize];
+                        let f = 20 + next(80);
+                        P::new(cx + dx * f / 100, cy + dy * f / 100)
+                    })
+                    .collect(),
+            );
+        }
+        for ring in shapes {
+            let region = Region::from_ring(ring);
+            assert_eq!(
+                representative(&region, grid),
+                representative_scan(&region, grid)
+            );
+        }
+    }
 }

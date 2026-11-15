@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 10], [100, 10]]
+
+[run.posts]
+asset = "fence_post"
+on    = { ref = "lane" }
+count = 3
+seed  = "x"

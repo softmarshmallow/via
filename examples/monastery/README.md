@@ -9,7 +9,7 @@ its turns and the wall are derived.
 
 | File | What |
 |---|---|
-| `world.toml` | The land and the gorge (one formula of the stream's line), the stream (lib/water `beck`), the tarn (`tarn`, lib/water's fill step), the crossing `bridge` (lib/ways), the switchback `road_up` (routed, six turns), the compound `court` (lib/town `enclosure`, new) with its `gate` (lib/town `gate`, new), the approach; the inline `winter` change. |
+| `world.toml` | The land and the gorge (one formula of the stream's line), the stream (lib/water `beck`), the tarn (`tarn`, lib/water's fill step), the crossing `bridge` (lib/ways), the switchback `road_up` (routed through six named turns, `turn_1` to `turn_6`), the compound `court` (lib/town `enclosure`, new) with its `gate` (lib/town `gate`, new), the approach; the inline `winter` change. |
 | `layers/compound.toml` | The hall, three cells, two garden terraces, lamps, the paint, eight views at the meetings, the reach lint with its sealed pairs. |
 | `changes/` | `guesthouse` (the spike's), `move_bridge` (19 m downstream), `no_bridge` (the bridge removed: is it the only way over?). |
 | `expect.toml`, `measure.py` | Road grade and turns, deck, wall and gate, reach, what a change kept; with protocol. |
@@ -34,8 +34,8 @@ A cold build takes about 3 s, a change about 2.5 s.
 
 ## What it shows (2026-11-15)
 
-- R16: the road is written by what it connects (`road_entry`, `bridge.start`) and where it turns;
-  the course between is found. Built, it climbs 31 m over 603 m; its steepest 10 m is 10.1 %, and
+- R16: the road is written by what it connects (`road_entry`, `bridge.start`) and the places it
+  turns, by name (`turn_1` to `turn_6`; M4, `path` takes names); the course between is found. Built, it climbs 31 m over 603 m; its steepest 10 m is 10.1 %, and
   6 m of it climb over 10 % (measure.py's protocol). Until slice 4 the first two legs ran on top of
   each other (0.27 m apart at (256, 20); the lattice walk runs each leg flat first, then
   diagonally): the first turn moved from (228, 18) to (228, 12) and the place (240, 26) makes the
@@ -68,8 +68,6 @@ A cold build takes about 3 s, a change about 2.5 s.
   the turns; with four turns the course bowed round the lumps and climbed 12.3 % for 102 m.
 - **The first leg ran along the south edge**: an edge post's slope is read one-sided, so the cost
   there is lower; the cost now rises within 8 m of the extent.
-- **A path's waypoints are coordinates, not names**: R16 says "the places it passes, by name", but
-  `path` takes points, so the turns are typed numbers.
 - **`deck_z` is typed** from `via eval` (as the spike's bridge was); `move_bridge` writes it again.
 
 ## Known faults (read from the sheets, on foot)

@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-335 codes in 22 groups. 37 have no bad and fixed example yet; their explain text is the
+354 codes in 23 groups. 4 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -29,6 +29,7 @@ chapter's summary and hint.
 | [`geom`](#geom) | `spec/geometry.md` | 31 |
 | [`graph`](#graph) | `spec/graph.md` | 9 |
 | [`identity`](#identity) | `spec/identity.md` | 29 |
+| [`import`](#import) | `spec/composition.md` | 19 |
 | [`load`](#load) | `spec/build.md` | 5 |
 | [`num`](#num) | `spec/numbers.md` | 12 |
 | [`pack`](#pack) | `spec/assets.md` | 14 |
@@ -1299,10 +1300,8 @@ error, milestone 1, `spec/documents.md`.
 The text uses a word that a later milestone brings; the message names that milestone. This
 version reads it but does not act on it.
 To fix: Remove it for now, or use the form this milestone has.
-Bad:   [layer.a]
-       after = "b"   (M4)
-Fixed: [layer.a]
-       rank = 2
+Bad:   chunk = 64      (M6)
+Fixed: remove chunk
 ```
 
 ### `doc.path_case`
@@ -2173,7 +2172,7 @@ Fixed: value = "= 2 * height"
 | `geom.mask_dropped` | warning | 1 |  | A masked piece had no area on the lattice and was dropped. |
 | `geom.mask_empty` | warning | 1 |  | A mask is above 0 nowhere; the formula's text and its range of values. |
 | `geom.mask_tiny` | info | 1 |  | A masked region has pieces smaller than one grid cell; the count and positions; kept. |
-| `geom.meet_shape` | error | 1 |  | `starts_at` or `ends_at` names a whole path or a region. |
+| `geom.meet_shape` | error | 1 |  | `starts_at`, `ends_at` or a way point in `path` names a whole path or a region. |
 | `geom.network_point` | error | 3 |  | A network's `from` names a point feature; a network is made of paths and region outlines (8.1; M3). |
 | `geom.no_area` | warning | 1 |  | A network encloses no area. |
 | `geom.no_length` | error | 1 |  | `t`, `offset` or `follows` on a point, a zero-length thing or an empty region. (A run's is `run.no_length`, `rules.md` 5.) |
@@ -2620,6 +2619,9 @@ info, milestone 3, `spec/graph.md`.
 
 ```text
 A for_each selector matched nothing in the step's view; the step did not run. (M3)
+To fix: Check the selector names the kind or tag the step should serve; nothing if the empty view is intended.
+Bad:   for_each = "kind:plaza"   (no feature has kind `plaza`)
+Fixed: for_each = "kind:terrace"
 ```
 
 ### `graph.input_missing`
@@ -2710,7 +2712,7 @@ Fixed: via build world.toml --store build/store
 | `identity.pin_removed` | info | 1 |  | What a pin removed: count and names. |
 | `identity.pins_overlap` | error | 1 |  | Two pins' footprints overlap; names both. |
 | `identity.reselected` | warning | 1 |  | A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (`build.md` 11.1). |
-| `identity.reserved` | error | 1 | `nearest` | An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r53, `surfaces.md` 1). |
+| `identity.reserved` | error | 1 | `nearest` | An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1). |
 | `identity.unknown_lock` | error | 3 | `nearest` | `via lock` was given an id that is no lock (M3). |
 | `identity.unknown_maker` | error | 1 | `nearest` | `of` names nothing. |
 | `identity.unknown_place` | error | 1 | `nearest` | A part of a place name names nothing. |
@@ -2799,6 +2801,8 @@ error, milestone 3, `spec/identity.md`.
 ```text
 A recorded item's asset is no longer bound by the pack.
 To fix: Bind the asset again, or re-record with via lock.
+Bad:   [asset.oak_old] removed from the pack; locks/old_grove.toml records asset = "oak_old"
+Fixed: bind oak_old again, or run: via lock world.toml old_grove
 ```
 
 ### `identity.lock_differs`
@@ -2808,6 +2812,8 @@ info, milestone 3, `spec/identity.md`.
 ```text
 What the producers would now do inside a lock, and live names dropped for a recorded one, as counts.
 To fix: Re-record with via lock, or leave it.
+Bad:   [scatter.oaks] density 0.6 -> 0.3 with [lock.old_grove] recorded at 0.6
+Fixed: via lock world.toml old_grove   (or leave the record as it is)
 ```
 
 ### `identity.lock_ground_moved`
@@ -2817,6 +2823,8 @@ warning, milestone 3, `spec/identity.md`.
 ```text
 Recorded items stand on ground that moved; count and largest change.
 To fix: Re-record with via lock, or edit the ground's cause.
+Bad:   [feature.hill] raised 2 m under [lock.old_grove]
+Fixed: via lock world.toml old_grove   (or move the hill back)
 ```
 
 ### `identity.lock_pin_clash`
@@ -2826,6 +2834,8 @@ error, milestone 3, `spec/identity.md`.
 ```text
 A recorded item overlaps a pin; names both.
 To fix: Move the pin, or re-record with via lock.
+Bad:   [pin.oak] at = [60, 132]   (a recorded item of old_grove stands there)
+Fixed: [pin.oak] at = [70, 132]
 ```
 
 ### `identity.lock_rerecorded`
@@ -2835,6 +2845,8 @@ info, milestone 3, `spec/identity.md`.
 ```text
 A record was replaced; counts of the difference.
 To fix: None needed; review the record's diff.
+Bad:   via lock world.toml old_grove   (a second time, after a change)
+Fixed: nothing to change: read the counts, then review locks/old_grove.toml's diff
 ```
 
 ### `identity.lock_unrecorded`
@@ -2844,6 +2856,8 @@ error, milestone 3, `spec/identity.md`.
 ```text
 A lock has no record.
 To fix: via lock <world> <id>.
+Bad:   [lock.old_grove] region = [...], by = ["oaks"]   (no locks/old_grove.toml)
+Fixed: via lock world.toml old_grove
 ```
 
 ### `identity.near_none`
@@ -2902,6 +2916,8 @@ error, milestone 3, `spec/identity.md`.
 ```text
 of names a maker with several classes and no class.
 To fix: The classes, with a count of each near near.
+Bad:   on = { of = "town", near = [120, 80] }   (town makes areas and cells)
+Fixed: on = { of = "town", class = "cell", near = [120, 80] }
 ```
 
 ### `identity.on_both`
@@ -3008,6 +3024,8 @@ error, milestone 3, `spec/identity.md`.
 ```text
 via lock was given an id that is no lock.
 To fix: The nearest lock id.
+Bad:   via lock world.toml old_grov
+Fixed: via lock world.toml old_grove
 ```
 
 ### `identity.unknown_maker`
@@ -3041,6 +3059,288 @@ error, milestone 1, `spec/identity.md`.
 To fix: Write the id of a producer the world declares.
 Bad:   by = ["sx"]
 Fixed: by = ["s"]
+```
+
+## import
+
+| Code | Severity | M | Data | Summary |
+|---|---|---|---|---|
+| `import.binding_differs` | error | 4 | `id` | One asset id or material name bound differently by two packs of the build; `data.id`. (M4) |
+| `import.coarser` | info | 4 | `ratio` | The parent's posts are coarser than the import's, so detail is lost; `data.ratio`. (M4) |
+| `import.cycle` | error | 4 |  | Worlds that import each other; the files of the loop, in order. (M4) |
+| `import.datum_differs` | error | 4 | `datum`, `parent_datum` | The import and the parent declare different datums and the import has no `lift`; `data.datum`, `data.parent_datum`. (M4) |
+| `import.exit_mismatch` | error | 4 | `attribute`, `exit_value`, `answer_value`, `write` | An answer to an exit whose attribute differs from the exit's; `data.attribute`, `data.exit_value`, `data.answer_value`, the fixing line in `data.write`. (M4) |
+| `import.exit_outside` | error | 4 |  | An exit lies outside its import's footprint. (M4) |
+| `import.exit_unanswered` | error | 4 | `write` | An exit of a direct import that no parent reference names; the line that answers it in `data.write`. (M4) |
+| `import.field_differs` | error | 4 | `field` | An import's field and the parent's field of one name differ in role, type or unit; `data.field`. (M4) |
+| `import.field_unmatched` | warning | 4 | `field`, `write` | An import's field the parent does not declare, so not brought; `data.field`, the declaration in `data.write`. (M4) |
+| `import.give_outside` | error | 4 | `area` | A given field does not cover the fill's extent as placed; `data.area`. (M4) |
+| `import.given_dropped` | warning | 4 | `attribute` | A given feature's attribute the fill's kind does not declare was dropped; `data.attribute`. (M4) |
+| `import.given_type` | error | 4 | `accepts` | What is given is not the form the given `accepts`; `data.accepts`. (M4) |
+| `import.given_unknown` | error | 4 | `nearest` | `give` names a name the import does not declare in `[given]`; the nearest name. (M4) |
+| `import.lift_on_datum` | error | 4 |  | `lift` on an import that declares the parent's datum. (M4) |
+| `import.no_datum` | warning | 4 | `write` | The import or the parent declares no datum and the import has no `lift`; the line to add in `data.write`. (M4) |
+| `import.outside` | warning | 4 | `area` | Part of an import's footprint lies past the parent's extent and is not brought; `data.area`. (M4) |
+| `import.overlap` | warning | 4 | `area` | Two imports' footprints, as placed, intersect with an area above 0; `data.area` (6.8). (M4) |
+| `import.place_blended` | warning | 4 | `weight`, `moved` | A place the parent names stands where the import's weight is below 1; `data.weight`, `data.moved`. (M4) |
+| `import.seam` | warning | 4 | `grade` | A step in the ground across the join steeper than `max_grade`, worst first by data.grade. (M4) |
+
+### `import.binding_differs`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+Two worlds of one build, a parent and an import or two imports, each resolve asset ids with their
+own pack, and those packs bind one asset id or material name to different things. A build holds
+one binding per name, so neither may win silently. `data.id` holds the name; the record names
+both packs.
+To fix: Bind the name the same way in both packs, or rename it in one of them.
+Bad:   parent pack: [asset.a] primitive = "box", size = [2, 2, 2]
+       import pack: [asset.a] primitive = "box", size = [1, 1, 1]
+Fixed: import pack: [asset.a_small] primitive = "box", size = [1, 1, 1]
+```
+
+### `import.coarser`
+
+info, milestone 4, `spec/composition.md`.
+
+```text
+The parent's post spacing is coarser than the import's, so the import's fields are read at fewer
+points than it was built at and its finer detail is not carried. `data.ratio` holds the parent's
+spacing over the import's. No filter is applied.
+To fix: Nothing, if the detail does not matter; otherwise give the parent a finer resolution.
+Bad:   resolution = 2        (the import's is 1)
+Fixed: resolution = 1
+```
+
+### `import.cycle`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+A world imports a world that, directly or through others, imports it back. A world built apart
+must build alone, so a loop has no first world. The record names the files of the loop in order.
+One file imported at two places in the tree is not a loop.
+To fix: Remove the import that closes the loop.
+Bad:   a/world.toml: [import.p] file = "../world.toml"
+Fixed: remove [import.p] from a/world.toml
+```
+
+### `import.datum_differs`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+The import's world and the parent each name what their height zero is, and the names differ, so
+the import's heights mean something else in the parent. `data.datum` and `data.parent_datum` hold
+the two names.
+To fix: Give the import a lift, the metres between the two zeros, or make both datums one.
+Bad:   [import.a]           (a: datum = "b"; parent: datum = "c")
+       file = "a/world.toml"
+Fixed: [import.a]
+       file = "a/world.toml"
+       lift = 2
+```
+
+### `import.exit_mismatch`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+An exit's kind lists attributes in `exit = [...]` that an answer must match, and a parent feature
+that answers the exit has another value for one of them, or none. `data.attribute` names it;
+`data.exit_value` and `data.answer_value` hold both values; `data.write` holds the line that makes
+the answer match.
+To fix: Write the line in data.write on the answering feature, or answer with a feature whose
+kind declares the attribute.
+Bad:   ends_at = "a.e"
+       width   = 4        (the exit a.e has width = 6)
+Fixed: ends_at = "a.e"
+       width   = 6
+```
+
+### `import.exit_outside`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+An exit of an import lies outside the footprint the parent brings, so it would leave from ground
+that is not in the parent.
+To fix: Widen the footprint to hold the exit, or move the exit inside it in the import.
+Bad:   footprint = [[0, 0], [4, 0], [4, 8], [0, 8]]     (the exit stands at [7, 4])
+Fixed: footprint = [[0, 0], [8, 0], [8, 8], [0, 8]]
+```
+
+### `import.exit_unanswered`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+An import declares an exit, a place where something leaves it, and nothing in the parent names
+it. The parent owns the region around the import and must say what happens there: something that
+goes on, or a deliberate end. `data.write` holds the line that answers it.
+To fix: End a path there with the line in data.write, or place a feature on it that ends it.
+Bad:   [import.a]            (a declares the exit e)
+       file = "a/world.toml"
+Fixed: [feature.p]
+       path    = [[0, 4]]
+       ends_at = "a.e"
+```
+
+### `import.field_differs`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+The import and the parent each declare a field of one name, and its role, type or unit differs,
+so the import's values cannot stand in the parent's field. `data.field` names it; the record
+gives both declarations.
+To fix: Declare the field alike in both worlds, or rename it in one.
+Bad:   parent: [field.m] role = "keep_out"      import: [field.m] (no role)
+Fixed: import: [field.m] role = "keep_out"
+```
+
+### `import.field_unmatched`
+
+warning, milestone 4, `spec/composition.md`.
+
+```text
+The import has a field that the parent does not declare, so nothing of it reaches the parent's
+build. `data.field` names it; `data.write` holds the declaration that brings it.
+To fix: Declare the field in the parent, as data.write gives, or leave it out on purpose.
+Bad:   (the import declares [field.m]; the parent does not)
+Fixed: [field.m]
+       base = 0
+```
+
+### `import.give_outside`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+A parent gives a fill a field, and part of the fill's extent, as placed, lies past the parent's
+extent, where the parent's field has no value. `data.area` holds that area in square metres.
+To fix: Place the fill inside the parent's extent, or widen the parent's extent.
+Bad:   at = [28, 0]        (an 8 m fill in a parent 32 m wide)
+Fixed: at = [24, 0]
+```
+
+### `import.given_dropped`
+
+warning, milestone 4, `spec/composition.md`.
+
+```text
+A parent gives a fill features, which take the kind the fill's [given] names. One of them has an
+attribute that kind does not declare, so the fill does not see it. `data.attribute` names it.
+To fix: Declare the attribute in the fill's kind, or leave it off the parent's features.
+Bad:   [given.g] kind = "k"     (k declares no attribute c; the parent's feature writes c)
+Fixed: [kind.k.defaults]
+       c = 0
+```
+
+### `import.given_type`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+A parent gives a fill something of another form than the fill's [given] accepts: a field where it
+accepts a region, a region where it accepts features. `data.accepts` holds the form it accepts.
+To fix: Give a thing of that form.
+Bad:   give = { g = "r" }      (g accepts a field; r is a region)
+Fixed: give = { g = "h" }      (h is a field)
+```
+
+### `import.given_unknown`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+A parent's give hands down a name that the import does not declare in a [given] table, so nothing
+in it would read what is given. `data.nearest` holds the nearest declared name.
+To fix: Use a name the import declares, or declare it in the import.
+Bad:   give = { lnad = "h" }
+Fixed: give = { land = "h" }
+```
+
+### `import.lift_on_datum`
+
+error, milestone 4, `spec/composition.md`.
+
+```text
+The import and the parent name the same datum, so their heights already share a zero, and a lift
+would move the import off it.
+To fix: Remove the lift; or, if the import's zero is really another, name its own datum.
+Bad:   [import.a]            (both worlds: datum = "b")
+       lift = 2
+Fixed: [import.a]
+       file = "a/world.toml"
+```
+
+### `import.no_datum`
+
+warning, milestone 4, `spec/composition.md`.
+
+```text
+The import or the parent does not name what its height zero is, and the import has no lift, so
+nothing says the two zeros agree. Heights are taken as they are. `data.write` holds the line to
+add.
+To fix: Name one datum in both world files, or give the import a lift.
+Bad:   (no datum in either world file)
+Fixed: datum = "b"           (in both world files)
+```
+
+### `import.outside`
+
+warning, milestone 4, `spec/composition.md`.
+
+```text
+Part of an import's footprint, as placed, lies past the parent's extent. That part is not brought:
+no field values, no instances. `data.area` holds its area in square metres.
+To fix: Move the import inside the extent, cut its footprint, or widen the parent's extent.
+Bad:   at = [28, 0]        (an 8 m import in a parent 32 m wide)
+Fixed: at = [24, 0]
+```
+
+### `import.overlap`
+
+warning, milestone 4, `spec/composition.md`.
+
+```text
+Two imports' footprints, as placed, overlap, so both bring ground to the same posts and the order
+of their entries decides it, which nobody chose. `data.area` holds the overlap in square metres.
+To fix: Move one, or cut one's footprint so they meet without overlapping.
+Bad:   [import.a] at = [0, 0]      [import.b] at = [6, 0]     (both 8 m wide)
+Fixed: [import.b] at = [8, 0]
+```
+
+### `import.place_blended`
+
+warning, milestone 4, `spec/composition.md`.
+
+```text
+The parent names a place inside an import, and the import's blend weight there is below 1, so the
+place stands on ground the import did not make. `data.weight` holds the weight; `data.moved` the
+height difference from the import's own ground.
+To fix: Make the blend reach 1 at the place, or move the place further inside the import.
+Bad:   blend = "= smoothstep(0, 4, d)"     (the named place is 1 m inside the edge)
+Fixed: blend = "= smoothstep(0, 1, d)"
+```
+
+### `import.seam`
+
+warning, milestone 4, `spec/composition.md`, worst first by `data.grade`.
+
+```text
+Across the edge of an import's ground, two neighbouring posts of the surface differ by more than
+the import's max_grade allows, rise over run. Nothing anchored owns that ground. `data.grade`
+holds the steepest; the position is its post inside the footprint.
+To fix: Write a blend that fades over the edge, place an anchored feature that owns the join, or
+raise max_grade if the step is meant.
+Bad:   [import.a]            (its ground stands 4 m above the parent's at its edge)
+       file = "a/world.toml"
+Fixed: [import.a]
+       file  = "a/world.toml"
+       blend = "= smoothstep(0, 8, d)"
 ```
 
 ## load
@@ -4078,6 +4378,8 @@ error, milestone 3, `spec/rules.md`.
 ```text
 count below 1, or below 2 with ends = "both" on an open stretch.
 To fix: The least allowed count.
+Bad:   count = 1, ends = "both"   (on a path)
+Fixed: count = 2, ends = "both"
 ```
 
 ### `run.count_or_spacing`
@@ -4087,6 +4389,8 @@ error, milestone 3, `spec/rules.md`.
 ```text
 A run writes both count and spacing, or neither.
 To fix: Keep one.
+Bad:   count = 4, spacing = 3
+Fixed: count = 4
 ```
 
 ### `run.no_length`
@@ -4096,6 +4400,8 @@ error, milestone 3, `spec/rules.md`.
 ```text
 The run's on names a thing with no length, or its stretch is zero millimetres.
 To fix: Name a path or region, or widen span.
+Bad:   on = { ref = "well" }   (a point feature)
+Fixed: on = { ref = "edge", span = [0, 0.5] }
 ```
 
 ### `run.outside`
@@ -4105,6 +4411,8 @@ warning, milestone 3, `spec/rules.md`.
 ```text
 Members fell outside the extent and were not made; gives the count.
 To fix: Narrow span to the part inside the extent.
+Bad:   on = { ref = "edge", span = [0, 1] }   (the path runs past the extent)
+Fixed: on = { ref = "edge", span = [0, 0.4] }
 ```
 
 ## scatter
@@ -4190,6 +4498,8 @@ error, milestone 3, `spec/rules.md`.
 ```text
 A set has no items.
 To fix: Add [set.<id>.item.<name>], or remove the set.
+Bad:   [set.pair]   (no item)
+Fixed: [set.pair.item.l] asset = "lamp_post"
 ```
 
 ### `set.unknown`
@@ -4199,6 +4509,8 @@ error, milestone 3, `spec/rules.md`.
 ```text
 set names no set.
 To fix: The nearest set id.
+Bad:   set = "lamp_pair"
+Fixed: set = "lamp_pairs"
 ```
 
 ### `set.unused`
@@ -4208,6 +4520,8 @@ info, milestone 3, `spec/rules.md`.
 ```text
 A set nothing places.
 To fix: Place it with an instance or run, or remove it.
+Bad:   [set.lamp_pair.item.l] ...   (no instance or run names lamp_pair)
+Fixed: [instance.front_lamps] set = "lamp_pair", on = { ref = "cottage.front" }
 ```
 
 ## surface
@@ -4245,6 +4559,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 Two paired mounts lie at different plan points; gives both.
+To fix: Put both mounts at one plan point: the same `t` and `offset`, or meet with another mount.
+Bad:   [kind.span.mount.a] t = 0, and [kind.span.mount.b] t = 0.1, meets = "a"
+Fixed: [kind.span.mount.b] t = 0, meets = "a"
 ```
 
 ### `surface.bound`
@@ -4253,6 +4570,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 Its bound is not above 0 or not finite; gives the value.
+To fix: Give `bound` a value above 0 for every owner, through the kind's defaults or the feature's attributes.
+Bad:   bound = "= width / 2"   (with width = 0)
+Fixed: bound = "= max(width, 0.5) / 2"
 ```
 
 ### `surface.clipped`
@@ -4261,6 +4581,9 @@ info, milestone 3, `spec/surfaces.md`.
 
 ```text
 Its bound reaches beyond the extent; the share lost.
+To fix: Nothing if the bound may reach past the edge; otherwise move the owner inside, or widen the extent.
+Bad:   a path owner's surface bound running 3 m past the east edge
+Fixed: the owner's path ending 3 m inside the extent
 ```
 
 ### `surface.connector`
@@ -4297,6 +4620,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 Its strip overlaps itself; position and the largest bound that holds.
+To fix: Widen the bend or narrow the bound to the largest that holds, which the record gives.
+Bad:   a path owner with width = 5 on a bend of inner radius 1 m
+Fixed: width = 1.8, or a bend of radius 3 m
 ```
 
 ### `surface.gap`
@@ -4305,6 +4631,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: "make the two sides equal: change <a> or <b>, or add an effect of <owner> that sets the ground to <z>".
+To fix: Make the two sides equal: change one side's height, or add an effect of the owner that sets the ground to the surface's height there.
+Bad:   a surface at top_z and no effect raising the ground at its ends
+Fixed: add [kind.span.effect.heads] with value = "= top_z" at each end
 ```
 
 ### `surface.ground_off_terrain`
@@ -4313,6 +4642,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 ground on an instance that stands on a kind surface.
+To fix: Remove `ground`, or stand the instance on the terrain.
+Bad:   on = { ref = "span_a", t = 0.5, offset = 1 }, ground = "level"
+Fixed: on = { ref = "span_a", t = 0.5, offset = 1 }
 ```
 
 ### `surface.host_missing`
@@ -4333,6 +4665,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 meets names the mount itself.
+To fix: Name another mount of the same kind in `meets`, or remove `meets`.
+Bad:   [kind.span.mount.west_top] meets = "west_top"
+Fixed: [kind.span.mount.west_top] meets = "west_head"
 ```
 
 ### `surface.meets_twice`
@@ -4341,6 +4676,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 The mount is in two meets pairs; names both others.
+To fix: Keep one pair for the mount: remove `meets` from one of the two others.
+Bad:   [kind.span.mount.a] meets = "c", and [kind.span.mount.b] meets = "c"
+Fixed: [kind.span.mount.b] meets = "d"
 ```
 
 ### `surface.mount_face`
@@ -4349,6 +4687,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 A face word on a kind mount. Hint: a number, 0 along travel, 180 against.
+To fix: Write a number of degrees: 0 along travel, 180 against.
+Bad:   face = "along"
+Fixed: face = 0
 ```
 
 ### `surface.name_clash`
@@ -4357,6 +4698,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 A surface and a mount share a name.
+To fix: Rename the surface or the mount.
+Bad:   [kind.span.surface.top] and [kind.span.mount.top]
+Fixed: [kind.span.surface.top] and [kind.span.mount.top_west]
 ```
 
 ### `surface.off_bound`
@@ -4365,6 +4709,9 @@ warning, milestone 3, `spec/surfaces.md`.
 
 ```text
 Part of its footprint lies outside its surface's bound; the share.
+To fix: Move the instance so its footprint lies on the surface, or widen the surface's bound.
+Bad:   on = { ref = "span_a", t = 0.5, offset = 2 }   (half the footprint off the 5 m surface)
+Fixed: on = { ref = "span_a", t = 0.5, offset = 0 }
 ```
 
 ### `surface.outside`
@@ -4373,6 +4720,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is place.outside (rules.md 8.4), never this code.
+To fix: Move it onto the surface's bound, or onto the ground beside it.
+Bad:   on = { ref = "span_a", t = 0.5, offset = 4 }   (the surface is 2.5 m to each side)
+Fixed: on = { ref = "span_a", t = 0.5, offset = 1 }
 ```
 
 ### `surface.owner_shape`
@@ -4381,6 +4731,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 A surface on a point kind, a path owner without bound, or a region owner with one.
+To fix: Give a path owner a `bound`, remove it from a region owner, or give the surface to a path or region kind.
+Bad:   [kind.span.surface.top] base = ...   (no bound, on a path owner)
+Fixed: [kind.span.surface.top] base = ..., bound = "= width / 2"
 ```
 
 ### `surface.through`
@@ -4389,6 +4742,9 @@ warning, milestone 3, `spec/surfaces.md`.
 
 ```text
 Its height reaches through another surface above its origin; names it.
+To fix: Move it, or choose a lower asset; nothing if it really stands under the other surface.
+Bad:   a 6 m mast under a surface 4.5 m above the ground
+Fixed: the mast moved 6 m off the surface's line
 ```
 
 ### `surface.too_early`
@@ -4420,6 +4776,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 meets names a mount the kind lacks; lists the kind's mounts.
+To fix: Name a mount the kind declares; the record lists them.
+Bad:   meets = "east_hed"
+Fixed: meets = "east_head"
 ```
 
 ### `surface.unknown_surface`
@@ -4428,6 +4787,9 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 surface names a surface the kind lacks; lists the kind's surfaces.
+To fix: Name a surface the kind declares; the record lists them.
+Bad:   surface = "tpo"
+Fixed: surface = "top"
 ```
 
 ### `surface.unmet`
@@ -4444,4 +4806,7 @@ error, milestone 3, `spec/surfaces.md`.
 
 ```text
 on a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it on a mount.
+To fix: Place it on one of the owner's mounts, which says the surface.
+Bad:   on = { ref = "hall" }   (hall owns upper and lower)
+Fixed: on = { ref = "hall.upper_mid" }
 ```

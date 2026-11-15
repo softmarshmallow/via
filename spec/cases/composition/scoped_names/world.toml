@@ -1,0 +1,21 @@
+name       = "scoped_names"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+pack       = "primitive"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.a]
+file = "a/world.toml"
+at   = [0, 0]
+
+[instance.hut]
+asset = "box_small"
+at    = [20, 10]
+
+[feature.look]
+on = { ref = "a.hut" }

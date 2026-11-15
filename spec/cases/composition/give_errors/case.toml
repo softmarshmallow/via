@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = '''give = { lnad = "height" }: import.given_unknown nearest land; give = { land = "zone" } with zone a region: import.given_type.'''
+milestone = 4
+actions   = ["unknown", "swap", "typed"]
+
+[action.unknown]
+via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+exit        = 1
+diagnostics = "exact"
+[action.unknown.diag.unknown]
+code = "import.given_unknown"
+data = { nearest = "land" }
+
+[action.swap]
+replace = "world.toml"
+find    = '''lnad = "height"'''
+with    = '''land = "zone"'''
+
+[action.typed]
+via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+exit        = 1
+diagnostics = "exact"
+[action.typed.diag.type]
+code = "import.given_type"
+data = { accepts = "field" }

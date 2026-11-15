@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "rules.md 5.1: path [[0, 0], [30, 0], [30, 30]], count = 3, ends = both, offset = 1: (0, 1000) facing 90000, (29000, 0) facing 0, (29000, 30000) facing 0."
+milestone = 3
+actions   = ["build"]
+
+# The member at s = 30000 lies on the vertex: the outgoing segment holds it (rules.md 5.1), so it
+# faces north and its offset is to the west.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+
+[action.build.check.r0]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r0"
+at = [0, 1]
+face = 90000
+
+[action.build.check.r1]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r1"
+at = [29, 0]
+face = 0
+
+[action.build.check.r2]
+fn = "instance_at"
+build = "build/w"
+name = "posts#r2"
+at = [29, 30]
+face = 0

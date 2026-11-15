@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A fill given a field and placed at (28, 0) in a 32 m parent: import.give_outside, data.area 32; exit 1."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.outside]
+code = "import.give_outside"
+data = { area = 32 }

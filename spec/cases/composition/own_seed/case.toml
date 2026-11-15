@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "An import with a noise height placed at (4, 4), then at (6, 4): each placed window of the parent's height equals the import's own build bit for bit."
+milestone = 4
+actions   = ["alone", "first", "move", "moved"]
+
+# max_grade = 100: the noise meets the parent's flat ground at a step this case does not test.
+
+[action.alone]
+via         = ["build", "a/world.toml", "--lib", "{work}/lib", "--out", "build/a"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/a"
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.first.check.window]
+fn     = "array_window"
+whole  = "build/w/fields/height.npy"
+part   = "build/a/fields/height.npy"
+window = [4, 4, 13, 13]
+
+[action.move]
+replace = "world.toml"
+find    = "at   = [4, 4]"
+with    = "at   = [6, 4]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.moved.check.window]
+fn     = "array_window"
+whole  = "build/w/fields/height.npy"
+part   = "build/a/fields/height.npy"
+window = [6, 4, 15, 13]

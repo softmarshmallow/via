@@ -1,0 +1,18 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[set.a.item.inner]
+set = "b"
+
+[set.b.item.inner]
+set = "a"
+
+[instance.x]
+set = "a"
+at  = [100, 100]

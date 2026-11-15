@@ -1,0 +1,27 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[instance.cottage]
+asset = "house_low"
+at    = [100, 100]
+
+[set.door_lamps.item.l]
+asset = "lamp_post"
+at    = [-1.8, 0.9]
+
+[set.door_lamps.item.r]
+asset = "lamp_post"
+at    = [1.8, 0.9]
+
+[instance.cottage_lamps]
+set = "door_lamps"
+on  = { ref = "cottage.door" }
+
+[change.turn.instance.cottage]
+face = 90

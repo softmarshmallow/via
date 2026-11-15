@@ -16,9 +16,9 @@
 # bearing_spread is lib/review/form.py's (challenges.md row 59: the spike's city alone 0.45, in
 # atlas 0.76; main ways 0.40): its band is wide on purpose, as it moves with the routes.
 #
-# R13 is NOT held for lots (rows marked FAULT): move_avenue renames 212 lots (106 of them with
-# identical outlines) inside 164 blocks whose names and outlines did not change; move_bridge 16.
-# Recorded as measured so a fix shows as a change in band. README "Known faults".
+# R13 for lots (M4 slice 1, fixed): move_avenue renamed 212 lots in kept blocks and move_bridge 16
+# until a source cut by a network's `within` outline was given its role there (identity.md 2.3,
+# roles by travel); both are 0 now.
 #
 # M3 slice 5 (fix): base and hand re-recorded on the combined tree with this protocol (release
 # `via` of that tree, VIA_LIB=lib, one fresh store, base cold 209 s and 5.3 GB peak; hand 81 s,
@@ -29,6 +29,17 @@
 # 203 -> 200, lots 2744 -> 2779, streets 95 -> 93, houses 1992 -> 2201, lots_held 1277 -> 1314,
 # place.relief 156 -> 190 (houses on the old town's slope: no terraces in the city); hand
 # houses_removed 3 -> 2, blocks_kept 203 -> 200. move_avenue and move_bridge in band unchanged.
+#
+# M4 slice 1 (names): re-recorded with this protocol on the working tree of 2026-11-16 (after
+# 7056fc3, with the other M4 slice 1 agents' uncommitted changes of that hour; release `via`,
+# VIA_LIB=lib, one fresh store; base cold 126 s and 6.0 GB peak, move_avenue 151 s, move_bridge
+# 129 s, hand 56 s, 7.5 to 8.5 GB peak). The grand avenue passes four named places on its line
+# (world.toml): it ran from x 661 to 728 for a line at 700, now on it (0 m off, base and
+# move_avenue). Moved: blocks 200 -> 186, lots 2779 -> 2739, houses 2201 -> 2291, lots_held
+# 1314 -> 1364, bearing_main 0.3448 (three way points) and 0.2878 (four), below its old band
+# [0.35, 0.42] since the avenue no longer bends; hand blocks_kept 200 -> 186. lots renamed in kept
+# blocks: move_avenue 212 -> 0, move_bridge 16 -> 0 (the fix above; 0 and 0 with three way points
+# too).
 
 # ------------------------------------------------------------------------------------------ base
 
@@ -42,11 +53,11 @@ band    = [24, 24]
 
 [base.blocks]
 measure = "block"
-band    = [200, 200]
+band    = [186, 186]
 
 [base.lots]
 measure = "lot"
-band    = [2779, 2779]
+band    = [2739, 2739]
 
 [base.streets]
 measure = "street"
@@ -54,11 +65,11 @@ band    = [93, 93]
 
 [base.houses]
 measure = "houses"
-band    = [2201, 2201]
+band    = [2291, 2291]
 
 [base.lots_held]
 measure = "lots_held"
-band    = [1314, 1314]
+band    = [1364, 1364]
 
 [base.crossings]
 measure = "crossings"
@@ -106,7 +117,7 @@ band    = [0.7, 0.78]
 
 [base.bearing_main]
 measure = "bearing_main"
-band    = [0.35, 0.42]
+band    = [0.28, 0.42]
 
 [base.dead_ends]
 measure = "dead_end_count"
@@ -150,9 +161,9 @@ band    = [0, 0]
 measure = "block_added_far"
 band    = [0, 0]
 
-[move_avenue.lots_renamed_in_kept_blocks]                             # FAULT, see the header
+[move_avenue.lots_renamed_in_kept_blocks]                             # R13 for lots, the header
 measure = "lot_changed_in_kept_blocks"
-band    = [212, 212]
+band    = [0, 0]
 
 [move_avenue.decks]
 measure = "decks"
@@ -204,9 +215,9 @@ band    = [0, 0]
 measure = "houses_changed_in_kept_blocks"
 band    = [0, 0]
 
-[move_bridge.lots_renamed_in_kept_blocks]                             # FAULT, see the header
+[move_bridge.lots_renamed_in_kept_blocks]                             # R13 for lots, the header
 measure = "lot_changed_in_kept_blocks"
-band    = [16, 16]
+band    = [0, 0]
 
 [move_bridge.reach]
 measure = "reach_held"
@@ -232,7 +243,7 @@ band    = [0, 0]
 
 [hand.blocks_kept]
 measure = "blocks_kept"
-band    = [200, 200]
+band    = [186, 186]
 
 [hand.wards_resettled]
 measure = "wards_resettled"

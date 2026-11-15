@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "rules.md 5 and 10: 12 bays of house_low at exact pitch, abutting, on a bent path: neighbours of one run are not tested, so no place.crowded and no place.overlap."
+milestone = 3
+actions   = ["build"]
+
+# The street is 40 + 56 = 96 m, so 12 half-step members stand exactly 8 m apart, each house_low 8 m
+# wide along the line: neighbours abut on the straights, and r4 and r5 overlap at the corner. A run
+# never tests its own neighbours (rules.md 5); a test between them would say place.crowded or
+# place.overlap and fail this case.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.build.check.first]
+fn = "instance_at"
+build = "build/w"
+name = "bays#r0"
+at = [24, 100]
+
+[action.build.check.last]
+fn = "instance_at"
+build = "build/w"
+name = "bays#r11"
+at = [60, 152]

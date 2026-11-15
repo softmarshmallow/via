@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "rules.md 5 and graph.md 3.1: a run of four members on pads, built; then a hand house added near the second member and built again in the same store: no diag.internal, and the warm build equals a clean one."
+milestone = 3
+actions   = ["build", "add", "added"]
+
+# Before the fix every member's footprint node shared one key, so the store handed r0's footprint
+# to r1 and the second build failed with diag.internal (example `third_cottage`, M4 slice 1).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.add]
+replace = "world.toml"
+find    = "# hand instances below"
+with    = "[instance.extra]\nasset  = \"house_low\"\nground = \"pad\"\nat     = [45, 30]"
+
+[action.added]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.added.diag.no_internal]
+code    = "diag.internal"
+records = 0
+[action.added.check.extra]
+fn    = "instance_at"
+build = "build/w"
+name  = "extra"
+at    = [45, 30]

@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, clipped: a crossing whose deck bound reaches 3 m past the extent's east edge: surface.clipped with the share lost."
+milestone = 3
+pending   = "owed: kind surfaces and kind mounts (`[kind.<k>.surface.<name>]`, `meets`, surfaces.md 1 and 3) are not implemented; the world, from section 6.3's kinds, is written with that code"
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.clipped]
+code = "surface.clipped"

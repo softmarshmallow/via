@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "p imports m, m imports n whose exit m answers: no diagnostic in p; m without the answer: import.exit_unanswered subject m.n.feature.east in p's build."
+milestone = 4
+actions   = ["build", "forget", "forgotten"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.forget]
+write = "m/world.toml"
+from  = "later/m.toml"
+
+[action.forgotten]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/w"
+[action.forgotten.diag.forgotten]
+code    = "import.exit_unanswered"
+subject = "m.n.feature.east"

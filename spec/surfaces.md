@@ -300,7 +300,8 @@ A meeting is a pair of mounts (R31). There are two ways to make one, and no othe
 - **Default mount.** A path end is a mount of its path. A mount or a path end is its own default
   mount; a point feature's is its point on the terrain, with no face and no connector; an
   instance's or a set item's is its origin, on the surface it stands on (4.1), with no face and no
-  connector; a place inside an import's is that of the thing it names (M4).
+  connector; a place inside an import's is that of the thing it names, taken through the import's frame (M4,
+  `composition.md` 3, 4).
 
 - A path end lies on its path's own kind surface when its kind owns exactly one, on the terrain when
   it owns none, and is `surface.which` (error) when it owns two or more. So a ramp whose end rests on
@@ -363,7 +364,7 @@ library's convention, shown in 6.3 and illustrative only:
 | `on` a thing that owns exactly one surface | that surface |
 | `on` a thing that owns two or more | `surface.which` (error), listing them. Hint: place it `on` a mount. |
 | `on` a mount | the mount's surface (3.1, 3.2) |
-| `on` a place inside an import (M4) | as this table, for the thing the place names |
+| `on` a place inside an import (M4) | as this table, for the thing the place names; its height found again on the parent's finished surface (`composition.md` 3) |
 | `on` anything else (a path, a region with no surface, an instance) | the terrain |
 | `at` | the terrain, always |
 | a scatter (`within`) | the terrain; a scatter on a kind surface is (open), item 5 |
@@ -667,6 +668,10 @@ folder's contents are (open): written with the code checks (plan, M0 step 5).
 | outside | M3 | the same with `offset = 4` | build | `surface.outside`, instance not placed. |
 | ground_on_deck | M3 | the same with `offset = 1` and `ground = "pad"` | build | `surface.ground_off_terrain`. |
 | which | M3 | `on` a feature whose kind owns two surfaces | build | `surface.which` listing both. |
+| bound_zero | M3 | a crossing with `width = 0` | build | `surface.bound` with the value, exit 1. |
+| clipped | M3 | a crossing whose deck bound reaches 3 m past the extent's east edge | build | `surface.clipped` with the share lost, exit 0. |
+| mount_face | M3 | a kind mount with `face = "along"` | build | `surface.mount_face`, exit 1. |
+| unknown_surface | M3 | a kind mount with `surface = "dek"` | build | `surface.unknown_surface` listing the kind's surfaces, exit 1. |
 | deck_divide | M3 | a crossing with `base = "= 1 / d"` | `sample` on its line | Exit 1, `formula.not_finite` at that point; no output file. |
 | connector | M5 | a lane kind with connector `rail` ending at a `way` head | build | `surface.connector`. |
 | unmet | M5 | 6.3 with `lane_east` removed | build | `surface.unmet` on `mill_bridge.east_head`, exit 0. |

@@ -28,7 +28,8 @@ In M1, `file` and `detail` on an asset are `doc.not_yet`, naming M2.
   id (`asset = "cottage"`) or by selection (`assets = ["@plant/tree"]`).
 - A pack is a document a user writes, flat TOML keyed by id (R1), with one exception: taxa are
   keyed by path (section 5). A pack may name files; a world may not.
-- One pack per world in v0. Whether an import brings its own pack is (open) in `documents.md`, M4.
+- One pack per world. An import resolves its asset ids with its own pack; one id bound two ways in
+  one build is an error (`composition.md` 10).
 - Swapping the pack changes no world text.
 
 **What a swap may change (R30).** Swapping the pack swaps the look and the facts the look carries
@@ -1016,6 +1017,6 @@ checks that a clean build equals the incremental one.
 - **A selection as an instance's or run's `asset`** (the spike's kit run): decided by the town kit's
   run in M3, with `rules.md`.
 - **Selection by tag in a world:** decided by the first case that needs it.
-- **Revisions across imports** (an asset revised in an imported world's pack): `documents.md`, M4.
+- **Revisions across imports** (an asset revised in an imported world's pack): `composition.md` 10.
 - **Formats other than glTF** (FBX, USD): converted outside the build; reopened only by a user case.
 - **Passable, connectors, module per axis, kit table, states:** M5 (section 10).

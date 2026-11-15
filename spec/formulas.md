@@ -212,7 +212,7 @@ never named bare: `fbm` alone is `formula.unknown_name`, unless a `let` or attri
 | kind surface `base` | number, metres | per post, read at any point asked (6.9) | | M3; names in `surfaces.md` 1.1 |
 | kind surface `bound` | number, metres | per feature | | M3; names in `surfaces.md` 1.1; not above 0 or not finite is `surface.bound` |
 | attribute, kind `defaults` | number | per feature | | 6.7 |
-| import `blend` | number | per post | 0 to 1 | M4; (open) names decided in `documents.md` |
+| import `blend` | number | per post | 0 to 1 | M4; names in `composition.md` 6.3 |
 | volume `base`, effect on a volume | number | per voxel | | M5 (open) |
 
 A value outside a key's range is `formula.range`, with the hint `clamp(..., 0, 1)`, reported as
@@ -233,7 +233,7 @@ yes/no is accepted because a condition is the usual way to write a region. A yes
   (the world frame, or an import's own world frame, `numbers.md`);
 - the world's `let` names;
 - `<id>.<attribute>`: the attribute of feature `<id>` after its own formula, constant (4.2). `<id>`
-  is a feature in this world; a place inside an import is M4. A feature may name itself this way;
+  is a feature in this world; a place inside an import is M4 (`composition.md` 4). A feature may name itself this way;
   the value is its own attribute;
 - every function of section 8 whose **Where** column allows the context.
 
@@ -367,7 +367,8 @@ says what class of thing it accepts. The forms are those of `vocabulary.md` sect
   `inside`, is `formula.empty_selection` (warning), once per formula and stratum. These functions
   then return their "nothing near" value: `dist` its cap, `sdist` minus its cap, `near` 0, `inside`
   no.
-- A place inside an import (`'a.quay_road.end'`) is M4.
+- A place inside an import (`'a.quay_road.end'`) is M4 (`composition.md` 4). An import's finished
+  field is read as `<import>.<field>` (`composition.md` 6.2).
 
 ## 8. The function table
 
@@ -945,7 +946,6 @@ Change propagation for a formula attribute (`lane_west.width` changed, only its 
 | A function reading one material's weight. | The first world that needs one: M1 `ford` or M2 `glade`. |
 | Volume formulas: `z`, per-voxel rate, 3D noise, names for a column. | M5, with `type = "volume"`. |
 | Formulas for positions (`at`, `path`) and facing. | M5, challenge 47's owed rotation. |
-| `blend`'s names on an import. | `documents.md`, for M4. |
 | Whether a per-post world `let` read by several fields is stored once as an unnamed field. Results are equal either way. | M1 build timings on `ford`. |
 | Whether `smoothed_along` and `'edge_min'` stay in the table or move to a library step. | M1: the approach-grade lint on `ford`; M2's lake shores. |
 | The function table's data file. | M0 step 5, with the code checks. |

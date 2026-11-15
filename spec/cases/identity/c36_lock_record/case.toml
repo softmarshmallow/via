@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "identity.md 36: via lock with an unknown id: identity.unknown_lock, exit 1; recorded twice after a change: identity.lock_rerecorded with counts."
+milestone = 3
+pending   = "owed: `[lock]` is still `doc.not_yet` and `via lock` is not written (identity.md 4.4, TODO M4 core); the world, its record and the actions are written with the lock code"
+actions   = ["unknown", "first", "second"]
+
+[action.unknown]
+via         = ["lock", "world.toml", "old_grov"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.unknown.diag.unknown_lock]
+code = "identity.unknown_lock"
+
+[action.first]
+via         = ["lock", "world.toml", "old_grove"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.second]
+via         = ["lock", "world.toml", "old_grove", "--change", "thin"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.second.diag.lock_rerecorded]
+code = "identity.lock_rerecorded"

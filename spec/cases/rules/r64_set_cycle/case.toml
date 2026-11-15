@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "rules.md 4: a set that contains itself, through another, is the graph's cycle naming the set; exit 1."
+milestone = 3
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.cycle]
+code = "graph.cycle"
+subject = "set.a"

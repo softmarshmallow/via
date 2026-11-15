@@ -620,7 +620,9 @@ def json_list(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -
 
 def instance_at(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
     """The build holds exactly one instance named `name`, its origin in plan exactly at `at`
-    (integer millimetres, build.md 8)."""
+    (integer millimetres, build.md 8); with `face`, its facing in millidegrees, and with `scale`,
+    its scale, exactly. With `absent = true`, the build holds no instance of that name (`at` then
+    says where it would stand)."""
     build = work / args["build"]
     xs = files.load_array(build / "instances" / "x.npy")
     ys = files.load_array(build / "instances" / "y.npy")
@@ -628,12 +630,21 @@ def instance_at(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any])
     if not (len(xs) == len(ys) == len(names)):
         return [(f"check.{cid}", "x, y and names.txt of one length", f"{len(xs)}, {len(ys)}, {len(names)}")]
     rows = [k for k, n in enumerate(names) if n == args["name"]]
+    if args.get("absent"):
+        if rows:
+            return [(f"check.{cid}", f"no instance named {args['name']}", str(len(rows)))]
+        return []
     if len(rows) != 1:
         return [(f"check.{cid}", f"one instance named {args['name']}", str(len(rows)))]
     want = (_mm(args["at"][0]), _mm(args["at"][1]))
     got = (int(xs[rows[0]]), int(ys[rows[0]]))
     if got != want:
         return [(f"check.{cid}", f"{args['name']} at {want} mm", f"{got} mm")]
+    for key, file in (("face", "face.npy"), ("scale", "scale.npy")):
+        if key in args:
+            v = files.load_array(build / "instances" / file)[rows[0]].item()
+            if v != args[key]:
+                return [(f"check.{cid}", f"{args['name']} {key} {args[key]}", str(v))]
     return []
 
 

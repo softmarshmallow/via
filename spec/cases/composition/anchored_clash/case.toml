@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "The import's anchored pad and a parent anchored pad of another level over it: authority.conflict, the import's feature in related; exit 1."
+milestone = 4
+actions   = ["build"]
+
+# Line 13 of a/world.toml is the pad's authority line.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.clash]
+code    = "authority.conflict"
+related = [{ file = "a/world.toml", line = 13 }]

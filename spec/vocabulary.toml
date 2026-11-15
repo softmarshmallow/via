@@ -129,6 +129,11 @@ takes = "table"
 chapter = "documents"
 sections = ["Document"]
 
+[key."datum"]
+takes = "string"
+chapter = "composition"
+sections = ["Document"]
+
 [key."file"]
 takes = "string"
 chapter = "documents"
@@ -275,7 +280,7 @@ chapter = "geometry"
 sections = ["Features", "Placement"]
 
 [key."path"]
-takes = "list of points"
+takes = "list of points and names"
 chapter = "geometry"
 sections = ["Features"]
 
@@ -335,8 +340,8 @@ chapter = "authority"
 sections = ["Kinds, effects, kind surfaces and kind mounts"]
 
 [key."exit"]
-takes = "bool"
-chapter = "documents"
+takes = "bool or list of strings"
+chapter = "composition"
 sections = ["Kinds, effects, kind surfaces and kind mounts"]
 
 [key."output"]
@@ -611,12 +616,12 @@ sections = ["Hand edits"]
 
 [key."[import.<id>]"]
 takes = "table"
-chapter = "documents"
+chapter = "composition"
 sections = ["Imports and composition"]
 
 [key."changes"]
 takes = "list of names"
-chapter = "documents"
+chapter = "composition"
 sections = ["Imports and composition"]
 
 [key."footprint"]
@@ -626,27 +631,37 @@ sections = ["Imports and composition"]
 
 [key."blend"]
 takes = "formula"
-chapter = "documents"
+chapter = "composition"
+sections = ["Imports and composition"]
+
+[key."lift"]
+takes = "length"
+chapter = "composition"
+sections = ["Imports and composition"]
+
+[key."max_grade"]
+takes = "number"
+chapter = "composition"
 sections = ["Imports and composition"]
 
 [key."give"]
 takes = "table of names"
-chapter = "documents"
+chapter = "composition"
 sections = ["Imports and composition"]
 
 [key."[given.<name>]"]
 takes = "table"
-chapter = "documents"
+chapter = "composition"
 sections = ["Imports and composition"]
 
 [key."accepts"]
 takes = "string"
-chapter = "documents"
+chapter = "composition"
 sections = ["Imports and composition"]
 
-[key."after"]
-takes = "string"
-chapter = "graph"
+[key."default"]
+takes = "formula, number, name or selector"
+chapter = "composition"
 sections = ["Imports and composition"]
 
 [key."[step.<id>]"]

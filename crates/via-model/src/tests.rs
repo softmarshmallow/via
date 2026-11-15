@@ -529,6 +529,36 @@ fn graph_reuses_unchanged_fields() {
     );
 }
 
+/// No two nodes of one family are keyed on the same parts (`graph.md` 3.1). The members of a
+/// run share every statement and edge; without their name as the key's argument the store gave
+/// one member's footprint to every other (example `third_cottage`: `diag.internal`).
+#[test]
+fn no_two_nodes_share_a_key() {
+    let w = WORLD.replace(
+        "[scatter.growth]",
+        "[run.row]\nasset  = \"box_a\"\nground = \"flat\"\non     = { ref = \"way_e\", offset = 8 }\ncount  = 3\n\n[scatter.growth]",
+    );
+    let d = world_dir(&w);
+    let lo = LoadOptions {
+        lib_roots: Vec::new(),
+        via_lib: None,
+        shipped_root: None,
+        changes: Vec::new(),
+    };
+    let path = d.0.join("world.toml");
+    let world = load(&path, 2, &lo).world.expect("merged");
+    let plan = crate::graph::ModelPlan::new(&world, &Options::from_load(&path, &lo), None);
+    let ids: Vec<String> = plan.ids().iter().map(ToString::to_string).collect();
+    assert!(
+        ids.iter()
+            .filter(|n| n.starts_with("footprint:row#r"))
+            .count()
+            == 3,
+        "{ids:?}"
+    );
+    assert_eq!(plan.key_clashes(), Vec::new());
+}
+
 const GRID: &str = r#"name       = "plain"
 extent     = [0, 0, 64, 64]
 resolution = 1

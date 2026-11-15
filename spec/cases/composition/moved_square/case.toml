@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "Two districts with a square each, given to a fill whose worker step runs per given district and reads the given squares within its item; one square moved inside its district: only that district's call ran."
+milestone = 4
+actions   = ["program", "trust", "first", "move", "moved"]
+
+# The town shares the parent's extent at (0, 0), so the given features keep their coordinates.
+# The plan's acceptance row: a moved square re-runs only its district.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/lib"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.first.nodes]
+ran_includes = ["town.step:lay/i:districts.d1", "town.step:lay/i:districts.d2"]
+
+[action.move]
+replace = "world.toml"
+find    = "at   = [4, 8]"
+with    = "at   = [6, 8]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.moved.nodes]
+ran_includes = ["town.step:lay/i:districts.d1"]
+not_ran      = ["town.step:lay/i:districts.d2"]

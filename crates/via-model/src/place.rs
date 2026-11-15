@@ -19,7 +19,7 @@ use via_geom::shape::{read_path, read_ring};
 use via_geom::{Region, P};
 use via_num::Frame;
 
-use crate::decl::{Decls, Face, FeatureDecl, Follows, On, Place, Select, ShapeDecl};
+use crate::decl::{Decls, Face, FeatureDecl, Follows, On, Place, Select, ShapeDecl, WayDecl};
 use crate::pack::{Asset, Pack};
 use crate::resolve::Fields;
 use crate::text::{self, at_key, at_path};
@@ -63,6 +63,30 @@ pub enum Geo {
         region: Region,
         line: Option<Line>,
     },
+}
+
+/// A shape ready to project many points ([`Geo::projector`]).
+pub struct Projector<'a> {
+    geo: &'a Geo,
+    path: Option<lineref::Index>,
+    rings: Vec<(lineref::Line, lineref::Index)>,
+}
+
+impl Projector<'_> {
+    /// [`Geo::project`] at `p`.
+    pub fn project(&self, p: P) -> lineref::Measure {
+        match (self.geo, &self.path) {
+            (Geo::Path { line }, Some(index)) => lineref::project_path_in(line, index, p),
+            (Geo::Region { region, .. }, _) => lineref::project_region_in(region, &self.rings, p)
+                .unwrap_or(lineref::Measure {
+                    t: None,
+                    d: 0.0,
+                    sd: 0.0,
+                    nearest: (0.0, 0.0),
+                }),
+            (g, _) => g.project(p),
+        }
+    }
 }
 
 impl Geo {
@@ -110,6 +134,22 @@ impl Geo {
                     nearest: (0.0, 0.0),
                 })
             }
+        }
+    }
+
+    /// [`Geo::project`] for many points: the path's or rings' segments indexed once
+    /// (`geometry.md` 3.8, How the nearest is found); the same measures, bit for bit.
+    pub fn projector(&self) -> Projector<'_> {
+        Projector {
+            geo: self,
+            path: match self {
+                Geo::Path { line } => Some(lineref::Index::new(line)),
+                _ => None,
+            },
+            rings: match self {
+                Geo::Region { region, .. } => lineref::region_rings(region),
+                _ => Vec::new(),
+            },
         }
     }
 
@@ -312,6 +352,9 @@ impl<'a> Placer<'a> {
         for id in self.d.instances.keys() {
             self.instance(id);
         }
+        for id in self.d.runs.keys() {
+            self.run_members(id);
+        }
         for id in self.d.pins.keys() {
             self.pin(id);
         }
@@ -389,8 +432,23 @@ impl<'a> Placer<'a> {
 
     fn make_feature(&mut self, f: &FeatureDecl) -> Option<Geo> {
         match &f.shape {
-            ShapeDecl::Path(pts) => {
-                let mut v: Vec<P> = pts.iter().map(|p| pt(*p)).collect();
+            ShapeDecl::Path(ways) => {
+                // Each named way point gives its point as an end would (`derived.md` 3); every
+                // one is resolved, so each that fails says so in the same build.
+                let mut v: Vec<P> = Vec::with_capacity(ways.len() + 2);
+                let mut failed = false;
+                for w in ways {
+                    match w {
+                        WayDecl::At(p) => v.push(pt(*p)),
+                        WayDecl::Name(n) => match self.end_point(&f.id, "path", n) {
+                            Some(p) => v.push(p),
+                            None => failed = true,
+                        },
+                    }
+                }
+                if failed {
+                    return None;
+                }
                 if let Some(s) = &f.starts_at {
                     let p = self.end_point(&f.id, "starts_at", s)?;
                     v.insert(0, p);
@@ -486,7 +544,8 @@ impl<'a> Placer<'a> {
         }
     }
 
-    /// The point a `starts_at` or `ends_at` gives (`geometry.md` 2.7).
+    /// The point a `starts_at`, `ends_at` or named way point gives (`geometry.md` 2.7,
+    /// `derived.md` 3).
     fn end_point(&mut self, id: &str, key: &str, name: &str) -> Option<P> {
         match self.spot("feature", id, key, name)? {
             Spot::At { p, .. } => Some(p),
@@ -496,7 +555,11 @@ impl<'a> Placer<'a> {
                     "feature",
                     id,
                     key,
-                    &format!("`{name}` is {}, which has no one point to meet", g.word()),
+                    &format!(
+                        "`{name}` is {}, which has no one point to {}",
+                        g.word(),
+                        if key == "path" { "pass" } else { "meet" }
+                    ),
                     "name an end, or place a point feature on it with `on`",
                 ));
                 None
@@ -587,6 +650,21 @@ impl<'a> Placer<'a> {
                     self.host_missing(top, id, key, host);
                     return None;
                 };
+                // A set's item is a place, and so is a mount of an item (`rules.md` 4, 3.2).
+                if let Some(it) = self.out.plans.get(name) {
+                    return Some(Spot::At {
+                        p: it.origin,
+                        facing: Some(it.facing),
+                        end: false,
+                    });
+                }
+                let (pl, part) = match name.rsplit_once('.') {
+                    Some((item, m)) if item != host => match self.out.plans.get(item) {
+                        Some(ip) => (ip.clone(), m),
+                        None => (pl, part),
+                    },
+                    _ => (pl, part),
+                };
                 if part == "ground" {
                     let fp = format!("{host}.ground");
                     return match self.out.shapes.get(&fp) {
@@ -603,6 +681,17 @@ impl<'a> Placer<'a> {
                             None
                         }
                     };
+                }
+                if pl.asset.is_empty() {
+                    self.diags.push(at_key(
+                        codes::identity::UNKNOWN_PLACE,
+                        top,
+                        id,
+                        key,
+                        &format!("`{part}` is no item of the set `{}` places", pl.name),
+                        "name an item of the set",
+                    ));
+                    return None;
                 }
                 let asset = self.pack.assets.get(&pl.asset)?;
                 return match asset.mounts.get(part) {
@@ -966,17 +1055,35 @@ impl<'a> Placer<'a> {
         if !self.enter(id, "instance") {
             return None;
         }
-        let plan = self.plan_of(
-            "instance", id, &i.asset, &i.place, i.face, i.scale, i.tint, i.rank,
-        );
+        let plan = match &i.set {
+            // A set placed: its frame, and its items as plans (`rules.md` 4).
+            Some(s) => self
+                .locate("instance", id, &i.place, i.face, false)
+                .and_then(|(o, f)| {
+                    self.place_set("instance", id, id, s, o, f, i.scale, i.tint, id, i.rank)
+                })
+                .map(|mut p| {
+                    p.on = match &i.place {
+                        Place::On(o) => Some(o.reference.clone()),
+                        Place::Of(o) => Some(o.of.clone()),
+                        Place::At(_) => None,
+                    };
+                    p
+                }),
+            None => self.plan_of(
+                "instance", id, &i.asset, &i.place, i.face, i.scale, i.tint, i.rank,
+            ),
+        };
         self.leave();
-        let Some(plan) = plan else {
+        let Some(mut plan) = plan else {
             self.failed.insert(id.to_string());
             self.out.missing.insert(id.to_string());
             return None;
         };
+        let set_fp = i.set.is_some().then(|| self.set_footprint(id));
         if let Some(g) = &i.ground {
-            if plan.footprint.is_empty() {
+            let fp = set_fp.unwrap_or_else(|| plan.footprint.clone());
+            if fp.is_empty() {
                 self.diags.push(at_key(
                     codes::place::NO_FOOTPRINT,
                     "instance",
@@ -986,7 +1093,7 @@ impl<'a> Placer<'a> {
                     "declare the asset's `footprint`, or remove `ground`",
                 ));
             } else {
-                match offset(id, &plan.footprint, i.margin, Join::Mitre(2.0)) {
+                match offset(id, &fp, i.margin, Join::Mitre(2.0)) {
                     Ok((r, _)) => {
                         let name = format!("{id}.ground");
                         let line = (r.pieces.len() == 1)
@@ -1002,6 +1109,7 @@ impl<'a> Placer<'a> {
                 }
             }
         }
+        plan.name = id.to_string();
         self.out.plans.insert(id.to_string(), plan.clone());
         Some(plan)
     }

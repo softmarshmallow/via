@@ -1,0 +1,4 @@
+[feature.ridge]
+kind   = "pad"
+level  = 6
+region = [[6, 2], [10, 2], [10, 6], [6, 6]]

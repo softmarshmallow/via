@@ -1,0 +1,13 @@
+name       = "coarser"
+extent     = [0, 0, 32, 16]
+resolution = 2
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.a]
+file = "a/world.toml"
+at   = [8, 0]

@@ -173,6 +173,7 @@ is built (`documents.md` 5, 6).
 | `include` | list of strings | Libraries, by name, never by path; each adds its kinds to the one kind namespace. A name is looked up in `lib/` beside the world file, each `--lib` root, each `VIA_LIB` entry, then the shipped root; first match wins (`documents.md` 4). Two libraries that declare one kind are `identity.duplicate_id`. Versions of a library: (open), decided by the first shipped library change that breaks a world, no later than M7. | documents |
 | `pack` | string | The pack that binds asset ids: a path if it holds `/` or ends in `.toml`, else a name looked up as `assets.md` 1.2 says. A world never names an asset file (principle 6). Swapping it swaps the look and the facts the look carries (size, footprint, mounts), and what follows settles and is reported; nothing the author wrote changes (R30). | assets |
 | `[layer.<id>]` | table | One document of the world: `file`, `owner`, `rank`. The world file's own text is the layer `world`. | documents |
+| `datum` | string | What the world's height zero is, by name (`"sea"`). Two worlds with one datum join with no lift. Default none. Lesson (TODO): `atlas` needed a lift found by eye. (M4) | composition |
 | `file` | string | A path relative to the file that names it: on a layer, an import or a field. In a pack, an asset's or material's `file` (and `detail`) resolves against `root`. A field's `file` is a declared outside input of the graph under principle 7, not an asset, so principle 6 does not forbid it (R30). | documents |
 | `owner` | string | Who answers for a layer, free text. The build does not check it; it travels in the chain of every diagnostic raised from that layer (`documents.md` 5). | documents |
 | `rank` | integer | A layer's place, lowest first, unique. `world` is 0 unless written. A layer names only what is at or below its rank. | documents |
@@ -238,7 +239,7 @@ placement of the head is ours; `authority.md` 4 is the source and this summary f
 | `authority` | string | `derived`, `shaped`, `anchored`. On a kind: its features' default, itself `derived` by default. On a feature: overrides its kind's. | authority |
 | `at` | point | A coordinate in the frame of the table it is in: the world's, or a set's for an item. Plan only: height comes from the surface beneath (`surfaces`). | geometry |
 | `on` | inline table | A place on a named or selected thing: see Placement. | geometry |
-| `path` | list of points | A polyline. With `starts_at` / `ends_at`, every point other than the ends those give. | geometry |
+| `path` | list of points and names | A polyline. With `starts_at` / `ends_at`, every point other than the ends those give. An entry may name a place, as `starts_at` does (`derived.md` 3). | geometry |
 | `region` | list of points | A closed polygon. Read counter-clockwise; `t = 0` is its first written point. | geometry |
 | `where` | formula | A region written as a condition: where the formula is above 0 (a yes/no means where it is yes). Every piece is kept, with its holes; a piece smaller than one grid cell is kept and reported (`geom.mask_tiny`, info). The only piece dropped is one whose rings have zero area after rounding to the 1 mm lattice (`geom.mask_dropped`, warning; `geometry.md` 3.7). | geometry |
 | `smooth` | bool | Smooth a path through its written points by centripetal Catmull-Rom (Yuksel, Schaefer and Keyser, 2011). `t` is measured along the final curve. Default `false`; a kind cannot change it. Taken only with `path`, else `geom.smooth_not_path` (`geometry.md` 2.4). | geometry |
@@ -258,7 +259,7 @@ north, 0 north, 90 east. The loader maps these to the engine's axes. This conven
 | `defaults` | table | Attribute values its features have unless they write them. Declares each attribute. | authority |
 | `requires` | list of strings | Attributes each of its features must write. Declares each too. | authority |
 | `radius` | length | Distance beyond which a thing does nothing. On a kind or effect: its effects are not evaluated beyond it. On a clear: nothing beyond it is removed. In `clump`: the disc members fall in, or the reach of `around`. | authority |
-| `exit` | bool | `true`: its point features are exits, places where something leaves the world. The core owns this flag and the word (R9); the library owns the kind's name. Which of an exit's attributes the core compares: (open) decided in `documents` for M4 (challenge 55 records `width`). | documents |
+| `exit` | bool or list of strings | `true`: its point features are exits, places where something leaves the world. A list names the kind's attributes an answer must match (challenge 55: `width`). The core owns this flag and the word (R9); the library owns the kind's name. | composition |
 | `output` | string | A name under which the build hands this kind's features to the loader (bookmarks, map icons). Any id, chosen by the library; the core gives it no meaning and knows no value of it. Kinds with one output share one list in the manifest's `outputs` (`build.md` 9.2). | build |
 | `names` | list of strings | The attributes whose values are place names, each declared in `defaults` or `requires` (`authority.names_undeclared` otherwise). Each value is resolved and direction-checked as `on.ref` is, and written to `features.json` resolved (`authority.md` 1.2). Ford's `bookmark` kind needs it in M1. | authority |
 | `[kind.<k>.effect.<id>]` | table | One change to fields near each feature: `field`, `value`, `mask`, `paint`, `radius`, `max_change`, `order`. | authority |
@@ -376,18 +377,20 @@ library gives them. Both are named in `of` and `within`; neither is a producer (
 - Hand edits are intent at a place, never against a generated name (R3). Produced names exist for
   the change report, diagnostics, lock records and the command line.
 
-### Imports and composition (`documents`)
+### Imports and composition (`composition`)
 
 | Key | Takes | Meaning | Chapter |
 |---|---|---|---|
-| `[import.<id>]` | table | A world built apart, placed in this one: `file`, `at`, `face`, `changes`, `footprint`, `blend`, `give`. Whether it may bring its own pack: (open) decided in `documents` for M4. | documents |
-| `changes` | list of names | Changes applied to the imported world. | documents |
+| `[import.<id>]` | table | A world built apart, placed in this one by name (R8): `file`, `at` or `on`, `face`, `seed`, `changes`, `footprint`, `blend`, `authority`, `lift`, `max_grade`, `give`. `at`, `on` and `face` place its frame as an instance's; `seed` replaces its world seed; `authority` is the tier of its ground in this world. It resolves asset ids with its own pack. | composition |
+| `changes` | list of names | Changes applied to the imported world, each read as `--change` reads one, from the import's folder. | composition |
 | `footprint` | name or list of points | The ground a thing covers. On an asset: its outline in its own frame. On an import: the region of it that is brought. | assets |
-| `blend` | formula | The weight the import's ground has. | documents |
-| `give` | table of names | `{ <name> = "<ours>" }`: hand down a region, a field or a `kind:<name>` selection (R11). | documents |
-| `[given.<name>]` | table | What a world accepts from a parent: `accepts`, `default`, `kind`. | documents |
-| `accepts` | string | `region`, `field` or `features`. | documents |
-| `after` | string | On a layer only, and only `"imports"`: its rows apply over the ground the imports bring (R10). Within it, R21 order holds; overruling anchored import ground is reported. | graph |
+| `blend` | formula | The weight, 0 to 1 per post, the import's ground has. Default `1`. Reads `d` (inward from the footprint's outline), `x`, `y` and `<import>.<field>`. | composition |
+| `lift` | length | Metres added to an import's `surface` field when its datum and the parent's differ or are not declared. | composition |
+| `max_grade` | number | On an import: the seam check's limit, rise over run between neighbouring posts across the join. Default 0.5. | composition |
+| `give` | table of names | `{ <name> = "<ours>" }`: hand down a region, a field, a `kind:<name>` selection or a number (R11). | composition |
+| `[given.<name>]` | table | What a world accepts from a parent: `accepts`, `default`, `kind` (the world's own kind that given features take). | composition |
+| `accepts` | string | `region`, `field`, `features` or `number`. | composition |
+| `default` | formula, number, name or selector | On a given: what it is when no parent gives it. Required for `field` and `number`. | composition |
 
 ### Steps (`protocol`, `graph`)
 
@@ -457,7 +460,8 @@ accept`.
 | `{ of, class, near }` | The produced thing of that class, from that maker, nearest the point. The only way text points at a produced thing (R3). | identity |
 | `<id>.start`, `<id>.end` | The two ends of a path. A point feature is a place by its own id. | identity |
 | `<instance>.ground` | An instance's footprint feature (`rules.md` 2.1). | rules |
-| `<import>.<place>` | A place inside an import (`a.quay_road.end`, `a.west_gate`). Never its coordinates (R8). | identity |
+| `<import>.<place>` | A place inside an import (`a.quay_road.end`, `a.west_gate`), through nested imports too (`a.b.<place>`). Never its coordinates (R8). `<import>.footprint` is its footprint as placed; in a formula, `<import>.<field>` is its finished field. | composition |
+| `given:<name>` | In a fill: the features a parent gave under `[given.<name>]`, or its default. | composition |
 | `lib:<library>/<path>` | In a step's `command`: a file in a library named in `include`, resolved in that library's folder (`protocol.md` 1). | protocol |
 | `<maker>#<place key>` | A produced name. **Never written in text** (R3, `identity.key_in_text`): it appears only in diagnostics, the change report, lock records, the command line and the messages between the engine and a step. | identity |
 
@@ -487,7 +491,6 @@ chapter named decides it, for M1 track A unless said.
 | cell | One part of a region divided along a frontage (R13, R23), named `<maker>#<place key>`, class `cell`; what lies deeper than a cell's depth is class `rest`. The place key of a name is not a cell. | geometry |
 | mount on a kind | `[kind.<k>.mount.<name>]` (Kinds): a place every feature of the kind has, such as a deck's two ends, so two surfaces meet at a pair of mounts (R25, `surfaces.md` 3.1). | surfaces |
 | kind surface and bound | `[kind.<k>.surface.<name>]` with `bound` (Kinds): a bounded `surface` owned by each feature of a kind, over its strip or region (R25, `surfaces.md` 1). "Owner" is prose only; `owner` is taken by layers. | surfaces |
-| datum | Where the world frame's height zero and north lie, declared once per world. Lesson (TODO): `atlas` needed a lift found by eye. | geometry |
 | `passes` | The places a main way passes, by name (R16). A ways library attribute, not core; the core gives a route over a cost field (R23). | (library) |
 | `hosts` | What a volume yields as floors (R25). Kept or folded into surfaces: (open) decided in `surfaces` for M5. | surfaces |
 
@@ -499,7 +502,7 @@ The M1 parser rejects each key or value below with `doc.not_yet` at its span, na
 |---|---|
 | `worker = true` (`worker = false` is accepted in M1); `when = "generate"`; `clump` and its `members`, `shrink`, `around`; a model asset's `file` and `detail`; a field `file` naming a PNG, `channel`, `range` (PNG fields); `filter = "cubic"`; class `feature`; `for_each`; `checks`; `holds`; `route`; `collision` | M2 |
 | `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, `[network]`, `[cells]` and their `from`, `frontage`, `depth`, `min_length`, `min_area` (`geometry.md` 8), classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
-| `[import]`, `changes`, `footprint` on an import, `blend`, `give`, `[given]`, `accepts`, `after`, `exit` | M4 |
+| `[import]` and its keys (`changes`, `footprint`, `blend`, `lift`, `max_grade`, `give`), `[given]`, `accepts`, `default`, `exit`, `datum`, the selector `given:<name>` | M4 |
 | `type = "volume"`, `hosts`, `connector`, `solidity = "passable"` | M5 |
 | `when = "export"`, `chunk`, `[budget]` | M6 |
 
@@ -536,10 +539,10 @@ A second top-level `surface` field is not here: it is `surface.two_terrains` in 
 | `scatter.id` written on instances as `by` | `by` | Same meaning, widened to every producer (run, scatter, step). |
 | `labels` | `tags` | `taxon` one place, `tags` many. |
 | `[[part]]`, master | `[import.<id>]`, parent | "Part" collides with building part. |
-| `after = "parts"` | `after = "imports"`, on a layer only | As above. |
-| part seam `apron`, `max_step`, `joins_at` | `blend` and library lints | R8, R10: the join blends by a rule the user may replace. |
-| part `expects` | library lint | Principle 5. |
-| part `pack` | (open) | Section 3, Imports. |
+| `after = "parts"` | Dropped: a layer ranked above the layer that declares the import (`composition.md` 6.5) | Rank already orders entries and what a step reads. |
+| part seam `apron`, `max_step`, `joins_at` | `blend`; `max_grade` and the seam check; an exit answered by name | R8, R10: the join blends by a rule the user may replace (`composition.md` 6, 7). |
+| part `expects` | `datum`, exits, the seam check, or a library lint | Principle 5: what a part expected was never compared (`composition.md`). |
+| part `pack` | The import's own `pack` | A world looks the same placed; one binding per id (`composition.md` 10). |
 | `atop`, `beside`, `against`, `along`, `yaw`, `turn` | `on = { ref, t, offset }`, `face` | One placement grammar. |
 | `joins` | `starts_at`, `ends_at` | A join is an end at a named thing. |
 | `over` | dropped | Principle 3: a clash between anchors is an error, never silenced. Its length also ordered effects, against 2.2. |

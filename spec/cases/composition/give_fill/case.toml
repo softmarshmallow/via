@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "A fill town with height = land + 1: alone its height is 1; given land = the parent's height 0.5 x, its height in the parent is 0.5 x + 1."
+milestone = 4
+actions   = ["alone", "build"]
+
+[action.alone]
+via         = ["build", "town/world.toml", "--lib", "{work}/lib", "--out", "build/t"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/t"
+[action.alone.file.h]
+path  = "build/t/fields/height.npy"
+post  = [4, 4]
+value = 1
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.h]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 7

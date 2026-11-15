@@ -94,7 +94,7 @@ toward = "church"
 [feature.on_green]                          # green and lane: across the green to the well and the inn
 kind   = "bookmark"
 on     = { ref = "green", t = 0.03, offset = 3 }
-toward = "well"
+toward = "square.well"                      # an item of the set the square places
 
 [feature.lane_bridge]                       # lane and crossing: the lane arriving at the deck
 kind   = "bookmark"

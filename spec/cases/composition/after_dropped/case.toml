@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = '''A layer with after = "imports": doc.unknown_key at after, with the fixed hint.'''
+milestone = 4
+actions   = ["merge"]
+
+[action.merge]
+via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+exit        = 1
+diagnostics = "exact"
+[action.merge.diag.after]
+code = "doc.unknown_key"
+file = "world.toml"
+line = 19

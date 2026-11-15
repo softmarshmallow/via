@@ -203,11 +203,20 @@ pub struct Follows {
     pub offset: i64,
 }
 
+/// One way point of a written path (`derived.md` 3): a point, or a named place.
+#[derive(Clone, Debug, PartialEq)]
+pub enum WayDecl {
+    /// A point, millimetres.
+    At((i64, i64)),
+    /// A named place, as `starts_at` takes one (`geometry.md` 2.7).
+    Name(String),
+}
+
 /// A feature's written shape.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ShapeDecl {
     Point(Place),
-    Path(Vec<(i64, i64)>),
+    Path(Vec<WayDecl>),
     Region(Vec<(i64, i64)>),
     /// A region written as a condition (`geometry.md` 3.7): the formula.
     Where(FormulaId),
@@ -234,6 +243,22 @@ pub struct FeatureDecl {
     pub route: Option<FormulaId>,
 }
 
+impl FeatureDecl {
+    /// The named way points of a written path, in order (`derived.md` 3).
+    pub fn way_names(&self) -> Vec<&str> {
+        match &self.shape {
+            ShapeDecl::Path(ws) => ws
+                .iter()
+                .filter_map(|w| match w {
+                    WayDecl::Name(n) => Some(n.as_str()),
+                    WayDecl::At(_) => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+}
+
 /// A hand instance (`rules.md` 2).
 #[derive(Clone, Debug)]
 pub struct InstanceDecl {
@@ -247,6 +272,8 @@ pub struct InstanceDecl {
     pub ground: Option<String>,
     pub margin: i64,
     pub rank: i64,
+    /// The set it places (`rules.md` 4); then `asset` is empty.
+    pub set: Option<String>,
 }
 
 /// One choice of a scatter's `assets` (`rules.md` 7.4).
@@ -440,7 +467,7 @@ impl Formulas {
 }
 
 /// The `requires` line of a kind, for a record that names it (`authority.md` 1).
-fn requires_line(kind: &str) -> via_diag::Related {
+pub(crate) fn requires_line(kind: &str) -> via_diag::Related {
     via_diag::Related {
         subject: Subject::entity("kind", kind),
         site: Site::Key(KeyPath::key("requires")),
@@ -467,6 +494,12 @@ pub struct Decls {
     /// stands on one is not placed either, and says nothing.
     pub gave_way: BTreeSet<String>,
     pub scatters: BTreeMap<String, ScatterDecl>,
+    /// `[set.<id>]` tables (`rules.md` 4), those that passed their checks.
+    pub sets: BTreeMap<String, crate::sets::SetDecl>,
+    /// Sets that failed their own checks (a cycle, no items): placing one says nothing more.
+    pub failed_sets: BTreeSet<String>,
+    /// `[run.<id>]` tables (`rules.md` 5).
+    pub runs: BTreeMap<String, crate::sets::RunDecl>,
     pub pins: BTreeMap<String, PinDecl>,
     pub clears: BTreeMap<String, ClearDecl>,
     pub steps: BTreeMap<String, StepDecl>,
@@ -664,7 +697,10 @@ impl Decls {
         d.read_kinds(root);
         d.read_fields(world, root);
         d.read_features(world, root);
+        d.read_sets(root);
         d.read_instances(world, root);
+        d.read_runs(world, root);
+        d.sets_unused();
         d.read_scatters(world, root);
         d.read_edits(world, root);
         d.read_steps(root);
@@ -1568,7 +1604,7 @@ impl Decls {
 
     /// `t` and `offset` of an `on` table (`geometry.md` 2.6), `None` after a fault.
     #[allow(clippy::type_complexity)]
-    fn read_t_offset(
+    pub(crate) fn read_t_offset(
         &mut self,
         top: &str,
         id: &str,
@@ -1679,7 +1715,7 @@ impl Decls {
         })
     }
 
-    fn read_face(&mut self, top: &str, id: &str, t: &Table) -> Option<Face> {
+    pub(crate) fn read_face(&mut self, top: &str, id: &str, t: &Table) -> Option<Face> {
         match t.value("face")? {
             Value::Num(n) => match via_num::parse_facing(&n.norm) {
                 Ok(m) => Some(Face::Bearing(m)),
@@ -1793,8 +1829,24 @@ impl Decls {
                 }
             }
             let shape = if let Some(v) = t.value("path") {
-                match text::points(v) {
-                    Some(Ok(p)) => ShapeDecl::Path(p),
+                match text::ways(v) {
+                    Some(Ok(p)) => {
+                        for w in &p {
+                            if let WayDecl::Name(n) = w {
+                                if n.contains('#') {
+                                    self.push(at_key(
+                                        codes::identity::KEY_IN_TEXT,
+                                        "feature",
+                                        id,
+                                        "path",
+                                        "a produced name is written where a name is taken",
+                                        "select by place with `{ of, near }` on a point feature, and name that",
+                                    ));
+                                }
+                            }
+                        }
+                        ShapeDecl::Path(p)
+                    }
                     Some(Err(e)) => {
                         self.push(text::num_diag(&e, "feature", id, &["path"]));
                         continue;
@@ -2134,7 +2186,7 @@ impl Decls {
         })
     }
 
-    fn read_scale_tint(
+    pub(crate) fn read_scale_tint(
         &mut self,
         top: &str,
         id: &str,
@@ -2197,25 +2249,8 @@ impl Decls {
     fn read_instances(&mut self, world: &World, root: &Table) {
         for (id, t) in table_of(root, "instance") {
             self.declared.insert(id.to_string(), "instance");
-            if t.get("set").is_some() {
-                self.push(at_key(
-                    codes::doc::NOT_YET,
-                    "instance",
-                    id,
-                    "set",
-                    "a `set` arrives in M3",
-                    "place an `asset`",
-                ));
-                continue;
-            }
-            let Some(asset) = t.str("asset").map(str::to_string) else {
-                self.push(at_header(
-                    codes::place::ASSET_OR_SET,
-                    "instance",
-                    id,
-                    "an instance writes neither `asset` nor `set`",
-                    "keep one of `asset`, `set`",
-                ));
+            // `rules.md` 2: exactly one of `asset` and `set`; a set placed is a frame (4).
+            let Some((asset, set)) = self.read_what("instance", id, t) else {
                 continue;
             };
             if t.get("at").is_none() && t.get("on").is_none() {
@@ -2325,10 +2360,11 @@ impl Decls {
                     ground,
                     margin,
                     rank: world.rank("instance", id).unwrap_or(0),
+                    set,
                 },
             );
         }
-        for top in ["set", "run", "lock", "import", "given"] {
+        for top in ["lock", "import", "given"] {
             for (id, _) in table_of(root, top) {
                 self.push(at_header(
                     codes::doc::NOT_YET,

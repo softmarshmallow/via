@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "identity.md 38: a pin onto a locked item: identity.lock_pin_clash, exit 1; the item is not removed."
+milestone = 3
+pending   = "owed: `[lock]` is still `doc.not_yet` and `via lock` is not written (identity.md 4.4, TODO M4 core); the world, its record and the actions are written with the lock code"
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.lock_pin_clash]
+code = "identity.lock_pin_clash"

@@ -1,0 +1,14 @@
+name       = "n"
+extent     = [0, 0, 4, 4]
+resolution = 1
+datum      = "sea"
+pack       = "primitive"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.hut]
+asset = "box_small"
+at    = [1, 1]

@@ -1,0 +1,16 @@
+name       = "rules"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.street]
+path = [[20, 100], [60, 100], [60, 156]]
+
+[run.bays]
+asset = "house_low"
+on    = { ref = "street", span = [0, 1] }
+count = 12

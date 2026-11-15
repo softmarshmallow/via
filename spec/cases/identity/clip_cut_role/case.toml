@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "identity.md 2.3, roles by travel: a source the network's clip cuts starts or ends at the outline, so a junction there is named by that source; a street added across the outline west of `a` renames no cell east of `a`."
+milestone = 4
+actions   = ["base", "west"]
+
+# Junctions on the outline: a and b cross it at y = 10 (each starts) and y = 90 (each ends). With
+# the cut source dropped, all four were {(#clip, pass)}, numbered by t along the outline from
+# (10, 10); `c`'s crossing at (30, 10) comes first and renumbers them, renaming every cell anchored
+# on them. The box [0, 0, 52, 100] holds every vertex of the cells west of `a` before and after
+# (its blocks are split by `c`); every other cell must keep its name.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.west]
+via         = ["build", "world.toml", "--change", "west", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.west.check.kept]
+fn            = "names_kept"
+first         = "build/a/features.json"
+second        = "build/b/features.json"
+prefix        = "lots#c"
+except_within = [0, 0, 52, 100]

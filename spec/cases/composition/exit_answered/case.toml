@@ -1,0 +1,34 @@
+format    = "via-case-1"
+summary   = "An exit of width 6 answered by a path of width 6: no diagnostic; of width 4: import.exit_mismatch on width, exit 1; by a deliberate end of width 6 placed on it: no diagnostic."
+milestone = 4
+actions   = ["build", "narrow", "narrowed", "end", "ended"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.narrow]
+replace = "world.toml"
+find    = "width     = 6"
+with    = "width     = 4"
+
+[action.narrowed]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/w"
+[action.narrowed.diag.mismatch]
+code = "import.exit_mismatch"
+data = { attribute = "width", exit_value = 6, answer_value = 4, write = "width = 6" }
+
+[action.end]
+write = "world.toml"
+from  = "later/ended.toml"
+
+[action.ended]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"

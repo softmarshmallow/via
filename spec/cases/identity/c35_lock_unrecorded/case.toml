@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "identity.md 35: a lock declared without a record: identity.lock_unrecorded, exit 1; then via lock, exit 0; then build, exit 0."
+milestone = 3
+pending   = "owed: `[lock]` is still `doc.not_yet` and `via lock` is not written (identity.md 4.4, TODO M4 core); the world, its record and the actions are written with the lock code"
+actions   = ["build", "lock", "again"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.lock_unrecorded]
+code = "identity.lock_unrecorded"
+
+[action.lock]
+via         = ["lock", "world.toml", "old_grove"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.again]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"

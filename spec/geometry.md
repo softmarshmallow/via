@@ -59,10 +59,10 @@ instance and a set each have one. The arithmetic of frames (placing, nesting, ro
 `numbers.md` 5. Every feature also gives the plane a local frame, `t`, `d` and `sd`, defined in
 `numbers.md` 5.5 and computed here (2.6, 3.8).
 
-**Datum.** In v1 the world frame is its own datum: north is `+y` and height zero is the value 0 of the
-`surface` field (`numbers.md` 1). How a world declares where its frame sits in an outside reference
-(a sea level, a map grid) is (open): decided in M6 with `atlas`, whose import heights were lifted by
-eye (TODO). `build.md` 5 adds the datum to `frame` once declared.
+**Datum.** The world frame is its own datum: north is `+y` and height zero is the value 0 of the
+`surface` field (`numbers.md` 1). A world names what that zero is with `datum` (M4); two worlds
+with one `datum` join with no lift (`composition.md` 5). `build.md` 5 writes it in `frame`. Where a
+frame sits on a map grid is not declared in v1.
 
 ### 2.2 Point, path, region
 
@@ -614,6 +614,17 @@ at a vertex `Pi` `t = Ci / L`, with `lk`, `Ck` and `L` as in section 1. Where th
 `interpolate(project(p))` lies within 1 mm of the exact nearest point; `project(interpolate(t))`
 returns `t'` with `|t' - t| × L` at most 1 mm.
 
+**How the nearest is found** (ours). The definition above names one segment: the least exact
+squared distance, ties to the lower `k`. How an engine finds it is not part of the definition. A
+field's posts are many points against one shape, so the engine files the segments by square cell
+of the shape's box and searches outward from a point's cell in rings, stopping once the best exact
+distance is strictly below the gap to every cell not yet searched; a segment beyond that gap is
+strictly farther, so no tie is missed. Any search must return the scan's segment, foot and exact
+distance, so `t`, `d`, `sd` and the nearest point are the same bits, and no key or vector changes
+with it. The network's representative point (3.2) is likewise exact whatever is skipped: an
+estimate below the floor of the greatest estimate so far is below the final floor too, so it is
+left unmeasured.
+
 ### 3.9 Simplification (pointer)
 
 No operation in M1 to M3 needs a simplifier: outlines are kept as made (3.7) and written shapes as
@@ -1036,7 +1047,7 @@ and line (section 3, `diagnostics.md`), and `via kernel` writes them as 7.1 says
 | `geom.face_needs_on` | error | A `face` word without `on`. | Use a bearing in degrees. |
 | `geom.face_unknown` | error | A `face` word that is not `along`, `toward` or `away`. | The nearest word. |
 | `geom.smooth_not_path` | error | `smooth` on a feature without `path`. | Remove `smooth`. |
-| `geom.meet_shape` | error | `starts_at` or `ends_at` names a whole path or a region. | Name an end, or place a point feature on it. |
+| `geom.meet_shape` | error | `starts_at`, `ends_at` or a way point in `path` names a whole path or a region. | Name an end, or place a point feature on it. |
 | `geom.unowned_crossing` | warning | Two paths with kinds cross or touch with no owner of the meeting (2.7); names both. | End one on the other or on a named owner. |
 | `geom.duplicate_source` | error | One batch holds two inputs with one source id. | Give each input its own source. |
 | `geom.bad_parameter` | error | An operation parameter outside its range; names it and its value. | The range. |
@@ -1144,6 +1155,11 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
   exit status 0. A feature `on` that region; `geom.no_length`.
 - A path; `project(interpolate(t))` for 1000 seeded `t`; `|t' - t| × L` at most 1 mm.
 - A path; `interpolate(project(p))` for 1000 seeded points; within 1 mm of the exact nearest point.
+- How the nearest is found (3.8): seeded walks of 20 to 2,000 segments, a comb whose teeth tie,
+  one long segment among short ones and a 400-point ring; points on every vertex, inside the box
+  and far outside it; the indexed search gives the scan's segment, foot and exact distance, and
+  `project` the same bits (`crates/via-geom/tests/nearest_index.rs`). Seeded stars, a square and a
+  sliver; the representative point equals the unpruned search's.
 - A 10 m square region and the point `[5, 2]`; `project`; `t = 0.125`, `sd = +2`, `d = 0`. The point
   `[5, -3]`; `sd = -3`, `d = 3`. The point `[10, 5]` on the outline; `t = 0.375`, `sd = +0`, `d = 0`.
 - `on` that square at `t = 0.125`, `offset = 2`; placed; `[5, 2]`.
@@ -1236,7 +1252,6 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
   fallback (ours) is built and passes the section's cases; `i_overlay` was not fetched (no download
   was approved), so the bake-off itself is still owed.
 - **Triangulator**: decided when `build.md` first exports a region as a mesh.
-- **The datum**: decided in M6 with `atlas` (2.1).
 - **`starts_at` and `ends_at` with `follows`**, and smoothing on `follows`: decided by the M3
   waterfront case.
 - **Naming points** for a network declared in text (an area named after a feature inside it):

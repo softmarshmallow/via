@@ -50,7 +50,7 @@ pub fn scatter_name(id: &str, spacing: i64, i: i64, j: i64) -> String {
     format!("{id}#s{spacing}_{}_{}", key_int(i), key_int(j))
 }
 
-fn overlaps(a: &Region, b: &Region) -> bool {
+pub(crate) fn overlaps(a: &Region, b: &Region) -> bool {
     if a.is_empty() || b.is_empty() {
         return false;
     }
@@ -662,7 +662,7 @@ pub fn scatter_all(
             let overlap = a.solid
                 && hand
                     .iter()
-                    .filter(|h| !h.pin && d.instances.get(&h.name).is_none_or(|i| i.rank <= s.rank))
+                    .filter(|h| !h.pin && d.placed_rank_of(&h.name).is_none_or(|r| r <= s.rank))
                     .any(|h| {
                         pack.assets.get(&h.asset).is_some_and(|ha| ha.solid)
                             && overlaps(&h.footprint, &fp)
@@ -737,7 +737,7 @@ pub fn scatter_all(
             let Some((maker, _)) = p.name.split_once('#') else {
                 continue;
             };
-            if p.pin || !d.steps.contains_key(maker) {
+            if p.pin || !(d.steps.contains_key(maker) || d.runs.contains_key(maker)) {
                 continue;
             }
             raw.push(held::Instance {
@@ -764,7 +764,10 @@ pub fn scatter_all(
     for c in d.clears.values() {
         if let Some(by) = &c.by {
             for b in by {
-                if !d.scatters.contains_key(b) && !d.steps.contains_key(b) {
+                if !d.scatters.contains_key(b)
+                    && !d.steps.contains_key(b)
+                    && !d.runs.contains_key(b)
+                {
                     out.diags.push(by_fault(d, "clear", &c.id, b));
                 }
             }
@@ -896,7 +899,10 @@ pub fn scatter_all(
         let by = d.pins.get(id).and_then(|x| x.by.clone());
         if let Some(by) = &by {
             for b in by {
-                if !d.scatters.contains_key(b) && !d.steps.contains_key(b) {
+                if !d.scatters.contains_key(b)
+                    && !d.steps.contains_key(b)
+                    && !d.runs.contains_key(b)
+                {
                     out.diags.push(by_fault(d, "pin", id, b));
                 }
             }
@@ -1064,12 +1070,13 @@ impl via_expr::Reads for DensityReads<'_, '_> {
         let g = self.f.placed.shape(feature).ok_or_else(|| {
             via_expr::ReadError::new(codes::diag::INTERNAL, "no shape", "report it")
         })?;
+        let pj = g.projector();
         Ok(domain
             .points()
             .into_iter()
             .map(|(x, y)| {
                 let p = P::new(x, y);
-                let pr = g.project(p);
+                let pr = pj.project(p);
                 match m {
                     via_expr::Measure::D => pr.d,
                     via_expr::Measure::Sd => pr.sd,
@@ -1108,7 +1115,8 @@ pub fn hand(
         }
         out.push(Placement {
             name: plan.name.clone(),
-            maker: None,
+            // A run's members and their items are its output (`rules.md` 5).
+            maker: d.run_of(&plan.name).map(str::to_string),
             pin,
             asset: plan.asset.clone(),
             origin: o,
@@ -1133,7 +1141,7 @@ pub fn hand(
     let mut failed: BTreeSet<String> = placed
         .plans
         .values()
-        .filter(|pl| outside(pl) && host_of(pl).is_none())
+        .filter(|pl| !pl.asset.is_empty() && outside(pl) && host_of(pl).is_none())
         .map(|pl| pl.name.clone())
         .collect();
     // Hosts that never got a plan at all (they said why) fail their dependants too.
@@ -1176,6 +1184,10 @@ pub fn hand(
                     note: via_diag::text!("the host, not placed"),
                 }),
             );
+            continue;
+        }
+        // A placed set's frame places nothing itself; its items are plans of their own.
+        if p.asset.is_empty() {
             continue;
         }
         add(p, false, diags);
@@ -1289,7 +1301,7 @@ pub fn ground_and_check(
             continue;
         }
         for h in &hands {
-            let hrank = d.instances.get(&h.name).map_or(0, |i| i.rank);
+            let hrank = d.placed_rank(&h.name);
             if hrank <= prank || !solid(h) || !overlaps(&p.footprint, &h.footprint) {
                 continue;
             }
@@ -1330,7 +1342,14 @@ pub fn ground_and_check(
                     .and_then(|pl| pl.on.as_deref())
                     .is_some_and(|o| o == y.name || o.starts_with(&format!("{}.", y.name)))
             };
-            if on(a, b) || on(b, a) {
+            // Items of one set placement are one unit (`rules.md` 4).
+            let unit = |x: &Placement| placed.plans.get(&x.name).and_then(|pl| pl.on.clone());
+            let one_unit = unit(a).is_some_and(|u| {
+                Some(&u) == unit(b).as_ref()
+                    && a.name.starts_with(&format!("{u}."))
+                    && b.name.starts_with(&format!("{u}."))
+            });
+            if on(a, b) || on(b, a) || one_unit {
                 continue;
             }
             if overlaps(&a.footprint, &b.footprint) {

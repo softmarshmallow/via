@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "blend = smoothstep(0, 4, d) and a parent path ending at a.quay, 1 m inside the import's edge: import.place_blended with data.weight below 1."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.diag.blended]
+code     = "import.place_blended"
+data_has = ["weight", "moved"]

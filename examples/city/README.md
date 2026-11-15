@@ -93,15 +93,15 @@ every lot a house fits gets one.
 
 ## Known faults (read from the sheet, on foot, 2026-11-15; 19 views, before and after `move_bridge` and `move_avenue`)
 
-- **R13 does not hold for lots.** `move_avenue` renames 212 lots inside 164 blocks whose names and
-  outlines are unchanged, 106 of them with identical outlines (the rows district's west side, 160 m
-  from the avenue); `move_bridge` renames 16. Wards hold (8 resettled, all bounding the moved way;
-  0 elsewhere) and blocks hold (0 changed more than 60 m away). The lot (cell) key digests its
-  stretch anchor and ordinal (identity.md 2.3); a junction on a long grid street that the avenue
-  stops crossing seems to renumber every stretch past it. Owed in the core; not diagnosed further.
-- **The grand avenue wanders into the rows district**: routed over 1.5 m lumps it runs from x 661
-  to 728 for a line written gate to gate at 700, crossing the rows district's east edge (685). A way
-  point would hold it; a named place it passes cannot be written yet.
+- **R13 for lots held (M4 slice 1).** `move_avenue` renamed 212 lots inside blocks whose names and
+  outlines were unchanged, `move_bridge` 16: every crossing of a district outline was named by the
+  outline alone and numbered round it, so the avenue crossing one outline renumbered the rest and
+  every lot anchored on them. A cut source now has its role at the outline (identity.md 2.3,
+  roles by travel): 0 and 0.
+- **The grand avenue held to its line (M4 slice 1)**: routed over 1.5 m lumps it ran from x 661 to
+  728 for a line written gate to gate at 700, into both districts. It now passes four named places
+  on a guide between its gates (derived.md 3, way points by name) and lies on its line, base and
+  `move_avenue`.
 - **The hill is nearly empty**: 213 houses on 137 of the old town's 777 lots (315 left out as
   steep), because houses stand on the ground as it lies (terraces did not build, "Build" above).
   `old_town_street` shows rows standing on the slope with grass between them and backs to the
