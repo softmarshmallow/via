@@ -1,0 +1,10 @@
+# The strait asks for one of A's own changes by name (composition.md 11): A's slipway moves north
+# and a boathouse stands above it. The strait's text is not edited; the ferry names `a.slip`.
+[import.a]
+changes = ["changes/harbour.toml"]
+
+# A view of what the change adds: A's boathouse above the moved slipway (review on foot).
+[feature.look_boathouse]
+kind   = "bookmark"
+on     = { ref = "a.quay_road", t = 0.7 }
+toward = "a.boathouse"

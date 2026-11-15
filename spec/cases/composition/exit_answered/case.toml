@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["build", "narrow", "narrowed", "end", "ended"]
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -15,7 +15,7 @@ find    = "width     = 6"
 with    = "width     = 4"
 
 [action.narrowed]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 1
 diagnostics = "exact"
 out         = "build/w"
@@ -28,7 +28,7 @@ write = "world.toml"
 from  = "later/ended.toml"
 
 [action.ended]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"

@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["build", "raise", "raised", "own", "owned"]
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -21,7 +21,7 @@ max_grade = 5
 """
 
 [action.raised]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -38,7 +38,7 @@ region    = [[0, 0], [32, 0], [32, 16], [0, 16]]
 """
 
 [action.owned]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"

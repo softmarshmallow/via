@@ -170,3 +170,67 @@ fn ctrl_c_kills_the_step() {
     assert!(left.is_empty(), "call folders left: {left:?}");
     let _ = std::fs::remove_dir_all(&d);
 }
+
+/// `graph.md` 5.1, Memo: a plain lint's request is kept under the world's leaves, so an unchanged
+/// world built into a new directory finds the lint's static key without making the build: its
+/// `totals.memo_ms` is 0, where the first build's is not.
+#[test]
+fn an_unchanged_world_keys_a_plain_lint_from_the_memo() {
+    let Some(py) = python() else {
+        eprintln!("skipped: no python3 on PATH");
+        return;
+    };
+    let world = "name       = \"w\"\nextent     = [0, 0, 1500, 1500]\nresolution = 1\n\n[field.height]\nrole = \"surface\"\nbase = 0\n\n[step.look]\nwhen    = \"lint\"\ncommand = [\"python\", \"steps/lint.py\"]\n";
+    let d = work("memo", world);
+    std::fs::create_dir_all(d.join("steps")).unwrap();
+    std::fs::write(
+        d.join("steps/lint.py"),
+        "import json, os\nrequest = json.load(open(os.environ[\"VIA_STEP\"], encoding=\"utf-8\"))\nopen(os.path.join(request[\"out\"], \"diagnostics.json\"), \"w\", encoding=\"utf-8\").write(\"[]\")\n",
+    )
+    .unwrap();
+    for args in [
+        vec!["config", "program", "python", &py],
+        vec!["trust", "world.toml", "--yes"],
+    ] {
+        assert!(via(&d)
+            .args(&args)
+            .stdout(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+    }
+    let memo = |out: &str| -> (u64, String) {
+        assert!(via(&d)
+            .args(["build", "world.toml", "--out", out])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        let report = std::fs::read_to_string(d.join(format!("{out}.run.json"))).unwrap();
+        let after = |key: &str| {
+            report
+                .split_once(key)
+                .map(|(_, r)| r.split([',', '}']).next().unwrap_or("").to_string())
+                .unwrap_or_default()
+        };
+        let look = report
+            .split("\"id\":\"step:look\"")
+            .nth(1)
+            .and_then(|r| r.split("\"status\":\"").nth(1))
+            .and_then(|r| r.split('"').next())
+            .unwrap_or("")
+            .to_string();
+        (after("\"memo_ms\":").parse().unwrap(), look)
+    };
+    let (first, ran) = memo("build/a");
+    assert_eq!(ran, "ran");
+    let (second, reused) = memo("build/b");
+    assert_eq!(reused, "reused");
+    assert!(
+        first > 0,
+        "the first build made the whole build: {first} ms"
+    );
+    assert_eq!(second, 0, "the unchanged build made the whole build");
+    let _ = std::fs::remove_dir_all(&d);
+}

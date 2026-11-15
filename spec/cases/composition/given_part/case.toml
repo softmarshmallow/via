@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "A given path r1, read in the fill as routes.r1, its end routes.r1.end: the fill's path stop starts there, at (10, 2)."
+milestone = 4
+actions   = ["build"]
+
+# The town shares the parent's frame at (0, 0), so the given path keeps its points.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.check.stop]
+fn          = "course_valid"
+path        = "build/w/features.json"
+feature     = "town.stop"
+start       = [10, 2]
+end         = [10, 8]
+min_segment = 0.001

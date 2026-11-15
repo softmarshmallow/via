@@ -530,6 +530,24 @@ name, lot names at size) that its worlds needed and did not get; carry them firs
   whole build per plan, because a worker's trace replay (`answer`) and a plain step's request key
   read `ModelPlan::build()`. The cut owed is (b): graph.md 5.1 says answering a read computes only
   what it names. Lesson: an algorithmic win lowers cold too; ratios need the structural cut.
+  M4 slice 2 (cost): profiled the no-op first (release, `sample`). Every rebuild made the whole
+  build because a plain lint's request (its static key) and each worker trace check (`answer`)
+  called `the_build()`. Now both are memo key records under the world's leaves (graph.md 5.1
+  Memo; test `an_unchanged_world_keys_a_plain_lint_from_the_memo`, fails at HEAD); the engine no
+  longer clones a definition each pass for a node whose edges are unsettled, nor builds the
+  reader map when nothing failed. quay (3 runs, medians, interleaved, fresh store per run,
+  HEAD fa672f7 against HEAD + this patch, same lib and examples, load ~8 from other agents,
+  `totals.ms`; HEAD + the cost patch alone, not the combined slice 2 tree, whose `prepare` also
+  builds every import inside `leaves()` and each stratum, so re-measure on the committed tree):
+  cold 7.9 -> 7.5 s, unchanged 4.1 -> 2.2 s (52% -> 29% of cold), `unrelated`
+  7.4 -> 7.2 s (97%), `move_hill` 9.5 -> 9.3 s (125%). city (same protocol; the third "after"
+  run fell in a load spike, its `memo_ms` 1.6x, so medians): cold 102.3 -> 95.8 s, unchanged
+  34.3 -> 22.5 s (34% -> 23%), `move_avenue` 100.3 -> 94.7 s (99%). Data files byte-identical
+  before and after, every run. Left, in order:
+  the change report still makes the whole build (0.9 s of quay's unchanged 2.2 s); three
+  `prepare` passes (`leaves`, each stratum, the final plan); store opens per reused node; and the
+  far edit, which misses every memo key: a read answered from the nodes it names (graph.md Open),
+  then (a) and (d). Lesson: the no-op had no node to run; its cost was all outside the nodes.
 - [ ] **Selector members read whole per chunk** (`define_all`, graph.md 8.1): terraces are quadratic,
   so the city has none (190 `place.relief`, doors to 0.5 m off). Then terraces in `city`.
 - [x] **R13 for lots at size** (M4 slice 1): city `move_avenue` renamed 212 lots in kept blocks,
@@ -652,6 +670,92 @@ found different blockers; the gate alone found none of them.
 - [ ] Field matching by role as well as name across imports (composition.md Open).
 - [ ] The key-clash test covers one small world; run `key_clashes` over every example's plan
   (crates/via-model/src/graph.rs, test-only) when a world adds a new per-item family.
+
+### From building strait (2026-11-16, M4 slice 2; examples/strait)
+
+Fixed in the slice: a scoped region lost its outline, so `on = { ref = "a.isle", t }` was
+`geom.many_rings`; a brought feature's name attribute kept the import's name and frame (`a.at_slip`
+looked at (186, 108), A's own point, named `slip`); an import's `changes` path was read from the
+process's folder, not the import's; the instance columns and `features.json` did not read
+`import:<id>`, so `harbour` built on the base's store lost A's new boathouse (47 against 48 fresh).
+Lesson: build every change on the base's store as well as fresh; the fresh build hid all of it.
+
+- [ ] Brought `weights` fields: the parent's paint holds only its own materials (strait: `sand`);
+  composition.md 6.2 reads each material's weight. Both islands render as sand. No longer silent:
+  `import.weights_dropped` (warning, case `weights_dropped`) since the slice 2 fix pass.
+- [x] `import.seam` came back stale from a warm store after an edit inside `a/world.toml` (0.649
+  and 0.886 repeated to the last digit; a fresh store gave 0.727 and 0.817). The merge-key fix
+  covered text edits only; a file edit stayed stale. Fixed in the slice 2 fix pass: one node
+  `joincheck:imports` holds seam, place_blended and exit diagnostics and reads every node (case
+  `seam_file_edited`); the per-import, per-window `joincheck` nodes of section 12 are still owed.
+- [ ] The seam check counts the import's own steep ground inside the blend band as a step at the
+  join (strait's road shoulders fading into the sea, 0.7): say so in 6.6, or measure only the
+  part of the grade the blend made (`|w' (h_import - h_parent)|`).
+- [ ] Every field chunk re-runs on a move (180 of 180 in `move_b`, also for `harbour`): the
+  `brought` nodes per chunk (composition.md 12) are owed.
+- [ ] `lib/ways` `slipway` is a point with no direction: a square platform with a 2:1 face, not a
+  ramp into the water. A way end with a facing, or a path kind, decides it.
+- [ ] strait: no step at the join (the ferry is the only crossing; R10's join layer has nothing
+  to read yet); `harbour`'s moved slipway leaves `harbour_house` in the lane's keep_out.
+
+### From M4 slice 2 (2026-11-16; the change, on-foot and gate reviews, and the fix pass)
+
+The fix pass fixed: an import's input leaves (a field `file`, the pack's bound files) in its digest
+(case `import_file_edited`); `placed:<id>` reads the place `on` names and the parent region
+`footprint` names (`placed_on` now moves `spot`); a brought chunk reads what its blend reads, fields
+and `let`s (`blend_reads`); the join's diagnostics on a `joincheck` node that reads the finished
+build (`seam_file_edited`); a field file edited in place has the cause `file:<path>` (it hit the
+change report's no-cause assert); a brought thing's chain ends at `placed:<id>`; an unfaced point of
+a turned import gains `face` (`turned`); `binding_differs` over every pair of worlds, nested
+included; R29 order of a brought entry by its own effect's `order`; a `footprint` naming a parent
+region or another import's place is brought, a non-region is said; the place-blended post is the
+nearest; `import.weights_dropped`; no `sea` in core. Lesson: every probe that found a stale build
+was warm against fresh; a case per family of input (text, file, place, blend read) is the guard.
+
+**-> M4 slice 3**
+- [ ] An import's own steps never run: `import::built` finishes with no step returns and no lints
+  (composition.md 3, 12). Case `import_step`, pending. Fix: the import's graph in the parent's,
+  ids prefixed `<id>.` (section 12).
+- [ ] No `brought:<id>/<field>/w:` nodes and one coarse `joincheck:imports` that reads every node
+  (skipped when any node fails, so join diagnostics vanish behind any error); every field chunk
+  re-runs on a move (strait `move_b` 180 of 180).
+- [ ] A change's chain through an import (`through import`, composition.md 11) and `related` on
+  scoped diagnostics are dropped.
+- [ ] `file` of `[import.<id>]` resolves from the world folder, not the declaring layer's file
+  (composition.md 2 says the layer's): spec edit with its reason, or code.
+- [ ] A seed override (`[import] seed`) does not reach attribute formulas.
+- [ ] `import.overlap` areas in doubles with convex clipping, not on the lattice (composition.md
+  6.8 wants exact).
+- [ ] Gate failures: `anchored_clash` (no `authority.conflict`), `join_step` (`look.py`
+  FileNotFoundError), `moved_square` (no `town.step:lay/i:` nodes; waits on the slice 3 item above).
+- [ ] A given region, a brought region and a `footprint` region keep only their first piece's shell:
+  holes and further pieces are lost (`geo_to_parent`, `bring`).
+- [ ] Given features do not take the parent's authority (composition.md 8): `GivenFeature` has no
+  tier.
+- [ ] A given field is read by a model-only `Fields::new` over the first placement: a parent field
+  returned by a step or brought from another stratum reads wrong, and each give costs a resolve.
+  Model fields only until it reads the graph.
+- [ ] R29 among brought entries: the order is now the entry's own effect's `order`, but nesting is
+  not compared and the tier's list is topological, so the position is approximate
+  (`resolve::merge_brought`); a unit test with two effects of different `order` around one import.
+- [ ] 6.7's named places miss name attributes, `follows` and `within` (documents.md 5.1).
+- [ ] `footprint_ref` checks no point of the feature that `follows` `a.footprint`; `change_scoped`
+  guards a pre-M4 rule (note it in the row).
+- [ ] Cost numbers of slice 2 were HEAD + the cost patch alone; re-measure quay and city on the
+  committed tree (its `prepare` builds every import in `leaves()` and each stratum).
+
+**-> later**
+- [ ] Incremental builds save little (review on foot): changes 80 to 123% of cold on quay,
+  townland, example, city; example `winter` 90%; city unchanged 25% and peaks above cold (6.4 vs
+  5.3 GB). Profile unchanged and `winter` first (`distance`, `write:changes.json` 13 s).
+- [ ] townland change runs once took 4 to 35 times cold (1041 s wall, 60 s CPU) under load 9 to 18;
+  a second fresh store did not repeat it. Re-time on a quiet machine; if it repeats, record what the
+  build waits on.
+- [ ] A turned import notches sheer ground (strait `move_b`, b at 80 degrees: water inside the
+  slipway apron). No check sees it; a distortion measure, and resampling that keeps anchored edges.
+- [ ] `import.seam`'s message says "across the edge" for a step inside the blend band (harbour,
+  27 m inside a): say where it is.
+- [ ] strait: the ferry is not drawn; no view shows the crossing between the imports.
 
 ## Framing
 

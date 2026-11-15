@@ -253,14 +253,19 @@ pub struct Placed {
     /// Effects of a made region): every area or cell a table gives a declared kind, by its
     /// produced name, to (its maker table's id, the kind, its region).
     pub made_writers: BTreeMap<String, (String, String, Geo)>,
+    /// Each scoped place name the world's text writes (`<import>.<place>`, `composition.md` 4),
+    /// as placed in this world's frame: what a formula's place argument reads.
+    pub scoped: BTreeMap<String, Geo>,
 }
 
 impl Placed {
-    /// A placed thing's shape by place name: a feature's or footprint's, else a made writer's.
+    /// A placed thing's shape by place name: a feature's or footprint's, else a made writer's,
+    /// else a scoped place's.
     pub fn shape(&self, name: &str) -> Option<&Geo> {
         self.shapes
             .get(name)
             .or_else(|| self.made_writers.get(name).map(|(_, _, g)| g))
+            .or_else(|| self.scoped.get(name))
     }
 }
 
@@ -344,6 +349,18 @@ impl<'a> Placer<'a> {
 
     /// Resolves every feature, instance, pin and footprint, in id order.
     pub fn run(mut self) -> (Placed, Vec<Diag>) {
+        // Scoped places first: a formula's place argument may read one (`composition.md` 4).
+        for name in &self.d.scoped_places {
+            let Some((h, rest)) = name.split_once('.') else {
+                continue;
+            };
+            let g = match self.d.imported.get(h).and_then(|i| i.spot(rest)) {
+                Some(Spot::Long(g)) => g,
+                Some(Spot::At { p, facing, .. }) => Geo::Point { p, facing },
+                None => continue,
+            };
+            self.out.scoped.insert(name.clone(), g);
+        }
         for id in self.d.features.keys() {
             self.feature(id);
         }
@@ -727,6 +744,41 @@ impl<'a> Placer<'a> {
                 };
             }
         }
+        // A scoped name (`composition.md` 4): a place inside an import, through its frame.
+        if let Some((head, rest)) = name.split_once('.') {
+            if let Some(imp) = self.d.imported.get(head) {
+                if let Some(sp) = imp.spot(rest) {
+                    return Some(sp);
+                }
+                let names = imp.names();
+                self.diags.push(text::with_nearest(
+                    at_key(
+                        codes::identity::UNKNOWN_PLACE,
+                        top,
+                        id,
+                        key,
+                        &format!("`{rest}` names nothing inside `{head}`"),
+                        &text::near_hint(
+                            rest,
+                            names.iter().map(String::as_str),
+                            "name a feature, an end or an instance of the import",
+                        ),
+                    ),
+                    rest,
+                    names.iter().map(String::as_str),
+                    |_: &str| None,
+                ));
+                // The nearest as the parent writes it.
+                if let Some(d) = self.diags.pop() {
+                    self.diags.push(scoped_nearest(d, head));
+                }
+                return None;
+            }
+            if self.d.imports.contains_key(head) {
+                // The import did not build or place; its own records say why.
+                return None;
+            }
+        }
         // A name whose declaration failed its own check still names it (`diagnostics.md` 4): its
         // record is the one cause, and the reader reads the failed entity, which the graph makes
         // an edge to the failed node, so the reader is `skipped`, not `names nothing`.
@@ -738,6 +790,23 @@ impl<'a> Placer<'a> {
             if matches!(f.shape, ShapeDecl::Path(_)) {
                 names.push(format!("{fid}.start"));
                 names.push(format!("{fid}.end"));
+            }
+        }
+        for (iid, imp) in &self.d.imported {
+            if imp.spot(name).is_some() {
+                let scoped = format!("{iid}.{name}");
+                self.diags.push(
+                    at_key(
+                        codes::identity::UNKNOWN_PLACE,
+                        top,
+                        id,
+                        key,
+                        &format!("`{name}` names nothing here; the import `{iid}` holds it"),
+                        &format!("write `{scoped}`"),
+                    )
+                    .nearest_name(&scoped, None),
+                );
+                return None;
             }
         }
         self.diags.push(text::with_nearest(
@@ -1713,4 +1782,16 @@ pub(crate) fn declared_at(d: &Decls, name: &str) -> Option<(Subject, Site)> {
         head
     };
     Some((Subject::entity(top, id), Site::Header))
+}
+
+/// A nearest-name record inside an import, its `data.nearest` written as the parent names it
+/// (`<import>.<name>`, `composition.md` 4).
+fn scoped_nearest(d: Diag, head: &str) -> Diag {
+    match d.data().get("nearest") {
+        Some(DValue::Text(n)) => {
+            let n = format!("{head}.{n}");
+            d.with("nearest", DValue::text(n.clone()))
+        }
+        _ => d,
+    }
 }

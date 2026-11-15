@@ -3293,6 +3293,22 @@ Fixed: [import.a]
        blend = "= smoothstep(0, 8, d)"
 """
 
+[import.weights_dropped]
+severity = "warning"
+chapter = "composition"
+milestone = 4
+summary = "An import's `weights` field matches the parent's but is not brought yet (6.2, owed); `data.field`. (M4)"
+data = ["field"]
+explain = """
+The import declares a `weights` field that matches one of this world's by name, role, type and
+unit, but weights are not yet carried across an import: the parent's own weights stand where the
+import's paint would be. Owed by composition.md 6.2 (each material's weight read and the parent's
+weights rule applied); until then this warning says the paint is lost.
+To fix: Paint the import's materials in this world's own rows over the import's footprint.
+Bad:   [field.ground] type = "weights" in both worlds, painted only in the import
+Fixed: a row of this world's [field.ground] that paints the same over `inside('a.footprint')`
+"""
+
 [load.bad_file]
 severity = "error"
 chapter = "build"

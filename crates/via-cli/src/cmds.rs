@@ -21,7 +21,8 @@ pub fn merge(
     lib: Vec<PathBuf>,
     origins: bool,
 ) -> Vec<Record> {
-    let l = via_doc::load(world, arg, &LoadOptions::from_env(lib, changes));
+    let opts = LoadOptions::from_env(lib, changes);
+    let l = via_doc::load(world, arg, &opts);
     if let Some(w) = &l.world {
         let mut s = if origins {
             w.origins_json()
@@ -41,6 +42,8 @@ pub fn merge(
             .any(|r| r.severity() == via_diag::Severity::Error)
         {
             records.extend(via_model::formula_direction(w).iter().map(|d| d.emit(w)));
+            let mopts = via_model::Options::from_load(world, &opts);
+            records.extend(via_model::scoped_names(w, &mopts).iter().map(|d| d.emit(w)));
         }
     }
     records

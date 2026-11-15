@@ -4,9 +4,12 @@ resolution = 1
 datum      = "sea"
 include    = ["marks"]
 
-[field.height]
-role = "surface"
-base = 0
+# The field lies below every layer that writes it (`documents.md` 5.1): the join layer may be
+# lowered to rank -1 and still write it.
+[layer.ground]
+file  = "layers/ground.toml"
+owner = "ground"
+rank  = -2
 
 [import.a]
 file = "a/world.toml"

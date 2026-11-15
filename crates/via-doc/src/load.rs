@@ -259,6 +259,11 @@ impl Loader<'_> {
         if self.faults.has_error() {
             return None;
         }
+        // Imports that reach back to a world on the way (`composition.md` 9).
+        self.import_cycles(&base.root, src);
+        if self.faults.has_error() {
+            return None;
+        }
         // Unrequested inline changes, each alone on a copy of the merged world (6.1).
         for (name, (ch, _)) in &inline {
             if requested.iter().any(|r| &r.name == name) {
@@ -274,6 +279,47 @@ impl Loader<'_> {
             changes: listed,
             removed,
         })
+    }
+
+    /// `import.cycle` (`composition.md` 9): each `[import.<id>]` whose file, followed through
+    /// the imports of the worlds it reaches, comes back to a world already on the way. Only the
+    /// `file` keys are read on the way; each world is checked whole when it is built.
+    fn import_cycles(&mut self, root: &Table, src: SrcId) {
+        let Some(imports) = root.table("import") else {
+            return;
+        };
+        let start = canonical(&self.world_dir.join(&self.world_file));
+        for (id, e) in imports.iter() {
+            let Value::Table(t) = &e.item.value else {
+                continue;
+            };
+            let Some(fe) = t.get("file") else { continue };
+            let Value::Str(file) = &fe.item.value else {
+                continue;
+            };
+            let mut stack = vec![start.clone()];
+            let next = canonical(&self.world_dir.join(&file.text));
+            if let Some(cycle) = import_loop(&next, &mut stack, src) {
+                let shown: Vec<String> = cycle
+                    .iter()
+                    .map(|p| shown_path(&self.world_dir, p))
+                    .collect();
+                self.fault(
+                    Fault::new(
+                        codes::import::CYCLE,
+                        Subject::entity("import", id),
+                        At::Span(fe.item.span),
+                        format!("worlds import each other: {}", shown.join(" -> ")),
+                        "drop one import of the loop: a world cannot hold itself",
+                    )
+                    .with(
+                        "files",
+                        via_diag::Value::texts(shown.iter().map(String::as_str)),
+                    )
+                    .chain(&fe.chain),
+                );
+            }
+        }
     }
 
     fn idle(
@@ -503,6 +549,15 @@ impl Loader<'_> {
             let sub = ctx.subject_key(k);
             match schema::rule(schema::Shape::Layer, k) {
                 Some(Rule::NotYet(m)) => self.fault(not_yet(sub, At::Span(e.key), k, m)),
+                // A dropped word with its fixed hint (`documents.md` 7): `after`
+                // (`composition.md` 6.5).
+                Some(Rule::Fixed(h)) => self.fault(Fault::new(
+                    codes::doc::UNKNOWN_KEY,
+                    sub,
+                    At::Span(e.key),
+                    format!("`{k}` is not a key of `layer.{id}`"),
+                    h,
+                )),
                 Some(Rule::Ok(_)) if world && k == "file" => self.fault(Fault::new(
                     codes::doc::UNKNOWN_KEY,
                     sub,
@@ -1403,4 +1458,73 @@ fn dup(sub: &Subject, header: Span, file: &str, prev: &Declared, chain: &[Link])
         At::Span(prev.header),
         format!("declared in `{}`", prev.file),
     )
+}
+
+/// A path made absolute and without `.` or `..`, by text: the file may not exist.
+fn canonical(p: &Path) -> PathBuf {
+    let abs = if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        std::env::current_dir().unwrap_or_default().join(p)
+    };
+    let mut out = PathBuf::new();
+    for c in abs.components() {
+        match c {
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            std::path::Component::CurDir => {}
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+/// A world file as a path from the parent's world folder, `/`-separated.
+fn shown_path(dir: &Path, p: &Path) -> String {
+    let dir = canonical(dir);
+    let a: Vec<_> = dir.components().collect();
+    let b: Vec<_> = p.components().collect();
+    let same = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
+    let mut parts: Vec<String> = vec!["..".to_string(); a.len() - same];
+    parts.extend(
+        b[same..]
+            .iter()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned()),
+    );
+    parts.join("/")
+}
+
+/// Follows the imports of the world at `p`: the loop, from the world it returns to, when one
+/// comes back to a world in `stack`.
+fn import_loop(p: &Path, stack: &mut Vec<PathBuf>, src: SrcId) -> Option<Vec<PathBuf>> {
+    if let Some(at) = stack.iter().position(|q| q == p) {
+        let mut l = stack[at..].to_vec();
+        l.push(p.to_path_buf());
+        return Some(l);
+    }
+    // A tree deeper than this is a loop by another path name, or a mistake.
+    if stack.len() > 64 {
+        return None;
+    }
+    let text = std::fs::read(p).ok().and_then(|b| decode(b, "").ok())?;
+    let root = read::read(src, &text).ok()?;
+    let dir = p.parent().map(Path::to_path_buf).unwrap_or_default();
+    stack.push(p.to_path_buf());
+    let mut found = None;
+    if let Some(imports) = root.table("import") {
+        for (_, e) in imports.iter() {
+            if let Some(Value::Str(f)) = match &e.item.value {
+                Value::Table(t) => t.value("file"),
+                _ => None,
+            } {
+                if let Some(l) = import_loop(&canonical(&dir.join(&f.text)), stack, src) {
+                    found = Some(l);
+                    break;
+                }
+            }
+        }
+    }
+    stack.pop();
+    found
 }

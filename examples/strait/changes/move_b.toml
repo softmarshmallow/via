@@ -1,0 +1,7 @@
+# B moved and turned (docs/plan.md M4: "an import moved and turned"): its origin 16 m west and 16 m
+# south, its north turned 10 degrees further toward the south. Nothing else is written: the ferry,
+# the views and the blend name B's places and fields, so they follow. Only what reads B re-runs;
+# nothing inside either island runs again, and every node of A is reused (composition.md 12).
+[import.b]
+at   = [280, 240]
+face = 80

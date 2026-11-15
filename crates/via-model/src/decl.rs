@@ -154,6 +154,9 @@ pub struct Kind {
     pub radius: Option<i64>,
     pub effects: BTreeMap<String, Effect>,
     pub output: Option<String>,
+    /// `exit` (`composition.md` 7): the attributes an answer must match; empty for `true`;
+    /// `None` when the kind marks no exit.
+    pub exit: Option<Vec<String>>,
 }
 
 /// A place written as `on = { ref, t, offset }`.
@@ -520,6 +523,21 @@ pub struct Decls {
     /// and the digest of the file's bytes (a declared outside input, `graph.md`). Filled by the
     /// build, which knows the folders.
     pub files: BTreeMap<String, FileBase>,
+    /// `datum` (`composition.md` 5).
+    pub datum: Option<String>,
+    /// `[import.<id>]` tables as written (`composition.md` 2).
+    pub imports: BTreeMap<String, crate::import::ImportDecl>,
+    /// Each import built alone and placed; filled by the build, which knows the folders.
+    pub imported: BTreeMap<String, std::sync::Arc<crate::import::Imported>>,
+    /// The scoped names formulas read as fields (`<import>.<field>`, section 4).
+    pub scoped_fields: BTreeSet<String>,
+    /// `[given.<name>]` (`composition.md` 8): what this world accepts from a parent.
+    pub givens: BTreeMap<String, crate::import::GivenDecl>,
+    /// The scoped place names the text writes, formula place arguments included
+    /// (`composition.md` 4).
+    pub scoped_places: BTreeSet<String>,
+    /// Each given field's values from a parent, on this world's posts.
+    pub given_fields: BTreeMap<String, FileBase>,
 }
 
 /// One attribute written as a formula: the feature's own text, or its kind's `defaults`.
@@ -691,12 +709,19 @@ impl Decls {
 
     /// Reads the merged world.
     pub fn read(world: &World) -> Decls {
+        Decls::read_given(world, None)
+    }
+
+    /// The world read, with what a parent gave it (`composition.md` 8); `None` builds every
+    /// given from its default.
+    pub fn read_given(world: &World, given: Option<&crate::import::GivenIn>) -> Decls {
         let mut d = Decls::default();
         let root = world.root();
         d.read_world_keys(root);
         d.read_kinds(root);
         d.read_fields(world, root);
         d.read_features(world, root);
+        crate::import::read_givens(&mut d, root, given);
         d.read_sets(root);
         d.read_instances(world, root);
         d.read_runs(world, root);
@@ -705,6 +730,11 @@ impl Decls {
         d.read_edits(world, root);
         d.read_steps(root);
         d.read_makers(world, root);
+        crate::import::read_imports(&mut d, world, root);
+        d.datum = root.str("datum").map(str::to_string);
+        let ids: BTreeSet<String> = d.imports.keys().cloned().collect();
+        d.scoped_fields = crate::import::scoped_field_names(root, &ids);
+        d.scoped_places = crate::import::scoped_refs(root, &ids);
         d.declare_env();
         d.check_formulas(root);
         let upward = d.upward_reads(world);
@@ -1043,16 +1073,12 @@ impl Decls {
                 }
             }
             k.output = t.str("output").map(str::to_string);
-            if t.get("exit").is_some() {
-                self.push(at_key(
-                    codes::doc::NOT_YET,
-                    "kind",
-                    id,
-                    "exit",
-                    "`exit` on a kind arrives in M4",
-                    "remove `exit` until M4",
-                ));
-            }
+            // `exit` (`composition.md` 7): the doc checks its form.
+            k.exit = match t.value("exit") {
+                Some(Value::Bool(true)) => Some(Vec::new()),
+                Some(v @ Value::List(_)) => text::strings(v),
+                _ => None,
+            };
             for sub in ["surface", "mount"] {
                 if t.get(sub).is_some() {
                     self.push(at_key(
@@ -1540,6 +1566,21 @@ impl Decls {
             channel,
             range,
         })
+    }
+
+    /// An import's `at` or `on` (`composition.md` 2), read as an instance's is.
+    pub(crate) fn read_import_place(&mut self, id: &str, t: &Table) -> Option<Place> {
+        self.read_place("import", id, t)
+    }
+
+    /// Adds a formula written outside the tables this module reads (an import's `blend`).
+    pub(crate) fn add_formula(
+        &mut self,
+        ft: &FormulaText,
+        subject: Subject,
+        path: KeyPath,
+    ) -> FormulaId {
+        self.formulas.add(ft, subject, path)
     }
 
     fn read_place(&mut self, top: &str, id: &str, t: &Table) -> Option<Place> {
@@ -2364,7 +2405,7 @@ impl Decls {
                 },
             );
         }
-        for top in ["lock", "import", "given"] {
+        for top in ["lock"] {
             for (id, _) in table_of(root, top) {
                 self.push(at_header(
                     codes::doc::NOT_YET,
@@ -2805,6 +2846,14 @@ impl Decls {
         for name in self.fields.keys() {
             env.field(name);
         }
+        for name in &self.scoped_fields {
+            env.field(name);
+        }
+        for (name, g) in &self.givens {
+            if g.accepts == "field" {
+                env.given_field(name);
+            }
+        }
         for (id, k) in &self.kinds {
             for (a, v) in &k.defaults {
                 let ty = match v {
@@ -3142,6 +3191,14 @@ impl Decls {
                     Context::new(Key::Where)
                         .feature(&f.id)
                         .noise(&["noise", "feature", &f.id, "route"]),
+                ));
+            }
+        }
+        for i in self.imports.values() {
+            if let Some(b) = i.blend {
+                lets.push((
+                    b,
+                    Context::new(Key::Blend).noise(&["noise", "import", &i.id, "blend"]),
                 ));
             }
         }

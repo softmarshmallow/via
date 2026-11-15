@@ -1,0 +1,106 @@
+name       = "b"
+extent     = [0, 0, 224, 224]
+resolution = 1
+datum      = "sea"                          # height zero is the sea's surface (composition.md 5)
+seed       = 47
+include    = ["land", "water", "ways", "map", "review"]
+pack       = "starter"
+
+# B, the far island: one island, built and checked by itself (`via build b/world.toml`). It knows
+# nothing of the strait it will stand in, nor that it will be turned. Its landing road starts at a
+# slipway on its south shore, an exit (lib/ways `slipway`): what leaves there is the parent's to say.
+
+[let]
+sea = 0
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]
+role = "surface"
+base = "= if(inland > 0, 0.5 * smoothstep(0, 3, inland) + 0.09 * min(inland, 30) + 6 * smoothstep(22, 70, inland) + 1.5 * fbm(40, 3, seed = 'hills') * smoothstep(10, 40, inland), -0.22 * min(-inland, 25))"
+
+[field.height.let]
+inland = "= sdist('isle', 60) + 4 * fbm(80, 2, seed = 'shore')"
+
+[field.water]
+tags = ["water_level"]
+base = "= max(f('height'), sea)"
+
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.meadow]
+paint = "meadow"
+mask  = "= smoothstep(-0.1, 0.25, fbm(50, 3, seed = 'meadow'))"
+
+[field.ground.then.sand]
+paint = "sand"
+mask  = "= 1 - smoothstep(1.2, 2.4, f('height') - sea)"
+
+[field.ground.then.rock]
+paint = "rock"
+mask  = "= smoothstep(30, 38, slope('height'))"
+
+[field.ground.then.track]
+paint = "earth"
+mask  = "= 1 - smoothstep(2.5, 3.2, dist('kind:lane', 6))"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.isle]
+region = [[184.1, 116], [178.6, 136.4], [165.8, 152.9], [154.8, 171.5], [134.9, 182.5], [112, 182], [91, 176.9], [70.9, 169.4], [52.5, 156.7], [44.1, 136.8], [42, 116], [48.1, 96.4], [53.7, 76], [70.9, 62.6], [89.1, 49.5], [112, 48.7], [132.5, 56.4], [153.1, 62.6], [170.9, 75.7], [178.6, 95.6]]
+
+# ------------------------------------------------------------------------------------------ the ways
+
+[feature.slip]                              # where the ferry lands: an exit (lib/ways)
+kind = "slipway"
+at   = [112, 45]
+
+[feature.landing]                           # from the slipway up into the island
+kind      = "lane"
+starts_at = "slip"
+path      = [[113, 66], [118, 100], [134, 134]]
+
+[feature.beacon]                            # a place a parent may name: `b.beacon`
+kind  = "poi"
+at    = [156, 156]
+label = "The Beacon"
+
+# ------------------------------------------------------------------------------------------ built
+
+[instance.farm]
+asset  = "barn"
+ground = "pad"
+margin = 1
+on     = { ref = "landing", t = 0.55, offset = 13 }
+face   = "toward"
+
+[instance.cottage]
+asset  = "house_low"
+ground = "pad"
+margin = 1
+on     = { ref = "landing", t = 0.8, offset = -11 }
+face   = "toward"
+
+# ------------------------------------------------------------------------------------------ growth
+
+[scatter.woods]
+assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 1 }]
+spacing = 7
+density = "= smoothstep(-0.2, 0.2, fbm(60, 3, seed = 'wood')) * smoothstep(1.5, 3.5, f('height')) * (1 - smoothstep(24, 32, slope('height')))"
+scale   = [0.8, 1.3]
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.at_slip]                           # slipway and road, built alone
+kind   = "bookmark"
+on     = { ref = "landing", t = 0.1 }
+toward = "slip"

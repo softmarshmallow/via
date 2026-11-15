@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "m passes n's exit east on with its own exit door placed on it; p answers m.door: no diagnostic; p without the answer: import.exit_unanswered, subject m.feature.door."
+milestone = 4
+actions   = ["build", "forget", "forgotten"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.forget]
+replace = "world.toml"
+find    = 'starts_at = "m.door"'
+with    = 'starts_at = "m"'
+
+[action.forgotten]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.forgotten.diag.forgotten]
+code    = "import.exit_unanswered"
+subject = "m.feature.door"

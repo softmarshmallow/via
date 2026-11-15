@@ -274,3 +274,51 @@ mask  = "= 1 - smoothstep(reach, reach + 4, d)"
 field = "role:keep_out"
 value = "= 1"
 mask  = "= 1 - smoothstep(plate, plate + 1, d)"
+
+# A slipway: where a ferry lands, a point on a shore (M4, `strait`). It is an exit (composition.md
+# 7): a world built apart that has one says a way leaves it here, over the water, and a parent that
+# imports the world must answer it by name (a `ferry` that starts or ends at it, or a deliberate
+# end). Built alone, nothing answers it and nothing is said. It holds a level apron round its point
+# at `level` metres over the datum (a firm decision of the world that has it: anchored, so a parent
+# that blends the world's ground keeps it, composition.md 6.4): land above it is cut back at `grade`
+# out to `reach`, and what lies below it is filled only behind a face of `drop` (rise over run), so
+# the apron does not build a bank out over the sea bed. A 1:2 bank below the water did: it held
+# `strait`'s sea floor up 13 m out, a 0.74 grade where it faded in the island alone and 1.04 where
+# the parent's blend met it. Its output `slipway` tells a game where boats put in. Ours, written
+# for `strait`.
+[kind.slipway]
+authority = "anchored"
+exit      = true
+output    = "slipway"
+radius    = 16                              # `reach` and the 4 m fade
+
+[kind.slipway.defaults]
+level = 1                                   # metres over the datum: a step above the water
+plate = 4                                   # metres of level apron round the point
+grade = 0.5                                 # the cut back into higher land, rise over run
+reach = 10                                  # metres from the point the apron holds the ground
+drop  = 2                                   # the apron's face toward the water, rise over run
+
+[kind.slipway.let]
+bank = "= grade * max(d - plate, 0)"
+fill = "= drop * max(d - plate, 0)"
+
+[kind.slipway.effect.apron]
+field = "role:surface"
+value = "= clamp(v, level - fill, level + bank)"
+mask  = "= 1 - smoothstep(reach, reach + 4, d)"
+
+[kind.slipway.effect.clear]
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(plate, plate + 1, d)"
+
+# A ferry: a line over water between two places, written by what it connects (`starts_at`,
+# `ends_at`; R16), most often two slipways. It changes no field: the water is not built on, so it
+# is derived and gives way to everything (authority.md 3). Its output `ferry` hands the line to the
+# game, which runs the boat. Ours, written for `strait`.
+[kind.ferry]
+output = "ferry"
+
+[kind.ferry.defaults]
+minutes = 5                                 # the crossing's time, for the game's timetable

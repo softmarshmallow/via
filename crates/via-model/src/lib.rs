@@ -50,6 +50,7 @@ mod decl;
 pub mod derived;
 pub mod derived_checks;
 mod graph;
+mod import;
 mod makers;
 pub mod pack;
 mod place;
@@ -73,6 +74,37 @@ pub fn formula_direction(world: &via_doc::World) -> Vec<via_diag::Diag> {
         .diags
         .into_iter()
         .filter(|x| *x.code() == via_diag::DiagCode::Core(via_diag::codes::doc::UPWARD_REF))
+        .collect()
+}
+
+/// `composition.md` 4 and 8 at merge: a scoped name that names nothing inside its import, a bare
+/// name only an import holds (`identity.unknown_place`, the nearest as the parent writes it), and
+/// a give of an unknown name or the wrong form (`import.given_unknown`, `import.given_type`).
+/// Empty for a world with no import.
+pub fn scoped_names(world: &via_doc::World, options: &Options) -> Vec<via_diag::Diag> {
+    if world.root().table("import").is_none() {
+        return Vec::new();
+    }
+    let p = build::prepare(world, options);
+    let heads: std::collections::BTreeSet<&String> = p.decls.imports.keys().collect();
+    // `composition.md` 8 at merge too: a give naming no given, or of the wrong form.
+    let given = [
+        via_diag::codes::import::GIVEN_UNKNOWN,
+        via_diag::codes::import::GIVEN_TYPE,
+    ]
+    .map(via_diag::DiagCode::Core);
+    p.diags
+        .into_iter()
+        .filter(|d| {
+            given.contains(d.code())
+                || (*d.code() == via_diag::DiagCode::Core(via_diag::codes::identity::UNKNOWN_PLACE)
+                    && match d.data().get("nearest") {
+                        Some(via_diag::Value::Text(n)) => n
+                            .split_once('.')
+                            .is_some_and(|(h, _)| heads.contains(&h.to_string())),
+                        _ => false,
+                    })
+        })
         .collect()
 }
 

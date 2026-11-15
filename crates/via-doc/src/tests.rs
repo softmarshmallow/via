@@ -393,11 +393,11 @@ fn fixed_hints() {
 #[test]
 fn not_yet() {
     let l = merge(
-        &simple(&format!("{HEAD}[import.a]\nfile = \"x.toml\"\n")),
+        &simple(&format!("{HEAD}[field.a]\ntype = \"volume\"\nbase = 0\n")),
         &[],
     );
     assert_eq!(codes(&l), ["doc.not_yet"]);
-    assert!(l.records[0].message().contains("M4"));
+    assert!(l.records[0].message().contains("M5"));
     let l = merge(&simple(&format!("chunk = 64\n{HEAD}")), &[]);
     assert_eq!(codes(&l), ["doc.not_yet"]);
     assert!(l.records[0].message().contains("M6"));

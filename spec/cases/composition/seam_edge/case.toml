@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "An import ramping from 0 at its west side to 2 m at its east side, which lies on the parent's east extent edge, as do its north and south sides: the only join pairs are on the west side, level; the 2 m along the extent edge is no seam."
+milestone = 4
+actions   = ["build", "step", "stepped"]
+
+# Then a 2 m step on the west side too: import.seam, so the case can fail.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.east]
+path  = "build/w/fields/height.npy"
+post  = [16, 4]
+value = 2
+
+[action.step]
+replace = "a/world.toml"
+find    = '"= 0.25 * x"'
+with    = '"= 2 + 0.25 * x"'
+
+[action.stepped]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.stepped.diag.seam]
+code = "import.seam"
+data = { grade = 2 }

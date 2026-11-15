@@ -1,0 +1,67 @@
+# Layer `crossing` (rank 1): what crosses the join. Ranked above the layer that declares the
+# imports (composition.md 6.5), so it reads the joined ground. Everything here names places inside
+# the islands by scoped name (`a.slip`, `b.landing`), never by coordinates: move or turn an island
+# and what names it follows.
+
+# ------------------------------------------------------------------------------------------ the ferry
+
+[feature.ferry]                             # from A's slipway to B's: answers both exits
+kind      = "ferry"
+path      = []
+starts_at = "a.slip"
+ends_at   = "b.slip"
+minutes   = 6
+
+# ------------------------------------------------------------------------------------------ views (R17)
+# At every meeting: road and slipway on each side, the ferry's two landings, and along the join on
+# each island's shore, looking out over it at the light.
+
+[feature.leave_a]                           # A's road arriving at its slipway, the far landing beyond
+kind   = "bookmark"
+on     = { ref = "a.quay_road", t = 0.92 }
+toward = "b.slip"
+
+[feature.arrive_b]                          # off the ferry at B: up the landing road
+kind   = "bookmark"
+on     = { ref = "b.landing", t = 0.04 }
+toward = "b.farm"
+
+[feature.back_to_a]                         # from B's landing back over the strait to A's slipway
+kind   = "bookmark"
+on     = { ref = "b.landing", t = 0.12 }
+toward = "a.slip"
+
+[feature.to_beacon]                         # a place inside B named from here; it looks at the
+kind   = "bookmark"                         # farm, which is drawn, past the beacon (no instance)
+on     = { ref = "b.landing", t = 0.95 }
+toward = "b.farm"
+
+[feature.a_shore_n]                         # along the join: A's shore, out over the join
+kind   = "bookmark"
+on     = { ref = "a.isle", t = 0.15, offset = 4 }
+toward = "light"
+
+[feature.a_shore_s]
+kind   = "bookmark"
+on     = { ref = "a.isle", t = 0.85, offset = 4 }
+toward = "light"
+
+[feature.a_shore_w]                         # A's west shore, 20 m from its extent: where the blend's
+kind   = "bookmark"                         # `d` factor holds the weight down
+on     = { ref = "a.isle", t = 0.5, offset = 4 }
+toward = "a.chapel"
+
+[feature.b_shore_n]
+kind   = "bookmark"
+on     = { ref = "b.isle", t = 0.65, offset = 4 }
+toward = "light"
+
+[feature.b_shore_s]
+kind   = "bookmark"
+on     = { ref = "b.isle", t = 0.85, offset = 4 }
+toward = "light"
+
+[feature.b_shore_e]
+kind   = "bookmark"
+on     = { ref = "b.isle", t = 0.25, offset = 4 }
+toward = "b.farm"

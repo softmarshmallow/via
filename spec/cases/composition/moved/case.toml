@@ -7,7 +7,7 @@ actions   = ["first", "move", "moved"]
 # (40, 8), then (44, 8). Both imports hold the parent's height, so no seam.
 
 [action.first]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -25,7 +25,7 @@ find    = "at   = [40, 4]"
 with    = "at   = [44, 4]"
 
 [action.moved]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"

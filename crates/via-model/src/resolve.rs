@@ -76,7 +76,15 @@ pub struct Writer {
 #[derive(Clone, Debug)]
 enum Entry {
     Row(usize),
-    Effect { writer: usize, effect: String },
+    Effect {
+        writer: usize,
+        effect: String,
+    },
+    /// An import's ground (`composition.md` 6.4): its own tier, or its anchored cover.
+    Brought {
+        import: String,
+        anchored: bool,
+    },
 }
 
 /// What one anchored feature left on one field: for `authority.md` 5.
@@ -160,6 +168,11 @@ pub struct Fields<'a> {
     /// already took every such instance out, so one here means the two resolutions disagree, and
     /// it must not pass silently (principle 3).
     pub collect_gave_way: bool,
+    /// Per field, at each post, the largest mask of any `anchored` entry on it in the build's
+    /// view: what an import hands its parent as its anchored cover (`composition.md` 6.4).
+    pub covers: RefCell<BTreeMap<String, Vec<f64>>>,
+    /// Each import's weight per post (`composition.md` 6.1, 6.3), once worked out.
+    weights_of: RefCell<BTreeMap<String, Option<Rc<Vec<f64>>>>>,
 }
 
 fn post_index(grid: &Grid, i: u64, j: u64) -> usize {
@@ -230,6 +243,8 @@ impl<'a> Fields<'a> {
             touched: RefCell::new(Vec::new()),
             gave_way: RefCell::new(BTreeMap::new()),
             collect_gave_way: false,
+            covers: RefCell::new(BTreeMap::new()),
+            weights_of: RefCell::new(BTreeMap::new()),
         };
         f.link();
         f
@@ -422,6 +437,9 @@ impl<'a> Fields<'a> {
                         let w = &self.writers[*writer];
                         below(w.rank, &w.name)
                     }
+                    Entry::Brought { import, .. } => {
+                        self.d.imports.get(import).is_some_and(|i| i.rank <= r)
+                    }
                 })
                 .collect();
             return (kept, Vec::new());
@@ -444,6 +462,8 @@ impl<'a> Fields<'a> {
         }
         // Effects, by tier, then nesting, then (order, rank, place name, effect id).
         for tier in [Tier::Derived, Tier::Shaped, Tier::Anchored] {
+            let tier_start = out.len();
+            let brought = self.brought(field, tier);
             let mut entries: Vec<(usize, String, i64)> = Vec::new();
             for (wi, w) in self.writers.iter().enumerate() {
                 if w.tier != tier || (view == View::NoFootprint && w.footprint) {
@@ -457,6 +477,7 @@ impl<'a> Fields<'a> {
                 }
             }
             if entries.is_empty() {
+                self.merge_brought(&mut out, tier_start, brought);
                 continue;
             }
             let present: BTreeSet<usize> = entries.iter().map(|e| e.0).collect();
@@ -596,8 +617,199 @@ impl<'a> Fields<'a> {
                     }
                 }
             }
+            self.merge_brought(&mut out, tier_start, brought);
         }
         (out, diags)
+    }
+
+    /// The import entries on `field` in `tier` (`composition.md` 6.4), each with its R29 key:
+    /// no `order` (0), the declaring layer's rank, the import's id.
+    fn brought(&self, field: &str, tier: Tier) -> Vec<((i64, i64, String), Entry)> {
+        let mut out = Vec::new();
+        let Some(pf) = self.d.fields.get(field) else {
+            return out;
+        };
+        for (id, imp) in &self.d.imported {
+            let Some(f) = imp.alone.decls.fields.get(field) else {
+                continue;
+            };
+            // A given field is the parent's own, handed down (`composition.md` 8).
+            if imp.alone.decls.givens.contains_key(field) {
+                continue;
+            }
+            if f.role != pf.role || f.weights != pf.weights || f.unit != pf.unit || pf.weights {
+                continue;
+            }
+            let own = imp.decl.authority;
+            let key = (0, imp.decl.rank, id.clone());
+            if own == tier {
+                out.push((
+                    key.clone(),
+                    Entry::Brought {
+                        import: id.clone(),
+                        anchored: false,
+                    },
+                ));
+            }
+            if tier == Tier::Anchored && own != Tier::Anchored {
+                out.push((
+                    key,
+                    Entry::Brought {
+                        import: id.clone(),
+                        anchored: true,
+                    },
+                ));
+            }
+        }
+        out
+    }
+
+    /// Puts each import entry among the tier's ordered effects by R29's key (`authority.md` 4).
+    fn merge_brought(
+        &self,
+        out: &mut Vec<Entry>,
+        tier_start: usize,
+        brought: Vec<((i64, i64, String), Entry)>,
+    ) {
+        for (key, entry) in brought {
+            let at = (tier_start..out.len())
+                .find(|&i| match &out[i] {
+                    Entry::Effect { writer, effect } => {
+                        let w = &self.writers[*writer];
+                        let k = &self.d.kinds[&w.kind];
+                        // This entry's own effect's `order`, not the kind's smallest.
+                        let order = k.effects.get(effect).map_or(0, |e| e.order);
+                        (order, w.rank, w.name.as_bytes()) > (key.0, key.1, key.2.as_bytes())
+                    }
+                    Entry::Brought { import, .. } => {
+                        let r = self.d.imports.get(import).map_or(0, |i| i.rank);
+                        (0, r, import.as_bytes()) > (key.0, key.1, key.2.as_bytes())
+                    }
+                    Entry::Row(_) => false,
+                })
+                .unwrap_or(out.len());
+            out.insert(at, entry);
+        }
+    }
+
+    /// An import's weight at every post (`composition.md` 6.1, 6.3): `blend` inside the footprint
+    /// and the import's extent, 0 elsewhere. `None` after the blend's own fault.
+    pub fn import_weight(&self, id: &str) -> Option<Rc<Vec<f64>>> {
+        if let Some(w) = self.weights_of.borrow().get(id) {
+            return w.clone();
+        }
+        let w = self.work_weight(id).map(Rc::new);
+        self.weights_of
+            .borrow_mut()
+            .insert(id.to_string(), w.clone());
+        w
+    }
+
+    fn work_weight(&self, id: &str) -> Option<Vec<f64>> {
+        let imp = self.d.imported.get(id)?;
+        let grid = self.grid;
+        let n = grid.len() as usize;
+        let mut inside = vec![false; n];
+        let mut pts: Vec<(i64, i64)> = Vec::new();
+        let mut cols: Vec<lineref_cols::Cols> = Vec::new();
+        let mut posts: Vec<usize> = Vec::new();
+        let geo = Geo::Region {
+            region: imp.footprint.clone(),
+            line: None,
+        };
+        let pj = geo.projector();
+        for (i, j) in self.whole().posts() {
+            let (x, y) = via_raster::window::post_mm(&grid, i, j);
+            if !imp.inside((x, y)) {
+                continue;
+            }
+            let k = post_index(&grid, i, j);
+            inside[k] = true;
+            let m = pj.project(P::new(x, y));
+            posts.push(k);
+            pts.push((x, y));
+            cols.push(lineref_cols::Cols {
+                // `sd` is positive inside a region (`numbers.md` 5.5): `d` inward, 0 on the outline.
+                d: if m.sd > 0.0 { m.sd } else { 0.0 },
+                sd: m.sd,
+                t: 0.0,
+            });
+        }
+        let mut w = vec![0.0; n];
+        if posts.is_empty() {
+            return Some(w);
+        }
+        let Some(b) = imp.decl.blend else {
+            for k in posts {
+                w[k] = 1.0;
+            }
+            return Some(w);
+        };
+        let attrs = BTreeMap::new();
+        let served = Served {
+            name: id,
+            geo: &geo,
+            attrs: &attrs,
+            local: &cols,
+        };
+        let ctx = Ctx {
+            f: self,
+            view: View::Build,
+            current: None,
+            served: Some(&served),
+            reads: RefCell::new(BTreeSet::new()),
+            own: None,
+            own_id: None,
+        };
+        let dom = Domain::Points(&pts);
+        let v = self.eval(b, &ctx, &dom, View::Build, None)?;
+        for (k, x) in posts.into_iter().zip(v) {
+            w[k] = x;
+        }
+        Some(w)
+    }
+
+    /// An import's field read on this world's posts (`<import>.<field>`, `composition.md` 6.2):
+    /// its value inside the footprint, 0 outside.
+    fn scoped_field(&self, name: &str) -> Option<Resolved> {
+        let (id, field) = name.split_once('.')?;
+        let imp = self.d.imported.get(id)?;
+        let Some(vals) = imp.field_values(field) else {
+            self.push(text::at_header(
+                codes::identity::UNKNOWN_PLACE,
+                "import",
+                id,
+                &format!("`{id}` has no scalar field `{field}`"),
+                &text::near_hint(
+                    field,
+                    imp.alone.decls.fields.keys().map(String::as_str),
+                    "name a field of the import",
+                ),
+            ));
+            return None;
+        };
+        let lift = if crate::import::is_surface(&imp.alone.decls, field) {
+            imp.decl.lift.unwrap_or(0.0)
+        } else {
+            0.0
+        };
+        let grid = self.grid;
+        let mut out = Vec::with_capacity(grid.len() as usize);
+        for (i, j) in self.whole().posts() {
+            let (x, y) = via_raster::window::post_mm(&grid, i, j);
+            let v = if imp.inside((x, y)) {
+                imp.sample(&vals, (x, y)).map_or(0.0, |v| v + lift)
+            } else {
+                0.0
+            };
+            out.push(via_num::store_f32(v).unwrap_or(0.0));
+        }
+        Some(Resolved {
+            scalar: Raster::from_values(self.whole(), out),
+            weights: BTreeMap::new(),
+            writers: BTreeSet::new(),
+            reads: BTreeSet::new(),
+        })
     }
 
     /// Takes a field resolved elsewhere (a graph node's value) as this view's.
@@ -649,7 +861,12 @@ impl<'a> Fields<'a> {
             return None;
         }
         self.stack.borrow_mut().push(key.clone());
-        let r = self.resolve(field, view).map(Rc::new);
+        let r = if self.d.fields.contains_key(field) {
+            self.resolve(field, view)
+        } else {
+            self.scoped_field(field)
+        }
+        .map(Rc::new);
         self.stack.borrow_mut().pop();
         self.cache.borrow_mut().insert(key, r.clone());
         r
@@ -874,8 +1091,58 @@ impl<'a> Fields<'a> {
         let mut anchors: Vec<Anchor> = Vec::new();
         let mut hid = Hidden::default();
         let mut failed = false;
+        let mut cover: Vec<f64> = vec![0.0; n];
         for (idx, entry) in entries.iter().enumerate() {
             match entry {
+                Entry::Brought { import, anchored } => {
+                    let Some(imp) = self.d.imported.get(import) else {
+                        continue;
+                    };
+                    let Some(vals) = imp.field_values(field) else {
+                        continue;
+                    };
+                    let Some(w) = self.import_weight(import) else {
+                        failed = true;
+                        continue;
+                    };
+                    let theirs = if *anchored {
+                        match imp.alone.build.cover.get(field) {
+                            Some(c) => Some(c),
+                            None => continue,
+                        }
+                    } else {
+                        None
+                    };
+                    let lift = if fd.role == Some(Role::Surface) {
+                        imp.decl.lift.unwrap_or(0.0)
+                    } else {
+                        0.0
+                    };
+                    writers.insert(import.clone());
+                    for (i, j) in self.whole().posts() {
+                        let k = post_index(&grid, i, j);
+                        if w[k] <= 0.0 {
+                            continue;
+                        }
+                        let p = via_raster::window::post_mm(&grid, i, j);
+                        let Some(v) = imp.sample(&vals, p) else {
+                            continue;
+                        };
+                        let mut m = w[k];
+                        if let Some(c) = theirs {
+                            m *= imp.sample(c, p).unwrap_or(0.0);
+                        }
+                        if m <= 0.0 {
+                            continue;
+                        }
+                        if view == View::Build
+                            && (*anchored || imp.decl.authority == Tier::Anchored)
+                        {
+                            cover[k] = via_num::max(cover[k], m);
+                        }
+                        cur[k] = (1.0 - m) * cur[k] + m * (v + lift);
+                    }
+                }
                 Entry::Row(r) => {
                     let row = &fd.rows[*r];
                     let ctx = Ctx {
@@ -1144,6 +1411,9 @@ impl<'a> Fields<'a> {
                         let m = mask[k];
                         let p = posts[k];
                         cur[p] = (1.0 - m) * cur[p] + m * value[k];
+                        if view == View::Build && w.tier == Tier::Anchored {
+                            cover[p] = via_num::max(cover[p], m);
+                        }
                     }
                     if view == View::Build {
                         let erases = !self
@@ -1174,6 +1444,9 @@ impl<'a> Fields<'a> {
         }
         if failed {
             return None;
+        }
+        if view == View::Build {
+            self.covers.borrow_mut().insert(field.to_string(), cover);
         }
         if view == View::Build && !fd.weights {
             self.anchors_meet(field, &anchors);
@@ -1555,6 +1828,13 @@ fn shape_of(g: &Geo) -> Shape {
 impl Select for Sel<'_, '_> {
     fn fields(&self, selector: &str) -> Vec<FieldInfo> {
         let d = self.fields.d;
+        // `<import>.<field>` (`composition.md` 6.2).
+        if d.scoped_fields.contains(selector) {
+            return vec![FieldInfo {
+                name: selector.to_string(),
+                weights: false,
+            }];
+        }
         d.fields
             .values()
             .filter(|f| match selector.strip_prefix("tag:") {

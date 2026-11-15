@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["build", "lift", "lifted"]
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -20,7 +20,7 @@ with    = """max_grade = 10
 lift = 2"""
 
 [action.lifted]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 1
 diagnostics = "includes"
 out         = "build/w"

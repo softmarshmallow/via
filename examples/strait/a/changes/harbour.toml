@@ -1,0 +1,13 @@
+# A's own change: the slipway moves 12 m north along the shore, and a boathouse stands by the lane
+# above it. Written in A, applied when A builds alone (`--change changes/harbour.toml`) or when a parent asks for
+# it by name (`[import.a] changes = ["changes/harbour.toml"]`, composition.md 11). The ferry that lands here is
+# the parent's, and names `a.slip`: it follows without an edit.
+[feature.slip]
+at = [185, 120]
+
+[instance.boathouse]
+asset  = "shed_gable"
+ground = "pad"
+margin = 1
+on     = { ref = "quay_road", t = 0.86, offset = -10 }
+face   = "toward"

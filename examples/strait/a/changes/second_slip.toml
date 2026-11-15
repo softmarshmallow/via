@@ -1,0 +1,6 @@
+# A's own change: a second slipway on the north shore, for a ferry to somewhere else. Built alone it
+# is one more point; in a parent that asks for it and does not answer it, it is an exit nobody
+# answered (composition.md 7).
+[feature.north_slip]
+kind = "slipway"
+at   = [124, 171]

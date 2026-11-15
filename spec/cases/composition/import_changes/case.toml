@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["build", "typo", "typoed"]
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -19,7 +19,7 @@ find    = '''changes = ["high"]'''
 with    = '''changes = ["hgih"]'''
 
 [action.typoed]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 1
 diagnostics = "includes"
 out         = "build/w"

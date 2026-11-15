@@ -8,6 +8,9 @@ include    = ["marks"]
 role = "surface"
 base = 0
 
+[field.tone]
+base = 0
+
 [feature.spot]
 at = [10, 10]
 

@@ -625,12 +625,22 @@ impl Engine<'_> {
         let Some(s) = self.get(id) else {
             return false;
         };
-        let Some(def) = s.def.clone() else {
+        let Some(d) = s.def.as_ref() else {
             return false;
         };
-        if (def.gate.skip_on_error || def.gate.traced) && !self.gates_open {
+        if (d.gate.skip_on_error || d.gate.traced) && !self.gates_open {
             return false;
         }
+        // Asked again each pass until its edges settle: said without copying its definition.
+        if !d.found.iter().any(|f| f.severity() == Severity::Error)
+            && !d
+                .edges
+                .iter()
+                .all(|(_, t)| self.get(t).is_some_and(St::settled))
+        {
+            return false;
+        }
+        let def = d.clone();
         if def.found.iter().any(|d| d.severity() == Severity::Error) {
             return self.settle_found(id, &def);
         }
@@ -1152,7 +1162,17 @@ impl Engine<'_> {
                     .cloned(),
             );
         }
-        let readers = self.readers();
+        // Who reads whom, made only when a cycle or a failed node is to be traced through it.
+        let traced = !self.opts.cycles.is_empty()
+            || self
+                .st
+                .values()
+                .any(|s| s.failed && s.status != Some(Status::Skipped));
+        let readers = if traced {
+            self.readers()
+        } else {
+            BTreeMap::new()
+        };
         let skipped_ids: BTreeSet<&NodeId> = self
             .st
             .iter()

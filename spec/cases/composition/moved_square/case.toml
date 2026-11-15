@@ -11,11 +11,11 @@ via  = ["config", "program", "python", "{python}"]
 exit = 0
 
 [action.trust]
-via  = ["trust", "world.toml", "--yes", "--lib", "{work}/lib"]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
 exit = 0
 
 [action.first]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -28,7 +28,7 @@ find    = "at   = [4, 8]"
 with    = "at   = [6, 8]"
 
 [action.moved]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"

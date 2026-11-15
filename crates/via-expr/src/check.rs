@@ -45,7 +45,8 @@ struct Compiler<'a> {
 }
 
 pub(crate) fn compile(env: &Env, id: FormulaId, ctx: &Context) -> Result<Program, ExprError> {
-    if ctx.key.milestone() > 1 {
+    // An import's `blend` arrives with M4, which is here (`composition.md` 6.3).
+    if ctx.key.milestone() > 1 && ctx.key != Key::Blend {
         return Err(ExprError::new(
             doc::NOT_YET,
             At::Key { formula: id },
@@ -570,6 +571,9 @@ impl Compiler<'_> {
             }
             Scope::World => {}
         }
+        if self.env.bare_fields.contains(n) {
+            return self.field_by_name(n, e, frame);
+        }
         if let Some(id) = self.env.world_lets.get(n) {
             let parts = ["noise", "let", n]
                 .iter()
@@ -638,6 +642,40 @@ impl Compiler<'_> {
         ))
     }
 
+    /// A field read by name, as `f('<name>')` reads it: `<import>.<field>` (`composition.md` 4,
+    /// 6.2) or a fill's given field (8); the model declares each such name a field.
+    fn field_by_name(&mut self, scoped: &str, e: &Expr, frame: &Frame) -> Result<usize, ExprError> {
+        let at = self.at(frame, e.span.clone());
+        let scoped = scoped.to_string();
+        let func = table::lookup("f").ok_or_else(|| {
+            ExprError::new(
+                via_diag::codes::diag::INTERNAL,
+                at.clone(),
+                "the function `f` is missing",
+                "report it: this is a defect of the engine",
+            )
+        })?;
+        self.reads.selectors.insert((Class::Field, scoped.clone()));
+        self.selectors.push(SelectorUse {
+            class: Class::Field,
+            text: scoped.clone(),
+            function: func.name,
+            at: at.clone(),
+        });
+        let k = self.selectors.len() - 1;
+        let own = func.rate.unwrap_or(Rate::Constant);
+        Ok(self.push(
+            Op::Field(k),
+            Type::Number,
+            own,
+            None,
+            at,
+            scoped.clone(),
+            scoped,
+            frame,
+        ))
+    }
+
     fn member(
         &mut self,
         id: &str,
@@ -646,6 +684,12 @@ impl Compiler<'_> {
         frame: &Frame,
     ) -> Result<usize, ExprError> {
         let at = self.at(frame, e.span.clone());
+        // `<import>.<field>` (`composition.md` 4, 6.2): an import's finished field, read as
+        // `f('<import>.<field>')` reads it; the model declares each such name a field.
+        let scoped = format!("{id}.{attr}");
+        if !self.env.features.contains_key(id) && self.env.fields.contains(&scoped) {
+            return self.field_by_name(&scoped, e, frame);
+        }
         let Some(fd) = self.env.features.get(id) else {
             let near = nearest(id, self.env.features.keys().map(String::as_str));
             let mut err = ExprError::new(

@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "An import with at and on together: doc.placement_twice; with neither: doc.missing_key at the import table."
+milestone = 4
+actions   = ["both", "drop", "neither"]
+
+[action.both]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit        = 1
+diagnostics = "exact"
+[action.both.diag.twice]
+code = "doc.placement_twice"
+
+[action.drop]
+replace = "world.toml"
+find    = """at   = [8, 0]
+on   = { ref = "spot" }"""
+with    = ""
+
+[action.neither]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit        = 1
+diagnostics = "exact"
+[action.neither.diag.missing]
+code    = "doc.missing_key"
+subject = "import.a"

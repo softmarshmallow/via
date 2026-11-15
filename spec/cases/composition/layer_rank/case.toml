@@ -6,7 +6,7 @@ actions   = ["build", "lower", "lowered"]
 # The ridge straddles the footprint's edge at x = 8, so nesting does not order it; rank does.
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -21,7 +21,7 @@ find    = "rank  = 1"
 with    = "rank  = -1"
 
 [action.lowered]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"

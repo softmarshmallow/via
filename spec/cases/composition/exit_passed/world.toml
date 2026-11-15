@@ -1,0 +1,18 @@
+name       = "exit_passed"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.m]
+file = "m/world.toml"
+at   = [0, 0]
+
+[feature.go]
+kind      = "way"
+starts_at = "m.door"
+path      = [[20, 2]]

@@ -249,6 +249,7 @@ The store is a folder of write-once files named by digest. Where it lives is `bu
 | key record | `keys/ab/<key>` | the value digest and the node's diagnostics |
 | trace | `traces/<static key>/<trace digest>` | one trace of a step (5.1) and its value digest |
 | build record | `builds/<build key>` | 6.2 |
+| memo | `keys/ab/<memo key>` | a key record whose value digest is a read's answer or a plain command's request (5.1, Memo) |
 
 - A file is written to a temporary name in the store and renamed into place without replacing, so a
   reader never sees half a file and nothing is renamed over a file another process has open. If the
@@ -412,6 +413,20 @@ added. This is a verifying trace (Mokhov, Mitchell and Peyton Jones, 2018), keye
 than by time. It replaces the spike's one-slot hash of "the whole build below" (`spike/SPEC.md`
 12.2, 12.8). An untrusted step built from its committed record (`protocol.md` 7, `gen/<step>/`)
 takes that record as its value, with status `reused`.
+
+**Memo.** A read's answer is kept in the store as a key record under its memo key: the digest of
+the build key (6.2); every `source` node's text and `input` node's bytes in the graph that answers
+it (a stratum's joined world, section 4, has its own); the step node's id; what failed or was
+skipped (`diagnostics.md` 4), for a traced lint; and the read's method and request. A plain
+command's request, the part of its static key above, is kept the same way without the read. Each
+answer a completed run was given is kept as it is made. A check, or a static key, whose memo key is
+stored takes the digest from it and makes nothing else: an unchanged world answers every trace
+without building. Every answer and request is a function of those parts (the model's build is made
+from the sources, the inputs and the flags of the build key alone), so a kept digest is the one
+making it would give, and section 7 holds. Ours: the M3 engine made the whole build per stratum to
+answer any read, so an unchanged rebuild cost 33% to 53% of a cold one (TODO, "A change costs a
+cold build"). A changed world still makes the whole build for the reads its memo keys miss; reading
+only what a read names is owed (Open).
 
 What the engine cannot see stays the step's to declare: a file opened directly, the clock, the
 network, an interpreter or package installed on the machine. Such a read goes stale unseen, as R26
@@ -814,3 +829,7 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
   in M1.
 - **Which view a shape in a step's view reads a returned field in** (section 4). Decided by `basin`
   in M2.
+- **A read answered from the nodes it names** (5.1, Reuse). A changed world misses every memo
+  key and makes the whole build per stratum, so a far edit still costs about a cold build.
+  Decided by `city` `move_avenue` and the M4 acceptance (a moved square re-runs only its
+  district).

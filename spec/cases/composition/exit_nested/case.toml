@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["build", "forget", "forgotten"]
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -14,7 +14,7 @@ write = "m/world.toml"
 from  = "later/m.toml"
 
 [action.forgotten]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 1
 diagnostics = "exact"
 out         = "build/w"

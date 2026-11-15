@@ -280,7 +280,13 @@ impl Context {
     pub fn sees(&self, b: Builtin) -> bool {
         match b {
             Builtin::Pi | Builtin::X | Builtin::Y => true,
-            Builtin::D | Builtin::Sd | Builtin::T => {
+            // An import's `blend` reads `d`, the distance inward from the footprint's outline
+            // (`composition.md` 6.3), and neither `sd` nor `t`.
+            Builtin::D => matches!(
+                self.key,
+                Key::EffectValue | Key::EffectMask | Key::KindLet | Key::Blend
+            ),
+            Builtin::Sd | Builtin::T => {
                 matches!(self.key, Key::EffectValue | Key::EffectMask | Key::KindLet)
             }
             Builtin::V => {

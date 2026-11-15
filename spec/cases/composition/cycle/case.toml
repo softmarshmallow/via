@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["merge"]
 
 [action.merge]
-via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
 exit        = 1
 diagnostics = "includes"
 [action.merge.diag.cycle]

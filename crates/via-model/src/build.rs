@@ -39,6 +39,10 @@ pub struct Options {
     pub step_out: BTreeMap<String, PathBuf>,
     /// `--stand-ins` (`assets.md` 9): model assets take their placement facts from the facts file.
     pub stand_ins: bool,
+    /// A seed that replaces the world's (`composition.md` 2, an import's `seed`).
+    pub seed: Option<u64>,
+    /// What a parent gives this world (`composition.md` 8): `None` builds each given's default.
+    pub given: Option<std::sync::Arc<crate::import::GivenIn>>,
 }
 
 impl Options {
@@ -63,6 +67,8 @@ impl Options {
             shipped_root: load.shipped_root.clone(),
             step_out: BTreeMap::new(),
             stand_ins: false,
+            seed: None,
+            given: None,
         }
     }
 }
@@ -178,6 +184,9 @@ pub struct Build {
     /// What each selection by place resolved to: `<table>.<id>` to (produced name, its point)
     /// (`identity.md` 3), for `identity.reselected` against the next build.
     pub selections: BTreeMap<String, (String, (i64, i64))>,
+    /// Per field, the largest mask of any `anchored` entry at each post: what this world hands a
+    /// parent that imports it (`composition.md` 6.4).
+    pub cover: BTreeMap<String, Vec<f64>>,
 }
 
 impl Build {
@@ -256,9 +265,15 @@ pub(crate) struct Prepared {
 /// Reads the world, finds and reads the pack, resolves shapes and plans.
 pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
     let mut diags: Vec<Diag> = Vec::new();
-    let mut decls = Decls::read(world);
+    let mut decls = Decls::read_given(world, options.given.as_deref());
+    if let Some(s) = options.seed {
+        decls.seed = s;
+    }
     diags.extend(decls.diags.iter().cloned());
     read_files(&mut decls, options, &mut diags);
+    // A given field's values from the parent stand as a base file (`composition.md` 8).
+    let given_fields = std::mem::take(&mut decls.given_fields);
+    decls.files.extend(given_fields);
     // The pack (assets.md 1.2).
     let roots = Roots {
         world_dir: options.world_dir.clone(),
@@ -346,52 +361,74 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
             }
         }
     }
-    let (placed, placing) = match decls.grid {
-        Some(grid) => {
-            // `authority.md` 2.2, A produced instance gives way: rounds of placing and resolving
-            // until no produced instance's footprint passes its kind's `max_change`. Each round
-            // removes every instance found at once. A round must remove one, or the next would
-            // find the same: a found name that is no declared instance (a scatter's, should its
-            // footprints ever write here) ends the rounds with `diag.internal` instead.
-            let mut gave: Vec<Diag> = Vec::new();
-            loop {
-                let (placed, mut pd) = Placer::new(&decls, &pk).run();
-                let found = give_way(&decls, &placed, grid);
-                let mut removed = 0;
-                let mut stuck = Vec::new();
-                for (inst, d) in found {
-                    if decls.instances.remove(&inst).is_some() {
-                        decls.gave_way.insert(inst);
-                        gave.push(d);
-                        removed += 1;
-                    } else {
-                        stuck.push(inst);
-                    }
-                }
-                if removed == 0 {
-                    for inst in stuck {
-                        pd.push(text::diag(
-                            codes::diag::INTERNAL,
-                            Subject::entity("instance", inst.clone()),
-                            Site::Header,
-                            &format!("`{inst}` passes its kind's `max_change` but cannot give way: it is no declared instance"),
-                            "report it: this is a defect of the engine",
-                        ));
-                    }
-                    pd.extend(gave);
-                    diags.extend(pd.iter().cloned());
-                    break (placed, Some(pd));
-                }
-            }
+    // Imports, built alone and placed (`composition.md` 2, 3).
+    crate::import::bring(&mut decls, &pk, options, &mut diags);
+    let mut placed_now = place_rounds(&mut decls, &pk);
+    // A fill is given what the parent placed, then built again with it; what the parent placed
+    // from it is placed again (`composition.md` 8).
+    if let Some(grid) = decls.grid {
+        if crate::import::give(
+            world,
+            &mut decls,
+            &pk,
+            &placed_now.0,
+            grid,
+            options,
+            &mut diags,
+        ) {
+            placed_now = place_rounds(&mut decls, &pk);
         }
-        None => (crate::place::Placed::default(), None),
-    };
+    }
+    let (placed, placing) = placed_now;
+    if let Some(pd) = &placing {
+        diags.extend(pd.iter().cloned());
+    }
     Prepared {
         decls,
         pack: pk,
         placed,
         diags,
         placing,
+    }
+}
+
+/// Places the world's text in rounds (`authority.md` 2.2, A produced instance gives way): rounds
+/// of placing and resolving until no produced instance's footprint passes its kind's
+/// `max_change`. Each round removes every instance found at once. A round must remove one, or the
+/// next would find the same: a found name that is no declared instance (a scatter's, should its
+/// footprints ever write here) ends the rounds with `diag.internal` instead.
+fn place_rounds(decls: &mut Decls, pk: &Pack) -> (Placed, Option<Vec<Diag>>) {
+    let Some(grid) = decls.grid else {
+        return (crate::place::Placed::default(), None);
+    };
+    let mut gave: Vec<Diag> = Vec::new();
+    loop {
+        let (placed, mut pd) = Placer::new(decls, pk).run();
+        let found = give_way(decls, &placed, grid);
+        let mut removed = 0;
+        let mut stuck = Vec::new();
+        for (inst, d) in found {
+            if decls.instances.remove(&inst).is_some() {
+                decls.gave_way.insert(inst);
+                gave.push(d);
+                removed += 1;
+            } else {
+                stuck.push(inst);
+            }
+        }
+        if removed == 0 {
+            for inst in stuck {
+                pd.push(text::diag(
+                    codes::diag::INTERNAL,
+                    Subject::entity("instance", inst.clone()),
+                    Site::Header,
+                    &format!("`{inst}` passes its kind's `max_change` but cannot give way: it is no declared instance"),
+                    "report it: this is a defect of the engine",
+                ));
+            }
+            pd.extend(gave);
+            return (placed, Some(pd));
+        }
     }
 }
 
@@ -788,6 +825,16 @@ pub(crate) fn finish_from(
             for f in &r.reads {
                 deps.insert(format!("field.{f}"));
             }
+            // A field's `file` is a cause of its own, `file:<path>` (`identity.md` 5), held as
+            // a statement of the file's digest so an edit in place is found (`build.md` 11.2).
+            if let (Some(f), Some(b)) = (&fd.file, decls.files.get(name)) {
+                let key = format!("file:{}", crate::graph::input_path(&f.source, &f.written));
+                out.statements
+                    .entry(key.clone())
+                    .or_default()
+                    .insert(String::new(), b.digest.clone());
+                deps.insert(key);
+            }
             out.deps.insert(("field".into(), name.clone()), deps);
         }
     }
@@ -938,6 +985,70 @@ pub(crate) fn finish_from(
             );
         }
     }
+    out.cover = fields.covers.borrow().clone();
+    // Imports (`composition.md` 3, 6.6, 6.7): their instances and features under scoped names,
+    // standing on this world's finished surface; then the seam and the places the join alters.
+    if !decls.imported.is_empty() {
+        let surface = fields.surface();
+        let z_at = |p: P| surface.and_then(|s| fields.read(s, View::Build, p));
+        for imp in decls.imported.values() {
+            imp.bring_out(&grid, &mut out, &z_at);
+        }
+        let mut weights = BTreeMap::new();
+        for id in decls.imported.keys() {
+            if let Some(w) = fields.import_weight(id) {
+                weights.insert(id.clone(), w.as_ref().clone());
+            }
+        }
+        let sz: Option<(String, Vec<f64>)> = surface.and_then(|s| {
+            let r = fields.get(s, View::Build)?;
+            let v = r
+                .scalar
+                .as_ref()?
+                .values()
+                .iter()
+                .map(|x| f64::from(*x))
+                .collect();
+            Some((s.to_string(), v))
+        });
+        // A field taken from the graph's nodes was not resolved here, so its cover was not
+        // gathered: resolve the surface once more to have it.
+        if let Some(s) = surface.filter(|s| !out.cover.contains_key(*s)) {
+            let again = Fields::new(&decls, &placed, grid);
+            let _ = again.get(s, View::Build);
+            let c = again.covers.borrow().get(s).cloned();
+            if let Some(c) = c {
+                out.cover.insert(s.to_string(), c);
+            }
+        }
+        let anchored1: Vec<bool> = surface
+            .and_then(|s| out.cover.get(s))
+            .map(|c| c.iter().map(|m| *m >= 1.0).collect())
+            .unwrap_or_else(|| vec![false; grid.len() as usize]);
+        let mut named: BTreeSet<String> = BTreeSet::new();
+        for f in decls.features.values() {
+            named.extend(f.starts_at.iter().cloned());
+            named.extend(f.ends_at.iter().cloned());
+            if let ShapeDecl::Point(crate::decl::Place::On(o)) = &f.shape {
+                named.insert(o.reference.clone());
+            }
+        }
+        for i in decls.instances.values() {
+            if let crate::decl::Place::On(o) = &i.place {
+                named.insert(o.reference.clone());
+            }
+        }
+        crate::import::join_checks(
+            decls,
+            &grid,
+            sz.as_ref().map(|(n, v)| (n.as_str(), v.as_slice())),
+            &weights,
+            &anchored1,
+            &named,
+            &mut diags,
+        );
+        crate::import::exit_checks(world, decls, &out, &mut diags);
+    }
     // Meetings (surfaces.md 3.3): path ends at a place, on the terrain in M1.
     let surface = fields.surface();
     for (id, f) in &decls.features {
@@ -974,6 +1085,89 @@ pub(crate) fn finish_from(
     unowned_crossings(&decls, &placed, &mut diags);
     // Dependencies, for causes.
     deps_of(&decls, &placed, &mut out);
+    // What comes from an import depends on its table (`composition.md` 11: causes in the
+    // parent's terms where the import moved); so does what names a place inside one.
+    if !decls.imported.is_empty() {
+        let tables = ["feature", "instance", "field"];
+        let layers: Vec<String> = out
+            .statements
+            .keys()
+            .filter(|k| k.starts_with("layer."))
+            .cloned()
+            .collect();
+        let names: Vec<(String, String)> = out
+            .features
+            .keys()
+            .map(|n| ("feature".to_string(), n.clone()))
+            .chain(
+                out.instances
+                    .keys()
+                    .map(|n| ("instance".to_string(), n.clone())),
+            )
+            .chain(out.fields.keys().map(|n| ("field".to_string(), n.clone())))
+            .collect();
+        let refs = |t: &str, n: &str| -> BTreeSet<String> {
+            let mut v = BTreeSet::new();
+            if let Some((h, _)) = n.split_once('.') {
+                if decls.imported.contains_key(h) {
+                    v.insert(format!("import.{h}"));
+                }
+            }
+            if t == "feature" {
+                if let Some(f) = decls.features.get(n) {
+                    for r in f.starts_at.iter().chain(f.ends_at.iter()) {
+                        if let Some((h, _)) = r.split_once('.') {
+                            if decls.imported.contains_key(h) {
+                                v.insert(format!("import.{h}"));
+                            }
+                        }
+                    }
+                }
+            }
+            if t == "field" {
+                for (id, imp) in &decls.imported {
+                    if imp.alone.decls.fields.contains_key(n) {
+                        v.insert(format!("import.{id}"));
+                        // Layer rank orders the import's entries against the parent's (R29).
+                        v.extend(layers.iter().cloned());
+                    }
+                }
+            }
+            v
+        };
+        for (t, n) in names {
+            let mut add = refs(&t, &n);
+            // A brought thing also depends on the import's own statements, in the import's
+            // terms (`composition.md` 11: `b.feature.landing.path` where it changed inside).
+            if let Some((h, rest)) = n.split_once('.') {
+                if let Some(imp) = decls.imported.get(h) {
+                    if let Some(theirs) = imp.alone.build.deps.get(&(t.clone(), rest.to_string())) {
+                        add.extend(
+                            theirs
+                                .iter()
+                                .filter(|s| !s.starts_with("asset:"))
+                                .map(|s| format!("{h}.{s}")),
+                        );
+                    }
+                }
+            }
+            if add.is_empty() || !tables.contains(&t.as_str()) {
+                continue;
+            }
+            out.deps.entry((t, n)).or_default().extend(add);
+        }
+        for (id, imp) in &decls.imported {
+            for (s, m) in &imp.alone.build.statements {
+                out.statements.insert(format!("{id}.{s}"), m.clone());
+            }
+            // The import's build as a whole: a cause in the parent's terms (`import.<id>`) of
+            // what changed inside it where no statement of its own says more.
+            out.statements
+                .entry(format!("import.{id}"))
+                .or_default()
+                .insert(String::new(), imp.alone.digest.clone());
+        }
+    }
     out.diagnostics = diags;
     out.changes = Some(report::compare(baseline, &out));
     // A selection that resolved to another name than in the baseline (`identity.md` 3): a run

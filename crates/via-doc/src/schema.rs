@@ -55,6 +55,12 @@ pub enum Takes {
     Free,
     /// A kind's `defaults`: any keys, each declaring an attribute.
     Defaults,
+    /// An import's `footprint`: a name, or a list of points (`composition.md` 2).
+    Footprint,
+    /// A kind's `exit`: `true`, or a list of attribute names (`composition.md` 7).
+    Exit,
+    /// A given's `default`: a formula, a number or a selector (`composition.md` 8).
+    Given,
 }
 
 impl Takes {
@@ -84,6 +90,9 @@ impl Takes {
             Takes::NameOrSelect => "a name or `{ of, class, near }`",
             Takes::Choices => "a list of asset ids or `{ id, weight }` tables",
             Takes::WorldSeed => "an integer",
+            Takes::Footprint => "a name or a list of points",
+            Takes::Exit => "`true` or a list of attribute names",
+            Takes::Given => "a formula, a number or a selector",
             Takes::RuleSeed => "a name",
             Takes::Table(_) | Takes::Ids(_) | Takes::Free | Takes::Defaults => "a table",
         }
@@ -133,6 +142,10 @@ pub enum Shape {
     Select,
     /// `{ id, weight }` in `assets`.
     Choice,
+    /// `[import.<id>]` (`composition.md` 2).
+    Import,
+    /// `[given.<name>]` (`composition.md` 8).
+    Given,
     /// `[let]`, `[field.<n>.let]`, `[kind.<k>.let]`: names to formulas.
     Let,
 }
@@ -178,8 +191,9 @@ pub const FEATURE_RESERVED: [&str; 16] = [
 pub const VALUE_TABLES: [&str; 3] = ["on", "follows", "clump"];
 
 /// Top-level keys of the world file that are not top tables.
-pub const WORLD_KEYS: [&str; 8] = [
+pub const WORLD_KEYS: [&str; 9] = [
     "name",
+    "datum",
     "extent",
     "resolution",
     "seed",
@@ -205,7 +219,8 @@ pub fn top_table(name: &str) -> Option<Rule> {
         "set" => Rule::Ok(Takes::Ids(Shape::Set)),
         "run" => Rule::Ok(Takes::Ids(Shape::Run)),
         "lock" => Rule::NotYet(3),
-        "import" | "given" => Rule::NotYet(4),
+        "import" => Rule::Ok(Takes::Ids(Shape::Import)),
+        "given" => Rule::Ok(Takes::Ids(Shape::Given)),
         "params" => Rule::Fixed("write `[let]`"),
         "variant" => Rule::Fixed("write `[change.<n>]`"),
         _ => return None,
@@ -227,6 +242,7 @@ pub fn world_key(name: &str) -> Option<Rule> {
         "seed" => Rule::Ok(Takes::WorldSeed),
         "include" => Rule::Ok(Takes::Strings),
         "pack" => Rule::Ok(Takes::Str),
+        "datum" => Rule::Ok(Takes::Name),
         "chunk" | "budget" => Rule::NotYet(6),
         _ => return None,
     })
@@ -241,7 +257,10 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("file", Ok(T::Str)),
             ("owner", Ok(T::Str)),
             ("rank", Ok(T::Integer)),
-            ("after", NotYet(4)),
+            (
+                "after",
+                Fixed("`after` was dropped: rank the layer above the layer that declares the import (`composition.md` 6.5)"),
+            ),
         ],
         Shape::Field => &[
             ("role", Ok(T::Str)),
@@ -288,7 +307,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("defaults", Ok(T::Defaults)),
             ("requires", Ok(T::Strings)),
             ("radius", Ok(T::Length)),
-            ("exit", NotYet(4)),
+            ("exit", Ok(T::Exit)),
             ("output", Ok(T::Str)),
             ("names", Ok(T::Strings)),
             ("effect", Ok(T::Ids(Shape::Effect))),
@@ -417,6 +436,26 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("near", Ok(T::Point)),
         ],
         Shape::Choice => &[("id", Ok(T::Name)), ("weight", Ok(T::Number))],
+        Shape::Import => &[
+            ("file", Ok(T::Str)),
+            ("at", Ok(T::Point)),
+            ("on", Ok(T::Table(Shape::On))),
+            ("face", Ok(T::Facing)),
+            ("seed", Ok(T::WorldSeed)),
+            ("changes", Ok(T::Strings)),
+            ("footprint", Ok(T::Footprint)),
+            ("blend", Ok(T::Formula)),
+            ("authority", Ok(T::Str)),
+            ("lift", Ok(T::Length)),
+            ("max_grade", Ok(T::Number)),
+            // `composition.md` 8: names to what is given, read by the model.
+            ("give", Ok(T::Free)),
+        ],
+        Shape::Given => &[
+            ("accepts", Ok(T::Str)),
+            ("default", Ok(T::Given)),
+            ("kind", Ok(T::Name)),
+        ],
         Shape::Let => &[],
     }
 }
@@ -469,6 +508,7 @@ pub fn in_world_namespace(top: &str) -> bool {
             | "clear"
             | "lock"
             | "import"
+            | "given"
             | "step"
             | "layer"
             | "network"
@@ -483,6 +523,7 @@ pub fn name_keys(shape: Shape) -> &'static [&'static str] {
         Shape::Pin | Shape::Clear => &["by"],
         Shape::Scatter => &["within"],
         Shape::On | Shape::Select => &["ref", "of"],
+        Shape::Import => &["footprint"],
         Shape::Follows => &["ref"],
         Shape::Network => &["from", "within"],
         Shape::Cells => &["within", "frontage"],

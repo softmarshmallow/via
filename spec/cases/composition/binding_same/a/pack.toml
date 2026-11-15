@@ -1,0 +1,4 @@
+# box_small bound as the primitive pack binds it: one asset, not two.
+[asset.box_small]
+primitive = "box"
+size      = [2, 2, 2]

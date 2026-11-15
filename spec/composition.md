@@ -179,7 +179,8 @@ Each field of the import is matched to the parent's field of the same name.
 The import's value at a parent post is read at that post's point in the import's frame, by the
 rule `sample` uses (`fields.md` 1.2; bilinear between the four posts around it), plus `lift` on the
 `surface` field. On a weights field, each material's weight is read so and the parent's weights rule
-applies (`fields.md` 5). A parent whose post spacing is coarser than the import's loses detail;
+applies (`fields.md` 5). Owed: weights are not brought yet; a matched `weights` field is
+`import.weights_dropped` (warning, `data.field`) so the lost paint is said, not silent. A parent whose post spacing is coarser than the import's loses detail;
 `import.coarser` (info) says so once per import with `data.ratio`. No filter is applied: ours, (open)
 below. The same values are what a parent formula reads as `<import>.<field>`; outside the footprint
 it reads 0, and `inside('<import>.footprint')` says where it is defined.
@@ -189,8 +190,8 @@ it reads 0, and `inside('<import>.footprint')` says where it is defined.
 `blend` is a per-post formula, range 0 to 1 (`formulas.md` 6.1). It reads `x`, `y` (the parent's
 frame), `d` (the distance from the footprint's outline inward, metres, 0 on the outline), the
 parent's `let` names, any parent field the import does not bring, and any `<import>.<field>`. A
-parent field the import brings, read by its own name in `blend`, reads itself through the blend:
-`graph.cycle`. Out of range is `formula.range`.
+parent field the import brings, read by its own name in `blend` (`f('height')`, as any field is
+read), reads itself through the blend: `graph.cycle`. Out of range is `formula.range`.
 
 - Default `1`: the import's ground holds to its footprint's edge, and a step there is reported
   (6.6). Not the spike's falloff over a fixed apron, which bent the ground on both sides by a number
@@ -350,7 +351,10 @@ give = { land = "height", limits = "town_limits", districts = "kind:district", d
   feature of the same id is `identity.duplicate_id`.
 - **Frames.** A given region or feature is taken into the fill's frame by the inverse of the
   import's frame (section 3). A given field is read on the fill's posts by `sample`'s rule from the
-  parent's posts; a fill whose extent, as placed, reaches past the parent's is
+  parent's posts, as the parent's field stands without this import's own entries (6.4): a fill on
+  the parent's land does not read itself through the land it brings back (case `give_fill`;
+  correction of slice 2, the text said nothing of which value is handed and every reading but
+  this one is a loop); a fill whose extent, as placed, reaches past the parent's is
   `import.give_outside` (error), with `data.area`. A number is handed as written.
 - **Given features** take the given's `kind` (the fill's own kind), the parent's authority, and
   the attributes written on them, by name; the parent kind's defaults and formulas stay the
@@ -539,6 +543,7 @@ Ids, places, layers and formulas use their own chapters' codes (`identity.unknow
 | `import.field_differs` | error | An import's field and the parent's field of one name differ in role, type or unit; `data.field`. (M4) |
 | `import.field_unmatched` | warning | An import's field the parent does not declare, so not brought; `data.field`, the declaration in `data.write`. (M4) |
 | `import.coarser` | info | The parent's posts are coarser than the import's, so detail is lost; `data.ratio`. (M4) |
+| `import.weights_dropped` | warning | An import's `weights` field matches the parent's but is not brought yet (6.2, owed); `data.field`. (M4) |
 | `import.outside` | warning | Part of an import's footprint lies past the parent's extent and is not brought; `data.area`. (M4) |
 | `import.overlap` | warning | Two imports' footprints, as placed, intersect with an area above 0; `data.area` (6.8). (M4) |
 | `import.seam` | warning | A step in the ground across the join steeper than `max_grade`, worst first by data.grade. (M4) |
@@ -559,11 +564,16 @@ re-runs (`conformance.md` 5) apply to every build.
 | Case | M | Input | Action | Must hold |
 |---|---|---|---|---|
 | moved | M4 | Two places `a`, `b` and a parent path from `a.quay.end` to `b.landing.start`; a change moving `b` 4 m east | build; build with the change | The path's ends at the placed points, (8, 8) to (40, 8), then to (44, 8); in the second build `placed:b` ran, `import:a` and `import:b` were reused, and neither import's shape nodes ran. |
-| turned | M4 | `a` holding instance `hut` at (2, 2) and a point `spot` at (4, 0), placed at (20, 20) with `face = 90` | build | `a.hut` at (22, 18), facing 90 degrees; a path `ends_at = "a.spot"` ends at (20, 16). |
+| turned | M4 | `a` holding instance `hut` at (2, 2) and a point `spot` at (4, 0), placed at (20, 20) with `face = 90` | build | `a.hut` at (22, 18), facing 90 degrees; a path `ends_at = "a.spot"` ends at (20, 16); a parent instance `on = { ref = "a.spot" }` (unfaced) at (20, 16) facing 90 degrees. |
 | own_seed | M4 | `a` with a noise height, placed at (4, 4), then at (6, 4); `a` built alone | build each | Each placed window of the parent's height equals `a`'s own height bit for bit: moving changed no noise. |
 | seed_set | M4 | The same import with `seed = 7`; then `seed = "x"` | build each | The parent's height differs from the build without `seed`; then `num.seed_type`. |
-| placed_on | M4 | An import `on = { ref = "spot" }`, `face = 180`, the point `spot` at (10, 10) | build | `a.hut` (at (2, 2) in `a`) at (8, 8). |
+| placed_on | M4 | An import `on = { ref = "spot" }`, `face = 180`, the point `spot` at (10, 10), `a`'s field `tone = x`; then `spot` moved to (14, 10) | build; build again on one store | `a.hut` (at (2, 2) in `a`) at (8, 8), parent `tone` 2 at post (8, 8); then `a.hut` at (12, 8) and `tone` 6 there: `placed:a` reads the place `on` names. |
+| import_file_edited | M4 | `a`'s `height` from `h.npy` (2), placed at (8, 0); then the file rewritten to 5 | build; build again on one store | The parent's height 2 at post (12, 4); then 5: `import:a` holds the import's input leaves. |
+| blend_reads | M4 | `blend = "= f('mix')"` with parent `mix` 1 and `a`'s `tone` 8; then `mix` 0.5 | build; build again on one store | Parent `tone` 8 at post (12, 4); then 4: a brought chunk reads what its blend reads. |
+| seam_file_edited | M4 | The parent's `height` from `p.npy` (2), a flat import at (8, 0); then the file rewritten to 5 | build; build again on one store | `import.seam` with `data.grade` 2; then 5: the join's checks read the finished surface and inputs. |
+| import_step | M4 | `a`'s field `tone` returned by its own generate step (3) | build | Parent `tone` 3 at post (12, 4), 0 at (2, 4). Pending: an import's own steps do not run yet. |
 | scoped_names | M4 | A parent and an import each holding instance `hut`; a parent bookmark `on.ref = "a.hutt"`; then `on.ref = "hut2"` with `hut2` only in the import | merge each | No `identity.duplicate_id`; both `hut` and `a.hut` built; then `identity.unknown_place` nearest `a.hut`; then `identity.unknown_place` hinting `a.hut2`. |
+| weights_dropped | M4 | Parent and `a` each with a `weights` field `mix`, painted only in `a` | build | `import.weights_dropped`, `data.field` `mix`; exit 0. |
 | field_read | M4 | A parent field `probe` with base `= a.height`; `a` at (8, 0) with height 3 | build | `probe` 3 at a post inside the footprint and 0 outside. |
 | datum_same | M4 | Parent and import `datum = "sea"`; then `lift = 2` added | build each | No datum diagnostic, height as the import's; then `import.lift_on_datum`. |
 | datum_differs | M4 | Parent `datum = "sea"`, import `datum = "chart"`; then `lift = 2` | build each | `import.datum_differs`, exit 1; then no diagnostic and the import's height 2 m higher in the parent. |
@@ -598,19 +608,26 @@ re-runs (`conformance.md` 5) apply to every build.
 | moved_square | M4 | Two districts (their kind has a default `tone`, written on neither) and a square in each, given to a fill whose worker step has `for_each = "given:districts"` and reads `given:squares` within its item; a change moving one square inside its district | build; build with the change | No diagnostic (a default is not handed down); second: `town.step:lay/i:districts.d1` ran, `town.step:lay/i:districts.d2` did not. |
 | join_step | M4 | A generate step in layer `join` (rank 1) reading `height` and `a.height`, returning field `own` = `a.height`; then the step in a layer of rank -1 | build each | `own` equals `a`'s height inside the footprint; then `graph.read_outside`. |
 | nested_names | M4 | `p` imports `m` at (8, 0); `m` imports `n` at (2, 0) holding instance `hut` at (1, 1); a bookmark `on.ref = "m.n.hut"` | build | `m.n.hut` at (11, 1). |
+| placement_keys | M4 | An import with `at` and `on`; then neither | merge each | `doc.placement_twice`; then `doc.missing_key`, subject `import.a`. |
+| given_default | M4 | A fill's `[given.land]` `accepts = "field"` with no `default`; then `number`; then `region` | merge each | `doc.missing_key`; again; then no diagnostic. |
+| given_read | M4 | A fill of height `= if(inside('limits'), density, 0)` with a given region `limits` and number `density` (default 1); the parent gives its west region and `density = 3` | build the fill alone; build the parent | Alone 1; in the parent 3 inside the region, 0 outside it. |
+| footprint_ref | M4 | A footprint of points (4 m by 8 m at (8, 4)); a parent field `= if(inside('a.footprint'), 1, 0)`; a feature `follows = { ref = "a.footprint" }` | build | 1 inside, 0 outside; exit 0. |
+| instance_outside | M4 | `a`'s `hut` at (2, 2) and `shed` at (6, 6), footprint the west half | build | `a.hut` brought; no `a.shed`. |
+| imported_twice | M4 | One file imported as `a` at (0, 0) and `b` at (16, 0) | build | No `import.cycle`; `a.hut` at (2, 2), `b.hut` at (18, 2). |
+| blend_self | M4 | `blend = "= smoothstep(0, 1, f('height'))"`, `height` brought | build | `graph.cycle`; exit 1. |
+| seam_edge | M4 | An import ramping to 2 m along its east side, which lies on the parent's east extent edge; then 2 m higher on its west side too | build each | No diagnostic; then `import.seam`, `data.grade` 2. |
+| lift_partial | M4 | The import declares no datum, `lift = 2`; its surface 3 and a field `moss` (no role) 1 | build | No diagnostic; surface 5; `moss` 1. |
+| exit_passed | M4 | `m` passes `n`'s exit on with its own exit placed `on` it; `p` answers `m.door`; then does not | build each | No diagnostic; then `import.exit_unanswered`, subject `m.feature.door`. |
+| binding_same | M4 | The import's pack binds `box_small` as the parent's does; then to a 1 m box | build each | No diagnostic; then `import.binding_differs`. |
+| change_scoped | M4 | A parent change file with `[feature."a.quay"]` | build with the change | `identity.bad_id`; exit 1. |
+| given_part | M4 | A given path `r1` under `routes`; the fill's path `starts_at = "routes.r1.end"` | build | `town.stop` starts at (10, 2). |
 
-Rules of this chapter with no case yet, owed by M4 slice 2 (each row able to fail): `at` and `on`
-together (`doc.placement_twice`) and neither (`doc.missing_key`); an `accepts` of `field` or
-`number` with no `default`; `region` and `number` givens read in the fill; a `footprint` as points
-(moves with the import) against a parent region (stays); `<import>.footprint` with `follows` and
-`inside('<import>.footprint')`; an instance outside the footprint not brought; one file imported
-twice under two ids, not a cycle; `blend` reading a brought field by its own name (`graph.cycle`);
-`authority.squeezed` where the import's anchored cover fades; the seam excused along the parent's
-extent edge; `lift` with one datum absent, and `lift` leaving a non-surface field alone; a nested
-exit passed on by `on`; one binding in two packs is one asset; a moved fill re-running its given
-readers; `brought` and parent field chunks reused away from the old and new footprint; change
-report causes in the parent's terms (`import.b`); a parent change table `[feature."a.quay"]`
-(`identity.bad_id`); a given feature's part read by name (`districts.d1.start`).
+Rules of this chapter with no case yet, owed by M4 slice 3 (each row able to fail): a footprint
+naming a parent region (stays where it is when the import moves); `authority.squeezed` where the
+import's anchored cover fades; a moved fill re-running its given readers; `brought` and parent field
+chunks reused away from the old and new footprint; change report causes in the parent's terms
+(`import.b.at`) checked in `changes.json`. Written in M4 slice 2: the thirteen rows from
+`placement_keys` to `given_part` above.
 
 ## Changed from the spike
 

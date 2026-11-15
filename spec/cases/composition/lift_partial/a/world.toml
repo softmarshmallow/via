@@ -1,0 +1,11 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 3
+
+[field.moss]
+base = 1

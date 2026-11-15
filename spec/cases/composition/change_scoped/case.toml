@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "A parent change table [feature.\"a.quay\"]: a scoped name is no id, identity.bad_id; an import's tables are changed only by its own changes."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "changes/nudge.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.bad]
+code = "identity.bad_id"

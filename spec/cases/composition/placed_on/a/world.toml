@@ -9,6 +9,9 @@ include    = ["marks"]
 role = "surface"
 base = 0
 
+[field.tone]
+base = "= x"
+
 [instance.hut]
 asset = "box_small"
 at    = [2, 2]

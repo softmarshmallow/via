@@ -488,14 +488,24 @@ fn statement_digests(world: &World, p: &Prepared) -> BTreeMap<String, Digest> {
 /// digests enter the build key (6.2), so a pack or a field file edited in place is never taken
 /// for an unchanged build.
 pub fn leaves(world: &World, options: &Options) -> Vec<(String, Digest)> {
-    leaves_of(&prepare(world, options), options)
+    let p = prepare(world, options);
+    let mut out: Vec<(String, Digest)> = leaves_of(&p, options)
         .into_iter()
         .map(|(path, _, d)| (path, d))
-        .collect()
+        .collect();
+    // Each import's files, by its digest (`composition.md` 12: `file` is a source of the build
+    // key, never of a node's).
+    for imp in p.decls.imported.values() {
+        out.push((
+            format!("import {}", imp.shown),
+            Digest::of(imp.alone.digest.as_bytes()),
+        ));
+    }
+    out
 }
 
 /// Each leaf as (path, node id, digest).
-fn leaves_of(p: &Prepared, options: &Options) -> Vec<(String, NodeId, Digest)> {
+pub(crate) fn leaves_of(p: &Prepared, options: &Options) -> Vec<(String, NodeId, Digest)> {
     let mut out = Vec::new();
     if let Some(written) = &p.decls.pack {
         let roots = crate::pack::Roots {
@@ -546,7 +556,7 @@ fn leaves_of(p: &Prepared, options: &Options) -> Vec<(String, NodeId, Digest)> {
 
 /// A declared file's path as an `input` id names it: the folder of the document that names it,
 /// then the path as written, with `/` (`graph.md` 1, "Paths").
-fn input_path(source: &str, written: &str) -> String {
+pub(crate) fn input_path(source: &str, written: &str) -> String {
     let dir = match source.rsplit_once('/') {
         Some((d, _)) => d,
         None => "",
@@ -734,8 +744,10 @@ impl<'w> ModelPlan<'w> {
                     pts.push(*p);
                 }
                 out.extend(self.surface_at(&pts));
+                out.extend(self.brought_reads());
             }
             FileReads::Instances => {
+                out.extend(self.brought_reads());
                 for id in self.defs.keys() {
                     // A clear reaches the instances a step returned, which no `held` node
                     // holds (`identity.md` 4.1), so the file reads every edit.
@@ -776,6 +788,29 @@ impl<'w> ModelPlan<'w> {
         }
         out.sort();
         out.dedup();
+        out
+    }
+
+    /// What brought instances and features read (`composition.md` 12: `import:<id>` is read by
+    /// the write nodes of `features.json` and the instance columns): each import, its frame, and
+    /// every surface chunk, since their heights are found again on the parent's surface (3).
+    fn brought_reads(&self) -> Vec<(String, NodeId)> {
+        let mut out = Vec::new();
+        if self.p.decls.imported.is_empty() {
+            return out;
+        }
+        for id in self.p.decls.imported.keys() {
+            out.push((format!("built {id}"), NodeId::of("import", id)));
+            out.push((format!("import {id}"), NodeId::of("placed", id)));
+        }
+        for f in self.surface_fields() {
+            for (_, w) in &self.chunks {
+                out.push((
+                    format!("surface {f} {}", win_text(w)),
+                    chunk_id(&f, BUILD, w),
+                ));
+            }
+        }
         out
     }
 
@@ -1002,6 +1037,15 @@ impl<'w> ModelPlan<'w> {
     /// The nodes a place name refers to (`graph.md` 2, "placement" and "mount").
     fn targets(&self, name: &str) -> Vec<NodeId> {
         let d = &self.p.decls;
+        if let Some((h, rest)) = name.split_once('.') {
+            if d.imports.contains_key(h) {
+                return if d.imported.contains_key(h) {
+                    vec![NodeId::of("placed", &format!("{h}/{rest}"))]
+                } else {
+                    Vec::new()
+                };
+            }
+        }
         if let Some((h, top)) = crate::place::failed_owner(d, name) {
             return vec![failed_node(top, &h)];
         }
@@ -1119,9 +1163,23 @@ impl<'w> ModelPlan<'w> {
                 },
             );
         }
+        // An import's own diagnostics are the merge's (`composition.md` 4): its build enters the
+        // merge's key, never where it is placed.
         let merge = Def {
             params: vec![("changes".into(), self.world.changes().join("\n"))],
             edges: merge_edges,
+            direct: self
+                .p
+                .decls
+                .imported
+                .iter()
+                .map(|(id, imp)| {
+                    (
+                        format!("import {id}"),
+                        Digest::of(imp.alone.digest.as_bytes()),
+                    )
+                })
+                .collect(),
             ..Def::default()
         };
         let mut defs: Vec<(NodeId, Def)> = vec![(NodeId::parse("merge").expect("an id"), merge)];
@@ -1858,6 +1916,224 @@ impl<'w> ModelPlan<'w> {
         for (id, def) in facts_defs {
             self.put(id, def);
         }
+        self.define_imports();
+    }
+
+    /// The import families (`composition.md` 12): `import:<id>` (the import built alone, keyed on
+    /// its own statements and `seed` and `changes`, never on where it is placed), `placed:<id>`
+    /// (the frame and footprint as placed) and `placed:<id>/<name>` per scoped name the parent
+    /// reads. A field chunk that brings an import's field, or reads `<import>.<field>`, reads
+    /// `placed:<id>`.
+    fn define_imports(&mut self) {
+        let d = &self.p.decls;
+        if d.imported.is_empty() {
+            return;
+        }
+        let mut defs: Vec<(NodeId, Def)> = Vec::new();
+        let ids: BTreeSet<String> = d.imported.keys().cloned().collect();
+        for (id, imp) in &d.imported {
+            let mut enc = Enc::new();
+            enc.str("via-import-build-1")
+                .str(&format!("{:?}", imp.decl.seed))
+                .len(imp.decl.changes.len());
+            for c in &imp.decl.changes {
+                enc.str(c);
+            }
+            defs.push((
+                NodeId::of("import", id),
+                Def {
+                    subject: Some(Subject::entity("import", id.clone())),
+                    statements: vec![(format!("import.{id}.build"), Digest::of(&enc.finish()))],
+                    direct: vec![("import".into(), Digest::of(imp.alone.digest.as_bytes()))],
+                    ..Def::default()
+                },
+            ));
+            // The place `on` names, and the parent's region `footprint` names (a name of the
+            // import itself is in its digest).
+            let mut edges = vec![("import".into(), NodeId::of("import", id))];
+            if let Some(Place::On(o)) = &imp.decl.place {
+                for t in self.targets(&o.reference) {
+                    edges.push(("on.ref".into(), t));
+                }
+            }
+            if let Some(crate::import::Foot::Name(n)) = &imp.decl.footprint {
+                if !n.starts_with(&format!("{id}.")) {
+                    for t in self.targets(n) {
+                        edges.push(("footprint".into(), t));
+                    }
+                }
+            }
+            defs.push((
+                NodeId::of("placed", id),
+                Def {
+                    subject: Some(Subject::entity("import", id.clone())),
+                    statements: self.stmts_of([format!("import.{id}").as_str(), "world"]),
+                    edges,
+                    ..Def::default()
+                },
+            ));
+        }
+        for name in crate::import::scoped_refs(self.world.root(), &ids) {
+            let Some((id, rest)) = name.split_once('.') else {
+                continue;
+            };
+            defs.push((
+                NodeId::of("placed", &format!("{id}/{rest}")),
+                Def {
+                    subject: Some(Subject::entity("import", id.to_string())),
+                    params: vec![("name".into(), rest.to_string())],
+                    edges: vec![
+                        ("frame".into(), NodeId::of("placed", id)),
+                        ("import".into(), NodeId::of("import", id)),
+                    ],
+                    ..Def::default()
+                },
+            ));
+        }
+        // Field chunks that bring or read an import.
+        let mut reads: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        for (fname, fd) in &d.fields {
+            let mut set = BTreeSet::new();
+            for (id, imp) in &d.imported {
+                if imp.alone.decls.fields.contains_key(fname) {
+                    set.insert(id.clone());
+                }
+            }
+            let formulas = fd.base.iter().chain(
+                fd.rows
+                    .iter()
+                    .flat_map(|r| r.value.iter().chain(r.mask.iter())),
+            );
+            for f in formulas {
+                if let Some(p) = d.formulas.programs.get(f) {
+                    for (class, sel) in &p.reads.selectors {
+                        if *class == Class::Field {
+                            if let Some((h, _)) = sel.split_once('.') {
+                                if ids.contains(h) {
+                                    set.insert(h.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // A blend reads what it names; every brought field reads the blend.
+            if !set.is_empty() {
+                reads.insert(fname.clone(), set);
+            }
+        }
+        let join: BTreeMap<String, (String, Digest)> = ids
+            .iter()
+            .filter_map(|id| self.stmt(&format!("import.{id}")).map(|x| (id.clone(), x)))
+            .collect();
+        // What each blend reads (6.3): parent fields and `let` names, as a base reads them.
+        let blends: BTreeMap<String, FReads> = d
+            .imported
+            .iter()
+            .filter_map(|(id, imp)| {
+                let b = imp.decl.blend?;
+                let mut r = FReads::default();
+                self.freads(Some(b), &mut r);
+                Some((id.clone(), r))
+            })
+            .collect();
+        let lets: BTreeMap<String, Vec<(String, Digest)>> = blends
+            .iter()
+            .map(|(id, r)| (id.clone(), self.stmts_of(r.lets.iter().map(String::as_str))))
+            .collect();
+        let grid = self.grid;
+        // Each field's chunks, with view and window, for the blend's reads.
+        let mut chunks_of: BTreeMap<String, Vec<(NodeId, Window)>> = BTreeMap::new();
+        for n in self.defs.keys().filter(|n| n.family() == "field") {
+            let rest = n.as_str().strip_prefix("field:").unwrap_or_default();
+            let f = rest.split('/').next().unwrap_or(rest);
+            if let Some(w) = window_of(n) {
+                chunks_of
+                    .entry(f.to_string())
+                    .or_default()
+                    .push((n.clone(), w));
+            }
+        }
+        for (nid, def) in self.defs.iter_mut() {
+            let Some(rest) = nid.as_str().strip_prefix("field:") else {
+                continue;
+            };
+            let fname = rest.split('/').next().unwrap_or(rest);
+            if let Some(set) = reads.get(fname) {
+                for id in set {
+                    // The blend's reads: each read field's chunks over this chunk's window (grown
+                    // by the blend's halo), in this chunk's view; its `let` names as statements.
+                    if let (Some(r), Some(w), Some(g)) = (blends.get(id), window_of(nid), grid) {
+                        let grown = w.grow(r.halo, &g);
+                        let v = nid.view_name().unwrap_or(BUILD);
+                        for f in r.fields.iter().filter(|f| *f != fname) {
+                            for (c, cw) in chunks_of.get(f).into_iter().flatten() {
+                                if c.view_name() == Some(v) && meets(cw, &grown) {
+                                    def.edges.push((format!("blend {id} reads {f}"), c.clone()));
+                                }
+                            }
+                        }
+                        def.statements
+                            .extend(lets.get(id).into_iter().flatten().cloned());
+                    }
+                    // The frame, what the import built, and the join's keys (`blend`, `lift`,
+                    // `authority`): the import's whole table is a statement of the chunk.
+                    def.edges
+                        .push((format!("import {id}"), NodeId::of("placed", id)));
+                    def.edges
+                        .push((format!("built {id}"), NodeId::of("import", id)));
+                    if let Some(x) = join.get(id) {
+                        def.statements.push(x.clone());
+                    }
+                }
+            }
+        }
+        let jc_direct: Vec<(String, Digest)> = d
+            .imported
+            .iter()
+            .map(|(id, imp)| {
+                (
+                    format!("import {id}"),
+                    Digest::of(imp.alone.digest.as_bytes()),
+                )
+            })
+            .collect();
+        for (id, def) in defs {
+            self.put(id, def);
+        }
+        // The join's checks (`import.seam`, `import.place_blended`, the exits) read the finished
+        // surface, the inputs and the features' attributes. Until section 12's `joincheck` nodes
+        // per import and window exist, one node holds them all and reads every node the build
+        // makes, so a warm build reports what a fresh one does; it is skipped, as any reader
+        // is, when one of them fails (`owners` routes them here).
+        let all: Vec<(String, NodeId)> = self
+            .defs
+            .keys()
+            .filter(|n| !matches!(n.family(), "source" | "merge" | "write"))
+            .map(|n| (format!("join reads {n}"), n.clone()))
+            .collect();
+        // Its statements: each import's table (`max_grade`, `blend`, `authority`) and the world.
+        let jc_stmts = self.stmts_of(
+            ids.iter()
+                .map(|id| format!("import.{id}"))
+                .collect::<Vec<_>>()
+                .iter()
+                .map(String::as_str)
+                .chain(["world"]),
+        );
+        self.put(
+            Self::joincheck_id(),
+            Def {
+                statements: jc_stmts,
+                edges: all,
+                direct: jc_direct,
+                ..Def::default()
+            },
+        );
+    }
+
+    fn joincheck_id() -> NodeId {
+        NodeId::of("joincheck", "imports")
     }
 
     /// The edges of a height: the surface beneath, and for a hand instance the `keep_out`
@@ -2113,6 +2389,12 @@ impl<'w> ModelPlan<'w> {
     /// The node that makes a selector member's shape: an instance's footprint (`<id>.ground`,
     /// placed or not), else the feature's shape.
     fn member_node(&self, m: &str) -> NodeId {
+        // A scoped place reads its own placed node (`composition.md` 12).
+        if let Some((h, rest)) = m.split_once('.') {
+            if self.p.decls.imported.contains_key(h) {
+                return NodeId::of("placed", &format!("{h}/{rest}"));
+            }
+        }
         if self.p.placed.made_writers.contains_key(m) {
             return view(NodeId::of("made", m));
         }
@@ -2333,6 +2615,21 @@ impl<'w> ModelPlan<'w> {
             if let Some(f) = self.defs.keys().find(|n| n.family() == "facts") {
                 return vec![f.clone()];
             }
+        }
+        // The join's checks of the finished build (`composition.md` 6.6, 6.7, 7).
+        if late
+            && [
+                codes::import::SEAM,
+                codes::import::PLACE_BLENDED,
+                codes::import::EXIT_UNANSWERED,
+                codes::import::EXIT_MISMATCH,
+                codes::import::EXIT_OUTSIDE,
+            ]
+            .iter()
+            .any(|c| *d.code() == via_diag::DiagCode::Core(*c))
+            && self.defs.contains_key(&Self::joincheck_id())
+        {
+            return vec![Self::joincheck_id()];
         }
         let mut v: Vec<NodeId> = match d.subject() {
             Subject::Entity {
@@ -3167,6 +3464,57 @@ impl Plan for ModelPlan<'_> {
                     e.str(&format!("{d:?}"));
                 }
                 Self::val(e.finish(), diags)
+            }
+            "joincheck" => {
+                let w = self.whole();
+                let diags = w.routed.get(id).cloned().unwrap_or_default();
+                let mut e = Enc::new();
+                e.str("via-joincheck-1").len(diags.len());
+                for d in &diags {
+                    e.str(&format!("{d:?}"));
+                }
+                Self::val(e.finish(), diags)
+            }
+            "import" => Self::val(
+                self.p
+                    .decls
+                    .imported
+                    .get(&s)
+                    .map(|i| i.alone.digest.clone().into_bytes())
+                    .unwrap_or_default(),
+                Vec::new(),
+            ),
+            "placed" => {
+                let mut e = Enc::new();
+                e.str("via-placed-1");
+                match s.split_once('/') {
+                    Some((h, rest)) => match self.p.decls.imported.get(h) {
+                        Some(imp) => match imp.spot(rest) {
+                            Some(crate::place::Spot::At { p, facing, end }) => {
+                                e.str("at").str(&format!("{p:?} {facing:?} {end}"));
+                            }
+                            Some(crate::place::Spot::Long(g)) => {
+                                e.str("long");
+                                Self::encode_geo(&mut e, Some(&g));
+                            }
+                            None => {
+                                e.str("none");
+                            }
+                        },
+                        None => {
+                            e.str("none");
+                        }
+                    },
+                    None => match self.p.decls.imported.get(&s) {
+                        Some(imp) => {
+                            e.str(&format!("{:?} {:?}", imp.frame, imp.footprint));
+                        }
+                        None => {
+                            e.str("none");
+                        }
+                    },
+                }
+                Self::val(e.finish(), Vec::new())
             }
             "field" => self.compute_chunk(id),
             "distance" => self.compute_distance(id),

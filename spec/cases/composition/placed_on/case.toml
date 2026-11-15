@@ -1,10 +1,10 @@
 format    = "via-case-1"
-summary   = '''An import on = { ref = "spot" } with face = 180, spot at (10, 10): its instance at (2, 2) stands at (8, 8).'''
+summary   = '''An import on = { ref = "spot" } with face = 180, spot at (10, 10): its instance at (2, 2) stands at (8, 8); spot moved to (14, 10) between two builds on one store: the instance at (12, 8) and a's tone (= x) at parent post (8, 8) is 6, as a fresh build gives (composition.md 12, placed:<id> reads the place on names).'''
 milestone = 4
-actions   = ["build"]
+actions   = ["build", "move", "moved"]
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -13,3 +13,27 @@ fn    = "instance_at"
 build = "build/w"
 name  = "a.hut"
 at    = [8, 8]
+[action.build.file.tone]
+path  = "build/w/fields/tone.npy"
+post  = [8, 8]
+value = 2
+
+[action.move]
+replace = "world.toml"
+find    = "at = [10, 10]"
+with    = "at = [14, 10]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.moved.check.hut]
+fn    = "instance_at"
+build = "build/w"
+name  = "a.hut"
+at    = [12, 8]
+[action.moved.file.tone]
+path  = "build/w/fields/tone.npy"
+post  = [8, 8]
+value = 6

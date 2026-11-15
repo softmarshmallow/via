@@ -72,6 +72,8 @@ pub struct Env {
     pub(crate) kinds: BTreeMap<String, KindDecl>,
     pub(crate) features: BTreeMap<String, FeatureDecl>,
     pub(crate) fields: BTreeSet<String>,
+    /// Fields read by their bare name: a fill's given fields (`composition.md` 8).
+    pub(crate) bare_fields: BTreeSet<String>,
     /// Kind `let` names also given as attributes, in declaration order, for `formula.shadow`.
     duplicates: Vec<(String, String)>,
     /// Formulas written in a step's returned document, by the step: a name in them resolves first
@@ -123,6 +125,13 @@ impl Env {
     /// Declares a field.
     pub fn field(&mut self, name: &str) {
         self.fields.insert(name.to_string());
+    }
+
+    /// Declares a field a formula reads by its bare name, as a `let` is read: a fill's given
+    /// field (`composition.md` 8).
+    pub fn given_field(&mut self, name: &str) {
+        self.fields.insert(name.to_string());
+        self.bare_fields.insert(name.to_string());
     }
 
     /// Declares a world `let`.

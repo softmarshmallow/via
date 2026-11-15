@@ -1,0 +1,29 @@
+format    = "via-case-1"
+summary   = "blend = \"= f('mix')\" over a's tone 8: the parent's tone is 8 with mix 1; mix changed to 0.5 between two builds on one store: 4, as a fresh build gives (composition.md 6.3, 12: a brought chunk reads what its blend reads)."
+milestone = 4
+actions   = ["first", "half", "halved"]
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.first.file.tone]
+path  = "build/w/fields/tone.npy"
+post  = [12, 4]
+value = 8
+
+[action.half]
+replace = "world.toml"
+find    = "[field.mix]\nbase = 1"
+with    = "[field.mix]\nbase = 0.5"
+
+[action.halved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.halved.file.tone]
+path  = "build/w/fields/tone.npy"
+post  = [12, 4]
+value = 4

@@ -8,11 +8,11 @@ via  = ["config", "program", "python", "{python}"]
 exit = 0
 
 [action.trust]
-via  = ["trust", "world.toml", "--yes", "--lib", "{work}/lib"]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
 exit = 0
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -27,11 +27,11 @@ find    = "rank  = 1"
 with    = "rank  = -1"
 
 [action.trust_again]
-via  = ["trust", "world.toml", "--yes", "--lib", "{work}/lib"]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
 exit = 0
 
 [action.lowered]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 1
 diagnostics = "includes"
 out         = "build/w"

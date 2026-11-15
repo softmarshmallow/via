@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["alone", "build"]
 
 [action.alone]
-via         = ["build", "town/world.toml", "--lib", "{work}/lib", "--out", "build/t"]
+via         = ["build", "town/world.toml", "--lib", "{work}/libs", "--out", "build/t"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/t"
@@ -14,7 +14,7 @@ post  = [4, 4]
 value = 1
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"

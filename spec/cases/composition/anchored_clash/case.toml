@@ -6,7 +6,7 @@ actions   = ["build"]
 # Line 13 of a/world.toml is the pad's authority line.
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 1
 diagnostics = "includes"
 out         = "build/w"

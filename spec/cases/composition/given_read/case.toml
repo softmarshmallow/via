@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "A fill reads a given region with inside('limits') and a given number density: alone its height is 1 everywhere; given the parent's west region and density 3, its height in the parent is 3 inside the region and 0 outside it."
+milestone = 4
+actions   = ["alone", "build"]
+
+[action.alone]
+via         = ["build", "town/world.toml", "--lib", "{work}/libs", "--out", "build/t"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/t"
+[action.alone.file.h]
+path  = "build/t/fields/height.npy"
+post  = [6, 4]
+value = 1
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.inside]
+path  = "build/w/fields/height.npy"
+post  = [10, 4]
+value = 3
+[action.build.file.outside]
+path  = "build/w/fields/height.npy"
+post  = [14, 4]
+value = 0

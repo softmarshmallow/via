@@ -1,0 +1,130 @@
+# What a strait build must measure (docs/plan.md M4: "an import moved and turned"; composition.md).
+# Measures, never bytes (R15): each row names a measure of `measure.py` and the band it must fall
+# in. Taken by
+#
+#   python3 examples/strait/measure.py BUILD --alone a=A_DIR --alone b=B_DIR             # base
+#   python3 examples/strait/measure.py BUILD+<c> --run BUILD+<c>.run.json --alone ...    # a change
+#   python3.11 examples/strait/measure.py ... --check <section>                          # the bands
+#
+# Protocol (M4 slice 2, 2026-11-16): macOS arm64, release `via` of the rewrite working tree after
+# fa672f7 with the M4 slice 2 diffs (imports, exits, and this example's three fixes in import.rs and
+# graph.rs), VIA_LIB=lib, one fresh store for the run: `a` and `b` alone, then the strait, then each
+# change with `--against` the strait base on the same store; one build each, other agents building
+# at the same time. Measured once, so each band is the measured number: it says where someone looks.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.a_instances]                          # 44 trees, the chapel, the store, the harbour house
+measure = "a_instances"
+band    = [47, 47]
+
+[base.b_instances]                          # 42 trees, the farm, the cottage
+measure = "b_instances"
+band    = [44, 44]
+
+[base.ferry_off]                            # the ferry ends on the two slipways as placed
+measure = "ferry_off"
+band    = [0, 0]
+
+[base.slip_z_off]                           # each slipway's apron at its level, 1 m over the datum
+measure = "slip_z_off"
+band    = [0, 0.01]
+
+[base.alone_off_a]                          # A's ground in the strait is A's own where its weight is 1
+measure = "alone_off_a"
+band    = [0, 0]
+
+[base.alone_off_b]                          # B too, turned a quarter
+measure = "alone_off_b"
+band    = [0, 0]
+
+[base.seam]                                 # no step across either join steeper than 1:2
+measure = "seam"
+band    = [0, 0]
+
+[base.wet_views]                            # no view stands in water
+measure = "wet_views"
+band    = [0, 0]
+
+[base.toward_off]                           # every view looks at the thing it names, as placed
+measure = "toward_off"
+band    = [0, 0]
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ move_b
+
+[move_b.ran_import_a]                       # neither island is built again
+measure = "ran_import_a"
+band    = [0, 0]
+
+[move_b.ran_import_b]
+measure = "ran_import_b"
+band    = [0, 0]
+
+[move_b.ran_placed_a]                       # nothing that places A runs
+measure = "ran_placed_a"
+band    = [0, 0]
+
+[move_b.ran_placed_b]                       # B's frame and its four places the strait names
+measure = "ran_placed_b"                    # (landing, slip, farm, isle; no view names b.beacon)
+band    = [5, 5]
+
+[move_b.shapes_ran]                         # only what names a place of B
+measure = "shapes_ran"
+band    = ["arrive_b", "b_shore_e", "b_shore_n", "b_shore_s", "back_to_a", "ferry", "to_beacon"]
+
+[move_b.fields_ran]                         # every field chunk: no `brought` node per chunk yet
+measure = "fields_ran"                      # (composition.md 12 wants only those B's footprint met)
+band    = [180, 180]
+
+[move_b.ferry_off]
+measure = "ferry_off"
+band    = [0, 0]
+
+[move_b.alone_off_b]                        # B turned 80 degrees: its posts that land on the parent's
+measure = "alone_off_b"                     # posts (the frame's 0 and 90 degree rows only) unchanged
+band    = [0, 0]
+
+[move_b.seam]
+measure = "seam"
+band    = [0, 0]
+
+[move_b.wet_views]
+measure = "wet_views"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ harbour
+
+[harbour.ran_import_b]                      # A's own change: B is not built again
+measure = "ran_import_b"
+band    = [0, 0]
+
+[harbour.ran_import_a]
+measure = "ran_import_a"
+band    = [1, 1]
+
+[harbour.shapes_ran]                        # the ferry and the view toward B from A's road follow a.slip;
+                                            # look_boathouse is the change's own view
+measure = "shapes_ran"
+band    = ["ferry", "leave_a", "look_boathouse"]
+
+[harbour.a_instances]                       # the boathouse comes in (47 before the write-node fix)
+measure = "a_instances"
+band    = [48, 48]
+
+[harbour.ferry_off]
+measure = "ferry_off"
+band    = [0, 0]
+
+[harbour.seam]                              # one: 3 pairs at 0.503 by the moved slipway's face
+measure = "seam_grade"
+band    = [0.503, 0.503]
+
+# ------------------------------------------------------------------------------------------ forgotten_exit
+
+[forgotten_exit.unanswered]                 # import.exit_unanswered on a.north_slip, exit 1
+measure = "unanswered"
+band    = [1, 1]

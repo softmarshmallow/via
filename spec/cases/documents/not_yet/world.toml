@@ -12,5 +12,5 @@ base = 20
 kind = "lane"
 path = [[0, 40], [128, 60]]
 
-[import.a]
-file = "a/world.toml"
+[field.v]
+type = "volume"

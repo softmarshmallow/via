@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "A fill's given of accepts field with no default: doc.missing_key; of accepts number: the same; a region needs none: merges."
+milestone = 4
+actions   = ["field", "to_number", "number", "to_region", "region"]
+
+[action.field]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit        = 1
+diagnostics = "exact"
+[action.field.diag.missing]
+code    = "doc.missing_key"
+subject = "given.land"
+
+[action.to_number]
+replace = "world.toml"
+find    = 'accepts = "field"'
+with    = 'accepts = "number"'
+
+[action.number]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit        = 1
+diagnostics = "exact"
+[action.number.diag.missing]
+code    = "doc.missing_key"
+subject = "given.land"
+
+[action.to_region]
+replace = "world.toml"
+find    = 'accepts = "number"'
+with    = 'accepts = "region"'
+
+[action.region]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit        = 0
+diagnostics = "exact"

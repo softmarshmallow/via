@@ -1,0 +1,12 @@
+format    = "via-case-1"
+summary   = "blend reads f('height'), a field the import brings, by its own name: it reads itself through the blend, graph.cycle; exit 1."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.cycle]
+code = "graph.cycle"

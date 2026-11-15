@@ -1,0 +1,76 @@
+name    = "strait"
+extent  = [0, 0, 544, 288]                  # metres: x east, y north
+resolution = 1
+datum   = "sea"                             # the islands say the same, so their heights join with no lift
+seed    = 5
+include = ["land", "water", "ways", "map", "review"]
+pack    = "starter"                         # the islands bind the same pack: one binding per asset id
+
+# Strait: two islands built apart, joined here (docs/plan.md, M4; R8, composition.md). Each island
+# is its own world, in its own folder, built and checked alone (`via build a/world.toml`). This
+# file owns the sea between them and places them by name; the layer above (layers/crossing.toml)
+# owns what crosses the join: the ferry, written by the two slipways it connects, and the views.
+#
+#   a/   A, the home island: a road east to its slipway, a chapel, a harbour house, a store
+#   b/   B, the far island: a slipway on its south shore, a landing road, a farm, a cottage,
+#        the Beacon; placed turned a quarter (face = 90), so its south shore faces the strait
+
+[layer.crossing]                            # content over the join: ranked above the imports' layer
+file  = "layers/crossing.toml"              # (composition.md 6.5, R36)
+owner = "crossing"
+rank  = 1
+
+[let]
+sea = 0                                     # metres: the water's surface, the datum
+
+# ------------------------------------------------------------------------------------------ fields
+# Named as the islands name theirs, with the same role, type and unit, so each is brought
+# (composition.md 6.2). Where no island's weight reaches, the strait's own values stand.
+
+[field.height]                              # the strait's bed, 5.5 m down, uneven
+role = "surface"
+base = "= -5.5 + 0.8 * fbm(60, 3, seed = 'bed')"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= max(f('height'), sea)"
+
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+[field.ground]                              # the strait's bed is sand; each island brings its own paint
+type = "weights"
+role = "material"
+
+[field.ground.then.sand]
+paint = "sand"
+
+# ------------------------------------------------------------------------------------------ the islands
+# `at` is where the island's own (0, 0) lies here; `face` where its north points. Nothing inside
+# either island depends on where it stands (composition.md 3): moving one re-runs only what reads
+# it (changes/move_b.toml).
+#
+# The blend reads the ground (R8): an island's ground comes in whole where it stands above 2 m down
+# and fades out by 5.5 m down, its own bed's depth, so the join lies on the sea floor, never along a line
+# nobody drew. Its second factor brings the weight to 0 over the last 8 m inside the footprint,
+# so an island whose bed has not reached 5.5 m down at its extent (its shore wavers by 5 m) still
+# meets the strait's bed with no step.
+
+[import.a]
+file  = "a/world.toml"
+at    = [24, 32]
+blend = "= smoothstep(-5.5, -2, a.height) * smoothstep(0, 8, d)"
+
+[import.b]
+file  = "b/world.toml"
+at    = [296, 256]
+face  = 90                                  # B's north points east: its south shore faces the strait
+blend = "= smoothstep(-5.5, -2, b.height) * smoothstep(0, 8, d)"
+
+# ------------------------------------------------------------------------------------------ the strait's own
+
+[feature.light]                             # a light on a rock in mid-strait, on the player's map
+kind  = "poi"
+at    = [276, 142]
+label = "Strait Light"

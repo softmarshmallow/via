@@ -6,7 +6,7 @@ actions   = ["plain", "seeded", "seeded_build", "bad", "bad_build"]
 # The same check compares the parent's height of the seeded build with the plain build's.
 
 [action.plain]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -18,13 +18,13 @@ with    = """max_grade = 100
 seed = 7"""
 
 [action.seeded_build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
 [action.seeded_build.same.noise]
 action = "plain"
-what   = "build/p/fields/height.npy"
+what   = "build/w/fields/height.npy"
 differ = true
 
 [action.bad]
@@ -33,7 +33,7 @@ find    = "seed = 7"
 with    = '''seed = "x"'''
 
 [action.bad_build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 1
 diagnostics = "includes"
 out         = "build/w"

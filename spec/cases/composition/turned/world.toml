@@ -2,6 +2,7 @@ name       = "turned"
 extent     = [0, 0, 32, 32]
 resolution = 1
 datum      = "sea"
+pack       = "primitive"
 include    = ["marks"]
 
 [field.height]
@@ -21,3 +22,8 @@ kind      = "way"
 path      = []
 starts_at = "o"
 ends_at   = "a.spot"
+
+# On an unfaced point of the turned import: it gains face (composition.md 3).
+[instance.post]
+asset = "box_small"
+on    = { ref = "a.spot" }

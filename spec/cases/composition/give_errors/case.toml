@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["unknown", "swap", "typed"]
 
 [action.unknown]
-via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
 exit        = 1
 diagnostics = "exact"
 [action.unknown.diag.unknown]
@@ -17,7 +17,7 @@ find    = '''lnad = "height"'''
 with    = '''land = "zone"'''
 
 [action.typed]
-via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
 exit        = 1
 diagnostics = "exact"
 [action.typed.diag.type]

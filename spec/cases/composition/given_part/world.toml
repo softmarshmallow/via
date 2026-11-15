@@ -1,0 +1,18 @@
+name       = "given_part"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.town]
+file = "town/world.toml"
+at   = [0, 0]
+give = { routes = ["r1"] }
+
+[feature.r1]
+kind = "way"
+path = [[2, 2], [10, 2]]

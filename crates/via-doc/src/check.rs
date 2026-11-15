@@ -165,6 +165,29 @@ impl<'w> Checker<'w> {
             Shape::On if t.get("ref").is_none() && t.get("of").is_none() => &[("ref", "a name")],
             Shape::Follows if t.get("ref").is_none() => &[("ref", "a name")],
             Shape::Choice if t.get("id").is_none() => &[("id", "an asset id")],
+            // `composition.md` 2: `file`, and one of `at` and `on`.
+            Shape::Import => match (
+                t.get("file").is_none(),
+                t.get("at").is_none() && t.get("on").is_none(),
+            ) {
+                (true, true) => &[
+                    ("file", "the imported world file"),
+                    ("at", "a point, or write `on`"),
+                ],
+                (true, false) => &[("file", "the imported world file")],
+                (false, true) => &[("at", "a point, or write `on`")],
+                (false, false) => &[],
+            },
+            // `composition.md` 8: `accepts`; a field or a number has no default without one.
+            Shape::Given if t.get("accepts").is_none() => {
+                &[("accepts", "`region`, `field`, `features` or `number`")]
+            }
+            Shape::Given
+                if t.get("default").is_none()
+                    && matches!(t.str("accepts"), Some("field" | "number")) =>
+            {
+                &[("default", "what the fill reads when no parent gives it")]
+            }
             _ => &[],
         };
         for (key, takes) in need {
@@ -343,6 +366,11 @@ impl<'w> Checker<'w> {
             (Takes::Points, Value::List(xs)) => {
                 xs.iter().all(|x| self.item_ok(Takes::Point, x, e, ctx))
             }
+            (Takes::Footprint, Value::Str(_)) => true,
+            (Takes::Exit, Value::Bool(_)) => true,
+            (Takes::Given, Value::Str(_) | Value::Num(_)) => true,
+            (Takes::Exit, Value::List(xs)) => xs.iter().all(|x| matches!(x.value, Value::Str(_))),
+            (Takes::Footprint, Value::List(_)) => self.item_ok(Takes::Points, item, e, ctx),
             (Takes::Ways, Value::List(xs)) => xs
                 .iter()
                 .all(|x| matches!(x.value, Value::Str(_)) || self.item_ok(Takes::Point, x, e, ctx)),
@@ -511,7 +539,9 @@ impl<'w> Checker<'w> {
         // `numbers.md` 7: a world seed of the wrong form has its own code.
         // A string or a float (`numbers.md` 7); any other form is the general `doc.type`.
         let seed_form = matches!(e.item.value, Value::Str(_) | Value::Num(_));
-        let code = if seed_form && ctx.id.is_none() && ctx.top == "seed" {
+        let import_seed =
+            ctx.top == "import" && ctx.path.last().map(String::as_str) == Some("seed");
+        let code = if seed_form && ((ctx.id.is_none() && ctx.top == "seed") || import_seed) {
             hint = "write an integer, 0 to 2^63 - 1".to_string();
             codes::num::SEED_TYPE
         } else if seed_form

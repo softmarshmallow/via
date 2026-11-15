@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "A footprint of the import's west half: hut at (2, 2) is brought, shed at (6, 6) outside the footprint is not."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.check.hut]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "a.hut"
+count  = 1
+[action.build.check.shed]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "a.shed"
+count  = 0

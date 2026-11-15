@@ -74,9 +74,14 @@ fn write(j: &J, out: &mut String) {
 fn number(norm: &str, integer: bool, takes: Option<Takes>) -> String {
     let fallback = || norm.to_string();
     match takes {
-        Some(Takes::Length | Takes::Point | Takes::Points | Takes::Ways | Takes::Lengths(_)) => {
-            via_num::parse_length(norm).map_or_else(|_| fallback(), via_num::write_length)
-        }
+        Some(
+            Takes::Length
+            | Takes::Point
+            | Takes::Points
+            | Takes::Ways
+            | Takes::Lengths(_)
+            | Takes::Footprint,
+        ) => via_num::parse_length(norm).map_or_else(|_| fallback(), via_num::write_length),
         Some(Takes::Integer) => fallback(),
         Some(Takes::Facing) => {
             via_num::parse_facing(norm).map_or_else(|_| fallback(), via_num::write_facing)
@@ -99,12 +104,12 @@ fn number(norm: &str, integer: bool, takes: Option<Takes>) -> String {
 
 fn element(takes: Option<Takes>) -> Option<Takes> {
     match takes {
-        Some(Takes::Points | Takes::Ways) => Some(Takes::Point),
+        Some(Takes::Points | Takes::Ways | Takes::Footprint) => Some(Takes::Point),
         Some(Takes::Point | Takes::Lengths(_)) => Some(Takes::Length),
         Some(Takes::Numbers(_) | Takes::NumberOrPair) => Some(Takes::Number),
         Some(Takes::Choices) => Some(Takes::Table(Shape::Choice)),
         Some(Takes::Free) => Some(Takes::Free),
-        Some(Takes::Strings | Takes::Names) => Some(Takes::Str),
+        Some(Takes::Strings | Takes::Names | Takes::Exit) => Some(Takes::Str),
         _ => None,
     }
 }

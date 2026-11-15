@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "inside('a.footprint') reads the footprint as placed (4 m by 8 m at (8, 4)): probe 1 inside, 0 outside; a feature follows a.footprint and is built."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.in]
+path  = "build/w/fields/probe.npy"
+post  = [10, 8]
+value = 1
+[action.build.file.out]
+path  = "build/w/fields/probe.npy"
+post  = [14, 8]
+value = 0

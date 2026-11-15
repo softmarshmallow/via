@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "The import's pack binds box_small as the parent's primitive pack does: one asset, no import.binding_differs; then bound to a 1 m box: the error."
+milestone = 4
+actions   = ["build", "rebind", "rebound"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.rebind]
+replace = "a/pack.toml"
+find    = "size      = [2, 2, 2]"
+with    = "size      = [1, 1, 1]"
+
+[action.rebound]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.rebound.diag.binding]
+code = "import.binding_differs"
+data = { id = "box_small" }

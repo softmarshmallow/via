@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "The parent's height from a file p.npy (2) around a flat import (0): import.seam grade 2; the file edited to 5 between two builds on one store: grade 5, as a fresh build gives (composition.md 12, joincheck)."
+milestone = 4
+actions   = ["first", "edit", "edited"]
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.first.diag.seam]
+code = "import.seam"
+data = { grade = 2 }
+
+[action.edit]
+write = "p.npy"
+from  = "later/p5.npy"
+
+[action.edited]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.edited.diag.seam]
+code = "import.seam"
+data = { grade = 5 }

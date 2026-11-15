@@ -4,7 +4,7 @@ milestone = 4
 actions   = ["build"]
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "includes"
 out         = "build/w"

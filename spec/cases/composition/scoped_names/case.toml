@@ -6,7 +6,7 @@ actions   = ["build", "typo", "typo_merge", "bare", "bare_merge"]
 # names_count counts by prefix: "a.hut" matches a.hut and a.hut2, so 2.
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"
@@ -28,7 +28,7 @@ find    = '''ref = "a.hut" }'''
 with    = '''ref = "a.hutt" }'''
 
 [action.typo_merge]
-via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
 exit        = 1
 diagnostics = "exact"
 [action.typo_merge.diag.unknown]
@@ -41,7 +41,7 @@ find    = '''ref = "a.hutt" }'''
 with    = '''ref = "hut2" }'''
 
 [action.bare_merge]
-via         = ["merge", "world.toml", "--lib", "{work}/lib"]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
 exit        = 1
 diagnostics = "exact"
 [action.bare_merge.diag.unknown]

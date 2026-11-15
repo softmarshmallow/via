@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "The import declares no datum and has lift = 2: no diagnostic, its surface 3 + 2 = 5 in the parent; its moss (no role) 1, not lifted."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.h]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 5
+[action.build.file.moss]
+path  = "build/w/fields/moss.npy"
+post  = [12, 4]
+value = 1

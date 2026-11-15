@@ -142,6 +142,8 @@ pub struct CliPlan<'a> {
     pool: crate::stepwork::Pool,
     /// The model's build, made once: what every step call and trace replay reads.
     build: std::sync::OnceLock<Arc<via_model::Build>>,
+    /// The digest of everything the model's build is made from ([`CliPlan::leaves_digest`]).
+    leaves: std::sync::OnceLock<Digest>,
 }
 
 fn write_id(path: &str) -> NodeId {
@@ -394,6 +396,7 @@ impl<'a> CliPlan<'a> {
             checked,
             pool: crate::stepwork::Pool::default(),
             build: std::sync::OnceLock::new(),
+            leaves: std::sync::OnceLock::new(),
             written: Mutex::new(None),
             last: Mutex::new(BTreeMap::new()),
             chains: Mutex::new(BTreeMap::new()),
@@ -800,6 +803,17 @@ impl<'a> CliPlan<'a> {
                     }
                     _ => continue,
                 };
+                // A thing brought from an import (`a.hut`) has no node of its own in the
+                // parent: its chain ends at the import as placed (`composition.md` 11, 12).
+                let targets = if targets.iter().all(|n| self.model.def(n).is_none()) {
+                    e.name
+                        .split_once('.')
+                        .map(|(h, _)| NodeId::of("placed", h))
+                        .filter(|n| self.model.def(n).is_some())
+                        .map_or(targets, |n| vec![n])
+                } else {
+                    targets
+                };
                 // Every instance of one producer has the same targets, its `held:` node: the
                 // chains are worked out once per set of targets (a scatter of thousands is one).
                 let mut found = memo
@@ -1105,6 +1119,97 @@ impl<'a> CliPlan<'a> {
             .clone()
     }
 
+    /// The digest of everything the model's build is made from (`graph.md` 5.1, Reuse): the
+    /// build key (versions, sources, declared inputs, trust, lookups and flags) and every leaf
+    /// of this graph's model, the text of each source and the bytes of each input. The joined
+    /// world of a stratum differs from the world the build key names; its leaves say how.
+    fn leaves_digest(&self) -> Digest {
+        *self.leaves.get_or_init(|| {
+            let mut e = via_graph::Enc::new();
+            e.str("via-leaves-1").str(&self.ctx.key.hex());
+            let mut ids: Vec<NodeId> = self
+                .model
+                .ids()
+                .into_iter()
+                .chain(self.defs.keys().cloned())
+                .filter(|i| matches!(i.family(), "source" | "input"))
+                .collect();
+            ids.sort();
+            ids.dedup();
+            e.len(ids.len());
+            for id in &ids {
+                let def = self.model.def(id).or_else(|| self.defs.get(id));
+                e.str(id.as_str());
+                let direct = def.map_or(&[][..], |d| d.direct.as_slice());
+                e.len(direct.len());
+                for (k, v) in direct {
+                    e.str(k).str(&v.hex());
+                }
+            }
+            Digest::of(&e.finish())
+        })
+    }
+
+    /// The store key of a memo of a step's read or request (`graph.md` 5.1, Reuse): what it is
+    /// a function of, so an equal key holds an equal digest and the build is not made to find it.
+    fn memo_key(
+        &self,
+        what: &str,
+        step: &NodeId,
+        bad: Option<&crate::stepview::Bad>,
+        rest: &[&str],
+    ) -> Digest {
+        let mut e = via_graph::Enc::new();
+        e.str("via-memo-1")
+            .str(what)
+            .str(&self.leaves_digest().hex())
+            .str(step.as_str());
+        match bad {
+            None => {
+                e.byte(0);
+            }
+            Some(b) => {
+                e.byte(1);
+                for set in [&b.fields, &b.features, &b.steps] {
+                    e.len(set.len());
+                    for x in set {
+                        e.str(x);
+                    }
+                }
+                e.byte(u8::from(b.instances));
+            }
+        }
+        e.len(rest.len());
+        for r in rest {
+            e.str(r);
+        }
+        Digest::of(&e.finish())
+    }
+
+    /// The memo key of one read of a step's trace.
+    fn answer_memo(
+        &self,
+        step: &NodeId,
+        bad: Option<&crate::stepview::Bad>,
+        read: &via_graph::Read,
+    ) -> Digest {
+        self.memo_key("answer", step, bad, &[&read.method, &read.request.hex()])
+    }
+
+    fn memo_get(&self, key: &Digest) -> Option<Digest> {
+        self.ctx.store.get_key(key).map(|r| r.value)
+    }
+
+    fn memo_put(&self, key: &Digest, value: Digest) {
+        self.ctx.store.put_key(
+            key,
+            &via_graph::KeyRecord {
+                value,
+                diags: Vec::new(),
+            },
+        );
+    }
+
     /// What a step call is handed beyond the step.
     fn call<'b>(
         &'b self,
@@ -1157,8 +1262,16 @@ impl<'a> CliPlan<'a> {
             && l.decl.when == "generate"
             && crate::commit::folder(&l.decl.home, &sid, None).is_dir();
         let request = if (l.trusted || committed) && l.code.is_ok() {
-            let build = self.the_build();
-            steps::request_key(&l.decl, &self.call(&build, item.as_deref(), J::Null, None))
+            // The request is a function of the model's leaves and the step (its statement is a
+            // source): kept under them, so a build with the same leaves does not make the build.
+            let memo = self.memo_key("request", id, None, &[]);
+            self.memo_get(&memo).unwrap_or_else(|| {
+                let build = self.the_build();
+                let r =
+                    steps::request_key(&l.decl, &self.call(&build, item.as_deref(), J::Null, None));
+                self.memo_put(&memo, r);
+                r
+            })
         } else {
             Digest::of(b"via-request-1 not started")
         };
@@ -1503,6 +1616,13 @@ impl<'a> CliPlan<'a> {
         } else {
             (!l.trusted && l.decl.when != "generate") || input_missing
         };
+        // Each read a completed run made, as the memo a trace check finds (`graph.md` 5.1,
+        // Reuse): the answer the run was given is the one a check computes again.
+        if complete && r.ran && !from_gen {
+            for rd in &r.reads {
+                self.memo_put(&self.answer_memo(id, bad.as_deref(), rd), rd.answer);
+            }
+        }
         // A plain command's one read, method `data`: its request without absolute paths, which
         // is also all it is answered.
         let data = r.data.map(|d| via_graph::Read {
@@ -1844,10 +1964,16 @@ impl Plan for CliPlan<'_> {
     fn answer(&self, step: &NodeId, read: &via_graph::Read) -> Option<Digest> {
         let (sid, _) = split_step(step);
         let l = self.ctx.lints.iter().find(|l| l.decl.id == sid)?;
+        let bad = self.bad_for(l.decl.worker && l.decl.when == "lint");
+        // An answer is a function of the model's leaves, the step, what failed and the request
+        // (`graph.md` 5.1, Reuse): kept under them, it is checked without making the build.
+        let memo = self.answer_memo(step, bad.as_deref(), read);
+        if let Some(a) = self.memo_get(&memo) {
+            return Some(a);
+        }
         let build = self.the_build();
         let grid = build.grid?;
         let objects = via_proto::store::Store::open(self.ctx.store.root().join("objects")).ok()?;
-        let bad = self.bad_for(l.decl.worker && l.decl.when == "lint");
         let view = crate::stepview::View {
             world: self.ctx.world,
             build: &build,
@@ -1862,7 +1988,9 @@ impl Plan for CliPlan<'_> {
             stratum: Some(self.model),
             bad: bad.as_deref(),
         };
-        crate::stepwork::replay(&view, self.ctx.store, read)
+        let answer = crate::stepwork::replay(&view, self.ctx.store, read)?;
+        self.memo_put(&memo, answer);
+        Some(answer)
     }
 
     fn note_bad(&self, bad: &BTreeSet<NodeId>) {
