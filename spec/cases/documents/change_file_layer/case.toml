@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "A change file's clear naming a scatter of layer 1 is declared in that layer: no doc.upward_ref; a pin naming nothing above rank 0 stays in world."
+milestone = 3
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "changes/edits.toml"]
+exit = 0
+
+[action.merge.file.clear]
+stream  = "stdout"
+pointer = "/clear/gap"
+value   = { "@layer" = "dressing", by = ["trees"], on = { near = [80, 90], of = "trees" } }
+
+[action.merge.file.pin]
+stream  = "stdout"
+pointer = "/pin/marker"
+value   = { "@layer" = "world", asset = "box_small", at = [20, 20] }

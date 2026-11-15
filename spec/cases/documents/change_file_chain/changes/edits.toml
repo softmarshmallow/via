@@ -1,0 +1,11 @@
+# The clear names `under`, a scatter this same file adds; `under` lies within `copse` of layer
+# `dressing` (rank 1). Both are declared in `dressing`: found again until nothing moves
+# (documents.md 6.1). The clear is applied first, so one pass would leave it in `world`.
+[clear.gap]
+on = { of = "under", near = [80, 90] }
+by = ["under"]
+
+[scatter.under]
+within  = "copse"
+assets  = ["box_small"]
+spacing = 8

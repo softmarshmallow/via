@@ -711,6 +711,98 @@ pub(crate) fn find_id<'b>(
     None
 }
 
+/// The names an entity of top table `top` writes, each one reference checked for direction (5.1):
+/// its simple name keys, the names inside `on`, `follows` and `within`, and on a feature the
+/// keys its kind lists in `names`.
+fn named_refs<'a>(root: &Table, top: &str, ent: &'a Table) -> Vec<Named<'a>> {
+    let mut refs: Vec<Named<'a>> = Vec::new();
+    let simple: &[&str] = match top {
+        "feature" => &["starts_at", "ends_at"],
+        "pin" | "clear" => &["by"],
+        "scatter" => &["within"],
+        "network" => &["from", "within"],
+        "cells" => &["within", "frontage"],
+        _ => &[],
+    };
+    for k in simple {
+        if let Some(x) = ent.get(k) {
+            names_in(vec![(*k).to_string()], x, &mut refs);
+        }
+    }
+    for (outer, inner) in [
+        ("on", "ref"),
+        ("on", "of"),
+        ("follows", "ref"),
+        ("within", "of"),
+    ] {
+        if let Some(x) = ent.table(outer).and_then(|o| o.get(inner)) {
+            names_in(vec![outer.to_string(), inner.to_string()], x, &mut refs);
+        }
+    }
+    if top == "feature" {
+        let names = ent
+            .str("kind")
+            .and_then(|k| root.table("kind").and_then(|ks| ks.table(k)))
+            .and_then(|k| match k.value("names") {
+                Some(Value::List(items)) => Some(items.clone()),
+                _ => None,
+            })
+            .unwrap_or_default();
+        for n in names {
+            if let Value::Str(s) = &n.value {
+                if let Some(x) = ent.get(&s.text) {
+                    names_in(vec![s.text.clone()], x, &mut refs);
+                }
+            }
+        }
+    }
+    refs
+}
+
+/// Re-homes what change files added (`documents.md` 6.1): each entity is declared in the layer
+/// of highest rank among `world` and the layers of the names it writes, so it names downward
+/// only. Repeated until nothing moves, since an added entity may name another. `added` is taken in
+/// the order the changes applied; the result does not depend on it, since a home only rises.
+pub(crate) fn rehome(
+    base: &mut crate::change::Base,
+    added: &[(String, String)],
+    ranks: &std::collections::BTreeMap<String, Rank>,
+) {
+    let rank = |l: &str| ranks.get(l).map(|r| r.rank);
+    // Each pass can only raise a home, and there are finitely many layers: it ends.
+    for _ in 0..=ranks.len() {
+        let mut moved = false;
+        for (top, id) in added {
+            let Some(Value::Table(ent)) = base
+                .root
+                .table(top)
+                .and_then(|t| t.get(id))
+                .map(|e| &e.item.value)
+            else {
+                continue;
+            };
+            let mut best = "world".to_string();
+            for r in named_refs(&base.root, top, ent) {
+                let first = r.name.split('.').next().unwrap_or("");
+                if let Some((_, h)) = find_id(&base.root, &base.homes, first) {
+                    if rank(h) > rank(&best) {
+                        best = h.clone();
+                    }
+                }
+            }
+            let key = (top.clone(), id.clone());
+            let now = base.homes.get(&key).cloned().unwrap_or_default();
+            if rank(&best) > rank(&now) {
+                base.homes.insert(key, best);
+                moved = true;
+            }
+        }
+        if !moved {
+            break;
+        }
+    }
+}
+
 /// Step 7's direction check on named references (5.1), and `doc.dangling` for a name whose
 /// target a requested change removed.
 pub(crate) fn direction(
@@ -728,47 +820,7 @@ pub(crate) fn direction(
             let Value::Table(ent) = &e.item.value else {
                 continue;
             };
-            let mut refs: Vec<Named> = Vec::new();
-            let simple: &[&str] = match top {
-                "feature" => &["starts_at", "ends_at"],
-                "pin" | "clear" => &["by"],
-                "scatter" => &["within"],
-                "network" => &["from", "within"],
-                "cells" => &["within", "frontage"],
-                _ => &[],
-            };
-            for k in simple {
-                if let Some(x) = ent.get(k) {
-                    names_in(vec![(*k).to_string()], x, &mut refs);
-                }
-            }
-            for (outer, inner) in [
-                ("on", "ref"),
-                ("on", "of"),
-                ("follows", "ref"),
-                ("within", "of"),
-            ] {
-                if let Some(x) = ent.table(outer).and_then(|o| o.get(inner)) {
-                    names_in(vec![outer.to_string(), inner.to_string()], x, &mut refs);
-                }
-            }
-            if top == "feature" {
-                let names = ent
-                    .str("kind")
-                    .and_then(|k| root.table("kind").and_then(|ks| ks.table(k)))
-                    .and_then(|k| match k.value("names") {
-                        Some(Value::List(items)) => Some(items.clone()),
-                        _ => None,
-                    })
-                    .unwrap_or_default();
-                for n in names {
-                    if let Value::Str(s) = &n.value {
-                        if let Some(x) = ent.get(&s.text) {
-                            names_in(vec![s.text.clone()], x, &mut refs);
-                        }
-                    }
-                }
-            }
+            let refs = named_refs(root, top, ent);
             let Some(home) = homes.get(&(top.to_string(), id.clone())) else {
                 continue;
             };

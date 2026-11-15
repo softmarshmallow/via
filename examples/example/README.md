@@ -106,10 +106,12 @@ Written down, not worked around in the core:
 
 Read from the sheets at every view (scratch renders, not committed):
 
-- `under_bridge`: the footbridge is a grey causeway across the beck; the water above it stands as
-  a pool against it, since the stand-in deck is terrain (gap 5). It reads as a dam, not a bridge.
-- `lane_bridge`: from 15 m back the deck is a grey hump with a dip before it where the lane's bed
-  meets the bridgehead's bank.
+- `under_bridge`: the footbridge is a grey causeway across the beck, since the stand-in deck is
+  terrain (gap 5). (Fixed, M3 slice 5) The beck no longer pools against it: depth 1 m off a face
+  0.55 to 0.30 m, as 15 m off (lib/ways crossing `pass`). Water still cannot run under terrain.
+- `lane_bridge`: (Fixed, M3 slice 5) the dip before the deck where the lane's bed met the
+  bridgehead's 1:2 bank: the lanes now reach the deck at 1:10 (`approach`; steepest metre of the
+  last 20 m 0.49 to 0.10). The lane's own cut-only bed still sags 0.47 m below the deck 7 m back.
 - `east_row_view`: the four row houses stand in a line, doors to the lane, gables a metre or two
   apart: a row by hand, not a terrace (houses.py's rows stand wall to wall).
 - `under_crag`: the crag reads as a grey wall with a flat top, the cliff kind's scarp.

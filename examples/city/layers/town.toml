@@ -1,0 +1,208 @@
+# Layer `dwellings` (rank 1): what stands on the lots, the paint, the lints that read the whole
+# city, and the views at the meetings. A step reads the lots (a cells table) only from a layer above
+# the one that declares it (geometry.md 8.3).
+
+# Rows of town houses along each lot's frontage (quay's), one step per district. Downtown and the
+# rows lie on 1.2 m in 100 m: their houses stand on the ground as it lies (`max_relief` 0.5 m across
+# a footprint), with no terrace. A terrace reads every other terrace (`inside('kind:terrace')`), and
+# the core's graph lists every member of a selector for each entry that reads it: terraces under
+# the whole city did not build (README, "Build"). The old town's hill is terraced, as townland's.
+[step.houses_down]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/houses.py"]
+params  = { lots = "lots_down", setback = 0.5, gap = 0.25, max_relief = 0.5, assets = ["house_row", "house_narrow"], streets = ["kind:main_street", "kind:street"] }
+
+[step.houses_rows]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/houses.py"]
+params  = { lots = "lots_rows", setback = 0.5, gap = 0.25, max_relief = 0.5, assets = ["house_row", "house_narrow"], streets = ["kind:main_street", "kind:street"] }
+
+[step.houses_old]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/houses.py"]
+params  = { lots = "lots_old", setback = 0.5, gap = 0.25, max_relief = 1.0, assets = ["house_row", "house_narrow"], streets = ["kind:main_street", "kind:street"] }
+
+[step.review_houses]                        # the houses step returns terraces, which change the
+when    = "lint"                            # ground: a lint must check it (authority.md 7)
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+checks  = ["houses_down", "houses_rows", "houses_old"]
+
+# lib/review's street form (form.py, R15) and the decks over the river (R18). The district
+# outlines and the limits are named, so a street ending on one is an edge end, not a dead end; the
+# gates are where the main ways leave. The freeway is a way, the interchange plate is not a line.
+[step.form]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/form.py"]
+params  = { ways = ["main_street", "street", "freeway"], meets = ["crossing"], edges = ["downtown", "rows", "old_town", "limits"], gates = ["harbor_gate_w", "harbor_gate_e", "central_gate_w", "central_gate_e", "north_gate_w", "north_gate_e", "west_ave_s", "west_ave_n", "grand_ave_s", "grand_ave_n", "east_ave_s", "east_ave_n", "freeway_s", "freeway_n"], water = ["beck"], crossings = ["crossing"] }
+
+# lib/review's reach lint between stated places: from the west end of the central arterial a
+# walker reaches the far bank over each bridge, the old town's hill, the north and south gates.
+[step.reach]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach = [
+  { profile = "walker", from = "central_gate_w", to = ["central_gate_e", "harbor_gate_e", "north_gate_e", "hill", "grand_ave_s", "grand_ave_n"] },
+]
+
+[step.reach.params.profiles.walker]         # metres; quay's walker
+grade = 0.5
+step  = 0.2
+width = 0.6
+wade  = 0.3
+reach = 2
+
+# ------------------------------------------------------------------------------------------ paint
+# Setts kerb to kerb on every way (the freeway too: the starter pack has no asphalt), flags on the
+# footways and the decks, gravel in the river's bed and on its banks below the water's edge.
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.pavement]
+paint = "flags"
+mask  = "= max(1 - smoothstep(10.5, 11.0, dist('kind:main_street', 14)), 1 - smoothstep(3.75, 4.25, dist('kind:street', 6)))"
+
+[field.ground.then.street]
+paint = "setts"
+mask  = "= max(max(1 - smoothstep(6.5, 7.0, dist('kind:main_street', 14)), 1 - smoothstep(2.25, 2.75, dist('kind:street', 6))), 1 - smoothstep(10, 10.5, dist('kind:freeway', 14)))"
+
+[field.ground.then.plate]                   # the interchanges' plates
+paint = "setts"
+mask  = "= 1 - smoothstep(16, 16.5, dist('kind:interchange', 20))"
+
+[field.ground.then.shore]                   # the river's bed and banks below the water's edge
+order = 1
+paint = "gravel"
+mask  = "= (1 - smoothstep(18, 20, abs(x - 1000 - 0.1 * (y - 800)))) * (1 - smoothstep(0, 0.5, f('height') - f('water') - 0.6))"
+
+[field.ground.then.deck]                    # the crossings' decks
+order = 2
+paint = "flags"
+mask  = "= 1 - smoothstep(6.5, 7, dist('kind:crossing', 10))"
+
+# ------------------------------------------------------------------------------------------ views
+# From eye height at every kind of meeting (R17): a way at each crossing's end, on each deck, the
+# river at each deck's face, a way at each interchange, an avenue across an arterial, a street on
+# an arterial, each district's streets, a street ending on a district's edge, a gate. Guides are
+# the places views look at; views on generated streets stand on a network's edge by place
+# (`{ of, class, near }`), so they follow their street when it is found again.
+
+[feature.look_down_river]                   # downstream, the middle of the river at the south edge
+at = [930, 100]
+[feature.look_grand_central]
+at = [700, 830]
+[feature.look_downtown]
+at = [880, 1000]
+[feature.look_rows]
+at = [600, 1000]
+[feature.look_hill]
+at = [1260, 1080]
+[feature.look_city]
+at = [1100, 820]
+
+# way and crossing, at each crossing's west end; on each deck; at the central deck's faces
+[feature.harbor_head]
+kind   = "bookmark"
+on     = { ref = "harbor_mid", t = 0.97 }
+toward = "harbor_bridge.end"
+
+[feature.central_head]
+kind   = "bookmark"
+on     = { ref = "central_mid", t = 0.96 }
+toward = "central_bridge.end"
+
+[feature.north_head]
+kind   = "bookmark"
+on     = { ref = "north_mid", t = 0.97 }
+toward = "north_bridge.end"
+
+[feature.central_east_head]                 # from the east bank back over the deck
+kind   = "bookmark"
+on     = { ref = "central_east", t = 0.03 }
+toward = "central_bridge.start"
+
+[feature.on_harbor_bridge]
+kind   = "bookmark"
+on     = { ref = "harbor_bridge", t = 0.5 }
+toward = "look_down_river"
+
+[feature.on_central_bridge]
+kind   = "bookmark"
+on     = { ref = "central_bridge", t = 0.5 }
+toward = "look_down_river"
+
+[feature.on_north_bridge]
+kind   = "bookmark"
+on     = { ref = "north_bridge", t = 0.5 }
+toward = "central_bridge"
+
+[feature.central_face]                      # on the west bank 30 m downstream, at the water's edge
+kind   = "bookmark"
+on     = { ref = "river", t = 0.52, offset = -17 }
+toward = "central_bridge"
+
+# way and interchange: an arterial and the freeway arriving at each plate
+[feature.ix_harbor_view]
+kind   = "bookmark"
+on     = { ref = "harbor_west", t = 0.95 }
+toward = "ix_harbor"
+
+[feature.ix_central_view]
+kind   = "bookmark"
+on     = { ref = "central_mid", t = 0.06 }
+toward = "ix_central"
+
+[feature.ix_central_freeway]
+kind   = "bookmark"
+on     = { ref = "freeway_mid", t = 0.96 }
+toward = "ix_central"
+
+[feature.ix_north_view]
+kind   = "bookmark"
+on     = { ref = "freeway_north", t = 0.08 }
+toward = "ix_north"
+
+# way and way: the grand avenue across the central arterial
+[feature.grand_central]
+kind   = "bookmark"
+on     = { ref = "grand_ave", t = 0.45 }
+toward = "look_grand_central"
+
+# street and arterial; each district's streets; a street on a district's edge
+[feature.downtown_street]                   # downtown: up a long street of the grid
+kind   = "bookmark"
+on     = { of = "central_blocks", class = "edge", near = [860, 930], t = 0.5 }
+toward = "look_downtown"
+
+[feature.downtown_at_central]               # a downtown street where it meets the central arterial
+kind   = "bookmark"
+on     = { of = "central_blocks", class = "edge", near = [840, 790], t = 0.5 }
+toward = "look_city"
+
+[feature.rows_street]                       # the rows: the turned grid
+kind   = "bookmark"
+on     = { of = "row_blocks", class = "edge", near = [592, 900], t = 0.5 }
+toward = "look_rows"
+
+[feature.old_town_street]                   # the old town: a contour street round the hill
+kind   = "bookmark"
+on     = { of = "old_blocks", class = "edge", near = [1180, 960], t = 0.5 }
+toward = "look_hill"
+
+[feature.old_town_edge]                     # an old town street where it leaves the district
+kind   = "bookmark"
+on     = { of = "old_blocks", class = "edge", near = [1400, 1000], t = 0.5 }
+toward = "look_hill"
+
+[feature.from_east_gate]                    # the city from the central arterial's east gate
+kind   = "bookmark"
+on     = { ref = "central_east", t = 0.98 }
+toward = "look_city"

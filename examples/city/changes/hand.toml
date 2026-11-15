@@ -1,0 +1,10 @@
+# Hand edits on a generated city (R13): a clear empties one lot the cells table cut downtown, and a
+# pin stands a shed on another lot in the old town, taking the place of the house it overlaps
+# (identity.md 4.2). Both name what they act on by place, so neither moves when the streets
+# around them are found again.
+[clear.one]
+on = { of = "lots_down", class = "cell", near = [854, 701] }
+
+[pin.shed]
+asset = "shed_gable"
+at    = [1184, 982]

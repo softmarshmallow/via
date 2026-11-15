@@ -385,10 +385,20 @@ leaves `doc.missing_key`. `remove` or `unset` that names nothing in the base is
 `doc.remove_missing`: a change that has gone stale says so.
 
 **Layer of what a change writes.** A key a change writes onto an existing entity takes that entity's
-layer. An entity an inline change adds is declared in the layer that declares the change; one a
-change file adds is declared in `world`. Which layer a change file's added entities belong to, other
-than `world`: (open), decided by the first example whose change file must add a table that names
-something above rank 0.
+layer. An entity an inline change adds is declared in the layer that declares the change. One a
+change file adds is declared in the highest-ranked of `world` and the layers that declare the
+names it writes as named references (section 5: `by`, `on.ref`, `on.of`, `within`, `from`,
+`frontage`, `starts_at`, `ends_at`, `follows.ref`, a kind's `names`): the lowest layer from which
+it names downward only. So `[clear.gap] by = ["trees"]` in a change file, where `trees` is a scatter of layer
+`dressing`, is declared in `dressing` and is no `doc.upward_ref`; a pin that names nothing above
+rank 0 stays in `world`. An entity naming another the same file adds takes that one's layer, found
+again until nothing moves (case `change_file_chain`). Names a formula reads are not among them: a
+formula in a change file that reads a higher layer is still `doc.upward_ref` (case
+`change_file_formula`). Decided in M3 by `example` (its gap 2: a clear and a pin naming
+`orchard_trees`, a dress scatter); case `change_file_layer`. Why not `world`: a
+change file is written over the whole world, and its hand edits speak to whatever stands there; why
+not always the top layer: a feature it adds that names only the world's things would leave the
+views of every step below the top (`authority.md` 4.4), changing what those steps read.
 
 **Unrequested changes are checked too** (principle 4; challenge 33: change scenarios that are never
 run rot). After the merged world is formed, every inline change not requested in this build is
@@ -767,6 +777,9 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 | change_empty | `[change.x]` holding nothing | merge | `doc.change_empty` warning. |
 | change_nested | `[change.a.change.b]` | merge | `doc.change_nested`. |
 | change_layer | A change writing `[layer.extra]` | merge | `doc.not_yet` naming M4. |
+| change_file_layer | A change file holding a clear with `by` and `on.of` naming a scatter of layer `dressing` (rank 1), and a pin at a point (M3) | merge | No diagnostic; the clear's `@layer` is `dressing`, the pin's `world`. |
+| change_file_chain | A change file holding a clear naming a scatter the same file adds, that scatter `within` a region of layer `dressing` (M3) | merge | No diagnostic; both `@layer` `dressing`. |
+| change_file_formula | A change file adding a field whose formula reads a `let` of layer `dressing` (M3) | merge | `doc.upward_ref` at the change file. |
 | change_kind_add | A change adding `[kind.new]` | merge | `doc.kind_outside_library`. |
 | change_pack_table | A change writing `[asset.cart]` | merge | `doc.unknown_key`, hint `pack`. |
 | change_fixed | A change writing `include`; another writing `name` | merge | `doc.change_fixed` each. |
@@ -826,7 +839,6 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 |---|---|
 | Where the spike-to-v1 translation for oracle comparison lives. | M0 step 7. |
 | Versions of a library. | The first shipped library change that breaks a world; no later than M7. |
-| Which layer a change file's added entities belong to, other than `world`. | The first example whose change file must add a table naming something above rank 0. |
 | Changes that add, remove or re-rank layers (`doc.not_yet` until then). | M4, with a first pass that settles the layer set before the base. |
 | Whether a number key may name a shared constant. | The first example where one change must move several literals together. |
 | How a world keeps an included kind with a local difference, other than an always-requested change or a copy under a new name. | The first example that needs it. |

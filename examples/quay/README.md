@@ -49,6 +49,16 @@ quayside are flagged, the wall face stone. Base: 123 houses on 74 of 135 lots (w
 
 ## Known faults (M3 slice 2 walk, 2026-11-15)
 
+- (Fixed, M3 slice 5 ways) The main way fell 2.38 m in its last 3 m onto the quay (`way_water`'s
+  walker stopped there) and `d35`, `d175` ended at 0.47 m a metre: the quay's `ends` hold (lib/town
+  `waterfront`) brings a way's bed to the deck at `end_grade` (1:5). The steepest metre of the last
+  20 m of a way on the quay is now 0.34 (`way_end_grade`; the first 2 m of `d35`, `d175`, where the
+  deck's 3 m `bank` fade is concave), the main way's 0.20. The wall no longer runs round the quay's
+  ends (80.8 to 35.6 degrees past them). The hold changes the ground the streets step reads by the
+  quay: base 138 lots, 128 houses, 9 `place.relief`, 14 `doors_off` (were 135, 125, 8, 12).
+  On the combined slice 5 tree (ways, streets and houses together): 136 lots, 110 houses, 9
+  `place.relief`, 0 `doors_off` (expect.toml, "M3 slice 5 (fix)").
+
 - (s4 town pass) 8 `place.relief` in base: on a down street each house of a row is its own floor,
   and the step under the party wall falls within one 0.5 m post cell of the footprint, so the
   exact relief reads part of the neighbour's floor. A raised floor (`doors_off`) has no steps.

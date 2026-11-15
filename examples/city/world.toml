@@ -1,0 +1,425 @@
+name       = "city"
+extent     = [0, 0, 1600, 1600]
+resolution = 2                              # metres between posts: 640,000 posts; why 2, README "Build"
+seed       = 77
+include    = ["land", "water", "ways", "town", "review"]   # kinds as data; the core knows none of these words
+pack       = "starter"
+
+# A city on a river (docs/plan.md, M3; R13, R15 to R18): the spike's `city` (1.6 km, a river,
+# freeways and arterials drawn by hand, districts each with its own street pattern cut into wards
+# by the arterials, bridges where an arterial meets the river, ramps where one meets a freeway, lots
+# filling blocks), rebuilt in the v1 vocabulary on the new core and lib/. What changed from the
+# spike, line by line, is in README.md.
+#
+# The author writes the land, the river, the city's limits, the places the main ways join (gates
+# on the limits, three crossings, three interchanges), the main ways by what they connect, and
+# three districts with their street patterns. Nobody writes a street, a ward, a block, a lot or a
+# house.
+#
+# - Arterials and the freeway are written by their ends and routed over the land (R16). An
+#   east-west arterial is three pieces: gate to interchange, interchange to the crossing's west end,
+#   the crossing's east end to the east gate. A north-south avenue runs gate to gate and crosses the
+#   east-west ones where the network of wards nodes them (geometry.md 8.1, Meetings).
+# - Every arterial-river meeting is a lib/ways `crossing` the arterial arrives at by name (R18);
+#   every freeway-arterial meeting is a lib/ways `interchange` (new, a stand-in: README).
+# - The wards are the faces of the skeleton (main ways, freeway, river, crossings, limits); each
+#   district's streets are lib/town's streets step in its own pattern (`grid` at two bearings and
+#   spacings, `contour` on the hill), noded with the main ways into blocks; lots fill every block's
+#   street sides; houses stand on them (layers/town.toml).
+#
+# Given, in M4 (the spike's `[given.limits]`, `[given.urban]`, `[given.districts]`): a larger map
+# will give this city its limits and its districts, and answer its gates as exits (TODO.md, "From
+# the city's exits"). Standalone, the city writes its own: `limits` a square 60 m inside the
+# extent, and the three districts below. `urban` (how built up) has no counterpart yet: every lot
+# that holds a house gets one.
+
+[layer.dwellings]
+file  = "layers/town.toml"
+owner = "dwellings"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ fields
+
+# The land: 8 m at the south edge rising 3 m per km north, climbing 1.2 m per 100 m away from the
+# river's line (x = 1000 + 0.1 (y - 800), the river's written course: a valley written by its line,
+# not as `dist('river')`, townland's lesson), a hill of 24 m round `hill` on the east bank (the
+# old town's), and broad lumps of 1.5 m away from the banks.
+[field.height]
+role = "surface"
+base = "= 8 + 0.003 * y + 0.012 * min(abs(x - 1000 - 0.1 * (y - 800)), 500) + 24 * (1 - smoothstep(30, 260, dist('hill', 300))) + 1.5 * fbm(200, 3, seed = 'lumps') * smoothstep(40, 80, abs(x - 1000 - 0.1 * (y - 800)))"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                            # ways, decks and plates keep props off it (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.hill]                              # the old town's hill, on the east bank
+at = [1260, 1080]
+
+# The river: a written course from the north edge to the south, straight (lib/water's `beck`,
+# 30 m of water, 3 m deep). The spike's river was a lake region 70 m wide; a beck has a line, so a
+# crossing can stand square to it and move with it (R18).
+[feature.river]
+kind       = "beck"
+width      = 30
+depth      = 3
+flow       = 1.5
+bank_grade = 0.3                            # the bank's cut meets the ground 20 m from the line
+path       = [[1080, 1600], [920, 0]]
+
+# The city's limits (M4 will give them: the spike's `[given.limits]`). The gates stand on them.
+[feature.limits]
+region = [[60, 60], [1540, 60], [1540, 1540], [60, 1540]]
+
+# ------------------------------------------------------------------------------------------ the skeleton: places
+
+# Gates: where a main way leaves the city, on the limits (M4: an exit a larger map answers).
+[feature.harbor_gate_w]
+at = [60, 400]
+[feature.harbor_gate_e]
+at = [1540, 420]
+[feature.central_gate_w]
+at = [60, 800]
+[feature.central_gate_e]
+at = [1540, 820]
+[feature.north_gate_w]
+at = [60, 1350]
+[feature.north_gate_e]
+at = [1540, 1360]
+[feature.west_ave_s]
+at = [300, 60]
+[feature.west_ave_n]
+at = [300, 1540]
+[feature.grand_ave_s]
+at = [700, 60]
+[feature.grand_ave_n]
+at = [700, 1540]
+[feature.east_ave_s]
+at = [1450, 60]
+[feature.east_ave_n]
+at = [1450, 1540]
+[feature.freeway_s]
+at = [480, 60]
+[feature.freeway_n]
+at = [480, 1540]
+
+# The crossings (lib/ways, R18): each stands square to the river, its two ends 24 m either side of
+# the line (4 m past where the bank's cut meets the ground), so it moves with the river and the
+# arterials arrive at its ends by name. Deck 0.5 m over the ground at its ends (8.3 + 0.003 y),
+# the water under it at the river's level (about 2.3 m below).
+[feature.harbor_bridge_w]
+on = { ref = "river", t = 0.75, offset = -24 }
+[feature.harbor_bridge_e]
+on = { ref = "river", t = 0.75, offset = 24 }
+
+[feature.harbor_bridge]
+kind      = "crossing"
+starts_at = "harbor_bridge_w"
+ends_at   = "harbor_bridge_e"
+path      = []
+width     = 13                              # the arterial's carriageway and footways
+deck_z    = 10.0
+freeboard = 2.3
+crosses   = "river"
+flow      = "= river.flow"
+
+[feature.central_bridge_w]
+on = { ref = "river", t = 0.5, offset = -24 }
+[feature.central_bridge_e]
+on = { ref = "river", t = 0.5, offset = 24 }
+
+[feature.central_bridge]
+kind      = "crossing"
+starts_at = "central_bridge_w"
+ends_at   = "central_bridge_e"
+path      = []
+width     = 13
+deck_z    = 11.2
+freeboard = 2.3
+crosses   = "river"
+flow      = "= river.flow"
+
+[feature.north_bridge_w]
+on = { ref = "river", t = 0.15625, offset = -24 }
+[feature.north_bridge_e]
+on = { ref = "river", t = 0.15625, offset = 24 }
+
+[feature.north_bridge]
+kind      = "crossing"
+starts_at = "north_bridge_w"
+ends_at   = "north_bridge_e"
+path      = []
+width     = 13
+deck_z    = 12.9
+freeboard = 2.3
+crosses   = "river"
+flow      = "= river.flow"
+
+# The interchanges (lib/ways, R18; a stand-in at grade: README): where the freeway meets each
+# east-west arterial. Both arrive at its point by name.
+[feature.ix_harbor]
+kind = "interchange"
+at   = [480, 400]
+[feature.ix_central]
+kind = "interchange"
+at   = [480, 800]
+[feature.ix_north]
+kind = "interchange"
+at   = [480, 1350]
+
+# ------------------------------------------------------------------------------------------ the skeleton: main ways
+
+# Every main way is routed over the land (R16) by one cost: convex in the slope, 400 a metre
+# within 22 m of the river's line (so no way crosses it but on a crossing's deck) and within 50 m
+# of the extent (so a way's smoothing, 40 m along it and 80 m for the freeway, reads inside the
+# field). An arterial is a main street 13 m kerb to kerb with 4 m footways (the spike's).
+
+[feature.harbor_west]
+kind      = "main_street"
+starts_at = "harbor_gate_w"
+ends_at   = "ix_harbor"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.harbor_mid]
+kind      = "main_street"
+starts_at = "ix_harbor"
+ends_at   = "harbor_bridge.start"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.harbor_east]
+kind      = "main_street"
+starts_at = "harbor_bridge.end"
+ends_at   = "harbor_gate_e"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.central_west]
+kind      = "main_street"
+starts_at = "central_gate_w"
+ends_at   = "ix_central"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.central_mid]
+kind      = "main_street"
+starts_at = "ix_central"
+ends_at   = "central_bridge.start"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.central_east]
+kind      = "main_street"
+starts_at = "central_bridge.end"
+ends_at   = "central_gate_e"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.north_west]
+kind      = "main_street"
+starts_at = "north_gate_w"
+ends_at   = "ix_north"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.north_mid]
+kind      = "main_street"
+starts_at = "ix_north"
+ends_at   = "north_bridge.start"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.north_east]
+kind      = "main_street"
+starts_at = "north_bridge.end"
+ends_at   = "north_gate_e"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+# The avenues: north-south, gate to gate, on one bank each; they cross the east-west arterials
+# where the network of wards nodes them.
+[feature.west_ave]
+kind      = "main_street"
+starts_at = "west_ave_s"
+ends_at   = "west_ave_n"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.grand_ave]                         # between the rows and downtown; `move_avenue` moves it
+kind      = "main_street"
+starts_at = "grand_ave_s"
+ends_at   = "grand_ave_n"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.east_ave]
+kind      = "main_street"
+starts_at = "east_ave_s"
+ends_at   = "east_ave_n"
+path      = []
+width     = 13
+footway   = 4
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+# The freeway (lib/ways, new; a stand-in on the ground: README): south gate to north gate through
+# the three interchanges, a piece between each two.
+[feature.freeway_south]
+kind      = "freeway"
+starts_at = "freeway_s"
+ends_at   = "ix_harbor"
+path      = []
+route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.freeway_mid]
+kind      = "freeway"
+starts_at = "ix_harbor"
+ends_at   = "ix_central"
+path      = []
+route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.freeway_upper]
+kind      = "freeway"
+starts_at = "ix_central"
+ends_at   = "ix_north"
+path      = []
+route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+[feature.freeway_north]
+kind      = "freeway"
+starts_at = "ix_north"
+ends_at   = "freeway_n"
+path      = []
+route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
+smooth    = true
+
+# The wards: the skeleton's faces within the limits (lib/town `ward`). A network owns every
+# crossing of two of its inputs, so the avenues crossing the arterials need no named place.
+[network.wards]
+from   = ["kind:main_street", "kind:freeway", "kind:crossing", "river"]
+within = "limits"
+kind   = "ward"
+
+# ------------------------------------------------------------------------------------------ the districts
+
+# Three districts, written as regions (M4 will give them: the spike's `[given.districts]`); each
+# keeps 15 m off the main ways that bound it and 45 m off the river's line. Their characters are
+# the streets step's params; the spike had five (downtown, old town, midtown, docks, rows).
+[feature.downtown]                          # west bank, between the grand avenue and the river
+region = [[715, 430], [918, 430], [1007, 1320], [715, 1320]]
+
+[feature.rows]                              # west of the grand avenue, east of the freeway
+region = [[500, 430], [685, 430], [685, 1320], [500, 1320]]
+
+[feature.old_town]                          # east bank, on the hill between the central and north arterials
+region = [[1048, 830], [1420, 830], [1420, 1320], [1097, 1320]]
+
+[step.downtown_streets]                     # a grid along the river's bearing, 50 m by 100 m blocks
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+params  = { district = "downtown", pattern = "grid", bearing = 6, origin = [860, 860], spacing = 50, cross = 100, ways = ["kind:main_street", "kind:freeway"] }
+
+[step.rows_streets]                         # a grid turned 30 degrees, 46 m by 92 m blocks
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+params  = { district = "rows", pattern = "grid", bearing = 30, origin = [592, 876], spacing = 46, cross = 92, ways = ["kind:main_street", "kind:freeway"] }
+
+[step.old_streets]                          # contour streets round the hill
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/streets.py"]
+params  = { district = "old_town", origin = [1180, 960], spacing = 44, cross = 60, ways = ["kind:main_street", "kind:freeway"] }
+
+[network.central_blocks]                    # one network per district; every area is a block
+from   = ["kind:main_street", "kind:street"]
+within = "downtown"
+kind   = "block"
+
+[network.row_blocks]
+from   = ["kind:main_street", "kind:street"]
+within = "rows"
+kind   = "block"
+
+[network.old_blocks]
+from   = ["kind:main_street", "kind:street"]
+within = "old_town"
+kind   = "block"
+
+# Lots along every block's street sides (not the freeway's), one table per district: the houses
+# on the flat districts stand on the ground as it lies, the old town's on terraces (layers/town.toml),
+# and a houses step reads one cells table.
+[cells.lots_down]
+within     = "central_blocks"
+frontage   = ["kind:main_street", "kind:street"]
+spacing    = 11
+depth      = 20
+min_length = 6
+min_area   = 60
+kind       = "lot"
+
+[cells.lots_rows]
+within     = "row_blocks"
+frontage   = ["kind:main_street", "kind:street"]
+spacing    = 11
+depth      = 20
+min_length = 6
+min_area   = 60
+kind       = "lot"
+
+[cells.lots_old]
+within     = "old_blocks"
+frontage   = ["kind:main_street", "kind:street"]
+spacing    = 11
+depth      = 20
+min_length = 6
+min_area   = 60
+kind       = "lot"
+
+[step.review]                               # lib/review's measures; it checks the streets steps
+when    = "lint"                            # (authority.md 7)
+command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+checks  = ["downtown_streets", "rows_streets", "old_streets"]

@@ -27,6 +27,9 @@ pub(crate) struct Change {
     pub body: Table,
     /// Where an entity it adds is declared (6.1): the declaring layer, or `world` for a file.
     pub home: String,
+    /// A change file: what it adds is then declared in the highest-ranked of `world` and the
+    /// layers of the names it writes (6.1, `check::rehome`), not in `home`.
+    pub file: bool,
     /// The span that creates it: its `[change.<name>]` header, or the file's start.
     pub header: Span,
 }

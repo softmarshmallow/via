@@ -64,6 +64,15 @@ equals  = 0
 measure = "deck.step_m"
 band    = [0, 1]
 
+[base.head_grade]                           # R16 (M3 slice 5): the steepest metre of the last 20 m of a
+measure = "meet.head_grade"                 # lane ending on the footbridge (measure.py "meetings"); 0.49
+band    = [0, 0.1]                          # before (lane_west, a 0.65 m dip in its last 3 m); now the
+                                            # crossing's `approach` (lib/ways)
+
+[base.face_pool]                            # the beck's depth 1 m off a face of the deck less its depth
+measure = "meet.face_pool"                  # 15 m off: 0.26 m before (pooled against the deck); the
+band    = [-0.3, 0.05]                      # crossing's `pass` holds it to the beck's `flow`
+
 [base.reach_held]                           # every door (7) and every stated place, from the lane's
 measure = "reach.held"                      # west end, the row's over the footbridge included
 equals  = 24
@@ -166,6 +175,14 @@ equals  = 8
 [move_beck.deck_wet]
 measure = "deck.wet"
 equals  = 0
+
+[move_beck.head_grade]                      # R16 at the moved bridge's heads
+measure = "meet.head_grade"
+band    = [0, 0.1]
+
+[move_beck.face_pool]
+measure = "meet.face_pool"
+band    = [-0.3, 0.05]
 
 [move_beck.reach]                           # the walk still crosses the moved bridge
 measure = "reach.held"

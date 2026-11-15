@@ -1,0 +1,9 @@
+# A clear naming a scatter of layer `dressing` (rank 1): declared in `dressing`, no upward
+# reference. A pin naming nothing above rank 0 stays in `world` (documents.md 6.1).
+[clear.gap]
+on = { of = "trees", near = [80, 90] }
+by = ["trees"]
+
+[pin.marker]
+asset = "box_small"
+at    = [20, 20]

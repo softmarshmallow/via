@@ -65,6 +65,14 @@ band    = [1, 1]
 measure = "deck_wet"
 band    = [0, 0]
 
+[base.head_grade]                           # R16 (M3 slice 5): the steepest metre of the last 20 m of a way
+measure = "head_grade"                      # ending on the bridge (measure.py "meetings"); 0.31 before
+band    = [0, 0.1]                          # (the approach), now the crossing's `approach` (lib/ways)
+
+[base.face_pool]                            # the stream's depth 1 m off a face of the deck less its depth
+measure = "face_pool"                       # 15 m off: 0.22 m before (pooled on the gorge floor)
+band    = [-0.3, 0.1]
+
 [base.unowned]
 measure = "geom.unowned_crossing"
 band    = [0, 0]
@@ -124,6 +132,14 @@ band    = [1, 1]
 [move_bridge.deck_wet]
 measure = "deck_wet"
 band    = [0, 0]
+
+[move_bridge.head_grade]                    # R16 at the moved bridge's heads
+measure = "head_grade"
+band    = [0, 0.1]
+
+[move_bridge.face_pool]
+measure = "face_pool"
+band    = [-0.3, 0.1]
 
 [move_bridge.unowned]
 measure = "geom.unowned_crossing"

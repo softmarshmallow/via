@@ -230,10 +230,16 @@ impl Loader<'_> {
             return None;
         }
         let mut removed: Vec<Removal> = Vec::new();
+        let mut from_files: Vec<(String, String)> = Vec::new();
         for ch in &requested {
             let a = change::apply(&mut base, ch);
             removed.extend(a.removed);
+            if ch.file {
+                from_files.extend(a.added);
+            }
         }
+        // What a change file adds is declared in the lowest layer it names downward from (6.1).
+        check::rehome(&mut base, &from_files, &ranks);
         // Step 5, the pack, is `assets.md`'s reader, run on the merged `pack`.
         // Step 6: the merged world's checks.
         let checked = Checker::new(&base.root).run();
@@ -1081,6 +1087,7 @@ impl Loader<'_> {
                                     name: id,
                                     body,
                                     home: home.clone(),
+                                    file: false,
                                     header,
                                 },
                                 file.clone(),
@@ -1319,6 +1326,7 @@ impl Loader<'_> {
                 name: stem.to_string(),
                 body,
                 home: "world".into(),
+                file: true,
                 header: start,
             },
             display,

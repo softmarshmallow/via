@@ -171,6 +171,20 @@ class Reach(unittest.TestCase):
         r = run(flat(), insts=insts, reach=a_to_b(), profile={"width": 5}).one("unreached")
         self.assertEqual(r["data"]["why"], "narrow")
 
+    def test_not_sealed_names_the_routes_narrowest_point(self):
+        # A sealed pair joined through the 3 m gap between two walls at x = 20 (posts y = 21 to
+        # 23): `data.narrowest` is in the gap, 1 m or less from a wall (TODO, "`not_sealed` says no
+        # place"; the monastery's LOG found the way in by a throwaway walk).
+        insts = [{"name": "w1", "asset": "wall", "x": 20000, "y": 0},
+                 {"name": "w2", "asset": "wall", "x": 20000, "y": 44000}]
+        r = run(flat(), insts=insts, sealed=a_to_b(), profile={"width": 0.6}).one("not_sealed")
+        n = r["data"]["narrowest"]
+        self.assertEqual(r["position"], [35.0, 20.0])               # still at the `to` place
+        self.assertTrue(19.0 <= n["at"][0] <= 21.0 and 21.0 <= n["at"][1] <= 23.0, n)
+        self.assertLessEqual(n["clear"], 1.0)
+        self.assertIn(n["by"], ("w1", "w2"))
+        self.assertIn("narrowest at", r["message"])
+
     def test_door_mounts_resolve_by_group_and_face(self):
         # hut at (30, 10) facing east (90): its door at asset (0, 1) lies at world (31, 10)
         insts = [{"name": "hut1", "asset": "hut", "x": 30000, "y": 10000, "face": 90000}]

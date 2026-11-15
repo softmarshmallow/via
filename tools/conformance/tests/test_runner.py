@@ -1074,6 +1074,40 @@ class RecordTests(Base):
         self.assertEqual(list(self.work_root.iterdir()), [], "a passing case's folders are deleted")
 
 
+class DefaultViaTests(unittest.TestCase):
+    """The default binary follows CARGO_TARGET_DIR and is refused when older than crates/: a stale
+    default once failed a correct case (documents/change_file_layer)."""
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp(prefix="via-conf-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_target_dir(self) -> None:
+        import os
+        old = os.environ.get("CARGO_TARGET_DIR")
+        try:
+            os.environ["CARGO_TARGET_DIR"] = str(self.tmp / "t")
+            self.assertEqual(cli._default_via(self.tmp).parent, self.tmp / "t" / "debug")
+            del os.environ["CARGO_TARGET_DIR"]
+            self.assertEqual(cli._default_via(self.tmp).parent, self.tmp / "target" / "debug")
+        finally:
+            if old is not None:
+                os.environ["CARGO_TARGET_DIR"] = old
+
+    def test_stale(self) -> None:
+        import os
+        src = self.tmp / "crates" / "a" / "src" / "lib.rs"
+        src.parent.mkdir(parents=True)
+        write(src, "")
+        via = self.tmp / "via"
+        write(via, "")
+        os.utime(src, (1000, 1000))
+        os.utime(via, (2000, 2000))
+        self.assertIsNone(cli._stale_against(via, self.tmp))
+        os.utime(src, (3000, 3000))
+        self.assertEqual(cli._stale_against(via, self.tmp), src)
+
+
 class RepositoryCases(unittest.TestCase):
     """The repository's own cases: every case.toml parses (conformance.md 7, first check), and the
     ford case folders hold exactly the files the documents give."""

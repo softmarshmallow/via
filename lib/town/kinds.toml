@@ -175,6 +175,12 @@ authority = "derived"
 [kind.lot]
 authority = "derived"
 
+# A ward: an area of a town's skeleton, the main ways (and the water, the crossings, the town's
+# limits) noded into one network (`[network.wards] kind = "ward"`). Like a block it writes no field;
+# it is a named region, so a check can say which wards an edit to one main way touched (`city`).
+[kind.ward]
+authority = "derived"
+
 # A waterfront owns the bank (R18): a path along the water's edge, the land on its left (`sd`
 # above 0, numbers.md 5.5: walk it with the water on your right hand). Streets end on its line, and
 # a network that selects it (`kind:waterfront`) nodes them there; lots may face it (`frontage`).
@@ -184,6 +190,33 @@ authority = "derived"
 # the ground over `bank` metres, so streets arriving from the slope run down onto the deck.
 # Anchored: a street's bed and a house's pad give way to it (authority.md 3). The streets step
 # lays streets down to it with `shore` (lib/town/streets.py, step 6). Ours, written for `quay`.
+#
+# Its ends (M3 slice 5; R16, R18: an end is a meeting too, and a kind that owns a line owns how it
+# stops). The wall fades over the first and last `end_fade` of the line (a fraction of `t`, as
+# lib/ways' crossing fades its heads: a path's length has no name in a formula), so it is `wall`
+# deep along the line and nothing at each end, and it asserts nothing there (its mask fades with
+# it); the deck's own mask fades over the first and last quarter of that stretch (`toe`), so at an
+# end the deck asserts nothing either and what the end meets holds it (a crossing's deck and head:
+# both masks at 1 there was `authority.conflict` on `townland`'s first try). Past an end (`t` at 0
+# or 1) the waterfront writes nothing, so the wall no longer runs round the end in a ring
+# (`townland`: a 65 to 69 degree face into a dry pit beside the river at the south end). The deck
+# may rise at an end to a level a named thing gives: `level_start`, `level_end` (metres; default
+# `level`), reached over the first or last `rise` of `t`. A waterfront that meets a crossing's end
+# names it (`starts_at = "old_bridge.end"`, R18) and takes its level (`level_start = "=
+# old_bridge.deck_z"`); the crossing, arrived at, holds its head (authority.md 6).
+#
+# `ends`: a way that ends on the deck is brought to the deck's level at no more than `end_grade`
+# (rise over run, 1:5) over as many metres as the drop needs, out to `reach` (M3 slice 5: quay's
+# main way fell 2.4 m in its last 3 m, a step its walker could not take; `d35` and `d175` ended at
+# 0.47 m a metre). On the land side within `reach` of the line the ground is held within a band of
+# the deck's level that widens at `end_grade` from the line and at 1:2 sideways from the edge of a
+# way's bed (`main_edge`, `street_edge`: half the carriageway and a footway, lib/town's defaults):
+# so the hold follows the ways that arrive and leaves the ground between them as it lies, and no
+# cone is cut into the land. A way that runs along the deck within `reach` is held too. It reads
+# `kind:main_street` and `kind:street`: a world with a waterfront and no ways of one of those kinds
+# says `formula.empty_selection` (warning) and the hold leaves the ground. The hold fades with the
+# wall over the ends (`tip`): what meets the waterfront's end owns that meeting (a crossing holds its
+# head, and two anchored holds there disagree: `authority.conflict`, `townland`'s first try).
 [kind.waterfront]
 authority = "anchored"
 requires  = ["level"]
@@ -194,11 +227,31 @@ width = 8                                   # metres of deck, from the line to t
 wall  = 4                                   # metres the ground drops at the deck's water side
 bank  = 12                                  # metres over which the deck fades into the land
 apron = 3                                   # metres of open quayside kept clear on the land side
+end_fade = 0.1                              # of `t`: the wall fades out over each end's stretch
+level_start = "= level"                     # metres: the deck's level at its start
+level_end   = "= level"                     # metres: at its end
+rise  = 0.25                                # of `t`: the stretch over which the deck reaches them
+end_grade = 0.2                             # rise over run of a way's bed onto the deck (1:5)
+reach = 24                                  # metres from the line the way's hold reaches
+main_edge   = 5.25                          # metres from a main street's line to its bed's edge
+street_edge = 3.75                          # from a street's
+
+[kind.waterfront.let]
+tip  = "= smoothstep(0, end_fade, t) * smoothstep(0, end_fade, 1 - t)"
+toe  = "= smoothstep(0, end_fade / 4, t) * smoothstep(0, end_fade / 4, 1 - t)"
+deck = "= level + (level_start - level) * (1 - smoothstep(0, rise, t)) + (level_end - level) * (1 - smoothstep(0, rise, 1 - t))"
+side = "= min(max(dist('kind:main_street', reach) - main_edge, 0), max(dist('kind:street', reach) - street_edge, 0))"
+band = "= end_grade * max(sd, 0) + 0.5 * side"
 
 [kind.waterfront.effect.deck]
 field = "role:surface"
-value = "= if(sd < -width, min(v, level - wall), level)"
-mask  = "= if(sd < -width, 1 - smoothstep(width + 6, width + 10, d), 1 - smoothstep(0, bank, sd))"
+value = "= if(sd < -width, min(v, deck - wall * tip), deck)"
+mask  = "= if(t > 0 and t < 1, if(sd < -width, tip * (1 - smoothstep(width + 6, width + 10, d)), toe * (1 - smoothstep(0, bank, sd))), 0)"
+
+[kind.waterfront.effect.ends]               # a way's bed onto the deck at `end_grade` (above)
+field = "role:surface"
+value = "= clamp(v, deck - band, deck + band)"
+mask  = "= if(sd > 0, tip * (1 - smoothstep(reach, reach + 2, sd)), 0)"
 
 [kind.waterfront.effect.clear]              # nothing on the deck, nor on `apron` metres of quayside
 field = "role:keep_out"                     # behind it (a house facing the quay stands there:

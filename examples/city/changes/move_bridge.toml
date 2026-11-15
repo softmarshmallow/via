@@ -1,0 +1,12 @@
+# A moved bridge (R18): the central crossing stands 48 m upstream (t 0.5 to 0.47 along the river).
+# Its two ends are points on the river, so it moves whole; the central arterial's two pieces that
+# arrive at its ends by name are found again, and no other line is written. Its deck rises with the
+# land (0.003 m a metre north).
+[feature.central_bridge_w]
+on = { ref = "river", t = 0.47, offset = -24 }
+
+[feature.central_bridge_e]
+on = { ref = "river", t = 0.47, offset = 24 }
+
+[feature.central_bridge]
+deck_z = 11.35

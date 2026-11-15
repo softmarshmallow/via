@@ -74,6 +74,11 @@ A cold build takes about 3 s, a change about 2.5 s.
 
 ## Known faults (read from the sheets, on foot)
 
+- (Fixed, M3 slice 5 ways) The approach's last metres ran 0.31 m a metre into a 1:2 lip at the
+  bridgehead and the stream pooled 0.22 m against both faces of the deck: lib/ways' crossing now
+  brings ways to the deck at `approach` (1:10; `head_grade` 0.10) and keeps the stream at its
+  `flow` past the faces (`face_pool` 0.06).
+
 - **The deck is a causeway** (lib/ways' stand-in; kind surfaces are `doc.not_yet`): from the gorge's
   floor (`bm_gorge`) the bridge is a 15 m wall across the gorge, and the floor is cut in two.
 - **The wall is ground** (lib/town `enclosure` stand-in): grey, sheer, no coping, no gatehouse; the

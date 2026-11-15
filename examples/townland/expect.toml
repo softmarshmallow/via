@@ -23,28 +23,43 @@
 # counts a street ending on a district's outline as `edge_ends` (16), not a dead end (0).
 # move_hill builds (0 errors) on this tree; HEAD's world builds too, so its formula.outside_field
 # was not the world's.
+#
+# M3 slice 5 (ways): the embankment now starts at `old_bridge.end` (it stopped 34 m short) and
+# rises to the deck's level; the old town's network gains that stretch of frontage, so base lots
+# 152 to 144, houses 99 to 95, lots_held 60 to 59, reach pairs 103 to 99 (all held), move_crossing
+# houses 100 to 93 and reach 104 to 97 (all held): re-recorded from one build each on this
+# protocol, VIA_LIB a copy of lib with only lib/ways and lib/town kinds.toml changed. The meetings
+# rows below are measure.py's "meetings" block.
+#
+# M3 slice 5 (fix): re-recorded on the combined tree (ways, streets and houses together; houses.py
+# rule 4 reading keep_out at the posts inside a footprint, so fronts stand 1.05 m behind the
+# footway, median, not 1.55; streets.py step 5b), release `via` of that tree, VIA_LIB=lib itself,
+# one fresh store, base cold then each change --against base, one build each. Moved: blocks
+# 20 -> 18, lots 144 -> 145, streets 14 -> 13, houses 95 -> 97, lots_held 59 -> 58, reach pairs
+# 99 -> 101 (all held), place.relief 4 -> 2; move_crossing houses 93 -> 92, reach 97 -> 96;
+# move_hill houses 55 -> 56, reach 59 -> 60.
 
 # ------------------------------------------------------------------------------------------ base
 
 [base.blocks]
 measure = "block"
-band    = [20, 20]
+band    = [18, 18]
 
 [base.lots]
 measure = "lot"
-band    = [152, 152]
+band    = [145, 145]
 
 [base.streets]
 measure = "street"
-band    = [14, 14]
+band    = [13, 13]
 
 [base.houses]
 measure = "houses"
-band    = [99, 99]
+band    = [97, 97]
 
 [base.lots_held]
 measure = "lots_held"
-band    = [60, 60]
+band    = [58, 58]
 
 [base.dead_ends]
 measure = "dead_end_count"
@@ -76,11 +91,11 @@ band    = [0, 0]
 
 [base.reach]
 measure = "reach_held"
-band    = [103, 103]
+band    = [101, 101]
 
 [base.relief]
 measure = "place.relief"
-band    = [4, 4]
+band    = [2, 2]
 
 [base.deck_dry]                             # no post of the deck under water (lib/ways crossing `water`)
 measure = "deck_wet"
@@ -92,6 +107,30 @@ band    = [1, 1]
 
 [base.errors]
 measure = "errors"
+band    = [0, 0]
+
+[base.head_grade]                           # R16: the steepest metre of the last 20 m of a way ending on
+measure = "head_grade"                      # the crossing; 0.32 before (north_road), now the crossing's
+band    = [0, 0.1]                          # `approach` (lib/ways)
+
+[base.way_end_grade]                        # of a way ending on the embankment; 0.33 before (quay_road)
+measure = "way_end_grade"
+band    = [0, 0.25]
+
+[base.face_pool]                            # the river's depth 1 m off a face of the deck less its depth
+measure = "face_pool"                       # 15 m off; 0.25 m before (pooled on both faces)
+band    = [-0.1, 0.05]
+
+[base.embankment_end]                       # the steepest post past the embankment's south end: 64.8
+measure = "front_end_slope"                 # degrees before, into a dry pit 0.19 m below the river
+band    = [0, 30]
+
+[base.embankment_pit]
+measure = "front_end_pit"
+band    = [0, 0]
+
+[base.embankment_to_bridge]                 # metres from the embankment's end to the crossing's: 33.9
+measure = "front_gap"                       # before; it starts at `old_bridge.end` (R18)
 band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ move_hill
@@ -106,11 +145,11 @@ band    = [0, 0]
 
 [move_hill.houses]
 measure = "houses"
-band    = [55, 55]
+band    = [56, 56]
 
 [move_hill.reach]
 measure = "reach_held"
-band    = [59, 59]
+band    = [60, 60]
 
 # ------------------------------------------------------------------------------------------ move_crossing
 
@@ -132,14 +171,26 @@ band    = [0, 0]
 
 [move_crossing.houses]
 measure = "houses"
-band    = [100, 100]
+band    = [92, 92]
 
 [move_crossing.reach]
 measure = "reach_held"
-band    = [104, 104]
+band    = [96, 96]
 
 [move_crossing.deck_dry]
 measure = "deck_wet"
+band    = [0, 0]
+
+[move_crossing.head_grade]                  # R16 at the moved crossing's heads
+measure = "head_grade"
+band    = [0, 0.1]
+
+[move_crossing.face_pool]
+measure = "face_pool"
+band    = [-0.1, 0.05]
+
+[move_crossing.embankment_to_bridge]        # the embankment follows the crossing's end
+measure = "front_gap"
 band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ edit_west

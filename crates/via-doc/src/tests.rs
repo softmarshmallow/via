@@ -1158,3 +1158,76 @@ fn m1_world_reads() {
     // own rules: line 1's `name` is the first top-level key.
     assert!(base_json.contains("\"layer\":{\"world\":{\"rank\":0}}"));
 }
+
+#[test]
+fn change_file_adds_in_the_layer_it_names_down_from() {
+    // documents.md 6.1, case `change_file_layer`: a clear naming a scatter of layer `d` (rank 1)
+    // is declared in `d`, not `world`, so it is no upward reference; a pin naming nothing above
+    // rank 0 stays in `world`; an inline change of the world file still adds in `world`, and the
+    // same clear written there is `doc.upward_ref`.
+    let clear = "on = { of = \"trees\", near = [5, 5] }\nby = [\"trees\"]\n";
+    let make = |tail: &str| {
+        dir(&[
+            (
+                "world.toml",
+                format!("{HEAD}[layer.d]\nfile = \"d.toml\"\nowner = \"o\"\nrank = 1\n{tail}")
+                    .as_bytes(),
+            ),
+            (
+                "d.toml",
+                b"[scatter.trees]\nwithin = \"plot\"\nassets = [\"tree\"]\nspacing = 4\n\n\
+                  [feature.plot]\nregion = [[0, 0], [10, 0], [10, 10], [0, 10]]\n",
+            ),
+            ("lib/paths/kinds.toml", KINDS),
+            (
+                "edits.toml",
+                format!("[clear.c1]\n{clear}\n[pin.p1]\nasset = \"tree\"\nat = [2, 2]\n")
+                    .as_bytes(),
+            ),
+        ])
+    };
+    let d = make("");
+    let l = merge(&d, &["edits.toml"]);
+    assert_eq!(codes(&l), Vec::<String>::new());
+    let w = world(&l);
+    assert_eq!(w.home("clear", "c1"), Some("d"));
+    assert_eq!(w.rank("clear", "c1"), Some(1));
+    assert_eq!(w.home("pin", "p1"), Some("world"));
+    let d = make(&format!("[change.inline.clear.c2]\n{clear}"));
+    // Both names (`on.of` and `by`) reach up.
+    assert_eq!(
+        codes(&merge(&d, &["inline"])),
+        ["doc.upward_ref", "doc.upward_ref"]
+    );
+}
+
+#[test]
+fn change_file_rehome_follows_its_own_adds() {
+    // documents.md 6.1, case `change_file_chain`: a clear naming a scatter the same file adds,
+    // itself within a feature of layer `d`, rises to `d` on the second pass (the clear is
+    // applied first, so one pass would leave it in `world`, an upward reference). The formula
+    // sentence of 6.1 is checked in via-model, case `change_file_formula`.
+    let make = |edits: &str| {
+        dir(&[
+            (
+                "world.toml",
+                format!("{HEAD}[layer.d]\nfile = \"d.toml\"\nowner = \"o\"\nrank = 1\n").as_bytes(),
+            ),
+            (
+                "d.toml",
+                b"[feature.copse]\nregion = [[0, 0], [10, 0], [10, 10], [0, 10]]\n\n[let]\nrise = 2\n",
+            ),
+            ("lib/paths/kinds.toml", KINDS),
+            ("edits.toml", edits.as_bytes()),
+        ])
+    };
+    let d = make(
+        "[clear.c1]\non = { of = \"under\", near = [5, 5] }\nby = [\"under\"]\n\n\
+         [scatter.under]\nwithin = \"copse\"\nassets = [\"tree\"]\nspacing = 4\n",
+    );
+    let l = merge(&d, &["edits.toml"]);
+    assert_eq!(codes(&l), Vec::<String>::new());
+    let w = world(&l);
+    assert_eq!(w.home("scatter", "under"), Some("d"));
+    assert_eq!(w.home("clear", "c1"), Some("d"));
+}

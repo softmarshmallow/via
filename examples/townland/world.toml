@@ -76,7 +76,9 @@ path       = [[175, 512], [185, 440], [200, 360], [200, 300], [200, 240], [200, 
 # on your right hand: the land is on its left (lib/town).
 [feature.embankment]
 kind  = "waterfront"
-level = 6.6
+starts_at   = "old_bridge.end"              # it runs from the crossing's east end (R18), whose deck
+level_start = "= old_bridge.deck_z"         # level it rises to (lib/town: `rise`); the crossing holds
+level = 6.6                                 # its head
 wall  = 3
 bank  = 6
 path  = [[215, 296], [215, 184]]
@@ -114,6 +116,7 @@ path      = []
 deck_z    = 8.5
 freeboard = 2.5                             # the water under the deck at 6.0 m, the river's own
 crosses   = "river"                         # level there (5.9 to 6.2): drawn flat beneath it
+flow      = "= river.flow"                  # the river's depth over its floor, kept past the deck (lib/ways `pass`)
 
 # The main ways: what each connects, routed over the land (R16). The cost is convex in the slope
 # (quay's) and the river is 400 a metre within 14 m of the valley's line, so no way crosses it but at the

@@ -14,6 +14,7 @@ seconds.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -26,8 +27,25 @@ REPO = Path(__file__).resolve().parents[3]
 
 
 def _default_via(repo: Path) -> Path:
+    """`$CARGO_TARGET_DIR/debug/via` when that is set (relative to the repository), else
+    `target/debug/via`: the binary `cargo build -p via-cli` just wrote, not an older one."""
     exe = "via.exe" if sys.platform == "win32" else "via"
-    return repo / "target" / "debug" / exe
+    target = os.environ.get("CARGO_TARGET_DIR")
+    base = (repo / target) if target else (repo / "target")
+    return base / "debug" / exe
+
+
+def _stale_against(via: Path, repo: Path) -> Path | None:
+    """The newest source under `crates/` (`.rs`, `Cargo.toml`) or the root `Cargo.toml`/`Cargo.lock`
+    saved after `via` was built, or None. A default binary older than the code gives false failures
+    and false passes alike, so the runner refuses it; an explicit `--via` is taken as given."""
+    built = via.stat().st_mtime
+    roots = [repo / "Cargo.toml", repo / "Cargo.lock"]
+    crates = repo / "crates"
+    if crates.is_dir():
+        roots += [p for p in crates.rglob("*") if p.suffix == ".rs" or p.name == "Cargo.toml"]
+    newest = max((p for p in roots if p.is_file()), key=lambda p: p.stat().st_mtime, default=None)
+    return newest if newest is not None and newest.stat().st_mtime > built else None
 
 
 def _selected(found: list[model.Discovered], chapter: str | None, case: str | None) -> list[model.Discovered]:
@@ -43,6 +61,12 @@ def cmd_run(ns: argparse.Namespace) -> int:
     if not via.is_file():
         print(f"error: the via binary {via} does not exist; build it with `cargo build -p via-cli`", file=sys.stderr)
         return 2
+    if not ns.via:
+        newer = _stale_against(via, repo)
+        if newer is not None:
+            print(f"error: the default via binary {via} is older than {newer}; rebuild it with "
+                  "`cargo build -p via-cli` (same CARGO_TARGET_DIR) or pass --via", file=sys.stderr)
+            return 2
     work_root = Path(ns.work_root).resolve() if ns.work_root else Path(tempfile.gettempdir())
     work_root.mkdir(parents=True, exist_ok=True)
     settings = Settings(via=via, repo=repo, milestone=ns.milestone, work_root=work_root, timeout=ns.timeout)
@@ -126,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="via-conformance", description="The conformance runner of spec/conformance.md.")
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="run the cases against a via binary")
-    r.add_argument("--via", help="the via binary (default: target/debug/via)")
+    r.add_argument("--via", help="the via binary (default: $CARGO_TARGET_DIR/debug/via or target/debug/via, refused when older than crates/)")
     r.add_argument("--milestone", type=int, required=True, help="the milestone being worked on; cases above it are pending")
     r.add_argument("--chapter")
     r.add_argument("--case")

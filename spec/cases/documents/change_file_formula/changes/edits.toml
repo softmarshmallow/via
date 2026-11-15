@@ -1,0 +1,4 @@
+# A formula reading `rise`, a `let` of layer `dressing` (rank 1): names a formula reads are no
+# named references, so the field stays in `world` and the read is upward (documents.md 6.1).
+[field.lift]
+base = "= 1 + rise"

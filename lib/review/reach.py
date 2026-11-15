@@ -59,7 +59,9 @@ place's name as subject (diagnostics.md 1.1 maps a place or produced name to its
 |               |          | (a `sealed` place with nowhere to stand holds, and says nothing)      |
 | unreached     | warning  | a `reach` pair not joined; at the post of the `from` side nearest the  |
 |               |          | `to` place, with why the next post toward it is not walked            |
-| not_sealed    | warning  | a `sealed` pair joined; at the `to` place                            |
+| not_sealed    | warning  | a `sealed` pair joined; at the `to` place, with `data.narrowest`:    |
+|               |          | where the fewest-posts route between them passes nearest a shut     |
+|               |          | post or the edge (`at`, `clear` metres, `by`), within 20 m          |
 | waived        | info     | a record a `waive` entry names (by its `to` place), with its reason  |
 | waiver_unused | warning  | a `waive` entry no record matched                                    |
 | walked        | info     | one per profile used: posts, open posts, pieces, pairs reached       |
@@ -258,10 +260,18 @@ def judge(grid, height, water, feats, insts, facts, params, step=None):
                     if not joined:
                         tally[pname][0] += 1
                         continue
+                    data = {"profile": pname, "from": fname, "to": tname}
+                    narrow = w.narrowest(fpost, tpost)
+                    where = ""
+                    if narrow is not None:
+                        k, clear, by = narrow
+                        at = _m(grid.post(*grid.ij(k)))
+                        data["narrowest"] = {"at": at, "clear": clear, "by": by}
+                        where = (f" The walked route is narrowest at ({at[0]}, {at[1]}), {clear} m "
+                                 f"from {by}.")
                     emit(("not_sealed", tname,
-                          f"{pname} can walk from {fname} to {tname}, which is stated sealed.",
-                          _m(grid.post(*grid.ij(tpost))),
-                          {"profile": pname, "from": fname, "to": tname}), tname)
+                          f"{pname} can walk from {fname} to {tname}, which is stated sealed."
+                          + where, _m(grid.post(*grid.ij(tpost))), data), tname)
     for k, (wto, why) in enumerate(waivers):
         if k not in hits:
             out.append(("waiver_unused", me,
@@ -327,6 +337,9 @@ def _on_way(p, ways):
         if d <= max(half, 1.0) and (best is None or (d, f["name"]) < best):
             best = (d, f["name"])
     return best[1] if best else None
+
+
+NARROW_LOOK = 20.0                                    # metres round a route `narrowest` looks
 
 
 class Walk:
@@ -438,6 +451,61 @@ class Walk:
 
     def piece(self, k):
         return self.label[k]
+
+    def route(self, a, b):
+        """The fewest-posts walk from post a to post b over the joins (links count as one), as
+        a list of posts from a to b; None when they are not joined. Breadth first, neighbours in
+        `neighbours` order, so the route is the same on every run."""
+        if self.label[a] != self.label[b] or self.label[a] < 0:
+            return None
+        came = {a: None}
+        todo = [a]
+        for k in todo:
+            if k == b:
+                break
+            nxt = []
+            for q, diag, (s, t) in self.neighbours(k):
+                if q in came or self.cause[q] is not None:
+                    continue
+                if diag and (self.cause[s] is not None or self.cause[t] is not None):
+                    continue
+                if self.joins(k, q, diag)[0]:
+                    nxt.append(q)
+            nxt += [q for q in self.extra.get(k, ()) if q not in came]
+            for q in nxt:
+                if q not in came:
+                    came[q] = k
+                    todo.append(q)
+        out, k = [], b
+        while k is not None:
+            out.append(k)
+            k = came[k]
+        return out[::-1]
+
+    def narrowest(self, a, b, limit_m=NARROW_LOOK):
+        """Where the walked route from post a to post b passes nearest a shut post (an
+        instance, water, a narrow gap) or the world's edge, within `limit_m`: (post, metres to it,
+        what it is), the first such post along the route on a tie; None when no route, or nothing
+        shut lies within `limit_m` of it."""
+        path = self.route(a, b)
+        if not path:
+            return None
+        g = self.g
+        best = None
+        for k in path:
+            i, j = g.ij(k)
+            edge = min(i, j, g.nx - 1 - i, g.ny - 1 - j) * g.r / 1000.0
+            q = self._ring_search(g.post(i, j), lambda p: self.cause[p] is not None,
+                                  limit_m * 1000.0)
+            d, by = (edge, "edge") if edge <= limit_m else (math.inf, None)
+            if q is not None:
+                dq = _dist(g.post(i, j), g.post(*g.ij(q))) / 1000.0
+                c = self.cause[q]
+                if dq < d:
+                    d, by = dq, (c[2] if c[0] in ("instance", "narrow") and c[2] else c[0])
+            if by is not None and (best is None or d < best[1]):
+                best = (k, round(d, 3), by)
+        return best
 
     def _ring_search(self, p, ok, limit_mm=None):
         """The post satisfying ``ok`` nearest to the point p (mm); ties by post order."""

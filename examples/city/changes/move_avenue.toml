@@ -1,0 +1,9 @@
+# A moved arterial (R13, R16): the grand avenue's two gates move 40 m east, so it is found again
+# over the land 40 m into what was downtown's west edge. Only the wards it bounds, and the blocks,
+# lots and houses within reach of its old and new course, may change; every other ward keeps its
+# outline and every name elsewhere stays (identity.md 2.3; measure.py, `_far`).
+[feature.grand_ave_s]
+at = [740, 60]
+
+[feature.grand_ave_n]
+at = [740, 1540]

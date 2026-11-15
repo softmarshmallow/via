@@ -10,6 +10,7 @@ says. Heights come from a Python function the stand-in evaluates at the asked po
 import math
 import os
 import runpy
+import types
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -390,6 +391,123 @@ class StreetsTest(unittest.TestCase):
         step = FakeStep({}, features=district())
         S["generate"](step)
         self.assertEqual(step.said, [("error", "params", "step.streets.params.district")])
+        for bad in ({"pattern": "radial"}, {"max_grade": -0.1}):
+            step = FakeStep(dict({"district": "old_town"}, **bad), features=district())
+            S["generate"](step)
+            self.assertEqual(step.said, [("error", "params",
+                                          "step.streets.params." + next(iter(bad)))])
+
+    def test_cross_streets_hold_max_grade_aslant(self):
+        # Step 5, the grade: land rising north at 0.3 (contours run east, 40 m apart). A cross
+        # street straight up the fall would climb 30 %; with `max_grade` 0.2 each climbs aslant
+        # (its line holds 0.2 over every 10 m) and runs east or west as much as north.
+        h = lambda x, y: 0.3 * y  # noqa: E731
+        land = S["Land"].flat(DISTRICT, 4)
+        land.h = [h(land.x0 + (i % land.nx) * land.d, land.y0 + (i // land.nx) * land.d)
+                  for i in range(land.nx * land.ny)]
+        straight = run_streets(h, max_grade=0)
+        aslant = run_streets(h)
+        xs0 = {k: metres(v[1]) for k, v in straight.out.features.items() if k.startswith("x")}
+        xs = {k: metres(v[1]) for k, v in aslant.out.features.items() if k.startswith("x")}
+        self.assertTrue(xs0 and xs)
+        self.assertTrue(all(S["grade_of"](land, p[0], p[-1]) > 0.29 for p in xs0.values()))
+        for k, p in xs.items():
+            a, b = p[0], p[-1]
+            self.assertLessEqual(S["grade_of"](land, a, b), 0.2 + 1e-9, k)
+            self.assertGreater(abs(b[0] - a[0]), 0.9 * abs(b[1] - a[1]), k)
+
+    def test_slanted_cross_street_crosses_no_way_nor_cross_street(self):
+        # A main way down the fall at x = 200: a cross street that climbs aslant does not run
+        # across it, nor across another cross street (quay: x0_140 slanted 96 m back over the
+        # main way, beside x0_70).
+        fl = district()
+        fl["kind:main_street"] = feature_list([("down", 1, [(200, 60), (200, 380)], "feature")])
+        step = FakeStep({"district": "old_town", "origin": [250, 220], "cross": 50},
+                        height=lambda x, y: 0.3 * y, features=fl)
+        S["generate"](step)
+        xs = {k: metres(v[1]) for k, v in step.out.features.items() if k.startswith("x")}
+        self.assertTrue(xs)
+        way = [(200, 60), (200, 380)]
+        for k, p in xs.items():
+            a, b = p[0], p[-1]
+            if math.dist(S["nearest_on"](way, a), a) < 1e-6:
+                continue                               # starts on the way: a T, not a crossing
+            self.assertIsNone(S["first_crossing"](a, b, [way]), k)
+            for o, q in xs.items():
+                if o != k and not {a, b} & {q[0], q[-1]}:
+                    self.assertIsNone(S["first_crossing"](a, b, [[q[0], q[-1]]]), (k, o))
+
+    def test_cross_street_too_steep_to_slant_not_laid(self):
+        # At 0.5 a street between contours 40 m apart needs 100 m to hold 0.2: more than
+        # `2 * spacing`, so none is laid; the long streets stay.
+        step = run_streets(lambda x, y: 0.5 * y)
+        keys = set(step.out.features)
+        self.assertFalse([k for k in keys if k.startswith("x")])
+        self.assertTrue([k for k in keys if k.startswith("s")])
+
+    def test_grade_of_reads_the_steepest_run(self):
+        land = S["Land"].flat(DISTRICT, 1)
+        land.h = [max(0.0, land.x0 + (i % land.nx) - 100) * 0.5 for i in range(land.nx * land.ny)]
+        self.assertAlmostEqual(S["grade_of"](land, (80, 100), (140, 100)), 0.5, places=6)
+        self.assertAlmostEqual(S["grade_of"](land, (60, 100), (95, 100)), 0.0, places=6)
+
+    def test_end_beside_a_node_takes_it(self):
+        # Step 4b: an end 1.7 m from a laid long street's end is moved onto it; one farther than
+        # `spacing / 2` (20 m) is not.
+        p = S["Params"]({"district": "old_town"})
+        longs = {0: [(60.005, 200.0), (440.005, 200.0)]}
+        self.assertEqual(S["snap_end"](p, (60.005, 201.7), longs), (60.005, 200.0))
+        self.assertEqual(S["snap_end"](p, (60.005, 221.0), longs), (60.005, 221.0))
+        self.assertEqual(S["snap_end"](p, (60.005, 200.0), longs), (60.005, 200.0))
+
+    def test_meeting_near_an_end_takes_the_end(self):
+        # Step 4b: a street ending on another 1.7 m from that one's start ends on its start (no
+        # 1.7 m stub past the junction); one ending 30 m along is written in as a vertex.
+        p = S["Params"]({"district": "old_town"})
+        other = [(60.005, 200.0), (200.0, 210.0), (440.005, 200.0)]
+        q, pts = S["meet_point"](p, other, (61.7, 205.0))
+        self.assertEqual((q, pts), ((60.005, 200.0), other))
+        q, pts = S["meet_point"](p, other, (90.0, 230.0))
+        self.assertIn(q, pts)
+        self.assertEqual(len(pts), 4)
+        loop = [(100.0, 100.0), (200.0, 100.0), (150.0, 150.0), (100.0, 100.0)]
+        q, pts = S["meet_point"](p, loop, (101.0, 99.0))      # a loop has no end to take
+        self.assertEqual(len(pts), 5)
+
+    def test_grid_lays_both_ways_at_bearing_and_spacing(self):
+        step = run_streets(lambda x, y: 0.3 * y, pattern="grid", bearing=30, spacing=40, cross=60,
+                           origin=[250, 220])
+        paths = {k: metres(v[1]) for k, v in step.out.features.items()}
+        longs = [p for k, p in paths.items() if k.startswith("s")]
+        cross = [p for k, p in paths.items() if k.startswith("c")]
+        self.assertGreaterEqual(len(longs), 8)
+        self.assertGreaterEqual(len(cross), 6)
+        for pts, want in [(p, 30) for p in longs] + [(p, 120) for p in cross]:
+            self.assertEqual(len(pts), 2)
+            a, b = pts
+            self.assertAlmostEqual(math.degrees(math.atan2(b[0] - a[0], b[1] - a[1])) % 180, want,
+                                   delta=0.01)
+            for q in pts:                              # each end just past the outline
+                self.assertFalse(S["inside"](DISTRICT, q))
+                self.assertLess(S["_dist_to"](DISTRICT + DISTRICT[:1], q), 0.01)
+        # neighbouring long streets `spacing` apart, through the origin
+        s0 = paths["s0"]
+        self.assertLess(S["_dist_to"](s0, (250, 220)), 1e-3)          # millimetre points
+        self.assertAlmostEqual(S["_dist_to"](paths["s1"], (250, 220)), 40, places=3)
+        self.assertAlmostEqual(S["_dist_to"](paths["c1"], (250, 220)), 60, places=3)
+
+    def test_grid_line_cut_in_pieces_by_a_notch(self):
+        # An L-shaped district: a line across the notch gives two streets, `_1` the later piece.
+        ring = [(60, 60), (440, 60), (440, 380), (300, 380), (300, 200), (200, 200), (200, 380),
+                (60, 380)]
+        step = run_streets(lambda x, y: 0.0, ring=ring, pattern="grid", bearing=90, origin=[250, 300],
+                           spacing=40, cross=60)
+        keys = set(step.out.features)
+        self.assertIn("s0", keys)
+        self.assertIn("s0_1", keys)
+        a, b = metres(step.out.features["s0"][1]), metres(step.out.features["s0_1"][1])
+        self.assertLess(a[1][0], 201)
+        self.assertGreater(b[0][0], 299)
 
 
 # --- houses -------------------------------------------------------------------------------------
@@ -638,6 +756,40 @@ class RowsTest(unittest.TestCase):
         self.assertEqual([([i for i, _ in r], z) for r, z in pieces],
                          [([0], 0.0), ([1], 1.0), ([2], 2.0)])
 
+    def test_no_floor_raised_past_raise_max(self):
+        # Rule 7: land rising 0.2 to 0.6 a metre back from the street. A terrace at its footway cuts
+        # past `max_cut` at the back; a floor may move at most RAISE_MAX (0.3 m) off the footway,
+        # so each kept terrace stands within it, and what no level holds is left out (was: raised
+        # up to 1.5 m, doors with no steps).
+        for slope in (0.2, 0.3, 0.35, 0.6):          # old rule 7: 0.75 and 1.25 m up at 0.3, 0.35
+            lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+            h = lambda x, y, s=slope: s * y  # noqa: E731
+            step = houses_step([("lots#cf_0", 2, lot, "cell")], height=h,
+                               assets=["house_narrow"], terrace="terrace", max_cut=3, grade=0.7)
+            fronts = H["fronts"]([(0, hh) for _, hh in H["fit_row"](
+                lot, H["lot_frame"](lot, [((0, 0), (100, 0))]),
+                [("house_narrow", -2.5, -4, 2.5, 4)], 1.0, 0.5)])
+            foot = [h(m[0] + f[0] * H["FOOTWAY_OUT"], m[1] + f[1] * H["FOOTWAY_OUT"])
+                    for m, f in fronts]
+            for key, attrs in getattr(step.out, "attrs", {}).items():
+                self.assertLessEqual(abs(attrs["level"] - sum(foot) / len(foot)),
+                                     0.3 + 1e-9, (slope, key))
+            placed = len(step.out.instances)
+            steep = [x for x in step.said if x[1] == "steep"]
+            self.assertEqual(placed + (steep[0][3]["count"] if steep else 0), 2, slope)
+        self.assertEqual(placed, 0)                      # at 0.6 none holds
+
+    def test_failing_row_tried_house_by_house(self):
+        # Rule 7: a row of two whose shared terrace cuts past `max_cut` (a 10 m face 3.5 m east
+        # of the second house), where the first alone (8.5 m from it, past the terrace's 8 m
+        # reach) does not: the first is kept on its own terrace, the second left out.
+        lot = [(20, 3), (31.01, 3), (31.01, 19), (20, 19)]
+        h = lambda x, y: 0.0 if x < 34 else 10.0  # noqa: E731
+        step = houses_step([("lots#cf_0", 2, lot, "cell")], height=h,
+                           assets=["house_narrow"], terrace="terrace", max_cut=3, grade=0.7)
+        self.assertEqual(len(step.out.instances), 1)
+        self.assertEqual(len(step.out.attrs), 1)
+
     def test_terrace_and_ground_refused(self):
         step = houses_step([], terrace="terrace", ground="pad")
         self.assertEqual(step.said[0][:2], ("error", "params"))
@@ -649,6 +801,37 @@ class RowsTest(unittest.TestCase):
         self.assertEqual(rows[1], (0, 0))                 # 10 m and a PARTY
         self.assertNotIn((0, 1), H["rows_by_cover"](12.0, sizes, 9.0))   # no room for the PARTY
         self.assertEqual(H["rows_by_cover"](12.0, sizes, 7.0), [])   # too deep for every asset
+
+
+class SnapNodeTest(unittest.TestCase):
+    # step 5b: a cross street's end takes a street end on the same long street within spacing / 4
+    def test_snap(self):
+        p = types.SimpleNamespace(spacing=44)
+        line = [(0.0, 0.0), (100.0, 0.0)]
+        nodes = [(50.13, 0.0), (52.0, 0.0), (40.0, 5.0), (70.0, 0.0)]
+        self.assertEqual(S["snap_node"](p, (50.0, 0.0), line, nodes), (50.13, 0.0))
+        self.assertEqual(S["snap_node"](p, (58.0, 0.0), line, nodes), (52.0, 0.0))   # 6 m < 11 m
+        self.assertEqual(S["snap_node"](p, (40.0, 0.0), line, [(40.0, 5.0)]), (40.0, 0.0))  # off the line
+        self.assertEqual(S["snap_node"](p, (85.0, 0.0), line, nodes), (85.0, 0.0))   # 15 m: too far
+
+
+class PostsInsideTest(unittest.TestCase):
+    # rule 4 reads keep_out at the posts inside a footprint, place.keep_out's own test (rules.md 8.3)
+    GRID = {"extent_mm": [0, 0, 10000, 10000], "resolution_mm": 500, "nx": 21, "ny": 21}
+
+    def test_square_either_turn(self):
+        sq = [(1.0, 1.0), (2.0, 1.0), (2.0, 2.0), (1.0, 2.0)]
+        got = H["posts_inside"](sq, self.GRID)
+        self.assertEqual(sorted(got), [(x, y) for x in (1000, 1500, 2000) for y in (1000, 1500, 2000)])
+        self.assertEqual(sorted(H["posts_inside"](sq[::-1], self.GRID)), sorted(got))
+
+    def test_turned_and_between_posts(self):
+        # a 0.4 m square between posts holds none; a diamond holds its centre post only
+        self.assertEqual(H["posts_inside"]([(1.05, 1.05), (1.45, 1.05), (1.45, 1.45), (1.05, 1.45)],
+                                           self.GRID), [])
+        self.assertEqual(H["posts_inside"]([(3.0, 2.6), (3.4, 3.0), (3.0, 3.4), (2.6, 3.0)], self.GRID),
+                         [(3000, 3000)])
+        self.assertEqual(H["posts_inside"]([(1.0, 1.0), (2.0, 1.0), (2.0, 2.0), (1.0, 2.0)], {}), [])
 
 
 if __name__ == "__main__":

@@ -14,38 +14,53 @@
 # base, the changes on the same store with --against base, one build each, default threads; VIA_LIB=lib. Measured once, so the bands are the measured number:
 # a band is not a target, it says where someone looks.
 
+# M3 slice 5 (ways): the quay's `ends` hold changes the ground the streets step reads near the quay,
+# so lots, houses, terraces, doors_off (+2) and place.relief (+1) were re-recorded from one build
+# each (this protocol; VIA_LIB a copy of lib with only lib/ways and lib/town kinds.toml changed, so
+# lib/town/streets.py as of 2026-11-15 evening).
+
+# M3 slice 5 (fix): every band below re-recorded on the combined tree (ways, streets and houses
+# together: streets.py step 4b and `max_grade`, houses.py's floor held within 0.3 m of the footway,
+# rule 4 reading keep_out at the posts inside a footprint, step 5b's cross-street ends), this
+# protocol with VIA_LIB=lib itself, release `via` of that tree, one fresh store; base, then each
+# change --against base once. The rows that moved: blocks 11 -> 9, lots 138 -> 136, rest 28 -> 27,
+# streets 6 -> 5 (x0_140 is not laid: too steep, no slant fits), houses 128 -> 110, lots_held
+# 77 -> 64, terraces 86 -> 77, doors_level 103 -> 110, doors_off 14 -> 0; move_hill lot_removed
+# 102 -> 110, lot_added 66 -> 70, houses_removed 96 -> 84, identity.reselected 1 -> 2; unrelated
+# lot_removed 3 -> 4, houses_removed_west 1 -> 0.
+
 # ------------------------------------------------------------------------------------------ base
 
 [base.blocks]                               # areas of `town`: the streets, the main way and the quay
 measure = "block"
-band    = [11, 11]
+band    = [9, 9]
 
 [base.lots]
 measure = "lot"
-band    = [135, 135]
+band    = [136, 136]
 
 [base.rest]                                 # what no frontage reaches (cells' rest pieces)
 measure = "rest"
-band    = [26, 26]
+band    = [27, 27]
 
 [base.streets]                              # 2 contour streets, 2 cross streets, 2 down to the quay
 measure = "street"
-band    = [6, 6]
+band    = [5, 5]
 
 [base.houses]                               # houses in rows along the lots' frontage (lib/town
 measure = "houses"                          # houses.py rules 2 and 4): 52 detached houses, one per
-band    = [125, 125]                        # lot, before the rows; 123 before the s4 town pass (its
+band    = [110, 110]                        # lot, before the rows; 123 before the s4 town pass (its
                                             # rule 7 now reads the terrace's own padded outline at
                                             # the footway's level, and raises a floor up to 1.5 m
                                             # before leaving a run out: 2 left out, was 9)
 
 [base.lots_held]                            # lots with a house; the rest are `step.houses.small`:
 measure = "lots_held"                       # corner triangles and wedges no 8.6 m deep house fits,
-band    = [74, 74]                          # and corner houses inside a cross street's keep_out
+band    = [64, 64]                          # and corner houses inside a cross street's keep_out
 
 [base.terraces]                             # one level terrace per run of houses wall to wall, cut
 measure = "terraces"                        # where the footway climbs more than 0.6 m (houses.py
-band    = [83, 83]                          # rule 8): 74 before, one per run
+band    = [77, 77]                          # rule 8): 74 before, one per run
 
 [base.keep_out]                             # every row clear of its street's carriageway and
 measure = "place.keep_out"                  # footways (7 before the rows were pushed back by the
@@ -69,11 +84,11 @@ band    = [0, 0]                            # there, so it agrees
 
 [base.doors_level]                          # doors within 0.3 m of the ground 3 m out (measure.py,
 measure = "doors_level"                     # "Doors"): 10 of 123 before the s4 town pass, when each
-band    = [103, 103]                        # terrace stood at its own mean
+band    = [110, 110]                        # terrace stood at its own mean
 
-[base.doors_off]                            # doors more than 1 m off it: 91 of 123 before; now the
-measure = "doors_off"                       # rows whose floor was raised (rule 7) to keep the
-band    = [12, 12]                          # terrace's cut within `max_cut`: front steps
+[base.doors_off]                            # doors more than 1 m off it: 91 of 123 before the s4
+measure = "doors_off"                       # pass, 14 after it (floors raised up to 1.5 m); 0 since
+band    = [0, 0]                            # slice 5 holds a floor within 0.3 m of its footway
 
 [base.views]                                # one per kind of meeting, one from the gate, two at the wall
 measure = "bookmarks"
@@ -81,10 +96,24 @@ band    = [8, 8]
 
 [base.unlevelled]                           # houses on terraces (lib/town `terrace`, one per run)
 measure = "place.relief"                    # standing on more relief than their asset allows
-band    = [8, 8]                            # (0.6 m); 50 with one lib/land pad per house in rows;
+band    = [9, 9]                            # (0.6 m); 50 with one lib/land pad per house in rows;
                                             # 9 before the s4 town pass. Most are a step between two
                                             # floors of a stepped row under a party wall: the step
                                             # falls within one 0.5 m post cell of the footprint
+
+[base.way_end_grade]                        # R16: a way's end is level with the deck it ends on. The
+measure = "way_end_grade"                   # steepest metre of the last 20 m of a way ending on the
+band    = [0, 0.35]                         # quay (measure.py, "meetings"); 1.14 before (high_street
+                                            # fell 2.38 m in its last 3 m). 0.34 is d35/d175's first
+                                            # 2 m, where the deck's 3 m `bank` fade is concave
+
+[base.way_end_drop3]                        # metres it falls in its last 3 m: at most `end_grade` (0.2)
+measure = "way_end_drop3"                   # over 3 m
+band    = [0, 0.6]
+
+[base.wall_ends]                            # the steepest post past each end of the quay within 12 m:
+measure = "front_end_slope"                 # 80.8 degrees before (the wall ran round the end); the
+band    = [0, 36]                           # wall now fades over each end's tenth
 
 # ------------------------------------------------------------------------------------------ R13
 
@@ -126,11 +155,11 @@ band    = [0, 0]
 
 [unrelated.lots_east]                       # the east end does change
 measure = "lot_removed"
-band    = [3, 3]
+band    = [4, 4]
 
 [unrelated.houses_west]                     # one house west of 200 m goes: its lot (175.9, 139.7)
 measure = "houses_removed_west"             # keeps its name but its shape moves with `s1`'s thinned
-band    = [1, 1]                            # points, and the house no longer fits. Should be 0.
+band    = [0, 0]                            # points, and the house no longer fit (1 until slice 5).
 
 # ------------------------------------------------------------------------------------------ move_hill
 
@@ -140,11 +169,11 @@ band    = [2, 2]                            # streets `d175` and `x0_140` are no
 
 [move_hill.lots_resettled]                  # the contours move, so the lots between them do
 measure = "lot_removed"
-band    = [99, 99]
+band    = [110, 110]
 
 [move_hill.lots_new]                        # 63 before the s4 town pass: `d105`, a street down
 measure = "lot_added"                       # from s0 that crosses the main way, now ends on the
-band    = [66, 66]                          # way (streets.py step 6) instead of being dropped
+band    = [70, 70]                          # way (streets.py step 6) instead of being dropped
 
 [move_hill.street_down_to_way]              # that street
 measure = "street_added"
@@ -152,8 +181,14 @@ band    = [1, 1]
 
 [move_hill.houses_moved_out]                # of base's 125 (92 before the s4 town pass)
 measure = "houses_removed"
-band    = [95, 95]
+band    = [84, 84]
 
-[move_hill.views_reselected]                # `way_street` follows its junction 14.3 m and says so
-measure = "identity.reselected"             # a run diagnostic: measured from --run (build --diagnostics)
-band    = [1, 1]
+[move_hill.views_reselected]                # `way_street` follows its junction 14.3 m and says so;
+measure = "identity.reselected"             # since slice 5 two views resolve to one new block
+                                            # (2): a run diagnostic, from --run (build --diagnostics)
+band    = [2, 2]
+
+[move_hill.way_end_grade]                   # R16, as in base
+measure = "way_end_grade"
+band    = [0, 0.35]
+

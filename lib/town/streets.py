@@ -38,11 +38,30 @@ How it lays them (ours, written for this library):
    crossing). The main ways are taken as given: the step never moves or splits them.
    With `shore` and `lot_depth`, a long street that comes nearer the shore than `2 * lot_depth`
    is not laid, so a row of lots faces the waterfront and another faces the lowest long street.
+   **4b.** An end within `spacing / 2` of an end of a long street laid before it is moved onto
+   that end (the nearest; ties by key): one that meets no street (on the outline, or on a main
+   way), and one that ends on another street whose own end lies within `spacing / 2` of the meeting
+   (not a loop). So two long streets leaving the district side by side end at one node, not two a
+   metre apart, and no stub is left past a junction (townland `move_crossing`:
+   `upper_streets#sm1` ended on `s0` 1.7 m from `s0`'s start).
 5. **Cross streets.** Between each two neighbouring long streets, every `cross` metres along the
    lower one (staggered by half a `cross` on alternate pairs, so they meet as T junctions rather
    than in a line), a short street runs straight to the nearest point of the other: on a contour
    that is the fall line, the shortest way up. Its two ends are written into both long streets.
    One that leaves the district, or is longer than `2 * spacing`, is not laid.
+   **5b.** Each end lies on the node of a street end laid before it (a long street's end, or a
+   cross street's) on the same long street within `spacing / 4`, when there is one (the far end
+   only while the grade still holds), and a cross street shorter than `spacing / 4` is not laid:
+   so streets meeting a long street from either side meet at one crossroads, and no sliver lot is
+   left where two long streets converge (city old town, M3 slice 5 review on foot: ten ends 0.1
+   to 3 m apart, `x2_330` 7 m long).
+   **The grade.** Where the land along that line rises more than `max_grade` (rise over run) over
+   any `GRADE_RUN` (10 m) of it, read every metre, the street climbs aslant instead: its far end
+   moves along the upper street `SLANT_STEP` (2 m) at a time, forward first then back at each
+   distance, to the first point whose line holds `max_grade`, crosses no main way nor another
+   cross street, and whose middle lies `spacing / 4` or more from every main way (a street beside
+   the way it would double); with none within `2 * spacing`, it is not laid (quay `x0_140`
+   climbed 34.5 % over 10 m; aslant, it ran 96 m back across the main way). Ours.
 6. **Down to the shore.** With `shore` (a path feature: the waterfront, R18), short streets run
    from the long street lowest on the land straight to the nearest point of the shore, every
    `cross` metres along it (offset by half a `cross` from its cross streets above), so streets end
@@ -78,7 +97,17 @@ name: the line streets run down to); `origin` (optional, [x, y] metres: the seed
 `ways` (selectors of the main ways, default `["kind:main_street"]`; none found is no error);
 `join` (8 m: a long street running beside a main way this near ends on it); `lot_depth` (0 m, off:
 with `shore`, the depth of the lots, so the lowest long street keeps `2 * lot_depth` from the
-shore).
+shore); `max_grade` (0.2, rise over run: a cross street's steepest 10 m, step 5; 0 is off);
+`pattern` (`"contour"`, the steps above, or `"grid"`, below).
+
+**`pattern = "grid"`** (a district of a planned town, cut by main ways it is bounded by): long
+streets run straight along `bearing` (default the district's long side) every `spacing` metres
+across it, and cross streets straight across them every `cross` metres, both through `origin` (or
+the district's centre snapped to whole `spacing`s), each cut `PAST` beyond the outline; a line the
+outline cuts in several pieces gives one street per piece, and one shorter than `min_length` is not
+laid. The land does not bend a grid (nor `max_grade`, `shore`, `steep`): the network nodes every
+crossing. Long streets are `s<k>`, cross streets `c<j>` (`j` whole `cross`es from the origin), a
+later piece of one line `_<i>`. Step 8 (joined) and 9 (length) apply.
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -89,8 +118,9 @@ from viasdk import RpcError
 
 PARAMS_EXPLAIN = ("A param of the streets step is outside what it takes: `district` names one "
                   "region feature; `spacing`, `cross`, `step` and `sample` are above 0; `steep`, "
-                  "`join` and `lot_depth` are 0 or more; `bearing` is a number of degrees; `ways` "
-                  "is a list of names and `kind:` selectors.")
+                  "`join`, `lot_depth` and `max_grade` are 0 or more; `bearing` is a number of "
+                  "degrees; `ways` is a list of names and `kind:` selectors; `pattern` is "
+                  "`contour` or `grid`.")
 
 EXPLAIN = {
     "no_surface": "The streets step found no field with role `surface`, so it cannot read the "
@@ -105,6 +135,9 @@ SELF = "\0self"                                       # for one that comes round
 WAY = "\0way"                                         # for one that ends on a main way beside it
 BESIDE = math.cos(math.radians(30))                   # within 30 degrees of a way's direction
 PAST = 0.005                                          # metres an end runs past the outline it is cut on
+PATTERNS = ("contour", "grid")
+GRADE_RUN = 10.0                                      # metres a cross street's grade is read over
+SLANT_STEP = 2.0                                      # metres along the upper street per slant tried
 
 
 class ParamError(ValueError):
@@ -142,7 +175,12 @@ class Params:
             raise ParamError("ways", "`ways` is not a list of names", "write a list of selectors")
         self.join = _number(raw, "join", 8)
         self.lot_depth = _number(raw, "lot_depth", 0)
-        for key in ("join", "lot_depth"):
+        self.max_grade = _number(raw, "max_grade", 0.2)
+        self.pattern = raw.get("pattern", "contour")
+        if self.pattern not in PATTERNS:
+            raise ParamError("pattern", f"`pattern` is {self.pattern!r}",
+                             "write \"contour\" or \"grid\"")
+        for key in ("join", "lot_depth", "max_grade"):
             if getattr(self, key) < 0:
                 raise ParamError(key, f"`{key}` is {getattr(self, key)}", "write 0 or more metres")
 
@@ -315,6 +353,8 @@ def _surface(step):
 
 def lay(p, ring, land, shore=None, ways=()):
     """Every street, by key: a list of points in metres. ``ways``: the main ways' polylines."""
+    if p.pattern == "grid":
+        return join_ends(p, ring, lay_grid(p, ring), ways, shore)
     steep = math.tan(math.radians(p.steep))
     # The seed line's origin: `origin` when written, else the district's centre snapped to whole
     # `spacing`s of the world frame. A written origin is the one an edit at the district's edge
@@ -365,6 +405,9 @@ def lay(p, ring, land, shore=None, ways=()):
         if _length(pts) < p.min_length or near_shore(p, ring, shore, pts):
             continue
         pts = thin(pts, 0.25)
+        for end, hit in ((0, hit_b), (-1, hit_f)):    # step 4b: an end beside a node takes it
+            if hit is None or hit is WAY:
+                pts[end] = snap_end(p, pts[end], longs)
         longs[k] = pts
         if hit_b is not None and hit_b is not WAY:
             meets.append((k, hit_b, 0))
@@ -372,8 +415,7 @@ def lay(p, ring, land, shore=None, ways=()):
             meets.append((k, hit_f, -1))
     # A long street that ends on another: its end is written into the other as a vertex.
     for k, other, end in meets:
-        q, longs[other] = insert_nearest(longs[other], longs[k][end])
-        longs[k][end] = q
+        longs[k][end], longs[other] = meet_point(p, longs[other], longs[k][end])
     crosses = {}
     order = sorted(longs)
     for n, (k, kn) in enumerate(zip(order, order[1:])):
@@ -383,10 +425,16 @@ def lay(p, ring, land, shore=None, ways=()):
         m = first
         total = _length(longs[k])
         while m < total - 0.5 * p.cross:
-            a = point_at(longs[k], m)
-            b = nearest_on(longs[kn], a)
-            if (math.dist(a, b) <= 2 * p.spacing and inside(ring, a) and inside(ring, b)
-                    and inside(ring, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2))):
+            nodes = [q for o in longs.values() for q in (o[0], o[-1])]
+            nodes += [q for c in crosses.values() for q in (c[0], c[-1])]
+            a = snap_node(p, point_at(longs[k], m), longs[k], nodes)
+            b = cross_to(p, ring, land, longs[kn], a, ways, crosses.values())
+            if b is not None:
+                b2 = snap_node(p, b, longs[kn], nodes)
+                if b2 != b and (p.max_grade <= 0 or grade_of(land, a, b2) <= p.max_grade) \
+                        and inside(ring, b2):
+                    b = b2
+            if b is not None and math.dist(a, b) >= p.spacing / 4:
                 a, longs[k] = insert_nearest(longs[k], a)
                 b, longs[kn] = insert_nearest(longs[kn], b)
                 crosses[f"x{_tag(k)}_{int(round(m))}"] = [a, b]
@@ -399,6 +447,159 @@ def lay(p, ring, land, shore=None, ways=()):
 
 
 ON_LINE = 0.002                                       # metres: an end this near a line lies on it
+
+
+def meet_point(p, other, pt):
+    """Where a street ending at ``pt`` on ``other`` meets it, and ``other`` with it written in:
+    its nearest point (written in as a vertex), or, with that point within `spacing / 2` of an
+    end of ``other`` (not a loop), that end (step 4b: no stub past the junction)."""
+    q0 = nearest_on(other, pt)
+    tips = [] if other[0] == other[-1] else sorted(
+        (math.dist(e, q0), e) for e in (other[0], other[-1]) if math.dist(e, q0) <= p.spacing / 2)
+    if tips:
+        return tips[0][1], other
+    return insert_nearest(other, pt)
+
+
+def snap_end(p, end, longs):
+    """Step 4b: an end that meets no street, within `spacing / 2` of an end of a long street
+    already laid, is that end (the nearest; ties by key), so two streets leaving the district
+    side by side end at one node, not two a metre apart."""
+    best = None
+    for o in sorted(longs):
+        for q in (longs[o][0], longs[o][-1]):
+            d = math.dist(q, end)
+            if ON_LINE < d <= p.spacing / 2 and (best is None or d < best[0]):
+                best = (d, q)
+    return end if best is None else best[1]
+
+
+def snap_node(p, pt, line, nodes):
+    """Step 5b: a cross street's end ``pt`` on ``line`` is the nearest of ``nodes`` (street ends
+    laid before it) that lies on ``line`` within `spacing / 4` of it, so streets meeting one street
+    from either side meet at one node, not two a metre apart; else ``pt``."""
+    best = None
+    for q in nodes:
+        d = math.dist(q, pt)
+        if d <= p.spacing / 4 and _dist_to(line, q) <= ON_LINE and (best is None or d < best[0]):
+            best = (d, q)
+    return pt if best is None else best[1]
+
+
+def grade_of(land, a, b, run=GRADE_RUN):
+    """The largest rise over run of the land along segment ``a``-``b``, read every metre or less,
+    over `run` metres (the whole segment when shorter)."""
+    L = math.dist(a, b)
+    if L == 0:
+        return 0.0
+    n = max(1, int(math.ceil(L)))
+    h = [land.height(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n)
+         for i in range(n + 1)]
+    w = max(1, min(n, int(round(run / (L / n)))))
+    return max(abs(h[i + w] - h[i]) for i in range(n - w + 1)) / (w * L / n)
+
+
+def arc_at(pts, q):
+    """The arc length along ``pts`` of its nearest point to ``q``."""
+    best, bd, walked = 0.0, math.inf, 0.0
+    for a, b in zip(pts, pts[1:]):
+        r, t = _seg_nearest(a, b, q)
+        d = math.dist(r, q)
+        if d < bd:
+            best, bd = walked + t * math.dist(a, b), d
+        walked += math.dist(a, b)
+    return best
+
+
+def cross_to(p, ring, land, upper, a, ways=(), crosses=()):
+    """Step 5's far end for a cross street from ``a``: the nearest point of the upper street when
+    the land along it is no steeper than `max_grade` over `GRADE_RUN` metres; else the nearest
+    point along the upper street, `SLANT_STEP` metres at a time either way (the forward way first
+    at each distance), whose line holds it, crosses no main way (``ways``) nor another cross
+    street (``crosses``), and whose middle lies `spacing / 4` or more from every main way (not a
+    street beside the way), so the street climbs aslant; None when none within `2 * spacing` does,
+    or the street leaves the district."""
+    def fits(b):
+        return (math.dist(a, b) <= 2 * p.spacing and inside(ring, a) and inside(ring, b)
+                and inside(ring, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)))
+
+    b0 = nearest_on(upper, a)
+    if not fits(b0):
+        return None
+    if p.max_grade <= 0 or grade_of(land, a, b0) <= p.max_grade:
+        return b0
+    s0, total = arc_at(upper, b0), _length(upper)
+    n = 1
+    while n * SLANT_STEP <= 2 * p.spacing:
+        near = False
+        for s in (s0 + n * SLANT_STEP, s0 - n * SLANT_STEP):
+            if 0 <= s <= total:
+                b = point_at(upper, s)
+                if math.dist(a, b) <= 2 * p.spacing:
+                    near = True
+                    mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+                    if (fits(b) and grade_of(land, a, b) <= p.max_grade
+                            and first_crossing(a, b, list(ways) + list(crosses)) is None
+                            and all(_dist_to(w, mid) >= p.spacing / 4 for w in ways)):
+                        return b
+        if not near:
+            break
+        n += 1
+    return None
+
+
+def lay_grid(p, ring):
+    """`pattern = "grid"`: long streets straight along `bearing` (default the district's long
+    side) every `spacing` metres across it, and cross streets straight across them every `cross`
+    metres along it, both through `origin` (or the district's centre snapped to whole
+    `spacing`s), each cut at the outline `PAST` beyond its crossing. A line the outline cuts into
+    several pieces gives one street per piece; one shorter than `min_length` is not laid. The
+    network nodes every crossing (geometry.md 8.1), so no vertex is written here. Long streets are
+    `s<k>`, cross streets `c<j>` (`j` whole `cross`es along from the origin), a later piece of
+    the same line `_<i>`."""
+    if p.origin is not None:
+        cx, cy = p.origin
+    else:
+        cx, cy = centroid(ring)
+        cx = math.floor(cx / p.spacing + 0.5) * p.spacing
+        cy = math.floor(cy / p.spacing + 0.5) * p.spacing
+    along = _unit(_bearing_vec(p.bearing if p.bearing is not None else long_side(ring)))
+    across = (along[1], -along[0])
+    reach = diameter(ring) + math.dist((cx, cy), centroid(ring))
+    out = {}
+    for prefix, gap, d, n in (("s", p.spacing, along, across), ("c", p.cross, across, along)):
+        for k in range(-int(reach / gap) - 1, int(reach / gap) + 2):
+            o = (cx + n[0] * k * gap, cy + n[1] * k * gap)
+            pieces = [s for s in clip_line(ring, o, d, reach) if math.dist(*s) >= p.min_length]
+            for i, seg in enumerate(pieces):
+                out[f"{prefix}{_tag(k)}" + (f"_{i}" if i else "")] = list(seg)
+    return out
+
+
+def clip_line(ring, o, d, reach):
+    """The pieces of the line through ``o`` along ``d`` (from `-reach` to `reach`) inside the
+    ring, in order along ``d``, each end carried `PAST` beyond the outline."""
+    a = (o[0] - d[0] * reach, o[1] - d[1] * reach)
+    r = (2 * d[0] * reach, 2 * d[1] * reach)
+    ts = []
+    for c, e in zip(ring, ring[1:] + ring[:1]):
+        s_ = (e[0] - c[0], e[1] - c[1])
+        den = r[0] * s_[1] - r[1] * s_[0]
+        if den == 0:
+            continue
+        w = (c[0] - a[0], c[1] - a[1])
+        t = (w[0] * s_[1] - w[1] * s_[0]) / den
+        u = (w[0] * r[1] - w[1] * r[0]) / den
+        if 0 <= t <= 1 and 0 <= u < 1:
+            ts.append(t)
+    ts.sort()
+    past = PAST / (2 * reach)
+    at = lambda t: (a[0] + r[0] * t, a[1] + r[1] * t)  # noqa: E731
+    out = []
+    for t0, t1 in zip(ts, ts[1:]):
+        if t1 - t0 > 2 * past and inside(ring, at((t0 + t1) / 2)):
+            out.append((at(t0 - past), at(t1 + past)))
+    return out
 
 
 def join_ends(p, ring, streets, ways=(), shore=None):

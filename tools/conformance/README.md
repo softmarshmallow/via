@@ -6,7 +6,7 @@ numpy, nothing else, and never the SDK.
 
 ```
 cd tools/conformance
-uv run python -m via_conformance run --milestone 0                 # target/debug/via
+uv run python -m via_conformance run --milestone 0                 # $CARGO_TARGET_DIR or target/debug/via; refused if older than crates/
 uv run python -m via_conformance run --via PATH --milestone 1 --chapter build --case c21_failed_build
 uv run python -m via_conformance run --milestone 1 --record runs/  # writes <os>-<arch>.json (U7)
 uv run python -m via_conformance compare runs/macos-aarch64.json runs/linux-x86_64.json

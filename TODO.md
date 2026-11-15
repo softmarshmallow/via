@@ -245,7 +245,7 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
   gate as `edge_ends`, apart from `dead_end_count`; townland expect `base.dead_ends` (18) must be
   re-recorded (18 were 15 at the edge and the rest at gates or inside) and `dead_end_at_edge` read from
   `edge_ends`. Done (townland pass): `base.dead_ends` [0, 0], `base.edge_ends` [16, 16].
-- [ ] -> lib/town (townland pass): **The waterfront's ends are sheer and its level is one number.**
+- [x] -> lib/town (townland pass): **The waterfront's ends are sheer and its level is one number.** Done (M3 slice 5, ways): wall and deck fade over the ends by `t` (`end_fade`), nothing past an end, `level_start`/`level_end` by name; townland starts at `old_bridge.end` (south end 64.8 to 28.5 degrees, no pit, gap 34 to 0 m).
   Its `deck` effect's wall branch (`sd < -width`, mask to `width + 10`) runs round each end, so past an
   end the ground is cut to `level - wall` in a ring: townland's south end is a 71 degree face into a
   dry pit at 3.6 m, below the river beside it (4.5 m); the north end a 0.9 m step into the land. Fade
@@ -416,6 +416,71 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
 - [x] -> examples/townland measure.py: `deck_and_ends` read `bridge.get("width", 6)` at the feature's
   top level, but features.json keeps it in `attrs`; it always used 6. Now reads `attrs` (slice 4).
 
+### From M3 slice 5 (city, 2026-11-15)
+
+- [ ] -> M3 core: **A selector's members are read whole, per chunk.** via-model `graph.rs`
+  `define_all` gives each field chunk an edge from every entry that reads a selector to every
+  member of it (and `shape_members` filters and sorts every feature and made thing per call);
+  graph.md 8.1 says only the made things whose windows meet. lib/town's `terrace` reads
+  `inside('kind:terrace')`, so terraces are quadratic: `city` with terraces under 777 lots passed
+  7.5 GB in 1.5 min; without terraces, 1,992 houses build in 154 s at 4.7 GB. Lesson: a library
+  kind that reads its own kind costs the square of its count in the core.
+- [ ] -> M3 core: **Lots renamed in unchanged blocks.** `city` `move_avenue` renames 212 lots (106
+  with identical outlines) inside 164 blocks kept with the same name and outline (measure.py
+  `lot_changed_in_kept_blocks`); `move_bridge` 16. R13 says names elsewhere stay. Suspect the
+  cell key's stretch anchor and ordinal (identity.md 2.3) when a long street loses a junction.
+- [ ] -> M3 core: `network::representative` scans every post of an area's bounding box against
+  every outline segment; the city's 24 wards (400 m across) made it the top of the profile.
+- [ ] -> M5: `city`'s interchanges are at-grade plates and its freeway lies on the ground (lib/ways
+  `interchange`, `freeway`: stand-ins); ramps, levels and the crosstown viaduct need kind surfaces.
+- [ ] -> M3: `city`'s grand avenue strays 39 m off its gate-to-gate line over 1.5 m lumps into the
+  rows district: a path way point by name (core item 3) or a stiffer route cost.
+
+### From M3 slice 5 (ways, 2026-11-15)
+
+- [x] -> lib/town + lib/ways: **ends level with what they meet (R16).** Quay's main way fell 2.38 m in its
+  last 3 m, crossing heads had 1:2 lips (steepest metre 0.31 to 0.49). Waterfront `ends` hold at
+  `end_grade` 1:5 along arriving ways (1:2 sideways); crossing `heads` at `approach` 1:10 out to `head`.
+  Measured by each world's measure.py "meetings" block; small world lib/ways/test_crossing_world.py
+  fails on the old kinds. Lesson: a hold whose band grows at 1:2 from zero makes a lip, not a ramp.
+- [ ] -> lib/town: quay's `d35`/`d175` still take 0.34 m a metre in their first 2 m: the deck's land fade
+  (`bank` 3, a `mix`) is concave under the `ends` band. Make the land fade a hold at `end_grade`.
+- [ ] -> lib/ways: the crossing's head hold is a half disc behind each end, not the arriving way's
+  corridor (a kind cannot tell what arrives); on a hillside it cuts a bowl round the head (monastery).
+  A per-end corridor needs the arriving way's line in the formula (core: a path end's frame).
+- [ ] -> lib/ways: a way arriving below `deck_z` with a cut-only bed (lane) still sags behind the ramp
+  (example `lane_west`: 0.47 m below the deck 7 m back). The lane's bed could fill near a named end.
+- [ ] -> examples/townland: one `authority.squeezed` at (202, 327): the embankment's faded wall and the
+  crossing's deck edge at partial masks. Fade the wall to 0 before the crossing's `width / 2 + 0.25`.
+- [ ] -> lib/town: waterfront `end_fade`, `rise` are fractions of `t` (a path length has no formula name);
+  metres would not change with the line's length.
+
+### From the M3 slice 5 review on foot (2026-11-15, five worlds, combined tree)
+
+- [ ] -> lib/town: **junction plates with 1:2 shoulders.** Where two street beds meet, the owner of the
+  crossing band holds a level plate and the other way climbs its `bank` at 1:2 (quay `high_street` on
+  `s0` g1 0.50 at g10 0.21; townland `east_road` off the market 3.5 m over 8 m). Let the network node
+  own the meeting (R18) with the crossing's head hold (`approach` 0.1), and a named place kind own
+  the market's plate. Lesson: two beds that each hold level make a step where they hand over.
+- [x] -> lib/town houses.py rule 4: **grass strip before the fronts.** keep_out read between posts
+  against 0 put fronts one post past its zero line (door 1.55 m behind the footway in quay, 3.05 m in
+  the city). Now read at the posts inside the footprint (place.keep_out's own test) plus the outline
+  below 0.5: 1.05 m and 1.55 m (median), no place.keep_out. A 0.25 m push step gave 0.87 m in quay;
+  not taken (twice the readings). Lesson: a lib test of a core rule reads what the core reads.
+- [ ] -> lib/town: the door still stands about 0.5 m further back than the 0.5 m fade (mount depth,
+  0.5 m push steps, the 2 m city posts). Set the front from the frontage street's own edge instead.
+- [x] -> lib/town streets.py step 5b: city old-town cross streets ended 0.1 to 3 m apart on a long
+  street and `x2_330` was 7 m: ends now join a node within `spacing / 4`, shorter ones are not laid.
+- [ ] -> lib/town lay_grid: two grid corners on the outline still miss by 1.0 m (downtown `c1`/`s2`) and
+  2.3 m (rows `c2`/`s0`); snap grid ends the same way.
+- [ ] -> examples/city: `downtown_at_central` (eye 3 m from a house wall in base) and `old_town_street`
+  (looks across lots) face a fixed point; anchor each on a street and face along it.
+- [ ] -> examples/example: a bush lands on the `at_mill` eye after move_beck; keep scatter off bookmark eyes.
+- [ ] -> lib/town: monastery `approach` steps -0.25 / +0.30 m in its last metre at the `gate`: the yard's
+  mean level does not meet the way's bed; the gate, a named point, should own it with an approach hold.
+- [ ] -> examples/measure: the "meetings" block is the same 120 lines in four measure.py files (each
+  example is one standalone file); move it to one shared module if a fifth world needs it.
+
 ### From building example (2026-11-15, M3 world; examples/example)
 
 - -> lib/ways or core (R18): **the church path cannot reach the door.** Ending it 2.5 or 3.8 m short
@@ -431,11 +496,77 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
   Proposal: a change file may write top-level `layer = "<id>"` for what it adds.
 - -> M3 core: **`run` and `set` are still `doc.not_yet`** though their milestone is M3; example's
   row of houses is written house by house and its lamps, stalls and bench are left out.
-- -> lib/ways: **the stand-in deck dams the beck** (example `under_bridge`): water above it pools
+- [x] -> lib/ways: **the stand-in deck dams the beck** (done M3 slice 5: crossing `pass` holds the water to `flow` over the ground 4 m past each face; `face_pool` 0.26 to 0.01 in example) (example `under_bridge`): water above it pools
   against a grey causeway. Owed with kind surfaces; until then say so in the crossing's comment.
 - -> core (documents.md 7): a `doc.change_adds_near` warning on example's `third_cottage` (`cottage_c` near
   `cottage_a`): a typo guard firing on a numbered family of names is noise; consider not warning
   when the two names differ only in a trailing letter or digit.
+
+### From the M3 close (2026-11-15; docs/reports/m3-sheet.png, the slice 5 reports)
+
+M3 closes on paper with these open. Detail for most is in the sections above; each line here says
+where it goes. Lesson: M3 carried four core items (incremental cost, `run`/`set`, way points by
+name, lot names at size) that its worlds needed and did not get; carry them first, not last.
+
+**-> M4, core, first (M3 debts the worlds tripped on)**
+- [ ] **A change costs a cold build.** quay `unrelated` ~100% of cold, `clear_one` 73%, unchanged 64%
+  (core report, 3 runs, HEAD ce470fd). On the m3-sheet run the slowest change is 81% (monastery) to
+  128% (quay `move_hill`) of cold; city `move_avenue` 188 s against 157 s cold. The whole-extent
+  fields memo runs once per plan, three plans a build (3.7 s of quay's 10). Owed: (a) a windowed
+  `Fields` resolve per chunk; (b) `answer`, `define`, `compute_step` reading only what they need;
+  (c) one plan for the three strata; (d) houses and lints split per item (`for_each`).
+- [ ] **Selector members read whole per chunk** (`define_all`, graph.md 8.1): terraces are quadratic,
+  so the city has none (190 `place.relief`, doors to 0.5 m off). Then terraces in `city`.
+- [ ] **R13 for lots at size**: city `move_avenue` renames 212 lots in kept blocks, `move_bridge` 16
+  (expect rows marked FAULT). Diagnose the cell key's stretch anchor and ordinal (identity.md 2.3).
+- [ ] **`run` and `set`** still `doc.not_yet` (rules.md 4, 5 specify them; cases r50-r61 owed):
+  example's row is written house by house, lamps, stalls and bench left out.
+- [ ] **Path way points by name** (derived.md 3, R16): monastery's turns typed; city grand avenue
+  strays 39 m off its line.
+- [ ] `network::representative` scans the bounding box per segment (top of the city profile).
+- [ ] `xtask check --milestone 3`: `cases` 31 and `explain` 33 findings (M3 codes `run.*`, `set.*`,
+  `identity.lock_*`, `surface.*` with no case or explain line). Same on HEAD; not from slice 5.
+- [ ] Plan step 6 for M3: a fresh agent builds a small variation from the documents alone. Not run.
+
+**-> M4, library (lib/town, lib/ways, lib/review)**
+- [ ] **Junction plates with 1:2 shoulders** (high; above, "review on foot"): the node owns the
+  meeting with an approach hold; a market place kind owns its plate. Worst on foot in every town.
+- [ ] Door ~0.5 m further back than the 0.5 m gap (quay, townland median 1.05 m behind the footway's
+  back edge, city 1.55 m): set the front from the frontage street's own edge.
+- [ ] `raise_max` 0.3 (default) loses the hill-street rows (quay 125 -> 102 houses on the streets
+  agent's tree); 1.5 keeps them with doors up to 1.5 m above the footway and no steps. -> owner.
+- [ ] Front steps for raised floors (no room in the 0.5 m before the footway; an asset or a stair).
+- [ ] Streets down to a waterfront (`d*`) have no grade limit (quay `d175` 25%); `d35`, `d175` take
+  0.34 m a metre in their first 2 m (the deck's concave `bank` fade).
+- [ ] lay_grid corners miss by 1.0 and 2.3 m (city downtown `c1`/`s2`, rows `c2`/`s0`).
+- [ ] Monastery gate lip (-0.25 / +0.30 m): the gate, a named point, owns the meeting.
+- [ ] The waterfront `ends` hold reads `kind:street`: a world with a waterfront and no streets gets
+  `formula.empty_selection`.
+- [ ] city: 1,465 of 2,779 lots hold no house (1,314 held; no asset fits, or too steep on the hill).
+- [ ] reach `not_sealed`'s new `narrowest` place is unit-tested only, not exercised in a world.
+- [ ] Footway hummock numbers (quay max 0.227 m) are the streets agent's, never re-measured.
+
+**-> M4, examples**
+- [ ] townland `move_hill`: the district regions stay where the hill was, so the old town empties
+  (56 houses, base 97); districts should follow the hill (a region by name round it).
+- [ ] townland: the river is a written straight course of one width (row 62 regressed from the
+  spike's bends and estuary); `from_east_gate` sees no town.
+- [ ] city: bookmarks `downtown_at_central`, `old_town_street` anchored on a street; houses along the
+  arterials outside the districts; the hand-edit views never rendered.
+- [ ] example: the bush on `at_mill`'s eye; the church path 7.5 m short of the door.
+- [ ] The "meetings" block in four measure.py files; the probe in make_m3_sheet.py is a fifth copy
+  of the same idea. One shared module when the next world needs it.
+
+**-> M5 (kind surfaces, buildings)**
+- [ ] Decks are causeways: water cannot pass under; a deck as a surface. Interchanges are level
+  plates, the freeway lies on the ground, no loop ramp (row 38): ramps and levels need surfaces.
+- [ ] The monastery wall is ground with a gap for a gate; sheer faces (gorge, tarn) draw
+  stair-stepped at 1 m posts: a cliff or wall that says "sheer" owns it.
+- [ ] Corner houses facing both streets; a shallower house for wedges (quay's 60 empty lots).
+
+**-> later**
+- [ ] A railway (row 36) is in no v1 world.
+- [ ] Monastery `no_bridge` floods the floor at the bridge site (seen, not measured).
 
 ## Framing
 

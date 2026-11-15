@@ -50,10 +50,17 @@ cbecb9d before the kernel's fast paths, TODO.md "Distance to large regions is sl
   posts wet (was 56, up to 0.61 m), and the water meets the deck's two faces flat. lib/water's beck
   reads the floor where it cut it, so the deck is no longer smoothed into the river (water 3.1 m
   over the line at the deck, now 0.25 m at most beside it). Nothing passes under it yet.
-- **The embankment's ends are sheer** (71 degrees at the south end into a dry pit at 3.6 m, below
-  the water beside it; 0.9 m step at the north) and it stops 34 m short of `old_bridge.end`. Both are
-  in lib/town's `waterfront` kind (its wall mask runs round the ends; its `level` is one number), not
-  fixable from the world without an `authority.conflict` against it: TODO.
+- (Fixed, M3 slice 5 ways) **The embankment's ends were sheer** (65 to 69 degrees past them, a dry
+  pit 0.19 m below the river at the south end) and it stopped 34 m short of `old_bridge.end`. It now
+  starts at the crossing's end by name and rises to its deck (`level_start = "= old_bridge.deck_z"`),
+  and its wall fades over each end (lib/town `waterfront`): 28.5 degrees past the south end, no pit.
+  The old town gains that frontage: 144 lots, 95 houses (were 152, 99); on the combined slice 5
+  tree 145 lots, 97 houses, 101 reach pairs held, 2 `place.relief`. One `authority.squeezed`
+  warning remains at (202, 327), where the faded wall and the crossing's deck edge overlap at
+  partial masks.
+- (Fixed, M3 slice 5 ways) The river pooled 0.25 m against both faces of the deck (the beck's level
+  smoothed from the stand-in deck): the crossing's `pass` holds it to the river's `flow`
+  (`face_pool` 0.02). Ways reach the deck at 1:10 (`head_grade` 0.32 to 0.10).
 - **One street of the old town ends on the embankment** (`old_streets#d68`; was none). The others
   that step 6 lays fall within `spacing / 2` of `quay_road` or `high_street`.
 - **`from_east_gate` sees no town**: from the gate down the east road the hill's south shoulder

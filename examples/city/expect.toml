@@ -1,0 +1,239 @@
+# What a city build must measure (docs/plan.md, M3; R13, R15, R16, R18). Measures, never bytes (R15):
+# each row names a measure of measure.py and the band it falls in. Taken by
+#
+#   python3 examples/city/measure.py BUILD                       # base
+#   python3 examples/city/measure.py BUILD+<c> --base BUILD      # a change, built with --against
+#   python3.11 examples/city/measure.py BUILD --check base       # each row against its band
+#
+# Protocol: macOS arm64 (Apple M4 Pro, shared with other agents' builds), a `via` release binary
+# built from the rewrite branch's working tree on 2026-11-15 (after ce470fd, with the other M3
+# slice 5 agents' uncommitted lib/ways, lib/town, lib/review and via-doc changes of that hour),
+# VIA_LIB=lib, Python 3.12 (sdk/python/.venv), one fresh store, 8 threads; base cold, then each
+# change --against base on the same store. One build each, so a band is the measured number: where
+# someone looks, not a target. Timings (/usr/bin/time -l): base cold 154 s, 4.7 GB peak;
+# move_avenue 185 s, move_bridge 156 s, hand 73 s, each 6.4 to 6.8 GB peak.
+#
+# bearing_spread is lib/review/form.py's (challenges.md row 59: the spike's city alone 0.45, in
+# atlas 0.76; main ways 0.40): its band is wide on purpose, as it moves with the routes.
+#
+# R13 is NOT held for lots (rows marked FAULT): move_avenue renames 212 lots (106 of them with
+# identical outlines) inside 164 blocks whose names and outlines did not change; move_bridge 16.
+# Recorded as measured so a fix shows as a change in band. README "Known faults".
+#
+# M3 slice 5 (fix): base and hand re-recorded on the combined tree with this protocol (release
+# `via` of that tree, VIA_LIB=lib, one fresh store, base cold 209 s and 5.3 GB peak; hand 81 s,
+# move_avenue 188 s, move_bridge 160 s, each 7.6 to 7.8 GB peak). houses.py rule 4 now reads
+# keep_out at the posts inside a footprint, as place.keep_out does, so fronts stand 1.55 m behind
+# the footway (median; 3.05 before) and more lots hold a row; streets.py step 5b joins the old
+# town's cross-street ends to a node within spacing / 4 and drops one shorter. Moved: blocks
+# 203 -> 200, lots 2744 -> 2779, streets 95 -> 93, houses 1992 -> 2201, lots_held 1277 -> 1314,
+# place.relief 156 -> 190 (houses on the old town's slope: no terraces in the city); hand
+# houses_removed 3 -> 2, blocks_kept 203 -> 200. move_avenue and move_bridge in band unchanged.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.wards]
+measure = "ward"
+band    = [24, 24]
+
+[base.blocks]
+measure = "block"
+band    = [200, 200]
+
+[base.lots]
+measure = "lot"
+band    = [2779, 2779]
+
+[base.streets]
+measure = "street"
+band    = [93, 93]
+
+[base.houses]
+measure = "houses"
+band    = [2201, 2201]
+
+[base.lots_held]
+measure = "lots_held"
+band    = [1314, 1314]
+
+[base.crossings]
+measure = "crossings"
+band    = [3, 3]
+
+[base.decks]
+measure = "decks"
+band    = [3, 3]
+
+[base.doubled_decks]
+measure = "doubled_decks"
+band    = [0, 0]
+
+[base.ways_over_water]
+measure = "ways_over_water"
+band    = [0, 0]
+
+[base.crossing_ends_met]
+measure = "crossing_ends_met"
+band    = [6, 6]
+
+[base.meetings_owned]
+measure = "meetings_owned"
+band    = [6, 6]
+
+[base.interchanges]
+measure = "interchanges"
+band    = [3, 3]
+
+[base.interchange_ends]
+measure = "interchange_ends_min"
+band    = [4, 4]
+
+[base.unowned]
+measure = "geom.unowned_crossing"
+band    = [0, 0]
+
+[base.deck_dry]
+measure = "deck_wet"
+band    = [0, 0]
+
+[base.bearing_spread]
+measure = "bearing_spread"
+band    = [0.7, 0.78]
+
+[base.bearing_main]
+measure = "bearing_main"
+band    = [0.35, 0.42]
+
+[base.dead_ends]
+measure = "dead_end_count"
+band    = [0, 0]
+
+[base.edge_ends]
+measure = "edge_ends"
+band    = [94, 94]
+
+[base.reach]
+measure = "reach_held"
+band    = [6, 6]
+
+[base.relief]
+measure = "place.relief"
+band    = [190, 190]
+
+[base.bookmarks]
+measure = "bookmarks"
+band    = [19, 19]
+
+# ------------------------------------------------------------------------------------------ move_avenue
+
+[move_avenue.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_avenue.wards_resettled]
+measure = "wards_resettled"
+band    = [8, 8]
+
+[move_avenue.wards_resettled_far]
+measure = "wards_resettled_far"
+band    = [0, 0]
+
+[move_avenue.blocks_removed_far]
+measure = "block_removed_far"
+band    = [0, 0]
+
+[move_avenue.blocks_added_far]
+measure = "block_added_far"
+band    = [0, 0]
+
+[move_avenue.lots_renamed_in_kept_blocks]                             # FAULT, see the header
+measure = "lot_changed_in_kept_blocks"
+band    = [212, 212]
+
+[move_avenue.decks]
+measure = "decks"
+band    = [3, 3]
+
+[move_avenue.unowned]
+measure = "geom.unowned_crossing"
+band    = [0, 0]
+
+[move_avenue.reach]
+measure = "reach_held"
+band    = [6, 6]
+
+# ------------------------------------------------------------------------------------------ move_bridge
+
+[move_bridge.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_bridge.decks]
+measure = "decks"
+band    = [3, 3]
+
+[move_bridge.doubled_decks]
+measure = "doubled_decks"
+band    = [0, 0]
+
+[move_bridge.ways_over_water]
+measure = "ways_over_water"
+band    = [0, 0]
+
+[move_bridge.crossing_ends_met]
+measure = "crossing_ends_met"
+band    = [6, 6]
+
+[move_bridge.deck_dry]
+measure = "deck_wet"
+band    = [0, 0]
+
+[move_bridge.wards_resettled]
+measure = "wards_resettled"
+band    = [8, 8]
+
+[move_bridge.wards_resettled_far]
+measure = "wards_resettled_far"
+band    = [0, 0]
+
+[move_bridge.houses_in_kept_blocks]
+measure = "houses_changed_in_kept_blocks"
+band    = [0, 0]
+
+[move_bridge.lots_renamed_in_kept_blocks]                             # FAULT, see the header
+measure = "lot_changed_in_kept_blocks"
+band    = [16, 16]
+
+[move_bridge.reach]
+measure = "reach_held"
+band    = [6, 6]
+
+# ------------------------------------------------------------------------------------------ hand
+
+[hand.errors]
+measure = "errors"
+band    = [0, 0]
+
+[hand.houses_removed]
+measure = "houses_removed"
+band    = [2, 2]
+
+[hand.houses_added]
+measure = "houses_added"
+band    = [0, 0]
+
+[hand.lots_removed]
+measure = "lot_removed"
+band    = [0, 0]
+
+[hand.blocks_kept]
+measure = "blocks_kept"
+band    = [200, 200]
+
+[hand.wards_resettled]
+measure = "wards_resettled"
+band    = [0, 0]

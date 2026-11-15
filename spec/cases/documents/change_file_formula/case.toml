@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "A change file adding a field whose formula reads a rank 1 `let`: names a formula reads do not re-home it, so doc.upward_ref."
+milestone = 3
+actions   = ["merge"]
+
+[action.merge]
+via  = ["merge", "world.toml", "--change", "changes/edits.toml"]
+exit = 1
+
+[action.merge.diag.upward_ref]
+code = "doc.upward_ref"
+file = "changes/edits.toml"
+line = 4
