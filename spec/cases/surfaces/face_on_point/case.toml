@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, face_on_point: a point feature with face = 90 as a path's place: face_b 90 000 and turn 0 in its meeting row (M5: default mounts carry faces)."
+milestone = 5
+actions   = ["query"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.query]
+via         = ["query", "world.toml", "meetings", "--lib", "{work}/lib", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.query.file.face]
+path    = "out.json"
+pointer = "/face_b"
+value   = [90000]
+
+[action.query.file.turn]
+path    = "out.json"
+pointer = "/turn"
+value   = [0]

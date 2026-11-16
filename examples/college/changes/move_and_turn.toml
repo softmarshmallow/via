@@ -1,0 +1,8 @@
+# The pavilion moved and turned (docs/plan.md, M5 acceptance; challenge 48): it stands 18 m north
+# and 8 m east, turned a quarter to face west, its door now toward the cloister. Only the building
+# is written again. Its walk ends at `pavilion.entry`, the asset's mount, so the walk's end follows
+# the door to its new place and faces it square; the walk's start, the way and every other building,
+# walk, run and view keep their names and places (measure.py `kept_*`, `walk_follows`).
+[instance.pavilion]
+at   = [202, 92]
+face = 270

@@ -1,0 +1,19 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.well]
+kind = "marker"
+at   = [50, 50]
+face = 90
+
+[feature.walk]
+kind    = "footpath"
+path    = [[20, 50]]
+ends_at = "well"

@@ -1,0 +1,153 @@
+# The college's pack: whole-building assets and the kit of bays (docs/plan.md, M5; the spike's
+# college used the shared primitive pack's `college.*` ids). Every asset a primitive, so no model
+# file and no facts file. A box's front is +y, its origin the base centre (assets.md 6).
+#
+# A building's door is an asset mount (assets.md 2.7): `entry`, on the doorstep 0.5 m out from the
+# front wall, facing into the building (180, as a walker enters), with `connector = "foot"`. So a
+# walk ends at `<instance>.entry` and follows the building when it is moved and turned, and a door
+# no walk reaches is the core's `surface.unmet` (surfaces.md 3.2, 3.4; challenge 48). The
+# `footpath` of lib/building has the same connector; a way of lib/ways has none.
+#
+# The kit (lib/building/README.md, assets.md 10): each bay carries `params.pitch`, the step it
+# repeats at in a run, apart from its measured width. The wing bay is the spike's published
+# fault: it measures 6.44 m at a 6 m pitch, so neighbours overlap by 0.44 m (lib/building's
+# check, `kit_pitch`; measure.py `kit_joint_*`).
+
+[taxon."college/building"]
+[taxon."college/gate"]
+[taxon."college/kit"]
+[taxon."plant/tree"]
+[taxon."prop/lamp"]
+
+# ------------------------------------------------------------------------------------------ buildings
+
+[asset.hall]                       # the hall on the top terrace: 30 m front, 14 m deep
+primitive = "box"
+size      = [30, 14, 14]
+taxon     = "college/building"
+colour    = [0.62, 0.55, 0.45]
+
+[asset.hall.mount.entry]
+at        = [0, 7.5]
+face      = 180
+connector = "foot"
+
+[asset.chapel]                     # a long chapel, its door in the short end
+primitive = "box"
+size      = [10, 22, 12]
+taxon     = "college/building"
+colour    = [0.66, 0.6, 0.5]
+
+[asset.chapel.mount.entry]
+at        = [0, 11.5]
+face      = 180
+connector = "foot"
+
+[asset.armoury]
+primitive = "box"
+size      = [14, 10, 7]
+taxon     = "college/building"
+colour    = [0.5, 0.45, 0.4]
+
+[asset.armoury.mount.entry]
+at        = [0, 5.5]
+face      = 180
+connector = "foot"
+
+[asset.pavilion]                   # the garden pavilion; the building moved and turned
+primitive = "box"
+size      = [12, 8, 6]
+taxon     = "college/building"
+colour    = [0.7, 0.66, 0.58]
+
+[asset.pavilion.mount.entry]
+at        = [0, 4.5]
+face      = 180
+connector = "foot"
+
+[asset.lodge]                      # the porter's lodge beside the gate
+primitive = "box"
+size      = [8, 6, 5]
+taxon     = "college/building"
+colour    = [0.6, 0.52, 0.42]
+
+[asset.lodge.mount.entry]
+at        = [0, 3.5]
+face      = 180
+connector = "foot"
+
+[asset.bell_tower]                 # no door to walk to: its mount has no connector, so no walk is owed
+primitive = "box"
+size      = [6, 6, 22]
+taxon     = "college/building"
+colour    = [0.58, 0.52, 0.44]
+
+[asset.bell_tower.mount.door]
+at   = [0, 3.5]
+face = 180
+
+[asset.gatehouse]                  # the approach passes through its arch (assets.md 2.4, surfaces.md 4.4)
+primitive = "box"
+size      = [12, 8, 9]
+taxon     = "college/gate"
+solidity  = "passable"
+colour    = [0.55, 0.5, 0.42]
+
+# ------------------------------------------------------------------------------------------ the kit
+
+[asset.cloister_bay]               # an arcade bay: walked through, so passable
+primitive = "box"
+size      = [4, 3, 4.5]
+taxon     = "college/kit"
+solidity  = "passable"
+colour    = [0.68, 0.63, 0.55]
+params    = { pitch = 4 }
+
+[asset.wing_bay]                   # the spike's fault, kept: 6.44 m wide at a 6 m pitch
+primitive = "box"
+size      = [6.44, 10, 11]
+taxon     = "college/kit"
+colour    = [0.6, 0.54, 0.46]
+params    = { pitch = 6 }
+
+[asset.dorm_bay]
+primitive = "box"
+size      = [6, 9, 8]
+taxon     = "college/kit"
+colour    = [0.64, 0.5, 0.4]
+params    = { pitch = 6 }
+
+# ------------------------------------------------------------------------------------------ dressing
+
+[asset.tree_court]
+primitive = "sphere"
+size      = [5, 5, 7]
+taxon     = "plant/tree"
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]   # the trunk, not the crown
+colour    = [0.18, 0.35, 0.12]
+
+[asset.lamp]
+primitive = "cylinder"
+size      = [0.2, 0.2, 3]
+taxon     = "prop/lamp"
+colour    = [0.15, 0.15, 0.15]
+
+# ------------------------------------------------------------------------------------------ paints
+
+[material.grass]
+colour = [0.2, 0.4, 0.1]
+
+[material.meadow]
+colour = [0.33, 0.45, 0.16]
+
+[material.rock]
+colour = [0.45, 0.43, 0.4]
+
+[material.earth]
+colour = [0.3, 0.22, 0.14]
+
+[material.flags]
+colour = [0.55, 0.53, 0.49]
+
+[material.setts]
+colour = [0.33, 0.32, 0.31]

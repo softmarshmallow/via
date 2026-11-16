@@ -404,13 +404,14 @@ fn asset_json(a: &via_model::pack::Asset, stand_ins: bool) -> J {
     m.insert("collision".into(), J::s(a.collision.clone()));
     let mut mounts = J::obj();
     for (n, (at, face)) in &a.mounts {
-        mounts.insert(n.clone(), obj([("at", xy(*at)), ("face", J::int(*face))]));
+        let mut o = obj([("at", xy(*at)), ("face", J::int(*face))]);
+        if let (Some(c), J::Obj(m)) = (a.connectors.get(n), &mut o) {
+            m.insert("connector".into(), J::s(c.clone()));
+        }
+        mounts.insert(n.clone(), o);
     }
     m.insert("mounts".into(), J::Obj(mounts));
-    m.insert(
-        "solidity".into(),
-        J::s(if a.solid { "solid" } else { "none" }),
-    );
+    m.insert("solidity".into(), J::s(a.solidity()));
     m.insert(
         "colour".into(),
         J::Arr(
@@ -745,12 +746,12 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
             obj([
                 ("a", J::s(m.a.clone())),
                 ("b", J::s(m.b.clone())),
-                ("connector_a", J::Null),
-                ("connector_b", J::Null),
-                ("face_a", J::Null),
-                ("face_b", J::Null),
+                ("connector_a", J::opt(m.connector_a.as_deref())),
+                ("connector_b", J::opt(m.connector_b.as_deref())),
+                ("face_a", m.face_a.map_or(J::Null, J::int)),
+                ("face_b", m.face_b.map_or(J::Null, J::int)),
                 ("gap", J::mm(m.gap)),
-                ("turn", J::Null),
+                ("turn", m.turn.map_or(J::Null, J::int)),
                 ("x", J::mm(m.at.0)),
                 ("y", J::mm(m.at.1)),
                 ("z_a", J::dbl(m.z_a).unwrap_or(J::Null)),

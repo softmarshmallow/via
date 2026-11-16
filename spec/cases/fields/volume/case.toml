@@ -1,6 +1,6 @@
 format    = "via-case-1"
-summary   = "type = \"volume\": doc.not_yet naming M5."
-milestone = 1
+summary   = "type = \"volume\": field.type_unknown (dropped in M5, surfaces.md 1.3). Its fixed hint is the documents' text; hints are never compared (conformance.md 3.5), so the case checks the code only."
+milestone = 5
 actions   = ["build"]
 
 [action.build]
@@ -9,5 +9,5 @@ exit        = 1
 diagnostics = "includes"
 out         = "build/w"
 
-[action.build.diag.not_yet]
-code = "doc.not_yet"
+[action.build.diag.type]
+code = "field.type_unknown"

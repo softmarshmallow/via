@@ -417,6 +417,13 @@ pub fn decode(bytes: &[u8]) -> Option<Snapshot> {
             z_a: f64::from_bits(d.u64()?),
             z_b: f64::from_bits(d.u64()?),
             gap: d.u64()? as i64,
+            // A baseline is compared by its sides and gap only (`build.md` 11.2).
+            face_a: None,
+            face_b: None,
+            turn: None,
+            connector_a: None,
+            connector_b: None,
+            pair: false,
         });
     }
     for _ in 0..d.count()? {

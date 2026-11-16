@@ -439,8 +439,19 @@ fn case_12_names_by_context() {
     let mc = Context::new(Key::MaxChange).kind("k");
     assert_eq!(code(check("= t", &mc)), "formula.unknown_name");
     assert_eq!(code(check("= z", &base())), "doc.not_yet");
+    // A kind surface's base (`surfaces.md` 1.1, M3): `t`, `d`, `sd`, never a field.
     let surf = Context::new(Key::SurfaceBase);
-    assert_eq!(code(check("= 1", &surf)), "doc.not_yet");
+    assert_eq!(code(check("= 1 + t + d + sd", &surf)), "ok");
+    assert_eq!(code(check("= f('height')", &surf)), "formula.unknown_name");
+    let bound = Context::new(Key::SurfaceBound);
+    // `t`, `d`, `sd`, `x`, `y` in `bound` are `formula.rate` (`surfaces.md` 1.1).
+    for n in ["d", "t", "sd", "x", "y"] {
+        assert_eq!(
+            code(check(&format!("= {n}"), &bound)),
+            "formula.rate",
+            "{n}"
+        );
+    }
 }
 
 #[test]

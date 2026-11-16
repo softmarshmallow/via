@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, turn: 6.3 with lane_west arriving from the north-west: turn equals the vector; null on the two pair rows."
+milestone = 5
+actions   = ["query"]
+
+# lane_west's last segment runs from [100, 200] to the head [132, 168]: bearing 135 000; the head
+# faces 90 000 (travel east, face 0): turn 45 000. The pair rows' null turns are owed as a vector
+# (TOML writes no null).
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.query]
+via         = ["query", "world.toml", "meetings", "--lib", "{work}/lib", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.query.file.a]
+path    = "out.json"
+pointer = "/a"
+value   = ["lane_east.start", "lane_west.end", "mill_bridge.east_deck", "mill_bridge.west_deck"]
+
+[action.query.file.turn]
+path    = "out.json"
+pointer = "/turn/1"
+value   = 45000

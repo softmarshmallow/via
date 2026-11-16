@@ -12,5 +12,5 @@ base = 20
 kind = "lane"
 path = [[0, 40], [128, 60]]
 
-[field.v]
-type = "volume"
+[budget]
+instances = 10

@@ -1,0 +1,65 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, cut: 6.4 cuts the 96 terrain quads with their centre inside hall_g, and no other; 6.3's deck (no cut) cuts none."
+milestone = 5
+actions   = ["house", "bridge_world", "bridge"]
+
+# Quads are indexed by their south-west post, [i, j] as a post (conformance.md 3.4). The count
+# of 96 is owed as a named check (`npy_count`) with the code; these five posts are the edges.
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.house]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/house"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/house"
+
+[action.house.file.shape]
+path  = "build/house/fields/height.cut.npy"
+dtype = "|u1"
+shape = [64, 64]
+
+[action.house.file.sw]
+path  = "build/house/fields/height.cut.npy"
+post  = [20, 20]
+value = 1
+
+[action.house.file.ne]
+path  = "build/house/fields/height.cut.npy"
+post  = [31, 27]
+value = 1
+
+[action.house.file.west]
+path  = "build/house/fields/height.cut.npy"
+post  = [19, 24]
+value = 0
+
+[action.house.file.door]
+path  = "build/house/fields/height.cut.npy"
+post  = [32, 24]
+value = 0
+
+[action.house.file.north]
+path  = "build/house/fields/height.cut.npy"
+post  = [25, 28]
+value = 0
+
+[action.bridge_world]
+write = "world.toml"
+from  = "later/bridge.toml"
+
+[action.bridge]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/bridge"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/bridge"
+
+[action.bridge.file.none]
+path = "build/bridge/fields/height.cut.npy"
+all  = 0

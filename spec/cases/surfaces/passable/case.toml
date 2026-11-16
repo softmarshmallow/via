@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, passable (4.4): a passable gate claims its footprint as solid does: no scattered shrub has its origin inside it; no doc.not_yet."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.check.clear]
+fn     = "no_origin_inside"
+build  = "build/build"
+points = [[30, 30], [34, 30], [34, 34], [30, 34]]
+prefix = "shrubs"

@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.2, assets.md 4.2: accepted; the door mount's connector edited foot to way: asset.revised on the asset, naming every instance (a, b), because the meetings of each may change."
+milestone = 5
+actions   = ["accept", "base", "edit", "build"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+out         = "build/base"
+diagnostics = "includes"
+
+[action.edit]
+write = "pack.toml"
+text  = "[asset.cube]\nfile = \"cube.gltf\"\n\n[asset.cube.mount.door]\nat        = [0, 1]\nface      = 180\nconnector = \"way\"\n"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+out         = "build/next"
+diagnostics = "includes"
+
+[action.build.diag.revised]
+code    = "asset.revised"
+subject = "asset.cube"
+data    = { count = 2, instances = ["a", "b"] }

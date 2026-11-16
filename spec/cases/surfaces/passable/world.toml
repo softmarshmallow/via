@@ -1,0 +1,17 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[instance.gate]
+asset = "gate"
+at    = [32, 32]
+
+[scatter.shrubs]
+assets  = ["@plant/shrub"]
+spacing = 1.5

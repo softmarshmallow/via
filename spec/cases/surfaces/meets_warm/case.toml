@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, meets_warm: meets.json reads the owners of its mounts and surfaces: the crossing's deck_z raised from 24.5 to 25 against the base build gives z 25 at every meeting, as a clean build does (U6; review of M5 slice 1, a warm build kept 24.5)."
+milestone = 5
+actions   = ["base", "raise"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.file.deck]
+path    = "build/base/meets.json"
+pointer = "/meets/3/z_a"
+value   = 24.5
+
+# Rows by a, bytewise: lane_east.start, lane_west.end, mill_bridge.east_deck, mill_bridge.west_deck.
+[action.raise]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "raise", "--against", "build/base", "--out", "build/raise"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/raise"
+
+[action.raise.file.deck]
+path    = "build/raise/meets.json"
+pointer = "/meets/3/z_a"
+value   = 25.0
+
+[action.raise.file.lane]
+path    = "build/raise/meets.json"
+pointer = "/meets/0/z_b"
+value   = 25.0

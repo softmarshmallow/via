@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, floor_mesh: 6.4 writes one mesh per kind surface (hall_g.floor, hall_1.floor, stair.tread), none for the terrain."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.file.g]
+path   = "build/build/meshes/hall_g.floor.glb"
+exists = true
+
+[action.build.file.one]
+path   = "build/build/meshes/hall_1.floor.glb"
+exists = true
+
+[action.build.file.tread]
+path   = "build/build/meshes/stair.tread.glb"
+exists = true

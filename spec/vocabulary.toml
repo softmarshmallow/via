@@ -387,7 +387,7 @@ sections = ["Kinds, effects, kind surfaces and kind mounts"]
 [key."surface"]
 takes = "name"
 chapter = "surfaces"
-sections = ["Kinds, effects, kind surfaces and kind mounts"]
+sections = ["Kinds, effects, kind surfaces and kind mounts", "Placement"]
 
 [key."meets"]
 takes = "name"
@@ -396,6 +396,16 @@ sections = ["Kinds, effects, kind surfaces and kind mounts"]
 
 [key."connector"]
 takes = "string"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."cut"]
+takes = "formula"
+chapter = "surfaces"
+sections = ["Kinds, effects, kind surfaces and kind mounts"]
+
+[key."material"]
+takes = "name"
 chapter = "surfaces"
 sections = ["Kinds, effects, kind surfaces and kind mounts"]
 
@@ -810,6 +820,3 @@ chapter = "geometry"
 
 [owed."passes"]
 chapter = "(library)"
-
-[owed."hosts"]
-chapter = "surfaces"

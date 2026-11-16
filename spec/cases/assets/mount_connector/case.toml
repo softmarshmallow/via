@@ -1,12 +1,18 @@
 format    = "via-case-1"
-summary   = "connector = \"wall\" on an asset mount: doc.not_yet naming M5."
-milestone = 1
-actions   = ["check"]
+summary   = "connector = \"wall\" on an asset mount: exit 0; the mount's connector is wall (M5; assets.md 2.7)."
+milestone = 5
+actions   = ["check", "list"]
 
 [action.check]
 via  = ["pack", "check", "pack.toml"]
-exit = 1
+exit = 0
 
-[action.check.diag.not_yet]
-code = "doc.not_yet"
-line = 7
+[action.list]
+via  = ["pack", "list", "pack.toml"]
+exit = 0
+
+[action.list.file.connector]
+stream  = "stdout"
+line    = 1
+pointer = "/mounts/side/connector"
+value   = "wall"

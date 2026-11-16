@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, road_to_door: 6.4 with garden_path a lane (connector way): surface.connector at front_door.start."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.connector]
+code    = "surface.connector"
+subject = "feature.garden_path"

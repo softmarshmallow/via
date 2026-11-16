@@ -1,0 +1,90 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, moved_turned: a hut moved and turned keeps its walk: the walk's end follows the door mount, gap 0, the change report names the hut and the walk."
+milestone = 5
+actions   = ["before", "after", "base", "next"]
+
+# The door mount is at [0, 2.5] facing 180 in the asset frame (front +y). At face 0 it lies at
+# [60, 62.5] facing 180 000; turned 90 it lies at [92.5, 60] facing 270 000 (assets.md 2.3,
+# build.md 8's R(90)). The meeting row's a is walk.end, b hut.door.
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.before]
+via         = ["query", "world.toml", "meetings", "--lib", "{work}/lib", "--out", "before.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.before.file.x]
+path    = "before.json"
+pointer = "/x"
+value   = [60000]
+
+[action.before.file.y]
+path    = "before.json"
+pointer = "/y"
+value   = [62500]
+
+[action.before.file.gap]
+path    = "before.json"
+pointer = "/gap"
+value   = [0]
+
+[action.before.file.face]
+path    = "before.json"
+pointer = "/face_b"
+value   = [180000]
+
+[action.after]
+via         = ["query", "world.toml", "meetings", "--lib", "{work}/lib", "--change", "turn", "--out", "after.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.after.file.x]
+path    = "after.json"
+pointer = "/x"
+value   = [92500]
+
+[action.after.file.y]
+path    = "after.json"
+pointer = "/y"
+value   = [60000]
+
+[action.after.file.gap]
+path    = "after.json"
+pointer = "/gap"
+value   = [0]
+
+[action.after.file.face]
+path    = "after.json"
+pointer = "/face_b"
+value   = [270000]
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.next]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "turn", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/next"
+
+[action.next.check.hut]
+fn    = "entry_causes"
+path  = "build/next/changes.json"
+table = "instance"
+prefix = "hut"
+
+[action.next.check.walk]
+fn    = "entry_causes"
+path  = "build/next/changes.json"
+table = "feature"
+prefix = "walk"

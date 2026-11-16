@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, unmet_asset: an instance whose asset mount has connector foot and nothing ends there: surface.unmet, exit 0; a footpath ending there clears it."
+milestone = 5
+actions   = ["build", "add_path", "again"]
+
+# `again` expects no world diagnostic at all (exact, none listed): the door is answered.
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.unmet]
+code    = "surface.unmet"
+subject = "instance.hut"
+
+[action.add_path]
+replace = "world.toml"
+find    = "# path here"
+with    = "[feature.walk]\nkind    = \"footpath\"\npath    = [[60, 80]]\nends_at = \"hut.door\""
+
+[action.again]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/again"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/again"
+
+# The library is beside the world and under --lib (the shared fixtures): one info, expected.
+[action.again.diag.shadowed]
+code    = "doc.include_shadowed"
+subject = "world"

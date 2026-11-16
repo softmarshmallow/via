@@ -193,7 +193,26 @@ pub fn query(a: &QueryArgs) -> Vec<Record> {
                 Ok(p) => p,
                 Err(r) => return vec![r],
             };
-            let rows = terrain.surfaces_at(&pts);
+            let mut rows: Vec<(usize, &str, f64)> = terrain.surfaces_at(&pts);
+            // Kind surfaces (2.1, M3): every one whose bound holds the point.
+            for (k, (x, y)) in pts.iter().enumerate() {
+                if !terrain.inside(*x, *y) {
+                    continue;
+                }
+                for s in b.surfaces.values() {
+                    // A `base` that fails at a point fails the whole call (2.7).
+                    match s.z((*x, *y)) {
+                        Ok(Some(z)) => rows.push((k, s.place.as_str(), z)),
+                        Ok(None) => {}
+                        Err(e) => return vec![s.fault(&e).emit(&NoWorld)],
+                    }
+                }
+            }
+            rows.sort_by(|a, c| {
+                a.0.cmp(&c.0)
+                    .then(a.2.total_cmp(&c.2))
+                    .then(a.1.as_bytes().cmp(c.1.as_bytes()))
+            });
             obj_of(vec![
                 ("point", rows.iter().map(|r| J::count(r.0)).collect()),
                 ("surface", rows.iter().map(|r| J::s(r.1)).collect()),
@@ -256,16 +275,30 @@ pub fn query(a: &QueryArgs) -> Vec<Record> {
         }
         _ => {
             let m = meetings(&b);
-            let null = |n: usize| vec![J::Null; n];
             obj_of(vec![
                 ("a", m.iter().map(|r| J::s(r.a.clone())).collect()),
                 ("b", m.iter().map(|r| J::s(r.b.clone())).collect()),
-                ("connector_a", null(m.len())),
-                ("connector_b", null(m.len())),
-                ("face_a", null(m.len())),
-                ("face_b", null(m.len())),
+                (
+                    "connector_a",
+                    m.iter().map(|r| J::opt(r.connector_a.as_deref())).collect(),
+                ),
+                (
+                    "connector_b",
+                    m.iter().map(|r| J::opt(r.connector_b.as_deref())).collect(),
+                ),
+                (
+                    "face_a",
+                    m.iter().map(|r| r.face_a.map_or(J::Null, J::int)).collect(),
+                ),
+                (
+                    "face_b",
+                    m.iter().map(|r| r.face_b.map_or(J::Null, J::int)).collect(),
+                ),
                 ("gap", m.iter().map(|r| J::int(r.gap)).collect()),
-                ("turn", null(m.len())),
+                (
+                    "turn",
+                    m.iter().map(|r| r.turn.map_or(J::Null, J::int)).collect(),
+                ),
                 ("x", m.iter().map(|r| J::int(r.at.0)).collect()),
                 ("y", m.iter().map(|r| J::int(r.at.1)).collect()),
                 ("z_a", m.iter().map(|r| dbl(r.z_a)).collect()),

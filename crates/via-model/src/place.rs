@@ -466,13 +466,23 @@ impl<'a> Placer<'a> {
                 if failed {
                     return None;
                 }
+                // A kind surface named as a place (`surfaces.md` 3.3, M5): the path is written in
+                // full and its end meets the surface at its own point.
                 if let Some(s) = &f.starts_at {
-                    let p = self.end_point(&f.id, "starts_at", s)?;
-                    v.insert(0, p);
+                    if crate::surfaces::is_kind_surface(self.d, s) {
+                        self.feature(s.split('.').next().unwrap_or(s))?;
+                    } else {
+                        let p = self.end_point(&f.id, "starts_at", s)?;
+                        v.insert(0, p);
+                    }
                 }
                 if let Some(e) = &f.ends_at {
-                    let p = self.end_point(&f.id, "ends_at", e)?;
-                    v.push(p);
+                    if crate::surfaces::is_kind_surface(self.d, e) {
+                        self.feature(e.split('.').next().unwrap_or(e))?;
+                    } else {
+                        let p = self.end_point(&f.id, "ends_at", e)?;
+                        v.push(p);
+                    }
                 }
                 if let Some(cost) = f.route {
                     // `route` (`derived.md` 3): the least-cost course through the written points,
@@ -624,6 +634,28 @@ impl<'a> Placer<'a> {
                     }
                 };
             }
+        }
+        // A kind mount (`surfaces.md` 3.1): its point on its owner and its world face.
+        if let Some((owner, m)) = crate::surfaces::kind_mount(self.d, name) {
+            let g = self.feature(owner)?;
+            return match crate::surfaces::mount_point(&g, m, name) {
+                Some((p, facing)) => Some(Spot::At {
+                    p,
+                    facing,
+                    end: false,
+                }),
+                None => {
+                    self.diags.push(at_key(
+                        codes::identity::UNKNOWN_PLACE,
+                        top,
+                        id,
+                        key,
+                        &format!("`{owner}` is {}, which holds no mount", g.word()),
+                        "name a mount of a path or region feature",
+                    ));
+                    None
+                }
+            };
         }
         if self.d.features.contains_key(name) {
             return Some(match self.feature(name)? {

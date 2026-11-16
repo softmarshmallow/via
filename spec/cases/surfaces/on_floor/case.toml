@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, on_floor: 6.4's desk at [30, 26] with surface = hall_1.floor: its pivot z is 13.3."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.file.z]
+path = "build/build/instances/z.npy"
+all  = 13.3
+
+[action.build.file.names]
+path = "build/build/instances/names.txt"
+text = "desk\n"

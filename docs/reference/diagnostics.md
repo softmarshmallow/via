@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-354 codes in 23 groups. 4 have no bad and fixed example yet; their explain text is the
+357 codes in 23 groups. 1 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -38,7 +38,7 @@ chapter's summary and hint.
 | [`run`](#run) | `spec/rules.md` | 4 |
 | [`scatter`](#scatter) | `spec/rules.md` | 5 |
 | [`set`](#set) | `spec/rules.md` | 3 |
-| [`surface`](#surface) | `spec/surfaces.md` | 24 |
+| [`surface`](#surface) | `spec/surfaces.md` | 27 |
 
 ## asset
 
@@ -4533,6 +4533,7 @@ Fixed: [instance.front_lamps] set = "lamp_pair", on = { ref = "cottage.front" }
 | `surface.bound` | error | 3 |  | Its `bound` is not above 0 or not finite; gives the value. |
 | `surface.clipped` | info | 3 |  | Its bound reaches beyond the extent; the share lost. |
 | `surface.connector` | error | 5 |  | Different connectors; names both. |
+| `surface.cut` | error | 5 |  | Its surface's `cut` is below 0 or not finite; gives the value. |
 | `surface.empty_region` | error | 1 |  | A region given to `relief` has zero area. |
 | `surface.facing` | error | 5 |  | Two paired mounts do not face opposite ways; both bearings. |
 | `surface.fold` | error | 3 |  | Its strip overlaps itself; position and the largest bound that holds. |
@@ -4543,9 +4544,11 @@ Fixed: [instance.front_lamps] set = "lamp_pair", on = { ref = "cottage.front" }
 | `surface.meets_twice` | error | 3 |  | The mount is in two `meets` pairs; names both others. |
 | `surface.mount_face` | error | 3 |  | A face word on a kind mount. Hint: a number, 0 along travel, 180 against. |
 | `surface.name_clash` | error | 3 |  | A surface and a mount share a name. |
+| `surface.not_surface` | error | 5 |  | Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces. |
 | `surface.off_bound` | warning | 3 |  | Part of its footprint lies outside its surface's bound; the share. |
 | `surface.outside` | error | 3 |  | Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code. |
 | `surface.owner_shape` | error | 3 |  | A surface on a point kind, a path owner without `bound`, or a region owner with one. |
+| `surface.placed_twice` | error | 5 |  | `surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`. |
 | `surface.through` | warning | 3 |  | Its height reaches through another surface above its origin; names it. |
 | `surface.too_early` | error | 2 |  | `meetings()` called at `generate`. |
 | `surface.two_terrains` | error | 1 |  | Two surface fields at the top level. Hint: make one a kind's surface. |
@@ -4592,7 +4595,24 @@ Fixed: the owner's path ending 3 m inside the extent
 error, milestone 5, `spec/surfaces.md`.
 
 ```text
-Different connectors; names both.
+Two sides of a meeting both carry a connector, and the words differ: a path end takes its kind's
+connector, a mount its own. Connectors are free words compared only for equality, so a joint meets
+only a joint of the same word.
+To fix: End a path of the matching kind there, or change one side's connector.
+Bad:   a path of a kind with connector = "rail" ending at a mount with connector = "way"
+Fixed: a path of a kind with connector = "way" ending there
+```
+
+### `surface.cut`
+
+error, milestone 5, `spec/surfaces.md`.
+
+```text
+A kind surface's cut, the height above the surface in which the terrain's export is removed, came
+out below 0 or not finite for this feature.
+To fix: Make the cut formula give 0 or more; leave cut out for no cut.
+Bad:   cut = "= clear_h" with clear_h = -1
+Fixed: clear_h = 2.6
 ```
 
 ### `surface.empty_region`
@@ -4612,7 +4632,11 @@ Fixed: relief asked for [[0, 0], [10, 0], [10, 10]]
 error, milestone 5, `spec/surfaces.md`.
 
 ```text
-Two paired mounts do not face opposite ways; both bearings.
+Two mounts paired by meets both have a face, and their world bearings are not half a turn apart:
+one should look into the joint and the other out of it.
+To fix: Set one face 180 degrees from the other; 0 looks along travel, 180 against it.
+Bad:   [kind.span.mount.end_top] face = 0 and [kind.span.mount.end_low] face = 0, paired by meets
+Fixed: end_low face = 180
 ```
 
 ### `surface.fold`
@@ -4704,6 +4728,18 @@ Bad:   [kind.span.surface.top] and [kind.span.mount.top]
 Fixed: [kind.span.surface.top] and [kind.span.mount.top_west]
 ```
 
+### `surface.not_surface`
+
+error, milestone 5, `spec/surfaces.md`.
+
+```text
+The surface key on a placement names a place, but not a kind surface: a mount, a path end, a
+feature or the terrain's field. The terrain is the default and is never named.
+To fix: Name <feature>.<surface>, one of the listed surfaces, or drop surface to stand on the terrain.
+Bad:   surface = "hall.entry"   (a mount)
+Fixed: surface = "hall.top"
+```
+
 ### `surface.off_bound`
 
 warning, milestone 3, `spec/surfaces.md`.
@@ -4735,6 +4771,18 @@ A surface on a point kind, a path owner without bound, or a region owner with on
 To fix: Give a path owner a `bound`, remove it from a region owner, or give the surface to a path or region kind.
 Bad:   [kind.span.surface.top] base = ...   (no bound, on a path owner)
 Fixed: [kind.span.surface.top] base = ..., bound = "= width / 2"
+```
+
+### `surface.placed_twice`
+
+error, milestone 5, `spec/surfaces.md`.
+
+```text
+A placement writes both on and surface. On already decides what it stands on (the surface of the
+thing or mount it is on), so the two could disagree.
+To fix: Drop surface, or place it by at with surface.
+Bad:   on = { ref = "hall", t = 0.5 } and surface = "hall.top"
+Fixed: at = [30, 26] and surface = "hall.top"
 ```
 
 ### `surface.through`
@@ -4798,7 +4846,12 @@ Fixed: surface = "top"
 warning, milestone 5, `spec/surfaces.md`.
 
 ```text
-A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: ends_at = \"<place>\"".
+A kind or asset mount with a connector is the place of no path end and meets no mount with the
+same connector: a joint left open. A meets pair whose other side has no connector does not count.
+Path ends are never checked: a path end may be left free on purpose.
+To fix: End a path whose kind has the same connector there, or remove the connector.
+Bad:   an instance whose asset mount entry has connector = "foot", and no path ends at it
+Fixed: [feature.walk] with ends_at = "<instance>.entry" and a kind with connector = "foot"
 ```
 
 ### `surface.which`

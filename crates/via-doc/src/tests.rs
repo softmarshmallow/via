@@ -392,12 +392,13 @@ fn fixed_hints() {
 
 #[test]
 fn not_yet() {
+    // `type = "volume"` is no longer a later word (`surfaces.md` 1.3): the model says
+    // `field.type_unknown`, so the document reads it as a string with nothing to say.
     let l = merge(
         &simple(&format!("{HEAD}[field.a]\ntype = \"volume\"\nbase = 0\n")),
         &[],
     );
-    assert_eq!(codes(&l), ["doc.not_yet"]);
-    assert!(l.records[0].message().contains("M5"));
+    assert!(codes(&l).is_empty(), "{:?}", codes(&l));
     let l = merge(&simple(&format!("chunk = 64\n{HEAD}")), &[]);
     assert_eq!(codes(&l), ["doc.not_yet"]);
     assert!(l.records[0].message().contains("M6"));

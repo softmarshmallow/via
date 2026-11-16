@@ -1,0 +1,48 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, regrounded: the desk on hall_1.floor depends on hall_1 as on an `on` reference (4.1): raising the floor re-grounds it (z 14, change report causes), shrinking the floor off it is surface.outside; each rebuild against the base equals a clean one (U6)."
+milestone = 5
+actions   = ["base", "raise", "shrink"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.file.z]
+path = "build/base/instances/z.npy"
+all  = 13.3
+
+[action.raise]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "raise", "--against", "build/base", "--out", "build/raise"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/raise"
+
+[action.raise.file.z]
+path = "build/raise/instances/z.npy"
+all  = 14.0
+
+[action.raise.check.desk]
+fn     = "entry_causes"
+path   = "build/raise/changes.json"
+table  = "instance"
+prefix = "desk"
+
+[action.shrink]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "shrink", "--against", "build/base", "--out", "build/shrink"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/shrink"
+
+[action.shrink.diag.outside]
+code    = "surface.outside"
+subject = "instance.desk"

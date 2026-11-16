@@ -114,6 +114,10 @@ pub enum Shape {
     Kind,
     /// `[kind.<k>.effect.<id>]`.
     Effect,
+    /// `[kind.<k>.surface.<name>]` (`surfaces.md` 1, 1.3).
+    KindSurface,
+    /// `[kind.<k>.mount.<name>]` (`surfaces.md` 3.1).
+    KindMount,
     /// `[instance.<id>]`.
     Instance,
     /// `[scatter.<id>]`.
@@ -303,6 +307,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("starts_at", Ok(T::Name)),
             ("ends_at", Ok(T::Name)),
             ("face", Ok(T::Facing)),
+            ("surface", Ok(T::Name)),
             ("holds", Ok(T::Point)),
             ("route", Ok(T::Formula)),
             ("over", Fixed("`over` was dropped; change one decision, see `authority.md` 5")),
@@ -317,9 +322,24 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("output", Ok(T::Str)),
             ("names", Ok(T::Strings)),
             ("effect", Ok(T::Ids(Shape::Effect))),
-            ("surface", NotYet(3)),
-            ("mount", NotYet(3)),
+            ("surface", Ok(T::Ids(Shape::KindSurface))),
+            ("mount", Ok(T::Ids(Shape::KindMount))),
+            ("connector", Ok(T::Str)),
             ("let", Ok(T::Table(Shape::Let))),
+        ],
+        Shape::KindSurface => &[
+            ("base", Ok(T::Formula)),
+            ("bound", Ok(T::Formula)),
+            ("cut", Ok(T::Formula)),
+            ("material", Ok(T::Str)),
+        ],
+        Shape::KindMount => &[
+            ("t", Ok(T::Number)),
+            ("offset", Ok(T::Length)),
+            ("face", Ok(T::Facing)),
+            ("surface", Ok(T::Name)),
+            ("meets", Ok(T::Name)),
+            ("connector", Ok(T::Str)),
         ],
         Shape::Effect => &[
             ("field", Ok(T::Str)),
@@ -336,6 +356,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("at", Ok(T::Point)),
             ("on", Ok(T::Table(Shape::On))),
             ("face", Ok(T::Facing)),
+            ("surface", Ok(T::Name)),
             ("scale", Ok(T::Number)),
             ("tint", Ok(T::Number)),
             ("ground", Ok(T::Name)),
@@ -353,6 +374,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("jitter", Ok(T::Number)),
             ("density", Ok(T::Formula)),
             ("within", Ok(T::NameOrSelect)),
+            ("surface", Ok(T::Name)),
             ("scale", Ok(T::NumberOrPair)),
             ("tint", Ok(T::NumberOrPair)),
             ("clump", Ok(T::Free)),
@@ -483,7 +505,6 @@ pub fn listed(shape: Shape) -> impl Iterator<Item = &'static str> {
 pub fn value_not_yet(shape: Shape, key: &str, value: &str) -> Option<u32> {
     match (shape, key, value) {
         (Shape::Step, "when", "export") => Some(6),
-        (Shape::Field, "type", "volume") => Some(5),
         _ => None,
     }
 }

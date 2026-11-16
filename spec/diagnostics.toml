@@ -4496,7 +4496,25 @@ chapter = "surfaces"
 milestone = 5
 summary = "Different connectors; names both."
 explain = """
-Different connectors; names both.
+Two sides of a meeting both carry a connector, and the words differ: a path end takes its kind's
+connector, a mount its own. Connectors are free words compared only for equality, so a joint meets
+only a joint of the same word.
+To fix: End a path of the matching kind there, or change one side's connector.
+Bad:   a path of a kind with connector = "rail" ending at a mount with connector = "way"
+Fixed: a path of a kind with connector = "way" ending there
+"""
+
+[surface.cut]
+severity = "error"
+chapter = "surfaces"
+milestone = 5
+summary = "Its surface's `cut` is below 0 or not finite; gives the value."
+explain = """
+A kind surface's cut, the height above the surface in which the terrain's export is removed, came
+out below 0 or not finite for this feature.
+To fix: Make the cut formula give 0 or more; leave cut out for no cut.
+Bad:   cut = "= clear_h" with clear_h = -1
+Fixed: clear_h = 2.6
 """
 
 [surface.empty_region]
@@ -4518,7 +4536,11 @@ chapter = "surfaces"
 milestone = 5
 summary = "Two paired mounts do not face opposite ways; both bearings."
 explain = """
-Two paired mounts do not face opposite ways; both bearings.
+Two mounts paired by meets both have a face, and their world bearings are not half a turn apart:
+one should look into the joint and the other out of it.
+To fix: Set one face 180 degrees from the other; 0 looks along travel, 180 against it.
+Bad:   [kind.span.mount.end_top] face = 0 and [kind.span.mount.end_low] face = 0, paired by meets
+Fixed: end_low face = 180
 """
 
 [surface.fold]
@@ -4618,6 +4640,19 @@ Bad:   [kind.span.surface.top] and [kind.span.mount.top]
 Fixed: [kind.span.surface.top] and [kind.span.mount.top_west]
 """
 
+[surface.not_surface]
+severity = "error"
+chapter = "surfaces"
+milestone = 5
+summary = "Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces."
+explain = """
+The surface key on a placement names a place, but not a kind surface: a mount, a path end, a
+feature or the terrain's field. The terrain is the default and is never named.
+To fix: Name <feature>.<surface>, one of the listed surfaces, or drop surface to stand on the terrain.
+Bad:   surface = "hall.entry"   (a mount)
+Fixed: surface = "hall.top"
+"""
+
 [surface.off_bound]
 severity = "warning"
 chapter = "surfaces"
@@ -4652,6 +4687,19 @@ A surface on a point kind, a path owner without bound, or a region owner with on
 To fix: Give a path owner a `bound`, remove it from a region owner, or give the surface to a path or region kind.
 Bad:   [kind.span.surface.top] base = ...   (no bound, on a path owner)
 Fixed: [kind.span.surface.top] base = ..., bound = "= width / 2"
+"""
+
+[surface.placed_twice]
+severity = "error"
+chapter = "surfaces"
+milestone = 5
+summary = "`surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`."
+explain = """
+A placement writes both on and surface. On already decides what it stands on (the surface of the
+thing or mount it is on), so the two could disagree.
+To fix: Drop surface, or place it by at with surface.
+Bad:   on = { ref = "hall", t = 0.5 } and surface = "hall.top"
+Fixed: at = [30, 26] and surface = "hall.top"
 """
 
 [surface.through]
@@ -4721,7 +4769,12 @@ chapter = "surfaces"
 milestone = 5
 summary = "A mount with a connector is answered by nothing (R18: a stub). Hint: \"end a path whose kind has connector <c> here: `ends_at = \\\"<place>\\\"`\"."
 explain = """
-A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: ends_at = \\"<place>\\"".
+A kind or asset mount with a connector is the place of no path end and meets no mount with the
+same connector: a joint left open. A meets pair whose other side has no connector does not count.
+Path ends are never checked: a path end may be left free on purpose.
+To fix: End a path whose kind has the same connector there, or remove the connector.
+Bad:   an instance whose asset mount entry has connector = "foot", and no path ends at it
+Fixed: [feature.walk] with ends_at = "<instance>.entry" and a kind with connector = "foot"
 """
 
 [surface.which]

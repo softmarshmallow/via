@@ -5,7 +5,7 @@ use crate::registry::{CoveredBy, Row};
 use crate::Severity;
 
 /// Every core code, sorted bytewise by code.
-pub(crate) static ROWS: [Row; 354] = [
+pub(crate) static ROWS: [Row; 357] = [
     Row {
         code: "asset.bad_footprint",
         severity: Severity::Error,
@@ -3678,7 +3678,18 @@ pub(crate) static ROWS: [Row; 354] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Different connectors; names both.\n",
+        explain: "Two sides of a meeting both carry a connector, and the words differ: a path end takes its kind's\nconnector, a mount its own. Connectors are free words compared only for equality, so a joint meets\nonly a joint of the same word.\nTo fix: End a path of the matching kind there, or change one side's connector.\nBad:   a path of a kind with connector = \"rail\" ending at a mount with connector = \"way\"\nFixed: a path of a kind with connector = \"way\" ending there\n",
+    },
+    Row {
+        code: "surface.cut",
+        severity: Severity::Error,
+        chapter: "surfaces",
+        milestone: 5,
+        summary: "Its surface's `cut` is below 0 or not finite; gives the value.",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "A kind surface's cut, the height above the surface in which the terrain's export is removed, came\nout below 0 or not finite for this feature.\nTo fix: Make the cut formula give 0 or more; leave cut out for no cut.\nBad:   cut = \"= clear_h\" with clear_h = -1\nFixed: clear_h = 2.6\n",
     },
     Row {
         code: "surface.empty_region",
@@ -3700,7 +3711,7 @@ pub(crate) static ROWS: [Row; 354] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two paired mounts do not face opposite ways; both bearings.\n",
+        explain: "Two mounts paired by meets both have a face, and their world bearings are not half a turn apart:\none should look into the joint and the other out of it.\nTo fix: Set one face 180 degrees from the other; 0 looks along travel, 180 against it.\nBad:   [kind.span.mount.end_top] face = 0 and [kind.span.mount.end_low] face = 0, paired by meets\nFixed: end_low face = 180\n",
     },
     Row {
         code: "surface.fold",
@@ -3791,6 +3802,17 @@ pub(crate) static ROWS: [Row; 354] = [
         explain: "A surface and a mount share a name.\nTo fix: Rename the surface or the mount.\nBad:   [kind.span.surface.top] and [kind.span.mount.top]\nFixed: [kind.span.surface.top] and [kind.span.mount.top_west]\n",
     },
     Row {
+        code: "surface.not_surface",
+        severity: Severity::Error,
+        chapter: "surfaces",
+        milestone: 5,
+        summary: "Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces.",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "The surface key on a placement names a place, but not a kind surface: a mount, a path end, a\nfeature or the terrain's field. The terrain is the default and is never named.\nTo fix: Name <feature>.<surface>, one of the listed surfaces, or drop surface to stand on the terrain.\nBad:   surface = \"hall.entry\"   (a mount)\nFixed: surface = \"hall.top\"\n",
+    },
+    Row {
         code: "surface.off_bound",
         severity: Severity::Warning,
         chapter: "surfaces",
@@ -3822,6 +3844,17 @@ pub(crate) static ROWS: [Row; 354] = [
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "A surface on a point kind, a path owner without bound, or a region owner with one.\nTo fix: Give a path owner a `bound`, remove it from a region owner, or give the surface to a path or region kind.\nBad:   [kind.span.surface.top] base = ...   (no bound, on a path owner)\nFixed: [kind.span.surface.top] base = ..., bound = \"= width / 2\"\n",
+    },
+    Row {
+        code: "surface.placed_twice",
+        severity: Severity::Error,
+        chapter: "surfaces",
+        milestone: 5,
+        summary: "`surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`.",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "A placement writes both on and surface. On already decides what it stands on (the surface of the\nthing or mount it is on), so the two could disagree.\nTo fix: Drop surface, or place it by at with surface.\nBad:   on = { ref = \"hall\", t = 0.5 } and surface = \"hall.top\"\nFixed: at = [30, 26] and surface = \"hall.top\"\n",
     },
     Row {
         code: "surface.through",
@@ -3887,7 +3920,7 @@ pub(crate) static ROWS: [Row; 354] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A mount with a connector is answered by nothing (R18: a stub). Hint: \"end a path whose kind has connector <c> here: ends_at = \\\"<place>\\\"\".\n",
+        explain: "A kind or asset mount with a connector is the place of no path end and meets no mount with the\nsame connector: a joint left open. A meets pair whose other side has no connector does not count.\nPath ends are never checked: a path end may be left free on purpose.\nTo fix: End a path whose kind has the same connector there, or remove the connector.\nBad:   an instance whose asset mount entry has connector = \"foot\", and no path ends at it\nFixed: [feature.walk] with ends_at = \"<instance>.entry\" and a kind with connector = \"foot\"\n",
     },
     Row {
         code: "surface.which",
@@ -4664,45 +4697,51 @@ pub mod codes {
         pub const CLIPPED: Code = Code::from_index(332);
         /// `surface.connector` (error): Different connectors; names both.
         pub const CONNECTOR: Code = Code::from_index(333);
+        /// `surface.cut` (error): Its surface's `cut` is below 0 or not finite; gives the value.
+        pub const CUT: Code = Code::from_index(334);
         /// `surface.empty_region` (error): A region given to `relief` has zero area.
-        pub const EMPTY_REGION: Code = Code::from_index(334);
+        pub const EMPTY_REGION: Code = Code::from_index(335);
         /// `surface.facing` (error): Two paired mounts do not face opposite ways; both bearings.
-        pub const FACING: Code = Code::from_index(335);
+        pub const FACING: Code = Code::from_index(336);
         /// `surface.fold` (error): Its strip overlaps itself; position and the largest bound that holds.
-        pub const FOLD: Code = Code::from_index(336);
+        pub const FOLD: Code = Code::from_index(337);
         /// `surface.gap` (error): The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: "make the two sides equal: change \<a\> or \<b\>, or add an effect of \<owner\> that sets the ground to \<z\>".
-        pub const GAP: Code = Code::from_index(337);
+        pub const GAP: Code = Code::from_index(338);
         /// `surface.ground_off_terrain` (error): `ground` on an instance that stands on a kind surface.
-        pub const GROUND_OFF_TERRAIN: Code = Code::from_index(338);
+        pub const GROUND_OFF_TERRAIN: Code = Code::from_index(339);
         /// `surface.host_missing` (error): What it is placed `on`, or the owner of the mount it is placed on, was not placed (4.1).
-        pub const HOST_MISSING: Code = Code::from_index(339);
+        pub const HOST_MISSING: Code = Code::from_index(340);
         /// `surface.meets_self` (error): `meets` names the mount itself.
-        pub const MEETS_SELF: Code = Code::from_index(340);
+        pub const MEETS_SELF: Code = Code::from_index(341);
         /// `surface.meets_twice` (error): The mount is in two `meets` pairs; names both others.
-        pub const MEETS_TWICE: Code = Code::from_index(341);
+        pub const MEETS_TWICE: Code = Code::from_index(342);
         /// `surface.mount_face` (error): A face word on a kind mount. Hint: a number, 0 along travel, 180 against.
-        pub const MOUNT_FACE: Code = Code::from_index(342);
+        pub const MOUNT_FACE: Code = Code::from_index(343);
         /// `surface.name_clash` (error): A surface and a mount share a name.
-        pub const NAME_CLASH: Code = Code::from_index(343);
+        pub const NAME_CLASH: Code = Code::from_index(344);
+        /// `surface.not_surface` (error): Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces.
+        pub const NOT_SURFACE: Code = Code::from_index(345);
         /// `surface.off_bound` (warning): Part of its footprint lies outside its surface's bound; the share.
-        pub const OFF_BOUND: Code = Code::from_index(344);
+        pub const OFF_BOUND: Code = Code::from_index(346);
         /// `surface.outside` (error): Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code.
-        pub const OUTSIDE: Code = Code::from_index(345);
+        pub const OUTSIDE: Code = Code::from_index(347);
         /// `surface.owner_shape` (error): A surface on a point kind, a path owner without `bound`, or a region owner with one.
-        pub const OWNER_SHAPE: Code = Code::from_index(346);
+        pub const OWNER_SHAPE: Code = Code::from_index(348);
+        /// `surface.placed_twice` (error): `surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`.
+        pub const PLACED_TWICE: Code = Code::from_index(349);
         /// `surface.through` (warning): Its height reaches through another surface above its origin; names it.
-        pub const THROUGH: Code = Code::from_index(347);
+        pub const THROUGH: Code = Code::from_index(350);
         /// `surface.too_early` (error): `meetings()` called at `generate`.
-        pub const TOO_EARLY: Code = Code::from_index(348);
+        pub const TOO_EARLY: Code = Code::from_index(351);
         /// `surface.two_terrains` (error): Two surface fields at the top level. Hint: make one a kind's surface.
-        pub const TWO_TERRAINS: Code = Code::from_index(349);
+        pub const TWO_TERRAINS: Code = Code::from_index(352);
         /// `surface.unknown_mount` (error): `meets` names a mount the kind lacks; lists the kind's mounts.
-        pub const UNKNOWN_MOUNT: Code = Code::from_index(350);
+        pub const UNKNOWN_MOUNT: Code = Code::from_index(353);
         /// `surface.unknown_surface` (error): `surface` names a surface the kind lacks; lists the kind's surfaces.
-        pub const UNKNOWN_SURFACE: Code = Code::from_index(351);
+        pub const UNKNOWN_SURFACE: Code = Code::from_index(354);
         /// `surface.unmet` (warning): A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector \<c\> here: `ends_at = \"<place>\"`".
-        pub const UNMET: Code = Code::from_index(352);
+        pub const UNMET: Code = Code::from_index(355);
         /// `surface.which` (error): `on` a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it `on` a mount.
-        pub const WHICH: Code = Code::from_index(353);
+        pub const WHICH: Code = Code::from_index(356);
     }
 }

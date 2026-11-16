@@ -194,7 +194,7 @@ held on the integer millimetre lattice (R24).
 | `footprint` | measured, or declared to override | list of points | The ground the asset claims, in plan. Measured: the rectangle of `bounds` in plan, counter-clockwise from `[x0, y0]` (section 6 for round primitives). Declare it when the claim is not the box (a trunk under a canopy, the ground a kit piece owns). |
 | `front`, `up` | declared (model) | string | Model axes, 2.3. Default `"+z"`, `"+y"`. |
 | `pivot` | declared (model) | string | The rule that puts the pivot: `"base_centre"` (default), `"base_corner"`, `"origin"`. |
-| `solidity` | declared | string | `"solid"` (default) or `"none"`. See below. |
+| `solidity` | declared | string | `"solid"` (default), `"passable"` (M5) or `"none"`. `passable` claims the footprint exactly as `solid` does; only a walk reads the difference (`surfaces.md` 4.4). See below. |
 | `collision` | declared | string | What the engine makes the instance collide as: `"none"` (default), `"box"` (the box of `bounds`), `"hull"` (the convex hull of the model's vertices), `"mesh"` (its triangles, static). See below. |
 | `sink` | declared | number | How far an instance is lowered below its placing point, metres. Default 0. May be negative. |
 | `max_relief` | declared | number | The largest difference in surface height under the footprint the asset tolerates, metres, 0 or greater (`pack.range`). No default: without it, nothing is checked. |
@@ -301,11 +301,13 @@ kind mount.
 | Key | Takes | Meaning |
 |---|---|---|
 | `at` | point | Plan position in the asset frame, lattice metres. Required. It may lie outside `bounds` (a doorstep in front of a door). Its height is never written: it is the surface's (`surfaces.md` 3.1). |
-| `face` | number | A bearing in the asset frame, 0 = the asset's front, clockwise (`numbers.md` 2). Default 0. |
+| `face` | number | A bearing in the asset frame, 0 = the asset's front, clockwise (`numbers.md` 2). Default 0. The way a walker faces as it enters through the mount (`surfaces.md` 3.4's `turn`). |
+| `connector` | string | (M5) What joint it is: a free word compared only for equality, as on a kind mount (`surfaces.md` 3.2, 3.4: `surface.connector`, `surface.unmet`). Default none. |
 
 - `t` and `offset` are not taken: an asset has no path. Each is `doc.unknown_key`.
-- `connector` on an asset mount is `doc.not_yet` (M5, section 10). On a kind mount it is
-  `surfaces.md`'s.
+- A mount's `connector` is one of the mount's facts: in the facts file with `at` and `face`
+  (4.1), and an edit to it in an accepted pack is `asset.revised` (4.2's `mounts` row).
+- A mount takes no `surface`: it lies on what its instance stands on (`surfaces.md` 3.2).
 - A mount named `start`, `end` or `ground` is `identity.reserved`.
 - Mounts are pack-wide checks (8.3) and facts of the facts file (section 4).
 
@@ -405,6 +407,8 @@ Two correct implementations write the same bytes.
   `numbers.md` 3.4 writes a double; integers as decimal digits. Lists as `[a, b]` with `, ` between
   items; strings as TOML basic strings.
 - `mounts` is an inline table by mount name, sorted: `{ door = { at = [0, 3.1], face = 0 } }`.
+  From M5 a mount with a connector adds it: `{ at = [0, 3.1], connector = "foot", face = 0 }`,
+  keys sorted; a mount without one writes no `connector`, so M2 facts files stay byte-equal.
   Absent when the asset has none.
 - `params` is the BLAKE3 digest (`build.md` 3.3) of the canonical JSON (`documents.md` 8) of the
   resolved `params`. Absent when there are none.
@@ -775,24 +779,27 @@ Primitive and engine-made assets build as they always do. This is ours.
 
 ## 10. Forward pointers (M5)
 
-Not in v0. Each is a declared fact or table to come; nothing here may be read as already deciding
-it. The words are reserved until then (`doc.not_yet`).
+Decided in M5, each by principle 5 (the core takes a word only when a core rule must read it). What
+the core took is above (2.4 `passable`, 2.7 `connector`); the rest is the building library's
+(`lib/building/README.md`).
 
-- **Passable.** `solidity = "passable"`: claims ground for overlap, but a walk passes through it (a
-  gate, an arcade; FINDINGS, the gatehouse). Only the walk lint, a library's, reads the difference;
-  whether it is a core value or a library tag is decided in M5 by principle 5 (TODO, "Design
-  passable footprints").
-- **Connectors.** A mount with a direction, a height and a type, so a wall end meets only a wall
-  end, and a fallback for an unused one (an unstitched doorway filled with wall; Dungeon Architect).
-  Optionally read from named glTF nodes in the model and compared with the pack, disagreement a
-  diagnostic (report, 5.5). Asset mounts today have `at` and `face` only (2.7).
-- **Module per axis.** The pitch a piece repeats at along run, depth and storey, apart from its
-  bounds, with an allowed overhang, checked against `bounds` (report, 5.2; FINDINGS, the college's
-  6.44 m bay at a 6 m pitch). Whether this is a core fact or the building library's is (open),
-  decided in M5 by principle 5.
-- **Kit table, roles, variants, allowed stretch.** The building library's, over `taxon`, `tags` and
-  facts (report, 5.4).
-- **States.** The same asset in another condition (a door open). With connectors.
+- **Passable. Core (2.4).** The core already reads `solidity` to give way, and a passable gate gives
+  way exactly as a solid one; a library tag beside `solid` would state one fact twice with nothing
+  to check the two agree (`surfaces.md` 4.4).
+- **Connectors. Core (2.7).** Direction is `face`, height is the surface's (`surfaces.md` 3.2: no
+  threshold), type is `connector`, checked at every meeting. No fallback: meetings come after
+  placement, so a filler for an unanswered mount is placed by the library step that left it
+  unanswered (`surfaces.md` 3.2). Reading mounts from named glTF nodes: not in v1; reopened by the
+  first real kit whose pack and model disagree.
+- **Module per axis. Library.** The pitch a piece repeats at, apart from its bounds, is read by the
+  building library's runs and its kit lint only; the core's run already places at a `spacing` the
+  library computes from the pitch. Written as `params.pitch` (2.2) on the piece, checked against
+  `bounds` by the kit lint (the college's 6.44 m bay at a 6 m pitch).
+- **Kit table, roles, variants, allowed stretch. Library**, over `taxon`, `tags`, `params` and
+  facts.
+- **States. Library.** The same thing in another condition (a door open, a slide racked) is another
+  asset id, filed with a `state:<word>` tag; a check that knows the state reads the instance's
+  asset and its tags (TODO, "Let a check know the state it is checking"). The core has no state.
 
 ## 11. Example
 
@@ -918,13 +925,13 @@ checks that a clean build equals the incremental one.
 | Fixed on primitive | 1 | `[defaults] pivot = "base_corner"`, a primitive, and a primitive writing `pivot` itself | `via pack check` | One `asset.declared_measured`, on the asset that wrote it; none for the default. |
 | Unknown primitive | 1 | `primitive = "boxx"` | `via pack check` | `asset.unknown_primitive`, hint `box`, exit 1. |
 | Bad value | 1 | `solidity = "solidd"`; `size = [0, 1, 1]`; `colour = [1.2, 0, 0]` | `via pack check` | `doc.type` hint `solid`; two `pack.range`; exit 1. |
-| Passable reserved | 1 | `solidity = "passable"` | `via pack check` | `doc.not_yet` naming M5. |
+| Passable | 5 | `solidity = "passable"` | `via pack check`; `via pack list` | Exit 0; the asset's `solidity` is `passable`. |
 | Unknown default key | 1 | `[defaults] pivt = "origin"` | `via pack check` | `doc.unknown_key`, hint `pivot`. |
 | Defaults order | 1 | `colour` in pack defaults, in `plant` and `plant/tree` defaults, and on one asset | `via pack list` | Each asset's resolved value per 2.5. |
 | Bad axes | 1 | `front = "+y"`, `up = "-y"` | `via pack check` | `pack.bad_axes`, exit 1. |
 | Bad footprint | 1 | A clockwise square; a square with its first point repeated | `via pack check` | Two `asset.bad_footprint`, exit 1. |
 | Mount reserved | 1 | `[asset.box.mount.start]`; again with `ground` | `via pack check` | `identity.reserved`, exit 1. |
-| Mount connector | 1 | `connector = "wall"` on an asset mount | `via pack check` | `doc.not_yet` naming M5. |
+| Mount connector | 5 | `connector = "wall"` on an asset mount | `via pack check`; `via pack list` | Exit 0; the mount's `connector` is `wall`. |
 | Material | 1 | A material with `file` and no `repeat`; a `paint` naming `gras` | `via build` | `pack.material_repeat`; `pack.unknown_material` hint `grass`; exit 1. |
 | Dotted id | 1 | `[asset."house.low"]` | `via pack check` | `identity.bad_id`, exit 1. |
 | Unknown asset | 1 | A world on the primitive pack naming `house_lo` | `via build` | `asset.unknown`, hint `house_low`, exit 1. |
@@ -991,14 +998,15 @@ checks that a clean build equals the incremental one.
 - Front was an unwritten convention and yaw ran counter-clockwise from east; now glTF's rule with a
   per-asset correction, and `face` is a bearing (`numbers.md`).
 - A pivot rule is declared and checked; the spike only lifted a model's base to 0.
-- `solid` (bool) is `solidity` (`solid`, `none`; `passable` reserved for M5). The spike's `avoid` (a
+- `solid` (bool) is `solidity` (`solid`, `none`, and from M5 `passable`). The spike's `avoid` (a
   list of fields) is gone: the `keep_out` field role covers it. The spike's fixed 1 m distance is
   gone: scatters give way by footprint overlap. `clearance` (never read) is gone. The viewer
   `color` is `colour`, used by primitives and stand-ins. Collision, never said, is the declared fact
   `collision`.
 - `labels` is `tags`. A taxonomy is declared in the pack and checked; `@path` works wherever assets
   are listed, not only in a kit run.
-- `[ground.<n>]` is `[material.<n>]`; `[surface.<n>]` is gone (R25). `module_m` waits for M5.
+- `[ground.<n>]` is `[material.<n>]`; `[surface.<n>]` is gone (R25). `module_m` is the building
+  library's `params.pitch` (M5, section 10).
 - `root` is relative to the pack file, not the working directory. Round footprints are polygons.
 - New: finding a pack by name; old and new facts in the change report; the facts file and its diff;
   `via pack check`, `via pack list` (from the zoo), `via pack accept`; stand-ins; an asset as a set
@@ -1019,4 +1027,4 @@ checks that a clean build equals the incremental one.
 - **Selection by tag in a world:** decided by the first case that needs it.
 - **Revisions across imports** (an asset revised in an imported world's pack): `composition.md` 10.
 - **Formats other than glTF** (FBX, USD): converted outside the build; reopened only by a user case.
-- **Passable, connectors, module per axis, kit table, states:** M5 (section 10).
+- **Reading mounts from named glTF nodes** (section 10): reopened by the first real kit whose pack and model disagree.

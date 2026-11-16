@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, stair_short: 6.4 with z1 = 13.0: surface.gap of 300 mm on (stair.end, hall_1.floor); exit 1."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.gap]
+code    = "surface.gap"
+subject = "feature.stair"

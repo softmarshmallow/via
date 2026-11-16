@@ -59,12 +59,16 @@ pub struct Asset {
     /// The footprint in the asset frame, counter-clockwise; empty for a point footprint.
     pub footprint: Vec<(i64, i64)>,
     pub solid: bool,
+    /// `solidity = "passable"` (2.4, M5): solid in every rule; only walks read the difference.
+    pub passable: bool,
     /// Metres.
     pub sink: f64,
     pub max_relief: Option<f64>,
     pub colour: [f64; 3],
     /// Mounts: name to (`at` in mm, face in millidegrees).
     pub mounts: BTreeMap<String, ((i64, i64), i64)>,
+    /// Each mount's `connector` (2.7, M5), where it writes one.
+    pub connectors: BTreeMap<String, String>,
     pub taxon: Option<String>,
     pub tags: Vec<String>,
     /// `collision` (2.4): `none`, `box`, `hull` or `mesh`. Carried to the loader; the core reads it
@@ -80,6 +84,15 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// The `solidity` word (2.4): `solid`, `passable` or `none`.
+    pub fn solidity(&self) -> &'static str {
+        match (self.solid, self.passable) {
+            (_, true) => "passable",
+            (true, false) => "solid",
+            (false, false) => "none",
+        }
+    }
+
     /// The 3 by 4 matrix, row by row, taking a point of the model file's node space to the asset
     /// frame (`build.md` 7 `to_asset`): the quarter turn of `front` and `up`, then minus the
     /// pivot, in millimetres. Identity for a primitive or engine-made asset.
@@ -128,16 +141,18 @@ impl Asset {
             self.max_relief
                 .map_or_else(|| "null".to_string(), crate::text::dbl),
         );
-        f.insert(
-            "solidity".into(),
-            if self.solid { "\"solid\"" } else { "\"none\"" }.into(),
-        );
+        f.insert("solidity".into(), format!("\"{}\"", self.solidity()));
         let mounts: Vec<String> = self
             .mounts
             .iter()
             .map(|(n, ((x, y), face))| {
+                let c = self
+                    .connectors
+                    .get(n)
+                    .map(|c| format!(",\"connector\":{}", serde_json_str(c)))
+                    .unwrap_or_default();
                 format!(
-                    "{}:{{\"at\":[{},{}],\"face\":{face}}}",
+                    "{}:{{\"at\":[{},{}]{c},\"face\":{face}}}",
                     serde_json_str(n),
                     mm(*x),
                     mm(*y)
@@ -1548,26 +1563,21 @@ fn read_asset(
             ],
         },
     };
+    let passable = declared("solidity").and_then(|v| v.as_str()) == Some("passable");
     let solid = match declared("solidity").and_then(|v| v.as_str()) {
-        None | Some("solid") => true,
+        None | Some("solid" | "passable") => true,
         Some("none") => false,
-        Some("passable") => {
-            r.fault(
-                codes::doc::NOT_YET,
-                &subject,
-                Some("solidity"),
-                "`passable` arrives in M5",
-                "write `solid` or `none`",
-            );
-            true
-        }
         Some(o) => {
             r.fault(
                 codes::doc::TYPE,
                 &subject,
                 Some("solidity"),
                 &format!("`{o}` is not a solidity"),
-                &text::near_hint(o, ["solid", "none"], "write `solid` or `none`"),
+                &text::near_hint(
+                    o,
+                    ["solid", "passable", "none"],
+                    "write `solid`, `passable` or `none`",
+                ),
             );
             true
         }
@@ -1629,6 +1639,7 @@ fn read_asset(
         })
         .unwrap_or_default();
     let mut mounts = BTreeMap::new();
+    let mut connectors = BTreeMap::new();
     if let Some(toml::Value::Table(ms)) = a.get("mount") {
         for (name, m) in ms {
             if matches!(name.as_str(), "start" | "end" | "ground") {
@@ -1646,14 +1657,18 @@ fn read_asset(
                 }
                 continue;
             }
-            if m.get("connector").is_some() {
-                r.fault(
-                    codes::doc::NOT_YET,
+            match m.get("connector") {
+                None => {}
+                Some(toml::Value::String(c)) => {
+                    connectors.insert(name.clone(), c.clone());
+                }
+                Some(_) => r.fault(
+                    codes::doc::TYPE,
                     &format!("{subject}.mount.{name}"),
                     Some("connector"),
-                    "`connector` on an asset mount arrives in M5",
-                    "remove `connector`",
-                );
+                    "`connector` is a word",
+                    "write `connector = \"<word>\"`",
+                ),
             }
             let at = m
                 .get("at")
@@ -1696,10 +1711,12 @@ fn read_asset(
         bounds,
         footprint,
         solid,
+        passable,
         sink,
         max_relief,
         colour,
         mounts,
+        connectors,
         taxon,
         tags,
         collision,

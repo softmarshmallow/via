@@ -330,7 +330,8 @@ pub enum FileReads {
     Features,
     /// The instance columns: every plan, held output and height.
     Instances,
-    /// `meets.json`: the paths with ends at a place, and the surface chunks at their ends.
+    /// `meets.json`: the paths with ends at a place, the owners of mounts and surfaces, what the
+    /// ends name, the instances and their mounts' facts, and the terrain under them.
     Meets,
     /// A file whose reads are not known here: every node of the model.
     Everything,
@@ -760,21 +761,65 @@ impl<'w> ModelPlan<'w> {
                     }
                 }
             }
+            // `meets.json` (`surfaces.md` 3.3, 3.4): every path with an end at a place and every
+            // feature whose kind has mounts or surfaces (shape, attributes), what each end names,
+            // every instance's plan and height and the facts of assets with mounts (asset mounts,
+            // 3.2), and the terrain under every end, mount and instance. Its statements are in
+            // [`ModelPlan::file_statements`].
             FileReads::Meets => {
-                let mut pts = Vec::new();
-                for (id, f) in &self.p.decls.features {
-                    if f.starts_at.is_none() && f.ends_at.is_none() {
-                        continue;
+                let d = &self.p.decls;
+                let mut pts: Vec<P> = Vec::new();
+                for id in self.meets_features() {
+                    out.push((format!("shape {id}"), view(NodeId::of("shape", &id))));
+                    out.push((format!("attr {id}"), NodeId::of("attr", &id)));
+                    match self.p.placed.shapes.get(&id) {
+                        Some(Geo::Path { line }) => pts.extend(line.pts.iter().copied()),
+                        Some(Geo::Region {
+                            line: Some(line), ..
+                        }) => pts.extend(line.pts.iter().copied()),
+                        Some(Geo::Point { p, .. }) => pts.push(*p),
+                        _ => {}
                     }
-                    if let Some(Geo::Path { line }) = self.p.placed.shapes.get(id) {
-                        out.push((format!("shape {id}"), view(NodeId::of("shape", id))));
-                        if f.starts_at.is_some() {
-                            pts.push(line.pts[0]);
-                        }
-                        if f.ends_at.is_some() {
-                            pts.push(line.pts[line.pts.len() - 1]);
+                    if let Some(f) = d.features.get(&id) {
+                        for place in [&f.starts_at, &f.ends_at].into_iter().flatten() {
+                            for t in self.targets(place) {
+                                out.push((format!("meets {place}"), t));
+                            }
                         }
                     }
+                }
+                for id in self.defs.keys() {
+                    if matches!(id.family(), "instance" | "height") {
+                        out.push((format!("{} {}", id.family(), subject_of(id)), id.clone()));
+                    }
+                }
+                for (a, x) in &self.p.pack.assets {
+                    let n = NodeId::of("facts", a);
+                    if !x.mounts.is_empty() && self.defs.contains_key(&n) {
+                        out.push((format!("facts {a}"), n));
+                    }
+                }
+                // An asset mount lies off its footprint by up to a few metres: 5 m round it.
+                const MOUNT_REACH: i64 = 5_000;
+                for pl in self.p.placed.plans.values() {
+                    let b = region_bbox(&pl.footprint, pl.origin);
+                    let b = [
+                        b[0] - MOUNT_REACH,
+                        b[1] - MOUNT_REACH,
+                        b[2] + MOUNT_REACH,
+                        b[3] + MOUNT_REACH,
+                    ];
+                    for f in self.surface_fields() {
+                        for w in self.chunks_under(b) {
+                            out.push((
+                                format!("surface {f} {}", win_text(&w)),
+                                chunk_id(&f, BUILD, &w),
+                            ));
+                        }
+                    }
+                }
+                for (_, p) in self.p.placed.names.values() {
+                    pts.push(*p);
                 }
                 out.extend(self.surface_at(&pts));
             }
@@ -788,6 +833,60 @@ impl<'w> ModelPlan<'w> {
         }
         out.sort();
         out.dedup();
+        out
+    }
+
+    /// The statements a build file's `write` node holds in its key, beside its edges. A meeting
+    /// is made by `starts_at`, `ends_at`, `meets` and the kinds' mounts (`surfaces.md` 3.3),
+    /// which no node's value carries: unsetting `ends_at` leaves every shape as it was, so
+    /// `meets.json` holds every statement (example `station`, `close_passage`: a warm build kept
+    /// the meeting a clean one dropped).
+    pub fn file_statements(&self, what: &FileReads) -> Vec<(String, Digest)> {
+        match what {
+            FileReads::Meets => {
+                let d = &self.p.decls;
+                let mut ids: Vec<String> = Vec::new();
+                for id in self.meets_features() {
+                    if let Some(k) = d.features.get(&id).and_then(|f| f.kind.as_ref()) {
+                        ids.push(format!("kind.{k}"));
+                    }
+                    ids.push(format!("feature.{id}"));
+                }
+                ids.extend(d.instances.keys().map(|i| format!("instance.{i}")));
+                self.stmts_of(ids.iter().map(String::as_str))
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// The features `meets.json` is made from (`surfaces.md` 3.3): every one with an end at a
+    /// place, every one whose kind has mounts or surfaces, and every feature an end names.
+    fn meets_features(&self) -> BTreeSet<String> {
+        let d = &self.p.decls;
+        let mut out = BTreeSet::new();
+        for (id, f) in &d.features {
+            let mounted = f
+                .kind
+                .as_ref()
+                .and_then(|k| d.kinds.get(k))
+                .is_some_and(|k| !k.mounts.is_empty() || !k.surfaces.is_empty());
+            let ends = [&f.starts_at, &f.ends_at];
+            if !mounted && ends.iter().all(|e| e.is_none()) {
+                continue;
+            }
+            out.insert(id.clone());
+            for place in ends.into_iter().flatten() {
+                let base = place
+                    .strip_suffix(".start")
+                    .or_else(|| place.strip_suffix(".end"))
+                    .unwrap_or(place);
+                for h in [base, base.split('.').next().unwrap_or(base)] {
+                    if d.features.contains_key(h) {
+                        out.insert(h.to_string());
+                    }
+                }
+            }
+        }
         out
     }
 
@@ -1429,6 +1528,21 @@ impl<'w> ModelPlan<'w> {
                 .map(|pl| region_bbox(&pl.footprint, pl.origin));
             let mut edges = vec![("plan".to_string(), view(NodeId::of("instance", id)))];
             edges.extend(self.standing_edges(at, true));
+            // On a kind surface (`surfaces.md` 4.1): the thing depends on the surface's owner as
+            // on an `on` reference, its shape, its attributes and its kind's statements (the
+            // surface's `base`, `bound`), so a changed floor re-grounds it, and the change report
+            // lists it as grounded on that owner (rule 8).
+            let mut statements = statements.clone();
+            if let Some(owner) = self.surface_owner(i) {
+                let label = format!("grounded on {owner}");
+                edges.push((label.clone(), view(NodeId::of("shape", &owner))));
+                edges.push((label, NodeId::of("attr", &owner)));
+                if let Some(k) = d.features.get(&owner).and_then(|f| f.kind.as_ref()) {
+                    statements.extend(self.stmts_of([format!("kind.{k}").as_str()]));
+                    statements.sort();
+                    statements.dedup();
+                }
+            }
             // A hand instance and the instance it stands on are not tested for overlap
             // (`rules.md` 8.1), so neither reads the other for it: the one on a mount already
             // reads its host's `height`, and an edge back would close a loop.
@@ -2136,6 +2250,41 @@ impl<'w> ModelPlan<'w> {
         NodeId::of("joincheck", "imports")
     }
 
+    /// The feature that owns the kind surface a hand instance stands on, if any (`surfaces.md`
+    /// 4.1): the head of its `surface`, the owner of the kind mount its `on` names when that mount
+    /// lies on a surface, or the feature its `on` names when that feature's kind has surfaces.
+    fn surface_owner(&self, i: &crate::decl::InstanceDecl) -> Option<String> {
+        self.surface_owner_at(i, 0)
+    }
+
+    /// [`ModelPlan::surface_owner`], following `on` an asset mount to its instance (3.2).
+    fn surface_owner_at(&self, i: &crate::decl::InstanceDecl, depth: u8) -> Option<String> {
+        let d = &self.p.decls;
+        let has_surfaces = |f: &str| {
+            d.features
+                .get(f)
+                .and_then(|x| x.kind.as_ref())
+                .and_then(|k| d.kinds.get(k))
+                .is_some_and(|k| !k.surfaces.is_empty())
+        };
+        if let Some(sn) = &i.surface {
+            let head = sn.split('.').next().unwrap_or(sn);
+            return d.features.contains_key(head).then(|| head.to_string());
+        }
+        let Place::On(o) = &i.place else { return None };
+        if let Some((owner, m)) = crate::surfaces::kind_mount(d, &o.reference) {
+            return m.surface.as_ref().map(|_| owner.to_string());
+        }
+        if has_surfaces(&o.reference) {
+            return Some(o.reference.clone());
+        }
+        let host = o.reference.split_once('.').map(|(h, _)| h)?;
+        if depth >= 16 {
+            return None;
+        }
+        self.surface_owner_at(d.instances.get(host)?, depth + 1)
+    }
+
     /// The edges of a height: the surface beneath, and for a hand instance the `keep_out`
     /// fields beneath in view `build-nofootprint` (R25, `rules.md` 8, `graph.md` 2 "standing").
     fn standing_edges(&self, at: Option<[i64; 4]>, keep_out: bool) -> Vec<(String, NodeId)> {
@@ -2672,6 +2821,22 @@ impl<'w> ModelPlan<'w> {
                         } else {
                             vec![NodeId::of("attr", id)]
                         }
+                    }
+                    // A meeting's check reads every path that ends at the mount (`surfaces.md`
+                    // 3.4), which the instance's height does not: the merge holds it.
+                    "instance"
+                        if late
+                            && [
+                                codes::surface::UNMET,
+                                codes::surface::CONNECTOR,
+                                codes::surface::GAP,
+                                codes::surface::FACING,
+                                codes::surface::APART,
+                            ]
+                            .iter()
+                            .any(|c| *d.code() == via_diag::DiagCode::Core(*c)) =>
+                    {
+                        vec![Self::merge_id()]
                     }
                     "instance" if late => vec![view(NodeId::of("height", id))],
                     "instance" => vec![view(NodeId::of("instance", id))],

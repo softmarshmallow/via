@@ -1,0 +1,22 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[instance.hut]
+asset = "hut"
+at    = [60, 60]
+
+[feature.walk]
+kind    = "footpath"
+path    = [[60, 80]]
+ends_at = "hut.door"
+
+[change.turn.instance.hut]
+at   = [90, 60]
+face = 90

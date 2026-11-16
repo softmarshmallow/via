@@ -21,7 +21,7 @@ placement, grounding and scatter are M1 (`ford`); `clump` is M2 (`glade`); sets 
 | produced instance | An instance a producer made, and every item of a set it places. Named `<producer>#<key>`, an item `<producer>#<key>.<item>` (`identity.md`). |
 | scattered instance | A produced instance whose producer is a scatter. |
 | footprint | The asset's outline in its own frame (`assets.md`), scaled and turned by the instance's frame. An asset without one has a point footprint: its origin. |
-| solidity | An asset fact: `solid` or `none` (`assets.md` 2.4). `solid` claims its footprint; `none` claims nothing. `passable` is reserved for M5 (`assets.md`); before then it is `doc.not_yet`. |
+| solidity | An asset fact: `solid`, `passable` (M5) or `none` (`assets.md` 2.4). `solid` and `passable` claim their footprint, alike in every rule of this chapter; `none` claims nothing. Only a walk reads `passable` (`surfaces.md` 4.4). |
 | instance frame | Origin at the placed point, turned by the resolved bearing, scaled by `scale` (`numbers.md`, frames). A set's items and an asset's mounts are measured in it. |
 
 A set is a rule in the doctrine's sense: placed, it lowers to plain instances. It is not a producer.

@@ -170,7 +170,7 @@ pub fn entry(a: &Asset) -> Vec<(&'static str, String)> {
         out.push(("up", basic(&m.up)));
         out.push(("pivot", basic(&m.pivot)));
     }
-    out.push(("solidity", basic(if a.solid { "solid" } else { "none" })));
+    out.push(("solidity", basic(a.solidity())));
     out.push(("collision", basic(&a.collision)));
     out.push(("sink", metres(a.sink)));
     if let Some(r) = a.max_relief {
@@ -186,8 +186,14 @@ pub fn entry(a: &Asset) -> Vec<(&'static str, String)> {
             .mounts
             .iter()
             .map(|(n, ((x, y), face))| {
+                // Keys sorted (4.1): `connector` only where the mount writes one (M5).
+                let c = a
+                    .connectors
+                    .get(n)
+                    .map(|c| format!("connector = {}, ", basic(c)))
+                    .unwrap_or_default();
                 format!(
-                    "{n} = {{ at = [{}, {}], face = {} }}",
+                    "{n} = {{ at = [{}, {}], {c}face = {} }}",
                     len(*x),
                     len(*y),
                     via_num::write_facing(*face)

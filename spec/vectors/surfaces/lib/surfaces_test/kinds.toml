@@ -1,0 +1,88 @@
+# surfaces_test: the kinds of surfaces.md section 6, for its conformance cases (conformance.md 2).
+# Library text in a test fixture; the names are the examples' own.
+
+[kind.pad.effect.level]
+field  = "role:surface"
+value  = "= under('mean')"
+radius = 3
+
+[kind.lane]
+connector = "way"
+
+[kind.rail]
+connector = "rail"
+
+[kind.footpath]
+connector = "foot"
+
+[kind.marker]
+
+[kind.crossing]
+authority = "anchored"
+requires  = ["deck_z"]
+defaults  = { width = 5, camber = 0.02 }
+
+[kind.crossing.surface.deck]
+base  = "= deck_z - camber * d"
+bound = "= width / 2"
+
+[kind.crossing.effect.heads]
+field  = "role:surface"
+value  = "= deck_z"
+mask   = "= max(1 - smoothstep(0.05, 0.15, t), smoothstep(0.85, 0.95, t)) * (1 - smoothstep(3, 6, d))"
+radius = 8
+
+[kind.crossing.mount.west_deck]
+t       = 0
+surface = "deck"
+face    = 180
+meets   = "west_head"
+[kind.crossing.mount.west_head]
+t         = 0
+face      = 0
+connector = "way"
+[kind.crossing.mount.east_deck]
+t       = 1
+surface = "deck"
+face    = 0
+meets   = "east_head"
+[kind.crossing.mount.east_head]
+t         = 1
+face      = 180
+connector = "way"
+
+# M5: section 6.4
+[kind.storey]
+authority = "anchored"
+requires  = ["level"]
+defaults  = { headroom = 2.6 }
+
+[kind.storey.surface.floor]
+base = "= level"
+cut  = "= headroom"
+
+[kind.flight]
+connector = "foot"
+requires  = ["z0", "z1"]
+defaults  = { width = 1 }
+
+[kind.flight.surface.tread]
+base  = "= z0 + (z1 - z0) * t"
+bound = "= width / 2"
+
+[kind.doorway]
+connector = "foot"
+requires  = ["sill_z"]
+
+[kind.doorway.effect.sill]
+field  = "role:surface"
+value  = "= sill_z"
+mask   = "= 1 - smoothstep(0.5, 2, d)"
+radius = 3
+
+# M5: section 6.6
+[kind.roof]
+requires = ["eaves"]
+
+[kind.roof.surface.garden]
+base = "= eaves"

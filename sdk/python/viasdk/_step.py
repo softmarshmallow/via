@@ -127,6 +127,16 @@ class Out:
             lines.append(f"{_key(k)} = {_toml_value(keys[k])}")
         self._tables.append("\n".join(lines) + "\n")
 
+    def table(self, section, key, **keys):
+        """A `[set]`, `[run]` or `[scatter]` table a library form lowers to (protocol.md 5,
+        rules.md 10); values as TOML writes them, tables inline (``on = { ref, span }``)."""
+        if section not in ("set", "run", "scatter"):
+            raise ValueError(f"a step returns no [{section}] table (protocol.md 5)")
+        lines = [f"[{section}.{_key(key)}]"]
+        for k in sorted(keys):
+            lines.append(f"{_key(k)} = {_toml_value(keys[k])}")
+        self._tables.append("\n".join(lines) + "\n")
+
     def text(self):
         """The document as TOML text; empty when nothing was returned (protocol.md 5)."""
         return "\n".join(self._tables)

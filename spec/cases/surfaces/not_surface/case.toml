@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, not_surface: surface naming a path end (front_door.start), not a kind surface: surface.not_surface listing front_door's surfaces (none)."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.not]
+code    = "surface.not_surface"
+subject = "instance.desk"

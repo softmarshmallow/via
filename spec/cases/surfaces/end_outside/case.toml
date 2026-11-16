@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, end_outside: 6.4 with the stair ending at [24, 20.6], in the stairwell: surface.outside on the stair (a path end naming a kind surface lies outside its bound)."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.outside]
+code    = "surface.outside"
+subject = "feature.stair"

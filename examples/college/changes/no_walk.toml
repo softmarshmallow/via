@@ -1,0 +1,6 @@
+# A forgotten walk (challenge 48): the chapel's walk is removed and nothing else is written. The
+# chapel's door is its asset's `entry` mount with `connector = "foot"`, so the build says, as a
+# warning on the chapel, that no path ends there and what to write (`surface.unmet`, surfaces.md
+# 3.4); the view at its gate still stands and looks at the door no walk reaches.
+[feature.chapel_walk]
+remove = true

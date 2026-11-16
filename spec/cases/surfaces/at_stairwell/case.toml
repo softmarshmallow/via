@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, at_stairwell: the desk at [22, 20.5], in the stairwell, on hall_1.floor: surface.outside, not placed."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.outside]
+code    = "surface.outside"
+subject = "instance.desk"

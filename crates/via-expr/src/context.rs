@@ -282,12 +282,28 @@ impl Context {
             Builtin::Pi | Builtin::X | Builtin::Y => true,
             // An import's `blend` reads `d`, the distance inward from the footprint's outline
             // (`composition.md` 6.3), and neither `sd` nor `t`.
+            // A kind surface's `bound` and `cut` see them too, so writing one there is
+            // `formula.rate` as for `x` and `y` (`surfaces.md` 1.1), not an unknown name.
             Builtin::D => matches!(
                 self.key,
-                Key::EffectValue | Key::EffectMask | Key::KindLet | Key::Blend
+                Key::EffectValue
+                    | Key::EffectMask
+                    | Key::KindLet
+                    | Key::Blend
+                    | Key::SurfaceBase
+                    | Key::SurfaceBound
             ),
+            // A kind surface's `base` reads its owner's `t`, `d`, `sd` at the point asked
+            // (`surfaces.md` 1.1).
             Builtin::Sd | Builtin::T => {
-                matches!(self.key, Key::EffectValue | Key::EffectMask | Key::KindLet)
+                matches!(
+                    self.key,
+                    Key::EffectValue
+                        | Key::EffectMask
+                        | Key::KindLet
+                        | Key::SurfaceBase
+                        | Key::SurfaceBound
+                )
             }
             Builtin::V => {
                 !self.weights

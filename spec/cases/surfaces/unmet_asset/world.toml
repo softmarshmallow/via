@@ -1,0 +1,14 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[instance.hut]
+asset = "hut"
+at    = [60, 60]
+# path here

@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "`type = \"volume\"` on a field in M1: doc.not_yet naming M5 (`[import]` arrived in M4, so it no longer serves)."
+summary   = "`[budget]` in the world file: doc.not_yet naming M6 (`[import]` arrived in M4 and `type = \"volume\"` was dropped in M5, so neither serves)."
 milestone = 1
 actions   = ["merge"]
 
@@ -10,4 +10,4 @@ exit = 1
 [action.merge.diag.not_yet]
 code = "doc.not_yet"
 file = "world.toml"
-line = 16
+line = 15

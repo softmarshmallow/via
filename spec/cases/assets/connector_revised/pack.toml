@@ -1,0 +1,7 @@
+[asset.cube]
+file = "cube.gltf"
+
+[asset.cube.mount.door]
+at        = [0, 1]
+face      = 180
+connector = "foot"

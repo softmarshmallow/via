@@ -157,6 +157,36 @@ pub struct Kind {
     /// `exit` (`composition.md` 7): the attributes an answer must match; empty for `true`;
     /// `None` when the kind marks no exit.
     pub exit: Option<Vec<String>>,
+    /// `connector` (`surfaces.md` 3.4, M5): what joint its path ends are.
+    pub connector: Option<String>,
+    /// Its kind surfaces (`surfaces.md` 1), by name.
+    pub surfaces: BTreeMap<String, KindSurface>,
+    /// Its kind mounts (`surfaces.md` 3.1), by name.
+    pub mounts: BTreeMap<String, KindMount>,
+}
+
+/// `[kind.<k>.surface.<name>]` (`surfaces.md` 1, 1.3).
+#[derive(Clone, Debug)]
+pub struct KindSurface {
+    pub name: String,
+    pub base: Option<FormulaId>,
+    pub bound: Option<FormulaId>,
+    pub cut: Option<FormulaId>,
+    pub material: Option<String>,
+}
+
+/// `[kind.<k>.mount.<name>]` (`surfaces.md` 3.1).
+#[derive(Clone, Debug)]
+pub struct KindMount {
+    pub name: String,
+    pub t: f64,
+    /// Millimetres to the left of travel.
+    pub offset: i64,
+    /// Millidegrees clockwise from the direction of travel.
+    pub face: Option<i64>,
+    pub surface: Option<String>,
+    pub meets: Option<String>,
+    pub connector: Option<String>,
 }
 
 /// A place written as `on = { ref, t, offset }`.
@@ -277,6 +307,8 @@ pub struct InstanceDecl {
     pub rank: i64,
     /// The set it places (`rules.md` 4); then `asset` is empty.
     pub set: Option<String>,
+    /// `surface = "<feature>.<surface>"` (`surfaces.md` 4.1, M5): the kind surface it stands on.
+    pub surface: Option<String>,
 }
 
 /// One choice of a scatter's `assets` (`rules.md` 7.4).
@@ -373,7 +405,7 @@ pub struct Formulas {
 }
 
 impl Formulas {
-    fn add(&mut self, ft: &FormulaText, subject: Subject, path: KeyPath) -> FormulaId {
+    pub(crate) fn add(&mut self, ft: &FormulaText, subject: Subject, path: KeyPath) -> FormulaId {
         let id = match ft {
             FormulaText::Text(t) => self.env.text(t),
             FormulaText::Number(n) => self.env.number(*n),
@@ -589,7 +621,7 @@ impl via_expr::Reads for AttrReads<'_> {
 }
 
 /// An attribute formula selects nothing (`formulas.md` 6.7).
-struct NoSelect;
+pub(crate) struct NoSelect;
 
 impl via_expr::Select for NoSelect {
     fn fields(&self, _selector: &str) -> Vec<via_expr::FieldInfo> {
@@ -1079,18 +1111,8 @@ impl Decls {
                 Some(v @ Value::List(_)) => text::strings(v),
                 _ => None,
             };
-            for sub in ["surface", "mount"] {
-                if t.get(sub).is_some() {
-                    self.push(at_key(
-                        codes::doc::NOT_YET,
-                        "kind",
-                        id,
-                        sub,
-                        &format!("a kind `{sub}` arrives in M3"),
-                        "in M1 every surface is the terrain",
-                    ));
-                }
-            }
+            k.connector = t.str("connector").map(str::to_string);
+            crate::surfaces::read_kind(self, id, t, &mut k);
             d_effects(self, id, t, &mut k);
             self.formulas.kind_attrs.insert(
                 id.to_string(),
@@ -1109,26 +1131,15 @@ impl Decls {
             let weights = match t.str("type") {
                 None | Some("scalar") => false,
                 Some("weights") => true,
-                Some("volume") => {
-                    self.push(at_key(
-                        codes::doc::NOT_YET,
-                        "field",
-                        name,
-                        "type",
-                        "a `volume` field arrives in M5",
-                        "use a scalar field until M5",
-                    ));
-                    continue;
-                }
                 Some(other) => {
                     let hint = if other == "material" {
                         "write `type = \"weights\"` with `role = \"material\"`".to_string()
+                    } else if other == "volume" {
+                        // `surfaces.md` 1.3 (M5): no volume field; the fixed hint.
+                        "a place to stand above or under the ground is a kind surface (`surfaces.md` 1.3)"
+                            .to_string()
                     } else {
-                        text::near_hint(
-                            other,
-                            ["scalar", "weights", "volume"],
-                            "write `scalar` or `weights`",
-                        )
+                        text::near_hint(other, ["scalar", "weights"], "write `scalar` or `weights`")
                     };
                     let d = at_key(
                         codes::field::TYPE_UNKNOWN,
@@ -1138,15 +1149,10 @@ impl Decls {
                         &format!("`{other}` is not a field type"),
                         &hint,
                     );
-                    self.push(if other == "material" {
+                    self.push(if other == "material" || other == "volume" {
                         d
                     } else {
-                        text::with_nearest(
-                            d,
-                            other,
-                            ["scalar", "weights", "volume"],
-                            text::undeclared,
-                        )
+                        text::with_nearest(d, other, ["scalar", "weights"], text::undeclared)
                     });
                     continue;
                 }
@@ -2402,6 +2408,7 @@ impl Decls {
                     margin,
                     rank: world.rank("instance", id).unwrap_or(0),
                     set,
+                    surface: t.str("surface").map(str::to_string),
                 },
             );
         }
@@ -3171,6 +3178,40 @@ impl Decls {
                             "max_change",
                         )),
                     ));
+                }
+            }
+        }
+        // Kind surfaces (`surfaces.md` 1.1): `base` per point, `bound` and `cut` per feature.
+        for k in self.kinds.values() {
+            for ks in k.surfaces.values() {
+                // `formulas.md` noise parts: `["noise", "feature", <fid>, "surface", <name>, <key>]`.
+                let noise = |key: &str| {
+                    vec![
+                        NoisePart::Text("noise".into()),
+                        NoisePart::Text("feature".into()),
+                        NoisePart::Feature,
+                        NoisePart::Text("surface".into()),
+                        NoisePart::Text(ks.name.clone()),
+                        NoisePart::Text(key.into()),
+                    ]
+                };
+                if let Some(b) = ks.base {
+                    lets.push((
+                        b,
+                        Context::new(Key::SurfaceBase)
+                            .kind(&k.id)
+                            .noise_parts(noise("base")),
+                    ));
+                }
+                for (f, key) in [(ks.bound, "bound"), (ks.cut, "cut")] {
+                    if let Some(f) = f {
+                        lets.push((
+                            f,
+                            Context::new(Key::SurfaceBound)
+                                .kind(&k.id)
+                                .noise_parts(noise(key)),
+                        ));
+                    }
                 }
             }
         }

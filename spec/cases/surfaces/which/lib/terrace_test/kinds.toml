@@ -1,0 +1,10 @@
+# terrace_test: a kind that owns two surfaces, for the case `which` (surfaces.md 4.1).
+
+[kind.terrace]
+requires = ["low", "high"]
+
+[kind.terrace.surface.lower]
+base = "= low"
+
+[kind.terrace.surface.upper]
+base = "= high"

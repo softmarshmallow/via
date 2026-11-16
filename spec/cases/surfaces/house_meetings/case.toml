@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, house_meetings: 6.4: meetings gives four rows, every gap 0; a door is a meeting between the terrain and a floor, a stair two between floors."
+milestone = 5
+actions   = ["query"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.query]
+via         = ["query", "world.toml", "meetings", "--lib", "{work}/lib", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.query.file.a]
+path    = "out.json"
+pointer = "/a"
+value   = ["front_door.end", "garden_path.end", "stair.end", "stair.start"]
+
+[action.query.file.b]
+path    = "out.json"
+pointer = "/b"
+value   = ["hall_g.floor", "front_door.start", "hall_1.floor", "hall_g.floor"]
+
+[action.query.file.gap]
+path    = "out.json"
+pointer = "/gap"
+value   = [0, 0, 0, 0]
+
+[action.query.file.x]
+path    = "out.json"
+pointer = "/x"
+value   = [32000, 36000, 26000, 21000]

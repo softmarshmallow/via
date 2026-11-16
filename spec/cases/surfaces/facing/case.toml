@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, facing: 6.3 with east_head face = 0: surface.facing with both bearings."
+milestone = 5
+actions   = ["turn_head", "build"]
+
+# The pair is (east_deck, east_head), ordered bytewise; a is east_deck. Bearings: the crossing
+# travels east (90 000), east_deck faces 90 000, east_head now 90 000: no half turn.
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.turn_head]
+replace = "lib/surfaces_test/kinds.toml"
+find    = "face      = 180\nconnector = \"way\""
+with    = "face      = 0\nconnector = \"way\""
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.facing]
+code    = "surface.facing"
+subject = "feature.mill_bridge"

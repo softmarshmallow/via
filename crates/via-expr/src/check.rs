@@ -46,7 +46,9 @@ struct Compiler<'a> {
 
 pub(crate) fn compile(env: &Env, id: FormulaId, ctx: &Context) -> Result<Program, ExprError> {
     // An import's `blend` arrives with M4, which is here (`composition.md` 6.3).
-    if ctx.key.milestone() > 1 && ctx.key != Key::Blend {
+    // Kind surfaces arrive with M3 and blends with M4; a volume formula never (`surfaces.md`
+    // 1.3: no volume field).
+    if ctx.key == Key::Volume {
         return Err(ExprError::new(
             doc::NOT_YET,
             At::Key { formula: id },
@@ -646,6 +648,15 @@ impl Compiler<'_> {
     /// 6.2) or a fill's given field (8); the model declares each such name a field.
     fn field_by_name(&mut self, scoped: &str, e: &Expr, frame: &Frame) -> Result<usize, ExprError> {
         let at = self.at(frame, e.span.clone());
+        if matches!(self.ctx.key, Key::SurfaceBase | Key::SurfaceBound) {
+            return Err(ExprError::new(
+                formula::UNKNOWN_NAME,
+                at,
+                format!("`{scoped}` is not visible in {}", self.ctx.key.words()),
+                "a kind surface reads its owner's attributes and `t`, `d`, `sd` only",
+            )
+            .with("name", scoped));
+        }
         let scoped = scoped.to_string();
         let func = table::lookup("f").ok_or_else(|| {
             ExprError::new(
@@ -843,6 +854,30 @@ impl Compiler<'_> {
                 format!("`{name}` arrives in milestone {}", func.milestone),
                 "remove it for now",
             ));
+        }
+        // A kind surface's formulas read no field and measure no shape (`surfaces.md` 1.1).
+        if matches!(self.ctx.key, Key::SurfaceBase | Key::SurfaceBound)
+            && [
+                "f",
+                "v",
+                "slope",
+                "under",
+                "smoothed_along",
+                "dist",
+                "sdist",
+                "near",
+                "inside",
+                "along",
+            ]
+            .contains(&name)
+        {
+            return Err(ExprError::new(
+                formula::UNKNOWN_NAME,
+                name_at,
+                format!("`{name}` is not visible in {}", self.ctx.key.words()),
+                "a kind surface reads its owner's attributes and `t`, `d`, `sd` only",
+            )
+            .with("name", name));
         }
         let kind_key = matches!(
             self.ctx.key,

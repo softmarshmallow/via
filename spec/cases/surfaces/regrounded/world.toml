@@ -1,0 +1,25 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_1]
+kind   = "storey"
+region = [[26, 20], [32, 20], [32, 28], [20, 28], [20, 21.2], [26, 21.2]]
+level  = 13.3
+
+[instance.desk]
+asset   = "box"
+at      = [30, 26]
+surface = "hall_1.floor"
+
+[change.raise.feature.hall_1]
+level = 14
+
+[change.shrink.feature.hall_1]
+region = [[20, 20], [28, 20], [28, 28], [20, 28]]

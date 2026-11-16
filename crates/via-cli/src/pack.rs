@@ -118,7 +118,11 @@ fn dbl(v: f64) -> J {
 fn line(a: &Asset, instances: Option<usize>) -> String {
     let mut mounts = J::obj();
     for (n, (at, face)) in &a.mounts {
-        mounts.insert(n.clone(), obj([("at", xy(*at)), ("face", J::int(*face))]));
+        let mut o = obj([("at", xy(*at)), ("face", J::int(*face))]);
+        if let (Some(c), J::Obj(m)) = (a.connectors.get(n), &mut o) {
+            m.insert("connector".into(), J::s(c.clone()));
+        }
+        mounts.insert(n.clone(), o);
     }
     let mut m = J::obj();
     m.insert("id".into(), J::s(a.id.clone()));
@@ -175,10 +179,7 @@ fn line(a: &Asset, instances: Option<usize>) -> String {
         "footprint".into(),
         J::Arr(a.footprint.iter().map(|p| xy(*p)).collect()),
     );
-    m.insert(
-        "solidity".into(),
-        J::s(if a.solid { "solid" } else { "none" }),
-    );
+    m.insert("solidity".into(), J::s(a.solidity()));
     m.insert("sink".into(), dbl(a.sink));
     m.insert("max_relief".into(), a.max_relief.map_or(J::Null, dbl));
     m.insert(

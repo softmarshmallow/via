@@ -947,6 +947,49 @@ must say which fields are metres. A rule's unit is part of the rule.
   (an underwater quay face, review issue 2): the code reads both at one post since the fix pass;
   a case with exact post values is owed.
 
+### From M5 slice 1 (2026-11-16; the change and on-foot reviews, and the fix pass)
+
+Lesson: a write node keyed by its reads' values misses what only a statement says: unsetting
+`ends_at` changes no shape, so `meets.json` stayed stale while every node read was unchanged. A
+file made from declarations holds those statements in its key.
+
+To slice 2:
+- [ ] Core owes `cut` (`fields/height.cut.npy`, build.md 6.5), the floor and tread meshes (build.md
+  10), and `surface` on a point feature and a scatter (surfaces.md 4.1): the schema accepts them and
+  nothing reads them (cases `cut`, `floor_mesh`, `roof_scatter` fail; station's views and 102
+  dressing pieces stand on the terrain). Until then nothing indoors is walked or drawn above ground.
+- [ ] A set's `surface` and a run `on` a storey: their members stand on the terrain (station
+  `off_floor` 102, wall pieces at 0.15 to 0.45). `surface` was dropped from runs (always `on`).
+- [ ] `place.overlap` compares plan footprints only, so pieces on different storeys clash (station
+  `shell_gave_way` 10): count an overlap only where heights overlap or on one surface.
+- [ ] meets.json's write node now reads the meeting features' shape and attr, what their ends
+  name, every instance and height, the facts of assets with mounts, and the terrain under ends and
+  under each plan's footprint grown by 5 m (`MOUNT_REACH`, an asset mount off its footprint); its key
+  holds the statements of those features, their kinds and every instance. Replace the 5 m with the
+  mounts' own points, and add warm-equals-clean cases for a connector edit in kinds.toml and a world
+  with the crossing removed (review issue 2 (b), (c); not written).
+- [ ] lib/building: wall runs leave each doorway and flight a clear width (station front door
+  0.20 m, tower step 0.29 m; the walker is 0.6 m), and check.py measures the clear width between
+  wall instances at each doorway against `inner_door`.
+- [ ] lib/ways: `[kind.crossing.surface.deck]` in place of the deck effect once meshes and the cut
+  land; a parapet run; a lint that water passes beneath; bookmark walks along the deck. Then rebuild
+  townland and example, `measure --check`.
+- [ ] Engine gaps lib/building found: list and table attributes reach a step empty (`?` = 0), not
+  canonical JSON (protocol.md 4.3); names in a returned document do not resolve to its keys first
+  (protocol.md 5); the SDK has no `surfaces_at` or `sample` over kind surfaces. `lay` cannot run
+  in a world until these land (station, college, market).
+- [ ] A vector case for a noise `base`: the stream is now `["noise", "feature", <fid>, "surface",
+  <name>, "base"]` (formulas.md), fixed in the fix pass; no world stored values under the old one.
+- [ ] Docs at the M5 close: challenges rows 7, 14, 15, 48 (mounts now have face, connector and the
+  height of their surface).
+
+Later:
+- [ ] station views: `in_living` 0.58 m from the table it looks at, `in_porch` against the east
+  wall; college: box collision for the primitive pack, a door at each `entry`, the chapel padded to
+  its court (README "Known faults").
+- [ ] A point feature's `surface` z in features.json and as a meeting's default mount (3.3 now says
+  so); until then the code gives the terrain.
+
 ## Framing
 
 - [x] Draft `docs/ledger.md` (2026-11-12): the vocabulary of a game world in 14 groups, each term with an

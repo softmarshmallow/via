@@ -1,0 +1,15 @@
+# The stair from the living room to the watch room moved 30 degrees on round the tower (docs/plan.md
+# M5: a building's parts moved; the stair is the part that joins two floors). Written by hand, the
+# stair and the stairwell over it move together: the flight's line, and the watch room's floor and
+# room leaving out the new notch (300 to 425 degrees). The living room and the watch room it serves
+# must still be reached: its two meetings hold (gap 0) and the building check reports no room
+# unreached. (lib/building's `lay` would carry the notch from `stair.t`; it lays straight flights.)
+
+[feature.stair_2]
+path = [[21.463, 29.911], [21.727, 30.124], [21.961, 30.369], [22.16, 30.644], [22.32, 30.943], [22.44, 31.26], [22.517, 31.59], [22.549, 31.928], [22.536, 32.267], [22.478, 32.601], [22.377, 32.924], [22.233, 33.231], [22.05, 33.517], [21.83, 33.775], [21.579, 34.003], [21.299, 34.194], [20.996, 34.347]]
+
+[feature.tower_2]
+region = [[21.395, 34.991], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.35, 34.858], [17.667, 34.333], [17.142, 33.65], [16.812, 32.854], [16.7, 32], [16.812, 31.146], [17.142, 30.35], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [21, 30.268], [21.414, 30.586], [21.732, 31], [21.932, 31.482], [22, 32], [21.932, 32.518], [21.732, 33], [21.414, 33.414], [21, 33.732], [20.845, 33.813]]
+
+[feature.watch]
+region = [[21.395, 34.991], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.35, 34.858], [17.667, 34.333], [17.142, 33.65], [16.812, 32.854], [16.7, 32], [16.812, 31.146], [17.142, 30.35], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [21, 30.268], [21.414, 30.586], [21.732, 31], [21.932, 31.482], [22, 32], [21.932, 32.518], [21.732, 33], [21.414, 33.414], [21, 33.732], [20.845, 33.813]]

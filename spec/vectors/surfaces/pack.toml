@@ -1,0 +1,30 @@
+# The surfaces cases' pack (surfaces.md Conformance, M5).
+[taxon."plant/shrub"]
+[taxon."building"]
+[taxon."prop"]
+
+[asset.box]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "prop"
+
+[asset.shrub]
+primitive = "cylinder"
+size      = [1, 1, 1.5]
+taxon     = "plant/shrub"
+
+[asset.hut]
+primitive = "box"
+size      = [6, 4, 3]
+taxon     = "building"
+
+[asset.hut.mount.door]
+at        = [0, 2.5]             # in front of the hut, on its doorstep
+face      = 180                  # into the hut, as a walker enters
+connector = "foot"
+
+[asset.gate]
+primitive = "box"
+size      = [4, 4, 4]
+taxon     = "building"
+solidity  = "passable"

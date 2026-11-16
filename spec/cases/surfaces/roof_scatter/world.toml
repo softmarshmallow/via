@@ -1,0 +1,20 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_roof]
+kind   = "roof"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+eaves  = 16.4
+
+[scatter.roof_shrubs]
+assets  = ["@plant/shrub"]
+within  = "hall_roof"
+surface = "hall_roof.garden"
+spacing = 3

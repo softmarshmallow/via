@@ -14,7 +14,7 @@ What lands when (plan, "Order notes": the surfaces chapter is M1, connectors M5)
 | M1 | The terrain only. The four questions on the terrain. Meetings of path ends with places on the terrain (`ford`). `surface.two_terrains`, `surface.empty_region`, `surface.host_missing`. Kind surfaces and kind mounts are `doc.not_yet`. |
 | M2 | The four questions through the SDK, in a step's view (2.6). |
 | M3 | Kind surfaces, kind mounts, `meets`, the place, height (`surface.gap`: in M1 every meeting is a path end on the terrain, so the gap is always 0, `fields.md`) and namespace checks. Assumes Open 2. |
-| M5 | `connector`, facing, `turn`, `surface.unmet`; asset mounts with connectors; floors and stairs. |
+| M5 | `connector`, facing, `turn`, `surface.unmet`; asset mounts with connectors; floors and stairs. Decided in M5 (section 9 lists every decision): no volume field (1.3); `cut` and `material` on a kind surface (1.3, 5); a kind surface as a place (3.3); `surface` on a placement and a scatter (4.1); faces on default mounts (3.3); `solidity = "passable"` (4.4). The M3 rows are not yet implemented (their 15 cases are pending at the M4 close), so M5 builds them first. |
 
 ## 1. What a surface is
 
@@ -30,7 +30,7 @@ it. No new noun (R25). "Owner" in this chapter is prose only, never a key: `owne
 | terrain | the world (R31): a world field | the extent | the field's `base`, `then` rows and kind effects (`fields.md`, `authority.md`) | sampled at the posts, interpolated between them as `fields.md` defines |
 | a kind surface on a path feature (a deck, a ramp) | the feature | the strip of 1.2 | the surface's `base` formula (1.1) | from the formula, at the point asked |
 | a kind surface on a region feature (a floor, a platform) | the feature | the region | as above | as above |
-| the floors a volume yields | (open): item 6 | (open) | (open) | (open) |
+| a floor, a stair, a cave's floor (M5) | a feature, as the two rows above: no third kind of owner | its region or strip | as above | as above |
 
 The terrain is owned by the world, not by a feature (R31).
 
@@ -109,6 +109,47 @@ is the source.
 - A path of zero length is not a valid path (`geometry.md` 2.1), so a strip is never empty.
 - A bound reaching beyond the extent is clipped to it, with `surface.clipped` (info) giving the share
   lost. Nothing stands outside the extent.
+
+### 1.3 No volume; what a surface clears (M5)
+
+**Decided (Open 6, 7, 10).** There is no volume field and no `hosts`. `type = "volume"` is
+`field.type_unknown` with the fixed hint "a place to stand above or under the ground is a kind surface (`surfaces.md` 1.3)" (no
+library noun in the core's text, principle 5); `hosts` is no key anywhere (`doc.unknown_key`). Reasons: every M5 world
+(`station`, `college`, `coast`) needs only places to stand and the edges between them, which kind
+surfaces and meetings already give; a 3D field has no walker, no meeting and nothing an engine reads;
+the spike's "one overhang per column" was the price of putting a second height into a 2D field
+(`bed`, `hole`), and kind surfaces have no such limit (rule 7: overlap is legal). What a building
+or a cave looks like (walls, a roof, a rock shell) is assets and library rules, the engine's to draw
+(principle 12, section 5). "Volume" is a library word from here on (`lib/building/README.md`).
+
+What the core does own is the one thing an engine cannot work out alone: the terrain must not stand
+inside a room or across a cave mouth. Two optional keys on a kind surface, both ours:
+
+```toml
+[kind.<k>.surface.<name>]
+cut      = "= <metres>"     # (new, M5) clear the terrain this far above the surface
+material = "<pack material>" # (new, M5) the mesh's material, a name from the pack (build.md 10)
+```
+
+- **`cut`.** A per-feature formula (rate as `bound`, 1.1), 0 or more and finite, else `surface.cut`
+  (error). Absent means no cut: a deck over a river cuts nothing, so the water and the bed stay seen
+  under it.
+- **The rule.** A terrain quad (the square between four posts, `fields.md` 1.2) is **cut** when its
+  centre lies inside the surface's bound (1.2) and the lowest of its four posts is below
+  `sample(surface, centre).z + cut`. The centre is the quad's south-west post plus
+  `floor(r_mm / 2)` millimetres on each axis, a lattice point at every resolution; the comparison is
+  of the f32 post read as f64 against the f64 sum. Ours.
+- So a cave's floor with `cut = 3` removes the cliff-face quads at its mouth, whose foot is at the
+  floor, and keeps the cliff top 30 m over it; a ground floor with `cut = 3` removes the terrain
+  that pokes through it (the spike's floor showed the terrain inside: Open 7). The cut is written as
+  data (`build.md` 6.5); a loader neither draws nor collides a cut quad.
+- **The field is untouched.** `cut` changes the terrain's export only. `sample`, `relief`, grounding,
+  meetings and every effect read the terrain field as before. A walk library treats a cut quad as no
+  ground: inside a cut, the only ground is the surface that cut it.
+- Two surfaces cutting one quad cut it once. A cut never reaches outside its surface's bound, so a
+  surface cannot hide terrain it does not cover.
+- **Change.** A cut moves with its owner; the change report's field region for the terrain is
+  unchanged by a cut (the field did not change); the cut file is an output, compared as one.
 
 ## 2. The four questions
 
@@ -284,9 +325,20 @@ connector = "<word>"      # (new, M5) what joint it is; free word, compared only
 `[asset.<id>.mount.<name>]` has `at` and `face` in the asset's frame (`assets.md`). Its plan point is
 `at` through the instance's transform. It lies on the surface its instance stands on (4.1), and its
 height is `sample` of that surface there. Its `at` and `face` are pack facts, so a pack swap may move
-it (R30): its meetings are checked again and what follows is reported. It has no `surface` key and,
-until M5, no connector: a
-door's "no path reaches it" check is a library lint until then (section 8, challenge 48).
+it (R30): its meetings are checked again and what follows is reported. It has no `surface` key.
+
+**From M5** an asset mount takes `connector`, with the meaning and the checks of a kind mount (3.4:
+`surface.connector`, `surface.unmet`); `assets.md` 2.7 owns the key. So a door's "no path reaches
+it" is the core's `surface.unmet` again, not a library lint (challenge 48). A mount's `connector` is
+a placement fact: editing it in an accepted pack is `asset.revised`, naming every instance, because
+the meetings of each may change (`assets.md` 4.2). There is no fallback asset for an unmet mount
+(the spike's report, Dungeon Architect's filler): meetings are found after grounding (4.3), so a
+fallback would place an instance after placement ended. A library that leaves a mount unanswered on
+purpose places its filler itself, in the generate step that knows it made no path there.
+
+The world bearing of an asset mount's `face` is the instance's `face` plus the mount's, normalised
+(`numbers.md` 2), so a turned instance turns its mounts, and a path ending at one follows it: a
+moved and turned building keeps its walk (challenge 48; case `moved_turned`).
 
 ### 3.3 Meetings
 
@@ -298,18 +350,29 @@ A meeting is a pair of mounts (R31). There are two ways to make one, and no othe
 | A path end and a place | `starts_at` or `ends_at` (`vocabulary.md`) | `<path>.start` or `<path>.end`, and the place's default mount |
 
 - **Default mount.** A path end is a mount of its path. A mount or a path end is its own default
-  mount; a point feature's is its point on the terrain, with no face and no connector; an
-  instance's or a set item's is its origin, on the surface it stands on (4.1), with no face and no
+  mount; a point feature's is its point on the surface it stands on (the terrain, or its `surface`,
+  4.1), with the feature's `face` when it writes one and no connector; an instance's or a set item's
+  is its origin, on the surface it stands on (4.1), with the instance's or item's world `face` and no
   connector; a place inside an import's is that of the thing it names, taken through the import's frame (M4,
-  `composition.md` 3, 4).
+  `composition.md` 3, 4). **(M5.)** Until M5 the point feature and the instance had no face here;
+  giving them one means `turn` is reported at every named place that faces somewhere, not only at
+  exits (TODO, "Facing for every named place"). `turn` is a report, never a check, so no build that
+  passed before fails.
+- **A kind surface as a place (M5).** `starts_at` or `ends_at` may name a kind surface,
+  `<feature>.<surface>`. The path is written in full (its `path` holds its end point, as for a path
+  with no place), and its end meets the surface at the end's own plan point: the surface's default
+  mount there, with no face and no connector. An end outside the surface's bound is `surface.outside`
+  on the path (4.1's code; the subject is the path). This is how a stair, a ramp or a doorway lands
+  on a floor at any point, with no mount written for it on the floor's kind. Ours: the spike's
+  `from_on` / `to_on` named a level, not a place.
 
 - A path end lies on its path's own kind surface when its kind owns exactly one, on the terrain when
   it owns none, and is `surface.which` (error) when it owns two or more. So a ramp whose end rests on
   another feature's deck is a path ending at a mount of that feature: a meeting between two owners,
   with no new key.
 - The place may be a mount of any feature, a mount of an instance, a path end, a point feature, an
-  instance or a set item, or a place inside an import (R8, M4). A point feature lies on the terrain, with no face and no
-  connector.
+  instance or a set item, or a place inside an import (R8, M4). Each one's default mount is the
+  first bullet's.
 - Two surfaces never meet anywhere else. Bounds that touch or overlap make no meeting. A path meets
   anything at its ends only (`vocabulary.md`, `starts_at`), so a path never meets a surface along
   its length.
@@ -324,6 +387,11 @@ A meeting is a pair of mounts (R31). There are two ways to make one, and no othe
 | Direction | Two mounts with faces face opposite ways: `(face_a - face_b)` mod 360 000 is 180 000 millidegrees. | `surface.facing` | M5 |
 | Answered | A mount with a connector is the place of at least one path end, or meets a mount with the same connector. A `meets` pair whose other side has no connector does not count. | `surface.unmet` | M5 |
 
+- **Which mounts each check reads (M5, decided).** `surface.facing` reads `meets` pairs only: a path
+  end's bearing is its tangent, judged by `turn`. `surface.unmet` reads kind mounts and asset mounts
+  only, never a path end: a path end is answered by being written at a place, or left free on
+  purpose (a lane that runs off into the fields). A kind surface named as a place (3.3) has no
+  connector, so a path end there is checked for place and height only.
 - **`turn`.** For a path end at a place with a face. The arrival bearing is the end tangent's for
   `ends_at` and the reversed start tangent's for `starts_at`. With `e = (arrival - face)` mod
   360 000, `turn = min(e, 360 000 - e)`: unsigned, 0 to 180 000 millidegrees. The core reports it and
@@ -366,14 +434,38 @@ library's convention, shown in 6.3 and illustrative only:
 | `on` a mount | the mount's surface (3.1, 3.2) |
 | `on` a place inside an import (M4) | as this table, for the thing the place names; its height found again on the parent's finished surface (`composition.md` 3) |
 | `on` anything else (a path, a region with no surface, an instance) | the terrain |
-| `at` | the terrain, always |
-| a scatter (`within`) | the terrain; a scatter on a kind surface is (open), item 5 |
+| `at` | the terrain, unless `surface` names another (M5, below) |
+| `at` with `surface = "<feature>.<surface>"` (M5) | that kind surface |
+| a scatter (`within`) | the terrain, unless `surface` names another (M5) |
+| a scatter with `surface` (M5) | that kind surface; a candidate outside its bound is no candidate (below) |
 
 - `at` has one meaning, the terrain. Where another surface at the origin lies above the instance's
   `z` and below its top (`z` plus the asset's `bounds` top, scaled; `assets.md`), the thing pokes
   through it: `surface.through` (warning), naming that surface. Hint: "place it `on` <owner> to
   stand on that surface, or move it". Both fixes clear it. An instance well under a high deck does
-  not warn. How an `at` names another surface (furniture on an upper floor) is (open), item 5.
+  not warn.
+- **`surface` on a placement (M5; decides Open 5).** A hand instance, a set, a point feature or a
+  scatter placed by `at` or `within` may write `surface = "<feature>.<surface>"`, naming one kind
+  surface: furniture on an upper floor, a lamp in a cave, trees on a roof garden. A rule instance
+  and a step instance take it as an instance does. A run takes no `surface`: it is always placed
+  `on` (`rules.md`, `place.no_position`), so it stands on what its `on` names by this table, and
+  `surface` there could only be `surface.placed_twice`; a run along a storey stands on that storey's
+  one surface (`doc.unknown_key`). Rules:
+  - It names a kind surface, never the terrain (the terrain is the default) and never a mount: a
+    place that is not a kind surface is `surface.not_surface` (error), listing that owner's
+    surfaces. A name that is no place is `identity.unknown_place`, as for any reference.
+  - With `on` it is `surface.placed_twice` (error): `on` already says the surface (this table).
+    Hint: "drop `surface`, or place it by `at`".
+  - A hand placement whose plan point lies outside the bound is `surface.outside`, not placed, as
+    for `on`. A scatter's candidate outside the bound, or where `relief` gives `outside > 0`, is not a
+    candidate: the surface's bound is part of the scatter's region, and nothing is said, as for a
+    candidate on `keep_out`. The scatter's `density` formula still reads world fields only (1.1); a
+    density that should differ on the roof is the roof owner's attribute, read as one.
+  - `ground` with `surface` is `surface.ground_off_terrain`, as with `on` a floor.
+  - The thing depends on the surface's owner as on an `on` reference (`graph.md`): moving the owner
+    re-grounds it and the change report lists it as grounded on that owner (rule 8).
+  - The core sees no word "host": `hosts` is dropped (1.3). A roof garden is a kind surface of the
+    roof's owner, and its trees are a scatter with `surface`.
 - **Outside a bound.** Two codes, one per bound, so no condition has two:
   - An origin outside the extent, the terrain's bound, is `place.outside` (error, not placed),
     owned by `rules.md` 8.4. It applies whatever the thing stands on, and it is checked first. From
@@ -422,6 +514,36 @@ checks. For surfaces it reads:
 A footprint whose position depends on that footprint's own shape, or on a `then` row that reads it,
 is `graph.cycle`. Its kind's effects on a field a shape reads are no cycle: shapes read the head view,
 which holds no effect (`authority.md` 2.3). Scatter density reads fields, so scatters come after step 2 and carry no `ground`.
+A scatter's surface bound (4.1, M5) is plan only, ready with its owner, so it adds no step.
+
+### 4.4 Passable, and what a walk may assume (M5)
+
+**Decided (`assets.md` 10, TODO "Design passable footprints").** `solidity = "passable"` is a core
+value of the existing asset fact, beside `solid` and `none`. Reason: the core already owns
+`solidity` and reads it to give way (`rules.md`); a gate, an arcade or a cloister walk claims its
+ground exactly as `solid` does (nothing is scattered or produced into it), so a library tag beside
+`solid` would be a second statement of one fact that the core could not check. What differs is
+read only by walks:
+
+- The core treats `passable` as `solid` in every rule that reads solidity (give way, pins, clumps,
+  `rules.md`). It writes the value in `instances` (`build.md` 8) and the step view (`protocol.md`).
+- `collision` stays its own fact (`assets.md` 2.4): a passable gatehouse collides as a mesh, so the
+  engine lets a walker through its arch and stops it at its piers.
+
+What a walk (a library) may rely on, and nothing more, since the core has no walker:
+
+1. A walker stands on exactly one surface at a time: the terrain or a kind surface.
+2. It moves within that surface's bound. How steep or narrow it may go is the library's profile.
+3. It changes surface only at a meeting, and only when the meeting holds (3.4). Meetings are the
+   only edges between surfaces (3.3), so a bound's edge is a wall to a walker unless a meeting is on
+   it: a floor's outline needs no wall feature to be closed.
+4. On the terrain, a quad that a surface cuts (1.3) is no ground, and the footprint of an instance
+   whose solidity is `solid` is no ground; `passable` and `none` footprints are ground.
+5. `surfaces_at` lists every surface at a point, lowest first (2.1): a walk on more than the top
+   surface asks it and keeps one node per (surface, place), never "the highest surface here".
+
+The station's walk test (challenge 15) and the college's gatehouse are this list run by
+`lib/review`'s reach lint.
 
 ## 5. Ours and the engine's
 
@@ -430,7 +552,9 @@ Principle 12: we stop at the engine's door.
 | Thing | Ours | The engine's |
 |---|---|---|
 | Terrain | The height field, its gradient, its materials (`build.md`). | Its mesh, its level of detail, its collision, how it is drawn. |
-| A kind surface | A mesh of its top over its bound, on the lattice, with its owner and surface name; marked as one that collides. The mesh's spacing and material: (open) in `build.md`. | Drawing it, its collision at run time, navigation baked from it. |
+| A kind surface | A mesh of its top over its bound, on the lattice, with its owner and surface name; marked as one that collides. Spacing the world's resolution, material its `material` key (M5, `build.md` 10). | Drawing it, its collision at run time, navigation baked from it. |
+| A cut (M5, 1.3) | Which terrain quads are cut, as data (`build.md` 6.5). | Not drawing or colliding them; closing the hole's sides with whatever the library placed there. |
+| Walls, roofs, a cave's rock (M5) | Nothing: instances placed by library rules and steps (`lib/building`). A floor's outline is closed to a walk by 4.4 without them. | Their look and collision, from the assets' `collision`. |
 | What dresses a surface | Instances placed by rules: a deck's parapet as a run, its piers as a library rule, assets from the pack. | Their look. |
 | Meetings | The rows of `meetings()` in the build, so a loader or navigation can join surfaces. | Joining navigation across them. |
 | Thickness, underside | Library attributes read by the library's rules. The core makes the walking surface only. | |
@@ -554,21 +678,169 @@ path      = [[256, 172]]
 - Writing the crossing as a point on the beck, with its path found square to the water, is ways
   library work that lowers to this text. So is `deck_z` from the water level plus headroom (Open 9).
 
-### 6.4 An upper floor (forward pointer, M5)
+### 6.4 Two storeys, a door and a stair (M5)
 
 ```toml
-# building library
+# building library (lib/building/kinds.toml; illustrative, the library's README is the source)
+[kind.storey]
+authority = "anchored"
+requires  = ["level"]
+defaults  = { headroom = 2.6 }
+
 [kind.storey.surface.floor]
 base = "= level"
+cut  = "= headroom"                      # no terrain inside the room (1.3)
+
+[kind.flight]                            # a stair or a ramp: a path owning one sloping surface
+connector = "foot"
+requires  = ["z0", "z1"]
+defaults  = { width = 1 }
+
+[kind.flight.surface.tread]
+base  = "= z0 + (z1 - z0) * t"
+bound = "= width / 2"
+
+[kind.doorway]                           # a path through the wall line, on the terrain
+connector = "foot"
+requires  = ["sill_z"]
+
+[kind.doorway.effect.sill]               # the ground along it set to the floor
+field  = "role:surface"
+value  = "= sill_z"
+mask   = "= 1 - smoothstep(0.5, 2, d)"
+radius = 3
+
+[kind.footpath]
+connector = "foot"
+
+# world (resolution 1)
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]                         # the south-west notch is the stairwell
+kind   = "storey"
+region = [[26, 20], [32, 20], [32, 28], [20, 28], [20, 21.2], [26, 21.2]]
+level  = 13.3
+
+[feature.stair]
+kind      = "flight"
+path      = [[21, 20.6], [26, 20.6]]
+starts_at = "hall_g.floor"
+ends_at   = "hall_1.floor"
+z0        = 10.3
+z1        = 13.3
+
+[feature.front_door]
+kind    = "doorway"
+path    = [[36, 24], [32, 24]]
+ends_at = "hall_g.floor"
+sill_z  = 10.3
+
+[feature.garden_path]
+kind    = "footpath"
+path    = [[48, 24]]
+ends_at = "front_door.start"
+
+[instance.desk]
+asset   = "box"
+at      = [30, 26]
+surface = "hall_1.floor"
 ```
 
-A storey is a region feature; its floor is a surface over the region at its level. A stair is a path
-feature whose kind owns one sloping surface. It starts at a mount of the lower storey and ends at a
-mount of the upper one, so by 3.3 its two ends are meetings between three owners, and a reach check
-climbs only by the stair. That this suffices is (open), confirmed by `college` in M5. `surfaces_at`
-inside the house gives the terrain, the ground floor and the upper floor. How furniture names the
-upper floor (item 5), whether a floor is measured from the terrain or from the world's datum, and
-the floors a volume yields (item 6) are decided in M5.
+- **No new owner.** A storey is a region feature and its floor a kind surface (1, row 3); the core
+  sees regions, paths, surfaces and meetings. `storey`, `flight` and `doorway` are library words
+  (deny-list, `vocabulary.md` 7). A building of three storeys is three storey features; the building
+  library writes them from one building feature with a step (`lib/building/README.md`).
+- **Heights are world metres** (decided, item 6.4's question): `level` is in the world frame, like
+  every surface `base` (1.1). A floor "3 m above the ground" is a number a step computed from
+  `sample` (generate steps may ask it) and wrote as `level`; moving the building re-runs that step
+  because it read the terrain there (`graph.md`). Across an import the datum is `composition.md`'s.
+- `surfaces_at` at `[28, 25]` gives three rows: `height` (10), `hall_g.floor` (10.3), `hall_1.floor`
+  (13.3). At `[23, 20.6]`: `height`, `hall_g.floor`, then `stair.tread` at
+  `10.3 + 3 * 2 / 5 = 11.5`; no `hall_1.floor`, the stairwell is outside its region.
+- `meetings()` gives four rows, by `a` bytewise: (`front_door.end`, `hall_g.floor`) at `[32, 24]`;
+  (`garden_path.end`, `front_door.start`); (`stair.end`, `hall_1.floor`) at `[26, 20.6]`, on
+  `hall_1`'s outline, so inside (1.2); (`stair.start`, `hall_g.floor`). Every gap is 0: the tread is
+  10.3 at `t = 0` and 13.3 at `t = 1`; at `[32, 24]` the `sill` effect's mask is 1 and the post holds
+  f32 10.3, which rounds to 10 300 mm as the floor does.
+- **A door is a meeting.** "Indoors reachable through a door" is: a walk on `height` along
+  `garden_path` and `front_door` reaches the meeting at `[32, 24]` and steps onto `hall_g.floor`
+  (4.4, item 3). It reaches `hall_1.floor` only by `stair.tread`, because meetings are the only
+  edges between surfaces. Nothing else joins them, so a stair that stops short (`z1 = 13.0`) is
+  `surface.gap` on (`stair.end`, `hall_1.floor`): 300 mm, naming `kind.flight.surface.tread`'s
+  `base` line and `hall_1`'s `level`.
+- `garden_path` written as a `lane` (connector `way`) would be `surface.connector` at
+  `front_door.start`: a road does not end at a doorway (R18).
+- The terrain quads with their centre inside `hall_g` (12 by 8 = 96 at resolution 1) are cut:
+  their lowest post, 10 or 10.3, is below `10.3 + 2.6`. The deck of 6.3 has no `cut` and cuts
+  nothing.
+- `desk` stands on `hall_1.floor`: pivot `z = 13.3`. With `at = [22, 20.5]`, in the stairwell, it is
+  `surface.outside` and not placed.
+- **Walls.** None is written, and the walk is still closed: `hall_g.floor`'s outline is an edge to a
+  walker except at its two meetings (4.4). Wall pieces, the door leaf and the roof are the building
+  library's instances, placed along the outline with a run that leaves the doorway open.
+
+### 6.5 A sea cave (M5, `coast`; decides Open 10)
+
+```toml
+[kind.cave]                              # library text
+requires = ["z0", "z1"]
+defaults = { width = 4, headroom = 3 }
+
+[kind.cave.surface.floor]
+base  = "= z0 + (z1 - z0) * t"
+bound = "= width / 2"
+cut   = "= headroom"
+
+[kind.cave.mount.mouth]
+t       = 0
+surface = "floor"
+face    = 180                            # out of the cave
+meets   = "mouth_ground"
+[kind.cave.mount.mouth_ground]
+t    = 0
+face = 0                                 # into it
+
+[feature.sea_cave]
+kind = "cave"
+path = [[212, 168], [230, 163], [244, 153], [258, 158]]
+z0   = 1.4
+z1   = 3.2
+```
+
+The cave's floor runs under the headland, 30 m below its top: `surfaces_at` inside it gives
+`height` above `sea_cave.floor`, which no column limit forbids (rule 7). The mouth is a meeting with
+the beach, gap-checked like a bridge head. The cliff-face quads at the mouth are cut (their foot is
+below `1.4 + 3`) and the headland's top is not, so the mouth is open and the hill is whole. The rock
+around the passage is assets or an engine-made mesh the library places; the inside is "checked"
+(challenge 7) by a walk along `sea_cave.floor`, which is a surface like any other.
+
+### 6.6 Trees on a roof garden (M5)
+
+```toml
+[kind.roof.surface.garden]               # library text; a region owner
+base = "= eaves"
+
+[feature.hall_roof]
+kind   = "roof"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+eaves  = 16.4
+
+[scatter.roof_trees]
+assets  = ["@plant/shrub"]
+within  = "hall_roof"
+surface = "hall_roof.garden"
+spacing = 3
+```
+
+Every shrub stands at `z = 16.4`; a candidate whose footprint would hang past the roof's edge is no
+candidate (4.1). Moving `hall_roof` re-grounds them and the change report lists each.
 
 ## 7. The command line
 
@@ -616,7 +888,7 @@ has a place.
 | `surface.meets_twice` | error | the mount | The mount is in two `meets` pairs; names both others. | M3 |
 | `surface.mount_face` | error | the mount | A face word on a kind mount. Hint: a number, 0 along travel, 180 against. | M3 |
 | `surface.which` | error | the instance, or the path | `on` a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it `on` a mount. | M3 |
-| `surface.outside` | error | the instance | Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code. | M3 |
+| `surface.outside` | error | the instance; from M5 also the path whose end names a kind surface (3.3) | Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code. | M3 |
 | `surface.host_missing` | error | the instance; its host in `related` | What it is placed `on`, or the owner of the mount it is placed on, was not placed (4.1). | M1 |
 | `surface.through` | warning | the instance | Its height reaches through another surface above its origin; names it. | M3 |
 | `surface.off_bound` | warning | the instance | Part of its footprint lies outside its surface's bound; the share. | M3 |
@@ -626,6 +898,9 @@ has a place.
 | `surface.connector` | error | the meeting's `a`; `b` in `related` | Different connectors; names both. | M5 |
 | `surface.facing` | error | the meeting's `a`; `b` in `related` | Two paired mounts do not face opposite ways; both bearings. | M5 |
 | `surface.unmet` | warning | the mount | A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: `ends_at = \"<place>\"`". | M5 |
+| `surface.cut` | error | the feature | Its surface's `cut` is below 0 or not finite; gives the value. | M5 |
+| `surface.not_surface` | error | the placement | Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces. | M5 |
+| `surface.placed_twice` | error | the placement | `surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`. | M5 |
 
 ## Conformance
 
@@ -636,7 +911,9 @@ test library, the folder `spec/vectors/surfaces/lib/surfaces_test/`, whose `kind
 (`documents.md` 4) holds the `lane`, `crossing` and `pad` kinds of section 6. M1 cases run on
 `ford` or a world of their own; each M3 case's world has `include = ["surfaces_test"]` and runs
 with `--lib spec/vectors/surfaces/lib` (`build.md`). The
-folder's contents are (open): written with the code checks (plan, M0 step 5).
+folder's contents are (open): written with the code checks (plan, M0 step 5). The M5 cases are
+whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which holds the kinds of
+6.3, 6.4 and 6.6) and `spec/vectors/surfaces/pack.toml`, and builds with `--lib {work}/lib`.
 
 | Case | Milestone | Input | Action | Must hold |
 |---|---|---|---|---|
@@ -673,10 +950,32 @@ folder's contents are (open): written with the code checks (plan, M0 step 5).
 | mount_face | M3 | a kind mount with `face = "along"` | build | `surface.mount_face`, exit 1. |
 | unknown_surface | M3 | a kind mount with `surface = "dek"` | build | `surface.unknown_surface` listing the kind's surfaces, exit 1. |
 | deck_divide | M3 | a crossing with `base = "= 1 / d"` | `sample` on its line | Exit 1, `formula.not_finite` at that point; no output file. |
-| connector | M5 | a lane kind with connector `rail` ending at a `way` head | build | `surface.connector`. |
-| unmet | M5 | 6.3 with `lane_east` removed | build | `surface.unmet` on `mill_bridge.east_head`, exit 0. |
-| facing | M5 | 6.3 with `east_head` `face = 0` | build | `surface.facing` with both bearings. |
-| turn | M5 | 6.3 with `lane_west` arriving from the north-west | `meetings` | `turn` equals the vector; null on the two pair rows. |
+| connector | M5 | a lane kind with connector `rail` ending at a `way` head | build | `surface.connector` on `lane_west.end`. |
+| unmet | M5 | 6.3 with `lane_east` removed | build | `surface.unmet` on `mill_bridge.east_head`, exit 0: its `meets` pair with `east_deck`, which has no connector, does not answer it. |
+| facing | M5 | 6.3 with `east_head` `face = 0` | build | `surface.facing` on the pair (`east_deck`, `east_head`) with both bearings. |
+| turn | M5 | 6.3 with `lane_west` arriving from the north-west, `[100, 200]` | `meetings` | `turn` 45 000 on `lane_west.end`; null on the two pair rows. |
+| connector_asset | M5 | an instance of an asset whose mount `door` has connector `foot`; a `lane` (connector `way`) ending at it | build | `surface.connector` on the lane's end. |
+| unmet_asset | M5 | the same instance, nothing ending at `door`; then a `footpath` ending there | build twice | `surface.unmet` on `hut.door`, exit 0; then no world diagnostic. |
+| moved_turned | M5 | the hut and a footpath ending at `hut.door`; a change moving it to `[90, 60]` and turning it 90 | `meetings` before and after; build `--against` | The meeting at `[60, 62.5]` facing 180 000, then at `[92.5, 60]` facing 270 000, gap 0 both times; the change report names `hut` and `walk` (challenge 48). |
+| face_on_point | M5 | a point feature with `face = 90` as a footpath's place | `meetings` | `face_b` 90 000, `turn` 0 (3.3: default mounts carry faces). |
+| stacked | M5 | 6.4; points `[28, 25]` and `[23, 20.6]` | `surfaces_at` | `height`, `hall_g.floor` (10.3), `hall_1.floor` (13.3); then `height`, `hall_g.floor`, `stair.tread`. |
+| house_meetings | M5 | 6.4 | `meetings` | Four rows as 6.4 lists, every gap 0. |
+| stair_short | M5 | 6.4 with `z1 = 13.0` | build | `surface.gap` on `stair.end`, 300 mm; exit 1. |
+| road_to_door | M5 | 6.4 with `garden_path` a `lane` | build | `surface.connector` at `front_door.start`. |
+| end_outside | M5 | 6.4 with the stair ending at `[24, 20.6]`, in the stairwell | build | `surface.outside` on `stair`; exit 1. |
+| on_floor | M5 | 6.4 with `desk` | build | Its pivot `z` is 13.3 (as f32). |
+| at_stairwell | M5 | `desk` at `[22, 20.5]` | build | `surface.outside`, not placed. |
+| placed_twice | M5 | `desk` with `on` and `surface` | build | `surface.placed_twice`. |
+| not_surface | M5 | `desk` with `surface = "front_door.start"` | build | `surface.not_surface`. |
+| surface_ground | M5 | `desk` with `ground = "pad"` | build | `surface.ground_off_terrain`. |
+| regrounded | M5 | `hall_1` and `desk` of 6.4; changes raising `hall_1` to 14 and shrinking it off the desk | build, then each change `--against` | `z` 14.0 and the change report's causes for `desk`; then `surface.outside` on `desk`, exit 1. Each warm build equals a clean one (4.1, rule 8; fix pass of M5 slice 1). |
+| door_on_floor | M5 | two huts on a 13.3 floor by `surface`; a footpath from the terrain to one door, a flight rising to 13.3 to the other | build | `surface.gap` 3300 on `walk.end`, none on `ramp` (3.2: an asset mount lies on its instance's surface). |
+| meets_warm | M5 | 6.3 with both lanes `lane`; a change raising `deck_z` to 25 | build, then the change `--against` | `meets.json`'s deck and lane rows at 25, as a clean build gives. |
+| cut | M5 | 6.4; then 6.3 | build | 6.4: the cut file's quads `[20, 20]` and `[31, 27]` are 1, `[19, 24]`, `[32, 24]`, `[25, 28]` are 0 (96 in all); 6.3: every quad 0. |
+| cut_bad | M5 | 6.4 with `headroom = -1` on `hall_g` | build | `surface.cut` with the value; exit 1. |
+| roof_scatter | M5 | 6.6 | build | Every instance's `z` is 16.4 and no origin lies off the roof. |
+| passable | M5 | a `passable` instance and a scatter around it | build | Exit 0, no `doc.not_yet`; no scattered origin inside its footprint (4.4). |
+| floor_mesh | M5 | 6.4 | build | `meshes/hall_g.floor.glb`, `hall_1.floor.glb` and `stair.tread.glb` exist (`build.md` 10). |
 
 ## Changed from the spike
 
@@ -702,6 +1001,14 @@ folder's contents are (open): written with the code checks (plan, M0 step 5).
   kept as `surface.unknown_mount`.
 - An asset mount loses the spike's "no path reaches its door" check until M5 (3.2). A regression,
   recorded in section 8.
+- **(M5.)** Levels, rooms, `in`, stairs with `from` / `to` and an `arc`, and doors as points `on` a
+  room's outline with `to = "outside"` (the station) are the building library's: storeys are region
+  features with a floor, stairs and doorways are paths whose ends meet floors, and "outside" is the
+  terrain. The spike's walk test found its way through rooms by `to`; a walk now crosses only at
+  meetings, which the core checks to the millimetre.
+- **(M5.)** The coast's cave was a `path3` carving a hole into a height field, one overhang per
+  column, its inside never checked. It is a kind surface under the terrain with a cut at its mouth.
+- **(M5.)** The college's gatehouse blocked the path through it (`solid`). It is `passable`.
 
 ## Open
 
@@ -712,22 +1019,27 @@ folder's contents are (open): written with the code checks (plan, M0 step 5).
    rows 34, 38 and 63 (bridges, a loop ramp, a deck that meets the ground) need, once the lead
    accepts this point. Decided by the lead before M3 starts; this chapter assumes M3.
 3. **A bound that varies along `t`** (a ramp that widens). Decided by challenge 38, the loop ramp.
-4. **An allowed step at a meeting** (a kerb). Decided by the first case that needs one, in M3 or M5;
-   until then a meeting is exact.
-5. **Naming a surface other than the terrain from `at` or a scatter** (furniture on an upper floor,
-   trees on a roof garden). Decided in M5 with `hosts`.
-6. **The floors a volume yields** (`hosts`): kept as a word or folded into a kind's surface.
-   Decided in M5 (`vocabulary.md` section 4).
-7. **The terrain under a floor or a deck.** Whether export cuts it away (the spike's floor showed the
-   terrain through it). Decided in `build.md` for M5.
-8. **`path3`.** Recommended dropped: a path in three dimensions is a path whose kind owns a surface,
-   and 3.3 lets its end rest on another deck. Confirmed or reversed by challenge 38.
+4. **An allowed step at a meeting** (a kerb). **Decided in M5: none.** A meeting is exact in v1.
+   Reason: the station's front door and the college's walks meet exactly once an effect sets the
+   ground (6.4's `sill`), and a kerb a walker steps up is a short `flight` (6.4) or the walk
+   library's tolerance, read from `gap` in `meetings()`, never the core's.
+5. **Naming a surface other than the terrain from `at` or a scatter.** **Decided in M5:** the
+   `surface` key on a placement and a scatter (4.1; 6.4, 6.6).
+6. **The floors a volume yields** (`hosts`). **Decided in M5:** folded into kind surfaces; no
+   volume and no `hosts` (1.3). A building's floors are storey features (6.4), written by the
+   building library's step from one building feature.
+7. **The terrain under a floor or a deck.** **Decided in M5:** a surface's `cut` (1.3), written
+   as `build.md` 6.5's cut file; a deck cuts nothing unless its kind says so.
+8. **`path3`.** **Dropped (M5):** a stair, a ramp and a cave are paths whose kind owns a surface
+   (6.4, 6.5), and 3.3 lets their ends rest on another surface. Challenge 38 may still reverse it
+   for a loop ramp that crosses itself (a fold, 1.2).
 9. **Reading a field from a surface formula** (a deck's height from the ground at its ends).
    Decided in `formulas.md`; until then 1.1 forbids it and the example writes `deck_z`.
-10. **Caves and overhangs** (challenge 7). Bounded 3D fields or kind surfaces under the terrain.
-    Decided in M5 with `coast`.
-11. **A threshold.** A mount a fixed height above its surface (a raised door sill); today a mount's
-    height is always its surface's. Decided by the first door in M5.
+10. **Caves and overhangs** (challenge 7). **Decided in M5:** kind surfaces under the terrain,
+    with `cut` at the mouth (6.5). An overhang a walker does not walk under is the terrain's shape
+    plus an asset; no 3D field.
+11. **A threshold.** **Decided in M5: no.** A mount's height is always its surface's. A raised
+    sill is the floor's own height with the ground set to it (6.4), or a one-step `flight`.
 12. **Two region owners resting on each other** (a deck on a deck that is not a path's end). Not
     expressible today; decided by challenge 38 if it needs it.
 
@@ -748,3 +1060,55 @@ For the lead; this chapter does not edit other files.
 | `geometry.md` | None needed: kind mount faces are numbers, so the word list is unchanged. |
 | `build.md` | Section 14: `via query`'s row and the owner-flags line list its flags as section 7 does (`--in`, `--out`, `--change`, `--lib`, `--store`, `--sdk`, `--diagnostics`); it writes no build directory. |
 | `docs/challenges.md` | Row 48: asset mounts have no connector until M5, so "no path reaches its door" is a library lint until then. |
+| M5 edits, made in M5's spec slice | `vocabulary.md` (keys `cut`, `material`, `surface` on placements, `connector` on asset mounts, `passable`; `volume`, `hosts`, `path3` dropped), `vocabulary.toml`, `assets.md` 2.4, 2.7, 4.1, 10, `build.md` 6.5, 10, 15, `rules.md` (solidity), `fields.md` 8, `documents.md` (`not_yet` row), `diagnostics.toml`. Owed by the lead: `docs/challenges.md` rows 7, 14, 15, 48 point here; `docs/doctrine.md` R25's "the floors a volume yields" reads "the floors a building's storeys own" (1.3). |
+
+## 9. What M5 decided
+
+Each item names where it is written and whether the mechanism is ours. Made in M5's spec slice, for
+the core and library agents to implement; the cases are the M5 rows of Conformance and the
+`assets.md` rows `Passable` and `Mount connector`.
+
+1. **The M3 rows first.** Kind surfaces, kind mounts, `meets`, the place, height and namespace
+   checks (sections 1 to 4) are not implemented: their 15 cases are pending manifests with no world.
+   M5 implements them before anything below, writes those worlds and lifts `pending`.
+2. **Connectors** on kind mounts, kinds (their path ends) and asset mounts, compared for equality
+   only (3.2, 3.4; `assets.md` 2.7). Ours. `doc.not_yet` on an asset mount's `connector` is lifted;
+   a connector edit in an accepted pack is `asset.revised` through the `mounts` fact.
+3. **Which mounts each check reads** (3.4): `surface.facing` reads `meets` pairs only; `surface.unmet`
+   reads kind and asset mounts only, never a path end; a `meets` partner with no connector does not
+   answer. No fallback asset for an unmet mount (3.2): the library step that left it places its filler.
+4. **Faces on default mounts** (3.3): a point feature's `face` and an instance's or set item's world
+   face are their default mount's face, so `turn` is reported at them. Report only; nothing that
+   passed fails. `meets.json` rows gain `face_b` values where they were null.
+5. **A kind surface as a place** for `starts_at` / `ends_at` (3.3): the end meets the surface at its
+   own point; outside the bound is `surface.outside` on the path. Ours. This is how a door and a
+   stair land on a floor with no per-feature mount.
+6. **`surface` on a placement and a scatter** (4.1): names the kind surface an `at` placement or a
+   scatter stands on. `surface.not_surface`, `surface.placed_twice`; outside the bound
+   `surface.outside` (hand) or no candidate (scatter); with `ground`, `surface.ground_off_terrain`.
+   Decides Open 5.
+7. **No volume, no `hosts`** (1.3): `type = "volume"` is `field.type_unknown` with a fixed hint;
+   `hosts` is no key; `path3` is dropped. Decides Open 6, 8, 10.
+8. **`cut` on a kind surface** (1.3; `build.md` 6.5): the terrain quads it removes from export,
+   written as `fields/<terrain>.cut.npy`; the field itself is unchanged. Ours. `surface.cut`.
+   Decides Open 7. Loaders skip cut quads in mesh and collision.
+9. **A kind surface's mesh** (`build.md` 10): posts inside the bound plus the outline's vertices and
+   grid crossings, constrained triangulation; `material` names a pack material. Ours.
+10. **No allowed step and no threshold** (Open 4, 11): meetings stay exact; a sill is the floor's
+    height with the ground set to it by an effect.
+11. **Heights are world metres** (6.4): a floor's `level` is a number in the world frame; "above the
+    ground" is a step's computation from `sample`, re-run when the ground or the outline changes.
+12. **`solidity = "passable"`** is a core value (4.4; `assets.md` 2.4; `rules.md`): claims ground as
+    `solid` does in every rule; only walks read the difference. What a walk may assume is 4.4's
+    list: one surface at a time, change only at a holding meeting, cut quads and solid footprints
+    are no ground.
+13. **Library, not core** (`assets.md` 10, `lib/building/README.md`): module per axis
+    (`params.pitch`), the kit table, roles, variants, stretch, states (`state:` tags), walls, roofs,
+    rooms, the walk and kit lints. The building library's kinds (`building`, `storey`, `room`,
+    `doorway`, `flight`, `footpath`, `roof`) and steps (`lay`, `check`) go through `viasdk` only.
+    Walls, roofs and furnishing are parts of `lay`'s one returned document, not steps of their own:
+    under R3 a step's output is never another step's input in the same layer, so they cannot be
+    separate generate steps (found by `lib/building`, M5 slice 1).
+14. **Still open after M5's spec slice:** a bound that varies along `t` (Open 3), reading a field from
+    a surface formula (Open 9; `deck_z` and `level` stay step-computed), two region owners resting
+    on each other (Open 12), mounts read from named glTF nodes (`assets.md` 10).

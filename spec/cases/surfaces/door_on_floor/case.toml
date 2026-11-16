@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, door_on_floor: an asset mount lies on the surface its instance stands on (3.2): a footpath from the terrain to the door of a hut on a 13.3 floor is surface.gap 3300; a flight rising to 13.3 meets the other hut's door with gap 0."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+# One gap only: the flight's end meets hut_b's door at 13.3 (3.3: a path end on its own tread).
+[action.build.diag.ramp]
+code    = "surface.gap"
+subject = "feature.ramp"
+records = 0
+
+[action.build.diag.gap]
+code    = "surface.gap"
+subject = "feature.walk"
+
+[action.build.diag.gap.data]
+place = "walk.end"
+gap   = 3300

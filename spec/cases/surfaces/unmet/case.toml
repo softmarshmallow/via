@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, unmet: 6.3 with lane_east removed: surface.unmet on mill_bridge.east_head, exit 0; its meets pair with east_deck, which has no connector, does not answer it."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.unmet]
+code    = "surface.unmet"
+subject = "feature.mill_bridge"

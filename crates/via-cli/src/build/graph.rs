@@ -158,6 +158,7 @@ impl<'a> CliPlan<'a> {
             let def = Def {
                 params: vec![("path".into(), path.clone())],
                 edges: model.file_reads(&reads),
+                statements: model.file_statements(&reads),
                 gate: Gate {
                     skip_on_error: true,
                     traced: false,

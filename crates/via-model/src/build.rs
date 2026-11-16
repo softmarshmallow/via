@@ -160,6 +160,24 @@ pub struct Meeting {
     pub z_a: f64,
     pub z_b: f64,
     pub gap: i64,
+    /// Each side's world bearing, millidegrees, where it has a face (M5).
+    pub face_a: Option<i64>,
+    pub face_b: Option<i64>,
+    /// 3.4: for a path end at a place with a face.
+    pub turn: Option<i64>,
+    pub connector_a: Option<String>,
+    pub connector_b: Option<String>,
+    /// True for a `meets` pair of one owner's mounts.
+    pub pair: bool,
+}
+
+/// A plan point as a message writes it, `[x, y]` in metres.
+fn pt_text(p: P) -> String {
+    format!(
+        "[{}, {}]",
+        via_num::write_length(p.x),
+        via_num::write_length(p.y)
+    )
 }
 
 /// A whole build, in memory.
@@ -171,6 +189,8 @@ pub struct Build {
     pub footprints: BTreeMap<String, FootprintOut>,
     pub instances: BTreeMap<String, InstanceOut>,
     pub meetings: Vec<Meeting>,
+    /// Every kind surface, by place name (`surfaces.md` 1).
+    pub surfaces: BTreeMap<String, crate::surfaces::SurfaceOut>,
     /// The resolved facts of every asset the build uses (`build.md` 7).
     pub assets: BTreeMap<String, BTreeMap<String, String>>,
     /// Where each used asset's declared facts are written (`assets.md` 7): asset id to fact key to
@@ -804,6 +824,20 @@ pub(crate) fn finish_from(
     all.append(&mut late);
     all.extend(produced.instances);
     rules::ground_and_check(&decls, &pk, &placed, &fields, &mut all, &mut diags);
+    // Kind surfaces (`surfaces.md` 4.3, step 3), then grounding on them (step 4).
+    let failed_surfaces;
+    (out.surfaces, failed_surfaces) =
+        crate::surfaces::kind_surfaces(&decls, &placed.shapes, &mut diags);
+    let mut grounded = crate::surfaces::ground_on_surfaces(
+        &decls,
+        &pk,
+        &out.surfaces,
+        &failed_surfaces,
+        &mut all,
+        &mut diags,
+    );
+    crate::surfaces::host_missing(&decls, &all, &mut grounded.gone, &mut diags);
+    all.retain(|p| !grounded.gone.contains(&p.name));
     diags.extend(fields.diags.borrow().iter().cloned());
     // Outputs.
     for (name, fd) in &decls.fields {
@@ -1057,37 +1091,358 @@ pub(crate) fn finish_from(
         );
         crate::import::exit_checks(world, decls, &out, &mut diags);
     }
-    // Meetings (surfaces.md 3.3): path ends at a place, on the terrain in M1.
+    // Meetings (surfaces.md 3.3, 3.4): path ends at a place, and `meets` pairs.
     let surface = fields.surface();
+    let terrain = |p: P| surface.and_then(|s| fields.read(s, View::Build, p));
+    let mut mounts =
+        crate::surfaces::kind_mounts(&decls, &placed.shapes, &out.surfaces, &terrain, &mut diags);
+    // The surface a placed instance stands on (4.1), sampled at a plan point: a kind surface's
+    // `base` there, else the terrain (3.2, 3.3).
+    let stands_z = |iid: &str, p: P, diags: &mut Vec<Diag>| -> Option<f64> {
+        match grounded.stands.get(iid).and_then(|n| out.surfaces.get(n)) {
+            Some(s) => s.z_in_build((p.x, p.y), diags).ok().flatten(),
+            None => terrain(p),
+        }
+    };
+    // Asset mounts of placed instances (3.2): on the surface the instance stands on. An instance
+    // not placed offers no mounts (4.1).
+    for (iid, pl) in &placed.plans {
+        if pl.asset.is_empty() || grounded.gone.contains(iid) {
+            continue;
+        }
+        let Some(asset) = pk.assets.get(&pl.asset) else {
+            continue;
+        };
+        let Ok(f) = via_num::Frame::new((pl.origin.x, pl.origin.y), pl.facing, pl.scale) else {
+            continue;
+        };
+        for (mn, (at, face)) in &asset.mounts {
+            let Ok(w) = f.to_world(*at) else { continue };
+            let p = P::new(w.0, w.1);
+            mounts.insert(
+                format!("{iid}.{mn}"),
+                crate::surfaces::Side {
+                    p: Some(p),
+                    z: stands_z(iid, p, &mut diags),
+                    face: Some(f.facing_to_world(*face)),
+                    connector: asset.connectors.get(mn).cloned(),
+                    mount: true,
+                },
+            );
+        }
+    }
+    let round_mm = |z: f64| via_num::round_to_lattice(z * 1000.0).unwrap_or(0);
+    let path_end = |id: &str, end: &str| -> Option<(P, i64)> {
+        let Some(Geo::Path { line }) = placed.shapes.get(id) else {
+            return None;
+        };
+        let n = line.pts.len();
+        let (p, q) = if end == "end" {
+            (line.pts[n - 1], line.pts[n - 2])
+        } else {
+            (line.pts[0], line.pts[1])
+        };
+        // The arrival bearing (3.4): along the end tangent for `ends_at`, the reversed start
+        // tangent for `starts_at`; both point from the path into the place.
+        let b = via_num::bearing(p.x - q.x, p.y - q.y).unwrap_or(0);
+        Some((p, b))
+    };
+    let mut which_said: BTreeSet<String> = BTreeSet::new();
+    let mut end_z = |id: &str, end: &str, p: P, diags: &mut Vec<Diag>| -> Option<f64> {
+        match crate::surfaces::own_surface(&decls, &out.surfaces, id) {
+            Ok(None) => terrain(p),
+            Ok(Some(s)) => match s.z_in_build((p.x, p.y), diags) {
+                Ok(Some(z)) => Some(z),
+                Ok(None) => {
+                    // A path end outside its own surface's bound (3.3, 4.1).
+                    diags.push(
+                        text::diag(
+                            codes::surface::OUTSIDE,
+                            Subject::entity("feature", id),
+                            Site::Header,
+                            &format!(
+                                "the {end} of `{id}` at {} lies outside the bound of `{}`",
+                                pt_text(p),
+                                s.place
+                            ),
+                            &format!("move the {end} onto `{}`", s.place),
+                        )
+                        .with("surface", via_diag::Value::text(s.place.clone())),
+                    );
+                    None
+                }
+                Err(()) => None,
+            },
+            Err(names) => {
+                if which_said.insert(id.to_string()) {
+                    diags.push(text::diag(
+                        codes::surface::WHICH,
+                        Subject::entity("feature", id),
+                        Site::Header,
+                        &format!(
+                            "the ends of `{id}` lie on one of its kind's surfaces, and it has {}",
+                            names.join(", ")
+                        ),
+                        "end the path at a mount",
+                    ));
+                }
+                None
+            }
+        }
+    };
+    let mut meetings = Vec::new();
     for (id, f) in &decls.features {
         let ShapeDecl::Path(_) = f.shape else {
             continue;
         };
-        let Some(Geo::Path { line }) = placed.shapes.get(id) else {
-            continue;
-        };
         for (end, place) in [("start", &f.starts_at), ("end", &f.ends_at)] {
             let Some(place) = place else { continue };
-            let p = if end == "start" {
-                line.pts[0]
-            } else {
-                line.pts[line.pts.len() - 1]
+            let Some((p, arrival)) = path_end(id, end) else {
+                continue;
             };
-            let z = surface
-                .and_then(|s| fields.read(s, View::Build, p))
-                .unwrap_or(0.0);
-            // `surfaces.md` 3.3: `a` is the path end, `b` the place's default mount.
-            let (a, b) = (format!("{id}.{end}"), place.clone());
-            out.meetings.push(Meeting {
+            let a = format!("{id}.{end}");
+            let Some(z_a) = end_z(id, end, p, &mut diags) else {
+                continue;
+            };
+            let connector_a = crate::surfaces::path_connector(&decls, id);
+            // The place's default mount (3.3). A place on an instance that was not placed offers
+            // nothing: the path end is `surface.host_missing` (4.1).
+            let head = place.split('.').next().unwrap_or(place);
+            if grounded.gone.contains(head) {
+                diags.push(
+                    text::diag(
+                        codes::surface::HOST_MISSING,
+                        Subject::entity("feature", id.as_str()),
+                        Site::Key(text::path(&[if end == "start" {
+                            "starts_at"
+                        } else {
+                            "ends_at"
+                        }])),
+                        &format!(
+                            "the {end} of `{id}` is at `{place}`, and `{head}` was not placed"
+                        ),
+                        &format!("fix `{head}` first: what meets it is checked with it"),
+                    )
+                    .related(via_diag::Related {
+                        subject: Subject::entity("instance", head),
+                        site: Site::Header,
+                        position: None,
+                        note: via_diag::text!("the host, not placed"),
+                    }),
+                );
+                continue;
+            }
+            let side = if let Some(m) = mounts.get(place.as_str()) {
+                m.clone()
+            } else if let Some(s) = out.surfaces.get(place.as_str()) {
+                match s.z_in_build((p.x, p.y), &mut diags) {
+                    Err(()) => continue,
+                    Ok(Some(z)) => crate::surfaces::Side {
+                        p: Some(p),
+                        z: Some(z),
+                        ..Default::default()
+                    },
+                    Ok(None) => {
+                        diags.push(
+                            text::diag(
+                                codes::surface::OUTSIDE,
+                                Subject::entity("feature", id.as_str()),
+                                Site::Key(text::path(&[if end == "start" {
+                                    "starts_at"
+                                } else {
+                                    "ends_at"
+                                }])),
+                                &format!(
+                                    "the {end} of `{id}` at {} lies outside the bound of `{place}`",
+                                    pt_text(p)
+                                ),
+                                &format!("move the {end} onto `{place}`"),
+                            )
+                            .with("place", via_diag::Value::text(place.clone())),
+                        );
+                        continue;
+                    }
+                }
+            } else if let Some((other, oend)) = place
+                .strip_suffix(".start")
+                .map(|o| (o, "start"))
+                .or_else(|| place.strip_suffix(".end").map(|o| (o, "end")))
+                .filter(|(o, _)| decls.features.contains_key(*o))
+            {
+                let q = path_end(other, oend).map(|x| x.0).unwrap_or(p);
+                crate::surfaces::Side {
+                    p: Some(q),
+                    z: end_z(other, oend, q, &mut diags),
+                    face: None,
+                    connector: crate::surfaces::path_connector(&decls, other),
+                    mount: false,
+                }
+            } else if let Some(Geo::Point { p: q, facing }) = placed.shapes.get(place.as_str()) {
+                // A point feature: its face when it writes one (M5).
+                let written = decls.features.get(place.as_str()).and_then(|f| f.face);
+                crate::surfaces::Side {
+                    p: Some(*q),
+                    z: terrain(*q),
+                    face: written.and(*facing),
+                    ..Default::default()
+                }
+            } else if let Some(pl) = placed.plans.get(place.as_str()) {
+                crate::surfaces::Side {
+                    p: Some(pl.origin),
+                    z: stands_z(place, pl.origin, &mut diags),
+                    face: Some(pl.facing),
+                    ..Default::default()
+                }
+            } else {
+                crate::surfaces::Side {
+                    p: Some(p),
+                    z: terrain(p),
+                    ..Default::default()
+                }
+            };
+            let z_b = side.z.unwrap_or(z_a);
+            let gap = (round_mm(z_a) - round_mm(z_b)).abs();
+            meetings.push(Meeting {
                 a,
-                b,
+                b: place.clone(),
                 at: (p.x, p.y),
-                z_a: z,
-                z_b: z,
-                gap: 0,
+                z_a,
+                z_b,
+                gap,
+                face_a: None,
+                face_b: side.face,
+                turn: side.face.map(|fc| crate::surfaces::turn(arrival, fc)),
+                connector_a,
+                connector_b: side.connector,
+                pair: false,
             });
         }
     }
+    // `meets` pairs (3.1): one meeting per pair, `a` and `b` ordered bytewise.
+    let mut pairs: BTreeSet<(String, String)> = BTreeSet::new();
+    for (id, f) in &decls.features {
+        let Some(k) = f.kind.as_ref().and_then(|k| decls.kinds.get(k)) else {
+            continue;
+        };
+        for m in k.mounts.values() {
+            let Some(other) = m.meets.as_ref().filter(|o| k.mounts.contains_key(*o)) else {
+                continue;
+            };
+            if *other == m.name {
+                continue;
+            }
+            let (x, y) = (format!("{id}.{}", m.name), format!("{id}.{other}"));
+            let (a, b) = if x.as_bytes() < y.as_bytes() {
+                (x, y)
+            } else {
+                (y, x)
+            };
+            pairs.insert((a, b));
+        }
+    }
+    for (a, b) in pairs {
+        let (Some(sa), Some(sb)) = (mounts.get(&a), mounts.get(&b)) else {
+            continue;
+        };
+        let (Some(pa), Some(pb)) = (sa.p, sb.p) else {
+            continue;
+        };
+        if pa != pb {
+            diags.push(
+                text::diag(
+                    codes::surface::APART,
+                    crate::surfaces::place_subject(&decls, &a),
+                    Site::Header,
+                    &format!(
+                        "the paired mounts `{a}` at {} and `{b}` at {} lie apart",
+                        pt_text(pa),
+                        pt_text(pb)
+                    ),
+                    "write the two mounts at one plan point",
+                )
+                .with("place", via_diag::Value::text(a.clone())),
+            );
+            continue;
+        }
+        let (Some(z_a), Some(z_b)) = (sa.z, sb.z) else {
+            continue;
+        };
+        if let (Some(fa), Some(fb)) = (sa.face, sb.face) {
+            if (fa - fb).rem_euclid(360_000) != 180_000 {
+                diags.push(
+                    text::diag(
+                        codes::surface::FACING,
+                        crate::surfaces::place_subject(&decls, &a),
+                        Site::Header,
+                        &format!(
+                            "`{a}` faces {} and `{b}` faces {}; paired mounts face opposite ways",
+                            via_num::write_facing(fa),
+                            via_num::write_facing(fb)
+                        ),
+                        "turn one mount's `face` by 180 degrees from the other's",
+                    )
+                    .with("place", via_diag::Value::text(a.clone()))
+                    .with("face_a", via_diag::Value::Int(fa))
+                    .with("face_b", via_diag::Value::Int(fb)),
+                );
+            }
+        }
+        meetings.push(Meeting {
+            a,
+            b,
+            at: (pa.x, pa.y),
+            z_a,
+            z_b,
+            gap: (round_mm(z_a) - round_mm(z_b)).abs(),
+            face_a: sa.face,
+            face_b: sb.face,
+            turn: None,
+            connector_a: sa.connector.clone(),
+            connector_b: sb.connector.clone(),
+            pair: true,
+        });
+    }
+    // What must hold at each (3.4): height and joint.
+    for m in &meetings {
+        if m.gap != 0 {
+            diags.push(
+                text::diag(
+                    codes::surface::GAP,
+                    crate::surfaces::place_subject(&decls, &m.a),
+                    Site::Header,
+                    &format!(
+                        "`{}` is at {} m and `{}` at {} m: a gap of {} mm",
+                        m.a,
+                        text::dbl(m.z_a),
+                        m.b,
+                        text::dbl(m.z_b),
+                        m.gap
+                    ),
+                    &format!("make the two sides equal: change `{}` or `{}`", m.a, m.b),
+                )
+                .with("place", via_diag::Value::text(m.a.clone()))
+                .with("gap", via_diag::Value::Int(m.gap)),
+            );
+        }
+        if let (Some(ca), Some(cb)) = (&m.connector_a, &m.connector_b) {
+            if ca != cb {
+                diags.push(
+                    text::diag(
+                        codes::surface::CONNECTOR,
+                        crate::surfaces::place_subject(&decls, &m.a),
+                        Site::Header,
+                        &format!("`{}` has connector `{ca}` and `{}` has `{cb}`", m.a, m.b),
+                        &format!("meet `{}` with a `{ca}`, or change one connector", m.b),
+                    )
+                    .with("place", via_diag::Value::text(m.a.clone()))
+                    .with("connector_a", via_diag::Value::text(ca.clone()))
+                    .with("connector_b", via_diag::Value::text(cb.clone())),
+                );
+            }
+        }
+    }
+    crate::surfaces::unmet(&decls, &mounts, &meetings, &mut diags);
+    out.meetings = meetings;
     out.meetings
         .sort_by(|x, y| (x.a.as_bytes(), x.b.as_bytes()).cmp(&(y.a.as_bytes(), y.b.as_bytes())));
     unowned_crossings(&decls, &placed, &mut diags);

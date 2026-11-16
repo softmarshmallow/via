@@ -1,0 +1,73 @@
+# Layer `views` (rank 1): where the station is judged from (R17). One view at each door, at the
+# step into the tower and at each stair's foot, and one inside every room. A view inside stands on
+# its room's floor with `surface` (surfaces.md 4.1, M5), so its eye is `eye_height` over that floor.
+
+[feature.outside]                             # the station from the east, on the walk
+kind       = "bookmark"
+at         = [52, 24]
+toward     = "lens"
+eye_height = 1.7
+
+[feature.at_front_door]                       # the front door from the walk: the meeting on the porch
+kind   = "bookmark"
+on     = { ref = "front_door", t = 0.0 }
+toward = "kitchen_table"
+
+[feature.at_back_door]                        # the back door from the yard
+kind   = "bookmark"
+on     = { ref = "back_door", t = 0.0 }
+toward = "bookcase"
+
+[feature.in_porch]
+kind    = "bookmark"
+at      = [39.4, 32.5]
+toward  = "stove"
+surface = "cottage.floor"
+
+[feature.in_kitchen]
+kind    = "bookmark"
+at      = [36.3, 29.2]
+toward  = "kitchen_shelf"
+surface = "cottage.floor"
+
+[feature.in_bunks]
+kind    = "bookmark"
+at      = [36.0, 35.2]
+toward  = "bunk_a"
+surface = "cottage.floor"
+
+[feature.in_passage]                          # down the passage to the step into the tower
+kind    = "bookmark"
+at      = [29.4, 32]
+toward  = "tower_step.start"
+surface = "cottage.floor"
+
+[feature.in_store]                            # the store, from the step, toward stair_1's foot
+kind    = "bookmark"
+at      = [22.4, 31.7]
+toward  = "stair_1.start"
+surface = "tower_0.floor"
+
+[feature.in_living]
+kind    = "bookmark"
+at      = [22.0, 30.4]
+toward  = "living_table"
+surface = "tower_1.floor"
+
+[feature.at_stair_2]                          # the foot of the stair up from the living room
+kind    = "bookmark"
+at      = [20.0, 30.6]
+toward  = "stair_2.end"
+surface = "tower_1.floor"
+
+[feature.in_watch]
+kind    = "bookmark"
+at      = [21.0, 34.6]
+toward  = "telescope"
+surface = "tower_2.floor"
+
+[feature.in_lantern]
+kind    = "bookmark"
+at      = [21.4, 29.5]
+toward  = "lens"
+surface = "tower_3.floor"

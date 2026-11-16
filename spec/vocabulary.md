@@ -187,7 +187,7 @@ is built (`documents.md` 5, 6).
 |---|---|---|---|
 | `[field.<name>]` | table | Declares a field. Any name. | fields |
 | `role` | string | What the core uses it for: `surface`, `material`, `keep_out`, or none. See the roles table. | fields |
-| `type` | string | `scalar` (default), `weights` (a weight per material), `volume` ((open): M5 decides its keys). | fields |
+| `type` | string | `scalar` (default) or `weights` (a weight per material). `volume` was dropped in M5 (`surfaces.md` 1.3): `field.type_unknown` with a hint naming kind surfaces. | fields |
 | `base` | formula | The value before any row. Default 0. Excludes `file`. On a kind surface, its value (Kinds). | fields |
 | `file` | string | Base read from a raster, with `channel`, `range`, `extent`, `outside`, `filter`. Formats: the `.npy` array file (M1) and PNG (M2), `fields.md` 4.1. | fields |
 | `channel` | string | PNG only: `grey`, `r`, `g`, `b` or `a`, the one channel read. Default `grey` for grey pictures; required for RGB and RGBA. | fields |
@@ -243,7 +243,7 @@ placement of the head is ours; `authority.md` 4 is the source and this summary f
 | `region` | list of points | A closed polygon. Read counter-clockwise; `t = 0` is its first written point. | geometry |
 | `where` | formula | A region written as a condition: where the formula is above 0 (a yes/no means where it is yes). Every piece is kept, with its holes; a piece smaller than one grid cell is kept and reported (`geom.mask_tiny`, info). The only piece dropped is one whose rings have zero area after rounding to the 1 mm lattice (`geom.mask_dropped`, warning; `geometry.md` 3.7). | geometry |
 | `smooth` | bool | Smooth a path through its written points by centripetal Catmull-Rom (Yuksel, Schaefer and Keyser, 2011). `t` is measured along the final curve. Default `false`; a kind cannot change it. Taken only with `path`, else `geom.smooth_not_path` (`geometry.md` 2.4). | geometry |
-| `starts_at`, `ends_at` | name | The place a path begins or ends at. A path meets another thing at its ends or by `follows`, nowhere else. | geometry |
+| `starts_at`, `ends_at` | name | The place a path begins or ends at. A path meets another thing at its ends or by `follows`, nowhere else. From M5 the place may be a kind surface: the end meets it at its own point (`surfaces.md` 3.3). | geometry |
 | `holds` | point | With `where` only: keep the one piece that holds this point, such as a hollow filled to a level (M2). | derived |
 | `route` | formula | On a path only: the cost per metre of travel, above 0; the course between its written points is found over the posts (R16, M2). | derived |
 
@@ -270,7 +270,9 @@ north, 0 north, 90 east. The loader maps these to the engine's axes. This conven
 | `[kind.<k>.mount.<name>]` | table | A place every feature of the kind has (a deck's two ends): `t`, `offset`, `face`, `surface`, `meets`, `connector`. No `at`. Named `<feature>.<name>`; shares one namespace with the kind's surfaces. | surfaces |
 | `surface` | name | On a kind mount: the owner's kind surface it lies on. Default the terrain, which the world owns (R31). | surfaces |
 | `meets` | name | On a kind mount: another mount of the same kind. Every meeting is a pair of mounts; a path that ends at a place meets that place's default mount (R31, `surfaces.md` 3.3). | surfaces |
-| `connector` | string | On a kind mount: what joint it is, a free word compared only for equality (M5). On an asset mount: `doc.not_yet` until M5. | surfaces |
+| `connector` | string | On a kind mount, on a kind (its path ends') and on an asset mount (`assets.md` 2.7): what joint it is, a free word compared only for equality (M5, `surfaces.md` 3.4). | surfaces |
+| `cut` | formula | On a kind surface (M5): metres above the surface in which the terrain's export is cut, a per-feature formula, 0 or more (`surfaces.md` 1.3, `build.md` 6.5). Absent: no cut. | surfaces |
+| `material` | name | On a kind surface (M5): the pack material its mesh carries (`build.md` 10). | surfaces |
 
 | Word | Meaning | Chapter |
 |---|---|---|
@@ -288,6 +290,7 @@ One grammar for features, instances, sets, rules and hand edits.
 | Key | Takes | Meaning | Chapter |
 |---|---|---|---|
 | `at` | | See Features. | geometry |
+| `surface` | name | On a placement by `at` (an instance, a set, a point feature) or a scatter (M5); not on a run, which is always `on` (`surfaces.md` 4.1): the kind surface, `<feature>.<surface>`, it stands on instead of the terrain. Not with `on` (`surface.placed_twice`). `surfaces.md` 4.1. | surfaces |
 | `on` | `{ ref, t, offset }` or `{ of, class, near, t, offset }` | On an authored thing by name (`ref`), or on a produced thing selected by a point near it (`of`). Never both (`identity.on_both`). Runs take `span` in place of `t`. Scatters take no `on`: they use `within`. | geometry |
 | `ref` | name | In `on`: the place name it is placed on (2.1): a feature, an instance, a mount, a path end, a set item, an import's place. Never a produced name (`identity.key_in_text`). | geometry |
 | `of` | name | In `on` or `within`: the maker selected from, by its id. | identity |
@@ -427,7 +430,7 @@ A pack is a document users write. It may name files; a world may not (principle 
 | `size` | 3 lengths | `[x, y, z]` in the asset frame, each above 0. | assets |
 | `triangles` | integer | Triangle count, 0 or more. Written on an engine-made asset; fixed or measured otherwise. | assets |
 | `front`, `up`, `pivot` | string | On a model: its front and up axes (`"+z"`, `"+y"` by default), and the rule that puts the pivot (`base_centre`, `base_corner`, `origin`) (`assets.md` 2.3). | assets |
-| `solidity` | string | `solid` or `none` (`passable` M5): whether the footprint is claimed. | assets |
+| `solidity` | string | `solid`, `passable` (M5) or `none`: whether the footprint is claimed; `passable` claims it as `solid` does and tells a walk it may pass (`surfaces.md` 4.4). | assets |
 | `collision` | string | `none` (default), `box`, `hull` or `mesh`: what the engine makes the instance collide as. The core never reads it; the loader maps it (M2). | assets |
 | `sink` | number | How far an instance is lowered below its placing point, metres. Default 0; may be negative. A height, so not a length (`assets.md` 2.4). | assets |
 | `max_relief` | number | The largest difference in surface height under the footprint the asset tolerates, metres, 0 or more. No default: without it nothing is checked (`place.relief`). | assets |
@@ -492,7 +495,7 @@ chapter named decides it, for M1 track A unless said.
 | mount on a kind | `[kind.<k>.mount.<name>]` (Kinds): a place every feature of the kind has, such as a deck's two ends, so two surfaces meet at a pair of mounts (R25, `surfaces.md` 3.1). | surfaces |
 | kind surface and bound | `[kind.<k>.surface.<name>]` with `bound` (Kinds): a bounded `surface` owned by each feature of a kind, over its strip or region (R25, `surfaces.md` 1). "Owner" is prose only; `owner` is taken by layers. | surfaces |
 | `passes` | The places a main way passes, by name (R16). A ways library attribute, not core; the core gives a route over a cost field (R23). | (library) |
-| `hosts` | What a volume yields as floors (R25). Kept or folded into surfaces: (open) decided in `surfaces` for M5. | surfaces |
+| `hosts` | Dropped in M5: folded into kind surfaces (`surfaces.md` 1.3). A roof garden is a kind surface; its trees a scatter with `surface`. | surfaces |
 
 ## 5. Not in M1
 
@@ -503,7 +506,7 @@ The M1 parser rejects each key or value below with `doc.not_yet` at its span, na
 | `worker = true` (`worker = false` is accepted in M1); `when = "generate"`; `clump` and its `members`, `shrink`, `around`; a model asset's `file` and `detail`; a field `file` naming a PNG, `channel`, `range` (PNG fields); `filter = "cubic"`; class `feature`; `for_each`; `checks`; `holds`; `route`; `collision` | M2 |
 | `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, `[network]`, `[cells]` and their `from`, `frontage`, `depth`, `min_length`, `min_area` (`geometry.md` 8), classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
 | `[import]` and its keys (`changes`, `footprint`, `blend`, `lift`, `max_grade`, `give`), `[given]`, `accepts`, `default`, `exit`, `datum`, the selector `given:<name>` | M4 |
-| `type = "volume"`, `hosts`, `connector`, `solidity = "passable"` | M5 |
+| `connector` on an asset mount, `solidity = "passable"`, `cut` and `material` on a kind surface, `surface` on a placement or a scatter, a kind surface as `starts_at` / `ends_at` (`type = "volume"` and `hosts` were dropped instead, `surfaces.md` 1.3) | M5 |
 | `when = "export"`, `chunk`, `[budget]` | M6 |
 
 A second top-level `surface` field is not here: it is `surface.two_terrains` in every milestone.
@@ -547,7 +550,7 @@ A second top-level `surface` field is not here: it is `surface.two_terrains` in 
 | `joins` | `starts_at`, `ends_at` | A join is an end at a named thing. |
 | `over` | dropped | Principle 3: a clash between anchors is an error, never silenced. Its length also ordered effects, against 2.2. |
 | `ellipse` | dropped | Write the polygon, or a library step makes one (principle 10). |
-| `path3` | (open) | Decided in `surfaces` for M5. |
+| `path3` | dropped (M5) | A path whose kind owns a surface (`surfaces.md` 6.4, 6.5). |
 | `width` | library attribute | Four meanings in the spike. An exit's `width`: section 3, `exit`. |
 | kind `map` | map library, through `output` | Principle 5. |
 | kind `measure`, `encloses`, `opening`, `link`, `light`, `module_m` | library attributes (water, building) | Principle 5. |
@@ -571,7 +574,7 @@ A second top-level `surface` field is not here: it is `surface.two_terrains` in 
 | pack `[ground.<n>]`, `[surface.<n>]` | pack `[material.<n>]` | `ground` is the instance key; `surface` is the role (R25). |
 | `[[level]]` | `storey` (building library) | `level` collides with a map. |
 | portal part | an import placed `on` a mount | `portal` means culling in engines. |
-| volume host `hosts` | `hosts` (open) | Section 4. |
+| volume host `hosts` | dropped | A floor is a kind surface (`surfaces.md` 1.3). |
 
 ## 7. Library words and the deny-list
 

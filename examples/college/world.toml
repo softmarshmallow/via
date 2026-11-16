@@ -1,0 +1,411 @@
+name       = "college"
+extent     = [0, 0, 320, 320]               # metres: x east, y north
+resolution = 1                              # metres between posts
+seed       = 61
+include    = ["land", "ways", "town", "review", "building"]   # kinds as data; the core knows none of these words
+pack       = "packs/college.toml"
+
+# A hillside college that grew court by court (docs/plan.md, M5; challenges 20 and 48), the
+# spike's `college` rebuilt in the v1 vocabulary. A gate at the foot with the porter's lodge
+# beside it, a cloistered garden court with its pavilion, a paved main court with the chapel, the
+# bell tower and the east wing round it, and the hall on the highest terrace. A dormitory lane
+# climbs the west; a way runs round the east to the armoury.
+#
+# The author writes the land, the courts (lib/town `terrace`), the ways by what they connect
+# (lib/ways `road`), each building as a whole asset of the college's pack, the kit's runs along
+# their lines, and each building's walk by what it connects: from a named place by the way to the
+# building's door, `ends_at = "<building>.entry"` (lib/building `footpath`, connector `foot`). The
+# door is the asset's `entry` mount, with `connector = "foot"`: the core finds the meeting, checks
+# the joint and reports the turn; a door no walk reaches is `surface.unmet` (surfaces.md 3.2 to
+# 3.4). So moving and turning a building moves its door and its walk follows, and nothing else is
+# written again (changes/move_and_turn.toml).
+#
+# What the spike tripped on, and how this world says it: its walks ended at `hall.door` but a mount
+# had no direction, height or type (challenge 48); here `entry` faces into the building, its height
+# is the ground it stands on, and its type is `foot`. Its kit bays were never measured against
+# each other (challenge 20); here each bay carries its pitch, the runs place at that pitch, and
+# measure.py measures every joint between neighbours (the wing bay's 0.44 m overlap is the kit's
+# published fault, kept). Its cloister and gatehouse were solid; here they are `passable`.
+
+# ------------------------------------------------------------------------------------------ fields
+
+# The land: the spike's hill, 1.5 m at the south edge rising 6.8 m per 100 m north, falling a
+# little to the west, with two octaves of lumps.
+[field.height]
+role = "surface"
+base = "= 1.5 + 0.068 * y + 0.012 * (x - 160) + 1.4 * fbm(90, 3, seed = 'hill') + 0.3 * fbm(18, 2, seed = 'lumps')"
+
+[field.clearing]                            # ways, pads keep trees off them (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.meadow]
+paint = "meadow"
+mask  = "= 0.7 * smoothstep(-0.1, 0.25, fbm(70, 3, seed = 'meadow'))"
+
+[field.ground.then.rock]
+paint = "rock"
+mask  = "= smoothstep(30, 40, slope('height'))"
+
+[field.ground.then.courts]                  # the courts flagged
+order = 1
+paint = "flags"
+mask  = "= if(inside('kind:terrace'), 1, 0)"
+
+[field.ground.then.ways]                    # the ways in setts, kerb to kerb
+order = 2
+paint = "setts"
+mask  = "= 1 - smoothstep(1.8, 2.3, dist('kind:road', 6))"
+
+[field.ground.then.walks]                   # each walk a metre and a half of earth
+order = 3
+paint = "earth"
+mask  = "= 1 - smoothstep(0.6, 0.9, dist('kind:footpath', 4))"
+
+# ------------------------------------------------------------------------------------------ courts
+
+[feature.gate_court]                        # the gatehouse and the lodge share one level
+kind    = "terrace"
+max_cut = 4
+region  = [[136, 32], [170, 32], [170, 56], [136, 56]]
+
+[feature.garden_court]                      # the cloister, its garth and the pavilion
+kind    = "terrace"
+max_cut = 4
+region  = [[112, 62], [208, 62], [208, 124], [112, 124]]
+
+[feature.main_court]                        # the chapel, the bell tower and the east wing round it
+kind    = "terrace"
+max_cut = 4
+region  = [[108, 142], [240, 136], [240, 208], [116, 202]]
+
+[feature.hall_terrace]
+kind    = "terrace"
+max_cut = 4
+region  = [[122, 216], [208, 216], [208, 262], [122, 262]]
+
+# ------------------------------------------------------------------------------------------ ways
+# Each way by what it connects (R16). A way that leaves the world ends on the extent's outline.
+
+[feature.arrival]                           # where the approach enters, on the south edge
+at = [160, 0]
+
+[feature.court_foot]                        # the approach's head in the garden court
+at = [160, 64]
+
+[feature.approach]
+kind      = "road"
+width     = 4
+starts_at = "arrival"
+ends_at   = "court_foot"
+path      = []
+
+[feature.fork]                              # inside the gate, where the lane and the east way leave
+on = { ref = "approach", t = 0.9 }
+
+[feature.court_west]                        # the court steps' head in the main court
+at = [134, 146]
+
+[feature.court_steps]                       # garden court up to the main court
+kind      = "road"
+width     = 4
+starts_at = "court_foot"
+ends_at   = "court_west"
+path      = [[136, 70], [130, 122]]
+
+[feature.hall_foot]
+at = [165, 200]
+
+[feature.hall_top]
+at = [165, 220]
+
+[feature.hall_steps]                        # main court up to the hall's terrace
+kind      = "road"
+width     = 6
+starts_at = "hall_foot"
+ends_at   = "hall_top"
+path      = []
+
+[feature.chapel_gate]                       # in the main court, before the chapel's door
+at = [118, 178]
+
+[feature.lane_head]                         # where the lane enters the main court
+at = [112, 160]
+
+[feature.dorm_lane]                         # up the west past the dormitories into the main court
+kind      = "road"
+width     = 3
+starts_at = "fork"
+ends_at   = "lane_head"
+path      = [[100, 58], [76, 74], [72, 120], [76, 160]]
+
+[feature.east_gate]                         # where the east way enters the main court
+at = [214, 160]
+
+[feature.east_way]                          # round the east, past the armoury
+kind      = "road"
+width     = 4
+starts_at = "fork"
+ends_at   = "east_gate"
+path      = [[222, 58], [250, 86], [246, 132]]
+
+# ------------------------------------------------------------------------------------------ buildings
+# Whole assets of the college's pack (packs/college.toml), each on a pad. A building's door is its
+# asset's `entry` mount; nobody writes where that is in the world.
+
+[instance.gatehouse]                        # astride the approach: passable, walked through
+asset = "gatehouse"
+at    = [160, 40]
+
+[instance.lodge]
+asset  = "lodge"
+ground = "pad"
+margin = 1
+at     = [146, 46]
+face   = 90                                 # its door to the east, toward the approach
+
+[instance.pavilion]
+asset  = "pavilion"
+ground = "pad"
+margin = 1
+at     = [194, 74]
+
+[instance.chapel]
+asset  = "chapel"
+ground = "pad"
+margin = 1
+at     = [96, 178]
+face   = 90                                 # its door in the east end, on the main court
+
+[instance.bell_tower]
+asset  = "bell_tower"
+ground = "pad"
+margin = 1
+at     = [118, 196]
+
+[instance.armoury]
+asset  = "armoury"
+ground = "pad"
+margin = 1
+at     = [262, 110]
+face   = 270                                # its door to the west, toward the east way
+
+[instance.hall]
+asset  = "hall"
+ground = "pad"
+margin = 1
+at     = [165, 240]
+face   = 180                                # its door to the south, at the head of the hall steps
+
+# ------------------------------------------------------------------------------------------ walks
+# Each walk by what it connects: a named place by a way, and the building's door. `footpath` is
+# lib/building's, connector `foot`, the door's own: a way (no connector) ending at the door would
+# be checked for place and height only, a way with another connector is `surface.connector`.
+
+[feature.lodge_gate]                        # just inside the arch
+at = [157, 46]
+
+[feature.lodge_walk]
+kind      = "footpath"
+starts_at = "lodge_gate"
+ends_at   = "lodge.entry"
+path      = []
+
+[feature.pavilion_gate]                     # in the garden court, east of the cloister
+at = [184, 92]
+
+[feature.pavilion_walk]
+kind      = "footpath"
+starts_at = "pavilion_gate"
+ends_at   = "pavilion.entry"
+path      = []
+
+[feature.chapel_walk]
+kind      = "footpath"
+starts_at = "chapel_gate"
+ends_at   = "chapel.entry"
+path      = []
+
+[feature.armoury_gate]                      # by the east way
+at = [251, 110]
+
+[feature.armoury_walk]
+kind      = "footpath"
+starts_at = "armoury_gate"
+ends_at   = "armoury.entry"
+path      = []
+
+[feature.hall_walk]
+kind      = "footpath"
+starts_at = "hall_steps.end"
+ends_at   = "hall.entry"
+path      = []
+
+# ------------------------------------------------------------------------------------------ the kit
+# Bays of one module, end to end along a line, at the bay's pitch (`params.pitch`, packs/college.toml).
+# A run stretches its step to fill its stretch evenly (rules.md 5.1), so each line is a whole number
+# of pitches long: the cloister's 36, 32 and 28 m at 4 m, the wing's 48 m and the dormitories' 54
+# and 30 m at 6 m. Each run faces its fronts one way (a bearing, the lines are square).
+
+[feature.cloister_north_line]
+path = [[143, 113], [179, 113]]
+
+[feature.cloister_west_line]
+path = [[143, 77], [143, 109]]
+
+[feature.cloister_east_line]
+path = [[179, 109], [179, 81]]
+
+[feature.east_wing_line]
+path = [[228, 154], [228, 202]]
+
+[feature.dorm_low_line]
+path = [[56, 80], [56, 134]]
+
+[feature.dorm_high_line]
+path = [[56, 146], [56, 176]]
+
+[run.cloister_north]                        # fronts south, onto the garth
+asset   = "cloister_bay"
+on      = { ref = "cloister_north_line" }
+spacing = 4
+face    = 180
+
+[run.cloister_west]                         # fronts east
+asset   = "cloister_bay"
+on      = { ref = "cloister_west_line" }
+spacing = 4
+face    = 90
+
+[run.cloister_east]                         # fronts west
+asset   = "cloister_bay"
+on      = { ref = "cloister_east_line" }
+spacing = 4
+face    = 270
+
+[run.east_wing]                             # fronts west, onto the main court
+asset   = "wing_bay"
+on      = { ref = "east_wing_line" }
+spacing = 6
+face    = 270
+
+[run.dorm_low]                              # fronts east, onto the lane
+asset   = "dorm_bay"
+on      = { ref = "dorm_low_line" }
+spacing = 6
+face    = 90
+
+[run.dorm_high]
+asset   = "dorm_bay"
+on      = { ref = "dorm_high_line" }
+spacing = 6
+face    = 90
+
+# ------------------------------------------------------------------------------------------ dressing
+
+[instance.garth_tree_a]
+asset = "tree_court"
+at    = [153, 88]
+
+[instance.garth_tree_b]
+asset = "tree_court"
+at    = [169, 102]
+
+[instance.court_tree_west]
+asset = "tree_court"
+at    = [138, 173]
+
+[instance.court_tree_east]
+asset = "tree_court"
+at    = [191, 176]
+
+[run.approach_lamps]
+asset  = "lamp"
+on     = { ref = "approach", span = [0.05, 0.5], offset = 3.5 }
+count  = 4
+
+[scatter.hill_trees]                        # trees on the open hill, kept off ways, pads and courts
+assets  = ["@plant/tree"]
+spacing = 11
+density = "= 0.55 * smoothstep(0, 0.3, fbm(60, 3, seed = 'woods')) * (1 - smoothstep(18, 26, slope('height'))) * if(inside('kind:terrace'), 0, 1)"
+seed    = 'hill_trees'
+
+# ------------------------------------------------------------------------------------------ views
+# One at every door, from the place its walk starts (R17), and two at the gate.
+
+[feature.bm_gate]                           # arriving, the gatehouse astride the approach
+kind   = "bookmark"
+on     = { ref = "approach", t = 0.2 }
+toward = "gatehouse"
+
+[feature.bm_arch]                           # inside the arch, toward the garden court
+kind   = "bookmark"
+on     = { ref = "approach", t = 0.66 }
+toward = "court_foot"
+
+[feature.bm_lodge]
+kind   = "bookmark"
+on     = { ref = "lodge_gate" }
+toward = "lodge.entry"
+
+[feature.bm_pavilion]
+kind   = "bookmark"
+on     = { ref = "pavilion_gate" }
+toward = "pavilion.entry"
+
+[feature.bm_chapel]
+kind   = "bookmark"
+on     = { ref = "chapel_gate" }
+toward = "chapel.entry"
+
+[feature.bm_armoury]
+kind   = "bookmark"
+on     = { ref = "armoury_gate" }
+toward = "armoury.entry"
+
+[feature.bm_hall]
+kind   = "bookmark"
+on     = { ref = "hall_steps", t = 0.2 }
+toward = "hall.entry"
+
+[feature.bm_wing]                           # the east wing's run of bays, from the court
+kind   = "bookmark"
+at     = [200, 150]
+toward = "east_wing_line"
+
+# ------------------------------------------------------------------------------------------ lints
+
+# lib/review's reach lint: from where the approach enters, a walker reaches every door, through the
+# gatehouse's arch (passable footprints are ground, surfaces.md 4.4).
+[step.reach]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach = [
+  { profile = "walker", from = "arrival", to = ["court_foot", "court_west", "hall_top", "east_gate"] },
+  { profile = "walker", from = "arrival", to = [{ mount = "entry", assets = ["@college/building"] }] },
+]
+
+[step.reach.params.profiles.walker]         # metres; quay's walker
+grade = 0.5
+step  = 0.2
+width = 0.6
+wade  = 0.3
+reach = 2
+
+# lib/building's lint: the doors' `turn` (a walk that arrives from the side) and the kit's pitch.
+[step.check]
+when    = "lint"
+worker  = true                              # the library's check reads its features as a worker
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+
+[step.check.params]
+kits = ["college/kit"]

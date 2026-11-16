@@ -1,14 +1,23 @@
 format    = "via-case-1"
 summary   = "surfaces.md Conformance, which: on a feature whose kind owns two surfaces: surface.which listing both."
 milestone = 3
-pending   = "owed: kind surfaces and kind mounts (`[kind.<k>.surface.<name>]`, `meets`, surfaces.md 1 and 3) are not implemented; the world, from section 6.3's kinds, is written with that code"
 actions   = ["build"]
 
+# The kind is the case's own (lib/terrace_test): the section 6 kinds own one surface each.
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
 [action.build]
-via         = ["build", "world.toml", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
 exit        = 1
 diagnostics = "includes"
 out         = "build/w"
 
 [action.build.diag.which]
 code = "surface.which"
+subject = "instance.bench"
+
+[action.build.diag.which.data]
+surfaces = ["steps.lower", "steps.upper"]

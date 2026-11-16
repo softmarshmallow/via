@@ -915,7 +915,6 @@ impl<'a> View<'a> {
             });
         }
         let rows = via_model::query::meetings(self.build);
-        let n = rows.len();
         let mut m = Map::new();
         let put = |col: Column| -> Result<Value, Refusal> {
             column::write_shaped(&Shaped::flat(col), self.objects)
@@ -949,13 +948,46 @@ impl<'a> View<'a> {
             "gap".into(),
             put(Column::I64(rows.iter().map(|r| r.gap).collect()))?,
         );
-        for c in ["face_a", "face_b", "turn"] {
-            m.insert(c.into(), put(Column::I64(vec![0; n]))?);
-            m.insert(format!("{c}?"), put(Column::U8(vec![0; n]))?);
+        // M5: the face, turn and connector columns as `query meetings` writes them (protocol.md
+        // 3.3), each with its `<column>?` beside it, 0 where the value is null.
+        type Int = fn(&via_model::Meeting) -> Option<i64>;
+        let ints: [(&str, Int); 3] = [
+            ("face_a", |r| r.face_a),
+            ("face_b", |r| r.face_b),
+            ("turn", |r| r.turn),
+        ];
+        for (c, get) in ints {
+            let v: Vec<Option<i64>> = rows.iter().map(|r| get(r)).collect();
+            m.insert(
+                c.into(),
+                put(Column::I64(v.iter().map(|x| x.unwrap_or(0)).collect()))?,
+            );
+            m.insert(
+                format!("{c}?"),
+                put(Column::U8(
+                    v.iter().map(|x| u8::from(x.is_some())).collect(),
+                ))?,
+            );
         }
-        for c in ["connector_a", "connector_b"] {
-            m.insert(c.into(), put(Column::Str(vec![String::new(); n]))?);
-            m.insert(format!("{c}?"), put(Column::U8(vec![0; n]))?);
+        type Txt = fn(&via_model::Meeting) -> Option<String>;
+        let txts: [(&str, Txt); 2] = [
+            ("connector_a", |r| r.connector_a.clone()),
+            ("connector_b", |r| r.connector_b.clone()),
+        ];
+        for (c, get) in txts {
+            let v: Vec<Option<String>> = rows.iter().map(|r| get(r)).collect();
+            m.insert(
+                c.into(),
+                put(Column::Str(
+                    v.iter().map(|x| x.clone().unwrap_or_default()).collect(),
+                ))?,
+            );
+            m.insert(
+                format!("{c}?"),
+                put(Column::U8(
+                    v.iter().map(|x| u8::from(x.is_some())).collect(),
+                ))?,
+            );
         }
         Ok(Value::Object(m))
     }
@@ -1430,7 +1462,11 @@ impl<'a> View<'a> {
                         .map(|a| {
                             let mut o = Map::new();
                             for (k, (at, face)) in &a.mounts {
-                                o.insert(k.clone(), json!({"at": [at.0, at.1], "face": face}));
+                                let mut m = json!({"at": [at.0, at.1], "face": face});
+                                if let Some(c) = a.connectors.get(k) {
+                                    m["connector"] = json!(c);
+                                }
+                                o.insert(k.clone(), m);
                             }
                             Value::Object(o).to_string()
                         })

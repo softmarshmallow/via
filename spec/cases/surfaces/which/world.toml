@@ -1,0 +1,19 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["terrace_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.steps]
+kind   = "terrace"
+region = [[20, 20], [40, 20], [40, 40], [20, 40]]
+low    = 10.5
+high   = 12
+
+[instance.bench]
+asset = "box"
+on    = { ref = "steps", t = 0.5 }

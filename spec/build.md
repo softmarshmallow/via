@@ -307,6 +307,27 @@ like any other field. Drawing it is a loader option, named by that tag (15.1, `w
 sheet passes `--option water=tag:water_level` (15.1). The spike's `water` raster held 0 where dry, which meant "below sea" in a valley and
 "no water" on a hill. Whether a library's water is a bounded field (6.3) is that library's choice.
 
+### 6.5 The terrain's cut (M5)
+
+Where a kind surface's `cut` removes the terrain (`surfaces.md` 1.3: a room's floor, a cave's
+mouth), the build writes `fields/<terrain>.cut.npy`: `|u1`, shape `(ny - 1, nx - 1)`, one element
+per quad, indexed by the quad's south-west post (`[i, j]` read as `array[j, i]`, as a field), 1 where
+the quad is cut, 0 elsewhere. It is written for every build with a terrain, all 0 when nothing cuts,
+so a loader reads one rule. The terrain's manifest entry adds `cut` (the file's path); its `min` and
+`max` are unchanged (the field is unchanged). Ours: the spike drew the terrain through its floors.
+
+- A loader neither draws nor collides a cut quad (15.1, 15.3). Where a cut quad borders an uncut
+  one, the hole's side is left open: what closes it (a wall, a cave's rock) is the library's
+  instances.
+- The cut file is an output like any other: it is in `files` with its digest, a build that changes
+  only the cut changes the build's identity (section 12), and the change report lists no entry for
+  it (the terrain's samples did not change).
+- **What a volume and a floor export**, so no reader has to ask: a floor (any kind surface) exports
+  its mesh (section 10) and its bounded field (6.3); its owner's footprint, if any, and its walls
+  and roof are instances (section 8); its meetings are rows of `meets.json` (9.3); the terrain under
+  it is cut by this section when its kind says `cut`. There is no volume in a build (`surfaces.md`
+  1.3).
+
 ## 7. Assets and materials
 
 `assets` holds every asset with at least one instance, by id. Keys are `assets.md`'s; the
@@ -451,7 +472,15 @@ layer's key; the format key is `feature`.
   `extras` beyond `{ "via": { "feature", "surface" } }`. `asset.generator` is `"via"`, with no
   release number, so a release that keeps the epoch keeps the bytes. Written by our own writer,
   buffers in a fixed order, so the bytes are the same everywhere.
-- Spacing of a surface's mesh and its material are (open), below.
+- **Spacing (M5, decided).** The mesh's vertices are the world's posts that lie inside the bound
+  (`surfaces.md` 1.2), plus every vertex of the bound's outline and every crossing of the outline
+  with a grid line, triangulated by the kernel's constrained triangulation (`geometry.md` 3.10);
+  each vertex's height is `sample(surface, vertex).z` rounded to the lattice. So a surface is no
+  coarser than the terrain under it and its edge is exact. Ours.
+- **Material (M5, decided).** The surface's `material` key names a pack material (`assets.md`
+  2.6); the mesh's single glTF material is named after it and takes its `colour`. With none, the mesh
+  has no material and a loader uses its default. An unknown name is `pack.unknown_material`.
+  `meshes` in the manifest adds `material` (the name, or `null`).
 
 ## 11. Reports
 
@@ -865,7 +894,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 |---|---|
 | `manifest.json` | A `Node3D` named after `world`, holding `id` and `format` as metadata. `format` unknown or no manifest: `load.format`, naming `diagnostics.json`. |
 | A chunk | A `Node3D` `c_<cx>_<cy>` under it. Streaming chunks in and out is the engine's (M6). |
-| The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. |
+| The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. From M5, a quad its cut file (6.5) marks 1 is in neither the mesh nor the collision shape. |
 | A `material` weights field | Per chunk: a `ShaderMaterial` on that mesh, its planes as one `Texture2DArray` (format `R8`, one Godot texture layer per material), and each material's `colour`, `file` and `repeat` from `materials`. The shader loops over the chunk's count; there is no fixed number. A chunk naming more materials than the loader draws is `load.too_many_materials`, naming the chunk and its materials (`fields.md` 7.1). |
 | The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0. At a dry post of a drawn quad the surface lies strictly below that post's ground: at the mean height of the wet posts among its eight neighbours where that is at least 0.02 m below the ground (it runs on level under the bank), else at the ground less the mean depth of those wet posts (at least 0.02 m), as on a falling stream whose upstream posts stand above the bank. The ground hides what runs under it, so the water's edge is where the ground mesh crosses the surface, between posts on every quad edge from a wet post to a dry one, never on a post or a quad's edge. Not collided. |
 | A bounded field (6.3) | Not drawn; a kind surface is drawn from its mesh. Kept as data when `fields` names it. |
@@ -994,7 +1023,7 @@ needs that is not here is a defect of this chapter, not of the reader. It knows 
 | Build | Becomes in glTF |
 |---|---|
 | A chunk | A node `c_<cx>_<cy>`. |
-| The `surface` field | A mesh per chunk, quads split as in 15.1. |
+| The `surface` field | A mesh per chunk, quads split as in 15.1, leaving out the quads its cut file (6.5) marks 1. |
 | A `material` weights field | Vertex colour `COLOR_0`: each material's `colour` weighted by its plane, divided by 255. A post with every byte 0 takes `[0.8, 0.8, 0.8]`, `assets.md`'s default colour. Lossy; textures are not carried. |
 | An instance | A node named after it, its transform from section 8, mapped by `(x, z, -y)`. A primitive or stand-in is its `assets.md` 6 shape in `colour`, made by the reader; a model's meshes are copied from its glTF (M2). |
 | A feature | A path as a `LINE_STRIP` mesh, a region's rings as `LINE_LOOP`s, a point as an empty node; `attrs` in `extras`. |
@@ -1290,8 +1319,8 @@ Owed to other chapters:
   time.
 - **Copying asset files into a build** (`--bundle`), for a hand-over to another machine. Decided by
   the first hand-over, M6 or M7.
-- **A surface's mesh spacing and material** (`surfaces.md` 5). Decided by the first deck, M3.
-- **The terrain under a floor or deck** (`surfaces.md` open 7). Decided in M5 by `station`'s walk.
+- **A surface's mesh spacing and material** (`surfaces.md` 5). Decided in M5: section 10.
+- **The terrain under a floor or deck** (`surfaces.md` open 7). Decided in M5: 6.5.
 - **A picture passed to the engine as a texture** (`fields.md` open). Decided by `relief` in M2: if
   a field file loses what the picture carried.
 - **How the SDK names a blob** without a native BLAKE3 (3.3). Decided in `protocol.md` for M2.

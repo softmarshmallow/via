@@ -59,6 +59,7 @@ pub mod report;
 mod resolve;
 mod rules;
 mod sets;
+pub mod surfaces;
 mod text;
 
 pub use build::{build, Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Options};

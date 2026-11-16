@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, roof_scatter: 6.6: every shrub stands at z = 16.4 with its origin inside the roof; none on the ground beside it."
+milestone = 5
+actions   = ["build"]
+
+# An empty scatter would pass `all`; the exact count at spacing 3 on the 12 by 8 roof is owed
+# from the first implementation (TODO, M4 slice 2: settle such details against it), as a
+# `json_count` on the build's instance names.
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.file.z]
+path = "build/build/instances/z.npy"
+all  = 16.4
+
+[action.build.check.inside]
+fn     = "no_origin_inside"
+build  = "build/build"
+points = [[0, 0], [64, 0], [64, 20], [0, 20]]
+prefix = "roof_shrubs"

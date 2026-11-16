@@ -32,7 +32,6 @@ the M2 and M3 blocks of the conformance table, so the M1 runner does not owe the
 |---|---|---|---|
 | `scalar` (default) | One 32-bit float (1.1). | Yes, one of them. | `value` (required), `mask`, `order` |
 | `weights` | One 32-bit float per material, each 0 to 1, summing to at most 1 (5.2). | No. | `paint` (required), `mask`, `order` |
-| `volume` | Forward pointer only (section 8). Rejected in M1 with `doc.not_yet`. | | |
 
 Another `type` is `field.type_unknown`, with the nearest type as hint. The spike's
 `type = "material"` gets the hint `type = "weights"` with `role = "material"`.
@@ -459,9 +458,10 @@ materials (`build.md` 15.1); it is the loader's message, not the build's.
 
 ## 8. Volume fields
 
-`type = "volume"` is a bounded 3D field (caves, overhangs, cliffs), owned by a feature like a
-bounded surface (R25). Its keys, its rows and how it yields floors are decided for M5 in
-`surfaces.md`. M1 rejects it with `doc.not_yet`.
+Dropped in M5 (`surfaces.md` 1.3): a floor, a deck and a cave's floor are kind surfaces, and the
+terrain is cut under them for export by `cut`. `type = "volume"` is `field.type_unknown` with the
+fixed hint "a place to stand above or under the ground is a kind surface (`surfaces.md` 1.3)"; M1 to M4
+rejected it with `doc.not_yet`.
 
 ## Worked example
 
@@ -607,7 +607,7 @@ and `resolution = 1` unless the row says otherwise. Every error case also checks
 | narrowing overflow | base `"= 1e39"` | `num.not_finite_result` naming the field and post (0, 0) |
 | window = cut | — | `numbers.md`'s `window_equals_whole`; no case here |
 | memo | `height` read by three formulas | the run report (`graph.md` 6.3) holds one `height` node per window with status `ran` |
-| volume | `type = "volume"` | `doc.not_yet` naming M5 |
+| volume | `type = "volume"` | from M5, `field.type_unknown` with section 8's hint (M1 to M4: `doc.not_yet`) |
 | change windows | `ford`, built; then built with `--change downstream`; then with `--change changes/vertex.toml` (`docs/plan.md`) | each changed build passes the named check `changed_within_windows` against the first, on `height`, `clearing` and `water` |
 
 **`changed_within_windows`** (asked of `conformance.md` 3.4). Arguments: `before` and `after`, two

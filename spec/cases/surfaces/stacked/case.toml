@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "surfaces.md Conformance, stacked: 6.4; surfaces_at inside the house gives height, hall_g.floor, hall_1.floor; in the stairwell height, hall_g.floor, stair.tread."
+milestone = 5
+actions   = ["query"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.query]
+via         = ["query", "world.toml", "surfaces_at", "--lib", "{work}/lib", "--in", "points.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.query.file.point]
+path    = "out.json"
+pointer = "/point"
+value   = [0, 0, 0, 1, 1, 1]
+
+[action.query.file.surface]
+path    = "out.json"
+pointer = "/surface"
+value   = ["height", "hall_g.floor", "hall_1.floor", "height", "hall_g.floor", "stair.tread"]
+
+[action.query.file.z0]
+path    = "out.json"
+pointer = "/z/1"
+value   = 10.3
+
+[action.query.file.z1]
+path    = "out.json"
+pointer = "/z/2"
+value   = 13.3

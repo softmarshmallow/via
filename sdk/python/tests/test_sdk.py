@@ -424,6 +424,20 @@ class Document(unittest.TestCase):
 
             tomllib.loads(text)
 
+    def test_out_writes_a_run_and_refuses_other_tables(self):
+        from viasdk._step import Out
+
+        with tempfile.TemporaryDirectory() as d:
+            out = Out(d)
+            out.table("run", "w0", asset="wall", count=3, on={"ref": "hall_s0", "span": [0, 0.5]})
+            import tomllib
+
+            got = tomllib.loads(out.text())
+            self.assertEqual(got["run"]["w0"], {"asset": "wall", "count": 3,
+                                                "on": {"ref": "hall_s0", "span": [0, 0.5]}})
+            with self.assertRaises(ValueError):
+                out.table("step", "x")
+
 
 class Meetings(unittest.TestCase):
     """Step.meetings (surfaces.md 2.4): one surface.meetings call, carrying the step.call's id,

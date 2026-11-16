@@ -1,0 +1,39 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall]
+kind   = "storey"
+region = [[10, 10], [54, 10], [54, 54], [10, 54]]
+level  = 13.3
+
+# Both huts stand on hall.floor (13.3), so their door mounts do too (3.2), at [x, y + 2.5].
+[instance.hut_a]
+asset   = "hut"
+at      = [20, 30]
+surface = "hall.floor"
+
+[instance.hut_b]
+asset   = "hut"
+at      = [40, 30]
+surface = "hall.floor"
+
+# From the terrain (10) to hut_a's door at 13.3: a gap of 3300 mm.
+[feature.walk]
+kind    = "footpath"
+path    = [[20, 60]]
+ends_at = "hut_a.door"
+
+# A flight from the terrain up to hut_b's door: its end on its own tread at z1 = 13.3, gap 0.
+[feature.ramp]
+kind    = "flight"
+path    = [[40, 60]]
+ends_at = "hut_b.door"
+z0      = 10
+z1      = 13.3

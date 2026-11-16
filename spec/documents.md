@@ -738,7 +738,7 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 | array_table | `[[feature]]` items each with `id`, the first `id = "mill"` | merge | `doc.syntax`, exit 1, `data.rewrite` `[feature.mill]`. |
 | inline_list | `assets = [{ id = "a", weight = 2 }]` on a scatter | merge | No diagnostic. |
 | unknown_key | `[feature.lane] widht = 6` | merge | `doc.unknown_key`, line and column of `widht`, hint `width`. |
-| not_yet | `[import.a]` in M1 | merge | `doc.not_yet` naming M4. |
+| not_yet | `[budget]` in the world file (M1 to M3: `[import.a]`; M4: `type = "volume"`, dropped in M5) | merge | `doc.not_yet` naming M6. |
 | chunk_not_yet | `chunk = 64` in the world file | merge | `doc.not_yet` naming M6. |
 | datetime | `seed = 1979-05-27` | merge | `doc.type`. |
 | integer_key | `[layer.d] rank = 1.0` | merge | `doc.type`. |

@@ -37,7 +37,8 @@ water (`tag:water_level`; without it nothing is wet), every instance with the pa
 lie on: a way too steep for the profile is reported as a stop on that way (`data.on`).
 
 **The walk graph.** The world's posts (protocol.md 2: `grid`). A post is shut, in this order, when it
-lies inside (or on) the footprint of a solid instance (`why = "instance"`, `by` its name), when the
+lies inside (or on) the footprint of a solid instance (`why = "instance"`, `by` its name; a
+`passable` footprint, a gate or an arcade, is ground, surfaces.md 4.4 item 4), when the
 water over it is deeper than `wade` (`"water"`, `value` the depth), or when such a post lies nearer
 than `width / 2` (`"narrow"`, `by` what is near, `value` the metres). Two open neighbours (eight
 neighbours; a diagonal only when both posts beside it are open) are joined when the rise between
@@ -647,7 +648,7 @@ def footprints(insts, facts):
     out = []
     for r in sorted(insts, key=lambda r: r["name"]):
         f = facts.get(r["asset"])
-        if not f or f.get("solidity", "solid") == "none" or len(f.get("footprint") or []) < 3:
+        if not f or f.get("solidity", "solid") in ("none", "passable") or len(f.get("footprint") or []) < 3:
             continue
         out.append((r["name"], [frame(r, q) for q in f["footprint"]]))
     return out

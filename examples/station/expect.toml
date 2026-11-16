@@ -1,0 +1,34 @@
+# The station's measures and their bands (measure.py says how each is taken). Taken on the M5
+# slice 1 shared tree (uncommitted, after 8f7b169), release build, one run each, resolution 0.5.
+# A row whose band is what the spec asks and the build does not yet give is marked OWED: it fails
+# until the core lands that item (surfaces.md 4.1: `surface` on a set, a run `on` a storey).
+
+[base]
+protocol = { text = "via build world.toml; via query world.toml surfaces_at --in stair_points.json; measure.py --surfaces" }
+storeys          = { band = [5, 5] }
+rooms            = { band = [8, 8] }
+flights          = { band = [4, 4] }
+doorways         = { band = [2, 2] }
+meetings         = { band = [12, 12] }
+gap_max_mm       = { band = [0, 0] }
+doors_in         = { band = [2, 2] }        # indoors reachable through a door: two doors in
+floors_joined    = { band = [5, 5] }        # every floor is stepped onto by some path
+unreached        = { band = [0, 0] }        # every storey and room reached from the ground
+checked_meetings = { band = [12, 12] }
+stair_surfaces   = { band = [5, 5] }        # at stair_1's middle: ground, store, stair_1, watch, stair_3
+dressing         = { band = [60, 400] }
+off_floor        = { band = [0, 0] }        # OWED: 102 (sets and runs stand on the terrain)
+shell_gave_way   = { band = [0, 0] }        # OWED: 10 (plan-only overlap with things on other floors)
+
+[move_stair]
+meetings         = { band = [12, 12] }
+gap_max_mm       = { band = [0, 0] }
+unreached        = { band = [0, 0] }        # the rooms the moved stair serves still reached
+floors_joined    = { band = [5, 5] }
+
+[close_passage]
+unreached        = { band = [8, 8] }        # the tower's four storeys and four rooms sealed
+unreached_names  = { text = "lantern living store tower_0 tower_1 tower_2 tower_3 watch" }
+doors_in         = { band = [2, 2] }        # the cottage's two doors still in
+checked_meetings = { band = [11, 11] }
+meetings         = { band = [11, 11] }      # OWED: meets.json still lists tower_step.end (12)

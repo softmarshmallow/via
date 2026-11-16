@@ -1,0 +1,43 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind     = "storey"
+region   = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level    = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[26, 20], [32, 20], [32, 28], [20, 28], [20, 21.2], [26, 21.2]]
+level  = 13.3
+
+[feature.stair]
+kind      = "flight"
+path      = [[21, 20.6], [26, 20.6]]
+starts_at = "hall_g.floor"
+ends_at   = "hall_1.floor"
+z0        = 10.3
+z1        = 13.3
+
+[feature.front_door]
+kind    = "doorway"
+path    = [[36, 24], [32, 24]]
+ends_at = "hall_g.floor"
+sill_z  = 10.3
+
+[feature.garden_path]
+kind    = "footpath"
+path    = [[48, 24]]
+ends_at = "front_door.start"
+
+[instance.desk]
+asset   = "box"
+at      = [30, 26]
+surface = "front_door.start"

@@ -1,0 +1,9 @@
+# The door between the cottage and the tower closed: the step up from the store no longer ends at
+# the passage's floor, so there is no meeting there and a walker cannot cross (surfaces.md 4.4,
+# item 3). The tower is reached only through the cottage, so its four storeys and four rooms are
+# sealed, and the building check names each (`step.check.unreached`); the cottage's rooms are still
+# reached through the front and back doors. A door that is shut is said by taking away the meeting:
+# the vocabulary has no closed state a walk reads (README, "What the vocabulary could not say").
+
+[feature.tower_step]
+unset = ["ends_at"]

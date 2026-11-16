@@ -1,0 +1,539 @@
+name       = "station"
+extent     = [0, 0, 64, 64]                   # metres: x east, y north
+resolution = 0.5
+seed       = 5
+include    = ["building", "review"]
+pack       = "pack.toml"                      # primitives: the shipped packs hold no furniture
+
+# Station: a lighthouse and its keeper's cottage, inside (docs/plan.md M5: "indoors reachable through
+# a door"; challenges 14, 15). The spike's world of the same name, written again in the v1
+# vocabulary on lib/building's kinds (storey, room, doorway, flight, footpath): every floor is a
+# kind surface of a storey, every way between floors is a meeting (spec/surfaces.md 4.4, 6.4).
+#
+# The tower is four round storeys stacked, joined by three spiral flights that hug its wall; each
+# upper storey leaves out its stairwell (a notch over the flight below it). The cottage is one
+# storey of four rooms, 0.15 m above the tower's ground floor, joined to it by a step through the
+# passage. Two doors lead in from the ground, the front door at the porch and the back door at the
+# bunk room; the tower is reached only through the cottage.
+#
+# Written by hand, not by lib/building's `lay` step (README "Not built yet"): `lay` lays rectangular
+# buildings with straight flights; a round tower with spiral flights is this world's text.
+#
+# Heights are world metres (surfaces.md 9, item 11). The ground is near 0.
+
+[layer.views]
+file  = "layers/views.toml"
+owner = "views"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]
+role = "surface"
+base = "= 0.05 * fbm(20, 2, seed = 'ground')"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "dry_grass"
+
+[field.ground.then.path]
+paint = "path"
+mask  = "= 1 - smoothstep(0.8, 1.6, dist('kind:footpath', 4))"
+
+# ------------------------------------------------------------------------------------------ the tower
+# Round, 3.3 m in radius about [20, 32]; each ring is a 24-gon from bearing 90 (east), counter-clockwise.
+# Levels from the spike: 0.30, 3.55, 6.70, 9.85.
+
+[feature.tower_0]                             # the store's floor
+kind   = "storey"
+region = [[23.3, 32], [23.188, 32.854], [22.858, 33.65], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.35, 34.858], [17.667, 34.333], [17.142, 33.65], [16.812, 32.854], [16.7, 32], [16.812, 31.146], [17.142, 30.35], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [22.333, 29.667], [22.858, 30.35], [23.188, 31.146]]
+level  = 0.3
+
+[feature.tower_1]                             # the living room; its stairwell over stair_1 (90 to 215 degrees)
+kind   = "storey"
+region = [[17.297, 30.107], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [22.333, 29.667], [22.858, 30.35], [23.188, 31.146], [23.3, 32], [23.188, 32.854], [22.858, 33.65], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [20, 34], [19.482, 33.932], [19, 33.732], [18.586, 33.414], [18.268, 33], [18.068, 32.518], [18, 32], [18.068, 31.482], [18.268, 31], [18.362, 30.853]]
+level  = 3.55
+
+[feature.tower_2]                             # the watch room; its stairwell over stair_2 (270 to 395 degrees)
+kind   = "storey"
+region = [[22.703, 33.893], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.35, 34.858], [17.667, 34.333], [17.142, 33.65], [16.812, 32.854], [16.7, 32], [16.812, 31.146], [17.142, 30.35], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20, 30], [20.518, 30.068], [21, 30.268], [21.414, 30.586], [21.732, 31], [21.932, 31.482], [22, 32], [21.932, 32.518], [21.732, 33], [21.638, 33.147]]
+level  = 6.7
+
+[feature.tower_3]                             # the lantern room; its stairwell over stair_3
+kind   = "storey"
+region = [[17.297, 30.107], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [22.333, 29.667], [22.858, 30.35], [23.188, 31.146], [23.3, 32], [23.188, 32.854], [22.858, 33.65], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [20, 34], [19.482, 33.932], [19, 33.732], [18.586, 33.414], [18.268, 33], [18.068, 32.518], [18, 32], [18.068, 31.482], [18.268, 31], [18.362, 30.853]]
+level  = 9.85
+
+# Spiral flights 2.55 m from the centre, 0.9 m wide, 122 degrees of arc (5.43 m). Each ends 2
+# degrees past its stairwell's edge, so its end lies on the floor above, not on the notch's line.
+
+[feature.stair_1]
+kind      = "flight"
+path      = [[19.778, 34.54], [19.443, 34.488], [19.117, 34.392], [18.808, 34.254], [18.519, 34.076], [18.257, 33.861], [18.025, 33.613], [17.829, 33.337], [17.67, 33.037], [17.553, 32.719], [17.48, 32.388], [17.45, 32.05], [17.466, 31.711], [17.527, 31.378], [17.632, 31.055], [17.778, 30.749], [17.963, 30.465]]
+starts_at = "tower_0.floor"
+ends_at   = "tower_1.floor"
+width     = 0.9
+z0        = 0.3
+z1        = 3.55
+
+[feature.stair_2]
+kind      = "flight"
+path      = [[20.222, 29.46], [20.557, 29.512], [20.883, 29.608], [21.192, 29.746], [21.481, 29.924], [21.743, 30.139], [21.975, 30.387], [22.171, 30.663], [22.33, 30.963], [22.447, 31.281], [22.52, 31.612], [22.55, 31.95], [22.534, 32.289], [22.473, 32.622], [22.368, 32.945], [22.222, 33.251], [22.037, 33.535]]
+starts_at = "tower_1.floor"
+ends_at   = "tower_2.floor"
+width     = 0.9
+z0        = 3.55
+z1        = 6.7
+
+[feature.stair_3]                             # over stair_1, one turn up
+kind      = "flight"
+path      = [[19.778, 34.54], [19.443, 34.488], [19.117, 34.392], [18.808, 34.254], [18.519, 34.076], [18.257, 33.861], [18.025, 33.613], [17.829, 33.337], [17.67, 33.037], [17.553, 32.719], [17.48, 32.388], [17.45, 32.05], [17.466, 31.711], [17.527, 31.378], [17.632, 31.055], [17.778, 30.749], [17.963, 30.465]]
+starts_at = "tower_2.floor"
+ends_at   = "tower_3.floor"
+width     = 0.9
+z0        = 6.7
+z1        = 9.85
+
+[feature.store]
+kind    = "room"
+storey  = "tower_0"
+region  = [[23.3, 32], [23.188, 32.854], [22.858, 33.65], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.35, 34.858], [17.667, 34.333], [17.142, 33.65], [16.812, 32.854], [16.7, 32], [16.812, 31.146], [17.142, 30.35], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [22.333, 29.667], [22.858, 30.35], [23.188, 31.146]]
+
+[feature.living]
+kind    = "room"
+storey  = "tower_1"
+region  = [[17.297, 30.107], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [22.333, 29.667], [22.858, 30.35], [23.188, 31.146], [23.3, 32], [23.188, 32.854], [22.858, 33.65], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [20, 34], [19.482, 33.932], [19, 33.732], [18.586, 33.414], [18.268, 33], [18.068, 32.518], [18, 32], [18.068, 31.482], [18.268, 31], [18.362, 30.853]]
+
+[feature.watch]
+kind    = "room"
+storey  = "tower_2"
+region  = [[22.703, 33.893], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.35, 34.858], [17.667, 34.333], [17.142, 33.65], [16.812, 32.854], [16.7, 32], [16.812, 31.146], [17.142, 30.35], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20, 30], [20.518, 30.068], [21, 30.268], [21.414, 30.586], [21.732, 31], [21.932, 31.482], [22, 32], [21.932, 32.518], [21.732, 33], [21.638, 33.147]]
+
+[feature.lantern]
+kind    = "room"
+storey  = "tower_3"
+region  = [[17.297, 30.107], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [22.333, 29.667], [22.858, 30.35], [23.188, 31.146], [23.3, 32], [23.188, 32.854], [22.858, 33.65], [22.333, 34.333], [21.65, 34.858], [20.854, 35.188], [20, 35.3], [20, 34], [19.482, 33.932], [19, 33.732], [18.586, 33.414], [18.268, 33], [18.068, 32.518], [18, 32], [18.068, 31.482], [18.268, 31], [18.362, 30.853]]
+
+# ------------------------------------------------------------------------------------------ the cottage
+# One storey, four rooms: the passage from the tower, the kitchen, the porch east of it, the bunk
+# room north of it. Rooms beside each other share 0.9 m of outline or more, the building check's
+# opening between them (lib/building/check.py rule 2).
+
+[feature.cottage]
+kind   = "storey"
+region = [[23.3, 31], [30, 31], [30, 28.5], [37, 28.5], [37, 30], [40, 30], [40, 33], [37, 33], [37, 39.5], [30, 39.5], [30, 33], [23.3, 33]]
+level  = 0.45
+
+[feature.passage]
+kind   = "room"
+storey = "cottage"
+region = [[23.3, 31], [30, 31], [30, 33], [23.3, 33]]
+
+[feature.kitchen]
+kind   = "room"
+storey = "cottage"
+region = [[30, 28.5], [37, 28.5], [37, 34.5], [30, 34.5]]
+
+[feature.porch]
+kind   = "room"
+storey = "cottage"
+region = [[37, 30], [40, 30], [40, 33], [37, 33]]
+
+[feature.bunks]
+kind   = "room"
+storey = "cottage"
+region = [[30, 34.5], [37, 34.5], [37, 39.5], [30, 39.5]]
+
+[feature.tower_step]                          # from the store up into the passage: 0.15 m over 1.4 m
+kind      = "flight"
+path      = [[22.6, 32], [24, 32]]
+starts_at = "tower_0.floor"
+ends_at   = "cottage.floor"
+width     = 1
+z0        = 0.3
+z1        = 0.45
+
+# ------------------------------------------------------------------------------------------ doors in
+# A door is a meeting (surfaces.md 6.4): a doorway on the ground ends at the floor, its `sill`
+# effect holding the ground at the floor's level, so the gap is 0.
+
+[feature.front_door]
+kind    = "doorway"
+path    = [[43, 31.5], [40, 31.5]]
+ends_at = "cottage.floor"
+sill_z  = 0.45
+
+[feature.back_door]
+kind    = "doorway"
+path    = [[33.5, 42.5], [33.5, 39.5]]
+ends_at = "cottage.floor"
+sill_z  = 0.45
+
+[feature.walk]                                # from the east, where a track would come in
+kind    = "footpath"
+path    = [[56, 31.5], [48, 31.5]]
+ends_at = "front_door.start"
+
+[feature.yard_walk]
+kind    = "footpath"
+path    = [[33.5, 50]]
+ends_at = "back_door.start"
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.check]                                  # lib/building's lint: reach between surfaces and rooms
+when    = "lint"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+
+# ------------------------------------------------------------------------------------------ walls and roofs
+# Runs along the storeys' outlines (rules.md runs; `on` a storey stands on its floor, surfaces.md
+# 4.1), `offset` inward. The tower's shell is one ring of full-height pieces on its ground floor:
+# an upper storey has no floor under its stairwell for a piece to stand on (lib/building README).
+
+[run.tower_wall]                              # leaves 1.2 m open at bearing 90 for the step
+asset   = "tower_shell"
+on      = { ref = "tower_0", span = [0.03, 0.97], offset = 0.15 }
+spacing = 0.8
+ends    = "both"
+
+[run.cottage_wall_south]                      # from the passage's west end round to the front door
+asset   = "wall"
+on      = { ref = "cottage", span = [0, 0.3899], offset = 0.1 }
+spacing = 0.9
+ends    = "both"
+
+[run.cottage_wall_east]                       # from the front door round to the back door
+asset   = "wall"
+on      = { ref = "cottage", span = [0.4116, 0.6516], offset = 0.1 }
+spacing = 0.9
+ends    = "both"
+
+[run.cottage_wall_north]                      # from the back door to the passage's west end
+asset   = "wall"
+on      = { ref = "cottage", span = [0.6733, 0.9639], offset = 0.1 }
+spacing = 0.9
+ends    = "both"
+
+[set.partition.item.a]                        # kitchen | bunks, 1.2 m open in the middle
+asset = "wall_inner"
+at    = [-3, 0]
+face  = 90
+[set.partition.item.b]
+asset = "wall_inner"
+at    = [-2, 0]
+face  = 90
+[set.partition.item.c]
+asset = "wall_inner"
+at    = [-1, 0]
+face  = 90
+[set.partition.item.d]
+asset = "wall_inner"
+at    = [1, 0]
+face  = 90
+[set.partition.item.e]
+asset = "wall_inner"
+at    = [2, 0]
+face  = 90
+[set.partition.item.f]
+asset = "wall_inner"
+at    = [3, 0]
+face  = 90
+
+[instance.kitchen_bunks_wall]
+set     = "partition"
+at      = [33.5, 34.5]
+surface = "cottage.floor"
+
+# No roofs: `place.overlap` compares hand instances' plan footprints only (rules.md 8), so a roof
+# over the rooms clashes with every piece of furniture under it, and a thing on one storey with a
+# thing on the storey below (see README, "Known faults"). The pack keeps the roof pieces.
+
+# ------------------------------------------------------------------------------------------ dressing
+# Sets are groups in one frame placed as a unit; runs repeat a piece along an outline. Things on a
+# floor say so with `surface`; nothing stands on another thing (the spike's `atop` is gone), and
+# `sink` is an asset fact, not a placement key: a plate on a table is the pack's `plate_top`, the
+# plate with `sink = -0.75`, the table's height. Roofs are lifted onto the walls the same way.
+
+[set.round_table.item.table]
+asset = "table_round"
+[set.round_table.item.stool_a]
+asset = "stool"
+at    = [0, 0.92]
+[set.round_table.item.stool_b]
+asset = "stool"
+at    = [-0.8, -0.46]
+[set.round_table.item.plate_a]
+asset = "plate_top"
+at    = [0, 0.32]
+[set.round_table.item.plate_b]
+asset = "plate_top"
+at    = [-0.28, -0.16]
+[set.round_table.item.mug]
+asset = "mug_top"
+at    = [0.12, 0.05]
+[set.round_table.item.candle]
+asset = "candle_top"
+
+[set.long_table.item.table]
+asset = "table"
+[set.long_table.item.chair_a]
+asset = "chair"
+at    = [-0.4, 0.66]
+face  = 180
+[set.long_table.item.chair_b]
+asset = "chair"
+at    = [0.4, 0.66]
+face  = 180
+[set.long_table.item.chair_c]
+asset = "chair"
+at    = [-0.4, -0.66]
+[set.long_table.item.chair_d]
+asset = "chair"
+at    = [0.4, -0.66]
+[set.long_table.item.plate_a]
+asset = "plate_top"
+at    = [-0.4, 0.22]
+[set.long_table.item.plate_b]
+asset = "plate_top"
+at    = [0.4, 0.22]
+[set.long_table.item.plate_c]
+asset = "plate_top"
+at    = [-0.4, -0.22]
+[set.long_table.item.plate_d]
+asset = "plate_top"
+at    = [0.4, -0.22]
+[set.long_table.item.mug]
+asset = "mug_top"
+at    = [0.1, 0]
+[set.long_table.item.candle]
+asset = "candle_top"
+at    = [-0.15, 0]
+
+[set.bunk.item.frame]
+asset = "bunk"
+[set.bunk.item.chest]
+asset = "chest"
+at    = [0, -1.3]
+
+[set.desk.item.desk]
+asset = "desk"
+[set.desk.item.chair]
+asset = "chair"
+at    = [0, -0.6]
+[set.desk.item.chart]
+asset = "chart_top"
+at    = [-0.2, 0]
+[set.desk.item.lamp]
+asset = "candle_top"
+at    = [0.5, 0.15]
+[set.desk.item.books]
+asset = "books_top"
+at    = [0.45, -0.1]
+
+# ---- the store: what a lighthouse runs on
+
+[run.store_barrels]
+asset   = "barrel"
+on      = { ref = "tower_0", span = [0.55, 0.7], offset = 0.75 }
+spacing = 0.7
+
+[run.store_crates]
+asset   = "crate"
+on      = { ref = "tower_0", span = [0.72, 0.86], offset = 0.7 }
+spacing = 0.7
+
+[instance.oil_tank]
+asset   = "oil_tank"
+at      = [18.2, 30.2]
+surface = "tower_0.floor"
+
+[instance.store_sack_a]
+asset   = "sack"
+at      = [21.7, 29.9]
+surface = "tower_0.floor"
+
+[instance.store_sack_b]
+asset   = "sack"
+at      = [22.5, 31.4]
+surface = "tower_0.floor"
+
+[instance.store_bucket]
+asset   = "bucket"
+at      = [19.6, 30.3]
+surface = "tower_0.floor"
+
+[instance.rope_a]
+asset   = "rope"
+at      = [19.4, 32.8]
+surface = "tower_0.floor"
+
+[instance.store_lamp]
+asset   = "lamp"
+at      = [20, 32.6]
+surface = "tower_0.floor"
+
+# ---- the living room
+
+[instance.living_table]                       # off the centre: the lens two floors up is over it
+set     = "round_table"                       # in plan, and place.overlap reads plan only
+at      = [21.5, 30.7]
+face    = 20
+surface = "tower_1.floor"
+
+[instance.hearth]
+asset   = "hearth"
+at      = [22.5, 32.4]
+face    = 270
+surface = "tower_1.floor"
+
+[instance.living_bench]
+asset   = "bench"
+at      = [20.6, 29.4]
+surface = "tower_1.floor"
+
+[instance.living_lamp]
+asset   = "lamp"
+at      = [21.6, 34.2]
+surface = "tower_1.floor"
+
+[instance.living_chest]
+asset   = "chest"
+at      = [19.0, 29.1]
+face    = 20
+surface = "tower_1.floor"
+
+# ---- the watch room
+
+[instance.watch_desk]
+set     = "desk"
+at      = [19.2, 34.3]
+face    = 180
+surface = "tower_2.floor"
+
+[instance.telescope]
+asset   = "telescope"
+at      = [17.6, 32.6]
+surface = "tower_2.floor"
+
+[instance.watch_shelf]
+asset   = "shelf"
+at      = [17.4, 31.0]
+face    = 70
+surface = "tower_2.floor"
+
+[instance.watch_chest]
+asset   = "chest"
+at      = [18.3, 33.7]
+face    = 45
+surface = "tower_2.floor"
+
+# ---- the lantern room
+
+[instance.lens]
+asset   = "lens"
+at      = [20.4, 32.0]
+surface = "tower_3.floor"
+
+[instance.lantern_oil]
+asset   = "barrel"
+at      = [22.2, 33.6]
+surface = "tower_3.floor"
+
+# ---- the kitchen
+
+[instance.kitchen_table]
+set     = "long_table"
+at      = [33.2, 31.4]
+surface = "cottage.floor"
+
+[instance.stove]
+asset   = "stove"
+at      = [31.0, 29.1]
+surface = "cottage.floor"
+
+[instance.dresser]
+asset   = "dresser"
+at      = [34.5, 28.9]
+surface = "cottage.floor"
+
+[instance.kitchen_shelf]
+asset   = "shelf"
+at      = [30.3, 33.2]
+face    = 90
+surface = "cottage.floor"
+
+[run.kitchen_barrels]                         # along the kitchen's south wall, east of the dresser
+asset   = "barrel"
+on      = { ref = "cottage", span = [0.2653, 0.287], offset = 0.5 }
+spacing = 0.7
+
+[instance.kitchen_lamp]
+asset   = "lamp"
+at      = [36.3, 34.0]
+surface = "cottage.floor"
+
+# ---- the bunk room
+
+[instance.bunk_a]
+set     = "bunk"
+at      = [30.7, 37.6]
+surface = "cottage.floor"
+
+[instance.bunk_b]
+set     = "bunk"
+at      = [36.3, 37.6]
+surface = "cottage.floor"
+
+[instance.bookcase]
+asset   = "bookcase"
+at      = [32.0, 39.1]
+face    = 180
+surface = "cottage.floor"
+
+[instance.bunks_lamp]
+asset   = "lamp"
+at      = [35.0, 39.0]
+surface = "cottage.floor"
+
+# ---- the porch and the passage
+
+[instance.porch_bench]
+asset   = "bench"
+at      = [38.5, 32.6]
+face    = 180
+surface = "cottage.floor"
+
+[instance.boots]
+asset   = "boots"
+at      = [39.4, 30.4]
+surface = "cottage.floor"
+
+[instance.coats]
+asset   = "coat_hook"
+at      = [37.9, 30.2]
+surface = "cottage.floor"
+
+[run.passage_crates]
+asset   = "crate"
+on      = { ref = "cottage", span = [0.02, 0.1], offset = 0.45 }
+spacing = 0.9
+
+[instance.passage_lamp]
+asset   = "lamp"
+at      = [28.8, 32.6]
+surface = "cottage.floor"
+
+# ---- outside
+
+[instance.gate_lamp]
+asset = "lamp_post"
+at    = [44, 33]
+
+[scatter.shrubs]
+assets  = ["shrub"]
+spacing = 3
+density = "= 0.6 * smoothstep(3, 6, dist('kind:storey', 8)) * smoothstep(2, 3, dist('kind:footpath', 4))"
