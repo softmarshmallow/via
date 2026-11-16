@@ -72,6 +72,8 @@ for args in "--before $HERE/fixture_build --out $OUT/foreign" \
             "--before $HERE/fixture_build --out $OUT/bad --option colour=red" \
             "--before $HERE/fixture_build --out $OUT/bad --option features=yes" \
             "--before $HERE/fixture_build --out $OUT/bad --option diagnostics=x" \
+            "--before $HERE/fixture_build --out $OUT/bad --stream 0" \
+            "--before $HERE/fixture_build --out $OUT/bad --frames x" \
             "--out $OUT/bad"; do
   # shellcheck disable=SC2086
   "$ROOT/sheet.sh" $args >/dev/null 2>&1
@@ -82,6 +84,14 @@ done
 step "kind surfaces: cut terrain, floor meshes, the walker on a floor (headless)"
 python3 "$HERE/make_floor_fixture.py" "$OUT/floor_build" || fail=1
 r=$(godot --headless --script res://tests/test_floor.gd -- --build "$OUT/floor_build"); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
+step "streaming: content once, a long walk loading and unloading chunks, load-unload-load (headless)"
+# fixture_build is 96 m by 80 m in four 64 m chunks: a 5 m load radius (unloading past 69 m) makes
+# the walk unload some, and is past the 4 m guard, so a walk loading one chunk a frame never stalls
+r=$(godot --headless --fixed-fps 60 --script res://tests/test_stream.gd -- --build "$HERE/fixture_build" --radius 5); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+r=$(godot --headless --fixed-fps 60 --script res://tests/test_stream.gd -- --build "$HERE/fixture_build" --radius 5 --frames); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
 step "sheet: the surface each bookmark stands on"

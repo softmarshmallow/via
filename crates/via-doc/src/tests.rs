@@ -399,9 +399,22 @@ fn not_yet() {
         &[],
     );
     assert!(codes(&l).is_empty(), "{:?}", codes(&l));
-    let l = merge(&simple(&format!("chunk = 64\n{HEAD}")), &[]);
-    assert_eq!(codes(&l), ["doc.not_yet"]);
-    assert!(l.records[0].message().contains("M6"));
+    // `chunk` and `[budget]` arrived in M6 (`build.md` 5, 5.1): read with nothing to say.
+    let l = merge(
+        &simple(&format!(
+            "chunk = 64\n{HEAD}[budget]\ntriangles = 1000\n[budget.waive.a]\nat = [0, 0]\ntriangles = 2000\nreason = \"r\"\n"
+        )),
+        &[],
+    );
+    assert!(codes(&l).is_empty(), "{:?}", codes(&l));
+    // A waiver says why (`doc.missing_key`), and a budget's limits are integers.
+    let l = merge(
+        &simple(&format!(
+            "{HEAD}[budget]\ntriangles = 1.5\n[budget.waive.a]\nat = [0, 0]\n"
+        )),
+        &[],
+    );
+    assert_eq!(codes(&l), ["doc.missing_key", "doc.type"]);
     // M2's words are read: a worker generate step is no longer `doc.not_yet`; an export step is.
     let l = merge(
         &simple(&format!(

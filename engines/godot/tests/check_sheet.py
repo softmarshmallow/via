@@ -151,7 +151,8 @@ def main():
     doc = json.loads(text)
     canon = _canon(doc) + "\n"
     check("sheet.json is canonical", text == canon)
-    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "godot", "light", "renderer", "size", "walk", "walks"])
+    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "renderer", "size", "stream", "walk", "walks"])
+    check("without --stream and --frames, stream and frames are null", doc["stream"] is None and doc["frames"] is None)
     check("edits lists pins and cleared", isinstance(doc.get("edits"), dict) and sorted(doc["edits"]) == ["against", "cleared", "pins"])
     check("one walk per bookmark, in name order", [w["name"] for w in doc.get("walks", [])] == [b["name"] for b in doc["bookmarks"]])
     walk_keys = ["by", "deepest", "drop", "eye", "from", "left", "on", "outcome", "plan", "slope", "stop", "through", "toward", "walked"]

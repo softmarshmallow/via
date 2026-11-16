@@ -22,9 +22,14 @@ band    = [0, 0]
 measure = "unanswered"
 band    = [0, 0]
 
-[base.unowned]                              # each bank owns its walk's crossing (opens_for)
-measure = "unowned"
-band    = [0, 0]
+[base.unowned]                              # each bank owns its walk's crossing (opens_for): 0 of
+measure = "unowned"                         # border's own. The 2 are the abbey's (monastery, its
+band    = [2, 2]                            # import, has sheer faces since M5 slice 3): its bridge
+                                            # over `gorge_e6` and `gorge_w8`, as monastery's own
+                                            # `unowned` [2, 2] (geometry.md 2.7, open in TODO).
+                                            # Re-banded M6 slice 1, 2026-11-17: release `via` of the
+                                            # working tree after 277993f with other M6 slice 1
+                                            # diffs, one fresh store, border base and every change
 
 [base.held]                                 # reach: gate to both exits, far_wood, crag
 measure = "held"

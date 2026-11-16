@@ -460,7 +460,12 @@ pub fn check(dir: &Path) -> Vec<Diag> {
         columns.get("instances/x.npy"),
         columns.get("instances/y.npy"),
     ) {
-        let layout = Layout::new(&g);
+        // The side the manifest's `frame.chunk` states (M6), else the default (5).
+        let side = manifest
+            .get("frame")
+            .and_then(|f| f.get("chunk"))
+            .and_then(mm_of);
+        let layout = Layout::with_side(&g, side);
         let mut next = 0usize;
         for (ci, c) in chunks.iter().enumerate() {
             let mut ranges: Vec<(usize, usize)> = Vec::new();

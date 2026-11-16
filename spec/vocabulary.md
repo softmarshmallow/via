@@ -179,7 +179,7 @@ is built (`documents.md` 5, 6).
 | `rank` | integer | A layer's place, lowest first, unique. `world` is 0 unless written. A layer names only what is at or below its rank. | documents |
 | `[let]` | table of formulas | Named values formulas read. Also `[field.<n>.let]` and `[kind.<k>.let]`. Resolved by dependency; a cycle is an error. | formulas |
 | `remove`, `unset` | bool; list of strings | In a change body only: delete the entity or sub-table; delete these keys from it (2.5, `documents.md` 6.1). A layer never writes onto another document's entity, so it has nothing to remove. | documents |
-| `chunk`, `[budget]` | length; table | Side of a chunk; limits per chunk (`instances`, `triangles`). | build |
+| `chunk`, `[budget]` | length; table | Side of a chunk (`build.md` 5); limits per chunk, `triangles`, `instances`, `groups`, and `[budget.waive.<id>]` with `at`, the limits and a `reason`, raising them for one chunk (`build.md` 5.1). World file only; a change may write `chunk`, never `[budget]`. (M6) | build |
 
 ### Fields (`fields`, `formulas`)
 
@@ -507,7 +507,7 @@ The M1 parser rejects each key or value below with `doc.not_yet` at its span, na
 | `[set]`, `set`, `[run]`, `count`, `span` on a run (`span` in `follows` is M1, `geometry.md` 4), `ends`, `[lock]` and its record, `[network]`, `[cells]` and their `from`, `frontage`, `depth`, `min_length`, `min_area` (`geometry.md` 8), classes `junction`, `edge`, `area`, `cell`, `rest`; `[kind.<k>.surface.<name>]`, `bound`, `[kind.<k>.mount.<name>]` and its `surface`, `meets` (kind surfaces and mounts at M3 once the lead accepts `surfaces.md` Open 2; the plan's M3 rows 34, 38 and 63 need them) | M3 |
 | `[import]` and its keys (`changes`, `footprint`, `blend`, `lift`, `max_grade`, `give`), `[given]`, `accepts`, `default`, `exit`, `datum`, the selector `given:<name>` | M4 |
 | `connector` on an asset mount, `solidity = "passable"`, `cut` and `material` on a kind surface, `surface` on a placement or a scatter, a kind surface as `starts_at` / `ends_at` (`type = "volume"` and `hosts` were dropped instead, `surfaces.md` 1.3) | M5 |
-| `when = "export"`, `chunk`, `[budget]` | M6 |
+| `when = "export"` (`chunk` and `[budget]` arrived in M6 slice 1, `build.md` 5, 5.1) | M6 |
 
 A second top-level `surface` field is not here: it is `surface.two_terrains` in every milestone.
 

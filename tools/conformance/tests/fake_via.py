@@ -249,7 +249,7 @@ class Cli:
         files["instances/names.txt"] = "".join(n + "\n" for n, _ in inst).encode()
 
         manifest = {"engine": {"epoch": 1, "name": "via"}, "files": {p: {"bytes": len(b), "digest": sha(b)}
-                    for p, b in sorted(files.items())}, "format": "via-build-0", "world": name}
+                    for p, b in sorted(files.items())}, "format": "via-build-1", "world": name}
         bid = sha(cj(manifest))
 
         # The change report, against --against or the directory's last complete build.

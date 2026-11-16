@@ -123,7 +123,7 @@ pub fn write(m: &MeshOut, material: Option<&Material<'_>>) -> Vec<u8> {
         Some(mt) => (
             ",\"material\":0".to_string(),
             format!(
-                ",\"materials\":[{{\"name\":{},\"pbrMetallicRoughness\":{{\"baseColorFactor\":[{},{},{},1]}}}}]",
+                ",\"materials\":[{{\"doubleSided\":true,\"name\":{},\"pbrMetallicRoughness\":{{\"baseColorFactor\":[{},{},{},1],\"metallicFactor\":0,\"roughnessFactor\":0.85}}}}]",
                 quote(mt.name),
                 num32(mt.colour[0] as f32),
                 num32(mt.colour[1] as f32),

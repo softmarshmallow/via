@@ -355,6 +355,51 @@ pub fn null_build(
     rec.complete.then_some(rec)
 }
 
+/// Where the files of a build with no baseline are kept (6.2, into a new directory): a record of
+/// its own, beside the build record, under a key the build key gives.
+fn fresh_key(key: &Digest) -> Digest {
+    let mut b = b"via-fresh-1\0".to_vec();
+    b.extend_from_slice(&key.0);
+    Digest::of(&b)
+}
+
+/// Keeps the digests of the manifest and the reports a complete build with no baseline wrote
+/// (6.2): with no baseline they are a function of the build key alone.
+pub fn put_fresh(store: &Store, key: &Digest, files: &BTreeMap<String, Digest>) {
+    let mut e = Enc::new();
+    e.u64(files.len() as u64);
+    for (p, d) in files {
+        e.str(p).digest(d);
+    }
+    store.put_build(&fresh_key(key), &e.finish());
+}
+
+/// The null build into a directory that holds no build (6.2): the build key's record, complete,
+/// and the manifest and reports a build with no baseline wrote under that key. `None` with
+/// `--against` (the build has a baseline) or when either is missing.
+pub fn null_build_fresh(
+    store: &Store,
+    key: &Digest,
+    against: bool,
+) -> Option<(BuildRecord, BTreeMap<String, Digest>)> {
+    if against {
+        return None;
+    }
+    let bytes = store.get_build(&fresh_key(key))?;
+    let mut d = Dec::new(&bytes);
+    let n = d.u64()?;
+    let mut files = BTreeMap::new();
+    for _ in 0..n {
+        let p = d.str()?;
+        files.insert(p, d.digest()?);
+    }
+    if !d.done() {
+        return None;
+    }
+    let rec = BuildRecord::get(store, key)?;
+    rec.complete.then_some((rec, files))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -435,6 +480,18 @@ mod tests {
         fixed.complete = true;
         fixed.put(&s, &k2);
         assert_eq!(null_build(&s, &k2, Some(&k2), false), Some(fixed.clone()));
+        // Into a new directory (6.2): only once a build with no baseline kept its manifest and
+        // reports under the key, and never with `--against`.
+        assert!(null_build_fresh(&s, &k2, false).is_none());
+        let made: BTreeMap<String, Digest> =
+            [("manifest.json".to_string(), Digest([7; 32]))].into();
+        put_fresh(&s, &k2, &made);
+        assert_eq!(
+            null_build_fresh(&s, &k2, false),
+            Some((fixed.clone(), made.clone()))
+        );
+        assert!(null_build_fresh(&s, &k2, true).is_none());
+        assert!(null_build_fresh(&s, &Digest([6; 32]), false).is_none());
         // The graph's edges and makers come back by id.
         assert_eq!(
             fixed

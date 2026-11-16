@@ -162,8 +162,17 @@ impl<'a> CliPlan<'a> {
         let mut defs = BTreeMap::new();
         let mut data = Vec::new();
         for (path, reads) in data_files(model) {
+            let mut params = vec![("path".into(), path.clone())];
+            // The instance columns are sorted by chunk (`build.md` 8): the chunk side is a
+            // parameter of theirs, so a changed `chunk` never reuses rows in the old order.
+            if matches!(reads, FileReads::Instances) {
+                params.push((
+                    "chunk".into(),
+                    model.chunk_side_mm().unwrap_or(0).to_string(),
+                ));
+            }
             let def = Def {
-                params: vec![("path".into(), path.clone())],
+                params,
                 edges: model.file_reads(&reads),
                 statements: model.file_statements(&reads),
                 gate: Gate {
@@ -174,6 +183,46 @@ impl<'a> CliPlan<'a> {
             };
             defs.insert(write_id(&path), def);
             data.push(path);
+        }
+        // The budget (`build.md` 5.1): one node, when the world writes `[budget]`, reading what
+        // the instance columns read (every row's place and asset, so its chunk and its load),
+        // the frame (the chunk side), the pack (each asset's triangles) and the budget's own
+        // statements. Its value is its diagnostics. Not `names.txt` alone: names in chunk order
+        // stay the same when a row crosses a chunk edge or swaps its asset, and a warm build
+        // then replayed a clean build's `build.over_budget` as nothing (M6 slice 1 review).
+        if model.budget().is_some() {
+            let mut statements: Vec<(String, Digest)> = model
+                .statements()
+                .iter()
+                .filter(|(k, _)| {
+                    k.as_str() == "world"
+                        || k.as_str() == via_model::PACK
+                        || k.starts_with("budget.")
+                })
+                .map(|(k, d)| (k.clone(), *d))
+                .collect();
+            statements.extend(model.file_statements(&FileReads::Instances));
+            statements.sort();
+            statements.dedup();
+            defs.insert(
+                NodeId::of("budget", "chunks"),
+                Def {
+                    params: vec![
+                        ("budget".into(), "chunks".into()),
+                        (
+                            "chunk".into(),
+                            model.chunk_side_mm().unwrap_or(0).to_string(),
+                        ),
+                    ],
+                    edges: model.file_reads(&FileReads::Instances),
+                    statements,
+                    gate: Gate {
+                        skip_on_error: true,
+                        traced: false,
+                    },
+                    ..Def::default()
+                },
+            );
         }
         // The diagnostics a lint returns are mapped to the world's entities by id
         // (`protocol.md` 5): the set of ids enters its key, so a renamed or removed entity
@@ -468,6 +517,7 @@ impl<'a> CliPlan<'a> {
             pack: self.ctx.pack,
             name: self.ctx.name,
             seed: self.ctx.seed,
+            budget: self.model.budget(),
         }));
         *slot = Some(w.clone());
         w
@@ -2057,6 +2107,16 @@ impl Plan for CliPlan<'_> {
                 self.compute_join(id, def, inputs)
             }
             "step" => self.compute_step(id, def, inputs),
+            "budget" => match self.files().as_ref() {
+                Ok(w) => Output::of(Val {
+                    bytes: Arc::new(Vec::new()),
+                    diags: Arc::new(w.budget.clone()),
+                }),
+                Err(d) => Output::of(Val {
+                    bytes: Arc::new(Vec::new()),
+                    diags: Arc::new(vec![d.clone()]),
+                }),
+            },
             "write" => match id.as_str() {
                 DIAGNOSTICS => Output::of(Val::plain(
                     self.last_bytes("diagnostics.json").unwrap_or_default(),

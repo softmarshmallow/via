@@ -47,6 +47,19 @@
 # with two loop ramps; the HEAD build (6f9f332, a worktree, same binary, 106 s) gave the "before"
 # numbers the rows quote. Every count of blocks, lots and houses is unchanged (houses 2291 both).
 # Rows marked OWED fail on purpose until the fix they name lands.
+#
+# M6 slice 1 (perf): the three houses steps run per block (`for_each = "kind:block"`, layers/town.toml;
+# lib/town houses.py "Per block"); the houses are those of the whole-table steps, name for name
+# (2291), and `lots_held` is counted from the houses' names (measure.py), since the steps' `rows`
+# records, equal for many blocks, merge in diagnostics.json. Times, one run each, release `via`
+# (HEAD 277993f with its lib and examples, a worktree; against the working tree of 2026-11-17
+# 07:00 KST with the other M6 agents' uncommitted changes), VIA_LIB=lib, fresh store, 14 threads,
+# load 12 to 35 from other agents' builds, wall clock: cold 119 -> 128 s; unchanged into the same
+# directory 1.8 -> 1.7 s; unchanged into a new directory 17.4 -> 1.1 s (graph.md 6.2, "Into a new
+# directory"); move_avenue --against cold 103 -> 106 s, its houses calls 124 -> 29 node-seconds
+# (97 of 558 calls ran, 78 of them blocks the avenue renamed). The change is now held up elsewhere:
+# 650 `distance` nodes (29 node-seconds), key records written one by one on the engine's thread
+# (about 15 s, `sample`), trace replays (13 s), three `prepare` passes (TODO, "From M6 slice 1").
 
 # ------------------------------------------------------------------------------------------ base
 

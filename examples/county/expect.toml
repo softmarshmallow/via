@@ -45,9 +45,14 @@ band    = [0, 0]
 measure = "town_streets"                    # composition.md 12): 2 streets on the county's land, against
 band    = [2, 2]                            # quay's 5 alone; measured once, release, 2026-11-16
 
-[base.town_instances]                       # its houses (quay alone holds more: fewer lots here)
-measure = "town_instances"
-band    = [68, 68]
+[base.town_instances]                       # its houses and its wall (quay alone holds more: fewer
+measure = "town_instances"                  # lots here). 324 = 249 pieces of the town wall (quay's
+band    = [324, 324]                        # `wall` step, lib/town kit.py, M5 slice 3) + 75 houses
+                                            # (68 before slice 3's corner and shallow houses, rules
+                                            # 2b, 2c). Re-banded M6 slice 1, 2026-11-17: release
+                                            # `via` of the working tree after 277993f with other M6
+                                            # slice 1 diffs, one fresh store, county base, every
+                                            # county row passing; from its import, not a fault
 
 # ------------------------------------------------------------------------------------------ move_town
 

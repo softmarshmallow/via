@@ -26,7 +26,7 @@ RUN_CODES = {
     "graph.busy",
     "protocol.slow_exit",
 }
-NOT_RUN_BUILD_CODES = {"build.chunk_not_multiple", "build.internal"}
+NOT_RUN_BUILD_CODES = {"build.chunk_not_multiple", "build.internal", "build.over_budget", "build.waiver_unused"}
 
 CODE_PART = r"[a-z][a-z0-9_]*"
 CORE_CODE_RE = re.compile(rf"^{CODE_PART}\.{CODE_PART}$")

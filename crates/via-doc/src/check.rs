@@ -165,6 +165,20 @@ impl<'w> Checker<'w> {
             Shape::On if t.get("ref").is_none() && t.get("of").is_none() => &[("ref", "a name")],
             Shape::Follows if t.get("ref").is_none() => &[("ref", "a name")],
             Shape::Choice if t.get("id").is_none() => &[("id", "an asset id")],
+            // `build.md` 5.1: a waiver names its chunk and says why.
+            // An empty `reason` says nothing, so it counts as none (M6 slice 1 review).
+            Shape::Waive => match (
+                t.get("at").is_none(),
+                t.get("reason").is_none() || t.str("reason").is_some_and(|r| r.trim().is_empty()),
+            ) {
+                (true, true) => &[
+                    ("at", "the chunk, `[cx, cy]`"),
+                    ("reason", "why the target can draw this chunk"),
+                ],
+                (true, false) => &[("at", "the chunk, `[cx, cy]`")],
+                (false, true) => &[("reason", "why the target can draw this chunk")],
+                (false, false) => &[],
+            },
             // `composition.md` 2: `file`, and one of `at` and `on`.
             Shape::Import => match (
                 t.get("file").is_none(),

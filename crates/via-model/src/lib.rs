@@ -63,8 +63,8 @@ pub mod surfaces;
 mod text;
 
 pub use build::{build, Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Options};
-pub use decl::Tier;
-pub use graph::{build_graph, dedupe, leaves, memo_ms, FileReads, ModelPlan};
+pub use decl::{Budget, Limits, Tier, Waiver};
+pub use graph::{build_graph, dedupe, leaves, memo_ms, FileReads, ModelPlan, PACK};
 pub use import::{ImportSteps, StepsCall, StepsDone};
 pub use rules::scatter_name;
 

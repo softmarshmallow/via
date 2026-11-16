@@ -406,6 +406,121 @@ def json_count(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) 
     return []
 
 
+def chunk_digests(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """`build.md` 5.2: between two manifests of one tiling, exactly the chunks `changed` (each
+    `[cx, cy]`) have another `digest`."""
+    def digests(rel: str) -> dict[tuple[int, int], Any]:
+        m = _read_json(work / rel)
+        return {tuple(c["at"]): c.get("digest") for c in m.get("chunks", [])}
+    a, b = digests(args["before"]), digests(args["after"])
+    if set(a) != set(b):
+        return [(f"check.{cid}", "the same chunks in both", f"{sorted(a)} and {sorted(b)}")]
+    if any(d is None for d in list(a.values()) + list(b.values())):
+        return [(f"check.{cid}", "every chunk has a digest", "absent")]
+    differ = sorted(k for k in a if a[k] != b[k])
+    want = sorted(tuple(c) for c in args["changed"])
+    if differ != want:
+        return [(f"check.{cid}", f"digests differ at {want}", str(differ))]
+    return []
+
+
+def chunk_digest_recomputed(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """`build.md` 5.2: every chunk's `digest` in `build`'s manifest equals the digest recomputed
+    from the build's files by 5.2's recipe, with the chunk's own listings (`meshes`, `features`,
+    `footprints`, `weights`, `instances`) as given. A second reader's check of the recipe."""
+    root = work / args["build"]
+    m = _read_json(root / "manifest.json")
+    feats = _read_json(root / m["features"]) if isinstance(m.get("features"), str) else {}
+    by_name = {f.get("name"): f for f in feats.get("features", [])}
+    by_inst = {f.get("instance"): f for f in feats.get("footprints", [])}
+    inst = m.get("instances", {})
+    names = (root / inst["names"]).read_text(encoding="utf-8").split("\n")[:-1] if inst.get("count") else []
+    cols = {k: np.load(root / inst[k]) for k in ("x", "y", "face", "z", "scale", "tint")} if names else {}
+    fields = {k: (f, np.load(root / f["file"])) for k, f in m.get("fields", {}).items()
+              if f.get("type") == "scalar" and f.get("file")}
+    cuts = {k: np.load(root / f["cut"]) for k, (f, _) in fields.items() if f.get("cut")}
+    mesh_file = {e["name"]: e["file"] for e in m.get("meshes", [])}
+
+    def d(b: bytes) -> str:
+        return blake3.digest(b)
+
+    def cj(v: Any) -> bytes:
+        return canon.canonical_bytes(v)[:-1]
+
+    def bits(v: Any) -> int:
+        return int(np.asarray(v, dtype="<f4").view("<u4"))
+
+    out: list[Failure] = []
+    for c in m.get("chunks", []):
+        i0, j0, i1, j1 = c["posts"]
+        fd: dict[str, Any] = {}
+        for k, (f, arr) in fields.items():
+            fd[k] = d(np.ascontiguousarray(arr[j0:j1 + 1, i0:i1 + 1], dtype="<f4").tobytes())
+            if k in cuts:
+                fd[f"{k}.cut"] = d(np.ascontiguousarray(cuts[k][j0:j1, i0:i1]).tobytes())
+        wd = {k: (d((root / e["file"]).read_bytes()) if e.get("file") else None)
+              for k, e in c.get("weights", {}).items()}
+        rows: list[Any] = []
+        for asset, (first, count) in sorted(c.get("instances", {}).items(), key=lambda kv: kv[0].encode()):
+            for r in range(first, first + count):
+                rows.append([names[r], asset, int(cols["x"][r]), int(cols["y"][r]), int(cols["face"][r]),
+                             bits(cols["z"][r]), bits(cols["scale"][r]), bits(cols["tint"][r])])
+        mats = sorted({x for e in c.get("weights", {}).values() for x in e.get("materials", [])})
+        obj = {
+            "assets": {a: d(cj(m["assets"][a])) for a in c.get("instances", {}) if a in m.get("assets", {})},
+            "features": {n: d(cj(by_name[n])) for n in c.get("features", [])},
+            "fields": fd,
+            "footprints": {n: d(cj(by_inst[n])) for n in c.get("footprints", [])},
+            "instances": d(cj(rows)),
+            "materials": {x: d(cj(m["materials"][x])) for x in mats if x in m.get("materials", {})},
+            "meshes": {n: d((root / mesh_file[n]).read_bytes()) for n in c.get("meshes", [])},
+            "weights": wd,
+        }
+        got = d(cj(obj))
+        if got != c.get("digest"):
+            out.append((f"check.{cid}", f"chunk {c['at']} digest {c.get('digest')}", f"recomputed {got}"))
+    if not m.get("chunks"):
+        out.append((f"check.{cid}", "chunks to recompute", "none"))
+    return out
+
+
+def weights_chunks_equal(cid: str, args: dict[str, Any], work: Path, ctx: dict[str, Any]) -> list[Failure]:
+    """`build.md` case 16: `whole` is one chunk; for each weights field, each material's plane in
+    each chunk of `chunked` equals the same window of that material's plane in `whole`, byte for
+    byte, and a material a chunk leaves out is 0 over that window there."""
+    a = _read_json(work / args["chunked"] / "manifest.json")
+    b = _read_json(work / args["whole"] / "manifest.json")
+    if len(b.get("chunks", [])) != 1:
+        return [(f"check.{cid}", f"{args['whole']} is one chunk", str(len(b.get("chunks", []))))]
+    one = b["chunks"][0]
+    out: list[Failure] = []
+    checked = 0
+    for field, w in one.get("weights", {}).items():
+        if w.get("file") is None:
+            continue
+        whole = np.load(work / args["whole"] / w["file"])
+        mats = w["materials"]
+        for c in a.get("chunks", []):
+            i0, j0, i1, j1 = c["posts"]
+            e = c.get("weights", {}).get(field)
+            if e is None:
+                return [(f"check.{cid}", f"chunk {c['at']} lists {field}", "absent")]
+            here = e.get("materials", [])
+            part = np.load(work / args["chunked"] / e["file"]) if e.get("file") else None
+            for m in mats:
+                cut = whole[mats.index(m), j0 : j1 + 1, i0 : i1 + 1]
+                if m in here and part is not None:
+                    got = part[here.index(m)]
+                else:
+                    got = np.zeros_like(cut)
+                checked += 1
+                if got.shape != cut.shape or not np.array_equal(got, cut):
+                    out.append((f"check.{cid}", f"{field} {m} in chunk {c['at']} equals the cut", "differs"))
+    if checked == 0 and not out:
+        out.append((f"check.{cid}", "at least one weights plane compared", "none"))
+    return out
+
+
 # --- names_count, names_kept (geometry.md 8, identity.md 23 to 26) ---------------------------
 
 
@@ -959,6 +1074,9 @@ CHECKS: dict[str, Callable[[str, dict[str, Any], Path, dict[str, Any]], list[Fai
     "changes_by_prefix": changes_by_prefix,
     "vectors_match": vectors_match,
     "json_count": json_count,
+    "chunk_digests": chunk_digests,
+    "chunk_digest_recomputed": chunk_digest_recomputed,
+    "weights_chunks_equal": weights_chunks_equal,
     "run_node": run_node,
     "array_window": array_window,
     "run_report_valid": run_report_valid,

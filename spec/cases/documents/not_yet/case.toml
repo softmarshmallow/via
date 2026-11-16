@@ -1,6 +1,7 @@
 format    = "via-case-1"
-summary   = "`[budget]` in the world file: doc.not_yet naming M6 (`[import]` arrived in M4 and `type = \"volume\"` was dropped in M5, so neither serves)."
+summary   = "A word of a later milestone in the world file: doc.not_yet naming its milestone."
 milestone = 1
+pending   = "no word of a later milestone is left to test with: `[budget]` and `chunk` arrived in M6 slice 1 (build.md 5, 5.1) and `when = \"export\"` arrives in M6 slice 2; the row returns when a later milestone names a word (vocabulary.md 5)"
 actions   = ["merge"]
 
 [action.merge]

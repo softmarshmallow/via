@@ -16,7 +16,7 @@ out  = "build/w"
 
 [action.fmt]
 replace = "build/w/manifest.json"
-find    = "\"format\":\"via-build-0\""
+find    = "\"format\":\"via-build-1\""
 with    = "\"format\":\"via-build-9\""
 
 [action.c1]

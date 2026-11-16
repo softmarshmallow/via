@@ -186,13 +186,28 @@ pub struct Chunks {
 
 impl Chunks {
     /// The default tiling: the side is the largest multiple of the resolution not above 64 m, and
-    /// at least the resolution. A written `chunk` is M6 (`doc.not_yet`).
+    /// at least the resolution.
     pub fn new(grid: &Grid) -> Chunks {
-        let r = grid.resolution;
-        let side = if r >= CHUNK_DEFAULT_MM {
-            r
+        Chunks::with_side(grid, None)
+    }
+
+    /// The default side for a resolution (`build.md` 5).
+    pub fn default_side(resolution_mm: i64) -> i64 {
+        if resolution_mm >= CHUNK_DEFAULT_MM {
+            resolution_mm
         } else {
-            (CHUNK_DEFAULT_MM / r) * r
+            (CHUNK_DEFAULT_MM / resolution_mm) * resolution_mm
+        }
+    }
+
+    /// The tiling with the world's `chunk` (M6), or the default with none. A side that is not a
+    /// positive whole multiple of the resolution is the caller's `build.chunk_not_multiple`; here
+    /// it falls back to the default, so a build with that error still has a tiling.
+    pub fn with_side(grid: &Grid, side_mm: Option<i64>) -> Chunks {
+        let r = grid.resolution;
+        let side = match side_mm {
+            Some(s) if s >= r && s % r == 0 => s,
+            _ => Chunks::default_side(r),
         };
         let k = (side / r) as u64;
         let count = |n: u64| ((n - 1).div_ceil(k)).max(1);
@@ -328,5 +343,20 @@ mod tests {
         let g = grid([0, 0, 200_000, 100_000], 100_000);
         let c = Chunks::new(&g);
         assert_eq!((c.k, c.cx, c.cy), (1, 2, 1));
+    }
+
+    #[test]
+    fn a_written_side_tiles_and_a_bad_one_falls_back() {
+        // ford at a 32 m chunk: 64 posts per side, 8 by 8 chunks.
+        let g = grid([0, 0, 256_000, 256_000], 500);
+        let c = Chunks::with_side(&g, Some(32_000));
+        assert_eq!((c.k, c.cx, c.cy, c.side_mm()), (64, 8, 8, 32_000));
+        assert_eq!(c.window(1, 0), Window::new(64, 0, 129, 65));
+        // The whole extent as one chunk.
+        let c = Chunks::with_side(&g, Some(256_000));
+        assert_eq!((c.cx, c.cy), (1, 1));
+        // Not a multiple, or below the resolution: the default.
+        assert_eq!(Chunks::with_side(&g, Some(32_250)), Chunks::new(&g));
+        assert_eq!(Chunks::with_side(&g, Some(0)), Chunks::new(&g));
     }
 }

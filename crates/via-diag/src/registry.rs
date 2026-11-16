@@ -135,7 +135,14 @@ pub fn is_run_code(code: &str) -> bool {
     if RUN.contains(&code) {
         return true;
     }
-    code.starts_with("build.") && code != "build.chunk_not_multiple" && code != "build.internal"
+    // The chunk side and the budget are the world's (M6), as is a defect of ours.
+    const WORLD_BUILD: &[&str] = &[
+        "build.chunk_not_multiple",
+        "build.internal",
+        "build.over_budget",
+        "build.waiver_unused",
+    ];
+    code.starts_with("build.") && !WORLD_BUILD.contains(&code)
 }
 
 /// True when `code` matches the form of section 2: `group.name`, or `step.<id>.<name>`, each part

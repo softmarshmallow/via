@@ -784,7 +784,9 @@ pub fn run(a: &Args) -> Outcome {
         memo_ms: via_model::memo_ms().saturating_sub(memo_at_start),
         run_records,
     };
-    // The null build (`graph.md` 6.2): nothing is touched; the record is the build.
+    // The null build (`graph.md` 6.2): nothing is touched; the record is the build. A directory
+    // that holds no build has no baseline, so its files are the key's too (into a new directory).
+    let fresh_dir = manifest_key.is_none() && !out_dir.join(".previous").exists();
     if a.rerun.is_empty() {
         if let Some(null) = null_build(
             &store,
@@ -792,8 +794,16 @@ pub fn run(a: &Args) -> Outcome {
             manifest_key.as_ref(),
             a.against.is_some(),
             &out_dir,
+            fresh_dir,
         ) {
-            let (diags, lints, restored) = null;
+            let (mut diags, lints, restored) = null;
+            if fresh_dir {
+                // As any build with no baseline says (`identity.no_previous`, never recorded).
+                diags.push(no_previous());
+            }
+            if pack_far {
+                run_diags.push(pack_root_far());
+            }
             run_diags.extend(store.take_run_diags());
             // The world the recorded diagnostics were emitted against: the merged text joined
             // with what each generate step returned, read back from the record (`graph.md` 6.2),
@@ -940,13 +950,7 @@ pub fn run(a: &Args) -> Outcome {
     let model = via_model::ModelPlan::new(&world, &model_opts, base_build);
     let mut extra: Vec<Diag> = Vec::new();
     if baseline.is_none() && !baseline_missing {
-        extra.push(Diag::new(
-            codes::identity::NO_PREVIOUS,
-            Subject::World,
-            Site::World,
-            via_diag::text!("no baseline build to report changes against"),
-            via_diag::text!("none needed; the next build has one"),
-        ));
+        extra.push(no_previous());
     }
     let mut flags = J::obj();
     flags.insert(
@@ -1147,11 +1151,7 @@ pub fn run(a: &Args) -> Outcome {
     };
     let mut extra_run: Vec<Diag> = Vec::new();
     if pack_far {
-        extra_run.push(run_diag(
-            codes::build::PACK_ROOT_FAR,
-            "no relative path leads from the build directory to the pack's root".into(),
-            "build onto the pack's drive, or tell the loader where the pack is",
-        ));
+        extra_run.push(pack_root_far());
     }
     let (Some(changes_bytes), Some(manifest_bytes)) = (last("changes.json"), last("manifest.json"))
     else {
@@ -1195,6 +1195,19 @@ pub fn run(a: &Args) -> Outcome {
         );
     }
     put_record(file_digests);
+    // A build with no baseline keeps its manifest and reports by the build key, so a build into
+    // a new directory with that key is a null build (`graph.md` 6.2).
+    if baseline.is_none() && !baseline_missing && a.against.is_none() {
+        let made: BTreeMap<String, Digest> = [
+            ("manifest.json", &manifest_bytes),
+            ("changes.json", &changes_bytes),
+            ("diagnostics.json", &diagnostics),
+        ]
+        .into_iter()
+        .map(|(p, b)| (p.to_string(), Digest::of(b)))
+        .collect();
+        via_graph::put_fresh(&store, &key, &made);
+    }
     all_files.insert("manifest.json".into(), manifest_bytes);
     all_files.insert("changes.json".into(), changes_bytes);
     all_files.insert("diagnostics.json".into(), diagnostics);
@@ -1347,13 +1360,71 @@ fn join_recorded(
     world.join(&returned).0
 }
 
+/// `identity.no_previous`: a build with no baseline says so; about the run, never replayed.
+fn no_previous() -> Diag {
+    Diag::new(
+        codes::identity::NO_PREVIOUS,
+        Subject::World,
+        Site::World,
+        via_diag::text!("no baseline build to report changes against"),
+        via_diag::text!("none needed; the next build has one"),
+    )
+}
+
+fn pack_root_far() -> Diag {
+    run_diag(
+        codes::build::PACK_ROOT_FAR,
+        "no relative path leads from the build directory to the pack's root".into(),
+        "build onto the pack's drive, or tell the loader where the pack is",
+    )
+}
+
+/// The null build into a directory that holds no build (`graph.md` 6.2): the data files are the
+/// record's and the manifest and reports those a build with no baseline wrote under this key;
+/// every one is written from the store, with a `.previous` naming the manifest.
+fn null_build_fresh(
+    store: &Store,
+    key: &Digest,
+    against: bool,
+    out: &Path,
+) -> Option<(Vec<Diag>, Vec<Lint>, Vec<Diag>)> {
+    let (rec, made) = via_graph::null_build_fresh(store, key, against)?;
+    let (diags, lints) = graph::decode_world(&rec.world_diags)?;
+    if rec.files.is_empty() {
+        return None;
+    }
+    let manifest_digest = *made.get("manifest.json")?;
+    let manifest = store.get_object(&manifest_digest)?;
+    let (_, id, mkey) = manifest_ids(&manifest)?;
+    if mkey != key.hex() {
+        return None;
+    }
+    let mut files: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    for (p, d) in rec.files.iter().chain(made.iter()) {
+        files.insert(p.clone(), store.get_object(d)?);
+    }
+    files.insert(
+        ".previous".into(),
+        previous_file(&J::s(id), &J::s(manifest_digest.hex())),
+    );
+    let mut failed = Vec::new();
+    if let Err(d) = dir::replace(out, &files) {
+        failed.push(d);
+    }
+    Some((diags, lints, failed))
+}
+
 fn null_build(
     store: &Store,
     key: &Digest,
     manifest_key: Option<&Digest>,
     against: bool,
     out: &Path,
+    fresh: bool,
 ) -> Option<(Vec<Diag>, Vec<Lint>, Vec<Diag>)> {
+    if fresh {
+        return null_build_fresh(store, key, against, out);
+    }
     let rec = via_graph::null_build(store, key, manifest_key, against)?;
     let (diags, lints) = graph::decode_world(&rec.world_diags)?;
     if rec.files.is_empty() {

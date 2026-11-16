@@ -37,22 +37,37 @@ pub const METHODS: [&str; 14] = [
     "diag.emit",
 ];
 
-/// The running workers of a build, one per step, started at a step's first call and shut down
-/// when the build ends (3.2: workers do not outlive a build).
+/// The running workers of a build, started at a step's first call and shut down when the build
+/// ends (3.2: workers do not outlive a build). A step's calls that run at once (the items of a
+/// `for_each`) are each given a worker: one that is free, else a new one, so a step has at most
+/// as many workers as the build runs calls of it at once.
 #[derive(Default)]
 pub struct Pool {
-    slots: Mutex<BTreeMap<String, Arc<Mutex<Option<Worker>>>>>,
+    slots: Mutex<BTreeMap<String, Vec<Slot>>>,
 }
 
+/// One worker's place: empty until its first call starts it; a call holds it (keeps the `Arc`)
+/// while it runs.
+pub type Slot = Arc<Mutex<Option<Worker>>>;
+
 impl Pool {
-    /// The slot of a step's worker; one call at a time holds it.
-    pub fn slot(&self, step: &str) -> Arc<Mutex<Option<Worker>>> {
-        self.slots
+    /// A slot of a step's workers for one call, which holds it while it runs: a free one, else a
+    /// new one. A slot is free when only the pool holds it; it is taken (cloned) under the pool's
+    /// lock, so two calls are never handed one slot. (Testing its mutex with `try_lock` released
+    /// the test before the caller locked, so two calls could take one slot and run in turn: M6
+    /// slice 1 review.)
+    pub fn slot(&self, step: &str) -> Slot {
+        let mut slots = self
+            .slots
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .entry(step.to_string())
-            .or_default()
-            .clone()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let held = slots.entry(step.to_string()).or_default();
+        if let Some(free) = held.iter().find(|s| Arc::strong_count(s) == 1) {
+            return free.clone();
+        }
+        let new: Slot = Arc::default();
+        held.push(new.clone());
+        new
     }
 }
 
@@ -68,7 +83,7 @@ impl Pool {
                 .unwrap_or_else(std::sync::PoisonError::into_inner),
         );
         let mut out = Vec::new();
-        for (_, s) in slots {
+        for s in slots.into_values().flatten() {
             if let Some(w) = s
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -329,8 +344,16 @@ impl Services for Svc<'_, '_> {
                         && method != "input.open"
                         && method != "pack.query"
                     {
+                        // An `expr.eval` reads its fields over the posts its values stand on
+                        // (`protocol.md` 3.3), so an edit far from them leaves its trace whole.
+                        let window = (method == "expr.eval")
+                            .then(|| self.view.eval_window(params))
+                            .flatten();
                         for f in self.compute_fields(method, params) {
-                            let p = json!({"fields": [f.clone()], "view": view});
+                            let mut p = json!({"fields": [f.clone()], "view": view});
+                            if let Some(w) = window {
+                                p["window"] = json!(w);
+                            }
                             if let Ok(a) = self.view.answer("build.field", &p) {
                                 self.record("build.field", &p, &a);
                             }
@@ -483,7 +506,24 @@ pub fn call(
 
 #[cfg(test)]
 mod tests {
-    use super::path_free;
+    use super::{path_free, Pool};
+
+    #[test]
+    fn a_step_called_at_once_gets_a_worker_per_call() {
+        // `protocol.md` 3.2: a free worker of the step, else a new one.
+        let pool = Pool::default();
+        let a = pool.slot("lay");
+        let b = pool.slot("lay");
+        assert!(!std::sync::Arc::ptr_eq(&a, &b));
+        let first = std::sync::Arc::as_ptr(&a);
+        drop(a);
+        let again = pool.slot("lay");
+        assert_eq!(std::sync::Arc::as_ptr(&again), first);
+        assert!(!std::sync::Arc::ptr_eq(&pool.slot("other"), &again));
+        // While `again` and `b` are held, a third call gets a third slot.
+        let c = pool.slot("lay");
+        assert!(!std::sync::Arc::ptr_eq(&c, &again) && !std::sync::Arc::ptr_eq(&c, &b));
+    }
 
     #[test]
     fn a_refusal_message_keeps_no_machine_path() {

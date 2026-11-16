@@ -1,0 +1,57 @@
+format    = "via-case-1"
+summary   = "ford built into one directory, then into a second at the same depth with the same store: the second is a null build (graph.md 6.2, into a new directory), its files, id, diagnostics and output those of the first."
+milestone = 6
+actions   = ["program", "trust", "first", "second"]
+
+# graph.md 6.2 "Into a new directory": a directory that holds no build has no baseline, so its
+# manifest and reports are the build key's; the second build touches no node and writes them from
+# the store. Its output is the first build's, which had no baseline either (stdout the same).
+# The runner builds each case clean too (section 7), so the second directory equals a clean one.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/one", "--store", "store"]
+out         = "build/one"
+exit        = 0
+diagnostics = "includes"
+
+[action.second]
+via         = ["build", "world.toml", "--out", "build/two", "--store", "store"]
+out         = "build/two"
+exit        = 0
+diagnostics = "includes"
+
+[action.second.nodes]
+ran = []
+
+[action.second.file.null]
+path    = "build/two.run.json"
+pointer = "/build/null"
+value   = true
+
+[action.second.same.files]
+action = "first"
+what   = "files"
+
+[action.second.same.id]
+action = "first"
+what   = "id"
+
+[action.second.same.diagnostics]
+action = "first"
+what   = "diagnostics"
+
+[action.second.same.stdout]
+action = "first"
+what   = "stdout"

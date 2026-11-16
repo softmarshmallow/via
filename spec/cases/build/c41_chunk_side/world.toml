@@ -1,0 +1,8 @@
+name       = "tiles"
+extent     = [0, 0, 100, 60]
+resolution = 2
+chunk      = 32
+
+[field.height]
+role = "surface"
+base = "= 0.25 * x"

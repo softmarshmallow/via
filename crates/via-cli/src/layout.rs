@@ -3,9 +3,8 @@
 
 use via_num::Grid;
 
-/// The default chunk side in millimetres, until `chunk` arrives (M6): the largest multiple of
-/// `resolution` not above 64 m, and at least `resolution`. (open in `build.md` 5, decided by the
-/// M1 world's build times.)
+/// The default chunk side in millimetres, when the world writes no `chunk`: the largest multiple
+/// of `resolution` not above 64 m, and at least `resolution` (`build.md` 5).
 pub const DEFAULT_SIDE_MM: i64 = 64_000;
 
 /// One chunk: its index and the posts it holds, ends included.
@@ -41,9 +40,20 @@ pub struct Layout {
 }
 
 impl Layout {
+    /// The default tiling (`build.md` 5).
+    #[cfg(test)]
     pub fn new(grid: &Grid) -> Layout {
+        Layout::with_side(grid, None)
+    }
+
+    /// The tiling with the world's `chunk` (M6): a side that is not a positive whole multiple of
+    /// `resolution` (`build.chunk_not_multiple`, the model's) falls back to the default.
+    pub fn with_side(grid: &Grid, side: Option<i64>) -> Layout {
         let r = grid.resolution;
-        let side_mm = ((DEFAULT_SIDE_MM / r) * r).max(r);
+        let side_mm = match side {
+            Some(s) if s >= r && s % r == 0 => s,
+            _ => ((DEFAULT_SIDE_MM / r) * r).max(r),
+        };
         let k = u64::try_from(side_mm / r).unwrap_or(1).max(1);
         let count = |n: u64| (n.saturating_sub(1)).div_ceil(k).max(1);
         let (ncx, ncy) = (count(grid.nx), count(grid.ny));

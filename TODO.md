@@ -1338,12 +1338,15 @@ Later:
 
 ### From M5 close (2026-11-17; the fresh agent, the change and on-foot reviews, and the fix pass)
 
-- [ ] M4 worlds not rebuilt after M5 library changes (found by the M5 sheet): county base
+- [x] M4 worlds not rebuilt after M5 library changes (found by the M5 sheet): county base
   `town_instances` 324 against [68, 68] (quay, its import, now lays its wall with lib/town kit.py,
   slice 3) and border base `unowned` 2 against [0, 0] (monastery, its import, now has sheer faces;
   the bridge over a face is `geom.unowned_crossing`, open item above). Confirm each cause, then
   re-band with the reason or fix; rebuild every importing world in the slice that changes its
   import (M6 slice 1).
+  Done M6 slice 1: both causes confirmed as the imports' (county 324 = 249 wall pieces + 75
+  houses; border's 2 are monastery's bridge over its sheer faces), re-banded with the reason in
+  expect.toml; county base 12/12 and border base 13/13 in the on-foot review's rebuild.
 
 Lesson: a fix closed at the case it was written for and not at the world that found it: the slice-3
 target fix covered a point `on` a deck, and station's tower views still looked through their
@@ -1390,6 +1393,13 @@ To M6:
   a view that follows a produced wedge needs a name for it.
 - [ ] A lint that furniture stands off a flight's line (station's `in_flight` is a world measure);
   lib/building `check` should report it for any building.
+- [ ] Streaming (M6 slice 1, stream.gd) left: reload only the chunks whose `digest` (build.md 5.2)
+  changed after a rebuild; walks streamed and whole agree on outcome and blocker in all 25 coast
+  and city walks, but two stop elsewhere along the wall they press (coast `cliff_from_sea` 0.52 m,
+  city `old_town_edge` 0.02 m), likely the order bodies enter the space; a headless walk's first
+  frame is 133 ms (Godot's 8-step clamp after the start's loading), not the streamer's.
+  Lesson: a renderer read-back (`Mesh.get_faces`) on a worker thread waits on the main loop, so a
+  threaded chunk load hung on the fixture's `mesh` collision; make chunk data without read-backs.
 
 To M7:
 - [ ] The loader draws the skirt's cut quads clipped to the strip (monastery `bm_tarn` fringe;
@@ -1404,6 +1414,89 @@ Later:
   meeting taken away); `outside` 13.9 m short at the kitchen table; coast `cliff_from_sea` and
   `along_cliff` blocked in every build; townland `from_east_gate` a grass slope; college blocks show
   no door at `*.entry` (on-foot review 8 to 10, all known).
+
+### From M6 slice 1, perf (2026-11-17; city and quay, before and after in examples/*/expect.toml)
+
+- [x] An unchanged build into a new directory is a null build (graph.md 6.2 "Into a new
+  directory", case `graph/null_new_dir`, M6): city 17.4 -> 1.1 s, quay 2.1 -> 0.2 s.
+- [x] city's houses steps run per block (`for_each = "kind:block"`; houses.py "Per block", test
+  `test_per_block_places_each_house_once`): 2291 houses name for name; move_avenue's houses calls
+  124 -> 29 node-seconds. Three core changes it needed (decided, open to the owner): `within`
+  takes what meets the region (protocol.md 3.3; a straight street passing a block had no vertex
+  in it); an `expr.eval`'s fields are traced over its window, not whole (protocol.md 3.3; every
+  call re-ran on any edit of `height`); a step's calls that run at once get a worker each
+  (protocol.md 3.2; one worker made 186 calls a queue).
+- [ ] city `move_avenue` is still 106 s against 128 s cold (target 40 s). From `sample` of a
+  change build (move_bridge, after): key records written one by one on the engine's thread, about
+  15 s (`Store::put_key`, `write_once`: exists, two `create_dir_all`, a temp file, a hard link,
+  an unlink each; batch them, or write off the engine's thread); trace replays answered on that
+  thread, 13 s (`stepwork::replay`); 650 `distance` nodes, 29 node-seconds, most in
+  `lineref::nearest`; three `prepare` passes, about 2.7 s each, of which `Placer::select`
+  evaluating each `where` (its `slope` resolves `height` over windows, fbm noise) 0.9 to 1.2 s and
+  `network::network` 0.5 s (HEAD profile, city into a new directory).
+- [ ] The full view of `height` at rank 1 read another value at post (0, 0) after city
+  `move_avenue` than before, while the built field's post is 14.0 in both (houses.py's field
+  listing read that post; it now reads one in its block, `probe`). Find why the stratum's view
+  moves there; a step reading a corner post re-runs on any far edit.
+- [ ] quay, townland: houses per block as in city (quay's houses are 7 s of `unrelated`).
+- [x] `diagnostics.json` merges equal records of a per-block step (city's `rows`: 119 records for
+  about 200 calls), so a world summing a step's counts over calls cannot; city's measure counts
+  from names now. A `for_each` step's records should keep their item (diagnostics.md 6 says the
+  item is the subject). Done in the M6 slice 1 fix pass: houses.py gives the block as subject and
+  `data.block` under `for_each`; city's `lots_held` sums the `rows` records again.
+
+Lesson: the houses steps were not the whole of a change's cost; once they ran per block, the
+change took as long, held up by the engine's own serial work. Profile the whole change build
+before choosing the cut.
+
+### From M6 slice 1 (2026-11-17; the change and on-foot reviews, and the fix pass)
+
+- [x] Closed in the fix pass: `budget:chunks` keyed on what the instance columns read, not
+  `names.txt` (a row crossing a chunk edge, or swapping its asset, kept a stale pass warm; case
+  `c48_budget_after_move`); build format `via-build-1` (a store filled by M5 would answer a null
+  build with the old manifest); a waiver raises only a limit the world sets; `reason = ""` is
+  `doc.missing_key`; the chunk digest holds its assets' and materials' manifest entries and lists
+  meshes by box (named check `chunk_digest_recomputed`, cases 16 and 45); per-block houses records
+  keep their block; a generated mesh's glTF material is not metal and is double-sided; the
+  streamer shows a coarse far ground per unloaded chunk; `Pool::slot` takes a slot under the
+  pool's lock; `gltf_check --source` runs on Python 3.9.
+
+To M6 slice 2 (atlas):
+- [ ] Streamed collision is not bit-equal to whole: border `bank_corner` (before) stops 40.7 m
+  from the whole build's stop (slope 57 against 40.5 degrees), and its after side moves 0.25 m
+  between runs. Add chunks to the physics space in a fixed order, and a streamed-equals-whole
+  stop check to test_stream (on-foot review).
+- [ ] The far ground draws no houses or meshes past the load radius (city `central_east_head`
+  1.7% of pixels differ from whole, the hill town's houses) and leaves slivers where a loaded
+  chunk's fine edge meets a coarse one; a far level of detail of instances (or a radius per asset
+  size) is the game's choice to make. No test compares a streamed view with the whole one
+  (test_stream checks only that the far ground is shown exactly where a chunk is not loaded).
+- [ ] The streamer does not read `digest`, `bounds` or `neighbours` yet (reload by digest is in
+  "To M6" above).
+- [ ] No case for an import's `chunk` and `[budget]` applying to its own build only (build.md 5,
+  5.1); no example writes `[budget]`, so no over-budget or waived chunk was seen on a world.
+- [ ] Change builds as slow as cold: city `hand` 116.5 s against 110.5 cold, `move_avenue` 98.6,
+  `move_bridge` 110.3; townland `move_crossing` 27.5 against 26.2; quay `unrelated` 21.8 against
+  15.0 (on-foot review, one run each, load 22 to 47). The perf items above.
+- [ ] The city frame tour covers 217 m of 1.6 km and loads 14 chunks: tour the bookmark route or
+  pace by its length. The headless "real time" walk gives 27,623 frames and 190.7 s in both modes:
+  likely Godot's low-processor sleep; set `OS.low_processor_usage_mode = false` or say so.
+
+To M7:
+- [ ] glTF export: water (`water_level`) is not carried (sea and beck missing at coast
+  `under_deck`); carry it per chunk, or say so in engines/gltf's README. The skirt is in "To M7"
+  above.
+- [ ] lib/map labels lib/building rooms by produced id (`lay#net_loft_s0_r0`): give rooms a name or
+  a role and index. map_render's labels collide on station floor 1 after `move_stair`.
+- [ ] map_render's coast registration counts `beck` (water) as a way and skips the under-way
+  `sea_cave` silently: rename the measure or list what it skips.
+- [ ] A generated mesh with no `material` has no glTF material, so a reader takes glTF's default
+  (a white metal); the glTF reader replaces it (15.3), others may not.
+
+Lesson: a key that names the file a node writes is not the key of what the node computes from it.
+`budget:chunks` read `names.txt` because the counts sit beside the names, but the counts come from
+positions and assets that file does not hold. Key a derived node on what decides its value, and
+write the case that changes only the undecided part.
 
 ## Framing
 
@@ -1646,9 +1739,14 @@ Structural checks stay in the core; everything else is an opt-in rule.
       body to the spike, where scattered trees and rocks had no colliders at all. Needs the asset
       contract to declare collision (none, box, mesh) so a rule can compare it with size, and a
       waiver for intended cases.
-- [ ] -> M6: Decide how budgets block. Context: the compiler flagged 21 chunks over the triangle budget and
+- [x] -> M6: Decide how budgets block. Context: the compiler flagged 21 chunks over the triangle budget and
       the warning was ignored until the frame rate collapsed. Lesson: a budget that only warns gets
       skipped; consider error thresholds and naming the asset that dominates.
+      Done M6 slice 1 (build.md 5.1, ours, open to the owner): `[budget]` in the world (triangles,
+      instances, groups per chunk), an over-budget chunk is `build.over_budget` (error, no warning
+      band) naming the dominant asset's share and the waiver line; `[budget.waive.<id>]` with a
+      required `reason`; an unneeded waiver is `build.waiver_unused`. Generated meshes are not
+      counted yet (open, decided by atlas's walk).
 
 ## Look and reference
 
@@ -1669,15 +1767,28 @@ Structural checks stay in the core; everything else is an opt-in rule.
 
 ## Player map
 
-- [ ] -> M6: Design the player-facing map as layers plus a separate style: what we emit (classes, masks,
+- [x] -> M6: Design the player-facing map as layers plus a separate style: what we emit (classes, masks,
       footprints, icons, labels, regions, floors, the world-to-map transform, tile fingerprints)
       and what stays the game's (discovery state, style). Context: study and spike on Coast.
+      Done M6 slice 1: build.md 9.4, lib/map/export.py, coast and station (`map.toml`, `[map]`
+      rows); station's `move_stair` changes exactly 4 of 80 tile fingerprints (floors 1 and 2).
+- [ ] -> M6 slice 2: The engine runs `when = "export"` (doc.not_yet today): the step node after
+      lints, `out` less `diagnostics.json` into `export/<step id>/`, `files`, `exports` with
+      `output` (protocol.md 1), case `c47_export_listed` (pending). Then move each world's
+      `map.toml` into its world.toml and retire `tools/map_export.py`. Lesson: the map was built
+      against a stand-in runner because the core half of its milestone row was in no slice.
+- [ ] -> M6: atlas's map: regions (`params.regions`) and POIs come from atlas's own features;
+      coast and station have none, so `labels.json` there holds only feature-name labels and rooms.
+- [ ] -> M6: The loader reads the player map (`exports` by `output`): a minimap in the viewer.
 - [ ] -> set aside (doctrine section 7, image-model map styling): Define a registration measure for a restyled map that works on painted water, roads and
       footprints. Context: the spike's colour-based water overlap failed on pale washes; only the
       shore distance was trustworthy. Nothing is published. Needs several seeds before any number
       is quoted.
-- [ ] -> M6: Design per-floor maps and discovery state. Context: not attempted in the spike, and the
+- [x] -> M6: Design per-floor maps and discovery state. Context: not attempted in the spike, and the
       study found no documentation of how shipped games produce multi-floor interior maps.
+      Done M6 slice 1 (build.md 9.4, ours): floors by level within 1.6 m, a height range per floor,
+      walls cut at 1.2 m, links with from and to floors; discovery is the game's, keyed on a 4 m
+      grid and on room names.
 - [ ] -> set aside (doctrine section 7, image-model map styling): Decide how a single changed map tile is repainted in a consistent style. Context: the spike
       fingerprints 64 tiles and found one changed after a level edit, but never repainted it. This
       is the map's version of hand edits surviving regeneration.
@@ -1848,7 +1959,9 @@ Structural checks stay in the core; everything else is an opt-in rule.
       we do own the structure that makes culling and streaming possible.
 - [ ] -> spec/build.md (R27 rules Godot for the first cut and Unreal set aside; close when `spec/build.md` holds the Unreal mapping table): Design the engine target strategy: Godot and Unreal mapping, and what "first-class" means for each.
 - [ ] -> spec/diagnostics.md: Design the agent loop surface: bookmarks, review renders, machine-readable diagnostics.
-- [ ] -> M6: Scope the derived products: minimap, POI metadata, streaming partition, static per-chunk budgets.
+- [x] -> M6: Scope the derived products: minimap, POI metadata, streaming partition, static per-chunk budgets.
+      Scoped M6 slice 1: the partition is `chunk` (build.md 5, 5.2), budgets `[budget]` (5.1), the
+      minimap and POI metadata the player map (9.4). The viewer's minimap is open under "Player map".
 - [ ] -> M6: Explain Coast's frame rate after parts were placed. Context: 22 fps in one capture, below the
       30 asked for, with about 9 million source triangles. Lesson so far: a part brings its whole
       budget with it and nothing in the master accounts for that.

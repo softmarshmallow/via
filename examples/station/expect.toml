@@ -47,3 +47,16 @@ unreached_names  = { text = "lantern living store tower_0 tower_1 tower_2 tower_
 doors_in         = { band = [3, 3] }        # the cottage's two doors and the loft's still in
 checked_meetings = { band = [15, 15] }
 meetings         = { band = [15, 15] }      # meets.json drops tower_step.end with the lint
+
+# The player map (lib/map, build.md 9.4), from `examples/station/map.toml`: M6 slice 1 tree, macOS
+# arm64, a release `via` of that tree, the base build, then
+#   sdk/python/.venv/bin/python tools/map_export.py B --step examples/station/map.toml --out M
+#   python3 tools/map_render.py B M --out PNG --ppm 10 --expect examples/station/expect.toml
+# (map_export.py stands in for the engine's export runner until `when = "export"` runs.)
+[map]
+floors           = { band = [4, 4] }        # ground floors (0.3, 0.309, 0.45 m), then the tower's 3.55, 6.7, 9.85
+links            = { band = [5, 5] }        # three spirals, the loft's flight, the tower's step
+walls            = { band = [250, 320] }    # 283: wall pieces through each floor's 1.2 m cut
+footprints       = { band = [3, 3] }        # cottage, loft, tower: the lowest floor's surfaces
+classes          = { band = [7, 7] }
+way_on_cells_min = { band = [1, 1] }        # every 0.25 m of each way's line lies on a way's cell

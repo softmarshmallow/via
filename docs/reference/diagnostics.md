@@ -11,14 +11,14 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-357 codes in 23 groups. 1 have no bad and fixed example yet; their explain text is the
+359 codes in 23 groups. 0 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
 |---|---|---|
 | [`asset`](#asset) | `spec/assets.md` | 18 |
 | [`authority`](#authority) | `spec/authority.md` | 19 |
-| [`build`](#build) | `spec/build.md` | 10 |
+| [`build`](#build) | `spec/build.md` | 12 |
 | [`check`](#check) | `spec/build.md` | 14 |
 | [`cli`](#cli) | `spec/diagnostics.md` | 3 |
 | [`derive`](#derive) | `spec/derived.md` | 6 |
@@ -562,13 +562,15 @@ Fixed: kind = "edge"
 |---|---|---|---|---|
 | `build.against_not_build` | error | 1 |  | `--against` names a folder with no manifest of a known `format`. Hint: name a complete build directory. |
 | `build.baseline_missing` | warning | 1 |  | `.previous` names a build the store no longer holds; the change report has no baseline. Hint: rebuild the earlier text, or pass `--against`. |
-| `build.chunk_not_multiple` | error | 6 |  | `chunk` is not a whole multiple of `resolution`; the hint gives the nearest that are. (M6.) |
+| `build.chunk_not_multiple` | error | 6 | `below`, `above` | `chunk` is not a whole multiple of `resolution`, or is below it; the hint gives the nearest that are, `data.below` and `data.above`. (M6.) |
 | `build.dir_busy` | error | 1 |  | The build directory could not be replaced because a file in it is open; names the file. Hint: close the program holding it, or build to another `--out`. |
 | `build.internal` | error | 1 |  | A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3. |
 | `build.no_facts` | error | 2 |  | `--stand-ins` was asked for and the pack has no facts file. Hint: run `via pack accept`. (M2.) |
 | `build.not_a_build` | error | 1 |  | `--out`, `<out>.partial` or `<out>.old` is a file, a non-empty folder `via` did not write, or the world file's own folder; nothing was deleted. Hint: name an empty or new folder. |
+| `build.over_budget` | error | 6 | `chunk`, `measure`, `value`, `limit`, `asset`, `share`, `instances` | A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`. Hint: thin that asset there, or the waiver line to write. (M6.) |
 | `build.pack_root_far` | warning | 1 |  | No relative path leads from the build directory to the pack's root (another drive); `pack_root` is `null`. Hint: build onto the pack's drive, or tell the loader where the pack is. |
 | `build.store_inside` | error | 1 |  | The store resolves inside the build directory, which every build replaces. Hint: drop `--store`, or name a folder outside `--out`. |
+| `build.waiver_unused` | warning | 6 | `waiver` | A `[budget.waive.<id>]` whose chunk is within the world's limit for every measure it writes, or whose `at` is no chunk (5.1); `data.waiver` is its id. Hint: delete the waiver. (M6.) |
 | `build.write_failed` | error | 1 |  | A file or rename could not be written; names the path and the system's error. Hint: free space, or fix the folder's permissions. |
 
 ### `build.against_not_build`
@@ -601,7 +603,12 @@ Fixed: via build world.toml --against build/a
 error, milestone 6, `spec/build.md`.
 
 ```text
-chunk is not a whole multiple of resolution; the hint gives the nearest that are. (M6.)
+The world's chunk side is not a whole multiple of its resolution, or is smaller than it. Chunks
+hold whole posts and share their edge posts, so a side must be a whole number of posts.
+To fix: Write one of the two multiples the hint gives.
+Bad:   resolution = 2
+       chunk      = 33
+Fixed: chunk      = 32
 ```
 
 ### `build.dir_busy`
@@ -652,6 +659,25 @@ Bad:   via build world.toml --out .
 Fixed: via build world.toml --out build/a
 ```
 
+### `build.over_budget`
+
+error, milestone 6, `spec/build.md`.
+
+```text
+A chunk holds more than the world's [budget] allows for one measure: triangles, instances or
+instance groups. A budget that only warned was skipped until the frame rate collapsed, so an
+over-budget chunk fails the build. The record names the chunk, the measure, the asset with the
+largest share of it there and that share.
+To fix: Thin or swap the named asset in that chunk, or, when the target can draw it, waive that
+chunk with a reason: the hint gives the line.
+Bad:   [budget]
+       triangles = 400000            (chunk [3, 4] holds 612000)
+Fixed: [budget.waive.c3_4]
+       at        = [3, 4]
+       triangles = 612000
+       reason    = "the engine's detail levels draw a third of them past 60 m"
+```
+
 ### `build.pack_root_far`
 
 warning, milestone 1, `spec/build.md`.
@@ -674,6 +700,20 @@ so the store would be deleted with it.
 To fix: Drop --store to use the default, or name a folder outside --out.
 Bad:   via build world.toml --out build/a --store build/a/store
 Fixed: via build world.toml --out build/a --store build/store
+```
+
+### `build.waiver_unused`
+
+warning, milestone 6, `spec/build.md`.
+
+```text
+A budget waiver raises the limit for one chunk. This one is not needed: its chunk is within the
+world's own limits for every measure it names, or its at names no chunk of this build. A waiver
+that outlives its cause hides the next overload in that chunk.
+To fix: Delete the waiver.
+Bad:   [budget.waive.old]
+       at = [9, 9]                   (the world has 4 by 4 chunks)
+Fixed: (no waiver)
 ```
 
 ### `build.write_failed`

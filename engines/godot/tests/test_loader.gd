@@ -84,7 +84,7 @@ func _before() -> void:
 	if root == null:
 		return
 	check("before: root named after world, holding id and format", root.name == "fixture"
-		and root.get_meta("id") == manifest.id and root.get_meta("format") == "via-build-0")
+		and root.get_meta("id") == manifest.id and root.get_meta("format") == "via-build-1")
 	check("before: no error", loader.diags.errors() == 0, str(loader.diags.records))
 	# one chunk node per chunk; one MultiMeshInstance3D per chunk entry's asset holding its count
 	var counts_ok := true

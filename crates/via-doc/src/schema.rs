@@ -150,6 +150,10 @@ pub enum Shape {
     Import,
     /// `[given.<name>]` (`composition.md` 8).
     Given,
+    /// `[budget]` (`build.md` 5.1).
+    Budget,
+    /// `[budget.waive.<id>]`.
+    Waive,
     /// `[let]`, `[field.<n>.let]`, `[kind.<k>.let]`: names to formulas.
     Let,
 }
@@ -253,7 +257,8 @@ pub fn world_key(name: &str) -> Option<Rule> {
         "include" => Rule::Ok(Takes::Strings),
         "pack" => Rule::Ok(Takes::Str),
         "datum" => Rule::Ok(Takes::Name),
-        "chunk" | "budget" => Rule::NotYet(6),
+        "chunk" => Rule::Ok(Takes::Length),
+        "budget" => Rule::Ok(Takes::Table(Shape::Budget)),
         _ => return None,
     })
 }
@@ -483,6 +488,19 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("accepts", Ok(T::Str)),
             ("default", Ok(T::Given)),
             ("kind", Ok(T::Name)),
+        ],
+        Shape::Budget => &[
+            ("triangles", Ok(T::Integer)),
+            ("instances", Ok(T::Integer)),
+            ("groups", Ok(T::Integer)),
+            ("waive", Ok(T::Ids(Shape::Waive))),
+        ],
+        Shape::Waive => &[
+            ("at", Ok(T::Numbers(2))),
+            ("triangles", Ok(T::Integer)),
+            ("instances", Ok(T::Integer)),
+            ("groups", Ok(T::Integer)),
+            ("reason", Ok(T::Str)),
         ],
         Shape::Let => &[],
     }

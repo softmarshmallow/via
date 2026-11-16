@@ -366,13 +366,14 @@ is `identity.duplicate_id`.
 | `remove = true` | Deletes the entity, or the sub-table it is written in. No other key may sit beside it (`doc.remove_with_keys`). |
 | `unset = ["k", ...]` | Deletes those keys from the table it is written in. In `[change.<c>.let]` it deletes `let` names. A key named in `unset` and also written in the same table is `doc.remove_with_keys`. |
 | one placement key (`at`, `on`, `path`, `region`, `where`, `follows`) | Sets it and deletes the other placement keys of that table. If the key is not `path`, it also deletes `starts_at`, `ends_at`, `smooth` and `route`, which only a path takes (`geometry.md` 2.2, 2.3, `derived.md` 3); if it is not `where`, it deletes `holds` (`derived.md` 2). |
-| the top-level keys `pack`, `seed`, `extent`, `resolution` | Sets them. `pack` is the ford pack-swap case: a change file holding `pack = "<other>"` leaves the world's text untouched and swaps the look, the facts it carries (size, footprint, mounts) and what follows from them, which settles and is reported (R30, `assets.md` 1). |
+| the top-level keys `pack`, `seed`, `extent`, `resolution`, `chunk` (M6) | Sets them. `pack` is the ford pack-swap case: a change file holding `pack = "<other>"` leaves the world's text untouched and swaps the look, the facts it carries (size, footprint, mounts) and what follows from them, which settles and is reported (R30, `assets.md` 1). |
 
 What a change body may not hold:
 
 | Written in the body | Code | Why |
 |---|---|---|
 | `include` or `name` | `doc.change_fixed` | Changes write onto the kinds `include` brings, so the list is settled before any change applies, in one pass. `name` names the world whose differences the changes are. |
+| `[budget]` (M6) | `doc.change_fixed` | A budget is the target's, the same for every change of the world (`build.md` 5.1). |
 | `[layer.*]` | `doc.not_yet` (M4) | Adding, removing or re-ranking a layer by change makes reading re-entrant: the base and the change namespace would depend on the changes. No ford case needs it. When one does, the layer set is resolved in a first pass, before the base is formed. |
 | a new kind | `doc.kind_outside_library` | A kind is declared in a library. A change may write onto, or remove, an existing kind; kinds have no rank. |
 | `[asset.*]`, `[material.*]`, `root` | `doc.unknown_key`, hint `pack` | A pack is not reachable by changes in M1; a change swaps it whole with `pack`. |
@@ -415,7 +416,8 @@ key, never by whether it was written inline or with a header. This is the one li
   list. Writing only `t` in a change's `on` replaces `on` with a table that lacks `ref`:
   `doc.missing_key`, whose hint says to write the whole `on`.
 - **Every other table merges** key by key, to any depth: top tables, `let`, `defaults`, `then`,
-  `effect`, `mount`, `item`, `params`, `give`, `budget`, and every entity.
+  `effect`, `mount`, `item`, `params`, `give`, and every entity. (`budget` is the world file's alone:
+  a change may not write it, `build.md` 5.1.)
 - A chapter that adds a table-valued key says here which list it joins.
 
 This supersedes the sentence in `vocabulary.md` 2.5 that makes inline tables values. It governs
@@ -580,7 +582,7 @@ error. Unrequested changes are checked after step 7 (6.1). `diagnostics.json` is
 |---|---|
 | `@format` | `"via-merged-1"`. |
 | `@changes` | The requested changes, as `build.md` lists them in the build record. |
-| `name`, `extent`, `resolution`, `seed`, `pack`, `include` | As merged, where written. `include` sorted bytewise; it changes nothing by order. |
+| `name`, `extent`, `resolution`, `seed`, `pack`, `include`, `chunk`, `budget` | As merged, where written. `include` sorted bytewise; it changes nothing by order. |
 | `layer` | Every layer by id, `world` included, with its keys; `world` always shows `rank`. |
 | `kind` | Every kind of every included library, after changes, each with `@library` naming its library. |
 | one member per other top table (`field`, `feature`, `instance`, `let`, `step`, ...) | Each entity by id, after changes, with `@layer` naming the layer it is declared in. A `let` entity is `{ "@layer": ..., "value": ... }`. |
@@ -738,8 +740,7 @@ canonical JSON of section 8; "origins" is `via merge --origins`.
 | array_table | `[[feature]]` items each with `id`, the first `id = "mill"` | merge | `doc.syntax`, exit 1, `data.rewrite` `[feature.mill]`. |
 | inline_list | `assets = [{ id = "a", weight = 2 }]` on a scatter | merge | No diagnostic. |
 | unknown_key | `[feature.lane] widht = 6` | merge | `doc.unknown_key`, line and column of `widht`, hint `width`. |
-| not_yet | `[budget]` in the world file (M1 to M3: `[import.a]`; M4: `type = "volume"`, dropped in M5) | merge | `doc.not_yet` naming M6. |
-| chunk_not_yet | `chunk = 64` in the world file | merge | `doc.not_yet` naming M6. |
+| not_yet | A word of a later milestone in the world file (M1 to M3: `[import.a]`; M4: `type = "volume"`, dropped in M5; M5: `[budget]`, arrived in M6). Pending from M6: no later word is left. | merge | `doc.not_yet` naming its milestone. |
 | datetime | `seed = 1979-05-27` | merge | `doc.type`. |
 | integer_key | `[layer.d] rank = 1.0` | merge | `doc.type`. |
 | hex_literal | `[layer.d] rank = 0x10` | merge | JSON `rank` is `16`. |

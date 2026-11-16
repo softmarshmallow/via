@@ -517,7 +517,7 @@ def write_build(out, downstream, pack_dir):
             "material": {"role": "material", "tags": [], "taxon": None, "type": "weights", "unit": None},
             "water": field("fields/water.npy", wat, None, ["water_level"], "m"),
         },
-        "format": "via-build-0",
+        "format": "via-build-1",
         "frame": {"axes": "x east, y north, z up", "bearing": "degrees clockwise from north",
                   "extent": list(EXTENT), "posts": [NX, NY], "resolution": RES, "unit": "m"},
         "instances": {"count": count, "face": "instances/face.npy", "names": "instances/names.txt",

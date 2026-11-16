@@ -4,6 +4,11 @@ extends Node
 ##
 ##   godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- \
 ##         --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...]
+##         [--stream RADIUS] [--frames SECONDS]
+##
+## --stream loads chunks round each eye and walker within RADIUS metres (stream.gd) instead of the
+## whole build; --frames tours the bookmarks' eyes at TOUR_SPEED for SECONDS per build after the
+## walks and records the frame times (sheet.json `frames`).
 ##
 ## engines/godot/sheet.sh runs it with a watchdog. It needs a display: Godot's --headless display
 ## draws nothing. Writes <out>/before/*.png, <out>/after/*.png (1280 by 720), <out>/sheet.png,
@@ -19,12 +24,16 @@ const Compose := preload("res://compose.gd")
 const Rig := preload("res://rig.gd")
 const Walk := preload("res://walk.gd")
 const Marks := preload("res://marks.gd")
+const Stream := preload("res://addons/via_loader/stream.gd")
 
 const SHOT := Vector2i(1280, 720)
 const SETTLE_FRAMES := 4
 const WATCHDOG_S := 300.0
 const PARKED := Vector2i(160, 90)
-const USAGE := "usage: godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...]"
+const USAGE := "usage: godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] [--stream RADIUS] [--frames SECONDS]"
+## The frame tour's pace, metres a second (ours): a run, five times the walker's, so a tour of a
+## minute crosses a city's chunks.
+const TOUR_SPEED := 7.0
 
 var before := ""
 var after := ""
@@ -33,6 +42,8 @@ var pack := ""
 var options := {}
 var diags := Diagnostics.new()
 var edits := {"against": null, "pins": [], "cleared": []}
+var stream_radius := 0.0
+var frames_s := 0.0
 var _done := false
 
 
@@ -74,7 +85,7 @@ func _read_arguments() -> String:
 	var n := 0
 	while n < args.size():
 		var a := args[n]
-		var takes := a in ["--before", "--after", "--out", "--pack", "--option"]
+		var takes := a in ["--before", "--after", "--out", "--pack", "--option", "--stream", "--frames"]
 		if not takes:
 			return "unknown argument `%s`" % a
 		if n + 1 >= args.size():
@@ -85,6 +96,13 @@ func _read_arguments() -> String:
 			"--after": after = _abs(v)
 			"--out": out = _abs(v)
 			"--pack": pack = _abs(v)
+			"--stream", "--frames":
+				if not v.is_valid_float() or float(v) <= 0.0:
+					return "%s takes a number above 0, not `%s`" % [a, v]
+				if a == "--stream":
+					stream_radius = float(v)
+				else:
+					frames_s = float(v)
 			"--option":
 				var eq := v.find("=")
 				if eq <= 0:
@@ -141,9 +159,9 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 	var loader := Loader.new()
 	loader.pack_dir = pack
 	loader.diags.build_label = label
-	var root := loader.make(dir, options)
+	var root := loader.prepare(dir, options) if stream_radius > 0.0 else loader.make(dir, options)
 	diags.records.append_array(loader.diags.records)
-	var res := {"id": null, "world": null, "shots": {}, "walks": {}, "far": null, "option_error": loader.option_error}
+	var res := {"id": null, "world": null, "shots": {}, "walks": {}, "far": null, "option_error": loader.option_error, "frames": null}
 	if root == null:
 		return res
 	res.id = root.get_meta("id")
@@ -151,9 +169,11 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 	if Marks.count(edits) > 0:
 		root.add_child(Marks.node(edits, loader))
 	vp.add_child(root)
+	var stream = Stream.new(loader, root, stream_radius) if stream_radius > 0.0 else null
 	DirAccess.make_dir_recursive_absolute(folder)
 	for cam in root.get_node("bookmarks").get_children():
 		var c := cam as Camera3D
+		_near(stream, Vector2(c.get_meta("eye")[0], c.get_meta("eye")[1]))
 		c.make_current()
 		res.far = c.get_meta("far")
 		for f in SETTLE_FRAMES:
@@ -167,13 +187,131 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 			res["write_failed"] = true
 			continue
 		res.shots[String(c.get_meta("feature"))] = {"file": file, "eye": c.get_meta("eye"), "toward": c.get_meta("toward"), "image": img}
-	await _walks(vp, root, loader, label, folder, res)
+	await _walks(vp, root, loader, label, folder, res, stream)
+	if frames_s > 0.0:
+		res.frames = await _frames(root, loader, stream)
+	if stream != null:
+		stream.end()
 	root.queue_free()
 	await RenderingServer.frame_post_draw
 	return res
 
 
-func _walks(vp: SubViewport, root: Node3D, loader, label: String, folder: String, res: Dictionary) -> void:
+static func _near(stream, p: Vector2) -> void:
+	## Streaming: the chunks within the load radius of p made now, the far ones freed, for a still.
+	if stream != null:
+		stream.update(p)
+		stream.fill(p, stream.load_radius)
+
+
+func _frames(root: Node3D, loader, stream) -> Dictionary:
+	## The frame tour (ours; challenge 4): a camera at the walker's eye over the ground goes from
+	## each bookmark's eye to the next in name order and back to the first, at TOUR_SPEED, facing
+	## the way it goes, for frames_s seconds of the machine's time, rendering the 1280 by 720 view
+	## every frame with no frame cap. Records each frame's time (one drawn frame to the next), and
+	## with streaming the streamer's own time on the frame and its counts, and the renderer's own
+	## measure of the view's draw (view_ms: cpu and gpu, 0 where the renderer gives none). The first second is not
+	## counted (shaders compile and the first chunks come in).
+	var route: Array[Vector2] = []
+	var cams := root.get_node("bookmarks").get_children()
+	cams.sort_custom(func(a, b): return String(a.get_meta("feature")) < String(b.get_meta("feature")))
+	for c in cams:
+		var e: Array = c.get_meta("eye")
+		route.append(Vector2(e[0], e[1]))
+	if route.size() < 2:
+		return {"error": "fewer than two bookmarks: no route"}
+	route.append(route[0])
+	var cam := Camera3D.new()
+	cam.far = cams[0].far
+	root.add_child(cam)
+	cam.make_current()
+	var vrid := root.get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vrid, true)
+	var gpu: Array[float] = []
+	var cpu: Array[float] = []
+	var vsync := DisplayServer.window_get_vsync_mode()
+	var cap := Engine.max_fps
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	if stream != null:
+		stream.update(route[0])
+		stream.fill(route[0], stream.load_radius)
+		stream.loads = 0
+		stream.unloads = 0
+		stream.stalls = 0
+		stream.work_max_usec = 0
+	var p := route[0]
+	var next := 1
+	var times: Array[float] = []
+	var work: Array[float] = []
+	var most := 0
+	var start := Time.get_ticks_usec()
+	var last := start
+	var walked := 0.0
+	while true:
+		var now := Time.get_ticks_usec()
+		var dt := (now - last) / 1e6
+		last = now
+		if now - start > 1e6:
+			times.append(dt * 1000.0)
+			gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(vrid))
+			cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(vrid))
+		if now - start > (frames_s + 1.0) * 1e6:
+			break
+		var left := TOUR_SPEED * minf(dt, 0.1)
+		while left > 0.0:
+			var d := p.distance_to(route[next])
+			if d <= left:
+				left -= d
+				walked += d
+				p = route[next]
+				next = next % (route.size() - 1) + 1
+			else:
+				p += (route[next] - p) / d * left
+				walked += left
+				left = 0.0
+		var ahead := route[next] - p
+		var dir := ahead.normalized() if ahead.length() > 0.01 else Vector2.UP
+		var z: float = loader.ground_at(p.x, p.y) if loader.has_ground() else 0.0
+		z = maxf(z, z + loader.depth_at(p.x, p.y)) + Walk.EYE
+		cam.transform = Transform3D(Basis.looking_at(Vector3(dir.x, 0, -dir.y), Vector3.UP), Loader.g(p.x, p.y, z))
+		if stream != null:
+			stream.update(p)
+			if now - start > 1e6:
+				work.append(stream.work_usec / 1000.0)
+			most = maxi(most, stream.loaded.size())
+		await RenderingServer.frame_post_draw
+	DisplayServer.window_set_vsync_mode(vsync)
+	Engine.max_fps = cap
+	cam.queue_free()
+	var r := {"seconds": frames_s, "speed": TOUR_SPEED, "toured_m": walked, "frames": times.size(),
+		"fps": _fps(times), "frame_ms": _spread(times), "stream": null,
+		"view_ms": {"cpu": _spread(cpu), "gpu": _spread(gpu)}}
+	if stream != null:
+		r.stream = {"load_radius": stream.load_radius, "unload_radius": stream.unload_radius,
+			"guard": stream.guard, "loads": stream.loads, "unloads": stream.unloads, "stalls": stream.stalls,
+			"most_loaded": most, "chunks": stream.chunk_count(), "work_ms": _spread(work)}
+	return r
+
+
+static func _spread(v: Array[float]) -> Dictionary:
+	if v.is_empty():
+		return {"median": null, "p99": null, "max": null}
+	var s := v.duplicate()
+	s.sort()
+	return {"median": s[s.size() / 2], "p99": s[mini(s.size() - 1, int(s.size() * 0.99))], "max": s[-1]}
+
+
+static func _fps(times: Array[float]) -> Dictionary:
+	## Frames a second: median (1000 / the median frame time), the slowest 1% (1000 / the 99th
+	## percentile frame time) and the minimum (1000 / the longest frame).
+	var s := _spread(times)
+	if s.median == null:
+		return {"median": null, "low_1pct": null, "min": null}
+	return {"median": 1000.0 / s.median, "low_1pct": 1000.0 / s.p99, "min": 1000.0 / s.max}
+
+
+func _walks(vp: SubViewport, root: Node3D, loader, label: String, folder: String, res: Dictionary, stream = null) -> void:
 	## Walks from each bookmark toward its target (walk.gd), then renders the walk from above with
 	## its trail and from the walker's eye where it stopped: <label>/walk/<name>_plan.png and
 	## <label>/walk/<name>_eye.png.
@@ -183,8 +321,10 @@ func _walks(vp: SubViewport, root: Node3D, loader, label: String, folder: String
 		var name := String(cam.get_meta("feature"))
 		var e: Array = cam.get_meta("eye")
 		var t: Dictionary = cam.get_meta("toward")
+		_near(stream, Vector2(e[0], e[1]))
 		var r: Dictionary = await Walk.walk(root, loader, Vector3(e[0], e[1], e[2]), Vector3(t.at[0], t.at[1], t.at[2]), String(t.name), unbodied,
-			cam.get_meta("along", []))
+			cam.get_meta("along", []), stream)
+		_near(stream, Vector2(r.stop[0], r.stop[1]))
 		var trail := Walk.trail_node(r)
 		root.add_child(trail)
 		var shots := {}
@@ -227,7 +367,7 @@ func _run() -> void:
 	if edited.against != null:
 		edits = edited
 	var b: Dictionary = await _render(vp, before, "before", partial + "/before")
-	var a: Dictionary = {"shots": {}, "walks": {}, "id": null, "world": null, "far": null, "option_error": ""}
+	var a: Dictionary = {"shots": {}, "walks": {}, "id": null, "world": null, "far": null, "option_error": "", "frames": null}
 	if two:
 		a = await _render(vp, after, "after", partial + "/after")
 	vp.queue_free()
@@ -301,10 +441,12 @@ func _run() -> void:
 		"bookmarks": marks,
 		"camera": {"far": b.far if b.far != null else a.far, "fov": 75.0, "near": 0.05},
 		"edits": edits,
+		"frames": {"after": a.frames, "before": b.frames} if frames_s > 0.0 else null,
 		"godot": godot,
 		"light": {"bearing": Rig.LIGHT_BEARING, "elevation": Rig.LIGHT_ELEVATION},
 		"renderer": RenderingServer.get_current_rendering_method(),
 		"size": [SHOT.x, SHOT.y],
+		"stream": stream_radius if stream_radius > 0.0 else null,
 		"walk": {"arrive": Walk.ARRIVE, "eye": Walk.EYE, "fall": Walk.FALL, "height": Walk.HEIGHT,
 			"max_slope": Walk.MAX_SLOPE, "radius": Walk.RADIUS, "speed": Walk.SPEED, "step": Walk.STEP, "wade": Walk.WADE,
 			"above_water": Walk.ABOVE_WATER},

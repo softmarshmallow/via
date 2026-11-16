@@ -139,7 +139,7 @@ def main(out):
         "features": "features.json",
         "fields": {"height": {"cut": "fields/height.cut.npy", "file": "fields/height.npy", "max": 0, "min": 0, "role": "surface",
                               "tags": [], "taxon": None, "type": "scalar", "unit": "m"}},
-        "format": "via-build-0",
+        "format": "via-build-1",
         "frame": {"axes": "x east, y north, z up", "bearing": "degrees clockwise from north", "extent": [0, 0, NX - 1, NY - 1],
                   "posts": [NX, NY], "resolution": 1, "unit": "m"},
         "id": "0" * 64,

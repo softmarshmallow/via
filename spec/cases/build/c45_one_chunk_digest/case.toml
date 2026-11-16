@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "Two instances in two chunks; a change moves one within its chunk: exactly that chunk's digest differs."
+milestone = 6
+actions   = ["base", "nudge"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.base.check.recomputed]
+fn    = "chunk_digest_recomputed"
+build = "build/a"
+
+[action.nudge]
+via         = ["build", "world.toml", "--change", "nudge", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.nudge.check.digests]
+fn      = "chunk_digests"
+before  = "build/a/manifest.json"
+after   = "build/b/manifest.json"
+changed = [[0, 0]]
+
+[action.nudge.check.recomputed]
+fn    = "chunk_digest_recomputed"
+build = "build/b"

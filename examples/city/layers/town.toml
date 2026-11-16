@@ -7,21 +7,26 @@
 # a footprint), with no terrace. A terrace reads every other terrace (`inside('kind:terrace')`), and
 # the core's graph lists every member of a selector for each entry that reads it: terraces under
 # the whole city did not build (README, "Build"). The old town's hill is terraced, as townland's.
+# Each runs once per block (`for_each`, houses.py "Per block"): a change re-runs the blocks whose
+# lots or streets it touches, not the district (M6: move_avenue re-ran all three, 64 to 80 s each).
 [step.houses_down]
 when    = "generate"
 worker  = true
+for_each = "kind:block"
 command = ["python", "-m", "viasdk", "lib:town/houses.py"]
 params  = { lots = "lots_down", setback = 0.5, gap = 0.25, max_relief = 0.5, assets = ["house_row", "house_narrow"], streets = ["kind:main_street", "kind:street"] }
 
 [step.houses_rows]
 when    = "generate"
 worker  = true
+for_each = "kind:block"
 command = ["python", "-m", "viasdk", "lib:town/houses.py"]
 params  = { lots = "lots_rows", setback = 0.5, gap = 0.25, max_relief = 0.5, assets = ["house_row", "house_narrow"], streets = ["kind:main_street", "kind:street"] }
 
 [step.houses_old]
 when    = "generate"
 worker  = true
+for_each = "kind:block"
 command = ["python", "-m", "viasdk", "lib:town/houses.py"]
 params  = { lots = "lots_old", setback = 0.5, gap = 0.25, max_relief = 1.0, assets = ["house_row", "house_narrow"], streets = ["kind:main_street", "kind:street"] }
 

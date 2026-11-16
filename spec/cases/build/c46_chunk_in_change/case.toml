@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A change writing chunk = 20: frame.chunks [5, 3]. A change writing [budget]: doc.change_fixed."
+milestone = 6
+actions   = ["finer", "cap"]
+
+[action.finer]
+via         = ["build", "world.toml", "--change", "finer", "--out", "build/finer"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/finer"
+
+[action.finer.file.count]
+path    = "build/finer/manifest.json"
+pointer = "/frame/chunks"
+value   = [5, 3]
+
+[action.cap]
+via         = ["merge", "world.toml", "--change", "cap"]
+exit        = 1
+diagnostics = "includes"
+
+[action.cap.diag.fixed]
+code = "doc.change_fixed"

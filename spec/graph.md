@@ -61,6 +61,7 @@ three suffixes are read as parts of the id.
 | `step` | `step:<id>`, and `step:<id>/i:<item>` under `for_each` | a step; one call per item | its returned document, field files and diagnostics, and its trace (5.1) | yes |
 | `facts` | `facts:<asset id>` | each model asset the build uses (M2, `assets.md` 4) | the comparison of the facts file's entry with the asset's measured facts and its pack statement, and its diagnostics; it reads the placements that can hold the asset, for `asset.revised`'s list | digest only |
 | `mesh` | `mesh:<owner>` | each generated mesh: a kind surface or a triangulated region (`surfaces.md` 5, `build.md` 10); the terrain is written as a field, not a mesh | the mesh | yes |
+| `budget` | `budget:chunks` | the world's `[budget]`, when written (`build.md` 5.1); it reads what the instance columns read, takes the chunk side as a parameter, and holds the `world`, pack and `budget.*` statements | no bytes; its `build.over_budget` and `build.waiver_unused` records | digest only |
 | `write` | `write:<build file>` | each file of the build directory (`build.md` 2) | the file's bytes | yes |
 
 - **Paths** in `source` and `input` ids are relative to the world file's folder and use `/`; a file
@@ -506,6 +507,18 @@ apply and the build runs as usual. After a build in which a step did not complet
 applies. With `--against`, nodes are reused as usual, but `write:changes.json` runs against the
 named baseline.
 
+**Into a new directory.** A directory that holds no build (no `manifest.json`, no `.previous`)
+has no baseline when no `--against` is given, so the manifest and the reports a build writes into
+it are a function of the build key alone: `locations.pack_root` enters the key by place, and
+`changes.json` without a baseline is the empty report (`build.md` 11.2). A complete build with no
+baseline keeps their digests in the store beside its build record, keyed by the build key. A later
+build into a directory holding no build, with that key, its record complete and every object
+present, is a null build: no node is touched, the data files, the manifest, the reports and a
+`.previous` naming the manifest are written from the store (swapped in as `build.md` 13 writes any
+build), and the run report lists every node of the record as `reused` with `null` true. Ours (M6):
+a world that imports the others (`atlas`) builds each into its own directory, and city's unchanged
+build into a new directory took 16 s of planning against 1.5 s into its own.
+
 Files are always hashed from their bytes. (open) Whether a size-and-time shortcut is allowed.
 
 ### 6.3 The run report
@@ -786,6 +799,7 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
 | epoch | M1 | the engine with `VIA_TEST_EPOCH_OFFSET=1`, read by test builds only | rebuild | every node `ran`; manifest `files` equal |
 | epoch guard | M1 | the examples' recorded `files` maps | build each | equal, or the epoch was raised |
 | failed step | M1 | a plain lint that exits 1 | build twice | `protocol.failed` both times; its readers `skipped`; it ran twice |
+| null, new directory | M6 | `ford` | build into `build/one`, then into `build/two`, one `--store` | second: nothing `ran`, the run report's `null` true; same files, `id`, diagnostics and output as the first |
 | two depths | M1 | `ford` | build into two `--out` folders at different depths with one `--store`, then the first again | each manifest's `pack_root` resolves from its own directory (`pack_root_resolves`); the third build: nothing `ran`, no run diagnostic |
 | program later | M1 | `ford` with no program configured | build; configure the program; build | first: `protocol.no_program`; second: `step:checks` `ran` (a step that did not start is not stored, 3.4) |
 | busy | M1 | the runner holds `<directory>.lock` | build | `graph.busy`, exit 1 |

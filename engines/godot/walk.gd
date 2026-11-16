@@ -144,8 +144,11 @@ static func plan(v: Vector3) -> Vector2:
 ## walker stands on the highest collision straight below the eye (the terrain, a kind surface's
 ## mesh or an instance), then follows whatever it walks onto. Returns the report sheet.json
 ## carries, plus "trail": PackedVector3Array of Godot points every TRAIL_STEP metres and "facing":
-## the last plan direction.
-static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: String, unbodied: Array, along: Array = []) -> Dictionary:
+## the last plan direction. With `stream` (stream.gd), the chunks round the walker are loaded as it
+## goes, the chunk under it before each step (build.md 15.1, streaming).
+static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: String, unbodied: Array, along: Array = [], stream = null) -> Dictionary:
+	if stream != null:
+		stream.update(Vector2(from.x, from.y))
 	await root.get_tree().physics_frame
 	var floor_y: float = loader.ground_min() if loader.has_ground() else from.z - 1000.0
 	var start := under(root, g(from.x, from.y, from.z), from.z - floor_y + 1000.0)
@@ -202,6 +205,8 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 	var target_wet: bool = wading(loader, to.x, to.y, to.z) > WADE
 	for step in limit:
 		var p := plan(body.position)
+		if stream != null:
+			stream.update(p)
 		while next < ways.size() and (p.distance_to(ways[next]) <= WAYPOINT or (next + 1 < ways.size()
 				and p.distance_to(ways[next + 1]) < ways[next].distance_to(ways[next + 1]))):
 			next += 1

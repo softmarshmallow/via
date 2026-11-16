@@ -220,7 +220,7 @@ fn position(
 fn region(name: &str, old: &Build, new: &Build) -> Option<(J, Option<[i64; 4]>, bool)> {
     let (a, b) = (old.fields.get(name)?, new.fields.get(name)?);
     let (ga, gb) = (old.grid?, new.grid?);
-    let layout = Layout::new(&gb);
+    let layout = Layout::with_side(&gb, new.chunk);
     let n = usize::try_from(gb.nx * gb.ny).unwrap_or(0);
     let same_frame = ga.extent == gb.extent && ga.resolution == gb.resolution;
     let mut differs = vec![false; n];

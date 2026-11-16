@@ -9,7 +9,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use via_diag::{codes, Diag, KeyPath, Site, Subject};
+use via_diag::{codes, Diag, KeyPath, Site, Subject, Value as Value0};
 use via_doc::{Table, Value, World};
 use via_expr::{AttrType, Context, Env, FormulaId, Key, NoisePart, Program};
 use via_num::Grid;
@@ -533,10 +533,63 @@ pub(crate) fn requires_line(kind: &str) -> via_diag::Related {
     }
 }
 
+/// Limits per chunk (`build.md` 5.1): each `None` is not counted.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Limits {
+    pub triangles: Option<u64>,
+    pub instances: Option<u64>,
+    pub groups: Option<u64>,
+}
+
+impl Limits {
+    fn read(t: &Table) -> Limits {
+        let int = |k: &str| match t.value(k) {
+            Some(Value::Num(n)) if n.integer => n.norm.parse::<u64>().ok(),
+            _ => None,
+        };
+        Limits {
+            triangles: int("triangles"),
+            instances: int("instances"),
+            groups: int("groups"),
+        }
+    }
+
+    /// The measures by name, in the order `build.md` 5.1 writes them.
+    pub fn each(&self) -> [(&'static str, Option<u64>); 3] {
+        [
+            ("triangles", self.triangles),
+            ("instances", self.instances),
+            ("groups", self.groups),
+        ]
+    }
+}
+
+/// A waiver of the budget for one chunk (`build.md` 5.1).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Waiver {
+    pub id: String,
+    /// The chunk's `at`, `[cx, cy]`; `None` when not two integers 0 or greater.
+    pub at: Option<(u64, u64)>,
+    pub limits: Limits,
+    pub reason: String,
+}
+
+/// The world's `[budget]` (`build.md` 5.1).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Budget {
+    pub limits: Limits,
+    pub waivers: Vec<Waiver>,
+}
+
 /// The world read.
 #[derive(Clone, Debug, Default)]
 pub struct Decls {
     pub grid: Option<Grid>,
+    /// The world's `chunk` in millimetres, when written and a whole multiple of `resolution`
+    /// (`build.md` 5); `None` tiles by the default side.
+    pub chunk: Option<i64>,
+    /// The world's `[budget]` (`build.md` 5.1).
+    pub budget: Option<Budget>,
     pub seed: u64,
     pub pack: Option<String>,
     pub fields: BTreeMap<String, FieldDecl>,
@@ -1079,6 +1132,90 @@ impl Decls {
             }
         }
         self.pack = root.str("pack").map(str::to_string);
+        self.read_chunk(root);
+        self.read_budget(root);
+    }
+
+    /// `chunk` (`build.md` 5): a length on the lattice, a whole multiple of `resolution` and at
+    /// least it, else `build.chunk_not_multiple` with the two nearest multiples.
+    fn read_chunk(&mut self, root: &Table) {
+        let Some(v) = root.value("chunk") else {
+            return;
+        };
+        let mm = match text::length(v) {
+            Some(Ok(mm)) => mm,
+            Some(Err(e)) => {
+                self.world_key_fault("chunk", &e);
+                return;
+            }
+            None => return,
+        };
+        let Some(g) = self.grid else {
+            return;
+        };
+        let r = g.resolution;
+        if mm >= r && mm % r == 0 {
+            self.chunk = Some(mm);
+            return;
+        }
+        let below = (mm.div_euclid(r) * r).max(r);
+        let above = if mm <= r { r } else { below + r };
+        let m = via_num::write_length;
+        self.push(
+            text::diag(
+                codes::build::CHUNK_NOT_MULTIPLE,
+                Subject::World,
+                Site::Key(KeyPath::key("chunk")),
+                &format!(
+                    "`chunk = {}` is not a whole multiple of `resolution = {}` at least as large",
+                    m(mm),
+                    m(r)
+                ),
+                &if below == above {
+                    format!("write `chunk = {}`", m(below))
+                } else {
+                    format!("write `chunk = {}` or `chunk = {}`", m(below), m(above))
+                },
+            )
+            .with("below", Value0::Length(below))
+            .with("above", Value0::Length(above)),
+        );
+    }
+
+    /// `[budget]` (`build.md` 5.1). Its keys' types and a waiver's required keys are checked by
+    /// the reading steps (`doc.type`, `doc.missing_key`); what is not readable is left out.
+    fn read_budget(&mut self, root: &Table) {
+        let Some(t) = root.table("budget") else {
+            return;
+        };
+        let mut waivers = Vec::new();
+        if let Some(w) = t.table("waive") {
+            for (id, e) in w.iter() {
+                let Value::Table(wt) = &e.item.value else {
+                    continue;
+                };
+                let at = match wt.value("at") {
+                    Some(Value::List(xs)) if xs.len() == 2 => {
+                        let ix = |i: usize| match &xs[i].value {
+                            Value::Num(n) if n.integer => n.norm.parse::<u64>().ok(),
+                            _ => None,
+                        };
+                        ix(0).zip(ix(1))
+                    }
+                    _ => None,
+                };
+                waivers.push(Waiver {
+                    id: id.clone(),
+                    at,
+                    limits: Limits::read(wt),
+                    reason: wt.str("reason").unwrap_or_default().to_string(),
+                });
+            }
+        }
+        self.budget = Some(Budget {
+            limits: Limits::read(t),
+            waivers,
+        });
     }
 
     fn read_kinds(&mut self, root: &Table) {

@@ -51,7 +51,9 @@ pub use plan::{
     default_persist, Def, Defined, Gate, Inputs, Known, Output, Persist, Plan, Read, Reports,
     Settled, StepDef, StepRun,
 };
-pub use record::{build_key, null_build, BuildKeyParts, BuildRecord, RecordNode};
+pub use record::{
+    build_key, null_build, null_build_fresh, put_fresh, BuildKeyParts, BuildRecord, RecordNode,
+};
 pub use refgraph::{Cycle, Member, RefEdge, RefGraph, SourceOrder};
 pub use report::{null_report, report, report_path, write_report, Json, ReportHead, RUN_FORMAT};
 pub use store::{KeyRecord, Store, DEFAULT_STORE};

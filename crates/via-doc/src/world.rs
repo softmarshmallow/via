@@ -353,7 +353,18 @@ impl Resolve for World {
                     let Some(KeyPart::Key(k)) = parts.next() else {
                         return None;
                     };
-                    let e = self.base.root.get(k)?;
+                    // A world key's table (`[budget]`, `build.md` 5.1) is walked as far as the
+                    // path holds, so a record names the deepest key written.
+                    let mut e = self.base.root.get(k)?;
+                    for p in parts {
+                        let (KeyPart::Key(k), Value::Table(t)) = (p, &e.item.value) else {
+                            break;
+                        };
+                        match t.get(k) {
+                            Some(below) => e = below,
+                            None => break,
+                        }
+                    }
                     return Some(self.resolved(e.key, e));
                 }
                 if let Some((e, _)) = self.walk(subject, path.parts()) {

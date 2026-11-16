@@ -33,6 +33,7 @@ key on a step.
 | `inputs` | list of strings | no, `[]` | Outside files or folders, relative to the declaring document. A folder is digested as the sorted list of its files (`graph.md` 5.1). A path that does not exist is `graph.input_missing` (`graph.md` 5.1). Their change re-runs the step. |
 | `for_each` | selector | no | One call per selected item (1.2). The item reaches the step in its request. |
 | `checks` | list of strings | no | On a lint step only: the generate steps whose stated facts it checks (`derived.md` 5). |
+| `output` | id | no | On an export step only (M6): the name under which a reader finds what the step writes, an id its library chooses and documents, as a kind's `output` (`build.md` 9.2). The manifest's `exports` carries it (`build.md` 11.4). On a generate or lint step: `doc.unknown_key`. The map library's is `player_map` (`build.md` 9.4). Ours. |
 
 The word `worker` is kept (vocabulary left it open): it names what the process is, and a bool
 cannot be misspelt into a third transport.
@@ -69,7 +70,7 @@ table shows a reviewer what runs.
 |---|---|---|---|
 | `generate` | At its layer's place in the graph (`graph.md`), once per item under `for_each`. | Its stratum (above); a field in the view `fields.md` 6.2 gives. | A document (section 5), field files, diagnostics. |
 | `lint` | After every generate step. A lint that reads a failed or skipped node is `skipped` (`diagnostics.md` 4); a plain lint is handed the whole build, so any failed node skips it (`graph.md` 4). | The finished build, view `build` (R29, `graph.md` 4). | Diagnostics. Other files it writes are kept in the store and named in the run report, not in the build directory (open, below). No document. |
-| `export` | After lints, and only when the build has no error (`diagnostics.md` 4, stage 5). | The finished build, view `build`. | Files under `export/<step id>/` (`build.md` 11.4). No document. |
+| `export` | After lints, and only when the build has no error (`diagnostics.md` 4, stage 5). | The finished build, view `build`. | Files under `export/<step id>/` (`build.md` 11.4): every file it writes in `out` but `diagnostics.json`, at the same path below that folder (M6). No document. |
 
 `effect` and `place` do not exist (R22): a generate step at a layer covers both.
 
@@ -209,8 +210,11 @@ word with one meaning (R9).
   code: the program's reach is `when_unserved`, the script's entry is `no_entry`.
 - A cancelled call is answered with error -32800 (as LSP's `RequestCancelled`). Its output is
   discarded.
-- A worker takes one `step.call` at a time. It serves every call of its step in one build (every
-  item of a `for_each`); workers do not outlive a build. A step must not carry state from one call to
+- A worker takes one `step.call` at a time and serves calls of its own step only. Calls of one
+  step that run at once (the items of a `for_each`) are each given a free worker of that step, else
+  a new one, so a step has at most as many workers as the build runs its calls at once; workers do
+  not outlive a build. Ours (M6): with one worker a step's items were a queue, city's 186 block
+  calls one after another while the build's other threads waited. A step must not carry state from one call to
   the next: an item's output would then depend on which items ran and which were reused. The core
   does not prevent it; `graph.step_unstable` reports it on a clean build. A fresh process per call is
   (open), decided by the first case that needs it.
@@ -236,7 +240,7 @@ that one diagnostic is the call's only report (principle 8: one fault, one messa
 | Method | Params | Result |
 |---|---|---|
 | `build.field` | `fields` (names, or `role:`/`tag:` selectors, each matching one field), `view` (`full` or `head`, default `full`; `authority.md` 4.4), `window` (`i0`, `j0`, `i1`, `j1`, `numbers.md` section 6, as an object or a list in that order; default the whole grid), `halo` (posts, default 0) | Keyed by each entry as asked: the field's `name`, its window grown by the halo and clipped to the grid, with its own `i0`, `j0`, `i1`, `j1`, as below. |
-| `build.features` | `select` (a selector, a list of names, or `"*"`), `within` (a region feature's name, or a region in millimetres), `columns` (attribute names, or `"*"`) | A feature list (4.3) with `name`, `kind`, `authority`, `layer`, and one column per attribute asked. A name in `select` that names a network or a cells table (`geometry.md` 8) gives its areas, or its cells and rest pieces, under their produced names, with a `class` str column (`area`, `cell`, `rest`; M3); in a list that also holds plain features, theirs is `""`. The core's columns (`name`, `kind`, `authority`, `layer`, the geometry columns of 4.3, and `class` when present) are never attribute columns: naming one in `columns` gives the core column, which is always there, and `"*"` leaves an attribute of that name out. |
+| `build.features` | `select` (a selector, a list of names, or `"*"`), `within` (a region feature's name, or a region in millimetres: the features that meet it, by a vertex inside it or on its outline, an edge crossing it, or the region lying inside a region feature; ours, M6: a test of vertices alone dropped a street passing a block between two far vertices), `columns` (attribute names, or `"*"`) | A feature list (4.3) with `name`, `kind`, `authority`, `layer`, and one column per attribute asked. A name in `select` that names a network or a cells table (`geometry.md` 8) gives its areas, or its cells and rest pieces, under their produced names, with a `class` str column (`area`, `cell`, `rest`; M3); in a list that also holds plain features, theirs is `""`. The core's columns (`name`, `kind`, `authority`, `layer`, the geometry columns of 4.3, and `class` when present) are never attribute columns: naming one in `columns` gives the core column, which is always there, and `"*"` leaves an attribute of that name out. |
 | `build.instances` | `select` (`"*"`, a producer's name, or an `@<taxon path>`), `within`, `columns` | A table: `name`, `asset`, `by` (the producer), `x`, `y` (i32 mm), `z` (f64 metres: heights are not on the lattice, `numbers.md` 3.1), `face` (i32 millidegrees), `scale`, `tint` (f64); footprints as a feature list when asked. |
 | `input.open` | `path`, as written in `inputs` | A raw blob of the file's bytes. A path not declared is `protocol.input_undeclared`. |
 | `pack.query` (M2) | `select` (`"*"`, asset ids, or an `@<taxon path>`), `columns` (fact names, or `"*"`) | A table by asset id: `id`, `source`, `taxon`, `tags`, and one column per resolved fact asked (`assets.md` 2.4): lengths as i32 millimetres (but `sink`, a height, f64 metres as `z` is: `numbers.md` 3.1), `bounds` `(n, 6)`, `origin` `(n, 3)`, `colour` f64 `(n, 3)`, words as str, `mounts`, `params` and `footprint` (a list of `[x, y]` millimetres in the asset frame: a table's column holds one value per row, so not a feature list) as canonical JSON text. Read-only (R19b; `assets.md` 5). |
@@ -261,7 +265,7 @@ make it per-point: R19(c) reads "whole arrays, never per point" (R32).
 
 | Method | Params | Result |
 |---|---|---|
-| `expr.eval` | `formula`, and either `x`, `y` (i32 mm columns of one length n) or a `window`; `view` (`full` or `head`, default `full`, as `build.field` takes it: a field the formula names is read, and traced, in that view) | One column, f64 or bool (`formulas.md` section 11). For points: n values in the order given. For a window: `(i1 - i0) * (j1 - j0)` values in post order (`numbers.md` 4: rows from the south, each west to east). Values are doubles, not yet narrowed to a field's f32 (`fields.md` 1.1). |
+| `expr.eval` | `formula`, and either `x`, `y` (i32 mm columns of one length n) or a `window`; `view` (`full` or `head`, default `full`, as `build.field` takes it: a field the formula names is read, and traced, in that view, over the posts its values stand on: its window, or the window holding each point's four posts; the call's own answer covers what a neighbourhood function reads beyond them. Ours, M6: traced whole, an edit anywhere in the field re-ran every step that evaluated it) | One column, f64 or bool (`formulas.md` section 11). For points: n values in the order given. For a window: `(i1 - i0) * (j1 - j0)` values in post order (`numbers.md` 4: rows from the south, each west to east). Values are doubles, not yet narrowed to a field's f32 (`fields.md` 1.1). |
 | `derive.where`, `derive.route`, `derive.descend`, `derive.spill` | `derived.md` 4 | `derived.md` 4: shapes and levels found over a field, the text forms' bytes (R19b, R23). |
 
 A compute that names a field, feature or selector reads it, and that read is traced as if made by
@@ -830,7 +834,7 @@ Not specified until the milestone that needs them. Each is decided by the case n
 | `progress`: a notification shown on the terminal and kept nowhere | M2 | `basin`'s 3.5 s model. |
 | More than one `step.call` at a time per worker | after M2 | A step whose calls are measured to wait on each other. |
 | Capabilities for dtypes and message size | when either varies | A second SDK. |
-| The output name of the player-map export step (`build.md` 9.4) | M6 | The player map. |
+| The output name of the player-map export step (`build.md` 9.4) | M6, decided | The step's `output` key (section 1); lib/map's is `player_map`. |
 
 ## Diagnostics
 

@@ -184,6 +184,9 @@ fn pt_text(p: P) -> String {
 #[derive(Clone, Debug, Default)]
 pub struct Build {
     pub grid: Option<Grid>,
+    /// The world's `chunk` in millimetres when written and valid (`build.md` 5); `None` tiles by
+    /// the default side.
+    pub chunk: Option<i64>,
     pub fields: BTreeMap<String, FieldOut>,
     pub features: BTreeMap<String, FeatureOut>,
     pub footprints: BTreeMap<String, FootprintOut>,
@@ -825,6 +828,7 @@ pub(crate) fn finish_from(
         return out;
     };
     out.grid = Some(grid);
+    out.chunk = decls.chunk;
     // Fields, every one in the build's view.
     let fields = Fields::new(&decls, &placed, grid);
     for (name, r) in seeds {

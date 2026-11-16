@@ -800,7 +800,7 @@ impl<'a> View<'a> {
         let select = p.get("select").cloned().unwrap_or(json!("*"));
         let mut rows = self.select_rows(&select)?;
         if let Some(region) = self.within(p.get("within"))? {
-            rows.retain(|r| r.vertices().any(|v| inside(&region, *v)));
+            rows.retain(|r| meets(&region, r));
         }
         self.feature_list(&rows, p.get("columns").unwrap_or(&Value::Null))
     }
@@ -1799,6 +1799,30 @@ impl<'a> View<'a> {
             .map_err(|e| refuse(-32603, format!("a column could not be stored: {e}")))
     }
 
+    /// The posts an `expr.eval` call's values stand on (`protocol.md` 3.3): its window, or the
+    /// window round its points (each point's four posts). The fields its formula names are
+    /// traced over this window. `None` when the call names neither, or no point.
+    pub fn eval_window(&self, p: &Value) -> Option<[i64; 4]> {
+        if let Ok(Some(w)) = window_of(p.get("window")) {
+            return Some(clip(w, &self.grid));
+        }
+        let xs = self.ints(p, "x").ok()?;
+        let ys = self.ints(p, "y").ok()?;
+        let (x0, x1) = (*xs.iter().min()?, *xs.iter().max()?);
+        let (y0, y1) = (*ys.iter().min()?, *ys.iter().max()?);
+        let r = self.grid.resolution;
+        let (ex, ey) = (self.grid.extent[0], self.grid.extent[1]);
+        Some(clip(
+            [
+                (x0 - ex).div_euclid(r),
+                (y0 - ey).div_euclid(r),
+                (x1 - ex).div_euclid(r) + 2,
+                (y1 - ey).div_euclid(r) + 2,
+            ],
+            &self.grid,
+        ))
+    }
+
     fn ints(&self, p: &Value, name: &str) -> Result<Vec<i64>, Refusal> {
         let v = p
             .get(name)
@@ -2428,6 +2452,69 @@ fn in_ring(ring: &[(i64, i64)], p: (i64, i64)) -> Option<bool> {
 }
 
 /// Whether a point lies in any of these rings, read as one region by even-odd.
+/// Whether a feature meets a region (`protocol.md` 3.3, `within`): a vertex inside it or on its
+/// outline, an edge crossing or touching its outline, or, for a region feature, the region inside
+/// it. A path crossing the region between two vertices outside it meets it.
+fn meets(region: &[Vec<(i64, i64)>], r: &Row) -> bool {
+    let bbox = |pts: &mut dyn Iterator<Item = &(i64, i64)>| {
+        pts.fold(None, |b: Option<(i64, i64, i64, i64)>, p| {
+            Some(b.map_or((p.0, p.1, p.0, p.1), |b| {
+                (b.0.min(p.0), b.1.min(p.1), b.2.max(p.0), b.3.max(p.1))
+            }))
+        })
+    };
+    let (Some(rb), Some(fb)) = (bbox(&mut region.iter().flatten()), bbox(&mut r.vertices())) else {
+        return false;
+    };
+    if fb.0 > rb.2 || rb.0 > fb.2 || fb.1 > rb.3 || rb.1 > fb.3 {
+        return false;
+    }
+    if r.vertices().any(|v| inside(region, *v)) {
+        return true;
+    }
+    let closed = r.geometry == 2;
+    let edges = |ring: &[(i64, i64)], closed: bool| -> Vec<((i64, i64), (i64, i64))> {
+        let n = ring.len();
+        let m = if closed { n } else { n.saturating_sub(1) };
+        (0..m).map(|k| (ring[k], ring[(k + 1) % n])).collect()
+    };
+    let outline: Vec<_> = region.iter().flat_map(|g| edges(g, true)).collect();
+    for ring in r.pieces.iter().flatten() {
+        for (a, b) in edges(ring, closed) {
+            if outline.iter().any(|&(c, d)| segments_meet(a, b, c, d)) {
+                return true;
+            }
+        }
+    }
+    closed
+        && r.pieces
+            .iter()
+            .any(|piece| region.iter().flatten().any(|v| inside(piece, *v)))
+}
+
+/// Whether two closed segments share a point, exactly, on integer millimetres.
+fn segments_meet(a: (i64, i64), b: (i64, i64), c: (i64, i64), d: (i64, i64)) -> bool {
+    let orient = |p: (i64, i64), q: (i64, i64), r: (i64, i64)| -> i128 {
+        let v = i128::from(q.0 - p.0) * i128::from(r.1 - p.1)
+            - i128::from(q.1 - p.1) * i128::from(r.0 - p.0);
+        v.signum()
+    };
+    let on = |p: (i64, i64), q: (i64, i64), r: (i64, i64)| {
+        r.0 >= p.0.min(q.0) && r.0 <= p.0.max(q.0) && r.1 >= p.1.min(q.1) && r.1 <= p.1.max(q.1)
+    };
+    let (o1, o2, o3, o4) = (
+        orient(a, b, c),
+        orient(a, b, d),
+        orient(c, d, a),
+        orient(c, d, b),
+    );
+    (o1 != o2 && o3 != o4)
+        || (o1 == 0 && on(a, b, c))
+        || (o2 == 0 && on(a, b, d))
+        || (o3 == 0 && on(c, d, a))
+        || (o4 == 0 && on(c, d, b))
+}
+
 fn inside(rings: &[Vec<(i64, i64)>], p: (i64, i64)) -> bool {
     let mut n = 0;
     for r in rings {
@@ -2609,5 +2696,38 @@ mod tests {
         let a = json!({"h": {"blob": "ab", "path": "/x/ab"}});
         let b = json!({"h": {"blob": "ab", "path": "/y/ab"}});
         assert_eq!(answer_digest(&a), answer_digest(&b));
+    }
+
+    #[test]
+    fn within_takes_what_meets_the_region() {
+        // `protocol.md` 3.3 `within`: a region 10 m square.
+        let region = vec![vec![(0, 0), (10_000, 0), (10_000, 10_000), (0, 10_000)]];
+        // A path passing the region between two far vertices, none inside it: it meets it.
+        assert!(meets(
+            &region,
+            &path_row(0, vec![(-50_000, 5_000), (60_000, 5_000)])
+        ));
+        // One along its outline (a line on its edge) meets it too.
+        assert!(meets(
+            &region,
+            &path_row(1, vec![(-50_000, 0), (60_000, 0)])
+        ));
+        // One 1 mm outside, does not.
+        assert!(!meets(
+            &region,
+            &path_row(2, vec![(-50_000, -1), (60_000, -1)])
+        ));
+        // A region holding the whole of it meets it, with no vertex inside it.
+        let mut around = path_row(
+            3,
+            vec![(-1, -1), (20_000, -1), (20_000, 20_000), (-1, 20_000)],
+        );
+        around.geometry = 2;
+        assert!(meets(&region, &around));
+        // A path that only passes near the corner, outside, does not.
+        assert!(!meets(
+            &region,
+            &path_row(4, vec![(10_001, -5_000), (20_000, 5_000)])
+        ));
     }
 }

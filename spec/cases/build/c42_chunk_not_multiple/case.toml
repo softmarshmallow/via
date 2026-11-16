@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "resolution 2, chunk 33: build.chunk_not_multiple at chunk, data below 32, above 34, exit 1; chunk 1: below 2."
+milestone = 6
+actions   = ["build", "small"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/tiles"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/tiles"
+
+[action.build.diag.side]
+code = "build.chunk_not_multiple"
+file = "world.toml"
+line = 4
+data = { below = 32, above = 34 }
+
+[action.build.file.listing]
+path    = "build/tiles"
+listing = [".previous", "diagnostics.json"]
+
+[action.small]
+via         = ["build", "small.toml", "--out", "build/small"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/small"
+
+[action.small.diag.side]
+code = "build.chunk_not_multiple"
+file = "small.toml"
+line = 4
+data = { below = 2, above = 2 }

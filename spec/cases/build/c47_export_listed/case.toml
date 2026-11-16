@@ -1,0 +1,58 @@
+format    = "via-case-1"
+summary   = "An export step's files are listed with digests under export/<step id>/, exports names the folder and the step's output, the step's diagnostics.json is not among them, and via check catches a changed byte."
+milestone = 6
+pending   = "the engine does not run `when = \"export\"` yet (doc.not_yet); its runner is owed (TODO \"Player map\")"
+actions   = ["program", "trust", "build", "check", "flip", "check_flipped"]
+
+# build.md Conformance 47, 9.4 and 11.4; protocol.md 1 (`output`) and 1.1 (what an export returns).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/exported"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/exported"
+
+[action.build.diag.written]
+code = "step.map.written"
+
+[action.build.file.exports]
+path    = "build/exported/manifest.json"
+pointer = "/exports"
+value   = { map = { folder = "export/map/", output = "player_map" } }
+
+[action.build.file.map_listed]
+path    = "build/exported/manifest.json"
+pointer = "/files/export~1map~1map.json/digest"
+value   = "f631d661694bb58f572a33dc089b595ffc2ec93462c102dfada949e837d9e115"
+
+[action.build.file.floor]
+path   = "build/exported/export/map/floors/0.json"
+exists = true
+
+[action.build.file.no_diagnostics]
+path   = "build/exported/export/map/diagnostics.json"
+exists = false
+
+[action.check]
+via  = ["check", "build/exported"]
+exit = 0
+
+[action.flip]
+flip = "build/exported/export/map/map.json"
+at   = 3
+
+[action.check_flipped]
+via         = ["check", "build/exported"]
+exit        = 1
+diagnostics = "includes"
+
+[action.check_flipped.diag.digest]
+code = "check.digest"

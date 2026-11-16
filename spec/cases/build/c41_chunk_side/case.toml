@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "extent [0, 0, 100, 60], resolution 2, chunk 32: frame.chunk 32, frame.chunks [4, 2]; chunk [3, 1] posts [48, 16, 50, 30], bounds [96, 32, 100, 60], neighbours [[2, 0], [3, 0], [2, 1]]."
+milestone = 6
+actions   = ["build"]
+
+[action.build]
+via  = ["build", "world.toml", "--out", "build/tiles"]
+exit = 0
+out  = "build/tiles"
+
+[action.build.file.side]
+path    = "build/tiles/manifest.json"
+pointer = "/frame/chunk"
+value   = 32
+
+[action.build.file.count]
+path    = "build/tiles/manifest.json"
+pointer = "/frame/chunks"
+value   = [4, 2]
+
+[action.build.file.last]
+path     = "build/tiles/manifest.json"
+pointer  = "/chunks/7"
+includes = { at = [3, 1], posts = [48, 16, 50, 30], bounds = [96, 32, 100, 60], neighbours = [[2, 0], [3, 0], [2, 1]] }
+
+[action.build.check.eight]
+fn      = "json_count"
+path    = "build/tiles/manifest.json"
+pointer = "/chunks"
+count   = 8

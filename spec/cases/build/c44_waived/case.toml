@@ -1,0 +1,59 @@
+format    = "via-case-1"
+summary   = "Case 43 with a waiver of chunk [0, 0] to 7000 triangles: exit 0, no build.over_budget, chunk triangles 6500. No reason, or a reason of spaces: doc.missing_key. A waiver at [5, 5], one within the budget, and one writing groups the world does not limit: build.waiver_unused each, exit 0."
+milestone = 6
+actions   = ["build", "no_reason", "empty_reason", "unused"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/yard"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/yard"
+
+[action.build.file.triangles]
+path    = "build/yard/manifest.json"
+pointer = "/chunks/0/triangles"
+value   = 6500
+
+[action.no_reason]
+via         = ["build", "no_reason.toml", "--out", "build/no_reason"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/no_reason"
+
+[action.no_reason.diag.reason]
+code = "doc.missing_key"
+file = "no_reason.toml"
+
+[action.empty_reason]
+via         = ["build", "empty_reason.toml", "--out", "build/empty_reason"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/empty_reason"
+
+[action.empty_reason.diag.reason]
+code = "doc.missing_key"
+file = "empty_reason.toml"
+
+[action.unused]
+via         = ["build", "unused.toml", "--out", "build/unused"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/unused"
+
+[action.unused.diag.far]
+code = "build.waiver_unused"
+file = "unused.toml"
+line = 243
+data = { waiver = "far" }
+
+[action.unused.diag.idle]
+code = "build.waiver_unused"
+file = "unused.toml"
+line = 248
+data = { waiver = "idle" }
+
+[action.unused.diag.unlimited]
+code = "build.waiver_unused"
+file = "unused.toml"
+line = 253
+data = { waiver = "unlimited" }

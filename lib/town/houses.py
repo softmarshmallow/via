@@ -112,6 +112,16 @@ How it places (ours, written for this library):
    (not at a cut between two pieces), so the footprint's edges read the terrace, not a bank
    beyond it. quay doors within 0.3 m of the ground 3 m out: 10 of 125 before, 103 after.
 
+**Per block** (M6): declared with `for_each = "kind:block"`, the step is called once per block
+(protocol.md 1.2) and reads that block's lots (`within` the block, those lying inside it) and the
+streets that meet the box `NEAR` (1 m) round it, so a change re-runs only the calls of the blocks
+whose lots or streets it touches; a block with no lot of `lots` (another district's) returns
+nothing and says nothing.
+Every rule above reads one lot, or two lots meeting at a block's corner, so the houses are those
+of the whole table, each placed once; the `rows` record and the others are then per block.
+Without `for_each` the step reads the whole table, as before. (city `move_avenue`: three steps of
+64 to 80 s each re-ran whole on any change.)
+
 Names are by place (identity.md 2.2): a lot `lots#c<digest>_<station>` gives its row's first house
 (from the frontage chord's start) `h<digest>_<station>` and the others `h<digest>_<station>_<i>`,
 `i` the place in the row; so a house keeps its name exactly when its lot and its place in the row
@@ -209,17 +219,21 @@ def generate(step):
                    explain=PARAMS_EXPLAIN)
         return
     split = []
-    lots = read_lots(step, p.lots, split)
+    item = step.for_each_item
+    lots = read_lots(step, p.lots, split, block=item)
+    if item is not None and not lots:
+        return                                         # a block of another table: nothing here
     if split:
-        step.info("split", "step." + step.id,
+        step.info("split", subject(step),
                   f"{len(split)} lots are of several pieces; each stands for its largest.",
                   "A junction's corner cut the lot in two; the smaller pieces stay empty.",
-                  data={"count": len(split), "lots": split[:20]}, explain=EXPLAIN["split"])
-    streets = read_streets(step, p.streets)
+                  data=per_block(step, {"count": len(split), "lots": split[:20]}),
+                  explain=EXPLAIN["split"])
+    streets = read_streets(step, p.streets, within=near_block(step, item))
     if not streets:
-        step.warning("no_street", "step." + step.id, "No street to face; no house placed.",
+        step.warning("no_street", subject(step), "No street to face; no house placed.",
                      "Check `streets` against the world's street kinds.",
-                     explain=EXPLAIN["no_street"])
+                     data=per_block(step, {}) or None, explain=EXPLAIN["no_street"])
         return
     sizes = asset_sizes(step, p.assets)
     spare = asset_sizes(step, p.fallback) if p.fallback else []
@@ -301,25 +315,44 @@ def held_lots(chosen, by, joined, left=()):
     return out
 
 
+def subject(step):
+    """A record's subject: the block under `for_each` (diagnostics.md 6, "a step that runs once
+    per item gives the item as subject"), else the step. With the step as subject, two blocks'
+    equal `rows` records were one in diagnostics.json ("once", diagnostics.md 5), and city's
+    lots held read 590 of 1364 (M6 slice 1 review)."""
+    item = getattr(step, "for_each_item", None)
+    return item if item is not None else "step." + step.id
+
+
+def per_block(step, data):
+    """`data` with the block's name under `block` when the step runs per block, so no two blocks'
+    records are equal."""
+    item = getattr(step, "for_each_item", None)
+    return dict(data, block=item) if item is not None else data
+
+
 def say(step, houses, held, lots, small, steep, terraces):
     """`held`: {lot: rule}, the rule (`row`, `fallback`, `corner`) that put a house on it."""
     by = {r: sum(1 for v in held.values() if v == r) for r in ("row", "fallback", "corner")}
-    step.info("rows", "step." + step.id,
+    step.info("rows", subject(step),
               f"{houses} houses in rows on {len(held)} of {lots} lots.",
               "Each lot's frontage holds a row of houses side by side (rule 2).",
-              data={"houses": houses, "lots": lots, "lots_held": len(held), "small": len(small),
-                    "steep": len(steep), "terraces": terraces, "empty": lots - len(held),
-                    "fallback_lots": by["fallback"], "corner_lots": by["corner"],
-                    "corners": by["corner"] // 2}, explain=EXPLAIN["rows"])
+              data=per_block(step, {
+                  "houses": houses, "lots": lots, "lots_held": len(held), "small": len(small),
+                  "steep": len(steep), "terraces": terraces, "empty": lots - len(held),
+                  "fallback_lots": by["fallback"], "corner_lots": by["corner"],
+                  "corners": by["corner"] // 2}), explain=EXPLAIN["rows"])
     if small:
-        step.info("small", "step." + step.id, f"{len(small)} lots too small for a house.",
+        step.info("small", subject(step), f"{len(small)} lots too small for a house.",
                   "Lower `gap` or `setback`, add a narrower asset, or lengthen the lots' `spacing`.",
-                  data={"count": len(small), "lots": small[:20]}, explain=EXPLAIN["small"])
+                  data=per_block(step, {"count": len(small), "lots": small[:20]}),
+                  explain=EXPLAIN["small"])
     if steep:
-        step.info("steep", "step." + step.id,
+        step.info("steep", subject(step),
                   f"{len(steep)} houses too steep unlevelled, or for their pads.",
                   "Set `ground` to a levelling kind (`pad`), or raise `max_relief` or `max_cut`.",
-                  data={"count": len(steep), "houses": steep[:20]}, explain=EXPLAIN["steep"])
+                  data=per_block(step, {"count": len(steep), "houses": steep[:20]}),
+                  explain=EXPLAIN["steep"])
 
 
 MAX_ROW = 6                                           # houses in one lot's row, at most
@@ -551,8 +584,9 @@ def clear_rows(step, rows):
     between two posts). Read between posts alone, against 0, a front stood one post past the zero
     line and a further push step back: 1.55 m behind the footway in quay, 3.05 m in the city (M3
     slice 5 review on foot, "a grass strip between the footway and every house front")."""
+    first = [h[1] for _, tries in rows for _, row in tries for _, h in row][:1]
     try:
-        fields = step.fields(["role:keep_out"], window=[0, 0, 1, 1])
+        fields = step.fields(["role:keep_out"], window=probe(step, first))
     except (LookupError, RpcError):
         fields = []
     if not fields:
@@ -766,11 +800,27 @@ def within_cut(step, p, pieces):
     return [q[:4] for q in kept], steep
 
 
+def probe(step, pts):
+    """The one-post window a field listing reads (only for the field's name): `[0, 0, 1, 1]` for
+    the whole table; under `for_each`, the post nearest the first of `pts` (metres), so a block's
+    call reads nothing far from its block. (city `move_avenue`, M6: the post at the map's corner
+    read another value in the step's view after the avenue moved, and 133 calls ran again whose
+    every other read was unchanged.)"""
+    g = getattr(step, "grid", None)
+    if getattr(step, "for_each_item", None) is None or not pts or not g:
+        return [0, 0, 1, 1]
+    r = g["resolution_mm"]
+    i = min(max(int(round((pts[0][0] * 1000 - g["extent_mm"][0]) / r)), 0), g["nx"] - 1)
+    j = min(max(int(round((pts[0][1] * 1000 - g["extent_mm"][1]) / r)), 0), g["ny"] - 1)
+    return [i, j, i + 1, j + 1]
+
+
 def footway_heights(step, runs_):
     """The land `FOOTWAY_OUT` metres out from each house's front middle, per run, in one batch;
     None when the world has no surface field."""
     try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+        (surface,) = step.fields(["role:surface"],
+                                 window=probe(step, [h[1] for run in runs_ for _, h in run][:1]))
     except (LookupError, RpcError):
         return None
     ext = (step.grid or {}).get("extent_mm")
@@ -831,7 +881,7 @@ def footprint_relief(step, footprints):
     """Highest less lowest land height over each footprint's corners and middle, in one batch;
     None when the world has no surface field (nothing is skipped then)."""
     try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+        (surface,) = step.fields(["role:surface"], window=probe(step, [c[0] for c in footprints][:1]))
     except (LookupError, RpcError):
         return None
     ext = (step.grid or {}).get("extent_mm")
@@ -860,7 +910,7 @@ def pad_moves(step, footprints, grade, fade=(10.0, 25.0), reach=PAD_REACH, level
     level per footprint (None: its mean), the height the pad holds. With `means`, (moves, the
     land's mean under each footprint), and (None, None) without a surface field."""
     try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+        (surface,) = step.fields(["role:surface"], window=probe(step, [c[0] for c in footprints][:1]))
     except (LookupError, RpcError):
         return (None, None) if means else None
     ext = (step.grid or {}).get("extent_mm")
@@ -918,14 +968,20 @@ def _smoothstep(a, b, x):
     return t * t * (3.0 - 2.0 * t)
 
 
-def read_lots(step, table, split=None):
+def read_lots(step, table, split=None, block=None):
     """(name, outer ring in metres, counter-clockwise) of every cell of the table. A lot of several
     pieces (a cell cut in two by a junction's corner) stands for its largest piece; its name goes
     into `split` (a list) when one is given, so the step reports it (`split`, info) instead of
-    passing it over in silence."""
+    passing it over in silence.
+
+    With `block` (a region's name: the item of a step run `for_each = "kind:block"`), only the
+    lots of that block: those meeting it (`within`, protocol.md 3.3) whose every vertex lies inside
+    or on its outline, so a lot across a street, which touches the block along the street's line,
+    is left to its own block's call."""
     # The core adds the `class` column to a cells table's list by itself (protocol.md 3.3); asking
     # for it in `columns` asks for an attribute of that name instead, which no lot has.
-    fl = step.features(select=[table])
+    fl = step.features(select=[table], within=block)
+    outlines = read_rings(step, block) if block is not None else None
     cls = fl.get("class")
     out = []
     for f, name in enumerate(fl.names):
@@ -938,6 +994,9 @@ def read_lots(step, table, split=None):
                 rings.append(ring)
         if not rings:
             continue
+        if outlines is not None and not any(
+                all(inside(o, v) for r in rings for v in r) for o in outlines):
+            continue
         if len(rings) > 1 and split is not None:
             split.append(name)
         ring = max(rings, key=lambda r: abs(_area2(r)))
@@ -947,14 +1006,39 @@ def read_lots(step, table, split=None):
     return out
 
 
-def read_streets(step, selectors):
-    """Every street's segments, in metres. `build.features` takes `kind:<k>` alone, or a list of
-    names (protocol.md 3.3), so each `kind:` selector is its own call and the names one more."""
+def read_rings(step, name):
+    """The outer rings of a region feature, in metres."""
+    fl = step.features(select=[name])
+    return [_open([(float(v[0]) / 1000.0, float(v[1]) / 1000.0) for v in _list(piece[0])])
+            for f in range(len(fl)) for piece in fl.rings(f)]
+
+
+NEAR = 1.0                                            # metres round a block its streets are read in
+
+
+def near_block(step, block):
+    """The ring (millimetres) of the box round a block, `NEAR` metres out, or None without one: a
+    street the block's lots front lies along its outline, but the network's cut can leave the
+    outline a few millimetres off the street's line, so the block itself is not met by it."""
+    if block is None:
+        return None
+    pts = [q for r in read_rings(step, block) for q in r]
+    if not pts:
+        return None
+    x0, y0 = min(q[0] for q in pts) - NEAR, min(q[1] for q in pts) - NEAR
+    x1, y1 = max(q[0] for q in pts) + NEAR, max(q[1] for q in pts) + NEAR
+    return [_mm(q) for q in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+
+
+def read_streets(step, selectors, within=None):
+    """Every street's segments, in metres; with `within` (a region's name), those of the streets
+    meeting it. `build.features` takes `kind:<k>` alone, or a list of names (protocol.md 3.3), so
+    each `kind:` selector is its own call and the names one more."""
     kinds = [s for s in selectors if s.startswith("kind:")]
     names = [s for s in selectors if not s.startswith("kind:")]
-    lists = [step.features(select=k) for k in kinds]
+    lists = [step.features(select=k, within=within) for k in kinds]
     if names:
-        lists.append(step.features(select=names))
+        lists.append(step.features(select=names, within=within))
     segs = []
     for fl in lists:
         for f in range(len(fl)):

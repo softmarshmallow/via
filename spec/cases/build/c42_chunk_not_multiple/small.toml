@@ -1,0 +1,8 @@
+name       = "small"
+extent     = [0, 0, 100, 60]
+resolution = 2
+chunk      = 1
+
+[field.height]
+role = "surface"
+base = 0

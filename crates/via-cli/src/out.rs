@@ -18,7 +18,7 @@ use crate::npy;
 use crate::txt;
 
 /// The build format (`build.md` 4): the build format version of `graph.md` 3.3.
-pub const FORMAT: &str = "via-build-0";
+pub const FORMAT: &str = "via-build-1";
 
 /// The numerics epoch (`graph.md` 3.3): raised by any engine change that may change the bytes of
 /// a value. Written in `manifest.json`'s `engine` and in every key. 2 from M3 slice 4: a smoothed
@@ -57,12 +57,16 @@ pub struct Input<'a> {
     pub pack: Option<&'a Pack>,
     pub name: &'a str,
     pub seed: u64,
+    /// The world's `[budget]` (5.1).
+    pub budget: Option<&'a via_model::Budget>,
 }
 
 /// The files of the `id` by build path, and the manifest's world keys.
 pub struct Written {
     pub files: BTreeMap<String, Vec<u8>>,
     pub head: BTreeMap<String, J>,
+    /// The budget's diagnostics (5.1): world diagnostics found while writing.
+    pub budget: Vec<Diag>,
 }
 
 fn internal(message: String) -> Diag {
@@ -482,7 +486,7 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     let grid = b
         .grid
         .ok_or_else(|| internal("a build with no grid reached the writer".into()))?;
-    let layout = Layout::new(&grid);
+    let layout = Layout::with_side(&grid, b.chunk);
     let (nx, ny) = (
         usize::try_from(grid.nx).unwrap_or(0),
         usize::try_from(grid.ny).unwrap_or(0),
@@ -509,11 +513,21 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
                 "extent",
                 J::Arr(vec![J::mm(x0), J::mm(y0), J::mm(x1), J::mm(y1)]),
             ),
+            ("chunk", J::mm(layout.side_mm)),
+            (
+                "chunks",
+                J::Arr(vec![
+                    J::Num(layout.ncx.to_string()),
+                    J::Num(layout.ncy.to_string()),
+                ]),
+            ),
             ("posts", J::Arr(vec![J::count(nx), J::count(ny)])),
             ("resolution", J::mm(grid.resolution)),
             ("unit", J::s("m")),
         ]),
     );
+    // What each chunk's digest reads of the scalar fields (5.2): the samples as written.
+    let mut scalars: Vec<(String, Vec<f32>)> = Vec::new();
 
     // Fields (6).
     let mut fields = J::obj();
@@ -538,6 +552,7 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
                 clean.push(finite32(*v, &format!("fields/{name}"), i)?);
             }
             let (lo, hi) = min_max(&clean);
+            scalars.push((name.clone(), clean.clone()));
             let path = format!("fields/{}.npy", segment(name));
             files.insert(path.clone(), npy::f4(&[ny, nx], &clean));
             e.insert("type".into(), J::s("scalar"));
@@ -647,6 +662,14 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
             obj([("colour", colour), ("params", J::Obj(J::obj()))]),
         );
     }
+    // Each material's and asset's entry digest, for the chunk digest (5.2): a pack revision that
+    // changes what an instance row or a weights layer points to changes the chunks that hold it.
+    let entry_digest = |m: &BTreeMap<String, J>| -> BTreeMap<String, String> {
+        m.iter()
+            .map(|(k, v)| (k.clone(), digest_hex(v.canonical().as_bytes())))
+            .collect()
+    };
+    let material_digest = entry_digest(&materials);
     head.insert("materials".into(), J::Obj(materials));
     let mut assets = J::obj();
     let mut triangles: BTreeMap<String, u64> = BTreeMap::new();
@@ -657,6 +680,7 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
             assets.insert(a.id.clone(), asset_json(a, stand_ins));
         }
     }
+    let asset_digest = entry_digest(&assets);
     head.insert("assets".into(), J::Obj(assets));
 
     // Instances (8): sorted by chunk, asset, name.
@@ -677,6 +701,7 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     let mut scales = Vec::new();
     let mut tints = Vec::new();
     let mut names = String::new();
+    let mut row_json: Vec<J> = Vec::with_capacity(rows.len());
     let mut per_chunk: Vec<BTreeMap<String, (usize, usize)>> =
         vec![BTreeMap::new(); layout.chunks.len()];
     let mut chunk_tri: Vec<u64> = vec![0; layout.chunks.len()];
@@ -697,6 +722,16 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
         tints.push(finite32(i.tint as f32, "instances/tint", row)?);
         names.push_str(name);
         names.push('\n');
+        row_json.push(J::Arr(vec![
+            J::s((*name).clone()),
+            J::s((*asset).clone()),
+            J::int(i.origin.0),
+            J::int(i.origin.1),
+            J::int(i.facing.rem_euclid(360_000)),
+            J::int(i64::from(zs[row].to_bits())),
+            J::int(i64::from(scales[row].to_bits())),
+            J::int(i64::from(tints[row].to_bits())),
+        ]));
         let e = per_chunk[*ci].entry((*asset).clone()).or_insert((row, 0));
         e.1 += 1;
         chunk_tri[*ci] += triangles.get(*asset).copied().unwrap_or(0);
@@ -717,37 +752,6 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     inst.insert("names".into(), J::s("instances/names.txt"));
     head.insert("instances".into(), J::Obj(inst));
 
-    // Chunks (5).
-    let mut chunks = Vec::new();
-    for (ci, c) in layout.chunks.iter().enumerate() {
-        let mut im = J::obj();
-        let mut count = 0usize;
-        for (a, (first, k)) in &per_chunk[ci] {
-            im.insert(a.clone(), J::Arr(vec![J::count(*first), J::count(*k)]));
-            count += k;
-        }
-        chunks.push(obj([
-            (
-                "at",
-                J::Arr(vec![J::Num(c.cx.to_string()), J::Num(c.cy.to_string())]),
-            ),
-            ("count", J::count(count)),
-            ("instances", J::Obj(im)),
-            (
-                "posts",
-                J::Arr(
-                    [c.i0, c.j0, c.i1, c.j1]
-                        .iter()
-                        .map(|v| J::Num(v.to_string()))
-                        .collect(),
-                ),
-            ),
-            ("triangles", J::Num(chunk_tri[ci].to_string())),
-            ("weights", J::Obj(chunk_weights[ci].clone())),
-        ]));
-    }
-    head.insert("chunks".into(), J::Arr(chunks));
-
     // Features, footprints, outputs (9).
     let surface = Surface::new(b, grid);
     let feats: Vec<J> = b
@@ -755,6 +759,13 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
         .iter()
         .map(|(n, f)| feature_json(n, f, input.world.home("feature", n), &surface))
         .collect();
+    // Each feature's and footprint's box and digest, for the chunks that list it (5, 5.2).
+    let mut feat_box: Vec<(String, [i64; 4], String)> = Vec::new();
+    for ((n, f), j) in b.features.iter().zip(&feats) {
+        if let Some(bx) = box_of(f.all_points()) {
+            feat_box.push((n.clone(), bx, digest_hex(j.canonical().as_bytes())));
+        }
+    }
     let foots: Vec<J> = b
         .footprints
         .iter()
@@ -777,6 +788,12 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
             ])
         })
         .collect();
+    let mut foot_box: Vec<(String, [i64; 4], String)> = Vec::new();
+    for ((inst, f), j) in b.footprints.iter().zip(&foots) {
+        if let Some(bx) = box_of(f.ring.iter().copied()) {
+            foot_box.push((inst.clone(), bx, digest_hex(j.canonical().as_bytes())));
+        }
+    }
     files.insert(
         "features.json".into(),
         obj([("features", J::Arr(feats)), ("footprints", J::Arr(foots))]).file(),
@@ -819,13 +836,19 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
 
     // Generated meshes (10): one per kind surface.
     let mut meshes = Vec::new();
+    let mut mesh_at: Vec<(String, Option<[i64; 4]>, String)> = Vec::new();
     for m in &b.meshes {
         let path = mesh_path(&m.place);
         let mat = m.material.as_deref().and_then(|n| {
             let colour = input.pack?.materials.get(n)?.colour;
             Some(crate::glb::Material { name: n, colour })
         });
-        files.insert(path.clone(), crate::glb::write(m, mat.as_ref()));
+        let bytes = crate::glb::write(m, mat.as_ref());
+        // Listed by its box, as features are (5): a large triangle can span a chunk that holds
+        // none of its vertices.
+        let bx = box_of(m.vertices.iter().map(|v| (v[0], v[1])));
+        mesh_at.push((m.place.clone(), bx, digest_hex(&bytes)));
+        files.insert(path.clone(), bytes);
         meshes.push(obj([
             ("collides", J::Bool(true)),
             ("feature", J::s(m.owner.clone())),
@@ -837,7 +860,389 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
         ]));
     }
     head.insert("meshes".into(), J::Arr(meshes));
-    Ok(Written { files, head })
+
+    // Chunks (5, 5.2), and the budget (5.1).
+    let [ex0, ey0, _, _] = grid.extent;
+    let r = grid.resolution;
+    let at_of =
+        |c: &crate::layout::Chunk| J::Arr(vec![J::Num(c.cx.to_string()), J::Num(c.cy.to_string())]);
+    let mut chunks = Vec::new();
+    let mut loads: Vec<Load> = Vec::new();
+    for (ci, c) in layout.chunks.iter().enumerate() {
+        let bounds = chunk_bounds(c, ex0, ey0, r);
+        let meets = |bx: &[i64; 4]| {
+            bx[0] <= bounds[2] && bounds[0] <= bx[2] && bx[1] <= bounds[3] && bounds[1] <= bx[3]
+        };
+        let mut im = J::obj();
+        let mut count = 0usize;
+        let mut rows_here = Vec::new();
+        for (a, (first, k)) in &per_chunk[ci] {
+            im.insert(a.clone(), J::Arr(vec![J::count(*first), J::count(*k)]));
+            count += k;
+            rows_here.extend(row_json[*first..*first + *k].iter().cloned());
+        }
+        let mut neighbours = Vec::new();
+        for dy in -1i64..=1 {
+            for dx in -1i64..=1 {
+                let (nx_, ny_) = (c.cx as i64 + dx, c.cy as i64 + dy);
+                if (dx, dy) != (0, 0)
+                    && (0..layout.ncx as i64).contains(&nx_)
+                    && (0..layout.ncy as i64).contains(&ny_)
+                {
+                    neighbours.push(J::Arr(vec![J::int(nx_), J::int(ny_)]));
+                }
+            }
+        }
+        let mesh_names: BTreeMap<String, J> = mesh_at
+            .iter()
+            .filter(|(_, bx, _)| bx.as_ref().is_some_and(meets))
+            .map(|(n, _, d)| (n.clone(), J::s(d.clone())))
+            .collect();
+        let feat_names: BTreeMap<String, J> = feat_box
+            .iter()
+            .filter(|(_, bx, _)| meets(bx))
+            .map(|(n, _, d)| (n.clone(), J::s(d.clone())))
+            .collect();
+        let foot_names: BTreeMap<String, J> = foot_box
+            .iter()
+            .filter(|(_, bx, _)| meets(bx))
+            .map(|(n, _, d)| (n.clone(), J::s(d.clone())))
+            .collect();
+        // The digest (5.2).
+        let mut fd = J::obj();
+        for (name, vals) in &scalars {
+            let mut bytes = Vec::new();
+            for j in c.j0..=c.j1 {
+                for i in c.i0..=c.i1 {
+                    let v = vals[usize::try_from(j * grid.nx + i).unwrap_or(0)];
+                    bytes.extend_from_slice(&v.to_le_bytes());
+                }
+            }
+            fd.insert(name.clone(), J::s(digest_hex(&bytes)));
+            if b.fields.get(name).and_then(|f| f.role.as_deref()) == Some("surface") {
+                if let Some(cut) = &b.cut {
+                    let mut q = Vec::new();
+                    for j in c.j0..c.j1 {
+                        for i in c.i0..c.i1 {
+                            let at = usize::try_from(j * (grid.nx - 1) + i).unwrap_or(0);
+                            q.push(cut.get(at).copied().unwrap_or(0));
+                        }
+                    }
+                    fd.insert(format!("{name}.cut"), J::s(digest_hex(&q)));
+                }
+            }
+        }
+        let mut wd = J::obj();
+        for (field, e) in &chunk_weights[ci] {
+            let d = e
+                .get("file")
+                .and_then(J::as_str)
+                .and_then(|p| files.get(p))
+                .map_or(J::Null, |bytes| J::s(digest_hex(bytes)));
+            wd.insert(field.clone(), d);
+        }
+        // The pack entries this chunk's rows and weights layers point to (5.2).
+        let mut ad = J::obj();
+        for a in per_chunk[ci].keys() {
+            if let Some(d) = asset_digest.get(a) {
+                ad.insert(a.clone(), J::s(d.clone()));
+            }
+        }
+        let mut md = J::obj();
+        for e in chunk_weights[ci].values() {
+            if let Some(J::Arr(ms)) = e.get("materials") {
+                for m in ms.iter().filter_map(J::as_str) {
+                    if let Some(d) = material_digest.get(m) {
+                        md.insert(m.to_string(), J::s(d.clone()));
+                    }
+                }
+            }
+        }
+        let digest = digest_hex(
+            obj([
+                ("assets", J::Obj(ad)),
+                ("features", J::Obj(feat_names.clone())),
+                ("fields", J::Obj(fd)),
+                ("footprints", J::Obj(foot_names.clone())),
+                (
+                    "instances",
+                    J::s(digest_hex(J::Arr(rows_here).canonical().as_bytes())),
+                ),
+                ("materials", J::Obj(md)),
+                ("meshes", J::Obj(mesh_names.clone())),
+                ("weights", J::Obj(wd)),
+            ])
+            .canonical()
+            .as_bytes(),
+        );
+        let groups = per_chunk[ci].len();
+        chunks.push(obj([
+            ("at", at_of(c)),
+            ("bounds", J::Arr(bounds.iter().map(|v| J::mm(*v)).collect())),
+            ("count", J::count(count)),
+            ("digest", J::s(digest)),
+            ("features", J::strs(feat_names.keys().map(String::as_str))),
+            ("footprints", J::strs(foot_names.keys().map(String::as_str))),
+            ("groups", J::count(groups)),
+            ("instances", J::Obj(im)),
+            ("meshes", J::strs(mesh_names.keys().map(String::as_str))),
+            ("neighbours", J::Arr(neighbours)),
+            (
+                "posts",
+                J::Arr(
+                    [c.i0, c.j0, c.i1, c.j1]
+                        .iter()
+                        .map(|v| J::Num(v.to_string()))
+                        .collect(),
+                ),
+            ),
+            ("triangles", J::Num(chunk_tri[ci].to_string())),
+            ("weights", J::Obj(chunk_weights[ci].clone())),
+        ]));
+        // Each asset's share of each measure, for the record that names the dominant one.
+        let shares: Vec<(String, u64, u64)> = per_chunk[ci]
+            .iter()
+            .map(|(a, (_, k))| {
+                let k = *k as u64;
+                (a.clone(), k, k * triangles.get(a).copied().unwrap_or(0))
+            })
+            .collect();
+        loads.push(Load {
+            at: (c.cx, c.cy),
+            bounds,
+            triangles: chunk_tri[ci],
+            instances: count as u64,
+            groups: groups as u64,
+            shares,
+        });
+    }
+    head.insert("chunks".into(), J::Arr(chunks));
+    let budget = input
+        .budget
+        .map(|bg| budget_diags(bg, &loads))
+        .unwrap_or_default();
+    Ok(Written {
+        files,
+        head,
+        budget,
+    })
+}
+
+/// What a chunk holds, as the budget counts it (5.1).
+struct Load {
+    at: (u64, u64),
+    bounds: [i64; 4],
+    triangles: u64,
+    instances: u64,
+    groups: u64,
+    /// Per asset: its instances and its triangles in the chunk.
+    shares: Vec<(String, u64, u64)>,
+}
+
+impl Load {
+    fn value(&self, measure: &str) -> u64 {
+        match measure {
+            "triangles" => self.triangles,
+            "instances" => self.instances,
+            _ => self.groups,
+        }
+    }
+}
+
+/// A chunk's first and last posts in millimetres (5).
+fn chunk_bounds(c: &crate::layout::Chunk, x0: i64, y0: i64, r: i64) -> [i64; 4] {
+    let p = |i: u64| i64::try_from(i).unwrap_or(0) * r;
+    [x0 + p(c.i0), y0 + p(c.j0), x0 + p(c.i1), y0 + p(c.j1)]
+}
+
+/// The least box holding the points, in millimetres.
+fn box_of(points: impl IntoIterator<Item = (i64, i64)>) -> Option<[i64; 4]> {
+    let mut b: Option<[i64; 4]> = None;
+    for (x, y) in points {
+        b = Some(match b {
+            None => [x, y, x, y],
+            Some(o) => [o[0].min(x), o[1].min(y), o[2].max(x), o[3].max(y)],
+        });
+    }
+    b
+}
+
+fn digest_hex(bytes: &[u8]) -> String {
+    via_graph::Digest::of(bytes).hex()
+}
+
+/// The budget's records (5.1): `build.over_budget` per chunk and measure over its limit, the
+/// dominant asset named; `build.waiver_unused` per waiver not needed.
+fn budget_diags(bg: &via_model::Budget, loads: &[Load]) -> Vec<Diag> {
+    use via_diag::{KeyPart, KeyPath, Value};
+    let key = |parts: &[&str]| {
+        KeyPath::from_parts(
+            parts
+                .iter()
+                .map(|p| KeyPart::Key((*p).to_string()))
+                .collect(),
+        )
+        .unwrap_or_else(|| KeyPath::key("budget"))
+    };
+    let m = via_num::write_length;
+    let mut out = Vec::new();
+    for l in loads {
+        for (measure, world_limit) in bg.limits.each() {
+            // A waiver raises the world's limit and never adds one (5.1).
+            if world_limit.is_none() {
+                continue;
+            }
+            // The first waiver of this chunk, by id, that writes this measure.
+            let waiver = bg.waivers.iter().find(|w| {
+                w.at == Some(l.at)
+                    && w.limits
+                        .each()
+                        .iter()
+                        .any(|(k, v)| *k == measure && v.is_some())
+            });
+            let limit = waiver
+                .and_then(|w| {
+                    w.limits
+                        .each()
+                        .iter()
+                        .find(|(k, _)| *k == measure)
+                        .and_then(|(_, v)| *v)
+                })
+                .or(world_limit);
+            let Some(limit) = limit else { continue };
+            let value = l.value(measure);
+            if value <= limit {
+                continue;
+            }
+            // The dominant asset: the largest share of the measure, ties to the lower id.
+            let part = |s: &(String, u64, u64)| if measure == "triangles" { s.2 } else { s.1 };
+            let top = l.shares.iter().max_by(|a, b| {
+                part(a)
+                    .cmp(&part(b))
+                    .then(b.0.as_bytes().cmp(a.0.as_bytes()))
+            });
+            let (asset, inst, share) = match top {
+                Some(t) => {
+                    let whole = if measure == "triangles" {
+                        l.triangles
+                    } else {
+                        l.instances
+                    };
+                    (t.0.clone(), t.1, part(t) * 100 / whole.max(1))
+                }
+                None => (String::new(), 0, 0),
+            };
+            let (cx, cy) = l.at;
+            let site = match waiver {
+                Some(w) => key(&["budget", "waive", &w.id, measure]),
+                None => key(&["budget", measure]),
+            };
+            let what = match measure {
+                "triangles" => "triangles",
+                "instances" => "instances",
+                _ => "instance groups",
+            };
+            // A group is one asset, so its share is of the chunk's instances (5.1).
+            let of = if measure == "groups" {
+                "of its instances"
+            } else {
+                "of them"
+            };
+            let msg = format!(
+                "chunk [{cx}, {cy}] ({}..{} m east, {}..{} m north) holds {value} {what}, over the {} of {limit}; `{asset}` gives {share}% {of} ({inst} instances)",
+                m(l.bounds[0]),
+                m(l.bounds[2]),
+                m(l.bounds[1]),
+                m(l.bounds[3]),
+                if waiver.is_some() { "waived limit" } else { "budget" },
+            );
+            let hint = format!(
+                "thin `{asset}` there, or waive the chunk: [budget.waive.c{cx}_{cy}] at = [{cx}, {cy}], {measure} = {value}, reason = \"<why the target can draw it>\""
+            );
+            let as_i = |v: u64| Value::from(i64::try_from(v).unwrap_or(i64::MAX));
+            out.push(
+                Diag::new(
+                    codes::build::OVER_BUDGET,
+                    Subject::World,
+                    Site::Key(site),
+                    txt(msg),
+                    txt(hint),
+                )
+                .with("chunk", Value::List(vec![as_i(cx), as_i(cy)]))
+                .with("measure", measure)
+                .with("value", as_i(value))
+                .with("limit", as_i(limit))
+                .with("asset", asset.as_str())
+                .with("share", as_i(share))
+                .with("instances", as_i(inst)),
+            );
+        }
+    }
+    for w in &bg.waivers {
+        let load = w.at.and_then(|at| loads.iter().find(|l| l.at == at));
+        let needed = load.is_some_and(|l| {
+            w.limits.each().iter().any(|(measure, v)| {
+                v.is_some()
+                    && bg
+                        .limits
+                        .each()
+                        .iter()
+                        .find(|(k, _)| k == measure)
+                        .and_then(|(_, lim)| *lim)
+                        .is_some_and(|lim| l.value(measure) > lim)
+            })
+        });
+        if needed {
+            continue;
+        }
+        let msg = match (w.at, load) {
+            (Some((cx, cy)), None) => format!(
+                "the waiver `{}` names chunk [{cx}, {cy}], which this build does not have",
+                w.id
+            ),
+            (None, _) => format!("the waiver `{}` names no chunk", w.id),
+            (Some((cx, cy)), Some(_)) => {
+                // A measure the world does not limit cannot be waived (5.1).
+                let unlimited: Vec<&str> = w
+                    .limits
+                    .each()
+                    .iter()
+                    .filter(|(k, v)| {
+                        v.is_some()
+                            && bg
+                                .limits
+                                .each()
+                                .iter()
+                                .any(|(m, lim)| m == k && lim.is_none())
+                    })
+                    .map(|(k, _)| *k)
+                    .collect();
+                if unlimited.is_empty() {
+                    format!(
+                        "the waiver `{}` is not needed: chunk [{cx}, {cy}] is within the budget for every measure it writes",
+                        w.id
+                    )
+                } else {
+                    format!(
+                        "the waiver `{}` is not needed: chunk [{cx}, {cy}] is within the budget, and `[budget]` sets no limit for {} to raise",
+                        w.id,
+                        unlimited.iter().map(|k| format!("`{k}`")).collect::<Vec<_>>().join(", ")
+                    )
+                }
+            }
+        };
+        out.push(
+            Diag::new(
+                codes::build::WAIVER_UNUSED,
+                Subject::World,
+                Site::Key(key(&["budget", "waive", &w.id])),
+                txt(msg),
+                via_diag::text!("delete the waiver"),
+            )
+            .with("waiver", w.id.as_str()),
+        );
+    }
+    out
 }
 
 /// The cut file of the terrain `name` (`build.md` 6.5).

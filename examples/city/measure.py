@@ -12,7 +12,8 @@ Counts: a ward, block or lot is a feature of that kind; `streets` the paths of k
 `houses` the instances named `houses_<district>#...`; `bookmarks` the features of kind `bookmark`. The street
 form and the decks are lib/review/form.py's records (`step.form.*`, data.value; `decks`,
 `doubled_decks` and `ways_over_water` are per water feature, so with one river one record each);
-`reach_held` the reach lint's; `houses`, `lots_held` the houses step's.
+`reach_held` the reach lint's; `lots_held` and `houses_<district>` the houses steps' `rows`
+records, summed over blocks (each per-block record names its block, so none is merged away).
 
 Per crossing (every feature of kind `crossing`): `meetings_owned` counts the main ways
 (`main_street`) with an end within 0.5 m of a crossing's first or last point; `crossing_ends_met`
@@ -221,9 +222,12 @@ def measures(d):
                 m["stubs"] = data.get("stubs")
             if c == "step.form.edge_ends":
                 m["edge_at_edge"], m["edge_at_gate"] = data.get("at_edge"), data.get("at_gate")
+        # One `rows` record per block (M6: the steps run per block, and each record names its
+        # block in `data.block`, so equal counts of two blocks are two records).
         if c.startswith("step.houses_") and c.endswith(".rows"):
             m["lots_held"] = m.get("lots_held", 0) + data.get("lots_held", 0)
-            m["houses_" + c.split(".")[1].split("_", 1)[1]] = data.get("houses")
+            k = "houses_" + c.split(".")[1].split("_", 1)[1]
+            m[k] = m.get(k, 0) + data.get("houses", 0)
         if c == "step.reach.walked":
             m["reach_held"], m["reach_pairs"] = data.get("held"), data.get("pairs")
     for code in ("place.relief", "place.keep_out", "geom.unowned_crossing", "authority.conflict",

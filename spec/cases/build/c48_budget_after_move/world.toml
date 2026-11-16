@@ -1,0 +1,28 @@
+name       = "pair"
+extent     = [0, 0, 128, 64]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.a]
+asset = "light"
+at    = [10, 10]
+
+[instance.b]
+asset = "light"
+at    = [100, 10]
+
+[budget]
+instances = 1
+triangles = 500
+
+# `a` crosses into chunk [1, 0]: two instances there. `instances/names.txt` still reads "a", "b".
+[change.cross.instance.a]
+at = [110, 10]
+
+# `b` swaps to a heavier asset in place: 1000 triangles in chunk [1, 0].
+[change.heavier.instance.b]
+asset = "heavy"

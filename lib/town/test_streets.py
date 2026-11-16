@@ -536,15 +536,37 @@ def _two_piece_lot():
 
 
 class FakeHouses(FakeStep):
+    for_each_item = None                               # the block of a `for_each` call, or None
+    withins = ()
+
     def pack(self, select="*", columns=()):
         return pack_table(select)
 
+    def features(self, select, within=None, columns=()):
+        fl = super().features(select, within, columns)
+        if within is None:
+            return fl
+        self.withins = self.withins + (within if isinstance(within, str) else "box",)
+        if select != ["lots"]:
+            return fl                                  # the streets: every one meets the blocks here
+        # As the engine (protocol.md 3.3, `within`): a lot with a vertex inside or on the block.
+        block = self.fl[within].rings(0)[0][0]
+        ring = [(float(v[0]) / 1000.0, float(v[1]) / 1000.0) for v in block]
+        keep = [(n, 2, [(float(v[0]) / 1000.0, float(v[1]) / 1000.0) for v in fl.rings(f)[0][0]],
+                 fl["class"][f]) for f, n in enumerate(fl.names)
+                if any(H["inside"](ring, (float(v[0]) / 1000.0, float(v[1]) / 1000.0))
+                       for v in fl.rings(f)[0][0])]
+        return feature_list(keep)
 
-def houses_step(cells, height=None, keep_out=None, **params):
+
+def houses_step(cells, height=None, keep_out=None, blocks=None, item=None, **params):
     fl = {"lots": feature_list(cells),
           "kind:main_street": feature_list([("streets#a", 1, [(0, 0), (100, 0)], "feature")]),
           "kind:street": feature_list([("streets#b", 1, [(0, 0), (0, 100)], "feature")])}
+    for name, ring in (blocks or {}).items():
+        fl[name] = feature_list([(name, 2, ring, "area")])
     step = FakeHouses(dict({"lots": "lots"}, **params), height=height, features=fl)
+    step.for_each_item = item
     step.keep_out = keep_out
     step.id = "houses"
     H["generate"](step)
@@ -552,6 +574,38 @@ def houses_step(cells, height=None, keep_out=None, **params):
 
 
 class HousesTest(unittest.TestCase):
+    def test_per_block_places_each_house_once(self):
+        # houses.py "Per block": called once per block, each call places the houses of its own
+        # lots only, and together they are the houses of the whole table. The lot at x 50 to 58.6
+        # touches block a along x = 50 (`within` gives it to a's call too) and stands in block b.
+        blocks = {"blocks#aa_0": [(0, 0), (50, 0), (50, 60), (0, 60)],
+                  "blocks#ab_0": [(50, 0), (100, 0), (100, 60), (50, 60)]}
+        lots = [("lots#cw_0", 2, [(20, 3), (28.6, 3), (28.6, 19), (20, 19)], "cell"),
+                ("lots#ce_0", 2, [(50, 3), (58.6, 3), (58.6, 19), (50, 19)], "cell"),
+                ("lots#cf_0", 2, [(70, 3), (78.6, 3), (78.6, 19), (70, 19)], "cell")]
+        whole = houses_step(lots)
+        a = houses_step(lots, blocks=blocks, item="blocks#aa_0")
+        b = houses_step(lots, blocks=blocks, item="blocks#ab_0")
+        self.assertEqual([i[0] for i in a.out.instances], ["hw_0"])
+        self.assertEqual(sorted(i[0] for i in b.out.instances), ["he_0", "hf_0"])
+        self.assertEqual(sorted(a.out.instances + b.out.instances), sorted(whole.out.instances))
+        self.assertIn("blocks#aa_0", a.withins)        # the lots and the streets, within the block
+        self.assertEqual(len(a.withins), 3)
+        # Each call's records give its block as subject and in `data` (diagnostics.md 6), so two
+        # blocks' equal `rows` records are not one in diagnostics.json; the whole table's, the step.
+        ra = next(s for s in a.said if s[1] == "rows")
+        self.assertEqual((ra[2], ra[3]["block"], ra[3]["lots_held"]), ("blocks#aa_0", "blocks#aa_0", 1))
+        rw = next(s for s in whole.said if s[1] == "rows")
+        self.assertEqual(rw[2], "step.houses")
+        self.assertNotIn("block", rw[3])
+        # A block with no lot of the table (another district's) returns nothing and says nothing.
+        none = houses_step(lots, blocks=dict(blocks, **{"blocks#ac_0": [(0, 70), (9, 70), (9, 80)]}),
+                           item="blocks#ac_0")
+        self.assertEqual((none.out.instances, none.said), ([], []))
+        # A field listing reads one post near the block, not the map's corner, under `for_each`.
+        self.assertEqual(H["probe"](a, [(21.2, 9.9)]), [11, 5, 12, 6])
+        self.assertEqual(H["probe"](whole, [(21.0, 9.9)]), [0, 0, 1, 1])
+
     def test_faces_its_street(self):
         # A lot 8.6 m along the east-west street at y = 0, 16 m deep, north of it: the house's front
         # faces south (180), its front 1 m in from the frontage. Only house_narrow fits 7.6 m.

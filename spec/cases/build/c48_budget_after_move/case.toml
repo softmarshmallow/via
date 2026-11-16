@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "Budget instances 1, triangles 500; two light instances in two chunks: exit 0. Built warm on the same store, a change moving one across the chunk edge gives build.over_budget for instances (exit 1), and a change swapping one to a 1000-triangle asset gives it for triangles (exit 1). Each also equals its clean build (U6)."
+milestone = 6
+actions   = ["base", "cross", "heavier"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/base"
+
+[action.cross]
+via         = ["build", "world.toml", "--change", "cross", "--out", "build/cross"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/cross"
+
+[action.cross.diag.instances]
+code = "build.over_budget"
+data = { chunk = [1, 0], measure = "instances", value = 2, limit = 1, asset = "light", share = 100, instances = 2 }
+
+[action.heavier]
+via         = ["build", "world.toml", "--change", "heavier", "--out", "build/heavier"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/heavier"
+
+[action.heavier.diag.triangles]
+code = "build.over_budget"
+data = { chunk = [1, 0], measure = "triangles", value = 1000, limit = 500, asset = "heavy", share = 100, instances = 1 }

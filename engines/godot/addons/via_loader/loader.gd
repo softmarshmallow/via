@@ -1,5 +1,5 @@
 extends RefCounted
-## The Godot loader of spec/build.md 15.1: reads one build directory (format via-build-0) and makes
+## The Godot loader of spec/build.md 15.1: reads one build directory (format via-build-1) and makes
 ## one node tree. The editor plugin saves that tree as a scene; the sheet tool makes it at start.
 ## Both run this code, so compile-time export and runtime loading differ only in when the tree is
 ## saved. It reads only the directory and the files the manifest names under `pack_root`; it never
@@ -22,7 +22,7 @@ const Primitives := preload("res://addons/via_loader/primitives.gd")
 const TERRAIN_SHADER := preload("res://addons/via_loader/terrain.gdshader")
 const INSTANCE_SHADER := preload("res://addons/via_loader/instance.gdshader")
 
-const FORMAT := "via-build-0"
+const FORMAT := "via-build-1"
 ## The most materials one chunk's shader draws: the layers of one Texture2DArray every renderer
 ## Godot ships allows (OpenGL ES 3 guarantees 256). A chunk naming more is load.too_many_materials.
 const MAX_MATERIALS := 256
@@ -78,6 +78,12 @@ var _asset_material := {}
 var _albedo := {}
 var _water_material: StandardMaterial3D
 var _features_cache = null
+## Streaming (build.md 15.1, M6): `prepare` makes the root without chunks or generated meshes, and
+## stream.gd makes each from `make_chunk` and `make_mesh` as a walker nears it.
+var _streamed := false
+var _material_field := ""
+var _cols := {}
+var _with_water := false
 
 
 # --- options -------------------------------------------------------------------------------------
@@ -198,9 +204,15 @@ func make(build_dir: String, opts := {}) -> Node3D:
 	if material != "":
 		drawn[material] = true
 	var cols := _instance_columns()
-	for chunk in _manifest.get("chunks", []):
-		root.add_child(_chunk(chunk, material, cols, not water.is_empty()))
-	_meshes(root)
+	_material_field = material
+	_cols = cols
+	_with_water = not water.is_empty()
+	if _streamed:
+		_warm()
+	else:
+		for chunk in _manifest.get("chunks", []):
+			root.add_child(_chunk(chunk, material, cols, not water.is_empty()))
+		_meshes(root)
 	_features(root)
 	if not _paths(root):
 		root.free()
@@ -219,6 +231,177 @@ func make(build_dir: String, opts := {}) -> Node3D:
 			"name them in the `fields` option to keep them as data, or `water` to draw a water surface",
 			{"fields": not_drawn})
 	return root
+
+
+func prepare(build_dir: String, opts := {}) -> Node3D:
+	## As `make`, but the root holds no chunk node and no generated mesh: stream.gd makes each with
+	## make_chunk and make_mesh. Everything chunks share (asset meshes and materials, material
+	## images, the water material) is made here, so a chunk can be made on another thread while
+	## nothing else touches the loader.
+	_streamed = true
+	return make(build_dir, opts)
+
+
+func _warm() -> void:
+	for chunk in _manifest.get("chunks", []):
+		for asset in chunk.get("instances", {}):
+			_asset_mesh_of(asset)
+		for w in chunk.get("weights", {}).values():
+			for m in w.get("materials", []):
+				_material_image(m, _manifest.get("materials", {}).get(m, {}))
+	if _with_water:
+		water_material()
+
+
+func chunk_list() -> Array:
+	return _manifest.get("chunks", [])
+
+
+func make_chunk(n: int) -> Node3D:
+	## Chunk n of the manifest's list as `make` adds it: `c_<cx>_<cy>` with its ground, water,
+	## instances and their bodies. Not in the tree, so it may be made on a worker thread.
+	return _chunk(_manifest.chunks[n], _material_field, _cols, _with_water)
+
+
+func make_far_ground(quads := 8) -> MeshInstance3D:
+	## Every chunk's ground at most `quads` quads a side (every few posts, its first and last posts
+	## kept, so neighbours meet on their shared edge posts), as one mesh, not collided and with no
+	## cut, each post coloured by its chunk's material weights there as terrain.gdshader blends
+	## them (no texture): what stream.gd shows of the chunks that are not loaded, so the world does
+	## not end at the load radius (build.md 15.1, Streaming). Each vertex's UV holds its chunk's
+	## `at` plus a half; the shader hides a chunk whose texel of the `loaded` texture (one per
+	## chunk, `[cx, cy]`, R8) is set, so the whole far ground is one draw call. Null without a
+	## surface field.
+	if _height.is_empty():
+		return null
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var tints := PackedColorArray()
+	var uvs := PackedVector2Array()
+	var idx := PackedInt32Array()
+	var ground := DEFAULT_GROUND.srgb_to_linear()
+	for chunk in _manifest.get("chunks", []):
+		var p: Array = chunk.get("posts", [0, 0, 0, 0])
+		var at: Array = chunk.get("at", [0, 0])
+		var is_ := _far_steps(int(p[0]), int(p[2]), quads)
+		var js := _far_steps(int(p[1]), int(p[3]), quads)
+		# The weights planes, [m][(j - j0) * cols + (i - i0)], and each material's colour.
+		var w: Dictionary = chunk.get("weights", {}).get(_material_field, {}) if _material_field != "" else {}
+		var planes := PackedByteArray()
+		var colours: Array[Color] = []
+		var cols := int(p[2]) - int(p[0]) + 1
+		var plane := cols * (int(p[3]) - int(p[1]) + 1)
+		if w.get("file") is String:
+			var arr := Npy.read(_dir + "/" + String(w.file))
+			var names: Array = w.get("materials", [])
+			if Npy.expect(arr, "|u1", [names.size(), int(p[3]) - int(p[1]) + 1, cols]) == "":
+				planes = arr.bytes
+				for m in names:
+					var c: Array = _manifest.get("materials", {}).get(m, {}).get("colour", [0.8, 0.8, 0.8])
+					colours.append(Color(c[0], c[1], c[2]))
+		var uv := Vector2(int(at[0]) + 0.5, int(at[1]) + 0.5)
+		var base := verts.size()
+		for j in js:
+			for i in is_:
+				verts.append(g(_x0 + i * _res, _y0 + j * _res, _h(i, j)))
+				var dx := (_h(i + 1, j) - _h(i - 1, j)) / ((mini(i + 1, _nx - 1) - maxi(i - 1, 0)) * _res)
+				var dy := (_h(i, j + 1) - _h(i, j - 1)) / ((mini(j + 1, _ny - 1) - maxi(j - 1, 0)) * _res)
+				normals.append(g(-dx, -dy, 1.0).normalized())
+				uvs.append(uv)
+				var c := Color(0, 0, 0)
+				var sum := 0.0
+				for m in colours.size():
+					var wt := planes[m * plane + (j - int(p[1])) * cols + (i - int(p[0]))] / 255.0
+					c += colours[m] * wt
+					sum += wt
+				tints.append(c / sum if sum > 0.001 else ground)   # as terrain.gdshader blends them
+		for k in _grid_indices(is_.size(), js.size(), func(_c, _r): return true):
+			idx.append(base + k)
+	var mesh := ArrayMesh.new()
+	if not idx.is_empty():
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_COLOR] = tints
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		arrays[Mesh.ARRAY_INDEX] = idx
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var node := MeshInstance3D.new()
+	node.name = "far_ground"
+	node.mesh = mesh
+	# The vertex colour is linear, as the pack's colours are (assets.md 2.6): drawn as
+	# terrain.gdshader draws a colour, through linear.gdshaderinc.
+	var shader := Shader.new()
+	shader.code = "shader_type spatial;\n#include \"res://addons/via_loader/linear.gdshaderinc\"\nuniform sampler2D loaded : filter_nearest, repeat_disable;\nvoid fragment() {\n\tif (texelFetch(loaded, ivec2(floor(UV)), 0).r > 0.5) {\n\t\tdiscard;\n\t}\n\tALBEDO = albedo_from_linear(COLOR.rgb);\n\tROUGHNESS = 0.95;\n}\n"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	node.material_override = mat
+	return node
+
+
+static func _far_steps(a: int, b: int, quads: int) -> Array[int]:
+	## Posts a to b, every ceil((b - a) / quads)-th, b always kept.
+	var step := maxi(1, ceili(float(b - a) / float(maxi(quads, 1))))
+	var out: Array[int] = []
+	var i := a
+	while i < b:
+		out.append(i)
+		i += step
+	out.append(b)
+	return out
+
+
+func chunk_rect(n: int) -> Rect2:
+	## Chunk n's posts in plan metres (build.md 5).
+	var p: Array = _manifest.chunks[n].get("posts", [0, 0, 0, 0])
+	var a := Vector2(_x0 + int(p[0]) * _res, _y0 + int(p[1]) * _res)
+	return Rect2(a, Vector2(_x0 + int(p[2]) * _res, _y0 + int(p[3]) * _res) - a)
+
+
+func mesh_list() -> Array:
+	var list = _manifest.get("meshes")
+	return list if list is Array else []
+
+
+func make_mesh(e) -> MeshInstance3D:
+	## One generated mesh as `make` puts it under `meshes` (with its body); null when it is bad.
+	return _mesh_node(e, _manifest.get("materials", {}))
+
+
+func mesh_rect(e) -> Rect2:
+	## A generated mesh's plan bounds from its .glb's JSON alone (build.md 10: one node's
+	## translation plus the POSITION accessor's min and max, glTF (X, Y, Z) = (x, z, -y)), so a
+	## streamer knows the chunks it meets without reading its triangles. A negative size when the
+	## file cannot say (stream.gd then keeps it with every chunk).
+	var none := Rect2(0, 0, -1, -1)
+	if not e is Dictionary or not e.get("file") is String:
+		return none
+	var f := FileAccess.open(_dir + "/" + String(e.file), FileAccess.READ)
+	if f == null or f.get_length() < 20 or f.get_32() != 0x46546C67:
+		return none
+	f.get_32()
+	f.get_32()
+	var n := f.get_32()
+	if f.get_32() != 0x4E4F534A:
+		return none
+	var doc = JSON.parse_string(f.get_buffer(n).get_string_from_utf8())
+	if not doc is Dictionary:
+		return none
+	for node in doc.get("nodes", []):
+		if not node.has("mesh"):
+			continue
+		var t: Array = node.get("translation", [0, 0, 0])
+		var prim: Dictionary = doc.meshes[int(node.mesh)].primitives[0]
+		var acc: Dictionary = doc.accessors[int(prim.attributes.POSITION)]
+		var lo: Array = acc.get("min", [])
+		var hi: Array = acc.get("max", [])
+		if lo.size() != 3 or hi.size() != 3:
+			return none
+		var a := Vector2(float(t[0]) + float(lo[0]), -(float(t[2]) + float(hi[2])))
+		var b := Vector2(float(t[0]) + float(hi[0]), -(float(t[2]) + float(lo[2])))
+		return Rect2(a, b - a)
+	return none
 
 
 func _read_manifest() -> bool:
@@ -857,12 +1040,15 @@ func _bodies(node: Node3D, asset: String, first: int, count: int, cols: Dictiona
 				hull.points = pts
 				cs.shape = hull
 			"mesh":
-				var m := Primitives.mesh(prim, bounds)
-				if m == null:
+				# The faces Primitives.mesh draws, taken from its triangles, not read back from
+				# the mesh: a read back waits on the renderer, which a worker thread must not.
+				var tris := Primitives.triangles(prim, bounds)
+				if tris.is_empty():
 					continue
-				var faces := m.get_faces()
-				for f in faces.size():
-					faces[f] *= s
+				var faces := PackedVector3Array()
+				for tri in tris:
+					for v in [tri[0], tri[2], tri[1]]:
+						faces.append(Primitives.g(v) * s)
 				var con := ConcavePolygonShape3D.new()
 				con.set_faces(faces)
 				cs.shape = con
@@ -1443,75 +1629,82 @@ func _meshes(root: Node3D) -> void:
 	root.add_child(holder)
 	var mats: Dictionary = _manifest.get("materials", {})
 	for e in list:
-		if not e is Dictionary or not e.get("file") is String or not e.get("name") is String:
-			_bad_file("manifest.json", "a `meshes` entry lacks `name` or `file`")
+		var mi := _mesh_node(e, mats)
+		if mi != null:
+			holder.add_child(mi)
+
+
+func _mesh_node(e, mats: Dictionary) -> MeshInstance3D:
+	## One entry of `meshes` as _meshes makes it; null (with load.bad_file) when it cannot be read.
+	if not e is Dictionary or not e.get("file") is String or not e.get("name") is String:
+		_bad_file("manifest.json", "a `meshes` entry lacks `name` or `file`")
+		return null
+	var file := String(e.file)
+	var path := _dir + "/" + file
+	if not FileAccess.file_exists(path):
+		_bad_file(file, "missing")
+		return null
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	if doc.append_from_file(path, state) != OK:
+		_bad_file(file, "not glTF Godot reads")
+		return null
+	var nodes := state.get_nodes()
+	var gmeshes := state.get_meshes()
+	var drawn := ArrayMesh.new()
+	var faces := PackedVector3Array()
+	var xf := Transform3D.IDENTITY
+	var found := false
+	for k in nodes.size():
+		var gn: GLTFNode = nodes[k]
+		if gn.mesh < 0 or gn.mesh >= gmeshes.size() or found:
 			continue
-		var file := String(e.file)
-		var path := _dir + "/" + file
-		if not FileAccess.file_exists(path):
-			_bad_file(file, "missing")
-			continue
-		var doc := GLTFDocument.new()
-		var state := GLTFState.new()
-		if doc.append_from_file(path, state) != OK:
-			_bad_file(file, "not glTF Godot reads")
-			continue
-		var nodes := state.get_nodes()
-		var gmeshes := state.get_meshes()
-		var drawn := ArrayMesh.new()
-		var faces := PackedVector3Array()
-		var xf := Transform3D.IDENTITY
-		var found := false
-		for k in nodes.size():
-			var gn: GLTFNode = nodes[k]
-			if gn.mesh < 0 or gn.mesh >= gmeshes.size() or found:
-				continue
-			found = true   # one mesh, one node (build.md 10)
-			xf = gn.xform
-			var p := gn.parent
-			while p >= 0:
-				xf = nodes[p].xform * xf
-				p = nodes[p].parent
-			var im: ImporterMesh = gmeshes[gn.mesh].mesh
-			for s in im.get_surface_count():
-				var arrays := im.get_surface_arrays(s)
-				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-				var idx = arrays[Mesh.ARRAY_INDEX]
-				if idx is PackedInt32Array and not idx.is_empty():
-					# glTF's front faces are counter-clockwise, Godot's clockwise: GLTFDocument
-					# has already turned the index order, so the faces are taken as they come.
-					for t in idx:
-						faces.append(verts[t])
-				else:
-					faces.append_array(verts)
-				drawn.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		if not found:
-			_bad_file(file, "no node holds a mesh")
-			continue
-		var mi := MeshInstance3D.new()
-		mi.name = node_name(String(e.name))
-		mi.mesh = drawn
-		mi.transform = xf
-		var m = e.get("material")
-		var c: Array = mats.get(m, {}).get("colour", []) if m is String else []
-		var colour := Color(c[0], c[1], c[2]) if c.size() == 3 else DEFAULT_GROUND.srgb_to_linear()
-		mi.material_override = surface_material(colour)
-		for key in ["feature", "surface", "material", "collides", "triangles"]:
-			mi.set_meta(key, e.get(key))
-		mi.set_meta("faces", faces.size() / 3)
-		holder.add_child(mi)
-		if e.get("collides", false) == true:
-			var shape := ConcavePolygonShape3D.new()
-			shape.backface_collision = true
-			shape.set_faces(faces)
-			var body := StaticBody3D.new()
-			body.name = mi.name
-			body.set_meta("surface", String(e.name))
-			var cs := CollisionShape3D.new()
-			cs.name = "shape"
-			cs.shape = shape
-			body.add_child(cs)
-			mi.add_child(body)
+		found = true   # one mesh, one node (build.md 10)
+		xf = gn.xform
+		var p := gn.parent
+		while p >= 0:
+			xf = nodes[p].xform * xf
+			p = nodes[p].parent
+		var im: ImporterMesh = gmeshes[gn.mesh].mesh
+		for s in im.get_surface_count():
+			var arrays := im.get_surface_arrays(s)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var idx = arrays[Mesh.ARRAY_INDEX]
+			if idx is PackedInt32Array and not idx.is_empty():
+				# glTF's front faces are counter-clockwise, Godot's clockwise: GLTFDocument
+				# has already turned the index order, so the faces are taken as they come.
+				for t in idx:
+					faces.append(verts[t])
+			else:
+				faces.append_array(verts)
+			drawn.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	if not found:
+		_bad_file(file, "no node holds a mesh")
+		return null
+	var mi := MeshInstance3D.new()
+	mi.name = node_name(String(e.name))
+	mi.mesh = drawn
+	mi.transform = xf
+	var m = e.get("material")
+	var c: Array = mats.get(m, {}).get("colour", []) if m is String else []
+	var colour := Color(c[0], c[1], c[2]) if c.size() == 3 else DEFAULT_GROUND.srgb_to_linear()
+	mi.material_override = surface_material(colour)
+	for key in ["feature", "surface", "material", "collides", "triangles"]:
+		mi.set_meta(key, e.get(key))
+	mi.set_meta("faces", faces.size() / 3)
+	if e.get("collides", false) == true:
+		var shape := ConcavePolygonShape3D.new()
+		shape.backface_collision = true
+		shape.set_faces(faces)
+		var body := StaticBody3D.new()
+		body.name = mi.name
+		body.set_meta("surface", String(e.name))
+		var cs := CollisionShape3D.new()
+		cs.name = "shape"
+		cs.shape = shape
+		body.add_child(cs)
+		mi.add_child(body)
+	return mi
 
 
 var _surface_materials := {}

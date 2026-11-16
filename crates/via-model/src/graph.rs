@@ -629,7 +629,7 @@ impl<'w> ModelPlan<'w> {
             stmts.insert(PACK.into(), Digest::of(&enc.finish()));
         }
         let grid = p.decls.grid;
-        let tiling = grid.as_ref().map(Chunks::new);
+        let tiling = grid.as_ref().map(|g| Chunks::with_side(g, p.decls.chunk));
         let chunks = tiling.map(|t| t.list()).unwrap_or_default();
         let mut plan = ModelPlan {
             world,
@@ -705,6 +705,16 @@ impl<'w> ModelPlan<'w> {
             .values()
             .map(|f| (f.name.clone(), f.weights))
             .collect()
+    }
+
+    /// The chunk side in millimetres (`build.md` 5): the world's `chunk`, or the default.
+    pub fn chunk_side_mm(&self) -> Option<i64> {
+        self.tiling.map(|t| t.side_mm())
+    }
+
+    /// The world's `[budget]` (`build.md` 5.1).
+    pub fn budget(&self) -> Option<&crate::decl::Budget> {
+        self.p.decls.budget.as_ref()
     }
 
     /// The build's chunks, in chunk order (`build.md` 5).

@@ -22,7 +22,7 @@ case marked with a later milestone as pending.
 | M1 | Everything not marked below. |
 | M2 | `--stand-ins`, `assets.stand_in`, model files in `assets.files`, `--fail-on asset.revised`. |
 | M3 | Generated meshes (section 10), kind surfaces as bounded fields (6.3), network areas and cells in `features.json`. |
-| M6 | `chunk` in the world, export steps (11.4) and `exports`, the player map (9.4), budgets. |
+| M6 | `chunk` in the world and the chunk keys a streaming reader reads (5, 5.2), budgets (5.1), export steps (11.4) and `exports`, the player map (9.4). |
 
 ## 1. Rules for every build
 
@@ -169,7 +169,7 @@ is refused.
 
 | Key | Holds |
 |---|---|
-| `format` | `"via-build-0"`. Changes when a reader of the old format would misread the new one. Added keys and files do not change it. The build format version of `graph.md` 3.3. |
+| `format` | `"via-build-1"` (M6; `"via-build-0"` before it). Changes when a reader of the old format would misread the new one: M6 changed `exports` from a folder to `{ folder, output }` and gave each chunk keys a streaming reader relies on. Added keys and files do not change it, but a release that writes the manifest or any file differently for the same inputs, added keys included, changes a key's version: this one, or the numerics epoch (`graph.md` 3.3), so a store an older binary filled never answers a null build with the old manifest. The build format version of `graph.md` 3.3. Ours. |
 | `engine` | `{ "epoch": <integer>, "name": "via" }`: `graph.md` 3.3's numerics epoch. The release number is in `run`. |
 | `world` | The world's `name`. |
 | `seed` | The world seed, 16 hex digits. |
@@ -180,7 +180,7 @@ is refused.
 | `instances` | Section 8. |
 | `features`, `outputs`, `meets` | Section 9. |
 | `meshes` | Section 10 (M3). |
-| `exports` | `{ <step id>: "export/<step id>/" }` (11.4, M6). |
+| `exports` | `{ <step id>: { "folder": "export/<step id>/", "output": <the step's output, or null> } }` (11.4, M6). |
 | `files` | Every file in the `id`: `{ <build path>: { "bytes", "digest" } }`. |
 | `id` | The build's identity (section 12). |
 | `run` | How this build was asked for. Not in the `id`. Keys below. |
@@ -213,10 +213,19 @@ also holds `"datum"`: the world's `datum` (`composition.md` 5), or `null` when n
 
 **Chunks.** The build's tiling is a grid of square chunks. `fields.md` and `graph.md` say "tile" for
 the same thing; `chunk` is the vocabulary's word, and those chapters are asked to use it (Answers).
-The side `c` is the world's `chunk` (M6; `doc.not_yet` in M1). Until then, and when `chunk` is not
+The side `c` is the world's `chunk` (M6), a length in metres on the lattice. When `chunk` is not
 written, `c` is the largest multiple of `resolution` not above 64 m, and at least `resolution`. A
-written `chunk` that is not a whole multiple of `resolution` is `build.chunk_not_multiple` (M6).
-Whether 64 m stays the default is (open), decided by `ford`'s build times in M1.
+written `chunk` that is not a whole multiple of `resolution`, or is below it, is
+`build.chunk_not_multiple` (error), whose hint gives the two nearest multiples (the one below at
+least `resolution`); the build then has no outputs, as with any error (`diagnostics.md` 4), and its
+nodes are planned over the default side so the rest of the text is still checked. A change may write
+`chunk`, as it may `resolution` (`documents.md` 6.1). An imported world's `chunk` tiles its own
+build only; in a parent's build the parent's `chunk` tiles everything (`composition.md` 12). Whether
+64 m stays the default is (open), decided by `ford`'s build times in M1.
+
+```toml
+chunk = 32        # ford at 0.5 m: 64 posts a side, 8 by 8 chunks
+```
 
 - With `k = c / resolution` posts per side, chunk `(cx, cy)` holds posts `i` from `cx * k` to
   `min((cx + 1) * k, nx - 1)` and `j` likewise, both ends included. Neighbours share their edge
@@ -236,8 +245,14 @@ over the chunk's posts as a window: `w:<cx * k>.<cy * k>.<i1 + 1>.<j1 + 1>`, wit
 chunk's last posts. Neighbouring windows overlap by their shared edge posts; the window rule makes
 both nodes give those posts the same bits, so no post needs an owner. A weights chunk file is one
 `write` node reading its chunk's node. A whole-extent scalar file (6.1) is one `write` node reading
-every chunk's node, taking a shared post from the first chunk in chunk order. `graph.md`'s worked
-example, which shows disjoint windows, is asked to follow this.
+every chunk's node, taking a shared post from the first chunk in chunk order. The instance columns'
+`write` nodes take the side `c` as a parameter (M6), since their rows are sorted by chunk (section
+8): a changed `chunk` reorders the rows and must not reuse the old order (found by case 16's
+clean-against-incremental re-run). `graph.md`'s worked example, which shows disjoint windows, is
+asked to follow this.
+
+`frame` also holds (M6) `"chunk"`, the side `c` in metres, and `"chunks"`, `[ncx, ncy]`, the
+chunks along `x` and `y`, so a reader finds a chunk's index from a point without the list.
 
 `chunks` is a list, one entry per chunk:
 
@@ -245,10 +260,117 @@ example, which shows disjoint windows, is asked to follow this.
 |---|---|
 | `at` | `[cx, cy]`. |
 | `posts` | `[i0, j0, i1, j1]`, the posts it holds, ends included. |
+| `bounds` | `[x0, y0, x1, y1]` (M6): its first and last posts in metres, exact from the lattice; neighbours share their edges. |
+| `neighbours` | (M6) The `at` of every chunk that shares an edge or a corner with it, in chunk order: what a reader loads around the one it stands in. |
 | `weights` | `{ <field>: { "file", "materials" } }` for each `weights` field (6.2). |
 | `instances` | `{ <asset id>: [first, count] }`: its rows in the instance columns (section 8). |
 | `count` | Instances in the chunk. |
-| `triangles` | Sum of `triangles` of the finest copy of each instance's asset: what the pack holds, not what an engine draws. Budgets read it (M6). |
+| `groups` | (M6) Entries of `instances`: the instance groups a loader draws for the chunk, one per asset (15.1). |
+| `triangles` | Sum of `triangles` of the finest copy of each instance's asset: what the pack holds, not what an engine draws. Budgets read it (5.1). |
+| `meshes` | (M6) The `name` of every generated mesh (section 10) whose box (the least box holding its vertices in plan) meets the chunk's `bounds`, edges included, sorted, as `features` are. A mesh is listed by every chunk it reaches and is drawn once. A box, not a vertex: a large deck or floor triangle can span a chunk that holds none of its vertices (M6 slice 1 review). Ours. |
+| `features` | (M6) The `name` of every feature (9.1) whose box (the least box holding its `at`, `points` or `pieces`) meets the chunk's `bounds`, edges included, sorted. A box, not the shape: a long diagonal path is listed by chunks it only passes near. Ours. |
+| `footprints` | (M6) The `instance` of every footprint (9.1) whose box meets the chunk's `bounds`, likewise. |
+| `digest` | (M6) The chunk's content digest (5.2): it changes when, and only when, something a reader of this chunk is handed changes. |
+
+### 5.1 Budgets (M6)
+
+A **budget** is a limit per chunk on what a loader is handed. The world declares it, in `[budget]`:
+
+```toml
+[budget]
+triangles = 400000     # a chunk's `triangles`
+instances = 5000       # its `count`
+groups    = 64         # its `groups`
+
+[budget.waive.harbour]
+at        = [3, 4]     # the chunk, by `at`
+triangles = 520000     # its own limit for this measure
+reason    = "the cranes; the engine's detail levels draw a third of them past 60 m"
+```
+
+- **Where it is declared: the world.** The budget is the target's (an engine, a platform, a frame
+  rate), and the world is what is built for one target. Not the pack: a pack serves many worlds and
+  targets, and a part brought into a world brings its whole load with it (TODO: Coast's frame rate
+  after parts), so only the world that holds everything can count it. Not the reader alone: the
+  spike's budget lived beside the viewer, flagged 21 chunks and was ignored until the frame rate
+  collapsed (TODO). A reader may keep its own budget as well and say so with its own `load.*` code;
+  that is the reader's. Each key is optional; a measure with no key is not counted, and a world with
+  no `[budget]` has none. There is no default: we do not know the target. Ours.
+- **What it counts.** `triangles` (5), `count` and `groups` of each chunk, as the manifest writes
+  them. Generated meshes are not counted (open below): one mesh reaches several chunks, and how its
+  triangles divide is the reader's.
+- **How it blocks.** A chunk over a limit is `build.over_budget`, an **error**: exit 1, and the build
+  writes no outputs (`diagnostics.md` 4), the same rule as every error. There is no warning band
+  below it: a warning is what the spike had and what was skipped, and one code has one severity
+  (`diagnostics.md` 2). A world that wants a softer limit writes a higher one. Ours.
+- **What it says.** One record per chunk and measure, subject the world, naming the chunk (`at` and
+  `bounds`), the measure, its value and the limit, and the asset that dominates it: the asset with
+  the largest share of the measure in that chunk (for `triangles` its instances times its
+  `triangles`, of the chunk's `triangles`; for `instances` and `groups` its instances, of the
+  chunk's `count`, since a group is one asset), ties to the lower asset id, with its share in
+  percent rounded down and its instance count. `measure` is the key's name: `triangles`,
+  `instances` or `groups`. `data`: `chunk` (`[cx, cy]`), `measure`, `value`,
+  `limit`, `asset`, `share` (percent, an integer), `instances`. The hint gives the line to write: the
+  waiver for that chunk with its value, and says to thin the asset instead.
+
+  ```
+  error[build.over_budget]: chunk [3, 4] (192..256 m east, 256..320 m north) holds 612000 triangles,
+    over the budget of 400000; `oak_large` gives 71% of them (310 instances)
+    hint: thin `oak_large` there, or waive the chunk: [budget.waive.c3_4] at = [3, 4],
+          triangles = 612000, reason = "<why the target can draw it>"
+  ```
+- **A waiver** (`[budget.waive.<id>]`) raises the limits it writes for one chunk, `at`, and
+  nothing else. `at` and `reason` are required (`doc.missing_key`), and `reason = ""` (empty or
+  only spaces) is `doc.missing_key` too: a waiver says why. Each limit it writes replaces the
+  world's for that chunk and measure, and only where the world writes that measure: a waiver
+  cannot add a limit the world does not set, so its measure with no world key is not counted. A
+  chunk still over its waived limit is `build.over_budget`, naming the waiver's limit. A waiver
+  that is not needed, its chunk within the world's limit for every measure it writes (a measure the
+  world does not limit is never needed), or whose `at` is no chunk of this build, is
+  `build.waiver_unused` (warning), so a waiver does not outlive its cause. Ours: a waiver that
+  added a limit was both enforced and reported unused (M6 slice 1 review). This is the
+  waiver `diagnostics.md` 3 leaves open, for one code, at one place, with a reason; it is ours, and
+  `protocol.md`'s lint waivers may take its form.
+- **A change** may not write `[budget]` (`doc.change_fixed`): the budget is the target's, the same
+  for every change of the world, so a change that broke it fails like the base. Ours.
+- **An import's** `[budget]` is read in its own build only. In a parent's build only the parent's
+  budget counts, over the parent's chunks, which hold the import's instances.
+- **In the graph** the budget is one node, `budget:chunks`, defined only when the world writes
+  `[budget]`: it reads what the instance columns' `write` nodes read (every row's place and asset,
+  hence its chunk and its load, with their statements), takes the chunk side as a parameter, and
+  holds the `world` statement, the pack statement (each asset's `triangles`) and the `budget.*`
+  statements. Its value is its records, so a changed limit re-runs it alone, and a change that
+  moves no instance, swaps no asset and edits no pack entry reuses it. Not `instances/names.txt`
+  alone: names in chunk order stay the same when a row crosses a chunk edge or changes its asset,
+  and a warm build then kept a stale "within budget" that a clean build refused (found by the M6
+  slice 1 review; case 48). It is skipped when the build has an error elsewhere, as a lint is
+  (`diagnostics.md` 4). Ours; `graph.md` 1 lists it.
+
+### 5.2 What a streaming reader reads (M6)
+
+A reader that loads and unloads chunks on a walk reads, per chunk: `bounds` (where it is),
+`neighbours` (what to load next), `weights`, `instances` and the window of each scalar field
+(`posts`), `meshes`, `features` and `footprints` (what of the whole-build files touches it), and `digest`, to
+reload only the chunks that changed between two builds.
+
+**The digest.** BLAKE3 (3.3) of the canonical JSON (`documents.md` 8, without its closing line feed)
+of one object:
+
+| Key | Holds |
+|---|---|
+| `fields` | `{ <scalar field>: <digest of the bytes of its posts in the chunk's window, rows from the south, as the array file holds them> }`, and for a terrain its cut's quads `i0..i1 - 1`, `j0..j1 - 1` under the key `<field>.cut`. |
+| `weights` | `{ <field>: <the digest of its chunk file, or null> }`. |
+| `instances` | The digest of the canonical JSON list of its rows: for each row in file order, one list `[name, asset, x, y, face, z, scale, tint]`, with `x` and `y` in integer millimetres (the plan origin), `face` in integer millidegrees taken modulo 360000 into `0..359999`, and `z`, `scale`, `tint` as the integers of their single-precision bits (IEEE 754, unsigned). |
+| `assets` | `{ <asset id>: <digest of its entry in the manifest's assets, canonical JSON> }` for each asset in its `instances`: what a row points to (model `files` and their digests, `bounds`, collision, colour). |
+| `materials` | `{ <material>: <digest of its entry in the manifest's materials> }` for each material a `weights` entry of the chunk lists. A generated mesh's material colour is in its file, so its digest covers it. |
+| `meshes` | `{ <name>: <its file's digest> }` for the meshes it lists. |
+| `features`, `footprints` | `{ <name or instance>: <digest of its canonical JSON object in features.json> }` for those it lists. |
+
+So a change that moves one tree within a chunk changes that chunk's digest only, a change that
+moves nothing a chunk is handed keeps its digest, and a pack revision of an asset changes the digest
+of every chunk holding it. `assets` and `materials` were added in M6 slice 1: without them a reader
+reloading by digest kept stale models after a pack revision (review). Ours. The digest is in the manifest and so in the `id`
+(section 12); it adds nothing the `files` digests do not already cover.
 
 ## 6. Fields
 
@@ -422,7 +544,9 @@ written `"toward":{"at":[153.63,115.48,…],"name":"ford"}`: the ford's lattice 
 name), `kind`, `authority`, `layer`, `pieces` and `attrs`, as above.
 
 `x` and `y` are exact metres from the lattice; `z` is the height of the surface beneath at that
-point (`surfaces.md` 2.2). A formula attribute is written as its text.
+point (`surfaces.md` 2.2), and `null` at a point off the extent, where no surface lies beneath (a
+path may run past the edge: `border`'s `bank_s` ends 14 m east of it; found by the glTF reader,
+M6). A formula attribute is written as its text.
 
 A network's areas and a divided region's cells and rest pieces (R13, M3) are region features under
 their produced names (`identity.md` 2.3). An area's or a cell's `kind` is the one its `[network]` or
@@ -456,10 +580,55 @@ kind mounts add rows from M3. A loader joins navigation only there.
 
 ### 9.4 The player map (M6)
 
-The player map is the map library's: an export step writes it under `export/<step id>/`, and the
-manifest's `exports` points to that folder. How a loader recognises it is by an output name the step
-declares; the key for that is (open) in `protocol.md`, M6. The spike's `--map` folder is not
-written by the core.
+The player map is the map library's (`lib/map/export.py`): an export step writes it under
+`export/<step id>/`. The core knows no word of it. **A reader recognises it** by the step's
+`output` (`protocol.md` 1), which lib/map documents as `player_map`: it takes each entry of
+`exports` whose `output` is `player_map` and reads `map.json` in its `folder`. Decided, M6 slice 1.
+The spike's `--map` folder is not written by the core.
+
+**What it holds** (the layer set of `reports/Game map production pipelines.md`, "What a map system
+needs"; its file rules are the library's, and ours where no source is given):
+
+| File | Holds |
+|---|---|
+| `map.json` | The index: `format` `"via-map-0"`, `output`, `transform`, `classes`, `layers`, `floors`, `tiles`, `discovery`, and `files` (each other file's fingerprint). |
+| `ground.npy` | One ground class per map cell: `\|u1`, shape `(rows, columns)`, row 0 the south row (3.2's rule). |
+| `vectors.json` | The ground plan's `ways` (`name`, `kind`, `class`, `width`, `under`, `points`), `water` courses (the same keys less `under`), `footprints` (`name`, `kind`, `from`, `pieces`) and `regions` (`name`, `kind`, `label`, `pieces`). |
+| `labels.json` | POIs and labels: `key` (a feature's name, which the game localises), `text`, `class` (`poi`, `label`, `region`, `room`), `kind`, `at`, `floor` (`null` on the ground plan), and a POI's `icon`. |
+| `floors/<n>.json` | One plan per floor (below): `surfaces`, `rooms`, `walls`, `doors`, `links`. |
+
+- **The transform.** The map is a grid of square cells of side `cell` (a step param, metres) over
+  the world's extent; cell `(c, r)` has its centre at `(x0 + (c + 0.5) cell, y0 + (r + 0.5) cell)`.
+  `affine` is the 2 by 3 matrix taking world metres to cell units. Vectors are in world metres, so
+  they need no transform; a game maps both to its screen.
+- **Ground classes**, in this order, a later one drawn over an earlier: `none` (no material),
+  `ground:<material>` (the material of largest weight of the `role:material` weights field at the
+  cell's nearest post, ties to the lower name), `water` (the water field stands `depth_min` or more
+  over the ground there), `water:<class>` (a water course by its width), `way:<class>` (a way by
+  its width; one marked `under`, a cave, is in `vectors.json` only), `footprint` (a footprint
+  feature, or a floor of the lowest floor). What a kind is on the map (a way of which class, a
+  floor, a door) is the world's to say, in the step's `params`; lib/map knows no kind but `poi`.
+- **Floors.** A floor is every kind surface the world names a floor (`params.floors`, a region kind
+  and its level attribute) whose levels lie within `floor_gap` (1.6 m) of the next lower: station's
+  ground floors at 0.3, 0.309 and 0.45 m are floor 0, its tower's storeys floors 1 to 3. Floor n
+  covers heights `[lowest level - 0.5, the next floor's start)`: a game picks the current floor as
+  the highest whose start is at or below the player's feet. Each plan holds that floor's surfaces,
+  its rooms (by the attribute naming their floor), the wall pieces (instances under
+  `params.walls`) that stand through the plane `cut` (1.2 m) over the floor, the doors whose sill
+  is on it, and the links (stairs: a path kind with a foot and a head height) with `from` and `to`
+  floors, on both floors' plans. The study found no shipped game's height ranges or stair records;
+  these are ours.
+- **Tile fingerprints.** Every plan (the ground, each floor) is cut into tiles of `tile` cells; a
+  tile's fingerprint is the SHA-256 of its cells' bytes and the canonical JSON of every item whose
+  box meets the tile, a path's as its segments clipped to the tile grown by half its width (so a
+  moved end changes only the tiles it is drawn in; a region whole). A reader that keeps last build's `tiles` knows which tiles a change touched,
+  and repaints only those (styling is set aside: doctrine section 7). SHA-256, not 3.3's BLAKE3,
+  because a library has only the standard library. Ours.
+- **What stays the game's** (the study's conclusion: style is a function applied to data):
+  discovery state, style, icon art and localised text. `discovery` names the grid a game keys what
+  the player has seen on, `reveal` metres a side (4 m by default, a whole number of cells), and
+  says rooms are keyed by name (one flag per room, the RE2 model); the state itself is the game's
+  save, never in a build.
 
 ## 10. Generated meshes (M3)
 
@@ -514,7 +683,11 @@ layer's key; the format key is `feature`.
   surfaces name (pack.toml's `[material.<m>]`, which the `pack` statement does not hold); a planned mesh
   that comes out empty (a bound wholly off the extent) is no file.
 - **Material (M5, decided).** The surface's `material` key names a pack material (`assets.md`
-  2.6); the mesh's single glTF material is named after it and takes its `colour`. With none, the mesh
+  2.6); the mesh's single glTF material is named after it and takes its `colour` as
+  `baseColorFactor`, with `metallicFactor` 0, `roughnessFactor` 0.85 and `doubleSided` true: what
+  the Godot loader draws (15.1: roughness 0.85, culling off). Without them glTF's defaults make it
+  a full metal seen from one side, so a second reader drew a cave floor black and saw a room above
+  through its ceiling (M6 slice 1 review on foot; ours). With none, the mesh
   has no material and a loader uses its default. An unknown name is `pack.unknown_material`.
   `meshes` in the manifest adds `material` (the name, or `null`).
 
@@ -527,7 +700,7 @@ Two kinds of diagnostic, kept apart so the same text gives the same `diagnostics
 | Kind | Codes | Where |
 |---|---|---|
 | World | Every node's diagnostics (`graph.md` 3.4), the reading steps' (`documents.md` 8), and the checks'. | `diagnostics.json`; the terminal; `--json`; `--diagnostics`. |
-| Run | `identity.no_previous`, `identity.reselected`, `graph.build_file_restored`, `graph.store_corrupt`, `graph.store_unavailable`, `graph.step_unstable`, `graph.busy`, `protocol.slow_exit`, and every `build.*` code of this chapter except `build.chunk_not_multiple` and `build.internal`. | The run report (11.3); the terminal; `--json`; `--diagnostics`. Never `diagnostics.json`. |
+| Run | `identity.no_previous`, `identity.reselected`, `graph.build_file_restored`, `graph.store_corrupt`, `graph.store_unavailable`, `graph.step_unstable`, `graph.busy`, `protocol.slow_exit`, and every `build.*` code of this chapter except `build.chunk_not_multiple`, `build.over_budget`, `build.waiver_unused` and `build.internal`. | The run report (11.3); the terminal; `--json`; `--diagnostics`. Never `diagnostics.json`. |
 
 - `diagnostics.json` is `diagnostics.md` 7's document, with world diagnostics only. Its `status`
   is the exit status the world diagnostics alone give.
@@ -700,6 +873,9 @@ reader is handed.
 - What it writes is the step's: R26 records a user's step and does not promise it. `via check`
   checks that its files are listed and match their digests, and nothing else about them: not
   canonical JSON, not paths (section 14).
+- What it writes is every file of its `out` but `diagnostics.json`, at the same path below
+  `export/<step id>/` (`protocol.md` 1.1); the manifest's `exports` names the folder and the
+  step's `output` (9.4). Ours, M6 slice 1.
 - An export step is a `step` node like any other (`graph.md` 5). Its instability is found as
   `graph.md` 5.2 finds any step's: when it runs again for a trace the store already holds a result
   for, and gives other bytes. Nothing else detects it. `graph.step_unstable` is then a run
@@ -929,7 +1105,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | Build | Becomes in Godot |
 |---|---|
 | `manifest.json` | A `Node3D` named after `world`, holding `id` and `format` as metadata. `format` unknown or no manifest: `load.format`, naming `diagnostics.json`. |
-| A chunk | A `Node3D` `c_<cx>_<cy>` under it. Streaming chunks in and out is the engine's (M6). |
+| A chunk | A `Node3D` `c_<cx>_<cy>` under it: all of them at once, or streamed in and out round a walker (below, M6). |
 | The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. From M5, a quad its cut file (6.5) marks 1 is in neither the mesh nor the collision shape; a chunk with a cut quad holds a `ConcavePolygonShape3D` of its uncut quads' triangles (split as the mesh, collided from both sides) in place of the `HeightMapShape3D`, which has no holes in Godot's physics (a NaN post is not one). A terrain entry with no `cut` (a build from before M5) cuts nothing. |
 | A `material` weights field | Per chunk: a `ShaderMaterial` on that mesh, its planes as one `Texture2DArray` (format `R8`, one Godot texture layer per material), and each material's `colour`, `file` and `repeat` from `materials`. The shader loops over the chunk's count; there is no fixed number. A chunk naming more materials than the loader draws is `load.too_many_materials`, naming the chunk and its materials (`fields.md` 7.1). |
 | The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0. At a dry post of a drawn quad the surface lies strictly below that post's ground: at the mean height of the wet posts among its eight neighbours where that is at least 0.02 m below the ground (it runs on level under the bank), else at the ground less the mean depth of those wet posts (at least 0.02 m), as on a falling stream whose upstream posts stand above the bank. The ground hides what runs under it, so the water's edge is where the ground mesh crosses the surface, between posts on every quad edge from a wet post to a dry one, never on a post or a quad's edge. Not collided. |
@@ -945,6 +1121,39 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | A meeting | A `NavigationLink3D` between its two mounts, under a `meets` node, named `<a>+<b>` with `.` mapped as in an instance name. |
 | `diagnostics.json`, `changes.json` | Not read. The viewer may show them; the scene never holds them. |
 
+**Streaming (M6; challenges 42 and 23).** The loader's `prepare` makes the root without chunk nodes
+or generated meshes; its streamer (`addons/via_loader/stream.gd`) makes and frees them round a
+walker's plan point, every frame, from the manifest alone: a chunk's node (ground, water, weights,
+instances and their bodies, exactly as above) from its entry in `chunks`, a generated mesh from
+`meshes`. The rules, ours (no source; numbers chosen for the default 64 m chunk):
+
+- **Load** every chunk whose plan rectangle (its first and last posts) lies within the load radius
+  of the walker, 96 m by default, nearest first, one at a time, made on a worker thread off the
+  walker's frame and added to the tree on it. **Unload** a chunk farther than the load radius plus
+  one chunk side (so a walker on a chunk's edge does not load and unload it each step).
+- **Guard**: a chunk within 4 m of the walker that is not loaded is made at once on the walker's
+  own thread, so the walker never stands over a chunk that is not there; each is a **stall**,
+  counted. A walk starts with the chunks within the load radius of its start made, as a game's
+  loading screen makes them.
+- A generated mesh belongs to every chunk whose `meshes` (5, M6) names it, or, in a build whose
+  chunks hold no `meshes`, every chunk its plan box meets (read from its `.glb`'s JSON: the node's
+  translation and the `POSITION` accessor's `min` and `max`); it is loaded while any of them is,
+  once. Features, paths, bookmarks and meetings are the root's and are not streamed.
+- **Far ground**: every chunk also has a coarse ground, at most 8 quads a side over every few of
+  its posts (its first and last kept, so neighbours meet on shared posts), not collided, with no
+  cut, each post coloured by the chunk's material weights as the ground shader blends them (no
+  texture), made once with the root's streamer as one mesh for all chunks (one draw call; a chunk
+  is hidden by its texel in a texture of one texel per chunk), and shown exactly while its chunk
+  is not loaded. One node per chunk halved the frame rate (city frame tour, 30 s at 7 m/s,
+  1280 by 720, macOS arm64, Godot 4.7.2 Compatibility, one run each under other load: 420
+  against 732 fps median).
+  Without it the view ended at the load radius inside the camera's far distance: the ground under
+  towns on a hill and a far bank vanished past 96 m (M6 slice 1 review on foot). Instances and
+  generated meshes past the load radius are still not drawn: the load radius is the game's. A
+  coarse ground is the reader's level of detail, not the build's; ours.
+- Every chunk's content is the same node for node as `make` makes it, and appears once however
+  often it is loaded and unloaded (the loader suite's streaming test).
+
 **The place a bookmark looks at** is resolved by the core (`authority.md` 1.2) and written as
 `toward`'s `at` (9.1). In `ford`, `at_ford` and `on_bank` look at `ford`, `to_door` ("from the lane
 to the door") at `cottage`, the instance, and `in_trees` at `lane_east.end`, as `docs/plan.md`
@@ -957,7 +1166,8 @@ them out on one sheet. It is the loader's code run by Godot, not a `via` command
 
 ```
 godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- \
-      --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...]
+      --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] \
+      [--stream RADIUS] [--frames SECONDS]
 ```
 
 - `--option` sets one loader option of the table above, repeatable; a list's items are separated
@@ -967,6 +1177,14 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   the lanes drawn on the ground, since `ford` paints no material (`lib/land/ground.md` gives the
   rows that would paint it); the Godot loader suite and the
   milestone sheet pass them.
+- `--stream RADIUS` (M6) streams each build (above) with RADIUS metres as its load radius: each
+  bookmark's view and each walk's start and stop are drawn with the chunks within RADIUS of them,
+  and each walk loads chunks as it goes, so a view past RADIUS draws less than the whole build.
+  `--frames SECONDS` (M6, ours; challenge 4) adds a frame tour to each build after its walks: a
+  camera at the walker's eye over the ground (and over water's surface) goes from each bookmark's
+  eye to the next in name order and back to the first at 7 m/s (a run), facing the way it goes,
+  for SECONDS of the machine's time, drawing the 1280 by 720 view every frame with no frame cap and
+  vsync off; the first second is not counted. Each must be a number above 0, else exit 2.
 - `--before` and `--after` are build directories (`build/ford` and `build/ford+downstream`).
   `--pack` names the pack's root when a manifest's `pack_root` is `null`. `--out` is written whole,
   like a build (section 13); a non-empty folder the tool did not write is refused.
@@ -1027,8 +1245,14 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   (`<side>/walk/<bookmark>_eye.png`), 1280 by 720, and laid out in `<out>/walks.png`: two rows per
   bookmark, `48 + 768 * rows` high, in `sheet.png`'s columns.
 - `<out>/sheet.json` is the protocol beside the images, canonical JSON:
-  `{ "after", "before", "bookmarks", "camera", "edits", "godot", "light", "renderer", "size",
-  "walk", "walks" }`. `edits` is `{ "against", "cleared", "pins" }`, each mark `{ "at", "cause",
+  `{ "after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "renderer",
+  "size", "stream", "walk", "walks" }`. `stream` is the load radius, or `null`; `frames` is `null`
+  without `--frames`, else `{ "after", "before" }`, each `{ "fps", "frame_ms", "frames", "seconds",
+  "speed", "stream", "toured_m", "view_ms" }`: `frame_ms` the time from one drawn frame to the next
+  on the main thread (`median`, `p99`, `max`), `fps` 1000 over those (`median`, `low_1pct` from the
+  99th percentile, `min` from the longest), `view_ms` the renderer's own measure of the view's draw
+  (`cpu`, `gpu`; 0 where the renderer gives none), `stream` the streamer's `loads`, `unloads`,
+  `stalls`, `most_loaded`, `chunks`, radii and `work_ms` (its own time on each frame), or `null`. `edits` is `{ "against", "cleared", "pins" }`, each mark `{ "at", "cause",
   "name" }`; `walk` the walker's constants (`above_water`, `arrive`, `eye`, `fall`, `height`,
   `max_slope`, `radius`, `speed`, `step`, `wade`); each of `walks` is `{ "after", "before", "name" }`, a
   report per build (`null` where absent): `{ "by", "deepest", "drop", "eye", "from", "left", "on",
@@ -1076,18 +1300,38 @@ one glTF 2.0 scene: the check that the directory alone describes the world. It i
 from the Godot loader and uses none of its terms. It reads only what this chapter defines; a fact it
 needs that is not here is a defect of this chapter, not of the reader. It knows no output name.
 
+```
+python3 engines/gltf/export.py BUILD --out FILE.glb [--pack DIR]
+```
+
+`--pack` names the pack's root when `pack_root` is `null` (section 4). Exit 0 written, 1 a build it
+cannot read (the reason on standard error), 2 a bad argument. Node names are ids and names as
+written (glTF allows `.` and `#`); the scene's one root node is named after `world`, with `id`,
+`format`, `frame` and `seed` in `extras.via`.
+
 | Build | Becomes in glTF |
 |---|---|
-| A chunk | A node `c_<cx>_<cy>`. |
-| The `surface` field | A mesh per chunk, quads split as in 15.1, leaving out the quads its cut file (6.5) marks 1. |
-| A `material` weights field | Vertex colour `COLOR_0`: each material's `colour` weighted by its plane, divided by 255. A post with every byte 0 takes `[0.8, 0.8, 0.8]`, `assets.md`'s default colour. Lossy; textures are not carried. |
-| An instance | A node named after it, its transform from section 8, mapped by `(x, z, -y)`. A primitive or stand-in is its `assets.md` 6 shape in `colour`, made by the reader; a model's meshes are copied from its glTF (M2). |
-| A feature | A path as a `LINE_STRIP` mesh, a region's rings as `LINE_LOOP`s, a point as an empty node; `attrs` in `extras`. |
-| A feature named in `outputs` | Also an empty node under a node named after the output, `attrs` in `extras`. No output becomes a camera; a reader that wants one is given the output name and attribute names as options. |
-| A generated mesh (M3) | Copied in. |
+| A chunk | A node `c_<cx>_<cy>` under the root. |
+| The `surface` field | A mesh per chunk, quads split as in 15.1, leaving out the quads its cut file (6.5) marks 1, under a child node named after the field placed at the chunk's south-west post, its vertices relative to it (as section 10, for single precision). A chunk whose quads are all cut has no mesh. Normals are the reader's own. |
+| A `material` weights field | Vertex colour `COLOR_0`: each material's `colour` weighted by its plane, divided by 255. A post with every byte 0, and a material with no `colour`, take `[0.8, 0.8, 0.8]`, `assets.md`'s default colour. Lossy; textures are not carried. Without one, the ground is drawn in that colour. |
+| An instance | A node named after it under its chunk's node, its transform from section 8, mapped by `(x, z, -y)`: translation `(x, z, -y)`, a turn of `-b` about +Y, uniform `scale`; `extras.via` holds `instance` (its name), `asset`, `face` and `tint`. A primitive or stand-in is its `assets.md` 6 shape over `bounds`, made by the reader with the triangle counts that section binds; an engine-made asset is drawn as a stand-in, a `box` of `bounds` (ours). Its material's colour is `colour` times `tint` (`assets.md` 2.4), each channel at most 1: glTF has no colour per node, so one material per asset and `tint`. A model's meshes are copied from its glTF (M2), the first of `files` under the pack's root: its default scene's nodes under a child node whose matrix is `to_asset` mapped to glTF axes, its materials' factors times `tint`; textures, texture coordinates, skins and animations are not carried. |
+| A feature | Under a node `features`: a path as a `LINE_STRIP` mesh, a region's rings as `LINE_LOOP`s, a point as an empty node; `kind`, `authority`, `layer` and `shape` in `extras.via`, `attrs` in `extras.attrs`. A region's rings hold no height (9.1), and a vertex off the extent has `z` `null`: each such vertex is drawn on the ground as drawn (15.1's split; off the extent, at its nearest point of the extent). |
+| A footprint (9.1) | As a region, under a node `footprints`, named after its instance. |
+| A feature named in `outputs` | Also an empty node under a node named after the output, `attrs` in `extras`: at a point's `at`, a path's first point, a region's origin. No output becomes a camera; a reader that wants one is given the output name and attribute names as options. |
+| A generated mesh (M3) | Copied in, its node and material as written, under a node `meshes` and a node named after its `name`, whose `extras.via` holds `feature`, `surface`, `collides`, `material` and `triangles`. A mesh with no material (section 10: "a loader uses its default") takes the reader's own, `[0.8, 0.8, 0.8]`, not metal and double-sided as section 10 writes a mesh's own material, since glTF's default material is a white metal seen from one side (ours; double-sided from the M6 slice 1 review on foot: station's room above showed through a ceiling). |
+| Any other field; `meets.json`; the reports | Not carried. The fields not drawn are listed in the root's `extras.via.fields_not_drawn`. |
+
+Every row above that says more than "becomes" was found missing by writing the reader (M6 slice 1),
+and is a fix of this chapter: the null `z` (9.1), heights of rings, footprints, engine-made assets,
+`tint`, a material without `colour`, where an output's node stands, and what is not carried.
 
 The output passes the Khronos glTF Validator with no error, at the release pinned in the runner and
-run offline from a local copy.
+run offline from a local copy. Until a copy is pinned (none could be had offline in M6 slice 1),
+`python -m via_conformance.gltf_check` stands in: a structural check, standard library only, of the
+glTF 2.0 MUSTs a writer of this kind can break (the GLB's chunks and lengths, every index in range,
+accessors inside their views and aligned, `min` and `max` equal to the data, `POSITION` bounded,
+unit normals and rotations, colours in `[0, 1]`, indices in range, one parent per node, no cycle),
+with the suite's rows below.
 
 ## Worked example
 
@@ -1146,7 +1390,9 @@ Kind: W a world diagnostic, R a run diagnostic (11.1).
 
 | Code | Severity | Kind | Says |
 |---|---|---|---|
-| `build.chunk_not_multiple` | error | W | `chunk` is not a whole multiple of `resolution`; the hint gives the nearest that are. (M6.) |
+| `build.chunk_not_multiple` | error | W | `chunk` is not a whole multiple of `resolution`, or is below it; the hint gives the nearest that are, `data.below` and `data.above`. (M6.) |
+| `build.over_budget` | error | W | A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`. Hint: thin that asset there, or the waiver line to write. (M6.) |
+| `build.waiver_unused` | warning | W | A `[budget.waive.<id>]` whose chunk is within the world's limit for every measure it writes, or whose `at` is no chunk (5.1); `data.waiver` is its id. Hint: delete the waiver. (M6.) |
 | `build.internal` | error | W | A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3. |
 | `build.dir_busy` | error | R | The build directory could not be replaced because a file in it is open; names the file. Hint: close the program holding it, or build to another `--out`. |
 | `build.not_a_build` | error | R | `--out`, `<out>.partial` or `<out>.old` is a file, a non-empty folder `via` did not write, or the world file's own folder; nothing was deleted. Hint: name an empty or new folder. |
@@ -1224,7 +1470,8 @@ numpy or the standard library, never through the SDK. Every case is also checked
     0, row 3 is all 6.
 15. **No instances.** A world with none; build; every column has shape `(0,)`, `names.txt` is 0
     bytes, `via check` passes.
-16. **Chunk equals cut** (M6). `ford` with the default chunk, and with `chunk` equal to the extent;
+16. **Chunk equals cut** (M6). `ford`, with a weights field painted across chunk edges (ford
+    writes none), with the default chunk, and with `chunk` equal to the extent (a change file);
     each material's plane in each chunk equals the same window of that material's plane in the
     single chunk, byte for byte.
 17. **Twelve materials.** Twelve materials painted in overlapping strips inside one chunk; build;
@@ -1291,6 +1538,40 @@ numpy or the standard library, never through the SDK. Every case is also checked
     exit 2.
 39. **Version** (M0). `via --version`; exit 0.
 40. **Help** (M0). `via help`; exit 0.
+41. **Chunk side** (M6). `extent = [0, 0, 100, 60]`, `resolution = 2`, `chunk = 32`; build;
+    `frame.chunk` 32, `frame.chunks` `[4, 2]`; chunk `[3, 1]` has `posts` `[48, 16, 50, 30]`,
+    `bounds` `[96, 32, 100, 60]` and `neighbours` `[[2, 0], [3, 0], [2, 1]]`.
+42. **Chunk not a multiple** (M6). `resolution = 2`, `chunk = 33`; build; exit 1,
+    `build.chunk_not_multiple` at `chunk`, `data` `{ "below": 32, "above": 34 }`; then `chunk = 1`:
+    the same code, `below` 2.
+43. **Over budget** (M6). Two assets in one chunk, one of 1000 triangles times 6 and one of 10
+    times 50, `[budget] triangles = 5000`; build; exit 1, one `build.over_budget` with `data`
+    `{ "chunk": [0, 0], "measure": "triangles", "value": 6500, "limit": 5000, "asset": <the first>,
+    "share": 92, "instances": 6 }`; the directory holds only `diagnostics.json` and `.previous`. Then
+    `instances = 40` as well: two records, the second `measure` `"instances"`, `asset` the second,
+    `share` 89.
+44. **Waived** (M6). Case 43 with `[budget.waive.yard] at = [0, 0], triangles = 7000, reason = "..."`;
+    build; exit 0, no `build.over_budget`; the manifest's chunk `triangles` is 6500. A waiver with no
+    `reason`, and one whose `reason` is only spaces: `doc.missing_key`. A waiver at `[5, 5]`, one at
+    a chunk within the budget, and one writing `groups`, which the world does not limit:
+    `build.waiver_unused` each, exit 0.
+45. **One chunk's digest** (M6). Two instances in two chunks; build; a change moves one within its
+    chunk; build to another `--out`; exactly that chunk's `digest` differs, and its `features` and
+    `meshes` are unchanged.
+46. **Chunk in a change** (M6). Case 41 with a change writing `chunk = 20`; build; `frame.chunks`
+    `[5, 3]`. A change writing `[budget]`: `doc.change_fixed`.
+47. **Export listed** (M6). A world with an export step (`output = "player_map"`, a plain command
+    writing `map.json` and `floors/0.json` and one diagnostic); build; exit 0; `exports` is
+    `{ "map": { "folder": "export/map/", "output": "player_map" } }`, both files are in `files`
+    with their digests, `export/map/diagnostics.json` is not written, and `via check` passes. Then
+    one byte of `export/map/map.json` changed: `via check` exits 1 naming that path.
+48. **Budget after a move** (M6). `[budget] instances = 1, triangles = 500`, two instances of a
+    10-triangle asset in two chunks; build; exit 0. On the same store, a change moving one across
+    the chunk edge: exit 1, `build.over_budget` `{ "chunk": [1, 0], "measure": "instances",
+    "value": 2 }`; a change giving the other a 1000-triangle asset in place: exit 1, `measure`
+    `"triangles"`, `value` 1000. `instances/names.txt` is the same in all three, so a budget keyed
+    on it alone passes warm and fails clean (5.1); the runner's clean rebuild (U6) makes the case
+    able to fail.
 
 Stable names across a change are `identity.md`'s cases, not repeated here.
 
@@ -1318,9 +1599,13 @@ TODO lines and challenge rows this chapter closes or defers.
 | Challenge 3, walk it in the engine | The loader's half: 15.1. |
 | Challenge 4, 30 frames a second | Not ours (principle 12); the hand-off shape is (8). |
 | Challenge 41, Unreal | Deferred (doctrine section 7); table 15.2. |
-| Challenge 42, streaming | Deferred to M6; chunks are the unit (5). |
+| Challenge 42, streaming | M6: chunks are the unit (5); what a streaming reader reads per chunk, and a digest to reload only changed chunks (5.2). Loading and unloading on a walk is the loader's (15.1, M6 slice 2). |
+| TODO: decide how budgets block | Closed (M6): declared in the world, an error per chunk and measure naming the dominant asset, waived per chunk with a reason (5.1). |
 
 Owed to other chapters:
+
+- `graph.md` 1: list the `budget:chunks` node (5.1). `documents.md` 6.1 and its `not_yet` row
+  follow 5 and 5.1 (done in M6 slice 1: `chunk` may be written by a change, `[budget]` may not).
 
 - `graph.md`: say "chunk" for "tile"; add `run.flags` to the build key (6.2); follow section 5's
   overlapping windows in its worked example; close its open item on tile size here.
@@ -1380,6 +1665,12 @@ Owed to other chapters:
 - **A picture passed to the engine as a texture** (`fields.md` open). Decided by `relief` in M2: if
   a field file loses what the picture carried.
 - **How the SDK names a blob** without a native BLAKE3 (3.3). Decided in `protocol.md` for M2.
+- **Generated meshes in a budget** (5.1). Not counted: a mesh reaches several chunks. Decided by
+  `atlas`'s chunk walk (M6): if a chunk of meshes alone drops the frame rate, count each mesh's
+  triangles in the chunks that hold their centres.
+- **The chunk digest's cost** (5.2): every scalar field is digested per chunk window. Decided by
+  `atlas`'s write time (M6).
 - **glTF instancing** (`EXT_mesh_gpu_instancing`) in place of a node per instance. Decided by the
   second reader on `atlas`.
-- **The player map's output name** (9.4). Decided in `protocol.md` for M6.
+- **The player map's output name** (9.4). Decided, M6 slice 1: the step's `output` (`protocol.md`
+  1), `player_map`.

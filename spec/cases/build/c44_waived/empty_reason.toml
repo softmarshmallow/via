@@ -1,0 +1,240 @@
+name       = "no_reason"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.h0]
+asset = "heavy"
+at    = [4, 4]
+
+[instance.h1]
+asset = "heavy"
+at    = [12, 4]
+
+[instance.h2]
+asset = "heavy"
+at    = [20, 4]
+
+[instance.h3]
+asset = "heavy"
+at    = [28, 4]
+
+[instance.h4]
+asset = "heavy"
+at    = [36, 4]
+
+[instance.h5]
+asset = "heavy"
+at    = [44, 4]
+
+[instance.l00]
+asset = "light"
+at    = [4, 12]
+
+[instance.l01]
+asset = "light"
+at    = [10, 12]
+
+[instance.l02]
+asset = "light"
+at    = [16, 12]
+
+[instance.l03]
+asset = "light"
+at    = [22, 12]
+
+[instance.l04]
+asset = "light"
+at    = [28, 12]
+
+[instance.l05]
+asset = "light"
+at    = [34, 12]
+
+[instance.l06]
+asset = "light"
+at    = [40, 12]
+
+[instance.l07]
+asset = "light"
+at    = [46, 12]
+
+[instance.l08]
+asset = "light"
+at    = [52, 12]
+
+[instance.l09]
+asset = "light"
+at    = [58, 12]
+
+[instance.l10]
+asset = "light"
+at    = [4, 18]
+
+[instance.l11]
+asset = "light"
+at    = [10, 18]
+
+[instance.l12]
+asset = "light"
+at    = [16, 18]
+
+[instance.l13]
+asset = "light"
+at    = [22, 18]
+
+[instance.l14]
+asset = "light"
+at    = [28, 18]
+
+[instance.l15]
+asset = "light"
+at    = [34, 18]
+
+[instance.l16]
+asset = "light"
+at    = [40, 18]
+
+[instance.l17]
+asset = "light"
+at    = [46, 18]
+
+[instance.l18]
+asset = "light"
+at    = [52, 18]
+
+[instance.l19]
+asset = "light"
+at    = [58, 18]
+
+[instance.l20]
+asset = "light"
+at    = [4, 24]
+
+[instance.l21]
+asset = "light"
+at    = [10, 24]
+
+[instance.l22]
+asset = "light"
+at    = [16, 24]
+
+[instance.l23]
+asset = "light"
+at    = [22, 24]
+
+[instance.l24]
+asset = "light"
+at    = [28, 24]
+
+[instance.l25]
+asset = "light"
+at    = [34, 24]
+
+[instance.l26]
+asset = "light"
+at    = [40, 24]
+
+[instance.l27]
+asset = "light"
+at    = [46, 24]
+
+[instance.l28]
+asset = "light"
+at    = [52, 24]
+
+[instance.l29]
+asset = "light"
+at    = [58, 24]
+
+[instance.l30]
+asset = "light"
+at    = [4, 30]
+
+[instance.l31]
+asset = "light"
+at    = [10, 30]
+
+[instance.l32]
+asset = "light"
+at    = [16, 30]
+
+[instance.l33]
+asset = "light"
+at    = [22, 30]
+
+[instance.l34]
+asset = "light"
+at    = [28, 30]
+
+[instance.l35]
+asset = "light"
+at    = [34, 30]
+
+[instance.l36]
+asset = "light"
+at    = [40, 30]
+
+[instance.l37]
+asset = "light"
+at    = [46, 30]
+
+[instance.l38]
+asset = "light"
+at    = [52, 30]
+
+[instance.l39]
+asset = "light"
+at    = [58, 30]
+
+[instance.l40]
+asset = "light"
+at    = [4, 36]
+
+[instance.l41]
+asset = "light"
+at    = [10, 36]
+
+[instance.l42]
+asset = "light"
+at    = [16, 36]
+
+[instance.l43]
+asset = "light"
+at    = [22, 36]
+
+[instance.l44]
+asset = "light"
+at    = [28, 36]
+
+[instance.l45]
+asset = "light"
+at    = [34, 36]
+
+[instance.l46]
+asset = "light"
+at    = [40, 36]
+
+[instance.l47]
+asset = "light"
+at    = [46, 36]
+
+[instance.l48]
+asset = "light"
+at    = [52, 36]
+
+[instance.l49]
+asset = "light"
+at    = [58, 36]
+
+[budget]
+triangles = 5000
+
+[budget.waive.yard]
+at        = [0, 0]
+triangles = 7000
+reason    = " "

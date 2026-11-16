@@ -76,8 +76,9 @@ fn entity_subject(top: &str, id: &str, path: &[String]) -> Subject {
 }
 
 /// The words a change body may hold at its root, for nearest-word hints.
-const BODY_WORDS: [&str; 14] = [
+const BODY_WORDS: [&str; 15] = [
     "cells",
+    "chunk",
     "clear",
     "extent",
     "feature",
@@ -109,8 +110,8 @@ pub(crate) fn check_body(ch: &Change) -> Vec<Fault> {
         let sub = change_subject(&ch.name, &[k]);
         let at = At::Span(e.key);
         match k.as_str() {
-            "pack" | "seed" | "extent" | "resolution" => {}
-            "include" | "name" => out.push(
+            "pack" | "seed" | "extent" | "resolution" | "chunk" => {}
+            "include" | "name" | "budget" => out.push(
                 Fault::new(
                     codes::doc::CHANGE_FIXED,
                     sub,
@@ -118,13 +119,14 @@ pub(crate) fn check_body(ch: &Change) -> Vec<Fault> {
                     format!("the change `{}` writes `{k}`, which no change may write", ch.name),
                     if k == "include" {
                         "edit `include` in the world file: the library list is settled before any change applies"
+                    } else if k == "budget" {
+                        "edit `[budget]` in the world file: a budget is the target's, the same for every change (`build.md` 5.1)"
                     } else {
                         "edit `name` in the world file: it names the world the changes differ from"
                     },
                 )
                 .chain(&e.chain),
             ),
-            "chunk" | "budget" => out.push(not_yet(sub, at, k, 6).chain(&e.chain)),
             "layer" => out.push(not_yet(sub, at, "[layer]", 4).chain(&e.chain)),
             "change" => out.push(
                 Fault::new(
@@ -301,7 +303,7 @@ pub(crate) fn apply(base: &mut Base, ch: &Change) -> Applied {
     let mut a = Applied::default();
     for (k, e) in ch.body.iter() {
         match k.as_str() {
-            "pack" | "seed" | "extent" | "resolution" => {
+            "pack" | "seed" | "extent" | "resolution" | "chunk" => {
                 let prior = base
                     .root
                     .get(k)

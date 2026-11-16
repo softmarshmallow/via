@@ -1,0 +1,54 @@
+format    = "via-case-1"
+summary   = "ford with the default chunk, and with chunk equal to the extent: each material's plane in each chunk equals the same window of that material's plane in the single chunk, byte for byte."
+milestone = 6
+actions   = ["program", "paint", "trust", "trust_whole", "chunked", "whole"]
+
+# ford writes no weights field, so the case paints one: grass everywhere and rock in strips that
+# cross the 64 m chunk edges (at x 60 to 70 and y 120 to 140), with a soft edge so posts hold both.
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.paint]
+replace = "world.toml"
+find    = "[feature.beck]"
+with    = "[field.ground]\ntype = \"weights\"\nrole = \"material\"\n\n[field.ground.then.grass]\npaint = \"grass\"\n\n[field.ground.then.rock]\npaint = \"rock\"\nmask  = \"= max(smoothstep(58, 62, x) * (1 - smoothstep(68, 72, x)), smoothstep(118, 122, y) * (1 - smoothstep(138, 142, y)))\"\n\n[feature.beck]"
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.trust_whole]
+via  = ["trust", "world.toml", "--yes", "--change", "changes/whole.toml"]
+exit = 0
+
+[action.chunked]
+via         = ["build", "world.toml", "--out", "build/a"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a"
+
+[action.whole]
+via         = ["build", "world.toml", "--change", "changes/whole.toml", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.whole.file.one]
+path    = "build/b/manifest.json"
+pointer = "/frame/chunks"
+value   = [1, 1]
+
+[action.whole.check.cut]
+fn      = "weights_chunks_equal"
+chunked = "build/a"
+whole   = "build/b"
+
+[action.whole.check.recomputed]
+fn    = "chunk_digest_recomputed"
+build = "build/a"
