@@ -285,11 +285,18 @@ pub struct SurfaceOut {
     pub place: String,
     pub owner: String,
     pub name: String,
+    /// The owner's kind: a skirt covers the cut cells of its own kind's surfaces only
+    /// (`build.md` 10, "Skirt").
+    pub kind: String,
     /// The bound, edges in (1.2).
     pub bound: Geo,
     pub base: Arc<SurfaceEval>,
     /// `cut` in metres, when written (1.3).
     pub cut: Option<f64>,
+    /// A path owner's cutting strip grown by the reach of a cut quad past it (`build.md` 10,
+    /// "Skirt"): the mesh covers the cut cells in it, so a cut quad is not left open past the
+    /// bound. `None` for a region owner or a surface with no `cut`.
+    pub skirt: Option<via_geom::Region>,
     pub material: Option<String>,
     /// Whether this surface's `formula.not_finite` was said in this build (2.7: once, at the
     /// first failing point asked).
@@ -518,6 +525,7 @@ pub(crate) fn kind_surfaces(
         for s in k.surfaces.values() {
             let subject = Subject::entity("feature", id.as_str());
             let place = format!("{id}.{}", s.name);
+            let mut skirt: Option<via_geom::Region> = None;
             // A formula that did not pass its check was said there; this surface is left out.
             failed.insert(place.clone());
             let bound = match (geo, s.bound) {
@@ -548,10 +556,29 @@ pub(crate) fn kind_surfaces(
                         continue;
                     }
                     match via_geom::offset::stroke(id, &line.pts, mm, mm, Join::Round, Cap::Butt) {
-                        Ok(region) => Geo::Region {
-                            region: clipped(d, id, region, &subject, diags),
-                            line: None,
-                        },
+                        Ok(region) => {
+                            // A cut quad has its centre in the strip, so it reaches at most half
+                            // a quad's diagonal past it: the skirt is the strip grown by that.
+                            if s.cut.is_some() {
+                                if let Some(g) = d.grid {
+                                    let reach = (g.resolution * 7072 + 9999) / 10000;
+                                    skirt = via_geom::offset::stroke(
+                                        id,
+                                        &line.pts,
+                                        mm + reach,
+                                        mm + reach,
+                                        Join::Round,
+                                        Cap::Butt,
+                                    )
+                                    .ok()
+                                    .map(|r| clipped(d, id, r, &subject, &mut Vec::new()));
+                                }
+                            }
+                            Geo::Region {
+                                region: clipped(d, id, region, &subject, diags),
+                                line: None,
+                            }
+                        }
                         Err(_) => {
                             diags.push(text::diag(
                                 codes::surface::BOUND,
@@ -619,8 +646,10 @@ pub(crate) fn kind_surfaces(
                     place,
                     owner: id.clone(),
                     name: s.name.clone(),
+                    kind: f.kind.clone().unwrap_or_default(),
                     bound,
                     base: Arc::new(base),
+                    skirt: if cut.is_some() { skirt } else { None },
                     cut,
                     material: s.material.clone(),
                     said: Arc::new(AtomicBool::new(false)),
@@ -1419,9 +1448,15 @@ pub struct MeshOut {
 /// bound's outline and every crossing of it with a grid line. Each grid cell is clipped to the
 /// bound and each piece triangulated by the kernel's triangulation (`geometry.md` 3.10), so the
 /// grid lines and the outline are constraints and no point is added. Ours.
+///
+/// A path owner's surface with `cut` (its `skirt`) also covers, in each cell the terrain's cut
+/// file marks (`cut`, indexed as `build.md` 6.5), the cell's part within the skirt and outside the
+/// bound, its height the formula's there: so a sheer face's mesh closes the slivers its cut quads
+/// open past its strip, its strip's edges still exact ("Skirt", build.md 10).
 pub(crate) fn meshes(
     grid: &via_num::Grid,
     surfaces: &BTreeMap<String, SurfaceOut>,
+    cut: Option<&[u8]>,
     pack: &crate::pack::Pack,
     diags: &mut Vec<Diag>,
 ) -> Vec<MeshOut> {
@@ -1449,7 +1484,10 @@ pub(crate) fn meshes(
             }
         }
         let Some(region) = s.region() else { continue };
-        let Some((lo, hi)) = region.bbox() else {
+        let qx = (grid.nx as i64 - 1).max(0);
+        let quads = cut.filter(|c| c.len() as i64 == qx * (grid.ny as i64 - 1).max(0));
+        let skirt = s.skirt.as_ref().filter(|_| quads.is_some());
+        let Some((lo, hi)) = skirt.unwrap_or(region).bbox() else {
             continue;
         };
         let (lo, hi) = (
@@ -1459,11 +1497,28 @@ pub(crate) fn meshes(
         if lo.x >= hi.x || lo.y >= hi.y {
             continue;
         }
-        let edges: Vec<(P, P)> = region
-            .rings()
-            .iter()
-            .flat_map(|ring| (0..ring.len()).map(move |k| (ring[k], ring[(k + 1) % ring.len()])))
-            .collect();
+        let ring_edges = |r: &via_geom::Region| -> Vec<(P, P)> {
+            r.rings()
+                .iter()
+                .flat_map(|ring| {
+                    (0..ring.len()).map(move |k| (ring[k], ring[(k + 1) % ring.len()]))
+                })
+                .collect()
+        };
+        let bound_edges = ring_edges(region);
+        let skirt_edges = skirt.map(ring_edges).unwrap_or_default();
+        // The cut cells a skirt covers: those whose centre lies in the bound of a surface of the
+        // owner's kind and name that cuts (its own, or a piece it meets at a joint), never a
+        // neighbour's floor or pad (M5 close: a face's skirt over a cave floor's cut z-fought).
+        let kin: Vec<&via_geom::Region> = if skirt.is_some() {
+            surfaces
+                .values()
+                .filter(|o| o.kind == s.kind && o.name == s.name && o.cut.is_some())
+                .filter_map(SurfaceOut::region)
+                .collect()
+        } else {
+            Vec::new()
+        };
         let i0 = (lo.x - x0).div_euclid(r);
         let j0 = (lo.y - y0).div_euclid(r);
         let i1 = (hi.x - x0 + r - 1).div_euclid(r);
@@ -1481,34 +1536,61 @@ pub(crate) fn meshes(
                     P::new(cx1, cy1),
                     P::new(cx0, cy1),
                 ];
-                let touched = edges.iter().any(|(a, b)| {
+                // Every cell is clipped to the bound; a cut cell of a skirted surface also gives
+                // its part within the skirt and outside the bound, so the bound's outline stays a
+                // constraint (the face's edges exact) and the skirt lies beside it.
+                let is_cut = quads.is_some_and(|c| {
+                    i >= 0 && j >= 0 && i < qx && c.get((j * qx + i) as usize) == Some(&1)
+                });
+                let touched = bound_edges.iter().any(|(a, b)| {
                     a.x.max(b.x) >= cx0
                         && a.x.min(b.x) <= cx1
                         && a.y.max(b.y) >= cy0
                         && a.y.min(b.y) <= cy1
                 });
-                let tris: Vec<[P; 3]> = if !touched {
+                let cell = via_geom::Region::from_ring(square.clone());
+                let mut tris: Vec<[P; 3]> = Vec::new();
+                if !touched {
                     let c = P::new(cx0 + (cx1 - cx0) / 2, cy0 + (cy1 - cy0) / 2);
-                    if !s.inside((c.x, c.y)) {
-                        continue;
+                    if region.side(c) != via_geom::pred::Side::Out {
+                        tris.push([square[0], square[1], square[2]]);
+                        tris.push([square[0], square[2], square[3]]);
                     }
-                    vec![
-                        [square[0], square[1], square[2]],
-                        [square[0], square[2], square[3]],
-                    ]
-                } else {
-                    let cell = via_geom::Region::from_ring(square);
-                    let Ok(piece) = boolean(BoolOp::Intersection, &[cell, region.clone()]) else {
-                        continue;
-                    };
-                    if piece.is_empty() {
-                        continue;
+                } else if let Ok(piece) =
+                    boolean(BoolOp::Intersection, &[cell.clone(), region.clone()])
+                {
+                    if !piece.is_empty() {
+                        if let Ok(t) = via_geom::triangulate::triangulate(&piece) {
+                            tris.extend(t);
+                        }
                     }
-                    match via_geom::triangulate::triangulate(&piece) {
-                        Ok(t) => t,
-                        Err(_) => continue,
-                    }
+                }
+                let kin_cut = is_cut && {
+                    let c = P::new(cx0 + (cx1 - cx0) / 2, cy0 + (cy1 - cy0) / 2);
+                    kin.iter().any(|g| g.side(c) != via_geom::pred::Side::Out)
                 };
+                if let Some(k) = skirt.filter(|_| kin_cut) {
+                    let near = skirt_edges.iter().any(|(a, b)| {
+                        a.x.max(b.x) >= cx0
+                            && a.x.min(b.x) <= cx1
+                            && a.y.max(b.y) >= cy0
+                            && a.y.min(b.y) <= cy1
+                    });
+                    let within = if near {
+                        boolean(BoolOp::Intersection, &[cell, k.clone()]).ok()
+                    } else {
+                        Some(cell)
+                    };
+                    if let Some(w) = within.filter(|w| !w.is_empty()) {
+                        if let Ok(rest) = boolean(BoolOp::Difference, &[w, region.clone()]) {
+                            if !rest.is_empty() {
+                                if let Ok(t) = via_geom::triangulate::triangulate(&rest) {
+                                    tris.extend(t);
+                                }
+                            }
+                        }
+                    }
+                }
                 for t in tris {
                     let mut k = [0u32; 3];
                     for (n, q) in t.iter().enumerate() {
@@ -1519,7 +1601,8 @@ pub(crate) fn meshes(
                         let z = match s.z_in_build((q.x, q.y), diags) {
                             Ok(Some(z)) => z,
                             // The bound's own vertices are in it (edges in); a point the
-                            // overlay put a hair outside takes the formula's value there.
+                            // overlay put a hair outside, or on a skirt, takes the formula's
+                            // value there.
                             Ok(None) => match s.base.eval(&[(q.x, q.y)]) {
                                 Ok(v) => v[0],
                                 Err(e) => {
@@ -1671,6 +1754,22 @@ pub(crate) fn place_surfaces(
             // A feature that owns one kind surface, named as a target: its point on that
             // surface where the bound holds it (else the terrain, as `xyz_of` falls back).
             Some(one.clone())
+        } else if let Some(i) = d.instances.get(place) {
+            // An instance named as a target stands where it was grounded (4.1): its `surface`,
+            // or what its `on` stands on (else the terrain).
+            match (&i.surface, &i.place) {
+                (Some(s), _) => Some(s.clone()),
+                (None, crate::decl::Place::On(o)) => on_target(d, &o.reference, 0).ok().flatten(),
+                _ => None,
+            }
+        } else if let Some(t) = path_end_meets(d, place) {
+            // A path's end named as a target, where the path `starts_at`/`ends_at` a kind
+            // surface (or a thing standing on one): that surface (4.4, the end meets it).
+            if surfaces.contains_key(&t) {
+                Some(t)
+            } else {
+                on_target(d, &t, 0).ok().flatten()
+            }
         } else {
             kind_mount(d, place)
                 .and_then(|(owner, m)| m.surface.as_ref().map(|sn| format!("{owner}.{sn}")))
@@ -1680,6 +1779,17 @@ pub(crate) fn place_surfaces(
         }
     }
     out
+}
+
+/// What `<path>.start` or `<path>.end` meets: the path's `starts_at` or `ends_at`.
+pub(crate) fn path_end_meets(d: &Decls, place: &str) -> Option<String> {
+    let (head, end) = place.rsplit_once('.')?;
+    let f = d.features.get(head)?;
+    match end {
+        "start" => f.starts_at.clone(),
+        "end" => f.ends_at.clone(),
+        _ => None,
+    }
 }
 
 /// What a thing stands on and how high it reaches above it (`rules.md` 8.1, M5): the place name

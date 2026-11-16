@@ -138,7 +138,8 @@ mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 2, d)"
 # `not_sealed`), and a bank built into `townland`'s river beside the deck.
 #
 # `deck`: the crossing's kind surface (surfaces.md 1, 6.3), `width` metres wide over its path,
-# `deck_z` on its line and falling `camber` a metre to each edge. It is not the terrain: the ground
+# `deck_z` on its line and falling `camber` a metre to each edge (over the heads' hold, `lift`
+# instead: below). It is not the terrain: the ground
 # and the water under it are left alone, so the water runs beneath and `surfaces_at` at the middle
 # of the river gives the bed, the water's level and the deck. Each end of the path (`<crossing>.start`,
 # `.end`) lies on the deck (surfaces.md 3.3: a path end lies on its kind's one surface), so a way
@@ -154,6 +155,28 @@ mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 2, d)"
 # the world put the end. `hold` must cover a quad's diagonal: `hold * length >= resolution * 1.42`
 # (a crossing 18 m long at 1 m: 0.08 or more). Under the deck's first and last metres the ground is
 # the bridgehead's abutment.
+#
+# Under the deck the hold is not `deck_z` across the whole width (M5 slice 3's on-foot review: the
+# ground held level stood up to `camber * width / 2` over the cambered deck, 0.13 m on `city`'s
+# 13 m decks, and drew the deck's ends notched where it showed through). It is `deck_z` within
+# `crown` of the line, so the posts round an end still read `deck_z` and the gap stays 0 (keep
+# `crown` at least 1.42 times the world's resolution: a quad's diagonal), and past `crown + 1` it
+# is the deck's own fall less `sink`, so the ground stays under the deck. Over the hold (`ends`)
+# the deck has no camber: it rises `lift` a metre from its line out to `crown + 1`, so the ground
+# held at `deck_z` within `crown` lies under it everywhere but on the line itself (where the gap is
+# taken). With the camber kept there, that ground stood `camber * crown` over the deck (0.06 m on
+# `city`) and drew a notch 2 m into each end, seen on the slice 3 fix's sheet.
+# Behind each end the band stays centred on `deck_z` (radial `d` there: centred on the deck's
+# fall, a way arriving on the line dipped 0.05 m and met the deck at 0.165, test_crossing_world),
+# so along the end's own line the ground stands up to `camber * width / 2` over the deck's corners.
+# `beneath` keeps the ground under the deck along its whole span, not only at its heads: where
+# the land stands above the deck's fall less `sink` (`crown` kept only within the heads' hold),
+# it is cut down to it out to a metre past the edge along the span (so the ground drawn between
+# the posts each side of the edge stays under it; within the heads' hold the bank starts at the
+# edge, where a quay may meet the deck: `townland`'s embankment, anchored, conflicted with the
+# metre), banked at `grade` past that and fading by `width / 2 + 2`; lower ground and
+# the water are left alone. Seen in M5 slice 3: `monastery`'s deck, 28 m over a 10 m gorge, had
+# the rim 0.41 m over its edge 19 to 23 m along; `townland`'s 0.17 m in the hold's fade.
 #
 # The parapet is a run along each edge of the deck (lib/ways/parapet.py, a generate step), and the
 # lint `lib/ways/check.py` judges that the water passes beneath (sampled under the deck's middle)
@@ -183,6 +206,9 @@ grade = 0.5                                 # the bridgehead's bank beside the d
 approach = 0.1                              # rise over run at which an arriving way meets the deck
 camber = 0.02                               # fall from the deck's line to each edge, per metre
 hold  = 0.08                                # share of the length at each end held at `deck_z` (above)
+crown = 1.5                                 # metres either side of the line held at `deck_z` (above)
+sink  = 0.05                                # metres the held ground stands under the deck past `crown + 1`
+lift  = 0.01                                # rise a metre from the line of the deck over the heads' hold (above)
 freeboard = 0.5                             # metres the deck stands over the water under its middle,
                                             # at least (lib/ways/check.py, `low_deck`)
 flow  = 0.3                                 # read by nothing since the deck left the terrain (it fed
@@ -191,16 +217,22 @@ flow  = 0.3                                 # read by nothing since the deck lef
 [kind.crossing.let]
 ends = "= max(1 - smoothstep(hold, hold + 0.12, t), smoothstep(1 - hold - 0.12, 1 - hold, t))"
 bank = "= grade * max(d - width / 2, 0)"
+under = "= deck_z - (camber * d + sink) * smoothstep(crown, crown + 1, d)"
 reach = "= approach * min(max(d - width / 2, 0), head) + grade * max(d - width / 2 - head, 0)"
 
 [kind.crossing.surface.deck]
-base  = "= deck_z - camber * d"
+base  = "= deck_z - camber * d * (1 - max(1 - smoothstep(hold, hold + 0.12, t), smoothstep(1 - hold - 0.12, 1 - hold, t))) + lift * min(d, crown + 1) * max(1 - smoothstep(hold, hold + 0.12, t), smoothstep(1 - hold - 0.12, 1 - hold, t))"
 bound = "= width / 2"
 
 [kind.crossing.effect.heads]
 field = "role:surface"
-value = "= if(t > 0 and t < 1, clamp(v, deck_z - bank, deck_z + bank), clamp(v, deck_z - reach, deck_z + reach))"
+value = "= if(t > 0 and t < 1, clamp(v, under - bank, under + bank), clamp(v, deck_z - reach, deck_z + reach))"
 mask  = "= ends * (1 - smoothstep(head + 4, head + 6, d)) * if(t > 0 and t < 1, 1 - smoothstep(width / 2, width / 2 + 1, d), 1)"
+
+[kind.crossing.effect.beneath]              # the ground under the span never above the deck
+field = "role:surface"
+value = "= min(v, deck_z - (camber * d + sink) * max(smoothstep(crown, crown + 1, d), 1 - ends) + grade * max(d - width / 2 - (1 - ends), 0))"
+mask  = "= if(t > 0 and t < 1, 1 - smoothstep(width / 2 + 1, width / 2 + 2, d), 0)"
 
 [kind.crossing.effect.clear]                # nothing stands on the deck or its heads
 field = "role:keep_out"

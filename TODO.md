@@ -979,7 +979,10 @@ To slice 2:
   `surfaces/step_run_on_floor` (fails before: z 10, not 13.3). Recheck the `place.keep_out` on a
   parapet member item below: likely the same root. Lesson: a produced name holds a `#` per
   producer; a parser of names must say which `#` it reads.
-- [x] (slice 3: point_on_deck, targets take the owner's one surface where the bound holds them)
+- [x] (slice 3: point_on_deck, targets take the owner's one surface where the bound holds them;
+  M5 close: that left instances and path ends on the terrain, the on-foot review found every tower
+  view still looking down; now an instance target takes the surface it stands on and a path's end
+  the surface its `ends_at` names, case `surfaces/target_on_floor`, station `lens` 9.85)
   Engine: a bookmark's `toward` target on a kind surface gets the terrain's z in features.json
   (station `lens` 0.01 for 9.85, `stair_2.end` 0.01 for 6.7, `kitchen_table` -0.01 for 0.45): every
   tower view looks steeply down through its floor. The eye stands right (slice 2).
@@ -1013,7 +1016,7 @@ To slice 2:
   the deck surface: `deck_wet` rows now the river under the deck (townland 78 of 192, example 69
   of 240; example's measure counted dry posts as wet, `>=`, now depth over 1 mm). Every other row in
   band but townland `reach` (below). Renders read: water runs under both decks.
-- [ ] townland `reach` 50 of 101 (move_crossing 40 of 96, move_hill 9 of 60), OWED in its
+- [x] (M5, reach agent: 101, 96, 60 all held; OWED lifted) townland `reach` 50 of 101 (move_crossing 40 of 96, move_hill 9 of 60), OWED in its
   expect.toml: lib/review's reach walks the terrain only, and the deck is no longer terrain, so the
   river cuts the town in two. Reach over kind surfaces through meetings (4.4) fixes it. Lesson: a
   library that leaves the terrain must land with the walk that follows it, or every reach measure
@@ -1043,14 +1046,15 @@ To slice 2:
   `step.surfaces_at` and `step.sample`; cases protocol c72 to c75. `test_lay.World` runs.
   Lesson: an attribute type the reader drops (`_ => None`) is silent; the step saw `?` = 0 and a
   library had to guess. Every value the text accepts should reach a reader or be refused.
-- [ ] `via query` builds with `via_model::build` alone: it runs no generate step, though
+- [ ] (M5 close: surfaces.md 7 now says what the command does, no step, and where to ask instead;
+  the step runner is owed) `via query` builds with `via_model::build` alone: it runs no generate step, though
   surfaces.md 7 says it does, so a world built by a step answers `meetings` empty (the house of
   `test_lay.World` gave `[]`; the test reads `meets.json` from `via build` instead). Also `relief`
   of a kind surface is not answered by `via query` (a usage error) nor by the protocol.
 - [ ] A vector case for a noise `base`: the stream is now `["noise", "feature", <fid>, "surface",
   <name>, "base"]` (formulas.md), fixed in the fix pass; no world stored values under the old one.
-- [ ] Docs at the M5 close: challenges rows 7, 14, 15, 48 (mounts now have face, connector and the
-  height of their surface).
+- [x] Docs at the M5 close: challenges rows 7, 14, 15, 48 (mounts now have face, connector and the
+  height of their surface). (M5 close fix pass, with 8, 18, 20, 33, 46, 47.)
 
 Later:
 - [x] station views: `in_living` and `in_porch` moved into open floor, `in_kitchen` off a barrel
@@ -1116,12 +1120,25 @@ To slice 3:
 - [x] Engine: two trees of parts side by side, each two deep, can still close the overlap loop
   across trees (height(a1) reads plan(b2) reads height(b1) reads plan(a2)); the overlap test reads
   plans and should not be an input of a height. (Slice 3 fix: one part deep sufficed, any distance;
-  the test is now its own `overlap` node, graph.md 1; case `assets/parts_two_hosts`.)
+  the test is now its own `overlap` node, graph.md 1; case `assets/parts_two_hosts`. M5 close:
+  the two-deep case `assets/parts_two_hosts_deep` written; no loop; moved half over each other it
+  found an overlap on a set's item as `diag.internal`, fixed in rules.rs.)
 - [ ] A mount with a height (spec/assets.md 12.2, owed): parts lie on flat ground only, a part at
   two heights is two assets, an accessory's asset states its socket's height. Build when a world
   needs it.
-- [ ] pistol/sidearm: README, expect.toml and a fresh-agent run not written (time box); the
+- [x] pistol/sidearm: README, expect.toml and a fresh-agent run not written (time box); the
   trigger guard is two bars open at the back; challenges rows 46 and 47 to update at the M5 close.
+  (M5 close, parts agent: READMEs; expect.toml per state, `measure.py --check STATE` reads it and
+  the build's own state; sidearm's `numbers.toml` and measure; the guard's bottom bar runs into the
+  leaning grip, closed; rows 46, 47. Lesson: a world without its own numbers had nothing to show
+  the barrel 17 mm proud; the measure found it at once, `crown` 17. The fresh-agent run is not
+  done: below.)
+- [ ] pistol/sidearm: a fresh agent, given only the READMEs and spec/assets.md 12, builds a
+  variation (a fourth accessory on a new socket, or the sidearm racked half way).
+- [ ] An overlap on a set's item is now at its set placement's header (case
+  `assets/parts_two_hosts_deep`; it was `diag.internal`); other records raised at an item's own
+  header (`place.keep_out`, rules.rs) still are: route them through `place::declared_at` too, with a
+  case each.
 
 Later:
 - [ ] The level test compares spans from two datums (terrain and floor) as one; a ground floor
@@ -1136,15 +1153,22 @@ Lesson: a world not rebuilt after a library change that moves a surface hides OW
 slices: monastery and city (decks as surfaces, slice 2) failed `deck_wet` and `reach` at HEAD
 already; rebuild every world a library change reaches in the slice that makes it.
 
-- [ ] lib/review reach over kind surfaces (4.4): monastery `reach` 3 of 10 and city 2 of 6 are now
+- [x] (M5, reach agent: one node per (surface, post) from `surfaces_at`, surfaces joined only at
+  meetings that hold; the step a worker; monastery 10 of 10 in base and every change, city 6 of 6;
+  lib/review test_reach `KindSurfaces`, test_reach_world deck cases) lib/review reach over kind surfaces (4.4): monastery `reach` 3 of 10 and city 2 of 6 are now
   OWED as townland's (the road cannot cross the gorge or the river on a deck).
 - [ ] geometry.md 2.7: a bridge's line over a sheer face is `geom.unowned_crossing` (monastery 2,
   every change): a deck over a face is no meeting, and a crossing names only the water it crosses.
   A kind listing more than one name in `names`, or a face (a path whose kind lays no way) left out
   of the check: decide (open to the owner).
-- [ ] Monastery faces, seen on the sheet: a saw-tooth of open slivers along the brink (a cut quad
-  reaches 0.71 of a post past the strip; coast's too), thin lit wedges where a piece's strip
-  bends (the mesh at a round join), and in the tarn's head the faces' flat 2.75 m foot fades into
+- [ ] Monastery faces, seen on the sheet: (M5 close, look pass: the saw-tooth of open slivers is
+  closed by the mesh's skirt, build.md 10, case `surfaces/skirt`: open cut area 124 to 0.2 m^2 on
+  the east wall, 95 to 0.5 on the west, coast's `sliver_m2_per_m` 0.129 to 0; the lit wedges were
+  the pieces' `taper` 0.0001, which brought every vertex on a piece's end line to the foot: now
+  `taper = 0` and joints mitred square to the bisector, gorge_faces.py `mitre`. Left: the skirt is
+  the face's one material, so from above the brink shows a rock fringe up to 0.71 m wide with the
+  cut quads' saw-tooth outline (monastery `bm_tarn`, near wall); a loader drawing a cut quad
+  clipped to the strip would end it; hairline seams at the joints.) In the tarn's head the faces' flat 2.75 m foot fades into
   the hollow (68 quads over 2 m, worst 2.81 m). The pieces are written by coordinates
   (gorge_faces.py): moving the stream leaves them; a face `follows` with a varying offset, or a
   face whose heights read the terrain (surfaces.md Open 9), would not need the generator.
@@ -1166,15 +1190,22 @@ Lesson: a fallback chosen before rule 4 (keep_out) never ran in quay: the rows f
 geometry and were then dropped by the footway's keep_out, so `fallback` saw no empty lot. A rule
 that answers "nothing stood" must run after every rule that removes, in the same batch.
 
-- [ ] Core: a distant edit reshapes a lot that keeps its name (quay `unrelated`:
+- [x] (M5 close, core: named, not a fault) Core: a distant edit reshapes a lot that keeps its name (quay `unrelated`:
   `lots#c48422ba69c7929ee_2` at (134.6, 139.7), 83 -> 87 outline points), and its shallow house no
   longer stands clear; `unrelated.houses_west` re-recorded 0 -> 1. Same root as the slice 5 case
-  (s1's thinned points).
+  (s1's thinned points). Found: `streets#s1`'s points near the lot are equal in both builds (its
+  east end moves 232 -> 226 with the district); the lot's side cuts along s1 move about 2.2 m
+  ((142.013, 142.21) -> (140.385, 143.716)). geometry.md 3.6 step 4: a stretch's stations stand at
+  `k L / n`, so shortening a stretch at its far end slides every station along it; the lot keeps
+  its station number, so its name. Rule as written. A station by distance from one end (the rest
+  at the far end), so a far edit moves only the last cells, is a choice for the owner (it changes
+  every cells case's numbers).
 - [ ] lib/town houses.py: rule 2c pairs only lots no row fits by geometry; a pair whose rows fit
   but are dropped by keep_out is not tried (a second batch, or corner tries in rule 4's). 7 pairs
   found leave no corner house clear (most beside the main street's 5.25 m keep_out): a smaller
   corner asset or a chamfered corner piece.
-- [ ] lib/review reach checks the `door` mount only: the corner house's side door (`side`) is not
+- [x] (M5, reach agent: `mount` may be a list; quay names `["door", "side"]`, 9 side doors walked,
+  `side_doors` and reach rows in quay's expect) lib/review reach checks the `door` mount only: the corner house's side door (`side`) is not
   walked to. Reach every mount with a door's role, or name both in quay's reach.
 - [ ] lib/town kit.py: quay's wall never cuts a bay to fillers (`kit_split` 0, the slope is 0.15);
   rule 6 is tested only in test_kit.py. A world with a run up a steeper slope (monastery wall,
@@ -1212,6 +1243,22 @@ say whether a library's lowering of that form inherits it.
   houses.py does) is owed; then `max_relief` back to 0.6.
 - [ ] The real kit: the TODO asks for a box kit then a real one; only the box kit is built.
 
+### From lib/review reach over kind surfaces (2026-11-17, M5; townland, monastery, city, quay)
+
+Lesson: a library lint that needs the engine (`surfaces_at`, `meetings`) runs only as a worker; a
+plain command's `NotAWorker` turned into a silent terrain-only walk would have hidden the decks
+again, so the lint now says `terrain_only` (info).
+
+- [ ] college, border and example declare reach as a plain command: they walk the terrain only and
+  now say `terrain_only`. Make each a worker and re-record (example's crossing deck is a kind
+  surface: its reach rows may rise). Not rebuilt here (not this agent's worlds).
+- [ ] The terrain's cut (surfaces.md 1.3, 4.4 item 4) is not served to a step: reach walks a cut quad
+  as ground (a floor with `cut` under a hill). Serve the cut (a field read, or `surfaces_at` leaving
+  the terrain out where cut), then read it.
+- [ ] A point feature's surface is not in the feature list (no `z`, no `surface`): reach stands a
+  point on the lowest open surface at its nearest open post. A point `on` a deck over dry ground
+  stands on the ground under it. Give the feature list `z` (features.json has it), or a `surface`.
+
 ### From M5 slice 3 (2026-11-17; the change and on-foot reviews, and the fix pass)
 
 Lesson: two blockers were old: `follows` had no graph edge since M1 (graph.md 2 lists it), and a
@@ -1231,24 +1278,132 @@ chest inside its floor; loader bodies under `bodies` (station `up_stair_3`, `in_
 case `assets/parts_on_set_item`; surfaces.md 2.3 says crossings are rounded to the lattice.
 
 To the M5 close:
-- [ ] A check that every reference kind in graph.md 2's edge table makes an edge in graph.rs
+- [x] (M5 close, core: via-model test `every_reference_in_graph_md_2_makes_an_edge`, which parses
+  the table, so a new row with no probe fails; 22 probed edges over 12 rows, `set` by statement, six step,
+  write and give rows by their conformance cases; six changes built warm on one store equal
+  clean, and back; case `composition/give_moved`, new; removing the `follows` edge fails it. No
+  other edge was missing.) A check that every reference kind in graph.md 2's edge table makes an edge in graph.rs
   (`follows` was missing from M1 to M5): a test per row, a world with that reference, the target
   moved, warm equals clean.
-- [ ] Decks: outlines notched where they meet the banks (city `on_north_bridge`); walks from a deck
+- [x] Decks: outlines notched where they meet the banks (city `on_north_bridge`); walks from a deck
   toward a target to the side leave it sideways and stop `blocked` by water (city
   `on_north_bridge`, townland `on_bridge`): trim the mesh at its bound, aim those bookmarks along
-  the deck or wait for parapets (on-foot review 5).
-- [ ] station: `loft_top`'s eye is under the loft floor (all grey, walk blocked at 0.3 m); `outside`
-  stops `blocked` at `cottage.floor` (seen on the fix pass's sheet, not reviewed).
-- [ ] pistol/sidearm: the optic hood is a solid plate, the grip upright; sidearm's barrel shows
+  the deck or wait for parapets (on-foot review 5). (M5 close, look pass: the mesh was inside its
+  bound; the notches were the held ground standing over the cambered deck, up to 0.13 m on city.
+  lib/ways `crossing`: the hold is `deck_z` only within `crown` of the line, the deck has `lift`
+  instead of camber over the hold, and `beneath` keeps the ground under the whole span: terrain
+  over a deck vertex 0 on all six decks, from up to 0.41 m on monastery. Both bookmarks look along
+  their deck and arrive. city's crossings write `crown = 3` for its 2 m posts.)
+- [ ] Decks: a kind default cannot read the world's resolution, so `crown` (1.5, for 1 m posts) is
+  restated by a world at coarser posts (city). A formula name for the resolution would let the
+  kind say `1.42 * resolution` itself.
+- [x] station: `loft_top`'s eye is under the loft floor (all grey, walk blocked at 0.3 m); `outside`
+  stops `blocked` at `cottage.floor` (seen on the fix pass's sheet, not reviewed). (M5 close, look
+  pass: `loft_top` stands 5.2 m over the ground, 1.7 over the upper floor, and walks down the
+  flight, arrived; `outside`'s straight line met the cottage's south side where no door is, so the
+  floor's 0.45 m edge stopped it: it follows `walk` in by the front door and stops at the kitchen
+  table across the line to the lens, 13.9 m short.)
+- [ ] station `outside` (M5 close: still 13.9 m short at the kitchen table): a view whose target no straight line reaches ends `blocked` on the sheet
+  however it is aimed; a walk to a place inside (a `along` path through the rooms) or a review that
+  reads a blocked walk by furniture as no fault is owed.
+- [x] lib/ways parapet.py: a deck shorter than the piece is deep said `narrow` ("as wide as the
+  deck"); now `short`, with its own text (test `test_a_deck_no_longer_than_the_piece_is_short_not_narrow`).
+- [x] pistol/sidearm: the optic hood is a solid plate, the grip upright; sidearm's barrel shows
   past the slide at rest (on-foot review 8; README and expect.toml are in "From M5 slice 2").
+  (M5 close: the hood is two posts and a bar round its window; both grips lean as models, a box
+  sheared by a tool with packgen's writer, since a placed part stands upright, assets.md 12.5; the
+  barrel's crown 2 mm ahead of the slide, checked by `crown` in sidearm's measure.)
 
 Later:
 - [ ] Performance: city's unchanged rebuild 21.5 s (2 s elsewhere); `move_avenue` and
   `move_bridge` 105 to 114 s against a 120 s cold build; quay `unrelated` 19.2 s against 16.3 s
   cold (on-foot review 7, one run each, release, a shared machine). Profile what re-runs.
+  M5 close (core; run.json node times and `sample`; one run each, release, 14 threads, HEAD's
+  examples and lib copied aside since both were being edited, other agents' builds on the
+  machine): the change report searched the whole graph once per changed thing, sorting every
+  node's inputs again (`causes_from`); now one indexed graph and a search over the nodes that
+  depend on a changed statement (`CauseGraph`): quay `write:changes.json` 3.73 -> 0.39 s, bytes
+  equal, `unrelated` 17.3 -> 14.0 s (cold 14.7). The build key's leaves placed the whole world
+  only to list files: city's same-directory unchanged rebuild (the null build) 8.4 -> 1.5 s. Left:
+  (a) core: an unchanged rebuild into a new directory is no null build (graph.md 6.2 asks the
+  directory's own manifest), so it plans: city 16.1 s, of which `prepare` (placing every `where`
+  district and network, once per stratum) about 5.5 s, defining 20k nodes about 3 s, store reads
+  0.8 s. Plans made lazily, or a null build into a fresh directory, is owed. (b) core: city
+  `write:changes.json` still 2.9 s in `move_avenue` (unprofiled). (c) library: every change re-runs
+  city's three `houses` steps whole (64 to 80 s each in `move_avenue`, 133 s in all against a
+  106 s cold build): each reads `build.features` over every lot, so one lot anywhere re-runs it;
+  quay's `houses` likewise (6.7 s of 14 s). A `for_each` per district or block in lib/town is owed.
 - [ ] The overlap test reads every other hand instance's `instance` node, O(n^2) edges, as the
   height did before; a grid of hand instances by plan would cut it when a world needs it.
+
+### From M5 close (2026-11-17; the fresh agent, the change and on-foot reviews, and the fix pass)
+
+- [ ] M4 worlds not rebuilt after M5 library changes (found by the M5 sheet): county base
+  `town_instances` 324 against [68, 68] (quay, its import, now lays its wall with lib/town kit.py,
+  slice 3) and border base `unowned` 2 against [0, 0] (monastery, its import, now has sheer faces;
+  the bridge over a face is `geom.unowned_crossing`, open item above). Confirm each cause, then
+  re-band with the reason or fix; rebuild every importing world in the slice that changes its
+  import (M6 slice 1).
+
+Lesson: a fix closed at the case it was written for and not at the world that found it: the slice-3
+target fix covered a point `on` a deck, and station's tower views still looked through their
+floors. Close a TODO item from the world's own render, not from the case alone.
+
+- [x] Plan step 6 for M5: a fresh agent builds a small variation from the documents alone. Run at
+  the M5 close (`brook`: a beck, a footbridge with parapet, two lanes meeting it, a two-storey laid
+  house with a door and a stair, a walk from the lane up to the upper floor; then the house moved
+  north and turned 36.87 degrees): both builds 0 errors, 8 meetings at gap 0, the walk stops on
+  `lay#house_s1.floor` before (28.9 m) and after (33.3 m). Nine trips; fixed in the documents or
+  the messages: the Build blocks' `via config program` (station, coast, county), the gap hint (a
+  produced side named with its producer, and setting the ground by an effect), `via query`'s
+  chapter (no step runs), a turned house's ends rounded off their floor (`lay.py` `onto`, test),
+  `via explain step.*` with no build there, `build.pack_root_far` on one drive (a world named by a
+  bare file name), walks judged by `on.stop` and a waypoint before a flight's foot (build.md
+  15.1), the produced-name pattern and doors off a way's bed (lib/building README "Using it"), the
+  `front` attribute and a door piece. Left: below.
+- [x] Closed in the fix pass: targets on floors (instances and path ends, case
+  `surfaces/target_on_floor`); a walker falling off a deck says `fell`, never `arrived` in the air
+  (walk.gd, test_floor); station `move_stair` moves the living table with the stair and
+  `measure.py` `in_flight` (0 in every build; 1 before); quay `move_hill` moves `wedge_house` to a
+  wedge of that build; `along` on townland `way_bridge`, monastery `bm_bridge_end`, coast
+  `on_bridge` (all arrive, base and change); rules.md 8.1 states the terrain-and-floor level (R40);
+  the skirt covers only its kind's cut cells (cases `skirt_neighbour`, `skirt_moved`; decided,
+  open to the owner); authority.md's volume lines closed by R37; the kit's `ends` param renamed
+  `caps` (rules.md 5 keeps `ends` for the core run); lib/building README's pistol line; the edge
+  test compares fields and features after "and back" and wants a change in each case.
+
+To M6:
+- [ ] `via query` runs no step (surfaces.md 7 says so now): a step runner for `surfaces_at`,
+  `sample` and `meetings` over a laid building, and `relief` over a kind surface.
+- [ ] `surface.gap` says "what sets each" only by name: the effect that wins the terrain at the
+  end (a lane's `bed` over a door's `sill`) is not named; field provenance at a post is owed.
+- [ ] `lay` returns no place name a bookmark can target (a storey, a stair's foot): a mount or a
+  documented point per door and stair foot would replace the fresh agent's hand `t`/`offset`
+  points. Decide with the produced-name rule (R3).
+- [ ] townland `ways_meet` walks from the bridge's east end toward its start and stops at the
+  bank: `along` walks a path from its start only; a reversed `along` (or from the nearer end) is
+  owed. city `on_central_bridge` and `on_harbor_bridge` look down river from mid-deck and now say
+  `fell` off the deck's side (no parapet): aim them along, or run `parapet` (next item).
+- [ ] Parapets on monastery's, city's and townland's decks (only coast runs lib/ways `parapet`),
+  or say in each README why not (on-foot review 6).
+- [ ] Quay's `wedge_house` in `move_hill` is placed by coordinates from that build's houses (R3):
+  a view that follows a produced wedge needs a name for it.
+- [ ] A lint that furniture stands off a flight's line (station's `in_flight` is a world measure);
+  lib/building `check` should report it for any building.
+
+To M7:
+- [ ] The loader draws the skirt's cut quads clipped to the strip (monastery `bm_tarn` fringe;
+  build.md 15.3 glTF reader, slice 2 item).
+
+Later:
+- [ ] The kit param rename `ends` -> `caps` (decided, open to the owner): if the owner prefers
+  another word, market's two runs and test_kit change with it.
+- [ ] Stations by distance from one end (doctrine 6, "Open (M5 close)"), with
+  `identity/c27_stretch_lengthened`.
+- [ ] station `close_passage`: the sheet still walks through the closed passage (a leaf, not a
+  meeting taken away); `outside` 13.9 m short at the kitchen table; coast `cliff_from_sea` and
+  `along_cliff` blocked in every build; townland `from_east_gate` a grass slope; college blocks show
+  no door at `*.entry` (on-foot review 8 to 10, all known).
 
 ## Framing
 

@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "graph.md 2, give: the import's `given` node reads the parent's field it names. The parent's height made flatter, built on the store that holds the first build: the town's height follows it (0.5 x + 1 = 7 at x 12, then 0.25 x + 1 = 4); the runner holds the warm build equal to a clean one."
+milestone = 4
+actions   = ["build", "flatter"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.h]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 7
+
+[action.flatter]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "flatter", "--against", "build/w", "--out", "build/f"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/f"
+[action.flatter.file.h]
+path  = "build/f/fields/height.npy"
+post  = [12, 4]
+value = 4

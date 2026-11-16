@@ -6,8 +6,16 @@
 asset = "optic_base"
 at    = [0, 0]
 
-[set.optic.item.optic_hood]
-asset = "optic_hood"
+[set.optic.item.optic_post_l]
+asset = "optic_post_l"
+at    = [0.013, 0.01]
+
+[set.optic.item.optic_post_r]
+asset = "optic_post_r"
+at    = [0.013, -0.01]
+
+[set.optic.item.optic_top]
+asset = "optic_top"
 at    = [0.013, 0]
 
 [instance.optic]

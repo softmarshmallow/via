@@ -41,8 +41,9 @@ params  = { ways = ["main_street", "street", "freeway"], meets = ["crossing", "v
 
 # lib/review's reach lint between stated places: from the west end of the central arterial a
 # walker reaches the far bank over each bridge, the old town's hill, the north and south gates.
-[step.reach]
+[step.reach]                                # a worker: it asks the engine for decks, floors and meetings
 when    = "lint"
+worker  = true
 command = ["python", "-m", "viasdk", "lib:review/reach.py"]
 
 [step.reach.params]
@@ -140,10 +141,10 @@ kind   = "bookmark"
 on     = { ref = "central_bridge", t = 0.5 }
 toward = "look_down_river"
 
-[feature.on_north_bridge]
-kind   = "bookmark"
-on     = { ref = "north_bridge", t = 0.5 }
-toward = "central_bridge"
+[feature.on_north_bridge]                   # mid-deck, looking along it to its east end: a walk toward
+kind   = "bookmark"                         # the central bridge, off to the side, left the deck and
+on     = { ref = "north_bridge", t = 0.5 }  # stopped at the water (M5 slice 3's on-foot review)
+toward = "north_bridge.end"
 
 [feature.central_face]                      # on the west bank 30 m downstream, at the water's edge
 kind   = "bookmark"

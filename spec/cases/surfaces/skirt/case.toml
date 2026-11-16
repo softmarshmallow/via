@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "build.md 10, Skirt (M5 close, look pass): a cutting path owner's mesh is clipped to its bound in every cell and, in a cut cell, also covers the cell's part within the strip grown by 0.7072 of a post and outside the bound, so no cut quad is left open past the bound and the bound's outline stays a constraint: 134 triangles, the bound's 102 and 32 of the skirt over the 16 cut cells. With no `cut` the same strip has no skirt: 102. Measured in m5c-look with the cut: 0.03 m^2 of cut quad open (behind the butt start, which the skirt does not pass)."
+milestone = 5
+actions   = ["build", "uncut", "rebuilt"]
+
+[copy.lib]
+from = "spec/cases/surfaces/skirt/lib"
+to   = "lib"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.file.triangles]
+path    = "build/build/manifest.json"
+pointer = "/meshes/0/triangles"
+value   = 134
+
+[action.uncut]
+replace = "lib/skirt_test/kinds.toml"
+find    = "cut   = \"= 3\""
+with    = ""
+
+[action.rebuilt]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.rebuilt.file.triangles]
+path    = "build/build/manifest.json"
+pointer = "/meshes/0/triangles"
+value   = 102

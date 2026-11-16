@@ -166,9 +166,9 @@ band    = [0, 0]
 measure = "edge_ends"
 band    = [94, 94]
 
-[base.reach]                                # OWED (M5 slice 2): 2 of 6, 2 at HEAD. lib/review's reach walks the terrain
-measure = "reach_held"                      # only; the decks are kind surfaces since slice 2, so the river cuts the
-band    = [6, 6]                            # city in two (TODO; townland's rows)
+[base.reach]                                # all held: lib/review's reach walks the decks (kind surfaces since
+measure = "reach_held"                      # slice 2) through their meetings (surfaces.md 4.4, M5; 36 joined);
+band    = [6, 6]                            # 2 of 6 when it walked the terrain only
 
 [base.relief]
 measure = "place.relief"
@@ -212,7 +212,7 @@ band    = [3, 3]
 measure = "geom.unowned_crossing"
 band    = [0, 0]
 
-[move_avenue.reach]                         # OWED (as base.reach)
+[move_avenue.reach]                         # all held (2 of 6 on the terrain only)
 measure = "reach_held"
 band    = [6, 6]
 
@@ -258,7 +258,7 @@ band    = [0, 0]
 measure = "lot_changed_in_kept_blocks"
 band    = [0, 0]
 
-[move_bridge.reach]                         # OWED (as base.reach)
+[move_bridge.reach]                         # all held (2 of 6 on the terrain only)
 measure = "reach_held"
 band    = [6, 6]
 

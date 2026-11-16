@@ -1,0 +1,31 @@
+format    = "via-case-1"
+summary   = "build.md 10, Skirt (M5 close): the ledge's mesh covers the cut cells in its skirt that a second ledge piece cuts; moving that piece away, built against the base on one store, gives the ledge's mesh case `skirt`'s 134 triangles again: the mesh's write node reads the cut when skirted (graph.rs, `skirted`); without that read the warm build keeps the base's mesh and U6 fails (checked at the M5 close)."
+milestone = 5
+actions   = ["base", "apart"]
+
+[copy.lib]
+from = "spec/cases/surfaces/skirt_moved/lib"
+to   = "lib"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+# Meshes by place: ledge.face, shelf.face.
+[action.base.file.triangles]
+path    = "build/base/manifest.json"
+pointer = "/meshes/0/triangles"
+value   = 214
+
+[action.apart]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "apart", "--against", "build/base", "--out", "build/apart"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/apart"
+
+[action.apart.file.triangles]
+path    = "build/apart/manifest.json"
+pointer = "/meshes/0/triangles"
+value   = 134

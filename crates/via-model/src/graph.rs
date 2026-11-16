@@ -501,7 +501,14 @@ fn statement_digests(world: &World, p: &Prepared) -> BTreeMap<String, Digest> {
 /// digests enter the build key (6.2), so a pack or a field file edited in place is never taken
 /// for an unchanged build.
 pub fn leaves(world: &World, options: &Options) -> Vec<(String, Digest)> {
-    let p = prepare(world, options);
+    let (decls, pack, _) = crate::build::declared(world, options);
+    let p = Prepared {
+        decls,
+        pack,
+        placed: crate::place::Placed::default(),
+        diags: Vec::new(),
+        placing: None,
+    };
     let mut out: Vec<(String, Digest)> = leaves_of(&p, options)
         .into_iter()
         .map(|(path, _, d)| (path, d))
@@ -903,6 +910,11 @@ impl<'w> ModelPlan<'w> {
             FileReads::Mesh(owner) => {
                 out.push((format!("shape {owner}"), view(NodeId::of("shape", owner))));
                 out.push((format!("attr {owner}"), NodeId::of("attr", owner)));
+                // A cutting path owner's mesh covers the cut cells in its skirt (`build.md` 10):
+                // it reads what the cut file reads.
+                if self.skirted(owner) {
+                    out.extend(self.file_reads(&FileReads::Cut));
+                }
             }
             FileReads::Everything => {
                 for id in self.defs.keys() {
@@ -993,6 +1005,16 @@ impl<'w> ModelPlan<'w> {
                         }
                     }
                 }
+                // A target's `z` is the surface its instance stands on, or the one its path's end
+                // meets (`surfaces.md` 4.1): their statements say which.
+                for (place, _) in self.p.placed.names.values() {
+                    if d.instances.contains_key(place) {
+                        ids.push(format!("instance.{place}"));
+                    } else if crate::surfaces::path_end_meets(d, place).is_some() {
+                        let head = place.rsplit_once('.').map_or(place.as_str(), |h| h.0);
+                        ids.push(format!("feature.{head}"));
+                    }
+                }
                 self.stmts_of(ids.iter().map(String::as_str))
             }
             // The mesh carries its material's colour (`build.md` 10), which is pack.toml's
@@ -1015,6 +1037,11 @@ impl<'w> ModelPlan<'w> {
                             .collect()
                     })
                     .unwrap_or_default();
+                if self.skirted(owner) {
+                    out.extend(self.file_statements(&FileReads::Cut));
+                    out.sort();
+                    out.dedup();
+                }
                 for m in named {
                     let mut enc = Enc::new();
                     enc.str("via-material-1").str(m);
@@ -1050,6 +1077,13 @@ impl<'w> ModelPlan<'w> {
             })
             .map(|(id, _)| id.clone())
             .collect()
+    }
+
+    /// Whether `owner` is a path whose kind has a surface with `cut`: its mesh covers the cut
+    /// cells in its skirt (`build.md` 10).
+    fn skirted(&self, owner: &str) -> bool {
+        matches!(self.p.placed.shapes.get(owner), Some(Geo::Path { .. }))
+            && self.cut_owners().iter().any(|o| o == owner)
     }
 
     /// The terrain, whose cut file a build writes (`build.md` 6.5).

@@ -1,0 +1,117 @@
+# What a sidearm build must measure, per state (challenge 46). Measures, never bytes (R15): each row
+# names a measure of measure.py and the band it must fall in; a section is a state, and measure.py
+# checks that the build's own state is that one (read from the build, spec/assets.md 12.4):
+#
+#   via build examples/sidearm/world.toml [--change examples/sidearm/changes/racked.toml] \
+#       --out BUILD --store STORE
+#   python3.12 examples/sidearm/measure.py BUILD --check racked
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
+# b588abc (M5 slice 3) with the M5 close agents' edits as of 2026-11-17 03:30, VIA_LIB=lib, one
+# store for both builds, each built once from the world with its change file (no --against).
+# Millimetres, against numbers.toml (the sidearm's own numbers; no source publishes any). Exact by
+# construction, so a band is one number. Before the M5 close the barrel stood 17 mm past the slide
+# at rest: `crown` 17, `length` 217, both outside.
+
+
+# ------------------------------------------------------------------------------------------ rest
+# the slide over the frame; the barrel's crown 2 mm ahead of its face
+
+[rest.errors]
+measure = "errors"
+band    = [0, 0]
+
+[rest.parts]
+measure = "parts"
+band    = [11, 11]
+
+[rest.length]
+measure = "length"
+band    = [202, 202]
+
+[rest.width]
+measure = "width"
+band    = [28, 28]
+
+[rest.height]
+measure = "height"
+band    = [151, 151]
+
+[rest.crown]
+measure = "crown"
+band    = [2, 2]
+
+[rest.sight_radius]
+measure = "sight_radius"
+band    = [180, 180]
+
+[rest.off_length]
+measure = "off_length"
+band    = [0, 0]
+
+[rest.off_width]
+measure = "off_width"
+band    = [0, 0]
+
+[rest.off_height]
+measure = "off_height"
+band    = [0, 0]
+
+[rest.off_crown]
+measure = "off_crown"
+band    = [0, 0]
+
+[rest.off_sight_radius]
+measure = "off_sight_radius"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ racked
+# the slide 32 mm back (changes/racked.toml): the length and the crown grow by the travel
+
+[racked.errors]
+measure = "errors"
+band    = [0, 0]
+
+[racked.parts]
+measure = "parts"
+band    = [11, 11]
+
+[racked.length]
+measure = "length"
+band    = [234, 234]
+
+[racked.width]
+measure = "width"
+band    = [28, 28]
+
+[racked.height]
+measure = "height"
+band    = [151, 151]
+
+[racked.crown]
+measure = "crown"
+band    = [34, 34]
+
+[racked.sight_radius]
+measure = "sight_radius"
+band    = [180, 180]
+
+[racked.off_length]
+measure = "off_length"
+band    = [0, 0]
+
+[racked.off_width]
+measure = "off_width"
+band    = [0, 0]
+
+[racked.off_height]
+measure = "off_height"
+band    = [0, 0]
+
+[racked.off_crown]
+measure = "off_crown"
+band    = [0, 0]
+
+[racked.off_sight_radius]
+measure = "off_sight_radius"
+band    = [0, 0]

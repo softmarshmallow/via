@@ -35,7 +35,7 @@ on the base's store they stop with `diag.internal` (TODO, "From M5 slice 3, mark
 Each row is a line `offset` metres from its street's centre line, on the side the row stands:
 the street's verge (`keep_out` to 5.75 m on the main street, 4.25 m on a street) and half a
 house's depth out, so each front is on the footway's back edge. The line `follows` its street
-over a `span`, so it moves when the street moves. The kit run (`lib/town/kit.py`, `ends =
+over a `span`, so it moves when the street moves. The kit run (`lib/town/kit.py`, `caps =
 "inside"`) lays on it: an end house at each free end and either side of a gap where a cross
 street's verge reaches within half a bay's depth of the line; a corner house where the line turns
 10 degrees or more; bays between, fillers for what bays leave, the rest to the free end; where

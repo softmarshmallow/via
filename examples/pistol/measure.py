@@ -1,20 +1,28 @@
 """Measures a pistol build against its published numbers, per state (challenge 47; docs/plan.md M5).
 
-    python3.11 examples/pistol/measure.py BUILD_DIR [--check STATE]
+    python3.12 examples/pistol/measure.py BUILD_DIR [--check STATE]
 
 Prints JSON. Reads only the build directory (spec/build.md): instances/ (names.txt; x.npy, y.npy
-int32 mm; z.npy float32 m; face.npy int32 millidegrees; scale.npy) and manifest.json (`assets`:
-`bounds`, `taxon`, `mounts`; `chunks` for each row's asset), and published.toml beside this file. Standard library only.
+int32 mm; z.npy float32 m; face.npy int32 millidegrees; scale.npy), manifest.json (`assets`:
+`bounds`, `taxon`, `mounts`; `chunks` for each row's asset) and diagnostics.json (`counts`), and
+published.toml beside this file. Standard library only.
+
+STATE is `rest` or `racked`, then `+<accessory>` for each accessory fitted, in the order optic,
+suppressor, light (`racked+optic`): the build's own state and accessories must be those, and each
+row of expect.toml's section STATE must hold (`measure`, `band`). Exit 1 when one does not.
 
 Protocol (ours, for this world):
 
 - **The state is read from the build, not told** (spec/assets.md 12.4). `racked` when the `slide`
   instance's origin is the frame's `slide_racked` socket (frame origin plus the mount's `at` turned
   by the frame's face, to the millimetre), `rest` when it is the `slide` socket, else `unknown`.
-  The accessories are the instances whose asset's taxon starts with `accessory/`.
+  The accessories are the instances whose asset's taxon starts with `accessory/`; `fitted` names
+  the overlays they come from (an accessory's parts are items of a set placement named for it,
+  `optic.optic_base`), in the order optic, suppressor, light.
 - **Size.** Every part's box is its asset's `bounds` scaled, turned by its face (quarter turns only:
   the parts stand at the frame's face), at its origin and `z`. `length`, `width`, `height` are the
-  union's extent along the frame's x, y and z, in mm, rounded to the nearest. The pistol alone
+  union's extent along the frame's x, y and z, in mm, rounded to the nearest. The leaning grip and
+  its panels are models (make_pack.py): their bounds are the sheared boxes'. The pistol alone
   (taxon `part/`), and with its accessories (`length_all`, `height_all`, `width_all`).
 - **Against the published numbers.** In `rest`, the pistol alone must equal `overall_length`,
   `width` and `height` exactly (`off_*` 0). In `racked`, the slide stands `travel` behind the rest
@@ -33,6 +41,7 @@ import tomllib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+ORDER = ("optic", "suppressor", "light")  # the accessory overlays, accessories/<name>.toml
 
 
 def npy(path):
@@ -79,8 +88,10 @@ def measure(build):
 
     sl = (xs[by["slide"]], ys[by["slide"]])
     out["state"] = "racked" if sl == socket("slide_racked") else "rest" if sl == socket("slide") else "unknown"
-    acc = sorted({asset_of[n] for n in names if assets[asset_of[n]]["taxon"].startswith("accessory/")})
-    out["accessories"] = acc
+    acc = [n for n in names if assets[asset_of[n]]["taxon"].startswith("accessory/")]
+    out["accessories"] = sorted({asset_of[n] for n in acc})
+    out["fitted"] = [a for a in ORDER if any(n.split(".")[0] == a for n in acc)]
+    out["errors"] = json.loads((build / "diagnostics.json").read_text())["counts"]["error"]
 
     def box(names_in):
         lo, hi = [math.inf] * 3, [-math.inf] * 3
@@ -116,18 +127,31 @@ def measure(build):
     return out
 
 
+def check(out, state):
+    """expect.toml's section `state`: each row's measure within its band, and the build's own
+    state and accessories those the section names. Prints a line a row; returns the exit code."""
+    rows = tomllib.loads((HERE / "expect.toml").read_text())[state]
+    want = state.split("+")
+    bad = 0
+    for name, ok, line in [("state", out["state"] == want[0], f"state = {out['state']}, checked as {want[0]}"),
+                           ("fitted", out["fitted"] == want[1:], f"fitted = {out['fitted']}, checked as {want[1:]}")]:
+        bad += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} {state}.{name}: {line}")
+    for name, row in rows.items():
+        v = out.get(row["measure"])
+        lo, hi = row["band"]
+        ok = v is not None and lo <= v <= hi
+        bad += not ok
+        print(f"{'ok  ' if ok else 'FAIL'} {state}.{name}: {row['measure']} = {v}, band [{lo}, {hi}]")
+    return 1 if bad else 0
+
+
 def main():
     args = sys.argv[1:]
     out = measure(args[0])
-    print(json.dumps(out, indent=1))
     if "--check" in args:
-        want = args[args.index("--check") + 1]
-        bad = [k for k in ("off_length", "off_width", "off_height", "off_sight_radius") if out[k] != 0]
-        if out["state"] != want.split("+")[0]:
-            bad.append(f"state {out['state']}, checked as {want}")
-        if bad:
-            print("outside: " + ", ".join(bad), file=sys.stderr)
-            sys.exit(1)
+        sys.exit(check(out, args[args.index("--check") + 1]))
+    print(json.dumps(out, indent=1))
 
 
 if __name__ == "__main__":

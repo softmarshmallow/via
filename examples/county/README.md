@@ -19,6 +19,7 @@ town's exit `town.gate` (R9).
 
 ```
 export VIA_LIB=$PWD/lib
+via config program python $PWD/sdk/python/.venv/bin/python     # steps run on Python 3.12 (3.11+)
 via trust examples/county/world.toml
 via build examples/county/world.toml --out build/county
 via build examples/county/world.toml --change examples/county/changes/move_town.toml --against build/county --out build/county+move_town

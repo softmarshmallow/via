@@ -1,0 +1,119 @@
+format    = "via-case-1"
+summary   = "assets.md 12.1, rules.md 8.1, graph.md 1 (M5 close, parts): two hosts side by side, each with two branches two parts deep and an accessory set three deep: no graph.cycle (height(a1) reading plan(b2), plan(b2) reading height(b1), height(b1) reading plan(a2) would close one); parts of one root are not tested against each other; moving a host half over the other gives one place.overlap per pair across the trees, a set item's at its set placement's header, and no cycle; turning one moves its whole tree."
+milestone = 5
+actions   = ["build", "near", "turn"]
+
+# frame at (10, 10), face 0 (its +x east): slide (11, 10), sight on slide.sight (13, 10); barrel
+# (12, 10), can on barrel.muzzle (13, 10), acc on can.tip (14, 10), its item cap there too.
+# b_frame at (10, 12): b_sight (13, 12), b_can (13, 12), b_acc (14, 12). The frames are 1 m wide, so
+# 1 m clear between the trees.
+# near: b_frame at (10, 10.5), half over frame: the two trees' parts overlap across trees
+# (place.overlap, exit 1), never within a tree, and still no graph.cycle.
+# turn: b_frame faces 180 (its +x west): b_slide (9, 12), b_sight (7, 12), b_barrel (8, 12), b_can
+# (7, 12), b_acc (6, 12).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.build.check.sight]
+fn    = "instance_at"
+build = "build/w"
+name  = "sight"
+at    = [13, 10]
+face  = 0
+
+[action.build.check.can]
+fn    = "instance_at"
+build = "build/w"
+name  = "can"
+at    = [13, 10]
+face  = 0
+
+[action.build.check.b_sight]
+fn    = "instance_at"
+build = "build/w"
+name  = "b_sight"
+at    = [13, 12]
+face  = 0
+
+[action.build.check.b_can]
+fn    = "instance_at"
+build = "build/w"
+name  = "b_can"
+at    = [13, 12]
+face  = 0
+
+[action.near]
+via         = ["build", "world.toml", "--change", "near", "--against", "build/w", "--out", "build/n"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/n"
+
+# Each overlapping pair across the trees, once, at the later instance's header; none within a tree.
+# A set's item has no header of its own: `acc.cap` against `b_acc.cap` is at `instance.b_acc`, its
+# set placement's header (before: diag.internal, "raised at the header, which has no span").
+
+[action.near.diag.frame]
+code    = "place.overlap"
+subject = "instance.frame"
+records = 1
+
+[action.near.diag.slide]
+code    = "place.overlap"
+subject = "instance.slide"
+records = 3
+
+[action.near.diag.sight]
+code    = "place.overlap"
+subject = "instance.sight"
+records = 1
+
+[action.near.diag.barrel]
+code    = "place.overlap"
+subject = "instance.barrel"
+records = 3
+
+[action.near.diag.can]
+code    = "place.overlap"
+subject = "instance.can"
+records = 4
+
+[action.near.diag.b_can]
+code    = "place.overlap"
+subject = "instance.b_can"
+records = 1
+
+[action.near.diag.b_acc]
+code    = "place.overlap"
+subject = "instance.b_acc"
+records = 1
+
+[action.turn]
+via         = ["build", "world.toml", "--change", "turn", "--against", "build/w", "--out", "build/t"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/t"
+
+[action.turn.check.b_sight]
+fn    = "instance_at"
+build = "build/t"
+name  = "b_sight"
+at    = [7, 12]
+face  = 180000
+
+[action.turn.check.b_can]
+fn    = "instance_at"
+build = "build/t"
+name  = "b_can"
+at    = [7, 12]
+face  = 180000
+
+[action.turn.check.sight]
+fn    = "instance_at"
+build = "build/t"
+name  = "sight"
+at    = [13, 10]
+face  = 0

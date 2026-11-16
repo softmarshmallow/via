@@ -215,7 +215,7 @@ class KitStepTest(unittest.TestCase):
     def test_bad_params(self):
         step = self.run_step([(0, 0), (10, 0)], side="up")
         self.assertEqual(step.said[0][:2], ("error", "params"))
-        step = self.run_step([(0, 0), (10, 0)], ends="out")
+        step = self.run_step([(0, 0), (10, 0)], caps="out")
         self.assertEqual(step.said[0][:2], ("error", "params"))
 
     def test_ends_inside(self):
@@ -236,7 +236,7 @@ class KitStepTest(unittest.TestCase):
         self.assertIsNone(closes)
         self.assertAlmostEqual(got[-1][1] + got[-1][2] / 2, 10.6 - (10.6 - 0.6 - math.hypot(0.7, 0.8) / 2) % 0.5, places=9)
         self.assertTrue(all(m - l / 2 >= -1e-9 and m + l / 2 <= 10.6 + 1e-9 for _, m, l in got))
-        step = self.run_step([(0, 0), (10.6, 0)], ends="inside")
+        step = self.run_step([(0, 0), (10.6, 0)], caps="inside")
         self.assertEqual(self.kit_info(step)["open"], 0)
         # A stretch too short for its caps: the one end piece clears the corner's reach.
         got, _ = K["lay_stretch"](1.3, KIT, "corner", "end", inside=True)
@@ -272,7 +272,7 @@ class KitStepTest(unittest.TestCase):
     def test_apart_on_the_lattice(self):
         # Rule 7: on a line off the axes, pieces at their exact pitch overlap by rounding to the
         # millimetre; the joint opens a millimetre at a time until they do not.
-        step = self.run_step([(0, 0), (20.6 * 0.6, 20.6 * 0.8)], ends="inside")
+        step = self.run_step([(0, 0), (20.6 * 0.6, 20.6 * 0.8)], caps="inside")
         self.assertEqual(self.neighbours_meet(step), [])
         self.assertGreater(self.kit_info(step)["opened"], 0)
         # On the axes nothing opens (the quay's wall is laid as before).
@@ -285,7 +285,7 @@ class KitStepTest(unittest.TestCase):
         # when the stretch no longer holds them.
         th = math.radians(6)
         path = [(0, 0), (10.3, 0), (10.3 + 10.3 * math.cos(th), 10.3 * math.sin(th))]
-        step = self.run_step(path, ends="inside")
+        step = self.run_step(path, caps="inside")
         self.assertEqual(self.neighbours_meet(step), [])
         info = self.kit_info(step)
         self.assertGreater(info["opened"], 0)

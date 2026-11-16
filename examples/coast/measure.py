@@ -36,7 +36,9 @@ when the cut file holds 1 there (build.md 6.5).
   - `face_steep_share`: the share of the faces' surface area in triangles steeper than 80 degrees.
   - `brink_dev_mm`: over the face vertices at the top (z within 1 mm of `top_z`), the spread
     (largest less least) of their signed distance from the cliff's line: 0 when the brink is drawn
-    along the line, `lip` from it. `brink_vertices` counts them.
+    along the line, `lip` from it. `brink_vertices` counts them. Only vertices within `lip` of the
+    line count: past it the mesh's skirt (build.md 10, M5 slice 3 fix) lies flat at `top_z` over
+    the cut quads, which is no brink.
   - `terrain_brink_dev_mm`, for contrast, what the terrain alone draws: the same spread over the
     posts at `top_z` (within 1 mm) with a 4-neighbour at `foot_z`, within the faces' span; the
     staircase the 0.5 m posts make of an oblique line (up to 0.71 of a post).
@@ -44,8 +46,9 @@ when the cut file holds 1 there (build.md 6.5).
   - `step_left`: quads not cut whose four posts span more than half the drop (a step the terrain
     still draws) within 3 m of a face's line, away from the cave's mouth (4 m).
   - `sliver_m2_per_m`: the area of cut quads (within 3 m of a face's line) that no kind surface's
-    bound covers (strips of the faces, the floor and the deck, sampled on a 0.1 m grid in each quad),
-    per metre of face: what is open to the sky at the foot and the brink.
+    mesh covers (strips of the faces, the floor and the deck, sampled on a 0.1 m grid in each quad;
+    a face's and the floor's strips grown by the skirt, build.md 10), per metre of face: what is
+    open to the sky at the foot and the brink.
 - The bridge (`harbour_bridge`, its line and `width / 2`):
   - `deck_posts`, `deck_wet`: posts within the half width between its ends, and of them those where
     the water stands over the ground (depth over 1 mm).
@@ -260,11 +263,12 @@ def measure(build, surfaces=None):
             slope = math.degrees(math.acos(min(1.0, abs(nz) / (2 * ar))))
             area += ar
             steep += ar if slope > 80 else 0
-        top = f["attrs"]["top_z"]
+        top, lip = f["attrs"]["top_z"], f["attrs"]["lip"]
         for v in verts:
             if abs(v[2] - top) <= 0.001:
                 sd = signed(v[:2], line)
-                if sd is not None:
+                # The strip's own brink: the skirt's flat past it (build.md 10) is left out.
+                if sd is not None and abs(sd) <= lip + 0.001:
                     brink.append(sd)
     out["face_triangles"] = int(tris)
     out["face_steep_share"] = round(steep / area, 3) if area else 0
@@ -272,8 +276,11 @@ def measure(build, surfaces=None):
     out["brink_dev_mm"] = round((max(brink) - min(brink)) * 1000) if brink else -1
 
     mouth = cl[0]
-    strips = [([p[:2] for p in f["points"]], f["attrs"]["lip"]) for f in faces]
-    strips.append((cl, half))
+    # A cutting path owner's mesh covers its cut quads out to its skirt (build.md 10): the strip
+    # grown by ceil(0.7072 r) mm. The faces and the cave's floor cut; the deck does not.
+    skirt = math.ceil(0.7072 * g.r * 1000) / 1000
+    strips = [([p[:2] for p in f["points"]], f["attrs"]["lip"] + skirt) for f in faces]
+    strips.append((cl, half + skirt))
     br = fs.get("harbour_bridge")
     if br:
         strips.append(([p[:2] for p in br["points"]], br["attrs"]["width"] / 2))

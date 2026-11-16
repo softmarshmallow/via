@@ -14,8 +14,9 @@ pack       = "pack.toml"
 # Coordinates here are the modeller's own: each item's place in its set's frame, x along the
 # length, metres. Heights are the parts' `sink` (pack.toml). What v1 cannot say, and so is not here:
 # a hole cut by one part in another (bore, ejection port, serrations: a part's shape is its asset's,
-# assets.md 12.5), a tilted part (the grip's lean: rules.md 6), a part sliding against another as a
-# constraint (the slide is moved, not driven).
+# assets.md 12.5), a part sliding against another as a constraint (the slide is moved, not driven).
+# The grip leans as the spike's did: a part stands upright (rules.md 6), so the grip is a model
+# (make_grip.py; assets.md 12.5), the rest primitives.
 
 [field.height]
 role = "surface"
@@ -53,9 +54,9 @@ at    = [0.012, 0]
 asset = "trigger"
 at    = [-0.012, 0]
 
-[set.parts.item.barrel]
-asset = "barrel"
-at    = [0.075, 0]
+[set.parts.item.barrel]                     # its crown 2 mm ahead of the slide's face at rest; the
+asset = "barrel"                            # spike's stood 17 mm proud, which no pistol does
+at    = [0.06, 0]
 
 [set.parts.item.upper]                      # the slide and what rides on it, one frame
 set = "upper"
@@ -86,24 +87,24 @@ at = [0.4, 0.3]
 
 [feature.bm_left]                           # the left side, square on
 kind       = "bookmark"
-at         = [0.4, 0.05]
+at         = [0.4, 0.03]
 toward     = "centre"
-eye_height = 0.12
+eye_height = 0.09
 
 [feature.bm_quarter]                        # three-quarter, muzzle toward the eye
 kind       = "bookmark"
-at         = [0.65, 0.12]
-toward     = "centre"
-eye_height = 0.2
-
-[feature.bm_rear]                           # down the sights from behind
-kind       = "bookmark"
-at         = [0.12, 0.3]
+at         = [0.6, 0.17]
 toward     = "centre"
 eye_height = 0.16
 
+[feature.bm_rear]                           # down the sights from behind
+kind       = "bookmark"
+at         = [0.17, 0.3]
+toward     = "centre"
+eye_height = 0.15
+
 [feature.bm_right]                          # the right side, from above
 kind       = "bookmark"
-at         = [0.35, 0.56]
+at         = [0.38, 0.47]
 toward     = "centre"
-eye_height = 0.25
+eye_height = 0.2

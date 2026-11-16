@@ -488,7 +488,12 @@ library's convention, shown in 6.3 and illustrative only:
     Its `z` in `features.json` and at its default mount (3.3) is that surface's. A feature that owns
     exactly one kind surface, named as a target (`names`, `build.md` 9.1), gives its point that
     surface's `z` where the bound holds the point, else the terrain's. Reason: townland's eye `on`
-    the bridge stood under the deck at the river (TODO, From M5 slice 1).
+    the bridge stood under the deck at the river (TODO, From M5 slice 1). An instance named as a
+    target gives the surface it stands on (its `surface`, or what its `on` stands on by this
+    table), and a path's end named as a target (`<path>.end`) the kind surface its `starts_at` or
+    `ends_at` names; each as a point, so within the grace it takes the surface's `base` (M5 close,
+    decided, open to the owner; case `target_on_floor`). Reason: every station tower view looked
+    down through its floor at a lens 9.85 m up, given the terrain's 0.01.
   - The core sees no word "host": `hosts` is dropped (1.3). A roof garden is a kind surface of the
     roof's owner, and its trees are a scatter with `surface`.
 - **Outside a bound.** Two codes, one per bound, so no condition has two:
@@ -575,7 +580,15 @@ What a walk (a library) may rely on, and nothing more, since the core has no wal
    surface asks it and keeps one node per (surface, place), never "the highest surface here".
 
 The station's walk test (challenge 15) and the college's gatehouse are this list run by
-`lib/review`'s reach lint.
+`lib/review`'s reach lint. **(M5, decided in the library, open to the owner.)** It runs it through
+the SDK only (R19b): one node per (surface, post) from one `surfaces_at` over every post, nodes of
+one surface joined as the terrain's posts are, and two surfaces joined only at a meeting from
+`meetings()` that holds (gap 0, connectors equal where both have one; facing not read), each side's
+node where the body stands at the meeting's point on the surface whose `z` is that side's, joined
+when the profile takes the rise between the two nodes. Since only a worker may ask the engine, a
+reach step declared as a plain command walks the terrain only and says so (`terrain_only`). Item 4's
+cut is not yet read: the SDK serves no cut (build.md 6.5 is the export's), so a cut quad is still
+ground to it.
 
 ## 5. Ours and the engine's
 
@@ -584,7 +597,7 @@ Principle 12: we stop at the engine's door.
 | Thing | Ours | The engine's |
 |---|---|---|
 | Terrain | The height field, its gradient, its materials (`build.md`). | Its mesh, its level of detail, its collision, how it is drawn. |
-| A kind surface | A mesh of its top over its bound, on the lattice, with its owner and surface name; marked as one that collides. Spacing the world's resolution, material its `material` key (M5, `build.md` 10). | Drawing it, its collision at run time, navigation baked from it. |
+| A kind surface | A mesh of its top over its bound (a cutting path owner's also over its cut quads' part in its skirt), on the lattice, with its owner and surface name; marked as one that collides. Spacing the world's resolution, material its `material` key (M5, `build.md` 10). | Drawing it, its collision at run time, navigation baked from it. |
 | A cut (M5, 1.3) | Which terrain quads are cut, as data (`build.md` 6.5). | Not drawing or colliding them; closing the hole's sides with whatever the library placed there. |
 | Walls, roofs, a cave's rock (M5) | Nothing: instances placed by library rules and steps (`lib/building`). A floor's outline is closed to a walk by 4.4 without them. | Their look and collision, from the assets' `collision`. |
 | What dresses a surface | Instances placed by rules: a deck's parapet as a run, its piers as a library rule, assets from the pack. | Their look. |
@@ -893,9 +906,15 @@ via query WORLD surfaces_at|sample|relief|meetings --in FILE --out FILE
 
 - Flags besides `--in` and `--out`, as `build.md` 14 defines them: `--change`, `--lib`, `--store`,
   `--sdk`, `--diagnostics`.
-- It builds `WORLD` with its changes (reusing the store) and answers over the whole world. It runs
-  generate steps but no lint or export step. It writes no build directory, run report or
-  `.previous`. `meetings` takes no `--in`.
+- It builds `WORLD` with its changes (reusing the store) and answers over the whole world. It
+  runs no step (M5 close: as built; this said it runs generate steps, which the command has no
+  runner for): what a step returns, a laid building's storeys, flights and doorways, is not in its
+  answers, so `surfaces_at` inside a laid house gives the terrain only and `meetings` lists the
+  declared meetings only. Ask a built world instead: its `meets.json` holds every meeting, and a
+  step's own `surfaces_at` sees what the steps below it returned (`protocol.md`). Running generate
+  steps here is owed (TODO, From M5 close). It writes no build directory, run report or
+  `.previous`. `meetings` takes no `--in`. `relief` asks the terrain only (a kind surface is a
+  usage error; owed with the step runner).
 - Both files are canonical JSON (`documents.md` 8): one object whose keys are column names, each a
   list. `surface` in `sample` and `relief` is a key holding one string; `regions` in `relief` is a
   list of rings, each a list of `[x, y]` in integer millimetres.
@@ -1019,6 +1038,9 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 | storey_overlap | M5 | two storeys over one plan point; a box on each at one point, and a lid lifted 2.5 m by its `sink` over the lower box; then the upper box moved to the lower floor | build, then the change | No `place.overlap`; then `place.overlap` on the two boxes, exit 1 (`rules.md` 8.1, levels). |
 | floor_warm | M5 | a set by `at` with `surface`, a run `on` a storey, a scatter with `surface`, a point feature with `surface`; a change raising the storey to 14 | build, then the change `--against` | Every `z` 13.3, the point's `z` 13.3 in `features.json`; then 14, each instance's cause the storey's `level`; the warm build equals a clean one (4.1, rule 8). |
 | point_on_deck | M5 | 6.3; a point feature `on` the crossing at `t = 0.5`; a point on the bank whose `toward` names it; the crossing named as a target | build | `features.json`: the point's `at` and both targets' `at` are `[142, 168, 24.5]` (4.1, M5 slice 3). |
+| target_on_floor | M5 | 6.4; an instance with `surface` on an upper storey, a flight whose `ends_at` names that floor, two sights on the ground naming the instance and the flight's `end`; a change that moves the instance to the lower storey | build, then the change on one store | `features.json`: the targets' `at` are `[30, 26, 13.3]` and `[20, 24, 13.3]`, then `[30, 26, 10.3]` (4.1, M5 close). |
+| skirt_neighbour | M5 | case `skirt`'s ledge and a pad (a region owner whose floor cuts) beside it, not touching its strip | build | The ledge's mesh has 134 triangles, as alone: the pad's cut cells in its skirt are not covered (`build.md` 10, Skirt, M5 close; 159 when any cut cell counted). |
+| skirt_moved | M5 | case `skirt`'s ledge and a second ledge whose cut cells lie in its skirt; a change moving the second away | build, then the change on one store | The ledge's mesh has 214 triangles, then 134; warm equals clean (`build.md` 10, Skirt; the mesh's read of the cut). |
 | ramp_scatter | M5 | a flight rising 0.5 m a metre, 8 m wide; scatters with `surface` on it of an asset with `max_relief = 0.2` and one with `max_relief = 1` | build | No instance of the first; 18 of the second, none within 0.5 m of the ramp's long edges (4.1, 4.2). |
 | meets_connector_edit | M5 | 6.3 with both lanes; `way` changed to `cart` in `kinds.toml` on the lane and both heads | build, then the edit `--against` | `meets.json`'s connector columns `cart`; the warm build equals a clean one. |
 | meets_crossing_removed | M5 | 6.3; the crossing removed and the lanes ending free | build, then the edit `--against` | `meets.json` with 4 rows, then none; the warm build equals a clean one. |

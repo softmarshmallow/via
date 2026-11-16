@@ -3,11 +3,13 @@
 Opt-in, and driven only by what the world writes (TODO "Design the reach lint properly"; R13, M3
 "reach as a library lint"): a movement profile, and the places that must (or must not) be reachable
 from each other. Nothing is assumed: a profile without one of its keys is an error, not a default.
-A lint step through the SDK, as a plain command or a worker (protocol.md 8). A world restates it (a
-library declares no step, protocol.md 1):
+A lint step through the SDK, as a worker (protocol.md 8): only a worker may ask the engine for the
+kind surfaces and the meetings, so a plain command walks the terrain only and says `terrain_only`.
+A world restates it (a library declares no step, protocol.md 1):
 
     [step.reach]
     when    = "lint"
+    worker  = true
     command = ["python", "-m", "viasdk", "lib:review/reach.py"]
 
     [step.reach.params.profiles.walker]       # metres; every key required
@@ -28,25 +30,45 @@ A **place** is written as one of:
   - `<path>.start` or `<path>.end`, a path feature's end;
   - `<instance>.<mount>`, an instance's mount (assets.md 2.7) taken to the world by numbers.md 5.1;
   - `{ mount = "<name>", assets = [<asset ids or @taxon paths>] }`: that mount of every instance of
-    those assets that has it, each its own place, in instance name order.
+    those assets that has it, each its own place, in instance name order; `mount` may be a list
+    (`["door", "side"]`: a corner house's two doors), each instance's mounts in the order written.
 
-**What it reads, and nothing else** (honest about its view): the finished build's ground
-(`role:surface`, its top surface only: a deck or a floor not in that field is not walked), the
-water (`tag:water_level`; without it nothing is wet), every instance with the pack's `footprint`,
-`solidity` and `mounts`, and the features. Ways are not walked differently from the land they
-lie on: a way too steep for the profile is reported as a stop on that way (`data.on`).
+**What it reads, and nothing else** (honest about its view): the finished build's terrain
+(`role:surface`), every kind surface at every post (`surfaces_at`, surfaces.md 2.1: a deck, a
+floor, a ramp), the meetings (`meetings`, 2.4), the water (`tag:water_level`; without it nothing
+is wet), every instance with its `z` and the pack's `footprint`, `solidity`, `sink` and `mounts`,
+and the features. Ways are not walked differently from the land they lie on: a way too steep for
+the profile is reported as a stop on that way (`data.on`). Not read: the terrain's cut (surfaces.md
+1.3; a cut quad is still walked as ground: the SDK serves no cut, TODO).
 
-**The walk graph.** The world's posts (protocol.md 2: `grid`). A post is shut, in this order, when it
-lies inside (or on) the footprint of a solid instance (`why = "instance"`, `by` its name; a
-`passable` footprint, a gate or an arcade, is ground, surfaces.md 4.4 item 4), when the
-water over it is deeper than `wade` (`"water"`, `value` the depth), or when such a post lies nearer
-than `width / 2` (`"narrow"`, `by` what is near, `value` the metres). Two open neighbours (eight
-neighbours; a diagonal only when both posts beside it are open) are joined when the rise between
-them is at most `step`, or rise over run at most `grade` (`"steep"`, `value` the grade). The graph
-is undirected, and a diagonal climbs at rise over its own run, so a walk may zigzag up a face too
-steep straight on, as a switchback does. A `width` shuts posts only when `width / 2` is a post
-spacing or more: below that, the posts cannot say how wide a gap is. A `link` joins its two places whatever lies between (a ladder, a ferry; no
-condition yet). A place stands at the nearest open post within `reach` (ties: post order).
+**The walk graph** (surfaces.md 4.4, the list a walk may rely on). A node is a surface at a post
+(protocol.md 2: `grid`): every post of the terrain, and every post inside a kind surface's bound
+for that surface, at the z `surfaces_at` gives, so a deck over a river is a second node over the
+bed's (item 5). A node is shut, in this order, when it lies inside (or on) the footprint of a solid
+instance that stands on that node's surface (`why = "instance"`, `by` its name; the instance's
+surface is the one at its origin whose z is its z plus its `sink`, scaled; a `passable` footprint,
+a gate or an arcade, is ground, item 4), when the water over it is deeper than `wade` (`"water"`,
+`value` the depth; on a kind surface only where water stands over the ground at that post, so a
+floor under a dry hill is dry and a deck is read at its own z over the river), or when such a node
+of its own surface, or a post off a kind surface's bound (its edge, a wall: item 3), lies nearer
+than `width / 2` (`"narrow"`, `by` what is near, `value` the metres). Two open neighbours on one
+surface (eight neighbours; a diagonal only when both posts beside it are open on that surface) are
+joined when the rise between them is at most `step`, or rise over run at most `grade` (`"steep"`,
+`value` the grade). The graph is undirected, and a diagonal climbs at rise over its own run, so a
+walk may zigzag up a face too steep straight on, as a switchback does. A `width` shuts nodes only
+when `width / 2` is a post spacing or more: below that, the posts cannot say how wide a gap is.
+
+Two surfaces are joined only at a meeting that holds (item 3): gap 0 and, where both sides have a
+connector, the same one (surfaces.md 3.4; facing is not read: a joint turned wrong is still a
+joint). Each side's surface is the one at the meeting's point whose z is that side's (to the
+millimetre); its node is where the body stands at the point on that surface (as a place, below);
+the two are joined when the profile takes the rise between them (`step`, or `grade` over the run
+between their posts), so a meeting whose posts differ by a kerb the body cannot take stays cut. A
+`link` joins its two places whatever lies between (a ladder, a ferry; no condition yet). A place
+stands at the nearest post within `reach` with an open node on its surface (ties: post order): an
+instance's mount on the instance's surface, a path end on its path's one kind surface or else the
+terrain (surfaces.md 3.3); a point feature (the SDK gives no z for it) on the lowest open surface
+at the nearest post with one.
 
 **What it says.** Codes are `step.<id>.<code>` (protocol.md 3.3); records in a fixed order: profiles,
 then each expectation as written, each of its `to` places in order. A record about a place has the
@@ -65,10 +87,14 @@ place's name as subject (diagnostics.md 1.1 maps a place or produced name to its
 |               |          | post or the edge (`at`, `clear` metres, `by`), within 20 m          |
 | waived        | info     | a record a `waive` entry names (by its `to` place), with its reason  |
 | waiver_unused | warning  | a `waive` entry no record matched                                    |
-| walked        | info     | one per profile used: posts, open posts, pieces, pairs reached       |
+| walked        | info     | one per profile used: nodes (`posts`), open nodes, pieces, pairs    |
+|               |          | reached, kind `surfaces` walked and meetings `joins`ed               |
 | unmeasured    | warning  | no single `role:surface` field: nothing is walked                    |
+| terrain_only  | info     | a plain command: no kind surface or meeting could be asked           |
 
-Deterministic: every loop runs in post or name order, and positions are integer millimetres until
+`unreached` gives `data.surface` when its stop is on a kind surface.
+
+Deterministic: every loop runs in node, post or name order, and positions are integer millimetres until
 the record. A mount's place uses Python's `math.sin` and `math.cos` for the instance's facing, which
 are not numbers.md 2's bits off the four axis facings; the place then snaps to a post, so a
 last-bit difference moves nothing unless a mount lies on the half-way line between posts.
@@ -101,6 +127,9 @@ EXPLAIN = {
     "walked": "The walk graph of one profile: posts, open posts, pieces (connected parts), and how "
     "many stated pairs were reached.",
     "unmeasured": "The ground could not be read: `role:surface` selects no field, or several.",
+    "terrain_only": "The step could not ask the engine for kind surfaces and meetings (a plain "
+    "command asks nothing: protocol.md 8), so only the terrain is walked: a deck or a floor is not "
+    "ground, and a way over a deck is cut where the deck begins.",
 }
 
 HINTS = {
@@ -115,6 +144,7 @@ HINTS = {
     "waiver_unused": "Remove the `waive` entry.",
     "walked": "Informs only (R15).",
     "unmeasured": "Give the world one field with `role = \"surface\"`.",
+    "terrain_only": "Declare the step with `worker = true` to walk decks and floors.",
 }
 
 WAYS = ("road", "lane", "trail", "street", "main_street")
@@ -136,12 +166,22 @@ def lint(step):
     feats = _features(step)
     insts = _instances(step)
     facts = _pack(step)
-    for rec in judge(grid, height, water, feats, insts, facts, p, step):
+    try:
+        kinds, meets = _surfaces(step, grid, insts, facts)
+    except NotImplementedError as e:          # a plain command asks the engine nothing
+        say("terrain_only", "step." + str(getattr(step, "id", "reach")),
+            f"Only the terrain is walked: {e}.")
+        kinds, meets = [], []
+    for rec in judge(grid, height, water, feats, insts, facts, p, step, kinds, meets):
         say(*rec)
 
 
-def judge(grid, height, water, feats, insts, facts, params, step=None):
-    """Every record as (code, subject, message, position or None, data), in a fixed order."""
+def judge(grid, height, water, feats, insts, facts, params, step=None, kinds=(), meets=()):
+    """Every record as (code, subject, message, position or None, data), in a fixed order.
+
+    `kinds` is every kind surface walked, [(place name, {post: z})] in name order; `meets` every
+    meeting, dicts with `x`, `y` (mm), `gap` (mm), `z_a`, `z_b`, `connector_a`, `connector_b` and
+    `at`, the surfaces at its point as [(name, z)] ("" for the terrain)."""
     out = []
     me = "step." + (getattr(step, "id", None) or "reach")
     profiles = params.get("profiles") or {}
@@ -165,12 +205,27 @@ def judge(grid, height, water, feats, insts, facts, params, step=None):
                         {"profile": name, "missing": lack}))
             continue
         good[name] = {k: float(prof[k]) for k in PROFILE_KEYS}
-    places = Places(grid, feats, insts, facts, step)
+    owned = {}
+    for name, _ in kinds:
+        owned.setdefault(name.rsplit(".", 1)[0], []).append(name)
+    places = Places(grid, feats, insts, facts, step, owned)
     obstacles = footprints(insts, facts)
     ways = [f for f in feats if f["kind"] in WAYS and f["geometry"] == 1]
     walks = {}
     for name in sorted(good):
-        walks[name] = Walk(grid, height, water, obstacles, good[name])
+        walks[name] = Walk(grid, height, water, obstacles, good[name], kinds)
+    # Meetings that hold join the surfaces at their point (surfaces.md 4.4 item 3), in the order
+    # the engine gives them (by `a`, then `b`).
+    for m in meets:
+        if not _holds(m):
+            continue
+        sides = []
+        for z in (m["z_a"], m["z_b"]):
+            sides.append([n for n, zz in m["at"] if abs(round(zz * 1000) - round(z * 1000)) <= 1])
+        pairs = sorted({tuple(sorted((a, b))) for a in sides[0] for b in sides[1] if a != b})
+        for w in walks.values():
+            for a, b in pairs:
+                w.meet((m["x"], m["y"]), a, b)
     # Links, then pieces
     unknown = set()
     for l in links:
@@ -184,9 +239,9 @@ def judge(grid, height, water, feats, insts, facts, params, step=None):
                 _unknown(out, unknown, me, l.get(side))
             ends.append(got)
         if all(ends):
-            for _, pa in ends[0]:
-                for _, pb in ends[1]:
-                    w.link(w.stand(pa), w.stand(pb))
+            for _, pa, sa in ends[0]:
+                for _, pb, sb in ends[1]:
+                    w.link(w.stand(pa, sa), w.stand(pb, sb))
     for w in walks.values():
         w.settle()
     tally = {n: [0, 0] for n in walks}
@@ -218,23 +273,23 @@ def judge(grid, height, water, feats, insts, facts, params, step=None):
             if not got:
                 _unknown(out, unknown, me, t)
             tos.extend(got)
-        for fname, fp in froms:
-            fpost = w.stand(fp)
+        for fname, fp, fs in froms:
+            fpost = w.stand(fp, fs)
             if fpost is None:
                 if (pname, fname) not in stranded:
                     stranded.add((pname, fname))
-                    emit(_stranded(w, grid, pname, fname, fp), fname)
+                    emit(_stranded(w, pname, fname, fp, fs), fname)
                 continue
-            for tname, tp in tos:
+            for tname, tp, ts in tos:
                 tally[pname][1] += 1
-                tpost = w.stand(tp)
+                tpost = w.stand(tp, ts)
                 if tpost is None and mode == "sealed":
                     tally[pname][0] += 1        # nowhere to stand there: sealed holds
                     continue
                 if tpost is None:
                     if (pname, tname) not in stranded:
                         stranded.add((pname, tname))
-                        emit(_stranded(w, grid, pname, tname, tp), tname)
+                        emit(_stranded(w, pname, tname, tp, ts), tname)
                     continue
                 joined = w.piece(fpost) == w.piece(tpost)
                 if mode == "reach":
@@ -242,10 +297,12 @@ def judge(grid, height, water, feats, insts, facts, params, step=None):
                         tally[pname][0] += 1
                         continue
                     stop, why = w.stop(fpost, tpost)
-                    at = grid.post(*grid.ij(stop))
-                    gap = round(_dist(at, grid.post(*grid.ij(tpost))) / 1000.0, 2)
+                    at = w.xy(stop)
+                    gap = round(_dist(at, w.xy(tpost)) / 1000.0, 2)
                     data = {"profile": pname, "from": fname, "to": tname, "why": why[0],
                             "gap": gap}
+                    if w.surf[stop]:
+                        data["surface"] = w.names[w.surf[stop]]
                     if why[1] is not None:
                         data["value"] = why[1]
                     if why[2] is not None:
@@ -266,13 +323,13 @@ def judge(grid, height, water, feats, insts, facts, params, step=None):
                     where = ""
                     if narrow is not None:
                         k, clear, by = narrow
-                        at = _m(grid.post(*grid.ij(k)))
+                        at = _m(w.xy(k))
                         data["narrowest"] = {"at": at, "clear": clear, "by": by}
                         where = (f" The walked route is narrowest at ({at[0]}, {at[1]}), {clear} m "
                                  f"from {by}.")
                     emit(("not_sealed", tname,
                           f"{pname} can walk from {fname} to {tname}, which is stated sealed."
-                          + where, _m(grid.post(*grid.ij(tpost))), data), tname)
+                          + where, _m(w.xy(tpost)), data), tname)
     for k, (wto, why) in enumerate(waivers):
         if k not in hits:
             out.append(("waiver_unused", me,
@@ -281,11 +338,14 @@ def judge(grid, height, water, feats, insts, facts, params, step=None):
         w = walks[name]
         n_open = sum(1 for c in w.cause if c is None)
         held, total = tally[name]
+        surf = len(w.names) - 1
+        on = (f" on the terrain and {surf} kind surface{'s' if surf != 1 else ''}, joined at "
+              f"{w.joined} meeting{'s' if w.joined != 1 else ''}") if surf else ""
         out.append(("walked", me,
-                    f"{name}: {n_open} of {len(w.cause)} posts open in {w.pieces} pieces; "
+                    f"{name}: {n_open} of {len(w.cause)} posts open in {w.pieces} pieces{on}; "
                     f"{held} of {total} stated pairs hold.", None,
                     {"posts": len(w.cause), "open": n_open, "pieces": w.pieces, "held": held,
-                     "pairs": total}))
+                     "pairs": total, "surfaces": surf, "joins": w.joined}))
     return out
 
 
@@ -305,8 +365,17 @@ def _place_text(place):
     return str(place)
 
 
-def _stranded(w, grid, pname, name, p):
-    near = w.nearest_post(p)
+def _holds(m):
+    """surfaces.md 3.4 as a walk reads it: the gap is 0 and, where both sides have a connector,
+    they are the same. Facing is not read: a meeting turned wrong is still a joint to walk."""
+    if int(m.get("gap", 0)) != 0:
+        return False
+    a, b = m.get("connector_a"), m.get("connector_b")
+    return not (a and b and a != b)
+
+
+def _stranded(w, pname, name, p, on=None):
+    near = w.nearest_post(p, on)
     why = w.why_shut(near) if near is not None else ("edge", None, None)
     data = {"profile": pname, "place": name, "why": why[0]}
     if why[1] is not None:
@@ -344,18 +413,44 @@ NARROW_LOOK = 20.0                                    # metres round a route `na
 
 
 class Walk:
-    """The walk graph of one profile over the posts: ``cause[k]`` is None for an open post, or
-    (why, value, by); ``label[k]`` the piece of an open post (-1 when shut)."""
+    """The walk graph of one profile. A node is (surface, post): every post of the terrain is a node
+    (node k is post k), and every post inside a kind surface's bound is one more node of that surface
+    (surfaces.md 4.4 item 5: one node per surface and place, never "the highest surface here").
+    ``cause[n]`` is None for an open node, or (why, value, by); ``label[n]`` the piece of an open node
+    (-1 when shut). Two nodes of one surface are joined as two posts are; nodes of two surfaces only
+    by a meeting that holds or a `link` (4.4 item 3)."""
 
-    def __init__(self, grid, height, water, obstacles, prof):
+    def __init__(self, grid, height, water, obstacles, prof, kinds=()):
         self.g = grid
-        self.h = [v for row in height for v in row]
         self.prof = prof
         nx, ny, r = grid.nx, grid.ny, grid.r
         n = nx * ny
-        cause = [None] * n
-        # Instances, in name order: the first name holding a post says it.
-        for name, rings in obstacles:
+        terrain = [v for row in height for v in row]
+        self.h = list(terrain)
+        self.post = list(range(n))
+        self.surf = [0] * n
+        self.names = [""] + [name for name, _ in kinds]
+        self.index = {name: s for s, name in enumerate(self.names)}
+        self.at = [None]
+        self.stack = {}                       # post -> its kind nodes, lowest first (2.1's order)
+        for s, (name, zs) in enumerate(kinds, start=1):
+            mine = {}
+            for k in sorted(zs):
+                mine[k] = len(self.h)
+                self.h.append(float(zs[k]))
+                self.post.append(k)
+                self.surf.append(s)
+                self.stack.setdefault(k, []).append(mine[k])
+            self.at.append(mine)
+        for k in self.stack:
+            self.stack[k].sort(key=lambda q: (self.h[q], self.names[self.surf[q]]))
+        total = len(self.h)
+        cause = [None] * total
+        # Instances, in name order: the first name holding a node says it. An instance shuts the
+        # nodes of the surface it stands on, and no other (4.4 item 4: a footprint on the terrain
+        # under a deck does not shut the deck).
+        for name, rings, on in obstacles:
+            s = self.index.get(on or "", 0)
             xs = [q[0] for q in rings]
             ys = [q[1] for q in rings]
             i0 = max(0, -(-(min(xs) - grid.x0) // r))
@@ -364,17 +459,20 @@ class Walk:
             j1 = min(ny - 1, (max(ys) - grid.y0) // r)
             for j in range(j0, j1 + 1):
                 for i in range(i0, i1 + 1):
-                    k = j * nx + i
-                    if cause[k] is None and _in_ring(grid.post(i, j), rings):
-                        cause[k] = ("instance", None, name)
+                    q = self.node(s, j * nx + i)
+                    if q is not None and cause[q] is None and _in_ring(grid.post(i, j), rings):
+                        cause[q] = ("instance", None, name)
         if water is not None:
             wade = prof["wade"]
             wl = [v for row in water for v in row]
-            for k in range(n):
-                if cause[k] is None:
-                    d = wl[k] - self.h[k]
+            for q in range(total):
+                if cause[q] is None:
+                    k = self.post[q]
+                    if q >= n and wl[k] - terrain[k] <= 0:
+                        continue                  # no water over the ground here: a floor is dry
+                    d = wl[k] - self.h[q]
                     if d > wade:
-                        cause[k] = ("water", round(d, 3), None)
+                        cause[q] = ("water", round(d, 3), None)
         half = prof["width"] * 500.0
         if half >= r:
             rad = int(half // r)
@@ -382,26 +480,45 @@ class Walk:
                            if 0 < (di * di + dj * dj) * r * r < half * half),
                           key=lambda o: (o[0] * o[0] + o[1] * o[1], o[1], o[0]))
             hard = list(cause)
-            for j in range(ny):
-                for i in range(nx):
-                    k = j * nx + i
-                    if hard[k] is not None:
+            for q in range(total):
+                if hard[q] is not None:
+                    continue
+                s = self.surf[q]
+                i, j = grid.ij(self.post[q])
+                for di, dj in offs:
+                    ii, jj = i + di, j + dj
+                    if not (0 <= ii < nx and 0 <= jj < ny):
                         continue
-                    for di, dj in offs:
-                        ii, jj = i + di, j + dj
-                        if 0 <= ii < nx and 0 <= jj < ny and hard[jj * nx + ii] is not None:
-                            c = hard[jj * nx + ii]
-                            by = c[2] if c[0] == "instance" else "water"
-                            dist = round(math.sqrt(di * di + dj * dj) * r / 1000.0, 3)
-                            cause[k] = ("narrow", dist, by)
-                            break
+                    o = self.node(s, jj * nx + ii)
+                    if o is None:                 # off a kind surface's bound: its edge, a wall
+                        c, by = None, self.names[s]
+                    elif hard[o] is not None:
+                        c = hard[o]
+                        by = c[2] if c[0] == "instance" else "water"
+                    else:
+                        continue
+                    dist = round(math.sqrt(di * di + dj * dj) * r / 1000.0, 3)
+                    cause[q] = ("narrow", dist, by)
+                    break
         self.cause = cause
         self.extra = {}
         self.label = None
         self.pieces = 0
+        self.joined = 0
+
+    def node(self, s, k):
+        """The node of surface index s at post k, or None when k lies off that surface."""
+        return k if s == 0 else self.at[s].get(k)
+
+    def nodes_at(self, k):
+        return [k] + self.stack.get(k, [])
+
+    def shut(self, q):
+        return q is None or self.cause[q] is not None
 
     def joins(self, k, q, diag):
-        """Whether open posts k and q (neighbours) are joined; (False, grade) when too steep."""
+        """Whether open nodes k and q (neighbours on one surface) are joined; (False, grade) when
+        too steep."""
         rise = abs(self.h[q] - self.h[k])
         if rise <= self.prof["step"]:
             return True, None
@@ -410,18 +527,42 @@ class Walk:
         return grade <= self.prof["grade"], grade
 
     def neighbours(self, k):
+        """The eight neighbours of node k on its own surface, each with whether it is a diagonal
+        and the two nodes beside a diagonal (None where that post lies off the surface)."""
         nx, ny = self.g.nx, self.g.ny
-        i, j = k % nx, k // nx
+        s = self.surf[k]
+        p = self.post[k]
+        i, j = p % nx, p // nx
         for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)):
             ii, jj = i + di, j + dj
             if 0 <= ii < nx and 0 <= jj < ny:
-                yield jj * nx + ii, di != 0 and dj != 0, (j * nx + ii, jj * nx + i)
+                q = self.node(s, jj * nx + ii)
+                if q is not None:
+                    yield q, di != 0 and dj != 0, (self.node(s, j * nx + ii), self.node(s, jj * nx + i))
 
     def link(self, a, b):
-        if a is None or b is None:
+        if a is None or b is None or a == b:
             return
         self.extra.setdefault(a, []).append(b)
         self.extra.setdefault(b, []).append(a)
+
+    def meet(self, p, s_a, s_b):
+        """Join surfaces s_a and s_b (names; "" the terrain) at the plan point p of a meeting that
+        holds: each side's node is where the body stands at p on that surface (`stand`), and the two
+        are joined when the profile takes the rise between them (`step`, or `grade` over the run
+        between their posts). True when joined."""
+        a = self.stand(p, s_a)
+        b = self.stand(p, s_b)
+        if a is None or b is None or a == b:
+            return False
+        rise = abs(self.h[a] - self.h[b])
+        if rise > self.prof["step"]:
+            run = _dist(self.g.post(*self.g.ij(self.post[a])), self.g.post(*self.g.ij(self.post[b]))) / 1000.0
+            if run <= 0 or rise / run > self.prof["grade"]:
+                return False
+        self.link(a, b)
+        self.joined += 1
+        return True
 
     def settle(self):
         n = len(self.cause)
@@ -437,7 +578,7 @@ class Walk:
                 for q, diag, (a, b) in self.neighbours(k):
                     if label[q] >= 0 or self.cause[q] is not None:
                         continue
-                    if diag and (self.cause[a] is not None or self.cause[b] is not None):
+                    if diag and (self.shut(a) or self.shut(b)):
                         continue
                     if self.joins(k, q, diag)[0]:
                         label[q] = pieces
@@ -454,9 +595,9 @@ class Walk:
         return self.label[k]
 
     def route(self, a, b):
-        """The fewest-posts walk from post a to post b over the joins (links count as one), as
-        a list of posts from a to b; None when they are not joined. Breadth first, neighbours in
-        `neighbours` order, so the route is the same on every run."""
+        """The fewest-nodes walk from node a to node b over the joins (links and meetings count as
+        one), as a list of nodes from a to b; None when they are not joined. Breadth first,
+        neighbours in `neighbours` order, so the route is the same on every run."""
         if self.label[a] != self.label[b] or self.label[a] < 0:
             return None
         came = {a: None}
@@ -468,7 +609,7 @@ class Walk:
             for q, diag, (s, t) in self.neighbours(k):
                 if q in came or self.cause[q] is not None:
                     continue
-                if diag and (self.cause[s] is not None or self.cause[t] is not None):
+                if diag and (self.shut(s) or self.shut(t)):
                     continue
                 if self.joins(k, q, diag)[0]:
                     nxt.append(q)
@@ -484,26 +625,32 @@ class Walk:
         return out[::-1]
 
     def narrowest(self, a, b, limit_m=NARROW_LOOK):
-        """Where the walked route from post a to post b passes nearest a shut post (an
-        instance, water, a narrow gap) or the world's edge, within `limit_m`: (post, metres to it,
-        what it is), the first such post along the route on a tie; None when no route, or nothing
-        shut lies within `limit_m` of it."""
+        """Where the walked route from node a to node b passes nearest a shut node of its own
+        surface (an instance, water, a narrow gap), a kind surface's edge, or the world's edge,
+        within `limit_m`: (node, metres to it, what it is), the first such node along the route on a
+        tie; None when no route, or nothing shut lies within `limit_m` of it."""
         path = self.route(a, b)
         if not path:
             return None
         g = self.g
         best = None
         for k in path:
-            i, j = g.ij(k)
+            s = self.surf[k]
+            i, j = g.ij(self.post[k])
             edge = min(i, j, g.nx - 1 - i, g.ny - 1 - j) * g.r / 1000.0
-            q = self._ring_search(g.post(i, j), lambda p: self.cause[p] is not None,
+            q = self._ring_search(g.post(i, j), lambda p: self.shut(self.node(s, p)),
                                   limit_m * 1000.0)
             d, by = (edge, "edge") if edge <= limit_m else (math.inf, None)
             if q is not None:
                 dq = _dist(g.post(i, j), g.post(*g.ij(q))) / 1000.0
-                c = self.cause[q]
+                o = self.node(s, q)
+                if o is None:
+                    what = self.names[s]
+                else:
+                    c = self.cause[o]
+                    what = c[2] if c[0] in ("instance", "narrow") and c[2] else c[0]
                 if dq < d:
-                    d, by = dq, (c[2] if c[0] in ("instance", "narrow") and c[2] else c[0])
+                    d, by = dq, what
             if by is not None and (best is None or d < best[1]):
                 best = (k, round(d, 3), by)
         return best
@@ -540,26 +687,52 @@ class Walk:
             ring += 1
         return None if best is None else best[1]
 
-    def stand(self, p):
-        return self._ring_search(p, lambda k: self.cause[k] is None, self.prof["reach"] * 1000.0)
+    def _open_at(self, k, on):
+        """The open node at post k on surface `on` (a name, "" the terrain), or with `on` None the
+        lowest open node there; None when there is none."""
+        if on is None:
+            for q in self.nodes_at(k):
+                if self.cause[q] is None:
+                    return q
+            return None
+        s = self.index.get(on)
+        if s is None:
+            return None
+        q = self.node(s, k)
+        return q if q is not None and self.cause[q] is None else None
 
-    def nearest_post(self, p):
-        return self._ring_search(p, lambda k: True)
+    def stand(self, p, on=None):
+        """The node a body at the point p stands on: the nearest post within `reach` with an open
+        node on the surface `on` ("" the terrain; None: any surface, the lowest open one there)."""
+        k = self._ring_search(p, lambda k: self._open_at(k, on) is not None, self.prof["reach"] * 1000.0)
+        return None if k is None else self._open_at(k, on)
+
+    def nearest_post(self, p, on=None):
+        """The node nearest the point p on the surface `on` (the terrain when None or unknown),
+        open or not."""
+        s = self.index.get(on or "", 0)
+        k = self._ring_search(p, lambda k: self.node(s, k) is not None)
+        return None if k is None else self.node(s, k)
 
     def why_shut(self, k):
         return self.cause[k]
 
+    def xy(self, k):
+        """The plan point (mm) of node k."""
+        return self.g.post(*self.g.ij(self.post[k]))
+
     def stop(self, a, b):
-        """Where the walk from post a comes nearest post b, and why the next post toward b is not
-        walked: (post, (why, value, by))."""
+        """Where the walk from node a comes nearest node b, and why the next node toward b is not
+        walked: (node, (why, value, by))."""
         mine = self.label[a]
-        target = self.g.post(*self.g.ij(b))
-        k = self._ring_search(target, lambda q: self.label[q] == mine)
+        target = self.xy(b)
+        kpost = self._ring_search(target, lambda q: any(self.label[o] == mine for o in self.nodes_at(q)))
+        k = next(o for o in self.nodes_at(kpost) if self.label[o] == mine)
         best = None
         for q, diag, (s, t) in self.neighbours(k):
             if self.label[q] == mine:
                 continue
-            d2 = _dist2(self.g.post(*self.g.ij(q)), target)
+            d2 = _dist2(self.xy(q), target)
             if best is None or (d2, q) < best[:2]:
                 best = (d2, q, diag, s, t)
         if best is None:
@@ -567,24 +740,37 @@ class Walk:
         _, q, diag, s, t = best
         if self.cause[q] is not None:
             return k, self.cause[q]
-        if diag and (self.cause[s] is not None or self.cause[t] is not None):
-            return k, self.cause[s] if self.cause[s] is not None else self.cause[t]
+        if diag and (self.shut(s) or self.shut(t)):
+            for side in (s, t):
+                if side is not None and self.cause[side] is not None:
+                    return k, self.cause[side]
+            return k, ("edge", None, None)
         _, grade = self.joins(k, q, diag)
         return k, ("steep", round(grade, 3) if grade is not None else None, None)
 
 
 class Places:
-    """Resolves a written place to [(name, (x, y) mm)]: one entry, or one per instance of a group."""
+    """Resolves a written place to [(name, (x, y) mm, surface)]: one entry, or one per instance of
+    a group. `surface` is the surface the place lies on, when the build says it: an instance's mount
+    lies on the instance's surface, a path end on its path's one kind surface or else the terrain
+    (surfaces.md 3.3), each "" for the terrain; None for a point feature, which stands on the lowest
+    open surface at its nearest open post (`Walk.stand`)."""
 
-    def __init__(self, grid, feats, insts, facts, step):
+    def __init__(self, grid, feats, insts, facts, step, owned=None):
+        owned = owned or {}
         self.points = {}
+        self.on = {}
         for f in feats:
             if f["geometry"] == 0:
                 self.points[f["name"]] = tuple(f["rings"][0][0][0])
+                self.on[f["name"]] = None
             elif f["geometry"] == 1:
                 line = f["rings"][0][0]
-                self.points[f["name"] + ".start"] = tuple(line[0])
-                self.points[f["name"] + ".end"] = tuple(line[-1])
+                mine = owned.get(f["name"], [])
+                on = mine[0] if len(mine) == 1 else ""
+                for end, p in ((".start", line[0]), (".end", line[-1])):
+                    self.points[f["name"] + end] = tuple(p)
+                    self.on[f["name"] + end] = on
         self.insts = sorted(insts, key=lambda r: r["name"])
         self.by_name = {r["name"]: r for r in insts}
         self.facts = facts
@@ -598,25 +784,27 @@ class Places:
 
     def resolve(self, place):
         if isinstance(place, dict):
-            mount = str(place.get("mount", ""))
+            mounts = place.get("mount", "")
+            mounts = [str(m) for m in mounts] if isinstance(mounts, list) else [str(mounts)]
             assets = _asset_ids(self.facts, list(place.get("assets") or []))
             out = []
             for r in self.insts:
                 if r["asset"] in assets:
-                    p = self.mount(r, mount)
-                    if p is not None:
-                        out.append((f"{r['name']}.{mount}", p))
+                    for mount in mounts:
+                        p = self.mount(r, mount)
+                        if p is not None:
+                            out.append((f"{r['name']}.{mount}", p, r.get("surface") or ""))
             return out
         place = str(place)
         if place in self.points:
-            return [(place, self.points[place])]
+            return [(place, self.points[place], self.on[place])]
         if "." in place:
             inst, mount = place.rsplit(".", 1)
             r = self.by_name.get(inst)
             if r is not None:
                 p = self.mount(r, mount)
                 if p is not None:
-                    return [(place, p)]
+                    return [(place, p, r.get("surface") or "")]
         return []
 
 
@@ -643,14 +831,14 @@ def _round(v):
 
 
 def footprints(insts, facts):
-    """(instance name, footprint ring in world mm) of every solid instance with a footprint, in
-    name order."""
+    """(instance name, footprint ring in world mm, the surface it stands on or None for the
+    terrain) of every solid instance with a footprint, in name order."""
     out = []
     for r in sorted(insts, key=lambda r: r["name"]):
         f = facts.get(r["asset"])
         if not f or f.get("solidity", "solid") in ("none", "passable") or len(f.get("footprint") or []) < 3:
             continue
-        out.append((r["name"], [frame(r, q) for q in f["footprint"]]))
+        out.append((r["name"], [frame(r, q) for q in f["footprint"]], r.get("surface")))
     return out
 
 
@@ -671,7 +859,8 @@ class Sayer:
 
     SEVERITY = {"profile": "error", "unknown_place": "error", "stranded": "warning",
                 "unreached": "warning", "not_sealed": "warning", "waived": "info",
-                "waiver_unused": "warning", "walked": "info", "unmeasured": "warning"}
+                "waiver_unused": "warning", "walked": "info", "unmeasured": "warning",
+                "terrain_only": "info"}
 
     def __init__(self, step):
         self.step = step
@@ -784,19 +973,75 @@ def _features(step):
 def _instances(step):
     t = step.instances("*")
     n = len(_list(t["name"]))
-    cols = {k: _list(t[k]) if k in t else None for k in ("name", "asset", "x", "y", "face", "scale")}
+    cols = {k: _list(t[k]) if k in t else None for k in ("name", "asset", "x", "y", "z", "face", "scale")}
     out = []
     for r in range(n):
         out.append({"name": cols["name"][r], "asset": cols["asset"][r], "x": int(cols["x"][r]),
                     "y": int(cols["y"][r]),
+                    "z": float(cols["z"][r]) if cols["z"] is not None else None,
                     "face": int(cols["face"][r]) if cols["face"] is not None else 0,
                     "scale": float(cols["scale"][r]) if cols["scale"] is not None else 1.0})
     return out
 
 
+def _surfaces(step, grid, insts, facts):
+    """Through the SDK only (R19b): every kind surface at the posts, [(name, {post: z})] in name
+    order, from one `surfaces_at` over every post; every meeting from `meetings`, with the surfaces
+    at its point; and, on each instance, the surface it stands on (`surface`, None for the
+    terrain): the surface at its origin whose z is its z plus its asset's `sink`, scaled (4.2).
+    Raises NotImplementedError when the step cannot ask (a plain command)."""
+    from viasdk import NotAWorker
+
+    nx, ny = grid.nx, grid.ny
+    xs = [grid.x0 + i * grid.r for _ in range(ny) for i in range(nx)]
+    ys = [grid.y0 + j * grid.r for j in range(ny) for _ in range(nx)]
+    if not hasattr(step, "surfaces_at"):
+        raise NotImplementedError("the step has no `surfaces_at`")
+    try:
+        t = step.surfaces_at(xs, ys)
+    except NotAWorker as e:
+        raise NotImplementedError(f"`surfaces_at` is not answered ({e})")
+    kinds = {}
+    for k, name, z in zip(_list(t["point"]), _list(t["surface"]), _list(t["z"])):
+        if "." in name:                       # `<feature>.<surface>`; the terrain is a field name
+            kinds.setdefault(name, {})[int(k)] = float(z)
+    kinds = sorted(kinds.items())
+    meets = []
+    if kinds:
+        m = step.meetings()
+        rows = len(_list(m.get("a", [])))
+        col = {k: _list(m[k]) if k in m else [None] * rows for k in
+               ("a", "b", "x", "y", "gap", "z_a", "z_b", "connector_a", "connector_b",
+                "connector_a?", "connector_b?")}
+        for r in range(rows):
+            meets.append({"a": col["a"][r], "b": col["b"][r], "x": int(col["x"][r]),
+                          "y": int(col["y"][r]), "gap": int(col["gap"][r]),
+                          "z_a": float(col["z_a"][r]), "z_b": float(col["z_b"][r]),
+                          "connector_a": col["connector_a"][r] if col["connector_a?"][r] else None,
+                          "connector_b": col["connector_b"][r] if col["connector_b?"][r] else None,
+                          "at": []})
+        on = [(q["x"], q["y"]) for q in meets] + [(r["x"], r["y"]) for r in insts]
+        if on:
+            got = step.surfaces_at([p[0] for p in on], [p[1] for p in on])
+            at = [[] for _ in on]
+            for k, name, z in zip(_list(got["point"]), _list(got["surface"]), _list(got["z"])):
+                at[int(k)].append((name if "." in name else "", float(z)))
+            for q, here in zip(meets, at):
+                q["at"] = here
+            for r, here in zip(insts, at[len(meets):]):
+                if r.get("z") is None:
+                    continue
+                f = facts.get(r["asset"], {})
+                want = r["z"] + float(f.get("sink") or 0.0) * float(r.get("scale") or 1.0)
+                best = min(here, key=lambda c: (abs(c[1] - want), c[0]), default=None)
+                if best is not None and best[0] and abs(best[1] - want) <= 0.002:
+                    r["surface"] = best[0]
+    return kinds, meets
+
+
 def _pack(step):
     """asset id -> {taxon, footprint (mm points), solidity, mounts {name: {at (mm), face}}}."""
-    t = step.pack("*", ["footprint", "solidity", "mounts"])
+    t = step.pack("*", ["footprint", "solidity", "mounts", "sink"])
     ids = _list(t.get("id", []))
     out = {}
     for r, a in enumerate(ids):
@@ -807,5 +1052,6 @@ def _pack(step):
         out[a] = {"taxon": col("taxon", ""),
                   "footprint": json.loads(fp) if isinstance(fp, str) and fp else (fp or []),
                   "solidity": col("solidity", "solid") or "solid",
+                  "sink": float(col("sink", 0.0) or 0.0),
                   "mounts": json.loads(mounts) if isinstance(mounts, str) and mounts else (mounts or {})}
     return out

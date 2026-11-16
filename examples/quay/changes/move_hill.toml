@@ -3,3 +3,14 @@
 # with them.
 [feature.hill]
 at = [96, 150]
+
+# The wedge view follows a wedge (M5 close): the base's shallow house at (158.6, 103) is gone with
+# the moved hill, and the eye stood inside a row house. The move_hill build's shallow house at
+# (111.16, 88.77), facing 357 degrees, viewed from 7.5 m in front of its door, as in the base.
+# Placed by coordinates (a produced house has no name text may write, R3): re-read it if the hill
+# or lib/town's houses move.
+[feature.look_wedge]
+at = [111.2, 88.8]
+
+[feature.wedge_house]
+at = [110.8, 96.3]

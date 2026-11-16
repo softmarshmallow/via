@@ -89,9 +89,9 @@ band    = [0, 0]
 measure = "geom.unowned_crossing"
 band    = [0, 0]
 
-[base.reach]                         # OWED (M5 slice 2): 50 of 101. lib/review's reach walks the
-measure = "reach_held"                      # terrain only; the deck is now a kind surface, so the
-band    = [101, 101]                          # river (0.5 m+ deep) cuts the town in two (TODO)
+[base.reach]                                # all held: lib/review's reach walks the deck (a kind
+measure = "reach_held"                      # surface) through its meetings (surfaces.md 4.4,
+band    = [101, 101]                        # M5; 50 of 101 when it walked the terrain only)
 
 [base.relief]
 measure = "place.relief"
@@ -147,9 +147,9 @@ band    = [60, 100]
 measure = "houses"
 band    = [56, 56]
 
-[move_hill.reach]                         # OWED (M5 slice 2): 9 of 60. lib/review's reach walks the
-measure = "reach_held"                      # terrain only; the deck is now a kind surface, so the
-band    = [60, 60]                          # river (0.5 m+ deep) cuts the town in two (TODO)
+[move_hill.reach]                           # all held: lib/review's reach walks the deck (a kind
+measure = "reach_held"                      # surface) through its meetings (surfaces.md 4.4,
+band    = [60, 60]                          # M5; 9 of 60 when it walked the terrain only)
 
 # ------------------------------------------------------------------------------------------ move_crossing
 
@@ -173,9 +173,9 @@ band    = [0, 0]
 measure = "houses"
 band    = [92, 92]
 
-[move_crossing.reach]                         # OWED (M5 slice 2): 40 of 96. lib/review's reach walks the
-measure = "reach_held"                      # terrain only; the deck is now a kind surface, so the
-band    = [96, 96]                          # river (0.5 m+ deep) cuts the town in two (TODO)
+[move_crossing.reach]                       # all held: lib/review's reach walks the deck (a kind
+measure = "reach_held"                      # surface) through its meetings (surfaces.md 4.4,
+band    = [96, 96]                          # M5; 40 of 96 when it walked the terrain only)
 
 [move_crossing.deck_wet]                     # the river under the deck (M5 slice 2): 78
 measure = "deck_wet"

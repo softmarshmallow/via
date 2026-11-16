@@ -126,6 +126,7 @@ ends_at   = "harbor_bridge_e"
 path      = []
 width     = 13                              # the arterial's carriageway and footways
 deck_z    = 10.0
+crown     = 3                                # 1.42 x the 2 m posts: the posts round each end read `deck_z`
 freeboard = 2.3
 crosses   = "river"
 flow      = "= river.flow"
@@ -142,6 +143,7 @@ ends_at   = "central_bridge_e"
 path      = []
 width     = 13
 deck_z    = 11.2
+crown     = 3                                # 1.42 x the 2 m posts: the posts round each end read `deck_z`
 freeboard = 2.3
 crosses   = "river"
 flow      = "= river.flow"
@@ -158,6 +160,7 @@ ends_at   = "north_bridge_e"
 path      = []
 width     = 13
 deck_z    = 12.9
+crown     = 3                                # 1.42 x the 2 m posts: the posts round each end read `deck_z`
 freeboard = 2.3
 crosses   = "river"
 flow      = "= river.flow"

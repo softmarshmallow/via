@@ -74,6 +74,23 @@ class Stairs(unittest.TestCase):
             self.assertEqual(f1["path"], [(26000, 21700), (21000, 21700)])   # lane 1, back
             self.assertEqual(f0["path"][0][1], 20600)
 
+    def test_a_turned_building_keeps_every_end_on_its_floor(self):
+        """Turned off the lattice's axes (every 5 degrees to 90, corners rounded to the mm): every
+        flight and doorway end inside its floor; without `onto`, 18 ends over these turns rounded to
+        just outside (M5 close, a fresh agent's house turned 20 degrees: `surface.outside`)."""
+        import math
+        for deg in range(0, 91, 5):
+            a = math.radians(deg)
+            ring = [(round(26000 + (x - 26000) * math.cos(a) - (y - 24000) * math.sin(a)),
+                     round(24000 + (x - 26000) * math.sin(a) + (y - 24000) * math.cos(a))) for x, y in HALL]
+            out = plan({"storeys": 3, "stair": {"t": 0.06, "width": 1, "run": 5}}, ring=ring)
+            rings = {s["key"]: s["region"] for s in out["storeys"]}
+            for f in out["flights"]:
+                self.assertTrue(L["inside"](rings[f["starts_at"][:-6]], f["path"][0]), (deg, f))
+                self.assertTrue(L["inside"](rings[f["ends_at"][:-6]], f["path"][-1]), (deg, f))
+            for d in out["doorways"]:
+                self.assertTrue(L["inside"](rings[d["ends_at"][:-6]], d["path"][-1]), (deg, d))
+
     def test_notch_of_an_odd_flight_is_two_lanes_deep(self):
         out = plan({"storeys": 3})
         s2 = out["storeys"][2]["region"]

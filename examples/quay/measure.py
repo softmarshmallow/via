@@ -27,6 +27,10 @@ Dead ends are lib/review/form.py's (`step.form.*` records, data.value; the world
 `dead_end_count` the ends on nothing inside the town, `edge_ends` those on the district's outline
 or at the gate, apart (form.py, "Dead end and edge end"); `geom.dead_end` stays the number of the
 core's records and `geom.dead_end_count` the count they carry.
+Reach is lib/review/reach.py's (`step.reach.*` records; the world declares the lint): `reach_held`
+and `reach_pairs` the `walked` record's `held` and `pairs`; `reach_unreached`, `reach_stranded` and
+`reach_not_sealed` the number of each record; `side_doors` the houses whose asset has a `side`
+mount (a corner house's second door, houses.py rule 2c), each a pair of the reach statement.
 
 Doors (quay-walk, 2026-11-15; ours): for each house (`houses#...`) whose asset has a `door` mount,
 its floor is the ground at its origin plus its `z`, and its door the mount's point turned by the
@@ -118,6 +122,19 @@ def doors(d):
             len(off), med)
 
 
+def side_doors(d):
+    """The houses (`houses#...`) whose asset has a `side` mount (the manifest's assets)."""
+    d = Path(d)
+    man = json.loads((d / "manifest.json").read_text())
+    names = [n for n in (d / "instances/names.txt").read_text().splitlines() if n]
+    out = 0
+    for ch in man["chunks"]:
+        for a, (s, n) in ch.get("instances", {}).items():
+            if "side" in ((man["assets"].get(a) or {}).get("mounts") or {}):
+                out += sum(1 for k in range(s, s + n) if names[k].startswith("houses#"))
+    return out
+
+
 def centre(f):
     if f.get("pieces"):
         ring = f["pieces"][0]["outer"]
@@ -170,6 +187,12 @@ def measures(d):
             m[x["code"][len("step.form."):]] = data["value"]
     m["geom.dead_end_count"] = sum((x.get("data") or {}).get("count", 0) for x in diags
                                    if x["code"] == "geom.dead_end")
+    walked = [x.get("data") or {} for x in diags if x["code"] == "step.reach.walked"]
+    m["reach_held"] = walked[0].get("held") if walked else None
+    m["reach_pairs"] = walked[0].get("pairs") if walked else None
+    for k in ("unreached", "stranded", "not_sealed"):
+        m["reach_" + k] = codes.get("step.reach." + k, 0)
+    m["side_doors"] = side_doors(d)
     m.update(meetings(d))
     return m, c, set(names)
 

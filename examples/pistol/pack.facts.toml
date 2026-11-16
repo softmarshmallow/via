@@ -1,0 +1,33 @@
+# Written by via pack accept. Do not edit.
+
+[asset.grip]
+bounds = [-0.038, -0.01, 0, 0.039, 0.011, 0.094]
+origin = [0, 0, 0]
+footprint = [[-0.038, -0.01], [0.039, -0.01], [0.039, 0.011], [-0.038, 0.011]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "none"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "part/pistol"
+tags = []
+files = { "grip.glb" = "787b229041f754cd1bba9a2f0ecca4132cf7e9d306eb17475d2c0b98772205dc" }
+
+[asset.grip_panels]
+bounds = [-0.031, -0.016, 0, 0.031, 0.017, 0.073]
+origin = [0, 0, 0]
+footprint = [[-0.031, -0.016], [0.031, -0.016], [0.031, 0.017], [-0.031, 0.017]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "none"
+collision = "box"
+sink = -0.008
+colour = [0.8, 0.8, 0.8]
+taxon = "part/pistol"
+tags = []
+files = { "grip_panels.glb" = "43dc1d62055a625748c3a818d575781d1040b57aa93b10fe1ff0efe3e2fbfcdb" }

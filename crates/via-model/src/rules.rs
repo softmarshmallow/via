@@ -1459,21 +1459,22 @@ pub fn ground_and_check(
             if levels.clash(&level(a), &a.footprint, &level(b), &b.footprint)
                 && overlaps(&a.footprint, &b.footprint)
             {
+                // A set's item (`acc.cap`) has no header of its own: its set placement's.
+                let head = |n: &str| {
+                    crate::place::declared_at(d, n)
+                        .unwrap_or((Subject::entity("instance", n), Site::Header))
+                };
+                let ((sb, hb), (sa, ha)) = (head(&b.name), head(&a.name));
+                let msg = format!("`{}` and `{}` overlap", a.name, b.name);
                 diags.push(
-                    at_header(
-                        codes::place::OVERLAP,
-                        "instance",
-                        &b.name,
-                        &format!("`{}` and `{}` overlap", a.name, b.name),
-                        "move one",
-                    )
-                    .at(text::pos(b.origin.x, b.origin.y))
-                    .related(via_diag::Related {
-                        subject: Subject::entity("instance", a.name.clone()),
-                        site: Site::Header,
-                        position: None,
-                        note: via_diag::text!("the other instance"),
-                    }),
+                    text::diag(codes::place::OVERLAP, sb, hb, &msg, "move one")
+                        .at(text::pos(b.origin.x, b.origin.y))
+                        .related(via_diag::Related {
+                            subject: sa,
+                            site: ha,
+                            position: None,
+                            note: via_diag::text!("the other instance"),
+                        }),
                 );
             }
         }

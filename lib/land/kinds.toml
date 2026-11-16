@@ -95,8 +95,9 @@ mask  = "= 1 - smoothstep(back, back + 2, d)"
 #
 # `step` writes the terrain to `foot_z` on the right of the line and `top_z` on its left, flat to
 # `lip + 2` m and fading into the land by `back`: the land each side meets the face's edges level.
-# A cut quad reaches up to 0.71 of a post past the strip, so a sliver that thin is open at the
-# face's foot and brink; the library's rocks, or the engine, close it (surfaces.md 5).
+# A cut quad reaches up to 0.71 of a post past the strip; the face's mesh covers that part of it
+# (build.md 10, "Skirt"), at `top_z` on the high side and `foot_z` on the low (the formula's clamp),
+# so the face meets the land each side with no open sliver (M5 slice 3 drew a saw-tooth there).
 #
 # The face, not the terrain's step, tapers to `foot_z` over the first and last `taper` of the
 # length, so an end written at a place by name meets it at `foot_z`: a cave's jamb (`cave`, below)
@@ -105,8 +106,11 @@ mask  = "= 1 - smoothstep(back, back + 2, d)"
 # A face whose foot and brink climb along it (M5 slice 3, `monastery`'s gorge: its floor rises 0.15
 # m a metre and its rim 0.17): the foot is `foot_z + foot_rise * t` and the brink `top_z + top_rise
 # * t`, so `foot_rise` and `top_rise` are the metres each gains from the start to the end. A face
-# that does not climb straight is written as pieces, each straight in both, end to end, with a
-# `taper` near 0 (a piece's two ends then meet its neighbour's at full height, not at the foot).
+# that does not climb straight is written as pieces, each straight in both, end to end, with
+# `taper = 0` (no taper: a piece's two ends meet its neighbour's at full height). A `taper` near 0
+# but above it still brought the face to the foot exactly at `t` 0 and 1, so every vertex on a
+# piece's end line stood at the foot: a slit the face's height at each joint, seen lit on the
+# M5 slice 3 sheet.
 # Past its ends a piece's `step` would write its own foot or brink over its neighbour's (a post
 # beyond the end is on whichever side the last segment's line puts it), so pieces set `beyond = 0`.
 # `side = -1` puts the high ground on the right of travel: a face written along a feature by
@@ -122,7 +126,8 @@ radius    = 14                            # `back` and the fade
 [kind.sheer_cliff.defaults]
 lip   = 0.5                               # half the face's width in plan, metres
 back  = 12                                # metres from the line by which the land is its own again
-taper = 0.02                              # share of the length at each end over which the face comes down
+taper = 0.02                              # share of the length at each end over which the face comes
+                                          # down; 0 for none (pieces end to end)
 side  = 1                                 # 1: the high ground on the left of travel; -1: on the right
 foot_rise = 0                             # metres the foot climbs from the start to the end
 top_rise  = 0                             # metres the brink climbs from the start to the end
@@ -130,7 +135,7 @@ beyond    = 1                             # 1: the step reaches past the ends, f
                                           # stops at them (`t` strictly between 0 and 1: pieces end to end)
 
 [kind.sheer_cliff.surface.face]
-base     = "= foot_z + foot_rise * t + (top_z + top_rise * t - (foot_z + foot_rise * t)) * clamp((side * sd + lip) / (2 * lip), 0, 1) * smoothstep(0, taper, t) * (1 - smoothstep(1 - taper, 1, t))"
+base     = "= foot_z + foot_rise * t + (top_z + top_rise * t - (foot_z + foot_rise * t)) * clamp((side * sd + lip) / (2 * lip), 0, 1) * if(taper > 0, smoothstep(0, taper, t) * (1 - smoothstep(1 - taper, 1, t)), 1)"
 bound    = "= lip"
 cut      = "= max(top_z, top_z + top_rise) - min(foot_z, foot_z + foot_rise)"
 material = "rock"

@@ -40,7 +40,8 @@ cbecb9d before the kernel's fast paths, TODO.md "Distance to large regions is sl
   16 street ends on a district's outline are counted as edge ends, 0 dead ends inside the town.
 - R13: `edit_west` changes no block, lot, street or house name on the east bank.
 - The reach lint: a walker from the west gate reaches the market and the other gates over the
-  crossing, and every door from the market (103 of 103).
+  crossing, and every door from the market (103 of 103; 101 of 101 since M5, over the deck through
+  its meetings, surfaces.md 4.4).
 
 ## Known faults (read from the sheet, on foot; townland pass 2026-11-15 evening)
 

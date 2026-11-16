@@ -703,6 +703,12 @@ pub fn run(a: &Args) -> Outcome {
         .as_ref()
         .and_then(|(pk, p)| {
             let mut dir = p.parent()?.to_path_buf();
+            // A world named by a bare file name in the working directory gives its pack a bare
+            // name too, whose parent is empty: that is the working directory, not "no path"
+            // (M5 close: `build.pack_root_far` on one drive, a fresh agent's `via build world.toml`).
+            if dir.as_os_str().is_empty() {
+                dir = PathBuf::from(".");
+            }
             // `root` may climb (`../`): each `..` takes off the part before it.
             for part in &pk.root.written {
                 if part == ".." && dir.file_name().is_some() {

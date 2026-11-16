@@ -193,6 +193,22 @@ pub fn explain(
     // Step codes recorded by the last build of WORLD.
     let mut recorded = Vec::new();
     if let Some(w) = world {
+        // A step's code is known only from a build's run report (`build.md` 14): with no build
+        // there, say so rather than that the code is unknown (M5 close: a fresh agent built with
+        // `--out` elsewhere and was told `step.lay.laid` is not a code).
+        if code.starts_with("step.") {
+            if let Err(dir) = last_report(w, out) {
+                return vec![usage(
+                    at,
+                    format!(
+                        "no build at `{}`: a step's codes are read from the run report of its last build",
+                        dir.to_string_lossy().replace('\\', "/")
+                    ),
+                    "run `via build` first, or name its directory with `--out`".into(),
+                )
+                .emit(&NoWorld)];
+            }
+        }
         if let Ok(r) = last_report(w, out) {
             for c in r.get("step_codes").and_then(J::as_arr).unwrap_or(&[]) {
                 if let Some(name) = c.get("code").and_then(J::as_str) {

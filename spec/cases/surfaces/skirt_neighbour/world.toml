@@ -1,0 +1,22 @@
+name       = "skirt"
+extent     = [0, 0, 32, 32]
+resolution = 1
+include    = ["skirt_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# The ledge of case `skirt`: its strip is y - x from -0.507 to 0.907.
+[feature.ledge]
+kind = "ledge"
+path = [[8, 8.2], [24, 24.2]]
+top  = 10
+
+# A pad beside it, not touching its strip (y - x from 0.95 to 2.8): the cells it cuts whose
+# centres lie on y - x = 1 are within the ledge's skirt (1.2072 m from its line) but are the
+# pad's, not the ledge's (build.md 10, Skirt, M5 close).
+[feature.pad]
+kind   = "pad"
+region = [[11, 11.95], [16, 16.95], [16, 18.8], [11, 13.8]]
+level  = 10

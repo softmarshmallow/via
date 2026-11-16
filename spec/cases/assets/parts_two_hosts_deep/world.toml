@@ -1,0 +1,68 @@
+name       = "parts"
+extent     = [0, 0, 40, 40]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+# Two hosts side by side, 2 m apart (1 m clear), each with two branches two parts deep and an
+# accessory set three deep: frame -> slide -> sight, frame -> barrel -> can -> acc (set tipset).
+[set.tipset.item.cap]
+asset = "cap"
+at    = [0, 0]
+
+[instance.frame]
+asset = "frame"
+at    = [10, 10]
+
+[instance.slide]
+asset = "slide"
+on    = { ref = "frame.slide" }
+
+[instance.sight]
+asset = "sight"
+on    = { ref = "slide.sight" }
+
+[instance.barrel]
+asset = "barrel"
+on    = { ref = "frame.barrel" }
+
+[instance.can]
+asset = "can"
+on    = { ref = "barrel.muzzle" }
+
+[instance.acc]
+set = "tipset"
+on  = { ref = "can.tip" }
+
+[instance.b_frame]
+asset = "frame"
+at    = [10, 12]
+
+[instance.b_slide]
+asset = "slide"
+on    = { ref = "b_frame.slide" }
+
+[instance.b_sight]
+asset = "sight"
+on    = { ref = "b_slide.sight" }
+
+[instance.b_barrel]
+asset = "barrel"
+on    = { ref = "b_frame.barrel" }
+
+[instance.b_can]
+asset = "can"
+on    = { ref = "b_barrel.muzzle" }
+
+[instance.b_acc]
+set = "tipset"
+on  = { ref = "b_can.tip" }
+
+[change.near.instance.b_frame]
+at = [10, 10.5]
+
+[change.turn.instance.b_frame]
+face = 180

@@ -29,6 +29,7 @@ toward = "brink"
 kind   = "bookmark"
 at     = [150, 96]
 toward = "harbour_bridge.end"
+along  = "harbour_bridge"                   # over the deck: long_deck's straight walk hit its side (M5 close)
 
 [feature.under_deck]                          # beside the beck downstream, looking under the deck
 kind   = "bookmark"

@@ -1,8 +1,11 @@
 # Written by make_pack.py from published.toml. Do not edit: change the numbers and run it again
-# (`--check` tells a stale pack). The pistol's parts and its accessories' parts, primitives only.
+# (`--check` tells a stale pack). The pistol's parts and its accessories' parts: primitives, and
+# the leaning grip and its panels as models (models/, a part stands upright: assets.md 12.5).
 # Sizes [x, y, z] metres, x along the length toward the muzzle; `sink` (negative) is how far a
 # part's underside stands above the base plate's (assets.md 12.2); each mount is a socket where
 # another part, or an accessory's frame, is put (assets.md 12.1).
+
+root = "models"
 
 [taxon."part/pistol"]                   # a thing on a bench claims no ground: parts nest inside each other
 defaults = { solidity = "none", collision = "box" }
@@ -58,10 +61,10 @@ at = [-0.063, 0]
 at = [-0.063, 0]
 
 [asset.frame.mount.base_plate]
-at = [-0.063, 0]
+at = [-0.078, 0]
 
 [asset.frame.mount.guard_bottom]
-at = [-0.008, 0]
+at = [-0.013, 0]
 
 [asset.frame.mount.guard_front]
 at = [0.011, 0]
@@ -93,17 +96,13 @@ sink      = -0.109
 colour    = [0.16, 0.16, 0.17]
 
 [asset.grip]
-primitive = "box"
-size      = [0.046, 0.021, 0.094]
+file      = "grip.glb"
 taxon     = "part/pistol"
-colour    = [0.36, 0.22, 0.12]
 
 [asset.grip_panels]
-primitive = "box"
-size      = [0.038, 0.033, 0.073]
+file      = "grip_panels.glb"
 taxon     = "part/pistol"
 sink      = -0.008
-colour    = [0.36, 0.22, 0.12]
 
 [asset.base_plate]
 primitive = "box"
@@ -113,7 +112,7 @@ colour    = [0.16, 0.16, 0.17]
 
 [asset.guard_bottom]
 primitive = "box"
-size      = [0.038, 0.01, 0.006]
+size      = [0.047, 0.01, 0.006]
 taxon     = "part/pistol"
 sink      = -0.062
 colour    = [0.16, 0.16, 0.17]
@@ -170,11 +169,25 @@ taxon     = "accessory/optic"
 sink      = -0.135
 colour    = [0.16, 0.16, 0.17]
 
-[asset.optic_hood]
+[asset.optic_post_l]
 primitive = "box"
-size      = [0.004, 0.023, 0.02]
+size      = [0.004, 0.003, 0.02]
 taxon     = "accessory/optic"
 sink      = -0.141
+colour    = [0.16, 0.16, 0.17]
+
+[asset.optic_post_r]
+primitive = "box"
+size      = [0.004, 0.003, 0.02]
+taxon     = "accessory/optic"
+sink      = -0.141
+colour    = [0.16, 0.16, 0.17]
+
+[asset.optic_top]
+primitive = "box"
+size      = [0.004, 0.023, 0.004]
+taxon     = "accessory/optic"
+sink      = -0.157
 colour    = [0.16, 0.16, 0.17]
 
 [asset.can]

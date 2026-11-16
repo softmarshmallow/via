@@ -299,6 +299,41 @@ pub(crate) struct Prepared {
 
 /// Reads the world, finds and reads the pack, resolves shapes and plans.
 pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
+    let (mut decls, pk, mut diags) = declared(world, options);
+    let mut placed_now = place_rounds(&mut decls, &pk);
+    // A fill is given what the parent placed, then built again with it; what the parent placed
+    // from it is placed again (`composition.md` 8).
+    if let Some(grid) = decls.grid {
+        if crate::import::give(
+            world,
+            &mut decls,
+            &pk,
+            &placed_now.0,
+            grid,
+            options,
+            &mut diags,
+        ) {
+            placed_now = place_rounds(&mut decls, &pk);
+        }
+    }
+    let (placed, placing) = placed_now;
+    if let Some(pd) = &placing {
+        diags.extend(pd.iter().cloned());
+    }
+    Prepared {
+        decls,
+        pack: pk,
+        placed,
+        diags,
+        placing,
+    }
+}
+
+/// What [`prepare`] reads before it places anything: the declarations with their files, the
+/// pack and the imports built alone. The build key's leaves need no more (`graph.md` 6.2), so
+/// they no longer place the world: city's unchanged rebuild spent 1.6 s of its 17 s placing
+/// it only to list its files (M5 close).
+pub(crate) fn declared(world: &World, options: &Options) -> (Decls, Pack, Vec<Diag>) {
     let mut diags: Vec<Diag> = Vec::new();
     let mut decls = Decls::read_given(world, options.given.as_deref());
     if let Some(s) = options.seed {
@@ -398,33 +433,7 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
     }
     // Imports, built alone and placed (`composition.md` 2, 3).
     crate::import::bring(&mut decls, &pk, options, &mut diags);
-    let mut placed_now = place_rounds(&mut decls, &pk);
-    // A fill is given what the parent placed, then built again with it; what the parent placed
-    // from it is placed again (`composition.md` 8).
-    if let Some(grid) = decls.grid {
-        if crate::import::give(
-            world,
-            &mut decls,
-            &pk,
-            &placed_now.0,
-            grid,
-            options,
-            &mut diags,
-        ) {
-            placed_now = place_rounds(&mut decls, &pk);
-        }
-    }
-    let (placed, placing) = placed_now;
-    if let Some(pd) = &placing {
-        diags.extend(pd.iter().cloned());
-    }
-    Prepared {
-        decls,
-        pack: pk,
-        placed,
-        diags,
-        placing,
-    }
+    (decls, pk, diags)
 }
 
 /// Places the world's text in rounds (`authority.md` 2.2, A produced instance gives way): rounds
@@ -747,6 +756,38 @@ fn png_samples(
 
 /// The rest of a build, with fields already resolved elsewhere (`seeds`, from the graph's
 /// `field` nodes, whose diagnostics come in `seeded_diags`) taken as they are.
+/// `surface.gap`'s hint (`surfaces.md` 3.4): change either side, or set the ground at the side
+/// that stands on it to the other's height. A side a step returned (a produced name, R3: text may
+/// not write it) is named with its producer, whose inputs are what to change (M5 close: a fresh
+/// agent was told to change two names it could not write).
+fn gap_hint(m: &Meeting, surfaces: &BTreeMap<String, crate::surfaces::SurfaceOut>) -> String {
+    let side = |n: &str| match n.rsplit_once('#') {
+        Some((producer, _)) => format!(
+            "`{n}` (returned by `{producer}`: change what it read, the feature it was made for)"
+        ),
+        None => format!("`{n}`"),
+    };
+    let on_ground = |n: &str| !surfaces.contains_key(n);
+    let ground = match (on_ground(&m.a), on_ground(&m.b)) {
+        (true, false) => Some((&m.a, m.z_b)),
+        (false, true) => Some((&m.b, m.z_a)),
+        _ => None,
+    };
+    let mut h = format!(
+        "make the two sides equal: change {} or {}",
+        side(&m.a),
+        side(&m.b)
+    );
+    if let Some((g, z)) = ground {
+        h.push_str(&format!(
+            ", or set the ground at `{g}` to {} m by an effect of its owner (another effect that \
+             reaches the end, a way's bed, may win there: move the thing away from it)",
+            text::dbl(z)
+        ));
+    }
+    h
+}
+
 pub(crate) fn finish(
     world: &World,
     p: Prepared,
@@ -903,7 +944,7 @@ pub(crate) fn finish_from(
             .map(|v| crate::surfaces::cut_quads(&grid, v, &out.surfaces, &mut diags));
         out.cut = quads;
     }
-    out.meshes = crate::surfaces::meshes(&grid, &out.surfaces, &pk, &mut diags);
+    out.meshes = crate::surfaces::meshes(&grid, &out.surfaces, out.cut.as_deref(), &pk, &mut diags);
     out.place_surface = crate::surfaces::place_surfaces(&decls, &placed, &out.surfaces, &mut diags);
     for (id, f) in &decls.features {
         let Some(g) = placed.shapes.get(id) else {
@@ -1459,7 +1500,7 @@ pub(crate) fn finish_from(
                         text::dbl(m.z_b),
                         m.gap
                     ),
-                    &format!("make the two sides equal: change `{}` or `{}`", m.a, m.b),
+                    &gap_hint(m, &out.surfaces),
                 )
                 .with("place", via_diag::Value::text(m.a.clone()))
                 .with("gap", via_diag::Value::Int(m.gap)),

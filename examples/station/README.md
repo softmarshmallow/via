@@ -24,6 +24,7 @@ that `lay` lays: two storeys of a primitive kit, a door, a straight flight, thre
 
 ```
 export VIA_LIB=$PWD/lib
+via config program python $PWD/sdk/python/.venv/bin/python     # steps run on Python 3.12 (3.11+)
 via trust examples/station/world.toml --yes --change examples/station/changes/move_stair.toml --change examples/station/changes/close_passage.toml
 via build examples/station/world.toml --out build/station
 via query examples/station/world.toml surfaces_at --in examples/station/stair_points.json --out build/station.sat.json
@@ -36,9 +37,14 @@ engines/godot/sheet.sh --before build/station --after build/station+close_passag
 
 Measured with `measure.py` and read on the sheet (`engines/godot/sheet.sh`, both changes):
 
-- Every view's `toward` target on a floor gets the terrain's z in `features.json` (`lens` 0.01,
-  `telescope` 0.01, `stair_2.end` 0.01, `kitchen_table` -0.01), so each camera in the tower looks
-  steeply down through its floor at the ground. The eye itself stands on its floor.
+- (Fixed at the M5 close.) Every view's `toward` target on a floor got the terrain's z in
+  `features.json` (`lens` 0.01, `telescope` 0.01, `stair_2.end` 0.01, `kitchen_table` -0.01), so
+  each camera in the tower looked down through its floor. An instance named as a target now takes
+  the floor it stands on and a path's end the floor its `ends_at` names (`lens` 9.85, `telescope`
+  6.7, `stair_2.end` 6.7, `kitchen_table` 0.45; surfaces.md 4.1, case `target_on_floor`).
+- (M5 close) `move_stair` laid stair_2's foot at the living table (`up_stair_2` blocked after
+  1.6 m): the change moves the table too, and `measure.py`'s `in_flight` counts dressing on a
+  flight's line below its tread (0 in every build).
 - (Slice 3) The spirals are climbed on foot: `up_stair_1..3` follow each flight's points (`along`,
   build.md 15.1) to the floor above. `up_stair_3` and `in_lantern` end `blocked` against the lens,
   their own target, because its body loads unnamed. The watch room's desk and the living room's

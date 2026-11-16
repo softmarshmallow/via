@@ -38,7 +38,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-pub use changes::{causes, causes_from, changed_statements, ChangeCause};
+pub use changes::{causes, causes_from, changed_statements, CauseGraph, ChangeCause};
 pub use codec::{object_bytes, CoreCodec, DiagCodec, Val};
 pub use digest::{Dec, Digest, Enc};
 pub use engine::{

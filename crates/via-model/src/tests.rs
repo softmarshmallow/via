@@ -739,3 +739,291 @@ fn hand_edits_select_a_scatters_instance() {
         "{e:?}"
     );
 }
+
+/// The references of `graph.md` 2's edge table, by their first column.
+fn edge_rows() -> Vec<String> {
+    let spec = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../spec/graph.md");
+    let text = std::fs::read_to_string(&spec).expect("spec/graph.md");
+    let at = text.find("\n## 2. Edges").expect("graph.md 2");
+    let mut rows = Vec::new();
+    let mut table = false;
+    for line in text[at + 1..].lines().skip(1) {
+        if line.starts_with("## ") || line.starts_with("### ") {
+            break;
+        }
+        if line.starts_with("| Reference |") {
+            table = true;
+            continue;
+        }
+        if !table || line.starts_with("|---") {
+            continue;
+        }
+        if !line.starts_with('|') {
+            if !rows.is_empty() {
+                break;
+            }
+            continue;
+        }
+        rows.push(line.split('|').nth(1).unwrap_or("").trim().to_string());
+    }
+    rows
+}
+
+/// Every reference here, beside `WORLD`'s own (`on.ref`, ends, a name attribute, effects,
+/// `ground`, `under`, a scatter, hand edits): `follows`, a name in `path`, a path's end, a
+/// selection by place, a mount, a field's formula reading another field and a set.
+const EDGES: &str = r#"
+[field.depth]
+base = "= f('height') + 1"
+
+[feature.side]
+follows = { ref = "way_e", span = [0.2, 0.8], offset = 5 }
+
+[feature.spur]
+starts_at = "way_e.end"
+path      = [[50, 60], "knot"]
+
+[feature.to_hut]
+starts_at = "hut.front"
+path      = [[4, 4]]
+
+[pin.picked]
+asset = "stem"
+on    = { of = "growth", near = [20, 20] }
+by    = ["growth"]
+
+[set.pair.item.a]
+asset = "stem"
+at    = [-2, 0]
+
+[set.pair.item.b]
+asset = "stem"
+at    = [2, 0]
+
+[instance.pair_at]
+set = "pair"
+at  = [12, 52]
+
+[change.shift.feature.way_e]
+path = [[64, 44]]
+
+[change.hut.instance.hut]
+on = { ref = "way_w", t = 0.6, offset = 8 }
+
+[change.reset.set.pair.item.a]
+asset = "stem"
+at    = [-3, 1]
+
+[change.warm.field.height]
+base = "= 21 + 0.05 * y"
+"#;
+
+/// One edge a reference makes: the reader's node id (a prefix, for a chunk), the label's prefix
+/// and the target's id (a prefix).
+type Probe = (&'static str, &'static str, &'static str);
+
+/// The probes of each row this crate builds; the changes that move each row's targets.
+const PROBES: &[(&str, &[Probe])] = &[
+    (
+        "placement",
+        &[
+            ("shape:knot/v:build", "on.ref", "shape:course/v:build"),
+            ("shape:side/v:build", "follows", "shape:way_e/v:build"),
+            ("shape:spur/v:build", "path", "shape:knot/v:build"),
+            ("shape:way_e/v:build", "starts_at", "shape:knot/v:build"),
+        ],
+    ),
+    (
+        "name attribute",
+        &[("attr:look", "toward", "shape:knot/v:build")],
+    ),
+    (
+        "ends",
+        &[("shape:spur/v:build", "starts_at", "shape:way_e/v:build")],
+    ),
+    (
+        "selection by place",
+        &[("edit:picked/v:build", "of", "rule:growth/v:build")],
+    ),
+    (
+        "mount",
+        &[
+            ("shape:to_hut/v:build", "starts_at", "instance:hut/v:build"),
+            ("shape:to_hut/v:build", "starts_at", "height:hut/v:build"),
+        ],
+    ),
+    (
+        "formula read",
+        &[("field:depth/v:build/w:", "", "field:height/v:build/w:")],
+    ),
+    (
+        "measure",
+        &[("field:height/v:build/w:", "", "measure:height/v:build/hut")],
+    ),
+    (
+        "effect",
+        &[
+            ("field:height/v:build/w:", "", "distance:course/v:build/w:"),
+            ("field:height/v:build/w:", "", "attr:course"),
+        ],
+    ),
+    (
+        "ground",
+        &[("footprint:hut/v:build", "ground", "instance:hut/v:build")],
+    ),
+    (
+        "standing",
+        &[
+            ("height:hut/v:build", "plan", "instance:hut/v:build"),
+            ("height:hut/v:build", "", "select:role:surface/v:build"),
+            ("height:hut/v:build", "", "field:height/v:build/w:"),
+        ],
+    ),
+    (
+        "scatter",
+        &[
+            ("rule:growth/v:build", "", "select:role:surface/v:build"),
+            ("rule:growth/v:build", "", "instance:hut/v:build"),
+        ],
+    ),
+    (
+        "hand edits",
+        &[
+            ("held:growth/v:build", "", "rule:growth/v:build"),
+            ("held:growth/v:build", "", "edit:kept/v:build"),
+            ("held:growth/v:build", "", "edit:picked/v:build"),
+        ],
+    ),
+];
+
+/// A row whose reference is made from statements, not edges (`graph.md` 2: "Statements are never
+/// edge targets"): the reader's node and a statement its key holds.
+const STATEMENT_ROWS: &[(&str, &str, &str)] = &[("set", "instance:pair_at/v:build", "set.pair")];
+
+/// The rows only the command line builds (steps, build files, imports): the conformance cases
+/// that build a world with that reference and then a change to its target on one store, where the
+/// runner holds the warm build equal to a clean one (`graph.md` 7).
+const CASE_ROWS: &[(&str, &[&str])] = &[
+    (
+        "step output",
+        &["graph/causes_returned_feature", "graph/scatter_reads_step"],
+    ),
+    ("field rows from a step", &["graph/causes_returned_field"]),
+    ("step, declared", &["graph/inputs", "graph/folder_input"]),
+    ("step, recorded", &["graph/causes_of_step"]),
+    ("write", &["graph/downstream"]),
+    ("give (M4)", &["composition/give_moved"]),
+];
+
+/// `graph.md` 2's edge table against the code (TODO "From M5 slice 3": `follows` had no edge from
+/// M1 to M5, silent until a change built on a shared store): every row is probed here, each
+/// probed edge is in its reader's definition, and each change that moves a target builds warm on
+/// one store equal to clean. A row added to the table with no probe fails here.
+#[test]
+fn every_reference_in_graph_md_2_makes_an_edge() {
+    let rows = edge_rows();
+    assert!(rows.len() >= 19, "{rows:?}");
+    for r in &rows {
+        let known = PROBES.iter().any(|(n, _)| n == r)
+            || STATEMENT_ROWS.iter().any(|(n, _, _)| n == r)
+            || CASE_ROWS.iter().any(|(n, _)| n == r);
+        assert!(known, "graph.md 2 row `{r}` has no probe here");
+    }
+    let d = world_dir(&format!("{WORLD}{EDGES}"));
+    let lo = LoadOptions {
+        lib_roots: Vec::new(),
+        via_lib: None,
+        shipped_root: None,
+        changes: Vec::new(),
+    };
+    let path = d.0.join("world.toml");
+    let loaded = load(&path, 2, &lo);
+    let records: Vec<String> = loaded
+        .records
+        .iter()
+        .map(|r| format!("{} {:?}", r.code(), r.message()))
+        .collect();
+    let world = loaded
+        .world
+        .unwrap_or_else(|| panic!("not merged: {records:?}"));
+    let plan = crate::graph::ModelPlan::new(&world, &Options::from_load(&path, &lo), None);
+    let ids = plan.ids();
+    for (row, probes) in PROBES {
+        for (reader, label, target) in *probes {
+            let readers: Vec<_> = ids
+                .iter()
+                .filter(|i| {
+                    i.as_str() == *reader
+                        || (reader.ends_with(':') && i.as_str().starts_with(reader))
+                })
+                .collect();
+            assert!(!readers.is_empty(), "{row}: no node {reader}");
+            let found = readers.iter().any(|i| {
+                plan.def(i).is_some_and(|def| {
+                    def.edges
+                        .iter()
+                        .any(|(l, t)| l.starts_with(label) && t.as_str().starts_with(target))
+                })
+            });
+            let edges: Vec<String> = readers
+                .iter()
+                .filter_map(|i| plan.def(i))
+                .flat_map(|def| def.edges.iter().map(|(l, t)| format!("{l} -> {t}")))
+                .take(40)
+                .collect();
+            assert!(
+                found,
+                "{row}: {reader} has no edge `{label}` to {target}: {edges:?}"
+            );
+        }
+    }
+    for (row, reader, statement) in STATEMENT_ROWS {
+        let def = plan
+            .def(&via_graph::NodeId::parse(reader).expect("an id"))
+            .unwrap_or_else(|| panic!("{row}: no node {reader}"));
+        assert!(
+            def.statements.iter().any(|(s, _)| s.starts_with(statement)),
+            "{row}: {reader} is not made from {statement}: {:?}",
+            def.statements
+        );
+    }
+    let cases = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../spec/cases");
+    for (row, list) in CASE_ROWS {
+        for c in *list {
+            let text = std::fs::read_to_string(cases.join(c).join("case.toml"))
+                .unwrap_or_else(|_| panic!("{row}: no case {c}"));
+            // Two builds of one world on the case's one store, the second after a change: a
+            // `--change`, or a file the case writes or edits between them.
+            let changed = text.contains("\"--change\"")
+                || text
+                    .lines()
+                    .any(|l| l.starts_with("write") || l.starts_with("replace"));
+            assert!(
+                text.matches("[\"build\",").count() >= 2 && changed,
+                "{row}: case {c} does not build a change on its base's store"
+            );
+        }
+    }
+    // Warm equals clean: each change, built on the store that holds the base build.
+    let store = via_graph::Store::open(d.0.join("store"));
+    let (base, _) = graph_run(&d, &store, &[]);
+    assert!(errors(&base).is_empty(), "{:?}", errors(&base));
+    for change in ["moved", "shift", "hut", "reset", "warm", "denser"] {
+        let (warm, _) = graph_run(&d, &store, &[change]);
+        let (clean, _) = run(&d, &[change], None);
+        assert!(errors(&warm).is_empty(), "{change}: {:?}", errors(&warm));
+        assert_eq!(warm.fields, clean.fields, "{change}");
+        assert_eq!(warm.instances, clean.instances, "{change}");
+        assert_eq!(warm.features, clean.features, "{change}");
+        // And back: the base again on the same store.
+        let (again, _) = graph_run(&d, &store, &[]);
+        assert!(
+            errors(&again).is_empty(),
+            "{change} undone: {:?}",
+            errors(&again)
+        );
+        assert_eq!(again.fields, base.fields, "{change} undone");
+        assert_eq!(again.instances, base.instances, "{change} undone");
+        assert_eq!(again.features, base.features, "{change} undone");
+    }
+}

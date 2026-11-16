@@ -1,0 +1,47 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# A flight from the ground up to hall_1, its end on the floor's edge.
+[feature.up]
+kind    = "flight"
+path    = [[10, 24], [20, 24]]
+ends_at = "hall_1.floor"
+z0      = 10
+z1      = 13.3
+
+[instance.lamp]
+asset   = "box"
+at      = [30, 26]
+surface = "hall_1.floor"
+
+# Views from the ground: a target that is an instance takes the floor it stands on, and a path's
+# end the floor its `ends_at` names (surfaces.md 4.1, M5 close); before, both took the terrain's 10.
+[feature.at_lamp]
+kind   = "sight"
+at     = [5, 5]
+toward = "lamp"
+
+[feature.at_top]
+kind   = "sight"
+at     = [5, 6]
+toward = "up.end"
+
+[change.lower.instance.lamp]
+surface = "hall_g.floor"

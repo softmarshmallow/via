@@ -1,6 +1,6 @@
 """Tests for reach.py, each from a row of its docstring, on small made-up worlds with a stand-in
-for the SDK's ``step`` (it answers ``fields``, ``features``, ``instances`` and ``pack`` as
-protocol.md 3.3 and 4.3 shape them, and records what is said).
+for the SDK's ``step`` (it answers ``fields``, ``features``, ``instances``, ``pack``,
+``surfaces_at`` and ``meetings`` as protocol.md 3.3 and 4.3 shape them, and records what is said).
 
     PYTHONPATH=sdk/python python3 -B -m unittest discover -s lib/review -p 'test_*.py'
 """
@@ -49,8 +49,13 @@ PACK = {
 
 
 class FakeStep:
-    def __init__(self, height, water=None, feats=(), insts=(), params=None):
+    """`kinds` maps a kind surface's place name to (x0, y0, x1, y1, z): a level rectangle, metres,
+    edges in; `meets` is a list of meeting rows (surfaces.md 2.4) in metres and millimetres."""
+
+    def __init__(self, height, water=None, feats=(), insts=(), params=None, kinds=None, meets=()):
         self.id = "reach"
+        self._kinds = dict(kinds or {})
+        self._meets = list(meets)
         self.grid = {"extent_mm": [0, 0, 40000, 40000], "resolution_mm": 1000, "nx": N, "ny": N}
         self._f = {"role:surface": height}
         if water is not None:
@@ -70,7 +75,31 @@ class FakeStep:
 
     def instances(self, select="*"):
         keys = ("name", "asset", "by", "x", "y", "face", "scale")
-        return Cols({k: [r.get(k, {"by": "", "face": 0, "scale": 1.0}.get(k)) for r in self._insts] for k in keys})
+        cols = Cols({k: [r.get(k, {"by": "", "face": 0, "scale": 1.0}.get(k)) for r in self._insts] for k in keys})
+        cols["z"] = [r["z"] if "z" in r else self._terrain(r["x"], r["y"]) for r in self._insts]
+        return cols
+
+    def _terrain(self, x, y):
+        h = self._f["role:surface"]
+        return h[min(max(round(y / 1000), 0), N - 1)][min(max(round(x / 1000), 0), N - 1)]
+
+    def surfaces_at(self, xs, ys):
+        rows = []
+        for k, (x, y) in enumerate(zip(xs, ys)):
+            here = [("height", self._terrain(x, y))]
+            for name, (x0, y0, x1, y1, z) in self._kinds.items():
+                if x0 * 1000 <= x <= x1 * 1000 and y0 * 1000 <= y <= y1 * 1000:
+                    here.append((name, z))
+            rows += [(k, n, z) for n, z in sorted(here, key=lambda r: (r[1], r[0]))]
+        return Cols(point=[r[0] for r in rows], surface=[r[1] for r in rows], z=[r[2] for r in rows])
+
+    def meetings(self):
+        keys = ("a", "b", "x", "y", "gap", "z_a", "z_b", "connector_a", "connector_b")
+        cols = Cols({k: [m.get(k) for m in self._meets] for k in keys})
+        for k in ("connector_a", "connector_b"):
+            cols[k + "?"] = [1 if v else 0 for v in cols[k]]
+            cols[k] = [v or "" for v in cols[k]]
+        return cols
 
     def pack(self, select="*", columns=()):
         ids = sorted(PACK)
@@ -108,9 +137,10 @@ def pt(name, x, y):
     return (name, "", 0, [[[(x * 1000, y * 1000)]]])
 
 
-def run(height, water=None, feats=(), insts=(), profile=None, **params):
+def run(height, water=None, feats=(), insts=(), profile=None, kinds=None, meets=(), **params):
     params.setdefault("profiles", {"walker": dict(WALKER, **(profile or {}))})
-    s = FakeStep(height, water, [pt("a", 5, 20), pt("b", 35, 20)] + list(feats), insts, params)
+    s = FakeStep(height, water, [pt("a", 5, 20), pt("b", 35, 20)] + list(feats), insts, params,
+                 kinds, meets)
     R["lint"](s)
     return s
 
@@ -124,7 +154,8 @@ class Reach(unittest.TestCase):
         s = run(flat(), reach=a_to_b())
         self.assertEqual(s.codes(), ["walked"])
         self.assertEqual(s.one("walked")["data"], {"posts": N * N, "open": N * N, "pieces": 1,
-                                                   "held": 1, "pairs": 1})
+                                                   "held": 1, "pairs": 1, "surfaces": 0,
+                                                   "joins": 0})
 
     def test_cliff_stops_walk_and_says_steep(self):
         h = [[10.0 if i < 20 else 12.0 for i in range(N)] for _ in range(N)]  # a 2 m face at x = 20
@@ -192,8 +223,8 @@ class Reach(unittest.TestCase):
                                    "nx": N, "ny": N}), [], R["_instances"](FakeStep(flat(), insts=insts)),
                         R["_pack"](FakeStep(flat())), None)
         self.assertEqual(p.resolve({"mount": "door", "assets": ["@building/house"]}),
-                         [("hut1.door", (31000, 10000))])
-        self.assertEqual(p.resolve("hut1.door"), [("hut1.door", (31000, 10000))])
+                         [("hut1.door", (31000, 10000), "")])
+        self.assertEqual(p.resolve("hut1.door"), [("hut1.door", (31000, 10000), "")])
         s = run(flat(), insts=insts,
                 reach=[{"profile": "walker", "from": "a", "to": [{"mount": "door", "assets": ["hut"]}]}])
         self.assertEqual(s.codes(), ["walked"])  # the door's post is in the footprint; reach finds 32
@@ -273,18 +304,144 @@ class Reach(unittest.TestCase):
         self.assertNotIn("explain", un[1])
 
 
+def river():
+    """A beck over x = 18..22 the whole height of the world, its bed at 8 under 1 m of water, in
+    flat ground at 10."""
+    h = [[8.0 if 18 <= i <= 22 else 10.0 for i in range(N)] for _ in range(N)]
+    return h, [[9.0 if 18 <= i <= 22 else 10.0 for i in range(N)] for _ in range(N)]
+
+
+DECK = {"bridge.deck": (15, 18, 25, 22, 10.0)}            # x 15..25, y 18..22, level with the banks
+
+
+def ends(gap_east=0, connector=None):
+    """The two meetings of a crossing: the lanes' ends at the deck's ends (surfaces.md 6.3)."""
+    out = []
+    for a, b, x, gap in (("bridge.start", "lane_west.end", 15000, 0),
+                         ("bridge.end", "lane_east.start", 25000, gap_east)):
+        out.append({"a": a, "b": b, "x": x, "y": 20000, "gap": gap, "z_a": 10.0,
+                    "z_b": 10.0 + gap / 1000.0, "connector_a": connector, "connector_b": None})
+    return out
+
+
+def crossing():
+    """The crossing's path, so `bridge.start`/`.end` are places on its one surface."""
+    return ("bridge", "crossing", 1, [[[(15000, 20000), (25000, 20000)]]])
+
+
 class KindSurfaces(unittest.TestCase):
-    @unittest.skip("waits for `surface.surfaces_at` and `surface.sample` in a released `via` (core-proto, M5 "
-                   "slice 2; the SDK methods `Step.surfaces_at`, `Step.sample` are in the working tree, not "
-                   "yet in a build): reach walks the terrain's posts only")
+    """surfaces.md 4.4, run by the walk: one node per (surface, post); a surface's own posts joined
+    as the terrain's; two surfaces only at a meeting that holds."""
+
     def test_walks_onto_a_deck_through_a_meeting_that_holds(self):
-        """surfaces.md 4.4: a walker on the terrain steps onto `bridge.deck` only at the meetings
-        `lane_west.end`/`bridge.start` and `lane_east.start`/`bridge.end` (gap 0), crosses the deck
-        over the beck, and is never on the bed under it; with the east meeting's gap at 300 mm the
-        far bank is reached only round by another way. To write when the methods land: one node
-        per (surface, place) from `surfaces_at`, edges within a surface by `sample`, and between
-        surfaces only at meetings that hold."""
-        self.fail("not written")
+        h, w = river()
+        self.assertEqual(run(h, w, reach=a_to_b()).one("unreached")["data"]["why"], "water")
+        s = run(h, w, reach=a_to_b(), kinds=DECK, meets=ends())
+        self.assertEqual(s.codes(), ["walked"])
+        d = s.one("walked")["data"]
+        self.assertEqual((d["held"], d["surfaces"], d["joins"], d["posts"]), (1, 1, 2, N * N + 11 * 5))
+
+    def test_a_deck_is_joined_only_at_its_meetings(self):
+        # 4.4 item 3: a bound's edge is a wall; with no meeting the deck is an island over the beck
+        h, w = river()
+        r = run(h, w, reach=a_to_b(), kinds=DECK).one("unreached")
+        self.assertEqual(r["data"]["why"], "water")
+        # the deck's own end is a place on the deck: not reached from the lane without a meeting,
+        # though the ground beneath it is dry and level with it
+        s = run(h, w, feats=[crossing()], kinds=DECK,
+                reach=[{"profile": "walker", "from": "a", "to": ["bridge.start"]}])
+        self.assertEqual(s.one("unreached")["data"]["to"], "bridge.start")
+        s = run(h, w, feats=[crossing()], kinds=DECK, meets=ends(),
+                reach=[{"profile": "walker", "from": "a", "to": ["bridge.start", "bridge.end"]}])
+        self.assertEqual(s.codes(), ["walked"])
+
+    def test_a_meeting_that_does_not_hold_joins_nothing(self):
+        h, w = river()
+        r = run(h, w, reach=a_to_b(), kinds=DECK, meets=ends(gap_east=300)).one("unreached")
+        self.assertEqual(r["data"].get("surface"), "bridge.deck")   # the walk ends on the deck
+        self.assertEqual(r["data"]["why"], "edge")
+        two = ends()
+        two[1]["connector_a"], two[1]["connector_b"] = "stone", "timber"
+        self.assertIn("unreached", run(h, w, reach=a_to_b(), kinds=DECK, meets=two).codes())
+
+    def test_a_footprint_shuts_only_the_surface_it_stands_on(self):
+        h, w = river()
+        # a wall across the whole world at x = 20, standing in the bed (the terrain, z 8): the deck
+        # passes over it
+        bed = [{"name": "weir", "asset": "wall", "x": 20000, "y": 20000, "z": 8.0}]
+        self.assertEqual(run(h, w, insts=bed, reach=a_to_b(), kinds=DECK, meets=ends()).codes(),
+                         ["walked"])
+        # the same wall standing on the deck (its z the deck's) shuts the deck
+        on = [{"name": "gate", "asset": "wall", "x": 20000, "y": 20000, "z": 10.0}]
+        r = run(h, w, insts=on, reach=a_to_b(), kinds=DECK, meets=ends()).one("unreached")
+        self.assertEqual((r["data"]["why"], r["data"]["by"], r["data"]["surface"]),
+                         ("instance", "gate", "bridge.deck"))
+
+    def test_water_is_read_against_the_ground(self):
+        # a deck post is wet only where water stands over the ground there and over the deck by
+        # more than `wade`: a deck laid 1 m under the beck's surface is not walked
+        h, w = river()
+        sunk = {"bridge.deck": (15, 18, 25, 22, 8.0)}
+        two = [dict(m, z_a=8.0, z_b=8.0) for m in ends()]
+        hh = [[8.0 if 15 <= i <= 25 else 10.0 for i in range(N)] for _ in range(N)]
+        ww = [[9.0 if 15 <= i <= 25 else 10.0 for i in range(N)] for _ in range(N)]
+        r = run(hh, ww, reach=a_to_b(), kinds=sunk, meets=two, profile={"grade": 2.0}).one("unreached")
+        self.assertEqual((r["data"]["why"], r["data"]["value"]), ("water", 1.0))
+        # dry ground under a floor below the terrain's level (a cellar): the water field there is
+        # the ground (lib/water's dry convention), so the floor is dry
+        cellar = {"bridge.deck": (15, 18, 25, 22, 7.0)}
+        d = run(flat(), flat(), reach=a_to_b(), kinds=cellar).one("walked")["data"]
+        self.assertEqual((d["open"], d["posts"]), (N * N + 11 * 5, N * N + 11 * 5))
+
+    def test_a_kind_surfaces_edge_narrows_as_a_wall(self):
+        h, w = river()
+        self.assertEqual(run(h, w, reach=a_to_b(), kinds=DECK, meets=ends(),
+                             profile={"width": 2.5}).codes(), ["walked"])
+        r = run(h, w, reach=a_to_b(), kinds=DECK, meets=ends(), profile={"width": 6.5})
+        self.assertIn("unreached", r.codes())
+
+    def test_a_point_stands_on_the_lowest_open_surface(self):
+        # `mid` over the beck: the bed is under water, so it stands on the deck
+        h, w = river()
+        s = run(h, w, feats=[pt("mid", 20, 20)], kinds=DECK, meets=ends(),
+                reach=[{"profile": "walker", "from": "a", "to": ["mid"]}])
+        self.assertEqual(s.codes(), ["walked"])
+
+    def test_a_plain_command_walks_the_terrain_only_and_says_so(self):
+        h, w = river()
+        s = FakeStep(h, w, [pt("a", 5, 20), pt("b", 35, 20)], (),
+                     {"profiles": {"walker": WALKER}, "reach": a_to_b()}, DECK, ends())
+
+        def refuse(xs, ys):
+            from viasdk import NotAWorker
+            raise NotAWorker("surface.surfaces_at needs a worker (worker = true)")
+        s.surfaces_at = refuse
+        R["lint"](s)
+        self.assertEqual(s.codes(), ["terrain_only", "unreached", "walked"])
+        self.assertEqual(s.one("terrain_only")["severity"], "info")
+
+
+class Mounts(unittest.TestCase):
+    def test_a_group_names_several_mounts(self):
+        # a corner house's front door and its side door, both reached (quay, TODO "From M5 slice
+        # 3, town kit"): `mount` as a list gives each instance's mounts in the order written
+        PACK["corner"] = {"taxon": "building/house", "solidity": "solid",
+                          "footprint": [[-3000, -3000], [3000, -3000], [3000, 3000], [-3000, 3000]],
+                          "mounts": {"door": {"at": [0, 3000], "face": 0},
+                                     "side": {"at": [3000, 0], "face": 90000}}}
+        try:
+            insts = [{"name": "c1", "asset": "corner", "x": 30000, "y": 10000}]
+            g = R["Grid"]({"extent_mm": [0, 0, 40000, 40000], "resolution_mm": 1000, "nx": N, "ny": N})
+            p = R["Places"](g, [], R["_instances"](FakeStep(flat(), insts=insts)),
+                            R["_pack"](FakeStep(flat())), None)
+            self.assertEqual(p.resolve({"mount": ["door", "side"], "assets": ["@building/house"]}),
+                             [("c1.door", (30000, 13000), ""), ("c1.side", (33000, 10000), "")])
+            s = run(flat(), insts=insts,
+                    reach=[{"profile": "walker", "from": "a",
+                            "to": [{"mount": ["door", "side"], "assets": ["corner"]}]}])
+            self.assertEqual(s.one("walked")["data"]["held"], 2)
+        finally:
+            del PACK["corner"]
 
 
 if __name__ == "__main__":

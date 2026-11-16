@@ -137,7 +137,8 @@ pair is one entry on each field it writes (section 4), applied by `fields.md` 5.
 | `max_change` below 0 for a feature | `formula.range` (`formulas.md` 6.1), at that feature. |
 | `order` not an integer | `doc.type` (`documents.md`). |
 
-Effects on `volume` fields are M5 (open): whether they obey the tiers is decided with `coast`.
+Effects on `volume` fields: closed by R37 (M5) — there is no volume field (`type = "volume"` is
+`field.type_unknown`); a floor, a deck or a cave's floor is a kind surface, so no effect writes one.
 
 ### 2.1 The names an effect sees
 
@@ -726,5 +727,5 @@ Six entries fit a 32-bit float exactly.
 | Whether 0.001 suits every field or a field states its own tolerance. | `ford`'s conformance, M1. |
 | Whether a step may pass an author's anchored tier to the features it lowers (a library rule written as a step). | `protocol.md`, by M3 (the kit run as a building library rule; `city`). |
 | Whether a derived feature is made by a step or by an engine operation. | M2, `vale` and `basin`. |
-| Whether effects on `volume` fields obey the tiers. | M5, `coast`. |
+| Whether effects on `volume` fields obey the tiers. | Closed by R37 (M5): there is no volume field. |
 | The lint key `checks` and `authority.unchecked` (section 7). | Queued for M2 by R31; `basin`. |

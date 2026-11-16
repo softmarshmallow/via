@@ -6,6 +6,8 @@
 # above the object's base, the base plate's underside (assets.md 12.2; the station's roofs do the
 # same). Read from the spike's sidearm, centimetres to metres, the lowest part's underside at 0.
 
+root = "models"                   # the leaning grip's model (make_grip.py); every other part a primitive
+
 [taxon."part/sidearm"]
 defaults = { collision = "box" }
 
@@ -16,12 +18,10 @@ taxon     = "part/sidearm"
 sink      = -0.093
 colour    = [0.18, 0.18, 0.19]
 
-[asset.grip]                     # upright: a part does not tilt (rules.md 6); the spike leaned it 0.28
-primitive = "box"
-size      = [0.046, 0.025, 0.088]
+[asset.grip]                     # leaning 0.28 as the spike's: a part stands upright (rules.md 6), so a
+file      = "grip.glb"           # leaning one is a model (assets.md 12.5), written by make_grip.py
 taxon     = "part/sidearm"
 sink      = -0.005
-colour    = [0.32, 0.2, 0.12]
 
 [asset.base_plate]
 primitive = "box"
@@ -50,7 +50,8 @@ taxon     = "part/sidearm"
 sink      = -0.068
 colour    = [0.6, 0.6, 0.62]
 
-[asset.barrel]                   # a rod in the spike; a primitive cylinder stands upright, so a box
+[asset.barrel]                   # a rod in the spike; a primitive cylinder stands upright, so a box.
+                                 # Its crown 2 mm ahead of the slide at rest (world.toml `barrel`)
 primitive = "box"
 size      = [0.084, 0.016, 0.016]
 taxon     = "part/sidearm"

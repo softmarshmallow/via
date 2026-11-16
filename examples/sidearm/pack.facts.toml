@@ -1,0 +1,17 @@
+# Written by via pack accept. Do not edit.
+
+[asset.grip]
+bounds = [-0.035, -0.012, 0, 0.036, 0.013, 0.088]
+origin = [0, 0, 0]
+footprint = [[-0.035, -0.012], [0.036, -0.012], [0.036, 0.013], [-0.035, 0.013]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = -0.005
+colour = [0.8, 0.8, 0.8]
+taxon = "part/sidearm"
+tags = []
+files = { "grip.glb" = "262b14bcf1dd4e360178fe3e2281d1d757e95606391f33f5d69c72f300f0e963" }

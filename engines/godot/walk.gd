@@ -207,7 +207,8 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 			next += 1
 		var aim: Vector2 = ways[next] if next < ways.size() else goal
 		var left := p.distance_to(goal)
-		if next >= ways.size() and left <= ARRIVE:
+		# Not in the air: a walker falling past its target has not arrived (build.md 15.1).
+		if next >= ways.size() and left <= ARRIVE and not airborne:
 			report.outcome = "arrived"
 			break
 		var to_aim := maxf(p.distance_to(aim), 1e-6)
@@ -266,7 +267,9 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 			trail_at = 0.0
 			trail.append(Vector3(body.position.x, feet, body.position.z))
 		var d: float = wading(loader, q.x, q.y, feet)
-		if d > WADE:
+		# In the air it is falling, not wading: off a deck into a river is `fell` once it lands
+		# (build.md 15.1), never `arrived` because the target stands in the water.
+		if d > WADE and not airborne:
 			# Too deep to wade: it stops at the shore, the step into it taken back.
 			body.position = Vector3(body.position.x - (q.x - p.x), body.position.y, body.position.z + (q.y - p.y))
 			walked -= q.distance_to(p)

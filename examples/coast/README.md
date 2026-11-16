@@ -28,6 +28,7 @@ in the v1 vocabulary: everything that is not the terrain is a kind surface of a 
 
 ```
 export VIA_LIB=$PWD/lib
+via config program python $PWD/sdk/python/.venv/bin/python     # steps run on Python 3.12 (3.11+)
 via trust examples/coast/world.toml
 via build examples/coast/world.toml --out build/coast
 (cd examples/coast && via query world.toml surfaces_at --in cave_points.json --out ../../build/coast.sat.json)

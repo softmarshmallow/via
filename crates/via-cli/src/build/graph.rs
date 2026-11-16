@@ -701,6 +701,9 @@ impl<'a> CliPlan<'a> {
         self.step_chain_nodes(&mut made_from, &mut edges, step_reads);
         let prev_edges = prev.edges();
         let prev_made_from = prev.made_from();
+        let now = via_graph::CauseGraph::new(self.model.statements(), &made_from, &edges, prev);
+        let before =
+            via_graph::CauseGraph::new(self.model.statements(), &prev_made_from, &prev_edges, prev);
         let chains_to = |targets: &[NodeId]| -> BTreeMap<String, Vec<String>> {
             let mut m: BTreeMap<String, (usize, NodeId, Vec<String>)> = BTreeMap::new();
             let mut ts: Vec<&NodeId> = targets
@@ -709,9 +712,7 @@ impl<'a> CliPlan<'a> {
                 .collect();
             ts.sort();
             for t in ts {
-                for c in
-                    via_graph::causes_from(self.model.statements(), &made_from, &edges, prev, t)
-                {
+                for c in now.causes(t) {
                     let path: Vec<String> = c.path.iter().map(ToString::to_string).collect();
                     let better = m.get(&c.statement).is_none_or(|(n, _, _)| path.len() < *n);
                     if better {
@@ -728,13 +729,7 @@ impl<'a> CliPlan<'a> {
             ts.sort();
             let mut old: BTreeMap<String, (usize, Vec<String>)> = BTreeMap::new();
             for t in ts {
-                for c in via_graph::causes_from(
-                    self.model.statements(),
-                    &prev_made_from,
-                    &prev_edges,
-                    prev,
-                    t,
-                ) {
+                for c in before.causes(t) {
                     if m.contains_key(&c.statement) {
                         continue;
                     }

@@ -192,13 +192,22 @@ class CrossingWorld(unittest.TestCase):
 
     def test_the_parapet_stands_on_the_deck(self):
         """A run `on` the crossing stands on its one surface, the deck (surfaces.md 4.1): each post
-        at its offset, `deck_z - 0.02 * 1.925`, not the beck's bank under the deck."""
+        at its offset, `deck_z - 0.02 * 1.925` mid-span and, over the heads' hold, the deck's
+        `lift` (0.01 a metre) instead of its camber (kinds.toml), not the beck's bank under it."""
         with open(os.path.join(self.build, "instances", "names.txt")) as f:
             names = f.read().split()
-        zs = self.npy("z")
+        zs, xs = self.npy("z"), self.npy("x")
+
+        def ss(e0, e1, a):
+            u = min(max((a - e0) / (e1 - e0), 0.0), 1.0)
+            return u * u * (3 - 2 * u)
+
         for i, n in enumerate(names):
             if "parapet" in n:
-                self.assertAlmostEqual(float(zs[i]), DECK_Z - 0.02 * 1.925, places=3)
+                t = (float(xs[i]) / 1000 - 51) / 18
+                e = max(1 - ss(0.08, 0.2, t), ss(0.8, 0.92, t))
+                want = DECK_Z - 0.02 * 1.925 * (1 - e) + 0.01 * 1.925 * e
+                self.assertAlmostEqual(float(zs[i]), want, places=3)
 
     def npy(self, name):
         """One column of the instances (`build.md` 8): a little-endian 1-d array."""

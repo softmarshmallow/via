@@ -490,6 +490,24 @@ layer's key; the format key is `feature`.
   above, and the grid lines are constraints too, so 3.10 needs no interior points. Vertices are
   numbered by first use, cells in rows from the south-west; triangles in that order. A cell's
   piece that 3.10 refuses is left out, so a hole is visible rather than a wrong surface.
+  **Skirt (M5, decided).** A path owner's surface with `cut` also covers, in each cell the cut
+  file (6.5) marks, the cell's part within its **skirt** and outside its bound, triangulated by
+  3.10 as its own piece beside the cell's part within the bound (so the bound's outline stays a
+  constraint and the strip's edges stay exact): the skirt is the strip stroked as the bound is
+  (round joins, butt ends) at `bound` plus `ceil(0.7072 * resolution)` mm, the farthest a cut quad
+  (its centre in the strip) reaches past it. Heights there are the formula's (`base` read past the
+  bound). So
+  a sheer face's mesh (lib/land `sheer_cliff`, its formula flat at the brink and the foot past
+  its strip) closes the slivers its cut quads open each side of it, where M5 slice 3 drew a
+  saw-tooth of open slivers along the brink (`monastery`: 124 m^2 of the east wall's 753 m^2 of
+  cut quads seen through, 0.2 after). A cut cell counts when its centre lies in the bound of a
+  cutting surface of the owner's kind and name (its own, or another piece's), so two pieces of a
+  face meeting square at a joint each cover their side of it, and a neighbour of another kind (a
+  cave's floor, a pad) is not covered: its cut cells are its own, and a face's flat foot laid over
+  them would lie at about the floor's height (M5 close, decided, open to the owner; it was any
+  cut cell; cases `skirt_neighbour`, `skirt_moved`). A region owner (a room's floor) has no
+  skirt: its cut quads past its outline are under its walls. The mesh's `write` node of such an
+  owner reads what the cut file's reads (6.5), since the cells it covers follow the cut. Ours.
   Normals are per vertex: the sum of the touching triangles' cross products (area-weighted), unit
   length, in f64 then single precision. A mesh's `write` node reads its owner's shape and
   attributes, the world, the pack, its kind's statement and the colour of each material its kind's
@@ -778,7 +796,7 @@ owns what it does. A form that chapter has not settled is marked (open). Exit st
 | `via merge WORLD` | Prints the merged document in canonical JSON (`documents.md` 8). | `documents.md` 8 | M1 |
 | `via lock WORLD LOCK` | Builds, then writes the record of `[lock.LOCK]` (`identity.md` 4.4). | `identity.md` 4.4 | M3 |
 | `via check DIR` | Reads a build directory alone and writes nothing into it. Below. | this chapter | M1 |
-| `via explain [CODE] [WORLD]` | Prints a code's registry row; with no code, every code by group; `step.<id>.<name> WORLD` prints a step's text from the last build. | `diagnostics.md` 2 | M1 |
+| `via explain [CODE] [WORLD]` | Prints a code's registry row; with no code, every code by group; `step.<id>.<name> WORLD` prints a step's text from the last build (the world's default build directory, or `--out`'s); with no build there it is `cli.usage` naming the directory looked in (M5 close). | `diagnostics.md` 2 | M1 |
 | `via explain NODE WORLD` | Prints a node's cause in the last build and its chain of causes back to a leaf, from the run report beside the world's default build directory, or `--out`'s. An argument holding `:` is a node id; a code never holds one. A node the last build did not hold is `cli.usage`, naming the nearest node id. | `graph.md` 6.3 | M1 |
 | `via pack check PACK` | Checks a pack without a world; writes nothing. | `assets.md` 8.1 | M1 |
 | `via pack list PACK` | Prints each asset's resolved facts as JSON Lines. | `assets.md` 8.2 | M1 |
@@ -987,13 +1005,19 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   most 0.3 m above its feet (the walker's `step`) is stepped onto, also when pressed into the crease
   where a sloping tread meets it and not moving; the ground and instances are never
   stepped. It stops `arrived` within 1 m of the
-  target or against the target's own body (an item of a set placement the target names counts); `blocked` when it gains less than 0.1 m in 1 s, naming
+  target in plan, standing (never in the air), or against the target's own body (an item of a set
+  placement the target names counts). Arrival ignores height: a walk to a target on an upper floor
+  is judged by `on.stop` (the floor it stopped on), not by `arrived`, since standing under the
+  target on the floor below is within 1 m in plan too. A route reaching a flight takes a point in
+  the flight's own line before its foot, or the next point (its head) is nearer and the foot is
+  skipped (M5 close, a fresh agent's trip); `blocked` when it gains less than 0.1 m in 1 s, naming
   what it pressed against (an instance, or `ground` with the slope, walkable up to 40 degrees);
   `fell` after a drop through the air of more than 1 m beyond what the ground falls under its path
   (a ledge), or below the lowest ground, a descent down ground too steep to walk with no ledge being
   `blocked` by `ground` with its slope, as going up; at the shore of water deeper than a person
   wades (0.7 m, the walker's `wade`; depth is the water's surface less the walker's feet, so a deck
-  or floor over deep water is walked), `blocked` by `water`, or `arrived` (by `water`) when the
+  or floor over deep water is walked; tested only standing, so a walker falling off a deck into a
+  river is `fell` when it lands, M5 close), `blocked` by `water`, or `arrived` (by `water`) when the
   target itself stands in such water, as a walk to a house ends at its wall; `timed_out` at three
   times the straight line's time plus 5 s. It records the deepest water it waded and every `solid` instance
   whose footprint it walked through because its asset collides as nothing. Each walk is rendered

@@ -1,0 +1,26 @@
+name       = "skirt"
+extent     = [0, 0, 32, 32]
+resolution = 1
+include    = ["skirt_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# The ledge of case `skirt`: its strip is y - x from -0.507 to 0.907.
+[feature.ledge]
+kind = "ledge"
+path = [[8, 8.2], [24, 24.2]]
+top  = 10
+
+# A second piece of the same kind beside it (its strip y - x from 0.893 to 2.307): the cells it
+# cuts on y - x = 1 lie in the ledge's skirt, so the ledge's mesh covers its side of them, as two
+# pieces of a face at a joint (build.md 10, Skirt).
+[feature.shelf]
+kind = "ledge"
+path = [[8, 9.6], [24, 25.6]]
+top  = 10
+
+# Moved 4.4 m away: the ledge's mesh no longer reads those cells.
+[change.apart.feature.shelf]
+path = [[8, 14], [24, 30]]

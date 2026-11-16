@@ -9,7 +9,7 @@ extends SceneTree
 const Loader := preload("res://addons/via_loader/loader.gd")
 const Walk := preload("res://walk.gd")
 
-const EXPECTED := 25
+const EXPECTED := 26
 var failed := 0
 var ran := 0
 
@@ -118,6 +118,11 @@ func _run() -> void:
 	r = await Walk.walk(root, loader, Vector3(5, 3, Walk.EYE), Vector3(32, 3, 0.0), "elsewhere", [])
 	check("on the ground it stops at the shore, blocked by water", r.outcome == "blocked" and r.by == "water"
 		and r.stop[0] > 8.5 and r.stop[0] < 10.0, Walk.summary(r) + " " + str(r.stop))
+	# off the floor's east edge toward a point in the water: it falls, though the target is wet
+	# (city's bridges walked off their decks and said `arrived`)
+	r = await Walk.walk(root, loader, Vector3(20, 12, 3.0 + Walk.EYE), Vector3(25.8, 12, 0.0), "in_water", [])
+	check("off the floor's edge into deep water it falls, not arrives", r.outcome == "fell" and r.drop > Walk.FALL,
+		Walk.summary(r) + " " + str(r.stop))
 	loader._water = dry_water
 
 	# along a path (a bookmark's `along`): north 3 m, east 5 m, then to the target 3 m south; a

@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "build.md 10, Skirt (M5 close, decided): a face's skirt covers only cut cells whose centre lies in the bound of a cutting surface of the owner's kind and name; a pad of another kind beside the ledge, not touching its strip, leaves the ledge's mesh at case `skirt`'s 134 triangles (any cut cell counted before, and the face's flat foot lay over the pad's cut, as at a cave floor)."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/cases/surfaces/skirt_neighbour/lib"
+to   = "lib"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+# Meshes by place: ledge.face, pad.floor.
+[action.build.file.triangles]
+path    = "build/build/manifest.json"
+pointer = "/meshes/0/triangles"
+value   = 134

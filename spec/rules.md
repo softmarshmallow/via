@@ -486,7 +486,12 @@ and asset facts; two storeys are two surfaces, so a thing on one never clashes w
 other (station: ten shell pieces of the ground floor gave way to furniture upstairs), and a roof
 lifted onto its walls by its `sink` clears the furniture beneath it. Whether a tall piece on one
 storey reaches through the floor above is a library lint over `surfaces_at`, not this test. Ours.
-Cases: `surfaces.md` Conformance, `storey_overlap`.
+The terrain and a kind surface count as one level where the surface stands on the ground: one
+whose kind writes `cut`, or whose bound meets the thing's footprint on the terrain (R40, owner's
+ruling, M5 slice 2 fix): a ground floor and the yard outside it are one floor to stand furniture
+on, so a chest on the floor and a barrel on the ground reaching onto it clash as on one surface; their
+spans are still compared from their own datums (TODO, the level test, Later). Cases: `surfaces.md`
+Conformance, `storey_overlap`, `ground_floor_clash`.
 
 | Between | Result |
 |---|---|
@@ -578,8 +583,9 @@ Each form, in a line; their cases are the libraries':
   path's ends and either side of each gap `keep_out` opens, a corner piece at each turn, bays at
   `params.pitch` and fillers for the rest, what is left spread over the joints or taken by a
   gap's edge, each piece level at its origin with `sink` as its footing; a stretch that cannot
-  close is the step's error naming the lengths that would. With `ends = "inside"` (a row of
-  houses, `market`) an end piece stands wholly inside its stretch and a free end takes what is
+  close is the step's error naming the lengths that would. With `caps = "inside"` (a row of
+  houses, `market`; the step's param was `ends` until the M5 close, renamed so `ends` is only the
+  core run's key) an end piece stands wholly inside its stretch and a free end takes what is
   left; neighbours whose chords turn, or that would meet once rounded to the lattice, stand apart.
 - **Dress** (M5): a `scatter` with `within` naming the region to dress, often a footprint feature
   (`within = "cottage.ground"`). A table top that is a surface is `surfaces.md`'s.

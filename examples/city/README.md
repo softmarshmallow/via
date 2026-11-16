@@ -90,8 +90,8 @@ every lot a house fits gets one.
 - **The freeway lies on the ground between viaducts.** The spike's crosstown freeway, over the
   river and three avenues on a viaduct, is still left out.
 - **The bridges are decks over the river** since M5 slice 2 (lib/ways `crossing`'s kind surface; 284
-  wet posts under the three), but lib/review's reach walks the terrain only, so the river cuts the
-  city in two for it (`reach` 2 of 6, OWED in expect.toml).
+  wet posts under the three), and lib/review's reach, which walked the terrain only (`reach` 2 of 6), now walks
+  the decks through their meetings (surfaces.md 4.4): 6 of 6 in base and every change.
 - **Boxes**: the starter pack's two row houses everywhere; the spike's towers, mid-rises and sheds
   per district need buildings as a library (M5).
 

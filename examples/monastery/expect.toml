@@ -26,13 +26,13 @@
 measure = "errors"
 band    = [0, 0]
 
-[base.warnings]                             # 9 measured: the 7 OWED unreached below and the 2 crossings of the
-measure = "warnings"                        # bridge over the gorge's faces (`unowned`); 7 at HEAD
-band    = [9, 9]
+[base.warnings]                             # 2 measured: the 2 crossings of the bridge over the gorge's
+measure = "warnings"                        # faces (`unowned`); 9 with the 7 unreached while reach walked
+band    = [2, 2]                            # the terrain only (M5 slice 2 to 3)
 
-[base.reach]                                # OWED (M5 slice 2): 3 of 10, as at HEAD. lib/review's reach walks the
-measure = "reach_held"                      # terrain only; the deck is a kind surface since slice 2, so the
-band    = [10, 10]                          # gorge cuts the road from the gate (TODO; townland's rows)
+[base.reach]                                # all held: lib/review's reach walks the deck (a kind surface
+measure = "reach_held"                      # since slice 2) through its meetings (surfaces.md 4.4, M5);
+band    = [10, 10]                          # 3 of 10 when it walked the terrain only
 
 [base.reach_pairs]
 measure = "reach_pairs"
@@ -42,7 +42,7 @@ band    = [10, 10]
 measure = "not_sealed"
 band    = [0, 0]
 
-[base.unreached]                            # OWED: 7 (as at HEAD), the reach rows' cause
+[base.unreached]                            # 7 when reach walked the terrain only
 measure = "unreached"
 band    = [0, 0]
 
@@ -140,7 +140,7 @@ band    = [1, 1]
 measure = "instances_removed"
 band    = [0, 0]
 
-[guesthouse.reach]                          # OWED (as base.reach: 3 of 11): the guesthouse's door reached from the road over the bridge
+[guesthouse.reach]                          # the guesthouse's door reached from the road over the bridge (3 of 11 on the terrain only)
 measure = "reach_held"
 band    = [11, 11]
 
@@ -178,7 +178,7 @@ band    = [-0.3, 0.1]
 measure = "geom.unowned_crossing"
 band    = [2, 2]
 
-[move_bridge.reach]                         # OWED (as base.reach: 3 of 10)
+[move_bridge.reach]                         # all held (3 of 10 on the terrain only)
 measure = "reach_held"
 band    = [10, 10]
 
@@ -226,7 +226,7 @@ band    = [0, 0]
 measure = "errors"
 band    = [0, 0]
 
-[winter.reach]                              # OWED (as base.reach: 3 of 10)
+[winter.reach]                              # all held (3 of 10 on the terrain only)
 measure = "reach_held"
 band    = [10, 10]
 

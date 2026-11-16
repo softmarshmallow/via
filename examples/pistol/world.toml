@@ -96,24 +96,24 @@ on = { ref = "pistol" }
 
 [feature.bm_left]                           # the left side, square on
 kind       = "bookmark"
-at         = [0.41, 0.02]
+at         = [0.4, 0.03]
 toward     = "centre"
-eye_height = 0.1
+eye_height = 0.09
 
 [feature.bm_quarter]                        # three-quarter, muzzle toward the eye
 kind       = "bookmark"
-at         = [0.72, 0.1]
-toward     = "centre"
-eye_height = 0.2
-
-[feature.bm_rear]                           # down the sights from behind
-kind       = "bookmark"
-at         = [0.1, 0.32]
+at         = [0.6, 0.17]
 toward     = "centre"
 eye_height = 0.16
 
+[feature.bm_rear]                           # down the sights from behind
+kind       = "bookmark"
+at         = [0.17, 0.31]
+toward     = "centre"
+eye_height = 0.15
+
 [feature.bm_right]                          # the right side, from above
 kind       = "bookmark"
-at         = [0.36, 0.58]
+at         = [0.38, 0.47]
 toward     = "centre"
-eye_height = 0.25
+eye_height = 0.2

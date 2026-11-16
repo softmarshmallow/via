@@ -78,8 +78,9 @@ A cold build takes about 3 s, a change about 2.5 s.
   `flow` past the faces (`face_pool` 0.06).
 
 - **The deck is a surface over the gorge** since M5 slice 2 (no longer a causeway; 11 wet posts
-  under it), but lib/review's reach walks the terrain only, so the road no longer reaches the gate
-  (`reach` 3 of 10, OWED in expect.toml, as in townland).
+  under it). lib/review's reach walked the terrain only, so the road reached the gate no longer
+  (`reach` 3 of 10); it now walks the deck through its meetings with the road and the approach
+  (surfaces.md 4.4): 10 of 10, and `no_bridge` keeps every sealed pair.
 - **The wall is a run of wall bays** since M5 slice 3 (`court_wall`, the starter pack's `wall_bay` at
   scale 1.5: 2.4 m high, 98 bays): masonry the engine draws and collides, owned by the run, the gap
   5.1 m where the span ends at the gate (`bm_gate`, `bm_court`). No coping, no gatehouse; bays at a

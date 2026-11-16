@@ -29,7 +29,7 @@ brink_dev_mm     = { band = [0, 5] }        # 1: the face's brink lies along its
 terrain_brink_dev_mm = { band = [300, 520] } # ... where the terrain alone draws it 491 mm off
 step_left        = { band = [0, 0] }        # no step of the terrain left drawn beside the face
 face_cut         = { band = [400, 600] }    # 495 quads under the face
-sliver_m2_per_m  = { band = [0, 0.2] }      # 0.129 m2 a metre open at foot and brink (lib/land)
+sliver_m2_per_m  = { band = [0, 0.02] }     # 0: the face's skirt covers its cut quads (build.md 10); 0.129 before
 deck_wet         = { band = [60, 100] }     # 81 of 257 posts under the deck in the beck
 under_depth_m    = { band = [0.2, 0.5] }    # 0.3: the beck's `flow`, running on under the deck
 freeboard_m      = { band = [0.5, 3] }      # 1.49
@@ -48,7 +48,7 @@ roof_min_m       = { band = [15, 21] }      # 18.63
 cave_reached     = { band = [1, 1] }
 brink_dev_mm     = { band = [0, 5] }        # 1
 step_left        = { band = [0, 0] }        # the old mouth closed: no step left drawn there
-sliver_m2_per_m  = { band = [0, 0.2] }      # 0.124
+sliver_m2_per_m  = { band = [0, 0.02] }     # 0 (0.124 before the skirt)
 
 [long_deck]                                 # the deck 16 m to 24 m
 errors           = { band = [0, 0] }

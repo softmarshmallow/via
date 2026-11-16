@@ -233,7 +233,12 @@ impl Surface {
             .place_surface
             .iter()
             .filter_map(|(n, s)| {
-                let point = build.features.get(n).is_some_and(|f| f.shape == "point");
+                // An instance or a path's end named as a target is a point too: within the
+                // bound's grace it takes the surface's `base` (4.1).
+                let point = match build.features.get(n) {
+                    Some(f) => f.shape == "point",
+                    None => !build.surfaces.contains_key(n),
+                };
                 Some((n.clone(), (build.surfaces.get(s)?.clone(), point)))
             })
             .collect();

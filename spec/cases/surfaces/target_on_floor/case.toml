@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 (M5 close): an instance named as a target takes the z of the surface it stands on, and a path's end named as a target the surface its `ends_at` names, in features.json (both took the terrain's 10: station's tower views looked down through their floors). Moving the instance to the lower storey rebuilds features.json on the same store (the file's key holds the instance's statement)."
+milestone = 5
+actions   = ["base", "lower"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+# Features in id order: at_lamp, at_top, hall_1, hall_g, up.
+[action.base.file.lamp]
+path    = "build/base/features.json"
+pointer = "/features/0/attrs/toward/at"
+value   = [30, 26, 13.3]
+
+[action.base.file.top]
+path    = "build/base/features.json"
+pointer = "/features/1/attrs/toward/at"
+value   = [20, 24, 13.3]
+
+[action.lower]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "lower", "--against", "build/base", "--out", "build/lower"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/lower"
+
+[action.lower.file.lamp]
+path    = "build/lower/features.json"
+pointer = "/features/0/attrs/toward/at"
+value   = [30, 26, 10.3]

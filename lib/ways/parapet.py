@@ -21,7 +21,9 @@ core grounds a run on its surface, its members stand on the terrain).
 
 `params`: `asset` (an asset id, or `@<taxon path>`: the first id under it bytewise; default
 `@prop/fence`), `spacing` (metres between posts, default 2). Codes are `step.<id>.<code>`:
-`params` (error), `no_piece` (warning: no asset to place, nothing returned), `laid` (info).
+`params` (error), `no_piece` (warning: no asset to place, nothing returned), `narrow` (warning:
+the piece leaves no deck between the rows), `short` (warning: the end insets leave no length
+along the deck), `laid` (info).
 
 Ours, written for this library (surfaces.md 5: "a deck's parapet as a run"). Library code imports
 only viasdk and the standard library (R19b).
@@ -38,6 +40,8 @@ EXPLAIN = {
     "that taxon. Nothing is placed along the deck.",
     "narrow": "The parapet piece is as wide as the deck or wider: two rows of it would not leave the "
     "deck open. Nothing is placed.",
+    "short": "The parapet piece is as deep along the deck as the deck is long, or deeper: inset by half "
+    "its depth at each end, the run has no length left. Nothing is placed.",
     "laid": "What the parapet step returned for one crossing: two runs of posts, one along each edge "
     "of its deck.",
 }
@@ -82,6 +86,16 @@ def runs(name, width, piece_id, piece_w_mm, spacing, piece_d_mm=0, length_mm=0):
     k = key_of(name)
     return [{"key": f"{k}_parapet_{side}", "asset": piece_id, "spacing": spacing, "ends": "both",
              "on": {"ref": name, "span": [s, round(1 - s, 6)], "offset": off}} for side, off in (("l", o), ("r", -o))]
+
+
+def refusal(width, piece_w_mm, piece_d_mm=0, length_mm=0):
+    """Why `runs` gave None: `narrow` (no deck between the rows) or `short` (no length between the
+    end insets); None when it gives runs."""
+    if round(width / 2 - piece_w_mm / 2000, 3) <= 0:
+        return "narrow"
+    if length_mm > 0 and round(piece_d_mm / 2 / length_mm, 6) >= 0.5:
+        return "short"
+    return None
 
 
 def _list(col):
@@ -132,6 +146,11 @@ def generate(step):
     width, length = read_deck(step, name)
     got = runs(name, width, piece[0], piece[1], p["spacing"], piece[2], length)
     if got is None:
+        if refusal(width, piece[1], piece[2], length) == "short":
+            step.warning("short", "feature." + name, f"`{piece[0]}` is {piece[2] / 1000:g} m deep; `{name}`'s deck "
+                         f"is {length / 1000:g} m long", "use a shallower piece, or a longer crossing",
+                         explain=EXPLAIN["short"])
+            return
         step.warning("narrow", "feature." + name, f"`{piece[0]}` is {piece[1] / 1000:g} m wide; `{name}`'s deck "
                      f"is {width:g} m", "use a narrower piece", explain=EXPLAIN["narrow"])
         return

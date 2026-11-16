@@ -150,6 +150,7 @@ def measure(build, surfaces=None):
             groups.add(head)
     out["on_floor"], out["off_floor"] = good, bad
     out["off_floor_groups"] = " ".join(sorted(groups))
+    out["in_flight"], out["in_flight_names"] = in_flight(d, fs, names, z, asset_of)
 
     if surfaces:
         s = json.loads(Path(surfaces).read_text())
@@ -177,6 +178,47 @@ def pack_tables():
         if cur is not None and m:
             cur[m.group(1)] = m.group(2).strip()
     return out
+
+
+def in_flight(d, fs, names, z, asset_of):
+    """Dressing standing in a flight's way: an instance on the floor at the flight's foot (its z
+    within 0.05 m of `z0` less its sink) whose plan disc (half its primitive's larger side) comes
+    within the walker's radius (0.3 m, walk.gd) of the flight's line at a station where the tread
+    is lower than the thing's top: the walker on the line meets it. Stations every 0.1 m along the
+    line, the rise by length. Walls, lay# pieces and shrubs are left out (the shell, not dressing).
+    Reason: move_stair laid stair_2's foot at the living table and no lint said so."""
+    tables = pack_tables()
+    sinks = pack_sinks()
+    xs, ys = npy(d / "instances" / "x.npy"), npy(d / "instances" / "y.npy")
+    hit = set()
+    for f in fs:
+        if f["kind"] != "flight":
+            continue
+        pts = [(p[0], p[1]) for p in f["points"]]
+        z0, z1 = f["attrs"]["z0"], f["attrs"]["z1"]
+        segs = list(zip(pts, pts[1:]))
+        total = sum(math.dist(a, b) for a, b in segs)
+        stations, run = [], 0.0
+        for a, b in segs:
+            L = math.dist(a, b)
+            for k in range(int(L * 10) + 1):
+                s_ = k / 10 / L if L else 0
+                stations.append(((a[0] + (b[0] - a[0]) * s_, a[1] + (b[1] - a[1]) * s_), (run + k / 10) / total * (z1 - z0)))
+            run += L
+        for r, (n, v) in enumerate(zip(names, z)):
+            if "_wall" in n or n.startswith(("lay#", "shrubs#")):
+                continue
+            a = asset_of.get(r)
+            t = tables.get(a, {})
+            if "size" not in t:
+                continue
+            sx, sy, sz = (float(c) for c in t["size"].strip("[]").split(","))
+            if abs(v - (z0 - sinks.get(a, 0.0))) > 0.05:
+                continue
+            p = (xs[r] / 1000, ys[r] / 1000)
+            if any(rise < sz and math.dist(p, q) < 0.3 + max(sx, sy) / 2 for q, rise in stations):
+                hit.add(n)
+    return len(hit), " ".join(sorted(hit))
 
 
 def pack_sinks():

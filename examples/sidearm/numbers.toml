@@ -1,0 +1,14 @@
+# The sidearm's own numbers (challenge 46): what its parts add up to, as its modeller states them,
+# millimetres, whole (numbers.md 3.1). No source publishes them: the sidearm is the spike's, read
+# from its parts (pack.toml sizes and sinks, world.toml places), with the barrel's crown 2 mm ahead
+# of the slide (the spike's stood 17 mm proud). Read by measure.py, which compares the build.
+
+[numbers]
+length       = 202   # the slide's back to the barrel's crown
+height       = 151   # the base plate's underside to the rear sight's top
+width        = 28    # the slide and the base plate
+sight_radius = 180   # the front sight's middle to the rear notch's
+crown        = 2     # the barrel ahead of the slide's face, at rest
+
+[state.racked]       # the slide drawn back (changes/racked.toml)
+travel = 32

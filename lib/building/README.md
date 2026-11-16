@@ -33,7 +33,8 @@ Library text in the form a user writes. Attributes illustrative until the code; 
 
 - **`building`** (region owner, anchored). The one feature a world writes. Attributes: `storeys`
   (integer, default 1), `storey_h` (default 3.2), `plinth` (height of the ground floor above the
-  mean ground under the outline, default 0.3), `front` (a bearing, the main door's side), `doors`
+  mean ground under the outline, default 0.3), `front` (a bearing, the main door's side: not
+  taken yet, `kinds.toml` has no default for it and `lay` reads `doors`), `doors`
   (a list of `{ storey, t, width }` on the outline, `t` as `on` takes it), `stair` (`{ t, width,
   run }`, where along the inner outline the stair climbs), `kit` (a taxon of pieces). No surface of
   its own: its storeys own them. Its footprint is solid: a `ground = "pad"` instance per building is
@@ -110,8 +111,34 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
    room reachable from the terrain by walking floors and crossing only at meetings (`surfaces.md`
    4.4, the reach lint of `lib/review` asked per building); stair going and riser within a profile;
    door `turn` under 45 degrees; kit pieces measured against `params.pitch` (the college's 6.44 m bay
-   at a 6 m pitch); a published object's measured size against its numbers (the pistol: a check that
-   reads the instance's asset and its `state:` tag, so a racked slide is not a fault).
+   at a 6 m pitch); a published object's measured size against its numbers (the pistol: its
+   measure reads the state from where the build placed the slide, spec/assets.md 12.4, not from a
+   `state:` tag, so a racked slide is not a fault; examples/pistol/measure.py).
+
+## Using it in a world (M5 close, from a fresh agent's house by a footbridge)
+
+- **Python for the steps.** `via config program python <a Python 3.11+ with viasdk>` before
+  `via trust` and `via build` (the repo's `sdk/python/.venv` is 3.12); without it the build says
+  `protocol.no_program`.
+- **Keep doors off a way's bed.** A doorway's `sill` sets the ground at its end to the floor, but a
+  way's `bed` effect reaching the same posts may win there (lib/ways: a lane's bed fades out
+  `width / 2 + 6` m from its line, a road's `width / 2 + 9`), and the meeting then gaps
+  (`surface.gap` names the doorway's end and the storey's floor, both returned by `lay`: change the
+  building's place, its `plinth` or `porch`, not those names). Stand each door's end farther from a
+  way's line than that.
+- **Turned buildings.** Any turn builds: an end that rounding to the millimetre left outside its
+  floor is moved onto it (`lay.py` rules 3 and 4, `onto`).
+- **Doors.** With no `role:door` piece in the kit a doorway is open the storey's full height
+  (`storey_h`); give the kit a door piece for a lintel.
+- **Walking to an upper floor.** A storey, flight or doorway `lay` returns has a produced name,
+  which text may not write (R3), so a bookmark cannot name it as `toward`. Place your own kindless
+  point features `on = { ref = "<building>", t, offset }` (they follow the building when it moves
+  or turns; `offset` is metres to the left of the ring's travel, inward on a region, `geometry.md`
+  2.6), list them in a kindless path, and give the bookmark `along = "<that path>"`. Put a point in
+  the flight's own line before its foot, or the walker skips the foot (`build.md` 15.1), and judge
+  the walk by `on.stop` in `sheet.json`, not by `arrived` (arrival is in plan only).
+- **Asking about it.** `via query` runs no step (`surfaces.md` 7): what `lay` returned is in the
+  build's `features.json` and `meets.json`, not in `via query`'s answers.
 
 ## What the M5 worlds need from it
 

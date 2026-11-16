@@ -1,0 +1,441 @@
+# What a pistol build must measure, per state (challenge 47; docs/plan.md M5 "the measured object
+# matches its published numbers"). Measures, never bytes (R15): each row names a measure of
+# measure.py and the band it must fall in. A section is a state: `rest` or `racked`, then
+# `+<accessory>` for each overlay fitted (accessories/<name>.toml), and measure.py checks that the
+# build's own state and accessories are those (read from the build, spec/assets.md 12.4):
+#
+#   via build examples/pistol/world.toml [--change examples/pistol/changes/racked.toml] \
+#       [--change examples/pistol/accessories/<a>.toml ...] --out BUILD --store STORE
+#   python3.12 examples/pistol/measure.py BUILD --check racked+optic
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
+# b588abc (M5 slice 3) with the M5 close agents' edits as of 2026-11-17 03:30, VIA_LIB=lib, one
+# store for all nine builds, each built once from the world with its change files (no --against).
+# Millimetres. Every size is exact by construction (make_pack.py writes the parts from
+# published.toml, so a band is one number): `length`, `width`, `height` the pistol's own parts
+# (taxon `part/`), `added_*` what the accessories add beyond them. Sources differ on the published
+# length by up to 9 mm (published.toml); the band is still the one used, since the pack is built
+# from it.
+
+
+# ------------------------------------------------------------------------------------------ rest
+# the published numbers exactly
+
+[rest.errors]
+measure = "errors"
+band    = [0, 0]
+
+[rest.length]
+measure = "length"
+band    = [219, 219]
+
+[rest.width]
+measure = "width"
+band    = [33, 33]
+
+[rest.height]
+measure = "height"
+band    = [140, 140]
+
+[rest.off_length]
+measure = "off_length"
+band    = [0, 0]
+
+[rest.off_width]
+measure = "off_width"
+band    = [0, 0]
+
+[rest.off_height]
+measure = "off_height"
+band    = [0, 0]
+
+[rest.sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+[rest.added_length]
+measure = "added_length"
+band    = [0, 0]
+
+[rest.added_height]
+measure = "added_height"
+band    = [0, 0]
+
+[rest.added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ racked
+# the slide's back 28 mm past the tail's (travel 40 less tang 12)
+
+[racked.errors]
+measure = "errors"
+band    = [0, 0]
+
+[racked.length]
+measure = "length"
+band    = [247, 247]
+
+[racked.width]
+measure = "width"
+band    = [33, 33]
+
+[racked.height]
+measure = "height"
+band    = [140, 140]
+
+[racked.off_length]
+measure = "off_length"
+band    = [0, 0]
+
+[racked.off_width]
+measure = "off_width"
+band    = [0, 0]
+
+[racked.off_height]
+measure = "off_height"
+band    = [0, 0]
+
+[racked.sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+[racked.added_length]
+measure = "added_length"
+band    = [0, 0]
+
+[racked.added_height]
+measure = "added_height"
+band    = [0, 0]
+
+[racked.added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ rest+optic
+# the hood 21 mm above the rear sight's top: added, never a fault
+
+["rest+optic".errors]
+measure = "errors"
+band    = [0, 0]
+
+["rest+optic".length]
+measure = "length"
+band    = [219, 219]
+
+["rest+optic".width]
+measure = "width"
+band    = [33, 33]
+
+["rest+optic".height]
+measure = "height"
+band    = [140, 140]
+
+["rest+optic".off_length]
+measure = "off_length"
+band    = [0, 0]
+
+["rest+optic".off_width]
+measure = "off_width"
+band    = [0, 0]
+
+["rest+optic".off_height]
+measure = "off_height"
+band    = [0, 0]
+
+["rest+optic".sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+["rest+optic".added_length]
+measure = "added_length"
+band    = [0, 0]
+
+["rest+optic".added_height]
+measure = "added_height"
+band    = [21, 21]
+
+["rest+optic".added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ rest+suppressor
+# the can's 130 mm ahead of the muzzle
+
+["rest+suppressor".errors]
+measure = "errors"
+band    = [0, 0]
+
+["rest+suppressor".length]
+measure = "length"
+band    = [219, 219]
+
+["rest+suppressor".width]
+measure = "width"
+band    = [33, 33]
+
+["rest+suppressor".height]
+measure = "height"
+band    = [140, 140]
+
+["rest+suppressor".off_length]
+measure = "off_length"
+band    = [0, 0]
+
+["rest+suppressor".off_width]
+measure = "off_width"
+band    = [0, 0]
+
+["rest+suppressor".off_height]
+measure = "off_height"
+band    = [0, 0]
+
+["rest+suppressor".sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+["rest+suppressor".added_length]
+measure = "added_length"
+band    = [130, 130]
+
+["rest+suppressor".added_height]
+measure = "added_height"
+band    = [0, 0]
+
+["rest+suppressor".added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ rest+light
+# the light under the rail, inside the pistol's length and height
+
+["rest+light".errors]
+measure = "errors"
+band    = [0, 0]
+
+["rest+light".length]
+measure = "length"
+band    = [219, 219]
+
+["rest+light".width]
+measure = "width"
+band    = [33, 33]
+
+["rest+light".height]
+measure = "height"
+band    = [140, 140]
+
+["rest+light".off_length]
+measure = "off_length"
+band    = [0, 0]
+
+["rest+light".off_width]
+measure = "off_width"
+band    = [0, 0]
+
+["rest+light".off_height]
+measure = "off_height"
+band    = [0, 0]
+
+["rest+light".sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+["rest+light".added_length]
+measure = "added_length"
+band    = [0, 0]
+
+["rest+light".added_height]
+measure = "added_height"
+band    = [0, 0]
+
+["rest+light".added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ racked+optic
+# the optic rides back with the slide, behind nothing
+
+["racked+optic".errors]
+measure = "errors"
+band    = [0, 0]
+
+["racked+optic".length]
+measure = "length"
+band    = [247, 247]
+
+["racked+optic".width]
+measure = "width"
+band    = [33, 33]
+
+["racked+optic".height]
+measure = "height"
+band    = [140, 140]
+
+["racked+optic".off_length]
+measure = "off_length"
+band    = [0, 0]
+
+["racked+optic".off_width]
+measure = "off_width"
+band    = [0, 0]
+
+["racked+optic".off_height]
+measure = "off_height"
+band    = [0, 0]
+
+["racked+optic".sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+["racked+optic".added_length]
+measure = "added_length"
+band    = [0, 0]
+
+["racked+optic".added_height]
+measure = "added_height"
+band    = [21, 21]
+
+["racked+optic".added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ racked+suppressor
+# the can stays on the barrel, which does not move
+
+["racked+suppressor".errors]
+measure = "errors"
+band    = [0, 0]
+
+["racked+suppressor".length]
+measure = "length"
+band    = [247, 247]
+
+["racked+suppressor".width]
+measure = "width"
+band    = [33, 33]
+
+["racked+suppressor".height]
+measure = "height"
+band    = [140, 140]
+
+["racked+suppressor".off_length]
+measure = "off_length"
+band    = [0, 0]
+
+["racked+suppressor".off_width]
+measure = "off_width"
+band    = [0, 0]
+
+["racked+suppressor".off_height]
+measure = "off_height"
+band    = [0, 0]
+
+["racked+suppressor".sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+["racked+suppressor".added_length]
+measure = "added_length"
+band    = [130, 130]
+
+["racked+suppressor".added_height]
+measure = "added_height"
+band    = [0, 0]
+
+["racked+suppressor".added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ racked+light
+
+["racked+light".errors]
+measure = "errors"
+band    = [0, 0]
+
+["racked+light".length]
+measure = "length"
+band    = [247, 247]
+
+["racked+light".width]
+measure = "width"
+band    = [33, 33]
+
+["racked+light".height]
+measure = "height"
+band    = [140, 140]
+
+["racked+light".off_length]
+measure = "off_length"
+band    = [0, 0]
+
+["racked+light".off_width]
+measure = "off_width"
+band    = [0, 0]
+
+["racked+light".off_height]
+measure = "off_height"
+band    = [0, 0]
+
+["racked+light".sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+["racked+light".added_length]
+measure = "added_length"
+band    = [0, 0]
+
+["racked+light".added_height]
+measure = "added_height"
+band    = [0, 0]
+
+["racked+light".added_width]
+measure = "added_width"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ racked+optic+suppressor+light
+# all three at once
+
+["racked+optic+suppressor+light".errors]
+measure = "errors"
+band    = [0, 0]
+
+["racked+optic+suppressor+light".length]
+measure = "length"
+band    = [247, 247]
+
+["racked+optic+suppressor+light".width]
+measure = "width"
+band    = [33, 33]
+
+["racked+optic+suppressor+light".height]
+measure = "height"
+band    = [140, 140]
+
+["racked+optic+suppressor+light".off_length]
+measure = "off_length"
+band    = [0, 0]
+
+["racked+optic+suppressor+light".off_width]
+measure = "off_width"
+band    = [0, 0]
+
+["racked+optic+suppressor+light".off_height]
+measure = "off_height"
+band    = [0, 0]
+
+["racked+optic+suppressor+light".sight_radius]
+measure = "sight_radius"
+band    = [165, 165]
+
+["racked+optic+suppressor+light".added_length]
+measure = "added_length"
+band    = [130, 130]
+
+["racked+optic+suppressor+light".added_height]
+measure = "added_height"
+band    = [21, 21]
+
+["racked+optic+suppressor+light".added_width]
+measure = "added_width"
+band    = [0, 0]

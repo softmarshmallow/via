@@ -171,6 +171,22 @@ band    = [0, 0.6]
 measure = "front_end_slope"                 # 80.8 degrees before (the wall ran round the end); the
 band    = [0, 36]                           # wall now fades over each end's tenth
 
+[base.reach]                                # lib/review reach (a worker since M5): every door, the side
+measure = "reach_held"                      # doors and the eight places from quay_head, and
+band    = [145, 145]                        # look_harbour sealed: every stated pair holds
+
+[base.reach_pairs]                          # 127 doors, 9 side doors, 8 places, 1 sealed
+measure = "reach_pairs"
+band    = [145, 145]
+
+[base.side_doors]                           # corner houses' `side` mounts, each walked to (M5:
+measure = "side_doors"                      # reach names `mount = ["door", "side"]`;
+band    = [9, 9]                            # before, only `door`: TODO town kit)
+
+[base.unreached]
+measure = "reach_unreached"
+band    = [0, 0]
+
 # ------------------------------------------------------------------------------------------ R13
 
 [clear_one.house_gone]                      # 1. a clear on a lot removes its row (two houses)
@@ -180,6 +196,10 @@ band    = [2, 2]
 [clear_one.lots_kept]
 measure = "lot_removed"
 band    = [0, 0]
+
+[clear_one.reach]                           # every pair holds (two doors fewer)
+measure = "reach_held"
+band    = [143, 143]
 
 [pin_one.house_replaced]                    # 2. a pin inside a cell replaces the houses it overlaps
                                             # (the shed stands across a party wall: two)
@@ -193,6 +213,10 @@ band    = [1, 1]
 [pin_one.lots_kept]
 measure = "lot_removed"
 band    = [0, 0]
+
+[pin_one.reach]                             # every pair holds (two doors fewer)
+measure = "reach_held"
+band    = [143, 143]
 
 # 3. placed on a generated street: the views `street_street` and `way_street` stand on network
 # junctions (`{ of = "town", class = "junction", near }`); `bookmarks` above counts them placed.
@@ -221,6 +245,10 @@ band    = [1, 1]                            # points, and the house no longer fi
                                             # the lot keeps its name, its outline goes 83 -> 87
                                             # points under the east edit, and the house no longer
                                             # stands clear (the core's cells, TODO M5 slice 3)
+
+[unrelated.reach]                           # every pair holds (138 of 138)
+measure = "reach_held"
+band    = [138, 138]
 
 # ------------------------------------------------------------------------------------------ move_hill
 
@@ -258,6 +286,10 @@ band    = [2, 2]
 measure = "way_end_grade"
 band    = [0, 0.35]
 
+[move_hill.reach]                           # every pair holds (102 of 102; 2 side doors)
+measure = "reach_held"
+band    = [102, 102]
+
 
 # ------------------------------------------------------------------------------------------ east_gate
 # A second exit (lib/town `entry`) at (244, 120), for `county`'s `forgotten_exit`. Built alone it
@@ -281,3 +313,7 @@ band    = [0, 0]
 [east_gate.errors]
 measure = "errors"
 band    = [0, 0]
+
+[east_gate.reach]                           # as base
+measure = "reach_held"
+band    = [145, 145]

@@ -1,0 +1,43 @@
+[asset.frame]
+primitive = "box"
+size      = [4, 1, 1]
+
+[asset.frame.mount.slide]
+at = [1, 0]
+
+[asset.frame.mount.barrel]
+at = [2, 0]
+
+[asset.slide]
+primitive = "box"
+size      = [4, 1, 1]
+sink      = -1
+
+[asset.slide.mount.sight]
+at = [2, 0]
+
+[asset.sight]
+primitive = "box"
+size      = [1, 1, 1]
+sink      = -2
+
+[asset.barrel]
+primitive = "box"
+size      = [3, 1, 1]
+sink      = -1
+
+[asset.barrel.mount.muzzle]
+at = [1, 0]
+
+[asset.can]
+primitive = "box"
+size      = [2, 1, 1]
+sink      = -1
+
+[asset.can.mount.tip]
+at = [1, 0]
+
+[asset.cap]
+primitive = "box"
+size      = [1, 1, 1]
+sink      = -1

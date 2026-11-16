@@ -13,3 +13,13 @@ region = [[21.395, 34.991], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.
 
 [feature.watch]
 region = [[21.395, 34.991], [20.854, 35.188], [20, 35.3], [19.146, 35.188], [18.35, 34.858], [17.667, 34.333], [17.142, 33.65], [16.812, 32.854], [16.7, 32], [16.812, 31.146], [17.142, 30.35], [17.667, 29.667], [18.35, 29.142], [19.146, 28.812], [20, 28.7], [20.854, 28.812], [21.65, 29.142], [21, 30.268], [21.414, 30.586], [21.732, 31], [21.932, 31.482], [22, 32], [21.932, 32.518], [21.732, 33], [21.414, 33.414], [21, 33.732], [20.845, 33.813]]
+
+# The moved stair's foot lands where the living table stood (21.5, 30.7): the table moves with it,
+# into the room's middle clear of the flight's line (measure.py `in_flight`, M5 close; the up_stair_2
+# walk was blocked by it after 1.6 m). at_stair_2 then walks to the new foot and up the flight
+# (`along`), as up_stair_2 does: straight at the stair's end it met the table's west stool.
+[instance.living_table]
+at = [21.3, 31.3]
+
+[feature.at_stair_2]
+along = "stair_2"

@@ -117,6 +117,7 @@ toward = "look_turn_1"
 kind   = "bookmark"
 on     = { ref = "road_up", t = 0.95 }
 toward = "bridge.end"
+along  = "bridge"                           # over the deck: straight, it fell off the south edge (M5 close)
 
 [feature.bm_deck]                           # on the deck, up the gorge to the tarn
 kind   = "bookmark"
@@ -154,8 +155,9 @@ eye_height = 12                             # at 1.7 m the rim hides the water b
 # floor is sealed from the road and from the court: its walls are too steep to climb down. With the
 # bridge removed (changes/no_bridge.toml) the hall is stated sealed from the road: the bridge is the
 # only way over.
-[step.reach]
+[step.reach]                                # a worker: it asks the engine for decks, floors and meetings
 when    = "lint"
+worker  = true
 command = ["python", "-m", "viasdk", "lib:review/reach.py"]
 
 [step.reach.params]

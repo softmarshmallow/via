@@ -629,8 +629,13 @@ From `docs/ledger.md` section 25, and from review of this page.
 
 | Word | v1 decision | Reason |
 |---|---|---|
-| part | `import` | "Part" means a piece of a building to everyone else. |
-| level | Not a core word; the building library says `storey`. | A level is a whole map in every engine; storey is the building-information term. |
+| part | `import` | "Part" means a piece of a building to everyone else. From M5 prose uses it in that everyday sense only: a placed thing in a thing with parts (`assets.md` 12, R42). It is no key. |
+| level | Not a core key; the building library says `storey`. In the core's prose (`rules.md` 8.1, R40) "one level" means standing on one surface, the terrain counting with a kind surface it is let into; `level` as an attribute is a library's height in world metres (a storey's floor, `lib/ways` `interchange`; R37). | A level is a whole map in every engine; storey is the building-information term. |
+| socket | Prose only: an asset mount another part or an accessory stands `on` (`assets.md` 12.1). The key is `mount`. | A modelling tool's word for a mount; not a second key. |
+| state | Prose only: the same thing in another arrangement, said once by the statement that makes it (another asset, socket or item place); a pack files a whole-thing state as a `state:<word>` tag, a library convention. The core has no state (`assets.md` 10, 12.4; R42). | No flag beside the arrangement (principle 9). |
+| accessory | Prose only: a change file that places a set on a named socket of its host (`assets.md` 12.3; R42). | A change and a set already say it (principle 10). |
+| passable | A value of `solidity` (core): claims ground as `solid` does; only a walk reads the difference (`surfaces.md` 4.4; R41). | Not a library tag beside `solid`: one fact stated once. |
+| along | `face = "along"` (core, `geometry.md` 2.6); dropped as a spike placement word (section 6); a review-library bookmark attribute naming a path to walk, read as text by the loader (`build.md` 15.1; R41). | Three senses, which principle 9 asks to part: (open), for the owner (R41). The bookmark's is a library word. |
 | set | Kept, as a core rule: a template placed by an instance, run or pin. Prose says "collection" or "group" for the everyday sense. | The doctrine names it among the three rules. |
 | portal | Dropped: an interior is an import placed on a mount. | Engines use portal for visibility culling. |
 | layer | Kept for a document only; field rows are `then`. | An engine's terrain layer is a `weights` field with `role = "material"` here. |

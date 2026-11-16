@@ -29,9 +29,11 @@ clear_min_mm     = { band = [1100, 3000] }  # every door and the step 1.1 m clea
 meshes           = { band = [12, 12] }      # a floor per storey, a tread per flight
 laid             = { band = [100, 140] }    # the loft's walls and corners
 laid_off_floor   = { band = [0, 0] }        # each on its storey's floor
+in_flight        = { band = [0, 0] }        # no dressing on a flight's line below its tread (M5 close)
 
 [move_stair]
 wall_gave_way    = { band = [0, 0] }
+in_flight        = { band = [0, 0] }        # the living table moved with the stair (1 at slice 3: up_stair_2 blocked)
 meetings         = { band = [16, 16] }
 gap_max_mm       = { band = [0, 0] }
 unreached        = { band = [0, 0] }        # the rooms the moved stair serves still reached
@@ -39,6 +41,7 @@ floors_joined    = { band = [7, 7] }
 off_floor        = { band = [0, 0] }        # the watch room's things follow its floor
 
 [close_passage]
+in_flight        = { band = [0, 0] }
 unreached        = { band = [8, 8] }        # the tower's four storeys and four rooms sealed
 unreached_names  = { text = "lantern living store tower_0 tower_1 tower_2 tower_3 watch" }
 doors_in         = { band = [3, 3] }        # the cottage's two doors and the loft's still in

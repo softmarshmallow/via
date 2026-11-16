@@ -110,7 +110,7 @@ follows = { ref = "back_lane", span = [0.14, 0.84], offset = 8.5 }
 [feature.row_lane_s]
 follows = { ref = "back_lane", span = [0.14, 0.76], offset = -8.5 }
 
-# The kit runs. `ends = "inside"`: an end house stands wholly inside its stretch, so a row never
+# The kit runs. `caps = "inside"`: an end house stands wholly inside its stretch, so a row never
 # reaches into a cross street's gap, and a row's free end takes what whole pieces leave (kit.py,
 # "Ends inside"). `joint`: two houses of a row may stand up to 0.5 m apart (an alley's width at
 # most), where a stretch between two corners cannot close wall to wall.
@@ -118,13 +118,13 @@ follows = { ref = "back_lane", span = [0.14, 0.76], offset = -8.5 }
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:town/kit.py"]
-params  = { runs = ["row_main_n1", "row_main_w", "row_mill_w", "row_church_n", "row_lane_n"], kit = "building/row", side = "right", ends = "inside", joint = 0.5 }
+params  = { runs = ["row_main_n1", "row_main_w", "row_mill_w", "row_church_n", "row_lane_n"], kit = "building/row", side = "right", caps = "inside", joint = 0.5 }
 
 [step.rows_right]                           # rows right of their street: fronts to their left
 when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:town/kit.py"]
-params  = { runs = ["row_main_s1", "row_main_e", "row_mill_e", "row_church_s", "row_lane_s"], kit = "building/row", side = "left", ends = "inside", joint = 0.5 }
+params  = { runs = ["row_main_s1", "row_main_e", "row_mill_e", "row_church_s", "row_lane_s"], kit = "building/row", side = "left", caps = "inside", joint = 0.5 }
 
 # ------------------------------------------------------------------------------------------ paint
 

@@ -40,6 +40,15 @@ class Parapet(unittest.TestCase):
 
     def test_a_piece_as_wide_as_the_deck_lays_nothing(self):
         self.assertIsNone(PAR["runs"]("bridge", 0.15, "fence_post", 150, 2.0))
+        self.assertEqual(PAR["refusal"](0.15, 150), "narrow")
+
+    def test_a_deck_no_longer_than_the_piece_is_short_not_narrow(self):
+        """A 4 m deck 0.15 m long and a 0.15 m deep post: the insets meet, so `short`, not `narrow`
+        (which says the piece is wider than the deck: false here). 0.2 m long leaves a run."""
+        self.assertIsNone(PAR["runs"]("bridge", 4, "fence_post", 150, 2.0, 150, 150))
+        self.assertEqual(PAR["refusal"](4, 150, 150, 150), "short")
+        self.assertIsNone(PAR["refusal"](4, 150, 150, 200))
+        self.assertIsNotNone(PAR["runs"]("bridge", 4, "fence_post", 150, 2.0, 150, 200))
 
     def test_params(self):
         self.assertEqual(PAR["params_of"]({})["asset"], "@prop/fence")

@@ -72,9 +72,10 @@ Names are by place (identity.md 2.2): `<run>_c<v>` the corner at the path's vert
 
 `params`: `runs` (names of path features, required); `kit` (taxon path, required); `side`
 (`"left"` or `"right"`: which side of the path the pieces' fronts face, default `"left"`);
-`joint` (metres, 0 or more, default 0.05); `ends` (`"centred"`, default, or `"inside"`).
+`joint` (metres, 0 or more, default 0.05); `caps` (`"centred"`, default, or `"inside"`; it was
+`ends` until the M5 close, renamed so `ends` keeps the core run's one meaning, rules.md 5.1).
 
-**Ends inside** (`ends = "inside"`, ours, asked by the `market` world's house rows): an `end`
+**Caps inside** (`caps = "inside"`, ours, asked by the `market` world's house rows): an `end`
 piece stands wholly inside its stretch, its side on the stretch's end, so a row of houses never
 reaches into the gap a cross street makes (a 6 m end house centred on the gap's edge stood 3 m
 into it). Its cap reach (rule 3) is its whole pitch; and a free end of the path takes what whole
@@ -131,10 +132,10 @@ def params(raw):
     joint = raw.get("joint", JOINT)
     if isinstance(joint, bool) or not isinstance(joint, (int, float)) or not joint >= 0:
         raise ParamError("joint", f"`joint` is {joint!r}", "write 0 or more metres")
-    ends = raw.get("ends", "centred")
-    if ends not in ("centred", "inside"):
-        raise ParamError("ends", f"`ends` is {ends!r}", "write `centred` or `inside`")
-    return runs, kit, side, float(joint), ends == "inside"
+    caps = raw.get("caps", "centred")
+    if caps not in ("centred", "inside"):
+        raise ParamError("caps", f"`caps` is {caps!r}", "write `centred` or `inside`")
+    return runs, kit, side, float(joint), caps == "inside"
 
 
 # ------------------------------------------------------------------------------------- the kit

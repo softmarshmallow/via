@@ -26,11 +26,13 @@ The rules (ours, written for this library; README.md is the design note):
    stairwell, a notch from the wall: for an even flight `[s0 - LANDING, s1]` one lane deep, for an
    odd one `[s0, s1 + LANDING]` two lanes deep and `T` more (both clamped to the edge), so each flight's end
    lies on the notch's side (on the outline: inside, surfaces.md 1.2) and the next flight starts on
-   the floor. A notch that reaches a corner needs the next edge square to this one, or it is
+   the floor. An end rounded to the millimetre outside its floor (an outline turned off the
+   lattice's axes) moves on along its flight, up to 3 mm, until the floor holds it (`onto`). A notch that reaches a corner needs the next edge square to this one, or it is
    refused (`params`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
    k+1>.floor"`, with `z0`, `z1` the two levels (surfaces.md 6.4).
 4. **Doors.** `doors = [{ storey, t, width }]`: a doorway square to the outline at `t`, from
-   `porch` metres outside to the outline, `ends_at = "<storey>.floor"`, `sill_z` its level, `flat`
+   `porch` metres outside to the outline (its end moved in up to 3 mm where rounding left it
+   outside, as rule 3's), `ends_at = "<storey>.floor"`, `sill_z` its level, `flat`
    at least the posts' diagonal so the sill effect holds every post round the end (kinds.toml). A
    `footpath` runs from `walk_out` metres beyond the doorway's start and `ends_at` its start; its
    own start is left free (surfaces.md 3.4: a free end is answered by nothing and checked for
@@ -172,6 +174,22 @@ def inside(ring, p):
             if x < xi:
                 hit = not hit
     return hit
+
+
+def onto(ring, p, behind, most=3):
+    """`p` (mm, on the ring's edge before rounding) or the first point up to `most` mm further
+    from `behind` along the line through both that the ring holds: an end laid on an outline or a
+    stairwell's side, rounded to the millimetre off a lattice-aligned edge, can fall a hair outside
+    its floor (a 20 degree turn gave `surface.outside`, M5 close)."""
+    if inside(ring, p):
+        return p
+    dx, dy = p[0] - behind[0], p[1] - behind[1]
+    n = math.hypot(dx, dy) or 1.0
+    for d in range(1, most + 1):
+        q = rnd((p[0] + dx / n * d, p[1] + dy / n * d))
+        if inside(ring, q):
+            return q
+    return p
 
 
 def same_dir(u, v):
@@ -672,6 +690,9 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
     for k in range(storeys):
         out["storeys"].append({"key": f"{prefix}_s{k}", "region": rings[k], "level": lv[k]})
     for path, lo, hi in sp["flights"]:
+        path = list(path)
+        path[0] = onto(rings[lo], path[0], path[1])
+        path[-1] = onto(rings[hi], path[-1], path[-2])
         out["flights"].append({"key": f"{prefix}_f{lo}", "path": path,
                                "starts_at": f"{prefix}_s{lo}.floor", "ends_at": f"{prefix}_s{hi}.floor",
                                "z0": lv[lo], "z1": lv[hi], "width": float(stair.get("width", 1))})
@@ -693,6 +714,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                                  "move the door's `t` or the stair's")
         doors_by_storey.setdefault(st, []).append(dp)
         key = f"{prefix}_d{i}"
+        dp["doorway"][-1] = onto(rings[st], dp["doorway"][-1], dp["doorway"][0])
         out["doorways"].append({"key": key, "path": dp["doorway"], "ends_at": f"{prefix}_s{st}.floor",
                                 "sill_z": lv[st], "flat": round(flat / 1000, 3)})
         if walk_out > 0:

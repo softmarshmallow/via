@@ -1,0 +1,15 @@
+name       = "skirt"
+extent     = [0, 0, 32, 32]
+resolution = 1
+include    = ["skirt_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# A diagonal strip: every quad whose centre lies within 0.5 m of the line is cut, and each reaches
+# up to 0.71 m past the strip.
+[feature.ledge]
+kind = "ledge"
+path = [[8, 8.2], [24, 24.2]]
+top  = 10

@@ -895,7 +895,12 @@ pistol's suppressor on the barrel against the sight on the slide: `graph.cycle`)
 `assets/parts_one_root`. The same loop closed across any two hosts with one part on a mount each,
 however far apart (host A's height read B's part, which reads B's height, which read A's part):
 since the slice 3 fix the overlap test is its own `overlap` node, which no height reads
-(`graph.md` 1). Case `assets/parts_two_hosts`.
+(`graph.md` 1). Case `assets/parts_two_hosts`; two trees side by side, each two parts deep with an
+accessory set three deep, `assets/parts_two_hosts_deep` (M5 close: no loop; moved half over each
+other, one `place.overlap` per pair across the trees, none within one). An overlap on a set's item
+(`acc.cap`) is located at its set placement's header, the declaration its name reads
+(`identity.md` 1); before the M5 close it was `diag.internal`. Other records raised on a set's item
+at its header (`place.keep_out`) are not yet moved (TODO).
 
 ### 12.2 A part's height
 
@@ -935,10 +940,12 @@ Each decided, open to the owner; each a modelling tool's job or a model's, not t
 
 - **A hole cut in a part by another** (a bore, an ejection port, serrations): a part's shape is its
   asset's. With primitives, a notch is the gap between two parts (`sidearm`, `pistol`: the rear
-  sight's two posts); a real pack's model has its holes.
+  sight's two posts; the optic's hood, two posts and a bar round its window); a real pack's model
+  has its holes.
 - **A tilted part** (a grip's lean, a barrel lying along its axis): instances stand upright
   (`rules.md` 6, open there). A tilted part is a model, or a box standing where the tilted part's
-  middle stood (`pistol`: the grip).
+  middle stood. `pistol` and `sidearm` write their leaning grips as models, a box sheared by the
+  lean, from a tool beside the world (`make_pack.py`, `make_grip.py`) with packgen's writer.
 - **A size or a place from a formula** (formulas.md 6.7): no. A pack holds facts (R30), and a part's
   place is a socket, not an expression. A part sized from published numbers is a pack written by a
   tool from those numbers and committed, with a check that it is current (`pistol/make_pack.py

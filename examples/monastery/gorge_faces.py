@@ -14,7 +14,8 @@ stay within 0.5 m of the straight line between its ends (its path the samples
 thinned to within 0.02 m); the face's `step` writes the straight line
 beside the face, and the land fades back to its own by `back`. Below the head (`t` from 0.29 to 1)
 `w` is 5 everywhere and both are straight in `y`: one face each side, the stream's line offset 5 m
-(mitred at its bends). The faces are written by coordinates, so moving the stream would leave them:
+(mitred at its bends). Two pieces meet square to the bisector of their segments at the joint
+(`mitre`), so their strips share the joint's line and leave no wedge. The faces are written by coordinates, so moving the stream would leave them:
 run this again (`follows` would carry the lower faces, but a path written by `follows` cannot also
 start at the piece above by name). Standard library only; the formulas are world.toml's, restated.
 """
@@ -22,7 +23,7 @@ start at the piece above by name). Standard library only; the formulas are world
 import math
 
 STREAM = [(196, 320), (198, 250), (202, 180), (206, 100), (204, 0)]
-LIP, BACK, TOL, STEP, LOWER = 0.75, 6, 0.5, 0.0025, 0.29
+LIP, BACK, TOL, STEP, LOWER, MITRE = 0.75, 6, 0.5, 0.0025, 0.29, 0.5
 
 
 def smoothstep(e0, e1, x):
@@ -108,6 +109,28 @@ def thin(pts, tol=0.02):
     return thin(pts[:k + 1], tol)[:-1] + thin(pts[k:], tol)
 
 
+def mitre(paths):
+    """Each joint of two pieces made square to the bisector of their two segments there.
+
+    A piece's strip ends square to its own last segment (a butt cap), so two pieces meeting at an
+    angle leave an open wedge on the outside of the turn and overlap on the inside (the light
+    wedges at the joints, M5 slice 3). A short segment along the bisector, `MITRE` metres (at
+    most 0.4 of the segment it cuts into) is put on each side of the joint, so both strips end
+    on the same line and the turn is taken inside each piece, at a round join.
+    """
+    out = [list(p) for p in paths]
+    for a, b in zip(out, out[1:]):
+        j, p, q = a[-1], a[-2], b[1]
+        din, dout = math.dist(p, j), math.dist(j, q)
+        u = ((j[0] - p[0]) / din + (q[0] - j[0]) / dout, (j[1] - p[1]) / din + (q[1] - j[1]) / dout)
+        n = math.hypot(*u)
+        e = min(MITRE, 0.4 * din, 0.4 * dout)
+        u = (u[0] / n * e, u[1] / n * e)
+        a.insert(len(a) - 1, (j[0] - u[0], j[1] - u[1]))
+        b.insert(1, (j[0] + u[0], j[1] + u[1]))
+    return out
+
+
 def num(v):
     return f"{round(v, 2):g}"
 
@@ -141,19 +164,19 @@ def main():
     print("# Written by gorge_faces.py (its docstring says how); do not edit by hand, run it again.")
     print("# East wall: the high ground on the left of the stream's travel (`side = 1`); west: on the")
     print(f"# right (`side = -1`). `lip` {LIP} (the world's 1 m posts: at least 0.71), `back` {BACK} (the")
-    print("# gorge is 10 m wide, so one wall's fade never reaches the other's brink), `taper` near 0 so")
+    print("# gorge is 10 m wide, so one wall's fade never reaches the other's brink), `taper = 0` so")
     print("# the pieces meet at full height, `beyond = 0` so no piece's step writes past its ends. Each piece starts at the one before's end by name, so the")
     print("# meeting of two pieces is owned (geometry.md 2.7) and held at gap 0 (surfaces.md 3.4).")
     for side, tag in ((1, "e"), (-1, "w")):
-        common = [f"side      = {side}", f"lip       = {LIP}", f"back      = {BACK}", "taper     = 0.0001", "beyond    = 0"]
+        common = [f"side      = {side}", f"lip       = {LIP}", f"back      = {BACK}", "taper     = 0", "beyond    = 0"]
         print()
         prev = None
         parts = [(pts, h, f"within {num(err)} m") for pts, h, err in pieces(0.0, LOWER, side)]
         lo = lower(side)
         parts.append((lo, (fl(lo[0]), fl(lo[-1]), g(lo[0]), g(lo[-1])), "below the head: w = 5, straight in y"))
-        for k, (pts, h, note) in enumerate(parts):
+        paths = mitre([thin(pts) for pts, _, _ in parts])
+        for k, ((_, h, note), pts) in enumerate(zip(parts, paths)):
             name = f"gorge_{tag}{k}"
-            pts = thin(pts)
             if prev:
                 pts = pts[1:]
             path = ", ".join(f"[{num(p[0])}, {num(p[1])}]" for p in pts)

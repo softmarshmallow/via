@@ -1,0 +1,10 @@
+# A cutting path owner for the case `surfaces/skirt` (build.md 10, "Skirt"): a ledge whose face is
+# a strip 1 m wide, flat at `top` past it by the formula's clamp, cutting the terrain under it.
+[kind.ledge]
+authority = "anchored"
+requires  = ["top"]
+
+[kind.ledge.surface.face]
+base  = "= top"
+bound = "= 0.5"
+cut   = "= 3"

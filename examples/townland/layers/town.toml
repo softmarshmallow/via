@@ -24,8 +24,9 @@ params  = { ways = ["main_street", "street"], meets = ["waterfront", "crossing"]
 
 # lib/review's reach lint: a walker from the west gate reaches the other gates and the market, so
 # across the crossing; every house's door from the market.
-[step.reach]
+[step.reach]                                # a worker: it asks the engine for decks, floors and meetings
 when    = "lint"
+worker  = true
 command = ["python", "-m", "viasdk", "lib:review/reach.py"]
 
 [step.reach.params]
@@ -110,11 +111,12 @@ at = [162, 222]
 kind   = "bookmark"
 on     = { ref = "west_road", t = 0.93 }
 toward = "old_bridge.end"
+along  = "old_bridge"                       # over the deck, not past its south edge (M5 close)
 
-[feature.on_bridge]                         # on the deck, looking downriver along the quay
-kind   = "bookmark"
-on     = { ref = "old_bridge", t = 0.5 }
-toward = "look_downriver"
+[feature.on_bridge]                         # mid-deck, looking along it to its end: a walk toward a
+kind   = "bookmark"                         # place downriver left the deck sideways and stopped at
+on     = { ref = "old_bridge", t = 0.5 }    # the water (M5 slice 3's on-foot review)
+toward = "old_bridge.end"
 
 [feature.bridge_bank]                       # on the west bank 18 m below the bridge, at the water's
 kind   = "bookmark"                         # edge, looking at the deck's face and the water at it
