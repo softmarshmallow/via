@@ -645,7 +645,7 @@ impl<'a> Fields<'a> {
             if imp.alone.decls.givens.contains_key(field) {
                 continue;
             }
-            if f.role != pf.role || f.weights != pf.weights || f.unit != pf.unit || pf.weights {
+            if f.role != pf.role || f.weights != pf.weights || f.unit != pf.unit {
                 continue;
             }
             let own = imp.decl.authority;
@@ -698,6 +698,68 @@ impl<'a> Fields<'a> {
                 .unwrap_or(out.len());
             out.insert(at, entry);
         }
+    }
+
+    /// One import entry on a weights field (`composition.md` 6.2): at each post of weight
+    /// `m` (the import's `w`, times its anchored cover on the anchored entry), every material's
+    /// weight becomes `(1 - m) * w[k] + m * u[k]`, `u[k]` the import's weight of `k` read by
+    /// `sample`'s rule (0 for a material it lacks). Materials in id order, in doubles. `false`
+    /// after the blend's own fault.
+    fn bring_weights(
+        &self,
+        imp: &crate::import::Imported,
+        field: &str,
+        anchored: bool,
+        weights: &mut BTreeMap<String, Vec<f64>>,
+        n: usize,
+    ) -> bool {
+        let Some(theirs) = imp.weight_values(field) else {
+            return true;
+        };
+        let Some(w) = self.import_weight(&imp.id) else {
+            return false;
+        };
+        let cover = if anchored {
+            match imp.alone.build.cover.get(field) {
+                Some(c) => Some(c),
+                None => return true,
+            }
+        } else {
+            None
+        };
+        for m in theirs.keys() {
+            weights.entry(m.clone()).or_insert_with(|| vec![0.0; n]);
+        }
+        let grid = self.grid;
+        for (i, j) in self.whole().posts() {
+            let k = post_index(&grid, i, j);
+            if w[k] <= 0.0 {
+                continue;
+            }
+            let p = via_raster::window::post_mm(&grid, i, j);
+            let mut m = w[k];
+            if let Some(c) = cover {
+                m *= imp.sample(c, p).unwrap_or(0.0);
+            }
+            if m <= 0.0 {
+                continue;
+            }
+            let mut read = BTreeMap::new();
+            for (mat, vals) in &theirs {
+                match imp.sample(vals, p) {
+                    Some(u) => read.insert(mat.as_str(), u),
+                    None => break,
+                };
+            }
+            if read.len() != theirs.len() {
+                continue;
+            }
+            for (mat, plane) in weights.iter_mut() {
+                let u = read.get(mat.as_str()).copied().unwrap_or(0.0);
+                plane[k] = (1.0 - m) * plane[k] + m * u;
+            }
+        }
+        true
     }
 
     /// An import's weight at every post (`composition.md` 6.1, 6.3): `blend` inside the footprint
@@ -801,12 +863,18 @@ impl<'a> Fields<'a> {
         } else {
             0.0
         };
+        let length = crate::import::is_length(&imp.alone.decls, field);
         let grid = self.grid;
         let mut out = Vec::with_capacity(grid.len() as usize);
         for (i, j) in self.whole().posts() {
             let (x, y) = via_raster::window::post_mm(&grid, i, j);
             let v = if imp.inside((x, y)) {
-                imp.sample(&vals, (x, y)).map_or(0.0, |v| v + lift)
+                let read = if length {
+                    imp.sample_length(&vals, (x, y))
+                } else {
+                    imp.sample(&vals, (x, y))
+                };
+                read.map_or(0.0, |v| v + lift)
             } else {
                 0.0
             };
@@ -1096,6 +1164,9 @@ impl<'a> Fields<'a> {
             // The file could not be read; its fault is said at `file`.
             return None;
         }
+        // A field derived from another (`composition.md` 6.2): its base, the other field's
+        // finished values here, which a brought entry lays the import's offset on.
+        let derived_base: Option<Vec<f64>> = derived_from(self.d, field).map(|_| cur.clone());
         let mut anchors: Vec<Anchor> = Vec::new();
         let mut hid = Hidden::default();
         let mut failed = false;
@@ -1106,9 +1177,27 @@ impl<'a> Fields<'a> {
                     let Some(imp) = self.d.imported.get(import) else {
                         continue;
                     };
+                    if fd.weights {
+                        // Each material's weight read so, then mixed by the parent's rule
+                        // (`composition.md` 6.2, `fields.md` 5.2).
+                        if !self.bring_weights(imp, field, *anchored, &mut weights, n) {
+                            failed = true;
+                        }
+                        writers.insert(import.clone());
+                        continue;
+                    }
                     let Some(vals) = imp.field_values(field) else {
                         continue;
                     };
+                    // Both sides derived from one field the import has: the import's offset from
+                    // its own, laid on this world's (6.2).
+                    let offset = derived_base.as_ref().and_then(|h| {
+                        let from = derived_from(self.d, field)?;
+                        (derived_from(&imp.alone.decls, field)? == from)
+                            .then(|| imp.field_values(&from))
+                            .flatten()
+                            .map(|g| (h, g, crate::import::is_length(&imp.alone.decls, &from)))
+                    });
                     let Some(w) = self.import_weight(import) else {
                         failed = true;
                         continue;
@@ -1126,6 +1215,7 @@ impl<'a> Fields<'a> {
                     } else {
                         0.0
                     };
+                    let length = crate::import::is_length(&imp.alone.decls, field);
                     writers.insert(import.clone());
                     let held =
                         view == View::Build && (*anchored || imp.decl.authority == Tier::Anchored);
@@ -1136,8 +1226,21 @@ impl<'a> Fields<'a> {
                             continue;
                         }
                         let p = via_raster::window::post_mm(&grid, i, j);
-                        let Some(v) = imp.sample(&vals, p) else {
-                            continue;
+                        let v = if let Some((h, g, walls)) = &offset {
+                            let Some((v, g)) = imp.sample_pair(&vals, g, p, *walls) else {
+                                continue;
+                            };
+                            h[k] + (v - g) - lift
+                        } else {
+                            let read = if length {
+                                imp.sample_length(&vals, p)
+                            } else {
+                                imp.sample(&vals, p)
+                            };
+                            let Some(v) = read else {
+                                continue;
+                            };
+                            v
                         };
                         let mut m = w[k];
                         if let Some(c) = theirs {
@@ -1830,6 +1933,18 @@ fn inside(b: &Geo, a: &Geo) -> bool {
                 .is_ok_and(|r| r.is_empty())
         }
     }
+}
+
+/// The field `field`'s base is derived from, when that base is another field read whole
+/// (`base = "= f('<name>')"`, `composition.md` 6.2).
+fn derived_from(d: &Decls, field: &str) -> Option<String> {
+    let prog = d.formulas.programs.get(&d.fields.get(field)?.base?)?;
+    let via_expr::Op::Field(i) = prog.nodes.get(prog.root)?.op else {
+        return None;
+    };
+    let sel = prog.selectors.get(i)?;
+    (sel.class == via_expr::Class::Field && d.fields.contains_key(&sel.text) && sel.text != field)
+        .then(|| sel.text.clone())
 }
 
 fn paint_into(

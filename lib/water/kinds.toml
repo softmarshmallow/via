@@ -4,7 +4,10 @@
 # - The ground is the field with role `surface` (fields.md 2.1). The beck cuts its channel into it.
 # - Water level is a field tagged `water_level` (fields.md 2.2, build.md 6.4), never a core role.
 #   Write its base as the ground, `base = "= f('height')"`, so where it is dry it equals the ground
-#   and the depth `water - ground` is 0. A loader is pointed at it with
+#   and the depth `water - ground` is 0. Written so in a world and in what it imports, the level is
+#   brought as depth over the importing world's own ground (composition.md 6.2, a field derived
+#   from another): what the join cuts or blends stays dry. `max(f('height'), sea)` is brought by
+#   value. A loader is pointed at it with
 #   `--option water=tag:water_level` (build.md 15.1).
 # - The water is a surface over the channel, level across it: at each point of the beck it stands
 #   `flow` metres above the channel floor on the beck's line, and wets only the ground below that.

@@ -22,13 +22,13 @@
 #     command = ["python", "-m", "viasdk", "lib:town/streets.py"]
 #     params  = { district = "old_town" }
 #
-#     [network.streets]                         # the core nodes them; every area is a block
-#     from   = ["kind:main_street", "kind:street"]
+#     [network.blocks]                          # the core nodes them; every area is a block
+#     from   = ["kind:main_street", "kind:street"]    # (not `streets`: a step owns that id)
 #     within = "old_town"
 #     kind   = "block"
 #
 #     [cells.lots]                              # the core cuts lots along each block's street sides
-#     within   = "streets"
+#     within   = "blocks"
 #     frontage = ["kind:main_street", "kind:street"]
 #     spacing  = 9
 #     depth    = 16
@@ -42,6 +42,12 @@
 #     worker  = true
 #     command = ["python", "-m", "viasdk", "lib:town/houses.py"]
 #     params  = { lots = "lots", ground = "pad" }
+#
+#     [step.review]                             # streets reads `high_street`, a stated fact: a lint
+#     when    = "lint"                          # must check it, or `authority.unchecked`
+#     worker  = true
+#     command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+#     checks  = ["streets", "houses"]
 #
 # Streets meet only where the network nodes them: every crossing of two of its inputs is owned by
 # the network (geometry.md 8.1, "Meetings"), so no street needs `starts_at` or `ends_at` on another.

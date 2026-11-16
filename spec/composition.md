@@ -46,6 +46,10 @@ the world namespace (`documents.md` 3). It has the rank of the layer it is decla
 | `give` | table of names | no | What the parent hands a fill (section 8). |
 
 - `at` and `on` together are `doc.placement_twice`; neither is `doc.missing_key`.
+- An import id may not be a collection's name (a top table's, or `asset`, `kind`, `material`,
+  `step`, `world`): `identity.reserved` (error), since the import's diagnostics name
+  the import as their collection (`a.feature.quay`) and `[import.feature]` would read back as the
+  parent's own feature. Case `import_reserved`. Ours, M4 slice 4 review.
 - An import takes no `scale`: a world is built at its own size (`numbers.md` 5.3).
 - The import is built in its own frame, with its own extent, resolution, seed (unless `seed` is
   written), includes, kinds, pack and layers. The parent's `[let]`, kinds and fields are not
@@ -175,12 +179,52 @@ Each field of the import is matched to the parent's field of the same name.
   declaration to add in `data.write`. Nothing of it is brought. Lesson: `atlas` exported no water
   and nothing said so.
 - The parent has a field the import lacks: the parent's own value stands under the import.
+- A field an import's generate step returns as its own (`<step>#<name>`, R32) is a produced name
+  no parent can declare: it is read inside the import (by the import's rows and formulas) and is
+  neither brought nor warned. To hand a step's result up, the import declares the field and the
+  step returns a row on it (case `import_step`). Ours (M4 slice 4: `import.field_unmatched` asked
+  for `[field.make#level]`, which no text can write).
 
 The import's value at a parent post is read at that post's point in the import's frame, by the
 rule `sample` uses (`fields.md` 1.2; bilinear between the four posts around it), plus `lift` on the
-`surface` field. On a weights field, each material's weight is read so and the parent's weights rule
-applies (`fields.md` 5). Owed: weights are not brought yet; a matched `weights` field is
-`import.weights_dropped` (warning, `data.field`) so the lost paint is said, not silent. A parent whose post spacing is coarser than the import's loses detail;
+`surface` field, with one exception for a **length** (the `surface`, or a field of unit `m`): in a
+**wall cell**, one whose four posts span more than twice the import's post spacing (a grade above
+2, 63 degrees), the value is the nearest of the four posts (a tie to the lower index, west then
+south). A field that is not a length (a tone, a density, `deg`, `ratio`, a weights plane, the
+import's cover) has no wall cells and reads bilinear: twice the spacing means nothing in its unit
+(case `turned_tone`; ours, M4 slice 4 review). A derived field read with its offset (below) decides
+the wall cell once, by the field it is derived from, and reads both at the same post, so the
+offset does not jump inside a wall cell. So a turned
+quay wall stays a wall on the parent's posts, its line a staircase of whole posts, not a row of
+half-height posts that draws as a saw edge. Source: the M4 sheet (`county`'s quay wall after
+`move_town`, turned 8 degrees: 203 posts half-way down a wall against 0 unturned, 122 with the
+rule; the rest are steeper slopes of under 2 m a cell, read bilinear). The threshold is ours; an
+import placed on whole metres at quarter turns reads every post exactly and is unchanged. On a weights field, each material's weight `u[k]` is read so (0 for a material
+the import does not paint), and the entry of mask `m` (6.4) mixes every material the parent holds
+or the import paints, in id order, in doubles: `w[k] = (1 - m) * w[k] + m * u[k]`. This is
+`fields.md` 5.2's rule with the import's weights in place of one paint: at `m = 1` the import's
+paint stands whole, and weights that summed to at most 1 on both sides still do. Paint is brought
+by material name, through section 10's one binding: on the parent's `material` field, a brought
+material the parent's pack does not bind is `pack.unknown_material` (error) at the import, since
+the build's materials are drawn from the parent's pack. Lesson: until M4 slice 4 no setts, flags
+or trail paving showed in `county` or `border` (`import.weights_dropped`, retired).
+
+**A field derived from another.** A field whose `base` is another field read whole
+(`base = "= f('height')"`: a water level that is the ground wherever nothing else is written) is
+derived from that field. When the parent's field and the import's of that name are both derived
+from one field of that same name, the import's entry is its offset laid on the parent's ground: the
+entry's value at a post is `h + (u - g)`, `h` the parent's base there (its own finished value of
+the field derived from), `u` and `g` the import's values of the two fields read by the rule above;
+the mix of 6.4 is unchanged. So where the import was dry the level is the parent's ground, whatever
+the blend or content above the join (6.5) made of that ground, and where it held water the depth
+comes with it. Any other base (a formula, `max(f('height'), sea)`) is brought by value. Source: the
+M4 sheet, `border`'s walks standing in water: 2188 posts where the brought level stood more than
+0.05 m over the ground (1.02 m at most), none of them wet in either import alone, 147 of them on
+the walks' treads. The level was the import's ground, fixed before the join's walks cut theirs and
+before the blend lowered it. The rule is ours; the alternative, each cutting kind drying its tread,
+leaves the other 2041 (the blend's) and asks every kind of every library to know the water.
+
+A parent whose post spacing is coarser than the import's loses detail;
 `import.coarser` (info) says so once per import with `data.ratio`. No filter is applied: ours, (open)
 below. The same values are what a parent formula reads as `<import>.<field>`; outside the footprint
 it reads 0, and `inside('<import>.footprint')` says where it is defined.
@@ -189,7 +233,9 @@ it reads 0, and `inside('<import>.footprint')` says where it is defined.
 
 `blend` is a per-post formula, range 0 to 1 (`formulas.md` 6.1). It reads `x`, `y` (the parent's
 frame), `d` (the distance from the footprint's outline inward, metres, 0 on the outline), the
-parent's `let` names, any parent field the import does not bring, and any `<import>.<field>`. A
+parent's `let` names, any parent field the import does not bring, any `<import>.<field>`, and the
+functions of `formulas.md` on the import's places by their scoped names (`dist('a.south_gate', 40)`,
+the place in the parent's frame). A
 parent field the import brings, read by its own name in `blend` (`f('height')`, as any field is
 read), reads itself through the blend: `graph.cycle`. Out of range is `formula.range`.
 
@@ -261,7 +307,9 @@ After the build, for the parent's `surface` field, every pair of neighbouring po
 whose two weights differ is a **seam pair**. Its grade is the difference of their finished heights
 over the post spacing. A pair whose grade is above the import's `max_grade` is a step at the join,
 unless a parent `anchored` entry on the field has mask 1 at either post: then a named thing owns
-that ground (R18), such as a way that crosses the edge at an exit. Pairs on the parent's extent edge
+that ground (R18), such as a way that crosses the edge at an exit. A `shaped` entry excuses
+nothing: a parent road of a `shaped` kind across the edge still has its pairs checked, so either
+hold its ground with an `anchored` entry or make the two grounds meet at the exit (6.7). Pairs on the parent's extent edge
 have no neighbour outside and are never seam pairs, so a footprint side along the extent needs no
 raised limit (TODO "`max_step` per side").
 
@@ -276,6 +324,13 @@ A place of the import that a parent named reference names (an exit it answers, a
 `import.place_blended` (warning) names it, with `data.weight` and `data.moved`, the height
 difference between the parent's finished surface and the import's own there (R8: "a named place
 that the blend would alter is reported").
+
+An exit on the import's edge under a fading blend is such a place (its weight is the blend's at
+`d` near 0). To keep it whole, raise the blend to 1 around the exit, by its scoped name:
+`blend = "= max(smoothstep(0, 40, d), 1 - smoothstep(12, 30, dist('a.south_gate', 40)))"` holds the
+import's ground within 12 m of `a.south_gate` and fades it as elsewhere past 30 m. The parent's way
+that answers the exit then meets the import's ground at the edge, and a step there is the seam
+check's (6.6). Source: the M4 slice 4 fresh-agent run (`hamlet`), which found this by trial.
 
 ### 6.8 Two imports
 
@@ -431,8 +486,9 @@ builds alone must build the same inside another (`border` imports `college`; `at
 Each world resolves asset ids with its own `pack` (`assets.md` 1.2), imports included: a world
 built alone looks the same placed. In a build, an asset id or material name is one binding:
 
-- Two worlds of one build that bind one asset id or material name differently (a different
-  statement digest, a different file digest) is `import.binding_differs` (error), naming the id,
+- Two worlds of one build that bind one asset id or material name differently (an asset by a
+  different statement or file digest, a material by its `colour`) is `import.binding_differs`
+  (error), naming the id,
   both packs and the worlds that use them. Hint: bind it the same, or rename it in one pack. One
   binding in two packs, or one pack shared, is one asset (`documents.md` 9).
 - Asset facts are measured once per asset in the build (`assets.md` 4); `asset.revised` lists the
@@ -480,6 +536,25 @@ digests hold no path. So two parents that reach one world by different paths sha
 | `joincheck` | `joincheck:<id>/exits` | `placed:<id>/<exit>` for each exit of the import; the merge (every parent named reference, `graph.md` 1); the attribute nodes of each answering feature | `import.exit_unanswered`, `import.exit_mismatch`, `import.exit_outside` | digest only |
 | `joincheck` | `joincheck:<id>/blended` | `placed:<id>/<name>` of each place a parent reference names; the `brought` and parent surface chunks at those places | `import.place_blended` | digest only |
 | `joincheck` | `joincheck:<id>/overlap:<other>` | `placed:<id>` and `placed:<other>`, for each pair `<id>` < `<other>` bytewise | `import.overlap` | digest only |
+
+**An import's steps.** An import's generate steps run in the parent's build, in its store, before
+the import is built, rank by rank as in a build alone (`protocol.md` 5): the import's `step` nodes
+are the parent's `<id>.step:<name>` and `<id>.step:<name>/i:<item>`, and the run report lists them
+so. Their keys are the import's own: its statements, its seed and what it is given (the memo of a
+worker's reads holds the given's digest, `graph.md` 5.1), never the frame. So a moved place finds
+every call in the store, a changed given re-runs only the calls whose reads changed, and a world
+built alone or imported shares its step results. A fill's first build, which only places it before
+the parent gives, runs no step. `--rerun-step` names an import's step by its prefixed id
+(`--rerun-step a.make`, `m.n.make` nested); a bare id names only the parent's own step (ours, M4
+slice 4 review: one set handed to every import re-ran `a.step:make` under `--rerun-step make`). An import's lint steps do not run in the parent (the parent's own
+lints read the joined build). Correction of slice 4: the import's other nodes (fields, shapes,
+places) are not yet the parent's: `import:<id>` builds them in the process, once per (file,
+seed, changes, given), so an unchanged parent rebuild still builds every import (owed, TODO).
+
+**Given features, per item.** A fill's step may run once per feature a parent gave it:
+`for_each = "given:<name>"`, the item named `<name>.<parent id>` (section 8). Inside a call,
+`features("given:<name>", ...)` selects the features given under `<name>` (`protocol.md` 4.3);
+when none was given, the given's `default` selector stands in. Ours.
 
 **Edges.** A scoped name `<import>.<name>` reads `placed:<id>/<name>`, never the whole import;
 `<import>.footprint` reads `placed:<id>`; a parent field chunk reads `brought:<id>/<field>` for that
@@ -538,6 +613,7 @@ no outside source.
 | Nested imports (`documents.md` Open) | Followed; obligations and `give` reach direct imports only | A world must build the same placed as alone. |
 | Packs (`documents.md`, `assets.md` Open) | Each world's own pack; one binding per id in a build, else an error | A world looks the same placed; no silent winner. |
 | Change files requested by an import (`documents.md` Open) | `changes`, read as `--change`, from the import's folder | One rule for naming a change. |
+| Trust for an import's steps (Open, M4 slice 4) | Trusted as the parent's are: `via trust` of the parent lists every import's generate steps (its lints never run in the parent, 12), at any depth, as `<id>.<step>`, and trusts them by the same digest | The parent names the import's file in its own text, so its code is the parent's choice as a `--lib` library's is; a second trust list would only be asked and agreed again. Ours. |
 | Graph | Families `import`, `placed` (the frame, and one node per scoped name), `brought`, `given`, `joincheck`; placement keys outside the import's keys; `file` in no key | A moved place re-runs only what reads it; a give reaches only the names it reads. |
 
 ## Diagnostics
@@ -558,7 +634,6 @@ Ids, places, layers and formulas use their own chapters' codes (`identity.unknow
 | `import.field_differs` | error | An import's field and the parent's field of one name differ in role, type or unit; `data.field`. (M4) |
 | `import.field_unmatched` | warning | An import's field the parent does not declare, so not brought; `data.field`, the declaration in `data.write`. (M4) |
 | `import.coarser` | info | The parent's posts are coarser than the import's, so detail is lost; `data.ratio`. (M4) |
-| `import.weights_dropped` | warning | An import's `weights` field matches the parent's but is not brought yet (6.2, owed); `data.field`. (M4) |
 | `import.outside` | warning | Part of an import's footprint lies past the parent's extent and is not brought; `data.area`. (M4) |
 | `import.overlap` | warning | Two imports' footprints, as placed, intersect with an area above 0; `data.area` (6.8). (M4) |
 | `import.seam` | warning | A step in the ground across the join steeper than `max_grade`, worst first by data.grade. (M4) |
@@ -586,9 +661,12 @@ re-runs (`conformance.md` 5) apply to every build.
 | import_file_edited | M4 | `a`'s `height` from `h.npy` (2), placed at (8, 0); then the file rewritten to 5 | build; build again on one store | The parent's height 2 at post (12, 4); then 5: `import:a` holds the import's input leaves. |
 | blend_reads | M4 | `blend = "= f('mix')"` with parent `mix` 1 and `a`'s `tone` 8; then `mix` 0.5 | build; build again on one store | Parent `tone` 8 at post (12, 4); then 4: a brought chunk reads what its blend reads. |
 | seam_file_edited | M4 | The parent's `height` from `p.npy` (2), a flat import at (8, 0); then the file rewritten to 5 | build; build again on one store | `import.seam` with `data.grade` 2; then 5: the join's checks read the finished surface and inputs. |
-| import_step | M4 | `a`'s field `tone` returned by its own generate step (3) | build | Parent `tone` 3 at post (12, 4), 0 at (2, 4). Pending: an import's own steps do not run yet. |
+| import_step | M4 | `a` declares `tone` (0); its own generate step returns a field `level` of 3 and a row on `tone` reading it; then `a` moved 4 m east | trust the parent; build; build again on one store | Parent `tone` 3 at post (12, 4), 0 at (2, 4); no `import.field_unmatched` for the step's own `make#level`; then `a` moved to (12, 0): `a.step:make` and `import:a` not run, `placed:a` ran, `tone` 3 at (16, 4) and 0 at (10, 4). |
 | scoped_names | M4 | A parent and an import each holding instance `hut`; a parent bookmark `on.ref = "a.hutt"`; then `on.ref = "hut2"` with `hut2` only in the import | merge each | No `identity.duplicate_id`; both `hut` and `a.hut` built; then `identity.unknown_place` nearest `a.hut`; then `identity.unknown_place` hinting `a.hut2`. |
-| weights_dropped | M4 | Parent and `a` each with a `weights` field `mix`, painted only in `a` | build | `import.weights_dropped`, `data.field` `mix`; exit 0. |
+| weights_brought | M4 | Parent and `a` (8 m square at (8, 0)) each with a `weights` field `mix`; the parent paints `sand` everywhere, `a` paints `moss`; then `blend = 0.25` | build each | No diagnostic; post (12, 4) `moss` 255 and `sand` 0, post (2, 4) `sand` 255 and `moss` 0; then at (12, 4) `moss` 64 and `sand` 191 (`build.md` 6.2's bytes of 0.25 and 0.75). |
+| derived_brought | M4 | Parent height 0 and `a`'s 4 at (8, 0), `blend = 0.5`; both declare `level` with `base = "= f('height')"`; `a` raises its level 1 m over its west half | build | Height 2 and `level` 2 at post (12, 4) (dry: not 3); `level` 2.5 at (9, 4) (not 3.5); 0 at (2, 4). |
+| turned_tone | M4 | `a`'s `tone` (unit `ratio`) 3 west of x = 4 and 0 east, at (8, 4), `face = 30` | build | Tone 0.5096 at post (13, 5) and 2.0096 at (13, 6), bilinear (tolerance 0.0001); 3 at (10, 6). |
+| turned_wall | M4 | `a` with a 4 m wall between its posts x = 3 and 4, at (8, 4), `face = 30` | build | Height 0 at post (13, 5) and 4 at (13, 6) (each a wall cell's nearest post; bilinear gives 0.68 and 2.68); 4 at (10, 6). |
 | field_read | M4 | A parent field `probe` with base `= a.height`; `a` at (8, 0) with height 3 | build | `probe` 3 at a post inside the footprint and 0 outside. |
 | datum_same | M4 | Parent and import `datum = "sea"`; then `lift = 2` added | build each | No datum diagnostic, height as the import's; then `import.lift_on_datum`. |
 | datum_differs | M4 | Parent `datum = "sea"`, import `datum = "chart"`; then `lift = 2` | build each | `import.datum_differs`, exit 1; then no diagnostic and the import's height 2 m higher in the parent. |
@@ -613,6 +691,9 @@ re-runs (`conformance.md` 5) apply to every build.
 | outside | M4 | `a` placed 4 m past the parent's east edge | build | `import.outside`; the build holds no `a.` instance past the edge. |
 | coarser | M4 | Parent resolution 2, import resolution 1 | build | `import.coarser`, `data.ratio` 2. |
 | binding | M4 | The import's own pack binding `box_small` to a 1 m box | build | `import.binding_differs`, `data.id` `box_small`; exit 1. |
+| import_reserved | M4 | `[import.feature]` | merge | `identity.reserved`, subject `import.feature`, `data.nearest` `feature_2`; exit 1. |
+| binding_material | M4 | Parent and `a` each paint `moss` on their `material` field; the two packs bind `moss` with different colours | build | `import.binding_differs`, `data.id` `moss`; exit 1. |
+| brought_unknown_material | M4 | `a` paints `moss` on the `material` field; `a`'s pack binds `moss`, the parent's binds only `sand` | build | `pack.unknown_material`, subject `import.a`; exit 1. |
 | diag_scoped | M4 | `a` with a feature of an unknown kind | build | `authority.unknown_kind`, subject `a.feature.bad`, file `a/world.toml`, chain through import `a`; exit 1. |
 | import_changes | M4 | `changes = ["high"]`, `a`'s change `high` setting height 4; then `changes = ["hgih"]` | build each | The parent's height 4 in the footprint; then `doc.unknown_change` nearest `high`. |
 | give_fill | M4 | A fill `town` with `[given.land]` (field, default `= 0`) and `height = land + 1`; a parent of height `= 0.5 * x` giving `land = "height"` | build the town alone; build the parent | Alone, the town's height 1; in the parent, `0.5 * x + 1` inside the footprint. |
@@ -675,7 +756,6 @@ chunks reused away from the old and new footprint; change report causes in the p
 | An import's own rule growing past its edge, fading (TODO). | `border`'s fringe in M4; until then a parent scatter in the join layer. |
 | A parent that offers what a part may take without the part declaring it. | Not planned: R11 makes it opt-in per input. |
 | Two exits that meet at one point with nothing between them. | A library kind placed `on` one naming the other answers both today; revisited with `atlas`. |
-| Trust for an import's steps under `via trust` of the parent. | `protocol.md` 7, slice 2 of M4. |
 | What leaves undeclared (R9: "what leaves is declared as an exit"): an import path cut by the footprint, or reaching the import's extent, with no exit there. A warning `import.exit_undeclared` per cut end, or nothing. | `atlas`'s river that stops at the edge, M4 slice 2: if it goes unseen on foot, the warning. |
 | A parent naming an import's produced face or cell as a place (`a.<network>.<face>`, R13 across imports). | The first parent that must place on an import's generated block; `county` in M4. |
 | Matching a field by role as well as by name (an import's `surface` field named `ground` is not brought today, only warned). | The first world pair whose surface fields differ by name. |

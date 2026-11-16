@@ -76,7 +76,8 @@ table shows a reviewer what runs.
 ### 1.2 `for_each` (M2)
 
 `for_each = "kind:<name>"` on a generate step calls it once per feature of that kind in its
-stratum, the **item**; any other form is `protocol.for_each_form`. Each call is its own graph node
+stratum, the **item**; in a fill, `for_each = "given:<name>"` calls it once per feature a parent
+gave under `<name>` (`composition.md` 8, 12); any other form is `protocol.for_each_form`. Each call is its own graph node
 with its own seed (`graph.md` 5.3, section 2), so moving one item re-runs its call alone. What the
 calls return is joined in item order; keys must already differ between items (`identity.md` 2.5),
 which a key built from the item's name does. A worker serves every call (3.2). A plain command is

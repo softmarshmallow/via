@@ -8,6 +8,9 @@ include    = ["marks"]
 role = "surface"
 base = 0
 
+[field.tone]                    # set by its own step's row; declared so the parent's tone matches it
+base = 0
+
 [step.make]
 when    = "generate"
 command = ["python", "-m", "viasdk", "steps/make.py"]

@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "An import id that is a collection's name, [import.feature]: identity.reserved, nearest feature_2; exit 1 (composition.md 2)."
+milestone = 4
+actions   = ["merge"]
+
+[action.merge]
+via         = ["merge", "world.toml", "--lib", "{work}/libs"]
+exit        = 1
+diagnostics = "includes"
+[action.merge.diag.reserved]
+code    = "identity.reserved"
+subject = "import.feature"
+data    = { nearest = "feature_2" }

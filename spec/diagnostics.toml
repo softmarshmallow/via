@@ -2937,11 +2937,12 @@ Fixed: on = { ref = "a", t = 0.5 }   (a the path the edge came from)
 severity = "error"
 chapter = "identity"
 milestone = 1
-summary = "An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1)."
+summary = "An id is `world`, an import id is a collection's name (a top table's name, or `asset`, `kind`, `material`, `step`, `world`: an import's diagnostics name it as their collection, `composition.md` 2), or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1)."
 data = ["nearest"]
 explain = """
-An id is world, or a mount, set item or kind surface is named start, end or ground. Those names
-are taken by the language.
+An id is world, an import id is a collection's name (feature, field, step and the like), or a
+mount, set item or kind surface is named start, end or ground. Those names are taken by the
+language.
 To fix: Choose another name; the hint gives the nearest free one.
 Bad:   [feature.world]
 Fixed: [feature.world_a]
@@ -3291,22 +3292,6 @@ Bad:   [import.a]            (its ground stands 4 m above the parent's at its ed
 Fixed: [import.a]
        file  = "a/world.toml"
        blend = "= smoothstep(0, 8, d)"
-"""
-
-[import.weights_dropped]
-severity = "warning"
-chapter = "composition"
-milestone = 4
-summary = "An import's `weights` field matches the parent's but is not brought yet (6.2, owed); `data.field`. (M4)"
-data = ["field"]
-explain = """
-The import declares a `weights` field that matches one of this world's by name, role, type and
-unit, but weights are not yet carried across an import: the parent's own weights stand where the
-import's paint would be. Owed by composition.md 6.2 (each material's weight read and the parent's
-weights rule applied); until then this warning says the paint is lost.
-To fix: Paint the import's materials in this world's own rows over the import's footprint.
-Bad:   [field.ground] type = "weights" in both worlds, painted only in the import
-Fixed: a row of this world's [field.ground] that paints the same over `inside('a.footprint')`
 """
 
 [load.bad_file]

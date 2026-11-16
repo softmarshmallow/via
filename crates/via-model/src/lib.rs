@@ -64,6 +64,7 @@ mod text;
 pub use build::{build, Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Options};
 pub use decl::Tier;
 pub use graph::{build_graph, dedupe, leaves, memo_ms, FileReads, ModelPlan};
+pub use import::{ImportSteps, StepsCall, StepsDone};
 pub use rules::scatter_name;
 
 /// `documents.md` 5.1 at merge: the names formulas read that lie above the reader

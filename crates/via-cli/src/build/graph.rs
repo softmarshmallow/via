@@ -246,7 +246,7 @@ impl<'a> CliPlan<'a> {
                     via_diag::codes::protocol::FOR_EACH_FORM,
                     "for_each",
                     format!(
-                        "step `{}`: `for_each` takes the one form `kind:<name>`, on a generate step",
+                        "step `{}`: `for_each` takes `kind:<name>` or `given:<name>`, on a generate step",
                         s.id
                     ),
                     "write `for_each = \"kind:<name>\"` on a generate step".into(),
@@ -1372,14 +1372,23 @@ impl<'a> CliPlan<'a> {
                 .iter()
                 .find(|(k, _)| k == "for_each")
                 .map_or("", |(_, v)| v.as_str());
+            // `given:<name>` is written whole; a kind is written after `kind:`.
+            let written = if kind.starts_with("given:") {
+                kind.to_string()
+            } else {
+                format!("kind:{kind}")
+            };
             diags.push(Diag::new(
                 via_diag::codes::graph::FOR_EACH_EMPTY,
                 via_diag::Subject::entity("step", sid.clone()),
                 via_diag::Site::Key(via_diag::KeyPath::key("for_each")),
                 crate::txt(format!(
-                    "step `{sid}`: `for_each = \"kind:{kind}\"` matches no feature in its view; the step did not run"
+                    "step `{sid}`: `for_each = \"{written}\"` matches no feature in its view; the step did not run"
                 )),
-                crate::txt(format!("add a feature of kind `{kind}` at or below the step's layer, or remove the step")),
+                crate::txt(match kind.strip_prefix("given:") {
+                    Some(g) => format!("give `{g}` a feature, or remove the step"),
+                    None => format!("add a feature of kind `{kind}` at or below the step's layer, or remove the step"),
+                }),
             ));
         }
         let facts: Vec<String> = facts.into_iter().collect();

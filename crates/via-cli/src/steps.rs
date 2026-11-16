@@ -44,13 +44,77 @@ pub struct StepDecl {
 }
 
 impl StepDecl {
-    /// The kind a `for_each = "kind:<k>"` selects; `None` without `for_each` or in another form.
+    /// What a `for_each` selects: the kind of `kind:<k>`, or `given:<name>` whole (a fill's given
+    /// features, `composition.md` 12); `None` without `for_each` or in another form.
     pub fn for_each_kind(&self) -> Option<&str> {
-        self.for_each
-            .as_deref()?
-            .strip_prefix("kind:")
-            .filter(|k| !k.is_empty())
+        let f = self.for_each.as_deref()?;
+        if f.strip_prefix("given:").is_some_and(|n| !n.is_empty()) {
+            return Some(f);
+        }
+        f.strip_prefix("kind:").filter(|k| !k.is_empty())
     }
+}
+
+/// Every import of `world`, at any depth, merged with the changes it requests: its id prefix
+/// (`a.`, `a.b.`), its world and its folder (`composition.md` 2, 9). A file that fails to read is
+/// left out: the build says why. A loop stops where it closes (`import.cycle` is the build's).
+pub fn import_worlds(world: &World, wdir: &Path, lib: &[PathBuf]) -> Vec<(String, World, PathBuf)> {
+    fn walk(
+        world: &World,
+        wdir: &Path,
+        lib: &[PathBuf],
+        prefix: &str,
+        chain: &mut Vec<PathBuf>,
+        out: &mut Vec<(String, World, PathBuf)>,
+    ) {
+        for id in world.ids("import") {
+            let Some(t) = world.entity("import", id) else {
+                continue;
+            };
+            let Some(file) = t.str("file") else { continue };
+            let path = crate::build::lexical(&wdir.join(file));
+            if chain.contains(&path) {
+                continue;
+            }
+            let dir = crate::build::world_dir(&path);
+            let changes: Vec<via_doc::ChangeRequest> = t
+                .value("changes")
+                .and_then(|v| match v {
+                    Value::List(xs) => Some(
+                        xs.iter()
+                            .filter_map(|x| match &x.value {
+                                Value::Str(s) => Some(s.text.clone()),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>(),
+                    ),
+                    _ => None,
+                })
+                .unwrap_or_default()
+                .into_iter()
+                .map(|c| {
+                    let r = via_doc::ChangeRequest::new(c.clone(), 0);
+                    if r.is_path() {
+                        via_doc::ChangeRequest::new(dir.join(&c).to_string_lossy().into_owned(), 0)
+                    } else {
+                        r
+                    }
+                })
+                .collect();
+            let opts = via_doc::LoadOptions::from_env(lib.to_vec(), changes);
+            let Some(w) = via_doc::load(&path, 0, &opts).world else {
+                continue;
+            };
+            let p = format!("{prefix}{id}.");
+            chain.push(path);
+            walk(&w, &dir, lib, &p, chain, out);
+            chain.pop();
+            out.push((p, w, dir));
+        }
+    }
+    let mut out = Vec::new();
+    walk(world, wdir, lib, "", &mut Vec::new(), &mut out);
+    out
 }
 
 /// `p` made absolute against the caller's folder, as given when that fails.

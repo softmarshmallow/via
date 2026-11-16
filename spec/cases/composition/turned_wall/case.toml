@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "a holds a 4 m wall between its posts x = 3 and 4, turned 30 degrees: a parent post inside a wall cell reads a's nearest post, 0 at (13, 5) and 4 at (13, 6), not the bilinear 0.68 and 2.68 (composition.md 6.2)."
+milestone = 4
+actions   = ["build"]
+
+# a at (8, 4), face 30: post (13, 5) is (3.83, 3.37) in a's frame, nearest post (4, 3), height 0;
+# post (13, 6) is (3.33, 4.23), nearest post (3, 4), height 4. Each lies in a cell whose four posts
+# span 4 m, more than twice the 1 m spacing: a wall, read at its nearest post.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.foot]
+path  = "build/w/fields/height.npy"
+post  = [13, 5]
+value = 0
+[action.build.file.top]
+path  = "build/w/fields/height.npy"
+post  = [13, 6]
+value = 4
+[action.build.file.inside]
+path  = "build/w/fields/height.npy"
+post  = [10, 6]
+value = 4

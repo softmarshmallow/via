@@ -23,6 +23,11 @@ How each is taken (ours):
   north-west... read at (crossing x - 40, crossing y + m), on the bare ground.
 - `alone_off_wild`: with --alone, the largest |parent height - wild alone height| over the posts
   where the wild's weight is 1 (inside its footprint, `off_corner` 16 m or more); metres.
+- `walk_wet`, `walk_wet_max`: posts on the treads of the ways (`trail/road/lane` paths: within half their
+  `width` of the line) where the water stands more than 0.05 m over the ground, and the deepest
+  (composition.md 6.2, a field derived from another). Ours, M4 slice 4.
+- `materials`: the materials the build draws (manifest.json `materials`), each import's paint
+  brought with its ground (composition.md 6.2). Ours, M4 slice 4.
 """
 
 import json
@@ -43,6 +48,33 @@ def grid(path):
     body = raw[10 + hlen:]
     return rows, cols, struct.unpack(f"<{len(body) // 4}f", body)
 
+
+
+def walk_wet(d, fs, kinds):
+    """`walk_wet`, `walk_wet_max`: the posts within half a way's `width` of its line, for every
+    path feature of `kinds`, where `water - height` exceeds 0.05 m; their count and the deepest,
+    metres. Every post of the extent's lattice, nearest-segment distance in the plane."""
+    h, w = grid(d / "fields" / "height.npy"), grid(d / "fields" / "water.npy")
+    rows, cols, hv = h
+    wv = w[2]
+    wet, worst = set(), 0.0
+    for f in fs.values():
+        if f.get("kind") not in kinds or f.get("shape") != "path":
+            continue
+        half = f["attrs"].get("width", 2) / 2
+        pts = [tuple(p[:2]) for p in f["points"]]
+        for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+            L2 = (bx - ax) ** 2 + (by - ay) ** 2
+            for j in range(max(0, int(min(ay, by) - half) - 1), min(rows, int(max(ay, by) + half) + 2)):
+                for i in range(max(0, int(min(ax, bx) - half) - 1), min(cols, int(max(ax, bx) + half) + 2)):
+                    t = 0 if L2 == 0 else max(0, min(1, ((i - ax) * (bx - ax) + (j - ay) * (by - ay)) / L2))
+                    if math.hypot(i - ax - t * (bx - ax), j - ay - t * (by - ay)) > half:
+                        continue
+                    dep = wv[j * cols + i] - hv[j * cols + i]
+                    if dep > 0.05:
+                        wet.add(j * cols + i)
+                        worst = max(worst, dep)
+    return len(wet), round(worst, 3)
 
 def post(g, x, y):
     rows, cols, v = g
@@ -147,6 +179,8 @@ def measure(d, alone=None):
     names = (d / "instances" / "names.txt").read_text().split()
     m["wild_trees"] = sum(1 for n in names if n.startswith("wild.trees#"))
     m["fringe_trees"] = sum(1 for n in names if n.startswith("fringe_trees#"))
+    m["materials"] = sorted(json.loads((Path(d) / "manifest.json").read_text())["materials"])
+    m["walk_wet"], m["walk_wet_max"] = walk_wet(Path(d), fs, ("trail", "road", "lane"))
     c = m.get("crossing_south_walk")
     sp = d / "fields" / "fringe#spread.npy"
     if c and sp.exists():

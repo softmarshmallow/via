@@ -26,6 +26,17 @@ How each is taken (ours):
 - With --run: `ran_import_<id>` and `ran_placed_<id>`, the nodes `import:<id>` and
   `placed:<id>[/...]` that ran (status `ran`); `fields_ran` and `fields`, field chunk nodes that
   ran and all of them; `shapes_ran`, the shape nodes that ran, by name.
+- `walk_wet`, `walk_wet_max`: posts on the treads of the ways (`lane/road/trail` paths: within half their
+  `width` of the line) where the water stands more than 0.05 m over the ground, and the deepest
+  (composition.md 6.2, a field derived from another). Ours, M4 slice 4.
+- `turn_sheer_<id>`, `turn_sheer_off_<id>`: with --alone, the parent posts that land between the
+  island's posts (only when it is turned off the quarter turns) inside an island cell whose four
+  posts span more than 1 m (a wall, the slipway's sides), and the largest |parent height - the
+  island's nearest post| there: how far `sample`'s bilinear rule (composition.md 6.2) bends sheer
+  ground it turns. A bound, not a fix: a 1 m lattice turned 10 degrees cannot hold a wall along its
+  old line. Ours, M4 slice 4.
+- `materials`: the materials the build draws (manifest.json `materials`), each import's paint
+  brought with its ground (composition.md 6.2). Ours, M4 slice 4.
 """
 
 import json
@@ -46,6 +57,33 @@ def grid(path):
     body = raw[10 + hlen:]
     return rows, cols, struct.unpack(f"<{len(body) // 4}f", body)
 
+
+
+def walk_wet(d, fs, kinds):
+    """`walk_wet`, `walk_wet_max`: the posts within half a way's `width` of its line, for every
+    path feature of `kinds`, where `water - height` exceeds 0.05 m; their count and the deepest,
+    metres. Every post of the extent's lattice, nearest-segment distance in the plane."""
+    h, w = grid(d / "fields" / "height.npy"), grid(d / "fields" / "water.npy")
+    rows, cols, hv = h
+    wv = w[2]
+    wet, worst = set(), 0.0
+    for f in fs.values():
+        if f.get("kind") not in kinds or f.get("shape") != "path":
+            continue
+        half = f["attrs"].get("width", 2) / 2
+        pts = [tuple(p[:2]) for p in f["points"]]
+        for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+            L2 = (bx - ax) ** 2 + (by - ay) ** 2
+            for j in range(max(0, int(min(ay, by) - half) - 1), min(rows, int(max(ay, by) + half) + 2)):
+                for i in range(max(0, int(min(ax, bx) - half) - 1), min(cols, int(max(ax, bx) + half) + 2)):
+                    t = 0 if L2 == 0 else max(0, min(1, ((i - ax) * (bx - ax) + (j - ay) * (by - ay)) / L2))
+                    if math.hypot(i - ax - t * (bx - ax), j - ay - t * (by - ay)) > half:
+                        continue
+                    dep = wv[j * cols + i] - hv[j * cols + i]
+                    if dep > 0.05:
+                        wet.add(j * cols + i)
+                        worst = max(worst, dep)
+    return len(wet), round(worst, 3)
 
 def frame(d):
     m = json.loads((Path(d) / "manifest.json").read_text())["frame"]
@@ -121,8 +159,11 @@ def measure(d, alone=None, run=None):
                 off = max(off, math.dist(own, t["at"][:2]))
     m["wet_views"] = wet
     m["toward_off"] = round(off, 3)
+    m["materials"] = sorted(json.loads((Path(d) / "manifest.json").read_text())["materials"])
+    m["walk_wet"], m["walk_wet_max"] = walk_wet(Path(d), fs, ("lane", "road", "trail"))
     for iid, ad in (alone or {}).items():
         m[f"alone_off_{iid}"] = alone_off(d, fs, iid, Path(ad))
+        m[f"turn_sheer_{iid}"], m[f"turn_sheer_off_{iid}"] = turn_sheer(d, fs, iid, Path(ad))
     if run:
         nodes = json.loads(Path(run).read_text())["nodes"]
         for iid in ("a", "b"):
@@ -169,6 +210,41 @@ def alone_off(d, fs, iid, ad):
             if 0 <= I < pcol and 0 <= J < prow:
                 worst = max(worst, abs(pv[J * pcol + I] - v))
     return round(worst, 3)
+
+
+def turn_sheer(d, fs, iid, ad):
+    """`turn_sheer_<id>`, `turn_sheer_off_<id>` (module doc): the parent posts that fall between
+    the island's posts (a turned island) inside a cell of the island whose four posts span more
+    than 1 m, and the largest |parent height - the island's nearest post| over them."""
+    home = features(ad)
+    p0, p1 = home["slip"]["at"][:2], home["at_slip"]["at"][:2]
+    q0, q1 = fs[f"{iid}.slip"]["at"][:2], fs[f"{iid}.at_slip"]["at"][:2]
+    ang = math.atan2(q1[1] - q0[1], q1[0] - q0[0]) - math.atan2(p1[1] - p0[1], p1[0] - p0[0])
+    c, s = math.cos(ang), math.sin(ang)
+    tx = q0[0] - (c * p0[0] - s * p0[1])
+    ty = q0[1] - (s * p0[0] + c * p0[1])
+    prow, pcol, pv = grid(d / "fields/height.npy")
+    rows, cols, ha = grid(ad / "fields/height.npy")
+    ax0, ay0, ares = frame(ad)
+    px0, py0, pres = frame(d)
+    count, worst = 0, 0.0
+    for J in range(prow):
+        for I in range(pcol):
+            X, Y = px0 + I * pres - tx, py0 + J * pres - ty
+            x, y = c * X + s * Y, -s * X + c * Y           # the island's frame
+            fi, fj = (x - ax0) / ares, (y - ay0) / ares
+            i, j = math.floor(fi + 1e-6), math.floor(fj + 1e-6)
+            if not (0 <= i < cols - 1 and 0 <= j < rows - 1):
+                continue
+            if abs(fi - round(fi)) < 1e-3 and abs(fj - round(fj)) < 1e-3:
+                continue                                   # on a post: nothing between
+            four = [ha[(j + b) * cols + i + a] for a in (0, 1) for b in (0, 1)]
+            if max(four) - min(four) <= 1:
+                continue
+            count += 1
+            near = ha[min(rows - 1, round(fj)) * cols + min(cols - 1, round(fi))]
+            worst = max(worst, abs(pv[J * pcol + I] - near))
+    return count, round(worst, 3)
 
 
 def check(m, section):

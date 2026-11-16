@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "The parent's pack binds the material moss to one colour, the import's pack to another: import.binding_differs, data.id moss; exit 1 (composition.md 10, a material by its colour)."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.binding]
+code = "import.binding_differs"
+data = { id = "moss" }

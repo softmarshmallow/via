@@ -41,13 +41,13 @@ band    = [1, 1]
 measure = "toward_off"
 band    = [0, 0]
 
-[base.town_streets]                         # 0 while an import's steps do not run (TODO, import_step):
-measure = "town_streets"                    # the town's streets and houses are steps; raise when they do
-band    = [0, 0]
+[base.town_streets]                         # the town's own steps run in the county's build (M4 slice 4,
+measure = "town_streets"                    # composition.md 12): 2 streets on the county's land, against
+band    = [2, 2]                            # quay's 5 alone; measured once, release, 2026-11-16
 
-[base.town_instances]
+[base.town_instances]                       # its houses (quay alone holds more: fewer lots here)
 measure = "town_instances"
-band    = [0, 0]
+band    = [68, 68]
 
 # ------------------------------------------------------------------------------------------ move_town
 
@@ -84,3 +84,35 @@ band    = [1, 1]
 [forgotten_exit.write]                      # with the line that answers it
 measure = "unanswered_write"
 band    = ["ends_at = \"town.east_gate\""]
+
+# ------------------------------------------------------------------------------------------ M4 slice 4
+# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD ff094b6 with
+# this slice's import.rs and resolve.rs hunks only (paint brought, a derived field's offset, wall
+# cells read at the nearest post; composition.md 6.2), VIA_LIB=lib, each world and import alone on a
+# fresh store, each change built --against the base on its store. One build each, other agents
+# building at the same time. Before these hunks: materials earth, grass, gravel and rock; walk_wet
+# 0.
+
+[base.walk_wet]
+measure = "walk_wet"
+band    = [0, 0]
+
+[base.materials]                    # the town's setts and flags brought
+measure = "materials"
+band    = ["earth", "flags", "grass", "gravel", "rock", "setts"]
+
+[base.wall_mid]                     # unturned: every wall runs post to post
+measure = "wall_mid"
+band    = [0, 0]
+
+[move_town.wall_mid]                # turned 8 degrees: 203 posts half-way down a wall before wall
+measure = "wall_mid"                # cells, 122 with them (the rest in cells under 2 m: slopes)
+band    = [122, 122]
+
+[move_town.walk_wet]
+measure = "walk_wet"
+band    = [0, 0]
+
+[move_town.materials]
+measure = "materials"
+band    = ["earth", "flags", "grass", "gravel", "rock", "setts"]

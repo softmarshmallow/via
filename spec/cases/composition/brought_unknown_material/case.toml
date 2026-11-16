@@ -1,0 +1,13 @@
+format    = "via-case-1"
+summary   = "a paints moss on the material field, which a's pack binds and the parent's pack does not: pack.unknown_material at import a; exit 1 (composition.md 6.2)."
+milestone = 4
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.unbound]
+code    = "pack.unknown_material"
+subject = "import.a"

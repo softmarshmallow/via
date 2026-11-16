@@ -656,7 +656,9 @@ fresh store into a fresh directory, and the two directories are compared.
 
 An import is a graph of its own, its node ids prefixed `<import>.`. The prefix is in no key, so one
 world imported twice, or built alone, shares its results in one store; M1 keeps room for the
-prefix. A `give` may read any node of the import that does not reach the given node; reading one
+prefix. A prefixed id is `<import>.<family>:<subject>` (`a.step:make`, `town.step:lay/i:districts.d1`;
+`<import>.<nested>.` at depth): the family stays `[a-z]+`, and the run report's `family` holds the
+prefix with it (`a.step`). Correction of M4 slice 4: section 1's grammar said nothing of the prefix. A `give` may read any node of the import that does not reach the given node; reading one
 that does is `graph.cycle`. So a parent may draw a fill's limits along the import's arterials or
 river: a scoped name reads one node per name (`placed:<id>/<name>`), never the whole import. The
 families `import`, `placed`, `brought`, `given` and `joincheck`, their edges, and what a moved import

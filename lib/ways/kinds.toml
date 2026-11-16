@@ -71,8 +71,10 @@ mask  = "= 1 - smoothstep(16, 20, d)"
 # Keep clear of the edge (asked by `massif`). `smoothed_along(k)` reads the ground `k` metres along
 # the way on each side, so a way's line should stay `k` metres inside the world's extent: 40 m for a
 # road, 24 m for a lane, 8 m for a trail. Nearer, its smoothing window reads outside the field and
-# the bed is `formula.outside_field` at those nodes. A way that leaves the world ends on the extent's
-# outline, never runs along it.
+# the bed is `formula.outside_field` at those nodes. The 40 m is for a way running along the edge.
+# A way that leaves the world crosses it: it ends on the extent's outline, never runs along it, and
+# the 40 m does not apply to it: in the M4 slice 4 fresh-agent run (`hamlet`) a road ending 2 m from
+# the edge built with no `formula.outside_field`.
 
 [kind.road]
 authority = "shaped"

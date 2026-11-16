@@ -110,7 +110,7 @@ HINTS = {
     "move the ford along the beck (`t`) where the banks are lower.",
     "ford_depth": "Move the ford along the beck (`t`), or change the beck's `depth`.",
     "water_step": "Lower the beck's `bank_grade`, or change its `depth` or `width`.",
-    "cottage_relief": "Ground the instance with a pad kind (`ground = \"pad\"`), or widen `margin`.",
+    "cottage_relief": "A measure: 0 means level. Above that, ground the instance with a pad kind (`ground = \"pad\"`), or widen `margin`.",
     "trees_in_clearing": "Hold the mask of the kind effect writing keep_out here at 1 farther from "
     "its feature (a lane's `verge`, a pad's `clear`, a beck's `bank`), out past a crown's reach, "
     "so it falls below 0.9 only where no crown reaches the feature.",

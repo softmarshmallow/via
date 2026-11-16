@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-355 codes in 23 groups. 4 have no bad and fixed example yet; their explain text is the
+354 codes in 23 groups. 4 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -29,7 +29,7 @@ chapter's summary and hint.
 | [`geom`](#geom) | `spec/geometry.md` | 31 |
 | [`graph`](#graph) | `spec/graph.md` | 9 |
 | [`identity`](#identity) | `spec/identity.md` | 29 |
-| [`import`](#import) | `spec/composition.md` | 20 |
+| [`import`](#import) | `spec/composition.md` | 19 |
 | [`load`](#load) | `spec/build.md` | 5 |
 | [`num`](#num) | `spec/numbers.md` | 12 |
 | [`pack`](#pack) | `spec/assets.md` | 14 |
@@ -2712,7 +2712,7 @@ Fixed: via build world.toml --store build/store
 | `identity.pin_removed` | info | 1 |  | What a pin removed: count and names. |
 | `identity.pins_overlap` | error | 1 |  | Two pins' footprints overlap; names both. |
 | `identity.reselected` | warning | 1 |  | A selection resolved to another name than in the baseline; names both and the distance moved. A run diagnostic (`build.md` 11.1). |
-| `identity.reserved` | error | 1 | `nearest` | An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1). |
+| `identity.reserved` | error | 1 | `nearest` | An id is `world`, an import id is a collection's name (a top table's name, or `asset`, `kind`, `material`, `step`, `world`: an import's diagnostics name it as their collection, `composition.md` 2), or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1). |
 | `identity.unknown_lock` | error | 3 | `nearest` | `via lock` was given an id that is no lock (M3). |
 | `identity.unknown_maker` | error | 1 | `nearest` | `of` names nothing. |
 | `identity.unknown_place` | error | 1 | `nearest` | A part of a place name names nothing. |
@@ -3010,8 +3010,9 @@ Fixed: on = { ref = "a", t = 0.5 }   (a the path the edge came from)
 error, milestone 1, `spec/identity.md`.
 
 ```text
-An id is world, or a mount, set item or kind surface is named start, end or ground. Those names
-are taken by the language.
+An id is world, an import id is a collection's name (feature, field, step and the like), or a
+mount, set item or kind surface is named start, end or ground. Those names are taken by the
+language.
 To fix: Choose another name; the hint gives the nearest free one.
 Bad:   [feature.world]
 Fixed: [feature.world_a]
@@ -3084,7 +3085,6 @@ Fixed: by = ["s"]
 | `import.overlap` | warning | 4 | `area` | Two imports' footprints, as placed, intersect with an area above 0; `data.area` (6.8). (M4) |
 | `import.place_blended` | warning | 4 | `weight`, `moved` | A place the parent names stands where the import's weight is below 1; `data.weight`, `data.moved`. (M4) |
 | `import.seam` | warning | 4 | `grade` | A step in the ground across the join steeper than `max_grade`, worst first by data.grade. (M4) |
-| `import.weights_dropped` | warning | 4 | `field` | An import's `weights` field matches the parent's but is not brought yet (6.2, owed); `data.field`. (M4) |
 
 ### `import.binding_differs`
 
@@ -3342,20 +3342,6 @@ Bad:   [import.a]            (its ground stands 4 m above the parent's at its ed
 Fixed: [import.a]
        file  = "a/world.toml"
        blend = "= smoothstep(0, 8, d)"
-```
-
-### `import.weights_dropped`
-
-warning, milestone 4, `spec/composition.md`.
-
-```text
-The import declares a `weights` field that matches one of this world's by name, role, type and
-unit, but weights are not yet carried across an import: the parent's own weights stand where the
-import's paint would be. Owed by composition.md 6.2 (each material's weight read and the parent's
-weights rule applied); until then this warning says the paint is lost.
-To fix: Paint the import's materials in this world's own rows over the import's footprint.
-Bad:   [field.ground] type = "weights" in both worlds, painted only in the import
-Fixed: a row of this world's [field.ground] that paints the same over `inside('a.footprint')`
 ```
 
 ## load

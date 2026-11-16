@@ -1,0 +1,27 @@
+format    = "via-case-1"
+summary   = "a's tone (unit ratio) jumps by 3 between its posts x = 3 and 4, turned 30 degrees: a field that is not a length has no wall cells and reads bilinear, 0.5096 at (13, 5) and 2.0096 at (13, 6), not the nearest posts' 0 and 3 (composition.md 6.2)."
+milestone = 4
+actions   = ["build"]
+
+# turned_wall's frame: post (13, 5) is (3.830, 3.366) in a's frame, so 3 * (1 - 0.830) = 0.5096;
+# post (13, 6) is (3.330, 4.232), 3 * (1 - 0.330) = 2.0096. Tolerance 0.0001 (float32 storage).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.low]
+path      = "build/w/fields/tone.npy"
+post      = [13, 5]
+value     = 0.5096
+tolerance = 0.0001
+[action.build.file.high]
+path      = "build/w/fields/tone.npy"
+post      = [13, 6]
+value     = 2.0096
+tolerance = 0.0001
+[action.build.file.inside]
+path  = "build/w/fields/tone.npy"
+post  = [10, 6]
+value = 3

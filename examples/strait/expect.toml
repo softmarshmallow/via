@@ -128,3 +128,38 @@ band    = [0.503, 0.503]
 [forgotten_exit.unanswered]                 # import.exit_unanswered on a.north_slip, exit 1
 measure = "unanswered"
 band    = [1, 1]
+
+# ------------------------------------------------------------------------------------------ M4 slice 4
+# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD ff094b6 with
+# this slice's import.rs and resolve.rs hunks only (paint brought, a derived field's offset, wall
+# cells read at the nearest post; composition.md 6.2), VIA_LIB=lib, each world and import alone on a
+# fresh store, each change built --against the base on its store. One build each, other agents
+# building at the same time. Before these hunks: materials sand only; walk_wet 0.
+
+[base.walk_wet]
+measure = "walk_wet"
+band    = [0, 0]
+
+[base.materials]                    # each island's paint brought
+measure = "materials"
+band    = ["earth", "grass", "meadow", "rock", "sand"]
+
+[base.turn_sheer_b]                 # b at a quarter turn: every post on one of b's
+measure = "turn_sheer_b"
+band    = [0, 0]
+
+[move_b.walk_wet]
+measure = "walk_wet"
+band    = [0, 0]
+
+[move_b.turn_sheer_b]               # turned 10 degrees: posts between b's in its sheer cells
+measure = "turn_sheer_b"
+band    = [34, 34]
+
+[move_b.turn_sheer_off_b]           # 0.901 m (1.014 before wall cells): a bound, cells of 1 to 2 m
+measure = "turn_sheer_off_b"
+band    = [0, 1.1]
+
+[harbour.walk_wet]
+measure = "walk_wet"
+band    = [0, 0]

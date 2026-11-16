@@ -1,8 +1,7 @@
 format    = "via-case-1"
 summary   = "An import whose field tone comes from its own generate step: the parent's tone reads 3 inside the footprint and 0 outside, as the import alone has it (composition.md 3, 12)."
 milestone = 4
-pending   = "an import's own steps do not run yet: its graph is not in the parent's (composition.md 12, `<id>.` prefix); TODO From M4 slice 2"
-actions   = ["program", "trust", "build"]
+actions   = ["program", "trust", "build", "move", "moved"]
 
 [action.program]
 via  = ["config", "program", "python", "{python}"]
@@ -25,4 +24,29 @@ value = 3
 [action.build.file.outside]
 path  = "build/w/fields/tone.npy"
 post  = [2, 4]
+value = 0
+
+# The import moved 4 m east: its step is keyed on its own statements, never the frame, so it is
+# found in the store (composition.md 12, "A place moved").
+[action.move]
+replace = "world.toml"
+find    = "at   = [8, 0]"
+with    = "at   = [12, 0]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.moved.nodes]
+ran_includes = ["placed:a"]
+not_ran      = ["a.step:make", "import:a"]
+[action.moved.file.inside]
+path  = "build/w/fields/tone.npy"
+post  = [16, 4]
+value = 3
+
+[action.moved.file.left]
+path  = "build/w/fields/tone.npy"
+post  = [10, 4]
 value = 0

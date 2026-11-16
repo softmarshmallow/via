@@ -233,6 +233,12 @@ pub const TOP_TABLES: [&str; 16] = [
     "lock", "network", "pin", "run", "scatter", "set",
 ];
 
+/// Whether an import id is reserved: a top table's name, or another collection a diagnostic's
+/// subject names (`identity.md` 1).
+pub fn reserved_import(id: &str) -> bool {
+    TOP_TABLES.contains(&id) || ["asset", "kind", "material", "step", "world"].contains(&id)
+}
+
 /// The world file's own top-level keys.
 pub fn world_key(name: &str) -> Option<Rule> {
     Some(match name {

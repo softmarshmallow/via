@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "A field derived from the ground (base = f('height')) in both worlds, blend 0.5: the import's offset is laid on the parent's ground, level 2 where a is dry and 2.5 over a's pool, never 3 (composition.md 6.2)."
+milestone = 4
+actions   = ["build"]
+
+# Parent height 0, a's 4, blend 0.5: the ground at (12, 4) is 2. a's level is its ground (dry) east
+# of x = 4 in its frame and 1 m over it west of it. Mixed as a value, the level would stand 1 m over
+# the parent's ground where a is dry (3 at (12, 4)) and 1.5 m over it at the pool (3.5 at (9, 4)).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.ground]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 2
+[action.build.file.dry]
+path  = "build/w/fields/level.npy"
+post  = [12, 4]
+value = 2
+[action.build.file.pool]
+path  = "build/w/fields/level.npy"
+post  = [9, 4]
+value = 2.5
+[action.build.file.outside]
+path  = "build/w/fields/level.npy"
+post  = [2, 4]
+value = 0

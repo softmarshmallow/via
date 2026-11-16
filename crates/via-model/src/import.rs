@@ -253,6 +253,35 @@ pub struct Imported {
     pub footprint: Region,
 }
 
+/// What an import's steps are run over (`composition.md` 12): its id, prefix, file, merged world
+/// and the options it is built with (seed, folder, given).
+pub struct StepsCall<'a> {
+    pub prefix: &'a str,
+    pub path: &'a Path,
+    pub world: &'a World,
+    pub options: &'a Options,
+}
+
+/// What running an import's generate steps gave: the world joined with what they returned, the
+/// folder of each step's `out`, and the steps' own diagnostics (subjects in the import's terms).
+pub struct StepsDone {
+    pub world: World,
+    pub step_out: BTreeMap<String, PathBuf>,
+    pub diags: Vec<Diag>,
+}
+
+/// The hook that runs an import's generate steps; the command line hands it in.
+type StepsFn = dyn Fn(&StepsCall<'_>) -> Option<StepsDone> + Send + Sync;
+
+#[derive(Clone)]
+pub struct ImportSteps(pub Arc<StepsFn>);
+
+impl std::fmt::Debug for ImportSteps {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ImportSteps")
+    }
+}
+
 /// Every import's build in this process, by (file, seed, changes): built once, shared.
 type Memo = Mutex<BTreeMap<String, Arc<Alone>>>;
 
@@ -494,6 +523,10 @@ fn built(
         decl.changes.join("\0"),
         given.as_ref().map_or("", |g| g.digest.as_str())
     );
+    // A fill's first build, before the parent gives, places it only: its steps run once, with
+    // what it is given (`composition.md` 12).
+    let run_steps = given.is_some() || decl.give.is_empty();
+    let key = format!("{key}\0{run_steps}");
     if let Some(a) = memo().lock().ok().and_then(|m| m.get(&key).cloned()) {
         return a;
     }
@@ -521,6 +554,25 @@ fn built(
             opts.world_dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
             opts.step_out = BTreeMap::new();
             opts.given.clone_from(&given);
+            opts.prefix = format!("{}{}.", options.prefix, decl.id);
+            // The import's own generate steps, run before it is built (`composition.md` 12).
+            let mut step_diags: Vec<Diag> = Vec::new();
+            let world = match options.import_steps.as_ref().filter(|_| run_steps) {
+                Some(h) => match (h.0)(&StepsCall {
+                    prefix: &opts.prefix,
+                    path,
+                    world: &world,
+                    options: &opts,
+                }) {
+                    Some(done) => {
+                        opts.step_out = done.step_out;
+                        step_diags = done.diags;
+                        done.world
+                    }
+                    None => world,
+                },
+                None => world,
+            };
             let p = crate::build::prepare(&world, &opts);
             // Its pack's bindings are its text too (section 10), and its input leaves (a field's
             // `file`, the files the pack binds) are what it is built from: an edit to one is a
@@ -546,7 +598,9 @@ fn built(
                 digest =
                     via_graph::Digest::of(format!("{digest} given {}", g.digest).as_bytes()).hex();
             }
-            let build = crate::build::finish_from(&world, &p, BTreeMap::new(), Vec::new(), None);
+            let mut build =
+                crate::build::finish_from(&world, &p, BTreeMap::new(), Vec::new(), None);
+            build.diagnostics.extend(step_diags);
             Alone {
                 pack: p.pack.clone(),
                 decls: p.decls,
@@ -591,6 +645,16 @@ fn digest_of(world: &World, d: &Decls) -> String {
         enc.str(&format!("{:?} {:?}", i.frame, i.decl.footprint));
     }
     via_graph::Digest::of(&enc.finish()).hex()
+}
+
+/// The subject `<import>.<collection>.<id>` of a thing inside an import, in the parts a stored
+/// diagnostic reads back (`a.feature.east`: collection `a`, id `feature`, key `east`).
+fn scoped_subject(import: &str, collection: &str, id: impl Into<String>) -> Subject {
+    Subject::Entity {
+        collection: import.to_string(),
+        id: collection.to_string(),
+        keys: vec![via_diag::KeyPart::Key(id.into())],
+    }
 }
 
 /// The point of the import's frame at a parent point, in millimetres, unrounded: the inverse of
@@ -819,9 +883,37 @@ impl Imported {
         x >= x0 as f64 - e && x <= x1 as f64 + e && y >= y0 as f64 - e && y <= y1 as f64 + e
     }
 
-    /// The import's finished value of `field` at a parent point, by `sample`'s rule at that
-    /// point in the import's frame (6.2), before `lift`. `None` outside its extent.
+    /// The import's finished value of a field that is not a length at a parent point: bilinear
+    /// at that point in the import's frame (6.2). `None` outside its extent.
     pub fn sample(&self, values: &[f64], p: (i64, i64)) -> Option<f64> {
+        self.sample_by(values, values, p, false)
+    }
+
+    /// The import's finished value of a length field (the `surface`, or unit `m`) at a parent
+    /// point, before `lift`: bilinear, or the nearest post in a wall cell (6.2).
+    pub fn sample_length(&self, values: &[f64], p: (i64, i64)) -> Option<f64> {
+        self.sample_by(values, values, p, true)
+    }
+
+    /// A derived field's value and the value of the field it is derived from, at one parent
+    /// point: when `from` is a length (`walls`), the wall cell is decided once, by `from`, and
+    /// both are read at the same post (6.2), so their difference does not jump inside a wall cell.
+    pub fn sample_pair(
+        &self,
+        values: &[f64],
+        from: &[f64],
+        p: (i64, i64),
+        walls: bool,
+    ) -> Option<(f64, f64)> {
+        Some((
+            self.sample_by(values, from, p, walls)?,
+            self.sample_by(from, from, p, walls)?,
+        ))
+    }
+
+    /// `sample`'s rule on `values`; with `walls`, a cell where `by`'s four posts span more than
+    /// twice the spacing reads `values` at the nearest post.
+    fn sample_by(&self, values: &[f64], by: &[f64], p: (i64, i64), walls: bool) -> Option<f64> {
         let g = self.alone.decls.grid?;
         let (x, y) = to_import(&self.frame, p);
         let [x0, y0, x1, y1] = g.extent;
@@ -847,14 +939,30 @@ impl Imported {
         let i1 = (i + 1).min(g.nx - 1);
         let j1 = (j + 1).min(g.ny - 1);
         let at = |i: u64, j: u64| values.get((j * g.nx + i) as usize).copied();
-        Some(via_raster::raster::bilinear(
-            at(i, j)?,
-            at(i1, j)?,
-            at(i, j1)?,
-            at(i1, j1)?,
-            fxr - i as f64,
-            fyr - j as f64,
-        ))
+        let (a, b, c, d) = (at(i, j)?, at(i1, j)?, at(i, j1)?, at(i1, j1)?);
+        let (tx, ty) = (fxr - i as f64, fyr - j as f64);
+        // A wall: the four posts span more than twice the spacing. Read at the nearest post, so a
+        // turned wall stays a wall on the parent's posts (6.2); ties to the lower post.
+        let wall = walls && {
+            let (a, b, c, d) = (
+                by.get((j * g.nx + i) as usize).copied()?,
+                by.get((j * g.nx + i1) as usize).copied()?,
+                by.get((j1 * g.nx + i) as usize).copied()?,
+                by.get((j1 * g.nx + i1) as usize).copied()?,
+            );
+            let span = via_num::max(via_num::max(a, b), via_num::max(c, d))
+                - via_num::min(via_num::min(a, b), via_num::min(c, d));
+            span > 2.0 * r / 1000.0
+        };
+        if wall {
+            return Some(match (tx > 0.5, ty > 0.5) {
+                (false, false) => a,
+                (true, false) => b,
+                (false, true) => c,
+                (true, true) => d,
+            });
+        }
+        Some(via_raster::raster::bilinear(a, b, c, d, tx, ty))
     }
 
     /// The import's finished values of a field as doubles, `None` when it has no such scalar
@@ -862,6 +970,21 @@ impl Imported {
     pub fn field_values(&self, field: &str) -> Option<Vec<f64>> {
         let f = self.alone.build.fields.get(field)?;
         Some(f.values.as_ref()?.iter().map(|v| f64::from(*v)).collect())
+    }
+
+    /// The import's finished weights of a weights field, per material as doubles (6.2), `None`
+    /// when it has no such weights field.
+    pub fn weight_values(&self, field: &str) -> Option<BTreeMap<String, Vec<f64>>> {
+        let f = self.alone.build.fields.get(field)?;
+        if f.values.is_some() {
+            return None;
+        }
+        Some(
+            f.weights
+                .iter()
+                .map(|(m, w)| (m.clone(), w.iter().map(|v| f64::from(*v)).collect()))
+                .collect(),
+        )
     }
 
     /// A file as a record of the import names it, as a path from the parent's world folder.
@@ -894,9 +1017,23 @@ impl Imported {
                     id,
                     keys,
                 } => Subject::Entity {
-                    collection: format!("{}.{collection}", self.id),
-                    id: id.clone(),
-                    keys: keys.clone(),
+                    // Read back as written (`a.feature.quay_road`): the import's id is the first
+                    // part, so the stored diagnostic parses to the same subject (graph.md 6.2). A
+                    // collection already scoped (`n.feature`, raised for a nested import) is split
+                    // into its parts the same way.
+                    collection: self.id.clone(),
+                    id: collection
+                        .split('.')
+                        .next()
+                        .unwrap_or(collection)
+                        .to_string(),
+                    keys: collection
+                        .split('.')
+                        .skip(1)
+                        .map(|p| via_diag::KeyPart::Key(p.to_string()))
+                        .chain(std::iter::once(via_diag::KeyPart::Key(id.clone())))
+                        .chain(keys.iter().cloned())
+                        .collect(),
                 },
                 other => other.clone(),
             }
@@ -1040,7 +1177,7 @@ impl Imported {
             }
             other => other,
         };
-        Some((Subject::entity(format!("{}.feature", self.id), name), site))
+        Some((scoped_subject(&self.id, "feature", name), site))
     }
 }
 
@@ -1244,13 +1381,25 @@ pub(crate) fn bring(
         }
     }
     walk(&d.imported, "", None, &mut packs);
-    let mut first: BTreeMap<&str, (usize, String)> = BTreeMap::new();
+    let mut first: BTreeMap<String, (usize, String)> = BTreeMap::new();
     for (k, (who, top, p)) in packs.iter().enumerate() {
-        for (id, a) in &p.assets {
-            let facts = format!("{:?}", a.facts());
-            match first.get(id.as_str()) {
+        // Asset ids, then material names (a brought paint is drawn by the build's one binding).
+        let bound = p
+            .assets
+            .iter()
+            .map(|(id, a)| (id.clone(), "asset id", format!("{:?}", a.facts())))
+            .chain(p.materials.iter().map(|(m, b)| {
+                (
+                    format!("material:{m}"),
+                    "material",
+                    format!("{:?}", b.colour),
+                )
+            }));
+        for (key, what, facts) in bound {
+            let id = key.strip_prefix("material:").unwrap_or(&key).to_string();
+            match first.get(&key) {
                 None => {
-                    first.insert(id.as_str(), (k, facts));
+                    first.insert(key, (k, facts));
                 }
                 Some((j, f)) if *f != facts => {
                     // The later world of the pair carries it: an import, the parent never.
@@ -1263,7 +1412,7 @@ pub(crate) fn bring(
                             subject,
                             "file",
                             &format!(
-                                "the asset id `{id}` is bound differently by {other}'s pack and {who}'s"
+                                "the {what} `{id}` is bound differently by {other}'s pack and {who}'s"
                             ),
                             "bind it the same, or rename it in one pack",
                         )
@@ -1271,6 +1420,40 @@ pub(crate) fn bring(
                     );
                 }
                 Some(_) => {}
+            }
+        }
+    }
+    // A brought paint on the `material` field is drawn by this world's binding (6.2, section 10):
+    // one this world's pack lacks is said, never drawn in no colour.
+    if pack.failed || d.pack.is_none() {
+        return;
+    }
+    let material = Some(Role::Material);
+    for (id, imp) in &d.imported {
+        for (name, f) in d.fields.iter().filter(|(_, f)| f.role == material) {
+            let Some(theirs) = imp.alone.build.fields.get(name) else {
+                continue;
+            };
+            if imp.alone.decls.fields.get(name).map(|g| g.role) != Some(f.role) {
+                continue;
+            }
+            for (m, w) in &theirs.weights {
+                if pack.materials.contains_key(m) || w.iter().all(|v| *v <= 0.0) {
+                    continue;
+                }
+                let names = || pack.materials.keys().map(String::as_str);
+                diags.push(text::with_nearest(
+                    text::at_header(
+                        codes::pack::UNKNOWN_MATERIAL,
+                        "import",
+                        id,
+                        &format!("`{id}` paints `{m}` on `{name}`, and this world's pack binds no material `{m}`"),
+                        &text::near_hint(m, names(), "bind it in this world's pack, or share the import's pack"),
+                    ),
+                    m,
+                    names(),
+                    |n: &str| pack.declaration("material", n),
+                ));
             }
         }
     }
@@ -1788,9 +1971,11 @@ impl Imported {
             ),
             _ => {}
         }
-        // Fields (6.2); a given field is the parent's own, handed down, not the import's.
+        // Fields (6.2); a given field is the parent's own, handed down, not the import's. A step's
+        // own field (`<step>#<name>`, R32) is a produced name no parent can declare: it is read
+        // inside the import, never matched (composition.md 6.2).
         for (name, f) in &a.decls.fields {
-            if a.decls.givens.contains_key(name) {
+            if a.decls.givens.contains_key(name) || name.contains('#') {
                 continue;
             }
             match d.fields.get(name) {
@@ -1829,18 +2014,6 @@ impl Imported {
                         }),
                     );
                 }
-                // A weights field matches but is not brought yet (6.2 reads each material's
-                // weight): say so rather than lose the import's paint in silence (principle 3).
-                Some(p) if p.weights => diags.push(
-                    text::at_header(
-                        codes::import::WEIGHTS_DROPPED,
-                        "import",
-                        id,
-                        &format!("`{id}`'s weights field `{name}` is not brought: this world's own weights stand under it"),
-                        "paint the import's materials in this world's own rows over its footprint for now",
-                    )
-                    .with("field", DValue::text(name.clone())),
-                ),
                 _ => {}
             }
         }
@@ -2041,7 +2214,7 @@ pub(crate) fn join_checks(
             if wk < 1.0 {
                 let own = imp
                     .field_values(sname)
-                    .and_then(|v| imp.sample(&v, (p.x, p.y)))
+                    .and_then(|v| imp.sample_length(&v, (p.x, p.y)))
                     .unwrap_or(0.0);
                 let moved = z[k] - own;
                 diags.push(
@@ -2155,7 +2328,7 @@ pub(crate) fn exit_checks(world: &World, d: &Decls, out: &Build, diags: &mut Vec
             else {
                 continue;
             };
-            let subject = Subject::entity(format!("{id}.feature"), fid.clone());
+            let subject = scoped_subject(id, "feature", fid.clone());
             let exit_site = a.world.as_ref().map_or(Site::World, |w| {
                 let s = text_site(w, Subject::entity("feature", fid.clone()), Site::Header);
                 match s {
@@ -2272,6 +2445,13 @@ pub(crate) fn is_surface(d: &Decls, field: &str) -> bool {
     d.fields
         .get(field)
         .is_some_and(|f| f.role == Some(Role::Surface))
+}
+
+/// Whether a field is a length (the `surface`, or unit `m`): only a length has wall cells (6.2).
+pub(crate) fn is_length(d: &Decls, field: &str) -> bool {
+    d.fields
+        .get(field)
+        .is_some_and(|f| f.role == Some(Role::Surface) || f.unit.as_deref() == Some("m"))
 }
 
 #[cfg(test)]

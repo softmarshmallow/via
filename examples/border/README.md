@@ -35,14 +35,16 @@ Cold build about 3 s (release, M4 slice 3 tree, one run).
   0.526667 to 0.6625). Two `follows` on one ring cross at its corner and cannot end on each other,
   so they stop 6 m apart with overlapping crests.
 - A name attribute holds one name: one bank feature per opening walk.
-- `blend` cannot name a place (6.3), so the distance to `wild.meet` is a parent field.
+- `blend` cannot name a place (6.3), so the distance to `wild.meet` is a parent field. (Since M4
+  slice 4, 6.3 lets a blend read `dist` of an import's place by its scoped name; this field stays.)
 
 ## Known faults (2026-11-16, walked on the move_abbey sheet)
 
-- A change built `--against` the base store fails: `diag.internal`, `held:fringe_trees/v:build`
-  not stable. The measures were taken on fresh stores, cold.
+- (Fixed by M4 slice 4: a change built `--against` the base store builds, and equals a fresh store.)
 - At the gate (`at_gate`) a sheer grey face stands beside the walk: not diagnosed.
 - The monastery's views outside the footprint (bridge, deck, gorge, turns) are brought and look at
   bare grass: features come in whole even where their ground does not.
-- Paint is not brought (`import.weights_dropped`): no trail or court paving shows.
-- The monastery's own steps (tarn fill, its reach lint) do not run inside the import (TODO M4 slice 3).
+- (Fixed by M4 slice 4: paint is brought, composition.md 6.2; the monastery's generate steps, its
+  tarn fill, run in the parent's build, composition.md 12. Its lints, the reach lint among them, do
+  not run in the parent by design; the brought water is off the walks, `walk_wet` 0.)
+- Two walks are blocked by ground: `at_gate` and `bank_corner` (TODO, From the M4 close).

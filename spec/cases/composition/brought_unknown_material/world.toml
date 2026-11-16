@@ -1,0 +1,21 @@
+name       = "brought_unknown_material"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+pack       = "pack.toml"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.sand]
+paint = "sand"
+
+[import.a]
+file = "a/world.toml"
+at   = [8, 0]

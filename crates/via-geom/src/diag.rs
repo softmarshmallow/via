@@ -113,7 +113,7 @@ impl Code {
             Code::NoArea => "Close the linework, or add a `clip`.",
             Code::OffsetEmpty => "Use a smaller distance.",
             Code::FollowBroken => "Use at most the widest offset that holds, or a shorter span.",
-            Code::CellNone => "Shorten `cell_length`.",
+            Code::CellNone => "Lower `spacing` (or `min_length`) in the `[cells]` table, or lengthen the frontage.",
             Code::CellSmall => "Lower the minimum, or lengthen the frontage.",
             Code::MaskEmpty => "Check the condition against the range.",
             Code::Internal => "Report it with the reproduction folder `data.repro` names.",

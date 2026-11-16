@@ -1,0 +1,9 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]                  # a 4 m wall between x = 3 and x = 4
+role = "surface"
+base = "= if(x < 4, 4, 0)"

@@ -1,0 +1,51 @@
+format    = "via-case-1"
+summary   = "Parent paints sand on mix, a paints moss: a's paint is brought, moss 255 at (12, 4), sand 255 at (2, 4); with blend 0.25, moss 64 and sand 191 at (12, 4) (composition.md 6.2)."
+milestone = 4
+actions   = ["build", "half", "halved"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.moss_inside]
+path  = "build/w/weights/mix/0_0.npy"
+post  = [12, 4]
+plane = 0
+value = 255
+[action.build.file.sand_inside]
+path  = "build/w/weights/mix/0_0.npy"
+post  = [12, 4]
+plane = 1
+value = 0
+[action.build.file.moss_outside]
+path  = "build/w/weights/mix/0_0.npy"
+post  = [2, 4]
+plane = 0
+value = 0
+[action.build.file.sand_outside]
+path  = "build/w/weights/mix/0_0.npy"
+post  = [2, 4]
+plane = 1
+value = 255
+
+[action.half]
+replace = "world.toml"
+find    = "at   = [8, 0]"
+with    = "at    = [8, 0]\nblend = 0.25"
+
+[action.halved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.halved.file.moss]
+path  = "build/w/weights/mix/0_0.npy"
+post  = [12, 4]
+plane = 0
+value = 64
+[action.halved.file.sand]
+path  = "build/w/weights/mix/0_0.npy"
+post  = [12, 4]
+plane = 1
+value = 191

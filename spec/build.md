@@ -770,7 +770,7 @@ Flags, on `build`, `merge` and `lock` where they apply:
 |---|---|
 | `--origins` | On `merge`: prints, beside the merged document, each value's span and chain (`documents.md` 8). |
 | `--lowered` | On `merge`: prints the document after forms are lowered (`rules.md` 10). (open): whether `merge` prints this, or the lowered statements are read from the graph, is decided with `rules.md`'s first form in M3. |
-| `--rerun-step ID` | On `build`: runs that step even when its trace matches, and compares (`graph.md` 5.2). Repeatable. Not in the build key: it changes no output unless the step is unstable, which `graph.step_unstable` reports. |
+| `--rerun-step ID` | On `build`: runs that step even when its trace matches, and compares (`graph.md` 5.2). Repeatable. An import's step is named by its prefixed id, `a.make` (`composition.md` 12). Not in the build key: it changes no output unless the step is unstable, which `graph.step_unstable` reports. |
 | `--step-deadline SECONDS` | On `build`: how long a step call may run before it is cancelled; default 600 (`protocol.md` 6.2). A whole number from 1 to 86,400 (one day); anything else is `cli.usage`. Not in the build key. |
 | `--sdk DIR` | On `build`, `lock`, `eval`, `query`, `merge` and `trust`: a working copy of the SDK in place of the carried one; its digest is in every step's static key and trust digest (`protocol.md` 8.1). |
 | `--change C` | Request a change. Repeatable; order changes nothing (changes commute). `C` holding a `.` or `/` is a change file's path, otherwise a change name: ids hold neither (`vocabulary.md` 2.1), so the two never mix. |

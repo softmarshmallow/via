@@ -43,6 +43,12 @@ pub struct Options {
     pub seed: Option<u64>,
     /// What a parent gives this world (`composition.md` 8): `None` builds each given's default.
     pub given: Option<std::sync::Arc<crate::import::GivenIn>>,
+    /// Runs an import's own generate steps before it is built (`composition.md` 12): the caller
+    /// that owns step running hands it in; `None` builds an import from its text alone.
+    pub import_steps: Option<crate::import::ImportSteps>,
+    /// The prefix of this world's node ids in the build that holds it: `""` for the world built,
+    /// `<id>.` for an import, `<id>.<nested>.` for an import's import (`composition.md` 12).
+    pub prefix: String,
 }
 
 impl Options {
@@ -69,6 +75,8 @@ impl Options {
             stand_ins: false,
             seed: None,
             given: None,
+            import_steps: None,
+            prefix: String::new(),
         }
     }
 }

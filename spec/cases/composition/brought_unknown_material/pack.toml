@@ -1,0 +1,3 @@
+# sand only: a's moss is not bound here.
+[material.sand]
+colour = [0.8, 0.7, 0.5]

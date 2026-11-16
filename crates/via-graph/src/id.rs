@@ -20,7 +20,23 @@ impl NodeId {
         if !s.is_empty() && s.bytes().all(|b| b.is_ascii_lowercase()) {
             return Ok(NodeId(s.to_string()));
         }
-        let (family, rest) = s.split_once(':').ok_or_else(|| bad("no `:`"))?;
+        let (head, rest) = s.split_once(':').ok_or_else(|| bad("no `:`"))?;
+        // An import's node carries its prefix, `<import>.` per level (`composition.md` 12):
+        // `a.step:lay`, `a.b.step:make`. Each import id is non-empty.
+        let family = match head.rsplit_once('.') {
+            Some((prefix, family)) => {
+                if prefix.split('.').any(|p| {
+                    p.is_empty()
+                        || !p
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+                }) {
+                    return Err(bad("an import prefix part is empty or not an id"));
+                }
+                family
+            }
+            None => head,
+        };
         if family.is_empty() || !family.bytes().all(|b| b.is_ascii_lowercase()) {
             return Err(bad("the family is not [a-z]+"));
         }
@@ -206,6 +222,12 @@ mod tests {
         }
         // A subject may hold `/` and `:` (paths); only the three suffixes are read.
         assert!(NodeId::parse("source:lib:alpha/kinds.toml").is_ok());
+        // An import's node, prefixed per level (`composition.md` 12).
+        assert!(NodeId::parse("a.step:lay/i:zones.z1").is_ok());
+        assert!(NodeId::parse("a.b.step:make").is_ok());
+        assert!(NodeId::parse(".step:make").is_err());
+        assert!(NodeId::parse("a..step:make").is_err());
+        assert!(NodeId::parse("a.Step:make").is_err());
         assert!(NodeId::parse("input:data/q:1").is_ok());
         assert!(NodeId::parse("write:fields/height.npy").is_ok());
     }

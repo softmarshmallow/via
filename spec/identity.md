@@ -582,7 +582,7 @@ table, and `position` is the item's place.
 | Code | Severity | Says | Hint |
 |---|---|---|---|
 | `identity.bad_id` | error | An id breaks `[a-z][a-z0-9_]*` or is longer than 48 bytes. | The repaired id: lowercased, each invalid character replaced by `_`, `x` in front if the first character is not a letter, cut to 48 bytes (`mill.a` to `mill_a`, `9x` to `x9x`). |
-| `identity.reserved` | error | An id is `world`, or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1). | Another name; the nearest free one. |
+| `identity.reserved` | error | An id is `world`, an import id is a collection's name (a top table's name, or `asset`, `kind`, `material`, `step`, `world`: an import's diagnostics name it as their collection, `composition.md` 2), or a mount, set item or kind surface is named `start`, `end` or `ground` (vocabulary 2.1, `rules.md` r65, `surfaces.md` 1). | Another name; the nearest free one. |
 | `identity.duplicate_id` | error | Two tables in one namespace share an id; names both, with file and line, across layers too. | Rename one, or merge them in one layer. |
 | `identity.unknown_place` | error | A part of a place name names nothing. | The nearest match. |
 | `identity.unknown_producer` | error | `by` names nothing. | The nearest producer id. |

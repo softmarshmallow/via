@@ -483,6 +483,7 @@ pub fn trust(
     yes: bool,
     json: bool,
 ) -> (Vec<Record>, u8) {
+    let lib_roots = lib.clone();
     let opts = LoadOptions::from_env(lib.clone(), changes);
     let l = via_doc::load(world, arg, &opts);
     let mut records = l.records;
@@ -509,11 +510,36 @@ pub fn trust(
     let trusted = steps::trusted(&config);
     let mut rows = Vec::new();
     let mut pending: Vec<(String, J)> = Vec::new();
-    for s in steps::declared(&w, &wdir) {
-        match steps::code_of(&s, &roots, &wdir, sdk_digest.as_ref()) {
+    // The world's steps, then each import's, at any depth: an import's steps are trusted as the
+    // parent's are, since the parent names its file in its own text (`composition.md` Open).
+    let mut worlds: Vec<(String, via_doc::World, PathBuf, steps::Roots)> = Vec::new();
+    for (prefix, iw, idir) in steps::import_worlds(&w, &wdir, &lib_roots) {
+        let r = steps::Roots {
+            world_dir: idir.clone(),
+            include: steps::includes(&iw),
+            ..roots.clone()
+        };
+        worlds.push((prefix, iw, idir, r));
+    }
+    let mut all: Vec<(String, steps::StepDecl, PathBuf, &steps::Roots)> =
+        steps::declared(&w, &wdir)
+            .into_iter()
+            .map(|s| (String::new(), s, wdir.clone(), &roots))
+            .collect();
+    // Only an import's generate steps run in the parent; its lints never do (`composition.md` 12).
+    for (prefix, iw, idir, r) in &worlds {
+        for s in steps::declared(iw, idir) {
+            if s.when == "generate" {
+                all.push((prefix.clone(), s, idir.clone(), r));
+            }
+        }
+    }
+    for (prefix, s, sdir, roots) in all {
+        let wdir = &sdir;
+        match steps::code_of(&s, roots, wdir, sdk_digest.as_ref()) {
             Ok(c) => {
                 let folder = c.folder.as_ref().map(|f| {
-                    f.strip_prefix(&wdir)
+                    f.strip_prefix(wdir)
                         .map_or_else(
                             |_| f.to_string_lossy().into_owned(),
                             |r| r.to_string_lossy().into_owned(),
@@ -529,7 +555,7 @@ pub fn trust(
                     ),
                     ("command", J::strs(s.command.iter().map(String::as_str))),
                     ("files", J::count(c.files)),
-                    ("step", J::s(s.id.clone())),
+                    ("step", J::s(format!("{prefix}{}", s.id))),
                     ("trust", J::s(c.trust.hex())),
                     ("trusted", J::Bool(trusted.contains(&c.trust.hex()))),
                 ]);

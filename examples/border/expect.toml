@@ -89,3 +89,31 @@ band    = [4, 4]
 [shut.opening]                              # the bank closed over both walks
 measure = "opening"
 band    = [4.5, 7]
+
+# ------------------------------------------------------------------------------------------ M4 slice 4
+# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD ff094b6 with
+# this slice's import.rs and resolve.rs hunks only (paint brought, a derived field's offset, wall
+# cells read at the nearest post; composition.md 6.2), VIA_LIB=lib, each world and import alone on a
+# fresh store, each change on its own fresh store with no --against (README Known faults). One build
+# each, other agents building at the same time. Before these hunks: walk_wet 147 (1.001 m deepest,
+# measured on HEAD's via), materials grass and rock only.
+
+[base.walk_wet]                     # no post of a walk's tread under brought water
+measure = "walk_wet"
+band    = [0, 0]
+
+[base.walk_wet_max]
+measure = "walk_wet_max"
+band    = [0, 0]
+
+[base.materials]                    # the abbey's and the wild's paint brought
+measure = "materials"
+band    = [["earth", "flags", "grass", "gravel", "rock"]]
+
+[move_abbey.walk_wet]
+measure = "walk_wet"
+band    = [0, 0]
+
+[shut.walk_wet]
+measure = "walk_wet"
+band    = [0, 0]

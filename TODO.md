@@ -860,27 +860,50 @@ M4 closes on paper with its third acceptance unmet: a moved square is not shown 
 The open "-> M4 slice 4" items above are re-sorted here; check them off in both places.
 
 **-> M5 (first, before M5's own work: M4's unmet acceptance and its costs)**
-- [ ] Import steps run inside the parent's build (`<id>.step:...` nodes in the parent's graph,
+- [x] Import steps run inside the parent's build (`<id>.step:...` nodes in the parent's graph,
   trust for an import's steps), then `for_each = "given:<name>"` and a `given:` selector; then
   `composition/moved_square` passes. Until then county's town is bare (`town_streets` 0,
-  `town_instances` 0) and the moved square is not shown.
+  `town_instances` 0) and the moved square is not shown. Done M4 slice 4: a hook the model calls
+  before it builds an import runs the import's generate steps in the parent's store
+  (`build/imports.rs`); county's town has 2 streets and 68 instances; moved_square passes.
+  Lesson: an import diagnostic's subject was stored as collection `town.cells`, which never read
+  back, so every parent with an import that said anything lost its null build (county unchanged
+  49% of cold -> 22%). A codec round-trip refusal is silent: say it (below).
+- [ ] An import's lint steps do not run in the parent, and an import's fill pre-build (before
+  give) runs none of its steps: decide whether a parent's build owes the import's lints
+  (composition.md 12 says not). A step's join records (reading faults of a returned document)
+  inside an import are dropped (`build/imports.rs`, `recs`).
+- [ ] A diagnostic the store codec cannot read back is refused silently
+  (`via-graph/src/codec.rs` encode): the record then has no world diagnostics and no null build
+  follows. Raise `diag.internal` (run) naming the code and subject instead.
+- [ ] The import's model nodes are still built in-process by `import:<id>` (leaves() prepares the
+  parent and every import to make the build key): county unchanged is 3.5 s of 15.9 s cold (22%,
+  six runs over three stores, release, other agents building), all of it that prepare.
 - [ ] `brought:<id>/<field>` nodes per chunk and the import's graph in the parent's: county
   unchanged pays `merge` (2.7 s of 5.4 s node time; unchanged 56 to 63% of cold over three runs of
   the slice), `move_town` re-runs 1280 of 1280 chunks, strait `move_b` all of its chunks. Then an
   unchanged-percent row in county's expect.toml.
-- [ ] Paint and weights brought across an import (`import.weights_dropped` in every import of the
-  three worlds): no setts, flags or trail paving show in county or border.
+- [x] Paint and weights brought across an import (`import.weights_dropped` in every import of the
+  three worlds): no setts, flags or trail paving show in county or border. Done M4 slice 4
+  (composition.md 6.2 and 10; cases `weights_brought`, `binding_material`,
+  `brought_unknown_material`): county shows earth, flags, gravel, setts.
 - [ ] A turned import notches sheer ground: county quay wall scalloped, a staircase band along the
   turned town's edge (paint or region edge on cells), seam 14 pairs at 1.61; strait b's slipway
   apron. Resampling that keeps anchored edges, paint resampled with the footprint, a distortion
-  measure.
-- [ ] border: brought water stands in the walks (2188 posts above 0.05 m, max 1.02 m); a way to dry
-  brought water against the joined ground, then a `walk_wet` measure.
+  measure. Part done M4 slice 4: the wall cell rule (6.2, lengths only after the review; cases
+  `turned_wall`, `turned_tone`) takes county `wall_mid` 203 -> 122 after `move_town`; the seam
+  stays 1.607; the 122 are slopes under 2 m a cell read bilinear.
+- [x] border: brought water stands in the walks (2188 posts above 0.05 m, max 1.02 m); a way to dry
+  brought water against the joined ground, then a `walk_wet` measure. Done M4 slice 4: a derived
+  field brought as its offset from the field it is derived from (6.2, case `derived_brought`);
+  border `walk_wet` 0 and `walk_wet_max` 0, base and `move_abbey`.
 - [ ] Given features cannot be given (county: `doc.upward_ref`, `formula.type`,
   `formula.outside_field`); a `features` given has no `default` selector though the spec says so;
   a given region's default cannot be a named region. Then give county's road to the town.
-- [ ] Plan step 6 for M4: a fresh agent builds a small variation (a third import, or a world
-  meeting another by ground) from the documents alone. Not run.
+- [x] Plan step 6 for M4: a fresh agent builds a small variation (a third import, or a world
+  meeting another by ground) from the documents alone. Run M4 slice 4 (`hamlet`, a vale imported
+  turned 30 degrees with an exit answered, then moved): built with 0 errors from the documents;
+  eleven trips, the document ones fixed, the rest under "From M4 slice 4".
 
 **-> later**
 - [ ] border views and reach (`at_gate`, `south_opening`, `wild.look_corner`, trees on the bank,
@@ -888,12 +911,41 @@ The open "-> M4 slice 4" items above are re-sorted here; check them off in both 
 - [ ] Vocabulary the border agent could not say: growth from a part's own rule past its footprint,
   names for an outline's sides, two `follows` on one outline ending on each other, a name
   attribute holding several names, `blend` naming a place (composition.md 6.3 against 4).
-- [ ] county: the erosion step on the county's land (skipped for the box); a README; views of the
-  town's district once its steps run.
+- [ ] county: the erosion step on the county's land (skipped for the box); views of the town's
+  district (its steps run since M4 slice 4; the README is written).
 - [ ] Wide reads make a far edit re-run every step (city `move_avenue`, quay `unrelated`): the
   slice 3 profile item above; city unchanged peaks above cold.
 - [ ] `scoped_values` per read, a named refusal for a non-generate step reading `<import>.<field>`,
   `anchored_at` by box containment: the slice 3 items above.
+
+### From M4 slice 4 (2026-11-16; the change, review, fresh-agent and gate runs, and the fix pass)
+
+Lesson: the wall rule was written for ground and applied to every field read; a threshold in metres
+must say which fields are metres. A rule's unit is part of the rule.
+
+- [ ] The terminal does not print the last 40 lines of a failed step's log (protocol.md 6.2 says it
+  does; code and spec disagree since M1). The `protocol.raised` hint now names where the log is
+  (`<out>.run.json` `steps[].log`, `<store>/objects/<2 hex>/<digest>`); print the tail, or a
+  `via log <step>` command.
+- [ ] lib/review reach lint: refuse an unknown params key or a malformed entry (`{ from, to }` at the
+  top level ran silently; `sealed` entries without `profile` raised AttributeError) and say one
+  info when it checks nothing. Its reference is now in lib/review/kinds.toml (hamlet trip 1).
+- [ ] An exit on the outline of a turned import is `import.exit_outside` (hamlet: gate at (196, 0)
+  on the vale's south edge, `face = 30`; `face = 0` clean). `inside` takes half a millimetre for the
+  frame's rounding; the exit test does not, or the footprint's own turned ring rounds inward. Then a
+  case `exit_on_turned_edge`.
+- [ ] `via build` asks once per new `--change` to be trusted although every step is trusted and
+  unchanged (hamlet trip 11, README "and once per --change"): decide whether a change that adds no
+  step needs trust.
+- [ ] A crossing's `deck_z` is a number measured from a build (hamlet, lib/ways README): a deck
+  height from the ground at its ends.
+- [ ] The river of an import leaves at two edges with no exit and nothing is said (composition
+  Open "what leaves undeclared"); hamlet's last seam (0.62) is probably there, not checked.
+- [ ] Not run in the fix pass: a small-world probe that a changed import step code file re-keys
+  the parent (review "Left").
+- [ ] A derived field read by its offset has no case at a wall cell where the derived field is flat
+  (an underwater quay face, review issue 2): the code reads both at one post since the fix pass;
+  a case with exact post values is owed.
 
 ## Framing
 

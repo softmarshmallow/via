@@ -551,8 +551,15 @@ impl<'a> View<'a> {
                     .filter(|r| r.kind == k && self.visible(r.rank))
                     .collect())
             }
+            Value::String(s) if s.starts_with("given:") => {
+                let names = given_names(self.world, self.build, &s["given:".len()..]);
+                Ok(all
+                    .into_iter()
+                    .filter(|r| names.contains(&r.name) && self.visible(r.rank))
+                    .collect())
+            }
             Value::String(s) if s.contains(':') => Err(invalid(format!(
-                "`{s}`: a feature selection is `*`, `kind:<kind>`, a name or a list of names"
+                "`{s}`: a feature selection is `*`, `kind:<kind>`, `given:<name>`, a name or a list of names"
             ))),
             Value::String(s) => Ok(vec![by_name(s)?]),
             Value::Array(a) => {
@@ -1894,6 +1901,11 @@ impl<'a> View<'a> {
 
 /// The features a `for_each = "kind:<k>"` selects in the view of layer rank `rank`, by name.
 pub fn items(world: &World, build: &Build, rank: Option<i64>, kind: &str) -> Vec<String> {
+    // `for_each = "given:<name>"`: one call per feature given under `<name>`, which stand below
+    // every layer of the fill (`composition.md` 8, 12).
+    if let Some(name) = kind.strip_prefix("given:") {
+        return given_names(world, build, name);
+    }
     build
         .features
         .iter()
@@ -1906,6 +1918,38 @@ pub fn items(world: &World, build: &Build, rank: Option<i64>, kind: &str) -> Vec
         })
         .map(|(n, _)| n.clone())
         .collect()
+}
+
+/// The features `given:<name>` selects (`composition.md` 8), by name: those a parent gave under
+/// `<name>`, named `<name>.<parent id>`; when none was given, those the given's `default`
+/// selector (`kind:<k>`) selects among the fill's own. Empty when `<name>` is no given of
+/// `accepts = "features"`.
+pub fn given_names(world: &World, build: &Build, name: &str) -> Vec<String> {
+    let Some(t) = world.entity("given", name) else {
+        return Vec::new();
+    };
+    if t.str("accepts") != Some("features") {
+        return Vec::new();
+    }
+    let prefix = format!("{name}.");
+    let given: Vec<String> = build
+        .features
+        .keys()
+        .filter(|n| n.starts_with(&prefix) && world.entity("feature", n).is_none())
+        .cloned()
+        .collect();
+    if !given.is_empty() {
+        return given;
+    }
+    match t.str("default").and_then(|d| d.strip_prefix("kind:")) {
+        Some(k) => build
+            .features
+            .iter()
+            .filter(|(_, f)| f.kind.as_deref() == Some(k))
+            .map(|(n, _)| n.clone())
+            .collect(),
+        None => Vec::new(),
+    }
 }
 
 /// The kinds whose effect writes this field (by name, `role:` or `tag:`).

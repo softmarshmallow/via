@@ -592,7 +592,7 @@ impl Worker {
                     .diag(
                         codes::protocol::RAISED,
                         format!("Step {} raised {exception}.", self.site.id),
-                        text!("Read the traceback in the step's log."),
+                        text!("Read the traceback in the step's log: the run report `<out>.run.json` names its digest in `steps[].log`, kept at `<store>/objects/<first two hex>/<digest>` (`.via/store` beside the world unless `--store`)."),
                     )
                     .with("exception", exception)
             }

@@ -26,6 +26,14 @@ How each is taken (ours):
 - With --run: `ran_import_town` (the node `import:town` that ran), `ran_placed_town` (`placed:town`
   and `placed:town/...` that ran), `fields_ran` and `fields` (field chunk nodes that ran, all of
   them), `shapes_ran` (shape nodes that ran, by name).
+- `walk_wet`, `walk_wet_max`: posts on the treads of the ways (`road/street/main_street/lane/trail` paths: within half their
+  `width` of the line) where the water stands more than 0.05 m over the ground, and the deepest
+  (composition.md 6.2, a field derived from another). Ours, M4 slice 4.
+- `materials`: the materials the build draws (manifest.json `materials`), each import's paint
+  brought with its ground (composition.md 6.2). Ours, M4 slice 4.
+- `wall_mid`, `wall_mid_off`: posts half-way down a wall (two neighbours across one axis more than
+  2 m apart, the post more than 0.5 m from each), and the largest such gap: the quay wall of a
+  turned town read through `sample` (composition.md 6.2, wall cells). Ours, M4 slice 4.
 """
 
 import json
@@ -46,6 +54,52 @@ def grid(path):
     body = raw[10 + hlen:]
     return rows, cols, struct.unpack(f"<{len(body) // 4}f", body)
 
+
+
+def wall_mid(d):
+    """`wall_mid`, `wall_mid_off`: posts half-way down a wall: a post whose two neighbours across
+    one axis (east and west, or north and south) differ by more than 2 m while it stands more than
+    0.5 m from each; and the largest of the smaller of those two gaps, metres. 0 where a wall runs
+    from a post at its top straight to one at its foot."""
+    rows, cols, h = grid(Path(d) / "fields" / "height.npy")
+    n, worst = 0, 0.0
+    for j in range(1, rows - 1):
+        for i in range(1, cols - 1):
+            p = h[j * cols + i]
+            for a, b in ((h[j * cols + i - 1], h[j * cols + i + 1]), (h[(j - 1) * cols + i], h[(j + 1) * cols + i])):
+                hi, lo = max(a, b), min(a, b)
+                if hi - lo > 2 and hi - p > 0.5 and p - lo > 0.5:
+                    n += 1
+                    worst = max(worst, min(hi - p, p - lo))
+                    break
+    return n, round(worst, 3)
+
+
+def walk_wet(d, fs, kinds):
+    """`walk_wet`, `walk_wet_max`: the posts within half a way's `width` of its line, for every
+    path feature of `kinds`, where `water - height` exceeds 0.05 m; their count and the deepest,
+    metres. Every post of the extent's lattice, nearest-segment distance in the plane."""
+    h, w = grid(d / "fields" / "height.npy"), grid(d / "fields" / "water.npy")
+    rows, cols, hv = h
+    wv = w[2]
+    wet, worst = set(), 0.0
+    for f in fs.values():
+        if f.get("kind") not in kinds or f.get("shape") != "path":
+            continue
+        half = f["attrs"].get("width", 2) / 2
+        pts = [tuple(p[:2]) for p in f["points"]]
+        for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+            L2 = (bx - ax) ** 2 + (by - ay) ** 2
+            for j in range(max(0, int(min(ay, by) - half) - 1), min(rows, int(max(ay, by) + half) + 2)):
+                for i in range(max(0, int(min(ax, bx) - half) - 1), min(cols, int(max(ax, bx) + half) + 2)):
+                    t = 0 if L2 == 0 else max(0, min(1, ((i - ax) * (bx - ax) + (j - ay) * (by - ay)) / L2))
+                    if math.hypot(i - ax - t * (bx - ax), j - ay - t * (by - ay)) > half:
+                        continue
+                    dep = wv[j * cols + i] - hv[j * cols + i]
+                    if dep > 0.05:
+                        wet.add(j * cols + i)
+                        worst = max(worst, dep)
+    return len(wet), round(worst, 3)
 
 def frame(d):
     m = json.loads((Path(d) / "manifest.json").read_text())["frame"]
@@ -127,6 +181,9 @@ def measure(d, run=None):
                 off = max(off, math.dist(own, t["at"][:2]))
     m["wet_views"] = wet
     m["toward_off"] = round(off, 3)
+    m["wall_mid"], m["wall_mid_off"] = wall_mid(d)
+    m["materials"] = sorted(json.loads((Path(d) / "manifest.json").read_text())["materials"])
+    m["walk_wet"], m["walk_wet_max"] = walk_wet(Path(d), fs, ("road", "street", "main_street", "lane", "trail"))
     return m
 
 

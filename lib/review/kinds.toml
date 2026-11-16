@@ -11,6 +11,39 @@
 #   [step.checks]
 #   when = "lint"
 #   command = ["python", "-m", "viasdk", "lib:review/checks.py"]
+#   checks  = ["streets", "houses"]          # the generate steps whose stated reads it checks
+#
+# A world whose generate step reads a stated fact (a `main_street` the world wrote, say) is
+# `authority.unchecked` until a lint step names that step in `checks` (authority.md); this one is
+# the lint to name (`worker = true` runs it as a worker).
+#
+# The reach lint, `reach.py` (its full reference is that file's docstring), is opt-in and checks
+# only what its params state: with no `reach` or `sealed` entry it checks nothing and says nothing,
+# and it emits one `walked` info per profile an entry uses. Every profile key is required; there
+# are no defaults:
+#
+#   [step.reach]
+#   when    = "lint"
+#   command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+#
+#   [step.reach.params.profiles.walker]    # metres
+#   grade = 0.5     # steepest rise over run walked between neighbouring posts
+#   step  = 0.3     # largest rise taken at once (a kerb)
+#   width = 0.8     # clear width the body needs
+#   wade  = 0.3     # deepest water walked through
+#   reach = 2       # how far from a place the body may stand and count as at it
+#
+#   [step.reach.params]
+#   reach  = [{ profile = "walker", from = "south_gate", to = ["market"] }]   # must join
+#   sealed = [{ profile = "walker", from = "south_gate", to = ["keep"] }]     # must not join
+#   links  = [{ profile = "walker", a = "<place>", b = "<place>", reason = "a ladder" }]
+#   waive  = [{ to = "<place>", reason = "why it may stay cut off" }]
+#
+# Every entry of `reach` and `sealed` is a table with `profile`, `from` and a list `to`. A place is
+# a point feature's name, `<path>.start` / `<path>.end`, `<instance>.<mount>`, or
+# `{ mount = "<name>", assets = [...] }`. A place naming nothing is `step.reach.unknown_place`
+# (error). Not checked yet (TODO, From M4 slice 4): an unknown params key (`from` at the top level)
+# is ignored without a word.
 
 #
 # A bookmark writes no field, so it cannot keep its eye clear (asked by `glade`): a bookmark that

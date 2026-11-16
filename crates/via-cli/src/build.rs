@@ -11,6 +11,7 @@ use via_diag::{
 };
 
 pub(crate) mod graph;
+pub(crate) mod imports;
 use via_doc::{ChangeRequest, LoadOptions, World};
 use via_graph::{BuildKeyParts, BuildRecord, Digest, NodeId, Store, Versions};
 
@@ -178,7 +179,7 @@ pub fn world_name(world: &World) -> Option<String> {
     }
 }
 
-fn world_seed(world: &World) -> u64 {
+pub(crate) fn world_seed(world: &World) -> u64 {
     match world.root().get("seed").map(|e| &e.item.value) {
         Some(via_doc::Value::Num(n)) => n.norm.parse::<i64>().map_or(0, |v| v as u64),
         _ => 0,
@@ -555,6 +556,36 @@ pub fn run(a: &Args) -> Outcome {
     let trusted = config.as_deref().map(steps::trusted).unwrap_or_default();
     let sdk_digest = a.sdk.as_deref().map(|d| steps::folder_digest(d).0);
     let decls = steps::declared(&world, &wdir);
+    let threads = a
+        .threads
+        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, usize::from))
+        .max(1);
+    // An import's own generate steps run in this build's store, trusted as this world's are
+    // (`composition.md` 12): the model calls this before it builds each import.
+    let import_env = std::sync::Arc::new(imports::Env {
+        store_root: store_root.clone(),
+        lib: a.lib.clone(),
+        config: config.clone(),
+        sdk: a.sdk.clone(),
+        sdk_digest,
+        trusted: trusted.clone(),
+        threads,
+        versions: versions(),
+        deadline: Duration::from_secs(a.deadline.unwrap_or(600)),
+        rerun: a.rerun.iter().cloned().collect(),
+        trust_command: steps::trust_command(
+            &a.world,
+            &a.lib,
+            a.sdk.as_deref(),
+            &a.changes
+                .iter()
+                .map(|c| c.written.clone())
+                .collect::<Vec<_>>(),
+        ),
+        outcomes: std::sync::Mutex::new(BTreeMap::new()),
+        run_diags: std::sync::Mutex::new(Vec::new()),
+    });
+    model_opts.import_steps = Some(imports::hook(import_env.clone()));
     let mut lint_steps: Vec<graph::LintStep> = Vec::new();
     // Lint and generate steps, plain or worker; export steps arrive with M6.
     for s in decls
@@ -706,10 +737,6 @@ pub fn run(a: &Args) -> Outcome {
     }
     let versions = versions();
     let key = via_graph::build_key(&versions, &parts);
-    let threads = a
-        .threads
-        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, usize::from))
-        .max(1);
     let started = std::time::Instant::now();
     let manifest_key = std::fs::read(out_dir.join("manifest.json"))
         .ok()
@@ -888,75 +915,14 @@ pub fn run(a: &Args) -> Outcome {
                 }
             }
             for l in &at_rank {
-                // A step's own value, or each item's under `for_each`, in item order.
-                let mut ids: Vec<&NodeId> = run_k
-                    .nodes
-                    .keys()
-                    .filter(|n| graph::split_step(n).0 == l.decl.id)
-                    .filter(|n| l.decl.for_each.is_none() || graph::split_step(n).1.is_some())
-                    .collect();
-                ids.sort();
-                let mut text = String::new();
-                let mut files: Vec<(String, Digest)> = Vec::new();
-                for n in ids {
-                    let Some(v) = run_k.value(n, &store, &plan_k) else {
-                        continue;
-                    };
-                    if v.diags
-                        .iter()
-                        .any(|d| d.severity() == via_diag::Severity::Error)
-                    {
-                        continue;
-                    }
-                    let Some((doc, fs)) = graph::returned(&v.bytes) else {
-                        continue;
-                    };
-                    let Some(bytes) = store.get_object(&doc) else {
-                        continue;
-                    };
-                    text.push_str(&String::from_utf8_lossy(&via_graph::object_bytes(&bytes)));
-                    text.push('\n');
-                    files.extend(fs);
+                if let Some((text, dir)) = imports::returned_of(&run_k, &plan_k, &store, l) {
+                    model_opts.step_out.insert(l.decl.id.clone(), dir);
+                    returned.push(via_doc::Returned {
+                        step: l.decl.id.clone(),
+                        layer: l.decl.layer.clone(),
+                        text,
+                    });
                 }
-                if text.trim().is_empty() {
-                    continue;
-                }
-                // The files of `out`, where a returned field's `file` is read. The folder is
-                // keyed by the document text and every returned file's digest, so a run that
-                // returns new file bytes under the same text never reads an older run's files.
-                let mut key = text.clone().into_bytes();
-                for (p, d) in &files {
-                    key.push(0);
-                    key.extend_from_slice(p.as_bytes());
-                    key.push(0);
-                    key.extend_from_slice(d.hex().as_bytes());
-                }
-                let dir = store.root().join("returned").join(Digest::of(&key).hex());
-                let mut ok = std::fs::create_dir_all(&dir).is_ok();
-                for (p, d) in &files {
-                    let target = dir.join(p);
-                    if target.is_file() {
-                        continue;
-                    }
-                    ok &= match store.get_object(d) {
-                        Some(b) => {
-                            if let Some(parent) = target.parent() {
-                                let _ = std::fs::create_dir_all(parent);
-                            }
-                            std::fs::write(&target, via_graph::object_bytes(&b)).is_ok()
-                        }
-                        None => false,
-                    };
-                }
-                if !ok {
-                    continue;
-                }
-                model_opts.step_out.insert(l.decl.id.clone(), dir);
-                returned.push(via_doc::Returned {
-                    step: l.decl.id.clone(),
-                    layer: l.decl.layer.clone(),
-                    text,
-                });
             }
             let (w, recs) = world.join(&returned);
             joined = w;
@@ -1069,6 +1035,23 @@ pub fn run(a: &Args) -> Outcome {
             }
         }
     }
+    // An import's step nodes, under its prefix (`composition.md` 12), as the import's build ran
+    // them in this process.
+    for (id, o) in import_env
+        .outcomes
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .iter()
+    {
+        run.nodes.insert(id.clone(), o.clone());
+    }
+    run_diags.extend(
+        import_env
+            .run_diags
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .drain(..),
+    );
     run_diags.extend(run.run_diags.iter().cloned());
     run_diags.extend(store.take_run_diags());
     // Every record, finished once.

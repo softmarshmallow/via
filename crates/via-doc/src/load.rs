@@ -1160,6 +1160,24 @@ impl Loader<'_> {
                         self.fault(change::reserved(sub, &ee, &|c| taken.contains(c)));
                         continue;
                     }
+                    // An import's id is the collection of its things' scoped subjects
+                    // (`identity.md` 1): a collection's own name would read back as the
+                    // parent's entity.
+                    if ts == "import" && schema::reserved_import(&id) {
+                        let free = change::free_name(&id, &|c| taken.contains(c));
+                        self.fault(
+                            Fault::new(
+                                codes::identity::RESERVED,
+                                sub,
+                                At::Span(ee.key),
+                                format!("the import id `{id}` is reserved: it names a collection of the world"),
+                                format!("choose another id, such as `{free}`"),
+                            )
+                            .with("nearest", free.as_str())
+                            .chain(&ee.chain),
+                        );
+                        continue;
+                    }
                     if ts != "let" {
                         match &ee.item.value {
                             Value::Table(et) => self.no_removal(et, &sub, ts == "step"),
