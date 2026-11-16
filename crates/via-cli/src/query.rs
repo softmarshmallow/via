@@ -152,6 +152,7 @@ pub fn query(a: &QueryArgs) -> Vec<Record> {
         );
         return records;
     };
+    let terrain_res = b.grid.map_or(1000, |g| g.resolution);
     let bad = |at: u32, what: &str| {
         usage(
             at,
@@ -160,15 +161,19 @@ pub fn query(a: &QueryArgs) -> Vec<Record> {
         )
         .emit(&NoWorld)
     };
-    let surface_of = |j: &J, at: u32| -> Result<(), Record> {
+    // The terrain (`None`), or a kind surface by place name (2.2, M3).
+    let surface_of = |j: &J, at: u32| -> Result<Option<&via_model::surfaces::SurfaceOut>, Record> {
         match j.get("surface").and_then(J::as_str) {
-            Some(s) if s == terrain.name => Ok(()),
+            Some(s) if s == terrain.name => Ok(None),
+            Some(s) if b.surfaces.contains_key(s) => Ok(b.surfaces.get(s)),
             Some(s) => {
-                let near = nearest(s, [terrain.name]);
+                let names =
+                    std::iter::once(terrain.name).chain(b.surfaces.keys().map(String::as_str));
+                let near = nearest(s, names);
                 let mut d = usage(
                     at,
                     format!("`{s}` is not a surface of this world"),
-                    near.hint("in M1 the one surface is the terrain"),
+                    near.hint("name the terrain field or a kind surface `<feature>.<surface>`"),
                 );
                 if let Some(n) = near.found() {
                     d = d.with("nearest", n);
@@ -220,14 +225,25 @@ pub fn query(a: &QueryArgs) -> Vec<Record> {
             ])
         }
         ("sample", Some((j, at))) => {
-            if let Err(r) = surface_of(j, *at) {
-                return vec![r];
-            }
+            let kind = match surface_of(j, *at) {
+                Ok(k) => k,
+                Err(r) => return vec![r],
+            };
             let pts = match points(j, *at) {
                 Ok(p) => p,
                 Err(r) => return vec![r],
             };
-            let s: Vec<_> = pts.iter().map(|(x, y)| terrain.sample(*x, *y)).collect();
+            let mut s = Vec::with_capacity(pts.len());
+            for &(x, y) in &pts {
+                match kind {
+                    None => s.push(terrain.sample(x, y)),
+                    // A `base` that fails at a point fails the whole call (2.7).
+                    Some(k) => match via_model::query::sample_kind(k, terrain_res, x, y) {
+                        Ok(v) => s.push(v),
+                        Err(e) => return vec![k.fault(&e).emit(&NoWorld)],
+                    },
+                }
+            }
             obj_of(vec![
                 ("gx", s.iter().map(|r| dbl(r.gx)).collect()),
                 ("gy", s.iter().map(|r| dbl(r.gy)).collect()),
@@ -236,8 +252,17 @@ pub fn query(a: &QueryArgs) -> Vec<Record> {
             ])
         }
         ("relief", Some((j, at))) => {
-            if let Err(r) = surface_of(j, *at) {
-                return vec![r];
+            match surface_of(j, *at) {
+                Ok(None) => {}
+                Ok(Some(_)) => {
+                    return vec![usage(
+                        *at,
+                        "`relief` of a kind surface is not answered yet".into(),
+                        "ask `relief` of the terrain; a kind surface's is owed (TODO)".into(),
+                    )
+                    .emit(&NoWorld)];
+                }
+                Err(r) => return vec![r],
             }
             let Some(rs) = j.get("regions").and_then(J::as_arr) else {
                 return vec![bad(*at, "regions")];

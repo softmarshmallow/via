@@ -1,7 +1,6 @@
 format    = "via-case-1"
 summary   = "comb; triangulate: twice-areas sum exactly, no added vertex, counter-clockwise, in the order of 3.10."
 milestone = 1
-pending   = "geometry.md 3.10: triangulation arrives with the milestone that first needs it"
 actions   = ["op"]
 
 [action.op]

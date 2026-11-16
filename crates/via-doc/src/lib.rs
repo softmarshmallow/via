@@ -36,7 +36,7 @@ mod world;
 pub use change::free_name;
 pub use ids::{is_id, repair as repair_id};
 pub use join::{document_file, Returned};
-pub use json::FORMAT;
+pub use json::{attribute_json, FORMAT};
 pub use load::{load, ChangeRequest, LoadOptions, Loaded};
 pub use path::open_file;
 pub use source::{Role, Source, Sources, Span, SrcId};

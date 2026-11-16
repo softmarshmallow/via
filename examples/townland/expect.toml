@@ -89,17 +89,17 @@ band    = [0, 0]
 measure = "geom.unowned_crossing"
 band    = [0, 0]
 
-[base.reach]
-measure = "reach_held"
-band    = [101, 101]
+[base.reach]                         # OWED (M5 slice 2): 50 of 101. lib/review's reach walks the
+measure = "reach_held"                      # terrain only; the deck is now a kind surface, so the
+band    = [101, 101]                          # river (0.5 m+ deep) cuts the town in two (TODO)
 
 [base.relief]
 measure = "place.relief"
 band    = [2, 2]
 
-[base.deck_dry]                             # no post of the deck under water (lib/ways crossing `water`)
-measure = "deck_wet"
-band    = [0, 0]
+[base.deck_wet]                             # M5 slice 2: the deck is the crossing's kind surface
+measure = "deck_wet"                        # (lib/ways), so the river runs on beneath it: 78 of 192
+band    = [60, 100]                         # posts wet; 0 under the stand-in deck (one build)
 
 [base.street_ends_on_embankment]            # the old town's streets end on the waterfront (R18)
 measure = "ends_on_embankment"
@@ -139,17 +139,17 @@ band    = [0, 0]
 measure = "errors"
 band    = [0, 0]
 
-[move_hill.deck_dry]
+[move_hill.deck_wet]                     # the river under the deck (M5 slice 2): 78
 measure = "deck_wet"
-band    = [0, 0]
+band    = [60, 100]
 
 [move_hill.houses]
 measure = "houses"
 band    = [56, 56]
 
-[move_hill.reach]
-measure = "reach_held"
-band    = [60, 60]
+[move_hill.reach]                         # OWED (M5 slice 2): 9 of 60. lib/review's reach walks the
+measure = "reach_held"                      # terrain only; the deck is now a kind surface, so the
+band    = [60, 60]                          # river (0.5 m+ deep) cuts the town in two (TODO)
 
 # ------------------------------------------------------------------------------------------ move_crossing
 
@@ -173,13 +173,13 @@ band    = [0, 0]
 measure = "houses"
 band    = [92, 92]
 
-[move_crossing.reach]
-measure = "reach_held"
-band    = [96, 96]
+[move_crossing.reach]                         # OWED (M5 slice 2): 40 of 96. lib/review's reach walks the
+measure = "reach_held"                      # terrain only; the deck is now a kind surface, so the
+band    = [96, 96]                          # river (0.5 m+ deep) cuts the town in two (TODO)
 
-[move_crossing.deck_dry]
+[move_crossing.deck_wet]                     # the river under the deck (M5 slice 2): 78
 measure = "deck_wet"
-band    = [0, 0]
+band    = [60, 100]
 
 [move_crossing.head_grade]                  # R16 at the moved crossing's heads
 measure = "head_grade"

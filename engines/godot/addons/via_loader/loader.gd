@@ -69,6 +69,9 @@ var _x0 := 0.0
 var _y0 := 0.0
 var _res := 1.0
 var _height := PackedFloat32Array()
+## The terrain's cut (build.md 6.5): one byte per quad, (ny - 1) by (nx - 1), 1 where cut; empty
+## when the build writes none (before M5), so no quad is cut.
+var _cut := PackedByteArray()
 var _water := PackedFloat32Array()
 var _asset_mesh := {}
 var _asset_material := {}
@@ -182,6 +185,7 @@ func make(build_dir: String, opts := {}) -> Node3D:
 		water = scalars[0]
 	if surface != "":
 		_height = _scalar(surface, fields[surface])
+		_cut = _cut_of(fields[surface])
 	if water != "":
 		_water = _scalar(water, fields[water])
 		if _water.is_empty():
@@ -196,6 +200,7 @@ func make(build_dir: String, opts := {}) -> Node3D:
 	var cols := _instance_columns()
 	for chunk in _manifest.get("chunks", []):
 		root.add_child(_chunk(chunk, material, cols, not water.is_empty()))
+	_meshes(root)
 	_features(root)
 	if not _paths(root):
 		root.free()
@@ -287,6 +292,31 @@ func _scalar(name: String, entry: Dictionary) -> PackedFloat32Array:
 	return Npy.floats(arr)
 
 
+func _cut_of(entry: Dictionary) -> PackedByteArray:
+	## The terrain entry's `cut` file (build.md 6.5), `|u1` of shape (ny - 1, nx - 1). No `cut` key
+	## (a build from before M5) cuts nothing; a key whose file is bad is load.bad_file and cuts
+	## nothing, so the terrain is drawn whole rather than with holes guessed.
+	var file = entry.get("cut")
+	if not file is String:
+		return PackedByteArray()
+	var arr := Npy.read(_dir + "/" + file)
+	var why := Npy.expect(arr, "|u1", [_ny - 1, _nx - 1])
+	if why != "":
+		_bad_file(file, why)
+		return PackedByteArray()
+	return arr.bytes
+
+
+func is_cut(i: int, j: int) -> bool:
+	## Whether the quad whose south-west post is [i, j] is cut (build.md 6.5).
+	return not _cut.is_empty() and i >= 0 and j >= 0 and i < _nx - 1 and j < _ny - 1 and _cut[j * (_nx - 1) + i] == 1
+
+
+func cut_at(x: float, y: float) -> bool:
+	## Whether the plan point lies on a cut quad.
+	return is_cut(floori((x - _x0) / _res), floori((y - _y0) / _res))
+
+
 func _h(i: int, j: int) -> float:
 	return _height[clampi(j, 0, _ny - 1) * _nx + clampi(i, 0, _nx - 1)]
 
@@ -346,8 +376,12 @@ func _ground_mesh(i0: int, j0: int, i1: int, j1: int) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
-	arrays[Mesh.ARRAY_INDEX] = _grid_indices(cols, rows, func(_c, _r): return true)
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	# A cut quad (build.md 6.5) is not drawn; the hole's sides are the library's instances.
+	var idx := _grid_indices(cols, rows, func(c, r): return not is_cut(i0 + c, j0 + r))
+	arrays[Mesh.ARRAY_INDEX] = idx
+	mesh.set_meta("triangles", idx.size() / 3)
+	if not idx.is_empty():
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
 
@@ -369,9 +403,17 @@ static func _grid_indices(cols: int, rows: int, keep: Callable) -> PackedInt32Ar
 
 func _ground_body(i0: int, j0: int, i1: int, j1: int) -> StaticBody3D:
 	## HeightMapShape3D spaces samples 1 unit apart and centres them; heights are divided by the
-	## resolution and the node scaled by it. Its rows run along +Z, which is south.
+	## resolution and the node scaled by it. Its rows run along +Z, which is south. A chunk with a
+	## cut quad (build.md 6.5) holds a ConcavePolygonShape3D of its uncut quads instead, split as the
+	## mesh is: a HeightMapShape3D has no holes in Godot's physics (a NaN post is not one).
 	var cols := i1 - i0 + 1
 	var rows := j1 - j0 + 1
+	var any_cut := false
+	for j in range(j0, j1):
+		for i in range(i0, i1):
+			any_cut = any_cut or is_cut(i, j)
+	if any_cut:
+		return _cut_ground_body(i0, j0, i1, j1)
 	var data := PackedFloat32Array()
 	data.resize(cols * rows)
 	for r in rows:
@@ -388,6 +430,30 @@ func _ground_body(i0: int, j0: int, i1: int, j1: int) -> StaticBody3D:
 	cs.shape = shape
 	cs.position = g(_x0 + (i0 + i1) * 0.5 * _res, _y0 + (j0 + j1) * 0.5 * _res, 0.0)
 	cs.scale = Vector3.ONE * _res
+	body.add_child(cs)
+	return body
+
+
+func _cut_ground_body(i0: int, j0: int, i1: int, j1: int) -> StaticBody3D:
+	## The chunk's uncut quads as triangles (sw, ne, se and sw, nw, ne), collided from both sides.
+	var faces := PackedVector3Array()
+	for j in range(j0, j1):
+		for i in range(i0, i1):
+			if is_cut(i, j):
+				continue
+			var sw := g(_x0 + i * _res, _y0 + j * _res, _h(i, j))
+			var se := g(_x0 + (i + 1) * _res, _y0 + j * _res, _h(i + 1, j))
+			var nw := g(_x0 + i * _res, _y0 + (j + 1) * _res, _h(i, j + 1))
+			var ne := g(_x0 + (i + 1) * _res, _y0 + (j + 1) * _res, _h(i + 1, j + 1))
+			faces.append_array([sw, ne, se, sw, nw, ne])
+	var shape := ConcavePolygonShape3D.new()
+	shape.backface_collision = true
+	shape.set_faces(faces)
+	var body := StaticBody3D.new()
+	body.name = "ground_body"
+	var cs := CollisionShape3D.new()
+	cs.name = "shape"
+	cs.shape = shape
 	body.add_child(cs)
 	return body
 
@@ -1332,6 +1398,112 @@ func _meets(root: Node3D) -> void:
 		link.bidirectional = true
 		link.set_meta("meeting", m)
 		holder.add_child(link)
+
+
+func _meshes(root: Node3D) -> void:
+	## Each generated mesh (build.md 10): a MeshInstance3D under `meshes`, named after its `name`
+	## (mapped as an instance name), from its .glb read through GLTFDocument, placed by its node's
+	## translation (the mesh's south-west corner, so vertices stay small), glTF's axes being Godot's.
+	## Drawn in its pack material's `colour` from `materials` (as declared, linear), or the loader's
+	## default ground colour when its `material` is null or not in `materials`; a material's `file`
+	## (texture) is not drawn on a mesh. With `collides`, a StaticBody3D child of the same name holding
+	## a ConcavePolygonShape3D of its triangles, collided from both sides; its metadata `surface`
+	## holds the mesh's name, which the walker reports. Faces are read from the glTF state's
+	## ImporterMesh, which keeps them on the CPU under every display, `--headless` included.
+	var list = _manifest.get("meshes")
+	if not list is Array or list.is_empty():
+		return
+	var holder := Node3D.new()
+	holder.name = "meshes"
+	root.add_child(holder)
+	var mats: Dictionary = _manifest.get("materials", {})
+	for e in list:
+		if not e is Dictionary or not e.get("file") is String or not e.get("name") is String:
+			_bad_file("manifest.json", "a `meshes` entry lacks `name` or `file`")
+			continue
+		var file := String(e.file)
+		var path := _dir + "/" + file
+		if not FileAccess.file_exists(path):
+			_bad_file(file, "missing")
+			continue
+		var doc := GLTFDocument.new()
+		var state := GLTFState.new()
+		if doc.append_from_file(path, state) != OK:
+			_bad_file(file, "not glTF Godot reads")
+			continue
+		var nodes := state.get_nodes()
+		var gmeshes := state.get_meshes()
+		var drawn := ArrayMesh.new()
+		var faces := PackedVector3Array()
+		var xf := Transform3D.IDENTITY
+		var found := false
+		for k in nodes.size():
+			var gn: GLTFNode = nodes[k]
+			if gn.mesh < 0 or gn.mesh >= gmeshes.size() or found:
+				continue
+			found = true   # one mesh, one node (build.md 10)
+			xf = gn.xform
+			var p := gn.parent
+			while p >= 0:
+				xf = nodes[p].xform * xf
+				p = nodes[p].parent
+			var im: ImporterMesh = gmeshes[gn.mesh].mesh
+			for s in im.get_surface_count():
+				var arrays := im.get_surface_arrays(s)
+				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+				var idx = arrays[Mesh.ARRAY_INDEX]
+				if idx is PackedInt32Array and not idx.is_empty():
+					# glTF's front faces are counter-clockwise, Godot's clockwise: GLTFDocument
+					# has already turned the index order, so the faces are taken as they come.
+					for t in idx:
+						faces.append(verts[t])
+				else:
+					faces.append_array(verts)
+				drawn.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		if not found:
+			_bad_file(file, "no node holds a mesh")
+			continue
+		var mi := MeshInstance3D.new()
+		mi.name = node_name(String(e.name))
+		mi.mesh = drawn
+		mi.transform = xf
+		var m = e.get("material")
+		var c: Array = mats.get(m, {}).get("colour", []) if m is String else []
+		var colour := Color(c[0], c[1], c[2]) if c.size() == 3 else DEFAULT_GROUND.srgb_to_linear()
+		mi.material_override = surface_material(colour)
+		for key in ["feature", "surface", "material", "collides", "triangles"]:
+			mi.set_meta(key, e.get(key))
+		mi.set_meta("faces", faces.size() / 3)
+		holder.add_child(mi)
+		if e.get("collides", false) == true:
+			var shape := ConcavePolygonShape3D.new()
+			shape.backface_collision = true
+			shape.set_faces(faces)
+			var body := StaticBody3D.new()
+			body.name = mi.name
+			body.set_meta("surface", String(e.name))
+			var cs := CollisionShape3D.new()
+			cs.name = "shape"
+			cs.shape = shape
+			body.add_child(cs)
+			mi.add_child(body)
+
+
+var _surface_materials := {}
+
+
+func surface_material(colour: Color) -> ShaderMaterial:
+	## A kind surface's colour as declared (linear), the way the instance shader draws an asset's
+	## colour, both sides drawn (a floor is seen from the storey below).
+	var key := colour.to_html()
+	if not _surface_materials.has(key):
+		var sh := Shader.new()
+		sh.code = "shader_type spatial;\nrender_mode cull_disabled;\n#include \"res://addons/via_loader/linear.gdshaderinc\"\nuniform vec3 colour;\nvoid fragment() {\n\tALBEDO = albedo_from_linear(colour);\n\tROUGHNESS = 0.85;\n}\n"
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		mat.set_shader_parameter("colour", Color(colour.r, colour.g, colour.b))
+		_surface_materials[key] = mat
+	return _surface_materials[key]
 
 
 func _keep_fields(root: Node3D, fields: Dictionary) -> Dictionary:

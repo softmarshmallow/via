@@ -10,7 +10,7 @@ The Godot loader and the sheet tool of `spec/build.md` 15.1. Godot release pinne
 | `walk.gd`, `marks.gd` | The sheet tool's walker (a capsule walked from each bookmark toward its target: arrived, blocked, fell) and its marks for the hand edits of the after build's change report (pins magenta, clears cyan). They write `walks.png` and `<side>/walk/`. |
 | `rig.gd` | The sheet's light and environment; exposure lives here, checked by `tests/test_exposure.gd`. |
 | `sheet.sh` | Runs the sheet tool with a watchdog. |
-| `tests/` | The loader suite and its hand-made fixture builds. |
+| `tests/` | The loader suite and its hand-made fixture builds. `make_floor_fixture.py DIR` writes a synthetic build with a cut terrain and four kind surface meshes (a floor at 3 m, a tread, a 0.25 m step, a 0.6 m plinth); `test_floor.gd` (headless) loads it and walks on them. |
 
 ```
 engines/godot/sheet.sh --before build/ford --after build/ford+downstream --out review/ford \
@@ -20,4 +20,4 @@ engines/godot/tests/run.sh
 
 Both need a display: Godot's `--headless` draws nothing and keeps no `MultiMesh` data. The fixture
 builds are written by `tests/make_fixture.py` (Python's standard library only); `--check` says
-whether the files on disk still match it.
+whether the files on disk still match it. The floor test is the one part that runs headless: it reads data and physics only, never a render.

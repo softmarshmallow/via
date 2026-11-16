@@ -1,34 +1,41 @@
 # The station's measures and their bands (measure.py says how each is taken). Taken on the M5
-# slice 1 shared tree (uncommitted, after 8f7b169), release build, one run each, resolution 0.5.
-# A row whose band is what the spec asks and the build does not yet give is marked OWED: it fails
-# until the core lands that item (surfaces.md 4.1: `surface` on a set, a run `on` a storey).
+# slice 2 shared tree (uncommitted, after 152bf1f), release build, one run each, resolution 0.5,
+# Python 3.9 for the steps and 3.13 for measure.py. The counts take in the net loft that
+# lib/building's `lay` lays (2 storeys, 3 rooms, 1 flight, 1 doorway, 4 meetings).
 
 [base]
 protocol = { text = "via build world.toml; via query world.toml surfaces_at --in stair_points.json; measure.py --surfaces" }
-storeys          = { band = [5, 5] }
-rooms            = { band = [8, 8] }
-flights          = { band = [4, 4] }
-doorways         = { band = [2, 2] }
-meetings         = { band = [12, 12] }
+storeys          = { band = [7, 7] }
+rooms            = { band = [11, 11] }
+flights          = { band = [5, 5] }
+doorways         = { band = [3, 3] }
+meetings         = { band = [16, 16] }
 gap_max_mm       = { band = [0, 0] }
-doors_in         = { band = [2, 2] }        # indoors reachable through a door: two doors in
-floors_joined    = { band = [5, 5] }        # every floor is stepped onto by some path
+doors_in         = { band = [3, 3] }        # indoors reachable through a door: two doors in, one to the loft
+floors_joined    = { band = [7, 7] }        # every floor is stepped onto by some path
 unreached        = { band = [0, 0] }        # every storey and room reached from the ground
-checked_meetings = { band = [12, 12] }
+checked_meetings = { band = [16, 16] }
 stair_surfaces   = { band = [5, 5] }        # at stair_1's middle: ground, store, stair_1, watch, stair_3
 dressing         = { band = [60, 400] }
-off_floor        = { band = [0, 0] }        # OWED: 102 (sets and runs stand on the terrain)
-shell_gave_way   = { band = [0, 0] }        # OWED: 10 (plan-only overlap with things on other floors)
+off_floor        = { band = [0, 0] }        # every hand set, run and instance on its floor (102 at slice 1)
+shell_gave_way   = { band = [0, 0] }        # overlap by level (rules.md 8.1; 10 at slice 1)
+door_narrow      = { band = [0, 0] }        # the lint's clear width at each door (check.py rule 5)
+doors_measured   = { band = [3, 3] }
+clear_min_mm     = { band = [1100, 3000] }  # every door and the step 1.1 m clear (0.20 m at slice 1)
+meshes           = { band = [12, 12] }      # a floor per storey, a tread per flight
+laid             = { band = [100, 140] }    # the loft's walls and corners
+laid_off_floor   = { band = [0, 0] }        # each on its storey's floor
 
 [move_stair]
-meetings         = { band = [12, 12] }
+meetings         = { band = [16, 16] }
 gap_max_mm       = { band = [0, 0] }
 unreached        = { band = [0, 0] }        # the rooms the moved stair serves still reached
-floors_joined    = { band = [5, 5] }
+floors_joined    = { band = [7, 7] }
+off_floor        = { band = [0, 0] }        # the watch room's things follow its floor
 
 [close_passage]
 unreached        = { band = [8, 8] }        # the tower's four storeys and four rooms sealed
 unreached_names  = { text = "lantern living store tower_0 tower_1 tower_2 tower_3 watch" }
-doors_in         = { band = [2, 2] }        # the cottage's two doors still in
-checked_meetings = { band = [11, 11] }
-meetings         = { band = [11, 11] }      # OWED: meets.json still lists tower_step.end (12)
+doors_in         = { band = [3, 3] }        # the cottage's two doors and the loft's still in
+checked_meetings = { band = [15, 15] }
+meetings         = { band = [15, 15] }      # meets.json drops tower_step.end with the lint

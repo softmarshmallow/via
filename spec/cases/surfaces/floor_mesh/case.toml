@@ -1,7 +1,7 @@
 format    = "via-case-1"
-summary   = "surfaces.md Conformance, floor_mesh: 6.4 writes one mesh per kind surface (hall_g.floor, hall_1.floor, stair.tread), none for the terrain."
+summary   = "surfaces.md Conformance, floor_mesh: 6.4 writes one mesh per kind surface (hall_g.floor, hall_1.floor, stair.tread), none for the terrain. M5 slice 2: the meshes' triangle counts (build.md 10, \"How\"); a floor's `material` is in the manifest's `materials` with its colour (build.md 7); a colour edit in the pack rewrites the mesh as a clean build does (U6)."
 milestone = 5
-actions   = ["build"]
+actions   = ["build", "boards", "boards_pack", "boarded", "recolour", "recoloured"]
 
 [copy.lib]
 from = "spec/vectors/surfaces/lib"
@@ -28,3 +28,63 @@ exists = true
 [action.build.file.tread]
 path   = "build/build/meshes/stair.tread.glb"
 exists = true
+
+# Triangle counts of build.md 10's meshing as built at M5 slice 2: a regression in the cells, the
+# clipping or 3.10 changes them.
+[action.build.file.rows_1]
+path    = "build/build/manifest.json"
+pointer = "/meshes/0/triangles"
+value   = 180
+
+[action.build.file.rows_g]
+path    = "build/build/manifest.json"
+pointer = "/meshes/1/triangles"
+value   = 192
+
+[action.build.file.rows_tread]
+path    = "build/build/manifest.json"
+pointer = "/meshes/2/triangles"
+value   = 20
+
+# The storey's floor given the pack's material `boards` (build.md 10, "Material").
+[action.boards]
+replace = "lib/surfaces_test/kinds.toml"
+find    = "cut  = \"= headroom\""
+with    = "cut  = \"= headroom\"\nmaterial = \"boards\""
+
+[action.boards_pack]
+replace = "pack.toml"
+find    = "[asset.box]"
+with    = "[material.boards]\ncolour = [0.5, 0.3, 0.1]\n\n[asset.box]"
+
+[action.boarded]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.boarded.file.material]
+path    = "build/build/manifest.json"
+pointer = "/meshes/0/material"
+value   = "boards"
+
+[action.boarded.file.colour]
+path    = "build/build/manifest.json"
+pointer = "/materials/boards/colour"
+value   = [0.5, 0.3, 0.1]
+
+[action.recolour]
+replace = "pack.toml"
+find    = "colour = [0.5, 0.3, 0.1]"
+with    = "colour = [0.9, 0.3, 0.1]"
+
+[action.recoloured]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.recoloured.file.colour]
+path    = "build/build/manifest.json"
+pointer = "/materials/boards/colour"
+value   = [0.9, 0.3, 0.1]

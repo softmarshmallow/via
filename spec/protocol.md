@@ -241,6 +241,8 @@ that one diagnostic is the call's only report (principle 8: one fault, one messa
 | `input.open` | `path`, as written in `inputs` | A raw blob of the file's bytes. A path not declared is `protocol.input_undeclared`. |
 | `pack.query` (M2) | `select` (`"*"`, asset ids, or an `@<taxon path>`), `columns` (fact names, or `"*"`) | A table by asset id: `id`, `source`, `taxon`, `tags`, and one column per resolved fact asked (`assets.md` 2.4): lengths as i32 millimetres, `bounds` `(n, 6)`, `origin` `(n, 3)`, `colour` f64 `(n, 3)`, words as str, `mounts`, `params` and `footprint` (a list of `[x, y]` millimetres in the asset frame: a table's column holds one value per row, so not a feature list) as canonical JSON text. Read-only (R19b; `assets.md` 5). |
 | `surface.meetings` (M2) | none | A table, one row per meeting, ordered by `a` then `b`: the columns of `surfaces.md` 2.4, `a`, `b` str, `x`, `y`, `gap` i64 millimetres, `z_a`, `z_b` f64; `face_a`, `face_b`, `turn` i64 millidegrees and `connector_a`, `connector_b` str, each with its `<column>?` u8 beside it (0 where the value is null, as attributes have, 4.3). Answered at `lint` and `export` only (R29); at `generate` it is refused with `surface.too_early`, naming the step, error -32006 on the wire with `data` holding `code` and `subject`, which the engine reports itself as it does `graph.read_outside`. |
+| `surface.surfaces_at` (M5) | `x`, `y` (i32 mm columns of one length n), `view` (`full` or `head`, default `full`, the terrain's view as `build.field` takes it) | `surfaces.md` 2.1 over the step's view (2.6): a table, one row per (point, surface), `point` i64 (the row in), `surface` str (the terrain's field name or `<feature>.<surface>`), `z` f64; a point's rows by `z`, then `surface` bytewise; none for a point outside the extent. A kind surface whose owner lies above the step's layer is left out, as a selector leaves it out. |
+| `surface.sample` (M5) | `surface` (one place name), `x`, `y`, `view` | `surfaces.md` 2.2: a table, one row per point, `inside` bool, `z`, `gx`, `gy` f64; outside the bound `inside` 0 and the rest 0. A name that is no surface in the view is `surface.not_surface` (error -32602, `data` holding `code` and `subject`, the nearest name in the record), and an owner above the step's layer `graph.read_outside`, each reported by the engine itself. |
 
 `build.field` by field type:
 
@@ -264,6 +266,7 @@ make it per-point: R19(c) reads "whole arrays, never per point" (R32).
 
 A compute that names a field, feature or selector reads it, and that read is traced as if made by
 the read methods above (a field: a `build.field` read of its whole grid in the compute's view). The
+two surface questions read the terrain so, in the view asked (M5). The
 compute's own call is traced as well, since its answer also depends on what is no read: a `let` its
 formula names.
 
@@ -379,13 +382,18 @@ width because kind defaults were not carried). An attribute's column type follow
 |---|---|
 | a lattice length | `i32`, millimetres |
 | a facing | `i32`, millidegrees |
-| an integer | `i64` |
-| another number | `f64` |
+| a number | `f64` |
 | a bool | `bool` |
 | a string or a name | `str` |
-| a list or a table | `str`, one canonical JSON text per row (`documents.md` 8) |
+| a list or a table | `str`, one canonical JSON text per row (`documents.md` 8), a kind's default included |
 
-An attribute that two selected kinds give two types is `protocol.column_mixed`, naming both kinds;
+An attribute has no declared number type, so a number is `f64` whether written `2` or `2.5`. (A
+row `an integer | i64` stood here until M5 slice 2; the engine never gave it, and it would make
+one attribute two column types across features.) Inside a list or table's JSON text no type is converted:
+a number written as a TOML integer is a JSON integer (`[2,1]`), any other number a double in the
+shortest form, members sorted, no spaces: `doors = [{ storey = 0, t = 0.4, width = 1 }]` reaches a
+step as `[{"storey":0,"t":0.4,"width":1}]`. A formula reads a list or table attribute as text
+(`formula.type`). An attribute that two selected kinds give two types is `protocol.column_mixed`, naming both kinds;
 the hint is to read each kind by its own `kind:` selector. Beside each attribute column is a `u8`
 column `<attribute>?`: 1 where the feature has the attribute, 0 where it has not, and the value
 there is 0 or `""`. Ids hold no `?`, so the name cannot collide.
@@ -503,7 +511,11 @@ step returns paths and regions of its kinds, and a network or cells table in tex
 - **Names.** Every table the document returns is named `<step>#<key>` in the build (`identity.md`
   2.4): a field, a row, a feature, an instance, a rule. Inside the document, a name resolves first
   to the document's own keys, then to the stratum, so a returned row reads its own field as
-  `f('<key>')`. Outside it, a formula in a higher layer reads a returned field by a tag the step
+  `f('<key>')`, and a returned path's `ends_at = "q.start"` names the returned `q`, built as
+  `<step>#q.start`. The names so resolved (M5): `starts_at`, `ends_at`, a path's named way points,
+  `on.ref`, `follows.ref`, a kind's `names` attributes, and `surface` on an instance, a point
+  feature and a scatter; a name whose part before the first `.` is a key of the document is that
+  key's (`<k>` or `<k>.<part>`). `identity.key_in_text` is checked on the name as written. Outside it, a formula in a higher layer reads a returned field by a tag the step
   sets on it (`tags` on a field of its own, `fields.md` 7), as `f('tag:<tag>')`; `'<step>#<key>'`
   in a formula is `identity.key_in_text` (R3, `formulas.md` 7). A key equal to a name the step can see is
   `protocol.key_shadows`. Under `for_each`, keys must already differ between items (`identity.md`
@@ -716,6 +728,7 @@ the library to Python on this SDK. Until then its code is covered by the static 
 | `step.fields(names, view="full", window=None, halo=0)` | `build.field`: read-only mapped arrays, each with its window; weights with their material names. |
 | `step.features(select, within=None, columns=())` | `build.features`: a feature list of NumPy columns, coordinates in millimetres, with a helper to metres. |
 | `step.instances(...)`, `step.input(path)`, `step.pack(select, columns=())` | The other traced reads. |
+| `step.meetings()`, `step.surfaces_at(x, y, view="full")`, `step.sample(surface, x, y, view="full")` | `surface.meetings`, `surface.surfaces_at`, `surface.sample`: one call per batch, a table back (M2, M5). |
 | `step.eval(formula, x, y, view="full")` or `step.eval(formula, window=..., view="full")` | `expr.eval`, one call per batch. |
 | `step.derive_where(...)`, `step.route(...)`, `step.descend(...)`, `step.spill(...)` | `derived.md` 4's operations, one call per batch. |
 | `step.checks` | A lint's `checks` member (2): each checked step and the stated facts it read. |
@@ -861,7 +874,7 @@ Not specified until the milestone that needs them. Each is decided by the case n
 Codes of other chapters used here: `graph.read_outside`, `graph.input_missing`,
 `graph.step_unstable`, `graph.store_corrupt`, `graph.for_each_empty`, `field.step_base`, `field.step_layer`,
 `authority.step_view`, `num.not_finite`, `num.not_finite_result`, `num.too_precise`, `doc.type`, `doc.not_yet`,
-`identity.key_collision`.
+`identity.key_collision`, `surface.too_early`, `surface.not_surface`, `formula.not_finite`.
 
 ## Conformance
 
@@ -927,6 +940,10 @@ by code, severity, subject, location and `data`.
 | 50 | M2 | A returned feature with an unknown attribute, its step in a layer whose `owner` is `land` | `doc.unknown_key` at its line in `step:<id>/document.toml`, the chain naming the layer and `land`. |
 | 51 | M2 | A step returning `[field.height]` with `file`, where `height` exists | `field.step_base`. |
 | 52 | M2 | A worker lint reading `pack.query` of `@plant/tree`, columns `bounds` and `collision`; then the pack's `colour` of one tree edited; then its `collision` | Columns as `via pack list` gives them; the lint reused; then ran. |
+| 72 | M5 | A worker lint reading list and table attributes, one written, one a kind's default (`c72_list_attributes`) | One canonical JSON text per row: `[{"storey":0,"t":0.4,"width":1}]`, `{"at":[2,3],"width":1}`, the default `[]`, `{}`. |
+| 73 | M5 | A generate step returning `p` with `ends_at = "q.start"`, `q`, and `t` with the name attribute `host = "q"`; a lint reading meetings (`c73_own_names`) | One meeting `make#p.end` with `make#q.start`, gap 0; `host` is `make#q`. |
+| 74 | M5 | A lint asking `surfaces_at` at three points and `sample` of a kind surface (`= level + 0.5 * x`) and of the terrain (`= x`) (`c74_surface_questions`) | Rows by point then `z`, none outside the extent; the kind surface's `gx` 0.5, one-sided at the bound's edge, `inside` false beyond it; the terrain's `gx` 1. |
+| 75 | M5 | `sample` of `deck.tops` where the surface is `deck.top` (`c75_sample_not_surface`) | `surface.not_surface` on the step, `data.nearest = "deck.top"`, exit 1. |
 
 ## Changed from the spike
 

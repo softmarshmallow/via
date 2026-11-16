@@ -1,0 +1,6 @@
+[kind.slab]
+authority = "anchored"
+requires  = ["level"]
+
+[kind.slab.surface.top]
+base = "= level + 0.5 * x"

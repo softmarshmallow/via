@@ -1,0 +1,116 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 (M5): a set placed with `surface`, a run `on` a storey, a scatter with `surface` and a point feature with `surface` all stand on hall_1.floor; raising the floor re-grounds each, the change report gives the floor's `level` as each instance's cause, and the rebuild against the base equals a clean one (U6). M5 slice 2: dropping the point's `surface`, moving the storey (its run re-laid), moving a set item, and editing the kind's `base` each equal a clean build (a features.json and instance file keyed by the statements they are made from)."
+milestone = 5
+actions   = ["base", "raise", "unsurface", "moved", "reitem", "rebase_edit", "rebase"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.file.z]
+path = "build/base/instances/z.npy"
+all  = 13.3
+
+[action.base.file.spot]
+path    = "build/base/features.json"
+pointer = "/features/1/at"
+value   = [30, 22, 13.3]
+
+[action.base.file.count]
+path    = "build/base/manifest.json"
+pointer = "/instances/count"
+value   = 11
+
+[action.raise]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "raise", "--against", "build/base", "--out", "build/raise"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/raise"
+
+[action.raise.file.z]
+path = "build/raise/instances/z.npy"
+all  = 14.0
+
+[action.raise.file.spot]
+path    = "build/raise/features.json"
+pointer = "/features/1/at"
+value   = [30, 22, 14]
+
+[action.raise.check.set]
+fn     = "entry_causes"
+path   = "build/raise/changes.json"
+table  = "instance"
+prefix = "pairs."
+named  = ["feature.hall_1.level"]
+
+[action.raise.check.run]
+fn     = "entry_causes"
+path   = "build/raise/changes.json"
+table  = "instance"
+prefix = "edge#"
+named  = ["feature.hall_1.level"]
+
+[action.raise.check.scatter]
+fn     = "entry_causes"
+path   = "build/raise/changes.json"
+table  = "instance"
+prefix = "pots#"
+named  = ["feature.hall_1.level"]
+
+# M5 slice 2 (review issues 1, 2, 6, 8): each change rebuilt against the base equals a clean
+# build (U6). Dropping the point's `surface` moves its `z` to the terrain and changes no shape.
+[action.unsurface]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "unsurface", "--against", "build/base", "--out", "build/unsurface"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/unsurface"
+
+[action.unsurface.file.spot]
+path    = "build/unsurface/features.json"
+pointer = "/features/1/at"
+value   = [30, 22, 10]
+
+# The storey 1.5 m longer to the east: its run (span 0 to 0.25 of its outline) is laid again.
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "moved", "--against", "build/base", "--out", "build/moved"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/moved"
+
+# A set item's `at` edited: the instance's items move.
+[action.reitem]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "reitem", "--against", "build/base", "--out", "build/reitem"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/reitem"
+
+# The kind's `base` one metre up, in the lib: the point standing on the floor rises with it.
+[action.rebase_edit]
+replace = "lib/surfaces_test/kinds.toml"
+find    = "base = \"= level\""
+with    = "base = \"= level + 1\""
+
+[action.rebase]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--against", "build/base", "--out", "build/rebase"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/rebase"
+
+[action.rebase.file.spot]
+path    = "build/rebase/features.json"
+pointer = "/features/1/at"
+value   = [30, 22, 14.3]
+
+[action.rebase.file.z]
+path = "build/rebase/instances/z.npy"
+all  = 14.3

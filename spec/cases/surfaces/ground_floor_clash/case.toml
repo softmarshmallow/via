@@ -1,0 +1,34 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (M5 slice 2): the terrain and a kind surface with `cut` are one level. A terrain scatter gives way to a hut on a ground floor at the terrain's height (no shrub origin inside the hut), and a hut on the terrain over it is place.overlap."
+milestone = 5
+actions   = ["scatter", "second"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.scatter]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+# The hut's footprint, 6 m by 4 m round [24, 24], less a hair at its edges.
+[action.scatter.check.none]
+fn     = "no_origin_inside"
+build  = "build/w"
+prefix = "bush#"
+points = [[21.01, 22.01], [26.99, 22.01], [26.99, 25.99], [21.01, 25.99]]
+
+[action.second]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "second", "--out", "build/second"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/second"
+
+[action.second.diag.overlap]
+code = "place.overlap"

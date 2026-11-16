@@ -70,9 +70,9 @@ band    = [1000, 1450]
 measure = "tarn.depth_max"
 band    = [2, 4]
 
-[base.deck_wet]                             # the stand-in deck stands dry over the beck
-measure = "deck.wet"
-equals  = 0
+[base.deck_wet]                             # M5 slice 2: the deck is the crossing's kind surface
+measure = "deck.wet"                        # (lib/ways), so the beck runs on beneath it: 69 of 240
+band    = [55, 85]                          # posts wet, 0 under the stand-in deck (one build)
 
 [base.deck_step]                            # deck end to the lane 4 m out: the head's 1:2 bank
 measure = "deck.step_m"
@@ -190,9 +190,9 @@ equals  = 4
 measure = "change.moved.east_row"
 equals  = 8
 
-[move_beck.deck_wet]
+[move_beck.deck_wet]                        # the moved deck over water: 73 of 245 (M5 slice 2)
 measure = "deck.wet"
-equals  = 0
+band    = [55, 85]
 
 [move_beck.head_grade]                      # R16 at the moved bridge's heads
 measure = "meet.head_grade"

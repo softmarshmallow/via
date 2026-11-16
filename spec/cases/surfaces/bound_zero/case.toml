@@ -1,7 +1,7 @@
 format    = "via-case-1"
 summary   = "surfaces.md Conformance, bound_zero: a crossing with width = 0: surface.bound with the value, exit 1."
 milestone = 3
-pending   = "owed: kind surfaces and kind mounts (`[kind.<k>.surface.<name>]`, `meets`, surfaces.md 1 and 3) are not implemented; the world, from section 6.3's kinds, is written with that code"
+pending   = "owed: no world.toml; the code is in (kind surfaces and mounts, M5 slice 1), the world from surfaces.md Conformance is not written (M5 slice 2 review: 14 such cases, TODO From M5 slice 2)"
 actions   = ["build"]
 
 [action.build]

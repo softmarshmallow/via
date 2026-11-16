@@ -19,11 +19,12 @@ The rules (ours, written for this library; README.md is the design note):
    post under its sill round to one millimetre (surfaces.md 3.4, `gap`).
 3. **Stair.** `stair = { t, width, run }`: the flights climb along the outline edge holding `t`,
    from `s0` (the point at `t`, along that edge) to `s1 = s0 + run`, in lanes `CLEAR` (0.1 m) off
-   the wall and off each other: lane 0's centre is `CLEAR + width / 2` in, lane 1's one lane
-   further. Flight `k` joins storey `k` to storey `k + 1`: an even flight climbs lane 0 from `s0`
+   the wall's inner face and off each other: lane 0's centre is `T + CLEAR + width / 2` in, lane
+   1's one lane further, where `T` is the kit's wall thickness (0 with no kit: surfaces.md 6.4's
+   `[21, 20.6]`). Measured from the outline, a 0.3 m wall stood 0.2 m into a 1 m flight. Flight `k` joins storey `k` to storey `k + 1`: an even flight climbs lane 0 from `s0`
    to `s1`, an odd one lane 1 back from `s1` to `s0` (a switchback). Storey `k + 1` loses its
    stairwell, a notch from the wall: for an even flight `[s0 - LANDING, s1]` one lane deep, for an
-   odd one `[s0, s1 + LANDING]` two lanes deep (both clamped to the edge), so each flight's end
+   odd one `[s0, s1 + LANDING]` two lanes deep and `T` more (both clamped to the edge), so each flight's end
    lies on the notch's side (on the outline: inside, surfaces.md 1.2) and the next flight starts on
    the floor. A notch that reaches a corner needs the next edge square to this one, or it is
    refused (`params`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
@@ -42,7 +43,7 @@ The rules (ours, written for this library; README.md is the design note):
    wide at the middle of their cut: the wall pieces there leave it open (the walk crosses it).
 6. **Walls** (with `kit`, a taxon path of pieces tagged `role:wall`, `role:corner`, `role:filler`,
    `role:door`, `role:roof`): along every stretch of a storey's outline that lies on the footprint's
-   outline, less the doorways and the corners, one `run` of wall pieces at their pitch
+   outline, less the corners and a clear gap for each doorway and flight that crosses it, one `run` of wall pieces at their pitch
    (`params.pitch`, else their `bounds` width) and one of fillers for what is left: the most wall
    pieces such that the rest is a whole number of fillers within `FIT` (5 mm). A stretch that does
    not close is `wall_open` (warning) naming the lengths near it that would. Runs stand on the
@@ -50,11 +51,18 @@ The rules (ours, written for this library; README.md is the design note):
    thickness inward, their front (+y) outward. A corner piece stands in each corner's square, a
    door leaf in each doorway, an inner wall between rooms leaving its opening, each `at` with
    `surface = "<storey>.floor"` (surfaces.md 4.1, M5).
+   **The clear gap.** A doorway or a flight crosses a stretch where its centreline comes within
+   `width / 2` of the wall's band (from the outline to `T` in). The wall leaves it `width + margin`
+   (`params.margin`, 0.1 m) clear, centred on where it crosses, and each side of the gap is pulled
+   back by the overhang of the pieces beside it (half a piece's `bounds` width past its pitch), so
+   the clear width between wall instances is never less than the path's width plus the margin.
+   Before, the gap was the door's width to the pitch, and a piece wider than its pitch closed it
+   (TODO, M5 slice 1: the station's front door 0.20 m clear, its tower step 0.29 m).
 7. **Roof.** `roof = "garden"`: a `roof` region over the footprint whose `garden` is at the top
    storey's level plus `storey_h`. Otherwise, with a `role:roof` piece in the kit, one instance at
    the footprint's middle on the top floor, facing out of the longest edge.
 
-`params` of the step: `inner_door` (0.9 m). Codes are `step.<id>.<code>`: `params` (error, the
+`params` of the step: `inner_door` (0.9 m), `margin` (0.1 m). Codes are `step.<id>.<code>`: `params` (error, the
 building's attribute), `wall_open` (warning), `laid` (info, what was returned).
 
 Library code imports only viasdk and the standard library (R19b).
@@ -70,6 +78,7 @@ LANDING = 1000       # mm of stairwell before an even flight's start and past an
 FIT = 5              # mm a stretch may differ from its pieces' pitches and still close
 INNER_DOOR = 900     # mm, an opening between two rooms
 MIN_FLAT = 1500      # mm, the least flat ground beside a doorway
+MARGIN = 100         # mm a wall's gap is wider than the doorway or flight through it
 
 EXPLAIN = {
     "params": "An attribute of a building is outside what the building library's lay step takes; "
@@ -199,7 +208,7 @@ def posts_in(ring, grid):
 # --- stair ------------------------------------------------------------------------------------
 
 
-def stair_plan(ring, stair, storeys):
+def stair_plan(ring, stair, storeys, wall_t=0):
     """Flights and stairwells (rule 3). Returns {flights: [(path mm, lower, upper)], notches:
     {storey: (edge, a, b, depth)}} with `a`, `b` mm along the edge."""
     if storeys < 2:
@@ -216,8 +225,8 @@ def stair_plan(ring, stair, storeys):
     if w <= 0 or run <= 0 or s1 > e["L"] + 1e-6:
         raise ParamError("stair", f"the stair runs {run / 1000:g} m from {s0 / 1000:g} m along an edge "
                          f"{e['L'] / 1000:g} m long", "move `t` or shorten `run` so the flight stays on one edge")
-    lane = [CLEAR + w / 2, CLEAR + w / 2 + (w + CLEAR)]
-    depth = [w + 2 * CLEAR, 2 * w + 3 * CLEAR]
+    lane = [wall_t + CLEAR + w / 2, wall_t + CLEAR + w / 2 + (w + CLEAR)]
+    depth = [wall_t + w + 2 * CLEAR, wall_t + 2 * w + 3 * CLEAR]
     flights, notches = [], {}
     for f in range(storeys - 1):
         if f % 2 == 0:
@@ -440,14 +449,46 @@ def kit_pieces(rows):
             thick = b[4] - b[1] if b else 0
             pitch = r["params"].get("pitch")
             out[role] = {"id": r["id"], "pitch": int(round(float(pitch) * 1000)) if pitch else width,
-                         "thick": thick}
+                         "thick": thick, "width": width}
     return out
 
 
-def wall_stretches(ring, footprint, doors):
-    """Stretches of `ring` on the footprint's outline, as `(ring edge, a, b)` mm along it, less
-    each door's interval and the corner squares; and the footprint corners the ring keeps, as
-    `(point, edge before, edge after, convex)`."""
+def overhang(kit):
+    """mm a wall or filler piece reaches past its pitch at each end (the larger of the two)."""
+    return max([0.0] + [max(0.0, (p.get("width", p["pitch"]) - p["pitch"]) / 2)
+                        for p in (kit.get("wall"), kit.get("filler")) if p])
+
+
+def crossing_gap(e, path, width, T, half):
+    """The interval `(u0, u1)` mm along edge `e` a path of `width` (mm) crossing the wall's band
+    (from the outline to `T` in) needs clear, `half` mm each side of where its centreline lies
+    within `width / 2` of the band (rule 6); None where it does not come near."""
+    lo, hi = -width / 2, T + width / 2
+    us = []
+    for p, q in zip(path, path[1:]):
+        up = (p[0] - e["a"][0]) * e["e"][0] + (p[1] - e["a"][1]) * e["e"][1]
+        uq = (q[0] - e["a"][0]) * e["e"][0] + (q[1] - e["a"][1]) * e["e"][1]
+        vp = (p[0] - e["a"][0]) * e["n"][0] + (p[1] - e["a"][1]) * e["n"][1]
+        vq = (q[0] - e["a"][0]) * e["n"][0] + (q[1] - e["a"][1]) * e["n"][1]
+        if abs(vq - vp) < 1e-9:
+            if not lo <= vp <= hi:
+                continue
+            l0, l1 = 0.0, 1.0
+        else:
+            a, b = (lo - vp) / (vq - vp), (hi - vp) / (vq - vp)
+            l0, l1 = max(0.0, min(a, b)), min(1.0, max(a, b))
+            if l0 > l1:
+                continue
+        us += [up + (uq - up) * l0, up + (uq - up) * l1]
+    if not us or max(us) < -half or min(us) > e["L"] + half:
+        return None
+    return (min(us) - half, max(us) + half)
+
+
+def wall_stretches(ring, footprint, crossers=(), T=0, margin=MARGIN, over=0.0):
+    """Stretches of `ring` on the footprint's outline, as `(ring edge, a, b)` mm along it, with the
+    gaps the doorways and flights crossing it need (`crossers`: `(path, width)` in mm; rule 6); and
+    the footprint corners the ring keeps, as `(point, edge before, edge after, convex)`."""
     fes = edges(footprint)
     res = edges(ring)
     out, corners = [], []
@@ -466,8 +507,11 @@ def wall_stretches(ring, footprint, doors):
                 break
         if host is None:
             continue
-        k, off = host
-        gaps = [(d["s"] - off - d["width"] / 2, d["s"] - off + d["width"] / 2) for d in doors if d["edge"] == k]
+        gaps = []
+        for path, w in crossers:
+            g = crossing_gap(re, path, w, T, (w + margin) / 2 + over)
+            if g is not None:
+                gaps.append(g)
         out.append({"edge": i, "L": re["L"], "gaps": sorted(gaps), "start_corner": re["a"] in fset,
                     "end_corner": re["b"] in fset, "e": re})
     for i, p in enumerate(ring):
@@ -486,14 +530,14 @@ def convex_at(corners, p):
     return False
 
 
-def wall_plan(ring, footprint, doors, kit, prefix, storey_key):
+def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), margin=MARGIN):
     """Runs and instances for one storey's walls (rule 6). Returns (runs, instances, open)."""
     wall, filler = kit.get("wall"), kit.get("filler")
     runs, insts, opens = [], [], []
     if wall is None:
         return runs, insts, opens
     T = wall["thick"]
-    stretches, corners = wall_stretches(ring, footprint, doors)
+    stretches, corners = wall_stretches(ring, footprint, crossers, T, margin, overhang(kit))
     res = edges(ring)
     starts, c = [], 0.0
     for e in res:
@@ -504,16 +548,29 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key):
         e = st["e"]
         a = T if st["start_corner"] and convex_at(corners, e["a"]) else 0.0
         b = st["L"] - (T if st["end_corner"] and convex_at(corners, e["b"]) else 0.0)
-        pieces, at = [], a
+        pieces, at, after_gap = [], a, False
         for g0, g1 in st["gaps"]:
-            pieces.append((at, g0))
-            at = g1
-        pieces.append((at, b))
-        for j, (p0, p1) in enumerate(pieces):
+            pieces.append((at, min(g0, b), after_gap, True))
+            at, after_gap = max(at, g1), True
+        pieces.append((at, b, after_gap, False))
+        step_max = max(wall["pitch"], filler["pitch"] if filler else 0)
+        for j, (p0, p1, gap0, gap1) in enumerate(pieces):
             L = p1 - p0
             if L <= FIT:
                 continue
             got, near = fit(L, wall["pitch"], filler["pitch"] if filler else 0)
+            if got is None and (gap0 or gap1) and near[0] and L - near[0] <= step_max:
+                # A stretch beside a gap is shortened to the next length that closes, from its
+                # gap's side: the gap only widens, so the clear width only grows (rule 6).
+                cut = L - near[0]
+                if gap0 and gap1:
+                    p0, p1 = p0 + cut / 2, p1 - cut / 2
+                elif gap1:
+                    p1 -= cut
+                else:
+                    p0 += cut
+                L = p1 - p0
+                got, near = fit(L, wall["pitch"], filler["pitch"] if filler else 0)
             key = f"{prefix}_w{st['edge']}_{j}"
             if got is None:
                 opens.append({"key": key, "length": L, "near": near, "at": rnd(local(e, (p0 + p1) / 2, 0))})
@@ -594,7 +651,7 @@ def _num(attrs, key, default, lo=None, integer=False):
     return v
 
 
-def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR):
+def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, margin=MARGIN):
     """Everything one building returns, as plain data (the step writes it): rules 1 to 7."""
     footprint = ccw(ring)
     prefix = key_of(name)
@@ -605,7 +662,8 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR):
     walk_out = int(round(_num(attrs, "walk_out", 3, 0) * 1000))
     lv = levels(ground_m, plinth, storey_h, storeys)
     stair = attrs.get("stair") or None
-    sp = stair_plan(footprint, stair, storeys)
+    wall_t = (kit or {}).get("wall", {}).get("thick", 0) if kit and kit.get("wall") else 0
+    sp = stair_plan(footprint, stair, storeys, wall_t)
     rings = [footprint]
     for k in range(1, storeys):
         rings.append(notch_ring(footprint, sp["notches"][k]))
@@ -659,8 +717,11 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR):
             out["open"].extend(opens)
     if kit:
         for k in range(storeys):
+            crossers = [(d["path"], dp["width"]) for d, dp in zip(
+                [d for d in out["doorways"] if d["ends_at"] == f"{prefix}_s{k}.floor"], doors_by_storey.get(k, []))]
+            crossers += [(f["path"], int(round(f["width"] * 1000))) for f in out["flights"]]
             runs, insts, opens = wall_plan(rings[k], footprint, doors_by_storey.get(k, []), kit,
-                                           f"{prefix}_s{k}", f"{prefix}_s{k}")
+                                           f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin)
             for it in insts:
                 it["surface"] = f"{prefix}_s{k}.floor"
             out["runs"].extend(runs)
@@ -772,9 +833,10 @@ def generate(step):
     name = step.for_each_item
     try:
         inner = int(round(float((step.params or {}).get("inner_door", INNER_DOOR / 1000)) * 1000))
+        margin = int(round(float((step.params or {}).get("margin", MARGIN / 1000)) * 1000))
         ring, attrs = read_building(step, name)
         kit = read_kit(step, attrs.get("kit"))
-        out = plan(name, ring, attrs, read_ground(step, ring), step.grid, kit, inner)
+        out = plan(name, ring, attrs, read_ground(step, ring), step.grid, kit, inner, margin)
     except ParamError as e:
         step.error("params", name, f"{name}: {e.message}", e.hint, explain=EXPLAIN["params"],
                    data={"attribute": e.key})

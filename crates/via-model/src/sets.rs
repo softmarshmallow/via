@@ -80,9 +80,11 @@ impl RunDecl {
 const RESERVED: [&str; 3] = ["start", "end", "ground"];
 
 impl Decls {
-    /// The run that made a produced name, its members and their items alike.
+    /// The run that made a produced name, its members and their items alike. A run a step
+    /// returned is itself `<step>#<key>`, so its members are `<step>#<key>#r<k>`: the run is what
+    /// stands before the last `#` (split at the first, a laid wall's members stood on the terrain).
     pub fn run_of<'n>(&self, name: &'n str) -> Option<&'n str> {
-        let (m, _) = name.split_once('#')?;
+        let (m, _) = name.rsplit_once('#')?;
         self.runs.contains_key(m).then_some(m)
     }
 
@@ -1000,12 +1002,14 @@ fn point_at(line: &Line, s: i64, off: i64) -> Option<(P, i64, P)> {
 pub(crate) fn runs_give_way(
     d: &Decls,
     pack: &crate::pack::Pack,
+    shapes: &BTreeMap<String, crate::place::Geo>,
     all: &mut Vec<crate::rules::Placement>,
     diags: &mut Vec<via_diag::Diag>,
 ) {
     if d.runs.is_empty() {
         return;
     }
+    let levels = crate::surfaces::Levels::new(d, shapes);
     let solid = |a: &str| pack.assets.get(a).is_some_and(|x| x.solid);
     let hands: Vec<&crate::rules::Placement> = all
         .iter()
@@ -1026,7 +1030,14 @@ pub(crate) fn runs_give_way(
                 .instances
                 .get(h.name.split('.').next().unwrap_or(&h.name))
                 .map_or(0, |i| i.rank);
-            hrank <= rank && crate::rules::overlaps(&p.footprint, &h.footprint)
+            hrank <= rank
+                && levels.clash(
+                    &crate::surfaces::level(d, pack, p),
+                    &p.footprint,
+                    &crate::surfaces::level(d, pack, h),
+                    &h.footprint,
+                )
+                && crate::rules::overlaps(&p.footprint, &h.footprint)
         });
         if !hit {
             continue;

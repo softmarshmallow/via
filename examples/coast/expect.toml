@@ -1,0 +1,61 @@
+# The coast's measures and their bands (measure.py says how each is taken). Taken on the M5 slice 2
+# shared tree (uncommitted, after 152bf1f, with the other slice 2 agents' core, loader and library
+# work of that hour), macOS arm64, a `via` release binary of that tree, VIA_LIB=lib, Python 3.9 for
+# measure.py (3.13 for --check), one store: base built cold, each change --against base, one build
+# each, so a band is the measured number with the margin its row gives, not a target. A row whose
+# band is what the spec asks and the build does not yet give is marked OWED.
+#
+#   via build examples/coast/world.toml --out B
+#   via query examples/coast/world.toml surfaces_at --in examples/coast/cave_points.json --out S
+#   python3 examples/coast/measure.py B --surfaces S --check base
+
+[base]
+errors           = { band = [0, 0] }
+meetings         = { band = [7, 7] }        # the mouth, two jambs, two bridge ends, two lane ends
+gap_max_mm       = { band = [0, 0] }
+mouth_gap_mm     = { band = [0, 0] }        # the beach meets the cave's floor level
+mouth_at         = { text = "100 70" }
+jambs_met        = { band = [2, 2] }        # each face ends at a jamb, at the foot's level
+mouth_open       = { band = [8, 20] }       # 13: the cliff's step at the mouth is cut
+roof_cut         = { band = [0, 0] }        # the hill over the cave is whole
+roof_min_m       = { band = [15, 21] }      # 19.19 m of rock over the floor, 2 m in and beyond
+cave_surfaces    = { band = [2, 2] }        # at the cave's middle: its floor under the terrain
+cave_surface_names = { text = "sea_cave.floor height" }
+beach_grade_deg  = { band = [0, 34] }       # 8.82: from the view on the beach to the mouth
+beach_cut        = { band = [0, 0] }
+cave_reached     = { band = [1, 1] }        # beach, mouth meeting, floor: walkable by 4.4
+face_steep_share = { band = [0.95, 1] }     # 0.999 of the face's area steeper than 80 degrees
+brink_dev_mm     = { band = [0, 5] }        # 1: the face's brink lies along its line ...
+terrain_brink_dev_mm = { band = [300, 520] } # ... where the terrain alone draws it 491 mm off
+step_left        = { band = [0, 0] }        # no step of the terrain left drawn beside the face
+face_cut         = { band = [400, 600] }    # 495 quads under the face
+sliver_m2_per_m  = { band = [0, 0.2] }      # 0.129 m2 a metre open at foot and brink (lib/land)
+deck_wet         = { band = [60, 100] }     # 81 of 257 posts under the deck in the beck
+under_depth_m    = { band = [0.2, 0.5] }    # 0.3: the beck's `flow`, running on under the deck
+freeboard_m      = { band = [0.5, 3] }      # 1.49
+deck_length_m    = { band = [16, 16] }
+parapet_posts    = { band = [18, 18] }
+
+[move_cave]                                 # the cave 16 m west along the cliff
+errors           = { band = [0, 0] }
+meetings         = { band = [7, 7] }
+gap_max_mm       = { band = [0, 0] }
+mouth_at         = { text = "84 68" }       # the mouth moved ...
+jambs_met        = { band = [2, 2] }        # ... and both faces followed it by name
+mouth_open       = { band = [8, 20] }       # 13
+roof_cut         = { band = [0, 0] }
+roof_min_m       = { band = [15, 21] }      # 18.63
+cave_reached     = { band = [1, 1] }
+brink_dev_mm     = { band = [0, 5] }        # 1
+step_left        = { band = [0, 0] }        # the old mouth closed: no step left drawn there
+sliver_m2_per_m  = { band = [0, 0.2] }      # 0.124
+
+[long_deck]                                 # the deck 16 m to 24 m
+errors           = { band = [0, 0] }
+meetings         = { band = [7, 7] }
+gap_max_mm       = { band = [0, 0] }
+deck_length_m    = { band = [24, 24] }
+deck_wet         = { band = [60, 100] }     # 81 of 387 posts: the beck still under it
+under_depth_m    = { band = [0.2, 0.5] }    # 0.3
+parapet_posts    = { band = [26, 26] }      # 26 warm and clean (M5 slice 2 fix: the instance file
+                                            # reads what lays a run, its `on` target's shape)

@@ -22,7 +22,17 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
 4. **Doors that face.** A meeting with a `turn` above `turn_max` degrees is `turn` (warning): a
    path that arrives at a door's mount from the side (surfaces.md 3.4: the core reports `turn`, a
    library judges it).
-5. **The kit.** Of every asset under the taxons in `kits` with `params.pitch`, one whose `bounds`
+5. **Doorways, clear.** At each doorway's inner end (where it meets its floor), the clear width
+   across the doorway between the wall pieces beside it: every instance of an asset under `kits`
+   that is not a door leaf (`role:door`), whose footprint (its `bounds`, scaled and turned by its
+   `face`) reaches within `DEPTH` (1 m) of that end along the doorway and whose foot `z` stands
+   within `LOW` (0.5 m) below and `HIGH` (2 m) above its `sill_z` (so the storey above's walls,
+   in plan over the doorway, are not counted), is an obstacle across it;
+   the clear width is the free interval round the doorway's line. Under `inner_door` is `door_narrow`
+   (warning) naming the doorway, with the width and the pieces either side. A side with no piece
+   within `REACH` (3 m) is open. This measures what lay's rule 6 promises (the path's width plus a
+   margin); M5 slice 1 found a front door 0.20 m clear and a step 0.29 m, under a 0.6 m walker.
+6. **The kit.** Of every asset under the taxons in `kits` with `params.pitch`, one whose `bounds`
    width differs from its pitch by more than `pitch_slack` metres is `kit_pitch` (warning): a bay
    that measures 6.44 m at a 6 m pitch (the college's) overlaps its neighbour by 0.44 m.
 
@@ -30,11 +40,17 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
 `pitch_slack` (0.05 m), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
 `checked` (info) counts what was judged.
 
+The clear width is the plan's: two boxes' footprints, not their collision meshes (the engine's).
+
 Library code imports only viasdk and the standard library (R19b).
 """
 
 import json
 import math
+
+DEPTH = 1000         # mm along a doorway from its inner end within which a piece stands beside it
+LOW, HIGH = 0.5, 2.0  # metres below and above a doorway's sill a piece's foot stands to be beside it
+REACH = 3000         # mm across a doorway past which a piece does not narrow it
 
 DEFAULTS = {"riser_max": 0.19, "going_min": 0.25, "turn_max": 45.0, "inner_door": 0.9,
             "pitch_slack": 0.05, "kits": []}
@@ -48,6 +64,9 @@ EXPLAIN = {
     "its length gives room for. Lengthen the flight's `run` or raise `storey_h` less.",
     "turn": "A path arrives at a place that faces, from the side or behind: its `turn` is above the "
     "profile's `turn_max`. Bring the path in square to the door.",
+    "door_narrow": "The clear width between the wall pieces at a doorway is under `inner_door`: a "
+    "walker cannot pass. Widen the door or the margin lay leaves (`params.margin`), or use pieces no "
+    "wider than their pitch.",
     "kit_pitch": "A kit piece's measured width differs from the pitch it repeats at: its neighbours "
     "in a run overlap or leave a gap.",
     "checked": "What the building check judged: storeys, rooms, flights, meetings and kit pieces.",
@@ -131,9 +150,52 @@ def surface_of(place, kinds):
     return None
 
 
-def judge(features, meetings, kit_rows, p):
+def footprint(piece):
+    """The four corners (mm, world) of an instance's `bounds` box, scaled and turned by its face
+    (millidegrees clockwise from north; the asset's +y looks along it)."""
+    b, k = piece["bounds"], piece.get("scale", 1.0)
+    th = math.radians(piece["face"] / 1000.0)
+    c, s_ = math.cos(th), math.sin(th)
+    out = []
+    for px, py in ((b[0], b[1]), (b[3], b[1]), (b[3], b[4]), (b[0], b[4])):
+        px, py = px * k, py * k
+        out.append((piece["x"] + px * c + py * s_, piece["y"] - px * s_ + py * c))
+    return out
+
+
+def clear_width(path, pieces, sill=None):
+    """(clear mm or None when a side is open, the pieces bounding it either side) across a
+    doorway's inner end (rule 5); with `sill` (metres), only pieces whose `z` stands beside it."""
+    end, prev = path[-1], path[-2]
+    L = math.dist(prev, end)
+    d = ((end[0] - prev[0]) / L, (end[1] - prev[1]) / L)
+    a = (-d[1], d[0])
+    left, right = (-math.inf, None), (math.inf, None)
+    for pc in pieces:
+        if sill is not None and pc.get("z") is not None and not sill - LOW <= pc["z"] <= sill + HIGH:
+            continue
+        qs, cs = [], []
+        for x, y in footprint(pc):
+            qs.append((x - end[0]) * d[0] + (y - end[1]) * d[1])
+            cs.append((x - end[0]) * a[0] + (y - end[1]) * a[1])
+        if max(qs) < -DEPTH or min(qs) > DEPTH or min(cs) > REACH or max(cs) < -REACH:
+            continue
+        if min(cs) < 0 < max(cs):
+            return 0.0, (pc["name"], pc["name"])
+        if max(cs) <= 0 and max(cs) > left[0]:
+            left = (max(cs), pc["name"])
+        if min(cs) >= 0 and min(cs) < right[0]:
+            right = (min(cs), pc["name"])
+    if left[1] is None or right[1] is None:
+        return None, (left[1], right[1])
+    return right[0] - left[0], (left[1], right[1])
+
+
+def judge(features, meetings, kit_rows, p, pieces=()):
     """Records `(severity, code, subject, message, hint, data, position)`, in a fixed order:
-    storeys, rooms, flights, meetings, kit (each in name order), then `checked`."""
+    storeys, rooms, flights, meetings, doorways, kit (each in name order), then `checked`.
+    `pieces` are the kit's placed wall pieces (rule 5): name, x, y (mm), z (metres), face (mdeg),
+    scale, bounds (mm, the asset's six)."""
     out = []
     kinds = {f["name"]: f["kind"] for f in features}
     storeys = sorted(f["name"] for f in features if f["kind"] == "storey")
@@ -211,6 +273,23 @@ def judge(features, meetings, kit_rows, p):
             out.append(("warning", "turn", m["a"], f"`{m['a']}` arrives at `{m['b']}` turned "
                         f"{t / 1000:g} degrees from its face", "bring the path in square to it",
                         {"turn": t / 1000, "b": m["b"]}, (m["x"] / 1000, m["y"] / 1000)))
+    doorways = sorted((f for f in features if f["kind"] == "doorway"), key=lambda f: f["name"])
+    measured = 0
+    for f in doorways:
+        if len(f["path"]) < 2 or not pieces:
+            continue
+        sill = f["attrs"].get("sill_z")
+        w, (lo, hi) = clear_width(f["path"], pieces, float(sill) if sill is not None else None)
+        if w is None:
+            continue
+        measured += 1
+        if w < inner:
+            end = f["path"][-1]
+            out.append(("warning", "door_narrow", f["name"],
+                        f"`{f['name']}` is {w / 1000:.3f} m clear between `{lo}` and `{hi}`, under "
+                        f"{inner / 1000:g} m", "widen the door or lay's `margin`",
+                        {"clear": round(w / 1000, 3), "need": inner / 1000, "pieces": [lo, hi]},
+                        (end[0] / 1000, end[1] / 1000)))
     for r in sorted(kit_rows, key=lambda r: r["id"]):
         pitch = (r.get("params") or {}).get("pitch")
         b = r.get("bounds")
@@ -222,9 +301,10 @@ def judge(features, meetings, kit_rows, p):
                         f"{float(pitch):g} m pitch", "measure the piece again or correct its `params.pitch`",
                         {"asset": r["id"], "width": width, "pitch": float(pitch)}, None))
     out.append(("info", "checked", None, f"{len(storeys)} storeys, {len(rooms)} rooms, {len(flights)} "
-                f"flights, {len(meetings)} meetings ({nturn} with a turn), {len(kit_rows)} kit pieces",
-                "none needed", {"storeys": len(storeys), "rooms": len(rooms), "flights": len(flights),
-                                "meetings": len(meetings), "kit": len(kit_rows)}, None))
+                f"flights, {len(meetings)} meetings ({nturn} with a turn), {measured} doorways measured, "
+                f"{len(kit_rows)} kit pieces", "none needed",
+                {"storeys": len(storeys), "rooms": len(rooms), "flights": len(flights),
+                 "meetings": len(meetings), "doorways": measured, "kit": len(kit_rows)}, None))
     return out
 
 
@@ -247,7 +327,7 @@ def _json(v):
 def read_features(step):
     out = []
     for kind, cols in (("storey", ["level"]), ("room", ["storey"]), ("flight", ["z0", "z1"]),
-                       ("doorway", []), ("footpath", [])):
+                       ("doorway", ["sill_z"]), ("footpath", [])):
         try:
             fl = step.features(select=f"kind:{kind}", columns=cols)
         except Exception:                         # a kind no feature has: nothing to judge
@@ -278,9 +358,29 @@ def read_kits(step, taxons):
     for taxon in taxons:
         t = step.pack(select="@" + taxon, columns=["bounds", "params"])
         for r, i in enumerate(_list(t.get("id", []))):
+            tags = _json(_list(t["tags"])[r]) if "tags" in t else []
             rows.append({"id": i, "bounds": [int(v) for v in _list(_list(t["bounds"])[r])] if "bounds" in t else None,
-                         "params": (_json(_list(t["params"])[r]) or {}) if "params" in t else {}})
+                         "params": (_json(_list(t["params"])[r]) or {}) if "params" in t else {},
+                         "tags": tags if isinstance(tags, list) else [tags]})
     return rows
+
+
+def read_pieces(step, taxons, kit_rows):
+    """Placed instances of the kits' assets that are not door leaves, with their asset's bounds."""
+    bounds = {r["id"]: r["bounds"] for r in kit_rows
+              if r.get("bounds") and "role:door" not in (r.get("tags") or [])}
+    out = []
+    for taxon in taxons:
+        t = step.instances(select="@" + taxon)
+        names = _list(t.get("name", []))
+        for r, name in enumerate(names):
+            asset = _list(t["asset"])[r]
+            if asset not in bounds:
+                continue
+            out.append({"name": name, "x": int(_list(t["x"])[r]), "y": int(_list(t["y"])[r]),
+                        "face": int(_list(t["face"])[r]), "z": float(_list(t["z"])[r]) if "z" in t else None,
+                        "scale": float(_list(t["scale"])[r]) if "scale" in t else 1.0, "bounds": bounds[asset]})
+    return out
 
 
 def lint(step):
@@ -290,8 +390,9 @@ def lint(step):
         step.error("params", "step." + step.id, str(e), "see lib/building/check.py", explain=EXPLAIN["params"])
         return
     said = set()
-    for sev, code, subject, msg, hint, data, pos in judge(read_features(step), read_meetings(step),
-                                                         read_kits(step, p["kits"]), p):
+    kits = read_kits(step, p["kits"])
+    for sev, code, subject, msg, hint, data, pos in judge(read_features(step), read_meetings(step), kits, p,
+                                                         read_pieces(step, p["kits"], kits)):
         kw = {"data": data}
         if pos is not None:
             kw["position"] = pos

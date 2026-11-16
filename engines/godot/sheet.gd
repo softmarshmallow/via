@@ -305,7 +305,7 @@ func _run() -> void:
 		"renderer": RenderingServer.get_current_rendering_method(),
 		"size": [SHOT.x, SHOT.y],
 		"walk": {"arrive": Walk.ARRIVE, "eye": Walk.EYE, "fall": Walk.FALL, "height": Walk.HEIGHT,
-			"max_slope": Walk.MAX_SLOPE, "radius": Walk.RADIUS, "speed": Walk.SPEED, "wade": Walk.WADE,
+			"max_slope": Walk.MAX_SLOPE, "radius": Walk.RADIUS, "speed": Walk.SPEED, "step": Walk.STEP, "wade": Walk.WADE,
 			"above_water": Walk.ABOVE_WATER},
 		"walks": walks,
 	}

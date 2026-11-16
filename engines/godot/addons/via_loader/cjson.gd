@@ -38,7 +38,7 @@ static func encode(value) -> String:
 
 
 static func number(x: float) -> String:
-	## The shortest decimal that reads back to x's bits, in plain notation (numbers.md 3.4). Godot's
+	## The shortest decimal that reads back to x's bits, in ECMAScript's notation (numbers.md 3.4). Godot's
 	## own parser and formatter are not correctly rounded at 16 and 17 digits, so the digits are
 	## worked out exactly: x and the midpoints to its two neighbours as exact decimals, then the
 	## first rounding of x, from 1 significant digit up, that lies strictly between the midpoints
@@ -75,8 +75,23 @@ static func number(x: float) -> String:
 		var above: bool = cand > los or (inclusive and cand == los)
 		var below: bool = cand < his or (inclusive and cand == his)
 		if above and below:
-			return ("-" if neg else "") + _place(cand, frac)
-	return ("-" if neg else "") + _place(xs, frac)
+			return ("-" if neg else "") + _es(_place(cand, frac))
+	return ("-" if neg else "") + _es(_place(xs, frac))
+
+
+static func _es(plain: String) -> String:
+	## ECMAScript's notation for a plain decimal (numbers.md 3.4): plain for magnitudes in
+	## [1e-6, 1e21), else `d.ddde-N` or `d.ddde+N`.
+	var whole := plain.get_slice(".", 0)
+	var part := plain.get_slice(".", 1) if plain.contains(".") else ""
+	var zeros := part.length() - part.lstrip("0").length()
+	if whole == "0" and zeros >= 6:
+		var d := part.lstrip("0")
+		return d.substr(0, 1) + ("." + d.substr(1) if d.length() > 1 else "") + "e-%d" % (zeros + 1)
+	if part == "" and whole.length() >= 22:
+		var d := whole.rstrip("0")
+		return d.substr(0, 1) + ("." + d.substr(1) if d.length() > 1 else "") + "e+%d" % (whole.length() - 1)
+	return plain
 
 
 static func _decimal(n: int, f: int) -> PackedByteArray:

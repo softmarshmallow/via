@@ -141,6 +141,22 @@ pub enum Attr {
     Number(f64),
     YesNo(bool),
     Text(String),
+    /// A list or a table, as one canonical JSON text (`protocol.md` 4.3); a formula reads it as
+    /// text, never as a number.
+    Json(String),
+}
+
+impl Attr {
+    /// A written value as an attribute: `None` for a date-time, which no attribute takes.
+    fn of(v: &Value, item: &via_doc::Item) -> Option<Attr> {
+        match v {
+            Value::Num(x) => text::num(x).ok().map(Attr::Number),
+            Value::Bool(b) => Some(Attr::YesNo(*b)),
+            Value::Str(s) => Some(Attr::Text(s.text.clone())),
+            Value::List(_) | Value::Table(_) => Some(Attr::Json(via_doc::attribute_json(item))),
+            Value::DateTime => None,
+        }
+    }
 }
 
 /// A kind (`authority.md` 1).
@@ -274,6 +290,9 @@ pub struct FeatureDecl {
     pub holds: Option<(i64, i64)>,
     /// `route` on a path (`derived.md` 3): the cost per metre, a formula over posts.
     pub route: Option<FormulaId>,
+    /// `surface = "<feature>.<surface>"` on a point (`surfaces.md` 4.1, M5): the kind surface its
+    /// `z` is read from.
+    pub surface: Option<String>,
 }
 
 impl FeatureDecl {
@@ -358,6 +377,9 @@ pub struct ScatterDecl {
     /// Layer rank: giving way reads down only (`rules.md` 3.4).
     pub rank: i64,
     pub clump: Option<Clump>,
+    /// `surface = "<feature>.<surface>"` (`surfaces.md` 4.1, M5): the kind surface it stands on;
+    /// its bound is part of the scatter's region.
+    pub surface: Option<String>,
 }
 
 /// A pin (`identity.md` 4.2).
@@ -599,7 +621,7 @@ impl via_expr::Reads for AttrReads<'_> {
         match self.features.get(id).and_then(|f| f.attrs.get(name)) {
             Some(Attr::Number(x)) => Ok(via_expr::Scalar::Number(*x)),
             Some(Attr::YesNo(b)) => Ok(via_expr::Scalar::YesNo(*b)),
-            Some(Attr::Text(_)) => Err(via_expr::ReadError::new(
+            Some(Attr::Text(_) | Attr::Json(_)) => Err(via_expr::ReadError::new(
                 codes::formula::TYPE,
                 format!("`{name}` is text, not a number"),
                 "read a number or bool attribute",
@@ -759,6 +781,7 @@ impl Decls {
         d.read_runs(world, root);
         d.sets_unused();
         d.read_scatters(world, root);
+        d.own_names();
         d.read_edits(world, root);
         d.read_steps(root);
         d.read_makers(world, root);
@@ -773,6 +796,75 @@ impl Decls {
         d.diags.extend(upward);
         d.eval_attributes();
         d
+    }
+
+    /// `protocol.md` 5, Names: inside a returned document a name resolves first to the
+    /// document's own keys, then to the stratum. A produced entity `<step>#<key>` that writes the
+    /// name `<k>` or `<k>.<part>` where `<step>#<k>` is declared names that thing. Text never
+    /// writes a produced name (`identity.key_in_text` is checked on the name as written, before
+    /// this), and `protocol.key_shadows` keeps an own key from equalling a name the step sees.
+    fn own_names(&mut self) {
+        fn own(declared: &BTreeMap<String, &'static str>, id: &str, name: &mut String) {
+            let Some((step, _)) = id.split_once('#') else {
+                return;
+            };
+            let head = name.split('.').next().unwrap_or(name);
+            if !name.contains('#') && declared.contains_key(&format!("{step}#{head}")) {
+                *name = format!("{step}#{name}");
+            }
+        }
+        fn place(declared: &BTreeMap<String, &'static str>, id: &str, p: &mut Place) {
+            if let Place::On(o) = p {
+                own(declared, id, &mut o.reference);
+            }
+        }
+        let declared = std::mem::take(&mut self.declared);
+        for (id, f) in self.features.iter_mut().filter(|(id, _)| id.contains('#')) {
+            for n in [&mut f.starts_at, &mut f.ends_at, &mut f.surface]
+                .into_iter()
+                .flatten()
+            {
+                own(&declared, id, n);
+            }
+            match &mut f.shape {
+                ShapeDecl::Path(ws) => {
+                    for w in ws {
+                        if let WayDecl::Name(n) = w {
+                            own(&declared, id, n);
+                        }
+                    }
+                }
+                ShapeDecl::Point(p) => place(&declared, id, p),
+                ShapeDecl::Follows(fo) => own(&declared, id, &mut fo.reference),
+                _ => {}
+            }
+            let names = f
+                .kind
+                .as_ref()
+                .and_then(|k| self.kinds.get(k))
+                .map(|k| k.names.clone())
+                .unwrap_or_default();
+            for n in &names {
+                if let Some(Attr::Text(t)) = f.attrs.get_mut(n) {
+                    own(&declared, id, t);
+                }
+            }
+        }
+        for (id, i) in self.instances.iter_mut().filter(|(id, _)| id.contains('#')) {
+            place(&declared, id, &mut i.place);
+            if let Some(s) = &mut i.surface {
+                own(&declared, id, s);
+            }
+        }
+        for (id, r) in self.runs.iter_mut().filter(|(id, _)| id.contains('#')) {
+            place(&declared, id, &mut r.place);
+        }
+        for (id, s) in self.scatters.iter_mut().filter(|(id, _)| id.contains('#')) {
+            if let Some(n) = &mut s.surface {
+                own(&declared, id, n);
+            }
+        }
+        self.declared = declared;
     }
 
     /// `documents.md` 5.1 and `formulas.md` 5: a formula reads downward only. A `let`, a field
@@ -1019,12 +1111,7 @@ impl Decls {
             }
             if let Some(defaults) = t.table("defaults") {
                 for (name, e) in defaults.iter() {
-                    let v = match &e.item.value {
-                        Value::Num(n) => text::num(n).ok().map(Attr::Number),
-                        Value::Bool(b) => Some(Attr::YesNo(*b)),
-                        Value::Str(s) => Some(Attr::Text(s.text.clone())),
-                        _ => None,
-                    };
+                    let v = Attr::of(&e.item.value, &e.item);
                     if let Some(v) = v {
                         k.defaults.insert(name.clone(), v);
                     }
@@ -2048,6 +2135,7 @@ impl Decls {
                                 let bad = match k.defaults.get(n) {
                                     Some(Attr::YesNo(_)) => Some("a bool"),
                                     Some(Attr::Text(d)) if !d.starts_with('=') => Some("text"),
+                                    Some(Attr::Json(_)) => Some("a list or a table"),
                                     None if k.names.contains(n) => Some("text (a place name)"),
                                     _ => None,
                                 };
@@ -2095,12 +2183,7 @@ impl Decls {
                                 continue;
                             }
                         }
-                        let v = match &e.item.value {
-                            Value::Num(x) => text::num(x).ok().map(Attr::Number),
-                            Value::Bool(b) => Some(Attr::YesNo(*b)),
-                            Value::Str(s) => Some(Attr::Text(s.text.clone())),
-                            _ => None,
-                        };
+                        let v = Attr::of(&e.item.value, &e.item);
                         if let Some(v) = v {
                             from_default.remove(n);
                             attrs.insert(n.clone(), v);
@@ -2155,6 +2238,7 @@ impl Decls {
                     smooth,
                     holds,
                     route,
+                    surface: t.str("surface").map(str::to_string),
                 },
             );
         }
@@ -2607,6 +2691,7 @@ impl Decls {
                     seed,
                     rank: world.rank("scatter", id).unwrap_or(0),
                     clump,
+                    surface: t.str("surface").map(str::to_string),
                 },
             );
         }
@@ -2868,7 +2953,7 @@ impl Decls {
                     Attr::YesNo(_) => AttrType::YesNo,
                     // A default formula gives a number (`formulas.md` 6.7).
                     Attr::Text(s) if s.starts_with('=') => AttrType::Number,
-                    Attr::Text(_) => AttrType::Text,
+                    Attr::Text(_) | Attr::Json(_) => AttrType::Text,
                 };
                 env.kind_attribute(id, a, ty);
             }
@@ -2889,7 +2974,7 @@ impl Decls {
                 let ty = match v {
                     Attr::Number(_) => AttrType::Number,
                     Attr::YesNo(_) => AttrType::YesNo,
-                    Attr::Text(_) => AttrType::Text,
+                    Attr::Text(_) | Attr::Json(_) => AttrType::Text,
                 };
                 env.feature_attribute(id, a, ty);
             }

@@ -1,0 +1,36 @@
+# Layer `views` (rank 1): where the coast is judged from (R17): at the cave's mouth, inside the
+# cave, along the cliff's foot, on its brink, and at the bridge from beside and beneath.
+
+[feature.brink]                               # a point on the headland's top, over the face
+at = [80, 74]
+
+[feature.at_cave_mouth]                       # the mouth from the beach
+kind   = "bookmark"
+at     = [100, 58]
+toward = "sea_cave.mouth"
+
+[feature.in_cave]                             # on the cave's floor, looking out
+kind    = "bookmark"
+at      = [102, 86]                           # on the floor's line; `changes/move_cave.toml` moves it too:
+surface = "sea_cave.floor"                    # placed `on` the cave it stands on the terrain (TODO)
+toward  = "sea_cave.mouth"
+
+[feature.along_cliff]                         # the face from its foot, looking east along it
+kind   = "bookmark"
+at     = [40, 64]
+toward = "sea_cave.mouth"
+
+[feature.cliff_from_sea]                      # the face square on, from the wet sand
+kind   = "bookmark"
+at     = [70, 46]
+toward = "brink"
+
+[feature.on_bridge]                           # on the lane at the bridge's west end
+kind   = "bookmark"
+at     = [150, 96]
+toward = "harbour_bridge.end"
+
+[feature.under_deck]                          # beside the beck downstream, looking under the deck
+kind   = "bookmark"
+at     = [176, 78]
+toward = "harbour_bridge"

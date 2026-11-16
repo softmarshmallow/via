@@ -11,6 +11,7 @@ import os
 import runpy
 import shutil
 import subprocess
+import sys
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -170,7 +171,9 @@ class Walls(unittest.TestCase):
         self.assertEqual(out["open"], [])
         runs = [r for r in out["runs"] if r["ref"] == "hall_s0"]
         covered = sum((r["span"][1] - r["span"][0]) * 40000 for r in runs)
-        self.assertAlmostEqual(covered, 40000 - 8 * 300 - 1000, delta=1)   # less 4 corners, 1 door
+        # less 4 corners and the door's gap: 1 m wide plus the 0.1 m margin is 1.1 m, which leaves
+        # 3.15 m each side, not a whole number of 0.1 m fillers; each side gives 0.05 m to 3.1 m.
+        self.assertAlmostEqual(covered, 40000 - 8 * 300 - 1200, delta=1)
         leaf = [i for i in out["instances"] if i["asset"] == "leaf"]
         self.assertEqual([(i["at"], i["face"], i["surface"]) for i in leaf], [((31850, 24000), 90.0, "hall_s0.floor")])
         corners = [i for i in out["instances"] if i["asset"] == "corner" and i["surface"] == "hall_s0.floor"]
@@ -182,6 +185,68 @@ class Walls(unittest.TestCase):
         out = plan(kit={k: v for k, v in kit.items() if v})
         self.assertTrue(out["open"])
         self.assertTrue(all(o["near"][0] < o["length"] < o["near"][1] for o in out["open"]))
+
+    def clear_at(self, out, s, asset_half=None):
+        """The clear width (mm) round arc length `s` of the ground storey's outline, between the
+        ends of its runs' pieces: a run of `count` members over its span, each `asset_half` mm
+        each side of its member point (half its pitch by default)."""
+        lo, hi = -math.inf, math.inf
+        for r in (r for r in out["runs"] if r["ref"] == "hall_s0"):
+            a, b = r["span"][0] * 40000, r["span"][1] * 40000
+            pitch = (b - a) / r["count"]
+            half = asset_half.get(r["asset"], pitch / 2) if asset_half else pitch / 2
+            for k in range(r["count"]):
+                m = a + (2 * k + 1) * (b - a) / (2 * r["count"])
+                if m + half <= s:
+                    lo = max(lo, m + half)
+                elif m - half >= s:
+                    hi = min(hi, m - half)
+                else:
+                    return 0
+        return hi - lo
+
+    def test_the_door_is_left_its_width_and_the_margin(self):
+        """Rule 6: between the pieces each side of the door (t = 0.4, 16 m along) there is at
+        least the door's 1 m and the 0.1 m margin; with a margin of 0.5 m, 1.5 m."""
+        self.assertGreaterEqual(self.clear_at(plan(kit=KIT), 16000), 1100)
+        self.assertGreaterEqual(self.clear_at(L["plan"]("hall", HALL, ATTRS, 10.0, GRID, KIT, margin=500), 16000),
+                                1500)
+
+    def test_a_piece_wider_than_its_pitch_is_pulled_back(self):
+        """A bay 1.2 m wide at a 1 m pitch reaches 0.1 m past each end of its run: the gap is
+        widened by that, so the clear width between the pieces' bounds still holds 1.1 m. Without
+        the pull back it would be 0.9 m (the station's front door came out 0.20 m)."""
+        kit = dict(KIT, wall=dict(KIT["wall"], width=1200))
+        out = plan(kit=kit)
+        self.assertEqual(L["overhang"](kit), 100)
+        self.assertGreaterEqual(self.clear_at(out, 16000, {"bay": 600, "strip": 50}), 1100)
+
+    def test_a_flight_stands_clear_of_the_wall(self):
+        """Rule 3: with a 0.3 m wall the flight's lane is measured from the wall's inner face, so
+        its strip (centre 0.9 m in, 1 m wide) starts 0.1 m clear of the wall; and the storey above
+        loses the 0.3 m too."""
+        out = plan(kit=KIT)
+        (f,) = out["flights"]
+        self.assertEqual(f["path"], [(21000, 20900), (26000, 20900)])
+        self.assertEqual(f["path"][0][1] - 500 - 20000, 300 + 100)
+        self.assertTrue(same_ring(out["storeys"][1]["region"],
+                                  [(26000, 20000), (32000, 20000), (32000, 28000), (20000, 28000),
+                                   (20000, 21500), (26000, 21500)]))
+
+    def test_a_flight_crossing_the_outline_gets_a_gap(self):
+        """A flight (1 m) that crosses a wall stretch, square or along its band, is left its width
+        and the margin; one that stays a lane in from the wall is left none."""
+        e = L["edges"]([(0, 0), (10000, 0), (10000, 8000), (0, 8000)])[0]
+        self.assertEqual(L["crossing_gap"](e, [(4000, -2000), (4000, 3000)], 1000, 300, 550), (3450, 4550))
+        self.assertEqual(L["crossing_gap"](e, [(2000, 600), (6000, 600)], 1000, 300, 550), (1450, 6550))
+        self.assertIsNone(L["crossing_gap"](e, [(2000, 900), (6000, 900)], 1000, 300, 550))
+        ring = [(0, 0), (10000, 0), (10000, 8000), (0, 8000)]
+        kit = {k: KIT[k] for k in ("wall", "filler")}
+        runs, _, opens = L["wall_plan"](ring, ring, [], kit, "b", "b_s0", [([(4000, -2000), (4000, 3000)], 1000)])
+        bottom = sorted((r["span"][0] * 36000, r["span"][1] * 36000) for r in runs if "_w0_" in r["key"])
+        self.assertEqual(opens, [])
+        self.assertLessEqual(bottom[0][1], 3450 + 1)
+        self.assertGreaterEqual(bottom[-1][0], 4550 - 1)
 
     def test_wall_faces_out(self):
         out = plan(kit=KIT)
@@ -298,28 +363,39 @@ when     = "generate"
 worker   = true
 for_each = "kind:building"
 command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
 """
 
 
 class World(unittest.TestCase):
     """The 6.4 house built by the engine from one building feature: four meetings, every gap 0,
-    as the case surfaces/house_meetings asks of the hand-written house (names `lay#hall_*`)."""
+    as the case surfaces/house_meetings asks of the hand-written house (names `lay#hall_*`). Read
+    from the build's meets.json: `via query` runs no generate step yet (TODO, From M5 slice 2)."""
 
-    @unittest.skip("core: kind surfaces and kind mounts are doc.not_yet (NotYet(3) in via-doc), and "
-                   "a kind surface as a place (surfaces.md 9 items 1, 5; cases surfaces/house_meetings, "
-                   "surfaces/on_floor)")
     def test_house_meets(self):
         import json
         import tempfile
 
         self.assertIsNotNone(VIA, "set VIA_BIN")
+        lib = os.path.dirname(HERE)
         with tempfile.TemporaryDirectory() as d:
+            # Its own config (the step's `python`, this interpreter): never the user's.
+            env = dict(os.environ, VIA_CONFIG_DIR=os.path.join(d, ".config"))
+            subprocess.run([VIA, "config", "program", "python", sys.executable], cwd=d, check=True,
+                           env=env, stdout=subprocess.DEVNULL)
             with open(os.path.join(d, "world.toml"), "w") as f:
                 f.write(WORLD)
-            out = os.path.join(d, "out.json")
-            subprocess.run([VIA, "query", "world.toml", "meetings", "--lib", os.path.dirname(HERE), "--out", out],
-                           cwd=d, check=True)
-            got = json.load(open(out))
+            subprocess.run([VIA, "trust", "world.toml", "--yes", "--lib", lib], cwd=d, check=True,
+                           env=env, stdout=subprocess.DEVNULL)
+            subprocess.run([VIA, "build", "world.toml", "--lib", lib, "--out", "build/w"], cwd=d, check=True,
+                           env=env)
+            got = json.load(open(os.path.join(d, "build", "w", "meets.json")))["meets"]
+            got = {k: [m[k] for m in got] for k in ("a", "gap")}
             self.assertEqual(got["a"], ["lay#hall_d0.end", "lay#hall_f0.end", "lay#hall_f0.start", "lay#hall_p0.end"])
             self.assertEqual(got["gap"], [0, 0, 0, 0])
 

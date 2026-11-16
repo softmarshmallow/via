@@ -20,13 +20,13 @@ toward = "bookcase"
 
 [feature.in_porch]
 kind    = "bookmark"
-at      = [39.4, 32.5]
+at      = [38.6, 31.5]                        # in the door's line, 1.2 m in from the wall
 toward  = "stove"
 surface = "cottage.floor"
 
 [feature.in_kitchen]
 kind    = "bookmark"
-at      = [36.3, 29.2]
+at      = [36.0, 30.6]                        # off the barrels along the south wall
 toward  = "kitchen_shelf"
 surface = "cottage.floor"
 
@@ -50,7 +50,7 @@ surface = "tower_0.floor"
 
 [feature.in_living]
 kind    = "bookmark"
-at      = [22.0, 30.4]
+at      = [20.4, 33.0]                        # across the room, 2.6 m from the table
 toward  = "living_table"
 surface = "tower_1.floor"
 
@@ -71,3 +71,31 @@ kind    = "bookmark"
 at      = [21.4, 29.5]
 toward  = "lens"
 surface = "tower_3.floor"
+
+[feature.down_step]                           # from the passage down the step into the store: the walk
+kind    = "bookmark"                          # crosses the 1.1 m gap in the cottage and tower walls
+at      = [26.0, 32.05]                       # clear of the passage's crates
+toward  = "store_lamp"                        # the line crosses x = 23.3 at y = 32.3
+surface = "cottage.floor"
+
+# The net loft (laid by `lay`): its storeys are `lay#net_loft_s*`, a produced name text may not
+# write (R3), so these views stand by `at` alone, eye over the ground, and the walker starts on the
+# highest floor below the eye. The foot looks up the flight along the north wall to the top, so its
+# walk climbs it. `loft_top` is what it looks at: its own eye is under the upper floor, so its view
+# and walk are the ground floor's west room (its walk stops at the wall between the rooms).
+
+[feature.loft_foot]
+kind   = "bookmark"
+at     = [54.0, 45.6]
+toward = "loft_top"
+
+[feature.loft_top]
+kind   = "bookmark"
+at     = [46.8, 45.6]
+toward = "loft_foot"
+
+[feature.out_front]                           # out through the front door: the walk leaves the floor
+kind    = "bookmark"                          # for the ground at the sill's height
+at      = [38.0, 31.5]
+toward  = "walk.start"
+surface = "cottage.floor"

@@ -1,0 +1,39 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# One plan point, two storeys: never tested (rules.md 8.1, M5).
+[instance.low]
+asset   = "box"
+at      = [30, 26]
+surface = "hall_g.floor"
+
+[instance.high]
+asset   = "box"
+at      = [30, 26]
+surface = "hall_1.floor"
+
+# On hall_g over `low`, lifted 2.5 m by its sink: their heights do not meet.
+[instance.lid]
+asset   = "lid"
+at      = [30, 26]
+surface = "hall_g.floor"
+
+[change.one_floor.instance.high]
+surface = "hall_g.floor"

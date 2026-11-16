@@ -273,5 +273,19 @@ class Reach(unittest.TestCase):
         self.assertNotIn("explain", un[1])
 
 
+class KindSurfaces(unittest.TestCase):
+    @unittest.skip("waits for `surface.surfaces_at` and `surface.sample` in a released `via` (core-proto, M5 "
+                   "slice 2; the SDK methods `Step.surfaces_at`, `Step.sample` are in the working tree, not "
+                   "yet in a build): reach walks the terrain's posts only")
+    def test_walks_onto_a_deck_through_a_meeting_that_holds(self):
+        """surfaces.md 4.4: a walker on the terrain steps onto `bridge.deck` only at the meetings
+        `lane_west.end`/`bridge.start` and `lane_east.start`/`bridge.end` (gap 0), crosses the deck
+        over the beck, and is never on the bed under it; with the east meeting's gap at 300 mm the
+        far bank is reached only round by another way. To write when the methods land: one node
+        per (surface, place) from `surfaces_at`, edges within a surface by `sample`, and between
+        surfaces only at meetings that hold."""
+        self.fail("not written")
+
+
 if __name__ == "__main__":
     unittest.main()

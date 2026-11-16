@@ -28,3 +28,9 @@ primitive = "box"
 size      = [4, 4, 4]
 taxon     = "building"
 solidity  = "passable"
+
+[asset.lid]                      # a slab lifted onto walls by its sink (rules.md 8.1, M5)
+primitive = "box"
+size      = [1, 1, 0.2]
+sink      = -2.5
+taxon     = "prop"

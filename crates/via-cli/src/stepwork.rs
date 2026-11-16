@@ -20,7 +20,7 @@ use via_proto::worker::{CancelToken, Outcome, RpcError, Services, Worker};
 use crate::stepview::{self, View};
 
 /// The worker methods offered in `initialize` (3.2).
-pub const METHODS: [&str; 12] = [
+pub const METHODS: [&str; 14] = [
     "build.field",
     "build.features",
     "build.instances",
@@ -32,6 +32,8 @@ pub const METHODS: [&str; 12] = [
     "derive.descend",
     "derive.spill",
     "surface.meetings",
+    "surface.surfaces_at",
+    "surface.sample",
     "diag.emit",
 ];
 
@@ -169,6 +171,10 @@ impl<'v, 'a> Svc<'v, 'a> {
                     out.extend(self.view.formula_fields(&t));
                 }
                 out.into_iter().collect()
+            }
+            // The surface questions read the terrain in the view (`surfaces.md` 2.6).
+            "surface.surfaces_at" | "surface.sample" => {
+                self.view.terrain_field().into_iter().collect()
             }
             _ => Vec::new(),
         }

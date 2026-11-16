@@ -12,6 +12,7 @@ diagnostics.md 7's document. Images are never compared byte for byte: renderers 
 Prints one line per check; exit 0 when all pass.
 """
 
+from decimal import Decimal
 import json
 import struct
 import sys
@@ -57,6 +58,36 @@ def png(path):
         rows.append(bytes(line))
         prev = line
     return w, h, rows, bpp
+
+
+def _es(x):
+    """A double as ECMAScript writes it (numbers.md 3.4): Python's repr gives the shortest digits,
+    placed by ECMAScript's rules (plain in [1e-6, 1e21), else d.ddde-N or d.ddde+N)."""
+    if x == int(x) and abs(x) < 1e21:
+        return str(int(x))
+    sign, digits, exp = Decimal(repr(abs(x))).as_tuple()
+    d = "".join(map(str, digits)).rstrip("0")
+    exp += len("".join(map(str, digits))) - len(d)
+    k, n = len(d), len(d) + exp
+    s = ("-" if x < 0 else "")
+    if k <= n <= 21:
+        return s + d + "0" * (n - k)
+    if 0 < n <= 21:
+        return s + d[:n] + "." + d[n:]
+    if -6 < n <= 0:
+        return s + "0." + "0" * -n + d
+    return s + d[0] + ("." + d[1:] if k > 1 else "") + "e" + ("+" if n - 1 > 0 else "-") + str(abs(n - 1))
+
+
+def _canon(v):
+    """Canonical JSON (documents.md 8): keys sorted, no white space, numbers as _es."""
+    if isinstance(v, dict):
+        return "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":" + _canon(v[k]) for k in sorted(v)) + "}"
+    if isinstance(v, list):
+        return "[" + ",".join(_canon(x) for x in v) + "]"
+    if isinstance(v, float):
+        return _es(v)
+    return json.dumps(v, ensure_ascii=False)
 
 
 def _norm(v):
@@ -118,12 +149,12 @@ def main():
 
     text = (out / "sheet.json").read_text()
     doc = json.loads(text)
-    canon = json.dumps(_norm(doc), sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
+    canon = _canon(doc) + "\n"
     check("sheet.json is canonical", text == canon)
     check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "godot", "light", "renderer", "size", "walk", "walks"])
     check("edits lists pins and cleared", isinstance(doc.get("edits"), dict) and sorted(doc["edits"]) == ["against", "cleared", "pins"])
     check("one walk per bookmark, in name order", [w["name"] for w in doc.get("walks", [])] == [b["name"] for b in doc["bookmarks"]])
-    walk_keys = ["by", "deepest", "drop", "eye", "from", "left", "outcome", "plan", "slope", "stop", "through", "toward", "walked"]
+    walk_keys = ["by", "deepest", "drop", "eye", "from", "left", "on", "outcome", "plan", "slope", "stop", "through", "toward", "walked"]
     for w in doc.get("walks", []):
         for side in ("before", "after"):
             r = w[side]

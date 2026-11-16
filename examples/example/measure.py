@@ -21,7 +21,8 @@ How each measure is taken (ours):
   over the ground, times the post spacing squared; `depth_max` the deepest of those; `x`, `y`
   their mean.
 - `deck.*`: the footbridge's strip (within `width / 2` of its line): `wet` posts where the water
-  stands at or over the ground; `step_m` the largest height difference between a deck end and the
+  stands over the ground by more than 1 mm (M5 slice 2: "at or over" counted every dry post once
+  the deck left the terrain, since dry, the water is the ground); `step_m` the largest height difference between a deck end and the
   ground 4 m out along the lane that arrives there.
 - `reach.*`: lib/review reach's `walked` record (`held`, `pairs`), and how many `unreached` and
   `not_sealed` records it gave.
@@ -150,7 +151,7 @@ def measure(build):
         half = fb["attrs"]["width"] / 2
         box = (min(a[0], b[0]) - half, min(a[1], b[1]) - half, max(a[0], b[0]) + half, max(a[1], b[1]) + half)
         strip = [(i, j) for i, j, x, y in g.posts_in(box) if seg_dist((x, y), a, b) <= half]
-        wet = sum(1 for i, j in strip if g.post("water", i, j) >= g.post("height", i, j))
+        wet = sum(1 for i, j in strip if g.post("water", i, j) - g.post("height", i, j) > 0.001)
         steps = []
         for end, lane in ((a, "lane_west"), (b, "lane_east")):
             pts = [p[:2] for p in feats[lane]["points"]]

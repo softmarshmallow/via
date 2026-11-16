@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (M5): two boxes at one plan point on two storeys do not overlap, nor a lid lifted 2.5 m by its sink over a box on one floor; moving the upper box to the lower floor is place.overlap."
+milestone = 5
+actions   = ["apart", "one_floor"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# Exactly one diagnostic: the library copied beside the world (every surfaces case has it), so
+# neither `place.overlap` nor anything else.
+[action.apart]
+via  = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/apart"]
+exit = 0
+out  = "build/apart"
+
+[action.apart.diag.lib]
+code = "doc.include_shadowed"
+
+[action.one_floor]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "one_floor", "--out", "build/one"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/one"
+
+[action.one_floor.diag.overlap]
+code    = "place.overlap"
+subject = "instance.low"

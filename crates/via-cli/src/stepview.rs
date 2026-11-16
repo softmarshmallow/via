@@ -159,6 +159,8 @@ pub fn traced(method: &str) -> bool {
             | "derive.descend"
             | "derive.spill"
             | "surface.meetings"
+            | "surface.surfaces_at"
+            | "surface.sample"
     )
 }
 
@@ -992,6 +994,206 @@ impl<'a> View<'a> {
         Ok(Value::Object(m))
     }
 
+    /// The terrain's field name: the one `role = "surface"` field (`surfaces.md` 1, rule 1).
+    pub fn terrain_field(&self) -> Option<String> {
+        self.build
+            .fields
+            .iter()
+            .find(|(_, f)| f.role.as_deref() == Some("surface"))
+            .map(|(n, _)| n.clone())
+    }
+
+    /// The terrain in the step's view (`surfaces.md` 2.6): the one `role = "surface"` field, its
+    /// posts as `build.field` gives them in `view`.
+    fn terrain_posts(&self, view: &str) -> Result<Option<(String, Vec<f32>)>, Refusal> {
+        let Some(name) = self.terrain_field() else {
+            return Ok(None);
+        };
+        let (name, v) = self.field_values(&name, view)?;
+        // The values were f32 posts; back to f32 exactly.
+        Ok(Some((name, v.iter().map(|x| *x as f32).collect())))
+    }
+
+    /// The kind surfaces in the view: an owner above a generate step's layer is absent (2.6).
+    fn kind_surfaces(&self) -> impl Iterator<Item = &via_model::surfaces::SurfaceOut> {
+        self.build
+            .surfaces
+            .values()
+            .filter(|s| self.visible(view_rank(self.world, "feature", &s.owner)))
+    }
+
+    /// A kind surface's `base` that failed at a point asked: the whole call fails with that
+    /// diagnostic, which the engine reports itself (`surfaces.md` 2.7).
+    fn surface_fault(
+        &self,
+        s: &via_model::surfaces::SurfaceOut,
+        e: &via_expr::ExprError,
+        p: (i64, i64),
+    ) -> Refusal {
+        Refusal {
+            code: -32602,
+            message: format!("the surface `{}` fails at ({}, {}): {e}", s.place, p.0, p.1),
+            data: Some(json!({"code": e.code.as_str(), "subject": format!("feature.{}", s.owner)})),
+            diag: Some(s.fault(e)),
+        }
+    }
+
+    fn points(&self, p: &Value) -> Result<Vec<(i64, i64)>, Refusal> {
+        let xs = self.ints(p, "x")?;
+        let ys = self.ints(p, "y")?;
+        if xs.len() != ys.len() {
+            return Err(invalid("x and y: columns of one length"));
+        }
+        Ok(xs.into_iter().zip(ys).collect())
+    }
+
+    /// `surface.surfaces_at` (`surfaces.md` 2.1): every surface in the view at each point, a
+    /// table `point` (i64, the row in), `surface` (str), `z` (f64); a point's rows by `z`, then
+    /// surface name bytewise; a point outside the extent has none.
+    fn surfaces_at(&self, p: &Value) -> Result<Value, Refusal> {
+        let view = p.get("view").and_then(Value::as_str).unwrap_or("full");
+        let pts = self.points(p)?;
+        let mut rows: Vec<(usize, String, f64)> = Vec::new();
+        if let Some((name, posts)) = self.terrain_posts(view)? {
+            if let Some(t) = via_model::query::Terrain::of_values(&name, self.grid, &posts) {
+                rows.extend(
+                    t.surfaces_at(&pts)
+                        .into_iter()
+                        .map(|(k, n, z)| (k, n.to_string(), z)),
+                );
+            }
+        }
+        let [x0, y0, x1, y1] = self.grid.extent;
+        for (k, &(x, y)) in pts.iter().enumerate() {
+            if !(x0..=x1).contains(&x) || !(y0..=y1).contains(&y) {
+                continue;
+            }
+            for s in self.kind_surfaces() {
+                match s.z((x, y)) {
+                    Ok(Some(z)) => rows.push((k, s.place.clone(), z)),
+                    Ok(None) => {}
+                    Err(e) => return Err(self.surface_fault(s, &e, (x, y))),
+                }
+            }
+        }
+        rows.sort_by(|a, c| {
+            a.0.cmp(&c.0)
+                .then(a.2.total_cmp(&c.2))
+                .then(a.1.as_bytes().cmp(c.1.as_bytes()))
+        });
+        let put = |col: Column| -> Result<Value, Refusal> {
+            column::write_shaped(&Shaped::flat(col), self.objects)
+                .map_err(|e| refuse(-32603, format!("a column could not be stored: {e}")))
+        };
+        let mut m = Map::new();
+        m.insert(
+            "point".into(),
+            put(Column::I64(rows.iter().map(|r| r.0 as i64).collect()))?,
+        );
+        m.insert(
+            "surface".into(),
+            put(Column::Str(rows.iter().map(|r| r.1.clone()).collect()))?,
+        );
+        m.insert(
+            "z".into(),
+            put(Column::F64(rows.iter().map(|r| r.2 + 0.0).collect()))?,
+        );
+        Ok(Value::Object(m))
+    }
+
+    /// `surface.sample` (`surfaces.md` 2.2): one surface by place name, the terrain's field name
+    /// or `<owner>.<surface>`; per point `inside` (bool), `z`, `gx`, `gy` (f64). A name that is
+    /// no surface in the view is `surface.not_surface`; an owner above a generate step's layer is
+    /// `graph.read_outside`, as a feature read by name is.
+    fn sample(&self, p: &Value) -> Result<Value, Refusal> {
+        let view = p.get("view").and_then(Value::as_str).unwrap_or("full");
+        let name = p
+            .get("surface")
+            .and_then(Value::as_str)
+            .ok_or_else(|| invalid("surface: one surface's place name"))?;
+        let pts = self.points(p)?;
+        let mut out: Vec<via_model::query::Sample> = Vec::with_capacity(pts.len());
+        let terrain = self.terrain_posts(view)?;
+        if let Some((tn, posts)) = terrain.as_ref().filter(|(tn, _)| tn == name) {
+            let t = via_model::query::Terrain::of_values(tn, self.grid, posts)
+                .ok_or_else(|| invalid(format!("`{name}` does not cover the grid")))?;
+            out.extend(pts.iter().map(|&(x, y)| t.sample(x, y)));
+        } else if let Some(s) = self.build.surfaces.get(name) {
+            // As a feature read by name (`select_rows`): a returned owner lies outside the
+            // stratum of every step of its producer's layer and below.
+            if let Some((producer, _)) = s.owner.split_once('#') {
+                if let (Some(own), Some(pr)) = (self.rank, self.world.rank("step", producer)) {
+                    if pr >= own {
+                        let layer = self.layer_above(pr).unwrap_or_else(|| {
+                            self.world.home("step", producer).unwrap_or("").to_string()
+                        });
+                        return Err(self.outside(&format!("feature.{}", s.owner), &layer));
+                    }
+                }
+            }
+            if !self.visible(view_rank(self.world, "feature", &s.owner)) {
+                let layer = self.layer_of("feature", &s.owner);
+                return Err(self.outside(&format!("feature.{}", s.owner), &layer));
+            }
+            for &(x, y) in &pts {
+                match via_model::query::sample_kind(s, self.grid.resolution, x, y) {
+                    Ok(v) => out.push(v),
+                    Err(e) => return Err(self.surface_fault(s, &e, (x, y))),
+                }
+            }
+        } else {
+            let mut known: Vec<&str> = self.kind_surfaces().map(|s| s.place.as_str()).collect();
+            if let Some((tn, _)) = &terrain {
+                known.push(tn);
+            }
+            let near = via_diag::nearest::nearest(name, known.iter().copied());
+            let mut d = Diag::new(
+                codes::surface::NOT_SURFACE,
+                Subject::entity("step", self.step.id.clone()),
+                Site::Header,
+                txt(format!(
+                    "step `{}` asked `sample` of `{name}`, which is no surface in its view",
+                    self.step.id
+                )),
+                txt(near.hint("name the terrain field or a kind surface as `<feature>.<surface>`")),
+            );
+            if let Some(n) = near.found() {
+                d = d.with("nearest", n);
+            }
+            return Err(Refusal {
+                code: -32602,
+                message: format!("`{name}` is no surface in the step's view"),
+                data: Some(json!({"code": "surface.not_surface", "subject": name})),
+                diag: Some(d),
+            });
+        }
+        let put = |col: Column| -> Result<Value, Refusal> {
+            column::write_shaped(&Shaped::flat(col), self.objects)
+                .map_err(|e| refuse(-32603, format!("a column could not be stored: {e}")))
+        };
+        let mut m = Map::new();
+        m.insert(
+            "inside".into(),
+            put(Column::Bool(
+                out.iter().map(|s| u8::from(s.inside)).collect(),
+            ))?,
+        );
+        for (c, get) in [
+            (
+                "z",
+                (|s: &via_model::query::Sample| s.z) as fn(&via_model::query::Sample) -> f64,
+            ),
+            ("gx", |s| s.gx),
+            ("gy", |s| s.gy),
+        ] {
+            m.insert(
+                c.into(),
+                put(Column::F64(out.iter().map(|s| get(s) + 0.0).collect()))?,
+            );
+        }
+        Ok(Value::Object(m))
+    }
+
     // ---- fields ----------------------------------------------------------------------------
 
     fn field_inexact(&self, field: &str) -> bool {
@@ -1817,6 +2019,8 @@ impl<'a> View<'a> {
             "derive.descend" => self.derive_descend(params),
             "derive.spill" => self.derive_spill(params),
             "surface.meetings" => self.meetings(),
+            "surface.surfaces_at" => self.surfaces_at(params),
+            "surface.sample" => self.sample(params),
             m => Err(Refusal {
                 code: -32601,
                 message: format!("unknown method {m}"),
@@ -1911,6 +2115,10 @@ impl<'a> View<'a> {
             "build.instances" => bad.instances,
             "expr.eval" | "derive.where" | "derive.route" | "derive.descend" | "derive.spill" => {
                 !bad.fields.is_empty()
+            }
+            // The terrain and every kind surface: any failed field or feature may be one.
+            "surface.surfaces_at" | "surface.sample" => {
+                !bad.fields.is_empty() || !bad.features.is_empty() || !bad.steps.is_empty()
             }
             _ => false,
         }

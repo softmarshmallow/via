@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "protocol.md 4.3: a list and a table attribute reach a step as one canonical JSON text per row (members sorted, a TOML integer a JSON integer, no spaces), a kind's default included (`[]`, `{}`)."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.read]
+code = "step.look.read"
+data = { doors = ['[{"storey":0,"t":0.4,"width":1}]', "[]"], "doors?" = [1, 1], door = ['{"at":[2,3],"width":1}', "{}"], sizes = ["[1,2.5,3]", "[1,2.5,3]"] }

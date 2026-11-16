@@ -646,7 +646,9 @@ name, lot names at size) that its worlds needed and did not get; carry them firs
 - [ ] Decks are causeways: water cannot pass under; a deck as a surface. Interchanges are level
   plates, the freeway lies on the ground, no loop ramp (row 38): ramps and levels need surfaces.
 - [ ] The monastery wall is ground with a gap for a gate; sheer faces (gorge, tarn) draw
-  stair-stepped at 1 m posts: a cliff or wall that says "sheer" owns it.
+  stair-stepped at 1 m posts: a cliff or wall that says "sheer" owns it. (M5 slice 2: lib/land
+  `sheer_cliff`, its face a kind surface, shown in `coast`: brink 1 mm off its line against the
+  terrain's 491 mm; gorge, tarn and the wall not yet moved to it.)
 - [ ] Corner houses facing both streets; a shallower house for wedges (quay's 60 empty lots).
 
 **-> later**
@@ -954,41 +956,148 @@ Lesson: a write node keyed by its reads' values misses what only a statement say
 file made from declarations holds those statements in its key.
 
 To slice 2:
-- [ ] Core owes `cut` (`fields/height.cut.npy`, build.md 6.5), the floor and tread meshes (build.md
-  10), and `surface` on a point feature and a scatter (surfaces.md 4.1): the schema accepts them and
-  nothing reads them (cases `cut`, `floor_mesh`, `roof_scatter` fail; station's views and 102
-  dressing pieces stand on the terrain). Until then nothing indoors is walked or drawn above ground.
-- [ ] A set's `surface` and a run `on` a storey: their members stand on the terrain (station
-  `off_floor` 102, wall pieces at 0.15 to 0.45). `surface` was dropped from runs (always `on`).
-- [ ] `place.overlap` compares plan footprints only, so pieces on different storeys clash (station
-  `shell_gave_way` 10): count an overlap only where heights overlap or on one surface.
+- [x] Core: `cut` (`fields/<terrain>.cut.npy` and the manifest's `cut`, build.md 6.5), kind
+  surface meshes (`meshes/<owner>.<surface>.glb` with `material`, build.md 10: each grid cell
+  clipped to the bound, then 3.10), `surface` on a scatter, a set and a point feature, a run `on` a
+  storey (surfaces.md 4.1), and `place.overlap` by level (rules.md 8.1: one surface and meeting
+  height spans, decided on plans). Cases `cut`, `cut_bad`, `floor_mesh`, `roof_scatter` pass; new
+  `storey_overlap`, `floor_warm`. Station (debug build, one run, resolution 0.5, scratch copy):
+  `off_floor` 102 -> 0, `shell_gave_way` 10 -> 0, 9 meshes; move_stair and close_passage warm
+  equal clean. Lesson: a placement's own node must carry what another's check reads of it (an
+  instance's `surface` entered `instance:` only after `storey_overlap` showed a stale overlap).
+- [x] station expect.toml: the two OWED rows lifted (`off_floor`, `shell_gave_way` 0), and close_passage
+  `meetings` 11 now holds (slice 2, station agent; release build, `measure.py --check` all three).
+- [x] Engine (station agent): a run a step returns had its members on the terrain: `run_of` split
+  `lay#loft_s1_w0_0#r3` at the first `#` and found no run `lay`, so the member had no stance and the
+  storey-1 walls stood at the ground, overlapped storey 0's and gave `diag.internal` (place.overlap
+  "raised at the header"). Now the last `#` (identity.md 2.3 says so); case
+  `surfaces/step_run_on_floor` (fails before: z 10, not 13.3). Recheck the `place.keep_out` on a
+  parapet member item below: likely the same root. Lesson: a produced name holds a `#` per
+  producer; a parser of names must say which `#` it reads.
+- [ ] Engine: a bookmark's `toward` target on a kind surface gets the terrain's z in features.json
+  (station `lens` 0.01 for 9.85, `stair_2.end` 0.01 for 6.7, `kitchen_table` -0.01 for 0.45): every
+  tower view looks steeply down through its floor. The eye stands right (slice 2).
+- [ ] lib/building `lay`: an inner wall between rooms leaves no gap for a flight (the station loft's
+  walk up its flight was blocked at 2.89 m with the cut at x = 49.3), and a door may land on a
+  rooms' cut (the lint's `door_narrow` said 0 m clear). Refuse or move either (`params`).
+- [ ] Sheet walks go straight at `toward`, so no walk climbs a spiral flight (station stair_1 to 3);
+  a walk along a path (`toward` a flight's end, following its line) would. Closing a passage takes
+  the meeting away, not the way: the walker still crosses `tower_step` with it unset.
+- [ ] A scatter on a kind surface skips the terrain's relief and does not yet take `relief` over
+  the kind surface (surfaces.md 2.3) against `max_relief`; a flat roof hides it.
+- [ ] A run's members have no node of their own: their change entries carry the cause (the model's
+  deps) with an empty `via` chain (case `floor_warm`, `edge#r0`). Give runs `rule`/`height` nodes.
+  (Slice 2: the instance file now reads what lays a run, so files are right; the nodes are still owed.)
+- [ ] The review's "remove dead `is_path`" found nothing dead in crates/ (every `is_path` is read).
 - [ ] meets.json's write node now reads the meeting features' shape and attr, what their ends
   name, every instance and height, the facts of assets with mounts, and the terrain under ends and
   under each plan's footprint grown by 5 m (`MOUNT_REACH`, an asset mount off its footprint); its key
   holds the statements of those features, their kinds and every instance. Replace the 5 m with the
   mounts' own points, and add warm-equals-clean cases for a connector edit in kinds.toml and a world
   with the crossing removed (review issue 2 (b), (c); not written).
-- [ ] lib/building: wall runs leave each doorway and flight a clear width (station front door
+- [x] lib/building: wall runs leave each doorway and flight a clear width (station front door
   0.20 m, tower step 0.29 m; the walker is 0.6 m), and check.py measures the clear width between
-  wall instances at each doorway against `inner_door`.
+  wall instances at each doorway against `inner_door`. Station's hand runs end short: 1.116 m clear
+  at the doors, 1.156 m at the step (measure.py `clear_min_mm`; 0.203 / 0.259 with the old spans).
 - [ ] lib/ways: `[kind.crossing.surface.deck]` in place of the deck effect once meshes and the cut
   land; a parapet run; a lint that water passes beneath; bookmark walks along the deck. Then rebuild
   townland and example, `measure --check`.
-- [ ] Engine gaps lib/building found: list and table attributes reach a step empty (`?` = 0), not
-  canonical JSON (protocol.md 4.3); names in a returned document do not resolve to its keys first
-  (protocol.md 5); the SDK has no `surfaces_at` or `sample` over kind surfaces. `lay` cannot run
-  in a world until these land (station, college, market).
+- [x] (coast agent) townland base, move_crossing, move_hill and example base, move_beck rebuilt on
+  the deck surface: `deck_wet` rows now the river under the deck (townland 78 of 192, example 69
+  of 240; example's measure counted dry posts as wet, `>=`, now depth over 1 mm). Every other row in
+  band but townland `reach` (below). Renders read: water runs under both decks.
+- [ ] townland `reach` 50 of 101 (move_crossing 40 of 96, move_hill 9 of 60), OWED in its
+  expect.toml: lib/review's reach walks the terrain only, and the deck is no longer terrain, so the
+  river cuts the town in two. Reach over kind surfaces through meetings (4.4) fixes it. Lesson: a
+  library that leaves the terrain must land with the walk that follows it, or every reach measure
+  downstream falls at once.
+- [x] (slice 2 fix: the instance file reads each run's `on` target, its kind and the ground
+  under it; coast long_deck warm = clean, 26 posts; floor_warm `moved`) Engine: a run `on` a
+  crossing is not re-placed when the crossing's ends move. Warm coast
+  `long_deck` keeps base's 18 parapet posts where clean lays 26; a store shared by two change
+  builds handed `move_cave` the 26 posts of `long_deck`; warm `move_cave` keeps a post's z that
+  clean moves 0.02 mm. The run's key misses the resolved ends (`starts_at` points). Same root as
+  "a run's members have no node" above. coast expect `long_deck.parapet_posts` OWED.
+- [ ] Engine: a point feature `on` a feature with one kind surface stands on the terrain, not that
+  surface (surfaces.md 4.1 row 1): townland `on_bridge` (eye at the river, under the deck) and a
+  bookmark `on` the cave (20 m up). coast's `in_cave` uses `at` + `surface` until then.
+- [ ] Engine: `place.keep_out` raised on a step's run member is `diag.internal` ("raised at the
+  header, which has no span"); seen with lib/ways parapet in a world with a `keep_out` field. And
+  the crossing's own `clear` refuses its parapet: posts on the deck should not read the terrain's
+  keep_out (or `clear` stops at the deck's edge). coast has no keep_out field meanwhile.
+- [ ] coast (M5 slice 2): the cave's mouth is a slot the face's full height and the passage has no
+  rock (challenge 8: a library places rock round a cave, surfaces.md 5); the sheer face leaves
+  0.13 m² a metre open at foot and brink (a cut quad reaches 0.71 of a post past the strip). The
+  sheer kinds for the monastery wall, gorge and tarn are not written (`sheer_cliff` is the cliff's).
+- [x] Engine gaps lib/building found (slice 2, core-proto): list and table attributes reach a step
+  as canonical JSON (`Attr::Json`, protocol.md 4.3; the never-given `integer | i64` row dropped);
+  names in a returned document resolve to its keys first (`Decls::own_names`, protocol.md 5);
+  `surface.surfaces_at` and `surface.sample` over the terrain and kind surfaces, in the SDK as
+  `step.surfaces_at` and `step.sample`; cases protocol c72 to c75. `test_lay.World` runs.
+  Lesson: an attribute type the reader drops (`_ => None`) is silent; the step saw `?` = 0 and a
+  library had to guess. Every value the text accepts should reach a reader or be refused.
+- [ ] `via query` builds with `via_model::build` alone: it runs no generate step, though
+  surfaces.md 7 says it does, so a world built by a step answers `meetings` empty (the house of
+  `test_lay.World` gave `[]`; the test reads `meets.json` from `via build` instead). Also `relief`
+  of a kind surface is not answered by `via query` (a usage error) nor by the protocol.
 - [ ] A vector case for a noise `base`: the stream is now `["noise", "feature", <fid>, "surface",
   <name>, "base"]` (formulas.md), fixed in the fix pass; no world stored values under the old one.
 - [ ] Docs at the M5 close: challenges rows 7, 14, 15, 48 (mounts now have face, connector and the
   height of their surface).
 
 Later:
-- [ ] station views: `in_living` 0.58 m from the table it looks at, `in_porch` against the east
-  wall; college: box collision for the primitive pack, a door at each `entry`, the chapel padded to
+- [x] station views: `in_living` and `in_porch` moved into open floor, `in_kitchen` off a barrel
+  (slice 2).
+- [ ] college: box collision for the primitive pack, a door at each `entry`, the chapel padded to
   its court (README "Known faults").
-- [ ] A point feature's `surface` z in features.json and as a meeting's default mount (3.3 now says
-  so); until then the code gives the terrain.
+- [ ] A point feature's `surface` z as a meeting's default mount (3.3 now says so); until then the
+  code gives the terrain. features.json gives its surface's z since M5 slice 2.
+
+### From M5 slice 2 (2026-11-17; the change and on-foot reviews, and the fix pass)
+
+Lesson: the slice-1 lesson again, three times (features.json, a mesh, the instance file): a file
+made from declarations or pack text holds them in its key. A run's members and a set's items have
+no node, so their file read nothing that lays them; coast long_deck wrote a manifest of 26 beside
+arrays of 18.
+
+Closed in the fix pass: features.json keyed on every point feature and every kind with a surface;
+a mesh on its materials' colours; manifest `materials` holds mesh materials (build.md 7); the
+terrain and a kind surface with `cut` (or whose bound the footprint meets) are one level (rules.md
+8.1, owner's ruling; case `ground_floor_clash`); a run member 1 lattice unit past a strip's end
+stands on it (surfaces.md 1.2; coast builds); the instance file reads runs' `on` targets and set
+statements (floor_warm `unsurface`, `moved`, `reitem`, `rebase`; floor_mesh material/recolour);
+geometry/triangulate runs (passes); ways' parapet test no longer expected to fail; test_lay uses
+its own VIA_CONFIG_DIR; a mesh's formula fault is said, not dropped.
+
+To slice 3:
+- [ ] townland and example not rebuilt after the level rule (rules.md 8.1) and the instance-file
+  key: rebuild every change, `measure --check`; a terrain scatter under a deck now gives way to
+  parapet posts whose footprint meets it (spans compared as one datum).
+- [ ] The 14 surfaces cases marked owed (apart, bound_zero, bridge_gap, clipped, fold,
+  ground_on_deck, meets_errors, mount_face, name_clash, outside, owner_shape, relief_outside,
+  through, unknown_surface) have no world.toml: write each from surfaces.md Conformance.
+- [ ] station: 8 wall members give way to furniture (south wall hole 2.8 m, both bunk walls);
+  set dressing off the wall line or rank walls higher; measure `wall_gave_way` over every
+  `structure/wall` run, band [0, 0] (on-foot review 3).
+- [ ] station: the tower's doorway gap runs the shell's full height; give the gap storey 0's
+  height (per-storey shell runs or a lintel run) and measure open wall above the door head
+  (on-foot review 4).
+- [ ] walk.gd stops a walker "by water" on a deck over deep water (townland move_crossing);
+  take depth against the feet, add a walk test across the townland deck (on-foot review 5).
+- [ ] station `at_back_door` arrives through the wall (bookcase within 1 m); aim it inside
+  (on-foot review 6).
+- [ ] stepview: `surfaces_at` lists owners `sample` then refuses (rank test differs); share one
+  predicate (change review 14).
+- [ ] engines/gltf (build.md 15.3) does not skip cut quads as 6.5 says (change review 15).
+- [ ] parapet.py: a post at span 0 overhangs the deck's end by half its depth; inset the span by
+  half the post's depth over the deck length (the core now grounds it; the overhang is a look).
+
+Later:
+- [ ] The level test compares spans from two datums (terrain and floor) as one; a ground floor
+  above the terrain by more than a piece's height still clashes. Read the floor's `base` at plan
+  time once surfaces settle before placement.
+- [ ] Warm-equals-clean cases for a connector edit in kinds.toml and a world with the crossing
+  removed (meets.json, slice-1 item) still unwritten.
 
 ## Framing
 

@@ -1,0 +1,9 @@
+# The bridge's deck lengthened from 16 m to 24 m: its two ends stand 12 m either side of the
+# beck's line instead of 8. The lanes arrive at its ends by name, so they follow; the deck is the
+# crossing's kind surface, so the beck runs on beneath the longer deck.
+
+[feature.bridge_west]
+on = { ref = "beck", t = 0.5, offset = -12 }
+
+[feature.bridge_east]
+on = { ref = "beck", t = 0.5, offset = 12 }

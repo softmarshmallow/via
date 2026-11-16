@@ -1128,7 +1128,7 @@ pub fn run(a: &Args) -> Outcome {
         if let Some(v) = run.value(&id, &store, &plan) {
             // A weights chunk with no material painted has no file (`build.md` 6.2); no other
             // file is ever left out, and some are empty (`instances/names.txt`).
-            if !(v.bytes.is_empty() && p.starts_with("weights/")) {
+            if !(v.bytes.is_empty() && (p.starts_with("weights/") || p.starts_with("meshes/"))) {
                 all_files.insert(p.clone(), v.bytes.as_ref().clone());
             }
         }

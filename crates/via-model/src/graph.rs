@@ -333,6 +333,12 @@ pub enum FileReads {
     /// `meets.json`: the paths with ends at a place, the owners of mounts and surfaces, what the
     /// ends name, the instances and their mounts' facts, and the terrain under them.
     Meets,
+    /// The terrain's cut file (`build.md` 6.5): the terrain's chunks, and the shape and
+    /// attributes of every feature whose kind has a surface with `cut`.
+    Cut,
+    /// A kind surface's mesh (`build.md` 10): its owner's shape and attributes, its kind, the
+    /// pack's materials.
+    Mesh(String),
     /// A file whose reads are not known here: every node of the model.
     Everything,
 }
@@ -749,6 +755,49 @@ impl<'w> ModelPlan<'w> {
             }
             FileReads::Instances => {
                 out.extend(self.brought_reads());
+                // A run's members have no node of their own (`rules.md` 5): the file reads what
+                // lays them, the run's `on` target (its shape and attributes, so moved ends
+                // re-lay it: coast `long_deck`, 18 posts kept where 26 were laid), and the
+                // ground under them. Their statements are in [`ModelPlan::file_statements`].
+                let d = &self.p.decls;
+                for (r, run) in &d.runs {
+                    let mut edges = Vec::new();
+                    self.place_edges(&run.place, &mut edges);
+                    out.extend(edges.into_iter().map(|(l, n)| (format!("run {r} {l}"), n)));
+                    if let Place::On(o) = &run.place {
+                        let head = o.reference.split('.').next().unwrap_or(&o.reference);
+                        if d.features.contains_key(head) {
+                            out.push((format!("run {r} on"), view(NodeId::of("shape", head))));
+                            out.push((format!("run {r} on"), NodeId::of("attr", head)));
+                        }
+                    }
+                    let mut b: Option<[i64; 4]> = None;
+                    for (name, pl) in &self.p.placed.plans {
+                        if d.run_of(name) != Some(r.as_str()) {
+                            continue;
+                        }
+                        let x = region_bbox(&pl.footprint, pl.origin);
+                        b = Some(match b {
+                            None => x,
+                            Some(y) => [
+                                y[0].min(x[0]),
+                                y[1].min(x[1]),
+                                y[2].max(x[2]),
+                                y[3].max(x[3]),
+                            ],
+                        });
+                    }
+                    if let Some(b) = b {
+                        for f in self.surface_fields() {
+                            for w in self.chunks_under(b) {
+                                out.push((
+                                    format!("run {r} ground {}", win_text(&w)),
+                                    chunk_id(&f, BUILD, &w),
+                                ));
+                            }
+                        }
+                    }
+                }
                 for id in self.defs.keys() {
                     // A clear reaches the instances a step returned, which no `held` node
                     // holds (`identity.md` 4.1), so the file reads every edit.
@@ -823,6 +872,32 @@ impl<'w> ModelPlan<'w> {
                 }
                 out.extend(self.surface_at(&pts));
             }
+            // The posts of the quads whose centre a cutting surface's bound can hold: under a
+            // region owner, its box grown by one post; under a path owner, whose strip's width is
+            // a formula, every chunk. With no cutting surface the file is all 0 and reads none.
+            FileReads::Cut => {
+                let r = self.grid.map_or(0, |g| g.resolution);
+                for id in self.cut_owners() {
+                    out.push((format!("shape {id}"), view(NodeId::of("shape", &id))));
+                    out.push((format!("attr {id}"), NodeId::of("attr", &id)));
+                    let under: Vec<Window> = match self.p.placed.shapes.get(&id) {
+                        Some(g @ Geo::Region { .. }) => {
+                            let (lo, hi) = g.bbox();
+                            self.chunks_under([lo.x - r, lo.y - r, hi.x + r, hi.y + r])
+                        }
+                        _ => self.chunks.iter().map(|(_, w)| *w).collect(),
+                    };
+                    for f in self.surface_fields() {
+                        for w in &under {
+                            out.push((format!("terrain {}", win_text(w)), chunk_id(&f, BUILD, w)));
+                        }
+                    }
+                }
+            }
+            FileReads::Mesh(owner) => {
+                out.push((format!("shape {owner}"), view(NodeId::of("shape", owner))));
+                out.push((format!("attr {owner}"), NodeId::of("attr", owner)));
+            }
             FileReads::Everything => {
                 for id in self.defs.keys() {
                     if id.family() != "source" && id.family() != "merge" {
@@ -855,8 +930,143 @@ impl<'w> ModelPlan<'w> {
                 ids.extend(d.instances.keys().map(|i| format!("instance.{i}")));
                 self.stmts_of(ids.iter().map(String::as_str))
             }
+            // The surfaces' formulas (`base`, `bound`, `cut`, `material`) are their kinds'
+            // statements, which no node's value carries.
+            FileReads::Cut => {
+                let d = &self.p.decls;
+                let mut ids: Vec<String> = vec!["world".into()];
+                for id in self.cut_owners() {
+                    if let Some(k) = d.features.get(&id).and_then(|f| f.kind.as_ref()) {
+                        ids.push(format!("kind.{k}"));
+                    }
+                }
+                ids.sort();
+                ids.dedup();
+                self.stmts_of(ids.iter().map(String::as_str))
+            }
+            // A run's members (`rules.md` 5) are laid from the run's statement, its set's, and
+            // the kind of what it is `on` (a surface's `base` and `bound`); a set's items from
+            // their set's.
+            FileReads::Instances => {
+                let d = &self.p.decls;
+                let mut ids: Vec<String> = Vec::new();
+                // A set's items are laid from the set's statement, which no instance node's
+                // value carries (an item's `at` edited left warm items where they were).
+                for i in d.instances.values() {
+                    ids.extend(d.set_stmts(i.set.as_deref()));
+                }
+                for (r, run) in &d.runs {
+                    ids.push(format!("run.{r}"));
+                    if let crate::sets::What::Set(x) = &run.what {
+                        ids.extend(d.set_stmts(Some(x)));
+                    }
+                    if let Place::On(o) = &run.place {
+                        let head = o.reference.split('.').next().unwrap_or(&o.reference);
+                        if let Some(k) = d.features.get(head).and_then(|f| f.kind.as_ref()) {
+                            ids.push(format!("kind.{k}"));
+                        }
+                    }
+                }
+                self.stmts_of(ids.iter().map(String::as_str))
+            }
+            // A point's or a named place's `z` stands on a kind surface (`surfaces.md` 4.1, 3.3):
+            // its `base` is the owner kind's statement, and which surface a point stands on is
+            // the point's own `surface`, which no shape carries (dropping it moves the point's
+            // `z`, not its shape). So the key holds every point feature's statement and every
+            // kind with a surface.
+            FileReads::Features => {
+                let d = &self.p.decls;
+                let mut ids: Vec<String> = Vec::new();
+                for (id, f) in &d.features {
+                    if matches!(self.p.placed.shapes.get(id), Some(Geo::Point { .. })) {
+                        ids.push(format!("feature.{id}"));
+                    }
+                    if let Some(k) = f.kind.as_ref() {
+                        if d.kinds.get(k).is_some_and(|k| !k.surfaces.is_empty()) {
+                            ids.push(format!("kind.{k}"));
+                        }
+                    }
+                }
+                self.stmts_of(ids.iter().map(String::as_str))
+            }
+            // The mesh carries its material's colour (`build.md` 10), which is pack.toml's
+            // `[material.<m>]`, not the `world.pack` statement (that digests the pack key and
+            // its model files): the named materials enter the key by their colour.
+            FileReads::Mesh(owner) => {
+                let d = &self.p.decls;
+                let mut ids = vec!["world".to_string(), PACK.to_string()];
+                let kind = d.features.get(owner).and_then(|f| f.kind.as_ref());
+                if let Some(k) = kind {
+                    ids.push(format!("kind.{k}"));
+                }
+                let mut out = self.stmts_of(ids.iter().map(String::as_str));
+                let named: BTreeSet<&String> = kind
+                    .and_then(|k| d.kinds.get(k))
+                    .map(|k| {
+                        k.surfaces
+                            .values()
+                            .filter_map(|s| s.material.as_ref())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                for m in named {
+                    let mut enc = Enc::new();
+                    enc.str("via-material-1").str(m);
+                    match self.p.pack.materials.get(m) {
+                        Some(x) => {
+                            for c in x.colour {
+                                enc.str(&format!("{:016x}", c.to_bits()));
+                            }
+                        }
+                        None => {
+                            enc.str("absent");
+                        }
+                    }
+                    out.push((format!("material.{m}"), Digest::of(&enc.finish())));
+                }
+                out
+            }
             _ => Vec::new(),
         }
+    }
+
+    /// The placed features whose kind has a surface with `cut` (`surfaces.md` 1.3).
+    fn cut_owners(&self) -> Vec<String> {
+        let d = &self.p.decls;
+        d.features
+            .iter()
+            .filter(|(id, f)| {
+                self.p.placed.shapes.contains_key(*id)
+                    && f.kind
+                        .as_ref()
+                        .and_then(|k| d.kinds.get(k))
+                        .is_some_and(|k| k.surfaces.values().any(|s| s.cut.is_some()))
+            })
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
+    /// The terrain, whose cut file a build writes (`build.md` 6.5).
+    pub fn terrain(&self) -> Option<String> {
+        self.surface_fields().into_iter().next()
+    }
+
+    /// Every kind surface of a placed feature, `(<owner>.<surface>, owner)`: the meshes a build
+    /// may write (`build.md` 10).
+    pub fn kind_surface_places(&self) -> Vec<(String, String)> {
+        let d = &self.p.decls;
+        let mut out = Vec::new();
+        for (id, f) in &d.features {
+            if !self.p.placed.shapes.contains_key(id) {
+                continue;
+            }
+            if let Some(k) = f.kind.as_ref().and_then(|k| d.kinds.get(k)) {
+                for n in k.surfaces.keys() {
+                    out.push((format!("{id}.{n}"), id.clone()));
+                }
+            }
+        }
+        out
     }
 
     /// The features `meets.json` is made from (`surfaces.md` 3.3): every one with an end at a
@@ -1534,14 +1744,7 @@ impl<'w> ModelPlan<'w> {
             // lists it as grounded on that owner (rule 8).
             let mut statements = statements.clone();
             if let Some(owner) = self.surface_owner(i) {
-                let label = format!("grounded on {owner}");
-                edges.push((label.clone(), view(NodeId::of("shape", &owner))));
-                edges.push((label, NodeId::of("attr", &owner)));
-                if let Some(k) = d.features.get(&owner).and_then(|f| f.kind.as_ref()) {
-                    statements.extend(self.stmts_of([format!("kind.{k}").as_str()]));
-                    statements.sort();
-                    statements.dedup();
-                }
+                self.grounded_on(&owner, &mut edges, &mut statements);
             }
             // A hand instance and the instance it stands on are not tested for overlap
             // (`rules.md` 8.1), so neither reads the other for it: the one on a mount already
@@ -1753,11 +1956,22 @@ impl<'w> ModelPlan<'w> {
                     edges.push(("within".into(), view(NodeId::of("footprint", inst))));
                 }
             }
+            // `surface` (4.1, M5): the surface's bound is part of its region, its owner's shape.
+            let owner = s
+                .surface
+                .as_ref()
+                .and_then(|n| n.split_once('.'))
+                .map(|(o, _)| o.to_string())
+                .filter(|o| d.features.contains_key(o));
+            let mut statements = self.stmts_of(st.iter().map(String::as_str));
+            if let Some(o) = &owner {
+                self.grounded_on(o, &mut edges, &mut statements);
+            }
             defs.push((
                 view(NodeId::of("rule", id)),
                 Def {
                     subject: subject.clone(),
-                    statements: self.stmts_of(st.iter().map(String::as_str)),
+                    statements,
                     edges,
                     ..Def::default()
                 },
@@ -1799,11 +2013,15 @@ impl<'w> ModelPlan<'w> {
                     edges.push((format!("surface {f}"), chunk_id(f, BUILD, w)));
                 }
             }
+            let mut statements = self.stmts_of(st.iter().map(String::as_str));
+            if let Some(o) = &owner {
+                self.grounded_on(o, &mut edges, &mut statements);
+            }
             defs.push((
                 view(NodeId::of("height", id)),
                 Def {
                     subject,
-                    statements: self.stmts_of(st.iter().map(String::as_str)),
+                    statements,
                     edges,
                     ..Def::default()
                 },
@@ -2253,6 +2471,27 @@ impl<'w> ModelPlan<'w> {
     /// The feature that owns the kind surface a hand instance stands on, if any (`surfaces.md`
     /// 4.1): the head of its `surface`, the owner of the kind mount its `on` names when that mount
     /// lies on a surface, or the feature its `on` names when that feature's kind has surfaces.
+    /// The edges and statements of a thing on the kind surface of `owner` (`surfaces.md` 4.1):
+    /// the owner's shape and attributes, labelled `grounded on <owner>`, and its kind's statements
+    /// (the surface's `base`, `bound`), so a changed floor re-grounds it and the change report
+    /// lists it as grounded on that owner (rule 8).
+    fn grounded_on(
+        &self,
+        owner: &str,
+        edges: &mut Vec<(String, NodeId)>,
+        statements: &mut Vec<(String, Digest)>,
+    ) {
+        let label = format!("grounded on {owner}");
+        edges.push((label.clone(), view(NodeId::of("shape", owner))));
+        edges.push((label, NodeId::of("attr", owner)));
+        let d = &self.p.decls;
+        if let Some(k) = d.features.get(owner).and_then(|f| f.kind.as_ref()) {
+            statements.extend(self.stmts_of([format!("kind.{k}").as_str()]));
+            statements.sort();
+            statements.dedup();
+        }
+    }
+
     fn surface_owner(&self, i: &crate::decl::InstanceDecl) -> Option<String> {
         self.surface_owner_at(i, 0)
     }
@@ -3174,7 +3413,7 @@ impl<'w> ModelPlan<'w> {
             }
             let mut dd = Vec::new();
             let mut hand = rules::hand(&d, &placed, &grid, &mut dd);
-            crate::sets::runs_give_way(&d, &self.p.pack, &mut hand, &mut dd);
+            crate::sets::runs_give_way(&d, &self.p.pack, &placed.shapes, &mut hand, &mut dd);
             let produced = rules::scatter_all(&d, &self.p.pack, &placed, &fields, &hand);
             for p in produced.instances {
                 if let Some(m) = &p.maker {
@@ -3396,6 +3635,17 @@ impl<'w> ModelPlan<'w> {
                 e.byte(0);
             }
         }
+        // A placed set's items, `<instance>.<item>`: their heights are this placement's.
+        let items: Vec<(&String, &crate::build::InstanceOut)> = w
+            .build
+            .instances
+            .range(format!("{s}.")..)
+            .take_while(|(n, _)| n.starts_with(&format!("{s}.")))
+            .collect();
+        e.len(items.len());
+        for (n, i) in items {
+            e.str(n).u64(i.z.to_bits());
+        }
         let mut diags = self.early_diags(id);
         diags.extend(w.routed.get(id).cloned().unwrap_or_default());
         Self::val(e.finish(), diags)
@@ -3582,6 +3832,18 @@ impl Plan for ModelPlan<'_> {
                 e.str("via-plan-1");
                 match self.p.placed.plans.get(&s) {
                     Some(p) => e.byte(1).str(&format!("{p:?}")),
+                    None => e.byte(0),
+                };
+                // The surface it stands on is part of its plan: another instance's overlap test
+                // reads it (`rules.md` 8.1, M5).
+                let surface = self
+                    .p
+                    .decls
+                    .instances
+                    .get(&s)
+                    .and_then(|i| i.surface.as_ref());
+                match surface {
+                    Some(sn) => e.byte(1).str(sn),
                     None => e.byte(0),
                 };
                 Self::val(e.finish(), self.early_diags(id))

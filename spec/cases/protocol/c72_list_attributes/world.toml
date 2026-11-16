@@ -1,0 +1,23 @@
+name       = "m5"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.a]
+kind  = "mark"
+at    = [1, 1]
+doors = [{ storey = 0, t = 0.4, width = 1 }]
+door  = { width = 1, at = [2, 3] }
+
+[feature.b]
+kind = "mark"
+at   = [2, 2]
+
+[step.look]
+when    = "lint"
+command = ["python", "-m", "viasdk", "steps/look.py"]
+worker  = true

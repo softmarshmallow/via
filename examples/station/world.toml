@@ -17,7 +17,8 @@ pack       = "pack.toml"                      # primitives: the shipped packs ho
 # bunk room; the tower is reached only through the cottage.
 #
 # Written by hand, not by lib/building's `lay` step (README "Not built yet"): `lay` lays rectangular
-# buildings with straight flights; a round tower with spiral flights is this world's text.
+# buildings with straight flights; a round tower with spiral flights is this world's text. The net
+# loft, further down, is the other way: one `building` feature that `lay` lays.
 #
 # Heights are world metres (surfaces.md 9, item 11). The ground is near 0.
 
@@ -182,39 +183,66 @@ kind    = "footpath"
 path    = [[33.5, 50]]
 ends_at = "back_door.start"
 
+# ------------------------------------------------------------------------------------------ the net loft
+# A second building, laid by lib/building's `lay` from one feature beside the hand-written ones: two
+# storeys of the pack's kit (`structure/kit`), a door on the south side, a straight flight along
+# the north wall, the ground floor cut into two rooms. lay's wall between rooms leaves no gap for a
+# flight (the walk up it was blocked at 2.89 m when the cut stood at x = 49.3), so the cut is west
+# of the flight. Everything it makes is named `lay#net_loft_*`.
+
+[feature.net_loft]
+kind     = "building"
+region   = [[44, 40], [54.6, 40], [54.6, 46.5], [44, 46.5]]   # counter-clockwise from the south-west
+storeys  = 2
+doors    = [{ storey = 0, t = 0.04386, width = 1 }]    # x = 45.5, west of the rooms' cut
+stair    = { t = 0.526316, width = 1, run = 5 }       # 0.9 m along the north wall from its corner
+rooms    = [{ storey = 0, shares = [1, 2] }, { storey = 1, shares = [1] }]   # cut at x = 47.53, clear of the flight
+kit      = "structure/kit"
+
 # ------------------------------------------------------------------------------------------ steps
 
-[step.check]                                  # lib/building's lint: reach between surfaces and rooms
-when    = "lint"
-worker  = true
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]                                  # lib/building's lint: reach between surfaces and rooms,
+when    = "lint"                              # and the clear width at each door between the pack's
+worker  = true                                # wall pieces (rule 5); it reads what `lay` made
+checks  = ["lay"]
 command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/wall", "structure/kit"] }
 
 # ------------------------------------------------------------------------------------------ walls and roofs
 # Runs along the storeys' outlines (rules.md runs; `on` a storey stands on its floor, surfaces.md
 # 4.1), `offset` inward. The tower's shell is one ring of full-height pieces on its ground floor:
 # an upper storey has no floor under its stairwell for a piece to stand on (lib/building README).
+# Each run ends short of a doorway or the step by half its piece's length plus 0.55 m, so 1.1 m
+# stays clear between the pieces either side (a 1 m way and 0.1 m, lay's `margin`); the building
+# check measures it at each door (`door_narrow`), measure.py at the step (`clear_min_mm`).
 
-[run.tower_wall]                              # leaves 1.2 m open at bearing 90 for the step
+[run.tower_wall]                              # leaves the 1 m step 1.1 m clear at bearing 90
 asset   = "tower_shell"
-on      = { ref = "tower_0", span = [0.03, 0.97], offset = 0.15 }
+on      = { ref = "tower_0", span = [0.055, 0.945], offset = 0.15 }
 spacing = 0.8
 ends    = "both"
 
 [run.cottage_wall_south]                      # from the passage's west end round to the front door
 asset   = "wall"
-on      = { ref = "cottage", span = [0, 0.3899], offset = 0.1 }
+on      = { ref = "cottage", span = [0, 0.3816], offset = 0.1 }
 spacing = 0.9
 ends    = "both"
 
 [run.cottage_wall_east]                       # from the front door round to the back door
 asset   = "wall"
-on      = { ref = "cottage", span = [0.4116, 0.6516], offset = 0.1 }
+on      = { ref = "cottage", span = [0.4198, 0.6434], offset = 0.1 }
 spacing = 0.9
 ends    = "both"
 
 [run.cottage_wall_north]                      # from the back door to the passage's west end
 asset   = "wall"
-on      = { ref = "cottage", span = [0.6733, 0.9639], offset = 0.1 }
+on      = { ref = "cottage", span = [0.6816, 0.9639], offset = 0.1 }
 spacing = 0.9
 ends    = "both"
 
@@ -248,9 +276,9 @@ set     = "partition"
 at      = [33.5, 34.5]
 surface = "cottage.floor"
 
-# No roofs: `place.overlap` compares hand instances' plan footprints only (rules.md 8), so a roof
-# over the rooms clashes with every piece of furniture under it, and a thing on one storey with a
-# thing on the storey below (see README, "Known faults"). The pack keeps the roof pieces.
+# No roofs, so the sheet's plan shows the floors. Since M5 slice 2 `place.overlap` tests only things
+# on one surface whose heights meet (rules.md 8.1, "Levels"), so a roof would no longer clash with
+# the furniture under it; the pack keeps the roof pieces.
 
 # ------------------------------------------------------------------------------------------ dressing
 # Sets are groups in one frame placed as a unit; runs repeat a piece along an outline. Things on a
@@ -378,8 +406,8 @@ surface = "tower_0.floor"
 
 # ---- the living room
 
-[instance.living_table]                       # off the centre: the lens two floors up is over it
-set     = "round_table"                       # in plan, and place.overlap reads plan only
+[instance.living_table]
+set     = "round_table"
 at      = [21.5, 30.7]
 face    = 20
 surface = "tower_1.floor"

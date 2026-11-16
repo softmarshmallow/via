@@ -82,3 +82,92 @@ back = 30                                 # metres over which each side fades in
 field = "role:surface"
 value = "= v + drop * smoothstep(0, 0.1, t) * (1 - smoothstep(0.9, 1, t)) * (smoothstep(-1, 1, sd) - 0.5) * (1 - smoothstep(back / 3, back, d))"
 mask  = "= 1 - smoothstep(back, back + 2, d)"
+
+# A sheer cliff (M5, `coast`; TODO "sheer faces draw stair-stepped at 1 m posts"): a cliff that
+# says "sheer" owns its face. The path runs along the face, the high ground on its left (`sd` above
+# 0), as `cliff`'s. The face is the kind surface `face`, a strip `2 * lip` wide that rises from
+# `foot_z` on its right edge to `top_z` on its left. A kind surface's mesh has vertices across the
+# strip only on its outline (spec/build.md 10), so the face is drawn along the path's own line at
+# atan(drop / (2 * lip)) (87 degrees for a 20 m face at the 0.5 m default), never stair-stepped at
+# the posts as the terrain's step is. Its `cut` removes every terrain quad whose centre is on the
+# strip (surfaces.md 1.3): the terrain's own step, a post wide, is not drawn. Keep `lip` at least
+# 0.71 of the world's resolution, so every quad the step crosses has its centre on the strip.
+#
+# `step` writes the terrain to `foot_z` on the right of the line and `top_z` on its left, flat to
+# `lip + 2` m and fading into the land by `back`: the land each side meets the face's edges level.
+# A cut quad reaches up to 0.71 of a post past the strip, so a sliver that thin is open at the
+# face's foot and brink; the library's rocks, or the engine, close it (surfaces.md 5).
+#
+# The face, not the terrain's step, tapers to `foot_z` over the first and last `taper` of the
+# length, so an end written at a place by name meets it at `foot_z`: a cave's jamb (`cave`, below)
+# holds the face open at the mouth. Material `rock`, which both shipped packs have.
+[kind.sheer_cliff]
+authority = "shaped"
+requires  = ["foot_z", "top_z"]
+radius    = 14                            # `back` and the fade
+
+[kind.sheer_cliff.defaults]
+lip   = 0.5                               # half the face's width in plan, metres
+back  = 12                                # metres from the line by which the land is its own again
+taper = 0.02                              # share of the length at each end over which the face comes down
+
+[kind.sheer_cliff.surface.face]
+base     = "= foot_z + (top_z - foot_z) * clamp((sd + lip) / (2 * lip), 0, 1) * smoothstep(0, taper, t) * (1 - smoothstep(1 - taper, 1, t))"
+bound    = "= lip"
+cut      = "= top_z - foot_z"
+material = "rock"
+
+[kind.sheer_cliff.effect.step]
+field = "role:surface"
+value = "= if(sd < 0, foot_z, top_z)"
+mask  = "= 1 - smoothstep(lip + 2, back, d)"
+
+# A cave (M5, `coast`; surfaces.md 6.5): a path from its mouth inward. Its floor is a kind surface
+# that rises from `z0` at the mouth to `z1` at the end, under the terrain: `surfaces_at` inside
+# lists the terrain above the floor (surfaces.md 1, rule 7). `cut` opens the terrain within
+# `headroom` of the floor, so the hill's quads at the mouth are not drawn and its top is whole.
+# The mouth is a meeting with the ground in front of it (`mouth`, `mouth_ground`), held at gap 0 by
+# `sill`, which writes `z0` on the posts within a metre of the mouth (anchored, so after a shaped
+# cliff's step there). Write the mouth on a post. Its two jambs, `left_jamb` and `right_jamb`, lie
+# on the floor's edge at the mouth (2 m either side, the default `width`): a sheer cliff ends at
+# one by name and starts at the other, so the face stays open where the cave moves. The rock round
+# the passage is assets a library places (surfaces.md 1.3, 5): none yet.
+[kind.cave]
+authority = "anchored"
+requires  = ["z0", "z1"]
+radius    = 2
+
+[kind.cave.defaults]
+width    = 4                              # metres; the jambs are written at 2 m, so keep it 4
+headroom = 3                              # metres of terrain cleared over the floor
+
+[kind.cave.surface.floor]
+base     = "= z0 + (z1 - z0) * t"
+bound    = "= width / 2"
+cut      = "= headroom"
+material = "rock"
+
+[kind.cave.mount.mouth]
+t       = 0
+surface = "floor"
+face    = 180                             # out of the cave
+meets   = "mouth_ground"
+
+[kind.cave.mount.mouth_ground]
+t    = 0
+face = 0                                  # into it
+
+[kind.cave.mount.left_jamb]
+t       = 0
+offset  = 2
+surface = "floor"
+
+[kind.cave.mount.right_jamb]
+t       = 0
+offset  = -2
+surface = "floor"
+
+[kind.cave.effect.sill]
+field = "role:surface"
+value = "= z0"
+mask  = "= (1 - smoothstep(0.5, 1, d)) * (1 - smoothstep(0.02, 0.04, t))"

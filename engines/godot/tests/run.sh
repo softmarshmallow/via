@@ -79,5 +79,22 @@ for args in "--before $HERE/fixture_build --out $OUT/foreign" \
   if [ $s -ne 2 ] || [ -e "$OUT/bad" ] || [ ! -f "$OUT/foreign/keep.txt" ]; then echo "FAIL exit $s for: $args"; fail=1; else echo "ok   exit 2: $args"; fi
 done
 
+step "kind surfaces: cut terrain, floor meshes, the walker on a floor (headless)"
+python3 "$HERE/make_floor_fixture.py" "$OUT/floor_build" || fail=1
+r=$(godot --headless --script res://tests/test_floor.gd -- --build "$OUT/floor_build"); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
+step "sheet: the surface each bookmark stands on"
+"$ROOT/sheet.sh" --before "$OUT/floor_build" --out "$OUT/floor" >/dev/null 2>&1 || { echo "FAIL sheet exit"; fail=1; }
+quiet python3 "$HERE/check_sheet.py" "$OUT/floor" 2 --one --before "$OUT/floor_build" || fail=1
+python3 - "$OUT/floor/sheet.json" <<'EOF' || fail=1
+import json, sys
+walks = {w["name"]: w["before"] for w in json.load(open(sys.argv[1]))["walks"]}
+on = {n: w["on"] for n, w in walks.items()}
+ok = on == {"below_floor": {"from": None, "stop": None}, "on_floor": {"from": "hall.floor", "stop": "hall.floor"}}
+print(("ok   " if ok else "FAIL ") + "sheet.json: on_floor stands on hall.floor, below_floor on nothing (the cut)", on)
+sys.exit(0 if ok else 1)
+EOF
+
 [ $fail -eq 0 ] && echo "PASS: Godot loader suite" || echo "FAIL: Godot loader suite"
 exit $fail

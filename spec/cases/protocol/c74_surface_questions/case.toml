@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "surfaces.md 2.1, 2.2 through the SDK (protocol.md 3.3): surfaces_at lists the terrain and the kind surface `deck.top` at a point in both, by z; none outside the extent. sample of `deck.top` (base = level + 0.5 x) gives z and a central-difference gradient of 0.5, one-sided at the bound's edge, inside false and all 0 beyond it; sample of the terrain (= x) the bilinear gradient 1."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.asked]
+code = "step.look.asked"
+data = { point = [0, 1, 1], surface = ["height", "height", "deck.top"], z = [1.0, 4.0, 5.0], inside = [true, true, false], kz = [5.0, 6.0, 0.0], kgx = [0.5, 0.5, 0.0], kgy = [0.0, 0.0, 0.0], tz = [4.5], tgx = [1.0] }

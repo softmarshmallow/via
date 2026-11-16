@@ -50,6 +50,14 @@ pub fn scatter_name(id: &str, spacing: i64, i: i64, j: i64) -> String {
     format!("{id}#s{spacing}_{}_{}", key_int(i), key_int(j))
 }
 
+/// Whether any of `fp` lies outside `bound`: their difference has area.
+pub(crate) fn hangs_off(fp: &Region, bound: &Region) -> bool {
+    if fp.is_empty() {
+        return false;
+    }
+    boolean(BoolOp::Difference, &[fp.clone(), bound.clone()]).map_or(true, |r| r.twice_area() > 0)
+}
+
 pub(crate) fn overlaps(a: &Region, b: &Region) -> bool {
     if a.is_empty() || b.is_empty() {
         return false;
@@ -316,6 +324,14 @@ pub fn scatter_all(
     let keep_out = f.keep_out(View::Build);
     let mut raw: Vec<held::Instance> = Vec::new();
     let mut facts: BTreeMap<String, (f64, f64)> = BTreeMap::new();
+    // The kind surfaces a scatter stands on (`surfaces.md` 4.1, M5): their bounds are plan only,
+    // ready with their owners (4.3). Their own faults are said by the build's grounding.
+    let levels = crate::surfaces::Levels::new(d, &placed.shapes);
+    let kinds = if d.scatters.values().any(|s| s.surface.is_some()) {
+        crate::surfaces::kind_surfaces(d, &placed.shapes, &mut Vec::new())
+    } else {
+        Default::default()
+    };
     // Scatters in an order where one grown `around` another comes after it (`rules.md` 7.3),
     // ties by id; a loop is left in id order (the graph says `graph.cycle`).
     let mut order: Vec<&crate::decl::ScatterDecl> = Vec::new();
@@ -384,6 +400,26 @@ pub fn scatter_all(
         let Some(lists) = choice_lists(s, pack, &mut out.diags) else {
             continue;
         };
+        // `surface` (4.1): the surface's bound is part of the scatter's region; a candidate
+        // outside it, or whose footprint leaves it, is no candidate.
+        let on: Option<&crate::surfaces::SurfaceOut> = match &s.surface {
+            None => None,
+            Some(n) => match kinds.0.get(n) {
+                Some(k) => Some(k),
+                // Its owner's fault was said where the surface is declared.
+                None if kinds.1.contains(n) => continue,
+                None => {
+                    if let Some(dg) = crate::surfaces::not_surface(
+                        d,
+                        n,
+                        Subject::entity("scatter", s.id.as_str()),
+                    ) {
+                        out.diags.push(dg);
+                    }
+                    continue;
+                }
+            },
+        };
         let within = match &s.within {
             None if s.within_of.is_some() => match placed.within.get(&s.id) {
                 Some(r) => Some(r.clone()),
@@ -437,12 +473,19 @@ pub fn scatter_all(
             },
         };
         let (mut bx0, mut by0, mut bx1, mut by1) = (ex0, ey0, ex1, ey1);
-        if let Some((a, b)) = within.as_ref().and_then(Region::bbox) {
+        let bound_box = on.map(|k| k.bound.bbox());
+        for (a, b) in within
+            .as_ref()
+            .and_then(Region::bbox)
+            .into_iter()
+            .chain(bound_box)
+        {
             bx0 = bx0.max(a.x);
             by0 = by0.max(a.y);
             bx1 = bx1.min(b.x);
             by1 = by1.min(b.y);
         }
+        let off_bound = |p: P| on.is_some_and(|k| !k.inside((p.x, p.y)));
         let sp = s.spacing;
         let st = |purpose: &str| via_num::stream(d.seed, &["rule", s.seed.as_str(), purpose]);
         let (sx, sy, sk, sa, sf, ss, stt) = (
@@ -474,6 +517,9 @@ pub fn scatter_all(
                         if r.side(P::new(x, y)) == via_geom::pred::Side::Out {
                             continue;
                         }
+                    }
+                    if off_bound(P::new(x, y)) {
+                        continue;
                     }
                     cands.push((i, j, (x, y)));
                 }
@@ -612,6 +658,9 @@ pub fn scatter_all(
                             continue;
                         }
                     }
+                    if off_bound(P::new(mx, my)) {
+                        continue;
+                    }
                     if via_num::unit(via_num::draw(smk, &key)) >= 1.0 - ko_at(mx, my) {
                         continue;
                     }
@@ -643,6 +692,13 @@ pub fn scatter_all(
             let Some(fp) = footprint(a, origin, facing, scale) else {
                 continue;
             };
+            // A footprint hanging past the surface's bound (`relief` gives `outside > 0`) is no
+            // candidate, as one off the bound is (4.1).
+            if let Some(k) = on {
+                if k.region().is_some_and(|b| hangs_off(&fp, b)) {
+                    continue;
+                }
+            }
             if member && a.solid && group.iter().any(|g| overlaps(g, &fp)) {
                 gave.0 += 1;
                 gave_box = Some(match gave_box {
@@ -659,16 +715,28 @@ pub fn scatter_all(
             // Pins are hand edits, applied to the held output, not given way to (identity.md 4.1).
             // Giving way reads down only (`rules.md` 3.4): a hand instance in a higher layer is
             // not given way to; an overlap with it is `place.crowded` (8.1).
+            // Only hand instances on its surface whose heights meet its own (8.1, M5).
+            let mine = {
+                let (lo, hi) = crate::surfaces::span(pack, &asset, scale);
+                (s.surface.clone().unwrap_or_default(), lo, hi)
+            };
             let overlap = a.solid
                 && hand
                     .iter()
                     .filter(|h| !h.pin && d.placed_rank_of(&h.name).is_none_or(|r| r <= s.rank))
                     .any(|h| {
                         pack.assets.get(&h.asset).is_some_and(|ha| ha.solid)
+                            && levels.clash(
+                                &mine,
+                                &fp,
+                                &crate::surfaces::level(d, pack, h),
+                                &h.footprint,
+                            )
                             && overlaps(&h.footprint, &fp)
                     });
             let mut relief_bad = false;
-            if !overlap {
+            // On a kind surface the terrain's relief is not what it stands on.
+            if !overlap && on.is_none() {
                 if let (Some(limit), Some(sf)) = (a.max_relief, surface) {
                     if let Some((lo, hi)) = relief(f, sf, &fp) {
                         relief_bad = hi - lo > limit * scale;
@@ -1289,6 +1357,7 @@ pub fn ground_and_check(
     let hands: Vec<&Placement> = all.iter().filter(|p| p.maker.is_none() && !p.pin).collect();
     // A lower layer's produced instance and a hand instance in a higher layer (8.1, 3.4: giving
     // way reads down only): `place.crowded`, naming both.
+    let levels = crate::surfaces::Levels::new(d, &placed.shapes);
     let solid = |x: &Placement| pack.assets.get(&x.asset).is_some_and(|s| s.solid);
     for p in all.iter().filter(|p| p.maker.is_some() && !p.pin) {
         let Some(maker) = p.maker.as_deref() else {
@@ -1302,7 +1371,16 @@ pub fn ground_and_check(
         }
         for h in &hands {
             let hrank = d.placed_rank(&h.name);
-            if hrank <= prank || !solid(h) || !overlaps(&p.footprint, &h.footprint) {
+            if hrank <= prank
+                || !solid(h)
+                || !levels.clash(
+                    &crate::surfaces::level(d, pack, p),
+                    &p.footprint,
+                    &crate::surfaces::level(d, pack, h),
+                    &h.footprint,
+                )
+                || !overlaps(&p.footprint, &h.footprint)
+            {
                 continue;
             }
             diags.push(
@@ -1352,7 +1430,11 @@ pub fn ground_and_check(
             if on(a, b) || on(b, a) || one_unit {
                 continue;
             }
-            if overlaps(&a.footprint, &b.footprint) {
+            // Only things on one surface whose heights meet (8.1, M5): two storeys never clash.
+            let level = |x: &Placement| crate::surfaces::level(d, pack, x);
+            if levels.clash(&level(a), &a.footprint, &level(b), &b.footprint)
+                && overlaps(&a.footprint, &b.footprint)
+            {
                 diags.push(
                     at_header(
                         codes::place::OVERLAP,

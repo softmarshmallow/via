@@ -33,6 +33,7 @@ mod cmds;
 mod commit;
 mod dir;
 mod filebase;
+mod glb;
 mod interrupt;
 mod json;
 mod kernel;

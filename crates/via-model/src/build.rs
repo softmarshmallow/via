@@ -215,6 +215,13 @@ pub struct Build {
     /// Per field, the largest mask of any `anchored` entry at each post: what this world hands a
     /// parent that imports it (`composition.md` 6.4).
     pub cover: BTreeMap<String, Vec<f64>>,
+    /// The terrain's cut quads (`build.md` 6.5), when the world has a terrain.
+    pub cut: Option<Vec<u8>>,
+    /// Every kind surface's mesh (`build.md` 10).
+    pub meshes: Vec<crate::surfaces::MeshOut>,
+    /// The kind surface a point feature or a named place stands on (`surfaces.md` 4.1, 3.3), by
+    /// feature id or place name: its `z` in `features.json` is that surface's.
+    pub place_surface: BTreeMap<String, String>,
 }
 
 impl Build {
@@ -237,7 +244,7 @@ fn attr_text(a: &Attr) -> String {
     match a {
         Attr::Number(x) => text::dbl(*x),
         Attr::YesNo(b) => b.to_string(),
-        Attr::Text(t) => t.clone(),
+        Attr::Text(t) | Attr::Json(t) => t.clone(),
     }
 }
 
@@ -788,7 +795,7 @@ pub(crate) fn finish_from(
     }
     // Producers and hand edits, then heights and checks.
     let mut hand = rules::hand(&decls, &placed, &grid, &mut diags);
-    crate::sets::runs_give_way(&decls, &pk, &mut hand, &mut diags);
+    crate::sets::runs_give_way(&decls, &pk, &placed.shapes, &mut hand, &mut diags);
     let produced = rules::scatter_all(&decls, &pk, &placed, &fields, &hand);
     diags.extend(produced.diags);
     // Pins placed on a scatter's instance stand where any pin does (`rules::hand`'s check).
@@ -880,6 +887,16 @@ pub(crate) fn finish_from(
             out.deps.insert(("field".into(), name.clone()), deps);
         }
     }
+    // The terrain's cut and the kind surfaces' meshes (`build.md` 6.5, 10).
+    if let Some(t) = fields.surface().and_then(|t| out.fields.get(t)) {
+        let quads = t
+            .values
+            .as_ref()
+            .map(|v| crate::surfaces::cut_quads(&grid, v, &out.surfaces, &mut diags));
+        out.cut = quads;
+    }
+    out.meshes = crate::surfaces::meshes(&grid, &out.surfaces, &pk, &mut diags);
+    out.place_surface = crate::surfaces::place_surfaces(&decls, &placed, &out.surfaces, &mut diags);
     for (id, f) in &decls.features {
         let Some(g) = placed.shapes.get(id) else {
             continue;
@@ -934,6 +951,9 @@ pub(crate) fn finish_from(
                             Attr::Number(_) => "number",
                             Attr::YesNo(_) => "bool",
                             Attr::Text(_) => "text",
+                            // `protocol.md` 4.3: a str column of canonical JSON texts.
+                            Attr::Json(j) if j.starts_with('[') => "list",
+                            Attr::Json(_) => "table",
                         };
                         (k.clone(), t.to_string())
                     })
@@ -1639,6 +1659,7 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         }
         refs.extend(f.starts_at.clone());
         refs.extend(f.ends_at.clone());
+        refs.extend(f.surface.clone());
         refs.extend(f.way_names().into_iter().map(str::to_string));
         if let Some(k) = f.kind.as_ref().and_then(|k| d.kinds.get(k)) {
             for n in &k.names {
@@ -1657,6 +1678,10 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         s.insert(format!("asset:{}", i.asset));
         if let Some(g) = &i.ground {
             s.insert(format!("kind.{g}"));
+        }
+        // The kind surface it stands on (`surfaces.md` 4.1): its owner, as an `on` reference.
+        if let Some(sn) = &i.surface {
+            s.extend(feature_deps(d, sn, seen));
         }
         match &i.place {
             crate::decl::Place::On(o) => s.extend(feature_deps(d, &o.reference, seen)),
@@ -1766,6 +1791,10 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
                     }
                     None => {
                         s.insert(format!("scatter.{m}"));
+                        // `surface` (`surfaces.md` 4.1): the owner of the surface it stands on.
+                        if let Some(sn) = d.scatters.get(m).and_then(|x| x.surface.as_ref()) {
+                            s.extend(feature_deps(d, sn, &mut BTreeSet::new()));
+                        }
                     }
                 }
                 s.insert(crate::graph::PACK.to_string());

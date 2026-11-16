@@ -473,6 +473,41 @@ class Meetings(unittest.TestCase):
             self.step(self.Conn(error=err), when="generate").meetings()
 
 
+class SurfaceQuestions(Meetings):
+    """Step.surfaces_at and Step.sample (surfaces.md 2.1, 2.2): one batch call each, columns in
+    (x, y as i32 millimetres) and a table out (R23), the step.call's id carried."""
+
+    def test_surfaces_at_is_one_batch(self):
+        conn = self.Conn({"point": {"dtype": "i64", "values": [0, 0, 1]},
+                          "surface": {"dtype": "str", "values": ["height", "s.floor", "height"]},
+                          "z": {"dtype": "f64", "values": [1.0, 3.0, 2.5]}})
+        t = self.step(conn).surfaces_at([0, 1000], [0, 500])
+        ((method, params),) = conn.sent
+        self.assertEqual(method, "surface.surfaces_at")
+        self.assertEqual(params["call"], 7)
+        self.assertEqual(params["view"], "full")
+        self.assertEqual((params["x"]["dtype"], list(params["x"]["values"])), ("i32", [0, 1000]))
+        self.assertEqual((params["y"]["dtype"], list(params["y"]["values"])), ("i32", [0, 500]))
+        self.assertEqual(list(t["surface"]), ["height", "s.floor", "height"])
+        self.assertEqual(list(t["point"]), [0, 0, 1])
+
+    def test_sample_names_one_surface(self):
+        conn = self.Conn({"inside": {"dtype": "bool", "values": [1, 0]},
+                          "z": {"dtype": "f64", "values": [3.0, 0.0]},
+                          "gx": {"dtype": "f64", "values": [0.5, 0.0]},
+                          "gy": {"dtype": "f64", "values": [0.0, 0.0]}})
+        t = self.step(conn, when="generate").sample("s.floor", [0, 9000], [0, 0], view="head")
+        ((method, params),) = conn.sent
+        self.assertEqual((method, params["surface"], params["view"]), ("surface.sample", "s.floor", "head"))
+        self.assertEqual([bool(v) for v in t["inside"]], [True, False])
+        self.assertEqual(list(t["gx"]), [0.5, 0.0])
+
+    def test_a_refusal_is_raised(self):
+        err = viasdk.RpcError(-32602, "no surface", {"code": "surface.not_surface"})
+        with self.assertRaises(viasdk.RpcError):
+            self.step(self.Conn(error=err)).sample("nowhere", [0], [0])
+
+
 class Version(unittest.TestCase):
     def test_major_version_is_the_protocol_number(self):
         self.assertEqual(viasdk.PROTOCOL, "via-step-1")

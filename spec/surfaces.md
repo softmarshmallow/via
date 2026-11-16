@@ -102,6 +102,11 @@ is the source.
 - A point is inside when the exact polygon test on the lattice puts it inside or on the edge. The
   polygon decides, not `d`: on a round join the chords stray up to 5 mm, so the formula may see `d`
   up to 5 mm above `bound`.
+- **A point laid on the owner's line** (a run member or an instance `on` the owner, `rules.md` 5)
+  that lies within one lattice unit (1 mm, in x and in y) of the bound counts as inside and takes
+  `base` there: the strip's corners and the laid point are rounded to the lattice apart, so a
+  member at a span end on the end edge may round 1 mm past it (M5 slice 2, coast: the parapet's
+  first post). A point written by `at` gets no such grace.
 - **Fold.** Where the strip overlaps itself (a bend whose inner radius is less than `bound`), `t`
   jumps inside the strip and `z` would have a cliff. This is `surface.fold` (error), found as
   `geometry.md` 3.5 finds `geom.follow_broken`: the curve at `bound` on either side is not one piece.
@@ -821,6 +826,14 @@ below `1.4 + 3`) and the headland's top is not, so the mouth is open and the hil
 around the passage is assets or an engine-made mesh the library places; the inside is "checked"
 (challenge 7) by a walk along `sea_cave.floor`, which is a surface like any other.
 
+What `coast` found (M5 slice 2; lib/land is the source for its `cave` and `sheer_cliff`): the text
+above has no gap 0 at the mouth unless the ground there is `z0`, so the library's `cave` adds an
+anchored effect writing `z0` on the posts within a metre of the mouth (written on a post). It adds
+two mounts on the floor's edge at the mouth, `left_jamb` and `right_jamb`, where a sheer face ends
+by name (R18): the face is open wherever the cave is. A sheer face is a kind surface too, a strip
+whose mesh has vertices across it only on its outline (`build.md` 10), so it is drawn along its line
+and not at the posts; its `cut` removes the terrain's own step under it.
+
 ### 6.6 Trees on a roof garden (M5)
 
 ```toml
@@ -976,6 +989,9 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 | roof_scatter | M5 | 6.6 | build | Every instance's `z` is 16.4 and no origin lies off the roof. |
 | passable | M5 | a `passable` instance and a scatter around it | build | Exit 0, no `doc.not_yet`; no scattered origin inside its footprint (4.4). |
 | floor_mesh | M5 | 6.4 | build | `meshes/hall_g.floor.glb`, `hall_1.floor.glb` and `stair.tread.glb` exist (`build.md` 10). |
+| storey_overlap | M5 | two storeys over one plan point; a box on each at one point, and a lid lifted 2.5 m by its `sink` over the lower box; then the upper box moved to the lower floor | build, then the change | No `place.overlap`; then `place.overlap` on the two boxes, exit 1 (`rules.md` 8.1, levels). |
+| floor_warm | M5 | a set by `at` with `surface`, a run `on` a storey, a scatter with `surface`, a point feature with `surface`; a change raising the storey to 14 | build, then the change `--against` | Every `z` 13.3, the point's `z` 13.3 in `features.json`; then 14, each instance's cause the storey's `level`; the warm build equals a clean one (4.1, rule 8). |
+| step_run_on_floor | M5 | a generate step returning a storey at 13.3 over ground at 10 and a run `on` it | build | Members `make#edge#r0` to `r2`, every `z` 13.3: a returned run's member is `<step>#<run>#r<k>`, its run read before the last `#` (`identity.md` 2.3). |
 
 ## Changed from the spike
 

@@ -7,8 +7,8 @@
 
 [taxon."structure/wall"]
 [taxon."structure/roof"]
-defaults = { solidity = "none" }           # a roof claims no ground: it is over the rooms, and
-                                           # place.overlap reads plan footprints only
+defaults = { solidity = "none" }           # a roof claims no ground: it is over the rooms
+[taxon."structure/kit"]                    # the net loft's kit, laid by lib/building's `lay`
 [taxon."structure"]
 defaults = { collision = "box" }
 
@@ -64,6 +64,33 @@ size      = [7.2, 7.2, 2.4]
 taxon     = "structure/roof"
 sink      = -3.0                # on the lantern room's walls, 3 m over its floor
 colour    = [0.7, 0.12, 0.1]
+
+# The net loft's kit (lib/building README, "Asset side"): `lay` reads pieces under a taxon by their
+# `role:` tag, `params.pitch` along x, thickness along y (front +y, outward). A storey is 3.2 m, so
+# a piece stands from its floor to the floor above. No door leaf: a shut leaf would bar the walk.
+
+[asset.kit_wall]
+primitive = "box"
+size      = [1.0, 0.3, 3.2]
+taxon     = "structure/kit"
+tags      = ["role:wall"]
+params    = { pitch = 1.0 }
+colour    = [0.62, 0.6, 0.56]
+
+[asset.kit_filler]              # a 0.1 m slip: every stretch a whole number of decimetres closes
+primitive = "box"
+size      = [0.1, 0.3, 3.2]
+taxon     = "structure/kit"
+tags      = ["role:filler"]
+params    = { pitch = 0.1 }
+colour    = [0.62, 0.6, 0.56]
+
+[asset.kit_corner]
+primitive = "box"
+size      = [0.3, 0.3, 3.2]
+taxon     = "structure/kit"
+tags      = ["role:corner"]
+colour    = [0.5, 0.48, 0.45]
 
 # ------------------------------------------------------------------------------------- furniture
 

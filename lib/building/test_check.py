@@ -6,6 +6,7 @@ The meetings are surfaces.md 6.4's four rows, as `surface.meetings` gives them; 
 what lay.py returns for that house (names as the build gives them, `lay#<key>`).
 """
 
+import math
 import os
 import runpy
 import unittest
@@ -36,7 +37,7 @@ def house(attrs=None):
                       "attrs": {"z0": f["z0"], "z1": f["z1"]}})
     for d in out["doorways"]:
         feats.append({"name": "lay#" + d["key"], "kind": "doorway", "ring": d["path"], "path": d["path"],
-                      "attrs": {}})
+                      "attrs": {"sill_z": d["sill_z"]}})
     for p in out["footpaths"]:
         feats.append({"name": "lay#" + p["key"], "kind": "footpath", "ring": p["path"], "path": p["path"],
                       "attrs": {}})
@@ -87,6 +88,98 @@ class Reach(unittest.TestCase):
         wide = C["params_of"]({"inner_door": 9})
         self.assertEqual(codes(C["judge"](feats, MEETINGS, [], wide)),
                          [("unreached", "lay#hall_s0_r1")])
+
+
+# The test kit's pieces as pack bounds (mm): a 1 m bay and a 0.1 m filler, 0.3 m thick, their +y
+# out of the wall; the corner a 0.3 m square; the leaf a door (not an obstacle).
+KIT = {"wall": {"id": "bay", "pitch": 1000, "thick": 300, "width": 1000},
+       "filler": {"id": "strip", "pitch": 100, "thick": 300, "width": 100},
+       "corner": {"id": "corner", "pitch": 300, "thick": 300, "width": 300},
+       "door": {"id": "leaf", "pitch": 1000, "thick": 300, "width": 1000}}
+BOUNDS = {"bay": [-500, -150, 0, 500, 150, 3000], "strip": [-50, -150, 0, 50, 150, 3000],
+          "corner": [-150, -150, 0, 150, 150, 3000]}
+
+
+def members(out):
+    """Where the core puts the plan's wall pieces (rules.md 5.1: `ends = "half"`, by arc length
+    along the storey's ring, `offset` to the left), and its `at` pieces; leaves are left out."""
+    rings = {s["key"]: s["region"] for s in out["storeys"]}
+    level = {s["key"] + ".floor": s["level"] for s in out["storeys"]}
+    got = []
+    for r in out["runs"]:
+        ring = rings[r["ref"]]
+        segs = list(zip(ring, ring[1:] + ring[:1]))
+        total = sum(math.dist(p, q) for p, q in segs)
+        a, b = round(r["span"][0] * total), round(r["span"][1] * total)
+        for k in range(r["count"]):
+            s_ = a + ((2 * k + 1) * (b - a)) // (2 * r["count"])
+            c = 0.0
+            for p, q in segs:
+                L = math.dist(p, q)
+                if s_ < c + L:
+                    e = ((q[0] - p[0]) / L, (q[1] - p[1]) / L)
+                    u, off = s_ - c, r["offset"] * 1000
+                    got.append({"name": f"lay#{r['key']}#r{k}", "x": round(p[0] + e[0] * u - e[1] * off),
+                                "y": round(p[1] + e[1] * u + e[0] * off), "face": round(r["face"] * 1000),
+                                "z": level[r["ref"] + ".floor"],
+                                "bounds": BOUNDS[r["asset"]]})
+                    break
+                c += L
+    for i in out["instances"]:
+        if i["asset"] in BOUNDS:
+            got.append({"name": "lay#" + i["key"], "x": i["at"][0], "y": i["at"][1], "z": level[i["surface"]],
+                        "face": round(i["face"] * 1000), "bounds": BOUNDS[i["asset"]]})
+    return got
+
+
+def laid(attrs=None, **kw):
+    a = dict(ATTRS)
+    a.update(attrs or {})
+    out = L["plan"]("hall", HALL, a, 10.0, None, KIT, **kw)
+    return out, members(out)
+
+
+class Doorways(unittest.TestCase):
+    def test_the_laid_door_is_clear(self):
+        """lay's rule 6 leaves the 1 m door 1.2 m between the bays (1 m, the 0.1 m margin, 0.1 m
+        to close the stretch with fillers); measured from the placed pieces' footprints."""
+        out, pieces = laid()
+        (d,) = [f for f in house() if f["kind"] == "doorway"]
+        w, (lo, hi) = C["clear_width"](d["path"], pieces, d["attrs"]["sill_z"])
+        self.assertAlmostEqual(w, 1200, delta=2)
+        self.assertEqual((lo, hi), ("lay#hall_s0_w1_1#r0", "lay#hall_s0_w1_0f#r0"))   # left of travel first
+        # Counted in plan alone, the storey above's wall over the doorway would close it.
+        self.assertEqual(C["clear_width"](d["path"], pieces)[0], 0.0)
+        self.assertNotIn("door_narrow", [r[1] for r in C["judge"](house(), MEETINGS, [], P, pieces)])
+
+    def test_a_narrow_door_names_the_doorway(self):
+        """A 0.6 m door is left 0.7 m (0.8 m to close): under `inner_door` (0.9 m), named."""
+        out, pieces = laid({"doors": [{"storey": 0, "t": 0.4, "width": 0.6}]})
+        feats = house({"doors": [{"storey": 0, "t": 0.4, "width": 0.6}]})
+        recs = [r for r in C["judge"](feats, MEETINGS, [], P, pieces) if r[1] == "door_narrow"]
+        self.assertEqual([(r[0], r[2]) for r in recs], [("warning", "lay#hall_d0")])
+        self.assertLess(recs[0][5]["clear"], 0.9)
+        self.assertEqual(recs[0][6], (32.0, 24.0))
+        self.assertEqual(C["address"]("door_narrow", recs[0][2]), "feature.lay#hall_d0")
+
+    def test_a_piece_in_the_doorway_is_no_way_through(self):
+        """A bay stood in the doorway (the station's front door, before the fix): clear 0."""
+        out, pieces = laid()
+        pieces = pieces + [{"name": "stray", "x": 31850, "y": 24000, "z": 10.3, "face": 90000,
+                            "bounds": BOUNDS["bay"]}]
+        recs = [r for r in C["judge"](house(), MEETINGS, [], P, pieces) if r[1] == "door_narrow"]
+        self.assertEqual(recs[0][5]["clear"], 0.0)
+
+    def test_no_pieces_measures_nothing(self):
+        recs = C["judge"](house(), MEETINGS, [], P)
+        self.assertEqual(recs[-1][5]["doorways"], 0)
+
+    def test_footprint_turns_with_face(self):
+        """A 1 m by 0.3 m bay facing east (90 degrees) is 0.3 m along x and 1 m along y."""
+        fp = C["footprint"]({"x": 0, "y": 0, "face": 90000, "bounds": BOUNDS["bay"]})
+        xs, ys = [p[0] for p in fp], [p[1] for p in fp]
+        self.assertAlmostEqual(max(xs) - min(xs), 300)
+        self.assertAlmostEqual(max(ys) - min(ys), 1000)
 
 
 class Profile(unittest.TestCase):

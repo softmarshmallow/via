@@ -475,6 +475,19 @@ here, so no case has two codes.
 Two footprints overlap when their interiors meet; touching edges do not overlap, so kit pieces
 that abut pass. Only instances whose solidity is not `none` are tested.
 
+**Levels (M5, decided).** Two things are tested only when they stand on one surface (the terrain,
+or one kind surface: `surfaces.md` 4.1, a set's items by their placement's, a run's members by its
+`on`) and their height spans above it meet. A thing's span is `-sink` to `-sink` plus its
+`bounds` height, both scaled (`assets.md` 2.4); spans meet when their insides do, so a piece
+standing on another's top passes, and a span of no height meets one it touches. This holds for
+`place.overlap`, `place.crowded` and every giving way (7.5, runs and steps). Reason: the test runs
+on plans (`surfaces.md` 4.3, step 1), before any field settles, so it may read only declarations
+and asset facts; two storeys are two surfaces, so a thing on one never clashes with a thing on the
+other (station: ten shell pieces of the ground floor gave way to furniture upstairs), and a roof
+lifted onto its walls by its `sink` clears the furniture beneath it. Whether a tall piece on one
+storey reaches through the floor above is a library lint over `surfaces_at`, not this test. Ours.
+Cases: `surfaces.md` Conformance, `storey_overlap`.
+
 | Between | Result |
 |---|---|
 | two hand instances | `place.overlap`, error: two firm decisions clash (principle 3). |

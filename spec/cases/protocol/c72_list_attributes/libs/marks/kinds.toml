@@ -1,0 +1,7 @@
+[kind.mark]
+authority = "shaped"
+
+[kind.mark.defaults]
+sizes = [1, 2.5, 3]
+doors = []
+door  = {}

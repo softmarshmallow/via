@@ -211,10 +211,13 @@ fn normalise_numbers(v: J) -> J {
     }
 }
 
-/// The surface field's samples, for the height beneath a feature (9.1).
+/// The surface field's samples, for the height beneath a feature (9.1), and the kind surfaces a
+/// point feature or a named place stands on (`surfaces.md` 4.1, 3.3).
 pub struct Surface {
     grid: Grid,
     raster: Option<Raster<f32>>,
+    /// Feature id or place name to the kind surface it stands on.
+    stands: BTreeMap<String, via_model::surfaces::SurfaceOut>,
 }
 
 impl Surface {
@@ -225,7 +228,16 @@ impl Surface {
             .find(|f| f.role.as_deref() == Some("surface"))
             .and_then(|f| f.values.clone())
             .and_then(|v| Raster::from_values(Window::whole(&grid), v));
-        Surface { grid, raster }
+        let stands = build
+            .place_surface
+            .iter()
+            .filter_map(|(n, s)| Some((n.clone(), build.surfaces.get(s)?.clone())))
+            .collect();
+        Surface {
+            grid,
+            raster,
+            stands,
+        }
     }
 
     fn z(&self, p: (i64, i64)) -> J {
@@ -238,6 +250,14 @@ impl Surface {
 
     pub fn xyz(&self, p: (i64, i64)) -> J {
         J::Arr(vec![J::mm(p.0), J::mm(p.1), self.z(p)])
+    }
+
+    /// [`Surface::xyz`] for the point of `name`: on the kind surface it stands on, if any.
+    pub fn xyz_of(&self, name: &str, p: (i64, i64)) -> J {
+        match self.stands.get(name).and_then(|s| s.z(p).ok().flatten()) {
+            Some(z) => J::Arr(vec![J::mm(p.0), J::mm(p.1), J::dbl(z).unwrap_or(J::Null)]),
+            None => self.xyz(p),
+        }
     }
 }
 
@@ -302,7 +322,7 @@ pub fn feature_json(name: &str, f: &FeatureOut, layer: Option<&str>, surface: &S
     match f.shape.as_str() {
         "point" => {
             if let Some(p) = f.points.first() {
-                m.insert("at".into(), surface.xyz(*p));
+                m.insert("at".into(), surface.xyz_of(name, *p));
             }
         }
         "path" => {
@@ -329,7 +349,10 @@ pub fn feature_json(name: &str, f: &FeatureOut, layer: Option<&str>, surface: &S
     for (k, (place, p)) in &f.names {
         attrs.insert(
             k.clone(),
-            obj([("at", surface.xyz(*p)), ("name", J::s(place.clone()))]),
+            obj([
+                ("at", surface.xyz_of(place, *p)),
+                ("name", J::s(place.clone())),
+            ]),
         );
     }
     m.insert("attrs".into(), J::Obj(attrs));
@@ -504,6 +527,15 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
             e.insert("file".into(), J::s(path));
             e.insert("min".into(), J::dbl(f64::from(lo)).unwrap_or(J::Null));
             e.insert("max".into(), J::dbl(f64::from(hi)).unwrap_or(J::Null));
+            // The terrain's cut (6.5): one byte per quad, all 0 when nothing cuts.
+            if f.role.as_deref() == Some("surface") {
+                if let Some(cut) = &b.cut {
+                    let path = cut_path(name);
+                    let shape = [ny.saturating_sub(1), nx.saturating_sub(1)];
+                    files.insert(path.clone(), npy::u1(&shape, cut));
+                    e.insert("cut".into(), J::s(path));
+                }
+            }
         } else {
             e.insert("type".into(), J::s("weights"));
             let mats: Vec<(&String, &Vec<f32>)> = f.weights.iter().collect();
@@ -573,7 +605,13 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     }
     head.insert("fields".into(), J::Obj(fields));
 
-    // Materials and assets (7).
+    // Materials and assets (7): every pack material a weights field or a generated mesh names
+    // (a loader reads a mesh's colour from `materials[material]`, 15.1).
+    for m in &b.meshes {
+        if let Some(n) = &m.material {
+            used_materials.insert(n.clone());
+        }
+    }
     let mut materials = J::obj();
     for m in &used_materials {
         let colour = input
@@ -761,7 +799,38 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
         .collect();
     files.insert("meets.json".into(), obj([("meets", J::Arr(meets))]).file());
     head.insert("meets".into(), J::s("meets.json"));
+
+    // Generated meshes (10): one per kind surface.
+    let mut meshes = Vec::new();
+    for m in &b.meshes {
+        let path = mesh_path(&m.place);
+        let mat = m.material.as_deref().and_then(|n| {
+            let colour = input.pack?.materials.get(n)?.colour;
+            Some(crate::glb::Material { name: n, colour })
+        });
+        files.insert(path.clone(), crate::glb::write(m, mat.as_ref()));
+        meshes.push(obj([
+            ("collides", J::Bool(true)),
+            ("feature", J::s(m.owner.clone())),
+            ("file", J::s(path)),
+            ("material", J::opt(m.material.as_deref())),
+            ("name", J::s(m.place.clone())),
+            ("surface", J::s(m.surface.clone())),
+            ("triangles", J::count(m.triangles.len())),
+        ]));
+    }
+    head.insert("meshes".into(), J::Arr(meshes));
     Ok(Written { files, head })
+}
+
+/// The cut file of the terrain `name` (`build.md` 6.5).
+pub fn cut_path(name: &str) -> String {
+    format!("fields/{}.cut.npy", segment(name))
+}
+
+/// The mesh file of the kind surface `place` (`build.md` 10).
+pub fn mesh_path(place: &str) -> String {
+    format!("meshes/{}.glb", segment(place))
 }
 
 #[cfg(test)]

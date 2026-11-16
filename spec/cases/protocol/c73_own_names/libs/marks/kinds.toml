@@ -1,0 +1,8 @@
+[kind.way]
+authority = "derived"
+connector = "foot"
+
+[kind.tag]
+authority = "derived"
+requires  = ["host"]
+names     = ["host"]

@@ -337,12 +337,58 @@ impl SurfaceOut {
     pub fn inside(&self, p: (i64, i64)) -> bool {
         self.bound.contains(P::new(p.0, p.1))
     }
+
+    /// The bound as a region (1.2): a region owner's, or a path owner's strip.
+    pub fn region(&self) -> Option<&via_geom::Region> {
+        match &self.bound {
+            Geo::Region { region, .. } => Some(region),
+            _ => None,
+        }
+    }
 }
 
-/// The evaluator of formula `f` for feature `owner` (a kind surface's key).
-fn evaluator(d: &Decls, f: via_expr::FormulaId, owner: &str, geo: &Geo) -> Option<SurfaceEval> {
+/// `surface.not_surface` (4.1) on `subject`, whose `surface` names `name`; `None` when the
+/// name is a kind surface its kind declares (a fault of its own was said where it is declared).
+pub(crate) fn not_surface(d: &Decls, name: &str, subject: Subject) -> Option<Diag> {
+    if is_kind_surface(d, name) {
+        return None;
+    }
+    let head = name.split('.').next().unwrap_or(name);
+    let owned = declared(d, head);
+    Some(
+        text::diag(
+            codes::surface::NOT_SURFACE,
+            subject,
+            Site::Key(text::path(&["surface"])),
+            &format!("`{name}` is not a kind surface"),
+            &if owned.is_empty() {
+                format!("`{head}` owns no surface; name `<feature>.<surface>`")
+            } else {
+                format!("name one of {}", owned.join(", "))
+            },
+        )
+        .with("surfaces", DValue::texts(owned)),
+    )
+}
+
+/// The evaluator of formula `f` for feature `owner` (a kind surface's key). `None` when the
+/// formula failed its own check (said there) or does not bind, which is said here: never a
+/// silent skip (2.7).
+fn evaluator(
+    d: &Decls,
+    f: via_expr::FormulaId,
+    owner: &str,
+    geo: &Geo,
+    diags: &mut Vec<Diag>,
+) -> Option<SurfaceEval> {
     let program = d.formulas.programs.get(&f)?.clone();
-    let binding = via_expr::bind(&program, &crate::decl::NoSelect).ok()?;
+    let binding = match via_expr::bind(&program, &crate::decl::NoSelect) {
+        Ok(b) => b,
+        Err(e) => {
+            diags.push(d.formulas.diag(&e));
+            return None;
+        }
+    };
     let attrs = d.features.get(owner)?.attrs.clone();
     Some(SurfaceEval {
         program,
@@ -381,7 +427,7 @@ pub(crate) fn kind_surfaces(
             failed.insert(place.clone());
             let bound = match (geo, s.bound) {
                 (Geo::Path { line }, Some(bf)) => {
-                    let Some(e) = evaluator(d, bf, id, geo) else {
+                    let Some(e) = evaluator(d, bf, id, geo, diags) else {
                         continue;
                     };
                     let half = match e.eval(&[(0, 0)]) {
@@ -438,10 +484,10 @@ pub(crate) fn kind_surfaces(
                     continue;
                 }
             };
-            let Some(base) = s.base.and_then(|b| evaluator(d, b, id, geo)) else {
+            let Some(base) = s.base.and_then(|b| evaluator(d, b, id, geo, diags)) else {
                 continue;
             };
-            let cut = match s.cut.and_then(|c| evaluator(d, c, id, geo)) {
+            let cut = match s.cut.and_then(|c| evaluator(d, c, id, geo, diags)) {
                 None => None,
                 Some(e) => match e.eval(&[(0, 0)]) {
                     Ok(v) if v[0].is_finite() && v[0] >= 0.0 => Some(v[0]),
@@ -719,10 +765,66 @@ fn on_target(d: &Decls, r: &str, depth: u8) -> Result<Option<String>, Vec<String
     Ok(None)
 }
 
-/// Grounds hand instances on kind surfaces (`surfaces.md` 4.1, 4.2): by `surface` (M5), by `on`
-/// a mount that lies on one (a kind mount, or an asset mount of an instance on one), or by `on` a
-/// feature that owns exactly one. A surface left out by a fault of its own (`failed`) says
-/// nothing more: its instances are not placed.
+/// How a placement says what it stands on (4.1): its subject, `surface`, the reference of its
+/// `on`, and whether it writes `ground`.
+struct Stance {
+    subject: Subject,
+    /// The key the subject's diagnostics are said once under.
+    key: String,
+    surface: Option<String>,
+    on: Option<String>,
+    ground: bool,
+}
+
+/// The stance of a placement: a hand instance and its set items by the instance's declaration, a
+/// run member and its items by the run's `on`, a scattered instance by its scatter's `surface`.
+fn stance(d: &Decls, p: &crate::rules::Placement) -> Option<Stance> {
+    if p.pin {
+        return None;
+    }
+    let on_ref = |pl: &crate::decl::Place| match pl {
+        crate::decl::Place::On(o) => Some(o.reference.clone()),
+        _ => None,
+    };
+    match p.maker.as_deref() {
+        None => {
+            let head = p.name.split('.').next().unwrap_or(&p.name);
+            let decl = d.instances.get(head)?;
+            Some(Stance {
+                subject: Subject::entity("instance", head),
+                key: format!("instance.{head}"),
+                surface: decl.surface.clone(),
+                on: on_ref(&decl.place),
+                ground: decl.ground.is_some(),
+            })
+        }
+        Some(m) => {
+            if let Some(r) = d.runs.get(m) {
+                return Some(Stance {
+                    subject: Subject::entity("run", m),
+                    key: format!("run.{m}"),
+                    surface: None,
+                    on: on_ref(&r.place),
+                    ground: r.ground.is_some(),
+                });
+            }
+            let s = d.scatters.get(m)?;
+            Some(Stance {
+                subject: Subject::entity("scatter", m),
+                key: format!("scatter.{m}"),
+                surface: Some(s.surface.clone()?),
+                on: None,
+                ground: false,
+            })
+        }
+    }
+}
+
+/// Grounds placements on kind surfaces (`surfaces.md` 4.1, 4.2): by `surface` (M5), by `on` a
+/// mount that lies on one (a kind mount, or an asset mount of an instance on one), or by `on` a
+/// feature that owns exactly one; a set's items as their instance, a run's members as their run
+/// (M5). A surface left out by a fault of its own (`failed`) says nothing more: what stands on it
+/// is not placed.
 pub(crate) fn ground_on_surfaces(
     d: &Decls,
     pack: &crate::pack::Pack,
@@ -732,52 +834,63 @@ pub(crate) fn ground_on_surfaces(
     diags: &mut Vec<Diag>,
 ) -> Grounded {
     let mut g = Grounded::default();
+    // A declaration's own fault is said once, for all its items or members; each is not placed.
+    let mut said: BTreeMap<String, bool> = BTreeMap::new();
     for p in all.iter_mut() {
-        if p.maker.is_some() || p.pin {
+        let Some(st) = stance(d, p) else { continue };
+        if said.get(&st.key) == Some(&true) {
+            g.gone.insert(p.name.clone());
             continue;
         }
-        let Some(decl) = d.instances.get(&p.name) else {
-            continue;
-        };
-        let subject = Subject::entity("instance", p.name.as_str());
         let key = |k: &str| Site::Key(text::path(&[k]));
-        let on = match &decl.place {
-            crate::decl::Place::On(o) => Some(o.reference.clone()),
-            _ => None,
+        let subject = st.subject.clone();
+        let fault = |dg: Diag,
+                     said: &mut BTreeMap<String, bool>,
+                     g: &mut Grounded,
+                     diags: &mut Vec<Diag>| {
+            diags.push(dg);
+            said.insert(st.key.clone(), true);
+            g.gone.insert(p.name.clone());
         };
-        let name = if let Some(name) = &decl.surface {
-            if on.is_some() {
-                diags.push(text::diag(
-                    codes::surface::PLACED_TWICE,
-                    subject,
-                    key("surface"),
-                    &format!("`{}` writes both `on` and `surface`", p.name),
-                    "drop `surface`, or place it by `at`",
-                ));
-                g.gone.insert(p.name.clone());
+        let name = if let Some(name) = &st.surface {
+            if st.on.is_some() {
+                fault(
+                    text::diag(
+                        codes::surface::PLACED_TWICE,
+                        subject,
+                        key("surface"),
+                        &format!("`{}` writes both `on` and `surface`", st.key),
+                        "drop `surface`, or place it by `at`",
+                    ),
+                    &mut said,
+                    &mut g,
+                    diags,
+                );
                 continue;
             }
             name.clone()
-        } else if let Some(r) = &on {
+        } else if let Some(r) = &st.on {
             match on_target(d, r, 0) {
                 Ok(Some(n)) => n,
                 Ok(None) => continue,
                 Err(names) => {
-                    diags.push(
+                    fault(
                         text::diag(
                             codes::surface::WHICH,
                             subject,
                             key("on"),
                             &format!(
                                 "`{}` is placed on `{r}`, which owns {}",
-                                p.name,
+                                st.key,
                                 names.join(", ")
                             ),
                             &format!("place it `on` a mount of `{r}`, or by `at` with `surface`"),
                         )
                         .with("surfaces", DValue::texts(names.into_iter())),
+                        &mut said,
+                        &mut g,
+                        diags,
                     );
-                    g.gone.insert(p.name.clone());
                     continue;
                 }
             }
@@ -790,46 +903,60 @@ pub(crate) fn ground_on_surfaces(
             continue;
         }
         let Some(s) = surfaces.get(&name) else {
-            if decl.surface.is_none() {
+            match st
+                .surface
+                .as_ref()
+                .and_then(|n| not_surface(d, n, subject.clone()))
+            {
+                Some(dg) => fault(dg, &mut said, &mut g, diags),
                 // A kind mount naming a surface its kind lacks: `surface.unknown_surface` was
                 // said on the kind.
-                g.gone.insert(p.name.clone());
-                continue;
+                None => {
+                    g.gone.insert(p.name.clone());
+                }
             }
-            let head = name.split('.').next().unwrap_or(&name);
-            let owned = declared(d, head);
-            diags.push(
-                text::diag(
-                    codes::surface::NOT_SURFACE,
-                    subject,
-                    key("surface"),
-                    &format!("`{name}` is not a kind surface"),
-                    &if owned.is_empty() {
-                        format!("`{head}` owns no surface; name `<feature>.<surface>`")
-                    } else {
-                        format!("name one of {}", owned.join(", "))
-                    },
-                )
-                .with("surfaces", DValue::texts(owned.into_iter())),
-            );
-            g.gone.insert(p.name.clone());
             continue;
         };
-        if decl.ground.is_some() {
-            diags.push(text::diag(
-                codes::surface::GROUND_OFF_TERRAIN,
-                subject,
-                key("ground"),
-                &format!(
-                    "`{}` stands on `{}`, and `ground` writes the terrain only",
-                    p.name, s.place
+        if st.ground {
+            fault(
+                text::diag(
+                    codes::surface::GROUND_OFF_TERRAIN,
+                    subject,
+                    key("ground"),
+                    &format!(
+                        "`{}` stands on `{}`, and `ground` writes the terrain only",
+                        st.key, s.place
+                    ),
+                    "drop `ground`, or place it on the terrain",
                 ),
-                "drop `ground`, or place it on the terrain",
-            ));
-            g.gone.insert(p.name.clone());
+                &mut said,
+                &mut g,
+                diags,
+            );
             continue;
         }
-        match s.z_in_build((p.origin.x, p.origin.y), diags) {
+        said.entry(st.key.clone()).or_insert(false);
+        let mut at = s.z_in_build((p.origin.x, p.origin.y), diags);
+        // A member a run lays along its host's line (`rules.md` 5) at a span end lies on the
+        // strip's end edge, which is inside (1.2); the member's point and the strip's corner
+        // are rounded to the lattice apart, so one unit off the bound is still on it (coast:
+        // the parapet's first post, 1 mm past the deck's end).
+        if matches!(at, Ok(None)) && st.surface.is_none() && st.on.is_some() {
+            let (x, y) = (p.origin.x, p.origin.y);
+            let near = (-1..=1).any(|dx| (-1..=1).any(|dy| s.inside((x + dx, y + dy))));
+            if near {
+                at = match s.base.eval(&[(x, y)]) {
+                    Ok(v) => Ok(v.first().copied()),
+                    Err(e) => {
+                        if !s.said.swap(true, Ordering::Relaxed) {
+                            diags.push(s.fault(&e));
+                        }
+                        Err(())
+                    }
+                };
+            }
+        }
+        match at {
             Ok(Some(z)) => {
                 let sink = pack.assets.get(&p.asset).map_or(0.0, |a| a.sink);
                 p.z = z - sink * p.scale;
@@ -855,6 +982,7 @@ pub(crate) fn ground_on_surfaces(
                 g.gone.insert(p.name.clone());
             }
             Err(()) => {
+                // The formula's fault was said on the owner (2.7); this one is not placed.
                 g.gone.insert(p.name.clone());
             }
         }
@@ -898,7 +1026,7 @@ pub(crate) fn host_missing(
                     subject: Subject::entity("instance", h),
                     site: Site::Header,
                     position: None,
-                    note: via_diag::text!("the host, not placed"),
+                    note: via_diag::text!("the owner, not placed"),
                 }),
             );
             gone.insert(p.name.clone());
@@ -907,5 +1035,383 @@ pub(crate) fn host_missing(
         if !grew {
             break;
         }
+    }
+}
+
+/// The terrain quads the kind surfaces' `cut` removes from export (`surfaces.md` 1.3,
+/// `build.md` 6.5): one byte per quad, `[j * (nx - 1) + i]` for the quad whose south-west post is
+/// `(i, j)`, 1 where cut. A quad is cut when its centre (its south-west post plus `floor(r / 2)`
+/// on each axis) lies in a surface's bound and its lowest post is below that surface's `z` there
+/// plus `cut`. Ours.
+pub(crate) fn cut_quads(
+    grid: &via_num::Grid,
+    terrain: &[f32],
+    surfaces: &BTreeMap<String, SurfaceOut>,
+    diags: &mut Vec<Diag>,
+) -> Vec<u8> {
+    let (nx, ny) = (grid.nx as usize, grid.ny as usize);
+    let (qx, qy) = (nx.saturating_sub(1), ny.saturating_sub(1));
+    let mut out = vec![0u8; qx * qy];
+    if terrain.len() != nx * ny {
+        return out;
+    }
+    let [x0, y0, ..] = grid.extent;
+    let r = grid.resolution;
+    let half = r.div_euclid(2);
+    for s in surfaces.values() {
+        let Some(cut) = s.cut else { continue };
+        let (lo, hi) = s.bound.bbox();
+        // The quads whose centre can lie in the bound's box.
+        let i0 = ((lo.x - half - x0).div_euclid(r)).max(0) as usize;
+        let j0 = ((lo.y - half - y0).div_euclid(r)).max(0) as usize;
+        let i1 = (((hi.x - half - x0).div_euclid(r)).max(-1) + 1).min(qx as i64) as usize;
+        let j1 = (((hi.y - half - y0).div_euclid(r)).max(-1) + 1).min(qy as i64) as usize;
+        for j in j0..j1 {
+            for i in i0..i1 {
+                let c = (x0 + i as i64 * r + half, y0 + j as i64 * r + half);
+                let z = match s.z_in_build(c, diags) {
+                    Ok(Some(z)) => z,
+                    Ok(None) => continue,
+                    // `formula.not_finite` was said on the owner (2.7); the build fails.
+                    Err(()) => return out,
+                };
+                let post = |a: usize, b: usize| f64::from(terrain[b * nx + a]);
+                let low = [
+                    post(i, j),
+                    post(i + 1, j),
+                    post(i, j + 1),
+                    post(i + 1, j + 1),
+                ]
+                .into_iter()
+                .fold(f64::INFINITY, via_num::min);
+                if low < z + cut {
+                    out[j * qx + i] = 1;
+                }
+            }
+        }
+    }
+    out
+}
+
+/// A kind surface's mesh (`build.md` 10), before it is written: vertices in integer millimetres,
+/// world frame, `z` rounded to the lattice; triangles counter-clockwise seen from above.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MeshOut {
+    /// `<owner>.<surface>`.
+    pub place: String,
+    pub owner: String,
+    pub surface: String,
+    pub material: Option<String>,
+    /// The south-west corner of the mesh's box, on the lattice.
+    pub origin: (i64, i64),
+    pub vertices: Vec<[i64; 3]>,
+    pub triangles: Vec<[u32; 3]>,
+}
+
+/// Every kind surface's mesh (`build.md` 10): the posts inside the bound, every vertex of the
+/// bound's outline and every crossing of it with a grid line. Each grid cell is clipped to the
+/// bound and each piece triangulated by the kernel's triangulation (`geometry.md` 3.10), so the
+/// grid lines and the outline are constraints and no point is added. Ours.
+pub(crate) fn meshes(
+    grid: &via_num::Grid,
+    surfaces: &BTreeMap<String, SurfaceOut>,
+    pack: &crate::pack::Pack,
+    diags: &mut Vec<Diag>,
+) -> Vec<MeshOut> {
+    use via_geom::overlay::{boolean, BoolOp};
+    let mut out = Vec::new();
+    let [x0, y0, x1, y1] = grid.extent;
+    let r = grid.resolution;
+    'surface: for s in surfaces.values() {
+        if let Some(m) = &s.material {
+            if !pack.materials.contains_key(m) {
+                diags.push(
+                    text::diag(
+                        codes::pack::UNKNOWN_MATERIAL,
+                        Subject::entity("feature", s.owner.as_str()),
+                        Site::Header,
+                        &format!(
+                            "the surface `{}` names the material `{m}`, which the pack lacks",
+                            s.place
+                        ),
+                        "name a material of the pack, or drop `material`",
+                    )
+                    .with("material", DValue::text(m.clone())),
+                );
+                continue;
+            }
+        }
+        let Some(region) = s.region() else { continue };
+        let Some((lo, hi)) = region.bbox() else {
+            continue;
+        };
+        let (lo, hi) = (
+            P::new(lo.x.max(x0), lo.y.max(y0)),
+            P::new(hi.x.min(x1), hi.y.min(y1)),
+        );
+        if lo.x >= hi.x || lo.y >= hi.y {
+            continue;
+        }
+        let edges: Vec<(P, P)> = region
+            .rings()
+            .iter()
+            .flat_map(|ring| (0..ring.len()).map(move |k| (ring[k], ring[(k + 1) % ring.len()])))
+            .collect();
+        let i0 = (lo.x - x0).div_euclid(r);
+        let j0 = (lo.y - y0).div_euclid(r);
+        let i1 = (hi.x - x0 + r - 1).div_euclid(r);
+        let j1 = (hi.y - y0 + r - 1).div_euclid(r);
+        let mut index: BTreeMap<(i64, i64), u32> = BTreeMap::new();
+        let mut vertices: Vec<[i64; 3]> = Vec::new();
+        let mut triangles: Vec<[u32; 3]> = Vec::new();
+        for j in j0..j1 {
+            for i in i0..i1 {
+                let (cx0, cy0) = (x0 + i * r, y0 + j * r);
+                let (cx1, cy1) = ((cx0 + r).min(x1), (cy0 + r).min(y1));
+                let square = vec![
+                    P::new(cx0, cy0),
+                    P::new(cx1, cy0),
+                    P::new(cx1, cy1),
+                    P::new(cx0, cy1),
+                ];
+                let touched = edges.iter().any(|(a, b)| {
+                    a.x.max(b.x) >= cx0
+                        && a.x.min(b.x) <= cx1
+                        && a.y.max(b.y) >= cy0
+                        && a.y.min(b.y) <= cy1
+                });
+                let tris: Vec<[P; 3]> = if !touched {
+                    let c = P::new(cx0 + (cx1 - cx0) / 2, cy0 + (cy1 - cy0) / 2);
+                    if !s.inside((c.x, c.y)) {
+                        continue;
+                    }
+                    vec![
+                        [square[0], square[1], square[2]],
+                        [square[0], square[2], square[3]],
+                    ]
+                } else {
+                    let cell = via_geom::Region::from_ring(square);
+                    let Ok(piece) = boolean(BoolOp::Intersection, &[cell, region.clone()]) else {
+                        continue;
+                    };
+                    if piece.is_empty() {
+                        continue;
+                    }
+                    match via_geom::triangulate::triangulate(&piece) {
+                        Ok(t) => t,
+                        Err(_) => continue,
+                    }
+                };
+                for t in tris {
+                    let mut k = [0u32; 3];
+                    for (n, q) in t.iter().enumerate() {
+                        if let Some(&v) = index.get(&(q.x, q.y)) {
+                            k[n] = v;
+                            continue;
+                        }
+                        let z = match s.z_in_build((q.x, q.y), diags) {
+                            Ok(Some(z)) => z,
+                            // The bound's own vertices are in it (edges in); a point the
+                            // overlay put a hair outside takes the formula's value there.
+                            Ok(None) => match s.base.eval(&[(q.x, q.y)]) {
+                                Ok(v) => v[0],
+                                Err(e) => {
+                                    if !s.said.swap(true, Ordering::Relaxed) {
+                                        diags.push(s.fault(&e));
+                                    }
+                                    continue 'surface;
+                                }
+                            },
+                            // `z_in_build` has said the formula's fault (2.7).
+                            Err(()) => continue 'surface,
+                        };
+                        // A formula's value is finite (2.7 refuses the rest), so only a height
+                        // past the lattice's range (2^53 mm) fails here: said as the formula's.
+                        let Ok(zmm) = via_num::round_to_lattice(z * 1000.0) else {
+                            diags.push(
+                                text::diag(
+                                    codes::num::NOT_FINITE_RESULT,
+                                    Subject::entity("feature", s.owner.as_str()),
+                                    Site::Header,
+                                    &format!("the surface `{}` stands out of range", s.place),
+                                    "keep `base` within the lattice's range",
+                                )
+                                .with("surface", DValue::text(s.place.clone())),
+                            );
+                            continue 'surface;
+                        };
+                        let v = vertices.len() as u32;
+                        index.insert((q.x, q.y), v);
+                        vertices.push([q.x, q.y, zmm]);
+                        k[n] = v;
+                    }
+                    triangles.push(k);
+                }
+            }
+        }
+        if triangles.is_empty() {
+            continue;
+        }
+        out.push(MeshOut {
+            place: s.place.clone(),
+            owner: s.owner.clone(),
+            surface: s.name.clone(),
+            material: s.material.clone(),
+            origin: (lo.x, lo.y),
+            vertices,
+            triangles,
+        });
+    }
+    out
+}
+
+/// The kind surface each point feature with `surface` and each named place stands on
+/// (`surfaces.md` 4.1, 3.3), for the `z` that `features.json` writes: a point feature by its
+/// `surface`, a kind surface named as a place by itself, a kind mount by its surface. Faults of a
+/// point's `surface`: `surface.placed_twice` with `on`, `surface.not_surface`, `surface.outside`.
+pub(crate) fn place_surfaces(
+    d: &Decls,
+    placed: &crate::place::Placed,
+    surfaces: &BTreeMap<String, SurfaceOut>,
+    diags: &mut Vec<Diag>,
+) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    for (id, f) in &d.features {
+        let Some(sn) = &f.surface else { continue };
+        let subject = Subject::entity("feature", id.as_str());
+        let Some(Geo::Point { p, .. }) = placed.shapes.get(id) else {
+            continue;
+        };
+        if let crate::decl::ShapeDecl::Point(crate::decl::Place::On(_)) = &f.shape {
+            diags.push(text::diag(
+                codes::surface::PLACED_TWICE,
+                subject,
+                Site::Key(text::path(&["surface"])),
+                &format!("`{id}` writes both `on` and `surface`"),
+                "drop `surface`, or place it by `at`",
+            ));
+            continue;
+        }
+        let Some(s) = surfaces.get(sn) else {
+            if let Some(dg) = not_surface(d, sn, subject) {
+                diags.push(dg);
+            }
+            continue;
+        };
+        if !s.inside((p.x, p.y)) {
+            diags.push(
+                text::diag(
+                    codes::surface::OUTSIDE,
+                    subject,
+                    Site::Header,
+                    &format!(
+                        "`{id}` at [{}, {}] lies outside the bound of `{}`",
+                        via_num::write_length(p.x),
+                        via_num::write_length(p.y),
+                        s.place
+                    ),
+                    &format!("move it onto `{}`", s.place),
+                )
+                .with("surface", DValue::text(s.place.clone())),
+            );
+            continue;
+        }
+        out.insert(id.clone(), s.place.clone());
+    }
+    for (place, _) in placed.names.values() {
+        let on = if surfaces.contains_key(place) {
+            Some(place.clone())
+        } else if let Some(s) = out.get(place) {
+            Some(s.clone())
+        } else {
+            kind_mount(d, place)
+                .and_then(|(owner, m)| m.surface.as_ref().map(|sn| format!("{owner}.{sn}")))
+        };
+        if let Some(s) = on.filter(|s| surfaces.contains_key(s)) {
+            out.insert(place.clone(), s);
+        }
+    }
+    out
+}
+
+/// What a thing stands on and how high it reaches above it (`rules.md` 8.1, M5): the place name
+/// of the kind surface its declaration names (`""` for the terrain), and its span above that
+/// surface in metres, `-sink` to `-sink` plus its bounds' height, all scaled. Plan only: read from
+/// the declarations and the asset's facts, never from a field (4.3 step 1).
+pub(crate) fn level(
+    d: &Decls,
+    pack: &crate::pack::Pack,
+    p: &crate::rules::Placement,
+) -> (String, f64, f64) {
+    let surface = match stance(d, p) {
+        Some(st) => match (&st.surface, &st.on) {
+            (Some(s), _) => s.clone(),
+            (None, Some(r)) => on_target(d, r, 0).ok().flatten().unwrap_or_default(),
+            _ => String::new(),
+        },
+        None => String::new(),
+    };
+    let (lo, hi) = span(pack, &p.asset, p.scale);
+    (surface, lo, hi)
+}
+
+/// An asset's height span above the surface it stands on, metres (`rules.md` 8.1).
+pub(crate) fn span(pack: &crate::pack::Pack, asset: &str, scale: f64) -> (f64, f64) {
+    match pack.assets.get(asset) {
+        Some(a) => (
+            (via_num::metres(a.bounds[2]) - a.sink) * scale,
+            (via_num::metres(a.bounds[5]) - a.sink) * scale,
+        ),
+        None => (0.0, 0.0),
+    }
+}
+
+/// The kind surfaces the level test reads (`rules.md` 8.1): their bounds and `cut`, plan only
+/// (made from the owners' shapes, 4.3 step 3).
+pub(crate) struct Levels {
+    kinds: BTreeMap<String, SurfaceOut>,
+}
+
+impl Levels {
+    pub(crate) fn new(d: &Decls, shapes: &BTreeMap<String, Geo>) -> Levels {
+        let any = d.kinds.values().any(|k| !k.surfaces.is_empty());
+        Levels {
+            kinds: if any {
+                kind_surfaces(d, shapes, &mut Vec::new()).0
+            } else {
+                BTreeMap::new()
+            },
+        }
+    }
+
+    /// Whether two things can clash (`rules.md` 8.1): one level, and spans whose insides meet
+    /// (a span of no height meets one it touches). The terrain is one level with a kind surface
+    /// that has `cut` (a ground floor let into it) or whose bound the terrain thing's footprint
+    /// meets; two different kind surfaces never are.
+    pub(crate) fn clash(
+        &self,
+        a: &(String, f64, f64),
+        fa: &via_geom::Region,
+        b: &(String, f64, f64),
+        fb: &via_geom::Region,
+    ) -> bool {
+        if a.0 != b.0 {
+            let (ground, on) = match (a.0.is_empty(), b.0.is_empty()) {
+                (true, false) => (fa, &b.0),
+                (false, true) => (fb, &a.0),
+                _ => return false,
+            };
+            let Some(s) = self.kinds.get(on) else {
+                return false;
+            };
+            let meets = s
+                .region()
+                .is_some_and(|r| crate::rules::overlaps(ground, r));
+            if s.cut.is_none() && !meets {
+                return false;
+            }
+        }
+        let (lo, hi) = (via_num::max(a.1, b.1), via_num::min(a.2, b.2));
+        lo < hi || ((a.1 == a.2 || b.1 == b.2) && lo <= hi)
     }
 }

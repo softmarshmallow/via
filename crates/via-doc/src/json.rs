@@ -196,6 +196,24 @@ fn value(item: &Item, takes: Option<Takes>) -> J {
     }
 }
 
+/// A list or table attribute as one canonical JSON text, as a step reads it (`protocol.md` 4.3):
+/// this section's rules, where a number written as a TOML integer is a JSON integer and any other
+/// number a double in the shortest form. An attribute has no declared type, so nothing else is
+/// converted: a length stays the number written.
+pub fn attribute_json(item: &Item) -> String {
+    fn walk(item: &Item) -> J {
+        match &item.value {
+            Value::Num(n) if n.integer => J::Num(n.norm.clone()),
+            Value::List(xs) => J::Arr(xs.iter().map(walk).collect()),
+            Value::Table(t) => J::Obj(t.iter().map(|(k, e)| (k.clone(), walk(&e.item))).collect()),
+            _ => value(item, None),
+        }
+    }
+    let mut out = String::new();
+    write(&walk(item), &mut out);
+    out
+}
+
 fn render(world: &World, mode: Mode) -> String {
     let mut top: BTreeMap<String, J> = BTreeMap::new();
     top.insert("@format".into(), J::Str(FORMAT.into()));

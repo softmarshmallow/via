@@ -99,6 +99,13 @@ fn data_files(model: &ModelPlan<'_>) -> Vec<(String, FileReads)> {
             out.push((format!("fields/{seg}.npy"), FileReads::Field(name)));
         }
     }
+    // The terrain's cut (`build.md` 6.5) and the kind surfaces' meshes (10).
+    if let Some(t) = model.terrain() {
+        out.push((out::cut_path(&t), FileReads::Cut));
+    }
+    for (place, owner) in model.kind_surface_places() {
+        out.push((out::mesh_path(&place), FileReads::Mesh(owner)));
+    }
     out.push(("features.json".into(), FileReads::Features));
     out.push(("meets.json".into(), FileReads::Meets));
     for f in [
@@ -785,11 +792,21 @@ impl<'a> CliPlan<'a> {
                         } else {
                             &["instance"]
                         };
-                        let own: Vec<NodeId> = families
+                        // A set's item `<instance>.<item>` has its placing instance's nodes.
+                        let mut own: Vec<NodeId> = families
                             .iter()
                             .map(|f| v(f, &e.name))
                             .filter(|n| self.model.def(n).is_some())
                             .collect();
+                        if own.is_empty() {
+                            if let Some((h, _)) = e.name.split_once('.') {
+                                own.extend(
+                                    [v("instance", h)]
+                                        .into_iter()
+                                        .filter(|n| self.model.def(n).is_some()),
+                                );
+                            }
+                        }
                         if !own.is_empty() {
                             own
                         } else {
@@ -824,7 +841,11 @@ impl<'a> CliPlan<'a> {
                 // A hand instance stands on the ground: what moved it only up or down reaches it
                 // through its `height:` node, which a statement not found above is chained to.
                 if e.table == "instance" {
-                    let h = v("height", &e.name);
+                    let head = match e.name.split_once('.') {
+                        Some((h, _)) if self.model.def(&v("height", &e.name)).is_none() => h,
+                        _ => e.name.as_str(),
+                    };
+                    let h = v("height", head);
                     if self.model.def(&h).is_some() && !targets.contains(&h) {
                         let more = memo
                             .entry(vec![h.clone()])
@@ -1104,7 +1125,9 @@ impl<'a> CliPlan<'a> {
             let path = node.as_str()["write:".len()..].to_string();
             if path == "diagnostics.json" || path == "changes.json" {
                 reports.insert(path, v.bytes.as_ref().clone());
-            } else if !(v.bytes.is_empty() && path.starts_with("weights/")) {
+            } else if !(v.bytes.is_empty()
+                && (path.starts_with("weights/") || path.starts_with("meshes/")))
+            {
                 files.insert(path, v.bytes.as_ref().clone());
             }
         }

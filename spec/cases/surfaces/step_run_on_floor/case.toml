@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 and identity.md 2.3: a run a step returns `on` a storey it returns: its members make#edge#r0 to r2 stand on the floor, z 13.3 (the ground is 10)."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+# The run's members are `<step>#<run>#r<k>`: the run is what stands before the last `#`. Read at
+# the first, the member had no run and stood on the terrain (M5 slice 2, the station's laid loft).
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.z]
+path = "build/w/instances/z.npy"
+all  = 13.3
+
+[action.build.file.names]
+path = "build/w/instances/names.txt"
+text = "make#edge#r0\nmake#edge#r1\nmake#edge#r2\n"

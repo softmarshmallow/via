@@ -122,7 +122,9 @@ Each class in more detail:
   `seed`, the scatter's `seed`, purpose, `i`, `j`, member index). Members are class `instance` like
   their parents: `of = "trees"` selects both, which is meant.
 - **Run.** Station `k` counted from `span[0]` toward `span[1]`. A run's instances are a sequence by
-  intent, so the station is the place.
+  intent, so the station is the place. A run a step returns is itself `<step>#<key>`, so its members
+  are `<step>#<key>#r<k>`: the run that made a name is what stands before its last `#` (case
+  `surfaces/step_run_on_floor`).
 - **Junction.** `geometry.md` 3.2's junction. Its parts are each source that meets there, with its
   role: `start`, `end` or passing through. A path's two ends and a point where it crosses itself
   all have distinct parts, so a new self-crossing does not rename the path's far end. When a source

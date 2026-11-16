@@ -1,0 +1,56 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# A set placed by `at` with `surface`, a run `on` the storey, a scatter with `surface`, and a
+# point feature with `surface` (surfaces.md 4.1): all stand on hall_1.floor.
+[set.pair.item.a]
+asset = "box"
+at    = [-1, 0]
+[set.pair.item.b]
+asset = "box"
+at    = [1, 0]
+
+[instance.pairs]
+set     = "pair"
+at      = [24, 24]
+surface = "hall_1.floor"
+
+[run.edge]
+asset   = "box"
+on      = { ref = "hall_1", span = [0, 0.25], offset = 1 }
+spacing = 2
+
+[scatter.pots]
+assets  = ["box"]
+within  = "hall_1"
+surface = "hall_1.floor"
+spacing = 4
+
+[feature.spot]
+kind    = "marker"
+at      = [30, 22]
+surface = "hall_1.floor"
+
+[change.raise.feature.hall_1]
+level = 14
+
+[change.unsurface.feature.spot]
+unset = ["surface"]
+
+[change.moved.feature.hall_1]
+region = [[20, 20], [33.5, 20], [33.5, 28.5], [20, 28.5]]
+
+[change.reitem.set.pair.item.b]
+at = [2, 0]

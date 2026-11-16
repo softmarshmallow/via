@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "protocol.md 3.3: surface.sample of a name that is no surface in the step's view (`deck.tops`; one letter more than the deck's `top`) is refused, and the engine reports surface.not_surface on the step itself, with the nearest name."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.not_surface]
+code = "surface.not_surface"
+data = { nearest = "deck.top" }

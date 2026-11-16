@@ -1,0 +1,18 @@
+name       = "m5"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= x"
+
+[feature.deck]
+kind   = "slab"
+region = [[2, 2], [6, 2], [6, 6], [2, 6]]
+level  = 3
+
+[step.look]
+when    = "lint"
+command = ["python", "-m", "viasdk", "steps/look.py"]
+worker  = true

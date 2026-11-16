@@ -288,6 +288,22 @@ class Step:
         refuses with ``surface.too_early`` naming the step, raised here as RpcError."""
         return table(self.call("surface.meetings"), self.objects)
 
+    def surfaces_at(self, x, y, view="full"):
+        """surface.surfaces_at: every surface in the step's view at each point (surfaces.md 2.1),
+        the terrain and every kind surface, in one batch. A table, one row per (point, surface):
+        ``point`` (the row in), ``surface`` (its place name), ``z`` (metres); a point's rows by
+        ``z``, lowest first."""
+        params = {"x": self._col(x, "i32"), "y": self._col(y, "i32"), "view": view}
+        return table(self.call("surface.surfaces_at", **params), self.objects)
+
+    def sample(self, surface, x, y, view="full"):
+        """surface.sample: one surface's height and gradient at each point (surfaces.md 2.2), the
+        terrain by its field name or a kind surface as ``<feature>.<surface>``. A table, one row
+        per point: ``inside`` (bool), ``z``, ``gx``, ``gy``; outside the bound all 0."""
+        params = {"surface": str(surface), "x": self._col(x, "i32"), "y": self._col(y, "i32"),
+                  "view": view}
+        return table(self.call("surface.sample", **params), self.objects)
+
     # --- computes ------------------------------------------------------------------------------
 
     def eval(self, formula, x=None, y=None, window=None, view="full"):

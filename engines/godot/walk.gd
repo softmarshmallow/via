@@ -45,6 +45,51 @@ const ABOVE_WATER := 0.2
 ## The eye view (eye()): BACK metres before the stop; turned round when the extent ends EDGE ahead.
 const BACK := 6.0
 const EDGE := 25.0
+## The highest edge of a kind surface's mesh the walker steps up onto, metres: a stair's riser or a
+## sill. Only onto a generated mesh (its body carries metadata `surface`), never onto the ground or
+## an instance, so a slope still blocks as ground and a wall as itself.
+const STEP := 0.3
+
+
+static func under(root: Node3D, top: Vector3, depth: float, exclude: Array[RID] = []) -> Dictionary:
+	## The first collision straight down from `top` (a Godot point) within `depth` metres:
+	## { "y": its height, "on": what it is } or {} for nothing. `on` is `ground`, a generated mesh's
+	## name (build.md 10) or an instance's name.
+	var q := PhysicsRayQueryParameters3D.create(top, top - Vector3(0, depth, 0))
+	q.exclude = exclude
+	var hit := root.get_world_3d().direct_space_state.intersect_ray(q)
+	if hit.is_empty():
+		return {}
+	return {"y": hit.position.y, "on": surface_name(hit.collider)}
+
+
+static func surface_name(collider: Object) -> String:
+	var n := collider as Node
+	if n.has_meta("surface"):
+		return String(n.get_meta("surface"))
+	if n.name == "ground_body":
+		return "ground"
+	return String(n.name).replace("-", ".")
+
+
+static func _step_up(body: CharacterBody3D, facing: Vector2) -> bool:
+	## Onto a ledge at most STEP above the feet: up STEP, RADIUS forward, then down onto what is
+	## there, which must be walkable. False, and nothing moved, when any part of that is blocked.
+	var up := Vector3(0, STEP, 0)
+	var fwd := Vector3(facing.x, 0, -facing.y) * RADIUS
+	if body.test_move(body.global_transform, up):
+		return false
+	var t := body.global_transform.translated(up)
+	if body.test_move(t, fwd):
+		return false
+	t = t.translated(fwd)
+	var land := KinematicCollision3D.new()
+	if not body.test_move(t, Vector3(0, -(STEP + LIFT), 0), land):
+		return false
+	if rad_to_deg(land.get_normal().angle_to(Vector3.UP)) > MAX_SLOPE:
+		return false
+	body.global_position = t.origin + land.get_travel()
+	return true
 
 
 static func g(x: float, y: float, z: float) -> Vector3:
@@ -75,10 +120,18 @@ static func plan(v: Vector3) -> Vector2:
 
 
 ## Walks once. `root` is the loaded build in its viewport (its bodies already in the physics
-## space); `loader` the Loader that made it; `from` and `to` world points (x, y, z); `target` the
-## name of what `to` is. Returns the report sheet.json carries, plus "trail": PackedVector3Array of
-## Godot points every TRAIL_STEP metres and "facing": the last plan direction.
+## space); `loader` the Loader that made it; `from` the eye's world point (x, y, z: a bookmark's
+## `at` raised by its eye height) and `to` the target's; `target` the name of what `to` is. The
+## walker stands on the highest collision straight below the eye (the terrain, a kind surface's
+## mesh or an instance), then follows whatever it walks onto. Returns the report sheet.json
+## carries, plus "trail": PackedVector3Array of Godot points every TRAIL_STEP metres and "facing":
+## the last plan direction.
 static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: String, unbodied: Array) -> Dictionary:
+	await root.get_tree().physics_frame
+	var floor_y: float = loader.ground_min() if loader.has_ground() else from.z - 1000.0
+	var start := under(root, g(from.x, from.y, from.z), from.z - floor_y + 1000.0)
+	var start_z: float = start.y if not start.is_empty() else from.z - EYE
+	var on_from = start.get("on")
 	var body := CharacterBody3D.new()
 	body.name = "walker"
 	var cs := CollisionShape3D.new()
@@ -91,7 +144,6 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 	body.floor_snap_length = SNAP
 	body.floor_stop_on_slope = true
 	body.up_direction = Vector3.UP
-	var start_z: float = loader.ground_at(from.x, from.y) if loader.has_ground() else from.z
 	body.position = g(from.x, from.y, start_z + HEIGHT / 2.0 + LIFT)
 	root.add_child(body)
 	await root.get_tree().physics_frame
@@ -128,6 +180,13 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 		facing = (goal - p) / left
 		body.velocity = Vector3(facing.x, 0, -facing.y) * SPEED + Vector3(0, vz, 0)
 		body.move_and_slide()
+		if body.is_on_floor():
+			# Against the edge of a kind surface's mesh within STEP of the feet: step onto it.
+			for k in body.get_slide_collision_count():
+				var c := body.get_slide_collision(k)
+				if (c.get_collider() as Node).has_meta("surface") and rad_to_deg(c.get_normal().angle_to(Vector3.UP)) > MAX_SLOPE:
+					if _step_up(body, facing):
+						break
 		var feet := body.position.y - HEIGHT / 2.0
 		if body.is_on_floor():
 			vz = 0.0
@@ -210,6 +269,7 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 				break
 	var end := body.position - Vector3(0, HEIGHT / 2.0, 0)
 	trail.append(end)
+	var below := under(root, body.position, HEIGHT / 2.0 + SNAP, [body.get_rid()])
 	root.remove_child(body)
 	body.free()
 	if report.outcome != "blocked":
@@ -223,6 +283,7 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 		"drop": report.drop,
 		"from": [from.x, from.y, start_z],
 		"left": plan(end).distance_to(goal),
+		"on": {"from": on_from, "stop": below.get("on")},
 		"outcome": report.outcome,
 		"slope": report.slope,
 		"stop": [end.x, -end.z, end.y],
@@ -238,7 +299,9 @@ static func summary(r) -> String:
 	## One line for a sheet label.
 	if r == null:
 		return "absent"
-	var s := "%s after %.1f m" % [r.outcome, r.walked]
+	var s := "on %s, %s after %.1f m" % [r.on.from if r.on.from != null else "nothing", r.outcome, r.walked]
+	if r.on.stop != r.on.from and r.on.stop != null:
+		s += " onto %s" % r.on.stop
 	match r.outcome:
 		"blocked":
 			s += " by %s" % (r.by if r.by != null else "?")

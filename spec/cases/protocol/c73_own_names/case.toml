@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "protocol.md 5, Names: inside a returned document `ends_at = \"q.start\"` names the document's own `q` (built as `make#q`), and so does a kind's name attribute `host = \"q\"`: one meeting `make#p.end` with `make#q.start`, gap 0, and `host` the place `make#q`."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.read]
+code = "step.look.read"
+data = { a = ["make#p.end"], b = ["make#q.start"], gap = [0], host = ["make#q"] }

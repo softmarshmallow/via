@@ -1,0 +1,18 @@
+name       = "m5"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[step.make]
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/make.py"]
+worker  = true
+
+[step.look]
+when    = "lint"
+command = ["python", "-m", "viasdk", "steps/look.py"]
+worker  = true

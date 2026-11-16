@@ -322,6 +322,11 @@ so a loader reads one rule. The terrain's manifest entry adds `cut` (the file's 
 - The cut file is an output like any other: it is in `files` with its digest, a build that changes
   only the cut changes the build's identity (section 12), and the change report lists no entry for
   it (the terrain's samples did not change).
+- Its `write` node (`graph.md` 1) reads the shape and attributes of each feature whose kind has a
+  surface with `cut`, that kind's statement, and the terrain's chunks under the owner's box grown
+  by one post (a path owner, whose strip's width is a formula: every chunk). A world with no cut
+  reads only the world statement, so moving a vertex never rewrites it (cases `graph` `vertex`,
+  `downstream`).
 - **What a volume and a floor export**, so no reader has to ask: a floor (any kind surface) exports
   its mesh (section 10) and its bounded field (6.3); its owner's footprint, if any, and its walls
   and roof are instances (section 8); its meetings are rows of `meets.json` (9.3); the terrain under
@@ -347,7 +352,7 @@ so a loader reads one rule. The terrain's manifest entry adds `cut` (the file's 
 | `taxon`, `tags`, `params` | Passed through. |
 | `stand_in` | `true` when built with `--stand-ins` (M2): draw a `box` of `bounds` in `colour` (`assets.md` 9). |
 
-`materials` holds every pack material a `weights` field names: `colour`, `file` (a pack path, with
+`materials` holds every pack material a `weights` field or a generated mesh (10) names: `colour`, `file` (a pack path, with
 `digest`) and `repeat` when written, and `params` passed through unread (`assets.md` 2.6).
 
 ## 8. Instances
@@ -477,6 +482,19 @@ layer's key; the format key is `feature`.
   with a grid line, triangulated by the kernel's constrained triangulation (`geometry.md` 3.10);
   each vertex's height is `sample(surface, vertex).z` rounded to the lattice. So a surface is no
   coarser than the terrain under it and its edge is exact. Ours.
+  **How (M5 slice 2):** each grid cell the bound meets is clipped to the bound (`geometry.md` 3.3
+  intersection) and each piece triangulated by 3.10; a cell whose closed square no outline edge's
+  closed box meets, and whose centre is inside, is two triangles, south-west to north-east (the
+  box test is the rule: a cell that only shares a grid line with a grid-aligned edge is clipped and
+  triangulated by 3.10). The vertices are exactly the set
+  above, and the grid lines are constraints too, so 3.10 needs no interior points. Vertices are
+  numbered by first use, cells in rows from the south-west; triangles in that order. A cell's
+  piece that 3.10 refuses is left out, so a hole is visible rather than a wrong surface.
+  Normals are per vertex: the sum of the touching triangles' cross products (area-weighted), unit
+  length, in f64 then single precision. A mesh's `write` node reads its owner's shape and
+  attributes, the world, the pack, its kind's statement and the colour of each material its kind's
+  surfaces name (pack.toml's `[material.<m>]`, which the `pack` statement does not hold); a planned mesh
+  that comes out empty (a bound wholly off the extent) is no file.
 - **Material (M5, decided).** The surface's `material` key names a pack material (`assets.md`
   2.6); the mesh's single glTF material is named after it and takes its `colour`. With none, the mesh
   has no material and a loader uses its default. An unknown name is `pack.unknown_material`.
@@ -894,7 +912,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 |---|---|
 | `manifest.json` | A `Node3D` named after `world`, holding `id` and `format` as metadata. `format` unknown or no manifest: `load.format`, naming `diagnostics.json`. |
 | A chunk | A `Node3D` `c_<cx>_<cy>` under it. Streaming chunks in and out is the engine's (M6). |
-| The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. From M5, a quad its cut file (6.5) marks 1 is in neither the mesh nor the collision shape. |
+| The `surface` field | Per chunk: a `MeshInstance3D` with an `ArrayMesh` over the chunk's posts, each quad split from its south-west to its north-east post; a `StaticBody3D` with a `CollisionShape3D` holding a `HeightMapShape3D` of the same posts. `HeightMapShape3D` spaces samples 1 unit apart, so its heights are divided by `resolution` and its node is scaled uniformly by `resolution`, centred on the chunk. From M5, a quad its cut file (6.5) marks 1 is in neither the mesh nor the collision shape; a chunk with a cut quad holds a `ConcavePolygonShape3D` of its uncut quads' triangles (split as the mesh, collided from both sides) in place of the `HeightMapShape3D`, which has no holes in Godot's physics (a NaN post is not one). A terrain entry with no `cut` (a build from before M5) cuts nothing. |
 | A `material` weights field | Per chunk: a `ShaderMaterial` on that mesh, its planes as one `Texture2DArray` (format `R8`, one Godot texture layer per material), and each material's `colour`, `file` and `repeat` from `materials`. The shader loops over the chunk's count; there is no fixed number. A chunk naming more materials than the loader draws is `load.too_many_materials`, naming the chunk and its materials (`fields.md` 7.1). |
 | The field the `water` option names | Per chunk: a `MeshInstance3D` of the water surface over the posts where depth is above 0 (under cover 1 for a bounded field), in the loader's water material: a quad is drawn when any of its four posts has depth above 0. At a dry post of a drawn quad the surface lies strictly below that post's ground: at the mean height of the wet posts among its eight neighbours where that is at least 0.02 m below the ground (it runs on level under the bank), else at the ground less the mean depth of those wet posts (at least 0.02 m), as on a falling stream whose upstream posts stand above the bank. The ground hides what runs under it, so the water's edge is where the ground mesh crosses the surface, between posts on every quad edge from a wet post to a dry one, never on a post or a quad's edge. Not collided. |
 | A bounded field (6.3) | Not drawn; a kind surface is drawn from its mesh. Kept as data when `fields` names it. |
@@ -905,7 +923,7 @@ selectors: a name, `role:<role>` or `tag:<tag>`.
 | Re-import (M6) | Nodes are matched by name: a name in both builds keeps its node and its editor-set properties the loader does not own; a name gone removes its node. |
 | A feature | Nothing by default. With `features`: a `Path3D` with a `Curve3D` for a path, a `Marker3D` for a point, a `Polygon` in metadata for a region; `attrs` as metadata. |
 | The review library's `bookmark` output | A `Camera3D` under a `bookmarks` node, named after the bookmark (as an instance name, below): the eye at the feature's `at` raised by `attrs.eye_height` metres (9.2), looking at `toward`'s `at` (9.1), with +Z of the world up. The loader reads `at` and never resolves a name. A `toward` that is missing or not of the form `{ "at", "name" }`, or whose `at` lies within 1 mm of the eye in plan, or an `eye_height` that is missing or not a finite number, is `load.bad_target`; that bookmark is not made, and no default is guessed. The sheet tool renders each (below). Other outputs: not read. |
-| A generated mesh (M3) | A `MeshInstance3D` from its `.glb`; with `collides`, a `StaticBody3D` with a `ConcavePolygonShape3D`. |
+| A generated mesh (M3) | A `MeshInstance3D` under a `meshes` node, named after its `name` (mapped as an instance name), from its `.glb` read with `GLTFDocument`, placed by its node's translation (glTF's axes are Godot's); drawn in the `colour` of the pack material its `material` names (from `materials`, as declared), or the loader's default colour when `null`; a material's `file` is not drawn on a mesh. With `collides`, a `StaticBody3D` child of the same name with a `ConcavePolygonShape3D` of its triangles, collided from both sides, its metadata `surface` holding the mesh's `name`. |
 | A meeting | A `NavigationLink3D` between its two mounts, under a `meets` node, named `<a>+<b>` with `.` mapped as in an instance name. |
 | `diagnostics.json`, `changes.json` | Not read. The viewer may show them; the scene never holds them. |
 
@@ -958,7 +976,12 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
 - **Walks** (ours; challenge 3, "walk it in the engine"). From each bookmark's point a scripted
   walker, a `CharacterBody3D` capsule 0.3 m in radius and 1.8 m tall, walks straight in plan toward
   the bookmark's `toward` at 1.4 m/s under gravity, one `move_and_slide` per 1/60 s, colliding with
-  the ground body and every instance body the loader made. It stops `arrived` within 1 m of the
+  the ground body, every generated mesh body and every instance body the loader made. It starts on
+  the highest collision straight below the bookmark's eye (the terrain, a kind surface's mesh or an
+  instance; nothing, over a cut with no floor above it, and it falls), then follows what it walks
+  onto: a sloping tread is walked as ground is, up to 40 degrees, and the edge of a generated mesh at
+  most 0.3 m above its feet (the walker's `step`) is stepped onto; the ground and instances are never
+  stepped. It stops `arrived` within 1 m of the
   target or against the target's own body; `blocked` when it gains less than 0.1 m in 1 s, naming
   what it pressed against (an instance, or `ground` with the slope, walkable up to 40 degrees);
   `fell` after a drop through the air of more than 1 m beyond what the ground falls under its path
@@ -977,9 +1000,12 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   `{ "after", "before", "bookmarks", "camera", "edits", "godot", "light", "renderer", "size",
   "walk", "walks" }`. `edits` is `{ "against", "cleared", "pins" }`, each mark `{ "at", "cause",
   "name" }`; `walk` the walker's constants (`above_water`, `arrive`, `eye`, `fall`, `height`,
-  `max_slope`, `radius`, `speed`, `wade`); each of `walks` is `{ "after", "before", "name" }`, a
-  report per build (`null` where absent): `{ "by", "deepest", "drop", "eye", "from", "left",
-  "outcome", "plan", "slope", "stop", "through", "toward", "walked" }`. `before`
+  `max_slope`, `radius`, `speed`, `step`, `wade`); each of `walks` is `{ "after", "before", "name" }`, a
+  report per build (`null` where absent): `{ "by", "deepest", "drop", "eye", "from", "left", "on",
+  "outcome", "plan", "slope", "stop", "through", "toward", "walked" }`, `on` being `{ "from",
+  "stop" }`, what the walker stood on at its start and where it stopped (`ground`, a generated
+  mesh's `name`, an instance's name, or `null` for nothing within 1.4 m below its centre at the
+  stop). `before`
   and `after` are `{ "id", "world" }` (`after` `null` without one); each of `bookmarks` is
   `{ "after", "before", "eye", "name", "target" }`, with the two image paths (`null` where absent),
   `eye` as `{ "after", "before" }`, each build's eye point (`null` where absent), and `target` as

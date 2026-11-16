@@ -253,6 +253,50 @@ impl<'b> Terrain<'b> {
     }
 }
 
+impl<'b> Terrain<'b> {
+    /// The terrain as a view gives its posts (a step's stratum, `protocol.md` 3.3), `None` when
+    /// the values do not cover the grid.
+    pub fn of_values(name: &'b str, grid: Grid, values: &'b [f32]) -> Option<Terrain<'b>> {
+        (values.len() as u64 == grid.len()).then_some(Terrain { name, grid, values })
+    }
+}
+
+/// `sample` on a kind surface (2.2): `z` is `base` at the point; the gradient a central
+/// difference of step `h_mm = max(1, floor(r_mm / 2))`, one-sided where one neighbour lies
+/// outside the bound, 0 where both do. Outside the bound: `inside = false`, all 0. A `base` that
+/// fails at a point asked fails the call (2.7).
+pub fn sample_kind(
+    s: &crate::surfaces::SurfaceOut,
+    r_mm: i64,
+    x: i64,
+    y: i64,
+) -> Result<Sample, Box<via_expr::ExprError>> {
+    let Some(z) = s.z((x, y))? else {
+        return Ok(Sample {
+            inside: false,
+            z: 0.0,
+            gx: 0.0,
+            gy: 0.0,
+        });
+    };
+    let h = (r_mm / 2).max(1);
+    let (hh, hh2) = (h as f64 / 1000.0, (2 * h) as f64 / 1000.0);
+    let grad = |p: (i64, i64), m: (i64, i64)| -> Result<f64, Box<via_expr::ExprError>> {
+        Ok(match (s.z(p)?, s.z(m)?) {
+            (Some(a), Some(b)) => (a - b) / hh2,
+            (Some(a), None) => (a - z) / hh,
+            (None, Some(b)) => (z - b) / hh,
+            (None, None) => 0.0,
+        })
+    };
+    Ok(Sample {
+        inside: true,
+        z,
+        gx: grad((x + h, y), (x - h, y))?,
+        gy: grad((x, y + h), (x, y - h))?,
+    })
+}
+
 /// `meetings()` (2.4): every meeting, ordered by `a`, then `b`, bytewise.
 pub fn meetings(b: &Build) -> Vec<&Meeting> {
     let mut m: Vec<&Meeting> = b.meetings.iter().collect();

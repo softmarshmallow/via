@@ -137,12 +137,39 @@ mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 2, d)"
 # on either side of the deck, a ramp a walker took down into `monastery`'s gorge (lib/review reach,
 # `not_sealed`), and a bank built into `townland`'s river beside the deck.
 #
-# `deck`: STAND-IN. surfaces.md's kind surface (`[kind.crossing.surface.deck]`) is `doc.not_yet`
-# (M3, not built), so the deck is written on the terrain: the ground is `deck_z` across the strip,
-# `width` metres wide, falling sheer at its sides. The water stands on either side and not under
-# it: on foot it reads as a solid causeway, not a bridge, and nothing can pass beneath it. When kind
-# surfaces land this effect becomes `[kind.crossing.surface.deck]` and the water runs under. Ours,
-# written for `townland` (M3).
+# `deck`: the crossing's kind surface (surfaces.md 1, 6.3), `width` metres wide over its path,
+# `deck_z` on its line and falling `camber` a metre to each edge. It is not the terrain: the ground
+# and the water under it are left alone, so the water runs beneath and `surfaces_at` at the middle
+# of the river gives the bed, the water's level and the deck. Each end of the path (`<crossing>.start`,
+# `.end`) lies on the deck (surfaces.md 3.3: a path end lies on its kind's one surface), so a way
+# arriving there meets the deck, and `heads` brings the ground to `deck_z` at the end for the gap of
+# 0 (surfaces.md 3.4). M3 to M5 slice 1 wrote the deck on the terrain (a stand-in effect, the ground
+# `deck_z` across the strip): it read as a causeway, the water stood either side and not under it,
+# and two effects (`water`, `pass`) were needed to keep it dry and to stop it pooling the water;
+# both went with it (M5 slice 2). Ours, after surfaces.md 6.3.
+#
+# `heads` holds the ground at exactly `deck_z` within `width / 2` of the path for the first `hold`
+# of its length at each end (and behind each end within `width / 2`), fading by `hold + 0.12`: so
+# every post round an end that is not on a post reads `deck_z`, and the meeting's gap is 0 wherever
+# the world put the end. `hold` must cover a quad's diagonal: `hold * length >= resolution * 1.42`
+# (a crossing 18 m long at 1 m: 0.08 or more). Under the deck's first and last metres the ground is
+# the bridgehead's abutment.
+#
+# The parapet is a run along each edge of the deck (lib/ways/parapet.py, a generate step), and the
+# lint `lib/ways/check.py` judges that the water passes beneath (sampled under the deck's middle)
+# with `freeboard` to spare, and that each end is met by a way with a gap of 0. A world restates both:
+#
+#     [step.parapet]
+#     when     = "generate"
+#     worker   = true
+#     for_each = "kind:crossing"
+#     command  = ["python", "-m", "viasdk", "lib:ways/parapet.py"]
+#     params   = { asset = "fence_post", spacing = 2 }
+#
+#     [step.crossings]
+#     when    = "lint"
+#     worker  = true
+#     command = ["python", "-m", "viasdk", "lib:ways/check.py"]
 [kind.crossing]
 authority = "anchored"
 requires  = ["deck_z", "crosses"]            # metres: the deck's level; the water it crosses
@@ -154,53 +181,26 @@ width = 6                                   # metres of deck, parapet to parapet
 head  = 12                                  # metres behind each end the bridgehead holds the ground
 grade = 0.5                                 # the bridgehead's bank beside the deck and past `head` (1:2)
 approach = 0.1                              # rise over run at which an arriving way meets the deck
-freeboard = 0.5                             # metres the water under the deck stands below it, at most
-flow  = 0.3                                 # metres of water over the crossed water's floor (its `flow`)
-pass  = 4                                   # metres beside the deck's faces the water keeps its depth
+camber = 0.02                               # fall from the deck's line to each edge, per metre
+hold  = 0.08                                # share of the length at each end held at `deck_z` (above)
+freeboard = 0.5                             # metres the deck stands over the water under its middle,
+                                            # at least (lib/ways/check.py, `low_deck`)
+flow  = 0.3                                 # read by nothing since the deck left the terrain (it fed
+                                            # `pass`); kept so the worlds that write it still build
 
 [kind.crossing.let]
-ends = "= max(1 - smoothstep(0, 0.12, t), smoothstep(0.88, 1, t))"
+ends = "= max(1 - smoothstep(hold, hold + 0.12, t), smoothstep(1 - hold - 0.12, 1 - hold, t))"
 bank = "= grade * max(d - width / 2, 0)"
 reach = "= approach * min(max(d - width / 2, 0), head) + grade * max(d - width / 2 - head, 0)"
 
-[kind.crossing.effect.deck]                 # stand-in: the deck on the terrain (above)
-field = "role:surface"
-value = "= deck_z"
-mask  = "= 1 - smoothstep(width / 2, width / 2 + 0.25, d)"
+[kind.crossing.surface.deck]
+base  = "= deck_z - camber * d"
+bound = "= width / 2"
 
 [kind.crossing.effect.heads]
 field = "role:surface"
 value = "= if(t > 0 and t < 1, clamp(v, deck_z - bank, deck_z + bank), clamp(v, deck_z - reach, deck_z + reach))"
 mask  = "= ends * (1 - smoothstep(head + 4, head + 6, d)) * if(t > 0 and t < 1, 1 - smoothstep(width / 2, width / 2 + 1, d), 1)"
-
-# `water`: the water passes under the deck. The water level is a field whose base is the ground
-# (lib/water), so over the stand-in deck the water's base is the deck, and the water the crossing
-# `crosses` (a beck, shaped, applied before this anchored crossing) stands at least its `flow` over
-# it. Under the deck, out to its sides, the crossing holds the level at least `freeboard` below
-# `deck_z`, so no post of the deck is wet and the water meets the deck's two faces at its own
-# level. A loader draws the water between posts, so a level held just under the deck rises from the
-# river to it across the deck's face, a ridge of water above the river beside the deck: set
-# `freeboard` to the deck's height over the water (`townland`: 2.5 m) and the water under it lies
-# at the river's level. With kind surfaces the deck leaves the terrain and this effect is what
-# keeps the deck's underside dry. Ours, for `townland`.
-#
-# `pass`: the water passes the deck at its own depth. The crossed water's level is smoothed along
-# its line from the ground (lib/water), and the stand-in deck is ground, so within a few metres of
-# each face the level rose against it, a pool on both sides (M3 slice 5: 0.1 to 0.27 m over the
-# river's own line beside the deck in `example`, `monastery` and `townland`, the depth at the face
-# 0.55 m on a beck of `flow` 0.3). From the deck's faces out to `pass` metres the crossing holds the
-# water no deeper than `flow` over the ground at the post (the crossed water's own `flow`: write
-# `flow = "= river.flow"`), and never below the ground, so dry ground stays dry and the level runs
-# on past the deck as the water's own. Ours, M3 slice 5.
-[kind.crossing.effect.water]
-field = "tag:water_level"
-value = "= min(v, deck_z - freeboard)"
-mask  = "= 1 - smoothstep(width / 2 + 0.25, width / 2 + 0.5, d)"
-
-[kind.crossing.effect.pass]
-field = "tag:water_level"
-value = "= max(f('height'), min(v, f('height') + flow))"
-mask  = "= smoothstep(width / 2 + 0.25, width / 2 + 0.5, d) * (1 - smoothstep(width / 2 + pass, width / 2 + pass + 1, d))"
 
 [kind.crossing.effect.clear]                # nothing stands on the deck or its heads
 field = "role:keep_out"
