@@ -1,0 +1,91 @@
+# What a border build must measure (docs/plan.md M4; composition.md 6, R10). Measures, never bytes
+# (R15): each row names a measure of measure.py and its band.
+#
+#   python3.11 examples/border/measure.py BUILD --alone wild=WILD_DIR --check <section>
+#
+# Protocol (M4 slice 3, label border, 2026-11-16): macOS arm64, release `via` of the rewrite working
+# tree after e67c061 with the slice 3 diffs other agents had made by then, VIA_LIB=lib. Each build on
+# its own FRESH store, cold: `wild` alone, the border, and each change as `--change` with no
+# `--against` (a change built against the base store fails, diag.internal on
+# `held:fringe_trees/v:build`: README Known faults). One build each, other agents building at the
+# same time. Measured once: each band is the measured number widened only where noted.
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.seam]                                 # import.seam: no step above 1:2 across either join
+measure = "seam"
+band    = [0, 0]
+
+[base.unanswered]                           # both of the wild's exits answered by a walk
+measure = "unanswered"
+band    = [0, 0]
+
+[base.unowned]                              # each bank owns its walk's crossing (opens_for)
+measure = "unowned"
+band    = [0, 0]
+
+[base.held]                                 # reach: gate to both exits, far_wood, crag
+measure = "held"
+band    = [4, 4]
+
+[base.crest]                                # the bank stands 5.4 m over the ground beside it
+measure = "crest"                           # (rise 7 x 0.85 at least, less its flank at 14 m)
+band    = [5, 7]
+
+[base.opening]                              # and is level at both openings
+measure = "opening"
+band    = [-0.5, 0.5]
+
+[base.gate_off]                             # the south walk starts on the abbey's gate
+measure = "gate_off"
+band    = [0, 0]
+
+[base.alone_off_wild]                       # the wild's ground where its weight is 1: measured 0.165
+measure = "alone_off_wild"                  # (the walks' beds reach 18 m into it, to its exits)
+band    = [0, 0.2]
+
+[base.fringe_trees]                         # growth across the join, from the join step's spread
+measure = "fringe_trees"
+band    = [33, 33]
+
+[move_abbey.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_abbey.gate]                           # the abbey 30 m east: its gate at x 475 (base 445)
+measure = "gate"
+band    = [[475, 433]]
+
+[move_abbey.gate_off]                       # the walk followed; nothing in the join was edited
+measure = "gate_off"
+band    = [0, 0]
+
+[move_abbey.seam]
+measure = "seam"
+band    = [0, 0]
+
+[move_abbey.held]
+measure = "held"
+band    = [4, 4]
+
+[move_abbey.opening]                        # the south opening moved with the walk (x 466.5 -> 470.7)
+measure = "opening"
+band    = [-0.5, 0.5]
+
+[move_abbey.crest]
+measure = "crest"
+band    = [5, 7]
+
+[shut.not_sealed]                           # both openings shut: no way out from the gate
+measure = "not_sealed"
+band    = [0, 0]
+
+[shut.held]                                 # the four sealed pairs hold
+measure = "held"
+band    = [4, 4]
+
+[shut.opening]                              # the bank closed over both walks
+measure = "opening"
+band    = [4.5, 7]

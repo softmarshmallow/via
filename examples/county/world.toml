@@ -1,0 +1,94 @@
+name       = "county"
+extent     = [0, 0, 1024, 1024]               # metres: x east, y north
+resolution = 1
+datum      = "sea"                            # the town says the same, so its heights join with no lift
+seed       = 13
+include    = ["land", "water", "ways", "town", "map", "review"]
+pack       = "starter"                        # the town binds the same pack
+
+# County: the town as a fill on simulated land (docs/plan.md, M4; R8, R9, R11; composition.md 8).
+# The land is this file's: downs rising north from a bay, a river down a valley into the bay. The
+# town is `examples/quay`, built apart and imported by file (not a copy). The town reads this land
+# through `give` (its `land`), so where it stands is this county's ground, not the slope it was
+# written on. The road from the north edge is written by what it connects: it ends at the town's
+# gate, the town's exit (R9).
+#
+# The layer above (layers/views.toml) owns the views at the join and at the exit.
+
+[layer.views]
+file  = "layers/views.toml"
+owner = "views"
+rank  = 1
+
+[let]
+sea = 2                                       # metres: the bay's surface (the town's harbour, `quay`'s `sea`)
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # downs rising north from the bay, a river valley cut in them
+role = "surface"
+base = "= -4 + 6 * smoothstep(120, 236, y) + 0.06 * max(y - 236, 0) + 22 * fbm(320, 4, seed = 'downs') * smoothstep(236, 420, y) + 2.5 * fbm(55, 3, seed = 'grain') * smoothstep(250, 330, y) - 9 * (1 - smoothstep(12, 110, vale)) * smoothstep(200, 300, y)"
+
+[field.height.let]
+vale = "= dist('river', 200) + 18 * fbm(140, 2, seed = 'vale')"   # how far from the river, rough
+
+[field.water]                                 # dry, the ground; the bay at `sea` (as strait's)
+tags = ["water_level"]
+base = "= max(f('height'), sea)"
+
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+[field.ground]                                # the downs' turf, rock on the steep, shingle by the bay
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.rock]
+paint = "rock"
+mask  = "= smoothstep(30, 40, slope('height'))"
+
+[field.ground.then.shore]
+paint = "gravel"
+mask  = "= 1 - smoothstep(0, 1.5, f('height') - sea)"
+
+[field.ground.then.track]
+paint = "earth"
+mask  = "= 1 - smoothstep(3, 3.8, dist('kind:road', 6))"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.river]                               # a river from the north edge down to the bay, east of the town
+kind = "beck"
+path = [[700, 1024], [690, 880], [720, 740], [680, 600], [700, 460], [660, 330], [680, 200]]
+
+# ------------------------------------------------------------------------------------------ the town
+# The town (quay) stands on the bay's north shore, its harbour south. `at` is where the town's own
+# (0, 0) lies here; its quay line (its y = 46) falls on this county's shore at y = 236.
+#
+# The blend: the town's ground comes in whole 16 m inside its footprint and fades to the county's
+# at its edge. Its land is the county's (given), so what the blend joins is the town's own effects:
+# the quay deck, the main street's bed, the terraces.
+
+[import.town]
+file  = "../quay/world.toml"
+at    = [300, 190]
+blend = "= smoothstep(0, 16, d)"
+give  = { land = "height" }
+
+# ------------------------------------------------------------------------------------------ the road
+# Written by what it connects (R9): from the north edge to the town's gate, routed over the land.
+
+[feature.north_end]
+at = [380, 1024]
+
+[feature.north_road]
+kind      = "road"
+starts_at = "north_end"
+ends_at   = "town.gate"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true

@@ -426,8 +426,9 @@ are above 0.
   the file and line of each one's `authority` (the feature's, or its kind's if inherited, as a
   footprint's always is), `a` and `b` at the post of the largest
   difference (ties: post order), and the number of posts that disagree. Its `data` holds the field
-  (`field`) and both counts: posts where both masks are 1 (`both_full`), and posts where both are
-  above 0 (`both_partial`).
+  (`field`), both counts: posts where both masks are 1 (`both_full`), and posts where both are
+  above 0 (`both_partial`), and at the reported post what the earlier leaves (`leaves`) and the
+  later asks (`asks`).
 - Diagnostics are computed over the whole of both features, whatever window was asked for.
 - The hint offers the three ways out, in this order: make one `shaped`, so the other holds; move one
   off the other; or let the later one read the earlier (`value = "= v"` where they overlap), so they
@@ -617,7 +618,7 @@ would not change.
 | `authority.unknown_kind` | error | A feature's `kind` or an instance's `ground` names no kind in the world's kind namespace; nearest kind. |
 | `authority.no_kind` | error | `authority` on a guide. |
 | `authority.order_cycle` | error | Nesting on one field forms a cycle; the field, every feature, each link and which side it puts later. |
-| `authority.conflict` | error | Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`. |
+| `authority.conflict` | error | Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`, `data.leaves`, `data.asks`. |
 | `authority.squeezed` | warning | Two anchored features disagree only where a mask is below 1; as above: `data.field`, `data.both_full`, `data.both_partial`. |
 | `authority.hidden` | info | An entry left no trace: later entries with mask 1 cover all of it; once per feature and field. |
 | `authority.step_view` | error | A step returned rows on a field whose full view it read, or a row sorting before a row of its head view. M2. |

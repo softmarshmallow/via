@@ -1,0 +1,33 @@
+format    = "via-case-1"
+summary   = "A scatter whose density reads a field a generate step returns (by tag), an import's footprint and the slope; the slope changed, built --against the base on one store: no diag.internal, and the trees on the steep half are gone, as a clean build gives."
+milestone = 4
+actions   = ["program", "trust", "base", "steep"]
+
+# The rule's value (the placements before hand edits) must be computed from what the build reads:
+# the plan's declarations with the import brought and the step's return, not the world text alone. Read from the text
+# alone it was empty in both builds, so `held:trees` kept its key while its value changed:
+# `diag.internal` "gave another value when computed again" (border, M4 slice 3).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.steep]
+via         = ["build", "world.toml", "--change", "steep", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/next"
+
+[action.steep.diag.internal]
+code    = "diag.internal"
+records = 0

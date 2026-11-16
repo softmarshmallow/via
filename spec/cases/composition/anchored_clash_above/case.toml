@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "anchored_clash with the import declared in a layer of rank 1: the import's anchored ground is the later entry, so over (earlier) leaves 9 and the import asks 3; subject over, related the import's feature; exit 1."
+milestone = 4
+actions   = ["build"]
+
+# Line 13 of a/world.toml is the pad's authority line. `data_below = { asks = "leaves" }` holds
+# only when the earlier entry is `over` (9) and the later the import's pad (3).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.clash]
+code       = "authority.conflict"
+subject    = "feature.over"
+related    = [{ file = "a/world.toml", line = 13 }]
+data_below = { asks = "leaves" }

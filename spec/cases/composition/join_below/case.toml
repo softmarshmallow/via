@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "A generate step in layer join (rank 1) reads height, the import declared in layer top (rank 2): its stratum leaves the brought ground out, so it sees 0 inside the footprint where the build has 2."
+milestone = 4
+actions   = ["program", "trust", "build"]
+
+# composition.md 6.5 and authority.md 4.4: the import's entries are its declaring layer's (rank 2),
+# outside the full view of a step at rank 1. The build's height there is 2 (case join_step).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.seen]
+path  = "build/w/fields/look#seen.npy"
+post  = [12, 4]
+value = 0
+
+[action.build.file.height]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 2

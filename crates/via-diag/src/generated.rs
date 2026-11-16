@@ -220,8 +220,8 @@ pub(crate) static ROWS: [Row; 355] = [
         severity: Severity::Error,
         chapter: "authority",
         milestone: 1,
-        summary: "Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`.",
-        data: &["field", "both_full", "both_partial"],
+        summary: "Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`, `data.leaves`, `data.asks`.",
+        data: &["field", "both_full", "both_partial", "leaves", "asks"],
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "Two anchored features write different values on one field at posts where both masks are exactly\n1. Neither may give way, so the build stops. The subject is the later feature, the earlier is in\nrelated; the message gives both values at the post of the largest difference. `data.field` names\nthe field, `data.both_full` counts the posts where both masks are 1 and `data.both_partial` those\nwhere both are above 0.\nTo fix: Make one shaped so the other holds; or move one off the other; or let the later one read\nthe earlier (value = \"= v\") where they overlap.\nBad:   [feature.a]  authority = \"anchored\", value 10 here\n       [feature.b]  authority = \"anchored\", value 12 on the same posts\nFixed: [feature.b]\n       authority = \"shaped\"\n",
@@ -3961,7 +3961,7 @@ pub mod codes {
         use crate::registry::Code;
         /// `authority.attribute_twice` (error): An attribute declared in both `defaults` and `requires`.
         pub const ATTRIBUTE_TWICE: Code = Code::from_index(18);
-        /// `authority.conflict` (error): Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`.
+        /// `authority.conflict` (error): Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`, `data.leaves`, `data.asks`.
         pub const CONFLICT: Code = Code::from_index(19);
         /// `authority.gave_way` (warning): A produced instance's footprint would move a value more than its kind's `max_change`, so the instance is not placed (M3, 2.2); the instance, field, amount, limit and post.
         pub const GAVE_WAY: Code = Code::from_index(20);

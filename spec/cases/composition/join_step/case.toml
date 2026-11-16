@@ -17,7 +17,7 @@ exit        = 0
 diagnostics = "exact"
 out         = "build/w"
 [action.build.file.own]
-path  = "build/w/fields/own.npy"
+path  = "build/w/fields/look#own.npy"
 post  = [12, 4]
 value = 2
 

@@ -13,3 +13,4 @@ out         = "build/w"
 [action.build.diag.clash]
 code    = "authority.conflict"
 related = [{ file = "a/world.toml", line = 13 }]
+data_below = { leaves = "asks" }   # the import (earlier) leaves 3, `over` (later) asks 9

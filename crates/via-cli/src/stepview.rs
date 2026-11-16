@@ -958,9 +958,9 @@ impl<'a> View<'a> {
     fn field_inexact(&self, field: &str) -> bool {
         self.rank.is_some_and(|own| {
             field_inexact(self.world, self.build, field, own, true)
-                || self
-                    .stratum
-                    .is_some_and(|m| m.reads_returned_shape(field, own))
+                || self.stratum.is_some_and(|m| {
+                    m.reads_returned_shape(field, own) || m.brought_above(field, own)
+                })
         })
     }
 
@@ -1020,6 +1020,31 @@ impl<'a> View<'a> {
                 .map(|(n, _)| n.clone())
                 .collect());
         }
+        if let Some(r) = self.scoped_rank(sel) {
+            // `<import>.<field>` (`composition.md` 6.5): a step at a join stands above the import.
+            if self.rank.is_some_and(|own| own <= r) {
+                let id = sel.split_once('.').map_or(sel, |(i, _)| i);
+                let layer = self.world.home("import", id).unwrap_or("world").to_string();
+                let mut refusal = self.outside(sel, &layer);
+                if let Some(d) = refusal.diag.take() {
+                    let hint = match self.layer_above(r) {
+                        Some(l) => format!(
+                            "declare the step in layer `{l}`, or another ranked above `{layer}`"
+                        ),
+                        None => format!("declare the step in a layer ranked above `{layer}`"),
+                    };
+                    refusal.diag = Some(Diag::new(
+                        codes::graph::READ_OUTSIDE,
+                        d.subject().clone(),
+                        Site::Header,
+                        d.message().clone(),
+                        txt(hint),
+                    ));
+                }
+                return Err(refusal);
+            }
+            return Ok(vec![sel.to_string()]);
+        }
         if self.build.fields.contains_key(sel) {
             if !vis(sel) {
                 let layer = self.world.home("field", sel).unwrap_or("").to_string();
@@ -1028,6 +1053,22 @@ impl<'a> View<'a> {
             return Ok(vec![sel.to_string()]);
         }
         Ok(Vec::new())
+    }
+
+    /// The declaring layer's rank of the import a scoped field `<import>.<field>` names, when
+    /// `sel` is one and not a field of this world.
+    fn scoped_rank(&self, sel: &str) -> Option<i64> {
+        if self.build.fields.contains_key(sel) {
+            return None;
+        }
+        let (id, _) = sel.split_once('.')?;
+        self.stratum?.import_rank(id)
+    }
+
+    /// An import's field on this world's posts, for a step at a join.
+    fn scoped_values(&self, sel: &str) -> Option<Vec<f32>> {
+        self.scoped_rank(sel)?;
+        self.stratum?.scoped_values(sel)
     }
 
     /// One field's values in the view, checked: `view` `full` or `head`.
@@ -1039,6 +1080,9 @@ impl<'a> View<'a> {
                 names.len()
             )));
         };
+        if let Some(v) = self.scoped_values(name) {
+            return Ok((name.clone(), v.iter().map(|x| f64::from(*x)).collect()));
+        }
         let f = &self.build.fields[name];
         let Some(v) = &f.values else {
             return Err(invalid(format!("`{name}` is a weights field")));
@@ -1128,8 +1172,10 @@ impl<'a> View<'a> {
                     names.len()
                 )));
             };
-            self.view_ok(name, view)?;
-            let f = &self.build.fields[name];
+            let scoped = self.scoped_values(name);
+            if scoped.is_none() {
+                self.view_ok(name, view)?;
+            }
             let cut = |v: &[f32]| -> Vec<f32> {
                 let mut c = Vec::with_capacity((i1 - i0) * (j1 - j0));
                 for j in j0..j1 {
@@ -1139,26 +1185,33 @@ impl<'a> View<'a> {
             };
             let mut e = Map::new();
             e.insert("name".into(), json!(name));
-            let bytes = match &f.values {
-                Some(v) => {
+            let bytes = match (&scoped, self.build.fields.get(name)) {
+                (Some(v), _) => {
                     e.insert("type".into(), json!("scalar"));
-                    let v = self.scalar_values(name, view).unwrap_or_else(|| v.clone());
-                    crate::npy::f4(&[j1 - j0, i1 - i0], &cut(&v))
+                    crate::npy::f4(&[j1 - j0, i1 - i0], &cut(v))
                 }
-                None => {
-                    e.insert("type".into(), json!("weights"));
-                    let mut mats = Vec::new();
-                    let mut all = Vec::new();
-                    for (m, v) in &f.weights {
-                        let c = cut(v);
-                        if c.iter().any(|x| *x != 0.0) {
-                            mats.push(m.clone());
-                            all.extend(c);
-                        }
+                (None, None) => return Err(invalid(format!("`{name}` is no field"))),
+                (None, Some(f)) => match &f.values {
+                    Some(v) => {
+                        e.insert("type".into(), json!("scalar"));
+                        let v = self.scalar_values(name, view).unwrap_or_else(|| v.clone());
+                        crate::npy::f4(&[j1 - j0, i1 - i0], &cut(&v))
                     }
-                    e.insert("materials".into(), json!(mats));
-                    crate::npy::f4(&[mats.len(), j1 - j0, i1 - i0], &all)
-                }
+                    None => {
+                        e.insert("type".into(), json!("weights"));
+                        let mut mats = Vec::new();
+                        let mut all = Vec::new();
+                        for (m, v) in &f.weights {
+                            let c = cut(v);
+                            if c.iter().any(|x| *x != 0.0) {
+                                mats.push(m.clone());
+                                all.extend(c);
+                            }
+                        }
+                        e.insert("materials".into(), json!(mats));
+                        crate::npy::f4(&[mats.len(), j1 - j0, i1 - i0], &all)
+                    }
+                },
             };
             let blob = self
                 .objects

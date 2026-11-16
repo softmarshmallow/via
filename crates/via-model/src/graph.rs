@@ -2946,6 +2946,36 @@ impl<'w> ModelPlan<'w> {
         v
     }
 
+    /// The layer rank of the layer that declares import `id` (`composition.md` 6.5); `None` when
+    /// there is no such import.
+    pub fn import_rank(&self, id: &str) -> Option<i64> {
+        self.p.decls.imports.get(id).map(|i| i.rank)
+    }
+
+    /// Whether an import declared in a layer ranked above `rank` brings `field` (`composition.md`
+    /// 6.4, 6.5): then a generate step of that rank reads the field without it, in its stratum.
+    /// True whenever the import's own document declares the field and does not take it as a
+    /// given, brought or not: an over-approximation that only forces the stratum to be recomputed
+    /// (time, not correctness).
+    pub fn brought_above(&self, field: &str, rank: i64) -> bool {
+        self.p.decls.imported.iter().any(|(id, imp)| {
+            self.p.decls.imports.get(id).is_some_and(|d| d.rank > rank)
+                && imp.alone.decls.fields.contains_key(field)
+                && !imp.alone.decls.givens.contains_key(field)
+        })
+    }
+
+    /// An import's field on this world's posts, `<import>.<field>` (`composition.md` 6.2, 6.5):
+    /// its finished value inside the footprint, 0 outside; post order. `None` when the import has
+    /// no such scalar field.
+    pub fn scoped_values(&self, name: &str) -> Option<Vec<f32>> {
+        let grid = self.grid?;
+        let fields = Fields::new(&self.p.decls, &self.p.placed, grid);
+        fields
+            .get(name, View::Build)
+            .and_then(|r| r.scalar.as_ref().map(|s| s.values().to_vec()))
+    }
+
     /// The build in memory, for the command line's files and steps.
     pub fn build(&self) -> Build {
         self.whole().build.clone()
@@ -2965,7 +2995,11 @@ impl<'w> ModelPlan<'w> {
         if let Some(grid) = self.grid {
             let fm = self.fields_memo();
             let t0 = std::time::Instant::now();
-            let mut d = crate::decl::Decls::read(self.world);
+            // The plan's own declarations (files read, imports brought, steps' returns), less
+            // the hand edits: a density that reads a step's returned field or an import's place
+            // must read here what the build reads, or the rule's value misses an input and its
+            // `held` reader is unstable.
+            let mut d = self.p.decls.clone();
             d.pins.clear();
             d.clears.clear();
             let (placed, _) = Placer::new(&d, &self.p.pack).run();

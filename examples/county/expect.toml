@@ -1,0 +1,86 @@
+# What a county build must measure (docs/plan.md M4: the town as a fill on simulated land; an import
+# moved and turned; a forgotten exit says what to write). Measures, never bytes (R15). Taken by
+#
+#   python3 examples/county/measure.py BUILD                                         # base
+#   python3 examples/county/measure.py BUILD+<c> --run BUILD+<c>.run.json            # a change
+#   python3.13 examples/county/measure.py ... --check <section>                      # the bands
+#
+# Protocol (M4 slice 3, 2026-11-16): macOS arm64, release `via` of the rewrite working tree after
+# e67c061 with the slice 3 diffs, VIA_LIB=lib, one fresh store: the county, then each change with
+# `--against` the county base on the same store; one build each, other agents building at the same
+# time. Measured once, so each band is the measured number: it says where someone looks.
+# Base 7.8 s wall, 0.84 GB peak; move_town 11.1 s; forgotten_exit 7.3 s.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.road_off]                             # the road ends on the exit it answers (R9)
+measure = "road_off"
+band    = [0, 0]
+
+[base.gate_ground_off]                      # the gate stands on the joined ground
+measure = "gate_ground_off"
+band    = [0, 0.01]
+
+[base.deck_off]                             # the quay's deck at 3.5 m: 1.5 at its faded ends
+measure = "deck_off"                        # (lib/town waterfront ends fade), on the county's shore
+band    = [1.5, 1.5]
+
+[base.seam]
+measure = "seam"
+band    = [0, 0]
+
+[base.wet_views]                            # one: quay's own `wall_face`, a view from the water by design
+measure = "wet_views"
+band    = [1, 1]
+
+[base.toward_off]
+measure = "toward_off"
+band    = [0, 0]
+
+[base.town_streets]                         # 0 while an import's steps do not run (TODO, import_step):
+measure = "town_streets"                    # the town's streets and houses are steps; raise when they do
+band    = [0, 0]
+
+[base.town_instances]
+measure = "town_instances"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ move_town
+
+[move_town.ran_import_town]                 # a fill moved reads its land again: the town re-runs
+measure = "ran_import_town"                 # (composition.md 12, "a fill moved"); whole, as the
+band    = [1, 1]                            # import is built eagerly in `prepare`
+
+[move_town.ran_placed_town]                 # the frame and the five places the county names
+measure = "ran_placed_town"
+band    = [6, 6]
+
+[move_town.shapes_ran]                      # only what names a place of the town
+measure = "shapes_ran"
+band    = ["at_gate", "from_gate", "join_road", "join_shore", "join_west", "north_road"]
+
+[move_town.fields_ran]                      # every field chunk: no `brought` node per chunk yet
+measure = "fields_ran"
+band    = [1280, 1280]
+
+[move_town.road_off]
+measure = "road_off"
+band    = [0, 0]
+
+[move_town.seam]                            # one: 14 pairs at 1.61 where the turned quay meets the bay
+measure = "seam_grade"                      # (TODO "a turned import notches sheer ground")
+band    = [1.607, 1.607]
+
+# ------------------------------------------------------------------------------------------ forgotten_exit
+
+[forgotten_exit.unanswered]                 # import.exit_unanswered on town.east_gate
+measure = "unanswered"
+band    = [1, 1]
+
+[forgotten_exit.write]                      # with the line that answers it
+measure = "unanswered_write"
+band    = ["ends_at = \"town.east_gate\""]

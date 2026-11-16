@@ -1,0 +1,97 @@
+name       = "wild"
+extent     = [0, 0, 640, 560]               # metres: x east, y north
+resolution = 1
+datum      = "border"                       # the border's zero (composition.md 5): its parent says the same
+seed       = 23
+include    = ["land", "ways", "town", "vegetation", "review"]
+pack       = "starter"
+
+# The wild: hills and woods, built and checked alone (`via build examples/border/wild/world.toml`).
+# It keeps its north-east corner clear for a place someone else builds; all it knows of that place
+# is the outline `meet` and the slope agreed for the ground there (18 m at y = 240, rising 0.17 m a
+# metre north and 24 m more from y = 475 to 560: the slope `monastery` was built to). Its two trails end short of the corner at two
+# exits (lib/town's `entry`), for whoever joins them.
+
+[let]
+agreed = "= 18 + 0.17 * (y - 240) + 24 * smoothstep(475, 560, y)"         # the agreed slope, written in the parent too
+
+# ------------------------------------------------------------------------------------------ fields
+
+# Near the corner the ground is the agreed slope; away from it, this map's own hills.
+[field.height]
+role = "surface"
+base = "= agreed + away * (9 + 15 * fbm(170, 4, seed = 'hills')) + 0.5 * fbm(22, 3, seed = 'grain') * smoothstep(0, 30, dist('meet', 40))"
+
+[field.height.let]
+away = "= smoothstep(20, 180, dist('meet', 200))"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+[field.cover]                               # woods on gentle ground, thinner toward the corner
+tags = ["cover"]
+base = "= smoothstep(-0.2, 0.25, fbm(90, 3, seed = 'woods')) * (1 - smoothstep(22, 30, slope('height'))) * (0.35 + 0.65 * smoothstep(0, 120, dist('meet', 130)))"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.rock]
+paint = "rock"
+mask  = "= smoothstep(30, 40, slope('height'))"
+
+[field.ground.then.track]
+paint = "earth"
+mask  = "= 1 - smoothstep(1.1, 1.8, dist('kind:trail', 3))"
+
+# ------------------------------------------------------------------------------------------ the land
+
+[feature.meet]                              # a guide: the corner kept clear for the neighbour
+region = [[250, 220], [640, 220], [640, 560], [250, 560]]
+
+[feature.far_wood]                          # deep in the wood, south-west
+at = [110, 90]
+
+[feature.crag]                              # the hills' top, west
+at = [70, 420]
+
+[feature.south_end]                         # exits: where the trails stop, 18 m inside the edge
+kind = "entry"
+at   = [470, 202]
+
+[feature.west_end]
+kind = "entry"
+at   = [232, 380]
+
+[feature.south_trail]
+kind      = "trail"
+starts_at = "far_wood"
+ends_at   = "south_end"
+path      = [[300, 120]]
+
+[feature.west_trail]
+kind      = "trail"
+starts_at = "crag"
+ends_at   = "west_end"
+path      = [[160, 360]]
+
+# ------------------------------------------------------------------------------------------ growth
+
+[scatter.trees]                             # the wild's own rule: cover, the trails kept clear
+assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 2 }]
+spacing = 9
+density = "= f('cover')"
+scale   = [0.8, 1.25]
+
+[feature.look_corner]                       # from the south trail's end toward the kept corner
+kind   = "bookmark"
+on     = { ref = "south_trail", t = 0.97 }
+toward = "west_end"

@@ -1,0 +1,32 @@
+# Layer `views` (rank 1): where the county is judged (R17), ranked above the layer that declares the
+# import (composition.md 6.5), so it reads the joined ground. Every view names a place in the town
+# by its scoped name (`town.gate`), never by coordinates: move or turn the town and the views follow.
+
+[feature.at_gate]                             # the exit: the county road arriving at the town's gate
+kind   = "bookmark"
+on     = { ref = "north_road", t = 0.97 }
+toward = "town.quay_head"
+
+[feature.from_gate]                           # the exit from the town's side: up the road, out of the town
+kind       = "bookmark"
+on         = { ref = "town.high_street", t = 0.08 }
+toward     = "north_end"
+eye_height = 3
+
+[feature.join_road]                           # the join on the road: where it crosses the town's edge
+kind   = "bookmark"
+on     = { ref = "north_road", t = 0.88 }
+toward = "town.gate"
+
+[feature.join_west]                           # the join off the road: the town's west edge, on the downs
+kind   = "bookmark"
+on     = { ref = "town.quay", t = 0.02, offset = 30 }
+toward = "town.hill"
+
+[feature.join_shore]                          # the join at the bay: the town's quay end, across the bay
+kind   = "bookmark"
+on     = { ref = "town.quay", t = 0.99, offset = 4 }
+toward = "river_mouth"
+
+[feature.river_mouth]                         # a guide: where the river meets the bay
+on = { ref = "river", t = 0.97 }

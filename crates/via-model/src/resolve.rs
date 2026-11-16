@@ -87,10 +87,18 @@ enum Entry {
     },
 }
 
+/// Who left an anchored ground: a writer of this world, or an import's anchored ground
+/// (`composition.md` 6.4).
+#[derive(Clone, Debug, PartialEq)]
+enum Owner {
+    Writer(usize),
+    Import(String),
+}
+
 /// What one anchored feature left on one field: for `authority.md` 5.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct Anchor {
-    writer: usize,
+    owner: Owner,
     /// Per entry: post index to (value, mask).
     entries: Vec<BTreeMap<usize, (f64, f64)>>,
     /// The field's value just after its last entry, at each post it touched.
@@ -1119,6 +1127,9 @@ impl<'a> Fields<'a> {
                         0.0
                     };
                     writers.insert(import.clone());
+                    let held =
+                        view == View::Build && (*anchored || imp.decl.authority == Tier::Anchored);
+                    let mut rec = BTreeMap::new();
                     for (i, j) in self.whole().posts() {
                         let k = post_index(&grid, i, j);
                         if w[k] <= 0.0 {
@@ -1135,12 +1146,20 @@ impl<'a> Fields<'a> {
                         if m <= 0.0 {
                             continue;
                         }
-                        if view == View::Build
-                            && (*anchored || imp.decl.authority == Tier::Anchored)
-                        {
+                        if held {
                             cover[k] = via_num::max(cover[k], m);
+                            rec.insert(k, (v + lift, m));
                         }
                         cur[k] = (1.0 - m) * cur[k] + m * (v + lift);
+                    }
+                    // The import's anchored ground meets the parent's anchors (`authority.md` 5).
+                    if !rec.is_empty() {
+                        let after = rec.keys().map(|&k| (k, cur[k])).collect();
+                        anchors.push(Anchor {
+                            owner: Owner::Import(import.clone()),
+                            entries: vec![rec],
+                            after,
+                        });
                     }
                 }
                 Entry::Row(r) => {
@@ -1390,13 +1409,16 @@ impl<'a> Fields<'a> {
                         }
                     }
                     if view == View::Build && w.tier == Tier::Anchored {
-                        let pos = anchors.iter().position(|a| a.writer == *writer);
+                        let pos = anchors
+                            .iter()
+                            .position(|a| a.owner == Owner::Writer(*writer));
                         let a = match pos {
                             Some(p) => &mut anchors[p],
                             None => {
                                 anchors.push(Anchor {
-                                    writer: *writer,
-                                    ..Anchor::default()
+                                    owner: Owner::Writer(*writer),
+                                    entries: Vec::new(),
+                                    after: BTreeMap::new(),
                                 });
                                 anchors.last_mut().expect("just pushed")
                             }
@@ -1430,7 +1452,10 @@ impl<'a> Fields<'a> {
                             |x| !matches!(x, Entry::Effect { writer: ww, .. } if ww == writer),
                         );
                         if last_of_writer {
-                            if let Some(a) = anchors.iter_mut().find(|a| a.writer == *writer) {
+                            if let Some(a) = anchors
+                                .iter_mut()
+                                .find(|a| a.owner == Owner::Writer(*writer))
+                            {
                                 let touched: BTreeSet<usize> =
                                     a.entries.iter().flat_map(|r| r.keys().copied()).collect();
                                 for p in touched {
@@ -1628,27 +1653,71 @@ impl<'a> Fields<'a> {
                     (None, Some(w)) => (codes::authority::SQUEEZED, w, both0),
                     _ => continue,
                 };
-                let (wa, wb) = (&self.writers[a.writer], &self.writers[b.writer]);
+                // The parent's feature is the subject; an import's ground is the related one.
+                // `a` is the earlier entry and leaves its value; `b` is the later and asks.
+                let is_import = |an: &Anchor| matches!(an.owner, Owner::Import(_));
+                let swapped = is_import(b) && !is_import(a);
+                let (a, b) = if swapped { (b, a) } else { (a, b) };
                 let (i, j) = post_of(&self.grid, worst.0);
                 let (x, y) = via_raster::window::post_mm(&self.grid, i, j);
-                let (top, id) = writer_subject(self.d, &wb.name);
-                let (atop, aid) = writer_subject(self.d, &wa.name);
-                let mut d = text::diag(
-                    code,
-                    Subject::entity(top, id.clone()),
-                    authority_site(),
-                    &format!("`{}` and `{}` are both anchored and disagree on `{field}` at {count} posts: `{}` leaves {}, `{}` asks {}", wb.name, wa.name, wa.name, text::dbl(worst.2), wb.name, text::dbl(worst.3)),
-                    &format!("make one `shaped` so the other holds; or move one off the other; or let `{}` read `{}` with `value = \"= v\"` where they overlap", wb.name, wa.name),
-                )
-                .at(text::pos(x, y))
-                .with("field", DValue::text(field))
-                .with("both_full", DValue::Int(both1 as i64))
-                .with("both_partial", DValue::Int(both0 as i64));
+                let who = |an: &Anchor| -> (String, Subject, Site) {
+                    let w = match &an.owner {
+                        Owner::Writer(w) => *w,
+                        Owner::Import(id) => {
+                            let found = self
+                                .d
+                                .imported
+                                .get(id)
+                                .and_then(|imp| imp.anchored_at((x, y)));
+                            return match found {
+                                Some((s, site)) => (s.to_string(), s, site),
+                                None => (
+                                    id.clone(),
+                                    Subject::entity("import", id.clone()),
+                                    Site::Header,
+                                ),
+                            };
+                        }
+                    };
+                    let w = &self.writers[w];
+                    let (top, id) = writer_subject(self.d, &w.name);
+                    (w.name.clone(), Subject::entity(top, id), authority_site())
+                };
+                let ((na, sa, site_a), (nb, sb, site_b)) = (who(a), who(b));
+                // The earlier leaves `worst.2`, the later asks `worst.3`. When swapped, the subject
+                // `b` is the parent's earlier feature and `a` the import's later ground, which
+                // cannot read anything of the parent.
+                let (message, hint) = if swapped {
+                    (
+                        format!("`{nb}` and `{na}` are both anchored and disagree on `{field}` at {count} posts: `{nb}` leaves {}, `{na}` asks {}", text::dbl(worst.2), text::dbl(worst.3)),
+                        format!("make `{nb}` `shaped` so the import's ground holds; or move `{nb}` off the import; or rank the import's layer below `{nb}`"),
+                    )
+                } else {
+                    (
+                        format!("`{nb}` and `{na}` are both anchored and disagree on `{field}` at {count} posts: `{na}` leaves {}, `{nb}` asks {}", text::dbl(worst.2), text::dbl(worst.3)),
+                        format!("make one `shaped` so the other holds; or move one off the other; or let `{nb}` read `{na}` with `value = \"= v\"` where they overlap"),
+                    )
+                };
+                let mut d = text::diag(code, sb, site_b, &message, &hint)
+                    .at(text::pos(x, y))
+                    .with("field", DValue::text(field))
+                    .with("both_full", DValue::Int(both1 as i64))
+                    .with("both_partial", DValue::Int(both0 as i64));
+                // What the earlier entry leaves and the later asks at that post (`authority.md` 5).
+                for (k, v) in [("leaves", worst.2), ("asks", worst.3)] {
+                    if let Some(v) = DValue::double(v) {
+                        d = d.with(k, v);
+                    }
+                }
                 d = d.related(via_diag::Related {
-                    subject: Subject::entity(atop, aid.clone()),
-                    site: authority_site(),
+                    subject: sa,
+                    site: site_a,
                     position: None,
-                    note: via_diag::text!("the earlier anchored feature"),
+                    note: if swapped {
+                        via_diag::text!("the later anchored ground of an import")
+                    } else {
+                        via_diag::text!("the earlier anchored feature")
+                    },
                 });
                 self.report(View::Build, d);
             }

@@ -361,7 +361,7 @@ pub struct StepDecl {
 }
 
 /// Every formula, with where it was written.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Formulas {
     pub env: Env,
     /// Per formula id: the entity and key path holding it.
@@ -480,7 +480,7 @@ pub(crate) fn requires_line(kind: &str) -> via_diag::Related {
 }
 
 /// The world read.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Decls {
     pub grid: Option<Grid>,
     pub seed: u64,

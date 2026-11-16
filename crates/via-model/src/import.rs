@@ -983,6 +983,65 @@ impl Imported {
         }
         out
     }
+
+    /// The import's anchored feature at the parent's point `p` (section 6.4, `authority.md` 5),
+    /// scoped `<id>.feature.<name>` and located at its `authority` line in the import's file: the
+    /// one whose outline's box holds `p`, else the first anchored one. `None` when it holds none.
+    pub(crate) fn anchored_at(&self, p: (i64, i64)) -> Option<(Subject, Site)> {
+        let (x, y) = to_import(&self.frame, p);
+        let anchored: Vec<&String> = self
+            .alone
+            .build
+            .features
+            .iter()
+            .filter(|(_, f)| f.tier == Some(Tier::Anchored))
+            .map(|(n, _)| n)
+            .collect();
+        let holds = |n: &&String| {
+            let pts = self.alone.build.features[*n].all_points();
+            let xs = pts.iter().map(|q| q.0);
+            let ys = pts.iter().map(|q| q.1);
+            let (Some(x0), Some(x1), Some(y0), Some(y1)) =
+                (xs.clone().min(), xs.max(), ys.clone().min(), ys.max())
+            else {
+                return false;
+            };
+            x0 as f64 <= x && x <= x1 as f64 && y0 as f64 <= y && y <= y1 as f64
+        };
+        let name = anchored
+            .iter()
+            .find(|n| holds(n))
+            .or(anchored.first())?
+            .to_string();
+        let world = self.alone.world.as_ref()?;
+        let site = match text_site(
+            world,
+            Subject::entity("feature", name.clone()),
+            Site::Key(via_diag::KeyPath::key("authority")),
+        ) {
+            Site::Text {
+                file,
+                line,
+                column,
+                bytes,
+            } => {
+                let dir = self.shown.rsplit_once('/').map_or("", |(d, _)| d);
+                let file = if file.starts_with("lib:") || dir.is_empty() {
+                    file
+                } else {
+                    format!("{dir}/{file}")
+                };
+                Site::Text {
+                    file,
+                    line,
+                    column,
+                    bytes,
+                }
+            }
+            other => other,
+        };
+        Some((Subject::entity(format!("{}.feature", self.id), name), site))
+    }
 }
 
 /// Builds and places every import of `d` (sections 2, 3, 5, 6.1, 6.2, 6.8, 10): fills

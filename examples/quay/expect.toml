@@ -36,6 +36,9 @@
 # of the working tree after 7056fc3 with the M4 slice 1 diff, 2026-11-16, one fresh store, one
 # build each, other agents building at the same time; the review on foot measured the same three
 # numbers on its own build.
+# M4 slice 3 (`given.land`, gate `entry`): every band re-checked, none moved: base 19/19, clear_one
+# 2/2, pin_one 3/3, unrelated 5/5, move_hill 7/7 (east_gate section's protocol, below). Heights
+# within 2e-6 m of the HEAD world's (the change review), plus `fields/land.npy`.
 
 # ------------------------------------------------------------------------------------------ base
 
@@ -200,3 +203,26 @@ band    = [2, 2]
 measure = "way_end_grade"
 band    = [0, 0.35]
 
+
+# ------------------------------------------------------------------------------------------ east_gate
+# A second exit (lib/town `entry`) at (244, 120), for `county`'s `forgotten_exit`. Built alone it
+# writes no field and nothing answers it, so the town is unchanged and nothing is said. Measured
+# M4 slice 3 (fix pass, 2026-11-16): release `via` of the working tree after e67c061 with the slice 3
+# diff, VIA_LIB=lib, Python 3.12 (sdk/python/.venv), one fresh store, base then east_gate
+# --against base, one build each, other agents building at the same time.
+
+[east_gate.lots_kept]
+measure = "lot_removed"
+band    = [0, 0]
+
+[east_gate.houses_kept]
+measure = "houses_removed"
+band    = [0, 0]
+
+[east_gate.streets_kept]
+measure = "street_removed"
+band    = [0, 0]
+
+[east_gate.errors]
+measure = "errors"
+band    = [0, 0]

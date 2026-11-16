@@ -303,3 +303,10 @@ mask  = "= if(sd >= 0, (1 - smoothstep(thick, thick + 0.25, sd)) * (1 - gate), 0
 
 [kind.gate]                                 # a point on an enclosure's outline where its wall opens
 radius = 1                                  # it writes no field
+
+# Where a way from outside comes into a town built apart: an exit (composition.md 7). A parent that
+# imports the town must answer it by name (a road that ends at it, or a deliberate end); built
+# alone, nothing answers it and nothing is said. It writes no field. Ours, written for `county`.
+[kind.entry]
+exit   = true
+radius = 1

@@ -258,8 +258,8 @@ Fixed: defaults = { a = 1 }
 severity = "error"
 chapter = "authority"
 milestone = 1
-summary = "Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`."
-data = ["field", "both_full", "both_partial"]
+summary = "Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`, `data.leaves`, `data.asks`."
+data = ["field", "both_full", "both_partial", "leaves", "asks"]
 explain = """
 Two anchored features write different values on one field at posts where both masks are exactly
 1. Neither may give way, so the build stops. The subject is the later feature, the earlier is in

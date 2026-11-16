@@ -1,0 +1,7 @@
+# The town moved and turned (docs/plan.md M4: "an import moved and turned"): its origin 24 m east and
+# 6 m north, its north turned 8 degrees west. Nothing else is written: the road ends at `town.gate`
+# and the views name the town's places, so they follow; the town reads this county's land under it
+# again through its given `land` (composition.md 12: a fill moved re-runs what reads a given).
+[import.town]
+at   = [324, 196]
+face = -8

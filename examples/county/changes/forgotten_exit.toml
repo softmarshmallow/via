@@ -1,0 +1,5 @@
+# The county asks for the town's own change `east_gate` by name (composition.md 11): a second way
+# into the town on its east side, and writes nothing that answers it. `import.exit_unanswered`, with
+# the line to write in `data.write` (composition.md 7). The fix: a road `ends_at = "town.east_gate"`.
+[import.town]
+changes = ["changes/east_gate.toml"]

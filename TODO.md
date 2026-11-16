@@ -59,6 +59,23 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
       and measurements that say how far the two differ.
 - [ ] -> none yet (open; owner to confirm at the M0 sheet whether it joins doctrine section 7 beside row 44): Fit other map examples to the spike model (recreations of well-known game maps) and tune the model.
 - [ ] -> M7: Delete `spike/`. The rewrite starts from the findings, never from the spike code.
+- [ ] -> M7 (owner, 2026-11-16): **Cutover cleanup of the pre-existing code.** Before `main` moves,
+      go through everything from before the rewrite and decide each piece: adopt, fold in, or drop.
+      What stays is a utility, an archetype or a higher-level module that via includes, never a
+      second core beside it.
+      - **Today:**
+        - `crates/via-terrain` (erosion, flow, sediment, climate) is the program behind `lib/terrain`,
+          used by `basin` and six derived cases. It is the one library step that bypasses the SDK
+          (`spec/protocol.md`).
+        - `crates/via-artifact` is kept only for its seed derivation.
+      - **To decide:**
+        - Whether `via-terrain` becomes a `lib:` step through the SDK or stays a program that the
+          spec admits.
+        - Whether `via-artifact`'s seed code moves into `via-num` and the crate goes.
+        - Which old modules (noise, rasters, config) duplicate the new crates and should go.
+        - Old docs under `docs/archive/` and any leftover old-workspace files.
+      - **Lesson:** the rewrite carried the old DEM work over as one library without settling its
+        shape; leave the final tree with one way in (the core plus `lib/` through the SDK).
 - [x] Refine the spike as if it were the product (done 2026-11-12): `spike/SPEC.md` states the
       contract as implemented, including a section of known limitations to review before the
       rewrite; `spike/kinds/` is the one library of kinds; `spike/check.py` guards six builds.
@@ -726,8 +743,30 @@ was warm against fresh; a case per family of input (text, file, place, blend rea
 - [ ] A seed override (`[import] seed`) does not reach attribute formulas.
 - [ ] `import.overlap` areas in doubles with convex clipping, not on the lattice (composition.md
   6.8 wants exact).
-- [ ] Gate failures: `anchored_clash` (no `authority.conflict`), `join_step` (`look.py`
-  FileNotFoundError), `moved_square` (no `town.step:lay/i:` nodes; waits on the slice 3 item above).
+- [x] Gate failures `anchored_clash` and `join_step` (M4 slice 3, label join): brought anchored
+  ground is an `Anchor` in `anchors_meet`, related the import's anchored feature at its
+  `authority` line; a step reads `<import>.<field>` (`ModelPlan::scoped_values`), refused at or
+  below the import's rank; a full view leaves out an import of a higher layer (new case
+  `join_below`). The `join_step` case itself was wrong twice: `look.py` must sit beside the
+  declaring layer file (`protocol.md` 6.1, working folder), and a returned field is `look#own`.
+  Lesson: run a new case's files against the protocol before calling the engine wrong.
+- [ ] `moved_square` (no `town.step:lay/i:` nodes) waits on import steps running (item above), and
+  then needs `for_each = "given:<name>"` (graph.rs and steps.rs accept only `kind:`) and a
+  `given:<name>` selector in the step view (`stepview.rs` `select_rows`). Shape found: the alone
+  build is eager in `import::built` (`finish_from` with no step returns) inside the parent's
+  `prepare`, so the import's step nodes must enter the CLI graph as `<id>.step:...` and the
+  `import:<id>`/`brought` nodes read them; a nested `build::run` per import would not give the
+  parent's ran set or trust (composition.md Open "Trust for an import's steps"). `import_step`'s
+  `a` declares no field `tone`, so its return is `make#tone` and the parent's `tone` is not
+  brought: fix that case (declare `[field.tone]` in `a`) when it is un-pended.
+- [ ] county (M4 slice 3): given features of a kind with effects cannot be given. `give = { roads =
+  ["north_road"] }` into quay's `[given.roads] kind = "main_street"` gave `doc.upward_ref` (given
+  rank is below the rank-0 fields its kind writes), `formula.type` (`width` not a number: the
+  fill kind's defaults are not applied) and `formula.outside_field` (the given path is not clipped
+  to the fill's extent). Fix all three, then give county's road to the town.
+- [ ] county: the town is bare in the parent: no streets or houses (import steps, above) and no
+  paint (`import.weights_dropped`); a turned town notches its quay wall (`wall_face`, seam 1.61).
+  `move_town` re-runs `import:town` whole (land given) and all 1280 field chunks.
 - [ ] A given region, a brought region and a `footprint` region keep only their first piece's shell:
   holes and further pieces are lost (`geo_to_parent`, `bring`).
 - [ ] Given features do not take the parent's authority (composition.md 8): `GivenFeature` has no
@@ -750,12 +789,111 @@ was warm against fresh; a case per family of input (text, file, place, blend rea
   5.3 GB). Profile unchanged and `winter` first (`distance`, `write:changes.json` 13 s).
 - [ ] townland change runs once took 4 to 35 times cold (1041 s wall, 60 s CPU) under load 9 to 18;
   a second fresh store did not repeat it. Re-time on a quiet machine; if it repeats, record what the
-  build waits on.
+  build waits on. M4 slice 3 re-time (release, fresh store, 1 run each, load 10 to 15, `/usr/bin/time -l`):
+  cold 22.7 s wall / 34.9 s CPU, `move_crossing` 23.3 s / 35.0 s, 0 swaps, 0 page faults, 0 block
+  I/O: not repeated. The engine's own waits do not lock (the build lock never blocks: read in the code, not measured); a wall that
+  far over CPU is a child step waiting (a plain step polls `try_wait`, a worker call
+  `recv_timeout`, both up to the 600 s deadline) or memory pressure from parallel builds. If it
+  repeats: `sample` the via pid and `ps` its children.
+- [ ] **A far edit re-runs every step because its reads are whole-extent** (M4 slice 3 profile;
+  graph.md Open). city `move_avenue` (1 run, 97.7 s against 101.6 s cold): all 10 steps re-run on a
+  changed answer, not a memo miss: houses_old/houses_rows read every `kind:main_street`,
+  houses_down every lot, old_streets `height` over [0,0,801,801]. Steps are 139 of the run's
+  node-seconds; houses_down alone 49 s. quay `unrelated` (8.2 s against 8.0 s cold): houses and
+  streets re-run on changed `build.features`. Fix in lib/town first (read the district's window
+  and its own streets), then per-item houses (5.3), then node-answered reads.
 - [ ] A turned import notches sheer ground (strait `move_b`, b at 80 degrees: water inside the
   slipway apron). No check sees it; a distortion measure, and resampling that keeps anchored edges.
 - [ ] `import.seam`'s message says "across the edge" for a step inside the blend band (harbour,
   27 m inside a): say where it is.
 - [ ] strait: the ferry is not drawn; no view shows the crossing between the imports.
+
+### From M4 slice 3 (2026-11-16; the change, on-foot and gate reviews, and the fix pass)
+
+The fix pass fixed: a scatter's `rule:` value was worked out from the world text alone
+(`pre_edit` read `Decls::read`), so a density reading an import's place or a step's returned field
+found nothing, the rule's value never changed and `held:` kept its key while its value moved:
+`diag.internal` on border `move_abbey` and `shut` built `--against` base. It now reads the plan's
+declarations (`Decls` and `Formulas` are `Clone`); case `graph/scatter_reads_step` failed before
+(exit 3, `diag.internal`) and passes. `authority.conflict` with the import's ground the later
+entry: the verbs were inverted and the hint asked the import to read the parent; now the earlier
+leaves and the later asks, the hint fits an import, and `data.leaves`/`data.asks` say which (case
+`anchored_clash_above`; `anchored_clash` checks the other order). `Anchor` owner is an enum. A
+given field is written as a build output (composition.md 8, a spec line); quay re-measured, every
+band held; quay `east_gate` section. Lesson: a value computed from a second, partial read of the
+world is an edge the graph cannot see; compute it from the plan's own declarations.
+
+**-> M4 slice 4**
+- [ ] `moved_square` still fails (no `town.step:lay/i:` nodes): M4's acceptance is not met. See
+  the slice 2 items (import steps, `for_each = "given:<name>"`).
+- [ ] border: water stands 0.2 to 1.0 m in the walks (2188 posts above 0.05 m; max 1.02 m at
+  (432, 364); west_opening blocked by 0.69 m). Each place's water is brought over its footprint as
+  that place's ground alone, and the join's rank-1 walk beds lower the ground after it. Moving
+  `[field.water]` into layers/join.toml changed nothing (2188 both ways: brought water, not the
+  base); a layer cannot add a row to a field of another file (`identity.duplicate_id`). Needs a way
+  to dry brought water against the joined ground (a kind effect on `tag:water_level` in the trail,
+  or a rule in composition.md 6.2), then a `walk_wet` measure.
+- [ ] A step other than a generate step at a join that reads `<import>.<field>` gets "no field",
+  not a named refusal (composition.md 6.5 now says only a generate step reads it).
+- [ ] `ModelPlan::scoped_values` makes a `Fields::new` per read (each window of `<import>.<field>`);
+  unmeasured on a large world. Memoise per plan.
+- [ ] county: `merge` rebuilds the imported town on every build (2.7 s of 5.4 s node time on
+  unchanged, 63% of cold); `move_town` re-runs 1280 of 1280 chunks. Add an unchanged-percent row to
+  county's expect.toml once `brought:` nodes exist.
+- [ ] county `move_town`: the quay wall scalloped by the lattice and a staircase band along the
+  turned town's edge in join_shore/join_west (paint or region edge on cells, not height: heights
+  within 0.2 m over 3 m there). Resample paint with the footprint.
+- [ ] border views: `at_gate` hugs the enclosure wall 0.75 m off (move the eye 5 to 8 m east, out
+  of the gate); `south_opening` aims at the gate through the wall corner (aim at a point on the
+  south walk); `wild.look_corner` to `wild.west_end` is blocked by the bank (add the reach pair or
+  move the bank to the parent side); fringe trees on the steep bank (a slope limit is in the
+  density, 22 to 30 degrees: check the bank's slope against it); brought views outside the
+  footprint look at grass (drop or flag them).
+- [ ] city unchanged peaks above cold (6.25 vs 5.05 GB) and `write:changes.json` takes 4.7 s
+  (known, the slice 2 cost item).
+
+### From the M4 close (2026-11-16; docs/reports/m4-sheet.png, the slice 3 reports)
+
+Lesson: M4 slice 2 took 11 hours. A slice that grows past its box hides what is late; slice 3 ran
+five agents in 90-minute boxes and wrote what did not fit here instead of carrying it. Keep that.
+M4 closes on paper with its third acceptance unmet: a moved square is not shown (below, first).
+The open "-> M4 slice 4" items above are re-sorted here; check them off in both places.
+
+**-> M5 (first, before M5's own work: M4's unmet acceptance and its costs)**
+- [ ] Import steps run inside the parent's build (`<id>.step:...` nodes in the parent's graph,
+  trust for an import's steps), then `for_each = "given:<name>"` and a `given:` selector; then
+  `composition/moved_square` passes. Until then county's town is bare (`town_streets` 0,
+  `town_instances` 0) and the moved square is not shown.
+- [ ] `brought:<id>/<field>` nodes per chunk and the import's graph in the parent's: county
+  unchanged pays `merge` (2.7 s of 5.4 s node time; unchanged 56 to 63% of cold over three runs of
+  the slice), `move_town` re-runs 1280 of 1280 chunks, strait `move_b` all of its chunks. Then an
+  unchanged-percent row in county's expect.toml.
+- [ ] Paint and weights brought across an import (`import.weights_dropped` in every import of the
+  three worlds): no setts, flags or trail paving show in county or border.
+- [ ] A turned import notches sheer ground: county quay wall scalloped, a staircase band along the
+  turned town's edge (paint or region edge on cells), seam 14 pairs at 1.61; strait b's slipway
+  apron. Resampling that keeps anchored edges, paint resampled with the footprint, a distortion
+  measure.
+- [ ] border: brought water stands in the walks (2188 posts above 0.05 m, max 1.02 m); a way to dry
+  brought water against the joined ground, then a `walk_wet` measure.
+- [ ] Given features cannot be given (county: `doc.upward_ref`, `formula.type`,
+  `formula.outside_field`); a `features` given has no `default` selector though the spec says so;
+  a given region's default cannot be a named region. Then give county's road to the town.
+- [ ] Plan step 6 for M4: a fresh agent builds a small variation (a third import, or a world
+  meeting another by ground) from the documents alone. Not run.
+
+**-> later**
+- [ ] border views and reach (`at_gate`, `south_opening`, `wild.look_corner`, trees on the bank,
+  brought views outside the footprint): the slice 3 list above.
+- [ ] Vocabulary the border agent could not say: growth from a part's own rule past its footprint,
+  names for an outline's sides, two `follows` on one outline ending on each other, a name
+  attribute holding several names, `blend` naming a place (composition.md 6.3 against 4).
+- [ ] county: the erosion step on the county's land (skipped for the box); a README; views of the
+  town's district once its steps run.
+- [ ] Wide reads make a far edit re-run every step (city `move_avenue`, quay `unrelated`): the
+  slice 3 profile item above; city unchanged peaks above cold.
+- [ ] `scoped_values` per read, a named refusal for a non-generate step reading `<import>.<field>`,
+  `anchored_at` by box containment: the slice 3 items above.
 
 ## Framing
 

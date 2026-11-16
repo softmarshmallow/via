@@ -803,6 +803,7 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
 | causes, returned field | M2 | `returned file bytes`' world | rebuild | the returned field's entry names `step.<id>.params` |
 | per item | M3 | three districts, `for_each = "kind:district"`; one moved | rebuild | exactly one `step:<id>/i:` call ran |
 | item added | M3 | a fourth district | rebuild | one call ran; the other three `reused` |
+| scatter reads step | M4 | a scatter in a layer of rank 1 whose density reads a field a generate step there returns (by tag), an import's footprint and `slope('height')`; a change makes half the ground steep | build; the change `--against` the first, one store | exit 0, no `diag.internal`; the same build as a clean one. The rule's value is computed from the plan's declarations (imports brought, steps' returns), not the world text alone |
 
 ## Changed from the spike
 
@@ -832,4 +833,9 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
 - **A read answered from the nodes it names** (5.1, Reuse). A changed world misses every memo
   key and makes the whole build per stratum, so a far edit still costs about a cold build.
   Decided by `city` `move_avenue` and the M4 acceptance (a moved square re-runs only its
-  district).
+  district). Ours (M4 slice 3 profile; 1 run each, release, fresh store, load 10 to 15; numbers
+  in TODO): on quay `unrelated` and city `move_avenue` no step re-runs
+  for a missed memo key; each re-runs because a read's answer changed (the first differing read
+  is a whole-extent `build.field`, every `kind:main_street`, every lot), and a step that runs needs
+  the build anyway. Node-answered reads pay only once those reads are narrowed to what a district
+  uses and the houses steps are split per item (5.3).

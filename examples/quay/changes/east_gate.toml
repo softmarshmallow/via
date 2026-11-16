@@ -1,0 +1,5 @@
+# A second way into the town, on its east side (`county`'s `forgotten_exit` asks for it by name,
+# composition.md 11): an exit a parent must answer. Alone, nothing answers it and nothing is said.
+[feature.east_gate]
+kind = "entry"
+at   = [244, 120]

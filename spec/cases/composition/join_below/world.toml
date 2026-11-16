@@ -1,0 +1,19 @@
+name       = "join_below"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[layer.join]
+file  = "layers/join.toml"
+owner = "join"
+rank  = 1
+
+[layer.top]
+file  = "top.toml"
+owner = "top"
+rank  = 2

@@ -1,0 +1,90 @@
+name       = "border"
+extent     = [0, 0, 640, 560]               # metres: x east, y north
+resolution = 1
+datum      = "border"                       # the wild says the same; the abbey declares none (lift below)
+seed       = 31
+include    = ["land", "ways", "town", "vegetation", "review", "bank"]
+pack       = "starter"
+
+# Border: two places built apart, meeting by ground, not by a bridge (docs/plan.md M4; R8, R10,
+# composition.md 6). The spike's `border` met a college with a wild; the college is an M5 world, so
+# the built place here is `examples/monastery`, imported by file, unchanged. This file says where
+# each stands, what of each is brought (its footprint, a shape), and the bare ground between them.
+# Everything about the meeting itself is in layers/join.toml, a layer ranked above this one with
+# its own owner (composition.md 6.5, R36).
+#
+#   wild/                the wild, built apart: hills and woods, two trails ending at two exits
+#   ../monastery/        the abbey, built apart (the monastery example, its south-west shelf brought)
+#   layers/join.toml     rank 1: the bank and its two openings, the walks, the growth, views, reach
+#   changes/move_abbey   the abbey 30 m east; nothing in the join is edited
+#   changes/shut         both openings shut: the walker no longer reaches the wild
+
+[layer.join]
+file  = "layers/join.toml"
+owner = "join"
+rank  = 1
+
+[let]
+agreed = "= 18 + 0.17 * (y - 240) + 24 * smoothstep(475, 560, y)"         # the slope both places were built to near the corner
+
+# ------------------------------------------------------------------------------------------ fields
+# Named as both places name theirs, same role, type and unit, so each is brought (composition.md
+# 6.2). Between the footprints, the corner's bare ground: the agreed slope, with the mountain the
+# abbey stands under rising 24 m from y = 475 (the monastery's own rise; without it the abbey's
+# north-east steps 24 m onto the slope, import.seam 2.18 at (460, 552)).
+
+[field.height]
+role = "surface"
+base = "= agreed + 0.4 * fbm(40, 3, seed = 'bare')"
+
+[field.water]
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+[field.cover]                               # the wild's woods come in by its own cover; the bare ground has none
+tags = ["cover"]
+base = "= 0"
+
+[field.off_corner]                          # metres from the wild's own outline of its kept corner, to 20
+base = "= dist('wild.meet', 20)"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.rock]
+paint = "rock"
+mask  = "= smoothstep(30, 40, slope('height'))"
+
+# ------------------------------------------------------------------------------------------ the places
+# The wild keeps its north-east corner clear; its footprint is the L around it, so nothing of its
+# corner is brought. Its ground fades in over the 16 m nearest its own outline of that corner
+# (`wild.meet`, a place of the wild): along the world's edge it holds whole. Written as
+# `smoothstep(0, 16, d)` it faded along the extent too, onto the bare slope 20 m below its hills
+# (import.seam 1.44 at (145, 8)). `blend` cannot name a place (6.3 lists what it reads), so the
+# distance is a parent field that does.
+
+[import.wild]
+file      = "wild/world.toml"
+at        = [0, 0]
+footprint = [[0, 0], [640, 0], [640, 220], [250, 220], [250, 560], [0, 560]]
+blend     = "= smoothstep(0, 16, f('off_corner'))"
+
+# The abbey: `monastery` placed in the corner. Its footprint is a shape in its own frame: the shelf
+# and the compound west of the gorge (x below 168), from 30 m up its slope to its north edge; the
+# gorge, the bridge and the switchback road stay at home. It declares no datum, so the lift is
+# written (0: it was built to the agreed slope; composition.md 5). Its anchored ground (the
+# enclosure's yard) holds against the join's shaped content (6.4); the rest of it is `shaped`.
+[import.abbey]
+file      = "../monastery/world.toml"
+at        = [300, 240]
+footprint = [[0, 30], [168, 30], [168, 320], [0, 320]]
+blend     = "= smoothstep(0, 16, d)"
+lift      = 0

@@ -219,6 +219,11 @@ the split into two entries is ours.
   feature of largest mask at the reported post in `related` (its import file and line). Overruling
   ground an import anchored is never silent (R10). This settles `authority.md`'s open line: an
   error where both masks are 1, a warning where they fade.
+- When the import's anchored ground is the later entry (the import's layer ranked above the parent
+  feature), the subject is still the parent feature: it leaves its value and the import asks. An
+  import's ground reads nothing of the parent, so the hint offers making the parent feature
+  `shaped`, moving it off the import, or ranking the import's layer below it (case
+  `anchored_clash_above`).
 - **Where the two entries stand.** Each is one entry of the layer that declares the import, at
   that layer's rank, nested in nothing and with no `order` (0); its id for R29's last tie-break is
   `<import>` (`a`), bytewise, against the parent's own ids. So ties inside one tier are R29's:
@@ -239,7 +244,12 @@ import**. No other key is needed:
 - a generate step declared in it reads the joined ground in its stratum (`authority.md` 4.4), and
   `<import>.<field>` for each side's own: this is **a step at a join**, code handed both sides
   (TODO "a step that runs at a join"); a step in a layer at or below the import's rank that asks for
-  `<import>.<field>` is `graph.read_outside`, naming the import's layer.
+  `<import>.<field>` is `graph.read_outside`, naming the import's layer. A step's full view of a
+  brought field keeps an import's entries only when the import's layer is at or below its own
+  (`authority.md` 4.4: entries of a higher layer are left out); its head view holds no import
+  entry, as it holds no effect (6.4: an import's ground enters as tier entries, not rows). Only a
+  generate step reads `<import>.<field>`; to a lint or plain step it names no field (TODO: a named
+  refusal for it).
 
 The spike's `after = "parts"` and the vocabulary's `after = "imports"` are dropped (principle 10):
 rank already says it. `after` on a layer is `doc.unknown_key` with the fixed hint "`after` was
@@ -356,6 +366,11 @@ give = { land = "height", limits = "town_limits", districts = "kind:district", d
   correction of slice 2, the text said nothing of which value is handed and every reading but
   this one is a loop); a fill whose extent, as placed, reaches past the parent's is
   `import.give_outside` (error), with `data.area`. A number is handed as written.
+- **A given field is a field of the fill's build**: written to `fields/<name>.npy` like any scalar
+  field, its default when built alone and the parent's values when given, so a loader or step of
+  the fill sees the ground it was handed. A world that turns its base into a given (`quay`'s
+  `land`) so gains one output file and keeps its other fields' values (within 2e-6 m on `quay`:
+  the formula is evaluated as a field, then read). Ours; the text said nothing (M4 slice 3 review).
 - **Given features** take the given's `kind` (the fill's own kind), the parent's authority, and
   the attributes written on them, by name; the parent kind's defaults and formulas stay the
   parent's and are not handed down. A written attribute the fill's kind does not declare is
@@ -585,7 +600,8 @@ re-runs (`conformance.md` 5) apply to every build.
 | cycle | M4 | `a/world.toml` imports `../world.toml`, which imports `a` | merge | `import.cycle` naming both files; exit 1. |
 | parent_anchored | M4 | A shaped import of height 2; a parent anchored feature setting height 5 over part of it | build | Height 5 under the parent feature; 2 elsewhere in the footprint. |
 | import_anchored | M4 | An import holding an anchored feature setting height 3; a parent shaped feature setting 9 over it | build | Height 3 there: the import's anchored ground holds. |
-| anchored_clash | M4 | The same import; the parent's feature anchored | build | `authority.conflict`, subject the parent feature, `related` the import's feature in `a/world.toml`; exit 1. |
+| anchored_clash | M4 | The same import; the parent's feature anchored | build | `authority.conflict`, subject the parent feature, `related` the import's feature in `a/world.toml`, `data.leaves` 3 below `data.asks` 9; exit 1. |
+| anchored_clash_above | M4 | As `anchored_clash`, the import declared in a layer of rank 1, so its anchored ground is the later entry | build | `authority.conflict`, subject the parent feature, `related` the import's feature; the earlier `over` leaves 9 and the import asks 3 (`data.asks` below `data.leaves`); the hint never asks the import's ground to read the parent; exit 1. |
 | layer_rank | M4 | A shaped import of height 2 in the world layer; a shaped parent feature setting 6 in layer `join` rank 1; then `join` at rank -1 | build each | 6 there; then 2. |
 | after_dropped | M4 | `[layer.join] after = "imports"` | merge | `doc.unknown_key` at `after`. |
 | blend_ground | M4 | `a`'s height -3 west of x = 4 and 2 east; parent height -5; `blend = "= smoothstep(-1, 0, a.height)"` | build | -5 at a post where `a` is -3; 2 at a post where `a` is 2. |
@@ -606,7 +622,8 @@ re-runs (`conformance.md` 5) apply to every build.
 | give_cycle | M4 | A parent region given to `town` as `limits`, written `where = "= dist('town.edge', 8) < 2"`, with `town.edge` following `limits` | build | `graph.cycle`; exit 1. |
 | give_reads_fill | M4 | The same, the limits drawn from `town.arterial`, a path that reads no given, while `town.edge` follows `limits` | build | No `graph.cycle`; exit 0. |
 | moved_square | M4 | Two districts (their kind has a default `tone`, written on neither) and a square in each, given to a fill whose worker step has `for_each = "given:districts"` and reads `given:squares` within its item; a change moving one square inside its district | build; build with the change | No diagnostic (a default is not handed down); second: `town.step:lay/i:districts.d1` ran, `town.step:lay/i:districts.d2` did not. |
-| join_step | M4 | A generate step in layer `join` (rank 1) reading `height` and `a.height`, returning field `own` = `a.height`; then the step in a layer of rank -1 | build each | `own` equals `a`'s height inside the footprint; then `graph.read_outside`. |
+| join_step | M4 | A generate step in layer `join` (rank 1) reading `height` and `a.height`, returning field `own` = `a.height`; then the step in a layer of rank -1 | build each | `look#own` equals `a`'s height inside the footprint; then `graph.read_outside`. |
+| join_below | M4 | `a` (height 2) declared in layer `top` (rank 2); a generate step in layer `join` (rank 1) returning `seen` = `height` | build | `look#seen` 0 at post (12, 4), the build's `height` 2 there: the step's stratum leaves out an import of a higher layer. |
 | nested_names | M4 | `p` imports `m` at (8, 0); `m` imports `n` at (2, 0) holding instance `hut` at (1, 1); a bookmark `on.ref = "m.n.hut"` | build | `m.n.hut` at (11, 1). |
 | placement_keys | M4 | An import with `at` and `on`; then neither | merge each | `doc.placement_twice`; then `doc.missing_key`, subject `import.a`. |
 | given_default | M4 | A fill's `[given.land]` `accepts = "field"` with no `default`; then `number`; then `region` | merge each | `doc.missing_key`; again; then no diagnostic. |

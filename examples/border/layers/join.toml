@@ -1,0 +1,120 @@
+# Layer `join` (rank 1, owner `join`): everything about where the abbey meets the wild, and nothing
+# else. Ranked above the layer that declares both imports (composition.md 6.5), so its shaped
+# entries come after the imports' shaped ground and are not blended away, and its step reads the
+# joined ground. It edits neither place and writes no coordinate: it names their places, their
+# footprints and their fields, so it follows when either one moves (changes/move_abbey.toml).
+
+# ------------------------------------------------------------------------------------------ the walks
+# Each answers one of the wild's exits (composition.md 7). The south walk leaves by the abbey's
+# gate; the west walk forks from it, 30 % of the way down (a point on a path, by name).
+
+[feature.south_walk]
+kind      = "trail"
+width     = 2.4
+starts_at = "abbey.gate"
+ends_at   = "wild.south_end"
+path      = []
+
+[feature.fork]
+on = { ref = "south_walk", t = 0.3 }
+
+[feature.west_walk]
+kind      = "trail"
+width     = 2.4
+starts_at = "fork"
+ends_at   = "wild.west_end"
+path      = []
+
+# ------------------------------------------------------------------------------------------ the bank
+# Along the two sides of the wild's outline that face the abbey (its kept corner's south side, then
+# its west side), 14 m outside the wild's edge on the corner's bare ground. It opens where a walk
+# passes (this project's lib/bank), so the openings follow the walks.
+# The span is a fraction of the wild's outline as placed: its sides have no names (TODO). Two
+# features, one per side, because a name attribute holds one name: each owns its walk's crossing.
+# They stop short of the corner (0.5125 and 0.526667, not 0.520833): two paths offset along one
+# ring cross at its corner, and `follows` takes no `starts_at` to make one end on the other, so
+# they end 6 m apart and their crests overlap there (geom.unowned_crossing otherwise).
+
+[feature.bank_s]                            # the corner's south side, east to west
+kind      = "bank"
+follows   = { ref = "wild.footprint", span = [0.358333, 0.5125], offset = -14 }
+opens_for = "south_walk"
+
+[feature.bank_w]                            # its west side, south to north
+kind      = "bank"
+follows   = { ref = "wild.footprint", span = [0.526667, 0.6625], offset = -14 }
+opens_for = "west_walk"
+
+# ------------------------------------------------------------------------------------------ growth across the join
+# The wild's woods stop at its footprint, and the abbey plants none outside its walls. A step at the
+# join reads both sides: the wild's own cover (`wild.cover`) and the abbey's ways and yard
+# (`abbey.clearing`), and returns `spread`, the wild's cover carried out over the bare ground,
+# fading over about 60 m and kept off what the abbey keeps clear. The trees on it are the wild's
+# own mix and spacing (wild/world.toml `scatter.trees`), written again here: the vocabulary cannot
+# say "run the wild's scatter over this ground" (README, What the vocabulary could not say).
+
+[step.fringe]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/fringe.py"]
+params  = { fade = 0.965, reach = 70 }
+
+[scatter.fringe_trees]
+assets  = [{ id = "tree_oak", weight = 3 }, { id = "tree_pine", weight = 2 }]
+spacing = 9
+density = "= f('tag:fringe') * if(inside('wild.footprint'), 0, 1) * (1 - smoothstep(22, 30, slope('height')))"
+scale   = [0.8, 1.25]
+
+# ------------------------------------------------------------------------------------------ views (R17)
+# At both openings, along the bank from each side, and at the gate.
+
+[feature.at_gate]                           # leaving the abbey by its gate, down the south walk
+kind   = "bookmark"
+on     = { ref = "south_walk", t = 0.03 }
+toward = "wild.south_end"
+
+[feature.south_opening]                     # in the south opening, looking back up to the abbey
+kind   = "bookmark"
+on     = { ref = "south_walk", t = 0.8 }
+toward = "abbey.gate"
+
+[feature.west_opening]                      # coming in from the wild by the west opening
+kind   = "bookmark"
+on     = { ref = "west_walk", t = 0.85 }
+toward = "fork"
+
+[feature.bank_south]                        # along the bank's south arm from the wild's side
+kind   = "bookmark"
+on     = { ref = "bank_s", t = 0.3, offset = 12 }
+toward = "south_opening"
+
+[feature.bank_west]                         # along the bank's west arm from the wild's side
+kind   = "bookmark"
+on     = { ref = "bank_w", t = 0.7, offset = 12 }
+toward = "west_opening"
+
+[feature.bank_corner]                       # the bank's corner, from the abbey's side
+kind   = "bookmark"
+on     = { ref = "bank_w", t = 0.03, offset = -16 }
+toward = "abbey.gate"
+
+# ------------------------------------------------------------------------------------------ reach (lib/review)
+# From the abbey's gate a walker reaches both exits and the wild's far places, and the bank stops
+# them anywhere else: the corner of the bank's two arms is sealed from the gate's side (it stands on
+# the bank's crest). changes/shut.toml shuts both openings and states the wild sealed.
+
+[step.reach]
+when    = "lint"
+command = ["python", "-m", "viasdk", "lib:review/reach.py"]
+
+[step.reach.params]
+reach = [
+  { profile = "walker", from = "abbey.gate", to = ["wild.south_end", "wild.west_end", "wild.far_wood", "wild.crag"] },
+]
+
+[step.reach.params.profiles.walker]         # metres; the monastery's walker
+grade = 0.5
+step  = 0.2
+width = 0.6
+wade  = 0.3
+reach = 2

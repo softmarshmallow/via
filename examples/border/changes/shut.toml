@@ -1,0 +1,14 @@
+# Both openings shut: is every way out through one of them? The bank closes over the walks; the
+# reach lint then states the wild's places sealed from the gate. If any is reached, the bank has a
+# way round and `not_sealed` says where.
+[feature.bank_s]
+open = 0
+
+[feature.bank_w]
+open = 0
+
+[step.reach.params]
+reach  = []
+sealed = [
+  { profile = "walker", from = "abbey.gate", to = ["wild.south_end", "wild.west_end", "wild.far_wood", "wild.crag"] },
+]

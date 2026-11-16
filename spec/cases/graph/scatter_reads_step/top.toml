@@ -1,0 +1,10 @@
+[step.gen]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/gen.py"]
+
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 7
+jitter  = 0
+density = "= f('tag:fringe') * if(inside('a.footprint'), 0, 1) * (1 - smoothstep(20, 30, slope('height')))"

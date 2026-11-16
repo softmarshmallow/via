@@ -1,0 +1,23 @@
+name       = "scatter_reads_step"
+extent     = [0, 0, 64, 64]
+resolution = 1
+datum      = "sea"
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.a]
+file = "a/world.toml"
+at   = [0, 48]
+
+[layer.top]
+file  = "top.toml"
+owner = "tests"
+rank  = 1
+
+# The east half rises steeply: the scatter's slope term clears the trees there; nothing the step
+# reads changes, and the import stays where it is.
+[change.steep.field.height]
+base = "= if(x > 32, 2 * (x - 32), 0)"

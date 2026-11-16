@@ -283,7 +283,7 @@ Fixed: the base colour texture bound in the model, or nothing if flat colour is 
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
 | `authority.attribute_twice` | error | 1 |  | An attribute declared in both `defaults` and `requires`. |
-| `authority.conflict` | error | 1 | `field`, `both_full`, `both_partial` | Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`. |
+| `authority.conflict` | error | 1 | `field`, `both_full`, `both_partial`, `leaves`, `asks` | Two anchored features disagree where both masks are 1; subject the later; values, post, counts: `data.field`, `data.both_full`, `data.both_partial`, `data.leaves`, `data.asks`. |
 | `authority.gave_way` | warning | 3 |  | A produced instance's footprint would move a value more than its kind's `max_change`, so the instance is not placed (M3, 2.2); the instance, field, amount, limit and post. |
 | `authority.ground_requires` | error | 1 |  | An instance grounds with a kind that has `requires`; the instance's `ground` line and the kind's `requires` line. |
 | `authority.hidden` | info | 1 |  | An entry left no trace: later entries with mask 1 cover all of it; once per feature and field. |

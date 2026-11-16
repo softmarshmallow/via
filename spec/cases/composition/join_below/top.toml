@@ -1,0 +1,6 @@
+# The import, declared in a layer ranked above the step's. Beside world.toml, so `file` reads the
+# same from the world's folder and from this layer's.
+[import.a]
+file = "a/world.toml"
+at   = [8, 0]
+max_grade = 10

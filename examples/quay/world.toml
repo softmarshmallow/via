@@ -3,6 +3,7 @@ extent  = [0, 0, 256, 256]
 seed    = 7
 include = ["land", "water", "town", "review"]   # kinds as data; the core knows none of these words
 pack    = "starter"
+datum   = "sea"                             # heights over the sea's datum: a parent that imports it says the same
 
 # A small harbour town on a slope down to the water (docs/plan.md, M3). The land falls south to a
 # harbour; a waterfront owns the bank (R18) and the streets end on it; one main way comes down from
@@ -23,9 +24,16 @@ quay  = 3.5                                 # metres: the deck, a metre and a ha
 
 # ------------------------------------------------------------------------------------------ fields
 
-[field.height]                              # a slope rising north from the harbour, a hill on it
+# What a parent may hand the town (composition.md 8; `county` imports it as a fill). Alone, each
+# given takes its default, so the town built alone is the town as it was, on its own land: heights
+# the same within 2e-6 m, plus `fields/land.npy` (a given field is written, composition.md 8).
+[given.land]                                # the ground the town stands on
+accepts = "field"
+default = "= quay + 0.15 * (y - 46) - 6 * (1 - smoothstep(30, 46, y)) + 9 * (1 - smoothstep(0, 70, dist('hill', 90))) + 1.2 * fbm(70, 3, seed = 'lumps') * smoothstep(46, 70, y)"
+
+[field.height]                              # alone: a slope rising north from the harbour, a hill on it
 role = "surface"
-base = "= quay + 0.15 * (y - 46) - 6 * (1 - smoothstep(30, 46, y)) + 9 * (1 - smoothstep(0, 70, dist('hill', 90))) + 1.2 * fbm(70, 3, seed = 'lumps') * smoothstep(46, 70, y)"
+base = "= land"
 
 [field.water]                               # lib/water's convention: dry, it is the ground
 tags = ["water_level"]
@@ -58,8 +66,9 @@ path  = [[4, 46], [252, 46]]                # the deck's fade stays within the a
 [feature.old_town]                          # the district the local streets fill; its foot is the quay
 region = [[24, 46], [232, 46], [232, 196], [24, 196]]
 
-[feature.gate]                              # where the main way comes in, above the town
-at = [140, 212]
+[feature.gate]                              # where the main way comes in, above the town: an exit
+kind = "entry"                              # (lib/town), which a parent that imports the town answers
+at   = [140, 212]
 
 [feature.quay_head]                         # where the main way meets the quay (R18: a named meeting)
 on = { ref = "quay", t = 0.42 }

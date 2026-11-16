@@ -1,0 +1,32 @@
+# This project's own kind (documents.md 4: found in lib/ beside the world file). The core knows
+# none of these words.
+#
+# A bank: a crest along a path too steep to walk over, a flank falling away on each side. It opens
+# wherever one of the world's own trails (lib/ways, `kind:trail`) passes within `gap` metres, so
+# the openings are where the walks cross it and move when the walks move. `open = 0` shuts every
+# opening (changes/shut.toml): the proof that every route out passes one.
+[kind.bank]
+authority = "shaped"
+radius    = 16
+requires  = ["opens_for"]
+names     = ["opens_for"]               # the walks it opens for: their crossings are its own (geometry.md 2.7)
+
+[kind.bank.defaults]
+rise  = 7                                   # metres the crest stands over the ground
+crest = 2.5                                 # metres either side of the line at full height
+flank = 6                                   # metres over which it falls to the ground
+gap   = 10                                  # metres either side of a trail kept open
+open  = 1                                   # 0: no openings
+
+[kind.bank.let]
+opening = "= max(1 - open, smoothstep(gap, gap + 4, dist('kind:trail', 30)))"
+
+[kind.bank.effect.raise]
+field = "role:surface"
+value = "= v + rise * (0.85 + 0.15 * fbm(14, 2, seed = 'bank')) * (1 - smoothstep(crest, crest + flank, d))"
+mask  = "= (1 - smoothstep(crest + flank, crest + flank + 3, d)) * opening"
+
+[kind.bank.effect.bare]                     # nothing grows on it
+field = "tag:cover"
+value = "= 0"
+mask  = "= (1 - smoothstep(crest, crest + flank + 2, d)) * opening"

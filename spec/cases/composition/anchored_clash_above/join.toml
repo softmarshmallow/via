@@ -1,0 +1,7 @@
+# The import is declared in a layer ranked above the world, so its anchored ground is the later
+# entry and the parent's `over` the earlier (composition.md 6.4).
+
+[import.a]
+file = "a/world.toml"
+at   = [8, 0]
+max_grade = 10
