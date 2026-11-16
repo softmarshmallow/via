@@ -33,7 +33,7 @@ key on a step.
 | `inputs` | list of strings | no, `[]` | Outside files or folders, relative to the declaring document. A folder is digested as the sorted list of its files (`graph.md` 5.1). A path that does not exist is `graph.input_missing` (`graph.md` 5.1). Their change re-runs the step. |
 | `for_each` | selector | no | One call per selected item (1.2). The item reaches the step in its request. |
 | `checks` | list of strings | no | On a lint step only: the generate steps whose stated facts it checks (`derived.md` 5). |
-| `output` | id | no | On an export step only (M6): the name under which a reader finds what the step writes, an id its library chooses and documents, as a kind's `output` (`build.md` 9.2). The manifest's `exports` carries it (`build.md` 11.4). On a generate or lint step: `doc.unknown_key`. The map library's is `player_map` (`build.md` 9.4). Ours. |
+| `output` | id | no | On an export step only (M6): the name under which a reader finds what the step writes, an id its library chooses and documents, as a kind's `output` (`build.md` 9.2). The manifest's `exports` carries it (`build.md` 11.4). On a generate or lint step: `doc.unknown_key`; one that is not an id: `identity.bad_id`. The map library's is `player_map` (`build.md` 9.4). Ours. |
 
 The word `worker` is kept (vocabulary left it open): it names what the process is, and a bool
 cannot be misspelt into a third transport.
@@ -151,7 +151,9 @@ command is handed; that is why it is the command's static key and its trace is e
 It writes into `out` (section 5) and exits. Exit status 0 is success; any other is
 `protocol.failed` (6.2). Its standard output and error are both its log. A plain
 command is handed everything in its view, so it runs again when anything in its view changes.
-Reading less is what a worker is for.
+Reading less is what a worker is for. An export step is no exception (M6): a plain export runs
+again on any change to the finished build, a worker export only when an answer of its trace
+changes (`build.md` 11.4).
 
 ## 3. The worker (M2)
 
@@ -314,7 +316,10 @@ Fields and large tables never travel as JSON (R20). They travel as blobs.
   `<objects>/ab/<digest>` (`graph.md` 3.2; `ab` the digest's first two hex digits; `tmp/` is the one
   flat entry) by a move that never replaces: `link` then `unlink` on macOS and Linux,
   `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING` on Windows. If the name exists, the move fails
-  and the new copy is deleted; the old one is kept. A blob is never replaced, appended to or deleted
+  and the new copy is deleted; the old one is kept. Since that copy would be deleted, the engine
+  does not write a blob whose name it finds in place (ours, M6): a replayed answer (`graph.md` 5.1) names
+  the blobs it named when first given, and writing each again, flushed, cost most of the replay. A
+  blob is never replaced, appended to or deleted
   while a build runs. This keeps Windows working: a mapped file there cannot be replaced or deleted.
   A `tmp/` entry older than one day is deleted at the start of a build; a fresh one may belong to
   another build sharing the store.
@@ -948,6 +953,7 @@ by code, severity, subject, location and `data`.
 | 73 | M5 | A generate step returning `p` with `ends_at = "q.start"`, `q`, and `t` with the name attribute `host = "q"`; a lint reading meetings (`c73_own_names`) | One meeting `make#p.end` with `make#q.start`, gap 0; `host` is `make#q`. |
 | 74 | M5 | A lint asking `surfaces_at` at three points and `sample` of a kind surface (`= level + 0.5 * x`) and of the terrain (`= x`) (`c74_surface_questions`) | Rows by point then `z`, none outside the extent; the kind surface's `gx` 0.5, one-sided at the bound's edge, `inside` false beyond it; the terrain's `gx` 1. |
 | 75 | M5 | `sample` of `deck.tops` where the surface is `deck.top` (`c75_sample_not_surface`) | `surface.not_surface` on the step, `data.nearest = "deck.top"`, exit 1. |
+| 77 | M6 | A lint step writing `output = "player_map"`, and an export step writing `output = "Player Map"` (`c77_output_key`) | `doc.unknown_key` at the lint's `output`; `identity.bad_id` at the export's, hint `player_map`; exit 1. |
 
 ## Changed from the spike
 

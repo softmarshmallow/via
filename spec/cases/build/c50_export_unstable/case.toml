@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "A plain export that writes the time; build; build with --rerun-step: graph.step_unstable in the run report, and the id follows the new bytes."
+milestone = 6
+actions   = ["program", "trust", "first", "rerun"]
+
+# build.md Conformance 50, 11.4; graph.md 5.2: an export's instability is found as any step's.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.first]
+via      = ["build", "world.toml", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "the export's output differs by design"
+
+[action.first.file.listed]
+path   = "build/w/export/stamp/stamp.json"
+exists = true
+
+[action.rerun]
+via      = ["build", "world.toml", "--rerun-step", "stamp", "--out", "build/w"]
+exit     = 0
+out      = "build/w"
+no_rerun = "the export's output differs by design"
+
+[action.rerun.diag.step_unstable]
+code = "graph.step_unstable"
+from = "run"
+
+[action.rerun.same.id]
+action = "first"
+what   = "id"
+differ = true

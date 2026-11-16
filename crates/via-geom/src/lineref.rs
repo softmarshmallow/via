@@ -166,6 +166,101 @@ pub fn nearest(line: &Line, p: P) -> Nearest {
     })
 }
 
+/// The segments of `line` that can hold the nearest place to some point of the box `lo..=hi`
+/// (geometry.md 3.8, How the nearest is found): every other segment is strictly farther, from
+/// every point of the box, than one of these. A search only: [`nearest_among`] over them returns
+/// what [`nearest`] returns for every point of the box.
+///
+/// The distance to a segment is convex, so over the box it is greatest at a corner. `u`, the
+/// least over segments of that greatest squared distance (rounded up), bounds the nearest
+/// distance of every point of the box; a segment whose box lies farther than `u` from the box
+/// is strictly farther than the nearest from every point of it.
+pub fn window_segments(line: &Line, lo: P, hi: P) -> Vec<usize> {
+    let n = line.segments();
+    let corners = [lo, P::new(hi.x, lo.y), P::new(lo.x, hi.y), hi];
+    let far_sq = |v: P| {
+        corners
+            .iter()
+            .map(|c| {
+                let (dx, dy) = (i128::from(c.x - v.x), i128::from(c.y - v.y));
+                dx * dx + dy * dy
+            })
+            .max()
+            .unwrap_or(0)
+    };
+    // A first bound from the vertices (each lies on its segments), then each segment that
+    // passes it tightens the bound by its exact farthest corner.
+    let Some(mut u) = line.pts.iter().map(|&v| far_sq(v)).min() else {
+        return Vec::new();
+    };
+    let box_gap = |k: usize| {
+        let (a, b) = line.seg(k);
+        let gx = gap2(a.x.min(b.x), a.x.max(b.x), lo.x, hi.x);
+        let gy = gap2(a.y.min(b.y), a.y.max(b.y), lo.y, hi.y);
+        gx * gx + gy * gy
+    };
+    let near: Vec<usize> = (0..n).filter(|&k| box_gap(k) <= u).collect();
+    for &k in &near {
+        let (a, b) = line.seg(k);
+        let far = corners
+            .iter()
+            .map(|&c| pred::dist2_segment(c, a, b).0.ceil())
+            .try_fold(0i128, |m, d| d.map(|d| m.max(d)));
+        if let Some(f) = far {
+            u = u.min(f);
+        }
+    }
+    near.into_iter().filter(|&k| box_gap(k) <= u).collect()
+}
+
+/// [`nearest`] over the segments `ks` (increasing) only: its answer when `ks` holds every
+/// segment that can be nearest to `p` ([`window_segments`]).
+pub fn nearest_among(line: &Line, ks: &[usize], p: P) -> Nearest {
+    let sq = |a: P| {
+        let (dx, dy) = (i128::from(a.x - p.x), i128::from(a.y - p.y));
+        dx * dx + dy * dy
+    };
+    let mut upper: Option<i128> = ks
+        .iter()
+        .map(|&k| {
+            let (a, b) = line.seg(k);
+            sq(a).min(sq(b))
+        })
+        .min();
+    let mut best: Option<Nearest> = None;
+    for &k in ks {
+        let (a, b) = line.seg(k);
+        let gx = gap(a.x.min(b.x), a.x.max(b.x), p.x);
+        let gy = gap(a.y.min(b.y), a.y.max(b.y), p.y);
+        if upper.is_some_and(|u| gx * gx + gy * gy > u) {
+            continue;
+        }
+        let (d, foot) = pred::dist2_segment(p, a, b);
+        let better = match &best {
+            None => true,
+            Some(bst) => d.cmp_exact(&bst.dist) == Ordering::Less,
+        };
+        if better {
+            if let (Some(c), Some(u)) = (d.ceil(), upper) {
+                upper = Some(u.min(c));
+            }
+            best = Some(Nearest { k, foot, dist: d });
+        }
+    }
+    best.unwrap_or_else(|| nearest(line, p))
+}
+
+/// How far `[lo, hi]` lies from `[a, b]`, millimetres (0 when they meet).
+fn gap2(lo: i64, hi: i64, a: i64, b: i64) -> i128 {
+    if hi < a {
+        i128::from(a - hi)
+    } else if lo > b {
+        i128::from(lo - b)
+    } else {
+        0
+    }
+}
+
 /// How far `v` lies outside `[lo, hi]`, millimetres.
 fn gap(lo: i64, hi: i64, v: i64) -> i128 {
     if v < lo {
@@ -473,6 +568,22 @@ pub fn project_path(line: &Line, p: P) -> Measure {
 /// measures, bit for bit (geometry.md 3.8, How the nearest is found).
 pub fn project_path_in(line: &Line, index: &Index, p: P) -> Measure {
     path_measure(line, p, &index.nearest(line, p))
+}
+
+/// [`project_path`] with the nearest place found among `ks` ([`window_segments`]): the same
+/// measure, bit for bit, for every point of the window.
+pub fn project_path_among(line: &Line, ks: &[usize], p: P) -> Measure {
+    path_measure(line, p, &nearest_among(line, ks, p))
+}
+
+/// [`project_region`] with each ring's nearest place found among its segments `ks`
+/// ([`window_segments`] of each ring): the same measure, bit for bit, for every point of the
+/// window.
+pub fn project_region_among(region: &Region, rings: &[(&Line, &[usize])], p: P) -> Option<Measure> {
+    let lines: Vec<&Line> = rings.iter().map(|(l, _)| *l).collect();
+    region_measure(region, &lines, p, |i, line| {
+        nearest_among(line, rings[i].1, p)
+    })
 }
 
 fn path_measure(line: &Line, p: P, n: &Nearest) -> Measure {

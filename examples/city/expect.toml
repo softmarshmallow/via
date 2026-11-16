@@ -60,6 +60,21 @@
 # (97 of 558 calls ran, 78 of them blocks the avenue renamed). The change is now held up elsewhere:
 # 650 `distance` nodes (29 node-seconds), key records written one by one on the engine's thread
 # (about 15 s, `sample`), trace replays (13 s), three `prepare` passes (TODO, "From M6 slice 1").
+#
+# M6 slice 2 (perf): key records written behind on the store's writer threads (graph.md 3.2), the
+# ready steps' traces replayed on --threads (graph.md 8), a blob already stored not written again
+# (protocol.md 4.1), and the nearest place found among a window's or a 32 m tile's segments
+# (geometry.md 3.8). Times, one run each, release `via` of the working tree of 2026-11-17 09:10
+# (before) and 09:30 KST (after; both with the other M6 agents' uncommitted changes of then),
+# VIA_LIB=lib, fresh store, 14 threads, load 10 to 26 from other agents' builds, wall clock:
+# cold 103 -> 64 s; unchanged 1.8 -> 1.6 s; move_avenue --against cold 108 -> 57 s (distance
+# 17.7 -> 6.1 node-seconds, steps 42.6 -> 36.5); move_bridge 93 -> 60 s; quay cold 18.0 -> 14.4 s,
+# unrelated 15.1 -> 14.1 s. Every build directory equal file for file to the before binary's (the
+# manifest's `run` member aside), and clean equals incremental for base, move_avenue and back to
+# base (`.previous` and changes.json aside, which name the build compared against). Left (sample
+# of move_avenue after): the whole model built again per generate rank for the steps' views
+# (CliPlan::new, about 10 s on the engine's thread), three `prepare` passes (about 8 s, most in
+# `where` evaluated by networks' features), the steps themselves (36 node-seconds).
 
 # ------------------------------------------------------------------------------------------ base
 

@@ -217,6 +217,7 @@ fn run_import(env: &Env, c: &StepsCall<'_>) -> Option<StepsDone> {
             key,
             version: env!("CARGO_PKG_VERSION").to_string(),
             pack_root: None,
+            pack_roots: BTreeMap::new(),
             run_members: BTreeMap::new(),
         };
         let plan_k = CliPlan::new(&model_k, ctx_k);

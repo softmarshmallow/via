@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "A world with an export step and an error; build; exit 1, one diag.skipped with subject world and data.stage export; nothing of the export written."
+milestone = 6
+actions   = ["program", "trust", "build"]
+
+# diagnostics.md 4 (stage 5) and its M6 conformance line; build.md 11.4.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.typo]
+code = "formula.unknown_name"
+
+[action.build.diag.skipped]
+code    = "diag.skipped"
+subject = "world"
+data    = { stage = "export" }
+
+[action.build.file.none]
+path   = "build/w/export"
+exists = false

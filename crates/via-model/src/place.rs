@@ -65,31 +65,121 @@ pub enum Geo {
     },
 }
 
-/// A shape ready to project many points ([`Geo::projector`]).
+/// A shape ready to project many points ([`Geo::projector`]): the points are taken by square
+/// tile of [`TILE_MM`], and each tile measures only the segments that can be nearest to one of
+/// its points ([`lineref::window_segments`]), found on the tile's first point.
 pub struct Projector<'a> {
     geo: &'a Geo,
-    path: Option<lineref::Index>,
-    rings: Vec<(lineref::Line, lineref::Index)>,
+    rings: Vec<lineref::Line>,
+    tiles: std::cell::RefCell<BTreeMap<(i64, i64), TileSegments>>,
 }
 
+/// A tile's segments, by ring (a path's in the one entry).
+type TileSegments = std::rc::Rc<Vec<Vec<usize>>>;
+
+/// The side of a [`Projector`]'s tile, millimetres (ours): a field's posts at 1 to 4 m fill one
+/// with 64 to 1,024 points.
+const TILE_MM: i64 = 32_000;
+
 impl Projector<'_> {
+    /// The tile's segments, by ring (a path's in the one entry).
+    fn tile(&self, p: P) -> TileSegments {
+        let t = (p.x.div_euclid(TILE_MM), p.y.div_euclid(TILE_MM));
+        if let Some(ks) = self.tiles.borrow().get(&t) {
+            return ks.clone();
+        }
+        let lo = P::new(t.0 * TILE_MM, t.1 * TILE_MM);
+        let hi = P::new(lo.x + TILE_MM - 1, lo.y + TILE_MM - 1);
+        let ks = std::rc::Rc::new(match self.geo {
+            Geo::Path { line } => vec![lineref::window_segments(line, lo, hi)],
+            _ => self
+                .rings
+                .iter()
+                .map(|l| lineref::window_segments(l, lo, hi))
+                .collect(),
+        });
+        self.tiles.borrow_mut().insert(t, ks.clone());
+        ks
+    }
+
     /// [`Geo::project`] at `p`.
     pub fn project(&self, p: P) -> lineref::Measure {
-        match (self.geo, &self.path) {
-            (Geo::Path { line }, Some(index)) => lineref::project_path_in(line, index, p),
-            (Geo::Region { region, .. }, _) => lineref::project_region_in(region, &self.rings, p)
-                .unwrap_or(lineref::Measure {
+        match self.geo {
+            Geo::Path { line } => lineref::project_path_among(line, &self.tile(p)[0], p),
+            Geo::Region { region, .. } => {
+                let ks = self.tile(p);
+                let rings: Vec<(&lineref::Line, &[usize])> = self
+                    .rings
+                    .iter()
+                    .zip(ks.iter())
+                    .map(|(l, k)| (l, k.as_slice()))
+                    .collect();
+                lineref::project_region_among(region, &rings, p).unwrap_or(lineref::Measure {
                     t: None,
                     d: 0.0,
                     sd: 0.0,
                     nearest: (0.0, 0.0),
-                }),
+                })
+            }
+            g => g.project(p),
+        }
+    }
+}
+
+/// A shape ready to project the posts of one window ([`Geo::window_projector`]).
+pub struct WindowProjector<'a> {
+    geo: &'a Geo,
+    path: Option<Vec<usize>>,
+    rings: Vec<(lineref::Line, Vec<usize>)>,
+}
+
+impl WindowProjector<'_> {
+    /// [`Geo::project`] at `p`, a point of the window.
+    pub fn project(&self, p: P) -> lineref::Measure {
+        match (self.geo, &self.path) {
+            (Geo::Path { line }, Some(ks)) => lineref::project_path_among(line, ks, p),
+            (Geo::Region { region, .. }, _) => {
+                let rings: Vec<(&lineref::Line, &[usize])> =
+                    self.rings.iter().map(|(l, k)| (l, k.as_slice())).collect();
+                lineref::project_region_among(region, &rings, p).unwrap_or(lineref::Measure {
+                    t: None,
+                    d: 0.0,
+                    sd: 0.0,
+                    nearest: (0.0, 0.0),
+                })
+            }
             (g, _) => g.project(p),
         }
     }
 }
 
 impl Geo {
+    /// [`Geo::project`] for the points of the box `lo..=hi`: only the segments that can be
+    /// nearest to one of them are measured (`geometry.md` 3.8, How the nearest is found); the
+    /// same measures, bit for bit. For a field's window, where most posts lie far from a long
+    /// shape and [`Geo::projector`]'s cells would be searched ring by ring.
+    pub fn window_projector(&self, lo: P, hi: P) -> WindowProjector<'_> {
+        WindowProjector {
+            geo: self,
+            path: match self {
+                Geo::Path { line } => Some(lineref::window_segments(line, lo, hi)),
+                _ => None,
+            },
+            rings: match self {
+                Geo::Region { region, .. } => region
+                    .rings()
+                    .into_iter()
+                    .map(|ring| {
+                        let line = lineref::Line::new(ring.to_vec(), true);
+                        let ks = lineref::window_segments(&line, lo, hi);
+                        (line, ks)
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            },
+        }
+    }
+
     /// The shape's nearest point to `near` on the lattice, and its squared distance in square
     /// millimetres: 0 inside a region or on the shape. Selections compare these exactly
     /// (`identity.md` 3, "compared exactly in integer millimetres"); a point off the lattice is
@@ -142,14 +232,15 @@ impl Geo {
     pub fn projector(&self) -> Projector<'_> {
         Projector {
             geo: self,
-            path: match self {
-                Geo::Path { line } => Some(lineref::Index::new(line)),
-                _ => None,
-            },
             rings: match self {
-                Geo::Region { region, .. } => lineref::region_rings(region),
+                Geo::Region { region, .. } => region
+                    .rings()
+                    .into_iter()
+                    .map(|ring| lineref::Line::new(ring.to_vec(), true))
+                    .collect(),
                 _ => Vec::new(),
             },
+            tiles: std::cell::RefCell::new(BTreeMap::new()),
         }
     }
 

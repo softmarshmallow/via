@@ -1,0 +1,124 @@
+# The ways layer, ranked above the imports (composition.md 6.5): the atlas's own roads, written by
+# what they connect (R9), each routed over the joined ground; the creek and its bridge. A road ends
+# at an import's exit where it has one (quay's `gate`, the wild's `south_end` and `west_end`:
+# composition.md 7 asks each to be answered) and at a named place of the import otherwise (its own
+# road's end, a gate): the places declare no other exits.
+
+# The roads and trails in earth, on the plain's `ground`. A row in world.toml cannot see this
+# layer's roads, and this layer may not write a row on a field world.toml declares, so a step of
+# this layer returns it (layers/steps/track.py): its row has this layer's rank and reads its roads.
+[step.track]                                  # a worker: it reads no stated fact (derived.md 5), only its params
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/track.py"]
+
+[step.track.params]
+mask = "= max(1 - smoothstep(3, 3.8, dist('kind:road', 6)), 1 - smoothstep(1.2, 2, dist('kind:trail', 4)))"
+
+[feature.west_edge]                           # where the wild's west trail road leaves the map
+at = [0, 2300]
+
+# ------------------------------------------------------------------------------------------ the creek
+# A tidal creek the atlas owns, from the hills below the glade down to the sea between the harbour
+# town and the cliffs. A beck (lib/water): cut below the ground, its water written on `water`.
+[feature.creek]
+kind  = "beck"
+path  = [[2296, 900], [2284, 640], [2290, 400], [2276, 200], [2282, 0]]
+width = 8
+depth = 1.6
+
+# The city's river goes on to the sea: from where it leaves the city's south edge, the atlas's.
+[feature.city_mouth]
+kind      = "beck"
+starts_at = "city.river.end"
+path      = [[1000, 160]]
+ends_at   = "river_mouth"
+width     = 10
+depth     = 1.6
+
+[feature.river_mouth]
+at = [1000, 60]
+
+[feature.bridge_west]
+on = { ref = "creek", t = 0.70, offset = -14 }
+
+[feature.bridge_east]
+on = { ref = "creek", t = 0.70, offset = 14 }
+
+[feature.creek_bridge]
+kind      = "crossing"
+starts_at = "bridge_west"
+ends_at   = "bridge_east"
+path      = []
+crosses   = "creek"
+width     = 6
+deck_z    = 4.5                                 # the banks stand about 3.5 m; the sea 2
+freeboard = 1
+
+# ------------------------------------------------------------------------------------------ the roads
+# Every road: routed over the joined ground at a cost that rises with the square of its slope
+# (county's), and smoothed.
+
+[feature.harbour_road]                        # the city's harbour gate east to the harbour town's gate
+kind      = "road"
+starts_at = "city.harbor_gate_e"
+ends_at   = "quay.gate"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true
+
+[feature.creek_road]                          # from the harbour town's gate to the creek's bridge
+kind      = "road"
+starts_at = "quay.gate"
+ends_at   = "bridge_west"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true
+
+[feature.college_road]                        # over the bridge to the college's arrival
+kind      = "road"
+starts_at = "bridge_east"
+ends_at   = "college.arrival"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true
+
+[feature.market_road]                         # from the college's arrival to the market's main street
+kind      = "road"
+starts_at = "college.arrival"
+ends_at   = "market.main_street.start"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true
+
+[feature.north_road]                          # the city's north-east gate to the townland's west gate
+kind      = "road"
+starts_at = "city.north_gate_e"
+ends_at   = "townland.west_gate"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + if(inside('monastery.footprint'), 40, 0)"   # round the abbey's gorge, not through it
+smooth    = true
+
+[feature.wild_road]                           # the city's north-west gate up to the wild's south exit
+kind      = "road"
+starts_at = "city.north_gate_w"
+ends_at   = "wild.south_end"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true
+
+[feature.west_road]                           # in from the map's west edge to the wild's west exit
+kind      = "trail"
+starts_at = "west_edge"
+ends_at   = "wild.west_end"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true
+
+[feature.hill_trail]                          # the relief's track to the vale's valley road
+kind      = "trail"
+starts_at = "relief.track.start"
+ends_at   = "vale.valley_road.start"
+path      = []
+route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+smooth    = true

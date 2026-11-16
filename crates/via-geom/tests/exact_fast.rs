@@ -3,7 +3,7 @@
 //! its bound taken first, and the winding number from the edges that span a row.
 
 use std::cmp::Ordering;
-use via_geom::lineref::{nearest, Line};
+use via_geom::lineref::{nearest, nearest_among, window_segments, Line};
 use via_geom::pred::{self, dist2_segment, winding_of_edges, Side, Wide};
 use via_geom::{Piece, Region, P};
 
@@ -105,6 +105,60 @@ fn nearest_equals_the_plain_scan() {
             assert_eq!(fast.dist.cmp_exact(&d), Ordering::Equal);
         }
     }
+}
+
+/// A window's segments (`geometry.md` 3.8): for every post of a window, near or far from the
+/// line, inside its box or not, the nearest among them is the nearest of the whole line,
+/// segment, foot and exact distance, ties to the lower index. Collinear and repeated runs make
+/// ties.
+#[test]
+fn window_segments_keep_the_nearest() {
+    let mut r = Lcg(11);
+    let mut pruned = 0usize;
+    for case in 0..200 {
+        let n = 2 + (r.next() % if case % 2 == 0 { 30 } else { 400 }) as usize;
+        let mut pts = vec![P::new(r.range(0, 400_000), r.range(0, 400_000))];
+        while pts.len() < n {
+            let last = *pts.last().unwrap();
+            // Every fourth case on a 1 m lattice of short steps: equal distances are common.
+            let q = if case % 4 == 1 {
+                P::new(
+                    last.x + 1_000 * r.range(-3, 3),
+                    last.y + 1_000 * r.range(-3, 3),
+                )
+            } else {
+                P::new(
+                    last.x + r.range(-9_000, 9_000),
+                    last.y + r.range(-9_000, 9_000),
+                )
+            };
+            if q != last {
+                pts.push(q);
+            }
+        }
+        let closed = case % 3 == 0 && n >= 3;
+        let line = Line::new(pts, closed);
+        for _ in 0..6 {
+            let (x0, y0) = (r.range(-100_000, 450_000), r.range(-100_000, 450_000));
+            let side = r.range(0, 64) * 2_000;
+            let (lo, hi) = (P::new(x0, y0), P::new(x0 + side, y0 + side));
+            let ks = window_segments(&line, lo, hi);
+            pruned += line.segments() - ks.len();
+            let posts = [lo, hi, P::new(lo.x, hi.y), P::new(hi.x, lo.y)]
+                .into_iter()
+                .chain((0..12).map(|_| P::new(r.range(lo.x, hi.x + 1), r.range(lo.y, hi.y + 1))));
+            for p in posts {
+                let (want, got) = (nearest(&line, p), nearest_among(&line, &ks, p));
+                assert_eq!(
+                    (got.k, got.foot),
+                    (want.k, want.foot),
+                    "case {case} at {p:?}"
+                );
+                assert_eq!(got.dist.cmp_exact(&want.dist), Ordering::Equal);
+            }
+        }
+    }
+    assert!(pruned > 0, "the windows leave segments out");
 }
 
 #[test]

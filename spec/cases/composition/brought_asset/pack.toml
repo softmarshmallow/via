@@ -1,0 +1,4 @@
+[asset.light]
+engine    = true
+size      = [1, 1, 1]
+triangles = 10

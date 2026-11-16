@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "An import's own pack binds `heavy` (1000 triangles), the parent's does not: the manifest lists it with `pack = \"a\"` and the chunk counts it (1010); the budget lowered to 500, build.over_budget names `heavy`."
+milestone = 6
+actions   = ["build", "lower", "over"]
+
+# composition.md 10 (an import's assets are the build's, measured once); build.md 5.1 and 7.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.brought]
+path    = "build/w/manifest.json"
+pointer = "/assets/heavy/pack"
+value   = "a"
+
+[action.build.file.own]
+path    = "build/w/manifest.json"
+pointer = "/assets/light/triangles"
+value   = [10]
+
+[action.build.file.counted]
+path    = "build/w/manifest.json"
+pointer = "/chunks/0/triangles"
+value   = 1010
+
+[action.lower]
+replace = "world.toml"
+find    = "triangles = 2000"
+with    = "triangles = 500"
+
+[action.over]
+via         = ["build", "world.toml", "--out", "build/w2"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w2"
+
+[action.over.diag.budget]
+code = "build.over_budget"
+data = { chunk = [0, 0], measure = "triangles", value = 1010, limit = 500, asset = "heavy", share = 99, instances = 1 }

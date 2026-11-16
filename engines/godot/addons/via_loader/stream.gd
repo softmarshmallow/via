@@ -15,6 +15,8 @@ extends RefCounted
 ##   frame; or, not threaded, one chunk per update on the walker's own thread.
 ## - Unload: a chunk farther than `unload_radius` (the load radius plus one chunk side, so a walker
 ##   on a chunk's edge does not load and unload it every step) is freed.
+## - Lockstep (`lockstep`): the worker's chunk is waited for on the next update, for a scripted
+##   walk that must end in the same place on every run.
 ## - Guard: a chunk within `guard` of the walker that is not loaded is made at once on the walker's
 ##   thread (waiting for the worker first), so the walker never stands over a chunk that is not
 ##   there. Each such load is a `stall`, counted: a stall is a frame the walk waited for a chunk.
@@ -27,6 +29,10 @@ extends RefCounted
 ##   `loaded` texture), so past the load radius the view still has ground to the camera's far
 ##   distance instead of a void (M6 slice 1 review on foot: hill towns and far banks vanished past
 ##   96 m).
+## - Far instances: every chunk's instances as boxes of their assets' bounds in one colour each
+##   (Loader.make_far_instances), one mesh and one draw call for all chunks, shown with the far
+##   ground's texture exactly while the chunk is not loaded, so far houses stand on far ground
+##   (M6 slice 2). `far_instances = false` before making the streamer leaves them out.
 
 ## Ours: 96 m is one and a half default chunks (64 m, build.md 5), so the chunks a walker may see
 ## within 96 m are there; GUARD is a walker's reach in a few frames at any pace a game walks.
@@ -39,6 +45,11 @@ var load_radius := LOAD
 var unload_radius := LOAD
 var guard := GUARD
 var threaded := true
+## Lockstep: a chunk begun on the worker is waited for and added on the next update, so what is
+## loaded after each update depends only on the points given, never on the worker's pace. A
+## scripted walk (walk.gd) sets it: the bodies enter the physics space in the same order on every
+## run, and the walk ends in the same place (M6 slice 2; a walk is sensitive to that order).
+var lockstep := false
 ## chunk index -> its node, while loaded
 var loaded := {}
 var loads := 0
@@ -56,6 +67,9 @@ var _mesh_nodes := {}   # mesh index -> MeshInstance3D
 var _mesh_refs := {}    # mesh index -> loaded chunks that hold it
 var _holder: Node3D
 var _far: MeshInstance3D
+var _far_things: MeshInstance3D  # the far instances (Loader.make_far_instances), or null
+## Whether the far instances are made (before the streamer's first chunk; read at construction).
+static var far_instances := true
 var _far_mask: Image            # one R8 texel per chunk, at `[cx, cy]`: 255 while it is loaded
 var _far_tex: ImageTexture
 var _ats: Array[Vector2i] = []  # chunk index -> its `at`
@@ -65,26 +79,43 @@ var _result := {}
 
 
 func _init(the_loader, the_root: Node3D, radius := LOAD) -> void:
+	_setup(the_loader, the_root)
+	set_radius(radius)
+
+
+func _setup(the_loader, the_root: Node3D) -> void:
+	## The chunk rectangles, the far ground and which meshes each chunk holds, for one build.
 	loader = the_loader
 	root = the_root
+	_rects.clear()
+	_ats.clear()
+	_chunk_meshes.clear()
+	_side = 0.0
 	var chunks: Array = loader.chunk_list()
 	for n in chunks.size():
 		var r: Rect2 = loader.chunk_rect(n)
 		_rects.append(r)
 		_side = maxf(_side, maxf(r.size.x, r.size.y))
 		_chunk_meshes.append([])
-	set_radius(radius)
 	var size := Vector2i(1, 1)
 	for c in chunks:
 		var at: Array = c.get("at", [0, 0])
 		_ats.append(Vector2i(int(at[0]), int(at[1])))
 		size = size.max(_ats[-1] + Vector2i(1, 1))
+	_far_tex = null
 	_far = loader.make_far_ground()
 	if _far != null:
 		_far_mask = Image.create_empty(size.x, size.y, false, Image.FORMAT_R8)
 		_far_tex = ImageTexture.create_from_image(_far_mask)
 		_far.material_override.set_shader_parameter("loaded", _far_tex)
 		root.add_child(_far)
+	_far_things = loader.make_far_instances() if far_instances else null
+	if _far_things != null:
+		if _far_tex == null:
+			_far_mask = Image.create_empty(size.x, size.y, false, Image.FORMAT_R8)
+			_far_tex = ImageTexture.create_from_image(_far_mask)
+		_far_things.material_override.set_shader_parameter("loaded", _far_tex)
+		root.add_child(_far_things)
 	_meshes = loader.mesh_list()
 	var listed := chunks.all(func(c): return c.get("meshes") is Array)
 	var index := {}
@@ -103,6 +134,7 @@ func _init(the_loader, the_root: Node3D, radius := LOAD) -> void:
 			for name in chunks[n].meshes:
 				if index.has(name):
 					_chunk_meshes[n].append(index[name])
+	_holder = null
 	if not _meshes.is_empty():
 		_holder = Node3D.new()
 		_holder.name = "meshes"
@@ -125,7 +157,7 @@ func distance(n: int, p: Vector2) -> float:
 
 func far_shown(n: int) -> bool:
 	## Whether chunk n's far ground is shown (false without a far ground).
-	return _far != null and _far_mask.get_pixelv(_ats[n]).r < 0.5
+	return _far_tex != null and _far_mask.get_pixelv(_ats[n]).r < 0.5
 
 
 func far_count() -> int:
@@ -134,7 +166,7 @@ func far_count() -> int:
 
 
 func _far_mark(n: int, is_loaded: bool) -> void:
-	if _far != null:
+	if _far_tex != null:
 		_far_mask.set_pixelv(_ats[n], Color(1.0 if is_loaded else 0.0, 0, 0))
 		_far_tex.update(_far_mask)
 
@@ -145,7 +177,7 @@ func meshes_of(n: int) -> Array:
 
 func update(p: Vector2) -> void:
 	var t0 := Time.get_ticks_usec()
-	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
+	if _task >= 0 and (lockstep or WorkerThreadPool.is_task_completed(_task)):
 		_finish()
 	for n in loaded.keys():
 		if distance(n, p) > unload_radius:
@@ -253,3 +285,93 @@ func _unload(n: int) -> void:
 			_mesh_refs.erase(i)
 			_holder.remove_child(m)
 			m.free()
+
+
+func reload(new_loader, new_root: Node3D) -> Dictionary:
+	## After a rebuild (build.md 5.2): streams `new_root` (new_loader.prepare of the new build)
+	## instead, keeping each loaded chunk whose `digest` is the same in both manifests, moved to the
+	## new root as it is, and making again the loaded chunks whose digest changed (or is missing in
+	## either, or whose chunk is gone, or when the frame changed), so the same chunks are loaded
+	## after as before. A loaded generated mesh is kept when the new manifest lists it by the same
+	## name with the same entry and file digest. The caller frees the old root (its features,
+	## paths, bookmarks and far ground are the old build's). Returns {"kept", "made", "dropped"}:
+	## chunk `at`s, and "meshes_kept", mesh names, each sorted.
+	end()
+	var old_list: Array = loader.chunk_list()
+	var new_list: Array = new_loader.chunk_list()
+	var same_frame: bool = JSON.stringify(loader.frame()) == JSON.stringify(new_loader.frame())
+	var new_index := {}
+	for m in new_list.size():
+		var at: Array = new_list[m].get("at", [0, 0])
+		new_index[Vector2i(int(at[0]), int(at[1]))] = m
+	var keep := {}   # new index -> node
+	var remake: Array[int] = []
+	var report := {"kept": [], "made": [], "dropped": [], "meshes_kept": []}
+	for n in loaded.keys():
+		var node: Node3D = loaded[n]
+		var at := _ats[n]
+		var m: int = new_index.get(at, -1)
+		var d = old_list[n].get("digest")
+		var same: bool = same_frame and m >= 0 and d is String and d != "" and new_list[m].get("digest") == d
+		root.remove_child(node)
+		if same:
+			keep[m] = node
+			report.kept.append([at.x, at.y])
+		else:
+			node.free()
+			if m >= 0:
+				remake.append(m)
+				report.made.append([at.x, at.y])
+			else:
+				report.dropped.append([at.x, at.y])
+	# Generated meshes: keep a node whose name, entry and file digest are unchanged.
+	var mesh_keep := {}   # name -> node
+	var new_meshes: Dictionary = {}
+	for e in new_loader.mesh_list():
+		if e is Dictionary:
+			new_meshes[e.get("name")] = e
+	for i in _mesh_nodes:
+		var e = _meshes[i]
+		var node: Node = _mesh_nodes[i]
+		_holder.remove_child(node)
+		var ne = new_meshes.get(e.get("name")) if e is Dictionary else null
+		if same_frame and ne != null and JSON.stringify(ne) == JSON.stringify(e) \
+				and loader.file_digest(String(e.get("file", ""))) == new_loader.file_digest(String(ne.get("file", ""))) \
+				and loader.file_digest(String(e.get("file", ""))) != "":
+			mesh_keep[e.name] = node
+			report.meshes_kept.append(String(e.name))
+		else:
+			node.free()
+	for far in [_far, _far_things]:
+		if far != null and far.get_parent() == root:
+			root.remove_child(far)
+			far.free()
+	loaded.clear()
+	_mesh_nodes.clear()
+	_mesh_refs.clear()
+	_setup(new_loader, new_root)
+	set_radius(load_radius)
+	for i in _meshes.size():
+		if _meshes[i] is Dictionary and mesh_keep.has(_meshes[i].get("name")):
+			_mesh_nodes[i] = mesh_keep[_meshes[i].name]
+			_holder.add_child(_mesh_nodes[i])
+			mesh_keep.erase(_meshes[i].name)
+	for node in mesh_keep.values():
+		node.free()   # its chunks are gone
+	var ms := keep.keys()
+	ms.sort()
+	for m in ms:
+		_attach(m, {"chunk": keep[m], "meshes": {}})
+	remake.sort()
+	for m in remake:
+		_attach(m, _made(m, _wanted(m)))
+	loads -= keep.size()   # a kept chunk is not a load
+	for i in _mesh_nodes.keys():
+		if _mesh_refs.get(i, 0) <= 0:   # kept, but no loaded chunk holds it now
+			_holder.remove_child(_mesh_nodes[i])
+			_mesh_nodes[i].free()
+			_mesh_nodes.erase(i)
+	for k in ["kept", "made", "dropped", "meshes_kept"]:
+		report[k].sort()
+	return report
+

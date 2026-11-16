@@ -14,7 +14,7 @@ extends Node
 ## draws nothing. Writes <out>/before/*.png, <out>/after/*.png (1280 by 720), <out>/sheet.png,
 ## <out>/sheet.json and <out>/diagnostics.json. <out> is written whole: into <out>.partial, then
 ## swapped in. Exit 0 when every bookmark was rendered, 1 with any error, 2 for a bad argument.
-## A watchdog quits with 3 if the run takes longer than WATCHDOG_S, so a stuck renderer never
+## A watchdog quits with 3 if the run takes longer than WATCHDOG_S (plus twice --frames), so a stuck renderer never
 ## leaves an unattended run waiting.
 
 const Loader := preload("res://addons/via_loader/loader.gd")
@@ -45,11 +45,14 @@ var edits := {"against": null, "pins": [], "cleared": []}
 var stream_radius := 0.0
 var frames_s := 0.0
 var _done := false
+var _watchdog_s := WATCHDOG_S
 
 
 func _ready() -> void:
-	get_tree().create_timer(WATCHDOG_S, true, false, true).timeout.connect(_watchdog)
 	var why := _read_arguments()
+	# a frame tour runs its seconds on each build, past the watchdog's own time
+	_watchdog_s = WATCHDOG_S + 2.0 * maxf(frames_s, 0.0)
+	get_tree().create_timer(_watchdog_s, true, false, true).timeout.connect(_watchdog)
 	if why == "":
 		why = _check_out()
 	if why != "":
@@ -63,7 +66,7 @@ func _ready() -> void:
 
 func _watchdog() -> void:
 	if not _done:
-		printerr("sheet: watchdog: no result after %d s; quitting" % int(WATCHDOG_S))
+		printerr("sheet: watchdog: no result after %d s; quitting" % int(_watchdog_s))
 		_quit(3)
 
 
@@ -156,6 +159,12 @@ static func _remove(dir: String) -> void:
 func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dictionary:
 	## Loads one build into the viewport and renders each bookmark camera. Returns
 	## { "root_meta": {id, world}, "shots": { name: {"file", "eye", "toward", "image"} }, "far" }.
+	# Each build in a fresh physics space: a walk over a build loaded into the space the other
+	# build's bodies had been in and left ended elsewhere (border `bank_corner` 40.7 m off, M6
+	# slice 2): the space's past is not the build's.
+	var was := vp.world_3d   # held through the switch: freed first, its scenario is gone when left
+	vp.world_3d = World3D.new()
+	was = null
 	var loader := Loader.new()
 	loader.pack_dir = pack
 	loader.diags.build_label = label
@@ -358,7 +367,7 @@ func _run() -> void:
 	var vp := SubViewport.new()
 	vp.size = SHOT
 	vp.msaa_3d = Viewport.MSAA_4X
-	vp.own_world_3d = true
+	vp.world_3d = World3D.new()   # and a fresh one for each build (_render)
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
 	Rig.rig(vp)

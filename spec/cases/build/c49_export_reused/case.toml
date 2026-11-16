@@ -1,0 +1,88 @@
+format    = "via-case-1"
+summary   = "A worker export reading height: it runs on the first build, an unchanged build runs nothing, a moved mark (not read) reuses it, a raised hill (read) runs it again and its file changes."
+milestone = 6
+actions   = ["program", "trust", "first", "same", "move", "moved", "raise", "raised"]
+
+# build.md Conformance 49, 11.4; graph.md 5.1 (a worker's key is its trace). `mark` has no effect,
+# so moving `flag` changes no answer the export was given; `rise` changes height.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.first.nodes]
+ran_includes = ["step:map"]
+
+[action.first.file.exports]
+path    = "build/w/manifest.json"
+pointer = "/exports"
+value   = { map = { folder = "export/map/", output = "height_sum" } }
+
+[action.first.file.sum]
+path   = "build/w/export/map/sum.json"
+exists = true
+
+[action.same]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.same.nodes]
+ran = []
+
+[action.move]
+replace = "world.toml"
+find    = "at   = [4, 4]"
+with    = "at   = [6, 6]"
+
+# Into a fresh directory: nothing left by the first build can stand in for the reused export's
+# file, which is written from the store (build.md 11.4).
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w2"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w2"
+
+[action.moved.nodes]
+reused = ["step:map"]
+
+# The first build's sum, 3.828: the reused export's file is the same.
+[action.moved.file.sum]
+path    = "build/w2/export/map/sum.json"
+pointer = "/sum"
+value   = 3.828
+
+[action.moved.file.first_sum]
+path    = "build/w/export/map/sum.json"
+pointer = "/sum"
+value   = 3.828
+
+[action.raise]
+replace = "world.toml"
+find    = "rise = 1"
+with    = "rise = 2"
+
+[action.raised]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.raised.nodes]
+ran_includes = ["step:map"]
+
+[action.raised.same.sum]
+action = "first"
+what   = "build/w/export/map/sum.json"
+differ = true

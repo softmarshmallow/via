@@ -408,6 +408,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("inputs", Ok(T::Strings)),
             ("for_each", Ok(T::Str)),
             ("checks", Ok(T::Strings)),
+            ("output", Ok(T::Str)),
         ],
         Shape::Network => &[
             ("from", Ok(T::Names)),
@@ -519,12 +520,12 @@ pub fn listed(shape: Shape) -> impl Iterator<Item = &'static str> {
         .map(|(k, _)| *k)
 }
 
-/// Values of a key that the vocabulary puts in a later milestone (`vocabulary.md` 5).
+/// Values of a key that the vocabulary puts in a later milestone (`vocabulary.md` 5). None is
+/// left since `when = "export"` arrived (M6); kept as the hook `check.rs` calls for the next
+/// such value, which is one arm here.
 pub fn value_not_yet(shape: Shape, key: &str, value: &str) -> Option<u32> {
-    match (shape, key, value) {
-        (Shape::Step, "when", "export") => Some(6),
-        _ => None,
-    }
+    let _ = (shape, key, value);
+    None
 }
 
 /// The shape of an entity in a top table.

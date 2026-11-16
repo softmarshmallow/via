@@ -94,6 +94,14 @@ r=$(godot --headless --fixed-fps 60 --script res://tests/test_stream.gd -- --bui
 r=$(godot --headless --fixed-fps 60 --script res://tests/test_stream.gd -- --build "$HERE/fixture_build" --radius 5 --frames); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
+step "streamed walks against whole walks: reproducible, same outcome and blocker, stop within a frame's pace (headless)"
+r=$(godot --headless --script res://tests/test_stream_walks.gd -- --build "$HERE/fixture_build" --radius 5); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
+step "reload after a rebuild: kept and made again by chunk digest (headless; the fixtures hold no digest, so every chunk is made again)"
+r=$(godot --headless --script res://tests/test_reload.gd -- --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" --radius 5); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
 step "sheet: the surface each bookmark stands on"
 "$ROOT/sheet.sh" --before "$OUT/floor_build" --out "$OUT/floor" >/dev/null 2>&1 || { echo "FAIL sheet exit"; fail=1; }
 quiet python3 "$HERE/check_sheet.py" "$OUT/floor" 2 --one --before "$OUT/floor_build" || fail=1

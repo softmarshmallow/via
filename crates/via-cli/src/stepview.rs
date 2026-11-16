@@ -812,7 +812,7 @@ impl<'a> View<'a> {
         let region = self.within(p.get("within"))?;
         let taxon = |asset: &str| -> String {
             self.pack
-                .and_then(|pk| pk.assets.get(asset))
+                .and_then(|pk| pk.asset(asset))
                 .and_then(|a| a.taxon.clone())
                 .unwrap_or_default()
         };
@@ -1523,15 +1523,23 @@ impl<'a> View<'a> {
         let Some(pack) = self.pack else {
             return Err(invalid("the world names no pack"));
         };
+        let all = |pk: &'a via_model::pack::Pack| -> Vec<&'a via_model::pack::Asset> {
+            pk.assets
+                .values()
+                .chain(pk.brought.values().map(|b| &b.asset))
+                .collect()
+        };
         let mut assets: Vec<&via_model::pack::Asset> = match p.get("select") {
-            None | Some(Value::Null) => pack.assets.values().collect(),
-            Some(Value::String(s)) if s == "*" => pack.assets.values().collect(),
+            // Every asset of the build, an import's brought ones included (`composition.md`
+            // 10); a taxon selects this world's own, as its scatters do.
+            None | Some(Value::Null) => all(pack),
+            Some(Value::String(s)) if s == "*" => all(pack),
             Some(Value::String(s)) if s.starts_with('@') => pack.select(&s[1..]),
-            Some(Value::String(s)) => pack.assets.get(s).into_iter().collect(),
+            Some(Value::String(s)) => pack.asset(s).into_iter().collect(),
             Some(Value::Array(a)) => a
                 .iter()
                 .filter_map(Value::as_str)
-                .filter_map(|s| pack.assets.get(s))
+                .filter_map(|s| pack.asset(s))
                 .collect(),
             _ => return Err(invalid("select: `*`, asset ids, or `@<taxon path>`")),
         };

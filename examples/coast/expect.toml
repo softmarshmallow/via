@@ -60,11 +60,10 @@ under_depth_m    = { band = [0.2, 0.5] }    # 0.3
 parapet_posts    = { band = [26, 26] }      # 26 warm and clean (M5 slice 2 fix: the instance file
                                             # reads what lays a run, its `on` target's shape)
 
-# The player map (lib/map, build.md 9.4), from `examples/coast/map.toml`: M6 slice 1 tree, macOS
-# arm64, a release `via` of that tree, the base build, then
-#   sdk/python/.venv/bin/python tools/map_export.py B --step examples/coast/map.toml --out M
-#   python3 tools/map_render.py B M --out PNG --ppm 4 --expect examples/coast/expect.toml
-# (map_export.py stands in for the engine's export runner until `when = "export"` runs.)
+# The player map (lib/map, build.md 9.4), written by the world's export step `map` into the
+# build's `export/map/` (build.md 11.4): M6 slice 2 tree, macOS arm64, a release `via` of that
+# tree, VIA_LIB=lib, one fresh store, the base build, then
+#   python3 tools/map_render.py B B/export/map --out PNG --ppm 4 --expect examples/coast/expect.toml
 [map]
 classes          = { band = [9, 9] }        # none, grass, rock, sand, water, stream, bridge, lane, footprint
 ways             = { band = [4, 4] }        # two lanes, the bridge, the cave (under)

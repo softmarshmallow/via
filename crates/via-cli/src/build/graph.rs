@@ -79,6 +79,9 @@ pub struct Ctx<'a> {
     pub key: Digest,
     pub version: String,
     pub pack_root: Option<String>,
+    /// `locations.pack_roots`: each import whose pack brought a model asset, to its root's path
+    /// from the directory (`build.md` 4).
+    pub pack_roots: BTreeMap<String, String>,
     /// The manifest's `run` members other than `key`, `reports` and `version`.
     pub run_members: BTreeMap<String, J>,
 }
@@ -121,6 +124,9 @@ fn data_files(model: &ModelPlan<'_>) -> Vec<(String, FileReads)> {
     }
     out
 }
+
+/// What the export steps wrote, by build path, and the manifest's `exports` (`build.md` 11.4).
+pub type Exported = (BTreeMap<String, Vec<u8>>, BTreeMap<String, J>);
 
 /// The plan of `via build`: the model's nodes and the command line's.
 /// How every node settled and what each step read, kept for [`CliPlan::find_chains`].
@@ -309,9 +315,10 @@ impl<'a> CliPlan<'a> {
                     "write `for_each = \"kind:<name>\"` on a generate step".into(),
                 ));
             }
-            // A plain lint reads the finished build through the data files; a worker reads what
-            // it asks for, so its key holds no data (`graph.md` 5.1).
-            let mut edges: Vec<(String, NodeId)> = if lint && !s.worker {
+            // A plain lint or export reads the finished build through the data files; a worker
+            // reads what it asks for, so its key holds no data (`graph.md` 5.1).
+            let reader = lint || s.when == "export";
+            let mut edges: Vec<(String, NodeId)> = if reader && !s.worker {
                 data.iter()
                     .map(|p| (format!("data {p}"), write_id(p)))
                     .collect()
@@ -677,6 +684,13 @@ impl<'a> CliPlan<'a> {
             }
             MANIFEST => {
                 let mut edges = data_edges;
+                // What each export step wrote is listed (`build.md` 11.4).
+                for l in self.ctx.lints.iter().filter(|l| l.decl.when == "export") {
+                    edges.push((
+                        format!("export {}", l.decl.id),
+                        NodeId::of("step", &l.decl.id),
+                    ));
+                }
                 edges.push((
                     "file changes.json".into(),
                     NodeId::parse(CHANGES).expect("an id"),
@@ -703,6 +717,15 @@ impl<'a> CliPlan<'a> {
                         (
                             "pack root".into(),
                             self.ctx.pack_root.clone().unwrap_or_default(),
+                        ),
+                        (
+                            "pack roots".into(),
+                            self.ctx
+                                .pack_roots
+                                .iter()
+                                .map(|(k, v)| format!("{k}={v}"))
+                                .collect::<Vec<_>>()
+                                .join(" "),
                         ),
                     ],
                     edges,
@@ -1176,9 +1199,92 @@ impl<'a> CliPlan<'a> {
                 files.insert(path, v.bytes.as_ref().clone());
             }
         }
+        let value = |n: &NodeId| {
+            inputs
+                .all()
+                .iter()
+                .find(|(_, node, _)| node == n)
+                .map(|(_, _, v)| v.bytes.as_ref().clone())
+        };
+        let mut head = head;
+        match self.export_files(&value) {
+            Ok((written, exports)) => {
+                files.extend(written);
+                if !exports.is_empty() {
+                    head.insert("exports".into(), J::Obj(exports));
+                }
+            }
+            Err(d) => {
+                return Output::of(Val {
+                    bytes: Arc::new(Vec::new()),
+                    diags: Arc::new(vec![d]),
+                })
+            }
+        }
         let bytes = manifest_bytes(head, &files, &reports, &self.ctx);
         self.stash("manifest.json", bytes.clone());
         Output::of(Val::plain(bytes))
+    }
+
+    /// What the export steps wrote and the manifest's `exports` (`build.md` 11.4): for each
+    /// export step that ran, every file its value lists but `diagnostics.json`, under
+    /// `export/<step id>/`, read from the store by digest. A step that did not run (untrusted)
+    /// has no entry: a reader finds nothing it would look for. An object the store no longer
+    /// holds is `build.internal`: the step's value says it was written.
+    pub fn export_files(
+        &self,
+        value: &dyn Fn(&NodeId) -> Option<Vec<u8>>,
+    ) -> Result<Exported, Diag> {
+        let mut files = BTreeMap::new();
+        let mut exports = BTreeMap::new();
+        for l in self.ctx.lints.iter().filter(|l| l.decl.when == "export") {
+            let sid = &l.decl.id;
+            let Some(bytes) = value(&NodeId::of("step", sid)) else {
+                continue;
+            };
+            let Ok(j) = parse(std::str::from_utf8(&bytes).unwrap_or("")) else {
+                continue;
+            };
+            if !matches!(j.get("ran"), Some(J::Bool(true))) {
+                continue;
+            }
+            let folder = format!("export/{sid}/");
+            for f in j.get("files").and_then(J::as_arr).unwrap_or(&[]) {
+                let (Some(path), Some(d)) = (
+                    f.get("path").and_then(J::as_str),
+                    f.get("digest")
+                        .and_then(J::as_str)
+                        .and_then(Digest::from_hex),
+                ) else {
+                    continue;
+                };
+                if path == "diagnostics.json" {
+                    continue;
+                }
+                let Some(b) = self.ctx.store.get_object(&d) else {
+                    return Err(Diag::new(
+                        via_diag::codes::build::INTERNAL,
+                        via_diag::Subject::entity("step", sid.clone()),
+                        via_diag::Site::World,
+                        crate::txt(format!(
+                            "export step `{sid}` wrote `{path}`, which the store no longer holds"
+                        )),
+                        crate::txt("build again with `--rerun-step` naming the step".to_string()),
+                    ));
+                };
+                // The escape of 3.4: a device name is written with `-` after it.
+                let escaped: Vec<String> = path.split('/').map(crate::out::segment).collect();
+                files.insert(format!("{folder}{}", escaped.join("/")), b);
+            }
+            exports.insert(
+                sid.clone(),
+                obj([
+                    ("folder", J::s(folder)),
+                    ("output", J::opt(l.decl.output.as_deref())),
+                ]),
+            );
+        }
+        Ok((files, exports))
     }
 
     /// The model's build, made once.
@@ -2031,10 +2137,23 @@ pub fn manifest_bytes(
     );
     run.insert("version".into(), J::s(ctx.version.clone()));
     manifest.insert("run".into(), J::Obj(run));
-    manifest.insert(
-        "locations".into(),
-        obj([("pack_root", ctx.pack_root.clone().map_or(J::Null, J::s))]),
-    );
+    manifest.insert("locations".into(), {
+        let mut l = obj([("pack_root", ctx.pack_root.clone().map_or(J::Null, J::s))]);
+        if !ctx.pack_roots.is_empty() {
+            if let J::Obj(m) = &mut l {
+                m.insert(
+                    "pack_roots".into(),
+                    J::Obj(
+                        ctx.pack_roots
+                            .iter()
+                            .map(|(k, v)| (k.clone(), J::s(v.clone())))
+                            .collect(),
+                    ),
+                );
+            }
+        }
+        l
+    });
     J::Obj(manifest).file()
 }
 

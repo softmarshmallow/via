@@ -1,0 +1,56 @@
+format    = "via-case-1"
+summary   = "An export writing aux.json is listed as export/names/aux-.json; the step changed to write Map.JSON is protocol.output_file naming the file, exit 1, no manifest."
+milestone = 6
+actions   = ["program", "trust", "device", "upper", "trust_again", "refused"]
+
+# build.md Conformance 51, 3.4 (File names) and 11.4 (Its file names are build paths).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.device]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.device.file.listed]
+path    = "build/w/manifest.json"
+pointer = "/files/export~1names~1aux-.json/bytes"
+value   = 21
+
+[action.device.file.escaped]
+path   = "build/w/export/names/aux-.json"
+exists = true
+
+[action.device.file.not_as_written]
+path   = "build/w/export/names/aux.json"
+exists = false
+
+[action.upper]
+replace = "steps/names.py"
+find    = 'NAME = "aux.json"'
+with    = 'NAME = "Map.JSON"'
+
+[action.trust_again]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.refused]
+via         = ["build", "world.toml", "--out", "build/w2"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w2"
+
+[action.refused.diag.name]
+code    = "protocol.output_file"
+subject = "step.names"
+
+[action.refused.file.no_manifest]
+path   = "build/w2/manifest.json"
+exists = false

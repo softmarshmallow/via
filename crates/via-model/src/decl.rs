@@ -3049,14 +3049,26 @@ impl Decls {
                 .value("command")
                 .and_then(text::strings)
                 .unwrap_or_default();
-            if when == "export" {
+            // `output` names what an export step writes (`protocol.md` 1); on a generate or a
+            // lint step it is a key the step does not have.
+            if t.value("output").is_some() && when != "export" && !when.is_empty() {
                 self.push(at_key(
-                    codes::doc::NOT_YET,
+                    codes::doc::UNKNOWN_KEY,
                     "step",
                     id,
-                    "when",
-                    "an `export` step arrives in M6",
-                    "write `when = \"lint\"` or `\"generate\"`",
+                    "output",
+                    &format!("a {when} step has no `output`: only an export step names one"),
+                    "remove `output`, or write `when = \"export\"`",
+                ));
+            } else if let Some(out) = t.str("output").filter(|o| !via_doc::is_id(o)) {
+                // `output` is an id (`protocol.md` 1), as a kind's is a name a reader matches.
+                self.push(at_key(
+                    codes::identity::BAD_ID,
+                    "step",
+                    id,
+                    "output",
+                    &format!("step `{id}`: the output `{out}` is not an id: an id is `[a-z][a-z0-9_]*`, at most 48 bytes"),
+                    &format!("write `output = \"{}\"`", via_doc::repair_id(out)),
                 ));
             }
             self.steps.insert(

@@ -15,13 +15,22 @@
 //! mismatch, or an entry that cannot be read, is `graph.store_corrupt`, and the entry is dropped.
 //! A store that cannot be written is `graph.store_unavailable` once, and the build keeps nothing
 //! more. Where the store lives is `build.md` 13 (`.via/store/` beside the world, or `--store`).
+//!
+//! Key records are written off the caller's thread (`graph.md` 3.2, "Key records written
+//! behind"): [`Store::put_key`] queues the record for a few writer threads and returns, and every
+//! read of a key answers from the queue first, so a build reads its own records as if written.
+//! [`Store::flush`] waits for the queue; taking the run diagnostics, writing a build record and
+//! dropping the store flush it.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{self, Write};
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread::JoinHandle;
 
 use via_diag::{codes, Diag, Site, Subject, Text};
 
@@ -32,10 +41,50 @@ pub const DEFAULT_STORE: &str = ".via/store";
 
 /// The store of one build.
 pub struct Store {
+    inner: Arc<Inner>,
+    behind: Mutex<Option<Behind>>,
+}
+
+/// What the store's writer threads share with it.
+pub struct Inner {
     root: PathBuf,
     unavailable: AtomicBool,
     verified: Mutex<BTreeSet<Digest>>,
     run: Mutex<Vec<Diag>>,
+    /// Folders known to exist, so a write does not ask again.
+    dirs: Mutex<HashSet<PathBuf>>,
+    /// Key records queued and not yet on disk, by path; the condition is told when one lands.
+    queued: Mutex<HashMap<PathBuf, Arc<Vec<u8>>>>,
+    landed: Condvar,
+}
+
+/// The writer threads of [`Store::put_key`].
+struct Behind {
+    tx: Sender<(PathBuf, Arc<Vec<u8>>)>,
+    threads: Vec<JoinHandle<()>>,
+}
+
+/// Writer threads for key records: the writes are small and many, and the file system takes
+/// several at once.
+const WRITERS: usize = 4;
+
+impl Deref for Store {
+    type Target = Inner;
+    fn deref(&self) -> &Inner {
+        &self.inner
+    }
+}
+
+impl Drop for Store {
+    fn drop(&mut self) {
+        let behind = self.behind.lock().map(|mut b| b.take()).unwrap_or_default();
+        if let Some(b) = behind {
+            drop(b.tx);
+            for t in b.threads {
+                let _ = t.join();
+            }
+        }
+    }
 }
 
 /// A key record: the value digest and the node's diagnostics, encoded by its codec.
@@ -64,10 +113,16 @@ impl Store {
         let root = root.into();
         let root = std::path::absolute(&root).unwrap_or(root);
         let s = Store {
-            root,
-            unavailable: AtomicBool::new(false),
-            verified: Mutex::new(BTreeSet::new()),
-            run: Mutex::new(Vec::new()),
+            inner: Arc::new(Inner {
+                root,
+                unavailable: AtomicBool::new(false),
+                verified: Mutex::new(BTreeSet::new()),
+                run: Mutex::new(Vec::new()),
+                dirs: Mutex::new(HashSet::new()),
+                queued: Mutex::new(HashMap::new()),
+                landed: Condvar::new(),
+            }),
+            behind: Mutex::new(None),
         };
         if let Err(e) = fs::create_dir_all(s.root.join("tmp")) {
             s.unavailable(&e);
@@ -81,12 +136,106 @@ impl Store {
     }
 
     /// The run diagnostics this store raised (`graph.store_corrupt`, `graph.store_unavailable`),
-    /// taken out in the order raised.
+    /// taken out in the order raised, once every queued key record is written.
     pub fn take_run_diags(&self) -> Vec<Diag> {
+        self.flush();
         self.run
             .lock()
             .map(|mut v| std::mem::take(&mut *v))
             .unwrap_or_default()
+    }
+
+    /// Waits until every key record queued by [`Store::put_key`] is on disk (or the store
+    /// became unavailable).
+    pub fn flush(&self) {
+        let mut q = self
+            .queued
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        while !q.is_empty() {
+            q = self
+                .landed
+                .wait(q)
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+        }
+    }
+
+    /// Queues `bytes` for `target`, starting the writer threads on first use; written here
+    /// when they cannot start.
+    fn write_behind(&self, target: PathBuf, bytes: Vec<u8>) {
+        if self.is_unavailable() {
+            return;
+        }
+        let bytes = Arc::new(bytes);
+        {
+            let mut q = self
+                .queued
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if q.contains_key(&target) {
+                return;
+            }
+            q.insert(target.clone(), bytes.clone());
+        }
+        let mut b = self
+            .behind
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if b.is_none() {
+            *b = self.start_writers();
+        }
+        let sent = b
+            .as_ref()
+            .is_some_and(|b| b.tx.send((target.clone(), bytes.clone())).is_ok());
+        drop(b);
+        if !sent {
+            self.inner.land(&target, &bytes);
+        }
+    }
+
+    fn start_writers(&self) -> Option<Behind> {
+        let (tx, rx) = channel::<(PathBuf, Arc<Vec<u8>>)>();
+        let rx = Arc::new(Mutex::new(rx));
+        let mut threads = Vec::new();
+        for k in 0..WRITERS {
+            let inner = self.inner.clone();
+            let rx = rx.clone();
+            let t = std::thread::Builder::new()
+                .name(format!("via-store-{k}"))
+                .spawn(move || loop {
+                    let job = rx.lock().ok().and_then(|r| r.recv().ok());
+                    let Some((target, bytes)) = job else {
+                        break;
+                    };
+                    inner.land(&target, &bytes);
+                });
+            match t {
+                Ok(t) => threads.push(t),
+                Err(_) => break,
+            }
+        }
+        (!threads.is_empty()).then_some(Behind { tx, threads })
+    }
+
+    /// A queued key record's bytes, if it is not on disk yet.
+    fn queued_bytes(&self, p: &Path) -> Option<Vec<u8>> {
+        self.queued
+            .lock()
+            .ok()
+            .and_then(|q| q.get(p).map(|b| b.as_ref().clone()))
+    }
+}
+
+impl Inner {
+    /// Writes a queued record and takes it off the queue.
+    fn land(&self, target: &Path, bytes: &[u8]) {
+        self.write_once(target, bytes);
+        let mut q = self
+            .queued
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        q.remove(target);
+        self.landed.notify_all();
     }
 
     /// True once a write failed: this build keeps nothing more.
@@ -131,6 +280,18 @@ impl Store {
         ));
     }
 
+    /// Makes `dir` once per store.
+    fn ensure_dir(&self, dir: &Path) -> io::Result<()> {
+        if self.dirs.lock().is_ok_and(|d| d.contains(dir)) {
+            return Ok(());
+        }
+        fs::create_dir_all(dir)?;
+        if let Ok(mut d) = self.dirs.lock() {
+            d.insert(dir.to_path_buf());
+        }
+        Ok(())
+    }
+
     /// `objects/ab/<digest>`.
     pub fn object_path(&self, d: &Digest) -> PathBuf {
         self.root.join("objects").join(d.fan()).join(d.hex())
@@ -172,9 +333,9 @@ impl Store {
             .join(format!("{}-{n}", std::process::id()));
         let result = (|| -> io::Result<Written> {
             if let Some(dir) = target.parent() {
-                fs::create_dir_all(dir)?;
+                self.ensure_dir(dir)?;
             }
-            fs::create_dir_all(self.root.join("tmp"))?;
+            self.ensure_dir(&self.root.join("tmp"))?;
             let mut f = fs::File::create(&tmp)?;
             f.write_all(bytes)?;
             drop(f);
@@ -196,7 +357,9 @@ impl Store {
             }
         }
     }
+}
 
+impl Store {
     fn read(&self, p: &Path) -> Result<Option<Vec<u8>>, io::Error> {
         match fs::read(p) {
             Ok(b) => Ok(Some(b)),
@@ -252,17 +415,22 @@ impl Store {
         self.object_path(d).is_file()
     }
 
-    /// Puts a key record.
+    /// Puts a key record, written behind (see the module's text).
     pub fn put_key(&self, key: &Digest, rec: &KeyRecord) {
         let mut e = Enc::new();
         e.str("via-keyrec-1").digest(&rec.value).bytes(&rec.diags);
-        self.write_once(&self.key_path(key), &e.finish());
+        self.write_behind(self.key_path(key), e.finish());
     }
 
-    /// Reads a key record; a damaged one is dropped with `graph.store_corrupt`.
+    /// Reads a key record, queued or on disk; a damaged one is dropped with
+    /// `graph.store_corrupt`.
     pub fn get_key(&self, key: &Digest) -> Option<KeyRecord> {
         let p = self.key_path(key);
-        let b = match self.read(&p) {
+        let read = match self.queued_bytes(&p) {
+            Some(b) => Ok(Some(b)),
+            None => self.read(&p),
+        };
+        let b = match read {
             Ok(b) => b?,
             Err(_) => {
                 self.drop_entry(&p, "could not be read");
@@ -286,6 +454,7 @@ impl Store {
 
     /// Drops a key record whose value turned out unreadable, so its node runs again.
     pub fn drop_key(&self, key: &Digest) {
+        self.flush();
         let _ = fs::remove_file(self.key_path(key));
     }
 
@@ -348,9 +517,9 @@ impl Store {
             .join(format!("{}-{n}", std::process::id()));
         let result = (|| -> io::Result<()> {
             if let Some(dir) = target.parent() {
-                fs::create_dir_all(dir)?;
+                self.ensure_dir(dir)?;
             }
-            fs::create_dir_all(self.root.join("tmp"))?;
+            self.ensure_dir(&self.root.join("tmp"))?;
             let mut f = fs::File::create(&tmp)?;
             f.write_all(bytes)?;
             f.sync_all()?;
@@ -373,6 +542,8 @@ impl Store {
     /// with a key wins (`graph.md` 6.2), so a complete build replaces the record of one whose
     /// step did not complete, and the null build applies after it.
     pub fn put_build(&self, build_key: &Digest, bytes: &[u8]) {
+        // The keys first: a build record names a build whose records are all there.
+        self.flush();
         let mut e = Enc::new();
         e.str("via-buildrec-1")
             .digest(&Digest::of(bytes))
@@ -439,6 +610,38 @@ mod tests {
         assert_eq!(run.len(), 1);
         assert_eq!(run[0].code().to_string(), "graph.store_corrupt");
         assert!(!s2.has_object(&d), "the entry is dropped");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// Key records written behind (`graph.md` 3.2): read back at once, on disk after a flush,
+    /// and in a store opened later; never two writes of one record.
+    #[test]
+    fn key_records_are_written_behind() {
+        let root = scratch("behind");
+        let s = Store::open(&root);
+        let keys: Vec<Digest> = (0..500u32).map(|i| Digest::of(&i.to_le_bytes())).collect();
+        for (i, k) in keys.iter().enumerate() {
+            let rec = KeyRecord {
+                value: Digest::of(k.hex().as_bytes()),
+                diags: vec![u8::try_from(i % 256).unwrap()],
+            };
+            s.put_key(k, &rec);
+            s.put_key(k, &rec);
+            assert_eq!(s.get_key(k), Some(rec), "a queued record answers its read");
+        }
+        s.flush();
+        assert!(s.queued.lock().unwrap().is_empty());
+        for k in &keys {
+            assert!(s.key_path(k).is_file(), "on disk after a flush");
+        }
+        drop(s);
+        let s2 = Store::open(&root);
+        assert_eq!(
+            s2.get_key(&keys[7]).map(|r| r.diags),
+            Some(vec![7]),
+            "a later store reads the records"
+        );
+        assert!(s2.take_run_diags().is_empty());
         let _ = fs::remove_dir_all(&root);
     }
 

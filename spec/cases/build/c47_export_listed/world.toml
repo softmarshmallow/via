@@ -8,4 +8,4 @@ base = "= 1"
 [step.map]                                # build.md 11.4: an export step that names its output
 when    = "export"
 output  = "player_map"
-command = ["python", "-m", "viasdk", "mapstep.py"]
+command = ["python", "-m", "viasdk", "steps/mapstep.py"]

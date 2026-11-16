@@ -330,14 +330,135 @@ func make_far_ground(quads := 8) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = "far_ground"
 	node.mesh = mesh
-	# The vertex colour is linear, as the pack's colours are (assets.md 2.6): drawn as
-	# terrain.gdshader draws a colour, through linear.gdshaderinc.
+	node.material_override = _far_material(0.95)
+	return node
+
+
+func _far_material(roughness: float) -> ShaderMaterial:
+	## The far layers' material: the vertex colour, linear as the pack's colours are (assets.md
+	## 2.6), drawn as terrain.gdshader draws a colour, through linear.gdshaderinc; a fragment whose
+	## chunk (its UV, the chunk's `at` plus a half) is set in the `loaded` texture is discarded.
 	var shader := Shader.new()
-	shader.code = "shader_type spatial;\n#include \"res://addons/via_loader/linear.gdshaderinc\"\nuniform sampler2D loaded : filter_nearest, repeat_disable;\nvoid fragment() {\n\tif (texelFetch(loaded, ivec2(floor(UV)), 0).r > 0.5) {\n\t\tdiscard;\n\t}\n\tALBEDO = albedo_from_linear(COLOR.rgb);\n\tROUGHNESS = 0.95;\n}\n"
+	shader.code = "shader_type spatial;\n#include \"res://addons/via_loader/linear.gdshaderinc\"\nuniform sampler2D loaded : filter_nearest, repeat_disable;\nvoid fragment() {\n\tif (texelFetch(loaded, ivec2(floor(UV)), 0).r > 0.5) {\n\t\tdiscard;\n\t}\n\tALBEDO = albedo_from_linear(COLOR.rgb);\n\tROUGHNESS = %.2f;\n}\n" % roughness
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
-	node.material_override = mat
+	return mat
+
+
+func make_far_instances() -> MeshInstance3D:
+	## Every chunk's instances as boxes, as one mesh: each instance whose asset is drawn and has
+	## `bounds` (assets.md 2.3) is the box of its bounds placed by its row (build.md 8, scale
+	## included), its four sides and top (no bottom), flat-shaded in one colour per asset: a
+	## primitive's or stand-in's `colour` times the row's tint, as instance.gdshader draws it; a
+	## model's mean surface albedo. Not collided. What stream.gd shows of a chunk's instances
+	## while the chunk is not loaded, in the far ground's way (one draw call, a chunk hidden by its
+	## texel of the `loaded` texture), so houses on a far hill stand past the load radius (M6 slice
+	## 2). The reader's level of detail; ours. Null when no chunk holds an instance drawn.
+	var cols := _cols
+	if not cols.has("names"):
+		return null
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var tints := PackedColorArray()
+	var uvs := PackedVector2Array()
+	var colour := {}   # asset -> [linear colour, uses tint] or null when not drawn
+	for chunk in _manifest.get("chunks", []):
+		var at: Array = chunk.get("at", [0, 0])
+		var uv := Vector2(int(at[0]) + 0.5, int(at[1]) + 0.5)
+		var groups: Dictionary = chunk.get("instances", {})
+		var assets := groups.keys()
+		assets.sort()
+		for asset in assets:
+			if not colour.has(asset):
+				colour[asset] = _far_colour(asset)
+			var c = colour[asset]
+			if c == null:
+				continue
+			var b: Array = _manifest.assets[asset].bounds
+			var r: Array = groups[asset]
+			for k in int(r[1]):
+				var n := int(r[0]) + k
+				if n < 0 or n >= int(cols.count):
+					continue
+				var t := _instance_transform(cols, n, true)
+				var tint: Color = c[0] * (cols.tint[n] if c[1] else 1.0)
+				_far_box(verts, normals, tints, uvs, t, b, Color(tint.r, tint.g, tint.b), uv)
+	if verts.is_empty():
+		return null
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = tints
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var node := MeshInstance3D.new()
+	node.name = "far_instances"
+	node.mesh = mesh
+	node.material_override = _far_material(0.85)
 	return node
+
+
+func _far_colour(asset: String):
+	## [linear colour, whether the row's tint multiplies it], or null for an asset not drawn or
+	## without bounds.
+	var a: Dictionary = _manifest.get("assets", {}).get(asset, {})
+	var b: Array = a.get("bounds", [])
+	var mesh := _asset_mesh_of(asset)
+	if mesh == null or b.size() != 6:
+		return null
+	if a.get("source") == "model":
+		var sum := Color(0, 0, 0)
+		var k := 0
+		for si in mesh.get_surface_count():
+			var m := mesh.surface_get_material(si) as BaseMaterial3D
+			if m != null:
+				sum += m.albedo_color.srgb_to_linear()
+				k += 1
+		var mean := sum / float(k) if k > 0 else DEFAULT_GROUND.srgb_to_linear()
+		return [Color(mean.r, mean.g, mean.b), false]
+	var c: Array = a.get("colour", [0.8, 0.8, 0.8])
+	return [Color(c[0], c[1], c[2]), true]
+
+
+static func _far_box(verts: PackedVector3Array, normals: PackedVector3Array, tints: PackedColorArray,
+		uvs: PackedVector2Array, t: Transform3D, b: Array, colour: Color, uv: Vector2) -> void:
+	## The box of bounds b (asset frame) placed by t: four sides and the top, two triangles each,
+	## wound clockwise seen from outside (Godot's front faces).
+	var p := func(x, y, z): return t * g(x, y, z)
+	var x0: float = b[0]
+	var y0: float = b[1]
+	var z0: float = b[2]
+	var x1: float = b[3]
+	var y1: float = b[4]
+	var z1: float = b[5]
+	var faces := [
+		[p.call(x0, y0, z1), p.call(x1, y0, z1), p.call(x1, y1, z1), p.call(x0, y1, z1)],   # top
+		[p.call(x0, y0, z0), p.call(x1, y0, z0), p.call(x1, y0, z1), p.call(x0, y0, z1)],   # south
+		[p.call(x1, y1, z0), p.call(x0, y1, z0), p.call(x0, y1, z1), p.call(x1, y1, z1)],   # north
+		[p.call(x0, y1, z0), p.call(x0, y0, z0), p.call(x0, y0, z1), p.call(x0, y1, z1)],   # west
+		[p.call(x1, y0, z0), p.call(x1, y1, z0), p.call(x1, y1, z1), p.call(x1, y0, z1)],   # east
+	]
+	var centre: Vector3 = t * g((x0 + x1) / 2.0, (y0 + y1) / 2.0, (z0 + z1) / 2.0)
+	for q in faces:
+		var nrm: Vector3 = (q[1] - q[0]).cross(q[2] - q[0]).normalized()
+		var mid: Vector3 = (q[0] + q[2]) / 2.0
+		if nrm.dot(mid - centre) < 0.0:
+			nrm = -nrm
+		for tri in [[q[0], q[1], q[2]], [q[0], q[2], q[3]]]:
+			var a: Vector3 = tri[0]
+			var bb: Vector3 = tri[1]
+			var cc: Vector3 = tri[2]
+			if (bb - a).cross(cc - a).dot(nrm) > 0.0:   # counter-clockwise from outside: turn it
+				var tmp := bb
+				bb = cc
+				cc = tmp
+			for v in [a, bb, cc]:
+				verts.append(v)
+				normals.append(nrm)
+				tints.append(colour)
+				uvs.append(uv)
 
 
 static func _far_steps(a: int, b: int, quads: int) -> Array[int]:
@@ -353,10 +474,24 @@ static func _far_steps(a: int, b: int, quads: int) -> Array[int]:
 
 
 func chunk_rect(n: int) -> Rect2:
-	## Chunk n's posts in plan metres (build.md 5).
+	## Chunk n's `bounds` (build.md 5, M6): its first and last posts in plan metres; from its
+	## `posts` in a build whose chunks hold no `bounds`.
+	var b = _manifest.chunks[n].get("bounds")
+	if b is Array and b.size() == 4:
+		return Rect2(float(b[0]), float(b[1]), float(b[2]) - float(b[0]), float(b[3]) - float(b[1]))
 	var p: Array = _manifest.chunks[n].get("posts", [0, 0, 0, 0])
 	var a := Vector2(_x0 + int(p[0]) * _res, _y0 + int(p[1]) * _res)
 	return Rect2(a, Vector2(_x0 + int(p[2]) * _res, _y0 + int(p[3]) * _res) - a)
+
+
+func frame() -> Dictionary:
+	return _manifest.get("frame", {})
+
+
+func file_digest(file: String) -> String:
+	## A build file's digest from the manifest's `files` (build.md 4), or "" when it is not listed.
+	var e = _manifest.get("files", {}).get(file)
+	return String(e.get("digest", "")) if e is Dictionary else ""
 
 
 func mesh_list() -> Array:
@@ -717,6 +852,15 @@ func _pack_root() -> String:
 	return pack_dir
 
 
+func _asset_root(a: Dictionary) -> String:
+	## Where an asset's files lie (build.md 4, 7): an asset an import's pack binds names that
+	## import in `pack`, and its root is `locations.pack_roots`; any other is under `pack_root`.
+	if a.get("pack") is String:
+		var pr = _manifest.get("locations", {}).get("pack_roots", {}).get(String(a.pack))
+		return (_dir + "/" + pr).simplify_path() if pr is String else ""
+	return _pack_root()
+
+
 func _material_image(id: String, e: Dictionary) -> Image:
 	## A material's `file`, read from the pack's root, resampled for the shared array; null when it
 	## has none, or it cannot be read (then load.bad_file and its colour is drawn).
@@ -911,10 +1055,10 @@ func _model_mesh(a: Dictionary) -> Mesh:
 	if files.is_empty() or not files[0] is Dictionary:
 		return null
 	var rel := String(files[0].get("path", ""))
-	var root := _pack_root()
+	var root := _asset_root(a)
 	var path := root + "/" + rel
 	if root == "" or not FileAccess.file_exists(path):
-		_bad_file("pack:" + rel, "missing" if root != "" else "the manifest's pack_root is null and no pack directory was given")
+		_bad_file("pack:" + rel, "missing" if root != "" else "the manifest names no root for this asset's pack, and no pack directory was given")
 		return null
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()

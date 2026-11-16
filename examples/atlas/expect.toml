@@ -1,0 +1,161 @@
+# What an atlas build must measure (docs/plan.md M6: every example joined in one map; an over-budget
+# chunk fails and names the asset). Measures, never bytes (R15). Taken by
+#
+#   python3.12 examples/atlas/measure.py BUILD --check base
+#   python3.12 examples/atlas/measure.py BUILD+<c> --run BUILD+<c>.run.json --check <c>
+#
+# Protocol (M6 slice 2, 2026-11-17): macOS arm64 (M4 Pro), release `via` and `via-terrain` of the
+# rewrite working tree after 33e309f with other agents' M6 slice 2 diffs, VIA_LIB=lib, Python 3.12
+# steps; one fresh store: the atlas cold, the same again into a new directory, then each change with
+# `--against` the base on that store, one after another; one run each; other agents building and a
+# Godot render running at the same time. Measured once, so each band is the measured number, or a
+# limit the spec states: it says where someone looks. Wall seconds: base cold 166.1; the same into a
+# new directory 33.7 (0 nodes ran); move_market 103.0, forgotten_exit 90.6 (exit 1), move_square
+# 100.5, over_budget 106.4 (exit 1).
+#
+# Re-taken in the M6 slice 2 fix pass (an import's own pack's assets brought; the roads painted by
+# layers/steps/track.py): release `via` and `via-terrain` of the working tree at 11:34 KST, as
+# above, load average 9 to 15 from other agents, one fresh store, one run each. Wall seconds: base
+# cold 245.3; move_market 161.8 (2805 nodes ran), forgotten_exit 105.1 (exit 1, 1077), move_square
+# 148.3 (2273), over_budget 165.6 (exit 1, 8182). Every row in band; new rows `road_painted`,
+# `road_painted_in`; moved: `[map] footprints` 2587 -> 2776, `move_market.shapes_ran` + area_market.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.exit_gap]                             # every road ends on the place it answers (R9): quay's
+measure = "exit_gap"                        # `gate` and the wild's two exits, and the named places
+band    = [0, 0]
+
+[base.unanswered]
+measure = "unanswered"
+band    = [0, 0]
+
+[base.chunks]                               # 3200 by 2560 m at 128 m: 25 by 20
+measure = "chunks"
+band    = [500, 500]
+
+[base.tri_max]                              # the heaviest chunk, [22, 12] (example's and vale's woods),
+measure = "tri_max"                         # against the budget's 100000 (README "Budget"); college's
+band    = [77904, 77904]                    # and market's own assets counted since M6 slice 2 (fix)
+
+[base.grade_p95]                            # 95% of the 4 m steps along the atlas's ways
+measure = "grade_p95"
+band    = [0, 0.2]
+
+[base.grade_max]                            # NOT HOLDING: one step of 15.2 (the hill trail over relief's
+measure = "grade_max"                       # north-east edge); measured, so its band says where
+band    = [15.24, 15.24]                    # to look, not that it is fine
+
+[base.join_step_max]                        # the largest median step at a join after the lifts:
+measure = "join_step_max"                   # metres, outside the edge less 28 m inside (README "Lifts")
+band    = [0, 7.6]
+
+[base.seam]                                 # one `import.seam` per import (13): the blend fades over
+measure = "seam"                            # 12 to 24 m, and a step steeper than 1:2 stays somewhere
+band    = [13, 13]                          # on every outline (README "What does not hold")
+
+[base.bookmarks]
+measure = "bookmarks"
+band    = [13, 13]
+
+[base.road_painted]                         # the roads in earth outside the places (0 of about 800
+measure = "road_painted"                    # sampled points before the M6 slice 2 fix: the row could
+band    = [1, 1]                            # not see the ways layer's roads; layers/steps/track.py)
+
+[base.road_painted_in]                      # NOT HOLDING: inside a place its own ground is brought
+measure = "road_painted_in"                 # over the plain's rows, so a road's last stretch to the
+band    = [0.101, 0.101]                    # place's gate is the place's paint (README)
+
+# ------------------------------------------------------------------------------------------ move_market
+
+[move_market.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_market.exit_gap]                      # the roads followed the market's places
+measure = "exit_gap"
+band    = [0, 0]
+
+[move_market.shapes_ran]                    # NOT HOLDING ("only its roads follow"): every routed road
+measure = "shapes_ran"                      # runs again, since `route` reads the whole surface; the
+                                            # outputs follow: only college_road, market_road and
+                                            # join_market move (README "Changes")
+band    = ["area_market", "college_road", "creek_road", "harbour_road", "hill_trail", "join_market", "market_road", "north_road", "west_road", "wild_road"]
+
+[move_market.ran_imports]                   # the market's placement only; nothing inside it
+measure = "ran_imports"
+band    = ["market"]
+
+# ------------------------------------------------------------------------------------------ forgotten_exit
+
+[forgotten_exit.unanswered]                 # composition.md 7: the forgotten exit, named
+measure = "unanswered"
+band    = [1, 1]
+
+[forgotten_exit.unanswered_write]           # with the line that answers it
+measure = "unanswered_write"
+band    = ["ends_at = \"wild.south_end\""]
+
+# ------------------------------------------------------------------------------------------ move_square
+
+[move_square.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_square.exit_gap]
+measure = "exit_gap"
+band    = [0, 0]
+
+[move_square.ran_imports]                   # the market re-runs inside; no other place
+measure = "ran_imports"
+band    = ["market"]
+
+# ------------------------------------------------------------------------------------------ over_budget
+
+[over_budget.over_budget]                   # build.md 5.1: one chunk over, exit 1
+measure = "over_budget"
+band    = [1, 1]
+
+[over_budget.over_budget_chunks]
+measure = "over_budget_chunks"
+band    = [[17, 8]]
+
+[over_budget.over_budget_asset]             # the asset that dominates it (63%, 260 instances)
+measure = "over_budget_asset"
+band    = ["tree_oak"]
+
+# ------------------------------------------------------------------------------------------ the player map
+# lib/map's export (layers/names.toml, world.toml [step.map]), measured by tools/map_render.py
+# (lib/map README "Measures"):
+#
+#   python3 tools/map_render.py BUILD BUILD/export/map --out P --expect examples/atlas/expect.toml
+#   python3 tools/map_render.py BUILD+move_market BUILD+move_market/export/map --out P \
+#       --against BUILD BUILD/export/map --expect examples/atlas/expect.toml --section map_move_market
+#
+# Protocol (M6 slice 2, 2026-11-17): as above (release `via` of the working tree, VIA_LIB=lib, one
+# fresh store, base then move_market `--against` it, one run each); system Python 3.9 with Pillow
+# and NumPy for the tool. The export step itself ran 34.9 s of the base build (run report, step:map).
+
+[map]
+classes            = { band = [21, 21] }     # none, 9 materials, water, river, stream, 7 way classes, footprint
+ways               = { band = [188, 188] }
+water              = { band = [10, 10] }     # the becks, the city's and townland's rivers, the terrain river
+under              = { band = [1, 1] }       # coast's sea cave: in vectors only, listed as skipped
+regions            = { band = [13, 13] }     # one area per import, its footprint as placed
+footprints         = { band = [2776, 2776] } # houses, barns, sheds by their bounds; college's and market's own since M6 slice 2 (2587 before: their pack's assets were not handed)
+labels             = { band = [45, 45] }
+tiles              = { band = [2000, 2000] } # 50 by 40 tiles of 64 m
+way_on_cells_min   = { band = [1, 1] }
+water_on_cells_min = { band = [1, 1] }
+label_overlaps     = { band = [0, 0] }       # at the stated zoom, 1 px a metre
+labels_unplaced    = { band = [0, 0] }
+
+[map_move_market]                            # the market 40 m east, 30 m north
+tiles_changed      = { band = [38, 38] }     # 30 in the market's old and new footprint, 8 along market_road
+tiles_unexplained  = { band = [0, 0] }       # every changed tile names a market item, its area or market_road
+tiles_cells_only   = { band = [0, 0] }
+label_overlaps     = { band = [0, 0] }

@@ -1,19 +1,36 @@
 """Draw a player map's layers (lib/map's export) beside the build it came from, and measure their
 registration. A review tool: no reader of the map needs it.
 
-    python3 tools/map_render.py BUILD MAPDIR --out PREFIX [--ppm N]
+    python3 tools/map_render.py BUILD MAPDIR --out PREFIX [--ppm N] [--expect EXPECT [--section T]]
+                                [--against OLDBUILD OLDMAPDIR]
 
-Writes PREFIX.ground.png (left: the map's ground classes with its ways, footprints and labels;
+Writes PREFIX.ground.png (left: the map's ground classes with its ways, footprints, regions and
+labels, each label in the box the map placed it in;
 right: the build's own plan view, the height field shaded, with features.json's ways and floors
 drawn over the map's classes in black) and, when the map has floors, PREFIX.floors.png (one plan
 per floor, then a section: each floor's surfaces at their levels and each link from its foot to its
 head). Prints the registration measures as JSON (protocol in the README of lib/map).
+
+`--ppm` defaults to the map's own label zoom (labels.json `placement`), the scale its labels are
+kept apart at; the floors are drawn at the floors' label zoom. Measures:
+
+- `way_on_cells` (ways) and `water_on_cells` (water courses), apart: every 0.25 m along the line
+  in features.json, the share whose map cell is its own class, another way or water course, or a
+  footprint. A way marked `under` (a cave) is not in the raster; it is listed in `skipped` with
+  that reason, never left out silently.
+- `label_overlaps`: pairs of placed labels whose text, as this tool draws it (PIL's default font
+  at the plan's zoom), meets; `labels_unplaced`: labels with no box.
+- With `--against`: `tiles_changed`, and each changed tile explained by what changed in it (the
+  raster's cells, or the names of the items whose part in it differs); `tiles_unexplained` counts
+  any left, which is a fault of the fingerprint; `tiles_cells_only`, those whose only reason is
+  changed cells (a field moved under no changed item).
 """
 
 import argparse
 import json
 import math
 import os
+import runpy
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -41,24 +58,123 @@ def colours(classes):
     return out
 
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+PLACE = runpy.run_path(os.path.join(HERE, "..", "lib", "map", "export.py"))["place_labels"]
+LABEL_INK = {"region": (110, 0, 150), "poi": (170, 0, 0), "label": (0, 0, 0), "room": (0, 0, 120)}
+
+
+def draw_labels(d, labels, px, ppm):
+    """Each label's anchor, and its text in its placed box (top-left corner, plus 1 px of the
+    box's padding); returns the drawn text boxes in pixels, as the font measures them."""
+    out = []
+    for lb in labels:
+        x, y = px(lb["at"])
+        ink = LABEL_INK.get(lb["class"], (0, 0, 0))
+        d.ellipse((x - 1.5, y - 1.5, x + 1.5, y + 1.5), fill=ink)
+        if not lb.get("box"):
+            continue
+        b = lb["box"]
+        tx, ty = px((b[0], b[3]))
+        tx, ty = tx + 1, ty + 1
+        d.text((tx, ty), lb["text"], fill=ink)
+        out.append((lb["key"], d.textbbox((tx, ty), lb["text"])))
+    return out
+
+
+def overlaps(boxes):
+    n = 0
+    for i, (_, a) in enumerate(boxes):
+        for _, b in boxes[i + 1:]:
+            n += a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+    return n
+
+
+def explain_tiles(old_dir, new_dir):
+    """Every tile whose fingerprint differs between two maps, with what differs in it."""
+    def load(d):
+        idx = json.load(open(os.path.join(d, "map.json")))
+        vec = json.load(open(os.path.join(d, "vectors.json")))
+        lab = json.load(open(os.path.join(d, "labels.json")))["labels"]
+        items = {}
+        for k in ("ways", "water", "footprints", "regions"):
+            for e in vec[k]:
+                items[("ground", k, e["name"])] = e
+        for fl in idx["floors"]:
+            fd = json.load(open(os.path.join(d, fl["file"])))
+            for k in ("surfaces", "rooms", "walls", "doors", "links"):
+                for e in fd[k]:
+                    items[(f"floor:{fl['index']}", k, e.get("name") or e.get("instance"))] = e
+        for e in lab:
+            plan = "ground" if e["floor"] is None else f"floor:{e['floor']}"
+            items[(plan, "labels", e["key"])] = e
+        return idx, np.load(os.path.join(d, "ground.npy")), items
+
+    oi, og, oit = load(old_dir)
+    ni, ng, nit = load(new_dir)
+    T = ni["tiles"]["side"]
+    cell = ni["transform"]["cell"]
+    x0, y0 = ni["transform"]["extent"][:2]
+    of = {(t["plan"], tuple(t["at"])): t["fingerprint"] for t in oi["tiles"]["list"]}
+    changed_items = [k for k in set(oit) | set(nit) if oit.get(k) != nit.get(k)]
+
+    def reaches(e, tb):
+        if e is None:
+            return False
+        pts = list(e.get("points", [])) + list(e.get("outline", [])) + [p for pc in e.get("pieces", []) for p in pc[0]]
+        if "at" in e:
+            pts.append(e["at"])
+        if e.get("box"):
+            pts += [e["box"][:2], e["box"][2:]]
+        if not pts:
+            return False
+        g = e.get("width", 0) / 2
+        bx = (min(p[0] for p in pts) - g, min(p[1] for p in pts) - g,
+              max(p[0] for p in pts) + g, max(p[1] for p in pts) + g)
+        return bx[0] < tb[2] and tb[0] <= bx[2] and bx[1] < tb[3] and tb[1] <= bx[3]
+
+    out = []
+    for t in ni["tiles"]["list"]:
+        key = (t["plan"], tuple(t["at"]))
+        if of.get(key) == t["fingerprint"]:
+            continue
+        tx, ty = t["at"]
+        why = []
+        if t["plan"] == "ground":
+            sl = (slice(ty * T, (ty + 1) * T), slice(tx * T, (tx + 1) * T))
+            nd = int((og[sl] != ng[sl]).sum())
+            if nd:
+                why.append(f"cells {nd}")
+        tb = (x0 + tx * T * cell, y0 + ty * T * cell, x0 + (tx + 1) * T * cell, y0 + (ty + 1) * T * cell)
+        why += sorted(f"{k}:{n}" for pl, k, n in changed_items if pl == t["plan"] and
+                      (reaches(oit.get((pl, k, n)), tb) or reaches(nit.get((pl, k, n)), tb)))
+        out.append({"plan": t["plan"], "at": [tx, ty], "why": why})
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("build")
     ap.add_argument("mapdir")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--ppm", type=float, default=4.0)
+    ap.add_argument("--ppm", type=float, help="pixels per metre; default the map's label zoom")
     ap.add_argument("--expect", help="an expect.toml whose [map] rows the measures are checked against")
+    ap.add_argument("--section", default="map", help="the expect.toml table of rows (default `map`)")
+    ap.add_argument("--against", nargs=2, metavar=("OLDBUILD", "OLDMAPDIR"),
+                    help="an earlier build's map: explain every tile whose fingerprint changed")
     a = ap.parse_args(argv)
     idx = json.load(open(os.path.join(a.mapdir, "map.json")))
     vec = json.load(open(os.path.join(a.mapdir, "vectors.json")))
-    labels = json.load(open(os.path.join(a.mapdir, "labels.json")))["labels"]
+    ldoc = json.load(open(os.path.join(a.mapdir, "labels.json")))
+    labels = ldoc["labels"]
+    zoom = ldoc.get("placement", {}).get("zoom", {"ground": 4.0, "floors": 14.0})
+    glyph = ldoc.get("placement", {}).get("glyph", [7, 13])
     ground = np.load(os.path.join(a.mapdir, "ground.npy"))
     man = json.load(open(os.path.join(a.build, "manifest.json")))
     fj = json.load(open(os.path.join(a.build, "features.json")))
     tr = idx["transform"]
     x0, y0, x1, y1 = tr["extent"]
     cell = tr["cell"]
-    ppm = a.ppm
+    ppm = a.ppm or zoom["ground"]
     W, H = int(round((x1 - x0) * ppm)), int(round((y1 - y0) * ppm))
 
     def px(p):
@@ -81,12 +197,11 @@ def main(argv=None):
     for f in vec["footprints"]:
         for pc in f["pieces"]:
             d.polygon([px(p) for p in pc[0]], outline=(60, 30, 20))
-    for lb in labels:
-        if lb["floor"] is None:
-            x, y = px(lb["at"])
-            d.ellipse((x - 2, y - 2, x + 2, y + 2), fill=(200, 0, 0))
-            d.text((x + 3, y - 6), lb["text"], fill=(0, 0, 0))
-    d.text((4, 4), f"map: {len(idx['classes'])} classes, cell {cell} m", fill=(0, 0, 0))
+    for r in vec["regions"]:
+        for pc in r["pieces"]:
+            d.polygon([px(p) for p in pc[0]], outline=(120, 0, 160))
+    drawn = draw_labels(d, [lb for lb in labels if lb["floor"] is None], px, ppm)
+    d.text((4, 4), f"map: {len(idx['classes'])} classes, cell {cell} m, {ppm} px/m", fill=(0, 0, 0))
 
     # Right: the build's plan view (height shaded) with features.json drawn over the map classes.
     h = np.load(os.path.join(a.build, man["fields"]["height"]["file"]))
@@ -127,44 +242,67 @@ def main(argv=None):
         r = int(math.floor((y - y0) / cell))
         return int(ground[min(max(r, 0), ny - 1), min(max(c, 0), nx - 1)])
 
-    meas = {}
-    for w in vec["ways"] + vec["water"]:
-        if w.get("under"):
-            continue
-        f = next(f for f in fj["features"] if f["name"] == w["name"])
-        want = by_name.get("way:" + w["class"], by_name.get("water:" + w["class"]))
-        hit = tot = 0
-        pts = f["points"]
-        for i in range(len(pts) - 1):
-            L = math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
-            n = max(1, int(L / 0.25))
-            for k in range(n):
-                t = k / n
-                x = pts[i][0] + t * (pts[i + 1][0] - pts[i][0])
-                y = pts[i][1] + t * (pts[i + 1][1] - pts[i][1])
-                if not (x0 <= x < x1 and y0 <= y < y1):
-                    continue
-                tot += 1
-                c = cls_at(x, y)
-                hit += c == want or idx["classes"][c]["name"] in ("footprint",) or idx["classes"][c]["from"] in ("way", "water course")
-        meas[w["name"]] = round(hit / tot, 4) if tot else None
+    fby = {f["name"]: f for f in fj["features"]}
+    meas = {"ways": {}, "water": {}}
+    skipped = {}
+    for group, items in (("ways", vec["ways"]), ("water", vec["water"])):
+        for w in items:
+            if w.get("under"):
+                skipped[w["name"]] = "under: in vectors.json only, not drawn on the ground raster"
+                continue
+            f = fby[w["name"]]
+            want = by_name.get("way:" + w["class"], by_name.get("water:" + w["class"]))
+            hit = tot = 0
+            pts = f["points"]
+            for i in range(len(pts) - 1):
+                L = math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+                n = max(1, int(L / 0.25))
+                for k in range(n):
+                    t = k / n
+                    x = pts[i][0] + t * (pts[i + 1][0] - pts[i][0])
+                    y = pts[i][1] + t * (pts[i + 1][1] - pts[i][1])
+                    if not (x0 <= x < x1 and y0 <= y < y1):
+                        continue
+                    tot += 1
+                    c = cls_at(x, y)
+                    hit += c == want or idx["classes"][c]["name"] in ("footprint",) or idx["classes"][c]["from"] in ("way", "water course")
+            meas[group][w["name"]] = round(hit / tot, 4) if tot else None
     counts = {"classes": len(idx["classes"]), "floors": len(idx["floors"]),
               "tiles": len(idx["tiles"]["list"]), "ways": len(vec["ways"]), "water": len(vec["water"]),
-              "footprints": len(vec["footprints"]), "labels": len(labels),
-              "way_on_cells_min": min((v for v in meas.values() if v is not None), default=None)}
+              "footprints": len(vec["footprints"]), "regions": len(vec["regions"]), "labels": len(labels),
+              "under": len(skipped),
+              "way_on_cells_min": min((v for v in meas["ways"].values() if v is not None), default=None),
+              "water_on_cells_min": min((v for v in meas["water"].values() if v is not None), default=None),
+              "labels_unplaced": sum(1 for lb in labels if not lb.get("box")),
+              "label_overlaps": overlaps(drawn)}
     links = set()
     for f in idx["floors"]:
         fd = json.load(open(os.path.join(a.mapdir, f["file"])))
         counts["walls"] = counts.get("walls", 0) + len(fd["walls"])
         links |= {ln["name"] for ln in fd["links"]}
     counts["links"] = len(links)
-    print(json.dumps({"way_centreline_on_way_cells": meas, "counts": counts}, sort_keys=True))
+    report = {"way_on_cells": meas["ways"], "water_on_cells": meas["water"], "skipped": skipped,
+              "counts": counts}
+    if a.against:
+        tiles = explain_tiles(a.against[1], a.mapdir)
+        report["tiles_changed"] = tiles
+        counts["tiles_changed"] = len(tiles)
+        counts["tiles_unexplained"] = sum(1 for t in tiles if not t["why"])
+        counts["tiles_cells_only"] = sum(1 for t in tiles if t["why"] and all(w.startswith("cells") for w in t["why"]))
+    print(json.dumps(report, sort_keys=True))
     if a.expect:
-        import re
+        text = open(a.expect).read()
+        try:
+            import tomllib
 
-        text = open(a.expect).read().split("\n[map]\n", 1)[1].split("\n[", 1)[0]
-        rows = {m.group(1): {"band": [float(m.group(2)), float(m.group(3))]} for m in
-                re.finditer(r"^(\w+)\s*=\s*\{\s*band\s*=\s*\[([-\d.]+),\s*([-\d.]+)\]", text, re.M)}
+            rows = tomllib.loads(text)[a.section]
+        except ImportError:  # Python before 3.11: the rows' one form, read by pattern
+            import re
+
+            head = re.search(r"^\[" + re.escape(a.section) + r"\][ \t]*(#.*)?$", text, re.M)
+            part = text[head.end():].split("\n[", 1)[0]
+            rows = {m.group(1): {"band": [float(m.group(2)), float(m.group(3))]} for m in
+                    re.finditer(r"^(\w+)\s*=\s*\{\s*band\s*=\s*\[([-\d.]+),\s*([-\d.]+)\]", part, re.M)}
         bad = [f"{k} {counts.get(k)} not in {r['band']}" for k, r in rows.items()
                if counts.get(k) is None or not r["band"][0] <= counts[k] <= r["band"][1]]
         print("map rows: " + ("; ".join(bad) if bad else f"{len(rows)} in band"))
@@ -177,7 +315,7 @@ def main(argv=None):
     allpts = [p for fl in floors for s in fl["surfaces"] for pc in s["pieces"] for p in pc[0]]
     bx0, by0 = min(p[0] for p in allpts) - 3, min(p[1] for p in allpts) - 3
     bx1, by1 = max(p[0] for p in allpts) + 3, max(p[1] for p in allpts) + 3
-    fp = 14.0
+    fp = zoom["floors"]
     FW, FH = int((bx1 - bx0) * fp), int((by1 - by0) * fp)
 
     def fq(p):
@@ -197,17 +335,31 @@ def main(argv=None):
             d.polygon([fq(p) for p in w["outline"]], fill=(50, 50, 50))
         for dr in fl["doors"]:
             d.line([fq(p) for p in dr["points"]], fill=(0, 160, 0), width=3)
+        notes = []
         for ln in fl["links"]:
             colr = (230, 120, 0) if ln["to"] != ln["from"] else (160, 160, 0)
             d.line([fq(p) for p in ln["points"]], fill=colr, width=3)
             end = ln["points"][-1] if ln["from"] == fl["index"] else ln["points"][0]
             other = ln["to"] if ln["from"] == fl["index"] else ln["from"]
-            x, y = fq(end)
-            d.text((x + 3, y), f"{'up' if other > fl['index'] else 'down' if other < fl['index'] else ''} {other}", fill=colr)
-        for lb in labels:
-            if lb["floor"] == fl["index"]:
-                x, y = fq(lb["at"])
-                d.text((x - 10, y - 5), lb["text"], fill=(0, 0, 120))
+            word = "up" if other > fl["index"] else "down" if other < fl["index"] else ""
+            notes.append({"key": "~" + ln["name"], "class": "link", "text": f"{word} {other}".strip(),
+                          "at": end, "floor": fl["index"]})
+        # The links' notes are this tool's, not the map's: placed by the map's own rule after its
+        # labels (which keep their boxes: they come first in its order), so neither covers the other.
+        mine = [dict(lb) for lb in labels if lb["floor"] == fl["index"]]
+        PLACE(mine + notes, fp, glyph, [bx0, by0, bx1, by1])
+        fdrawn = draw_labels(d, mine, fq, fp)
+        moved = sum(1 for lb, m in zip([lb for lb in labels if lb["floor"] == fl["index"]], mine)
+                    if lb.get("box") != m.get("box"))
+        for nt in notes:
+            if nt.get("box"):
+                b = nt["box"]
+                tx, ty = fq((b[0], b[3]))
+                d.text((tx + 1, ty + 1), nt["text"], fill=(230, 120, 0))
+                fdrawn.append((nt["key"], d.textbbox((tx + 1, ty + 1), nt["text"])))
+        print(json.dumps({"floor": fl["index"], "label_overlaps": overlaps(fdrawn), "labels_moved": moved,
+                          "labels_unplaced": sum(1 for lb in labels if lb["floor"] == fl["index"] and not lb.get("box")),
+                          "notes_unplaced": sum(1 for nt in notes if not nt.get("box"))}))
         d.text((4, FH + 2), f"floor {fl['index']}: levels {fl['levels']} z {fl['z']}  walls {len(fl['walls'])} "
                f"doors {len(fl['doors'])} links {len(fl['links'])}", fill=(0, 0, 0))
         panels.append(im)

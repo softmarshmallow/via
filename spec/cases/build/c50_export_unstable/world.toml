@@ -1,0 +1,10 @@
+name   = "exportunstable"
+extent = [0, 0, 16, 16]
+
+[field.height]
+role = "surface"
+base = "= 1"
+
+[step.stamp]                              # a plain export that writes the time: other bytes each run
+when    = "export"
+command = ["python", "-m", "viasdk", "steps/stamp.py"]

@@ -1,0 +1,67 @@
+# The views layer: where the atlas is judged from (R17). One bookmark at every join a road makes
+# (on the road near its end, looking into the place) and a few along the roads and over the river.
+
+[feature.join_harbour]                        # the harbour road arriving at the harbour town's gate
+kind   = "bookmark"
+on     = { ref = "harbour_road", t = 0.94 }
+toward = "quay.gate"
+
+[feature.join_city_harbour]                   # the harbour road leaving the city's harbour gate
+kind   = "bookmark"
+on     = { ref = "harbour_road", t = 0.06 }
+toward = "city.harbor_gate_e"
+
+[feature.along_harbour]                       # half way, looking east along the plain
+kind   = "bookmark"
+on     = { ref = "harbour_road", t = 0.5 }
+toward = "quay.gate"
+
+[feature.on_bridge]                           # on the creek's bridge, looking east
+kind   = "bookmark"
+on     = { ref = "creek_road", t = 0.92 }
+toward = "bridge_east"
+
+[feature.join_college]
+kind   = "bookmark"
+on     = { ref = "college_road", t = 0.9 }
+toward = "college.arrival"
+
+[feature.join_market]
+kind   = "bookmark"
+on     = { ref = "market_road", t = 0.9 }
+toward = "market.main_street.start"
+
+[feature.join_townland]
+kind   = "bookmark"
+on     = { ref = "north_road", t = 0.94 }
+toward = "townland.west_gate"
+
+[feature.along_north]
+kind   = "bookmark"
+on     = { ref = "north_road", t = 0.5 }
+toward = "townland.west_gate"
+
+[feature.join_city_north]
+kind   = "bookmark"
+on     = { ref = "north_road", t = 0.05 }
+toward = "city.north_gate_e"
+
+[feature.join_wild]
+kind   = "bookmark"
+on     = { ref = "wild_road", t = 0.9 }
+toward = "wild.south_end"
+
+[feature.join_wild_west]
+kind   = "bookmark"
+on     = { ref = "west_road", t = 0.85 }
+toward = "wild.west_end"
+
+[feature.join_vale]
+kind   = "bookmark"
+on     = { ref = "hill_trail", t = 0.9 }
+toward = "vale.valley_road.start"
+
+[feature.over_river]                          # beside the river that bends, looking down it to the city
+kind   = "bookmark"
+at     = [1470, 2420]
+toward = "inlet"

@@ -415,7 +415,8 @@ fn not_yet() {
         &[],
     );
     assert_eq!(codes(&l), ["doc.missing_key", "doc.type"]);
-    // M2's words are read: a worker generate step is no longer `doc.not_yet`; an export step is.
+    // M2's words are read: a worker generate step is no longer `doc.not_yet`; nor, from M6, is an
+    // export step, which may name its `output` (`protocol.md` 1).
     let l = merge(
         &simple(&format!(
             "{HEAD}[step.s]\nwhen = \"generate\"\ncommand = [\"x\"]\nworker = true\n"
@@ -425,11 +426,11 @@ fn not_yet() {
     assert!(codes(&l).is_empty(), "{:?}", codes(&l));
     let l = merge(
         &simple(&format!(
-            "{HEAD}[step.s]\nwhen = \"export\"\ncommand = [\"x\"]\n"
+            "{HEAD}[step.s]\nwhen = \"export\"\ncommand = [\"x\"]\noutput = \"player_map\"\n"
         )),
         &[],
     );
-    assert_eq!(codes(&l), ["doc.not_yet"]);
+    assert!(codes(&l).is_empty(), "{:?}", codes(&l));
 }
 
 #[test]

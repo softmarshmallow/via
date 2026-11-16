@@ -1,0 +1,17 @@
+name       = "outputkey"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= 1"
+
+[step.look]                               # protocol.md 1: `output` is an export step's key only
+when    = "lint"
+output  = "player_map"
+command = ["python", "-c", "pass"]
+
+[step.map]                                # protocol.md 1: `output` is an id
+when    = "export"
+output  = "Player Map"
+command = ["python", "-c", "pass"]

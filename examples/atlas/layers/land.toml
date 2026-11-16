@@ -1,0 +1,32 @@
+# The land layer: the river that bends, stated, and the simulation that settles the plain under it
+# (lib/terrain, R14). The step reads this layer and the world file below it in its head view, which
+# holds no import's entries (composition.md 6.5), so it settles the plain alone and the places stand
+# on what it settled.
+
+[feature.spring]                              # where the river rises, in the northern uplands
+at = [1560, 2520]
+
+[feature.inlet]                               # where it reaches the city: the city's own river starts here
+at = [1160, 1924]
+
+# The river that bends: a spring in the uplands, two bends west, into the city's river at its north
+# edge. The library cuts a groove that only ever falls and the model makes the valley.
+[feature.river]
+kind      = "terrain_river"
+starts_at = "spring"
+ends_at   = "inlet"
+path      = [[1430, 2330], [1300, 2230], [1330, 2100], [1220, 2010]]
+width     = 8
+
+[step.terrain]
+when    = "generate"
+worker  = true
+command = ["via-terrain"]
+params  = { sea = 2, cell = 16 }             # 16 m: 200 by 160 cells, a whole number of 2 m posts
+
+[step.facts]
+when    = "lint"
+worker  = true
+command = ["via-terrain"]
+checks  = ["terrain"]
+params  = { min_catchment = 0.005 }           # the river drains its upland valley, not the plain

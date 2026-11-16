@@ -1,0 +1,6 @@
+# One place moved (docs/plan.md M6): the market 40 m east and 30 m north. Nothing else is written:
+# the road that ends on the market's main street (`market_road`) follows it and is routed again, and
+# the view that names it follows. Nothing inside the market re-runs (composition.md 12: a place moved
+# re-runs nothing inside it).
+[import.market]
+at = [2800, 450]

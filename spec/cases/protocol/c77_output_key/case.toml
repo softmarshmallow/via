@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "`output` on a lint step is doc.unknown_key at line 11; an export step's `output` that is not an id is identity.bad_id at line 16; exit 1."
+milestone = 6
+actions   = ["build"]
+
+# protocol.md 1 (the `output` row): an id, on an export step only.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.lint_output]
+code    = "doc.unknown_key"
+subject = "step.look"
+line    = 11
+
+[action.build.diag.not_an_id]
+code    = "identity.bad_id"
+subject = "step.map"
+line    = 16

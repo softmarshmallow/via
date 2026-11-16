@@ -20,6 +20,15 @@
 #   table     = "wolves"
 #   max_alive = 4
 #
+# An area is a named part of the player's map: a district, a place brought by an import. Its
+# outline is any region; `where = "= if(inside('city.footprint'), 1, -1)"` makes it the import's
+# footprint as placed, so it moves with the import (examples/atlas, layers/map.toml):
+#
+#   [feature.area_city]
+#   kind  = "area"
+#   where = "= if(inside('city.footprint'), 1, -1)"
+#   label = "City"
+#
 # Placed `on` a derived shape (a lake's shore, a found course), a point of interest follows it
 # when the shape moves: `on = { of = "fill", class = "feature", near = [338, 186], t = 0.3,
 # offset = 3 }`.
@@ -37,3 +46,7 @@ requires = ["table"]                      # the game's spawn table, by its own i
 
 [kind.spawn_zone.defaults]
 max_alive = 1                             # the most alive at once
+
+[kind.area]
+output   = "area"
+requires = ["label"]                      # the name shown on the player's map

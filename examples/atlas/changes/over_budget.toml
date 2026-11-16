@@ -1,0 +1,5 @@
+# A chunk over the budget (build.md 5.1). A change may not write `[budget]` (the target's), but it
+# may write `chunk`: at 160 m a side, the chunk [17, 8] (vale's woods, 2720..2880 m east) carries more triangles
+# than the target draws. `build.over_budget`, exit 1, no outputs; the record names the chunk and the
+# asset that gives the largest share of it, and the hint the waiver to write.
+chunk = 160

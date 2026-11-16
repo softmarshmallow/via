@@ -1,0 +1,5 @@
+# Bound by this world's pack only: the parent's binds no `heavy`.
+[asset.heavy]
+engine    = true
+size      = [1, 1, 1]
+triangles = 1000

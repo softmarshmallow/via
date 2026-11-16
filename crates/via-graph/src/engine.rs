@@ -2,7 +2,9 @@
 //!
 //! Keys are worked out from the leaves up. One coordinating thread defines nodes, works out
 //! keys, looks them up and settles results, always in id order; only [`Plan::compute`] runs on
-//! other threads, in batches of ready nodes taken in id order. Every status, cause and value is
+//! other threads, in batches of ready nodes taken in id order, and so do the trace replays of
+//! the ready steps ([`Plan::answer`], `graph.md` 5.1), whose matches are taken in id order.
+//! Every status, cause and value is
 //! then a function of the store and the text, never of which thread finished first: among nodes
 //! of one build with equal keys the lowest id carries `ran`, and whatever combines several values
 //! does so by id.
@@ -357,7 +359,13 @@ struct Engine<'a> {
     world: Option<Vec<Diag>>,
     run_diags: Vec<Diag>,
     defects: Vec<Diag>,
+    /// The trace each ready step matched, replayed on several threads before the ready nodes
+    /// are looked up in id order: by node, the static key it was found under and the match.
+    found: BTreeMap<NodeId, (Digest, Option<Found>)>,
 }
+
+/// A trace that answers the same again: its name, its entry and its diagnostics.
+type Found = (Digest, TraceEntry, Vec<Diag>);
 
 /// Runs the graph from its roots: every node reachable from them along edges and needs.
 pub fn run(plan: &dyn Plan, store: &Store, opts: &Options, roots: &[NodeId]) -> Run {
@@ -378,6 +386,7 @@ pub fn run(plan: &dyn Plan, store: &Store, opts: &Options, roots: &[NodeId]) -> 
         world: None,
         run_diags: Vec::new(),
         defects: Vec::new(),
+        found: BTreeMap::new(),
     };
     for r in roots {
         e.discover(r);
@@ -468,6 +477,7 @@ impl Engine<'_> {
                 .filter(|(_, s)| s.phase == Phase::Defined && !s.settled())
                 .map(|(id, _)| id.clone())
                 .collect();
+            self.replay_ready(&ready);
             for id in ready {
                 if self.lookup(&id) {
                     progress = true;
@@ -478,6 +488,7 @@ impl Engine<'_> {
                     batch.push(id);
                 }
             }
+            self.found.clear();
             if !batch.is_empty() {
                 progress = true;
                 self.run_batch(batch);
@@ -644,38 +655,9 @@ impl Engine<'_> {
         if def.found.iter().any(|d| d.severity() == Severity::Error) {
             return self.settle_found(id, &def);
         }
-        let mut edges = Vec::with_capacity(def.edges.len() + def.direct.len());
-        let mut all_settled = true;
-        let mut any_bad = false;
-        for (l, t) in &def.edges {
-            match self.get(t) {
-                Some(ts) if ts.settled() => {
-                    if ts.usable() {
-                        if let Some(vd) = ts.vd {
-                            edges.push((l.clone(), vd));
-                        }
-                    } else {
-                        any_bad = true;
-                    }
-                }
-                _ => all_settled = false,
-            }
-        }
-        if !all_settled {
+        let Some(k) = self.key_of(id, &def) else {
             return false;
-        }
-        let k = (!any_bad).then(|| {
-            edges.extend(def.direct.iter().cloned());
-            key(
-                &self.opts.versions,
-                &KeyParts {
-                    family: id.family().to_string(),
-                    statements: def.statements.iter().map(|(_, d)| *d).collect(),
-                    params: def.params.clone(),
-                    edges,
-                },
-            )
-        });
+        };
         let gated = def.gate.skip_on_error && self.has_error;
         if let Some(s) = self.st.get_mut(id) {
             s.key = k;
@@ -701,7 +683,10 @@ impl Engine<'_> {
         }
         if let Some(sd) = &def.step {
             let rerun = self.opts.rerun.contains(&sd.step);
-            let found = self.find_trace(id, &k);
+            let found = match self.found.remove(id) {
+                Some((pk, f)) if pk == k => f,
+                _ => self.find_trace(id, &k),
+            };
             let Some(s) = self.st.get_mut(id) else {
                 return false;
             };
@@ -746,6 +731,92 @@ impl Engine<'_> {
         }
     }
 
+    /// The node's key once every edge settled: `Some(None)` when an edge is not usable.
+    #[allow(clippy::option_option)]
+    fn key_of(&self, id: &NodeId, def: &Def) -> Option<Option<Digest>> {
+        let mut edges = Vec::with_capacity(def.edges.len() + def.direct.len());
+        let mut any_bad = false;
+        for (l, t) in &def.edges {
+            let ts = self.get(t).filter(|ts| ts.settled())?;
+            if ts.usable() {
+                if let Some(vd) = ts.vd {
+                    edges.push((l.clone(), vd));
+                }
+            } else {
+                any_bad = true;
+            }
+        }
+        Some((!any_bad).then(|| {
+            edges.extend(def.direct.iter().cloned());
+            key(
+                &self.opts.versions,
+                &KeyParts {
+                    family: id.family().to_string(),
+                    statements: def.statements.iter().map(|(_, d)| *d).collect(),
+                    params: def.params.clone(),
+                    edges,
+                },
+            )
+        }))
+    }
+
+    /// Replays the traces of the ready steps whose edges have settled on several threads, each
+    /// a pure function of the store and the plan's answers, so that [`Engine::lookup`] takes
+    /// each match in id order as if it had replayed it there. Steps sharing a static key, or
+    /// forced by `--rerun-step`, are left to the lookup.
+    fn replay_ready(&mut self, ready: &[NodeId]) {
+        let mut jobs: Vec<(NodeId, Digest)> = Vec::new();
+        let mut seen: BTreeMap<Digest, usize> = BTreeMap::new();
+        for id in ready {
+            let Some(d) = self.get(id).and_then(|s| s.def.as_ref()) else {
+                continue;
+            };
+            let Some(sd) = d.step.as_ref() else {
+                continue;
+            };
+            if (d.gate.skip_on_error || d.gate.traced) && !self.gates_open
+                || d.gate.skip_on_error && self.has_error
+                || d.found.iter().any(|f| f.severity() == Severity::Error)
+                || self.opts.rerun.contains(&sd.step)
+            {
+                continue;
+            }
+            let Some(Some(k)) = self.key_of(id, d) else {
+                continue;
+            };
+            *seen.entry(k).or_default() += 1;
+            jobs.push((id.clone(), k));
+        }
+        jobs.retain(|(_, k)| seen.get(k) == Some(&1));
+        let threads = self.opts.threads.max(1).min(jobs.len());
+        if threads <= 1 {
+            return;
+        }
+        let (plan, store) = (self.plan, self.store);
+        let next = AtomicUsize::new(0);
+        let slots: Vec<Mutex<Option<Option<Found>>>> =
+            jobs.iter().map(|_| Mutex::new(None)).collect();
+        std::thread::scope(|scope| {
+            for _ in 0..threads {
+                scope.spawn(|| loop {
+                    let i = next.fetch_add(1, Ordering::SeqCst);
+                    if i >= jobs.len() {
+                        break;
+                    }
+                    let r = find_trace(plan, store, &jobs[i].0, &jobs[i].1);
+                    if let Ok(mut slot) = slots[i].lock() {
+                        *slot = Some(r);
+                    }
+                });
+            }
+        });
+        for ((id, k), slot) in jobs.into_iter().zip(slots) {
+            if let Some(r) = slot.into_inner().ok().flatten() {
+                self.found.insert(id, (k, r));
+            }
+        }
+    }
+
     /// A node the static checks failed (`Def::found`): keyed by its statements, parameters and
     /// errors alone, reused when that key is stored, else settled as `ran` with the errors as its
     /// value's diagnostics.
@@ -787,36 +858,8 @@ impl Engine<'_> {
     }
 
     /// The newest trace under the static key whose every read answers the same again.
-    fn find_trace(
-        &self,
-        id: &NodeId,
-        static_key: &Digest,
-    ) -> Option<(Digest, TraceEntry, Vec<Diag>)> {
-        for (name, bytes) in self.store.traces(static_key) {
-            let Some(entry) = TraceEntry::decode(&bytes) else {
-                self.store
-                    .drop_trace(static_key, &name, "is not a trace entry");
-                continue;
-            };
-            if trace_digest(&entry.reads) != name {
-                self.store
-                    .drop_trace(static_key, &name, "does not match its name");
-                continue;
-            }
-            let Some(diags) = self.plan.codec().decode(&entry.diags) else {
-                self.store
-                    .drop_trace(static_key, &name, "holds diagnostics that cannot be read");
-                continue;
-            };
-            if entry
-                .reads
-                .iter()
-                .all(|r| self.plan.answer(id, r) == Some(r.answer))
-            {
-                return Some((name, entry, diags));
-            }
-        }
-        None
+    fn find_trace(&self, id: &NodeId, static_key: &Digest) -> Option<Found> {
+        find_trace(self.plan, self.store, id, static_key)
     }
 
     /// The value of a settled, usable node: from memory, from its object, or computed again.
@@ -1453,6 +1496,32 @@ impl Engine<'_> {
             made_from,
         }
     }
+}
+
+/// The newest trace under the static key whose every read answers the same again.
+fn find_trace(plan: &dyn Plan, store: &Store, id: &NodeId, static_key: &Digest) -> Option<Found> {
+    for (name, bytes) in store.traces(static_key) {
+        let Some(entry) = TraceEntry::decode(&bytes) else {
+            store.drop_trace(static_key, &name, "is not a trace entry");
+            continue;
+        };
+        if trace_digest(&entry.reads) != name {
+            store.drop_trace(static_key, &name, "does not match its name");
+            continue;
+        }
+        let Some(diags) = plan.codec().decode(&entry.diags) else {
+            store.drop_trace(static_key, &name, "holds diagnostics that cannot be read");
+            continue;
+        };
+        if entry
+            .reads
+            .iter()
+            .all(|r| plan.answer(id, r) == Some(r.answer))
+        {
+            return Some((name, entry, diags));
+        }
+    }
+    None
 }
 
 fn has_error(diags: &[Diag]) -> bool {

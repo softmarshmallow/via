@@ -587,10 +587,10 @@ pub fn run(a: &Args) -> Outcome {
     });
     model_opts.import_steps = Some(imports::hook(import_env.clone()));
     let mut lint_steps: Vec<graph::LintStep> = Vec::new();
-    // Lint and generate steps, plain or worker; export steps arrive with M6.
+    // Generate, lint and export steps, plain or worker (`protocol.md` 1.1).
     for s in decls
         .iter()
-        .filter(|s| matches!(s.when.as_str(), "lint" | "generate"))
+        .filter(|s| matches!(s.when.as_str(), "lint" | "generate" | "export"))
     {
         let code = steps::code_of(s, &roots, &wdir, sdk_digest.as_ref());
         let is_trusted = code
@@ -876,6 +876,7 @@ pub fn run(a: &Args) -> Outcome {
         let mut joined = world.clone();
         for rank in ranks {
             let model_k = via_model::ModelPlan::new(&joined, &model_opts, base_build);
+            let pack_k = with_brought(pack.as_ref(), &model_k);
             let ctx_k = graph::Ctx {
                 world: &joined,
                 store: &store,
@@ -885,7 +886,7 @@ pub fn run(a: &Args) -> Outcome {
                 sdk_digest: sdk_digest.as_ref(),
                 seed: world_seed(&joined),
                 deadline: Duration::from_secs(a.deadline.unwrap_or(600)),
-                pack: pack.as_ref().map(|p| &p.0),
+                pack: pack_k.as_ref(),
                 trust_command: steps::trust_command(
                     &a.world,
                     &a.lib,
@@ -905,6 +906,7 @@ pub fn run(a: &Args) -> Outcome {
                 key,
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 pack_root: pack_root.clone(),
+                pack_roots: BTreeMap::new(),
                 run_members: BTreeMap::new(),
             };
             let plan_k = graph::CliPlan::new(&model_k, ctx_k);
@@ -948,6 +950,8 @@ pub fn run(a: &Args) -> Outcome {
     };
     // The graph.
     let model = via_model::ModelPlan::new(&world, &model_opts, base_build);
+    let pack_all = with_brought(pack.as_ref(), &model);
+    let pack_roots = brought_roots(pack_all.as_ref(), &out_dir);
     let mut extra: Vec<Diag> = Vec::new();
     if baseline.is_none() && !baseline_missing {
         extra.push(no_previous());
@@ -986,7 +990,7 @@ pub fn run(a: &Args) -> Outcome {
         sdk_digest: sdk_digest.as_ref(),
         seed: world_seed(&world),
         deadline: Duration::from_secs(a.deadline.unwrap_or(600)),
-        pack: pack.as_ref().map(|p| &p.0),
+        pack: pack_all.as_ref(),
         trust_command: steps::trust_command(
             &a.world,
             &a.lib,
@@ -1011,6 +1015,7 @@ pub fn run(a: &Args) -> Outcome {
         key,
         version: env!("CARGO_PKG_VERSION").to_string(),
         pack_root: pack_root.clone(),
+        pack_roots,
         run_members,
     };
     let plan = graph::CliPlan::new(&model, ctx);
@@ -1142,6 +1147,13 @@ pub fn run(a: &Args) -> Outcome {
                 all_files.insert(p.clone(), v.bytes.as_ref().clone());
             }
         }
+    }
+    // What the export steps wrote (`build.md` 11.4), as the manifest lists it.
+    if let Ok((written, _)) = plan.export_files(&|n| {
+        run.value(n, &store, &plan)
+            .map(|v| v.bytes.as_ref().clone())
+    }) {
+        all_files.extend(written);
     }
     let last = |path: &str| -> Option<Vec<u8>> {
         let id = NodeId::of("write", path);
@@ -1369,6 +1381,34 @@ fn no_previous() -> Diag {
         via_diag::text!("no baseline build to report changes against"),
         via_diag::text!("none needed; the next build has one"),
     )
+}
+
+/// The world's pack with each import's assets it does not bind brought in (`composition.md` 10),
+/// so the build lists, counts and hands on every asset an instance names.
+fn with_brought(
+    pack: Option<&(via_model::pack::Pack, PathBuf)>,
+    model: &via_model::ModelPlan<'_>,
+) -> Option<via_model::pack::Pack> {
+    let mut p = pack?.0.clone();
+    for (from, other) in model.imported_packs() {
+        p.bring(&from, other);
+    }
+    Some(p)
+}
+
+/// `locations.pack_roots` (`build.md` 4): for each import whose pack brought a model asset, the
+/// path from this directory to that pack's root; an import on another drive is left out (its
+/// files are then `load.bad_file` to a loader, as with `pack_root` null).
+fn brought_roots(pack: Option<&via_model::pack::Pack>, out_dir: &Path) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    for b in pack.map(|p| p.brought.values()).into_iter().flatten() {
+        if b.asset.model.is_some() && !out.contains_key(&b.from) {
+            if let Some(r) = relative(out_dir, &b.root) {
+                out.insert(b.from.clone(), r);
+            }
+        }
+    }
+    out
 }
 
 fn pack_root_far() -> Diag {

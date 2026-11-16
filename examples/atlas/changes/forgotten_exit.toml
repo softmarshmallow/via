@@ -1,0 +1,8 @@
+# An exit forgotten (composition.md 7): the road to the wild's south exit is taken away, and nothing
+# else answers `wild.south_end`. The build fails with `import.exit_unanswered`, whose `data.write`
+# is the line to write: `ends_at = "wild.south_end"`. Its view goes with it.
+[feature.wild_road]
+remove = true
+
+[feature.join_wild]
+remove = true

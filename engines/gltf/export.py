@@ -482,9 +482,14 @@ def export(build, out_path, pack=None):
     def place_model(aid, tint, parent):
         a = m["assets"][aid]
         if aid not in copiers:
-            if pack is None:
-                raise Refused(f"asset `{aid}` is a model and the pack's root is not known (--pack)")
-            path = os.path.join(pack, a["files"][0]["path"])
+            # An asset an import's pack binds lies under that pack's root (build.md 4, 7).
+            root = pack
+            if isinstance(a.get("pack"), str):
+                pr = m.get("locations", {}).get("pack_roots", {}).get(a["pack"])
+                root = os.path.join(build, pr) if pr is not None else None
+            if root is None:
+                raise Refused(f"asset `{aid}` is a model and its pack's root is not known (--pack)")
+            path = os.path.join(root, a["files"][0]["path"])
             src, buffers = read_gltf(path)
             copiers[aid] = (Copier(g, src, buffers), {})
         cp, cache = copiers[aid]

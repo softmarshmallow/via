@@ -1,0 +1,23 @@
+name       = "exportreuse"
+extent     = [0, 0, 32, 32]
+resolution = 1
+include    = ["g"]
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.hill]
+kind = "bump"
+at   = [16, 16]
+rise = 1
+
+[feature.flag]
+kind = "mark"
+at   = [4, 4]
+
+[step.map]                                # a worker export: its trace is what it read (height)
+when    = "export"
+worker  = true
+output  = "height_sum"
+command = ["python", "-m", "viasdk", "steps/sum.py"]

@@ -674,10 +674,16 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     let mut assets = J::obj();
     let mut triangles: BTreeMap<String, u64> = BTreeMap::new();
     for i in b.instances.values() {
-        if let Some(a) = input.pack.and_then(|p| p.assets.get(&i.asset)) {
+        if let Some(a) = input.pack.and_then(|p| p.asset(&i.asset)) {
             triangles.insert(a.id.clone(), a.triangles);
             let stand_ins = input.pack.is_some_and(|p| p.stand_ins);
-            assets.insert(a.id.clone(), asset_json(a, stand_ins));
+            let mut j = asset_json(a, stand_ins);
+            // An asset an import's pack binds names that import (`build.md` 7): its `files`
+            // lie under that pack's root, `locations.pack_roots`.
+            if let (Some(b), J::Obj(m)) = (input.pack.and_then(|p| p.brought.get(&a.id)), &mut j) {
+                m.insert("pack".into(), J::s(b.from.clone()));
+            }
+            assets.insert(a.id.clone(), j);
         }
     }
     let asset_digest = entry_digest(&assets);

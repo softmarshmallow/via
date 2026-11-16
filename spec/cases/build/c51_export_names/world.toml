@@ -1,0 +1,11 @@
+name       = "exportnames"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = "= 1"
+
+[step.names]                              # build.md 11.4: an export's file names are build paths
+when    = "export"
+command = ["python", "-m", "viasdk", "steps/names.py"]

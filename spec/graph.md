@@ -267,6 +267,16 @@ The store is a folder of write-once files named by digest. Where it lives is `bu
   wrong, only colder. A flush per entry cost more than the work it kept (M2, `vale`).
 - A store that cannot be written (no permission, a full disk) is `graph.store_unavailable`: the
   build goes on and keeps nothing more.
+- Key records written behind (ours, M6): key records and memos are written by a few writer threads
+  of the store, not by the thread that settles nodes, and a read of a key the build queued answers
+  from the queue, so a build sees its own records at once. The queue is emptied before a build
+  record is written (a build record names a build whose keys are all there), before the run's
+  store diagnostics are taken and when the build ends. Objects and traces are written in place,
+  since a step or a worker may read them by path. Why: one file creation per settled node, on the
+  coordinating thread, was about 15 s of city's change build (M6 slice 1, `sample` of
+  move_avenue; protocol in `examples/city/expect.toml`, M6 slice 2). A crash
+  loses at most queued records, which only makes the store colder. Case
+  `store::key_records_are_written_behind` (crate test).
 - Deleting the store is always safe: the next build runs everything and gives the same bytes
   (section 7).
 - The store keeps every key it has seen, so building with a change, without it, and with it again
@@ -653,6 +663,12 @@ fresh store into a fresh directory, and the two directories are compared.
 - Nodes are started in a topological order of the node graph: ready nodes are taken in id order,
   onto as many threads as `--threads` allows (`build.md` 14). The thread count is in no key and no
   build file.
+- The traces of the ready steps (5.1) are replayed on as many threads before those nodes are looked
+  up (ours, M6): each replay reads only the store and the view, so its match is the one the lookup
+  would find, and the lookup takes the matches in id order. Steps sharing a static key and steps
+  forced by `--rerun-step` replay at their lookup, so a damaged trace is dropped once and in
+  order. Why: replays answered one by one were about 13 s of city's change build (protocol in
+  `examples/city/expect.toml`, M6 slice 2).
 - Every value is a function of its inputs only. Whatever combines many values (a field's rows, the
   outputs of `for_each` calls, the instances of several producers, diagnostics) does so in an order
   fixed by keys and ids, never in the order work finished. Reductions inside a node follow

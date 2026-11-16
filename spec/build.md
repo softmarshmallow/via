@@ -180,11 +180,11 @@ is refused.
 | `instances` | Section 8. |
 | `features`, `outputs`, `meets` | Section 9. |
 | `meshes` | Section 10 (M3). |
-| `exports` | `{ <step id>: { "folder": "export/<step id>/", "output": <the step's output, or null> } }` (11.4, M6). |
+| `exports` | `{ <step id>: { "folder": "export/<step id>/", "output": <the step's output, or null> } }` (11.4, M6). Written only when an export step ran: a world with none has no `exports`, so its manifest and `id` are what M5 wrote (the null vector holds). Ours. |
 | `files` | Every file in the `id`: `{ <build path>: { "bytes", "digest" } }`. |
 | `id` | The build's identity (section 12). |
 | `run` | How this build was asked for. Not in the `id`. Keys below. |
-| `locations` | `{ "pack_root": <path from this directory to the pack's root, or null> }`. Not in the `id`. |
+| `locations` | `{ "pack_root": <path from this directory to the pack's root, or null> }`, and `"pack_roots": { <import's scoped id>: <path to that import's pack's root> }` when an import's pack brought a model asset (`composition.md` 10, ours, M6). Not in the `id`. |
 
 `run` holds:
 
@@ -472,6 +472,7 @@ so a loader reads one rule. The terrain's manifest entry adds `cut` (the file's 
 | `colour` | As resolved (`assets.md` 2.4): the colour of a primitive or stand-in. |
 | `collision` | As resolved (`assets.md` 2.4, M2): `none`, `box`, `hull` or `mesh`, for the loader to map to the engine's shapes. The core reads it for nothing. |
 | `taxon`, `tags`, `params` | Passed through. |
+| `pack` | Only on an asset an import's pack binds and the world's does not (`composition.md` 10): that import's scoped id. Its `files` are pack paths of that pack, found under `locations.pack_roots`. Ours, M6. |
 | `stand_in` | `true` when built with `--stand-ins` (M2): draw a `box` of `bounds` in `colour` (`assets.md` 9). |
 
 `materials` holds every pack material a `weights` field or a generated mesh (10) names: `colour`, `file` (a pack path, with
@@ -594,7 +595,7 @@ needs"; its file rules are the library's, and ours where no source is given):
 | `map.json` | The index: `format` `"via-map-0"`, `output`, `transform`, `classes`, `layers`, `floors`, `tiles`, `discovery`, and `files` (each other file's fingerprint). |
 | `ground.npy` | One ground class per map cell: `\|u1`, shape `(rows, columns)`, row 0 the south row (3.2's rule). |
 | `vectors.json` | The ground plan's `ways` (`name`, `kind`, `class`, `width`, `under`, `points`), `water` courses (the same keys less `under`), `footprints` (`name`, `kind`, `from`, `pieces`) and `regions` (`name`, `kind`, `label`, `pieces`). |
-| `labels.json` | POIs and labels: `key` (a feature's name, which the game localises), `text`, `class` (`poi`, `label`, `region`, `room`), `kind`, `at`, `floor` (`null` on the ground plan), and a POI's `icon`. |
+| `labels.json` | POIs and labels: `key` (a feature's name, which the game localises), `text`, `class` (`poi`, `label`, `region`, `room`), `kind`, `at`, `floor` (`null` on the ground plan), `box` (where its text stands, world metres, or `null`: Labels below), and a POI's `icon`; `placement`, the zoom and glyph the boxes were placed at. |
 | `floors/<n>.json` | One plan per floor (below): `surfaces`, `rooms`, `walls`, `doors`, `links`. |
 
 - **The transform.** The map is a grid of square cells of side `cell` (a step param, metres) over
@@ -606,7 +607,11 @@ needs"; its file rules are the library's, and ours where no source is given):
   cell's nearest post, ties to the lower name), `water` (the water field stands `depth_min` or more
   over the ground there), `water:<class>` (a water course by its width), `way:<class>` (a way by
   its width; one marked `under`, a cave, is in `vectors.json` only), `footprint` (a footprint
-  feature, or a floor of the lowest floor). What a kind is on the map (a way of which class, a
+  feature, an instance of an asset under `params.buildings`' taxon paths by its bounds' plan box as
+  placed, or a floor of the lowest floor). A line is drawn on every cell whose centre lies within
+  half its width, and never less than half a cell's diagonal: so a way narrower than a cell is
+  never broken on the raster (M6 slice 2: atlas's 1.5 m paths at 2 m cells read 0.91 on their
+  cells before). Ours. What a kind is on the map (a way of which class, a
   floor, a door) is the world's to say, in the step's `params`; lib/map knows no kind but `poi`.
 - **Floors.** A floor is every kind surface the world names a floor (`params.floors`, a region kind
   and its level attribute) whose levels lie within `floor_gap` (1.6 m) of the next lower: station's
@@ -618,6 +623,18 @@ needs"; its file rules are the library's, and ours where no source is given):
   is on it, and the links (stairs: a path kind with a foot and a head height) with `from` and `to`
   floors, on both floors' plans. The study found no shipped game's height ranges or stair records;
   these are ours.
+- **Labels** (ours; the study gives the layer, not the rules). A text read from a feature's name
+  (a `labels` kind with no text attribute) is the name's last part with `_` as a space (`coast.sea_cave`:
+  `Sea cave`); a produced name (one holding `#`, `identity.md`) gives none, and the feature has no
+  label, so no label shows a produced id. A room with no text attribute and a produced name reads
+  `Room <floor>.<n>`, numbered over its floor's such rooms in reading order. Each plan's labels are
+  placed apart at a zoom the world states (`label_zoom`, `floor_label_zoom`: pixels per metre)
+  with a glyph box (`glyph`, pixels a character and a line): greedily, regions then POIs, labels,
+  rooms, then by key, each at the first of eight positions round its anchor (upper right first,
+  after Imhof 1975; a region centred first) where its box meets no placed box, covers no other
+  anchor and lies inside the extent. A label that fits nowhere has `box` null; the game shows it
+  closer in. `labels.json` holds the zoom and glyph it was placed at. Named areas (a district, a
+  place an import brings) are features of lib/map's kind `area`, listed in `params.regions`.
 - **Tile fingerprints.** Every plan (the ground, each floor) is cut into tiles of `tile` cells; a
   tile's fingerprint is the SHA-256 of its cells' bytes and the canonical JSON of every item whose
   box meets the tile, a path's as its segments clipped to the tile grown by half its width (so a
@@ -876,10 +893,28 @@ reader is handed.
 - What it writes is every file of its `out` but `diagnostics.json`, at the same path below
   `export/<step id>/` (`protocol.md` 1.1); the manifest's `exports` names the folder and the
   step's `output` (9.4). Ours, M6 slice 1.
+- **Its file names are build paths** (3.4): a file whose path under `out` holds a name outside
+  `[a-z0-9_.#]` is `protocol.output_file`, naming the file, and is not written; the build stops
+  as on any step error. So two names that differ only by case never reach a build made on a
+  system that tells them apart. A name whose part before its first `.` is a device name is
+  written with the escape of 3.4 (`aux.json` is `export/<id>/aux-.json`), and `files` lists it so.
+  Ours, M6 slice 2: an export is written into the build, and the build's paths must be writable
+  on the three systems (R20, R26).
 - An export step is a `step` node like any other (`graph.md` 5). Its instability is found as
   `graph.md` 5.2 finds any step's: when it runs again for a trace the store already holds a result
   for, and gives other bytes. Nothing else detects it. `graph.step_unstable` is then a run
   diagnostic, and the `id` follows the new bytes.
+- **What its node reads** is a lint's (`graph.md` 4, 5.1): a plain export is handed the whole
+  finished build (`protocol.md` 2.2), so its key holds every data file and its request, and any
+  change to the build runs it again; a worker export's key is its trace, so a change that answers
+  none of its reads differently reuses it. An unchanged build runs no export. Its value lists each
+  file it wrote by path and digest, and the files are kept in the store, so a reused export's files
+  are written from the store, never by running it. The manifest node reads every export node. M6
+  slice 2.
+- **When it has no entry**: an export step that was not started (untrusted, `protocol.md` 7) is in
+  no `exports` entry and writes no folder; one gated by an error does not run at all (`diagnostics.md`
+  4, stage 5), and no manifest is written. A step that ran and wrote nothing has its entry and no
+  file under its folder. Ours, M6 slice 2.
 
 ## 12. The identity of a build
 
@@ -1127,7 +1162,8 @@ walker's plan point, every frame, from the manifest alone: a chunk's node (groun
 instances and their bodies, exactly as above) from its entry in `chunks`, a generated mesh from
 `meshes`. The rules, ours (no source; numbers chosen for the default 64 m chunk):
 
-- **Load** every chunk whose plan rectangle (its first and last posts) lies within the load radius
+- **Load** every chunk whose plan rectangle (its `bounds`, M6; its first and last posts in a build
+  without them) lies within the load radius
   of the walker, 96 m by default, nearest first, one at a time, made on a worker thread off the
   walker's frame and added to the tree on it. **Unload** a chunk farther than the load radius plus
   one chunk side (so a walker on a chunk's edge does not load and unload it each step).
@@ -1148,11 +1184,36 @@ instances and their bodies, exactly as above) from its entry in `chunks`, a gene
   1280 by 720, macOS arm64, Godot 4.7.2 Compatibility, one run each under other load: 420
   against 732 fps median).
   Without it the view ended at the load radius inside the camera's far distance: the ground under
-  towns on a hill and a far bank vanished past 96 m (M6 slice 1 review on foot). Instances and
-  generated meshes past the load radius are still not drawn: the load radius is the game's. A
-  coarse ground is the reader's level of detail, not the build's; ours.
+  towns on a hill and a far bank vanished past 96 m (M6 slice 1 review on foot). Generated
+  meshes past the load radius are still not drawn: the load radius is the game's. A coarse ground
+  is the reader's level of detail, not the build's; ours.
+- **Far instances** (M6 slice 2): every chunk's instances also stand past the load radius as boxes
+  of their assets' `bounds`, placed by their rows, four sides and a top, flat, one colour per asset
+  (a primitive's `colour` times the row's tint; a model's mean surface albedo), not collided, made
+  once as one mesh for all chunks and hidden by the far ground's texture, so shown exactly while
+  the chunk is not loaded. Without them the houses of a far hill town were missing from a streamed
+  view: city's bookmark views streamed at 96 m against whole differ in at most 2.01% of pixels
+  without them and 0.87% with them (`from_east_gate`, `central_head`; a pixel differs when a
+  channel differs by more than 24 of 255; `tests/compare_views.py`, which allows 1%; macOS arm64,
+  Godot 4.7.2 Compatibility, one run each). Ours.
 - Every chunk's content is the same node for node as `make` makes it, and appears once however
   often it is loaded and unloaded (the loader suite's streaming test).
+- **Walks** (M6 slice 2): the sheet's walker loads chunks in **lockstep**: a chunk begun on the
+  worker is waited for on the walker's next step, so what is loaded at each step depends only on the
+  walk, and a streamed walk ends in the same place on every run. Each build is loaded into a fresh
+  physics space: a walk over a build loaded where another build's bodies had been ended elsewhere
+  (border `bank_corner`, 40.7 m), and the same bodies entering in another order move a stop
+  (Godot's physics resolves a capsule against two bodies in the space's order). A streamed walk
+  meets only the chunks near it, entered in the order it reached them, so it has the whole walk's
+  outcome and blocker and stops within one walk frame's pace (1.4 m/s over 1/60 s, 0.023 m) of the
+  whole walk's stop, not bit-equal: border, coast and city farthest 0.019, 0.002 and 0.020 m
+  (`tests/test_stream_walks.gd`). Ours.
+- **Reload** (M6 slice 2, 5.2): handed a rebuild of the same world (`Stream.reload`), the streamer
+  keeps each loaded chunk whose `digest` is the same in both manifests, the same node, and makes
+  again those whose digest changed, so the same chunks are loaded after; a generated mesh is kept
+  when its entry and its file's digest in `files` are the same. border `move_abbey`, every chunk
+  loaded: 53 of 90 kept, 37 made, 0.36 s; coast `long_deck`: 10 of 12 kept, 3 of 4 meshes kept
+  (`tests/test_reload.gd`). `neighbours` is not read: a streamer by radius loads them anyway.
 
 **The place a bookmark looks at** is resolved by the core (`authority.md` 1.2) and written as
 `toward`'s `at` (9.1). In `ford`, `at_ford` and `on_bank` look at `ford`, `to_door` ("from the lane
@@ -1572,6 +1633,15 @@ numpy or the standard library, never through the SDK. Every case is also checked
     `"triangles"`, `value` 1000. `instances/names.txt` is the same in all three, so a budget keyed
     on it alone passes warm and fails clean (5.1); the runner's clean rebuild (U6) makes the case
     able to fail.
+49. **Export reused** (M6). A worker export reading `height` alone; build: it runs and `exports`
+    names it; build again: nothing runs; a change moving a feature with no effect, built into a
+    fresh `--out`: the export is `reused` and its file, written from the store, is the same; a
+    change raising a hill: it runs again and its file differs.
+50. **Unstable export** (M6). A plain export writing the time; build; build with `--rerun-step`:
+    `graph.step_unstable` in the run report, and the `id` differs from the first build's.
+51. **Export names** (M6). An export writing `aux.json`; build; exit 0, the file is
+    `export/names/aux-.json` in `files`. The step changed to write `Map.JSON` and trusted again;
+    build: `protocol.output_file` naming `out/Map.JSON`, exit 1, no manifest (11.4).
 
 Stable names across a change are `identity.md`'s cases, not repeated here.
 

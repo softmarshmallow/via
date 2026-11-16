@@ -1,0 +1,7 @@
+# A difference inside a place (composition.md 11): the market's own square moved, asked of the market
+# by name. The change is the market's (market/move_square.toml, in the market's terms, kept with the
+# atlas because the market does not hold it); the atlas writes only that it requests it. The square
+# and what stands round it re-run inside the market; the atlas's roads end on the market's places,
+# which the square does not move.
+[import.market]
+changes = ["../atlas/changes/market/move_square.toml"]

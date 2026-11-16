@@ -493,6 +493,15 @@ built alone looks the same placed. In a build, an asset id or material name is o
   binding in two packs, or one pack shared, is one asset (`documents.md` 9).
 - Asset facts are measured once per asset in the build (`assets.md` 4); `asset.revised` lists the
   import's instances under their scoped names.
+- **The build's assets are every world's** (ours, M6 slice 2): an asset an import's pack binds and
+  the parent's does not is brought into the build as that one binding. The manifest lists it with
+  `pack`, the import's scoped id, and its files under that pack's root (`build.md` 4, 7); a
+  chunk's budget counts it (`build.md` 5.1); `pack.query` and a plain step's `pack` hold it
+  (`protocol.md` 2.2) beside the parent's own, with `"*"` or its id, not under an `@<taxon>`. The
+  parent's own text still resolves ids with its own pack alone: an instance or scatter of the
+  parent naming it is `pack.unknown_asset`, and a taxon selects only the parent's assets, so an
+  import never changes what the parent places. Why: a reader, a budget and a map step read the
+  build, and an asset missing there drew nothing and counted 0 triangles (atlas, M6 slice 2).
 - Swapping the parent's pack swaps the look of what the parent places, not an import's: each
   import's pack is the import's text.
 
@@ -647,7 +656,7 @@ Ids, places, layers and formulas use their own chapters' codes (`identity.unknow
 ## Conformance
 
 Cases are stored and run as `conformance.md` says: one folder per case under
-`spec/cases/composition/`, with a `case.toml`. Every case is milestone 4. Small worlds of 8 m to 32
+`spec/cases/composition/`, with a `case.toml`. Every case is milestone 4 but where its row says M6. Small worlds of 8 m to 32
 m at 1 m posts; heights are chosen so that every checked post is an exact float. The runner's
 re-runs (`conformance.md` 5) apply to every build.
 
@@ -720,6 +729,7 @@ re-runs (`conformance.md` 5) apply to every build.
 | binding_same | M4 | The import's pack binds `box_small` as the parent's does; then to a 1 m box | build each | No diagnostic; then `import.binding_differs`. |
 | change_scoped | M4 | A parent change file with `[feature."a.quay"]` | build with the change | `identity.bad_id`; exit 1. |
 | given_part | M4 | A given path `r1` under `routes`; the fill's path `starts_at = "routes.r1.end"` | build | `town.stop` starts at (10, 2). |
+| brought_asset | M6 | `a`'s own pack binds `heavy` (1000 triangles), the parent's binds only `light`; `[budget] triangles = 2000`; then 500 | build; build | The manifest's `assets.heavy.pack` is `a` and chunk [0, 0] counts 1010 triangles; then `build.over_budget` naming `heavy`, exit 1. |
 
 Rules of this chapter with no case yet, owed by M4 slice 3 (each row able to fail): a footprint
 naming a parent region (stays where it is when the import moves); `authority.squeezed` where the

@@ -101,6 +101,12 @@ impl Store {
     /// and is checked on its first map like any blob this store did not write.
     pub fn put(&self, bytes: &[u8]) -> io::Result<String> {
         let name = digest(bytes);
+        // A blob of that name is kept whatever this call writes (`settle` never replaces), so
+        // it is not written again: an answer replayed in a later build (`graph.md` 5.1) names
+        // the blobs it named when first given.
+        if self.path_of(&name).is_file() {
+            return Ok(name);
+        }
         let tmp = self.tmp_path();
         let written = File::create(&tmp).and_then(|mut f| {
             f.write_all(bytes)?;

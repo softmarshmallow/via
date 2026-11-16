@@ -123,6 +123,11 @@ impl Ctx<'_> {
     }
 }
 
+/// A byte a build path's name may hold (`build.md` 3.4).
+fn name_byte(b: u8) -> bool {
+    b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'_' | b'.' | b'#')
+}
+
 fn step_diag(step: &str, code: via_diag::Code, msg: String, hint: &str) -> Diag {
     Diag::new(
         code,
@@ -182,6 +187,23 @@ pub fn collect(
             ));
         }
         for f in files {
+            // An export's files become build paths (`build.md` 3.4, 11.4): names of
+            // `[a-z0-9_.#]` only, so none differs from another by case alone. A file a lint
+            // leaves is not written into the build.
+            let named = f
+                .split('/')
+                .all(|s| !s.is_empty() && s != "." && s != ".." && s.bytes().all(name_byte));
+            if when == "export" && !named {
+                r.diags.push(step_diag(
+                    step,
+                    codes::protocol::OUTPUT_FILE,
+                    format!(
+                        "export step `{step}` wrote `out/{f}`; a build path holds only `[a-z0-9_.#]` in each name"
+                    ),
+                    "name the file in lowercase letters, digits, `_`, `.` and `#`",
+                ));
+                continue;
+            }
             if let Ok(b) = std::fs::read(out.join(&f)) {
                 r.files.push((f, store.put_object(&b)));
             }

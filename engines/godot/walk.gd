@@ -145,9 +145,13 @@ static func plan(v: Vector3) -> Vector2:
 ## mesh or an instance), then follows whatever it walks onto. Returns the report sheet.json
 ## carries, plus "trail": PackedVector3Array of Godot points every TRAIL_STEP metres and "facing":
 ## the last plan direction. With `stream` (stream.gd), the chunks round the walker are loaded as it
-## goes, the chunk under it before each step (build.md 15.1, streaming).
+## goes, the chunk under it before each step, in lockstep (build.md 15.1, streaming), so a streamed
+## walk ends in the same place on every run.
 static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: String, unbodied: Array, along: Array = [], stream = null) -> Dictionary:
+	var was_lockstep := false
 	if stream != null:
+		was_lockstep = stream.lockstep
+		stream.lockstep = true   # the same bodies in the same order on every run (stream.gd)
 		stream.update(Vector2(from.x, from.y))
 	await root.get_tree().physics_frame
 	var floor_y: float = loader.ground_min() if loader.has_ground() else from.z - 1000.0
@@ -324,6 +328,8 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 	var below := under(root, body.position, HEIGHT / 2.0 + SNAP, [body.get_rid()])
 	root.remove_child(body)
 	body.free()
+	if stream != null:
+		stream.lockstep = was_lockstep
 	if report.outcome != "blocked":
 		report.by = report.at_target   # arrived against its target's body, or null
 		report.slope = null

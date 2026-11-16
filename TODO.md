@@ -1434,6 +1434,16 @@ Later:
   `lineref::nearest`; three `prepare` passes, about 2.7 s each, of which `Placer::select`
   evaluating each `where` (its `slope` resolves `height` over windows, fbm noise) 0.9 to 1.2 s and
   `network::network` 0.5 s (HEAD profile, city into a new directory).
+  Done in M6 slice 2 (perf): key records written behind (graph.md 3.2), the ready steps' traces
+  replayed on --threads (graph.md 8), a stored blob not written again (protocol.md 4.1), the
+  nearest place among a window's or 32 m tile's segments (geometry.md 3.8); city cold 103 -> 64 s,
+  move_avenue 108 -> 57 s, move_bridge 93 -> 60 s, every build equal to the before binary's.
+- [ ] city `move_avenue` 57 s against the 40 s target, and cold 64 s against 60 s. Left on the
+  engine's thread (`sample`, M6 slice 2): the whole model built again per generate rank for the
+  steps' views and `for_each` items (`CliPlan::new` -> `ModelPlan::build`, about 10 s, most in
+  `fields_memo` resolving whole fields); the three `prepare` passes (about 8 s, most in
+  `Fields::eval_where` reached from `make_network`); key reads in `lookup` (1 s). Share the
+  strata's work where a rank's returns do not reach it, or evaluate `where` over windows.
 - [ ] The full view of `height` at rank 1 read another value at post (0, 0) after city
   `move_avenue` than before, while the built field's post is 14.0 in both (houses.py's field
   listing read that post; it now reads one in its block, `probe`). Find why the stratum's view
@@ -1444,6 +1454,11 @@ Later:
   from names now. A `for_each` step's records should keep their item (diagnostics.md 6 says the
   item is the subject). Done in the M6 slice 1 fix pass: houses.py gives the block as subject and
   `data.block` under `for_each`; city's `lots_held` sums the `rows` records again.
+
+Lesson (M6 slice 2): the segment index that sped up nearest-place queries near a shape made a
+field's window three times slower (city's distance nodes 18 -> 64 node-seconds), since most posts
+lie far from the shape and its ring search walked out to them. Time the node family in the run
+report before and after a "faster" search, not the search alone.
 
 Lesson: the houses steps were not the whole of a change's cost; once they ran per block, the
 change took as long, held up by the engine's own serial work. Profile the whole change build
@@ -1462,32 +1477,48 @@ before choosing the cut.
   pool's lock; `gltf_check --source` runs on Python 3.9.
 
 To M6 slice 2 (atlas):
-- [ ] Streamed collision is not bit-equal to whole: border `bank_corner` (before) stops 40.7 m
-  from the whole build's stop (slope 57 against 40.5 degrees), and its after side moves 0.25 m
-  between runs. Add chunks to the physics space in a fixed order, and a streamed-equals-whole
-  stop check to test_stream (on-foot review).
-- [ ] The far ground draws no houses or meshes past the load radius (city `central_east_head`
-  1.7% of pixels differ from whole, the hill town's houses) and leaves slivers where a loaded
-  chunk's fine edge meets a coarse one; a far level of detail of instances (or a radius per asset
-  size) is the game's choice to make. No test compares a streamed view with the whole one
-  (test_stream checks only that the far ground is shown exactly where a chunk is not loaded).
-- [ ] The streamer does not read `digest`, `bounds` or `neighbours` yet (reload by digest is in
-  "To M6" above).
+- [x] Streamed collision is not bit-equal to whole. Done M6 slice 2 (stream): the 40.7 m was not
+  streaming but the physics space's past: the same build walked whole a second time in one process
+  (a space another load had left) stops `bank_corner` 40.7 m off; the same bodies in reverse order
+  do too. Each sheet build gets a fresh World3D; the walker streams in lockstep (stream.gd), so a
+  streamed walk is bit-equal run to run. Streamed against whole: same outcome and blocker, stop
+  within a frame's pace (0.023 m); border, coast, city farthest 0.019, 0.002, 0.020 m
+  (tests/test_stream_walks.gd; the city sheet's 19 walks 0.016 m). Bit-equal needs the same bodies
+  in the same order, which a streamer cannot give (decided, open to the owner).
+  Lesson: test the reference against itself first; the "streaming" fault was in the whole walk.
+- [x] Far houses. Done M6 slice 2 (stream): far instances (loader `make_far_instances`, boxes of
+  their bounds, one mesh, hidden per chunk with the far ground); tests/compare_views.py compares
+  the sheet's views streamed and whole: city at 96 m, at most 0.87% of pixels differ (2.01%
+  without; threshold 1%, a pixel differs by more than 24 of 255).
+- [ ] Left from the far layers: slivers where a loaded chunk's fine edge meets a coarse one;
+  generated meshes (decks, floors) are not drawn past the load radius; a far house is a box, not
+  its roof (a model's mean albedo). compare_views.py is not in run.sh (it needs a world build).
+- [x] Reload by digest. Done M6 slice 2 (stream): `Stream.reload` keeps a loaded chunk whose
+  `digest` is unchanged (the same node) and makes the rest again; meshes by entry and file digest;
+  `chunk_rect` reads `bounds`. tests/test_reload.gd: border `move_abbey` 53 of 90 kept, coast
+  `long_deck` 10 of 12 and 3 of 4 meshes. `neighbours` is not read (a radius loads them).
 - [ ] No case for an import's `chunk` and `[budget]` applying to its own build only (build.md 5,
   5.1); no example writes `[budget]`, so no over-budget or waived chunk was seen on a world.
 - [ ] Change builds as slow as cold: city `hand` 116.5 s against 110.5 cold, `move_avenue` 98.6,
   `move_bridge` 110.3; townland `move_crossing` 27.5 against 26.2; quay `unrelated` 21.8 against
   15.0 (on-foot review, one run each, load 22 to 47). The perf items above.
-- [ ] The city frame tour covers 217 m of 1.6 km and loads 14 chunks: tour the bookmark route or
-  pace by its length. The headless "real time" walk gives 27,623 frames and 190.7 s in both modes:
-  likely Godot's low-processor sleep; set `OS.low_processor_usage_mode = false` or say so.
+- [x] A frame tour across more than 1 km. Done M6 slice 2 (stream; atlas did not build yet, so
+  city): `sheet.sh --before build/city --stream 96 --frames 240`, 1280 by 720, 1687 m at 7 m/s,
+  125,184 frames: median 664 fps, slowest 1% 241, slowest frame 62; 96 loads, 92 unloads, 0
+  stalls, at most 23 of 625 chunks loaded, streamer median 0.20 ms a frame (macOS arm64 M4 Pro,
+  Godot 4.7.2 Compatibility, far instances on, one run, load average 11.6 rising to 62 from other
+  work). The sheet's own watchdog now adds twice `--frames` (a 240 s tour hit its 300 s). Redo on
+  atlas once it builds (challenge 4).
+- [ ] The headless "real time" walk gives 27,623 frames and 190.7 s in both modes: likely Godot's
+  low-processor sleep; set `OS.low_processor_usage_mode = false` or say so.
 
 To M7:
 - [ ] glTF export: water (`water_level`) is not carried (sea and beck missing at coast
   `under_deck`); carry it per chunk, or say so in engines/gltf's README. The skirt is in "To M7"
   above.
-- [ ] lib/map labels lib/building rooms by produced id (`lay#net_loft_s0_r0`): give rooms a name or
-  a role and index. map_render's labels collide on station floor 1 after `move_stair`.
+- [x] lib/map labels lib/building rooms by produced id (`lay#net_loft_s0_r0`): give rooms a name or
+  a role and index. map_render's labels collide on station floor 1 after `move_stair`. Done M6
+  slice 2 (map): a room reads its floor and number; labels are placed apart (`label_overlaps` 0).
 - [ ] map_render's coast registration counts `beck` (water) as a way and skips the under-way
   `sea_cave` silently: rename the measure or list what it skips.
 - [ ] A generated mesh with no `material` has no glTF material, so a reader takes glTF's default
@@ -1497,6 +1528,75 @@ Lesson: a key that names the file a node writes is not the key of what the node 
 `budget:chunks` read `names.txt` because the counts sit beside the names, but the counts come from
 positions and assets that file does not hold. Key a derived node on what decides its value, and
 write the case that changes only the undecided part.
+
+### From M6 slice 2 (2026-11-17; atlas, export, perf, stream and map; the change and on-foot reviews, and the fix pass)
+
+- [x] Closed in the fix pass: an export's file names are build paths (`build.md` 11.4, case 51:
+  a name outside `[a-z0-9_.#]` is `protocol.output_file`, a device name is escaped); `output` is
+  an id (`identity.bad_id`, case `protocol/c77_output_key`, with `doc.unknown_key` on a lint);
+  c49 builds the reused export into a fresh directory; an import's own pack's assets are the
+  build's (`composition.md` 10, manifest `pack` and `locations.pack_roots`, the loader and the
+  glTF reader read them; case `composition/brought_asset`): atlas lists college's and market's 16
+  ids, budgets count them, the map draws them (2587 -> 2776 footprints); lib/map no longer hides a
+  failed `step.pack` and warns of an instanced asset the pack lacks; atlas's roads are painted
+  (`road_painted` 1.0 outside the places, 0 before) by a ways-layer step; conformance 49 and 50
+  in order; numbers point to their protocol; protocol.md 4.1 marked ours.
+  Lesson: a world-level row that reads `dist('kind:road')` found no road and said only a warning
+  among 256; the atlas looked painted in features.json and bare on foot. Measure what the player
+  sees (the paint), not the feature.
+
+To M6 close (atlas on foot):
+- [ ] Imports' kind surfaces, their meshes and the terrain cut are dropped silently: atlas has 1
+  mesh against city's 12, coast's 4 and monastery's 17 alone, and `height.cut` 0 cells against
+  coast's 508; coast's sea cave is solid and the city's bridges are gone (`on_*_bridge` stand in
+  1.5 m of river). Spec gap in composition.md 6.1: say kind surfaces and cuts come with their
+  feature (heights plus `lift`, scoped names), add a case `import_kind_surface`, warn until built.
+- [ ] Water at the joins: 137,886 posts wet in atlas, 15 of 126 bookmarks in water (college's,
+  `monastery.bm_arrive` 4.75 m), two sheet walks blocked. composition.md 6.2's derived rule must
+  offset the parent's water too where the lifted ground is lower; dry the college lake.
+- [ ] Exits on a cliff: `vale.valley_road.start` falls from 14.0 m to -22.9 m within 25 m through
+  up to 8.8 m of water in the blend ring (`place_blended` moved -15.4 m). Hold the import's ground
+  round each answered exit (composition.md 6.7's `1 - smoothstep(12, 30, dist(exit))`) and
+  measure the profile along each import's way from its answered exit (worst grade, water depth).
+- [ ] A layer cannot write a row on a field another document declares (`identity.duplicate_id`),
+  and a lower row cannot read a higher layer's features, so atlas paints its roads with a step
+  (layers/steps/track.py) that only returns a row. Decide whether a layer may add `then` rows to a
+  field declared below it (documents.md 4, fields.md 7); then drop the step.
+- [ ] Roads inside a place's outline take the place's paint (`road_painted_in` 0.10): the last
+  stretch to a gate is grass. Seams: places meet the plain as straight bare scarps with
+  triangular pools; the city's freeways and east street stop about 30 m short of its edge; a wild
+  tree fills the view at `join_wild_west`; `on_bridge` stands on grass short of a bare deck.
+- [ ] The atlas sheet (124 bookmarks) fails at compose (GL target) and its watchdog quits with 3
+  after 900 s, so `sheet.json` and the walk and frame data are lost: write `sheet.json` before
+  composing, and split the sheet into pages.
+- [ ] Streamer far layer: generated meshes and water are not drawn past the load radius, woods
+  show as box walls; 4 of 13 atlas views differ from whole by more than 1% at 96 m (`join_vale`
+  3.72%). test_stream_walks: 0.0279 m against the 0.023 m tolerance at `example.church_turn`;
+  give the walker the water option.
+- [ ] The terrain river's authored polyline lies up to 23 m from its carved course, so the map
+  draws water where there is none: export the course the terrain step found.
+- [ ] Atlas times: a change costs 55 to 79% of cold (move_market 162 s against 245 s, this fix
+  pass); an unchanged build into the same directory takes 36 s preparing thirteen imports. The
+  export `map` alone is about 35 s of a build.
+- [ ] Owed to M6 by earlier sections, not done this slice: atlas takes its plain from the erosion
+  library and townland's authoring; coast's frame rate after parts; the loader's minimap.
+
+To M7:
+- [ ] A world with no `pack` whose imports bind assets has nothing to bring them into
+  (`with_brought` needs the world's pack); a brought asset's taxon is not selectable by `@taxon`
+  in `pack.query` (only `"*"` and ids), by design here (composition.md 10, ours).
+- [ ] The store's `flush()` waits with no bound: a writer thread that panics in `land` hangs
+  `put_build`; catch an unwinding writer or land what is left once the writers are gone. The
+  `dirs` cache assumes no folder is removed during a build.
+- [ ] engines/godot/tests/run.sh's reload step: its fixtures hold no chunk `digest`, so the suite
+  sees only "made again"; give them digests so one chunk is kept and one made.
+- [ ] lib/map labels do not avoid footprints; a test of `read_world`'s pack handling (the
+  `asset_unknown` warning) with a fake step.
+
+Lesson: two reviews found five atlas faults that measure.py never saw (no road, no buildings,
+dropped surfaces, water at joins, a cliff exit), because each row measured the plan (features,
+outlines, medians) and none what stands on the ground. An example's first rows should sample the
+finished fields along what a player walks.
 
 ## Framing
 
@@ -1772,13 +1872,19 @@ Structural checks stay in the core; everything else is an opt-in rule.
       and what stays the game's (discovery state, style). Context: study and spike on Coast.
       Done M6 slice 1: build.md 9.4, lib/map/export.py, coast and station (`map.toml`, `[map]`
       rows); station's `move_stair` changes exactly 4 of 80 tile fingerprints (floors 1 and 2).
-- [ ] -> M6 slice 2: The engine runs `when = "export"` (doc.not_yet today): the step node after
+- [x] -> M6 slice 2: The engine runs `when = "export"` (doc.not_yet today): the step node after
       lints, `out` less `diagnostics.json` into `export/<step id>/`, `files`, `exports` with
       `output` (protocol.md 1), case `c47_export_listed` (pending). Then move each world's
       `map.toml` into its world.toml and retire `tools/map_export.py`. Lesson: the map was built
       against a stand-in runner because the core half of its milestone row was in no slice.
-- [ ] -> M6: atlas's map: regions (`params.regions`) and POIs come from atlas's own features;
+      Done M6 slice 2: build.md 11.4 (what its node reads, when it has no entry), cases 47, 49, 50
+      and `diagnostics/export_skipped`; coast and station declare `[step.map]`, `[map]` rows 6/6
+      each. Lesson: c47, written pending, had two faults no run had seen (its script in the world's
+      folder, `protocol.code_folder`; a prefixed code, `diag.malformed`), and lib/map sent the same
+      prefixed code, which the stand-in never checked: a pending case is unverified text.
+- [x] -> M6: atlas's map: regions (`params.regions`) and POIs come from atlas's own features;
       coast and station have none, so `labels.json` there holds only feature-name labels and rooms.
+      Done M6 slice 2 (map): atlas's layers/names.toml, one area per place; `[map]` 12/12.
 - [ ] -> M6: The loader reads the player map (`exports` by `output`): a minimap in the viewer.
 - [ ] -> set aside (doctrine section 7, image-model map styling): Define a registration measure for a restyled map that works on painted water, roads and
       footprints. Context: the spike's colour-based water overlap failed on pale washes; only the

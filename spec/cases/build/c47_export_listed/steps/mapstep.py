@@ -9,4 +9,4 @@ def export(step):
     os.makedirs(os.path.join(step.out.folder, "floors"), exist_ok=True)
     with open(os.path.join(step.out.folder, "floors", "0.json"), "w", encoding="utf-8") as f:
         f.write('{"index":0}\n')
-    step.info("step.map.written", "step.map", "two files", "none", explain="What was written.")
+    step.info("written", "step.map", "two files", "none", explain="What was written.")

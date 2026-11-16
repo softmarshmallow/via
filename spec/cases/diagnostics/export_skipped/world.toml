@@ -1,0 +1,10 @@
+name   = "exportskipped"
+extent = [0, 0, 16, 16]
+
+[field.height]
+role = "surface"
+base = "= 1 + xx"                         # an error: the export does not run
+
+[step.map]
+when    = "export"
+command = ["python", "-m", "viasdk", "steps/map.py"]

@@ -257,7 +257,19 @@ fn member_boxes(geos: &[&Geo]) -> Vec<Option<[i64; 4]>> {
 /// projecting every member. A member whose box bound passes the distance of the member nearest by
 /// box (with a margin far wider than the doubles' error) cannot be the least, nor tie it, so it
 /// is not projected.
+#[cfg(test)]
 fn nearest_member(geos: &[&Geo], boxes: &[Option<[i64; 4]>], at: P) -> Option<(f64, f64)> {
+    nearest_member_by(boxes, at, |k, p| geos[k].project(p))
+}
+
+/// [`nearest_member`] with each member's projection given: a distance node projects every post
+/// of its window through each member's [`Geo::window_projector`], measuring only the segments
+/// that can be nearest to a post of the window (the same measures, bit for bit).
+fn nearest_member_by(
+    boxes: &[Option<[i64; 4]>],
+    at: P,
+    project: impl Fn(usize, P) -> via_geom::lineref::Measure,
+) -> Option<(f64, f64)> {
     let lower = |b: &Option<[i64; 4]>| -> f64 {
         let Some(b) = b else { return 0.0 };
         let gap = |lo: i64, hi: i64, v: i64| (lo - v).max(v - hi).max(0) as f64;
@@ -269,14 +281,14 @@ fn nearest_member(geos: &[&Geo], boxes: &[Option<[i64; 4]>], at: P) -> Option<(f
         .iter()
         .enumerate()
         .min_by(|a, b| a.1.total_cmp(b.1))
-        .map(|(k, _)| geos[k].project(at).d)
+        .map(|(k, _)| project(k, at).d)
         .map_or(f64::INFINITY, |d| d * (1.0 + 1e-9) + 1e-6);
     let mut best: Option<(f64, f64)> = None;
-    for (g, lb) in geos.iter().zip(&bounds) {
+    for (k, lb) in bounds.iter().enumerate() {
         if *lb > reach {
             continue;
         }
-        let m = g.project(at);
+        let m = project(k, at);
         if best.is_none_or(|b| m.d < b.0) {
             best = Some((m.d, m.sd));
         }
@@ -3423,6 +3435,25 @@ impl<'w> ModelPlan<'w> {
         v
     }
 
+    /// Every import's pack, the imports inside them included, by scoped id in id order
+    /// (`composition.md` 10): what a build brings into the build's assets.
+    pub fn imported_packs(&self) -> Vec<(String, &crate::pack::Pack)> {
+        fn walk<'a>(
+            imported: &'a BTreeMap<String, Arc<crate::import::Imported>>,
+            prefix: &str,
+            out: &mut Vec<(String, &'a crate::pack::Pack)>,
+        ) {
+            for (id, imp) in imported {
+                let scoped = format!("{prefix}{id}");
+                out.push((scoped.clone(), &imp.alone.pack));
+                walk(&imp.alone.decls.imported, &format!("{scoped}."), out);
+            }
+        }
+        let mut out = Vec::new();
+        walk(&self.p.decls.imported, "", &mut out);
+        out
+    }
+
     /// The layer rank of the layer that declares import `id` (`composition.md` 6.5); `None` when
     /// there is no such import.
     pub fn import_rank(&self, id: &str) -> Option<i64> {
@@ -3626,10 +3657,17 @@ impl<'w> ModelPlan<'w> {
         };
         let boxes = member_boxes(&geos);
         if let (Some(grid), Some(w)) = (self.grid, window_of(id)) {
+            let (mut lo, mut hi) = (P::new(i64::MAX, i64::MAX), P::new(i64::MIN, i64::MIN));
+            for (i, j) in w.posts() {
+                let (x, y) = via_raster::window::post_mm(&grid, i, j);
+                lo = P::new(lo.x.min(x), lo.y.min(y));
+                hi = P::new(hi.x.max(x), hi.y.max(y));
+            }
+            let pjs: Vec<_> = geos.iter().map(|g| g.window_projector(lo, hi)).collect();
             e.len(w.len());
             for (i, j) in w.posts() {
                 let (x, y) = via_raster::window::post_mm(&grid, i, j);
-                let best = nearest_member(&geos, &boxes, P::new(x, y));
+                let best = nearest_member_by(&boxes, P::new(x, y), |k, p| pjs[k].project(p));
                 let (d, sd) = best.unwrap_or((f64::INFINITY, f64::INFINITY));
                 e.u64((d as f32).to_bits().into())
                     .u64((sd as f32).to_bits().into());

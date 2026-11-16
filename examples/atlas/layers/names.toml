@@ -1,0 +1,69 @@
+# The names layer: what the player's map names (lib/map, build.md 9.4). Each place is an area on the
+# map, its outline the import's footprint as placed (composition.md 4: `<import>.footprint`), found
+# by `where` (geometry.md 3.7), so it follows its import when a change moves it. The label is the
+# name a player reads; the key is the feature's name, which the game localises. Changes no field.
+
+[feature.area_city]
+kind  = "area"
+where = "= if(inside('city.footprint'), 1, -1)"
+label = "City"
+
+[feature.area_quay]
+kind  = "area"
+where = "= if(inside('quay.footprint'), 1, -1)"
+label = "Quay"
+
+[feature.area_coast]
+kind  = "area"
+where = "= if(inside('coast.footprint'), 1, -1)"
+label = "Coast"
+
+[feature.area_college]
+kind  = "area"
+where = "= if(inside('college.footprint'), 1, -1)"
+label = "College"
+
+[feature.area_market]
+kind  = "area"
+where = "= if(inside('market.footprint'), 1, -1)"
+label = "Market"
+
+[feature.area_glade]
+kind  = "area"
+where = "= if(inside('glade.footprint'), 1, -1)"
+label = "Glade"
+
+[feature.area_relief]
+kind  = "area"
+where = "= if(inside('relief.footprint'), 1, -1)"
+label = "Relief"
+
+[feature.area_example]
+kind  = "area"
+where = "= if(inside('example.footprint'), 1, -1)"
+label = "Example"
+
+[feature.area_massif]
+kind  = "area"
+where = "= if(inside('massif.footprint'), 1, -1)"
+label = "Massif"
+
+[feature.area_vale]
+kind  = "area"
+where = "= if(inside('vale.footprint'), 1, -1)"
+label = "Vale"
+
+[feature.area_monastery]
+kind  = "area"
+where = "= if(inside('monastery.footprint'), 1, -1)"
+label = "Monastery"
+
+[feature.area_townland]
+kind  = "area"
+where = "= if(inside('townland.footprint'), 1, -1)"
+label = "Townland"
+
+[feature.area_wild]
+kind  = "area"
+where = "= if(inside('wild.footprint'), 1, -1)"
+label = "Wild"

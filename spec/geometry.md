@@ -621,7 +621,15 @@ of the shape's box and searches outward from a point's cell in rings, stopping o
 distance is strictly below the gap to every cell not yet searched; a segment beyond that gap is
 strictly farther, so no tie is missed. Any search must return the scan's segment, foot and exact
 distance, so `t`, `d`, `sd` and the nearest point are the same bits, and no key or vector changes
-with it. The network's representative point (3.2) is likewise exact whatever is skipped: an
+with it. Since M6 the engine takes many points by box instead: a `distance` field's window, or a
+square tile of 32 m (ours) for any other field or measure over many posts. It keeps only the
+segments that can be nearest to some point of the box and scans those for each point. The distance
+to a segment is convex, so over the box it is greatest at a corner; `u`, the least over segments
+of that greatest exact squared distance rounded up, bounds the nearest distance of every point of
+the box, and a segment whose box lies farther than `u` from the box is strictly farther from every
+point of it. The ring search searched outward to the far posts of a long shape, and for a window
+cost more than the plain scan (city's 650 `distance` nodes, 18 node-seconds scanned, 64 by rings,
+7 by box; M6, protocol in `examples/city/expect.toml`, M6 slice 2). The network's representative point (3.2) is likewise exact whatever is skipped: an
 estimate below the floor of the greatest estimate so far is below the final floor too, so it is
 left unmeasured.
 
@@ -1158,7 +1166,11 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 - How the nearest is found (3.8): seeded walks of 20 to 2,000 segments, a comb whose teeth tie,
   one long segment among short ones and a 400-point ring; points on every vertex, inside the box
   and far outside it; the indexed search gives the scan's segment, foot and exact distance, and
-  `project` the same bits (`crates/via-geom/tests/nearest_index.rs`). Seeded stars, a square and a
+  `project` the same bits (`crates/via-geom/tests/nearest_index.rs`). A window's segments: seeded
+  walks of 2 to 400 segments (one in four on a 1 m lattice, so distances tie) and boxes of 0 to
+  126 m near, across and far from them; for each corner and posts inside, the nearest among them
+  is the scan's segment, foot and exact distance (`crates/via-geom/tests/exact_fast.rs`,
+  `window_segments_keep_the_nearest`). Seeded stars, a square and a
   sliver; the representative point equals the unpruned search's.
 - A 10 m square region and the point `[5, 2]`; `project`; `t = 0.125`, `sd = +2`, `d = 0`. The point
   `[5, -3]`; `sd = -3`, `d = 3`. The point `[10, 5]` on the outline; `t = 0.375`, `sd = +0`, `d = 0`.

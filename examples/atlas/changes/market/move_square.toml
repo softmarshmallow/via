@@ -1,0 +1,4 @@
+# In the market's terms (its frame, its ids): the market square 10 m east and 6 m south in the crook
+# of the bend. Requested by the atlas's `move_square` (an import's change, composition.md 11).
+[feature.market_square]
+region = [[116, 88], [146, 106], [134, 144], [98, 134]]

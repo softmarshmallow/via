@@ -221,9 +221,53 @@ pub struct Pack {
     pub asset_diags: BTreeMap<String, Vec<Diag>>,
     /// Built with `--stand-ins` (9): each model asset is drawn as a box of its accepted facts.
     pub stand_ins: bool,
+    /// Assets an import's pack binds and this world's does not (`composition.md` 10), by id:
+    /// what a build lists, counts against its budgets and hands a lint or export step. This
+    /// world's own text never resolves them: placing and selecting read `assets` alone.
+    pub brought: BTreeMap<String, Brought>,
+}
+
+/// An asset bound by an import's pack (`composition.md` 10).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Brought {
+    /// The scoped id of the import whose pack binds it (`a`, or `a.b` inside `a`).
+    pub from: String,
+    /// That pack's root (2.1), where the asset's files lie.
+    pub root: PathBuf,
+    pub asset: Asset,
 }
 
 impl Pack {
+    /// The asset a build's instance names: this world's binding, else one an import's pack
+    /// brought (`composition.md` 10).
+    pub fn asset(&self, id: &str) -> Option<&Asset> {
+        self.assets
+            .get(id)
+            .or_else(|| self.brought.get(id).map(|b| &b.asset))
+    }
+
+    /// Takes in the assets of an import's pack that this pack does not bind, as brought from
+    /// `from`. One binding per id in a build (`import.binding_differs`), so the first pack
+    /// taken in for an id is the one.
+    pub fn bring(&mut self, from: &str, other: &Pack) {
+        if other.failed {
+            return;
+        }
+        for (id, a) in &other.assets {
+            if self.assets.contains_key(id) || self.brought.contains_key(id) {
+                continue;
+            }
+            self.brought.insert(
+                id.clone(),
+                Brought {
+                    from: from.to_string(),
+                    root: other.root.root.clone(),
+                    asset: a.clone(),
+                },
+            );
+        }
+    }
+
     /// The pack path a hint names.
     pub fn command_path(&self) -> &str {
         &self.command

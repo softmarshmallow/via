@@ -605,7 +605,7 @@ Each case runs through the command line (R20): input; action; what must hold.
   step, `count = 166`, five `occurrences`, largest relief first, names `<step>#<key>`.
 - Ten hand instances on steep ground; build; ten `place.relief` records.
 - (M6) A world with an export step and an error; build; exit 1, one `diag.skipped` with subject `world`
-  and `data.stage = "export"`.
+  and `data.stage = "export"`; nothing of the export written (`diagnostics/export_skipped`).
 - The same world at 1 and 8 threads, clean and incremental; build; `diagnostics.json` byte-identical.
 - `ford` with `changes/bad_anchor.toml`; insert one blank line above the table `related` points at,
   nothing else changed; build incrementally and clean; both `diagnostics.json` identical, `related` at the new

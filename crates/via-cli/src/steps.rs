@@ -37,6 +37,8 @@ pub struct StepDecl {
     pub for_each: Option<String>,
     /// `checks`: the generate steps a lint checks (`derived.md` 5).
     pub checks: Vec<String>,
+    /// `output`: on an export step, the name a reader finds what it writes by (`protocol.md` 1).
+    pub output: Option<String>,
     /// The layer the step belongs to (`protocol.md` 1, "Which layer").
     pub layer: String,
     /// The folder of the declaring document.
@@ -246,6 +248,10 @@ pub fn declared(world: &World, world_dir: &Path) -> Vec<StepDecl> {
                 _ => None,
             },
             checks: strings(get("checks")),
+            output: match get("output") {
+                Some(Value::Str(s)) => Some(s.text.clone()),
+                _ => None,
+            },
             layer: world.home("step", id).unwrap_or("world").to_string(),
             home,
         });
@@ -877,7 +883,7 @@ fn instances_data(
             &rows
                 .iter()
                 .map(|(_, i)| {
-                    pack.and_then(|p| p.assets.get(&i.asset))
+                    pack.and_then(|p| p.asset(&i.asset))
                         .and_then(|a| a.taxon.clone())
                         .unwrap_or_default()
                 })
