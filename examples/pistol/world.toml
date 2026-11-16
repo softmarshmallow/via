@@ -1,0 +1,119 @@
+name       = "pistol"
+extent     = [0, 0, 0.8, 0.6]               # metres: a bench, not land
+resolution = 0.05
+seed       = 47
+include    = ["review"]
+pack       = "pack.toml"
+
+# A real object from its published numbers (challenge 47; docs/plan.md M5 "the measured object
+# matches its published numbers"): the spike's pistol written again in the v1 vocabulary
+# (spec/assets.md 12). No part here has a coordinate. Each part stands `on` a socket of the part it
+# rides on: a mount of that part's asset, worked out from published.toml by make_pack.py, which
+# writes pack.toml. The frame is the root; the slide stands on the frame's `slide` socket and the
+# sights on the slide's, so moving or turning the frame moves everything, and drawing the slide back
+# (changes/racked.toml) moves the sights and anything mounted on the slide with it.
+#
+# Accessories are overlays on named sockets that change nothing of the pistol
+# (accessories/optic.toml on `slide.optic`, suppressor.toml on `barrel.muzzle`, light.toml on
+# `pistol.rail`). measure.py measures the build against the published numbers, per state: it reads
+# the state (rest or racked, which accessories) from the build itself.
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.bench]
+paint = "bench"
+
+# ------------------------------------------------------------------------------------- the frame and what is fixed to it
+
+[instance.pistol]                           # the frame: the one placed part, muzzle to the east
+asset = "frame"
+at    = [0.4, 0.3]
+
+[instance.tail]
+asset = "tail"
+on    = { ref = "pistol.tail" }
+
+[instance.hammer]
+asset = "hammer"
+on    = { ref = "pistol.hammer" }
+
+[instance.grip]
+asset = "grip"
+on    = { ref = "pistol.grip" }
+
+[instance.grip_panels]                      # these carry the published width
+asset = "grip_panels"
+on    = { ref = "pistol.grip_panels" }
+
+[instance.base_plate]
+asset = "base_plate"
+on    = { ref = "pistol.base_plate" }
+
+[instance.guard_bottom]
+asset = "guard_bottom"
+on    = { ref = "pistol.guard_bottom" }
+
+[instance.guard_front]
+asset = "guard_front"
+on    = { ref = "pistol.guard_front" }
+
+[instance.trigger]
+asset = "trigger"
+on    = { ref = "pistol.trigger" }
+
+[instance.barrel]                           # the published barrel length, its front the muzzle
+asset = "barrel"
+on    = { ref = "pistol.barrel" }
+
+# ------------------------------------------------------------------------------------- the slide and what rides on it
+
+[instance.slide]
+asset = "slide"
+on    = { ref = "pistol.slide" }
+
+[instance.front_sight]
+asset = "front_sight"
+on    = { ref = "slide.front_sight" }
+
+[instance.rear_left]                        # the rear sight's two posts; the notch between them
+asset = "rear_left"
+on    = { ref = "slide.rear_left" }
+
+[instance.rear_right]
+asset = "rear_right"
+on    = { ref = "slide.rear_right" }
+
+# ------------------------------------------------------------------------------------- views round it
+
+[feature.centre]                            # what the views look at
+on = { ref = "pistol" }
+
+[feature.bm_left]                           # the left side, square on
+kind       = "bookmark"
+at         = [0.41, 0.02]
+toward     = "centre"
+eye_height = 0.1
+
+[feature.bm_quarter]                        # three-quarter, muzzle toward the eye
+kind       = "bookmark"
+at         = [0.72, 0.1]
+toward     = "centre"
+eye_height = 0.2
+
+[feature.bm_rear]                           # down the sights from behind
+kind       = "bookmark"
+at         = [0.1, 0.32]
+toward     = "centre"
+eye_height = 0.16
+
+[feature.bm_right]                          # the right side, from above
+kind       = "bookmark"
+at         = [0.36, 0.58]
+toward     = "centre"
+eye_height = 0.25

@@ -1,0 +1,6 @@
+# The street moved, a second way: the main street's entry and first bend come 8 m south, so the
+# street is 3.5 m longer. Its rows follow it (`follows`); the cross streets' feet are placed on it
+# by `t`, a fraction of its length, so they slide 1 to 3 m along it, and every row of the cross
+# streets moves with them (measured: README, "The street moved").
+[feature.main_street]
+path = [[0, 45.4], [60, 54], [118, 86], [160, 134], [174, 200], [177.5, 256]]

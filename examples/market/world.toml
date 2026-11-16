@@ -1,0 +1,217 @@
+name    = "market"
+extent  = [0, 0, 256, 256]
+seed    = 41
+include = ["land", "water", "town", "review"]   # kinds as data; the core knows none of these words
+pack    = "packs/kit.toml"                  # the box kit, beside the world (packs/make_kit.py)
+
+# A market street on a slope (docs/plan.md, M5; the dogfood district of the city study: TODO,
+# "Dogfood: the market-street district"). The streets come first, drawn by hand. Each row of
+# houses is a line that `follows` its street at a setback (geometry.md 4), so it moves when the
+# street moves, and a kit run (lib/town/kit.py) lays the box kit on it: an end house at each free
+# end and either side of the gap a cross street makes, a corner house where the row turns with its
+# street's bend, bays between, fillers for what bays leave. The kit's pieces and their numbers are
+# the pack's (packs/kit.toml), never the world's: a revised piece re-fits every row (changes/).
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                              # a slope rising north and a little east
+role = "surface"
+base = "= 16 + 0.05 * y + 0.016 * x + 3 * fbm(140, 3, seed = 'hills') + 0.5 * fbm(28, 3, seed = 'lumps')"
+
+[field.water]                               # lib/water's convention: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]                            # the streets keep the rows off them (role:keep_out)
+role = "keep_out"
+base = "= 0"
+
+# ------------------------------------------------------------------------------------------ streets
+# The main street climbs from the west edge through two bends to the top of the town; the mill
+# street leaves it below the first bend and climbs north-west; the church street runs east from
+# the top of the second bend; the back lane closes the block between the mill street and the main
+# street. Each street's bed grades the ground and its verge (carriageway and footways) keeps the
+# rows out (lib/town/kinds.toml: a main street 6.5 m with 2 m footways, a street 4.5 m with 1.5 m).
+# A cross street starts (or ends) at a point placed on the street it leaves, so the street it
+# leaves owns the meeting (authority.md, "B arrives at A"; R18) and the foot moves with it.
+
+[feature.main_street]
+kind = "main_street"
+path = [[0, 53.4], [60, 62], [118, 86], [160, 134], [174, 200], [177.5, 256]]
+
+[feature.mill_foot]                        # where the mill street leaves the main street
+on = { ref = "main_street", t = 0.3062 }
+
+[feature.church_foot]                       # where the church street leaves it, atop the third bend
+on = { ref = "main_street", t = 0.6288 }
+
+[feature.lane_head]                         # where the back lane comes out on it
+on = { ref = "main_street", t = 0.8062 }
+
+[feature.lane_foot]                         # where the back lane leaves the mill street
+on = { ref = "mill_street", t = 0.497 }
+
+[feature.mill_street]
+kind      = "street"
+starts_at = "mill_foot"
+path      = [[80, 120], [66, 180], [60, 256]]
+
+[feature.church_street]
+kind      = "street"
+starts_at = "church_foot"
+path      = [[205, 136], [256, 128]]
+
+[feature.back_lane]
+kind      = "street"
+starts_at = "lane_foot"
+ends_at   = "lane_head"
+path      = [[120, 178]]
+
+[feature.market_square]                     # the paved court in the crook of the bend, level
+kind    = "terrace"
+region  = [[106, 94], [136, 112], [124, 150], [88, 140]]
+max_cut = 3.5
+
+# ------------------------------------------------------------------------------------------ rows
+# A row's line is where its houses' middles stand: `offset` metres from its street's centre line,
+# the street's verge (keep_out to `width / 2 + footway + 0.5`: 5.75 m on the main street, 4.25 m
+# on a street) and half a house's depth (4 m) out, so each front is on the footway's back edge.
+# `span` is the part of the street the row lines, as fractions of its length; a cross street's rows
+# start far enough up it to clear the rows of the street it leaves (14 m: 10 m and half a depth). A row left of its
+# street's travel (offset above 0) fronts to its right, and the other way round: two kit steps.
+
+[feature.row_main_n1]                       # north of the main street, from the west edge past the
+follows = { ref = "main_street", span = [0.03, 0.36], offset = 10 }  # mill street: a corner at the first bend
+
+[feature.row_main_s1]                       # south of it, to the market square's foot
+follows = { ref = "main_street", span = [0.03, 0.36], offset = -10 }
+
+[feature.row_main_e]                        # outside the second bend, past the church street, up
+follows = { ref = "main_street", span = [0.40, 0.98], offset = -10 }
+
+[feature.row_main_w]                        # inside the third bend, above the square, past the
+follows = { ref = "main_street", span = [0.56, 0.98], offset = 10 }  # back lane: a corner at the bend
+
+[feature.row_mill_w]                        # the mill street's west side, all its length
+follows = { ref = "mill_street", span = [0.1, 0.96], offset = 8.5 }
+
+[feature.row_mill_e]                        # its east side, below the back lane
+follows = { ref = "mill_street", span = [0.1, 0.46], offset = -8.5 }
+
+[feature.row_church_n]
+follows = { ref = "church_street", span = [0.17, 0.96], offset = 8.5 }
+
+[feature.row_church_s]
+follows = { ref = "church_street", span = [0.17, 0.96], offset = -8.5 }
+
+[feature.row_lane_n]
+follows = { ref = "back_lane", span = [0.14, 0.84], offset = 8.5 }
+
+[feature.row_lane_s]
+follows = { ref = "back_lane", span = [0.14, 0.76], offset = -8.5 }
+
+# The kit runs. `ends = "inside"`: an end house stands wholly inside its stretch, so a row never
+# reaches into a cross street's gap, and a row's free end takes what whole pieces leave (kit.py,
+# "Ends inside"). `joint`: two houses of a row may stand up to 0.5 m apart (an alley's width at
+# most), where a stretch between two corners cannot close wall to wall.
+[step.rows_left]                            # rows left of their street: fronts to their right
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/kit.py"]
+params  = { runs = ["row_main_n1", "row_main_w", "row_mill_w", "row_church_n", "row_lane_n"], kit = "building/row", side = "right", ends = "inside", joint = 0.5 }
+
+[step.rows_right]                           # rows right of their street: fronts to their left
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/kit.py"]
+params  = { runs = ["row_main_s1", "row_main_e", "row_mill_e", "row_church_s", "row_lane_s"], kit = "building/row", side = "left", ends = "inside", joint = 0.5 }
+
+# ------------------------------------------------------------------------------------------ paint
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.grass]
+paint = "grass"
+
+[field.ground.then.pavement]                # the footways, to the house fronts (6 m and 4.5 m
+paint = "flags"                             # out: the sheet showed a strip of grass before them)
+mask  = "= max(1 - smoothstep(5.9, 6.4, dist('kind:main_street', 8)), 1 - smoothstep(4.4, 4.9, dist('kind:street', 6)))"
+
+[field.ground.then.square]                  # the market square, flagged to its edge
+paint = "flags"
+mask  = "= 1 - smoothstep(0, 0.5, dist('market_square', 2))"
+
+[field.ground.then.street]                  # the carriageway, kerb to kerb
+paint = "setts"
+mask  = "= max(1 - smoothstep(3.0, 3.5, dist('kind:main_street', 8)), 1 - smoothstep(2.0, 2.5, dist('kind:street', 6)))"
+
+# ------------------------------------------------------------------------------------------ views
+# Along the street, at its corners and at its rows' ends (R17: from eye height, at the meetings).
+# Each stands on a street and looks at a guide point written for it.
+
+[feature.look_arrive]
+at = [92, 76]
+
+[feature.look_corner_low]
+at = [60, 72]
+
+[feature.look_mill_mouth]
+at = [90, 84]
+
+[feature.look_corner_bend]
+at = [150, 137]
+
+[feature.look_church]
+at = [230, 134]
+
+[feature.look_down]
+at = [166, 160]
+
+[feature.look_square]
+at = [150, 128]
+
+[feature.look_town]
+at = [120, 140]
+
+[feature.arrive]                            # along: arriving from the west, rows either side
+kind   = "bookmark"
+on     = { ref = "main_street", t = 0.02 }
+toward = "look_arrive"
+
+[feature.corner_low]                        # corner: the corner house inside the first bend
+kind   = "bookmark"
+on     = { ref = "main_street", t = 0.15 }
+toward = "look_corner_low"
+
+[feature.mill_ends]                         # ends: the end houses either side of the mill street
+kind   = "bookmark"
+on     = { ref = "main_street", t = 0.35 }
+toward = "look_mill_mouth"
+
+[feature.corner_bend]                       # corner: the corner house inside the third bend
+kind   = "bookmark"
+on     = { ref = "main_street", t = 0.66 }
+toward = "look_corner_bend"
+
+[feature.church_ends]                       # ends: down the church street from the main street
+kind   = "bookmark"
+on     = { ref = "church_street", t = 0.04 }
+toward = "look_church"
+
+[feature.top]                               # along: from the top of the town down the main street
+kind   = "bookmark"
+on     = { ref = "main_street", t = 0.99 }
+toward = "look_down"
+
+[feature.square]                            # the square, across to the rows inside the bend
+kind   = "bookmark"
+at     = [116, 122]
+toward = "look_square"
+
+[feature.over]                              # the whole street from the south-east, above
+kind       = "bookmark"
+at         = [236, 30]
+toward     = "look_town"
+eye_height = 60

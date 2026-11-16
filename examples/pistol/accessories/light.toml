@@ -1,0 +1,15 @@
+# Written by make_pack.py. An accessory overlay: a light under the frame's rail, attached to the socket
+# `pistol.rail` (spec/assets.md 12.3). Its parts are a set in its own frame, whose origin is
+# the socket; the host is not written again. Build with --change accessories/light.toml.
+
+[set.light.item.light_body]
+asset = "light_body"
+at    = [0, 0]
+
+[set.light.item.light_head]
+asset = "light_head"
+at    = [0.026, 0]
+
+[instance.light]
+set = "light"
+on  = { ref = "pistol.rail" }

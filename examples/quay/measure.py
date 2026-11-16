@@ -17,7 +17,12 @@ How each is taken (ours): a block is a feature of kind `block`, a lot of kind `l
 region of the cells table with no kind; a house an instance named `houses#...`; a pin's instance
 is named by its pin id. A centre is the mean of a region's outer ring's vertices. `lots_held` is the
 houses step's own count (its `step.houses.rows` info: lots with at least one house of a row on them),
-`terraces` the regions of kind `terrace` it returns (one per run of houses wall to wall).
+`terraces` the regions of kind `terrace` it returns (one per run of houses wall to wall);
+`empty`, `corner_lots`, `corners` and `fallback_lots` the same record's counts (houses.py rules
+2b and 2c: lots with no house, lots held by a corner house, corner houses, lots held by a row of
+`fallback`). `kit_*` are the town wall's `step.wall.kit` record (lib/town/kit.py): its pieces, by
+role, its gaps, open stretches, pieces steeper than their plinth, bays laid as fillers, and the
+largest step between neighbours' tops (`kit_max_step`, metres).
 Dead ends are lib/review/form.py's (`step.form.*` records, data.value; the world declares the lint):
 `dead_end_count` the ends on nothing inside the town, `edge_ends` those on the district's outline
 or at the gate, apart (form.py, "Dead end and edge end"); `geom.dead_end` stays the number of the
@@ -147,6 +152,11 @@ def measures(d):
     m["terraces"] = sum(1 for f in fs if f.get("kind") == "terrace")
     rows = [x.get("data") or {} for x in diags if x["code"] == "step.houses.rows"]
     m["lots_held"] = rows[0].get("lots_held") if rows else None      # lots with a house on them
+    for k in ("empty", "corner_lots", "corners", "fallback_lots"):   # houses.py rules 2b, 2c
+        m[k] = rows[0].get(k) if rows else None
+    kit = [x.get("data") or {} for x in diags if x["code"] == "step.wall.kit"]
+    for k in ("pieces", "corner", "end", "filler", "gaps", "open", "steep", "split", "max_step"):
+        m["kit_" + k] = kit[0].get(k) if kit else None                   # kit.py, the town wall
     for code in ("place.relief", "place.keep_out", "geom.dead_end", "geom.unowned_crossing",
                  "identity.pin_removed", "step.streets.none"):
         m[code] = codes.get(code, 0)

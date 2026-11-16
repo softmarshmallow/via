@@ -1,0 +1,5 @@
+# The first of the town kit's three changes (TODO, "Dogfood: the market-street district"): a
+# piece remodelled. The end house is re-exported a metre deeper (packs/make_kit.py); its pack's
+# facts file is the one accepted before, so the build names every instance of `row_end`
+# (`asset.revised`, assets.md 4.2). Nothing else is edited.
+pack = "packs/remodel.toml"

@@ -1,0 +1,16 @@
+name       = "mill"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 22
+
+# Width 8 on x = 255: the strip runs to x = 259, 3 m past the east edge (256); 3/8 of it is lost.
+[feature.mill_bridge]
+kind   = "crossing"
+path   = [[255, 100], [255, 140]]
+deck_z = 24.5
+width  = 8

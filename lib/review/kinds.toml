@@ -58,3 +58,9 @@ names    = ["toward"]
 
 [kind.bookmark.defaults]
 eye_height = 1.7                          # metres above the ground at the bookmark
+along      = ""                           # a path feature the sheet's walker follows, point by point,
+                                          # before it walks on to `toward` (build.md 15.1); "" walks
+                                          # straight. Text, not in `names`: the core resolves a name
+                                          # to one point, and the walk reads the path's points from
+                                          # features.json; a name with no such path is the loader's
+                                          # load.bad_target.

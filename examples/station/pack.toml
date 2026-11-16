@@ -38,10 +38,17 @@ size      = [0.12, 0.98, 2.6]
 taxon     = "structure/wall"
 colour    = [0.8, 0.76, 0.66]
 
-[asset.tower_shell]             # the tower's round wall, one piece over all four storeys
+[asset.tower_shell]             # the tower's round wall, the ground storey (3.25 m, to the door head)
 primitive = "box"
-size      = [0.3, 0.9, 12.6]
+size      = [0.3, 0.9, 3.25]
 taxon     = "structure/wall"
+colour    = [0.93, 0.93, 0.9]
+
+[asset.tower_shell_upper]       # the tower's round wall over the ground storey, to 12.6 m
+primitive = "box"
+size      = [0.3, 0.9, 9.35]
+taxon     = "structure/wall"
+sink      = -3.25               # lifted onto the lower ring: nothing stands on a thing
 colour    = [0.93, 0.93, 0.9]
 
 [asset.roof_cottage]

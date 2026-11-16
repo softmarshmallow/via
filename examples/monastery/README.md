@@ -45,9 +45,9 @@ A cold build takes about 3 s, a change about 2.5 s.
   leaves its end by name. `move_bridge` moves it whole: the road keeps its course up to the last
   turn (2082 of 2393 points to the millimetre) and only the last leg is found again; the approach
   follows; 0 `geom.unowned_crossing`; 0 deck posts wet.
-- The compound is one region of lib/town's new `enclosure`: the court levelled, a 4 m wall all
-  round, open only within 2 m of the `gate` point. 0 metres of wall under 3.5 m away from the gate;
-  the step across the gate is 31 cm.
+- The compound is one region of lib/town's new `enclosure`: the court levelled; its wall (M5 slice
+  3) a run of wall bays round the outline, open where the gate stands (5.1 m). 0 metres of wall
+  uncovered away from the gate; the step across the gate is 31 cm.
 - Reach (lib/review): from the road's entry a walker reaches both bridge ends, the gate, the hall's
   step, the well and every door (the guesthouse's too, in its change); the gorge's floor is sealed
   from the road and from the hall. `no_bridge` removes the crossing and states the hall, the gate,
@@ -77,12 +77,22 @@ A cold build takes about 3 s, a change about 2.5 s.
   brings ways to the deck at `approach` (1:10; `head_grade` 0.10) and keeps the stream at its
   `flow` past the faces (`face_pool` 0.06).
 
-- **The deck is a causeway** (lib/ways' stand-in; kind surfaces are `doc.not_yet`): from the gorge's
-  floor (`bm_gorge`) the bridge is a 15 m wall across the gorge, and the floor is cut in two.
-- **The wall is ground** (lib/town `enclosure` stand-in): grey, sheer, no coping, no gatehouse; the
-  gate is a gap.
-- **The gorge's walls and the tarn's hollow are stair-stepped**: a step from one 1 m post to the next
-  draws as terraces (`bm_tarn`). A sheer face finer than the posts needs a surface, not the terrain.
+- **The deck is a surface over the gorge** since M5 slice 2 (no longer a causeway; 11 wet posts
+  under it), but lib/review's reach walks the terrain only, so the road no longer reaches the gate
+  (`reach` 3 of 10, OWED in expect.toml, as in townland).
+- **The wall is a run of wall bays** since M5 slice 3 (`court_wall`, the starter pack's `wall_bay` at
+  scale 1.5: 2.4 m high, 98 bays): masonry the engine draws and collides, owned by the run, the gap
+  5.1 m where the span ends at the gate (`bm_gate`, `bm_court`). No coping, no gatehouse; bays at a
+  corner overlap or leave its outer corner open.
+- **The gorge's walls are sheer faces** since M5 slice 3 (layers/gorge.toml, lib/land `sheer_cliff`
+  in 16 pieces, written by gorge_faces.py): drawn along their line, the terrain's step cut away
+  under them. Before, the terrain drew every wall stair-stepped at the 1 m posts (`bm_tarn`; 606
+  quads within 20 m of the stream spanning more than 2 m, the worst 21.15 m); now 68 and 2.81 m,
+  all in the tarn's head, where each face's flat foot (2.75 m) fades into the hollow. Seen on the
+  sheet: a saw-tooth of open slivers along the brink (a cut quad reaches up to 0.71 of a post past
+  the face's strip, coast's fault too), thin lit wedges where a piece's strip bends, and the
+  bridge's line crosses each face unowned (2 `geom.unowned_crossing`: a crossing names only the
+  water it crosses).
 - **The switchbacks do not read from eye height** (`bm_turn`): the legs lie 30 m apart on open grass.
 - **No bell tower, no well, no huts**: the starter pack has no such assets; the hall is a barn.
 - **`no_bridge` floods the floor** at the bridge site in its `bm_gorge` view (seen, not measured).

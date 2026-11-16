@@ -1,0 +1,39 @@
+name       = "mill"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 22
+
+[feature.mill_bridge]
+kind   = "crossing"
+path   = [[132, 168], [152, 168]]
+deck_z = 24.5
+
+# On the crossing, which owns one surface: it stands on the deck (4.1, row 1), not the river.
+[feature.deck_spot]
+kind   = "sight"
+on     = { ref = "mill_bridge", t = 0.5 }
+toward = "mill_bridge"
+
+# On the terrain, looking at the point on the deck: its target's `at` is the deck's height.
+[feature.bank]
+kind   = "sight"
+at     = [120, 150]
+toward = "deck_spot"
+
+# 1 mm past the deck's bound (2.5 m), within one lattice unit: on the deck, at its base there
+# (24.5 - 0.02 * 2.501), in features.json as in meets.json.
+[feature.edge_spot]
+kind   = "sight"
+on     = { ref = "mill_bridge", t = 0.5, offset = 2.501 }
+toward = "mill_bridge"
+
+# 10 m off the line, past the bound: on the terrain (22), nothing said (4.1, M5 slice 3 fix).
+[feature.beside]
+kind   = "sight"
+on     = { ref = "mill_bridge", t = 0.5, offset = 10 }
+toward = "mill_bridge"

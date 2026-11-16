@@ -1,6 +1,8 @@
 # The station's measures and their bands (measure.py says how each is taken). Taken on the M5
 # slice 2 shared tree (uncommitted, after 152bf1f), release build, one run each, resolution 0.5,
-# Python 3.9 for the steps and 3.13 for measure.py. The counts take in the net loft that
+# Python 3.9 for the steps and 3.13 for measure.py; `wall_gave_way` and `open_above_door_mm` on
+# the M5 slice 3 shared tree (uncommitted, after 6f9f332), release build, one run, Python 3.12 for
+# the steps and 3.13 for measure.py. The counts take in the net loft that
 # lib/building's `lay` lays (2 storeys, 3 rooms, 1 flight, 1 doorway, 4 meetings).
 
 [base]
@@ -19,6 +21,8 @@ stair_surfaces   = { band = [5, 5] }        # at stair_1's middle: ground, store
 dressing         = { band = [60, 400] }
 off_floor        = { band = [0, 0] }        # every hand set, run and instance on its floor (102 at slice 1)
 shell_gave_way   = { band = [0, 0] }        # overlap by level (rules.md 8.1; 10 at slice 1)
+wall_gave_way    = { band = [0, 0] }        # no wall member gives way to dressing (8 at slice 2: a 2.8 m hole)
+open_above_door_mm = { band = [0, 0] }      # the tower's doorway is the ground storey's height (9350 at slice 2)
 door_narrow      = { band = [0, 0] }        # the lint's clear width at each door (check.py rule 5)
 doors_measured   = { band = [3, 3] }
 clear_min_mm     = { band = [1100, 3000] }  # every door and the step 1.1 m clear (0.20 m at slice 1)
@@ -27,6 +31,7 @@ laid             = { band = [100, 140] }    # the loft's walls and corners
 laid_off_floor   = { band = [0, 0] }        # each on its storey's floor
 
 [move_stair]
+wall_gave_way    = { band = [0, 0] }
 meetings         = { band = [16, 16] }
 gap_max_mm       = { band = [0, 0] }
 unreached        = { band = [0, 0] }        # the rooms the moved stair serves still reached

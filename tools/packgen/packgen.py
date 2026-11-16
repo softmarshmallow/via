@@ -304,6 +304,44 @@ def row_house(width: float, depth: float, wall: float, ridge: float, walls: str,
     ]
 
 
+def hip_roof(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> list[Tri]:
+    """A hipped roof over the box's top face: four slopes up to one apex at height y1."""
+    a, b, c, d = (x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)
+    top = ((x0 + x1) / 2, y1, (z0 + z1) / 2)
+    return [
+        (d, c, top),  # front (+z)
+        (b, a, top),  # back (-z)
+        (a, d, top),  # -x
+        (c, b, top),  # +x
+        (a, b, c), (a, c, d),  # underside
+    ]
+
+
+def corner_house(width: float, depth: float, wall: float, ridge: float, walls: str, roofs: str) -> list[tuple[str, list[Tri]]]:
+    """A town house for a street corner (lib/town's houses step, rule 2c): two storeys under a
+    hipped roof, so it has no gable and reads the same from both streets, a door on the front (+z)
+    and one on its right side. The asset frame's +x is the model's -x (assets.md 2.3), so the
+    right-hand door is on the model's -x face."""
+    w, d = width / 2, depth / 2
+    return [
+        (walls, box(-w, 0.0, -d, w, wall, d)),
+        (roofs, hip_roof(-w - 0.3, w + 0.3, wall, ridge, -d - 0.3, d + 0.3)),
+        ("timber", box(-0.5, 0.0, d, 0.5, 2.1, d + 0.05)),
+        ("timber", box(-w - 0.05, 0.0, -0.5, -w, 2.1, 0.5)),
+    ]
+
+
+def wall_piece(length: float, thick: float, high: float, plinth: float) -> list[tuple[str, list[Tri]]]:
+    """A piece of a garden or town wall kit (lib/town's kit run): stone along x, `thick` deep, its
+    coping a little wider. It reaches `plinth` metres below its origin, which the pack declares as
+    its `sink`, so a piece on a slope keeps its foot in the ground (kit.py, stepped runs)."""
+    l, t = length / 2, thick / 2
+    return [
+        ("stone", box(-l, 0.0, -t, l, plinth + high - 0.1, t)),
+        ("slate", box(-l, plinth + high - 0.1, -t - 0.05, l, plinth + high, t + 0.05)),
+    ]
+
+
 def shed(width: float, depth: float, ridge: float) -> list[tuple[str, list[Tri]]]:
     w, d = width / 2, depth / 2
     return [
@@ -367,6 +405,12 @@ FILES = {
     "house_wide.glb": house(11.0, 7.0, 3.2, 5.4),
     "house_narrow.glb": row_house(5.0, 8.0, 5.6, 7.6, "render", "slate"),
     "house_row.glb": row_house(7.0, 8.0, 5.8, 8.0, "stone", "roof"),
+    "house_shallow.glb": row_house(6.0, 4.5, 5.2, 6.8, "render", "roof"),
+    "house_corner.glb": corner_house(6.0, 6.0, 5.8, 8.2, "stone", "slate"),
+    "wall_bay.glb": wall_piece(2.0, 0.4, 1.1, 0.5),
+    "wall_filler.glb": wall_piece(0.5, 0.4, 1.1, 0.5),
+    "wall_pier.glb": wall_piece(0.6, 0.6, 1.4, 0.5),
+    "wall_corner.glb": wall_piece(0.7, 0.7, 1.5, 0.5),
     "shed_gable.glb": shed(4.0, 3.0, 3.0),
     "tree_oak.glb": broadleaf(7.0, 5.0, 16, 8),
     "tree_oak_low.glb": broadleaf(7.0, 5.0, 8, 4),

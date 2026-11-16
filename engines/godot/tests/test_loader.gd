@@ -9,7 +9,7 @@ const Npy := preload("res://addons/via_loader/npy.gd")
 const CJson := preload("res://addons/via_loader/cjson.gd")
 const Primitives := preload("res://addons/via_loader/primitives.gd")
 
-const EXPECTED := 74
+const EXPECTED := 75
 var failed := 0
 var ran := 0
 var tests_dir := ""
@@ -107,12 +107,16 @@ func _before() -> void:
 	var fence := c00.get_node("fence_post") as MultiMeshInstance3D
 	check("before: names in metadata keep rows findable", "fence.p2" in fence.get_meta("names"))
 	check("before: collision bodies from params (box, hull, mesh)",
-		c00.get_node_or_null("cottage/shape") != null and c00.get_node("cottage/shape").shape is BoxShape3D
-		and root.get_node("c_1_0").get_node_or_null("trees#t4/shape") != null
-		and root.get_node("c_1_0").get_node("trees#t4/shape").shape is ConvexPolygonShape3D
-		and root.get_node("c_1_0").get_node_or_null("rocks#r0/shape") != null
-		and root.get_node("c_1_0").get_node("rocks#r0/shape").shape is ConcavePolygonShape3D)
-	check("before: no body without params.collision", c00.get_node_or_null("crate") == null)
+		c00.get_node_or_null("bodies/cottage/shape") != null and c00.get_node("bodies/cottage/shape").shape is BoxShape3D
+		and root.get_node("c_1_0").get_node_or_null("bodies/trees#t4/shape") != null
+		and root.get_node("c_1_0").get_node("bodies/trees#t4/shape").shape is ConvexPolygonShape3D
+		and root.get_node("c_1_0").get_node_or_null("bodies/rocks#r0/shape") != null
+		and root.get_node("c_1_0").get_node("bodies/rocks#r0/shape").shape is ConcavePolygonShape3D)
+	check("before: no body without params.collision", c00.get_node_or_null("bodies/crate") == null)
+	# bodies under their own `bodies` node, apart from the multimeshes named after assets: an
+	# instance named like its asset keeps its name (station's `lens` was `@StaticBody3D@9`)
+	var renamed := root.find_children("@*", "", true, false)
+	check("before: no node renamed for a clash of names", renamed.is_empty(), str(renamed.map(func(n): return n.name)))
 	# instance transform: pivot and facing (face 90000 turns +y front to east)
 	var cottage_row := Array(fence.get_meta("names")).size()
 	var house := c00.get_node("house_low") as MultiMeshInstance3D

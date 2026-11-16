@@ -13,7 +13,8 @@ at 2 m posts.
 | `changes/` | `move_avenue` (the grand avenue 40 m east), `move_bridge` (the central crossing 48 m upstream), `hand` (a clear and a pin). |
 | `expect.toml`, `measure.py` | Counts, the meetings and who owns them, the street form, reach, names elsewhere unchanged after each change; with protocol. |
 
-New in lib for this world: lib/ways `freeway` and `interchange` (both partly stand-ins, below),
+New in lib for this world: lib/ways `freeway` and `interchange`, and since M5 slice 3 `viaduct`
+and `ramp` (levels, below),
 lib/town `ward` (a named region, no effect).
 
 ## Build
@@ -79,15 +80,18 @@ every lot a house fits gets one.
 
 ## Stand-ins (say what is not real)
 
-- **Interchanges have no ramps and no levels.** Kind surfaces (a deck not on the terrain) are not
-  built, so no way can pass over another: lib/ways `interchange` is an at-grade plate 16 m round
-  its point, held level and banked at 1:10, where the freeway's and the arterial's pieces end, four
-  ends at a cross. The spike's loops and connectors are not drawn.
-- **The freeway is on the ground**, not a viaduct, and meets nothing but at an interchange. The
-  spike's crosstown freeway, which crossed the river and three avenues on a viaduct, is left out:
-  on the ground it would need a crossing of its own and three more at-grade meetings.
-- **The bridges are causeways** (lib/ways `crossing`, as in townland): the deck is written on the
-  terrain; the water stands either side, not under it.
+- **Interchanges have levels since M5 slice 3** (challenge 38): the freeway passes over each
+  arterial on a lib/ways `viaduct`, a deck 300 m long, 6.0 m over the interchange's plate, where
+  the arterial is taken 3 m down; two loop `ramp`s per interchange (270 degrees, west of the
+  freeway, where no district is) run from the deck to the ground beside the arterial (`ix_*_view`,
+  `ix_central_freeway`). What is not there: a ramp from the freeway on the ground (a diamond's
+  slips), a merge onto the arterial (a loop lands 7 m beside it), piers, deck edges and parapets
+  (the deck is a surface); the viaduct climbs at up to 6.1 % (interchanges 400 m apart leave 300 m).
+- **The freeway lies on the ground between viaducts.** The spike's crosstown freeway, over the
+  river and three avenues on a viaduct, is still left out.
+- **The bridges are decks over the river** since M5 slice 2 (lib/ways `crossing`'s kind surface; 284
+  wet posts under the three), but lib/review's reach walks the terrain only, so the river cuts the
+  city in two for it (`reach` 2 of 6, OWED in expect.toml).
 - **Boxes**: the starter pack's two row houses everywhere; the spike's towers, mid-rises and sheds
   per district need buildings as a library (M5).
 

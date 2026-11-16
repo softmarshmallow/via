@@ -1,0 +1,109 @@
+name       = "sidearm"
+extent     = [0, 0, 0.8, 0.6]               # metres: a bench, not land
+resolution = 0.05
+seed       = 46
+include    = ["review"]
+pack       = "pack.toml"
+
+# A small mechanical object with full parts, as a modelling tool would hold it (challenge 46): the
+# spike's sidearm written again in the v1 vocabulary (spec/assets.md 12). The object is a set, its
+# parts are items, and the parts that move together are a set inside it (`upper`: the slide and
+# its sights), a nested frame (numbers.md 5.4). The racked state is one edit: `upper` drawn back
+# (changes/racked.toml), and every part on it follows. The spike moved six parts by hand.
+#
+# Coordinates here are the modeller's own: each item's place in its set's frame, x along the
+# length, metres. Heights are the parts' `sink` (pack.toml). What v1 cannot say, and so is not here:
+# a hole cut by one part in another (bore, ejection port, serrations: a part's shape is its asset's,
+# assets.md 12.5), a tilted part (the grip's lean: rules.md 6), a part sliding against another as a
+# constraint (the slide is moved, not driven).
+
+[field.height]
+role = "surface"
+base = 0
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.bench]
+paint = "flags"
+
+# ------------------------------------------------------------------------------------- the object
+
+[set.parts.item.frame]
+asset = "frame"
+
+[set.parts.item.grip]
+asset = "grip"
+at    = [-0.053, 0]
+
+[set.parts.item.base_plate]
+asset = "base_plate"
+at    = [-0.066, 0]
+
+[set.parts.item.guard_bottom]
+asset = "guard_bottom"
+at    = [-0.009, 0]
+
+[set.parts.item.guard_front]
+asset = "guard_front"
+at    = [0.012, 0]
+
+[set.parts.item.trigger]
+asset = "trigger"
+at    = [-0.012, 0]
+
+[set.parts.item.barrel]
+asset = "barrel"
+at    = [0.075, 0]
+
+[set.parts.item.upper]                      # the slide and what rides on it, one frame
+set = "upper"
+
+[set.upper.item.slide]
+asset = "slide"
+
+[set.upper.item.front_sight]
+asset = "front_sight"
+at    = [0.091, 0]
+
+[set.upper.item.rear_left]
+asset = "rear_post"
+at    = [-0.089, 0.006]
+
+[set.upper.item.rear_right]
+asset = "rear_post"
+at    = [-0.089, -0.006]
+
+[instance.sidearm]
+set = "parts"
+at  = [0.4, 0.3]
+
+# ------------------------------------------------------------------------------------- views round it
+
+[feature.centre]                            # what the views look at: the object's middle
+at = [0.4, 0.3]
+
+[feature.bm_left]                           # the left side, square on
+kind       = "bookmark"
+at         = [0.4, 0.05]
+toward     = "centre"
+eye_height = 0.12
+
+[feature.bm_quarter]                        # three-quarter, muzzle toward the eye
+kind       = "bookmark"
+at         = [0.65, 0.12]
+toward     = "centre"
+eye_height = 0.2
+
+[feature.bm_rear]                           # down the sights from behind
+kind       = "bookmark"
+at         = [0.12, 0.3]
+toward     = "centre"
+eye_height = 0.16
+
+[feature.bm_right]                          # the right side, from above
+kind       = "bookmark"
+at         = [0.35, 0.56]
+toward     = "centre"
+eye_height = 0.25

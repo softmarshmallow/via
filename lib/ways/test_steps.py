@@ -30,6 +30,14 @@ class Parapet(unittest.TestCase):
                          [("bridge_parapet_l", 1.925), ("bridge_parapet_r", -1.925)])
         self.assertTrue(all(r["on"]["span"] == [0, 1] and r["ends"] == "both" for r in runs))
 
+    def test_span_inset_by_half_the_post(self):
+        """A 0.15 m deep post on an 18 m deck: span [0.075 / 18, 1 - 0.075 / 18], so the end posts'
+        faces stand on the deck's ends, not 75 mm past them."""
+        runs = PAR["runs"]("bridge", 4, "fence_post", 150, 2.0, 150, 18000)
+        s = round(75 / 18000, 6)
+        self.assertEqual([r["on"]["span"] for r in runs], [[s, round(1 - s, 6)]] * 2)
+        self.assertEqual(PAR["length_of"]([(0, 0), (3000, 4000), (3000, 10000)]), 11000)
+
     def test_a_piece_as_wide_as_the_deck_lays_nothing(self):
         self.assertIsNone(PAR["runs"]("bridge", 0.15, "fence_post", 150, 2.0))
 

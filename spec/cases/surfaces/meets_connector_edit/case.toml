@@ -1,0 +1,60 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.4 and build.md 9.3 (M5 slice 3; slice-1 TODO): an edit of connectors in kinds.toml (lane and both crossing heads, way to cart) rebuilt against the base gives meets.json's connector columns as cart, as a clean build does (U6)."
+milestone = 5
+actions   = ["base", "lane", "west", "east", "edit"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+# Rows by a, bytewise: lane_east.start, lane_west.end, mill_bridge.east_deck, mill_bridge.west_deck.
+[action.base.file.west]
+path    = "build/base/meets.json"
+pointer = "/meets/1/connector_b"
+value   = "way"
+
+[action.lane]
+replace = "lib/surfaces_test/kinds.toml"
+find    = "[kind.lane]\nconnector = \"way\""
+with    = "[kind.lane]\nconnector = \"cart\""
+
+[action.west]
+replace = "lib/surfaces_test/kinds.toml"
+find    = "[kind.crossing.mount.west_head]\nt         = 0\nface      = 0\nconnector = \"way\""
+with    = "[kind.crossing.mount.west_head]\nt         = 0\nface      = 0\nconnector = \"cart\""
+
+[action.east]
+replace = "lib/surfaces_test/kinds.toml"
+find    = "[kind.crossing.mount.east_head]\nt         = 1\nface      = 180\nconnector = \"way\""
+with    = "[kind.crossing.mount.east_head]\nt         = 1\nface      = 180\nconnector = \"cart\""
+
+[action.edit]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--against", "build/base", "--out", "build/edit"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/edit"
+
+[action.edit.file.west_a]
+path    = "build/edit/meets.json"
+pointer = "/meets/1/connector_a"
+value   = "cart"
+
+[action.edit.file.west_b]
+path    = "build/edit/meets.json"
+pointer = "/meets/1/connector_b"
+value   = "cart"
+
+[action.edit.file.east_b]
+path    = "build/edit/meets.json"
+pointer = "/meets/0/connector_b"
+value   = "cart"

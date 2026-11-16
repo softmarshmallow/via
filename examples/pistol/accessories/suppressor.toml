@@ -1,0 +1,11 @@
+# Written by make_pack.py. An accessory overlay: a muzzle device on the barrel, attached to the socket
+# `barrel.muzzle` (spec/assets.md 12.3). Its parts are a set in its own frame, whose origin is
+# the socket; the host is not written again. Build with --change accessories/suppressor.toml.
+
+[set.suppressor.item.can]
+asset = "can"
+at    = [0.065, 0]
+
+[instance.suppressor]
+set = "suppressor"
+on  = { ref = "barrel.muzzle" }

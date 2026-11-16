@@ -6,14 +6,16 @@ reads the crossing's path and `width` (`build.features`) and the parapet piece's
 
     [run.<crossing>_parapet_l]
     asset   = "<asset>"
-    on      = { ref = "<crossing>", span = [0, 1], offset = <o> }
+    on      = { ref = "<crossing>", span = [s, 1 - s], offset = <o> }
     spacing = <spacing>
     ends    = "both"
 
 with `o = width / 2 - w / 2` to the left and `-o` to the right, `w` the piece's width across the
 deck (its `bounds` x extent: a member faces along the path, so its x is across it). So every post
 stands inside the deck's bound (surfaces.md 1.2: the edge counts as inside), its outer face on the
-edge. A run `on` the crossing stands on the crossing's one surface, the deck (surfaces.md 4.1), and
+edge. The span is `[s, 1 - s]` with `s = (d / 2) / L`, `d` the piece's depth along the deck (its
+`bounds` y extent) and `L` the deck's length along its path: the posts at the ends stand with
+their end faces on the deck's ends, not half a post past them (TODO "From M5 slice 2"). A run `on` the crossing stands on the crossing's one surface, the deck (surfaces.md 4.1), and
 moves with it; a member is never at the terrain under the deck (TODO "From M5 slice 1": until the
 core grounds a run on its surface, its members stand on the terrain).
 
@@ -67,15 +69,19 @@ def key_of(name):
     return "".join(c if c.isalnum() or c in "_-" else "_" for c in str(name))
 
 
-def runs(name, width, piece_id, piece_w_mm, spacing):
+def runs(name, width, piece_id, piece_w_mm, spacing, piece_d_mm=0, length_mm=0):
     """The two runs (rules.md 5) for a crossing `width` metres wide and a piece `piece_w_mm` wide
-    across the deck, or None when the piece leaves no deck between the rows."""
+    across the deck and `piece_d_mm` deep along it, on a deck `length_mm` long, or None when the
+    piece leaves no deck between the rows or no length between the ends."""
     o = round(width / 2 - piece_w_mm / 2000, 3)
     if o <= 0:
         return None
+    s = round(piece_d_mm / 2 / length_mm, 6) if length_mm > 0 else 0.0
+    if s >= 0.5:
+        return None
     k = key_of(name)
     return [{"key": f"{k}_parapet_{side}", "asset": piece_id, "spacing": spacing, "ends": "both",
-             "on": {"ref": name, "span": [0, 1], "offset": off}} for side, off in (("l", o), ("r", -o))]
+             "on": {"ref": name, "span": [s, round(1 - s, 6)], "offset": off}} for side, off in (("l", o), ("r", -o))]
 
 
 def _list(col):
@@ -83,22 +89,29 @@ def _list(col):
 
 
 def read_piece(step, asset):
-    """(id, width across in mm) of the parapet piece, or None."""
+    """(id, width across in mm, depth along in mm) of the parapet piece, or None."""
     t = step.pack(select=asset if asset.startswith("@") else [asset], columns=["bounds"])
     ids = _list(t.get("id", []))
     if not ids:
         return None
     r = min(range(len(ids)), key=lambda i: ids[i])
     b = [int(v) for v in _list(_list(t["bounds"])[r])] if "bounds" in t else [0, 0, 0, 0, 0, 0]
-    return ids[r], b[3] - b[0]
+    return ids[r], b[3] - b[0], b[4] - b[1]
 
 
-def read_width(step, name):
+def length_of(points):
+    """A path's length in mm, from its vertices in mm."""
+    pts = [(float(p[0]), float(p[1])) for p in points]
+    return sum(((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5 for a, b in zip(pts, pts[1:]))
+
+
+def read_deck(step, name):
+    """(width in metres, length along the path in mm) of the crossing."""
     fl = step.features(select=[name], columns=["width"])
     v = _list(fl["width"])[0] if "width" in fl else None
     if isinstance(v, str):
         v = json.loads(v)
-    return float(v)
+    return float(v), length_of(_list(fl.points(0)))
 
 
 def generate(step):
@@ -116,8 +129,8 @@ def generate(step):
         step.warning("no_piece", "feature." + name, f"no asset `{p['asset']}` in the pack for `{name}`'s parapet",
                      "name an asset the pack holds in the step's `asset` param", explain=EXPLAIN["no_piece"])
         return
-    width = read_width(step, name)
-    got = runs(name, width, piece[0], piece[1], p["spacing"])
+    width, length = read_deck(step, name)
+    got = runs(name, width, piece[0], piece[1], p["spacing"], piece[2], length)
     if got is None:
         step.warning("narrow", "feature." + name, f"`{piece[0]}` is {piece[1] / 1000:g} m wide; `{name}`'s deck "
                      f"is {width:g} m", "use a narrower piece", explain=EXPLAIN["narrow"])

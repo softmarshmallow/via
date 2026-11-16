@@ -1,0 +1,82 @@
+# The sidearm's parts: primitives only (assets.md 6). Each part is an asset; its size is the part's
+# own fact, as a modelling tool keeps a part's dimensions with the part (assets.md 12.1).
+#
+# Sizes are [x, y, z] metres in the asset frame: x along the object's length (muzzle to +x), y across
+# it, z up. A part's height in the object is its `sink`, negative: how far its underside stands
+# above the object's base, the base plate's underside (assets.md 12.2; the station's roofs do the
+# same). Read from the spike's sidearm, centimetres to metres, the lowest part's underside at 0.
+
+[taxon."part/sidearm"]
+defaults = { collision = "box" }
+
+[asset.frame]
+primitive = "box"
+size      = [0.17, 0.026, 0.02]
+taxon     = "part/sidearm"
+sink      = -0.093
+colour    = [0.18, 0.18, 0.19]
+
+[asset.grip]                     # upright: a part does not tilt (rules.md 6); the spike leaned it 0.28
+primitive = "box"
+size      = [0.046, 0.025, 0.088]
+taxon     = "part/sidearm"
+sink      = -0.005
+colour    = [0.32, 0.2, 0.12]
+
+[asset.base_plate]
+primitive = "box"
+size      = [0.054, 0.028, 0.006]
+taxon     = "part/sidearm"
+colour    = [0.18, 0.18, 0.19]
+
+[asset.guard_bottom]             # the trigger guard, a loop in the spike, as two bars
+primitive = "box"
+size      = [0.042, 0.011, 0.006]
+taxon     = "part/sidearm"
+sink      = -0.052
+colour    = [0.18, 0.18, 0.19]
+
+[asset.guard_front]
+primitive = "box"
+size      = [0.006, 0.011, 0.041]
+taxon     = "part/sidearm"
+sink      = -0.052
+colour    = [0.18, 0.18, 0.19]
+
+[asset.trigger]
+primitive = "box"
+size      = [0.007, 0.007, 0.026]
+taxon     = "part/sidearm"
+sink      = -0.068
+colour    = [0.6, 0.6, 0.62]
+
+[asset.barrel]                   # a rod in the spike; a primitive cylinder stands upright, so a box
+primitive = "box"
+size      = [0.084, 0.016, 0.016]
+taxon     = "part/sidearm"
+sink      = -0.122
+colour    = [0.55, 0.55, 0.57]
+
+[asset.slide]
+primitive = "box"
+size      = [0.2, 0.028, 0.03]
+taxon     = "part/sidearm"
+sink      = -0.113
+colour    = [0.24, 0.25, 0.27]
+
+[asset.front_sight]
+primitive = "box"
+size      = [0.008, 0.005, 0.007]
+taxon     = "part/sidearm"
+sink      = -0.143
+colour    = [0.9, 0.9, 0.9]
+
+[asset.rear_post]                # the rear sight as two posts: the notch is the gap between them
+primitive = "box"
+size      = [0.009, 0.007, 0.008]
+taxon     = "part/sidearm"
+sink      = -0.143
+colour    = [0.9, 0.9, 0.9]
+
+[material.flags]                 # the bench
+colour = [0.62, 0.6, 0.55]

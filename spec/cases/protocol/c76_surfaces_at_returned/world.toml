@@ -1,0 +1,20 @@
+name       = "returned"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[layer.top]
+file  = "layers/top.toml"
+owner = "top"
+rank  = 1
+
+[field.height]
+role = "surface"
+base = 1
+
+# Rank 0: returns `make#deck`, a slab at level 3 over [2, 6] x [2, 6].
+[step.make]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]
+params  = { key = "deck", level = 3 }

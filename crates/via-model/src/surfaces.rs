@@ -400,6 +400,101 @@ fn evaluator(
     })
 }
 
+/// `surface.fold` (1.2): the strip of `pts` at `half` mm overlaps itself, found as `geometry.md`
+/// 3.5 finds `geom.follow_broken`: the curve at `half` on either side is not one piece. Gives
+/// the position and the largest bound that holds on both sides.
+fn fold(id: &str, pts: &[P], half: i64, subject: &Subject) -> Option<Diag> {
+    use via_geom::follow::{follow, Reference};
+    let reference = Reference::Path(pts.to_vec());
+    let mut broken: Option<(P, i64)> = None;
+    for side in [half, -half] {
+        let Err(g) = follow(id, &reference, 0.0, 1.0, side) else {
+            continue;
+        };
+        if g.code != via_geom::Code::FollowBroken {
+            continue;
+        }
+        let widest = match g.data.get("widest") {
+            Some(via_diag::Value::Length(w)) => w.abs(),
+            _ => 0,
+        };
+        let at = g.position.unwrap_or(pts[0]);
+        broken = Some(match broken {
+            Some((p, w)) if w <= widest => (p, w),
+            _ => (at, widest),
+        });
+    }
+    let (at, widest) = broken?;
+    Some(
+        text::diag(
+            codes::surface::FOLD,
+            subject.clone(),
+            Site::Header,
+            &format!(
+                "the strip of `{id}` at a bound of {} m overlaps itself near [{}, {}]; the largest bound that holds is {} m",
+                via_num::write_length(half),
+                via_num::write_length(at.x),
+                via_num::write_length(at.y),
+                via_num::write_length(widest)
+            ),
+            "write a smaller `bound`, or ease the bend",
+        )
+        .at(text::pos(at.x, at.y))
+        .with("bound", DValue::Length(half))
+        .with("widest", DValue::Length(widest)),
+    )
+}
+
+/// A path owner's strip clipped to the extent (1.2): `surface.clipped` (info) with the share
+/// of the strip's area lost, exact integer areas and one f64 division.
+fn clipped(
+    d: &Decls,
+    id: &str,
+    region: via_geom::Region,
+    subject: &Subject,
+    diags: &mut Vec<Diag>,
+) -> via_geom::Region {
+    use via_geom::overlay::{boolean, BoolOp};
+    let Some([x0, y0, x1, y1]) = d.grid.map(|g| g.extent) else {
+        return region;
+    };
+    let Some((lo, hi)) = region.bbox() else {
+        return region;
+    };
+    if lo.x >= x0 && lo.y >= y0 && hi.x <= x1 && hi.y <= y1 {
+        return region;
+    }
+    let extent = via_geom::Region::from_ring(vec![
+        P::new(x0, y0),
+        P::new(x1, y0),
+        P::new(x1, y1),
+        P::new(x0, y1),
+    ]);
+    let Ok(inside) = boolean(BoolOp::Intersection, &[region.clone(), extent]) else {
+        return region;
+    };
+    let (a, ai) = (region.twice_area(), inside.twice_area());
+    if a <= 0 || ai >= a {
+        return region;
+    }
+    let share = (a - ai) as f64 / a as f64;
+    let mut dg = text::diag(
+        codes::surface::CLIPPED,
+        subject.clone(),
+        Site::Header,
+        &format!(
+            "the bound of `{id}` reaches beyond the extent; {} of it is clipped",
+            text::dbl(share)
+        ),
+        "nothing if it may reach past the edge; otherwise move it inside, or widen the extent",
+    );
+    if let Some(v) = DValue::double(share) {
+        dg = dg.with("share", v);
+    }
+    diags.push(dg);
+    inside
+}
+
 /// Every kind surface of every placed feature, by place name (1); faults pushed. The second map
 /// holds the surfaces a fault of their own left out, so a reader of one says nothing more.
 pub(crate) fn kind_surfaces(
@@ -448,8 +543,15 @@ pub(crate) fn kind_surfaces(
                         ));
                         continue;
                     }
+                    if let Some(dg) = fold(id, &line.pts, mm, &subject) {
+                        diags.push(dg);
+                        continue;
+                    }
                     match via_geom::offset::stroke(id, &line.pts, mm, mm, Join::Round, Cap::Butt) {
-                        Ok(region) => Geo::Region { region, line: None },
+                        Ok(region) => Geo::Region {
+                            region: clipped(d, id, region, &subject, diags),
+                            line: None,
+                        },
                         Err(_) => {
                             diags.push(text::diag(
                                 codes::surface::BOUND,
@@ -961,6 +1063,11 @@ pub(crate) fn ground_on_surfaces(
                 let sink = pack.assets.get(&p.asset).map_or(0.0, |a| a.sink);
                 p.z = z - sink * p.scale;
                 g.stands.insert(p.name.clone(), s.place.clone());
+                // Hand instances and set items only (4.2): a step's returned instance by its
+                // name, as its `maker` is set only when the world has a hand edit.
+                if p.maker.is_none() && !d.produced_instance(&p.name) {
+                    footprint_on(d, pack, s, p, &subject, diags);
+                }
             }
             Ok(None) => {
                 diags.push(
@@ -988,6 +1095,206 @@ pub(crate) fn ground_on_surfaces(
         }
     }
     g
+}
+
+/// `relief(surface, [region])` on a kind surface (2.3): `(low, high, outside)`. Sampled, not
+/// exact: the formula at the lattice posts inside `R ∩ B`, its vertices, and its edges'
+/// crossings with grid lines (rounded to the lattice); `outside` from exact integer areas and one
+/// f64 division. `R` wholly outside gives `(0, 0, 1)`; `None` for a region of zero area, or where
+/// the formula fails (its fault said on the owner once, 2.7). Its callers pass footprints, which
+/// never have zero area, so `surface.empty_region` (2.3, a step's call) is not said here.
+pub(crate) fn kind_relief(
+    s: &SurfaceOut,
+    grid: &via_num::Grid,
+    region: &via_geom::Region,
+    diags: &mut Vec<Diag>,
+) -> Option<(f64, f64, f64)> {
+    use via_geom::overlay::{boolean, BoolOp};
+    let area = region.twice_area();
+    if area <= 0 {
+        return None;
+    }
+    let bound = s.region()?;
+    let inter = boolean(BoolOp::Intersection, &[region.clone(), bound.clone()]).unwrap_or_default();
+    let ai = inter.twice_area();
+    let outside = (area - ai) as f64 / area as f64;
+    if inter.is_empty() || ai <= 0 {
+        return Some((0.0, 0.0, 1.0));
+    }
+    let mut pts: Vec<(i64, i64)> = Vec::new();
+    if let Some((lo, hi)) = inter.bbox() {
+        if let Ok(Some(w)) = via_raster::window::effect_window(grid, [lo.x, lo.y, hi.x, hi.y], 0) {
+            for (i, j) in w.posts() {
+                let (x, y) = via_raster::window::post_mm(grid, i, j);
+                if inter.side(P::new(x, y)) != via_geom::pred::Side::Out {
+                    pts.push((x, y));
+                }
+            }
+        }
+    }
+    let [x0, y0, _, _] = grid.extent;
+    let r = grid.resolution;
+    let lines = |p: i64, q: i64, o: i64| -> Vec<i64> {
+        let (lo, hi) = (p.min(q), p.max(q));
+        let mut v = Vec::new();
+        let mut g = o + (lo - o).div_euclid(r) * r + r;
+        while g < hi {
+            v.push(g);
+            g += r;
+        }
+        v
+    };
+    for ring in inter.rings() {
+        for k in 0..ring.len() {
+            let (a, b) = (ring[k], ring[(k + 1) % ring.len()]);
+            pts.push((a.x, a.y));
+            let along = |num: i64, den: i64, from: i64, span: i64| -> i64 {
+                from + via_num::round_to_lattice(span as f64 * num as f64 / den as f64).unwrap_or(0)
+            };
+            if a.x != b.x {
+                for gx in lines(a.x, b.x, x0) {
+                    pts.push((gx, along(gx - a.x, b.x - a.x, a.y, b.y - a.y)));
+                }
+            }
+            if a.y != b.y {
+                for gy in lines(a.y, b.y, y0) {
+                    pts.push((along(gy - a.y, b.y - a.y, a.x, b.x - a.x), gy));
+                }
+            }
+        }
+    }
+    pts.sort_unstable();
+    pts.dedup();
+    let vals = match s.base.eval(&pts) {
+        Ok(v) => v,
+        Err(e) => {
+            if !s.said.swap(true, Ordering::Relaxed) {
+                diags.push(s.fault(&e));
+            }
+            return None;
+        }
+    };
+    let low = via_num::minimum(&vals).ok()?;
+    let high = via_num::maximum(&vals).ok()?;
+    Some((low, high, outside))
+}
+
+/// After grounding a hand instance on a kind surface (4.2): `relief` over its footprint;
+/// `outside > 0` is `surface.off_bound` with the share, and `high - low` past the asset's
+/// `max_relief` is `place.relief`.
+fn footprint_on(
+    d: &Decls,
+    pack: &crate::pack::Pack,
+    s: &SurfaceOut,
+    p: &crate::rules::Placement,
+    subject: &Subject,
+    diags: &mut Vec<Diag>,
+) {
+    let Some(grid) = d.grid.as_ref() else { return };
+    let Some((low, high, outside)) = kind_relief(s, grid, &p.footprint, diags) else {
+        return;
+    };
+    if outside > 0.0 {
+        let mut dg = text::diag(
+            codes::surface::OFF_BOUND,
+            subject.clone(),
+            Site::Header,
+            &format!(
+                "{} of the footprint of `{}` lies outside the bound of `{}`",
+                text::dbl(outside),
+                p.name,
+                s.place
+            ),
+            &format!("move it onto `{}`", s.place),
+        )
+        .at(text::pos(p.origin.x, p.origin.y))
+        .with("surface", DValue::text(s.place.clone()));
+        if let Some(v) = DValue::double(outside) {
+            dg = dg.with("share", v);
+        }
+        diags.push(dg);
+    }
+    if let Some(limit) = pack.assets.get(&p.asset).and_then(|a| a.max_relief) {
+        if high - low > limit * p.scale {
+            diags.push(
+                text::diag(
+                    codes::place::RELIEF,
+                    subject.clone(),
+                    Site::Header,
+                    &format!(
+                        "relief of `{}` under `{}` is {} m; its asset allows {} m",
+                        s.place,
+                        p.name,
+                        text::dbl(high - low),
+                        text::dbl(limit * p.scale)
+                    ),
+                    "move it, or choose an asset with a larger `max_relief`",
+                )
+                .at(text::pos(p.origin.x, p.origin.y)),
+            );
+        }
+    }
+}
+
+/// `surface.through` (4.1, warning): a hand instance on the terrain whose height reaches
+/// through a kind surface above its origin, lying above its `z` and below its top (`z` plus its
+/// bounds' top, scaled). Said once per instance, naming the lowest such surface.
+pub(crate) fn through(
+    d: &Decls,
+    pack: &crate::pack::Pack,
+    surfaces: &BTreeMap<String, SurfaceOut>,
+    all: &[crate::rules::Placement],
+    stands: &BTreeMap<String, String>,
+    diags: &mut Vec<Diag>,
+) {
+    let mut said: BTreeSet<&str> = BTreeSet::new();
+    for p in all {
+        // A rule, run, scatter or step instance is not tested (4.1): a step's by its name, as
+        // its `maker` is set only when the world has a hand edit.
+        if p.maker.is_some()
+            || p.pin
+            || stands.contains_key(&p.name)
+            || d.produced_instance(&p.name)
+        {
+            continue;
+        }
+        let head = p.name.split('.').next().unwrap_or(&p.name);
+        if said.contains(head) {
+            continue;
+        }
+        let Some(a) = pack.assets.get(&p.asset) else {
+            continue;
+        };
+        let top = p.z + via_num::metres(a.bounds[5]) * p.scale;
+        let o = (p.origin.x, p.origin.y);
+        let mut hit: Option<(f64, &str)> = None;
+        for s in surfaces.values() {
+            if let Ok(Some(z)) = s.z(o) {
+                if z > p.z && z < top && hit.is_none_or(|(hz, _)| z < hz) {
+                    hit = Some((z, s.place.as_str()));
+                }
+            }
+        }
+        let Some((z, place)) = hit else { continue };
+        said.insert(head);
+        let owner = place.split('.').next().unwrap_or(place);
+        diags.push(
+            text::diag(
+                codes::surface::THROUGH,
+                Subject::entity("instance", head),
+                Site::Header,
+                &format!(
+                    "`{}` stands on the terrain and reaches {} m, through `{place}` at {} m",
+                    p.name,
+                    text::dbl(top),
+                    text::dbl(z)
+                ),
+                &format!("place it `on` {owner} to stand on that surface, or move it"),
+            )
+            .at(text::pos(p.origin.x, p.origin.y))
+            .with("surface", DValue::text(place)),
+        );
+    }
 }
 
 /// What stands on a thing grounding left unplaced is not placed either (4.1, "A host that was not
@@ -1277,9 +1584,46 @@ pub(crate) fn place_surfaces(
 ) -> BTreeMap<String, String> {
     let mut out = BTreeMap::new();
     for (id, f) in &d.features {
-        let Some(sn) = &f.surface else { continue };
         let subject = Subject::entity("feature", id.as_str());
         let Some(Geo::Point { p, .. }) = placed.shapes.get(id) else {
+            continue;
+        };
+        let Some(sn) = &f.surface else {
+            // A point `on` a thing stands where an instance `on` it would (4.1, row 1 to 3):
+            // the one kind surface of a feature, or a mount's surface. A point laid on the
+            // owner's line within one lattice unit of the bound is on it (1.2); one an `offset`
+            // lays farther out stands on the terrain, as a target does, and nothing is said
+            // (4.1, decided in slice 3: a view beside a deck that moves with it).
+            let crate::decl::ShapeDecl::Point(crate::decl::Place::On(o)) = &f.shape else {
+                continue;
+            };
+            match on_target(d, &o.reference, 0) {
+                Ok(Some(n)) => {
+                    let Some(s) = surfaces.get(&n) else { continue };
+                    let near = (-1..=1).any(|dx| (-1..=1).any(|dy| s.inside((p.x + dx, p.y + dy))));
+                    if near {
+                        out.insert(id.clone(), s.place.clone());
+                    }
+                }
+                Ok(None) => {}
+                Err(names) => diags.push(
+                    text::diag(
+                        codes::surface::WHICH,
+                        subject,
+                        Site::Key(text::path(&["on"])),
+                        &format!(
+                            "`{id}` is placed on `{}`, which owns {}",
+                            o.reference,
+                            names.join(", ")
+                        ),
+                        &format!(
+                            "place it `on` a mount of `{}`, or by `at` with `surface`",
+                            o.reference
+                        ),
+                    )
+                    .with("surfaces", DValue::texts(names.into_iter())),
+                ),
+            }
             continue;
         };
         if let crate::decl::ShapeDecl::Point(crate::decl::Place::On(_)) = &f.shape {
@@ -1323,6 +1667,10 @@ pub(crate) fn place_surfaces(
             Some(place.clone())
         } else if let Some(s) = out.get(place) {
             Some(s.clone())
+        } else if let [one] = declared(d, place).as_slice() {
+            // A feature that owns one kind surface, named as a target: its point on that
+            // surface where the bound holds it (else the terrain, as `xyz_of` falls back).
+            Some(one.clone())
         } else {
             kind_mount(d, place)
                 .and_then(|(owner, m)| m.surface.as_ref().map(|sn| format!("{owner}.{sn}")))

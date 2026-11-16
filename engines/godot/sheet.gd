@@ -183,7 +183,8 @@ func _walks(vp: SubViewport, root: Node3D, loader, label: String, folder: String
 		var name := String(cam.get_meta("feature"))
 		var e: Array = cam.get_meta("eye")
 		var t: Dictionary = cam.get_meta("toward")
-		var r: Dictionary = await Walk.walk(root, loader, Vector3(e[0], e[1], e[2]), Vector3(t.at[0], t.at[1], t.at[2]), String(t.name), unbodied)
+		var r: Dictionary = await Walk.walk(root, loader, Vector3(e[0], e[1], e[2]), Vector3(t.at[0], t.at[1], t.at[2]), String(t.name), unbodied,
+			cam.get_meta("along", []))
 		var trail := Walk.trail_node(r)
 		root.add_child(trail)
 		var shots := {}

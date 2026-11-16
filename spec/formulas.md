@@ -303,8 +303,8 @@ order (`graph.md`). Afterwards it is a plain number. Names:
 | `pi` and the arithmetic functions of 8.1 | Functions with rate per post are `formula.rate`. |
 
 A kind's `defaults` may be formulas, so every feature of the kind has derived attributes others
-can read (the `pistol` case, challenge 47). Whether formulas may also give positions (`at`, `path`)
-or a facing is (open): decided in M5 by challenge 47's owed rotation.
+can read (the `pistol` case, challenge 47). Formulas do not give positions (`at`, `path`), sizes or
+a facing: decided in M5 (`assets.md` 12.5): a part's place is a socket, its size a pack fact.
 
 ### 6.8 A scatter's density
 

@@ -52,6 +52,7 @@ three suffixes are read as parts of the id.
 | `held` | `held:<producer>/v:<view>` | each rule or step that places instances | its output with the hand edits of `identity.md` 4.1 applied, as the view sees them | digest only |
 | `footprint` | `footprint:<instance name>/v:<view>` | each instance with `ground` | its footprint feature's geometry (`rules.md` 2.1) | digest only |
 | `height` | `height:<owner>/v:<view>` | each hand instance, pin and `held` node | the height of each of its instances from the surface beneath (R25), and the relief and `keep_out` checks (`rules.md` 8) | digest only |
+| `overlap` | `overlap:<instance>/v:<view>` | each hand instance, when the world has two or more | the overlap test of it against every other hand instance (`rules.md` 8.1), its `place.overlap`; it reads the instance's inputs, its `height` and every other hand instance's `instance`. Decided in M5 slice 3: no `height` reads it, so two hosts with a part on a mount each, however far apart, close no loop through the test (the test reads plans only, `rules.md` 8.1) | digest only |
 | `field` | `field:<name>/v:<view>/w:<window>` | a field, in one view, over one window | its samples | yes |
 | `distance` | `distance:<id or selector>/v:<view>/w:<window>` | a feature or selection that `d`, `sd` or a distance function reads | the distance and signed distance at each post | yes |
 | `measure` | `measure:<field>/v:<view>/<feature>.<effect>/<call>` | each `under` or `smoothed_along` call (`formulas.md` 8.5), per feature | the measure, or the smoothed values along the path | yes |

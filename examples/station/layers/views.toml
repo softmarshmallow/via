@@ -13,10 +13,10 @@ kind   = "bookmark"
 on     = { ref = "front_door", t = 0.0 }
 toward = "kitchen_table"
 
-[feature.at_back_door]                        # the back door from the yard
-kind   = "bookmark"
-on     = { ref = "back_door", t = 0.0 }
-toward = "bookcase"
+[feature.at_back_door]                        # the back door from the yard, looking in through it
+kind   = "bookmark"                           # down the bunk room to the partition's opening (the
+on     = { ref = "back_door", t = 0.0 }       # door and the opening are both at x = 33.5), so the
+toward = "kitchen_bunks_wall"                 # walk goes through the door, not the wall
 
 [feature.in_porch]
 kind    = "bookmark"
@@ -59,6 +59,31 @@ kind    = "bookmark"
 at      = [20.0, 30.6]
 toward  = "stair_2.end"
 surface = "tower_1.floor"
+
+# Up the spirals on foot: each walk follows its flight's points (`along`, build.md 15.1), from just
+# before its foot on the floor below to its end, then on to a thing on the floor above. A straight
+# walk toward the top would take a chord of the 122 degree arc and leave the tread.
+
+[feature.up_stair_1]                          # the store up to the living room
+kind    = "bookmark"
+at      = [20.28, 34.48]
+toward  = "living_chest"
+along   = "stair_1"
+surface = "tower_0.floor"
+
+[feature.up_stair_2]                          # the living room up to the watch room
+kind    = "bookmark"
+at      = [19.95, 29.45]
+toward  = "watch_desk"
+along   = "stair_2"
+surface = "tower_1.floor"
+
+[feature.up_stair_3]                          # the watch room up to the lantern
+kind    = "bookmark"
+at      = [20.28, 34.48]
+toward  = "lens"
+along   = "stair_3"
+surface = "tower_2.floor"
 
 [feature.in_watch]
 kind    = "bookmark"

@@ -1,0 +1,80 @@
+# The market's kit with one piece remodelled: `row_end` re-exported a metre deeper (9 m, its front and
+# back each half a metre further out), packs/make_kit.py. Its facts file is kit.facts.toml as accepted
+# before the re-export, so a build reports `asset.revised` and names every instance of `row_end`
+# (assets.md 4.2). Requested by `--change changes/remodel.toml`.
+#
+# Every model is glTF's convention: +Y up, front +Z, origin at the base centre (packgen's), so
+# front, up and pivot take their defaults. A piece is laid along its x axis by lib/town's kit run
+# (kit.py): `role:` says what it is in a row, `params.pitch` the length it repeats at, and `sink`
+# the plinth below its floor, so a piece on a slope keeps its foot in the ground. Every piece is
+# 8 m deep, its front on +y, a door at its front's middle.
+
+root = "remodel"
+
+[taxon."building/row"]
+[taxon."building"]
+defaults = { collision = "box", max_relief = 1.2 }   # the plinth (0.6 m) shows below, the floor cuts 0.6 m behind
+
+# The bay: a two-storey shop house on a 5 m module, repeated along a row.
+[asset.row_bay]
+file      = "row_bay.glb"
+taxon     = "building/row"
+tags      = ["role:wall"]
+params    = { pitch = 5.0 }
+sink      = 0.6
+footprint = [[-2.5, -4], [2.5, -4], [2.5, 4], [-2.5, 4]]
+
+[asset.row_bay.mount.door]
+at = [0, 4]
+
+# The filler: a narrow house, half a module, for what whole bays leave.
+[asset.row_filler]
+file      = "row_filler.glb"
+taxon     = "building/row"
+tags      = ["role:filler"]
+params    = { pitch = 2.5 }
+sink      = 0.6
+footprint = [[-1.25, -4], [1.25, -4], [1.25, 4], [-1.25, 4]]
+
+[asset.row_filler.mount.door]
+at = [0, 4]
+
+# The end: a 6 m house under a hipped roof, at a row's free end and either side of a gap.
+[asset.row_end]
+file      = "row_end.glb"
+taxon     = "building/row"
+tags      = ["role:end"]
+params    = { pitch = 6.0 }
+sink      = 0.6
+footprint = [[-3, -4.5], [3, -4.5], [3, 4.5], [-3, 4.5]]
+
+[asset.row_end.mount.door]
+at = [0, 4.5]
+
+# The corner: a 6 m square house of three storeys under a hipped roof where a row turns, a door
+# on its front and one on its right side. 6 m, not 8: it stands on the vertex of the row's line, and
+# inside a 29 degree bend an 8 m square's front corner reached 1.2 m over the footway (`market`).
+[asset.row_corner]
+file      = "row_corner.glb"
+taxon     = "building/row"
+tags      = ["role:corner"]
+params    = { pitch = 6.0 }
+sink      = 0.6
+footprint = [[-3, -3], [3, -3], [3, 3], [-3, 3]]
+
+[asset.row_corner.mount.door]
+at = [0, 3]
+
+[asset.row_corner.mount.side]
+at   = [3, 0]
+face = 90
+
+# The paints the world uses (lib/town's paved ways; the starter pack's colours).
+[material.grass]
+colour = [0.2, 0.4, 0.1]
+
+[material.setts]
+colour = [0.33, 0.32, 0.31]
+
+[material.flags]
+colour = [0.55, 0.53, 0.49]

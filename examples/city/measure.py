@@ -22,6 +22,16 @@ freeways within 0.5 m of it (4 at a cross), the least over the interchanges in
 `interchange_ends_min`. `deck_wet` counts deck posts (within `width / 2` of a crossing's line,
 between its ends) where water stands above the ground by over 1 mm, over all crossings.
 
+Levels (M5 slice 3; lib/ways `viaduct`, `ramp`, the attrs from features.json): `viaducts`, `ramps`
+count features of those kinds. `level_meetings` counts the rows of meets.json with a side whose
+name starts with a viaduct's or a ramp's name; `level_gap_max_mm` the largest |gap| of them.
+`headroom_min_m`: per interchange, the viaduct whose line passes within 1 m of its point, `deck_z`
+less the ground (fields/height.npy, bilinear) at the point; the least over the interchanges.
+`viaduct_grade_max` (%): per viaduct, `1.5 (deck_z - z) / (rise * length)` for `z` each end's
+level (a smoothstep's steepest slope), the largest; `ramp_grade_max` (%): per ramp, `1.5 |z1 - z0|
+/ length` over its built points; `freeway_ix_ends`: freeway ends within 0.5 m of an interchange's
+point (0: the freeway meets none at grade).
+
 With --base (a change built `--against` the base), what changed, by name and place. The moved
 features are the features of the two builds whose points differ (paths, points, regions: a
 feature present in one only counts as moved). A ward is *resettled* when its name is in one build
@@ -127,6 +137,51 @@ def skeleton(fs, m):
     m["interchange_ends_min"] = min(counts) if counts else 0
 
 
+def levels(d, fs, m):
+    vi = [f for f in fs if f.get("kind") == "viaduct"]
+    ra = [f for f in fs if f.get("kind") == "ramp"]
+    m["viaducts"], m["ramps"] = len(vi), len(ra)
+    names = tuple(f["name"] + "." for f in vi + ra)
+    rows = [r for r in json.loads((Path(d) / "meets.json").read_text())["meets"]
+            if r["a"].startswith(names) or r["b"].startswith(names)]
+    m["level_meetings"] = len(rows)
+    m["level_gap_max_mm"] = max((abs(r["gap"]) for r in rows), default=0)
+    r = json.loads((Path(d) / "manifest.json").read_text())["frame"]["resolution"]
+    nx, ny, h = field(d, "height")
+
+    def ground(x, y):
+        fx, fy = x / r, y / r
+        i, j = min(int(fx), nx - 2), min(int(fy), ny - 2)
+        u, v = fx - i, fy - j
+        return (h[j * nx + i] * (1 - u) * (1 - v) + h[j * nx + i + 1] * u * (1 - v)
+                + h[(j + 1) * nx + i] * (1 - u) * v + h[(j + 1) * nx + i + 1] * u * v)
+    room = []
+    for f in fs:
+        if f.get("kind") != "interchange":
+            continue
+        p = f["at"][:2]
+        for v in vi:
+            if line_dist(p, [q[:2] for q in v["points"]]) <= 1:
+                room.append(v["attrs"]["deck_z"] - ground(*p))
+    m["headroom_min_m"] = round(min(room), 2) if room else None
+    g = 0.0
+    for v in vi:
+        a = v["attrs"]
+        length = math.dist(v["points"][0][:2], v["points"][-1][:2])
+        g = max(g, 1.5 * max(a["deck_z"] - a["z_start"], a["deck_z"] - a["z_end"]) / (a["rise"] * length))
+    m["viaduct_grade_max"] = round(100 * g, 2)
+    g = 0.0
+    for f in ra:
+        pts = [q[:2] for q in f["points"]]
+        length = sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
+        g = max(g, 1.5 * abs(f["attrs"]["z1"] - f["attrs"]["z0"]) / length)
+    m["ramp_grade_max"] = round(100 * g, 2)
+    ix = [f["at"][:2] for f in fs if f.get("kind") == "interchange"]
+    m["freeway_ix_ends"] = sum(1 for f in fs if f.get("kind") == "freeway"
+                               for e in (f["points"][0][:2], f["points"][-1][:2])
+                               if any(math.dist(e, p) <= 0.5 for p in ix))
+
+
 def deck_wet(d, fs, m):
     r = json.loads((Path(d) / "manifest.json").read_text())["frame"]["resolution"]
     (nx, ny, h), (_, _, w) = field(d, "height"), field(d, "water")
@@ -177,6 +232,7 @@ def measures(d):
         m[code] = codes.get(code, 0)
     skeleton(fs, m)
     deck_wet(d, fs, m)
+    levels(d, fs, m)
     m["errors"] = sum(1 for x in diags if x["severity"] == "error")
     m["warnings"] = sum(1 for x in diags if x["severity"] == "warning")
     return m, fs, by, houses

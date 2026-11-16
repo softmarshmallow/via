@@ -1,0 +1,28 @@
+name       = "parts"
+extent     = [0, 0, 40, 40]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+# Two hosts 5 m apart, a solid part on a mount of each: one part deep is enough to reach the loop.
+[instance.frame]
+asset = "frame"
+at    = [10, 10]
+
+[instance.slide]
+asset = "slide"
+on    = { ref = "frame.slide" }
+
+[instance.b_frame]
+asset = "frame"
+at    = [10, 15]
+
+[instance.b_slide]
+asset = "slide"
+on    = { ref = "b_frame.slide" }
+
+[change.move.instance.b_frame]
+at = [10, 30]

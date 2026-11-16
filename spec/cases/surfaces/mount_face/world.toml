@@ -1,0 +1,13 @@
+name       = "mill"
+extent     = [0, 0, 256, 256]
+resolution = 1
+pack       = "pack.toml"
+include    = ["mount_face_test"]
+
+[field.height]
+role = "surface"
+base = 22
+
+[feature.span]
+kind = "span"
+path = [[100, 100], [140, 100]]

@@ -797,9 +797,10 @@ the core took is above (2.4 `passable`, 2.7 `connector`); the rest is the buildi
   `bounds` by the kit lint (the college's 6.44 m bay at a 6 m pitch).
 - **Kit table, roles, variants, allowed stretch. Library**, over `taxon`, `tags`, `params` and
   facts.
-- **States. Library.** The same thing in another condition (a door open, a slide racked) is another
-  asset id, filed with a `state:<word>` tag; a check that knows the state reads the instance's
-  asset and its tags (TODO, "Let a check know the state it is checking"). The core has no state.
+- **States. Library.** The same thing in another condition (a door open) is another asset id,
+  filed with a `state:<word>` tag; a check that knows the state reads the instance's asset and its
+  tags. A thing with parts in another arrangement (a slide racked) is section 12.4. The core has no
+  state.
 
 ## 11. Example
 
@@ -860,6 +861,90 @@ Here the asset id and the instance id are both `cottage`. The change report list
 `cottage` as `changed` and footprint `cottage` as `moved`, cause `asset.cottage.bounds` (the asset
 id), each with `facts` old and new. No world text changed. Had only the triangles
 changed, the build would say `asset.remodelled` and nothing would move.
+
+## 12. Things with parts, states and accessories (M5)
+
+Decided in M5 slice 3 by `sidearm` and `pistol` (challenges 46, 47; TODO "a thing with parts as one
+interface", "frames that nest", "a mount as the connector", "let a check know the state"). No new
+noun, key or code: each item below says what existing mechanism carries it, and why that is
+enough (principle 10). Decided, open to the owner where marked.
+
+### 12.1 A thing with parts
+
+A thing with parts is placed things in frames that nest. Two forms, both core already:
+
+- **A set** (`rules.md` 4): parts are items in the set's frame; parts that move together are a
+  set inside it, a nested frame (`numbers.md` 5.4), so one edit to that item moves all of them
+  (`sidearm`: `upper`, the slide and three sight posts). Use it where the author places the parts.
+- **Sockets** (2.7): each part stands `on` a mount of the part it rides on (`rules.md` 3.2, 3.3:
+  it takes its host's place and facing), so the root moves and turns everything, and a part on a
+  part follows its host (`pistol`: the sights on the slide's mounts, the slide on the frame's). Use
+  it where the parts' places are facts of the parts, as a model's sockets are.
+
+Either way a part is a place others stand `on` (`pistol.slide` a mount; `sidearm.upper.slide` an
+item), with one name grammar at every scale (`identity.md`), as an import's places are
+(`composition.md`). So "one interface at every scale" is the placed thing and its places; the
+proposal's merge of import, asset contract, variant and overlay under new words is not taken.
+
+**One root, one unit (decided, ours; `rules.md` 8.1).** Two hand instances whose chains of `on`
+reach one root (a part on a part on a frame) are parts of one thing: they are not tested for
+overlap against each other, as items of one set placement are not (`rules.md` 4). Reason: the
+author arranged them, and a part inside another (a barrel in a slide) is the normal case; also, an
+overlap edge between two branches of one tree closed a loop through each part's host height (the
+pistol's suppressor on the barrel against the sight on the slide: `graph.cycle`). Case
+`assets/parts_one_root`. The same loop closed across any two hosts with one part on a mount each,
+however far apart (host A's height read B's part, which reads B's height, which read A's part):
+since the slice 3 fix the overlap test is its own `overlap` node, which no height reads
+(`graph.md` 1). Case `assets/parts_two_hosts`.
+
+### 12.2 A part's height
+
+A part's height in its thing is its asset's `sink`, negative (2.4; the station's roofs lifted onto
+their walls the same way). No height is written in a world (`rules.md` 6). Decided, open to the
+owner. Reason: grounding already reads it, and a pack is where a part's facts live. Cost, stated:
+every part grounds on the surface beneath its own origin, so a thing with parts must lie on flat
+ground to stay whole; a part at two heights is two assets; and an accessory's asset states the
+height of its host's socket (12.3). The fix, when a world needs it, is a mount with a height (a
+socket in three dimensions, a thing on it standing at its host's pivot plus that height); owed,
+not built (TODO).
+
+### 12.3 Accessories
+
+An accessory is a change file (`documents.md` 6) that places a set on a named socket of its host,
+`[instance.<acc>] set = "<acc>", on = { ref = "<host>.<mount>" }`; its parts are items in its own
+frame, whose origin is the socket. It names the socket only and writes nothing of the host again
+(`pistol`: optic on `slide.optic`, suppressor on `barrel.muzzle`, light on `pistol.rail`). A
+socket on a part that moves carries its accessory: the optic rides back with the racked slide.
+
+### 12.4 States, and the check that knows them
+
+A thing's state is said once, in the statement that makes it: another asset for a whole thing
+(section 10), another socket or another item place for a thing with parts (`pistol`:
+`changes/racked.toml` puts the slide on the frame's `slide_racked` mount; `sidearm`: one item's
+`at`). A check reads the state from the build, never from a second flag: `pistol/measure.py` finds
+which socket the slide stands on and which assets are under `accessory/`, and compares the build
+with the published numbers that hold in that state (a racked slide lengthens the object by its
+travel past the tail; accessories are reported as added size, never as a fault). Reason: a flag
+beside the arrangement is one fact twice with nothing to check they agree (principle 9). Library
+(each check is its world's or a library's); the core has no state.
+
+### 12.5 What v1 does not say about parts
+
+Each decided, open to the owner; each a modelling tool's job or a model's, not the placement's
+(principle 12):
+
+- **A hole cut in a part by another** (a bore, an ejection port, serrations): a part's shape is its
+  asset's. With primitives, a notch is the gap between two parts (`sidearm`, `pistol`: the rear
+  sight's two posts); a real pack's model has its holes.
+- **A tilted part** (a grip's lean, a barrel lying along its axis): instances stand upright
+  (`rules.md` 6, open there). A tilted part is a model, or a box standing where the tilted part's
+  middle stood (`pistol`: the grip).
+- **A size or a place from a formula** (formulas.md 6.7): no. A pack holds facts (R30), and a part's
+  place is a socket, not an expression. A part sized from published numbers is a pack written by a
+  tool from those numbers and committed, with a check that it is current (`pistol/make_pack.py
+  --check`), as a step's committed result is (`protocol.md`, `gen/`).
+- **Mutual constraints** (a slide that must stay on its rails): none; a state moves a part, a check
+  measures the result.
 
 ## Diagnostics
 

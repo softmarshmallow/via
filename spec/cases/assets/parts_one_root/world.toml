@@ -1,0 +1,31 @@
+name       = "parts"
+extent     = [0, 0, 20, 20]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.frame]
+asset = "frame"
+at    = [10, 10]
+
+[instance.slide]
+asset = "slide"
+on    = { ref = "frame.slide" }
+
+[instance.sight]
+asset = "sight"
+on    = { ref = "slide.sight" }
+
+[instance.barrel]
+asset = "barrel"
+on    = { ref = "frame.barrel" }
+
+[instance.can]
+asset = "can"
+on    = { ref = "barrel.muzzle" }
+
+[change.turn.instance.frame]
+face = 90

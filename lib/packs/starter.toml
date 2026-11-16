@@ -15,6 +15,10 @@ root = "starter"
 [taxon."building"]
 defaults = { collision = "box", max_relief = 0.6 }
 
+[taxon."structure/wall"]
+[taxon."structure"]
+defaults = { collision = "box" }
+
 [taxon."plant/tree"]
 defaults = { collision = "hull" }
 
@@ -67,6 +71,63 @@ footprint = [[-3.5, -4], [3.5, -4], [3.5, 4], [-3.5, 4]]
 
 [asset.house_row.mount.door]
 at = [0, 4]
+
+# For the lots a row of 8 m deep houses does not fit (lib/town's houses step, rules 2b and 2c):
+# `house_shallow` a 6 m front only 4.5 m deep (one room), for a wedge; `house_corner` a square house under a
+# hipped roof with a door on its front and one on its right side, for a block's corner, facing
+# both streets.
+[asset.house_shallow]
+file      = "house_shallow.glb"
+taxon     = "building/house"
+footprint = [[-3, -2.25], [3, -2.25], [3, 2.25], [-3, 2.25]]
+
+[asset.house_shallow.mount.door]
+at = [0, 2.25]
+
+[asset.house_corner]
+file      = "house_corner.glb"
+taxon     = "building/house"
+footprint = [[-3, -3], [3, -3], [3, 3], [-3, 3]]
+tags      = ["role:corner"]
+
+[asset.house_corner.mount.door]
+at = [0, 3]
+
+[asset.house_corner.mount.side]   # the door on its right side, to the second street
+at   = [3, 0]
+face = 90
+
+# A stone wall kit (lib/town's kit run, kit.py): pieces along their x axis, front +y, each sunk
+# 0.5 m (`sink`) so a piece on a slope keeps its foot in the ground; `params.pitch` the length
+# a piece repeats at. A run is end piers at both ends (and either side of a gap), a corner pier
+# at each turn, bays between, and fillers for what bays leave.
+[asset.wall_bay]
+file   = "wall_bay.glb"
+taxon  = "structure/wall"
+tags   = ["role:wall"]
+params = { pitch = 2.0 }
+sink   = 0.5
+
+[asset.wall_filler]
+file   = "wall_filler.glb"
+taxon  = "structure/wall"
+tags   = ["role:filler"]
+params = { pitch = 0.5 }
+sink   = 0.5
+
+[asset.wall_pier]
+file   = "wall_pier.glb"
+taxon  = "structure/wall"
+tags   = ["role:end"]
+params = { pitch = 0.6 }
+sink   = 0.5
+
+[asset.wall_corner]
+file   = "wall_corner.glb"
+taxon  = "structure/wall"
+tags   = ["role:corner"]
+params = { pitch = 0.7 }
+sink   = 0.5
 
 [asset.barn]
 file      = "barn.glb"

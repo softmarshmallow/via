@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "protocol.md surface.surfaces_at (M5 slice 3): a kind surface whose owner a step returned is listed when that step runs below the reading step's rank (make#deck.top, rank 0, z 3 + 0.5 x = 5) and left out when it runs at the reader's rank (make_top#upper.top, rank 1), as surface.sample refuses it: one test for both."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+[copy.libs]
+from = "spec/cases/protocol/c74_surface_questions/libs"
+to   = "libs"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.diag.asked]
+code = "step.look.asked"
+data = { surface = ["height", "make#deck.top"], z = [1.0, 5.0] }

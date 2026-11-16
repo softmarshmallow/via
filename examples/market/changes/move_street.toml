@@ -1,0 +1,6 @@
+# The third change: the street moved. The main street's entry swings 9 m south about its first
+# bend, its length kept (the first segment 60.613 m before and after), so the cross streets' feet,
+# placed on it by `t`, stay where they were. Its rows follow it (`follows`); the rows of the other
+# streets keep their names and places.
+[feature.main_street]
+path = [[2, 44.394], [60, 62], [118, 86], [160, 134], [174, 200], [177.5, 256]]

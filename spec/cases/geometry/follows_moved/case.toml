@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "graph.md 2, placement: a path that `follows` another reads its shape. The street moved 20 m north, built against the first build on one store: the row moves with it. Before the edge: `diag.internal` (`shape:row` gave another value when computed again), M5 market `move_street`."
+milestone = 5
+actions   = ["build", "moved"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.moved]
+via         = ["build", "world.toml", "--change", "moved", "--against", "build/w", "--out", "build/m"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/m"

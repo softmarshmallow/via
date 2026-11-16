@@ -40,6 +40,15 @@
 # 2/2, pin_one 3/3, unrelated 5/5, move_hill 7/7 (east_gate section's protocol, below). Heights
 # within 2e-6 m of the HEAD world's (the change review), plus `fields/land.npy`.
 
+# M5 slice 3 (town kit: corner houses, shallow houses in wedges, the town wall as a kit run):
+# release `via` of the working tree after 6f9f332 with the slice 3 diff, VIA_LIB=lib, Python 3.12
+# (sdk/python/.venv), one fresh store, base then each change --against base, one build each, other
+# agents building at the same time, 2026-11-17. The rows that moved: houses 110 -> 127, lots_held
+# 64 -> 90 (18 by 9 corner houses, 8 by shallow houses), terraces 77 -> 94, doors_level 110 -> 125
+# (doors_off stays 0), views 8 -> 10 (corner_houses, wedge_house); move_hill houses_removed 67 -> 80
+# (base has 17 houses more to move); unrelated houses_removed_west 0 -> 1 (below). New rows: the
+# empty lots, the corner and wedge lots, and the town wall.
+
 # ------------------------------------------------------------------------------------------ base
 
 [base.blocks]                               # areas of `town`: the streets, the main way and the quay
@@ -60,18 +69,54 @@ band    = [5, 5]
 
 [base.houses]                               # houses in rows along the lots' frontage (lib/town
 measure = "houses"                          # houses.py rules 2 and 4): 52 detached houses, one per
-band    = [110, 110]                        # lot, before the rows; 123 before the s4 town pass (its
+band    = [127, 127]                        # lot, before the rows; 123 before the s4 town pass (its
                                             # rule 7 now reads the terrace's own padded outline at
                                             # the footway's level, and raises a floor up to 1.5 m
                                             # before leaving a run out: 2 left out, was 9)
 
 [base.lots_held]                            # lots with a house; the rest are `step.houses.small`:
 measure = "lots_held"                       # corner triangles and wedges no 8.6 m deep house fits,
-band    = [64, 64]                          # and corner houses inside a cross street's keep_out
+band    = [90, 90]                          # and corner houses inside a cross street's keep_out
+                                            # (64 before M5 slice 3's corner and shallow houses)
+
+[base.empty_lots]                           # lots with no house: 72 before M5 slice 3 (57 `small`,
+measure = "empty"                           # 15 left out for the land). Of the 46 left: lots
+band    = [46, 46]                          # between two streets 10 m apart (no house clears both
+                                            # footways), corners beside the main street's wider
+                                            # keep_out, and the steep lots of rule 7
+
+[base.corner_lots]                          # lots held by a corner house (houses.py rule 2c), two
+measure = "corner_lots"                     # a house: the two triangles a block's corner bisector
+band    = [18, 18]                          # cuts; 9 corner houses, 7 more pairs found too small
+                                            # once both streets' keep_out is cleared
+
+[base.wedge_lots]                           # lots held by a row of 4.5 m deep `house_shallow`
+measure = "fallback_lots"                   # (rule 2b) where no 8 m deep house stands clear
+band    = [8, 8]
+
+[base.wall_pieces]                          # the town wall (lib/town/kit.py): 219 bays, 7 fillers,
+measure = "kit_pieces"                      # 12 end piers (two path ends, five gaps), 2 corner piers
+band    = [240, 240]
+
+[base.wall_corners]
+measure = "kit_corner"
+band    = [2, 2]
+
+[base.wall_gaps]                            # where a way leaves the town (high_street, s0, s1, the
+measure = "kit_gaps"                        # cross streets near the edges) and the quay's deck
+band    = [7, 7]
+
+[base.wall_closes]                          # every stretch closes (kit.py rule 5)
+measure = "kit_open"
+band    = [0, 0]
+
+[base.wall_footing]                         # no piece's end off its 0.5 m footing (rule 6); the
+measure = "kit_steep"                       # slope is gentle enough that no bay is cut to fillers
+band    = [0, 0]                            # (kit_split 0) and neighbours step 0.41 m at most
 
 [base.terraces]                             # one level terrace per run of houses wall to wall, cut
 measure = "terraces"                        # where the footway climbs more than 0.6 m (houses.py
-band    = [77, 77]                          # rule 8): 74 before, one per run
+band    = [94, 94]                          # rule 8): 74 before, one per run
 
 [base.keep_out]                             # every row clear of its street's carriageway and
 measure = "place.keep_out"                  # footways (7 before the rows were pushed back by the
@@ -95,15 +140,15 @@ band    = [0, 0]                            # there, so it agrees
 
 [base.doors_level]                          # doors within 0.3 m of the ground 3 m out (measure.py,
 measure = "doors_level"                     # "Doors"): 10 of 123 before the s4 town pass, when each
-band    = [110, 110]                        # terrace stood at its own mean
+band    = [125, 125]                        # terrace stood at its own mean
 
 [base.doors_off]                            # doors more than 1 m off it: 91 of 123 before the s4
 measure = "doors_off"                       # pass, 14 after it (floors raised up to 1.5 m); 0 since
 band    = [0, 0]                            # slice 5 holds a floor within 0.3 m of its footway
 
 [base.views]                                # one per kind of meeting, one from the gate, two at the wall
-measure = "bookmarks"
-band    = [8, 8]
+measure = "bookmarks"                       # (+ corner_houses and wedge_house, M5 slice 3)
+band    = [10, 10]
 
 [base.unlevelled]                           # houses on terraces (lib/town `terrace`, one per run)
 measure = "place.relief"                    # standing on more relief than their asset allows
@@ -170,7 +215,12 @@ band    = [4, 4]
 
 [unrelated.houses_west]                     # one house west of 200 m goes: its lot (175.9, 139.7)
 measure = "houses_removed_west"             # keeps its name but its shape moves with `s1`'s thinned
-band    = [0, 0]                            # points, and the house no longer fit (1 until slice 5).
+band    = [1, 1]                            # points, and the house no longer fit (1 until slice 5).
+                                            # M5 slice 3: 1 again, `h48422ba69c7929ee_2`, a shallow
+                                            # house (rule 2b) at (134.6, 139.7) on a lot empty before:
+                                            # the lot keeps its name, its outline goes 83 -> 87
+                                            # points under the east edit, and the house no longer
+                                            # stands clear (the core's cells, TODO M5 slice 3)
 
 # ------------------------------------------------------------------------------------------ move_hill
 
@@ -190,9 +240,14 @@ band    = [52, 52]                          # way (streets.py step 6) instead of
 measure = "street_added"
 band    = [1, 1]
 
-[move_hill.houses_moved_out]                # of base's 125 (92 before the s4 town pass)
-measure = "houses_removed"
-band    = [67, 67]
+[move_hill.houses_moved_out]                # of base's 127 (92 before the s4 town pass; 67 of 110
+measure = "houses_removed"                  # before M5 slice 3's corner and shallow houses)
+band    = [80, 80]
+
+[move_hill.wall_closes]                     # the wall's gaps move with the streets; every stretch
+measure = "kit_open"                        # still closes (an end pier at a gap slides into it,
+band    = [0, 0]                            # kit.py rule 5: 3.75 m between a corner and a gap was
+                                            # open with fixed caps)
 
 [move_hill.views_reselected]                # `way_street` follows its junction 14.3 m and says so;
 measure = "identity.reselected"             # since slice 5 two views resolve to one new block

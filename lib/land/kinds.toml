@@ -101,6 +101,19 @@ mask  = "= 1 - smoothstep(back, back + 2, d)"
 # The face, not the terrain's step, tapers to `foot_z` over the first and last `taper` of the
 # length, so an end written at a place by name meets it at `foot_z`: a cave's jamb (`cave`, below)
 # holds the face open at the mouth. Material `rock`, which both shipped packs have.
+#
+# A face whose foot and brink climb along it (M5 slice 3, `monastery`'s gorge: its floor rises 0.15
+# m a metre and its rim 0.17): the foot is `foot_z + foot_rise * t` and the brink `top_z + top_rise
+# * t`, so `foot_rise` and `top_rise` are the metres each gains from the start to the end. A face
+# that does not climb straight is written as pieces, each straight in both, end to end, with a
+# `taper` near 0 (a piece's two ends then meet its neighbour's at full height, not at the foot).
+# Past its ends a piece's `step` would write its own foot or brink over its neighbour's (a post
+# beyond the end is on whichever side the last segment's line puts it), so pieces set `beyond = 0`.
+# `side = -1` puts the high ground on the right of travel: a face written along a feature by
+# `follows`, which takes that feature's direction, may have the high ground on either side (the
+# gorge's two walls). A kind surface's `base` cannot read the terrain (surfaces.md 1.1), so the
+# heights are numbers the world writes, as `deck_z` is; the `step` effect brings the land each side
+# to them.
 [kind.sheer_cliff]
 authority = "shaped"
 requires  = ["foot_z", "top_z"]
@@ -110,17 +123,22 @@ radius    = 14                            # `back` and the fade
 lip   = 0.5                               # half the face's width in plan, metres
 back  = 12                                # metres from the line by which the land is its own again
 taper = 0.02                              # share of the length at each end over which the face comes down
+side  = 1                                 # 1: the high ground on the left of travel; -1: on the right
+foot_rise = 0                             # metres the foot climbs from the start to the end
+top_rise  = 0                             # metres the brink climbs from the start to the end
+beyond    = 1                             # 1: the step reaches past the ends, fading by `back`; 0: it
+                                          # stops at them (`t` strictly between 0 and 1: pieces end to end)
 
 [kind.sheer_cliff.surface.face]
-base     = "= foot_z + (top_z - foot_z) * clamp((sd + lip) / (2 * lip), 0, 1) * smoothstep(0, taper, t) * (1 - smoothstep(1 - taper, 1, t))"
+base     = "= foot_z + foot_rise * t + (top_z + top_rise * t - (foot_z + foot_rise * t)) * clamp((side * sd + lip) / (2 * lip), 0, 1) * smoothstep(0, taper, t) * (1 - smoothstep(1 - taper, 1, t))"
 bound    = "= lip"
-cut      = "= top_z - foot_z"
+cut      = "= max(top_z, top_z + top_rise) - min(foot_z, foot_z + foot_rise)"
 material = "rock"
 
 [kind.sheer_cliff.effect.step]
 field = "role:surface"
-value = "= if(sd < 0, foot_z, top_z)"
-mask  = "= 1 - smoothstep(lip + 2, back, d)"
+value = "= if(side * sd < 0, foot_z + foot_rise * t, top_z + top_rise * t)"
+mask  = "= (1 - smoothstep(lip + 2, back, d)) * if(t > 0 and t < 1, 1, beyond)"
 
 # A cave (M5, `coast`; surfaces.md 6.5): a path from its mouth inward. Its floor is a kind surface
 # that rises from `z0` at the mouth to `z1` at the end, under the terrain: `surfaces_at` inside

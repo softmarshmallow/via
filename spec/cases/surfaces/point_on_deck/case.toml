@@ -1,0 +1,44 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 row 1 and 3.3 (M5 slice 3): a point feature `on` a crossing, which owns one surface, stands on its deck (24.5 over a river at 22), and a name target on the deck, or the crossing named as a target, takes the deck's z in features.json. Slice 3 fix: a point 1 mm past the bound (within the grace) takes the deck's base there in features.json (it took the terrain); one 10 m off the line takes the terrain and nothing is said (it was surface.outside)."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+# Features in id order: bank, beside, deck_spot, edge_spot, mill_bridge.
+[action.build.file.spot]
+path    = "build/w/features.json"
+pointer = "/features/2/at"
+value   = [142, 168, 24.5]
+
+[action.build.file.target]
+path    = "build/w/features.json"
+pointer = "/features/0/attrs/toward/at"
+value   = [142, 168, 24.5]
+
+[action.build.file.owner]
+path    = "build/w/features.json"
+pointer = "/features/2/attrs/toward/at"
+value   = [142, 168, 24.5]
+
+[action.build.file.beside]
+path    = "build/w/features.json"
+pointer = "/features/1/at"
+value   = [142, 178, 22]
+
+[action.build.file.edge]
+path    = "build/w/features.json"
+pointer = "/features/3/at"
+value   = [142, 170.501, 24.44998]

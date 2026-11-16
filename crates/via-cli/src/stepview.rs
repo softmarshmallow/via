@@ -1015,11 +1015,34 @@ impl<'a> View<'a> {
     }
 
     /// The kind surfaces in the view: an owner above a generate step's layer is absent (2.6).
+    /// The one test `surfaces_at` and `sample` share ([`View::out_of_view`]).
     fn kind_surfaces(&self) -> impl Iterator<Item = &via_model::surfaces::SurfaceOut> {
         self.build
             .surfaces
             .values()
-            .filter(|s| self.visible(view_rank(self.world, "feature", &s.owner)))
+            .filter(|s| self.out_of_view(s).is_none())
+    }
+
+    /// Why a kind surface is not in the step's view (2.6), as `graph.read_outside`, or `None`
+    /// when it is: as a feature read by name (`select_rows`), a returned owner lies outside the
+    /// stratum of every step of its producer's layer and below, and an owner above a generate
+    /// step's layer is absent.
+    fn out_of_view(&self, s: &via_model::surfaces::SurfaceOut) -> Option<Refusal> {
+        if let Some((producer, _)) = s.owner.split_once('#') {
+            if let (Some(own), Some(pr)) = (self.rank, self.world.rank("step", producer)) {
+                if pr >= own {
+                    let layer = self.layer_above(pr).unwrap_or_else(|| {
+                        self.world.home("step", producer).unwrap_or("").to_string()
+                    });
+                    return Some(self.outside(&format!("feature.{}", s.owner), &layer));
+                }
+            }
+        }
+        if !self.visible(view_rank(self.world, "feature", &s.owner)) {
+            let layer = self.layer_of("feature", &s.owner);
+            return Some(self.outside(&format!("feature.{}", s.owner), &layer));
+        }
+        None
     }
 
     /// A kind surface's `base` that failed at a point asked: the whole call fails with that
@@ -1119,21 +1142,8 @@ impl<'a> View<'a> {
                 .ok_or_else(|| invalid(format!("`{name}` does not cover the grid")))?;
             out.extend(pts.iter().map(|&(x, y)| t.sample(x, y)));
         } else if let Some(s) = self.build.surfaces.get(name) {
-            // As a feature read by name (`select_rows`): a returned owner lies outside the
-            // stratum of every step of its producer's layer and below.
-            if let Some((producer, _)) = s.owner.split_once('#') {
-                if let (Some(own), Some(pr)) = (self.rank, self.world.rank("step", producer)) {
-                    if pr >= own {
-                        let layer = self.layer_above(pr).unwrap_or_else(|| {
-                            self.world.home("step", producer).unwrap_or("").to_string()
-                        });
-                        return Err(self.outside(&format!("feature.{}", s.owner), &layer));
-                    }
-                }
-            }
-            if !self.visible(view_rank(self.world, "feature", &s.owner)) {
-                let layer = self.layer_of("feature", &s.owner);
-                return Err(self.outside(&format!("feature.{}", s.owner), &layer));
+            if let Some(r) = self.out_of_view(s) {
+                return Err(r);
             }
             for &(x, y) in &pts {
                 match via_model::query::sample_kind(s, self.grid.resolution, x, y) {

@@ -32,11 +32,12 @@ checks  = ["houses_down", "houses_rows", "houses_old"]
 
 # lib/review's street form (form.py, R15) and the decks over the river (R18). The district
 # outlines and the limits are named, so a street ending on one is an edge end, not a dead end; the
-# gates are where the main ways leave. The freeway is a way, the interchange plate is not a line.
+# gates are where the main ways leave. The freeway is a way, the interchange plate is not a line;
+# the viaducts and the ramps are lines a way ends on (`meets`), as a crossing is.
 [step.form]
 when    = "lint"
 command = ["python", "-m", "viasdk", "lib:review/form.py"]
-params  = { ways = ["main_street", "street", "freeway"], meets = ["crossing"], edges = ["downtown", "rows", "old_town", "limits"], gates = ["harbor_gate_w", "harbor_gate_e", "central_gate_w", "central_gate_e", "north_gate_w", "north_gate_e", "west_ave_s", "west_ave_n", "grand_ave_s", "grand_ave_n", "east_ave_s", "east_ave_n", "freeway_s", "freeway_n"], water = ["beck"], crossings = ["crossing"] }
+params  = { ways = ["main_street", "street", "freeway"], meets = ["crossing", "viaduct", "ramp"], edges = ["downtown", "rows", "old_town", "limits"], gates = ["harbor_gate_w", "harbor_gate_e", "central_gate_w", "central_gate_e", "north_gate_w", "north_gate_e", "west_ave_s", "west_ave_n", "grand_ave_s", "grand_ave_n", "east_ave_s", "east_ave_n", "freeway_s", "freeway_n"], water = ["beck"], crossings = ["crossing"] }
 
 # lib/review's reach lint between stated places: from the west end of the central arterial a
 # walker reaches the far bank over each bridge, the old town's hill, the north and south gates.

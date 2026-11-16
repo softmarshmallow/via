@@ -975,19 +975,25 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   in colours no pack colour should take, and the same in both builds' renders.
 - **Walks** (ours; challenge 3, "walk it in the engine"). From each bookmark's point a scripted
   walker, a `CharacterBody3D` capsule 0.3 m in radius and 1.8 m tall, walks straight in plan toward
-  the bookmark's `toward` at 1.4 m/s under gravity, one `move_and_slide` per 1/60 s, colliding with
+  the bookmark's `toward` at 1.4 m/s under gravity (or, when the bookmark's `along` names a path
+  feature, the review library's text attribute, first to each of that path's points in turn, a
+  point taken once within 0.3 m of it or nearer the next point than it is, then to `toward`; it
+  arrives only past them all, and its progress and time limit run along that route; an `along`
+  that names no path in `features.json` is `load.bad_target` with `attribute` `along`), one `move_and_slide` per 1/60 s, colliding with
   the ground body, every generated mesh body and every instance body the loader made. It starts on
   the highest collision straight below the bookmark's eye (the terrain, a kind surface's mesh or an
   instance; nothing, over a cut with no floor above it, and it falls), then follows what it walks
   onto: a sloping tread is walked as ground is, up to 40 degrees, and the edge of a generated mesh at
-  most 0.3 m above its feet (the walker's `step`) is stepped onto; the ground and instances are never
+  most 0.3 m above its feet (the walker's `step`) is stepped onto, also when pressed into the crease
+  where a sloping tread meets it and not moving; the ground and instances are never
   stepped. It stops `arrived` within 1 m of the
-  target or against the target's own body; `blocked` when it gains less than 0.1 m in 1 s, naming
+  target or against the target's own body (an item of a set placement the target names counts); `blocked` when it gains less than 0.1 m in 1 s, naming
   what it pressed against (an instance, or `ground` with the slope, walkable up to 40 degrees);
   `fell` after a drop through the air of more than 1 m beyond what the ground falls under its path
   (a ledge), or below the lowest ground, a descent down ground too steep to walk with no ledge being
   `blocked` by `ground` with its slope, as going up; at the shore of water deeper than a person
-  wades (0.7 m, the walker's `wade`), `blocked` by `water`, or `arrived` (by `water`) when the
+  wades (0.7 m, the walker's `wade`; depth is the water's surface less the walker's feet, so a deck
+  or floor over deep water is walked), `blocked` by `water`, or `arrived` (by `water`) when the
   target itself stands in such water, as a walk to a house ends at its wall; `timed_out` at three
   times the straight line's time plus 5 s. It records the deepest water it waded and every `solid` instance
   whose footprint it walked through because its asset collides as nothing. Each walk is rendered

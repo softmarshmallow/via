@@ -1,0 +1,231 @@
+# Layer `gorge` (rank 2): the gorge's two walls as sheer faces (lib/land `sheer_cliff`).
+# Written by gorge_faces.py (its docstring says how); do not edit by hand, run it again.
+# East wall: the high ground on the left of the stream's travel (`side = 1`); west: on the
+# right (`side = -1`). `lip` 0.75 (the world's 1 m posts: at least 0.71), `back` 6 (the
+# gorge is 10 m wide, so one wall's fade never reaches the other's brink), `taper` near 0 so
+# the pieces meet at full height, `beyond = 0` so no piece's step writes past its ends. Each piece starts at the one before's end by name, so the
+# meeting of two pieces is owned (geometry.md 2.7) and held at gap 0 (surfaces.md 3.4).
+
+[feature.gorge_e0]                    # within 0.5 m
+kind      = "sheer_cliff"
+path      = [[201, 320.14], [201.44, 304.54]]
+side      = 1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 76.02
+foot_rise = -4.08
+top_z     = 96.42
+top_rise  = -4.74
+
+[feature.gorge_e1]                    # within 0.49 m
+kind      = "sheer_cliff"
+starts_at = "gorge_e0.end"
+path      = [[202.04, 283.67], [202.11, 282.87], [202.29, 282.07], [202.54, 281.27], [202.85, 280.48], [203.23, 279.68], [204.08, 278.1]]
+side      = 1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 71.94
+foot_rise = -12.07
+top_z     = 91.68
+top_rise  = -14.15
+
+[feature.gorge_e2]                    # within 0.19 m
+kind      = "sheer_cliff"
+starts_at = "gorge_e1.end"
+path      = [[206.41, 274.21], [207.3, 272.65], [208.53, 270.31], [209.25, 268.75], [210.18, 266.4], [210.69, 264.83], [211.12, 263.26], [211.61, 260.9]]
+side      = 1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 59.87
+foot_rise = -11.92
+top_z     = 77.53
+top_rise  = -9.85
+
+[feature.gorge_e3]                    # within 0.49 m
+kind      = "sheer_cliff"
+starts_at = "gorge_e2.end"
+path      = [[211.74, 260.08], [211.93, 258.45], [212.04, 256.82], [212.07, 255.19], [212.01, 253.55], [211.95, 252.73], [211.78, 251.09], [211.59, 249.84]]
+side      = 1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 47.95
+foot_rise = -4.22
+top_z     = 67.68
+top_rise  = -5.27
+
+[feature.gorge_e4]                    # within 0.34 m
+kind      = "sheer_cliff"
+starts_at = "gorge_e3.end"
+path      = [[211.28, 248.17], [211.09, 247.33], [210.88, 246.49], [210.39, 244.81], [210.11, 243.96], [209.48, 242.27], [208.76, 240.58], [207.98, 238.88]]
+side      = 1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 43.73
+foot_rise = -0.66
+top_z     = 62.41
+top_rise  = -3.66
+
+[feature.gorge_e5]                    # within 0.42 m
+kind      = "sheer_cliff"
+starts_at = "gorge_e4.end"
+path      = [[205.57, 233.94], [204.89, 232.31], [204.62, 231.49], [204.41, 230.68], [204.27, 229.87], [204.22, 229.07], [204.3, 227.47]]
+side      = 1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 43.07
+foot_rise = -0.95
+top_z     = 58.75
+top_rise  = -2.08
+
+[feature.gorge_e6]                    # below the head: w = 5, straight in y
+kind      = "sheer_cliff"
+starts_at = "gorge_e5.end"
+path      = [[206.99, 180.27], [211, 100.07], [209, -0.1]]
+side      = 1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 42.12
+foot_rise = -34.13
+top_z     = 56.67
+top_rise  = -38.69
+
+
+[feature.gorge_w0]                    # within 0.49 m
+kind      = "sheer_cliff"
+path      = [[191, 319.86], [191.45, 304.25]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 75.98
+foot_rise = -4.15
+top_z     = 96.38
+top_rise  = -4.82
+
+[feature.gorge_w1]                    # within 0.35 m
+kind      = "sheer_cliff"
+starts_at = "gorge_w0.end"
+path      = [[191.98, 285.71]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 71.83
+foot_rise = -8.11
+top_z     = 91.56
+top_rise  = -9.56
+
+[feature.gorge_w2]                    # within 0.15 m
+kind      = "sheer_cliff"
+starts_at = "gorge_w1.end"
+path      = [[192.05, 283.24], [192, 282.42], [191.85, 281.59], [191.62, 280.76], [191.33, 279.93], [190.99, 279.1], [190.19, 277.43], [189.32, 275.76]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 63.72
+foot_rise = -5.3
+top_z     = 82
+top_rise  = -5.86
+
+[feature.gorge_w3]                    # within 0.33 m
+kind      = "sheer_cliff"
+starts_at = "gorge_w2.end"
+path      = [[188.04, 273.33], [186.87, 270.9], [185.85, 268.48], [185.28, 266.87], [184.79, 265.26], [184.58, 264.45], [184.22, 262.85], [183.94, 261.24], [183.83, 260.44], [183.67, 258.84]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 58.42
+foot_rise = -11.49
+top_z     = 76.14
+top_rise  = -9.53
+
+[feature.gorge_w4]                    # within 0.24 m
+kind      = "sheer_cliff"
+starts_at = "gorge_w3.end"
+path      = [[183.6, 257.3], [183.63, 254.98], [183.82, 252.68], [184.03, 251.14]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 46.93
+foot_rise = -3
+top_z     = 66.61
+top_rise  = -3.65
+
+[feature.gorge_w5]                    # within 0.29 m
+kind      = "sheer_cliff"
+starts_at = "gorge_w4.end"
+path      = [[184.45, 249.09], [184.91, 247.44], [185.17, 246.62], [185.77, 244.98], [186.1, 244.16], [186.84, 242.53]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 43.93
+foot_rise = -1.16
+top_z     = 62.96
+top_rise  = -3.2
+
+[feature.gorge_w6]                    # within 0.27 m
+kind      = "sheer_cliff"
+starts_at = "gorge_w5.end"
+path      = [[187.63, 240.97], [188.5, 239.41], [189.43, 237.86], [191.88, 233.99], [192.79, 232.43], [193.19, 231.65]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 42.77
+foot_rise = -0.02
+top_z     = 59.76
+top_rise  = -2.38
+
+[feature.gorge_w7]                    # within 0.01 m
+kind      = "sheer_cliff"
+starts_at = "gorge_w6.end"
+path      = [[193.55, 230.87], [193.85, 230.09], [194.08, 229.3], [194.21, 228.5], [194.31, 226.9]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 42.75
+foot_rise = -0.71
+top_z     = 57.38
+top_rise  = -0.81
+
+[feature.gorge_w8]                    # below the head: w = 5, straight in y
+kind      = "sheer_cliff"
+starts_at = "gorge_w7.end"
+path      = [[197.01, 179.73], [201, 99.93], [199, 0.1]]
+side      = -1
+lip       = 0.75
+back      = 6
+taper     = 0.0001
+beyond    = 0
+foot_z    = 42.04
+foot_rise = -34.03
+top_z     = 56.57
+top_rise  = -38.55
+

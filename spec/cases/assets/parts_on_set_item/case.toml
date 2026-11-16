@@ -1,0 +1,20 @@
+format    = "via-case-1"
+summary   = "assets.md 12.1, rules.md 8.1 (M5 slice 3 fix): a solid part on a set item's mount (`k.f.slide`), overlapping that item, is of the item's root: no place.overlap. The one-root rule replaced a `<host>.` prefix test, which this placement took before."
+milestone = 5
+actions   = ["build"]
+
+# k at (10, 10) places item f (a frame) at (10, 10); the slide on f's mount `slide` at [1, 0]
+# stands at (11, 10), overlapping the frame.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.slide]
+fn    = "instance_at"
+build = "build/w"
+name  = "sl"
+at    = [11, 10]
+face  = 0

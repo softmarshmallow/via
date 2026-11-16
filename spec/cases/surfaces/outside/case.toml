@@ -1,14 +1,22 @@
 format    = "via-case-1"
 summary   = "surfaces.md Conformance, outside: an instance on the deck with offset = 4: surface.outside, not placed."
 milestone = 3
-pending   = "owed: no world.toml; the code is in (kind surfaces and mounts, M5 slice 1), the world from surfaces.md Conformance is not written (M5 slice 2 review: 14 such cases, TODO From M5 slice 2)"
 actions   = ["build"]
 
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
 [action.build]
-via         = ["build", "world.toml", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
 exit        = 1
 diagnostics = "includes"
 out         = "build/w"
 
 [action.build.diag.outside]
-code = "surface.outside"
+code    = "surface.outside"
+subject = "instance.crate"

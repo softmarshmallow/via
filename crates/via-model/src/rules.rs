@@ -735,7 +735,20 @@ pub fn scatter_all(
                             && overlaps(&h.footprint, &fp)
                     });
             let mut relief_bad = false;
-            // On a kind surface the terrain's relief is not what it stands on.
+            // On a kind surface the terrain's relief is not what it stands on: relief over that
+            // surface (`surfaces.md` 2.3). A footprint partly off its bound is no candidate,
+            // and nothing is said (4.1); past `max_relief` it gives way, as on the terrain.
+            if let (false, Some(k), Some(grid)) = (overlap, on, d.grid.as_ref()) {
+                let mut faults = Vec::new();
+                match crate::surfaces::kind_relief(k, grid, &fp, &mut faults) {
+                    Some((_, _, outside)) if outside > 0.0 => continue,
+                    Some((lo, hi, _)) => {
+                        relief_bad = a.max_relief.is_some_and(|limit| hi - lo > limit * scale);
+                    }
+                    None => {}
+                }
+                out.diags.extend(faults);
+            }
             if !overlap && on.is_none() {
                 if let (Some(limit), Some(sf)) = (a.max_relief, surface) {
                     if let Some((lo, hi)) = relief(f, sf, &fp) {
@@ -1311,8 +1324,10 @@ pub fn ground_and_check(
         if p.maker.is_some() || p.pin {
             continue;
         }
-        // Relief (8.2) and keep_out (8.3) for hand instances.
-        if let Some(limit) = a.max_relief {
+        // Relief (8.2) and keep_out (8.3) for hand instances. One that stands on a kind surface
+        // takes its relief over that surface when grounded there (`surfaces.md` 4.2).
+        let on_terrain = crate::surfaces::level(d, pack, p).0.is_empty();
+        if let (Some(limit), true) = (a.max_relief, on_terrain) {
             if let Some((lo, hi)) = relief(f, surface, &p.footprint) {
                 if hi - lo > limit * p.scale {
                     diags.push(at_header(codes::place::RELIEF, "instance", &p.name, &format!("relief under `{}` is {} m; its asset allows {} m", p.name, text::dbl(hi - lo), text::dbl(limit * p.scale)), "move it, give it `ground` with a kind that levels, or choose an asset with a larger `max_relief`").at(text::pos(p.origin.x, p.origin.y)));
@@ -1413,13 +1428,22 @@ pub fn ground_and_check(
             if !solid(a) || !solid(b) {
                 continue;
             }
-            let on = |x: &Placement, y: &Placement| {
-                placed
-                    .plans
-                    .get(&x.name)
-                    .and_then(|pl| pl.on.as_deref())
-                    .is_some_and(|o| o == y.name || o.starts_with(&format!("{}.", y.name)))
+            // Two whose chains of `on` reach one root are one thing's parts (`assets.md` 12.1).
+            let root = |x: &Placement| -> String {
+                let mut at = x.name.clone();
+                for _ in 0..=hands.len() {
+                    let Some(o) = placed.plans.get(&at).and_then(|pl| pl.on.as_deref()) else {
+                        break;
+                    };
+                    let host = o.split('.').next().unwrap_or(o);
+                    if host == at || !placed.plans.contains_key(host) {
+                        break;
+                    }
+                    at = host.to_string();
+                }
+                at
             };
+            let on = |x: &Placement, y: &Placement| root(x) == root(y);
             // Items of one set placement are one unit (`rules.md` 4).
             let unit = |x: &Placement| placed.plans.get(&x.name).and_then(|pl| pl.on.clone());
             let one_unit = unit(a).is_some_and(|u| {

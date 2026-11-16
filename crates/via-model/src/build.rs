@@ -845,6 +845,14 @@ pub(crate) fn finish_from(
     );
     crate::surfaces::host_missing(&decls, &all, &mut grounded.gone, &mut diags);
     all.retain(|p| !grounded.gone.contains(&p.name));
+    crate::surfaces::through(
+        &decls,
+        &pk,
+        &out.surfaces,
+        &all,
+        &grounded.stands,
+        &mut diags,
+    );
     diags.extend(fields.diags.borrow().iter().cloned());
     // Outputs.
     for (name, fd) in &decls.fields {
@@ -1300,9 +1308,22 @@ pub(crate) fn finish_from(
             } else if let Some(Geo::Point { p: q, facing }) = placed.shapes.get(place.as_str()) {
                 // A point feature: its face when it writes one (M5).
                 let written = decls.features.get(place.as_str()).and_then(|f| f.face);
+                // On the surface it stands on (3.3, 4.1): its `surface`, or what its `on` names.
+                let z = match out
+                    .place_surface
+                    .get(place.as_str())
+                    .and_then(|n| out.surfaces.get(n))
+                {
+                    Some(s) => match s.z_in_build((q.x, q.y), &mut diags) {
+                        Ok(Some(z)) => Some(z),
+                        Ok(None) => s.base.eval(&[(q.x, q.y)]).ok().map(|v| v[0]),
+                        Err(()) => continue,
+                    },
+                    None => terrain(*q),
+                };
                 crate::surfaces::Side {
                     p: Some(*q),
-                    z: terrain(*q),
+                    z,
                     face: written.and(*facing),
                     ..Default::default()
                 }

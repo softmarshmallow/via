@@ -1,0 +1,23 @@
+# meets_errors_test: `meets` to a missing mount, to itself, and a mount in two pairs, for the case
+# `meets_errors` (surfaces.md 3.1).
+
+[kind.span]
+
+[kind.span.mount.a]
+t     = 0
+meets = "zz"
+
+[kind.span.mount.b]
+t     = 0.5
+meets = "b"
+
+[kind.span.mount.c]
+t     = 1
+meets = "d"
+
+[kind.span.mount.d]
+t     = 1
+meets = "e"
+
+[kind.span.mount.e]
+t = 1

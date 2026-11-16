@@ -216,8 +216,11 @@ params  = { kits = ["structure/wall", "structure/kit"] }
 
 # ------------------------------------------------------------------------------------------ walls and roofs
 # Runs along the storeys' outlines (rules.md runs; `on` a storey stands on its floor, surfaces.md
-# 4.1), `offset` inward. The tower's shell is one ring of full-height pieces on its ground floor:
-# an upper storey has no floor under its stairwell for a piece to stand on (lib/building README).
+# 4.1), `offset` inward. The tower's shell is two rings on its ground floor: an upper storey has no
+# floor under its stairwell for a piece to stand on (lib/building README). The lower ring is the
+# ground storey's height (3.25 m) and leaves the doorway to the step; the upper ring, lifted onto it
+# by its pieces' `sink`, is closed, so it runs over the doorway as its lintel (TODO "From M5 slice
+# 2": the gap ran the shell's full 12.6 m; measure.py `open_above_door_mm`).
 # Each run ends short of a doorway or the step by half its piece's length plus 0.55 m, so 1.1 m
 # stays clear between the pieces either side (a 1 m way and 0.1 m, lay's `margin`); the building
 # check measures it at each door (`door_narrow`), measure.py at the step (`clear_min_mm`).
@@ -225,6 +228,12 @@ params  = { kits = ["structure/wall", "structure/kit"] }
 [run.tower_wall]                              # leaves the 1 m step 1.1 m clear at bearing 90
 asset   = "tower_shell"
 on      = { ref = "tower_0", span = [0.055, 0.945], offset = 0.15 }
+spacing = 0.8
+ends    = "both"
+
+[run.tower_wall_upper]                        # from the door head (3.55 m) to the top (12.9 m), closed
+asset   = "tower_shell_upper"
+on      = { ref = "tower_0", span = [0, 1], offset = 0.15 }
 spacing = 0.8
 ends    = "both"
 
@@ -246,9 +255,9 @@ on      = { ref = "cottage", span = [0.6816, 0.9639], offset = 0.1 }
 spacing = 0.9
 ends    = "both"
 
-[set.partition.item.a]                        # kitchen | bunks, 1.2 m open in the middle
-asset = "wall_inner"
-at    = [-3, 0]
+[set.partition.item.a]                        # kitchen | bunks, 1 m open in the middle; the end
+asset = "wall_inner"                          # pieces stop 0.01 m short of the outer walls' inner
+at    = [-2.8, 0]                             # faces (x = 30.2, 36.8), so no wall member gives way
 face  = 90
 [set.partition.item.b]
 asset = "wall_inner"
@@ -268,7 +277,7 @@ at    = [2, 0]
 face  = 90
 [set.partition.item.f]
 asset = "wall_inner"
-at    = [3, 0]
+at    = [2.8, 0]
 face  = 90
 
 [instance.kitchen_bunks_wall]
@@ -418,9 +427,10 @@ at      = [22.5, 32.4]
 face    = 270
 surface = "tower_1.floor"
 
-[instance.living_bench]
+[instance.living_bench]                       # in the room's middle: stair_2's foot is at bearing 275
 asset   = "bench"
-at      = [20.6, 29.4]
+at      = [19.3, 31.9]
+face    = 90
 surface = "tower_1.floor"
 
 [instance.living_lamp]
@@ -428,17 +438,17 @@ asset   = "lamp"
 at      = [21.6, 34.2]
 surface = "tower_1.floor"
 
-[instance.living_chest]
-asset   = "chest"
-at      = [19.0, 29.1]
+[instance.living_chest]                       # 2.5 m from the tower's axis: at 3.07 m, 0.09 of it
+asset   = "chest"                             # hung past the floor's edge (surface.off_bound)
+at      = [19.3, 29.6]
 face    = 20
 surface = "tower_1.floor"
 
 # ---- the watch room
 
-[instance.watch_desk]
+[instance.watch_desk]                         # in the room's middle: stair_3's foot is at bearing 95
 set     = "desk"
-at      = [19.2, 34.3]
+at      = [19.6, 32.4]
 face    = 180
 surface = "tower_2.floor"
 
@@ -483,14 +493,14 @@ asset   = "stove"
 at      = [31.0, 29.1]
 surface = "cottage.floor"
 
-[instance.dresser]
+[instance.dresser]                            # its back on the south wall's inner face (y = 28.7)
 asset   = "dresser"
-at      = [34.5, 28.9]
+at      = [34.5, 28.96]
 surface = "cottage.floor"
 
-[instance.kitchen_shelf]
-asset   = "shelf"
-at      = [30.3, 33.2]
+[instance.kitchen_shelf]                      # clear of the west wall (x = 30.2) and the passage's
+asset   = "shelf"                             # north wall (y = 33)
+at      = [30.4, 33.8]
 face    = 90
 surface = "cottage.floor"
 

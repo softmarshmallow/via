@@ -1,0 +1,7 @@
+# The slide drawn back (challenge 47; published.toml `state.racked.travel`): one edit. The slide
+# stands on the frame's other socket, `slide_racked`; the sights ride on the slide's sockets, and
+# an optic on it rides with them, so nothing else is written. measure.py reads the state from the
+# build (which socket the slide stands on), not from a flag (spec/assets.md 12.4).
+[instance.slide]
+asset = "slide"
+on    = { ref = "pistol.slide_racked" }

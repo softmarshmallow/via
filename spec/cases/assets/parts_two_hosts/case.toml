@@ -1,0 +1,47 @@
+format    = "via-case-1"
+summary   = "assets.md 12.1, graph.md 1 (M5 slice 3): two hosts 5 m apart, each with one solid part on a mount: no graph.cycle and no place.overlap; moving one host moves its part. Before the overlap node: graph.cycle frame -> b_slide -> b_frame -> slide -> frame, since each host's height read every other hand instance for the overlap test."
+milestone = 5
+actions   = ["build", "move"]
+
+# frame at (10, 10): slide on frame.slide at [1, 0] -> (11, 10). b_frame at (10, 15): b_slide at
+# (11, 15); moved to (10, 30): b_slide at (11, 30).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.build.check.slide]
+fn = "instance_at"
+build = "build/w"
+name = "slide"
+at = [11, 10]
+face = 0
+
+[action.build.check.b_slide]
+fn = "instance_at"
+build = "build/w"
+name = "b_slide"
+at = [11, 15]
+face = 0
+
+[action.move]
+via         = ["build", "world.toml", "--change", "move", "--against", "build/w", "--out", "build/m"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/m"
+
+[action.move.check.b_slide]
+fn = "instance_at"
+build = "build/m"
+name = "b_slide"
+at = [11, 30]
+face = 0
+
+[action.move.check.slide]
+fn = "instance_at"
+build = "build/m"
+name = "slide"
+at = [11, 10]
+face = 0

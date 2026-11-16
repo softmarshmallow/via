@@ -1,14 +1,30 @@
 format    = "via-case-1"
 summary   = "surfaces.md Conformance, through: an instance at mid-river whose bounds top reaches above 24.5: grounded on height; surface.through naming mill_bridge.deck."
 milestone = 3
-pending   = "owed: no world.toml; the code is in (kind surfaces and mounts, M5 slice 1), the world from surfaces.md Conformance is not written (M5 slice 2 review: 14 such cases, TODO From M5 slice 2)"
 actions   = ["build"]
 
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
 [action.build]
-via         = ["build", "world.toml", "--out", "build/w"]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
 exit        = 0
 diagnostics = "includes"
 out         = "build/w"
 
 [action.build.diag.through]
 code = "surface.through"
+subject = "instance.mast"
+
+[action.build.diag.through.data]
+surface = "mill_bridge.deck"
+
+# Grounded on the terrain, not lifted to the deck.
+[action.build.file.z]
+path = "build/w/instances/z.npy"
+all  = 22

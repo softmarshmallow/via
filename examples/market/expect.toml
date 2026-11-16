@@ -1,0 +1,205 @@
+# What a market build must measure (docs/plan.md, M5; TODO "Dogfood: the market-street district":
+# a box kit judged on three changes). Measures, never bytes (R15): each row names a measure of
+# `measure.py` and the band it must fall in. Taken by
+#
+#   python3 examples/market/measure.py BUILD                        # base
+#   python3 examples/market/measure.py BUILD+<c> --base BUILD       # a change, built with --against
+#   python3.11 examples/market/measure.py BUILD+<c> --base BUILD --check <c>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
+# 6f9f332 (M5 slice 2) with the other slice 3 agents' edits as of 2026-11-17 01:00, VIA_LIB=lib,
+# Python 3.12 (sdk/python/.venv) for the steps, lib/town/kit.py with this slice's `ends = "inside"`
+# and rule 7. One fresh store: base, then `remodel` and `module` with --against base, one build
+# each. `move_street` and `move_bend` each on a fresh store of their own, --against base: on the
+# shared store both stop with `diag.internal` (`shape:row_church_n` not stable: TODO, "From M5
+# slice 3, market"). Measured once, so a band is the measured number: not a target, it says where
+# someone looks.
+
+# ------------------------------------------------------------------------------------------ base
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.pieces]                               # every row piece of the two kit steps
+measure = "pieces"
+band    = [189, 189]
+
+[base.bays]
+measure = "bay"
+band    = [157, 157]
+
+[base.fillers]
+measure = "filler"
+band    = [6, 6]
+
+[base.ends]                                 # a free end of each row, and either side of 3 gaps
+measure = "end"
+band    = [24, 24]
+
+[base.corners]                              # inside the first and the third bend
+measure = "corner"
+band    = [2, 2]
+
+[base.gaps]                                 # the mill street, the church street, the back lane
+measure = "kit_gaps"
+band    = [3, 3]
+
+[base.open]                                 # every stretch closes
+measure = "kit_open"
+band    = [0, 0]
+
+[base.overlap]                              # neighbours apart (kit.py rule 7)
+measure = "place.overlap"
+band    = [0, 0]
+
+[base.keep_out]                             # no house on a footway
+measure = "place.keep_out"
+band    = [0, 0]
+
+[base.relief]
+measure = "place.relief"
+band    = [0, 0]
+
+[base.max_joint]                            # the widest joint: outside the first bend (14 deg)
+measure = "max_joint_cm"
+band    = [113.3, 113.3]
+
+[base.doors_off]                            # no door more than 1 m off its footway
+measure = "doors_off"
+band    = [0, 0]
+
+[base.doors_level]                          # of 189 doors within 0.3 m of the footway
+measure = "doors_level"
+band    = [85, 85]
+
+[base.views]                                # along, at both corners, at the ends, the square, over
+measure = "bookmarks"
+band    = [8, 8]
+
+# ------------------------------------------------------------------------------------------ remodel
+# A piece remodelled: `row_end` a metre deeper. `asset.revised` names every instance of it, and
+# each end house's front now stands half a metre over the footway.
+
+[remodel.revised]
+measure = "revised"
+band    = [1, 1]
+
+[remodel.named]
+measure = "revised_named"
+band    = [24, 24]
+
+[remodel.names_every_instance]
+measure = "revised_all"
+band    = [1, 1]
+
+[remodel.ends_on_footway]
+measure = "place.keep_out"
+band    = [24, 24]
+
+[remodel.names_kept]                        # no piece added or removed
+measure = "removed_other"
+band    = [0, 0]
+
+[remodel.moved_main]                        # bays beside an end on a bend: rule 7 reads the deeper plan
+measure = "moved_main"
+band    = [10, 10]
+
+[remodel.moved_other]
+measure = "moved_other"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ module
+# A piece's module changed: the bay 6 m in place of 5 m. Every row re-fits; every stretch closes.
+
+[module.revised_all]
+measure = "revised_all"
+band    = [1, 1]
+
+[module.named]                              # every bay of the re-fitted build
+measure = "revised_named"
+band    = [131, 131]
+
+[module.pieces]
+measure = "pieces"
+band    = [161, 161]
+
+[module.bays]
+measure = "bay"
+band    = [131, 131]
+
+[module.fillers]
+measure = "filler"
+band    = [4, 4]
+
+[module.open]
+measure = "kit_open"
+band    = [0, 0]
+
+[module.overlap]
+measure = "place.overlap"
+band    = [0, 0]
+
+[module.removed]                            # names past each row's new last piece
+measure = "removed_other"
+band    = [16, 16]
+
+[module.max_joint]
+measure = "max_joint_cm"
+band    = [136.5, 136.5]
+
+# ------------------------------------------------------------------------------------------ move_street
+# The street moved: the main street's entry swings 9 m south, its length kept. Its rows follow; the
+# rows of the other streets keep their names and places.
+
+[move_street.errors]
+measure = "errors"
+band    = [0, 0]
+
+[move_street.other_kept]
+measure = "kept_other"
+band    = [102, 102]
+
+[move_street.other_moved]
+measure = "moved_other"
+band    = [0, 0]
+
+[move_street.other_added]
+measure = "added_other"
+band    = [0, 0]
+
+[move_street.main_moved]                    # the two rows of the entry follow it
+measure = "moved_main"
+band    = [28, 28]
+
+[move_street.main_added]
+measure = "added_main"
+band    = [9, 9]
+
+[move_street.main_removed]
+measure = "removed_main"
+band    = [7, 7]
+
+[move_street.corners]                       # the first bend turns 5.6 deg now: no corner there
+measure = "corner"
+band    = [1, 1]
+
+[move_street.overlap]
+measure = "place.overlap"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ move_bend
+# The street moved and grew 3.5 m longer: the cross streets' feet are placed on it by `t`, so they
+# slide, and every row on them moves (a finding, not a target).
+
+[move_bend.other_moved]
+measure = "moved_other"
+band    = [101, 101]
+
+[move_bend.other_removed]
+measure = "removed_other"
+band    = [1, 1]
+
+[move_bend.unowned]                         # the church street's foot, moved, now crosses the main street
+measure = "geom.unowned_crossing"
+band    = [1, 1]

@@ -870,7 +870,19 @@ func _bodies(node: Node3D, asset: String, first: int, count: int, cols: Dictiona
 		body.name = node_name(cols.names[n])
 		body.transform = _instance_transform(cols, n, false)
 		body.add_child(cs)
-		node.add_child(body)
+		_bodies_holder(node).add_child(body)
+
+
+func _bodies_holder(node: Node3D) -> Node3D:
+	## The chunk's instance bodies under their own node, `bodies`: beside the multimeshes, which
+	## are named after their assets, an instance named like its asset (station's `lens`) was
+	## renamed `@StaticBody3D@N` and a walk was `blocked` by that, not by the instance.
+	var h := node.get_node_or_null("bodies") as Node3D
+	if h == null:
+		h = Node3D.new()
+		h.name = "bodies"
+		node.add_child(h)
+	return h
 
 
 # --- features, bookmarks, meetings -----------------------------------------------------------------
@@ -1354,6 +1366,18 @@ func _bookmarks(root: Node3D) -> void:
 			if Vector2(float(tat[0]) - float(at[0]), float(tat[1]) - float(at[1])).length() < 0.001:
 				bad = "toward"
 				why = "`toward` lies within 1 mm of the eye in plan"
+		# `along`: a path the sheet's walker follows point by point (build.md 15.1); "" or absent
+		# walks straight.
+		var along = attrs.get("along", "")
+		var along_pts: Array = []
+		if bad == "" and along != null and along != "":
+			var pf: Dictionary = by_name.get(along, {}) if along is String else {}
+			if pf.get("shape") == "path" and pf.get("points", []).size() >= 2:
+				for q in pf.points:
+					along_pts.append([float(q[0]), float(q[1])])
+			else:
+				bad = "along"
+				why = "`along` is %s, not the name of a path feature" % JSON.stringify(along)
 		if bad != "":
 			diags.add("load.bad_target", "feature.%s.%s" % [name, bad], String(_manifest.get("features", "features.json")),
 				"bookmark %s gets no camera: %s" % [name, why],
@@ -1370,6 +1394,7 @@ func _bookmarks(root: Node3D) -> void:
 		cam.set_meta("feature", name)
 		cam.set_meta("eye", [float(f.at[0]), float(f.at[1]), float(f.at[2]) + float(eye_h)])
 		cam.set_meta("toward", toward)
+		cam.set_meta("along", along_pts)
 		holder.add_child(cam)
 
 

@@ -14,7 +14,24 @@ command = ["python", "-m", "viasdk", "lib:town/houses.py"]
 # own layer's view, where the terrace is not (authority.md 4.4). `max_cut` and `grade` are the
 # terrace kind's own: a run whose terrace would move the land beside it by more than its
 # `max_change` is left out (houses.py rule 7).
-params  = { lots = "lots", setback = 0.5, gap = 0.25, terrace = "terrace", max_cut = 3, grade = 0.7, assets = ["house_row", "house_narrow"], streets = ["high_street", "kind:street", "quay"] }
+# A lot no row fits takes a corner house with its partner across a block corner's bisector
+# (`corner`, rule 2c), else a row of 5 m deep houses (`fallback`, rule 2b): 57 of the 136 lots
+# were empty, too small, before (M5 slice 3).
+params  = { lots = "lots", setback = 0.5, gap = 0.25, terrace = "terrace", max_cut = 3, grade = 0.7, assets = ["house_row", "house_narrow"], fallback = ["house_shallow"], corner = ["house_corner"], streets = ["high_street", "kind:street", "quay"] }
+
+# The town wall: a stone wall a metre outside the old town's west, north and east sides, down to
+# the quay (lib/town/kit.py, the starter pack's wall kit). It leaves a gap wherever the land keeps
+# things out (the ways that leave the town, the quay's deck), with an end pier either side; a
+# corner pier at the two top corners; bays and fillers between, joints spread; on the slope each
+# piece stands level, cut into fillers where a bay's end would leave its 0.5 m footing.
+[feature.town_wall]
+path = [[23, 47], [23, 197], [233, 197], [233, 47]]
+
+[step.wall]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:town/kit.py"]
+params  = { runs = ["town_wall"], kit = "structure/wall", side = "left" }
 
 [step.review_houses]                        # the houses step returns terraces, which change the
 when    = "lint"                            # ground: a lint must check it (authority.md 7)
@@ -114,6 +131,25 @@ kind       = "bookmark"
 at         = [140, 208]
 toward     = "quay_head"
 eye_height = 3
+
+# The town kit's corners and wedges (M5 slice 3): a corner house each side of a street's foot on
+# the quay, each fronting one way and turning its side door to the other (houses.py rule 2c); a
+# shallow house on a wedge between two contour streets (rule 2b).
+[feature.look_corner]
+at = [58.8, 70]
+
+[feature.look_wedge]
+at = [158.6, 103]
+
+[feature.corner_houses]                     # on the quay's apron at the street's foot, up the street
+kind   = "bookmark"
+at     = [58.8, 47]
+toward = "look_corner"
+
+[feature.wedge_house]                       # on the contour street, at a shallow house's door
+kind   = "bookmark"
+at     = [158.6, 95.5]
+toward = "look_wedge"
 
 # The quay wall: the deck's water side drops `wall` metres (lib/town, `waterfront`). One view on the
 # deck looks along the wall's top; one from the water, at a boat's eye, looks at its face.

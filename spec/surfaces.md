@@ -239,8 +239,10 @@ Let `R` be the region and `B` the surface's bound (the extent for the terrain).
   within one cell, the turning point of the interpolant along it (a quadratic in the edge's
   parameter), where it falls strictly inside the piece. That point is not rounded to the lattice.
   Bilinear has no extreme inside a cell, so this set holds both extremes. Ours.
-- **A kind surface: sampled, not exact.** The same set less the turning points, over `R ∩ B`. A
-  formula such as `fbm` has extremes anywhere; the result is the extremes over that set.
+- **A kind surface: sampled, not exact.** The same set less the turning points, over `R ∩ B`,
+  each crossing of an edge with a grid line rounded to the lattice (the formula is asked at
+  integer points). A formula such as `fbm` has extremes anywhere; the result is the extremes over
+  that set.
 - `outside = (area(R) - area(R ∩ B)) / area(R)`, with both areas exact integer square millimetres
   from the kernel (`geometry.md` 3.3) and one f64 division, so half is exactly 0.5.
 - `R` wholly outside `B` gives `low = high = 0`, `outside = 1`. A region of zero area is
@@ -448,7 +450,11 @@ library's convention, shown in 6.3 and illustrative only:
   `z` and below its top (`z` plus the asset's `bounds` top, scaled; `assets.md`), the thing pokes
   through it: `surface.through` (warning), naming that surface. Hint: "place it `on` <owner> to
   stand on that surface, or move it". Both fixes clear it. An instance well under a high deck does
-  not warn.
+  not warn. **(M5 slice 3, decided.)** The test is made for every hand instance that stands on the
+  terrain, however placed (`at`, or `on` a thing that owns no surface), once per instance, naming
+  the lowest surface it reaches through; a rule, run, scatter or step instance is not tested.
+  Reason: what pokes through is the same fault whichever key put it on the terrain, and the cases
+  that matter are hand placements (a mast under a deck); a library's own instances are its lint.
 - **`surface` on a placement (M5; decides Open 5).** A hand instance, a set, a point feature or a
   scatter placed by `at` or `within` may write `surface = "<feature>.<surface>"`, naming one kind
   surface: furniture on an upper floor, a lamp in a cave, trees on a roof garden. A rule instance
@@ -469,6 +475,20 @@ library's convention, shown in 6.3 and illustrative only:
   - `ground` with `surface` is `surface.ground_off_terrain`, as with `on` a floor.
   - The thing depends on the surface's owner as on an `on` reference (`graph.md`): moving the owner
     re-grounds it and the change report lists it as grounded on that owner (rule 8).
+  - **A point feature `on` a thing (M5 slice 3, decided)** stands where an instance `on` it
+    would, by this table: on the one kind surface of a feature, or a mount's surface; on a feature
+    with two or more it is `surface.which` on the point. Laid on the owner's line, it counts as
+    inside within one lattice unit of the bound (1.2), and there takes the surface's `base` even
+    where that unit lies past the bound; farther out (an `offset` past the bound) it stands on the
+    terrain, and nothing is said (decided in M5 slice 3 fix, open to the owner; it was
+    `surface.outside`). Reason: a point has no body to hang off a deck, and a view laid beside the
+    thing it moves with is the use (monastery `bm_gorge`: on the gorge floor 20 m from the bridge,
+    moved with it); a target already takes the terrain off its owner's bound. Cost: a point meant
+    for the deck and laid off it by mistake is not reported; its `z` in `features.json` shows it.
+    Its `z` in `features.json` and at its default mount (3.3) is that surface's. A feature that owns
+    exactly one kind surface, named as a target (`names`, `build.md` 9.1), gives its point that
+    surface's `z` where the bound holds the point, else the terrain's. Reason: townland's eye `on`
+    the bridge stood under the deck at the river (TODO, From M5 slice 1).
   - The core sees no word "host": `hosts` is dropped (1.3). A roof garden is a kind surface of the
     roof's owner, and its trees are a scatter with `surface`.
 - **Outside a bound.** Two codes, one per bound, so no condition has two:
@@ -495,7 +515,14 @@ library's convention, shown in 6.3 and illustrative only:
   surface is `surface.ground_off_terrain` (error). Scattered instances carry no `ground` (`rules.md`
   7).
 - After grounding, `relief(surface, [footprint])` is taken for every instance. `outside > 0` warns
-  `surface.off_bound` with the share. `high - low` is compared with the asset's `max_relief`, and
+  `surface.off_bound` with the share. **(M5 slice 3, decided.)** On a kind surface the warning and
+  `place.relief` are said for hand instances and set items; a run member laid along its host's
+  line may overhang the edge by design (a parapet post on a deck's end), and a scattered candidate
+  with `outside > 0` or past `max_relief` gives way silently (4.1). A step's returned instance
+  (`<step>#<id>`) is not tested either, here or by `surface.through` (4.1), whatever else the
+  world holds: a library's own instances are its lint (decided in the M5 slice 3 fix, open to the
+  owner; it was tested unless a hand edit in the world made it a producer's). An instance that stands on a
+  kind surface takes no relief over the terrain. `high - low` is compared with the asset's `max_relief`, and
   past it is `rules.md`'s `place.relief` (a scattered candidate gives way instead). This chapter
   measures; `rules.md` owns the code and its wording (section 8).
 
@@ -991,6 +1018,10 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 | floor_mesh | M5 | 6.4 | build | `meshes/hall_g.floor.glb`, `hall_1.floor.glb` and `stair.tread.glb` exist (`build.md` 10). |
 | storey_overlap | M5 | two storeys over one plan point; a box on each at one point, and a lid lifted 2.5 m by its `sink` over the lower box; then the upper box moved to the lower floor | build, then the change | No `place.overlap`; then `place.overlap` on the two boxes, exit 1 (`rules.md` 8.1, levels). |
 | floor_warm | M5 | a set by `at` with `surface`, a run `on` a storey, a scatter with `surface`, a point feature with `surface`; a change raising the storey to 14 | build, then the change `--against` | Every `z` 13.3, the point's `z` 13.3 in `features.json`; then 14, each instance's cause the storey's `level`; the warm build equals a clean one (4.1, rule 8). |
+| point_on_deck | M5 | 6.3; a point feature `on` the crossing at `t = 0.5`; a point on the bank whose `toward` names it; the crossing named as a target | build | `features.json`: the point's `at` and both targets' `at` are `[142, 168, 24.5]` (4.1, M5 slice 3). |
+| ramp_scatter | M5 | a flight rising 0.5 m a metre, 8 m wide; scatters with `surface` on it of an asset with `max_relief = 0.2` and one with `max_relief = 1` | build | No instance of the first; 18 of the second, none within 0.5 m of the ramp's long edges (4.1, 4.2). |
+| meets_connector_edit | M5 | 6.3 with both lanes; `way` changed to `cart` in `kinds.toml` on the lane and both heads | build, then the edit `--against` | `meets.json`'s connector columns `cart`; the warm build equals a clean one. |
+| meets_crossing_removed | M5 | 6.3; the crossing removed and the lanes ending free | build, then the edit `--against` | `meets.json` with 4 rows, then none; the warm build equals a clean one. |
 | step_run_on_floor | M5 | a generate step returning a storey at 13.3 over ground at 10 and a run `on` it | build | Members `make#edge#r0` to `r2`, every `z` 13.3: a returned run's member is `<step>#<run>#r<k>`, its run read before the last `#` (`identity.md` 2.3). |
 
 ## Changed from the spike
@@ -1047,8 +1078,11 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 7. **The terrain under a floor or a deck.** **Decided in M5:** a surface's `cut` (1.3), written
    as `build.md` 6.5's cut file; a deck cuts nothing unless its kind says so.
 8. **`path3`.** **Dropped (M5):** a stair, a ramp and a cave are paths whose kind owns a surface
-   (6.4, 6.5), and 3.3 lets their ends rest on another surface. Challenge 38 may still reverse it
-   for a loop ramp that crosses itself (a fold, 1.2).
+   (6.4, 6.5), and 3.3 lets their ends rest on another surface. **Held in M5 slice 3** (challenge
+   38, `city`): a loop ramp is a lib/ways `ramp`, a path turning 270 degrees with one kind surface,
+   that starts on a viaduct's deck as a place (3.3) and ends on the ground; it does not cross itself
+   in plan, so no fold (1.2) and no `path3`. A ramp that passes over itself (a full spiral) is two
+   paths, the second starting at the first's end.
 9. **Reading a field from a surface formula** (a deck's height from the ground at its ends).
    Decided in `formulas.md`; until then 1.1 forbids it and the example writes `deck_z`.
 10. **Caves and overhangs** (challenge 7). **Decided in M5:** kind surfaces under the terrain,
@@ -1057,7 +1091,8 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 11. **A threshold.** **Decided in M5: no.** A mount's height is always its surface's. A raised
     sill is the floor's own height with the ground set to it (6.4), or a one-step `flight`.
 12. **Two region owners resting on each other** (a deck on a deck that is not a path's end). Not
-    expressible today; decided by challenge 38 if it needs it.
+    expressible today. Challenge 38 did not need it (M5 slice 3): every level change in `city` is a
+    path's end on a surface by name.
 
 ## 8. Edits this chapter needs elsewhere
 

@@ -14,6 +14,11 @@
 # Re-taken 2026-11-15 (M3 slice 4) for the road's rows after its first turn moved to (228, 12) and
 # the place (240, 26) was added: same machine and protocol, a release binary of the working tree of
 # that hour (epoch 2), base 3 s, each change 2 to 3 s; every other row measured unchanged.
+# Re-taken 2026-11-17 (M5 slice 3: the gorge's walls as sheer faces, the court's wall a run of wall
+# bays): same machine, a release binary of the working tree at 01:03 KST (after 6f9f332, with other
+# M5 slice 3 agents' uncommitted changes), VIA_LIB=lib, Python 3.12, one fresh store, base 1.4 s
+# wall, each change with --against base. The HEAD build (6f9f332, a worktree, same binary) gave the
+# "before" numbers the rows quote. Rows marked OWED fail on purpose until the fix they name lands.
 
 # ------------------------------------------------------------------------------------------ base
 
@@ -21,13 +26,13 @@
 measure = "errors"
 band    = [0, 0]
 
-[base.warnings]
-measure = "warnings"
-band    = [0, 0]
+[base.warnings]                             # 9 measured: the 7 OWED unreached below and the 2 crossings of the
+measure = "warnings"                        # bridge over the gorge's faces (`unowned`); 7 at HEAD
+band    = [9, 9]
 
-[base.reach]                                # 5 places and 3 cell doors reached, 2 sealed pairs held (the gorge floor)
-measure = "reach_held"
-band    = [10, 10]
+[base.reach]                                # OWED (M5 slice 2): 3 of 10, as at HEAD. lib/review's reach walks the
+measure = "reach_held"                      # terrain only; the deck is a kind surface since slice 2, so the
+band    = [10, 10]                          # gorge cuts the road from the gate (TODO; townland's rows)
 
 [base.reach_pairs]
 measure = "reach_pairs"
@@ -37,7 +42,7 @@ band    = [10, 10]
 measure = "not_sealed"
 band    = [0, 0]
 
-[base.unreached]
+[base.unreached]                            # OWED: 7 (as at HEAD), the reach rows' cause
 measure = "unreached"
 band    = [0, 0]
 
@@ -61,9 +66,9 @@ band    = [0, 13]
 measure = "decks"
 band    = [1, 1]
 
-[base.deck_wet]
-measure = "deck_wet"
-band    = [0, 0]
+[base.deck_wet]                             # the stream runs under the deck since slice 2 (a kind surface, not a
+measure = "deck_wet"                        # causeway): 11 wet posts (15 at HEAD; the faces' step now holds the
+band    = [8, 16]                           # floor beside the walls at their foot)
 
 [base.head_grade]                           # R16 (M3 slice 5): the steepest metre of the last 20 m of a way
 measure = "head_grade"                      # ending on the bridge (measure.py "meetings"); 0.31 before
@@ -73,12 +78,40 @@ band    = [0, 0.1]                          # (the approach), now the crossing's
 measure = "face_pool"                       # 15 m off: 0.22 m before (pooled on the gorge floor)
 band    = [-0.3, 0.1]
 
-[base.unowned]
-measure = "geom.unowned_crossing"
+[base.unowned]                              # the bridge's line crosses the east and the west face: a deck over a
+measure = "geom.unowned_crossing"           # face is no meeting, and a crossing names only the water it crosses
+band    = [2, 2]                            # (geometry.md 2.7; TODO). Piece to piece the faces start at each other by name: 0 there
+
+[base.wall_low]                             # no metre of wall, away from the gate, uncovered by a wall bay (or the old ground 3.5 m up)
+measure = "wall_low"
 band    = [0, 0]
 
-[base.wall_low]                             # no metre of wall, away from the gate, under 3.5 m above the court
-measure = "wall_low"
+[base.wall_members]                         # the run `court_wall`: 295 m of outline, 3 m spacing; 98 measured, none gave way
+measure = "wall_members"
+band    = [98, 98]
+
+[base.gate_open]                            # metres of outline no bay covers at the gate: the span's 5 m and a bay's corner; 5.1 measured
+measure = "gate_open_m"                     # (the terrain wall's gap, sampled the same way at HEAD: 12.0, every sample uncovered)
+band    = [4.5, 5.5]
+
+[base.gorge_step]                           # the largest span of a terrain quad left drawn within 20 m of the stream (not
+measure = "gorge_step_max_m"                # under the bridge or the tarn): 21.15 m at HEAD (the wall from post to post),
+band    = [0, 3]                            # 2.81 measured: the hollow's floor round the tarn falling away from the faces' foot
+
+[base.gorge_steep]                          # those quads with a span over 2 m: 606 at HEAD, 68 measured, all 4 to 6 m off a face in the
+measure = "gorge_steep"                     # tarn's head, where the step's flat foot (2.75 m) fades into the hollow
+band    = [0, 80]
+
+[base.faces]                                # layers/gorge.toml: 7 pieces east, 9 west
+measure = "faces"
+band    = [16, 16]
+
+[base.face_cut]                             # cut quads on the faces' lines; 979 measured
+measure = "face_cut"
+band    = [900, 1100]
+
+[base.face_gap]                             # piece to piece, mm
+measure = "face_gap_max_mm"
 band    = [0, 0]
 
 [base.gate_step]                            # cm between the court and the ground across the gate; 31 measured (walker's step 20 cm, its grade 0.5)
@@ -107,7 +140,7 @@ band    = [1, 1]
 measure = "instances_removed"
 band    = [0, 0]
 
-[guesthouse.reach]                          # the guesthouse's door reached from the road over the bridge
+[guesthouse.reach]                          # OWED (as base.reach: 3 of 11): the guesthouse's door reached from the road over the bridge
 measure = "reach_held"
 band    = [11, 11]
 
@@ -129,9 +162,9 @@ band    = [0, 0]
 measure = "decks"
 band    = [1, 1]
 
-[move_bridge.deck_wet]
+[move_bridge.deck_wet]                      # as base: the stream under the deck; 10 measured
 measure = "deck_wet"
-band    = [0, 0]
+band    = [8, 16]
 
 [move_bridge.head_grade]                    # R16 at the moved bridge's heads
 measure = "head_grade"
@@ -141,11 +174,11 @@ band    = [0, 0.1]
 measure = "face_pool"
 band    = [-0.3, 0.1]
 
-[move_bridge.unowned]
+[move_bridge.unowned]                       # as base: the moved bridge over the two faces
 measure = "geom.unowned_crossing"
-band    = [0, 0]
+band    = [2, 2]
 
-[move_bridge.reach]
+[move_bridge.reach]                         # OWED (as base.reach: 3 of 10)
 measure = "reach_held"
 band    = [10, 10]
 
@@ -193,7 +226,7 @@ band    = [0, 0]
 measure = "errors"
 band    = [0, 0]
 
-[winter.reach]
+[winter.reach]                              # OWED (as base.reach: 3 of 10)
 measure = "reach_held"
 band    = [10, 10]
 

@@ -1,0 +1,33 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# A ramp rising 0.5 m a metre east, 8 m wide (y 28 to 36), over flat ground at 10.
+[feature.ramp]
+kind  = "flight"
+path  = [[10, 32], [50, 32]]
+z0    = 10
+z1    = 30
+width = 8
+
+# A 1 m footprint on the ramp spans 0.5 m of height: past the urn's 0.2, within the pot's 1.
+[scatter.urns]
+assets  = ["urn"]
+surface = "ramp.tread"
+spacing = 4
+
+[scatter.pots]
+assets  = ["pot"]
+surface = "ramp.tread"
+spacing = 4
+
+# The ramp narrowed: fewer candidates, and the urns' `place.gave_way` changes while no instance of
+# theirs does (warm equals clean, `graph.md` 1 `rule`).
+[change.narrow.feature.ramp]
+width = 4

@@ -1,0 +1,12 @@
+# name_clash_test: a kind whose surface and mount share a name, for the case `name_clash`
+# (surfaces.md 1, rule 3).
+
+[kind.span]
+defaults = { width = 5 }
+
+[kind.span.surface.deck]
+base  = "= 24.5"
+bound = "= width / 2"
+
+[kind.span.mount.deck]
+t = 0

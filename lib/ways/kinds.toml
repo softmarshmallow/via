@@ -215,9 +215,9 @@ mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 1, d)"
 # extent (`smoothed_along(80)`, as the road's 40 m above). A freeway is not a town street: no lot
 # fronts it (a world's `[cells]` leaves it out of `frontage`).
 #
-# STAND-IN: on a viaduct over the town's ways, as the spike's city drew it, it needs a deck that
-# is not the terrain, and kind surfaces are `doc.not_yet` (surfaces.md, M5); so this freeway lies
-# on the ground and crosses nothing but at an interchange. Ours, written for `city`.
+# Where it passes over another way it is not a freeway but a `viaduct` (below): the freeway's pieces
+# end at the viaduct's two ends by name, as a way arrives at a crossing (M5 slice 3). Ours, written
+# for `city`.
 [kind.freeway]
 authority = "shaped"
 radius    = 30                              # a 1:2 bank from the edge (12 m) holds a cut of 9 m
@@ -242,29 +242,27 @@ field = "role:keep_out"
 value = "= 1"
 mask  = "= 1 - smoothstep(width / 2 + shoulder, width / 2 + shoulder + 1, d)"
 
-# An interchange (M3, `city`): the named thing that owns where a freeway meets an arterial (R18).
-# A point; the freeway's pieces and the arterial's pieces arrive at it by name (`ends_at =
-# "ix_central"`, `starts_at = "ix_central"`), so no way meets the freeway anywhere else and the
-# meeting is never whichever way was graded last. It holds a level plate `plate` metres round its
-# point at the ground there (`under('mean')`: a point's one sample), past it a bank of `grade`
-# (1:10, the crossing's `approach`, so every way arriving is brought to the plate as gently) out to
-# `reach`, fading over 4 m; anchored, so the ways' beds give way to it (authority.md 3).
-#
-# STAND-IN: an interchange separates its ways in height and joins them by ramps. Without kind
-# surfaces (a deck not on the terrain, M5) no way can pass over another, so this one is an at-grade
-# junction plate: the freeway and the arterial meet on it as four ends, and there are no ramps.
-# The spike's ramps and loops were a step's paths drawn over a crossing of two roads at grade. Ours.
+# An interchange (M3, `city`; levels M5 slice 3): the named place where a freeway passes over an
+# arterial (R18). A point: the arterial's pieces arrive at it by name (`ends_at = "ix_central"`,
+# `starts_at = "ix_central"`), and the freeway passes over it on a `viaduct` (below) whose ends its
+# pieces meet. It holds a level plate `plate` metres round its point at `level` metres, past it a
+# bank of `grade` (1:10, the crossing's `approach`, so every way arriving is brought to the plate as
+# gently) out to `reach`, fading over 4 m; anchored, so the ways' beds give way to it (authority.md
+# 3). `level` is a number the world writes (the ground there, or below it: an arterial taken down
+# under the viaduct for headroom), not the ground read (`under('mean')` until M5 slice 3), so a
+# thing that meets the plate can name it (`= ix_central.level`). A plate wide enough for the ramps
+# to land on (56 m) took 55 of the city's houses with its bank; the ramps land beside it instead.
 [kind.interchange]
 authority = "anchored"
-radius    = 60                              # `reach` and the 4 m fade
+requires  = ["level"]                       # metres: the plate's height
+radius    = 110                             # `reach` and the 4 m fade
 
 [kind.interchange.defaults]
 plate = 16                                  # metres of level plate round the point
 grade = 0.1                                 # the bank past the plate, rise over run
-reach = 50                                  # metres from the point the bank holds the ground
+reach = 50                                  # metres from the point the bank holds the ground (at most 104)
 
 [kind.interchange.let]
-level = "= under('mean')"
 bank  = "= grade * max(d - plate, 0)"
 
 [kind.interchange.effect.plate]
@@ -276,6 +274,82 @@ mask  = "= 1 - smoothstep(reach, reach + 4, d)"
 field = "role:keep_out"
 value = "= 1"
 mask  = "= 1 - smoothstep(plate, plate + 1, d)"
+
+# A viaduct (M5 slice 3, `city`; challenge 38): a way carried over what lies under it on its own
+# deck. A straight path between two named ends (as a crossing's); the freeway's pieces end at its
+# `.start` and start at its `.end`. Its deck is a kind surface (surfaces.md 1, 6.3), `width` metres
+# wide, so the ground and the ways under it are left alone: the arterial runs on at grade beneath.
+# The deck is at `z_start` at its start, rises over the first `rise` of its length (a smoothstep, so
+# its steepest grade is `1.5 (deck_z - z_start) / (rise * length)`) to `deck_z`, is level at
+# `deck_z` over its middle, and comes down to `z_end` over the last `rise`. Level is exact there
+# (the `if`): a ramp leaving the middle starts at `deck_z` and meets it at a gap of 0.
+#
+# `heads` holds the ground at the end's level at each end, as the crossing's do (its first and last
+# `hold` of the length within `width / 2`, and behind each end, banked at `approach` out to `head`):
+# the freeway arriving there meets the deck at a gap of 0. `hold * length` must cover a quad's
+# diagonal (1.42 resolution; 300 m at 2 m: 0.01). `width` is the freeway's 20 m and its shoulders.
+# A ramp names the deck as a place (`starts_at = "<viaduct>.deck"`, surfaces.md 3.3) at any point
+# of its level middle. What passes under is not a meeting (3.5); a world puts the viaduct and the
+# ways it passes over in one network (`[network.wards]`) so the crossing of the two lines is owned
+# (geometry.md 2.7). Headroom is `deck_z` less the ground beneath, measured by the world. Ours.
+[kind.viaduct]
+authority = "anchored"
+requires  = ["z_start", "z_end", "deck_z"]  # metres: the ground at each end, the level of its middle
+radius    = 20                              # `head`, the run-out and a post
+
+[kind.viaduct.defaults]
+width    = 24                               # metres of deck
+rise     = 0.3                              # share of the length at each end over which the deck climbs
+head     = 12                               # metres behind each end the ground is held
+approach = 0.1                              # rise over run of the ground behind an end
+hold     = 0.03                             # share of the length at each end held at the end's level
+
+[kind.viaduct.let]
+ends  = "= max(1 - smoothstep(hold, hold + 0.02, t), smoothstep(1 - hold - 0.02, 1 - hold, t))"
+reach = "= approach * min(max(d - width / 2, 0), head) + 0.5 * max(d - width / 2 - head, 0)"
+
+[kind.viaduct.surface.deck]
+base  = "= if(t < rise, z_start + (deck_z - z_start) * smoothstep(0, rise, t), if(t > 1 - rise, z_end + (deck_z - z_end) * (1 - smoothstep(1 - rise, 1, t)), deck_z))"
+bound = "= width / 2"
+
+[kind.viaduct.effect.heads]
+field = "role:surface"
+value = "= if(t < 0.5, clamp(v, z_start - reach, z_start + reach), clamp(v, z_end - reach, z_end + reach))"
+mask  = "= ends * (1 - smoothstep(head + 4, head + 6, d)) * if(t > 0 and t < 1, 1 - smoothstep(width / 2, width / 2 + 1, d), 1)"
+
+[kind.viaduct.effect.clear]                 # nothing stands under the deck's edge nor on its heads
+field = "role:keep_out"
+value = "= 1"
+mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 1, d)"
+
+# A ramp (M5 slice 3, `city`; challenge 38): a way between two levels on its own deck, a kind
+# surface `width` metres wide that runs from `z0` at its start to `z1` at its end (a smoothstep in
+# `t`, so it leaves and lands level: its steepest grade is `1.5 |z1 - z0| / length`). It is written
+# by what it joins (R16): it starts at a deck by name, the deck as a place (`starts_at =
+# "<viaduct>.deck"`, surfaces.md 3.3, its first point written on the deck's level middle), and ends
+# at a place on the ground by name. `z0` names the deck's level (`z0 = "= fly.deck_z"`), so the
+# start meets at a gap of 0 and moves with it; `z1` is the ground at its foot (a number the world
+# writes, as a crossing's `deck_z`), and `foot` holds the ground at exactly `z1` under its last
+# `land` of the length and within `width / 2` round its end (anchored, as a crossing's heads), so
+# the foot meets the ground at a gap of 0. A loop ramp is a path that turns through 270 degrees: one
+# surface over it, no fold while its radius exceeds `width / 2` (surfaces.md 1.2). Ours.
+[kind.ramp]
+authority = "anchored"
+requires  = ["z0", "z1"]                    # metres: the levels at its start and its end
+radius    = 8                               # `width / 2`, the 2 m fade and a post
+
+[kind.ramp.defaults]
+width = 8                                   # metres of deck, one lane and its shoulders
+land  = 0.03                                # share of the length at its foot over which the ground is held
+
+[kind.ramp.surface.deck]
+base  = "= z0 + (z1 - z0) * smoothstep(0, 1, t)"
+bound = "= width / 2"
+
+[kind.ramp.effect.foot]
+field = "role:surface"
+value = "= z1"
+mask  = "= smoothstep(1 - land - 0.02, 1 - land, t) * (1 - smoothstep(width / 2, width / 2 + 2, d))"
 
 # A slipway: where a ferry lands, a point on a shore (M4, `strait`). It is an exit (composition.md
 # 7): a world built apart that has one says a way leaves it here, over the water, and a parent that

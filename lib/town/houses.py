@@ -26,10 +26,29 @@ How it places (ours, written for this library):
    49 such lots empty). A row that stands inside the lot no way is passed over for the next; a lot no house fits is left empty, and
    counted (`small`, info). quay (M3 slice 2) placed one detached house per lot, so a street read
    as houses in fields; with `assets` holding one asset this is that rule with the row's count.
-   **2b. A shallower house at a corner.** With `fallback` (asset names), a lot where no row of
-   `assets` stands (a corner triangle or wedge, too shallow for the row's depth) is tried again
-   with those assets alone, so a corner holds a lower, shallower house rather than nothing
-   (quay: 61 of 135 lots empty with rows of 8 m deep houses).
+   **2b. A shallower house in a wedge.** With `fallback` (asset names), a lot where no house of
+   `assets` stands clear of `keep_out` (rule 4: a wedge too shallow for the row's depth behind
+   its street's footway) and that rule 2c did not join to a corner takes a row of those assets
+   alone, so it holds a shallower row rather than nothing (quay: 61 of 135 lots empty with rows
+   of 8 m deep houses). A wedge narrows to one side, so the row is tried at every half metre
+   along the frontage, not only centred and at its ends (`fit_rows_along`); its tries are read
+   in rule 4's one batch with the rows', and taken only where no house of `assets` is clear.
+   **2c. A corner house facing both streets.** With `corner` (asset names; the first, by
+   `asset_sizes`' order, is used), two lots no row of `assets` fits that meet at a block's corner
+   hold one corner house between them: a lot cut at a corner by the bisector (geometry.md 3.6) is
+   a triangle with its sharp end at the corner, too shallow there for any house, and its
+   neighbour across the bisector, on the other street, is its mirror. Two lots pair when they
+   share an end of their frontage chords (the corner) and leave it along one cut (their edges
+   from it within 2 degrees), and their chords turn by `CORNER_TURN` (45 degrees) or more; each lot pairs once, in name order. The house fronts one street and
+   turns its right side (where a corner asset has its second door, lib/packs/starter
+   `house_corner`) to the other: the front goes to the street whose outward normal, turned a
+   quarter clockwise, is the other's. Its front stands `setback` from its street's chord and its
+   right side `setback` from the other's, each pushed back by rule 4 independently (the least
+   total push first), with every corner inside the two lots. It is named for the first lot of
+   the pair (`h<digest>_<station>`), and its terrace (rule 5) is a run of one; a hand edit on
+   the second lot reaches it only if its origin lies there. Both lots count as held. A pair no
+   corner house fits inside goes on to rule 2b, lot by lot. (Ours: a house over two lots is
+   what a town does at its corners; the step still cuts no lot.)
 3. **Where and which way.** Every house of the row faces the street: `face` is the bearing of the
    frontage chord's outward normal, clockwise from north, in whole millidegrees. Their fronts (the
    asset frame's `+y` bound, assets.md) stand on one line `setback` metres in from the chord.
@@ -102,7 +121,8 @@ near }`) reaches them.
 `params`: `lots` (required, the cells table's id); `streets` (selectors, default
 `["kind:main_street", "kind:street"]`); `assets` (default `["house_narrow", "house_low"]`);
 `fallback` (optional, assets tried alone where `assets` fit no row, rule 2b; when written it is a
-list of at least one name, and an empty list is refused like `assets`);
+list of at least one name, and an empty list is refused like `assets`); `corner` (optional, the
+corner house's asset, rule 2c, a list as `fallback`);
 `setback` (1 m: the least, rule 4 pushes it back); `gap` (0.5 m, at each end of a lot's row); `ground` (optional, a ground kind lent to each house); `terrace` (optional, a region kind under
 each run; not with `ground`); `max_relief` (optional,
 metres, 0 or more); `max_cut` and `grade` (optional, with `ground` or `terrace`: that kind's);
@@ -122,7 +142,9 @@ PARAMS_EXPLAIN = ("A param of the houses step is outside what it takes: `lots` n
 
 EXPLAIN = {
     "rows": "How many houses the houses step placed, in rows along the lots' frontage, and on how "
-    "many of the lots; `small` lots fit no house, `steep` houses were left out for the land.",
+    "many of the lots; `small` lots fit no house, `steep` houses were left out for the land; "
+    "`empty` lots hold none; `fallback_lots` hold a row of `fallback` (rule 2b), `corner_lots` "
+    "a corner house, two lots each (`corners`, rule 2c).",
     "small": "The houses step left some lots empty: no asset in `assets` fits the lot's frontage "
     "less `gap` on each side and its depth less `setback`.",
     "split": "Some lots are cells of more than one piece; the houses step fills only the largest "
@@ -149,6 +171,7 @@ class Params:
         self.assets = _names(raw, "assets", ["house_narrow", "house_low"])
         # Written: a list of at least one name (`_names` refuses an empty one); absent: none.
         self.fallback = _names(raw, "fallback", None) if "fallback" in raw else []
+        self.corner = _names(raw, "corner", None) if "corner" in raw else []
         self.setback = _number(raw, "setback", 1.0)
         self.gap = _number(raw, "gap", 0.5)
         self.ground = raw.get("ground")
@@ -200,22 +223,52 @@ def generate(step):
         return
     sizes = asset_sizes(step, p.assets)
     spare = asset_sizes(step, p.fallback) if p.fallback else []
-    rows = []                                          # (lot, [(offset, [house]) per push])
-    for name, ring in lots:
-        frame = lot_frame(ring, streets)
-        fits = []
-        for these in (sizes, spare):                   # rule 2b: `fallback` where `assets` fit none
-            tries = [] if frame is None or not these else [
-                (k, fit_row(ring, frame, these, p.setback + k * SETBACK_STEP, p.gap))
-                for k in range(int(round(MAX_PUSH / SETBACK_STEP)) + 1)]
-            fits = [(k, r) for k, r in tries if r]
-            if fits:
-                break
-        rows.append((name, fits))
-    chosen = clear_rows(step, rows)
-    small = [name for name, row in chosen if not row]
+    corner = asset_sizes(step, p.corner)[:1] if p.corner else []
+    pushes = range(int(round(MAX_PUSH / SETBACK_STEP)) + 1)
+    frames = {name: lot_frame(ring, streets) for name, ring in lots}
+    rings = dict(lots)
+
+    def tries_for(name, these):
+        frame = frames[name]
+        if frame is None or not these:
+            return []
+        tries = [(k, fit_row(rings[name], frame, these, p.setback + k * SETBACK_STEP, p.gap))
+                 for k in pushes]
+        return [(k, r) for k, r in tries if r]
+
+    fits = {name: tries_for(name, sizes) for name, _ in lots}
+    # Rule 2c: two lots `assets` fit none, meeting at a block's corner, hold one corner house.
+    joined, pairs = {}, []
+    if corner:
+        for a, b, k in corner_pairs([(n, rings[n], frames[n]) for n, _ in lots if not fits[n]]):
+            tries = corner_tries(rings[a], rings[b], frames[a], frames[b], k, corner[0], p.setback)
+            if tries:
+                pairs.append((a, tries))
+                joined[a], joined[b] = b, a
+    rows, by = [], {}                                  # (lot, [(push, [(i, house)])]); lot: rule
+    spares = []                                        # rule 2b's tries, read in the same batch
+    for name, _ in lots:
+        if name in joined:
+            if any(a == name for a, _ in pairs):
+                rows.append((name, next(t for a, t in pairs if a == name)))
+                by[name] = "corner"
+            continue
+        rows.append((name, fits[name]))
+        by[name] = "row"
+        if spare and frames[name] is not None:
+            spares.append((name, [((k, j), r) for k in pushes for j, r in fit_rows_along(
+                rings[name], frames[name], spare, p.setback + k * SETBACK_STEP, p.gap)]))
+    got = clear_rows(step, rows + spares)
+    chosen, extra = got[:len(rows)], dict(got[len(rows):])
+    for j, (name, row) in enumerate(chosen):           # rule 2b: no house of `assets` clear
+        if not row and extra.get(name):
+            chosen[j] = (name, extra[name])
+            by[name] = "fallback"
+    held = held_lots(chosen, by, joined)
+    small = [name for name, _ in lots if name not in held]
     if p.terrace is not None:
-        place_terraces(step, p, chosen, small, len(lots))
+        place_terraces(step, p, chosen, small, len(lots), lambda left: held_lots(
+            chosen, by, joined, left))
         return
     placed = [(house_key(name, i), h) for name, row in chosen for i, h in row]
     steep = []
@@ -232,16 +285,32 @@ def generate(step):
     for key, (asset, at, face, _) in placed:
         keys = {"ground": p.ground} if p.ground else {}
         step.out.instance(key, asset, at=_mm(at), face=face, **keys)
-    held = {key.rsplit("_", 1)[0] if key.count("_") > 1 else key for key, _ in placed}
-    say(step, len(placed), len(held), len(lots), small, steep, 0)
+    say(step, len(placed), held_lots(chosen, by, joined, set(steep)), len(lots), small, steep, 0)
+
+
+def held_lots(chosen, by, joined, left=()):
+    """{lot: rule} of the lots a placed house stands on, the rule (`row`, `fallback`, `corner`)
+    that put it there: a lot whose houses were all left out (`left`, house keys, rule 7) is not
+    held, and a corner house holds both its lots (rule 2c; `joined` maps each to the other)."""
+    out = {}
+    for name, row in chosen:
+        if any(house_key(name, i) not in left for i, _ in row):
+            out[name] = by[name]
+            if by[name] == "corner":
+                out[joined[name]] = "corner"
+    return out
 
 
 def say(step, houses, held, lots, small, steep, terraces):
+    """`held`: {lot: rule}, the rule (`row`, `fallback`, `corner`) that put a house on it."""
+    by = {r: sum(1 for v in held.values() if v == r) for r in ("row", "fallback", "corner")}
     step.info("rows", "step." + step.id,
-              f"{houses} houses in rows on {held} of {lots} lots.",
+              f"{houses} houses in rows on {len(held)} of {lots} lots.",
               "Each lot's frontage holds a row of houses side by side (rule 2).",
-              data={"houses": houses, "lots": lots, "lots_held": held, "small": len(small),
-                    "steep": len(steep), "terraces": terraces}, explain=EXPLAIN["rows"])
+              data={"houses": houses, "lots": lots, "lots_held": len(held), "small": len(small),
+                    "steep": len(steep), "terraces": terraces, "empty": lots - len(held),
+                    "fallback_lots": by["fallback"], "corner_lots": by["corner"],
+                    "corners": by["corner"] // 2}, explain=EXPLAIN["rows"])
     if small:
         step.info("small", "step." + step.id, f"{len(small)} lots too small for a house.",
                   "Lower `gap` or `setback`, add a narrower asset, or lengthen the lots' `spacing`.",
@@ -279,6 +348,111 @@ def lot_frame(ring, segs):
     return mid, n, t, front, right, length, deep, face
 
 
+CORNER_TURN = 45.0                                    # degrees two frontages turn, at least, at a corner
+SHARED = 0.05                                         # metres: two lots' vertices this near are one
+
+
+def corner_pairs(empty):
+    """Rule 2c: pairs of lots meeting at a block's corner, from ``empty`` (name, ring, frame) in
+    name order: two lots that share an edge (two vertices within `SHARED`) and an end of their
+    frontage chords (the corner, where the two streets meet) and leave it along one cut
+    (`_cut_shared`), whose chords turn by at least `CORNER_TURN`. [(first name, second name, corner point)], each lot in one pair at most, the
+    pairs taken in name order of their first lot."""
+    out, used = [], set()
+    empty = sorted(empty, key=lambda e: e[0])
+    for ia, (a, ra, fa) in enumerate(empty):
+        if a in used or fa is None:
+            continue
+        for b, rb, fb in empty[ia + 1:]:
+            if b in used or fb is None:
+                continue
+            ta, tb = fa[2], fb[2]
+            if abs(ta[0] * tb[0] + ta[1] * tb[1]) > math.cos(math.radians(CORNER_TURN)):
+                continue
+            ends_a = _chord_ends(fa)
+            k = next((e for e in ends_a if any(math.dist(e, f) <= SHARED for f in _chord_ends(fb))),
+                     None)
+            if k is None or not _cut_shared(ra, rb, k):
+                continue
+            out.append((a, b, k))
+            used.update((a, b))
+            break
+    return out
+
+
+def _cut_shared(ra, rb, k):
+    """Whether the two rings leave the corner ``k`` along one line (the bisector cut between
+    them): an edge of each from a vertex at ``k`` within `BISECTOR_TOL` degrees of the other.
+    Two lots cut from one corner on two streets need not end the cut at one point (quay: one
+    lot's cut 12.4 m long, the other's 16.1 m), so a shared vertex pair is not asked for."""
+    def dirs(ring):
+        out = []
+        for i, v in enumerate(ring):
+            if math.dist(v, k) <= SHARED:
+                for w in (ring[i - 1], ring[(i + 1) % len(ring)]):
+                    n = math.dist(w, k)
+                    if n > SHARED:
+                        out.append(((w[0] - k[0]) / n, (w[1] - k[1]) / n))
+        return out
+    lim = math.cos(math.radians(BISECTOR_TOL))
+    return any(u[0] * v[0] + u[1] * v[1] >= lim for u in dirs(ra) for v in dirs(rb))
+
+
+BISECTOR_TOL = 2.0                                    # degrees two cuts from a corner differ, at most
+
+
+def _chord_ends(frame):
+    mid, n, t, front, right, length, deep, face = frame
+    return [(mid[0] - t[0] * length / 2, mid[1] - t[1] * length / 2),
+            (mid[0] + t[0] * length / 2, mid[1] + t[1] * length / 2)]
+
+
+def corner_tries(ra, rb, fa, fb, k, size, setback):
+    """Rule 2c: the corner house (one asset, ``size`` as `asset_sizes` gives it) on the two lots
+    meeting at the corner ``k``, its front to one street and its right side to the other: the
+    front to the street whose outward normal turned clockwise a quarter is the other's, so the
+    side door (the asset's right) opens onto that other street. Its front stands `setback` plus a
+    push from the front street's chord, its right side `setback` plus a push from the other's,
+    each push in `SETBACK_STEP`s up to `MAX_PUSH`, and only where all four corners and the middle
+    stand inside the two lots: [((front push + side push, front push), [(0, house)])], the least
+    push first (rule 4 then takes the least that is clear of `keep_out`)."""
+    out_a, out_b = (-fa[1][0], -fa[1][1]), (-fb[1][0], -fb[1][1])
+    if _cw(out_a)[0] * out_b[0] + _cw(out_a)[1] * out_b[1] >= 0:
+        ff, fs = fa, fb
+    else:
+        ff, fs = fb, fa
+    front = (-ff[1][0], -ff[1][1])
+    right = _cw(front)
+    nf, ns = ff[1], fs[1]
+    # The front street's direction away from the corner, into the side street's lot side.
+    uf = next(((e[0] - k[0]) / ff[5], (e[1] - k[1]) / ff[5]) for e in _chord_ends(ff)
+              if math.dist(e, k) > SHARED)
+    across = uf[0] * ns[0] + uf[1] * ns[1]
+    if across <= 1e-6:
+        return []
+    asset, x0, y0, x1, y1 = size
+    face = round(math.degrees(math.atan2(front[0], front[1])) % 360.0, 3)
+    steps = int(round(MAX_PUSH / SETBACK_STEP)) + 1
+    tries = []
+    for kf in range(steps):
+        for ks in range(steps):
+            sf, ss = setback + kf * SETBACK_STEP, setback + ks * SETBACK_STEP
+            x = (ss - sf * (nf[0] * ns[0] + nf[1] * ns[1])) / across
+            q = (k[0] + nf[0] * sf + uf[0] * x, k[1] + nf[1] * sf + uf[1] * x)   # front-right corner
+            o = (q[0] - right[0] * x1 - front[0] * y1, q[1] - right[1] * x1 - front[1] * y1)
+            corners = [(o[0] + right[0] * cx + front[0] * cy, o[1] + right[1] * cx + front[1] * cy)
+                       for cx, cy in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+            mid = (sum(c[0] for c in corners) / 4, sum(c[1] for c in corners) / 4)
+            if all(inside(ra, c) or inside(rb, c) for c in corners + [mid]):
+                tries.append(((kf + ks, kf), [(0, (asset, o, face, corners))]))
+    return sorted(tries, key=lambda t: t[0])
+
+
+def _cw(v):
+    """``v`` turned a quarter clockwise (east of north)."""
+    return (v[1], -v[0])
+
+
 def rows_by_cover(width, sizes, depth):
     """Every row (a tuple of indices into `sizes`, in the order written within the row) of at most
     MAX_ROW houses no deeper than `depth`, whose widths (and PARTY between each two) sum to at most
@@ -313,6 +487,28 @@ def fit_row(ring, frame, sizes, setback, gap):
             if all(inside(ring, q) for _, h in houses for q in h[3]):
                 return houses
     return []
+
+
+def fit_rows_along(ring, frame, sizes, setback, gap):
+    """Rule 2b's tries at one setback: every row (`rows_by_cover`'s order) at every shift along
+    the chord on a `SETBACK_STEP` lattice from its start to its end, the least shift from the
+    middle first, where it stands inside the lot: [((row rank, shift index), houses)]. A wedge
+    narrows to one side, so the one place a row stands clear of a cross street's `keep_out` is
+    often neither the middle nor an end (quay, M5 slice 3: 2 m off the middle), and a shorter
+    row may stand clear where the longest does not; rule 4 takes the widest clear."""
+    mid, n, t, front, right, length, deep, face = frame
+    out = []
+    for rank, row in enumerate(rows_by_cover(length - 2 * gap, sizes, deep - setback)):
+        total = sum(sizes[i][3] - sizes[i][1] for i in row) + PARTY * (len(row) - 1)
+        slack = length / 2 - gap - total / 2
+        m = int(slack / SETBACK_STEP + 1e-9)
+        shifts = sorted({0.0, -slack, slack} | {j * SETBACK_STEP for j in range(-m, m + 1)},
+                        key=lambda x: (abs(x), x))
+        for j, shift in enumerate(shifts):
+            houses = row_houses(frame, sizes, row, setback, -total / 2 + shift)
+            if all(inside(ring, q) for _, h in houses for q in h[3]):
+                out.append(((rank, j), houses))
+    return out
 
 
 def row_houses(frame, sizes, row, setback, s):
@@ -598,7 +794,7 @@ def footway_heights(step, runs_):
     return out
 
 
-def place_terraces(step, p, chosen, small, nlots):
+def place_terraces(step, p, chosen, small, nlots, held):
     """Rules 5, 7 and 8 with `terrace`: each run of houses is levelled at its footway (cut into
     pieces where the footway climbs), each piece on one terrace with its apron, and rule 7 is taken
     per piece with the terrace's own fade and level."""
@@ -628,7 +824,7 @@ def place_terraces(step, p, chosen, small, nlots):
         for i, (asset, at, face, _) in run:
             step.out.instance(house_key(name, i), asset, at=_mm(at), face=face)
             houses += 1
-    say(step, houses, len({n for n, _, _, _ in pieces}), nlots, small, steep, len(pieces))
+    say(step, houses, held(set(steep)), nlots, small, steep, len(pieces))
 
 
 def footprint_relief(step, footprints):

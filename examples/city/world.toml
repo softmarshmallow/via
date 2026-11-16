@@ -21,7 +21,9 @@ pack       = "starter"
 #   the crossing's east end to the east gate. A north-south avenue runs gate to gate and crosses the
 #   east-west ones where the network of wards nodes them (geometry.md 8.1, Meetings).
 # - Every arterial-river meeting is a lib/ways `crossing` the arterial arrives at by name (R18);
-#   every freeway-arterial meeting is a lib/ways `interchange` (new, a stand-in: README).
+#   where the freeway meets an arterial it passes over it on a lib/ways `viaduct`, the arterial
+#   taken down onto an `interchange`'s plate beneath, and two loop `ramp`s join the deck to the
+#   plate (M5 slice 3, challenge 38: levels).
 # - The wards are the faces of the skeleton (main ways, freeway, river, crossings, limits); each
 #   district's streets are lib/town's streets step in its own pattern (`grid` at two bearings and
 #   spacings, `contour` on the hill), noded with the main ways into blocks; lots fill every block's
@@ -160,17 +162,147 @@ freeboard = 2.3
 crosses   = "river"
 flow      = "= river.flow"
 
-# The interchanges (lib/ways, R18; a stand-in at grade: README): where the freeway meets each
-# east-west arterial. Both arrive at its point by name.
+# The interchanges (lib/ways, R18; levels since M5 slice 3): where the freeway passes over an
+# east-west arterial. The arterial's two pieces arrive at its point by name; the freeway passes over
+# it on a viaduct (below). Its plate is `level`, the ground there less 3 m (the ground at its point
+# in the build of 6f9f332: 14.59, 16.45, 18.05, read from fields/height.npy), so the arterial dips
+# under the deck: flat 16 m round, banked at 1:10 out to 40 m and fading by 44 m. A plate 56 m round
+# (the ramps landing on it) took 55 houses of the rows district with its bank to 100 m.
 [feature.ix_harbor]
-kind = "interchange"
-at   = [480, 400]
+kind  = "interchange"
+at    = [480, 400]
+level = 11.6
+reach = 40
 [feature.ix_central]
-kind = "interchange"
-at   = [480, 800]
+kind  = "interchange"
+at    = [480, 800]
+level = 13.45
+reach = 40
 [feature.ix_north]
-kind = "interchange"
-at   = [480, 1350]
+kind  = "interchange"
+at    = [480, 1350]
+level = 15.05
+reach = 40
+
+# The viaducts (lib/ways): the freeway over each interchange, 300 m from 150 m south of its point
+# to 150 m north, straight; the freeway's pieces end and start at its ends by name. Each end is at
+# the ground there (the build of 6f9f332, as above), its middle (t 0.3 to 0.7) at the ground at the
+# interchange plus 3 m: 6 m over the plate. Its steepest grade, 1.5 (deck_z - z_start) / 90 m, is
+# 5.6 % (harbor), 5.8 % (central), 6.1 % (north).
+[feature.fly_harbor_s]
+at = [480, 250]
+[feature.fly_harbor_n]
+at = [480, 550]
+
+[feature.fly_harbor]
+kind      = "viaduct"
+starts_at = "fly_harbor_s"
+ends_at   = "fly_harbor_n"
+path      = []
+z_start   = 14.26
+z_end     = 15.64
+deck_z    = 17.6
+
+[feature.fly_central_s]
+at = [480, 650]
+[feature.fly_central_n]
+at = [480, 950]
+
+[feature.fly_central]
+kind      = "viaduct"
+starts_at = "fly_central_s"
+ends_at   = "fly_central_n"
+path      = []
+z_start   = 15.99
+z_end     = 16.99
+deck_z    = 19.45
+
+[feature.fly_north_s]
+at = [480, 1200]
+[feature.fly_north_n]
+at = [480, 1500]
+
+[feature.fly_north]
+kind      = "viaduct"
+starts_at = "fly_north_s"
+ends_at   = "fly_north_n"
+path      = []
+z_start   = 17.38
+z_end     = 18.54
+deck_z    = 21.05
+
+# The ramps (lib/ways): at each interchange two loops west of the freeway, where no district is. A
+# loop starts on the viaduct's deck as a place (`.deck`, its first point 1 m in from the deck's
+# west edge on its level middle), turns 270 degrees and lands 7 m beside the arterial, past the
+# plate's bank (47 to 52 m from the interchange), at a point by name, heading east. North-west:
+# radius 40 m about (429, y + 47), counter-clockwise from (469, y + 47); south-west: radius 44 m
+# about (425, y - 43), clockwise from (469, y - 43); points every 15 degrees. `z1` is the ground at
+# the foot in the build of 6f9f332; the ramp's `foot` holds it there, 6 m round, clear of the
+# plate's bank (a foot 47.5 m out met it: `authority.squeezed`). Each falls 2.6 to 3.2 m over 188 m
+# (north-west) and 207 m (south-west): 2.6 % at most.
+[feature.harbor_nw_foot]
+at = [429, 407]
+[feature.harbor_sw_foot]
+at = [425, 393]
+
+[feature.ramp_harbor_nw]
+kind      = "ramp"
+starts_at = "fly_harbor.deck"
+ends_at   = "harbor_nw_foot"
+path      = [[469.0, 447.0], [467.6, 457.4], [463.6, 467.0], [457.3, 475.3], [449.0, 481.6], [439.4, 485.6], [429.0, 487.0], [418.6, 485.6], [409.0, 481.6], [400.7, 475.3], [394.4, 467.0], [390.4, 457.4], [389.0, 447.0], [390.4, 436.6], [394.4, 427.0], [400.7, 418.7], [409.0, 412.4], [418.6, 408.4]]
+z0        = "= fly_harbor.deck_z"
+z1        = 14.95
+
+[feature.ramp_harbor_sw]
+kind      = "ramp"
+starts_at = "fly_harbor.deck"
+ends_at   = "harbor_sw_foot"
+path      = [[469.0, 357.0], [467.5, 345.6], [463.1, 335.0], [456.1, 325.9], [447.0, 318.9], [436.4, 314.5], [425.0, 313.0], [413.6, 314.5], [403.0, 318.9], [393.9, 325.9], [386.9, 335.0], [382.5, 345.6], [381.0, 357.0], [382.5, 368.4], [386.9, 379.0], [393.9, 388.1], [403.0, 395.1], [413.6, 399.5]]
+z0        = "= fly_harbor.deck_z"
+z1        = 14.97
+
+[feature.central_nw_foot]
+at = [429, 807]
+[feature.central_sw_foot]
+at = [425, 793]
+
+[feature.ramp_central_nw]
+kind      = "ramp"
+starts_at = "fly_central.deck"
+ends_at   = "central_nw_foot"
+path      = [[469.0, 847.0], [467.6, 857.4], [463.6, 867.0], [457.3, 875.3], [449.0, 881.6], [439.4, 885.6], [429.0, 887.0], [418.6, 885.6], [409.0, 881.6], [400.7, 875.3], [394.4, 867.0], [390.4, 857.4], [389.0, 847.0], [390.4, 836.6], [394.4, 827.0], [400.7, 818.7], [409.0, 812.4], [418.6, 808.4]]
+z0        = "= fly_central.deck_z"
+z1        = 16.33
+
+[feature.ramp_central_sw]
+kind      = "ramp"
+starts_at = "fly_central.deck"
+ends_at   = "central_sw_foot"
+path      = [[469.0, 757.0], [467.5, 745.6], [463.1, 735.0], [456.1, 725.9], [447.0, 718.9], [436.4, 714.5], [425.0, 713.0], [413.6, 714.5], [403.0, 718.9], [393.9, 725.9], [386.9, 735.0], [382.5, 745.6], [381.0, 757.0], [382.5, 768.4], [386.9, 779.0], [393.9, 788.1], [403.0, 795.1], [413.6, 799.5]]
+z0        = "= fly_central.deck_z"
+z1        = 16.32
+
+[feature.north_nw_foot]
+at = [429, 1357]
+[feature.north_sw_foot]
+at = [425, 1343]
+
+[feature.ramp_north_nw]
+kind      = "ramp"
+starts_at = "fly_north.deck"
+ends_at   = "north_nw_foot"
+path      = [[469.0, 1397.0], [467.6, 1407.4], [463.6, 1417.0], [457.3, 1425.3], [449.0, 1431.6], [439.4, 1435.6], [429.0, 1437.0], [418.6, 1435.6], [409.0, 1431.6], [400.7, 1425.3], [394.4, 1417.0], [390.4, 1407.4], [389.0, 1397.0], [390.4, 1386.6], [394.4, 1377.0], [400.7, 1368.7], [409.0, 1362.4], [418.6, 1358.4]]
+z0        = "= fly_north.deck_z"
+z1        = 17.88
+
+[feature.ramp_north_sw]
+kind      = "ramp"
+starts_at = "fly_north.deck"
+ends_at   = "north_sw_foot"
+path      = [[469.0, 1307.0], [467.5, 1295.6], [463.1, 1285.0], [456.1, 1275.9], [447.0, 1268.9], [436.4, 1264.5], [425.0, 1263.0], [413.6, 1264.5], [403.0, 1268.9], [393.9, 1275.9], [386.9, 1285.0], [382.5, 1295.6], [381.0, 1307.0], [382.5, 1318.4], [386.9, 1329.0], [393.9, 1338.1], [403.0, 1345.1], [413.6, 1349.5]]
+z0        = "= fly_north.deck_z"
+z1        = 17.87
+
 
 # ------------------------------------------------------------------------------------------ the skeleton: main ways
 
@@ -324,35 +456,35 @@ footway   = 4
 route     = "= 1 + 0.12 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
 smooth    = true
 
-# The freeway (lib/ways, new; a stand-in on the ground: README): south gate to north gate through
-# the three interchanges, a piece between each two.
+# The freeway (lib/ways): south gate to north gate over the three interchanges, a piece on the
+# ground between each two viaducts, ending and starting at their ends by name.
 [feature.freeway_south]
 kind      = "freeway"
 starts_at = "freeway_s"
-ends_at   = "ix_harbor"
+ends_at   = "fly_harbor.start"
 path      = []
 route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
 smooth    = true
 
 [feature.freeway_mid]
 kind      = "freeway"
-starts_at = "ix_harbor"
-ends_at   = "ix_central"
+starts_at = "fly_harbor.end"
+ends_at   = "fly_central.start"
 path      = []
 route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
 smooth    = true
 
 [feature.freeway_upper]
 kind      = "freeway"
-starts_at = "ix_central"
-ends_at   = "ix_north"
+starts_at = "fly_central.end"
+ends_at   = "fly_north.start"
 path      = []
 route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
 smooth    = true
 
 [feature.freeway_north]
 kind      = "freeway"
-starts_at = "ix_north"
+starts_at = "fly_north.end"
 ends_at   = "freeway_n"
 path      = []
 route     = "= 1 + 0.3 * pow(slope('height'), 2) + 400 * (1 - smoothstep(21, 22, abs(x - 1000 - 0.1 * (y - 800)))) + 400 * (1 - smoothstep(46, 50, min(min(x, 1600 - x), min(y, 1600 - y))))"
@@ -361,7 +493,7 @@ smooth    = true
 # The wards: the skeleton's faces within the limits (lib/town `ward`). A network owns every
 # crossing of two of its inputs, so the avenues crossing the arterials need no named place.
 [network.wards]
-from   = ["kind:main_street", "kind:freeway", "kind:crossing", "river"]
+from   = ["kind:main_street", "kind:freeway", "kind:viaduct", "kind:crossing", "river"]
 within = "limits"
 kind   = "ward"
 

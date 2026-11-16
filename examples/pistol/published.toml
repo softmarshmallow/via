@@ -1,0 +1,36 @@
+# The pistol's numbers (challenge 47): a well-known service pistol's published overall dimensions,
+# and the proportions no source gives, marked as estimates. Millimetres, whole: the lattice
+# (numbers.md 3.1). Read by make_pack.py (writes pack.toml) and measure.py (compares the build).
+# Taken from the spike's committed pistol world (centimetres there).
+
+[published]                  # sources differ on length by up to 9 mm; the longest is used
+overall_length = 219
+barrel_length  = 127
+sight_radius   = 165
+height         = 140
+width          = 33
+bore           = 11.43       # not drawn: v1 cuts no hole in a part (spec/assets.md 12.5)
+
+[estimate]                   # by eye: no source consulted gives these
+slide_h   = 0.19             # of height
+frame_h   = 0.10             # of height
+slide_w   = 0.70             # of width
+tang      = 0.055            # of overall_length: the frame's tail behind the slide
+grip_l    = 0.21             # of overall_length
+guard_r   = 0.085            # of overall_length
+grip_lean = 18               # degrees back from square; a part does not tilt in v1, so the upright
+                             # grip stands where the leaning grip's middle stood
+crown     = 2                # mm the barrel stands ahead of the slide
+sight_h   = 5                # mm
+
+[state.racked]               # the slide drawn back
+travel = 40                  # mm
+
+[accessory]                  # the accessories' own numbers, their makers' (the spike's)
+optic_l   = 30
+optic_h   = 6
+hood_h    = 20
+can_l     = 130
+can_d     = 32
+light_l   = 44
+light_h   = 20

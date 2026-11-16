@@ -1,0 +1,11 @@
+# Rank 1: returns `make_top#upper` over the same square at level 10, and `look` asks there.
+[step.make_top]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]
+params  = { key = "upper", level = 10 }
+
+[step.look]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/look.py"]

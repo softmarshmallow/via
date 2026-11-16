@@ -1,0 +1,21 @@
+name       = "follows_moved"
+extent     = [0, 0, 64, 64]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.street]
+path = [[4, 20], [60, 20]]
+
+# A row 5 m north of the street, over its middle half.
+[feature.row]
+follows = { ref = "street", span = [0.25, 0.75], offset = 5 }
+
+# Something that reads the row's shape, so a warm build computes it again.
+[feature.mid]
+on = { ref = "row", t = 0.5 }
+
+[change.moved.feature.street]
+path = [[4, 40], [60, 40]]

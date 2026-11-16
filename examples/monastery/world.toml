@@ -18,11 +18,17 @@ pack       = "starter"
 # the road's course is found over the land between its turns, the walls stand by the outline.
 #
 #   layers/compound.toml   rank 1: the hall, cells, gardens, lamps, paint, the views, the lints
+#   layers/gorge.toml      rank 2: the gorge's two walls as sheer faces (written by gorge_faces.py)
 
 [layer.compound]
 file  = "layers/compound.toml"
 owner = "compound"
 rank  = 1
+
+[layer.gorge]
+file  = "layers/gorge.toml"
+owner = "gorge"
+rank  = 2
 
 [let]
 treeline = 70                               # metres: grass below, bare rock above
@@ -36,6 +42,9 @@ treeline = 70                               # metres: grass below, bare rock abo
 # is sheer, from one post to the next: a wall eased over a few metres is walked down obliquely,
 # along a row of posts nearly parallel to it (lib/review reach: `not_sealed` twice, at a smoothstep
 # over 3 m and over 0.6 m); at its head round `tarn_site` the floor widens and sinks 8 m into a hollow the tarn fills.
+# The terrain draws that wall stair-stepped at the 1 m posts; since M5 slice 3 each wall is owned by
+# sheer faces (lib/land `sheer_cliff`, layers/gorge.toml) along the line where the step lies: the face
+# draws the drop along its line and cuts the terrain's step away under it (surfaces.md 1.3).
 # The gorge is written by its line, so moving the stream moves it (`dist('stream')` reads five
 # vertices: cheap).
 [field.height]
@@ -149,11 +158,23 @@ path      = ["turn_1", [240, 26], "turn_2", "turn_3", "turn_4", "turn_5", "turn_
 route     = "= 1 + 0.02 * pow(slope('height'), 2) + 40 * (1 - smoothstep(3, 8, min(min(x, 320 - x), min(y, 320 - y))))"
 smooth    = true
 
-# The compound: one enclosure (lib/town), its outline starting at the gate's north jamb; the gate
-# is a point on the outline, so the wall's gap is where the gate stands.
+# The compound: one enclosure (lib/town), its outline starting 1 m north of the gate's north jamb;
+# the gate is a point on the outline. The enclosure levels the yard; its terrain wall (the stand-in
+# ground 4 m up across the wall's thickness) is off (`wall = 0`): since M5 slice 3 the wall is a run
+# of the pack's wall bays (`court_wall`), masonry an engine draws and collides, owned by the run.
+# Its stretch is the outline from its start round to the gate's south jamb, so the gap is where
+# the gate stands (t 0.98333 to 1: 5 m, the gate 2 m from its south jamb).
 [feature.court]
 kind   = "enclosure"
 region = [[145, 196], [145, 220], [55, 220], [55, 160], [145, 160], [145, 190]]
+wall   = 0
+
+[run.court_wall]                            # a bay is 2 m long, 0.5 m deep, 1.6 m high: at scale 1.5, 3 m,
+asset   = "wall_bay"                        # 0.75 m and 2.4 m; its centre 0.375 m inside the outline puts
+on      = { ref = "court", span = [0, 0.98333], offset = 0.375 }   # its outer face on it
+spacing = 3
+scale   = 1.5
+face    = "toward"                          # its length (the asset's x) along the outline
 
 [feature.gate]
 kind = "gate"

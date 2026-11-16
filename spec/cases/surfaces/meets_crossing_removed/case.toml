@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3 and build.md 9.3 (M5 slice 3; slice-1 TODO): 6.3 with the crossing removed and the lanes ending free, rebuilt against the base, writes meets.json with no row, as a clean build does (U6)."
+milestone = 5
+actions   = ["base", "remove", "edit"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.check.rows]
+fn      = "json_count"
+path    = "build/base/meets.json"
+pointer = "/meets"
+count   = 4
+
+[action.remove]
+write = "world.toml"
+text  = "name       = \"mill\"\nextent     = [0, 0, 256, 256]\nresolution = 1\npack       = \"pack.toml\"\ninclude    = [\"surfaces_test\"]\n\n[field.height]\nrole = \"surface\"\nbase = 22\n\n[feature.lane_west]\nkind = \"lane\"\npath = [[0, 170], [132, 168]]\n\n[feature.lane_east]\nkind = \"lane\"\npath = [[152, 168], [256, 172]]\n"
+
+[action.edit]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--against", "build/base", "--out", "build/edit"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/edit"
+
+[action.edit.check.rows]
+fn      = "json_count"
+path    = "build/edit/meets.json"
+pointer = "/meets"
+count   = 0

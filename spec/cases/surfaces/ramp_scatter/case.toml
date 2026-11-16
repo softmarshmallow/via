@@ -1,0 +1,57 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 and 4.2 (M5 slice 3): a scatter with `surface` on a ramp rising 0.5 m a metre takes relief over the ramp, not the flat terrain: an urn (max_relief 0.2) gives way at every candidate; a pot (max_relief 1) stands, and no pot's footprint leaves the ramp's bound (y 28 to 36), so no origin lies within 0.5 m of its edge."
+milestone = 5
+actions   = ["build", "narrow"]
+
+# The pack is the case's own (two assets that differ in `max_relief`).
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+# 18 of the 20 candidates of spacing 4 whose origin lies on the ramp keep a whole footprint on it
+# (from the first implementation, M5 slice 3).
+[action.build.check.pots]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "pots#"
+count  = 18
+
+[action.build.check.urns]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "urns#"
+count  = 0
+
+[action.build.check.south]
+fn     = "no_origin_inside"
+build  = "build/w"
+points = [[0, 0], [64, 0], [64, 28.5], [0, 28.5]]
+prefix = "pots"
+
+[action.build.check.north]
+fn     = "no_origin_inside"
+build  = "build/w"
+points = [[0, 35.5], [64, 35.5], [64, 64], [0, 64]]
+prefix = "pots"
+
+# The ramp narrowed to 4 m, built against the 8 m build on one store: before the scatter's `rule`
+# value held what its run said, the warm build stopped with `diag.internal` (`held:urns` gave
+# another value when computed again), as its `place.gave_way` changed while its instances did not.
+[action.narrow]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "narrow", "--against", "build/w", "--out", "build/n"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/n"
+
+[action.narrow.check.urns]
+fn     = "names_count"
+path   = "build/n/instances/names.txt"
+prefix = "urns#"
+count  = 0

@@ -40,6 +40,13 @@
 # [0.35, 0.42] since the avenue no longer bends; hand blocks_kept 200 -> 186. lots renamed in kept
 # blocks: move_avenue 212 -> 0, move_bridge 16 -> 0 (the fix above; 0 and 0 with three way points
 # too).
+#
+# M5 slice 3 (levels): re-taken 2026-11-17 on a release `via` of the working tree at 01:03 KST (after
+# 6f9f332, with the other M5 slice 3 agents' uncommitted changes), VIA_LIB=lib, one fresh store,
+# base cold 103 s, each change --against base. The freeway passes over each arterial on a viaduct
+# with two loop ramps; the HEAD build (6f9f332, a worktree, same binary, 106 s) gave the "before"
+# numbers the rows quote. Every count of blocks, lots and houses is unchanged (houses 2291 both).
+# Rows marked OWED fail on purpose until the fix they name lands.
 
 # ------------------------------------------------------------------------------------------ base
 
@@ -99,17 +106,49 @@ band    = [6, 6]
 measure = "interchanges"
 band    = [3, 3]
 
-[base.interchange_ends]
-measure = "interchange_ends_min"
-band    = [4, 4]
+[base.interchange_ends]                     # the arterial's two pieces; 4 at HEAD (the freeway's two pieces ended
+measure = "interchange_ends_min"            # there too, at grade): the freeway passes over on a viaduct now
+band    = [2, 2]
+
+[base.viaducts]                             # M5 slice 3 (challenge 38): one over each interchange
+measure = "viaducts"
+band    = [3, 3]
+
+[base.ramps]                                # two loop ramps at each
+measure = "ramps"
+band    = [6, 6]
+
+[base.level_meetings]                       # viaduct ends with their places and the freeway (12), ramps with the deck and their feet (12)
+measure = "level_meetings"
+band    = [24, 24]
+
+[base.level_gap]                            # mm, every one of them
+measure = "level_gap_max_mm"
+band    = [0, 0]
+
+[base.headroom]                             # deck over the plate at each interchange: 3 m up and 3 m down, 6.0 measured
+measure = "headroom_min_m"
+band    = [5.5, 6.5]
+
+[base.viaduct_grade]                        # %, the deck's steepest (north, 6.12); a freeway's usual limit is about 6
+measure = "viaduct_grade_max"
+band    = [0, 6.5]
+
+[base.ramp_grade]                           # %, 2.53 measured
+measure = "ramp_grade_max"
+band    = [0, 6]
+
+[base.freeway_ix_ends]                      # freeway ends at an interchange's point: 6 at HEAD (at grade), none now
+measure = "freeway_ix_ends"
+band    = [0, 0]
 
 [base.unowned]
 measure = "geom.unowned_crossing"
 band    = [0, 0]
 
-[base.deck_dry]
-measure = "deck_wet"
-band    = [0, 0]
+[base.deck_dry]                             # the river under the three decks since M5 slice 2 (kind surfaces, not
+measure = "deck_wet"                        # causeways): 284 measured, 284 at HEAD (not re-taken in slice 2)
+band    = [284, 284]
 
 [base.bearing_spread]
 measure = "bearing_spread"
@@ -127,9 +166,9 @@ band    = [0, 0]
 measure = "edge_ends"
 band    = [94, 94]
 
-[base.reach]
-measure = "reach_held"
-band    = [6, 6]
+[base.reach]                                # OWED (M5 slice 2): 2 of 6, 2 at HEAD. lib/review's reach walks the terrain
+measure = "reach_held"                      # only; the decks are kind surfaces since slice 2, so the river cuts the
+band    = [6, 6]                            # city in two (TODO; townland's rows)
 
 [base.relief]
 measure = "place.relief"
@@ -173,7 +212,7 @@ band    = [3, 3]
 measure = "geom.unowned_crossing"
 band    = [0, 0]
 
-[move_avenue.reach]
+[move_avenue.reach]                         # OWED (as base.reach)
 measure = "reach_held"
 band    = [6, 6]
 
@@ -199,9 +238,9 @@ band    = [0, 0]
 measure = "crossing_ends_met"
 band    = [6, 6]
 
-[move_bridge.deck_dry]
-measure = "deck_wet"
-band    = [0, 0]
+[move_bridge.deck_dry]                      # as base (the river under the decks): 283 measured, the moved deck
+measure = "deck_wet"                        # over one post fewer of water
+band    = [283, 283]
 
 [move_bridge.wards_resettled]
 measure = "wards_resettled"
@@ -219,7 +258,7 @@ band    = [0, 0]
 measure = "lot_changed_in_kept_blocks"
 band    = [0, 0]
 
-[move_bridge.reach]
+[move_bridge.reach]                         # OWED (as base.reach)
 measure = "reach_held"
 band    = [6, 6]
 
@@ -248,3 +287,21 @@ band    = [186, 186]
 [hand.wards_resettled]
 measure = "wards_resettled"
 band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ levels under each change (M5 slice 3)
+
+[hand.level_gap]                            # every viaduct and ramp meeting still at a gap of 0 (mm)
+measure = "level_gap_max_mm"
+band    = [0, 0]
+
+[move_avenue.level_gap]
+measure = "level_gap_max_mm"
+band    = [0, 0]
+
+[move_bridge.level_gap]
+measure = "level_gap_max_mm"
+band    = [0, 0]
+
+[move_bridge.headroom]                      # 6.0 measured in every change
+measure = "headroom_min_m"
+band    = [5.5, 6.5]

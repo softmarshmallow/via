@@ -182,8 +182,14 @@ struct Whole {
     routed: BTreeMap<NodeId, Vec<Diag>>,
 }
 
-/// Each producer's output before hand edits.
-type PreEdit = BTreeMap<String, Vec<Placement>>;
+/// Each producer's output before hand edits, and what its run said (`place.gave_way`, "placed
+/// nothing"): the scatter's `rule` value holds both, so its `held` reader, which reports them, is
+/// keyed on them (a candidate that gives way changes no instance but changes what is said).
+#[derive(Default)]
+struct PreEdit {
+    placed: BTreeMap<String, Vec<Placement>>,
+    said: BTreeMap<String, Vec<String>>,
+}
 
 fn view(id: NodeId) -> NodeId {
     id.view(BUILD)
@@ -1508,6 +1514,14 @@ impl<'w> ModelPlan<'w> {
             if let ShapeDecl::Point(p) = &f.shape {
                 self.place_edges(p, &mut shape_edges);
             }
+            // `follows` (`graph.md` 2, "placement"): the shape reads the followed thing's. It
+            // had no edge, so a row kept its old line when its street moved, on one store
+            // (M5 `market` `move_street`: `diag.internal`, `shape:row_main_n1` unstable).
+            if let ShapeDecl::Follows(fl) = &f.shape {
+                for t in self.targets(&fl.reference) {
+                    shape_edges.push(("follows".to_string(), t));
+                }
+            }
             let shape_formula = match &f.shape {
                 ShapeDecl::Where(w) => Some(*w),
                 _ => f.route,
@@ -1746,23 +1760,6 @@ impl<'w> ModelPlan<'w> {
             if let Some(owner) = self.surface_owner(i) {
                 self.grounded_on(&owner, &mut edges, &mut statements);
             }
-            // A hand instance and the instance it stands on are not tested for overlap
-            // (`rules.md` 8.1), so neither reads the other for it: the one on a mount already
-            // reads its host's `height`, and an edge back would close a loop.
-            let stands_on = |x: &str, y: &str| {
-                d.instances.get(x).is_some_and(|i| match &i.place {
-                    Place::On(o) => o.reference.split('.').next() == Some(y),
-                    _ => false,
-                })
-            };
-            for other in &hands {
-                if other != id && !stands_on(id, other) && !stands_on(other, id) {
-                    edges.push((
-                        format!("overlap {other}"),
-                        view(NodeId::of("instance", other)),
-                    ));
-                }
-            }
             // An instance a step returned is held by every hand edit (`identity.md` 4.1).
             if id
                 .split_once('#')
@@ -1771,6 +1768,30 @@ impl<'w> ModelPlan<'w> {
                 for e in d.pins.keys().chain(d.clears.keys()) {
                     edges.push((format!("edit {e}"), view(NodeId::of("edit", e))));
                 }
+            }
+            // The overlap test of two hand instances (`rules.md` 8.1) is its own check node,
+            // which reads this instance's inputs and every other hand instance's plan; no height
+            // reads it. Held by the height, it closed a loop through any two hosts with a part
+            // on a mount each (host A's height read B's part, which reads B's height, which read
+            // A's part, which reads A's height), however far apart.
+            if hands.len() > 1 {
+                let mut over = edges.clone();
+                over.push(("height".into(), view(NodeId::of("height", id))));
+                for other in hands.iter().filter(|o| *o != id) {
+                    over.push((
+                        format!("overlap {other}"),
+                        view(NodeId::of("instance", other)),
+                    ));
+                }
+                defs.push((
+                    view(NodeId::of("overlap", id)),
+                    Def {
+                        subject: subject.clone(),
+                        statements: statements.clone(),
+                        edges: over,
+                        ..Def::default()
+                    },
+                ));
             }
             defs.push((
                 view(NodeId::of("height", id)),
@@ -3077,6 +3098,14 @@ impl<'w> ModelPlan<'w> {
                     {
                         vec![Self::merge_id()]
                     }
+                    // Two hand instances' overlap: their check node, which no height reads.
+                    "instance"
+                        if late
+                            && *d.code() == via_diag::DiagCode::Core(codes::place::OVERLAP)
+                            && self.defs.contains_key(&view(NodeId::of("overlap", id))) =>
+                    {
+                        vec![view(NodeId::of("overlap", id))]
+                    }
                     "instance" if late => vec![view(NodeId::of("height", id))],
                     "instance" => vec![view(NodeId::of("instance", id))],
                     "pin" if late => vec![view(NodeId::of("height", id))],
@@ -3395,7 +3424,7 @@ impl<'w> ModelPlan<'w> {
         if let Some(p) = slot.as_ref() {
             return p.clone();
         }
-        let mut out: BTreeMap<String, Vec<Placement>> = BTreeMap::new();
+        let mut out = PreEdit::default();
         if let Some(grid) = self.grid {
             let fm = self.fields_memo();
             let t0 = std::time::Instant::now();
@@ -3417,7 +3446,17 @@ impl<'w> ModelPlan<'w> {
             let produced = rules::scatter_all(&d, &self.p.pack, &placed, &fields, &hand);
             for p in produced.instances {
                 if let Some(m) = &p.maker {
-                    out.entry(m.clone()).or_default().push(p);
+                    out.placed.entry(m.clone()).or_default().push(p);
+                }
+            }
+            for dg in &produced.diags {
+                if let Subject::Entity { collection, id, .. } = dg.subject() {
+                    if collection == "scatter" && self.p.decls.scatters.contains_key(id) {
+                        out.said
+                            .entry(id.clone())
+                            .or_default()
+                            .push(format!("{dg:?}"));
+                    }
                 }
             }
             memo_spent(t0);
@@ -3874,7 +3913,7 @@ impl Plan for ModelPlan<'_> {
                 match place {
                     Some(Place::Of(sel)) if self.p.decls.scatters.contains_key(&sel.of) => {
                         let pre = self.pre_edit();
-                        let list = pre.get(&sel.of).map(Vec::as_slice).unwrap_or(&[]);
+                        let list = pre.placed.get(&sel.of).map(Vec::as_slice).unwrap_or(&[]);
                         e.byte(1).len(list.len());
                         for p in list {
                             e.str(&p.name)
@@ -3901,7 +3940,7 @@ impl Plan for ModelPlan<'_> {
                 let pre = self.pre_edit();
                 let mut e = Enc::new();
                 e.str("via-rule-1");
-                let list = pre.get(&s).map(Vec::as_slice).unwrap_or(&[]);
+                let list = pre.placed.get(&s).map(Vec::as_slice).unwrap_or(&[]);
                 e.len(list.len());
                 for p in list {
                     e.str(&p.name).str(&p.asset);
@@ -3910,6 +3949,11 @@ impl Plan for ModelPlan<'_> {
                         .u64(p.facing as u64);
                     e.u64(p.scale.to_bits()).u64(p.tint.to_bits());
                     e.str(&format!("{:?}", p.footprint));
+                }
+                let said = pre.said.get(&s).map(Vec::as_slice).unwrap_or(&[]);
+                e.len(said.len());
+                for d in said {
+                    e.str(d);
                 }
                 Self::val(e.finish(), Vec::new())
             }
@@ -3921,6 +3965,16 @@ impl Plan for ModelPlan<'_> {
                 diags.extend(w.routed.get(id).cloned().unwrap_or_default());
                 let mut e = Enc::new();
                 e.str("via-facts-1").len(diags.len());
+                for d in &diags {
+                    e.str(&format!("{d:?}"));
+                }
+                Self::val(e.finish(), diags)
+            }
+            "overlap" => {
+                let w = self.whole();
+                let diags = w.routed.get(id).cloned().unwrap_or_default();
+                let mut e = Enc::new();
+                e.str("via-overlap-1").len(diags.len());
                 for d in &diags {
                     e.str(&format!("{d:?}"));
                 }

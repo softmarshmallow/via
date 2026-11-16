@@ -23,9 +23,20 @@ How each is taken (ours, M5 slice 1):
   members `lay#<storey>_<run>#r<k>`), and those whose z is not their storey's `level` within 1 mm.
 - `on_floor`, `off_floor`, `off_floor_groups`: of the instances placed on a storey (a hand instance
   or set with `surface = "<storey>.floor"`, a run `on` a storey, read from the world's text), those
-  whose z is within 1 mm of the storey's level (or level - 0.76 m sink for the pack's `*_top` ids),
-  those that are not, and the names of the placements the latter belong to.
-- `shell_gave_way`: tower shell members dropped by overlap (`place.gave_way` on `run.tower_wall`).
+  whose z is within 1 mm of the storey's level less their asset's `sink` (pack.toml; the `*_top`
+  ids at -0.76 m, the upper shell at -3.25 m), those that are not, and the names of the placements
+  the latter belong to.
+- `shell_gave_way`: tower shell members dropped by overlap (`place.gave_way` on `run.tower_wall`
+  and `run.tower_wall_upper`).
+- `wall_gave_way` (M5 slice 3): wall members dropped by overlap over every run whose asset is a
+  wall piece (taxon `structure/wall` or `structure/kit` in pack.toml), and every run `lay` returns
+  (`run.lay#*`, all kit pieces).
+- `open_above_door_mm` (M5 slice 3): at the tower's doorway, the most open wall above the door
+  head. Along the `tower_step`'s line every 50 mm, at the samples inside `tower_0` within 0.3 m of
+  its outline (the shell's band), the length of the height from the door head (`tower_1`'s level,
+  the ground storey's top) to the shell's top (the highest top of a `structure/wall` piece standing
+  on `tower_0`'s level or above it, foot + `bounds` height) that no wall piece whose footprint holds
+  the sample covers; the most over the samples. 9350 before slice 3 (the gap ran the full height).
 - `crossings`: `geom.unowned_crossing` warnings (stacked flights crossing in plan).
 - `door_narrow`: lib/building's lint (`step.check.door_narrow`, check.py rule 5 with `kits`), doors
   whose clear width between wall pieces is under 0.9 m; `doors_measured`, the doors it measured.
@@ -48,7 +59,6 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TOP_SINK = 0.76
 
 
 def npy(path):
@@ -102,8 +112,12 @@ def measure(build, surfaces=None):
     out["unreached_names"] = " ".join(un)
     chk = [r for r in diags if r["code"] == "step.check.checked"]
     out["checked_meetings"] = chk[0]["data"]["meetings"] if chk else -1
-    out["shell_gave_way"] = sum(r["data"]["overlap"] for r in diags
-                                if r["code"] == "place.gave_way" and r["subject"] == "run.tower_wall")
+    out["shell_gave_way"] = sum(r["data"]["overlap"] for r in diags if r["code"] == "place.gave_way"
+                                and r["subject"] in ("run.tower_wall", "run.tower_wall_upper"))
+    walls = wall_runs()
+    out["wall_gave_way"] = sum(r["data"]["overlap"] for r in diags if r["code"] == "place.gave_way"
+                               and (r["subject"][4:] in walls or r["subject"].startswith("run.lay#")))
+    out["open_above_door_mm"] = open_above_door(d, fs, level)
     out["crossings"] = sum(1 for r in diags if r["code"] == "geom.unowned_crossing")
 
     out["door_narrow"] = sum(1 for r in diags if r["code"] == "step.check.door_narrow")
@@ -120,13 +134,15 @@ def measure(build, surfaces=None):
     out["laid_off_floor"] = sum(1 for n, v in laid
                                 if abs(v - level.get(re.match(r"(lay#\w+?_s\d+)", n).group(1), 1e9)) > 0.001)
     on = placed_on_floors()
+    sinks = pack_sinks()
+    asset_of = row_assets(d)
     good, bad, groups = 0, 0, set()
-    for n, v in zip(names, z):
+    for r, (n, v) in enumerate(zip(names, z)):
         head = re.split(r"[.#]", n)[0]
         st = on.get(head)
         if st is None or st not in level:
             continue
-        want = level[st] + (TOP_SINK if n.split(".")[-1] in TOP_ITEMS else 0)
+        want = level[st] - sinks.get(asset_of.get(r), 0.0)
         if abs(v - want) <= 0.001:
             good += 1
         else:
@@ -146,8 +162,104 @@ def measure(build, surfaces=None):
 REACH, LOW, HIGH, STEP, PAST = 3000, 0.5, 2.0, 50, 500
 
 
-def wall_boxes(d):
-    """[(corners in mm, foot z)] of every instance of a `structure/wall` asset."""
+def pack_tables():
+    """{asset id: {key: raw value text}} from pack.toml's `[asset.<id>]` tables."""
+    out, cur = {}, None
+    for line in (HERE / "pack.toml").read_text().splitlines():
+        m = re.match(r"\[asset\.(\w+)\]", line)
+        if m:
+            cur = out.setdefault(m.group(1), {})
+            continue
+        if line.startswith("["):
+            cur = None
+            continue
+        m = re.match(r"(\w+)\s*=\s*([^#]*)", line)
+        if cur is not None and m:
+            cur[m.group(1)] = m.group(2).strip()
+    return out
+
+
+def pack_sinks():
+    return {a: float(t["sink"]) for a, t in pack_tables().items() if "sink" in t}
+
+
+def wall_runs():
+    """Names of the world's runs whose asset is a wall piece (`structure/wall` or `structure/kit`)."""
+    walls = {a for a, t in pack_tables().items() if t.get("taxon", "").strip('"') in ("structure/wall", "structure/kit")}
+    out, cur = set(), None
+    for line in (HERE / "world.toml").read_text().splitlines():
+        m = re.match(r"\[run\.(\w+)\]", line)
+        if m:
+            cur = m.group(1)
+            continue
+        if line.startswith("["):
+            cur = None
+            continue
+        m = re.match(r'asset\s*=\s*"(\w+)"', line)
+        if cur is not None and m and m.group(1) in walls:
+            out.add(cur)
+    return out
+
+
+def row_assets(d):
+    """{instance row: asset id} from the manifest's chunk ranges."""
+    man = json.loads((d / "manifest.json").read_text())
+    return {r: aid for ch in man["chunks"] for aid, (first, n) in ch["instances"].items() for r in range(first, first + n)}
+
+
+def inside(p, ring):
+    x, y = p
+    k = False
+    for (ax, ay), (bx, by) in zip(ring, ring[1:] + ring[:1]):
+        if (ay > y) != (by > y) and x < ax + (y - ay) * (bx - ax) / (by - ay):
+            k = not k
+    return k
+
+
+def to_edge(p, ring):
+    best = math.inf
+    for (ax, ay), (bx, by) in zip(ring, ring[1:] + ring[:1]):
+        dx, dy = bx - ax, by - ay
+        if not dx and not dy:
+            continue
+        t = max(0.0, min(1.0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / (dx * dx + dy * dy)))
+        best = min(best, math.hypot(p[0] - ax - t * dx, p[1] - ay - t * dy))
+    return best
+
+
+def open_above_door(d, fs, level):
+    """The most open wall above the tower's door head, mm (see `open_above_door_mm` above)."""
+    by = {f["name"]: f for f in fs}
+    ring = [(p[0] * 1000, p[1] * 1000) for p in by["tower_0"]["pieces"][0]["outer"]] if "pieces" in by["tower_0"] else None
+    if ring is None:
+        return -1
+    head, base = level["tower_1"] * 1000, level["tower_0"] * 1000
+    boxes = [(pts, zp * 1000, h * 1000) for pts, zp, h in wall_boxes(d, heights=True)]
+    top = max((zp + h for pts, zp, h in boxes if zp >= base - 1 and any(inside(q, ring) for q in pts)), default=head)
+    path = [(p[0] * 1000, p[1] * 1000) for p in by["tower_step"]["points"]]
+    (ax, ay), (bx, by_) = path[0], path[-1]
+    L = math.hypot(bx - ax, by_ - ay)
+    dx, dy = (bx - ax) / L, (by_ - ay) / L
+    most = 0
+    for i in range(int((L + 2 * PAST) // STEP) + 1):
+        s = -PAST + i * STEP
+        p = (ax + dx * s, ay + dy * s)
+        if not inside(p, ring) or to_edge(p, ring) > 300:
+            continue
+        spans = sorted((zp, zp + h) for pts, zp, h in boxes if inside(p, pts))
+        covered, at = 0.0, head
+        for lo, hi in spans:
+            lo, hi = max(lo, at), min(hi, top)
+            if hi > lo:
+                covered += hi - lo
+                at = hi
+        most = max(most, round(top - head - covered))
+    return most
+
+
+def wall_boxes(d, heights=False):
+    """[(corners in mm, foot z)] of every instance of a `structure/wall` asset; with `heights`,
+    [(corners, foot z, height in metres)]."""
     man = json.loads((d / "manifest.json").read_text())
     x, y = npy(d / "instances" / "x.npy"), npy(d / "instances" / "y.npy")
     z, face = npy(d / "instances" / "z.npy"), npy(d / "instances" / "face.npy")
@@ -166,7 +278,7 @@ def wall_boxes(d):
                 for px, py in ((b[0], b[1]), (b[3], b[1]), (b[3], b[4]), (b[0], b[4])):
                     px, py = px * k * 1000, py * k * 1000
                     pts.append((x[r] + px * c + py * s_, y[r] - px * s_ + py * c))
-                out.append((pts, z[r]))
+                out.append((pts, z[r], (b[5] - b[2]) * k) if heights else (pts, z[r]))
     return out
 
 
@@ -208,9 +320,6 @@ def clear_min(d, fs):
                 best = (w, f["name"])
     return best
 
-
-# Set items standing on a table top (the pack's `*_top` ids); found by item name.
-TOP_ITEMS = {"plate_a", "plate_b", "plate_c", "plate_d", "mug", "candle", "chart", "lamp", "books"}
 
 
 def check(got, section):

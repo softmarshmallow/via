@@ -1,0 +1,7 @@
+# mount_face_test: a kind mount with a face word, for the case `mount_face` (surfaces.md 3.1).
+
+[kind.span]
+
+[kind.span.mount.a]
+t    = 0
+face = "along"

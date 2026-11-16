@@ -1,0 +1,5 @@
+# The slide drawn back (challenge 46): one edit. `upper` is a set inside the object's set, so its
+# slide and three sight posts move with it (numbers.md 5.4); the frame, grip, trigger and barrel
+# stay. The spike's variant moved six parts by hand.
+[set.parts.item.upper]
+at = [-0.032, 0]

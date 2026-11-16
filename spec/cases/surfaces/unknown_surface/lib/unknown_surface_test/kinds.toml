@@ -1,0 +1,13 @@
+# unknown_surface_test: a kind mount naming a surface its kind lacks, for the case
+# `unknown_surface` (surfaces.md 3.1).
+
+[kind.span]
+defaults = { width = 5 }
+
+[kind.span.surface.deck]
+base  = "= 24.5"
+bound = "= width / 2"
+
+[kind.span.mount.a]
+t       = 0
+surface = "dek"

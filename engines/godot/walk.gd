@@ -8,7 +8,7 @@ extends RefCounted
 ##
 ## It stops at the first of:
 ##   arrived    within ARRIVE metres of the target in plan, or against the target's own body (a walk
-##              to a house ends at its wall);
+##              to a house ends at its wall; a set's items are its placement's body);
 ##   blocked    less than STALL_PROGRESS metres nearer in STALL_TIME seconds: `by` names what it
 ##              pressed against last, an instance or `ground` (with the slope, steeper than
 ##              MAX_SLOPE degrees);
@@ -19,7 +19,9 @@ extends RefCounted
 ##   timed_out  three times the time the straight line needs, plus 5 s.
 ## Water deeper than WADE metres stops it at the shore: `blocked` by `water`, or `arrived` (by
 ## `water`) when the place it walks to stands in such water itself, as a walk to a house ends at
-## its wall.
+## its wall. Depth is taken against the feet, not the ground: the water's surface (ground plus
+## depth_at) less the feet, so a walker on a deck or a floor over deep water walks on; on the
+## ground the two are the same.
 ## Along the way it records the deepest water it waded (depth_at) and every solid instance whose
 ## footprint it walked through because the asset collides as nothing (solid_without_body): the core
 ## keeps things off such a footprint, so walking through one says the pack has not given it a body.
@@ -49,6 +51,17 @@ const EDGE := 25.0
 ## sill. Only onto a generated mesh (its body carries metadata `surface`), never onto the ground or
 ## an instance, so a slope still blocks as ground and a wall as itself.
 const STEP := 0.3
+## Following a path (`along`): a point counts as reached within WAYPOINT metres of it.
+const WAYPOINT := 0.3
+
+
+static func wading(loader, x: float, y: float, feet: float) -> float:
+	## How deep a walker whose feet are at `feet` (world metres) stands in water at (x, y): the
+	## water's surface less the feet, 0 where it is dry or the feet are above the surface.
+	var d: float = loader.depth_at(x, y)
+	if d <= 0.0:
+		return 0.0
+	return maxf(0.0, loader.ground_at(x, y) + d - feet)
 
 
 static func under(root: Node3D, top: Vector3, depth: float, exclude: Array[RID] = []) -> Dictionary:
@@ -88,6 +101,8 @@ static func _step_up(body: CharacterBody3D, facing: Vector2) -> bool:
 		return false
 	if rad_to_deg(land.get_normal().angle_to(Vector3.UP)) > MAX_SLOPE:
 		return false
+	if not (land.get_collider() as Node).has_meta("surface"):
+		return false   # onto a generated mesh only: never onto the ground or an instance
 	body.global_position = t.origin + land.get_travel()
 	return true
 
@@ -121,12 +136,16 @@ static func plan(v: Vector3) -> Vector2:
 
 ## Walks once. `root` is the loaded build in its viewport (its bodies already in the physics
 ## space); `loader` the Loader that made it; `from` the eye's world point (x, y, z: a bookmark's
-## `at` raised by its eye height) and `to` the target's; `target` the name of what `to` is. The
+## `at` raised by its eye height) and `to` the target's; `target` the name of what `to` is; `along`
+## the plan points [x, y] of a path to follow first (a bookmark's `along`, build.md 15.1), or none:
+## it aims at each point in turn, taking the next once within WAYPOINT of it or nearer the one
+## after than that point is, and only after the last at `to`; it arrives only once past them all,
+## and its progress (for `blocked`) and time limit are measured along that route. The
 ## walker stands on the highest collision straight below the eye (the terrain, a kind surface's
 ## mesh or an instance), then follows whatever it walks onto. Returns the report sheet.json
 ## carries, plus "trail": PackedVector3Array of Godot points every TRAIL_STEP metres and "facing":
 ## the last plan direction.
-static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: String, unbodied: Array) -> Dictionary:
+static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: String, unbodied: Array, along: Array = []) -> Dictionary:
 	await root.get_tree().physics_frame
 	var floor_y: float = loader.ground_min() if loader.has_ground() else from.z - 1000.0
 	var start := under(root, g(from.x, from.y, from.z), from.z - floor_y + 1000.0)
@@ -150,8 +169,18 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 	await root.get_tree().physics_frame
 
 	var goal := Vector2(to.x, to.y)
-	var straight := Vector2(from.x, from.y).distance_to(goal)
-	var limit := int((straight / SPEED * 3.0 + 5.0) / DT)
+	var ways: Array[Vector2] = []
+	for q in along:
+		ways.append(Vector2(float(q[0]), float(q[1])))
+	# tail[i]: the route's length from ways[i] through the rest to the goal; tail[n] = 0
+	var tail: Array[float] = []
+	tail.resize(ways.size() + 1)
+	tail[ways.size()] = 0.0
+	for i in range(ways.size() - 1, -1, -1):
+		tail[i] = tail[i + 1] + ways[i].distance_to(ways[i + 1] if i + 1 < ways.size() else goal)
+	var next := 0
+	var route := Vector2(from.x, from.y).distance_to(ways[0] if not ways.is_empty() else goal) + tail[0]
+	var limit := int((route / SPEED * 3.0 + 5.0) / DT)
 	var stall := int(STALL_TIME / DT)
 	var history: Array[float] = []
 	var trail := PackedVector3Array()
@@ -170,23 +199,34 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 	var ground_min := INF
 	if loader.has_ground():
 		ground_min = loader.ground_min()
-	var target_wet: bool = loader.depth_at(to.x, to.y) > WADE
+	var target_wet: bool = wading(loader, to.x, to.y, to.z) > WADE
 	for step in limit:
 		var p := plan(body.position)
+		while next < ways.size() and (p.distance_to(ways[next]) <= WAYPOINT or (next + 1 < ways.size()
+				and p.distance_to(ways[next + 1]) < ways[next].distance_to(ways[next + 1]))):
+			next += 1
+		var aim: Vector2 = ways[next] if next < ways.size() else goal
 		var left := p.distance_to(goal)
-		if left <= ARRIVE:
+		if next >= ways.size() and left <= ARRIVE:
 			report.outcome = "arrived"
 			break
-		facing = (goal - p) / left
+		var to_aim := maxf(p.distance_to(aim), 1e-6)
+		facing = (aim - p) / to_aim
 		body.velocity = Vector3(facing.x, 0, -facing.y) * SPEED + Vector3(0, vz, 0)
 		body.move_and_slide()
 		if body.is_on_floor():
 			# Against the edge of a kind surface's mesh within STEP of the feet: step onto it.
+			var stepped := false
 			for k in body.get_slide_collision_count():
 				var c := body.get_slide_collision(k)
 				if (c.get_collider() as Node).has_meta("surface") and rad_to_deg(c.get_normal().angle_to(Vector3.UP)) > MAX_SLOPE:
 					if _step_up(body, facing):
+						stepped = true
 						break
+			# Pressed into the crease where a sloping tread meets a floor's edge, the capsule
+			# reports only the tread and does not move: try the step there too (onto a mesh only).
+			if not stepped and plan(body.position).distance_to(p) < SPEED * DT * 0.25:
+				_step_up(body, facing)
 		var feet := body.position.y - HEIGHT / 2.0
 		if body.is_on_floor():
 			vz = 0.0
@@ -225,7 +265,7 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 		if trail_at >= TRAIL_STEP:
 			trail_at = 0.0
 			trail.append(Vector3(body.position.x, feet, body.position.z))
-		var d: float = loader.depth_at(q.x, q.y)
+		var d: float = wading(loader, q.x, q.y, feet)
 		if d > WADE:
 			# Too deep to wade: it stops at the shore, the step into it taken back.
 			body.position = Vector3(body.position.x - (q.x - p.x), body.position.y, body.position.z + (q.y - p.y))
@@ -257,14 +297,18 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 			else:
 				report.by = who.replace("-", ".")
 				report.slope = null
-				if report.by == target or target.begins_with(report.by + "."):
+				# its own body: the target itself, the thing a mount or end of it names
+				# (`cottage.door`), or an item of a set placement it names (`desk.chair`; an
+				# instance, not a kind surface's mesh, whose edge is stepped onto)
+				var item: bool = report.by.begins_with(target + ".") and not (hit.get_collider() as Node).has_meta("surface")
+				if report.by == target or target.begins_with(report.by + ".") or item:
 					report.outcome = "arrived"
 					report.at_target = report.by
 					break
-		history.append(left)
+		history.append(to_aim + tail[next])
 		if history.size() > stall:
 			var then: float = history.pop_front()
-			if then - q.distance_to(goal) < STALL_PROGRESS:
+			if then - (q.distance_to(aim) + tail[next]) < STALL_PROGRESS:
 				report.outcome = "blocked"
 				break
 	var end := body.position - Vector3(0, HEIGHT / 2.0, 0)

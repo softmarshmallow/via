@@ -216,8 +216,9 @@ fn normalise_numbers(v: J) -> J {
 pub struct Surface {
     grid: Grid,
     raster: Option<Raster<f32>>,
-    /// Feature id or place name to the kind surface it stands on.
-    stands: BTreeMap<String, via_model::surfaces::SurfaceOut>,
+    /// Feature id or place name to the kind surface it stands on, and whether it is a point
+    /// feature placed on it (taken on it within the bound's grace, 4.1), not a named owner.
+    stands: BTreeMap<String, (via_model::surfaces::SurfaceOut, bool)>,
 }
 
 impl Surface {
@@ -231,7 +232,10 @@ impl Surface {
         let stands = build
             .place_surface
             .iter()
-            .filter_map(|(n, s)| Some((n.clone(), build.surfaces.get(s)?.clone())))
+            .filter_map(|(n, s)| {
+                let point = build.features.get(n).is_some_and(|f| f.shape == "point");
+                Some((n.clone(), (build.surfaces.get(s)?.clone(), point)))
+            })
             .collect();
         Surface {
             grid,
@@ -252,9 +256,17 @@ impl Surface {
         J::Arr(vec![J::mm(p.0), J::mm(p.1), self.z(p)])
     }
 
-    /// [`Surface::xyz`] for the point of `name`: on the kind surface it stands on, if any.
+    /// [`Surface::xyz`] for the point of `name`: on the kind surface it stands on, if any. A
+    /// point feature the build stood on it within the bound's one-unit grace (`surfaces.md` 4.1)
+    /// takes the surface's `base` there, as `meets.json` does; a named owner outside its bound,
+    /// the terrain.
     pub fn xyz_of(&self, name: &str, p: (i64, i64)) -> J {
-        match self.stands.get(name).and_then(|s| s.z(p).ok().flatten()) {
+        let on = self.stands.get(name).and_then(|(s, point)| match s.z(p) {
+            Ok(Some(z)) => Some(z),
+            Ok(None) if *point => s.base.eval(&[p]).ok().and_then(|v| v.first().copied()),
+            _ => None,
+        });
+        match on {
             Some(z) => J::Arr(vec![J::mm(p.0), J::mm(p.1), J::dbl(z).unwrap_or(J::Null)]),
             None => self.xyz(p),
         }

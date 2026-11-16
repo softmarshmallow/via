@@ -47,6 +47,23 @@ quayside are flagged, the wall face stone. Base: 123 houses on 74 of 135 lots (w
 `place.keep_out` 0 (was 7), `place.relief` 9. The 61 empty lots are corner triangles and wedges no
 8.6 m deep house fits, and corner houses inside a cross street's keep_out.
 
+## Corners, wedges and the town wall (M5 slice 3, 2026-11-17)
+
+The town kit's owed change 3. Where two lots meet at a block's corner (the two triangles the
+corner's bisector cuts), one `house_corner` stands across both: a square house under a hipped
+roof, its front to one street and its side door to the other (houses.py rule 2c). Where no 8 m
+deep row stands clear of a street's footway, a row of `house_shallow` (6 m front, 4.5 m deep) is
+tried at every half metre along the frontage (rule 2b). A stone wall (`town_wall`, lib/town
+kit.py and the starter pack's wall kit) runs a metre outside the old town's west, north and east
+sides: end piers at its two ends and either side of each gap the land's `keep_out` opens (the
+ways out, the quay), corner piers at the two top corners, bays and fillers between, each piece
+level on its own footing. Base: 127 houses on 90 of 136 lots (was 110 on 64): 9 corner houses on
+18 lots, 8 lots of shallow houses; 46 lots empty (was 72); the wall 240 pieces in 8 stretches, 7
+gaps, none open, none off its footing. Views `corner_houses` and `wedge_house` show them; the wall
+shows in `from_gate`. Left empty: lots between two streets 10 m apart (no house clears both
+footways), 7 corner pairs too small once both streets' keep_out is cleared (most beside the main
+street, 5.25 m), and the steep lots of rule 7.
+
 ## Known faults (M3 slice 2 walk, 2026-11-15)
 
 - (Fixed, M3 slice 5 ways) The main way fell 2.38 m in its last 3 m onto the quay (`way_water`'s
@@ -66,7 +83,7 @@ quayside are flagged, the wall face stone. Base: 123 houses on 74 of 135 lots (w
   quads and 36 polygons whose frontage and depth would hold a house but no rectangle stands inside
   the outline (or the corner house falls in a cross street's keep_out), and 5 too shallow. A
   shallower `fallback` asset (houses.py rule 2b, `house_low`) filled none: it is 8 m wide. A
-  corner house facing both streets is owed.
+  corner house facing both streets is owed. (M5 slice 3: done, above; 46 lots empty.)
 - (s4 town pass) `move_hill`: `d105` now runs down from `s0` and ends on the main way where it
   crosses it (streets.py step 6), a street of 23 m between the way's hairpin and s0.
 - Dead ends are lib/review/form.py's (`dead_end_count` 0, `edge_ends` 5 in base: ends on the

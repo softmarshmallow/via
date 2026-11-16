@@ -39,11 +39,14 @@ Measured with `measure.py` and read on the sheet (`engines/godot/sheet.sh`, both
 - Every view's `toward` target on a floor gets the terrain's z in `features.json` (`lens` 0.01,
   `telescope` 0.01, `stair_2.end` 0.01, `kitchen_table` -0.01), so each camera in the tower looks
   steeply down through its floor at the ground. The eye itself stands on its floor.
-- No walk climbs a spiral flight: the sheet walks a straight line toward `toward`, and a chord of
-  a 122 degree spiral leaves the tread. The net loft's straight flight is climbed (`loft_foot`,
-  0.31 m to 3.51 m), and `down_step` crosses the step into the store.
+- (Slice 3) The spirals are climbed on foot: `up_stair_1..3` follow each flight's points (`along`,
+  build.md 15.1) to the floor above. `up_stair_3` and `in_lantern` end `blocked` against the lens,
+  their own target, because its body loads unnamed. The watch room's desk and the living room's
+  bench stood on the flights' feet; they moved. No wall member gives way (`wall_gave_way` 0, was 8)
+  and the tower's doorway is the ground storey's height, a closed upper ring over it
+  (`open_above_door_mm` 0, was 9350). `at_back_door` walks in through the door.
 - With the passage closed the walker still crosses the step (`down_step` arrives in the store):
   a closed door is the meeting taken away (the lint reports the tower unreached), not a leaf.
-- Stacked flights cross in plan: 10 `geom.unowned_crossing` warnings.
+- Stacked flights cross in plan: 16 `geom.unowned_crossing` warnings.
 - lib/building's `lay` leaves no gap in a wall between rooms for a flight: with the loft's cut at
   x = 49.3 the walk up its flight stopped at 2.89 m against it. The cut is now west of the flight.

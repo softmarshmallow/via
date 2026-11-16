@@ -492,8 +492,8 @@ Cases: `surfaces.md` Conformance, `storey_overlap`.
 |---|---|
 | two hand instances | `place.overlap`, error: two firm decisions clash (principle 3). |
 | a hand instance and a produced instance of a producer in its layer or below | The produced one gave way before it was placed (7.5 for scatters; the same overlap test for runs and steps), counted in `place.gave_way`. A hand end piece beside its run therefore replaces the bay it overlaps. |
-| a hand instance and the instance it stands on (`on` it) | Not tested: it was placed there on purpose. |
-| neighbours `k` and `k + 1` of one run, and the last and first on a closed outline | Not tested. Kit bays measure a little over their pitch, and on a curve abutting bays overlap on the inner side even at the exact pitch: the spike's college gave 22 false overlaps this way (`spike/FINDINGS.md`, college). |
+| a hand instance and the instance it stands on (`on` it), or any two whose chains of `on` reach one root (M5, `assets.md` 12.1) | Not tested: it was placed there on purpose; parts on parts of one root are one thing, as one set placement's items are. |
+| neighbours `k` and `k + 1` of one run, and the last and first on a closed outline | Not tested. Kit bays measure a little over their pitch, and on a curve abutting bays overlap on the inner side even at the exact pitch: the spike's college gave 22 false overlaps this way (`spike/FINDINGS.md`, college). A step's instances are hand instances of its document, so this exemption does not reach a kit run a library lays: the library keeps its neighbours apart itself (`lib/town/kit.py` rule 7, M5 `market`: 86 false `place.overlap` before it, by rounding to the lattice and on bends). |
 | two items of one set placement | Not tested (section 4). |
 | any other two non-scattered produced instances, of one producer or two | `place.crowded`, warning, naming both. |
 | a lower layer's produced instance and anything in a higher layer | `place.crowded`, warning, naming both (3.4: giving way reads down only). |
@@ -573,7 +573,14 @@ step reaches (R19b). For every form:
 Each form, in a line; their cases are the libraries':
 
 - **Kit run** (building library, M3): a `run` with `count`, `ends = "half"`, and one pad feature
-  under the row. The fit (`count * module` against the length) is the library's lint.
+  under the row. The fit (`count * module` against the length) is the library's lint. The town
+  library's kit run (M5, `lib/town/kit.py`) lowers to plain instances: end pieces centred on a
+  path's ends and either side of each gap `keep_out` opens, a corner piece at each turn, bays at
+  `params.pitch` and fillers for the rest, what is left spread over the joints or taken by a
+  gap's edge, each piece level at its origin with `sink` as its footing; a stretch that cannot
+  close is the step's error naming the lengths that would. With `ends = "inside"` (a row of
+  houses, `market`) an end piece stands wholly inside its stretch and a free end takes what is
+  left; neighbours whose chords turn, or that would meet once rounded to the lattice, stand apart.
 - **Dress** (M5): a `scatter` with `within` naming the region to dress, often a footprint feature
   (`within = "cottage.ground"`). A table top that is a surface is `surfaces.md`'s.
 - **Flank** (M5): a set of two items placed `on` the host's mount, turning with it (3.3).

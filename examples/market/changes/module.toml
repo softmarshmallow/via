@@ -1,0 +1,4 @@
+# The second change: a piece's module changed. The bay is re-exported on a 6 m module in place of
+# 5 m (`params.pitch` 6, packs/make_kit.py), so every row re-fits: whole bays, then fillers,
+# what is left to the free ends and the joints (lib/town/kit.py rules 4 and 5).
+pack = "packs/module.toml"

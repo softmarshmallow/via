@@ -1,0 +1,15 @@
+# Written by make_pack.py. An accessory overlay: a reflex sight on the slide, attached to the socket
+# `slide.optic` (spec/assets.md 12.3). Its parts are a set in its own frame, whose origin is
+# the socket; the host is not written again. Build with --change accessories/optic.toml.
+
+[set.optic.item.optic_base]
+asset = "optic_base"
+at    = [0, 0]
+
+[set.optic.item.optic_hood]
+asset = "optic_hood"
+at    = [0.013, 0]
+
+[instance.optic]
+set = "optic"
+on  = { ref = "slide.optic" }

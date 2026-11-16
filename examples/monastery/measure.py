@@ -23,11 +23,25 @@ Protocol of each measure:
   two legs 0.27 m apart at (256, 20), 97 such pairs).
 - **Deck** (R18). `decks`, features of kind `crossing`; `deck_wet` the deck's posts (within half its
   `width` of its line, between its ends) where the water stands over the ground by more than 1 mm.
-- **Wall and gate** (lib/town `enclosure`). The court's level is the ground at the well. Walking the
-  court's outline every 1 m, 0.75 m inside it: `wall_low` counts samples farther than 3 m from the
-  gate where the ground stands less than 3.5 m above the court; `gate_step` is the largest
-  difference, in centimetres, between the court's level and the ground across the gate (from 1.5 m
-  outside the outline to 1.5 m inside it, on the gate's normal).
+- **Wall and gate** (lib/town `enclosure`; since M5 slice 3 the wall is lib/town kit.py's pieces
+  along `court_wall`, not the terrain). The court's level is the ground at the well. Walking the
+  court's outline every 1 m, 0.25 m inside it: `wall_low` counts samples farther than 3 m from the
+  gate where the ground stands less than 3.5 m above the court and no wall piece covers the point
+  (its plan bounds from the pack's facts, lib/packs/starter.facts.toml, times its scale, turned by
+  its face; instances/x, y, face, scale.npy, the asset from manifest.json's chunks); `wall_members`
+  counts the pieces.
+  `gate_open_m` is the longest stretch of the outline (sampled every 0.1 m within 6 m of the gate)
+  that no member covers: the gap a walker passes. `gate_step` is the largest difference, in
+  centimetres, between the court's level and the ground across the gate (from 1.5 m outside the
+  outline to 1.5 m inside it, on the gate's normal).
+- **Gorge faces** (M5 slice 3; lib/land `sheer_cliff`, layers/gorge.toml). Quad (j, i) is the square
+  from post (i, j), cut when fields/height.cut.npy holds 1 there (build.md 6.5); its span is its
+  four posts' highest less lowest, in metres. `gorge_step_max_m` is the largest span of a quad not
+  cut whose centre lies within 20 m of the stream's line (features.json), away from the bridge (20
+  m of its middle) and the tarn's water: the stair-step the terrain still draws there;
+  `gorge_steep` counts those quads with a span over 2 m. `faces` counts features of kind
+  `sheer_cliff`; `face_cut` the cut quads whose centre lies within 0.75 m (the faces' `lip`) of a
+  face's line; `face_gap_max_mm` the largest |gap| over meets.json rows between two faces.
 - **Reach** (lib/review reach): `reach_held`, `reach_pairs` from `step.reach.walked`; `unreached`,
   `not_sealed`, `stranded` the counts of those records.
 - **Against a base**: `instances_added`, `instances_removed` by name; `road_kept` the number of the
@@ -137,11 +151,53 @@ def deck(fs, h, w):
     return m
 
 
-def wall(fs, h):
+def npy(path):
+    raw = Path(path).read_bytes()
+    hlen = struct.unpack("<H", raw[8:10])[0]
+    head = raw[10:10 + hlen].decode()
+    code = {"<i4": "i", "<f4": "f", "<f8": "d", "|u1": "B"}[head.split("'descr': '")[1].split("'")[0]]
+    body = raw[10 + hlen:]
+    return struct.unpack(f"<{len(body) // struct.calcsize(code)}{code}", body)
+
+
+def wall_bays(d, names):
+    """Each piece of the wall (`wall#court_wall...`, lib/town kit.py) as (x, y, front, right, x0, x1,
+    y0, y1): its plan bounds from the pack's facts (lib/packs/starter.facts.toml `bounds`) times its
+    scale, its asset from manifest.json's chunks."""
+    import tomllib
+    ins = Path(d) / "instances"
+    xs, ys, fa, sc = (npy(ins / f"{k}.npy") for k in ("x", "y", "face", "scale"))
+    asset = {}
+    for c in json.loads((Path(d) / "manifest.json").read_text()).get("chunks", []):
+        for a, (start, count) in c.get("instances", {}).items():
+            for k in range(start, start + count):
+                asset[k] = a
+    facts = tomllib.loads((Path(__file__).resolve().parents[2] / "lib/packs/starter.facts.toml").read_text())["asset"]
+    out = []
+    for k, n in enumerate(names):
+        if n.startswith(("wall#court_wall", "court_wall#")):
+            b = math.radians(fa[k] / 1000)
+            bx = facts[asset[k]]["bounds"]
+            out.append((xs[k] / 1000, ys[k] / 1000, (math.sin(b), math.cos(b)), (math.cos(b), -math.sin(b)),
+                        bx[0] * sc[k], bx[3] * sc[k], bx[1] * sc[k], bx[4] * sc[k]))
+    return out
+
+
+def covered(bays, x, y):
+    for cx, cy, fr, rt, x0, x1, y0, y1 in bays:
+        dx, dy = x - cx, y - cy
+        u, v = dx * rt[0] + dy * rt[1], dx * fr[0] + dy * fr[1]
+        if x0 - 1e-6 <= u <= x1 + 1e-6 and y0 - 1e-6 <= v <= y1 + 1e-6:
+            return True
+    return False
+
+
+def wall(fs, h, d, names):
     by = {f["name"]: f for f in fs}
     court, gate, well = by.get("court"), by.get("gate"), by.get("well")
     if not (court and gate and well):
         return {}
+    bays = wall_bays(d, names)
     level = h(*well["at"][:2])
     ring = [p[:2] for p in court["pieces"][0]["outer"]]
     if ring[0] != ring[-1]:
@@ -159,11 +215,73 @@ def wall(fs, h):
             nx_, ny_ = -nx_, -ny_
         if math.hypot(x - gx, y - gy) < 0.5:
             normal = (nx_, ny_)
-        if math.hypot(x - gx, y - gy) > 3 and h(x + 0.75 * nx_, y + 0.75 * ny_) - level < 3.5:
+        px, py = x + 0.25 * nx_, y + 0.25 * ny_
+        if math.hypot(x - gx, y - gy) > 3 and h(px, py) - level < 3.5 and not covered(bays, px, py):
             low += 1
     nx_, ny_ = normal or (-1.0, 0.0)
     step = max(abs(h(gx + k * 0.5 * nx_, gy + k * 0.5 * ny_) - level) for k in range(-3, 4))
-    return {"wall_low": low, "gate_step": round(step * 100), "court_level": round(level, 2)}
+    run = best = 0.0
+    for x, y, a in walk(ring, 0.1):
+        if math.hypot(x - gx, y - gy) > 6:
+            run = 0.0
+            continue
+        nx_, ny_ = -math.sin(a), math.cos(a)
+        if (cx - x) * nx_ + (cy - y) * ny_ < 0:
+            nx_, ny_ = -nx_, -ny_
+        run = 0.0 if covered(bays, x + 0.25 * nx_, y + 0.25 * ny_) else run + 0.1
+        best = max(best, run)
+    return {"wall_low": low, "gate_step": round(step * 100), "court_level": round(level, 2),
+            "wall_members": len(bays), "gate_open_m": round(best, 1)}
+
+
+def seg_dist(p, pts):
+    best = math.inf
+    for a, b in zip(pts, pts[1:]):
+        ax, ay = b[0] - a[0], b[1] - a[1]
+        L2 = ax * ax + ay * ay or 1e-12
+        u = min(max(((p[0] - a[0]) * ax + (p[1] - a[1]) * ay) / L2, 0.0), 1.0)
+        best = min(best, math.hypot(p[0] - a[0] - u * ax, p[1] - a[1] - u * ay))
+    return best
+
+
+def faces(d, fs, shape, hv, wv):
+    d = Path(d)
+    ny, nx = shape
+    cutp = d / "fields" / "height.cut.npy"
+    cut = npy(cutp) if cutp.exists() else None
+    by = {f["name"]: f for f in fs}
+    lines = [[p[:2] for p in f["points"]] for f in fs if f.get("kind") == "sheer_cliff"]
+    stream = [p[:2] for p in by["stream"]["points"]]
+    br = by.get("bridge")
+    mid = None
+    if br:
+        a, b = br["points"][0], br["points"][-1]
+        mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+    worst, steep, face_cut = 0.0, 0, 0
+    for j in range(ny - 1):
+        for i in range(nx - 1):
+            c = (i + 0.5, j + 0.5)
+            is_cut = cut is not None and cut[j * (nx - 1) + i] == 1
+            if is_cut and lines and min(seg_dist(c, ln) for ln in lines) <= 0.75:
+                face_cut += 1
+            if is_cut or abs(c[0] - 200) > 40:
+                continue
+            if seg_dist(c, stream) > 20 or (mid and math.dist(c, mid) < 20):
+                continue
+            ks = (j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1)
+            if any(wv[k] - hv[k] > 0.001 for k in ks):
+                continue
+            span = max(hv[k] for k in ks) - min(hv[k] for k in ks)
+            worst = max(worst, span)
+            steep += span > 2
+    gap = 0
+    mp = d / "meets.json"
+    if mp.exists():
+        for r in json.loads(mp.read_text()).get("meets", []):
+            if r["a"].startswith("gorge_") and r["b"].startswith("gorge_"):
+                gap = max(gap, abs(r["gap"]))
+    return {"gorge_step_max_m": round(worst, 2), "gorge_steep": steep, "faces": len(lines),
+            "face_cut": face_cut, "face_gap_max_mm": gap}
 
 
 def measures(d):
@@ -187,7 +305,8 @@ def measures(d):
     m["lakes"] = sum(1 for f in fs if f.get("kind") == "lake")
     m.update(road(fs, h))
     m.update(deck(fs, h, w))
-    m.update(wall(fs, h))
+    m.update(wall(fs, h, d, names))
+    m.update(faces(d, fs, shape, hv, wv))
     m.update(meetings(d))
     m["errors"] = sum(1 for x in diags if x["severity"] == "error")
     m["warnings"] = sum(1 for x in diags if x["severity"] == "warning")

@@ -1,0 +1,61 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 and 4.2 (M5 slice 3 fix): a step's returned instance is not tested by surface.through, with or without a hand edit in the world. Before: `gen#mast` reaching through the deck gave surface.through, until a clear of `gen#spare` far away made its maker the step and the warning went."
+milestone = 5
+actions   = ["program", "trust", "plain", "add_clear", "trust_again", "cleared"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.plain]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.plain.diag.east]
+code    = "surface.unmet"
+subject = "feature.mill_bridge"
+data    = { place = "mill_bridge.east_head" }
+
+[action.plain.diag.west]
+code    = "surface.unmet"
+subject = "feature.mill_bridge"
+data    = { place = "mill_bridge.west_head" }
+
+[action.add_clear]
+replace = "world.toml"
+find    = "# (a hand edit)"
+with    = "[clear.drop]\nat     = [20, 20]\nradius = 2\nby     = [\"gen\"]"
+
+[action.trust_again]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.cleared]
+via         = ["build", "world.toml", "--out", "build/c"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/c"
+
+[action.cleared.diag.east]
+code    = "surface.unmet"
+subject = "feature.mill_bridge"
+data    = { place = "mill_bridge.east_head" }
+
+[action.cleared.diag.west]
+code    = "surface.unmet"
+subject = "feature.mill_bridge"
+data    = { place = "mill_bridge.west_head" }

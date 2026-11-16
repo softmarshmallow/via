@@ -1,0 +1,56 @@
+format    = "via-case-1"
+summary   = "assets.md 12.1, rules.md 8.1: parts on parts on one root (a slide on a frame, a sight on the slide, a muzzle device on a barrel on the frame), every part solid and overlapping its neighbours: no place.overlap and no graph.cycle; turning the root turns every part. Before the one-root rule: graph.cycle through the overlap edges."
+milestone = 5
+actions   = ["build", "turn"]
+
+# frame at (10, 10); slide on frame.slide at [1, 0] -> (11, 10); sight on slide.sight at [2, 0] ->
+# (13, 10); barrel on frame.barrel at [2, 0] -> (12, 10); can on barrel.muzzle at [1, 0] -> (13, 10).
+# Turned to 90 (east): the frame's +x runs south, so slide (10, 9), sight (10, 7), barrel (10, 8),
+# can (10, 7).
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.build.check.sight]
+fn = "instance_at"
+build = "build/w"
+name = "sight"
+at = [13, 10]
+face = 0
+
+[action.build.check.can]
+fn = "instance_at"
+build = "build/w"
+name = "can"
+at = [13, 10]
+face = 0
+
+[action.turn]
+via         = ["build", "world.toml", "--change", "turn", "--out", "build/t"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/t"
+
+[action.turn.check.slide]
+fn = "instance_at"
+build = "build/t"
+name = "slide"
+at = [10, 9]
+face = 90000
+
+[action.turn.check.sight]
+fn = "instance_at"
+build = "build/t"
+name = "sight"
+at = [10, 7]
+face = 90000
+
+[action.turn.check.can]
+fn = "instance_at"
+build = "build/t"
+name = "can"
+at = [10, 7]
+face = 90000

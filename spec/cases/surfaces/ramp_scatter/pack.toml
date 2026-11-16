@@ -1,0 +1,14 @@
+# ramp_scatter's pack: the surfaces pack's taxa and two pots that differ only in `max_relief`.
+[taxon."prop"]
+
+[asset.urn]
+primitive  = "box"
+size       = [1, 1, 1]
+taxon      = "prop"
+max_relief = 0.2
+
+[asset.pot]
+primitive  = "box"
+size       = [1, 1, 1]
+taxon      = "prop"
+max_relief = 1

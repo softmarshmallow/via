@@ -1,0 +1,20 @@
+name       = "parts"
+extent     = [0, 0, 40, 40]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[set.kit.item.f]
+asset = "frame"
+at    = [0, 0]
+
+[instance.k]
+set = "kit"
+at  = [10, 10]
+
+[instance.sl]
+asset = "slide"
+on    = { ref = "k.f.slide" }

@@ -9,7 +9,7 @@ extends SceneTree
 const Loader := preload("res://addons/via_loader/loader.gd")
 const Walk := preload("res://walk.gd")
 
-const EXPECTED := 21
+const EXPECTED := 25
 var failed := 0
 var ran := 0
 
@@ -99,6 +99,35 @@ func _run() -> void:
 	r = await Walk.walk(root, loader, Vector3(37, 5, Walk.EYE), Vector3(37, 13, 0.6), "elsewhere", [])
 	check("plinth.floor, 0.6 m up, blocks", r.outcome == "blocked" and r.by == "plinth.floor" and r.stop[1] < 10.0,
 		Walk.summary(r) + " " + str(r.stop))
+
+	# deep water under the hall and west of it (2 m deep from x = 10 to x = 26): the walker on the
+	# floor 1 m above its surface walks on; on the ground it stops at the shore (depth against the
+	# feet, walk.gd)
+	var wet: Array = []
+	for k in loader._height.size():
+		var x: float = loader._x0 + (k % loader._nx) * loader._res
+		wet.append(loader._height[k] + (2.0 if x >= 10.0 and x <= 26.0 else -1.0))
+	var dry_water: PackedFloat32Array = loader._water
+	loader._water = PackedFloat32Array(wet)
+	r = await Walk.walk(root, loader, Vector3(14, 12, 3.0 + Walk.EYE), Vector3(22, 12, 3.0), "hall_east", [])
+	check("on hall.floor over 2 m of water it walks on, wading nothing", r.outcome == "arrived" and r.on.stop == "hall.floor"
+		and r.deepest == null, Walk.summary(r) + " " + str(r.deepest))
+	r = await Walk.walk(root, loader, Vector3(1, 12, Walk.EYE), Vector3(17, 12, 3.0), "hall", [])
+	check("up the tread over the water onto hall.floor", r.outcome == "arrived" and r.on.stop == "hall.floor"
+		and r.deepest == null, Walk.summary(r) + " " + str(r.deepest))
+	r = await Walk.walk(root, loader, Vector3(5, 3, Walk.EYE), Vector3(32, 3, 0.0), "elsewhere", [])
+	check("on the ground it stops at the shore, blocked by water", r.outcome == "blocked" and r.by == "water"
+		and r.stop[0] > 8.5 and r.stop[0] < 10.0, Walk.summary(r) + " " + str(r.stop))
+	loader._water = dry_water
+
+	# along a path (a bookmark's `along`): north 3 m, east 5 m, then to the target 3 m south; a
+	# straight walk would be 5 m
+	r = await Walk.walk(root, loader, Vector3(1, 3, Walk.EYE), Vector3(6, 3, 0.0), "elsewhere", [], [[1, 6], [6, 6]])
+	var most_north := -INF
+	for q in r.trail:
+		most_north = maxf(most_north, Walk.plan(q).y)
+	check("along a path it passes each point, then arrives", r.outcome == "arrived" and most_north > 5.6
+		and r.walked > 8.5 and r.walked < 11.0, Walk.summary(r) + " north %.2f" % most_north)
 
 	root.queue_free()
 	check("every check ran", ran >= EXPECTED - 1, "%d of %d" % [ran + 1, EXPECTED])

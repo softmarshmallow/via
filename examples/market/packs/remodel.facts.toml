@@ -1,0 +1,77 @@
+# Written by via pack accept. Do not edit.
+
+[asset.row_bay]
+bounds = [-2.5, -4.3, 0, 2.5, 4.3, 8.2]
+origin = [0, 0, 0]
+footprint = [[-2.5, -4], [2.5, -4], [2.5, 4], [-2.5, 4]]
+triangles = 44
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0.6
+max_relief = 1.2
+colour = [0.8, 0.8, 0.8]
+taxon = "building/row"
+tags = ["role:wall"]
+mounts = { door = { at = [0, 4], face = 0 } }
+params = "a266d3e934fcd2b26d05c79cb41a218a47c790da11f0dfa0a8175994682f8654"
+files = { "row_bay.glb" = "da1bd6877d905b97826493bc44d18349ce1fba7f15983c4598935ed84ceaf28d" }
+
+[asset.row_corner]
+bounds = [-3.3, -3.3, 0, 3.3, 3.3, 11.2]
+origin = [0, 0, 0]
+footprint = [[-3, -3], [3, -3], [3, 3], [-3, 3]]
+triangles = 54
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0.6
+max_relief = 1.2
+colour = [0.8, 0.8, 0.8]
+taxon = "building/row"
+tags = ["role:corner"]
+mounts = { door = { at = [0, 3], face = 0 }, side = { at = [3, 0], face = 90 } }
+params = "675dba90985185e4eeb9177fcc55b061b8d2787e02553f3e42dbc1ea2c2783ab"
+files = { "row_corner.glb" = "a9d69395b53b0eae659fbac68643a34186ebd030c4ed3520f1e7d02a0cddf3f0" }
+
+[asset.row_end]
+bounds = [-3.3, -4.3, 0, 3.3, 4.3, 8.8]
+origin = [0, 0, 0]
+footprint = [[-3, -4], [3, -4], [3, 4], [-3, 4]]
+triangles = 42
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0.6
+max_relief = 1.2
+colour = [0.8, 0.8, 0.8]
+taxon = "building/row"
+tags = ["role:end"]
+mounts = { door = { at = [0, 4], face = 0 } }
+params = "675dba90985185e4eeb9177fcc55b061b8d2787e02553f3e42dbc1ea2c2783ab"
+files = { "row_end.glb" = "263ebcbcc149bf7ef6af3acf76f7d6176892c9c0c42323f7e3ebe863f14baaa2" }
+
+[asset.row_filler]
+bounds = [-1.25, -4.3, 0, 1.25, 4.3, 7.2]
+origin = [0, 0, 0]
+footprint = [[-1.25, -4], [1.25, -4], [1.25, 4], [-1.25, 4]]
+triangles = 44
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0.6
+max_relief = 1.2
+colour = [0.8, 0.8, 0.8]
+taxon = "building/row"
+tags = ["role:filler"]
+mounts = { door = { at = [0, 4], face = 0 } }
+params = "fb43a63e03a983be009da7a54da87db0bda3c567cce5a33d5b7256c15de2335c"
+files = { "row_filler.glb" = "e298433d67cdedf28af48597e551867a964b80065e07105edac5220856f13133" }

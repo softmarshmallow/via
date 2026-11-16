@@ -1,0 +1,10 @@
+# apart_test: a pair of mounts written at two plan points, for the case `apart` (surfaces.md 3.4).
+
+[kind.span]
+
+[kind.span.mount.a]
+t = 0
+
+[kind.span.mount.b]
+t     = 0.1
+meets = "a"
