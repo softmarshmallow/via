@@ -168,6 +168,48 @@ func _setup(the_loader, the_root: Node3D) -> void:
 			_far_mesh_nodes[i] = m
 
 
+## The far mask's colours (ours; the sheet's `--far-mask`, compare_views' "why"): the far layers
+## drawn unshaded in colours no pack colour takes, so a view drawn again with the mask on differs
+## from the plain one exactly where a far layer shows, and the hue says which.
+const MASK_INSTANCES := Color(1, 0, 1)
+const MASK_GROUND := Color(0, 1, 1)
+var _plain := {}   # node -> its own material while the mask is on
+
+
+func set_far_mask(on: bool) -> void:
+	## Draws the far instances in MASK_INSTANCES and the far ground, its skirts and water and the
+	## far meshes in MASK_GROUND, unshaded, each still hidden where its chunk is loaded; off puts
+	## their own materials back.
+	if not on:
+		for n in _plain:
+			if is_instance_valid(n):
+				n.material_override = _plain[n]
+		_plain.clear()
+		return
+	if not _plain.is_empty():
+		return
+	var nodes: Array = []
+	if _far != null:
+		nodes.append([_far, MASK_GROUND])
+		for w in _far.get_children():
+			nodes.append([w, MASK_GROUND])
+	if _far_things != null:
+		nodes.append([_far_things, MASK_INSTANCES])
+	for i in _far_mesh_nodes:
+		nodes.append([_far_mesh_nodes[i], MASK_GROUND])
+	for e in nodes:
+		var n: GeometryInstance3D = e[0]
+		_plain[n] = n.material_override
+		var shader := Shader.new()
+		shader.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform sampler2D loaded : filter_nearest, repeat_disable;\nuniform bool masked;\nuniform vec3 colour;\nvoid fragment() {\n\tif (masked && texelFetch(loaded, ivec2(floor(UV)), 0).r > 0.5) {\n\t\tdiscard;\n\t}\n\tALBEDO = colour;\n}\n"
+		var mat := ShaderMaterial.new()
+		mat.shader = shader
+		mat.set_shader_parameter("colour", Vector3(e[1].r, e[1].g, e[1].b))
+		mat.set_shader_parameter("masked", n == _far or n == _far_things or n.get_parent() == _far)
+		mat.set_shader_parameter("loaded", _far_tex)
+		n.material_override = mat
+
+
 func _far_mesh_shown(i: int, shown: bool) -> void:
 	if _far_mesh_nodes.has(i):
 		_far_mesh_nodes[i].visible = shown

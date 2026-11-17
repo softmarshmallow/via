@@ -1,0 +1,17 @@
+format    = "via-case-1"
+summary   = "A world built from its own folder (`cwd`) whose import is `../x/world.toml`: the import is found beside the world's folder and the build exits 0 with no diagnostic; the same world built from the folder above agrees (M6 close: a fresh agent's import from its own folder was doc.file_missing). A regression guard, not a fix proof: it passes on the M6 close engine too (M7 slice 1 review); it holds the runner's `cwd` key, without which no case builds from a world's own folder."
+milestone = 7
+actions   = ["inside", "above"]
+
+[action.inside]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "../build/inside"]
+cwd         = "w"
+exit        = 0
+diagnostics = "exact"
+out         = "build/inside"
+
+[action.above]
+via         = ["build", "w/world.toml", "--lib", "{work}/libs", "--out", "build/above"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/above"

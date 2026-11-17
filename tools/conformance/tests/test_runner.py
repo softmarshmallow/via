@@ -270,6 +270,19 @@ class RunTests(Base):
         with self.assertRaises(model.CaseError):
             model.parse_case(bad, "build")
 
+    def test_cwd(self) -> None:
+        """conformance.md 3.3 `cwd`: the binary runs in that folder of the working folder, so its
+        own relative paths are read from there; `out` stays relative to the working folder."""
+        inside = BUILD.replace('to   = "."', 'to   = "w"').replace(
+            'via  = ["build", "world.toml", "--out", "build/t"]',
+            'via  = ["build", "world.toml", "--out", "../build/t"]\ncwd  = "w"')
+        self.assertPass(self.run_folder(self.case(inside)))
+        # Without it the world is not found from the working folder's root.
+        outside = inside.replace('cwd  = "w"\n', "")
+        self.assertEqual(self.run_folder(self.case(outside)).status, "fail")
+        with self.assertRaises(model.CaseError):
+            model.parse_case(self.case(inside.replace('cwd  = "w"', 'cwd  = "/w"')), "build")
+
     def test_build_checks_pass(self) -> None:
         o = self.run_folder(self.case(BUILD.replace('actions   = ["build"]', 'actions = ["build", "again", "usage"]') + """\
             [action.build.diag.first]

@@ -91,6 +91,13 @@ when    = "generate"
 worker  = true
 command = ["python", "-m", "viasdk", "lib:water/fill.py"]
 
+[step.parapet]                              # lib/ways: the deck's two rows of posts (M7 slice 1: `bm_deck`
+when     = "generate"                       # walked off the deck's side and fell 14.1 m, alone and in atlas)
+worker   = true
+for_each = "kind:crossing"
+command  = ["python", "-m", "viasdk", "lib:ways/parapet.py"]
+params   = { asset = "fence_post", spacing = 2 }
+
 # ------------------------------------------------------------------------------------------ the ways
 
 # The crossing (R18, lib/ways): its two ends stand on the gorge's rims, 14 m either side of the

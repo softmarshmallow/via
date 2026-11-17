@@ -185,6 +185,43 @@ class Labels(unittest.TestCase):
         E["place_labels"](lbs, 1.0, [6, 11], [0, 0, 100, 100])
         self.assertEqual(lbs[0]["box"], [22.0, 52.0, 48.0, 65.0])                  # upper left instead
 
+    def test_a_label_stands_off_a_footprint_where_it_can(self):
+        # build.md 9.4 Labels (M7): upper right is first, but a house stands there, so upper left.
+        house = {"name": "h", "kind": "house", "from": "instance",
+                 "pieces": [[[[53.0, 53.0], [70.0, 53.0], [70.0, 60.0], [53.0, 60.0]]]]}
+        lb = [{"key": "a", "class": "label", "text": "Mill", "at": [50.0, 50.0]}]
+        E["place_labels"](lb, 1.0, [6, 11], [0, 0, 100, 100], [house])
+        self.assertEqual(lb[0]["box"], [22.0, 52.0, 48.0, 65.0])
+        # a turned house (a diamond) whose corners all lie outside the upper-right box still meets
+        # it by its edges
+        diamond = {"name": "d", "kind": "house", "from": "instance",
+                   "pieces": [[[[65.0, 40.0], [90.0, 58.5], [65.0, 77.0], [40.0, 58.5]]]]}
+        lb = [{"key": "a", "class": "label", "text": "Mill", "at": [50.0, 50.0]}]
+        E["place_labels"](lb, 1.0, [6, 11], [0, 0, 100, 100], [diamond])
+        self.assertNotEqual(lb[0]["box"], [52.0, 52.0, 78.0, 65.0])
+        # houses all round: placed over one rather than not at all, at the first position
+        town = {"name": "t", "kind": "house", "from": "instance",
+                "pieces": [[[[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]]]]}
+        lb = [{"key": "a", "class": "label", "text": "Mill", "at": [50.0, 50.0]}]
+        E["place_labels"](lb, 1.0, [6, 11], [0, 0, 100, 100], [town])
+        self.assertEqual(lb[0]["box"], [52.0, 52.0, 78.0, 65.0])
+
+    def test_the_whole_map_places_labels_off_footprints(self):
+        # through make_map at 16 px a metre: the inn's label stands upper right of (12, 9), or,
+        # with a house standing there (13 to 15, 8.6 to 10.6), elsewhere and off it
+        p = E["params_of"]({"ways": {"lane": "lane"}, "buildings": ["building"], "label_zoom": 16.0})
+        house = {"name": "h1", "asset": "house_a", "x": 14.0, "y": 9.6, "z": 1.0, "face": 0, "scale": 1.0}
+        boxes = []
+        for inst in ([], [house]):
+            w = world()
+            w["instances"] = inst
+            w["pack"] = {"house_a": {"bounds": [-1.0, -1.0, 0.0, 1.0, 1.0, 3.0], "taxon": "building/house"}}
+            files, _ = E["make_map"](w, p)
+            boxes.append(next(x for x in json.loads(files["labels.json"])["labels"] if x["key"] == "inn")["box"])
+        ring = [(13.0, 8.6), (15.0, 8.6), (15.0, 10.6), (13.0, 10.6)]
+        self.assertTrue(boxes[0][0] > 12.0 and boxes[0][1] > 9.0 and E["box_meets_ring"](boxes[0], ring), boxes)
+        self.assertFalse(E["box_meets_ring"](boxes[1], ring), boxes)
+
     def test_a_region_label_is_centred_first(self):
         lb = [{"key": "a", "class": "region", "text": "Vale", "at": [50.0, 50.0]}]
         E["place_labels"](lb, 1.0, [6, 11], [0, 0, 100, 100])
@@ -264,6 +301,51 @@ class Strokes(unittest.TestCase):
         self.assertNotEqual(rows[11][5], foot)
         fp = json.loads(files["vectors.json"])["footprints"]
         self.assertEqual([(f["name"], f["from"]) for f in fp], [("h1", "instance")])
+
+
+class ReadWorld(unittest.TestCase):
+    """read_world through a fake step (the SDK's tables as plain lists): the pack's bounds and
+    taxons in metres, and an instanced asset the pack lacks warned of once, by `asset_unknown`."""
+
+    class Step:
+        id = "map"
+        grid = {"extent_mm": [0, 0, 16000, 12000], "resolution_mm": 500, "nx": 33, "ny": 25}
+
+        def __init__(self, pack_ids):
+            self.pack_ids, self.warnings = pack_ids, []
+
+        def features(self, sel):
+            return {"name": ["lane"], "kind": ["lane"], "geometry": [1], "pieces": [0, 1], "rings": [0, 1],
+                    "ring_starts": [0, 2], "coords": [[0, 5000], [16000, 5000]], "width": [2.0], "width?": [1]}
+
+        def instances(self, sel):
+            return {"name": ["h1", "h2", "tree"], "asset": ["house_a", "house_b", "oak"],
+                    "x": [3000, 9000, 1000], "y": [3000, 3000, 1000], "z": [1.0, 1.0, 1.0],
+                    "face": [0, 0, 0], "scale": [1.0, 1.0, 1.0]}
+
+        def pack(self, sel, columns=None):
+            return {"id": self.pack_ids, "bounds": [[-1000, -1000, 0, 1000, 1000, 3000]] * len(self.pack_ids),
+                    "taxon": ["building/house"] * len(self.pack_ids)}
+
+        def fields(self, names):
+            raise KeyError(names[0])   # a world without the field draws without it
+
+        def warning(self, code, subject, message, hint, explain=None, data=None):
+            self.warnings.append((code, subject, data))
+
+    def test_an_asset_not_in_the_pack_is_warned_of(self):
+        st = self.Step(["house_a"])
+        got = E["read_world"](st, P)
+        self.assertEqual(got["pack"], {"house_a": {"bounds": [-1.0, -1.0, 0.0, 1.0, 1.0, 3.0], "taxon": "building/house"}})
+        self.assertEqual(st.warnings, [("asset_unknown", "step.map", {"assets": ["house_b", "oak"]})])
+        self.assertEqual([(i["name"], i["x"]) for i in got["instances"]], [("h1", 3.0), ("h2", 9.0), ("tree", 1.0)])
+        self.assertEqual(got["features"][0]["points"], [[0.0, 5.0], [16.0, 5.0]])
+        self.assertEqual(got["fields"], {"ground_field": None, "water_field": None, "material": None})
+
+    def test_every_asset_in_the_pack_warns_of_nothing(self):
+        st = self.Step(["house_a", "house_b", "oak"])
+        E["read_world"](st, P)
+        self.assertEqual(st.warnings, [])
 
 
 class Params(unittest.TestCase):

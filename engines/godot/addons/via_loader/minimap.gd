@@ -25,7 +25,12 @@ const CORNER_METRES := 160.0
 const MARGIN := 16
 ## Ours: the colours a class is drawn in when the build says none: a way, a footprint, water, and
 ## a ground class whose material the manifest does not colour.
-const WAY := Color(0.86, 0.80, 0.66)
+const WAY := Color(0.98, 0.95, 0.86)
+## Ours (M7): a way is also drawn from vectors.json as its line, WAY over a CASING one pixel wider
+## each side, never less than WAY_PX across, so a road narrower than a pixel of the whole map is
+## one line, not dashes where its cells fall between the pixels (atlas's earth roads, M6 close).
+const CASING := Color(0.45, 0.33, 0.22)
+const WAY_PX := 1.5
 const FOOTPRINT := Color(0.36, 0.33, 0.31)
 const WATER := Color(0.25, 0.45, 0.62)
 const GROUND := Color(0.6, 0.6, 0.55)
@@ -37,6 +42,7 @@ const INK := Color(0.1, 0.1, 0.1)
 const WALKER := Color(0.85, 0.1, 0.1)
 
 var full := false
+var show_walker := true   # the walker's arrow; the sheet's whole map (map.png) leaves it out
 var toggle_key := KEY_M
 var folder := ""          # the export's folder, absolute
 var extent := Rect2()     # world metres
@@ -46,6 +52,7 @@ var colours: Array[Color] = []
 var ground_image: Image   # one pixel per map cell, north at the top
 var floors: Array = []    # each { "index", "z": [lo, hi or null], "plan": Dictionary }
 var labels: Array = []
+var ways: Array = []      # vectors.json's ways not `under`: { "width", "points" }
 var walker := Vector2.ZERO
 var heading := Vector2(0, 1)
 var feet := 0.0
@@ -87,6 +94,12 @@ func read(build_dir: String) -> String:
 		return "ground.npy is not |u1 of the map's size"
 	ground_image = ground_of(arr.bytes, int(size[0]), int(size[1]), colours)
 	_tex = ImageTexture.create_from_image(ground_image)
+	var vec = JSON.parse_string(FileAccess.get_file_as_string(folder + "/" + String(layers.get("vectors", "vectors.json"))))
+	ways = []
+	if vec is Dictionary:
+		for w in vec.get("ways", []):
+			if not w.get("under", false) and w.get("points") is Array:
+				ways.append({"width": float(w.get("width", 1.0)), "points": w.points})
 	var l = JSON.parse_string(FileAccess.get_file_as_string(folder + "/" + String(layers.get("labels", "labels.json"))))
 	labels = l.get("labels", []) if l is Dictionary else []
 	floors.clear()
@@ -232,6 +245,7 @@ func _draw() -> void:
 	draw_set_transform_matrix(Transform2D(ax, ay, o))
 	draw_texture(_tex, Vector2.ZERO)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
+	_draw_ways(r)
 	var n := floor_at(feet)
 	for f in floors:
 		if int(f.index) == n:
@@ -246,11 +260,41 @@ func _draw() -> void:
 			continue
 		taken.append(box)
 		draw_string(font, p + Vector2(3, -3), String(l.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, INK)
-	var w := to_screen(walker)
-	var h := Vector2(0, -1) if not full else Vector2(heading.x, -heading.y)
-	var side := Vector2(-h.y, h.x)
-	draw_colored_polygon(PackedVector2Array([w + h * 9.0, w - h * 5.0 + side * 6.0, w - h * 5.0 - side * 6.0]), WALKER)
+	if show_walker:
+		var w := to_screen(walker)
+		var h := Vector2(0, -1) if not full else Vector2(heading.x, -heading.y)
+		var side := Vector2(-h.y, h.x)
+		draw_colored_polygon(PackedVector2Array([w + h * 9.0, w - h * 5.0 + side * 6.0, w - h * 5.0 - side * 6.0]), WALKER)
 	draw_rect(r, INK, false, 2.0)
+
+
+func pixels_a_metre() -> float:
+	var r := view()
+	if full:
+		return minf(r.size.x / extent.size.x, r.size.y / extent.size.y)
+	return CORNER / corner_metres()
+
+
+func _draw_ways(r: Rect2) -> void:
+	## Every way's line, casings first so a crossing reads as one: its width at the map's scale,
+	## at least WAY_PX. Lines wholly outside the view are skipped.
+	var s := pixels_a_metre()
+	var lines: Array = []
+	for w in ways:
+		var line := PackedVector2Array()
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for q in w.points:
+			var p := to_screen(Vector2(q[0], q[1]))
+			line.append(p)
+			lo = lo.min(p)
+			hi = hi.max(p)
+		if line.size() >= 2 and Rect2(lo, hi - lo).grow(8.0).intersects(r):
+			lines.append([line, maxf(w.width * s, WAY_PX)])
+	for e in lines:
+		draw_polyline(e[0], CASING, e[1] + 2.0)
+	for e in lines:
+		draw_polyline(e[0], WAY, e[1])
 
 
 func _draw_plan(plan: Dictionary) -> void:

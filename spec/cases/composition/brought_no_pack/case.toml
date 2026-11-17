@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "A world with no pack imports `a`, whose pack binds `heavy` (1000 triangles): the build's assets are the union of its worlds' packs, so the manifest lists `heavy` with `pack = \"a\"` and the chunk counts it (1000). Before M7 the manifest listed no asset and the chunk counted 0 (a.statue drew nothing)."
+milestone = 7
+actions   = ["build"]
+
+# composition.md 10, "The build's assets are every world's".
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.brought]
+path    = "build/w/manifest.json"
+pointer = "/assets/heavy/pack"
+value   = "a"
+
+[action.build.file.counted]
+path    = "build/w/manifest.json"
+pointer = "/chunks/0/triangles"
+value   = 1000

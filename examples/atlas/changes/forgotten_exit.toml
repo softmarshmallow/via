@@ -6,5 +6,10 @@
 [feature.west_road]
 remove = true
 
+# The trail's approach (layers/ways.toml, M7 slice 1) stands on the trail, so it goes with it, or
+# its `on` names nothing (`doc.dangling`) before any exit is checked.
+[feature.west_road_approach]
+remove = true
+
 [feature.join_wild_west]
 remove = true

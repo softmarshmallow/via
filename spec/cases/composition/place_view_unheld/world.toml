@@ -1,0 +1,18 @@
+name       = "place_view_unheld"
+extent     = [0, 0, 96, 64]
+resolution = 1
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.a]
+file      = "a/world.toml"
+at        = [32, 0]
+blend     = "= smoothstep(0, 16, d)"
+max_grade = 5
+
+# A view on a's gate, and no path joins it: the ground is not held (composition.md 6.7).
+[feature.v]
+on = { ref = "a.gate" }

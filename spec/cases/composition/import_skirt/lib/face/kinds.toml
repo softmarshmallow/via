@@ -1,0 +1,6 @@
+# composition.md Conformance, import_skirt: a narrow cutting strip, as a sheer face.
+[kind.face]
+[kind.face.surface.side]
+base  = "= 0.5"
+bound = "= 0.5"
+cut   = "= 1"

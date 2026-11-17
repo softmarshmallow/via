@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "composition.md 6.7, Held: only a parent path's `starts_at` or `ends_at` holds an import's place. A parent point `on` a.gate (a view) holds nothing, so adding it leaves the ground as the blend makes it: 3.375 m at (44, 32), 12 m inside the gate, not a's 4; the gate is import.place_blended at weight 0. Before M7 the view held it (decided, open to the owner)."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.build.file.inside]
+path  = "build/w/fields/height.npy"
+post  = [44, 32]
+value = 3.375
+[action.build.file.gate]
+path  = "build/w/fields/height.npy"
+post  = [32, 32]
+value = 0
+[action.build.diag.blended]
+code = "import.place_blended"
+data = { weight = 0 }

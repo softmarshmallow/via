@@ -325,6 +325,12 @@ pub fn input_digest(p: &Path) -> Option<Digest> {
 
 /// The digest of a folder by 7's rule, and its file count.
 pub fn folder_digest(dir: &Path) -> (Digest, usize) {
+    folder_digest_less(dir, &[])
+}
+
+/// [`folder_digest`] less the files at the folder's root named in `less`: a library's
+/// `kinds.toml`, which the engine reads as text and never runs (7, "The code of a step").
+pub fn folder_digest_less(dir: &Path, less: &[&str]) -> (Digest, usize) {
     fn walk(base: &Path, d: &Path, out: &mut Vec<(String, PathBuf)>) {
         let Ok(rd) = std::fs::read_dir(d) else { return };
         for e in rd.flatten() {
@@ -350,6 +356,7 @@ pub fn folder_digest(dir: &Path) -> (Digest, usize) {
     }
     let mut files = Vec::new();
     walk(dir, dir, &mut files);
+    files.retain(|(rel, _)| !less.contains(&rel.as_str()));
     files.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
     let mut e = Enc::new();
     e.str("via-code-folder-1").len(files.len());
@@ -382,10 +389,12 @@ pub fn code_of(
     sdk: Option<&Digest>,
 ) -> Result<Code, Diag> {
     let mut folder: Option<PathBuf> = None;
+    let mut library = false;
     for el in &s.command {
         if let Some(rest) = el.strip_prefix("lib:") {
             let lib = rest.split('/').next().unwrap_or("");
             folder = roots.library(lib);
+            library = true;
             if folder.is_none() {
                 return Err(unknown_library(
                     &s.id,
@@ -432,7 +441,10 @@ pub fn code_of(
                 "move the script into a folder of its own".into(),
             ));
         }
-        let (d, n) = folder_digest(f);
+        // A library's kinds file is a document, read as text and never run: an edit to it (a
+        // comment) asks no trust again. Its statements key what reads them (`graph.md` 5.1).
+        let less: &[&str] = if library { &["kinds.toml"] } else { &[] };
+        let (d, n) = folder_digest_less(f, less);
         files = n;
         e.byte(1).digest(&d);
     } else {

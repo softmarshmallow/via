@@ -938,7 +938,16 @@ pub fn run(a: &Args) -> Outcome {
             // The previous build's record, so a step that runs here gives its cause against it
             // (graph.md 6.3): `no record` only when there is none.
             gopts.previous = prev_record.clone();
-            let run_k = via_graph::run(&plan_k, &store, &gopts, &step_roots);
+            // A `for_each` step lists its items from the model's build, so a rank with one always
+            // makes it: made beside the graph's first lookups instead of after them. Not at
+            // `--threads 1`, which asks for one worker thread (`graph.md` 8).
+            let warm = threads > 1 && plan_k.lists_items(&at_rank);
+            let run_k = std::thread::scope(|sc| {
+                if warm {
+                    sc.spawn(|| plan_k.warm());
+                }
+                via_graph::run(&plan_k, &store, &gopts, &step_roots)
+            });
             run_diags.extend(plan_k.stop_workers());
             for (id, o) in &run_k.nodes {
                 if id.as_str().starts_with("step:") && o.status == via_graph::Status::Ran {
@@ -1397,13 +1406,21 @@ fn no_previous() -> Diag {
 }
 
 /// The world's pack with each import's assets it does not bind brought in (`composition.md` 10),
-/// so the build lists, counts and hands on every asset an instance names.
+/// so the build lists, counts and hands on every asset an instance names. A world with no pack
+/// whose imports bind assets brings them into an empty one: the build's assets are the union.
 fn with_brought(
     pack: Option<&(via_model::pack::Pack, PathBuf)>,
     model: &via_model::ModelPlan<'_>,
 ) -> Option<via_model::pack::Pack> {
-    let mut p = pack?.0.clone();
-    for (from, other) in model.imported_packs() {
+    let packs = model.imported_packs();
+    let mut p = match pack {
+        Some((p, _)) => p.clone(),
+        None if packs.iter().any(|(_, o)| !o.failed && !o.assets.is_empty()) => {
+            via_model::pack::Pack::default()
+        }
+        None => return None,
+    };
+    for (from, other) in packs {
         p.bring(&from, other);
     }
     Some(p)

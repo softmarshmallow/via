@@ -81,6 +81,7 @@ for args in "--before $HERE/fixture_build --out $OUT/foreign" \
             "--before $HERE/fixture_build --out $OUT/bad --stream 0" \
             "--before $HERE/fixture_build --out $OUT/bad --frames x" \
             "--before $HERE/fixture_build --out $OUT/bad --page 0" \
+            "--before $HERE/fixture_build --out $OUT/bad --far-mask" \
             "--out $OUT/bad"; do
   # shellcheck disable=SC2086
   "$ROOT/sheet.sh" $args >/dev/null 2>&1
@@ -109,13 +110,29 @@ step "streamed walks against whole walks, wading: reproducible, same outcome and
 r=$(godot --headless --script res://tests/test_stream_walks.gd -- --build "$HERE/fixture_build" --radius 5 --water tag:water_level); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
-step "reload after a rebuild: kept and made again by chunk digest (headless; the fixtures hold no digest, so every chunk is made again)"
-r=$(godot --headless --script res://tests/test_reload.gd -- --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" --radius 5); printf '%s\n' "$r" | grep -v "^ok"
+step "reload after a rebuild: kept and made again by chunk digest (headless; the ford's move changes 3 of the 4 chunks' digests)"
+r=$(godot --headless --script res://tests/test_reload.gd -- --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" --radius 5 --mixed); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
 step "minimap: station's player map read, turned with the walker, per floor (headless; fixture_map is station's export)"
 r=$(godot --headless --script res://tests/test_minimap.gd -- --build "$HERE/fixture_map"); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
+step "sheet: the player map as before/map.png and the corner map on each walk's eye view"
+# fixture_build with fixture_map's export (station's map) beside it, named in its manifest's exports
+python3 - "$HERE/fixture_build" "$HERE/fixture_map" "$OUT/map_build" <<'EOF' || fail=1
+import json, os, shutil, sys
+from pathlib import Path
+src, mp, dst = map(Path, sys.argv[1:])
+shutil.copytree(src, dst)
+shutil.copytree(mp / "export", dst / "export")
+m = json.loads((dst / "manifest.json").read_text())
+m["exports"] = json.loads((mp / "manifest.json").read_text())["exports"]
+m["locations"]["pack_root"] = os.path.relpath((src / m["locations"]["pack_root"]).resolve(), dst.resolve())
+(dst / "manifest.json").write_text(json.dumps(m, sort_keys=True, separators=(",", ":")) + "\n")
+EOF
+"$ROOT/sheet.sh" --before "$OUT/map_build" --out "$OUT/map" >/dev/null 2>&1 || { echo "FAIL sheet exit"; fail=1; }
+quiet python3 "$HERE/check_sheet.py" "$OUT/map" 4 --one --map || fail=1
 
 step "sheet: the surface each bookmark stands on"
 "$ROOT/sheet.sh" --before "$OUT/floor_build" --out "$OUT/floor" >/dev/null 2>&1 || { echo "FAIL sheet exit"; fail=1; }

@@ -13,7 +13,7 @@ out         = "build/yard"
 code = "build.over_budget"
 file = "world.toml"
 line = 235
-data = { chunk = [0, 0], measure = "triangles", value = 6500, limit = 5000, asset = "heavy", share = 92, instances = 6 }
+data = { chunk = [0, 0], measure = "triangles", value = 6500, limit = 5000, asset = "heavy", share = 92, instances = 6, from = "" }
 
 [action.build.file.listing]
 path    = "build/yard"
@@ -27,8 +27,8 @@ out         = "build/both"
 
 [action.both.diag.triangles]
 code = "build.over_budget"
-data = { chunk = [0, 0], measure = "triangles", value = 6500, limit = 5000, asset = "heavy", share = 92, instances = 6 }
+data = { chunk = [0, 0], measure = "triangles", value = 6500, limit = 5000, asset = "heavy", share = 92, instances = 6, from = "" }
 
 [action.both.diag.instances]
 code = "build.over_budget"
-data = { chunk = [0, 0], measure = "instances", value = 56, limit = 40, asset = "light", share = 89, instances = 50 }
+data = { chunk = [0, 0], measure = "instances", value = 56, limit = 40, asset = "light", share = 89, instances = 50, from = "" }

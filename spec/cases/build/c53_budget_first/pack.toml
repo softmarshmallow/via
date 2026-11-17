@@ -1,0 +1,9 @@
+[asset.heavy]
+engine    = true
+size      = [1, 1, 1]
+triangles = 1000
+
+[asset.light]
+engine    = true
+size      = [1, 1, 1]
+triangles = 10

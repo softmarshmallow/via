@@ -1229,17 +1229,9 @@ impl Compiler<'_> {
                         "write a feature's id or `'kind:<name>'`".into(),
                     ));
                 } else if s.starts_with("kind:") {
-                } else if parts.len() > 2 {
-                    return Err(ExprError::new(
-                        doc::NOT_YET,
-                        at,
-                        format!(
-                            "`{s}` names a path's end or a mount inside an import, which a formula does not read yet"
-                        ),
-                        format!(
-                            "a place a parent path joins is held already (composition.md 6.7); else stand a parent point `on = {{ ref = \"{s}\" }}` and name it"
-                        ),
-                    ));
+                    // A name of three parts or more (`a.track.start`, a nested import's place) is
+                    // read as a two-part scoped name is: the world's own placing resolves it
+                    // (`composition.md` 6.3, M7).
                 } else if parts.len() == 1 && self.env.fields.contains(&s) {
                     return Err(sel_err(
                         formula::SELECTOR,

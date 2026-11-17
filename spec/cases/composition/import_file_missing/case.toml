@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "An import whose file is not found: doc.file_missing on the import's `file` key (subject import.a), naming the path as the parent wrote it, with the nearest name as the hint; not `cli` or the world file."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+diagnostics = "exact"
+out         = "build/w"
+[action.build.diag.missing]
+code    = "doc.file_missing"
+subject = "import.a"
+data    = { file = "a/wrold.toml" }

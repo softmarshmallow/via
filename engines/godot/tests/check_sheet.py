@@ -1,6 +1,6 @@
 """Checks what the sheet tool wrote (spec/build.md 15.1), Python's standard library only.
 
-    python3 engines/godot/tests/check_sheet.py OUT ROWS [--one] [--before DIR] [--after DIR] [--page PER]
+    python3 engines/godot/tests/check_sheet.py OUT ROWS [--one] [--before DIR] [--after DIR] [--page PER] [--map]
 
 Every PNG it names is 1280 by 720 and not one colour; each bookmark's eye and target are given per
 build; with the build directories, each cell's eye and target are its own build's bookmark (its
@@ -9,7 +9,10 @@ build's target and the after cell at the after build's;
 sheet.png is 1280 (640 with --one) by
 48 + 384 * ROWS, walks.png by 48 + 768 * ROWS (with `pages`, each page by its own rows of PER, and
 the pages' rows are ROWS), each walk's two views 1280 by 720; sheet.json is canonical and has the keys 15.1 lists; diagnostics.json is
-diagnostics.md 7's document. Images are never compared byte for byte: renderers differ.
+diagnostics.md 7's document; `maps` is null for each side unless --map, which wants
+`before/map.png` (the whole player map, 1280 by 720, not one colour) and the corner map on each
+walk's eye view (its frame, CORNER pixels a side MARGIN in from the top right, dark). Images are
+never compared byte for byte: renderers differ.
 Prints one line per check; exit 0 when all pass.
 """
 
@@ -152,7 +155,15 @@ def main():
     doc = json.loads(text)
     canon = _canon(doc) + "\n"
     check("sheet.json is canonical", text == canon)
-    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "pages", "renderer", "size", "stream", "walk", "walks"])
+    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "maps", "pages", "renderer", "size", "stream", "walk", "walks"])
+    want_map = "--map" in rest
+    maps = doc.get("maps") or {}
+    check("maps: the whole player map per build, or null without an export",
+          sorted(maps) == ["after", "before"] and maps["after"] is None
+          and maps["before"] == ("before/map.png" if want_map else None), str(maps))
+    if want_map and maps.get("before"):
+        ww, hh, rr, bb = png(out / maps["before"])
+        check("before/map.png is 1280 by 720 and not one colour", (ww, hh) == (1280, 720) and not one_colour(rr, bb), f"{ww}x{hh}")
     check("without --stream and --frames, stream and frames are null", doc["stream"] is None and doc["frames"] is None)
     check("edits lists pins and cleared", isinstance(doc.get("edits"), dict) and sorted(doc["edits"]) == ["against", "cleared", "pins"])
     check("one walk per bookmark, in name order", [w["name"] for w in doc.get("walks", [])] == [b["name"] for b in doc["bookmarks"]])
@@ -167,6 +178,13 @@ def main():
             for view in ("plan", "eye"):
                 ww, hh, rr, bb = png(out / r[view])
                 check(f"{r[view]} is 1280 by 720 and not one colour", (ww, hh) == (1280, 720) and not one_colour(rr, bb), f"{ww}x{hh}")
+                if want_map:
+                    # the corner map's frame (minimap.gd: CORNER 240, MARGIN 16, INK, 2 px) on the
+                    # eye view only: its left edge's column, down the middle of its side
+                    x = 1280 - 16 - 240
+                    dark = sum(1 for y in range(16 + 20, 16 + 220) if max(rr[y][x * bb:x * bb + 3]) < 60)
+                    check(f"{r[view]}: the corner map {'on' if view == 'eye' else 'not on'} it",
+                          (dark >= 190) == (view == "eye"), f"{dark} of 200 frame pixels dark")
     check("one entry per row, in name order", [b["name"] for b in doc["bookmarks"]] == sorted(b["name"] for b in doc["bookmarks"])
           and len(doc["bookmarks"]) == n_rows)
     check("after is null without --after", (doc["after"] is None) == one)

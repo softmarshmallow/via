@@ -4,10 +4,11 @@ extends Node
 ##
 ##   godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- \
 ##         --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...]
-##         [--stream RADIUS] [--frames SECONDS] [--page BOOKMARKS]
+##         [--stream RADIUS [--far-mask]] [--frames SECONDS] [--page BOOKMARKS]
 ##
 ## --stream loads chunks round each eye and walker within RADIUS metres (stream.gd) instead of the
-## whole build; --frames tours the bookmarks' eyes at TOUR_SPEED for SECONDS per build after the
+## whole build; --far-mask draws each streamed view again with the far layers in mask colours
+## (<side>/far/<bookmark>.png, for tests/compare_views.py); --frames tours the bookmarks' eyes at TOUR_SPEED for SECONDS per build after the
 ## walks and records the frame times (sheet.json `frames`).
 ##
 ## engines/godot/sheet.sh runs it with a watchdog. It needs a display: Godot's --headless display
@@ -29,12 +30,13 @@ const Rig := preload("res://rig.gd")
 const Walk := preload("res://walk.gd")
 const Marks := preload("res://marks.gd")
 const Stream := preload("res://addons/via_loader/stream.gd")
+const Minimap := preload("res://addons/via_loader/minimap.gd")
 
 const SHOT := Vector2i(1280, 720)
 const SETTLE_FRAMES := 4
 const WATCHDOG_S := 300.0
 const PARKED := Vector2i(160, 90)
-const USAGE := "usage: godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] [--stream RADIUS] [--frames SECONDS] [--page BOOKMARKS]"
+const USAGE := "usage: godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] [--stream RADIUS [--far-mask]] [--frames SECONDS] [--page BOOKMARKS]"
 ## The frame tour's pace, metres a second (ours): a run, five times the walker's, so a tour of a
 ## minute crosses a city's chunks.
 const TOUR_SPEED := 7.0
@@ -53,10 +55,12 @@ var diags := Diagnostics.new()
 var edits := {"against": null, "pins": [], "cleared": []}
 var stream_radius := 0.0
 var frames_s := 0.0
+var far_mask := false   # --far-mask: each streamed view again with the far layers in mask colours
 var page := PAGE
 var _done := false
 var _watchdog_s := WATCHDOG_S
 var _petted := 0   # msec of the last finished bookmark, walk, page or tour frame
+var _loading := false   # a build loading: not watched (sheet.sh's SHEET_TIMEOUT bounds it)
 
 
 func _ready() -> void:
@@ -84,7 +88,7 @@ func _pet() -> void:
 
 
 func _watchdog() -> void:
-	if _done or Time.get_ticks_msec() - _petted < _watchdog_s * 1000.0:
+	if _done or _loading or Time.get_ticks_msec() - _petted < _watchdog_s * 1000.0:
 		return
 	printerr("sheet: watchdog: nothing finished for %d s; quitting" % int(_watchdog_s))
 	if FileAccess.file_exists(out + ".partial/sheet.json"):
@@ -111,6 +115,10 @@ func _read_arguments() -> String:
 	var n := 0
 	while n < args.size():
 		var a := args[n]
+		if a == "--far-mask":
+			far_mask = true
+			n += 1
+			continue
 		var takes := a in ["--before", "--after", "--out", "--pack", "--option", "--stream", "--frames", "--page"]
 		if not takes:
 			return "unknown argument `%s`" % a
@@ -146,6 +154,8 @@ func _read_arguments() -> String:
 		n += 2
 	if before == "" or out == "":
 		return "--before and --out are required"
+	if far_mask and stream_radius <= 0.0:
+		return "--far-mask needs --stream"
 	return ""
 
 
@@ -195,9 +205,15 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 	var loader := Loader.new()
 	loader.pack_dir = pack
 	loader.diags.build_label = label
+	# A whole load of atlas took over the watchdog's 300 s under other agents' load (M7): the
+	# load is bounded by sheet.sh's SHEET_TIMEOUT instead, and counts as progress when done.
+	_loading = true
 	var root := loader.prepare(dir, options) if stream_radius > 0.0 else loader.make(dir, options)
+	_loading = false
+	_pet()
 	diags.records.append_array(loader.diags.records)
-	var res := {"id": null, "world": null, "shots": {}, "walks": {}, "far": null, "option_error": loader.option_error, "frames": null}
+	var res := {"id": null, "world": null, "shots": {}, "walks": {}, "far": null, "option_error": loader.option_error, "frames": null,
+		"map": null, "minimap": null}
 	if root == null:
 		return res
 	res.id = root.get_meta("id")
@@ -223,8 +239,43 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 			res["write_failed"] = true
 			continue
 		res.shots[String(c.get_meta("feature"))] = {"file": file, "eye": c.get_meta("eye"), "toward": c.get_meta("toward"), "image": img}
+		if far_mask:   # <label>/far/<bookmark>.png: where the far layers show, and which (stream.gd)
+			stream.set_far_mask(true)
+			for f in SETTLE_FRAMES:
+				await RenderingServer.frame_post_draw
+			var mimg := vp.get_texture().get_image()
+			mimg.convert(Image.FORMAT_RGB8)
+			DirAccess.make_dir_recursive_absolute(out + ".partial/%s/far" % label)
+			if mimg.save_png(out + ".partial/%s/far/%s.png" % [label, c.name]) != OK:
+				res["write_failed"] = true
+			stream.set_far_mask(false)
 		_pet()
+	# The player map (build.md 15.1, "The minimap"), when the build exports one: the whole map, north
+	# up, as <label>/map.png, and the corner map on each walk's eye view.
+	var mm := Minimap.new()
+	if mm.read(dir) == "":
+		mm.show_walker = false
+		vp.add_child(mm)
+		mm.set_full(true)
+		for f in SETTLE_FRAMES:
+			await RenderingServer.frame_post_draw
+		var mimg := vp.get_texture().get_image()
+		mimg.convert(Image.FORMAT_RGB8)
+		var mfile := "%s/map.png" % label
+		if mimg.save_png(out + ".partial/" + mfile) != OK:
+			printerr("sheet: cannot write %s" % mfile)
+			res["write_failed"] = true
+		res.map = mfile
+		mm.set_full(false)
+		mm.show_walker = true
+		mm.visible = false
+		res.minimap = mm
+	else:
+		mm.free()
 	await _walks(vp, root, loader, label, folder, res, stream)
+	if res.minimap != null:
+		res.minimap.queue_free()
+		res.minimap = null
 	if frames_s > 0.0:
 		res.frames = await _frames(root, loader, stream)
 	if stream != null:
@@ -370,8 +421,16 @@ func _walks(vp: SubViewport, root: Node3D, loader, label: String, folder: String
 			var vcam: Camera3D = Walk.overhead(r, float(SHOT.x) / SHOT.y) if view == "plan" else Walk.eye(r, root.get_meta("frame").extent, loader)
 			root.add_child(vcam)
 			vcam.make_current()
+			var mm = res.minimap
+			if mm != null:   # the corner map at the eye: where it stands, facing as it looks
+				mm.visible = view == "eye"
+				var g := vcam.global_transform
+				var d := -g.basis.z
+				mm.set_walker(Vector2(g.origin.x, -g.origin.z), Vector2(d.x, -d.z), g.origin.y - Walk.EYE)
 			for f in SETTLE_FRAMES:
 				await RenderingServer.frame_post_draw
+			if mm != null:
+				mm.visible = false
 			var img := vp.get_texture().get_image()
 			img.convert(Image.FORMAT_RGB8)
 			var file := "%s/walk/%s_%s.png" % [label, cam.name, view]
@@ -406,7 +465,7 @@ func _run() -> void:
 	if edited.against != null:
 		edits = edited
 	var b: Dictionary = await _render(vp, before, "before", partial + "/before")
-	var a: Dictionary = {"shots": {}, "walks": {}, "id": null, "world": null, "far": null, "option_error": "", "frames": null}
+	var a: Dictionary = {"shots": {}, "walks": {}, "id": null, "world": null, "far": null, "option_error": "", "frames": null, "map": null}
 	if two:
 		a = await _render(vp, after, "after", partial + "/after")
 	vp.queue_free()
@@ -485,6 +544,7 @@ func _run() -> void:
 		"frames": {"after": a.frames, "before": b.frames} if frames_s > 0.0 else null,
 		"godot": godot,
 		"light": {"bearing": Rig.LIGHT_BEARING, "elevation": Rig.LIGHT_ELEVATION},
+		"maps": {"after": a.map, "before": b.map} if two else {"after": null, "before": b.map},
 		"pages": {"bookmarks": page, "sheet": pages.sheet, "walks": pages.walks},
 		"renderer": RenderingServer.get_current_rendering_method(),
 		"size": [SHOT.x, SHOT.y],

@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "An import of height 4 on parent ground 0 with blend 1: import.seam, data.grade 4; with max_grade = 5 none; with an anchored keep over the whole edge none."
+summary   = "An import of height 4 on parent ground 0 with blend 1: import.seam, data.grade 4 and data.lift_hint -4 (the import's ground 4 m over the parent's across its edge, named in the hint as `lift = -4`); with max_grade = 5 none; with an anchored keep over the whole edge none."
 milestone = 4
 actions   = ["build", "raise", "raised", "own", "owned"]
 
@@ -10,7 +10,7 @@ diagnostics = "exact"
 out         = "build/w"
 [action.build.diag.seam]
 code = "import.seam"
-data = { grade = 4 }
+data = { grade = 4, lift_hint = -4 }
 
 [action.raise]
 replace = "world.toml"

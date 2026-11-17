@@ -1,0 +1,11 @@
+name       = "marks"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+
+[step.look]
+when    = "lint"
+command = ["python", "lib:marks/lint.py"]

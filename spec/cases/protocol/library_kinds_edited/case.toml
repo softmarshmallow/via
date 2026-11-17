@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "A lint step's code in a library (`lib:marks/lint.py`), trusted; the library's kinds.toml given a comment: still trusted, no protocol.untrusted_skipped; then lint.py edited: protocol.untrusted_skipped (protocol.md 7, a library's kinds file is not code)."
+milestone = 7
+actions   = ["program", "trust", "first", "comment", "commented", "edit", "again"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--lib", "{work}/libs", "--yes"]
+exit = 0
+
+[action.first]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.comment]
+replace = "libs/marks/kinds.toml"
+find    = "# A library with one kind and one lint step's code.\n"
+with    = "# A library with one kind and one lint step's code. A comment edited.\n"
+
+[action.commented]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.edit]
+write = "libs/marks/lint.py"
+text  = "import json, os\nrequest = json.load(open(os.environ[\"VIA_STEP\"], encoding=\"utf-8\"))\nopen(os.path.join(request[\"out\"], \"diagnostics.json\"), \"w\", encoding=\"utf-8\").write('[]')\n# edited\n"
+
+[action.again]
+via  = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit = 0
+out  = "build/w"
+
+[action.again.diag.untrusted_skipped]
+code = "protocol.untrusted_skipped"

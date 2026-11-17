@@ -711,6 +711,10 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
     let mut per_chunk: Vec<BTreeMap<String, (usize, usize)>> =
         vec![BTreeMap::new(); layout.chunks.len()];
     let mut chunk_tri: Vec<u64> = vec![0; layout.chunks.len()];
+    // Per chunk and asset, its instances per import they come from ("" for this world's own).
+    let mut chunk_from: Vec<BTreeMap<(String, String), u64>> =
+        vec![BTreeMap::new(); layout.chunks.len()];
+    let import_ids: BTreeSet<&str> = input.world.ids("import").into_iter().collect();
     for (row, (ci, asset, name)) in rows.iter().enumerate() {
         let i = &b.instances[*name];
         let to32 = |v: i64, what: &str| {
@@ -740,6 +744,9 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
         ]));
         let e = per_chunk[*ci].entry((*asset).clone()).or_insert((row, 0));
         e.1 += 1;
+        *chunk_from[*ci]
+            .entry(((*asset).clone(), import_of(name, &import_ids).to_string()))
+            .or_insert(0) += 1;
         chunk_tri[*ci] += triangles.get(*asset).copied().unwrap_or(0);
     }
     let n = rows.len();
@@ -1020,6 +1027,7 @@ pub fn write(input: &Input<'_>) -> Result<Written, Diag> {
             instances: count as u64,
             groups: groups as u64,
             shares,
+            from: std::mem::take(&mut chunk_from[ci]),
         });
     }
     head.insert("chunks".into(), J::Arr(chunks));
@@ -1043,6 +1051,20 @@ struct Load {
     groups: u64,
     /// Per asset: its instances and its triangles in the chunk.
     shares: Vec<(String, u64, u64)>,
+    /// Per asset and the import its instances come from ("" for the world's own): how many.
+    from: BTreeMap<(String, String), u64>,
+}
+
+/// The import an instance comes from, by its scoped name (`composition.md` 4: `a.lamp`,
+/// `a.scatter#k`), or "" for the world's own: the part before the first `.`, when the name has
+/// one before any `#` and that part is one of the world's imports. A world's own accessory
+/// (`table.candle`) is dotted too, and is the world's own (`build.md` 5.1).
+fn import_of<'n>(name: &'n str, imports: &BTreeSet<&str>) -> &'n str {
+    let head = name.split('#').next().unwrap_or(name);
+    match head.split_once('.') {
+        Some((a, _)) if imports.contains(a) => a,
+        _ => "",
+    }
 }
 
 impl Load {
@@ -1162,8 +1184,22 @@ fn budget_diags(bg: &via_model::Budget, loads: &[Load]) -> Vec<Diag> {
                 m(l.bounds[3]),
                 if waiver.is_some() { "waived limit" } else { "budget" },
             );
+            // Where the asset's instances in the chunk come from: an import's are thinned by a
+            // change of that import, which this world asks for (`composition.md` 11).
+            let from = l
+                .from
+                .iter()
+                .filter(|((a, _), _)| *a == asset)
+                .max_by(|(a, x), (b, y)| x.cmp(y).then(b.1.cmp(&a.1)))
+                .map(|((_, f), _)| f.clone())
+                .unwrap_or_default();
+            let thin = if from.is_empty() {
+                format!("thin `{asset}` there")
+            } else {
+                format!("`{asset}` there comes from the import `{from}`: thin it by a change of that import (`changes = [\"<change>\"]` on `[import.{from}]`)")
+            };
             let hint = format!(
-                "thin `{asset}` there, or waive the chunk: [budget.waive.c{cx}_{cy}] at = [{cx}, {cy}], {measure} = {value}, reason = \"<why the target can draw it>\""
+                "{thin}, or waive the chunk: [budget.waive.c{cx}_{cy}] at = [{cx}, {cy}], {measure} = {value}, reason = \"<why the target can draw it>\""
             );
             let as_i = |v: u64| Value::from(i64::try_from(v).unwrap_or(i64::MAX));
             out.push(
@@ -1180,7 +1216,8 @@ fn budget_diags(bg: &via_model::Budget, loads: &[Load]) -> Vec<Diag> {
                 .with("limit", as_i(limit))
                 .with("asset", asset.as_str())
                 .with("share", as_i(share))
-                .with("instances", as_i(inst)),
+                .with("instances", as_i(inst))
+                .with("from", from.as_str()),
             );
         }
     }

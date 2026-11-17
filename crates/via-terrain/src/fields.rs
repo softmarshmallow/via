@@ -8,13 +8,7 @@ use via_num as num;
 use crate::config::TerrainConfig;
 use crate::grid::Grid;
 use crate::noise;
-use via_artifact::seed;
-
-#[inline]
-pub fn smoothstep(e0: f64, e1: f64, x: f64) -> f64 {
-    let t = num::clamp((x - e0) / (e1 - e0), 0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
+use crate::raster::smoothstep;
 
 /// Uplift rate field (m/yr). Signed: positive fBm regions rise, negative
 /// regions subside, so the coastline is the emergent U ≈ 0 noise contour —
@@ -22,9 +16,9 @@ pub fn smoothstep(e0: f64, e1: f64, x: f64) -> f64 {
 /// Domain warping breaks the isotropy of raw fBm; a finer octave carries
 /// range-scale texture.
 pub fn build_uplift(cfg: &TerrainConfig, grid: &Grid) -> Vec<f64> {
-    let s_shape = seed::derive(cfg.seed, "terrain", 0);
-    let s_warp = seed::derive(cfg.seed, "terrain", 3);
-    let s_tex = seed::derive(cfg.seed, "terrain", 4);
+    let s_shape = num::sub_seed(cfg.seed, "terrain", 0);
+    let s_warp = num::sub_seed(cfg.seed, "terrain", 3);
+    let s_tex = num::sub_seed(cfg.seed, "terrain", 4);
     let (w, h) = (grid.w as f64, grid.h as f64);
     (0..grid.n() as u32)
         .into_par_iter()
@@ -61,8 +55,8 @@ pub fn build_uplift(cfg: &TerrainConfig, grid: &Grid) -> Vec<f64> {
 /// Initial surface: a submerged plain with gentle fBm undulation and per-cell
 /// jitter to break the symmetry the drainage pattern grows from.
 pub fn initial_heights(cfg: &TerrainConfig, grid: &Grid) -> Vec<f64> {
-    let s_fbm = seed::derive(cfg.seed, "terrain", 1);
-    let s_jit = seed::derive(cfg.seed, "terrain", 2);
+    let s_fbm = num::sub_seed(cfg.seed, "terrain", 1);
+    let s_jit = num::sub_seed(cfg.seed, "terrain", 2);
     let (w, h) = (grid.w as f64, grid.h as f64);
     (0..grid.n() as u32)
         .into_par_iter()

@@ -49,8 +49,10 @@ room names), style, icon art, localised text.
 A text read from a name is its last part, `_` as a space; a produced name (`#`) gives no label,
 and a produced room reads `Room <floor>.<n>`. Labels are placed apart at the stated zoom
 (`label_zoom`, `floor_label_zoom`) with a glyph box (`glyph`): the first of eight positions round
-the anchor where the box meets no other box and covers no other anchor; `box` null where none
-fits. Rules in `export.py`'s docstring and build.md 9.4.
+the anchor where the box meets no other box and covers no other anchor, and on the ground plan
+covers no footprint where any position can (M7: atlas 8 of 44 labels over a footprint before, 3
+after, those 3 with no clear position at 1 px a metre); `box` null where none fits. Rules in
+`export.py`'s docstring and build.md 9.4.
 
 ### Measures (protocol)
 

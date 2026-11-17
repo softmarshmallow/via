@@ -47,6 +47,18 @@ pub fn draw(stream: u64, keys: &[i64]) -> u64 {
         .fold(mix(stream, keys.len() as u64), |h, &k| mix(h, k as u64))
 }
 
+/// The earlier Rust code's sub-seed for `(label, salt)` under `seed` (`numbers.md` 7.2,
+/// `sub_seed`): the label's bytes mixed one by one from `seed`'s root, then the salt. It absorbs no
+/// length, so it keeps labels apart less well than [`stream`]; it is kept, bit for bit, for the one
+/// library model drawn from it (`lib/terrain`'s program), and a new user takes [`stream`].
+pub fn sub_seed(seed: u64, label: &str, salt: u64) -> u64 {
+    let h = label
+        .as_bytes()
+        .iter()
+        .fold(splitmix64(seed ^ ROOT), |h, &b| mix(h, u64::from(b)));
+    mix(h, salt)
+}
+
 /// A word to a double in `[0, 1)`: the top 53 bits times `2^-53`, exact.
 pub fn unit(u: u64) -> f64 {
     // 2^-53 is exact as a double, and a 53-bit integer converts exactly, so one correctly rounded
@@ -105,6 +117,19 @@ mod tests {
     fn length_prefix_keeps_part_boundaries() {
         assert_ne!(stream(0, &["ab", "c"]), stream(0, &["a", "bc"]));
         assert_ne!(draw(7, &[3, 4]), draw(7, &[3, 4, 0]));
+    }
+
+    /// `sub_seed` as `numbers.md` 7.2 defines it, from the primitives; its values on the old
+    /// workspace's vectors are pinned where it is used (`crates/via-terrain/tests/carried.rs`).
+    #[test]
+    fn sub_seed_is_its_definition() {
+        let root = splitmix64(9 ^ ROOT);
+        assert_eq!(sub_seed(9, "", 5), mix(root, 5));
+        assert_eq!(sub_seed(9, "ab", 5), mix(mix(mix(root, 0x61), 0x62), 5));
+        // No length absorbed: unlike `stream`, it is not `absorb` under another name.
+        assert_ne!(sub_seed(9, "ab", 0), mix(absorb(root, b"ab"), 0));
+        assert_ne!(sub_seed(9, "ab", 0), sub_seed(9, "ab", 1));
+        assert_ne!(sub_seed(9, "ab", 0), sub_seed(10, "ab", 0));
     }
 
     #[test]

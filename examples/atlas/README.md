@@ -51,6 +51,24 @@ Only quay declares a datum (`sea`, the atlas's); it is a fill and stands on the 
 4 m outside less 28 m inside), and add it. After one round the largest median step is 7.5 m (coast,
 whose outline is half sea; its lift is set instead so its sea at its 0 lies on the atlas's at 2).
 
+**At the exit** (M7 slice 1). A place a road answers is lifted so the place the road ends on meets
+the plain, not by its outline's median: the plain's finished height outside the place less the
+place's own at it, from a build, added to the lift. The vale is a valley whose road enters at its
+mouth: by its median its valley floor lay 37 m under the plain at both ends, so the hill trail
+fell into a trench (`hill_trail@vale` 8.026, a pool in it, `join_vale` blocked at 41.9 degrees).
+Measured on the build before: vale, the plain 13.9 m at (2607, 1290), its road's start -23.1 m:
+-52.5 -> -15.5. Market, the plain 6.5 m 4 m out, its main street 1.6 m 12 m in (a 4.7 m drop where
+the plain's road bed met it, `market.arrive` blocked 2 m in): -16.5 -> -11.6. College, the plain
+6.6 m south of its arrival, the arrival 3.2 m: -3.5 -> -0.1 (the 3.2 was the old pad's cut, not the
+college's own: its arrival stands at 4.1 now, 2.5 m under the plain, still; "What does not hold").
+The cost is the rest of each outline: the vale's walls now stand 37 m over the plain on its median
+(`join_step` -37.24), the market's 5.15 and the college's 3.55 (each by the lift's change).
+
+The wild's kept corner is the plain's, but the wild was built to meet a neighbour on the slope it
+agreed there (its `agreed`: 18 m at its y = 240, rising 0.17 m a metre north), so the plain takes
+that slope near the wild's two edges of the corner (world.toml `[field.start]`), and its west exit
+at 51.3 m meets it; before, the plain lay 12 m under it (`join_wild_west` blocked at 73.9 degrees).
+
 ## Budget
 
 `[budget] triangles = 100000` source triangles per 128 m chunk. No target is known (build.md 5.1
@@ -110,7 +128,8 @@ move_market 115.9, move_square 168.3, forgotten_exit 108.9, over_budget 175.5.
   (composition.md 6.2, "An import without the derived field"); `college.arrival`'s approach held
   6.53 m of water in its first 30 m and holds none. The fix is the import rule's, not a row here: a
   row of the atlas cannot reach under the terrain step's row.
-- **Exits on a cliff.** Each place a road joins now holds the place's ground (composition.md 6.7,
+- **Exits on a cliff** (closed for the vale and the wild's west exit in M7 slice 1, "Lifts": the
+  text below is the M6 close's). Each place a road joins now holds the place's ground (composition.md 6.7,
   "Held"), so no place's own way is under water at its join (`exit_in_depth_max` 8.76 -> 0) and
   `import.place_blended` is gone (5 -> 0). But the vale's valley road starts 37 m below the plain:
   held, that step moved to the plain's side of the edge, where the hill trail falls 12.06 in its
@@ -123,6 +142,16 @@ move_market 115.9, move_square 168.3, forgotten_exit 108.9, over_budget 175.5.
   build into the same directory takes 1.0 s since an import enters the build key by its text
   (graph.md 6.2; 33.7 s before); into a new directory with the map export trusted, 89.8 s, of which
   about 54 s is in no node (TODO From M6 close).
+- **Approaches** (M7 slice 1). The college's arrival and the wild's west exit are met by lib/land's
+  `approach` (anchored, so read after an import's anchored ground; lib/land/test_approach_world.py)
+  in layers/ways.toml. Measured on the build, the step the parent's road bed leaves is not an
+  anchored-ground matter at the college (it has no anchored entry): a road's bed is
+  `smoothed_along(40)` of the ground along its own line, so at its end it carries the plain's level
+  a few metres into the place (`market.arrive`'s drop). The lift at the exit makes the two levels
+  one; a road that ends on a place taking that place's level at its end is proposed (TODO). The
+  college's arrival still stands 2.5 m under the plain (its lift should be about +2.4, not built), so
+  the approach cuts the plain below the terrain step's level and `college_road` holds 1.86 m of
+  water in its last 8 m (`exit_profile`, `join_college`).
 - **Roads inside a place.** The plain's roads are earth outside every place (`road_painted` 1.0,
   from layers/steps/track.py since M6 slice 2; before, a row of world.toml could not see the ways
   layer's roads and none was painted). Inside a place's outline its own ground is brought over the

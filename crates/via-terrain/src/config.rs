@@ -1,9 +1,7 @@
-use serde::{Deserialize, Serialize};
-
 /// Terrain stage configuration. Every field is a physical quantity or a
-/// derivation threshold — nothing here names a landform.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
+/// derivation threshold — nothing here names a landform. The step builds it from the request
+/// (`settle.rs`); no file is read into it (the old workspace's configuration files are retired).
+#[derive(Clone, Debug)]
 pub struct TerrainConfig {
     pub seed: u64,
     /// Grid width in cells (columns).

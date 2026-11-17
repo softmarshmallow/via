@@ -486,7 +486,7 @@ def _parse_via(a: Action, earlier_via: list[str]) -> None:
     where = f"action.{a.id}"
     allowed = {
         "via", "exit", "out", "env", "holding", "for_each", "diagnostics", "untouched",
-        "pids_gone", "no_rerun", "diag", "file", "nodes", "same", "check",
+        "pids_gone", "no_rerun", "diag", "file", "nodes", "same", "check", "cwd",
     }
     _keys(t, where, {"via", "exit"}, allowed - {"via", "exit"})
     args = _str_list(t["via"], f"{where}.via")
@@ -509,7 +509,7 @@ def _parse_via(a: Action, earlier_via: list[str]) -> None:
     if "env" in t:
         for k, v in _table(t["env"], f"{where}.env").items():
             _str(v, f"{where}.env.{k}")
-    for k in ("holding", "pids_gone"):
+    for k in ("holding", "pids_gone", "cwd"):
         if k in t:
             _relative(_str(t[k], f"{where}.{k}"), f"{where}.{k}")
     if "for_each" in t:

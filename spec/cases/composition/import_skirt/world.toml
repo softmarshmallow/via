@@ -1,0 +1,13 @@
+name       = "import_skirt"
+extent     = [0, 0, 16, 16]
+resolution = 2
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 0
+
+# composition.md 6.1: `a`, at 0.5 m posts, brings a cutting face onto these 2 m posts, unmoved.
+[import.a]
+file = "a/world.toml"
+at   = [0, 0]

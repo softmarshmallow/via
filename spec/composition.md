@@ -32,7 +32,7 @@ the world namespace (`documents.md` 3). It has the rank of the layer it is decla
 
 | Key | Takes | Required | Meaning, and its absence |
 |---|---|---|---|
-| `file` | path | yes | The imported world file, relative to the file that declares the import (`documents.md` 7.2). |
+| `file` | path | yes | The imported world file, relative to the file that declares the import (`documents.md` 7.2). Not found, unreadable or of another case on disk: the `doc.*` code of `documents.md` 7.2 with subject `import.<id>` at this key and `data.file` the path from this world's folder, never `cli`: the command line named the parent, not the import (M7; the fresh agent of the M6 close was told the world file was missing). |
 | `at` | point | one of `at`, `on` | Where the import's frame origin, its world point (0, 0), lies in the parent's frame. |
 | `on` | `{ ref, t, offset }` | one of `at`, `on` | Placed on a named place of the parent, as an instance is (`geometry.md` 2.6). |
 | `face` | bearing | no | Where the import's `+y` points in the parent, degrees clockwise from north. Default 0. On `on`, added to the place's facing as for an instance. |
@@ -145,12 +145,21 @@ author's. Absent, the world declares none: its zero is its own.
 |---|---|---|
 | Both written, equal | Heights taken as they are. | `import.lift_on_datum` (error): a lift would move the import off the shared zero. |
 | Both written, different | `import.datum_differs` (error): say how far apart they are. | Heights lifted by `lift`. |
-| Either absent | `import.no_datum` (warning), with `data.write` the line to add; heights taken as they are. | Heights lifted by `lift`. |
+| Either absent | `import.no_datum` (warning), with `data.write` the line to add and `data.lift_hint` the lift that meets this world's ground (below); heights taken as they are. | Heights lifted by `lift`. |
 
 - `lift` is added to the import's field of role `surface` only. The core knows no other height
   (a water level is a library's tag, `fields.md` 2), which is why a shared datum is the way to join
   worlds that carry other heights. Lesson: `atlas` placed nine worlds whose zeros ran from 0 m to
   140 m and lifted each by eye.
+- **The lift hint.** `data.lift_hint` on `import.no_datum` and `import.seam` is the lift that
+  would meet this world's ground across the import's edge: over every pair of neighbouring parent
+  posts with one outside the footprint (weight 0) and one inside, neither anchored, the median of
+  this world's finished height outside less the import's own surface, before `lift`, at the post
+  inside; to the centimetre, ties to even. The hint names the line, `lift = <lift_hint>`. Absent when no pair
+  crosses the edge (a footprint over the whole extent). The median, not the mean, so a road or a
+  cliff along part of the edge does not set it. Ours (M7 slice 1; decided, open to the owner): the
+  fresh agent of the M6 close set its lift by trial builds. It is a hint, not a fix: between worlds
+  with no datum, only the author knows whether the zeros agree.
 - North is the parent frame's `+y`; an import's north turns with `face`.
 - `datum` joins `extent`, `resolution`, `seed` and `chunk` in the frame statement (`graph.md` 1) and
   is written in the manifest's `frame` (`build.md` 5).
@@ -175,14 +184,30 @@ nested, `m.n.span.top`): its bound taken through the frame point by point (every
 its `base` read at the point in the import's frame (section 3's inverse, rounded to the lattice)
 plus `lift`, as the `surface` field is lifted (section 5): a deck stays as high over the ground it
 was built over. `cut`, `material` and its kind's name come unchanged. It is brought whole, as its
-feature is: the footprint and the blend do not clip it (ours). From these the parent's build makes
+feature is: the footprint and the blend do not clip it (ours). One a point of which leaves the
+lattice where the import is placed (`numbers.md` 3) is not brought, and `import.surface_dropped`
+(warning) names it on its scoped feature with `data.surface` (M7; it was dropped unsaid). From these the parent's build makes
 what a world makes of its own surfaces, on its own posts and over its finished terrain:
 
 - their meshes (`build.md` 10), `meshes/<import>.<owner>.<surface>.glb`, listed in the manifest with
   the scoped feature; a material is coloured by the parent's pack, and one it does not bind is
-  `pack.unknown_material` (error) on the scoped feature, as brought paint is (6.2);
+  `pack.unknown_material` (error) on the scoped feature, as brought paint is (6.2); a cutting path
+  owner's skirt (`build.md` 10, "Skirt") is stroked again from its brought line by the parent's
+  resolution, whose quads it covers;
 - the terrain's cut (`build.md` 6.5): a quad is cut where a brought surface with `cut` holds its
-  centre, by the rule a world's own surface cuts by, read on the parent's terrain;
+  centre, by the rule a world's own surface cuts by, read on the parent's terrain. On posts
+  coarser than the import's, a cutting path owner's strip narrower than half a parent quad's
+  diagonal (`ceil(0.7072 * resolution)` mm each side) cuts as if that wide, its formula read past
+  the bound there (a non-finite value inside the bound is `formula.not_finite` on the owner, 2.7 of
+  `surfaces.md`, as anywhere; past it, where the surface does not stand, it cuts nothing and is
+  not reported; ours, M7 slice 1), and its skirt reaches that much again past it: so every quad the line crosses
+  is cut and covered, and no uncut quad straddles the face beside a cut one (case
+  `import_skirt`; ours, M7). Source: `coast` (0.5 m) in `atlas` (2 m): its faces' strips, 1 m
+  wide, held the centres of only some of the quads they crossed, a staircase of single cut quads,
+  the import's own skirt 0.35 m past the face under quads that reach 1.41 m, and an uncut quad
+  straddling the 20 m step beside each cut one, whose side was open: `coast.along_cliff` fell
+  35.5 m at the face's foot. A world's own strip that narrow on its own posts cuts the same
+  staircase: its author sees it in that world (lib/land's `lip`); (open) below;
 - the surface questions (`surfaces.md` 2): `surfaces_at` and `sample` answer them by name;
 - the import's meetings (`surfaces.md` 3.3) in `meets.json`, sides scoped, moved, faces turned,
   heights plus `lift`; a side that is the import's terrain keeps its field's name and stands at the
@@ -301,10 +326,10 @@ it reads 0, and `inside('<import>.footprint')` says where it is defined.
 frame), `d` (the distance from the footprint's outline inward, metres, 0 on the outline), the
 parent's `let` names, any parent field the import does not bring, any `<import>.<field>`, and the
 functions of `formulas.md` on the import's places by their scoped names (`dist('a.south_gate', 40)`,
-the place in the parent's frame). A name of three parts or more (a path's end, `a.track.start`,
-or a place of a nested import) is not read yet: `doc.not_yet`, whose hint names the hold of 6.7,
-which holds such a place without a formula, and a parent point `on` it as the form that works
-(owed; M6 close fresh-agent run `weir`, which wrote 6.7's form with `glade.track.start`). A
+the place in the parent's frame), a name of three parts or more among them: a path's end
+(`a.track.start`, the point section 4 names) or a place of a nested import (`m.n.gate`), as a
+parent's `starts_at` reads it (case `blend_path_end`; M7: it was `doc.not_yet` until the M6
+close fresh-agent run `weir` wrote 6.7's form with `glade.track.start`). A
 parent field the import brings, read by its own name in `blend` (`f('height')`, as any field is
 read), reads itself through the blend: `graph.cycle`. Out of range is `formula.range`.
 
@@ -383,23 +408,26 @@ have no neighbour outside and are never seam pairs, so a footprint side along th
 raised limit (TODO "`max_step` per side").
 
 One `import.seam` (warning) per import: `data.grade` the worst pair's grade, `count` the steep
-pairs, and its position the post of the worst pair that lies inside the footprint. Default 0.5: ours, a slope steeper than one in
+pairs, `data.lift_hint` the lift that meets the parent's ground across the edge (section 5), and its position the post of the worst pair that lies inside the footprint. Default 0.5: ours, a slope steeper than one in
 two across a line nobody drew; (open) below.
 
 ### 6.7 Places the join alters
 
 A place of the import that a parent named reference names (an exit it answers, a path's end, an
 `on.ref`) and whose weight is below 1 stands on ground the import did not make (after the hold
-below, only a place outside the footprint).
+below, only a place outside the footprint, or one only a point or instance `on` names).
 `import.place_blended` (warning) names it, with `data.weight` and `data.moved`, the height
 difference between the parent's finished surface and the import's own there (R8: "a named place
 that the blend would alter is reported").
 
 **Held.** An exit on the import's edge under a fading blend would be such a place (its weight is
 the blend's at `d` near 0), so the import's ground is held round every place a parent path joins:
-each place of the import that a parent feature's `starts_at` or `ends_at` names, or a parent
-feature or instance's `on.ref` names, that is a point (an exit, a point feature, a path's `start`
-or `end`) inside the footprint. At each post of the footprint the weight is
+each place of the import that a parent feature's `starts_at` or `ends_at` names that is a point
+(an exit, a point feature, a path's `start` or `end`) inside the footprint. A parent point or
+instance `on` such a place (a view, a lamp) holds nothing: adding a view never changes the ground
+(case `place_view_unheld`; M7, decided, open to the owner: until then an `on.ref` held too, so a
+bookmark placed on a gate raised the terrain round it; a parent that wants the hold without a way
+writes it in `blend`, 6.3). At each post of the footprint the weight is
 `max(blend, 1 - smoothstep(12, 30, r))`, `r` the distance in metres to the nearest such place: the
 import's ground whole within 12 m of it, faded to the blend's by 30 m. The parent's way that
 answers the place then meets the import's ground at the edge, and a step there is the seam check's
@@ -583,7 +611,10 @@ built alone looks the same placed. In a build, an asset id or material name is o
   parent's own text still resolves ids with its own pack alone: an instance or scatter of the
   parent naming it is `pack.unknown_asset`, and a taxon selects only the parent's assets, so an
   import never changes what the parent places. Why: a reader, a budget and a map step read the
-  build, and an asset missing there drew nothing and counted 0 triangles (atlas, M6 slice 2).
+  build, and an asset missing there drew nothing and counted 0 triangles (atlas, M6 slice 2). A
+  world with no `pack` brings them into an empty one: the build's assets are the union of its
+  worlds' packs, and the parent's own text still binds nothing (case `brought_no_pack`; ours, M7:
+  such a build listed no asset and counted 0).
 - Swapping the parent's pack swaps the look of what the parent places, not an import's: each
   import's pack is the import's text.
 
@@ -721,14 +752,15 @@ Ids, places, layers and formulas use their own chapters' codes (`identity.unknow
 | `import.exit_outside` | error | An exit lies outside its import's footprint. (M4) |
 | `import.datum_differs` | error | The import and the parent declare different datums and the import has no `lift`; `data.datum`, `data.parent_datum`. (M4) |
 | `import.lift_on_datum` | error | `lift` on an import that declares the parent's datum. (M4) |
-| `import.no_datum` | warning | The import or the parent declares no datum and the import has no `lift`; the line to add in `data.write`. (M4) |
+| `import.no_datum` | warning | The import or the parent declares no datum and the import has no `lift`; the line to add in `data.write`, and `data.lift_hint` the lift that meets this world's ground across the edge (5). (M4) |
 | `import.field_differs` | error | An import's field and the parent's field of one name differ in role, type or unit; `data.field`. (M4) |
 | `import.field_unmatched` | warning | An import's field the parent does not declare, so not brought; `data.field`, the declaration in `data.write`. (M4) |
 | `import.coarser` | info | The parent's posts are coarser than the import's, so detail is lost; `data.ratio`. (M4) |
 | `import.outside` | warning | Part of an import's footprint lies past the parent's extent and is not brought; `data.area`. (M4) |
 | `import.overlap` | warning | Two imports' footprints, as placed, intersect with an area above 0; `data.area` (6.8). (M4) |
-| `import.seam` | warning | A step in the ground across the join steeper than `max_grade`, worst first by data.grade. (M4) |
+| `import.seam` | warning | A step in the ground across the join steeper than `max_grade`, worst first by data.grade; `data.lift_hint` the lift that meets this world's ground across the edge (5). (M4) |
 | `import.place_blended` | warning | A place the parent names stands where the import's weight is below 1; `data.weight`, `data.moved`. (M4) |
+| `import.surface_dropped` | warning | A kind surface of an import leaves the lattice where the import is placed and is not brought; `data.surface` (6.1). (M7) |
 | `import.binding_differs` | error | One asset id or material name bound differently by two packs of the build; `data.id`. (M4) |
 | `import.given_unknown` | error | `give` names a name the import does not declare in `[given]`; the nearest name. (M4) |
 | `import.given_type` | error | What is given is not the form the given `accepts`; `data.accepts`. (M4) |
@@ -765,6 +797,9 @@ re-runs (`conformance.md` 5) apply to every build.
 | datum_same | M4 | Parent and import `datum = "sea"`; then `lift = 2` added | build each | No datum diagnostic, height as the import's; then `import.lift_on_datum`. |
 | datum_differs | M4 | Parent `datum = "sea"`, import `datum = "chart"`; then `lift = 2` | build each | `import.datum_differs`, exit 1; then no diagnostic and the import's height 2 m higher in the parent. |
 | no_datum | M4 | Neither declares a datum | build | `import.no_datum` warning with `data.write`; exit 0. |
+| no_datum_lift | M7 | Neither declares a datum; the import's ground at 4.25, the parent's at 1.5 | build | `import.no_datum` with `data.lift_hint` -2.75; exit 0. |
+| import_file_missing | M7 | An import whose `file` names no file (`a/wrold.toml`) | build | `doc.file_missing`, subject `import.a` at its `file` key, `data.file` the path as written; not `cli`; exit 1. |
+| import_from_folder | M7 | A world in `w/` importing `../x/world.toml`, built from `w/` (`cwd`, `conformance.md` 3.3) and from the folder above | build each | Exit 0 and no diagnostic both times. A regression guard: it passes on the M6 close engine too; it holds the runner's `cwd` key. |
 | exit_forgotten | M4 | `a` with an exit `east`, and no parent reference to it | build | `import.exit_unanswered`, subject `a.feature.east`, `data.write` `ends_at = "a.east"`; exit 1. |
 | exit_answered | M4 | `exit = ["width"]` on the exit kind, exit width 6; a parent path `ends_at = "a.east"` of width 6; then of width 4; then a deliberate end `on.ref = "a.east"` of width 6 | build each | No diagnostic; then `import.exit_mismatch`, `data.attribute` `width`, exit 1; then no diagnostic. |
 | exit_outside | M4 | `a`'s exit at (7, 4) and a footprint of `a`'s west half | build | `import.exit_outside`, subject `a.feature.east`. |
@@ -778,7 +813,7 @@ re-runs (`conformance.md` 5) apply to every build.
 | after_dropped | M4 | `[layer.join] after = "imports"` | merge | `doc.unknown_key` at `after`. |
 | blend_ground | M4 | `a`'s height -3 west of x = 4 and 2 east; parent height -5; `blend = "= smoothstep(-1, 0, a.height)"` | build | -5 at a post where `a` is -3; 2 at a post where `a` is 2. |
 | blend_range | M4 | `blend = "= 2"` | build | `formula.range`; exit 1. |
-| seam | M4 | A hard edge: import height 4 on parent height 0; then `max_grade = 5`; then a parent anchored feature over the whole edge | build each | `import.seam` with `data.grade` 4; then none; then none. |
+| seam | M4 | A hard edge: import height 4 on parent height 0; then `max_grade = 5`; then a parent anchored feature over the whole edge | build each | `import.seam` with `data.grade` 4 and `data.lift_hint` -4; then none; then none. |
 | place_blended | M4 | `blend = "= smoothstep(0, 4, d)"`; `footprint` the import's east 6 m; a parent path `ends_at = "a.quay"` with `a.quay` 1 m inside the import's extent, outside the footprint | build | `import.place_blended`, `data.weight` 0 (a place inside the footprint is held, 6.7). |
 | place_held | M6 | Parent height 0, `a`'s 4 at (32, 0), 48 by 64; `blend = "= smoothstep(0, 16, d)"`; a parent path `ends_at = "a.gate"`, `a.gate` on `a`'s west edge at (0, 32) | build | Height 4 at (32, 32) and (44, 32) (held: the blend alone gives 0 and 3.375); 0 at (32, 0), 32 m from the gate; no `import.place_blended`. |
 | field_match | M4 | `a` with a field `moss` the parent lacks; then the parent declares `moss` with `role = "keep_out"` and `a`'s `moss` has none | build each | `import.field_unmatched` with `data.field` `moss`; then `import.field_differs`, exit 1. |
@@ -818,6 +853,11 @@ re-runs (`conformance.md` 5) apply to every build.
 | import_kind_surface | M6 | `a` (8 m square, no datum) holds a deck `span` (top 3 m, path (1, 4) to (7, 4), half-width 1) and a hollow `cave` (floor -1 m, `cut` 3, region (1, 1) to (3, 3)), a lamp (`surface = "span.top"`) and a bookmark `mid` on the deck; placed at (20, 8), `face = 90`, `lift = 2`; a parent point `view` at (24, 3) with `surface = "a.span.top"`; then `a` and `view` moved 8 m west on one store; then a parent path `ends_at = "a.span.end"` | build; query `surfaces_at`; build; build | The manifest lists meshes `a.cave` and `a.span`; cut quads at posts (21, 5) and (22, 6), none at (23, 5) or (20, 5); the lamp's `z` 5; `a.mid` at (24, 4, 5) and `view` at (24, 3, 5); at (24, 4) `surfaces_at` gives `height` 2 and `a.span.top` 5; moved, cut at (13, 5) and (14, 6), none at (21, 5), `a.mid` at (16, 4, 5); then `surface.gap`, `data.gap` 3000 (the path's end at 2 m). |
 | import_nested_stand | M6 | p imports m at (4, 4), no lift; m is import_kind_surface's parent (a lamp of `a` on `a.span.top`) | build | `m.a.lamp`'s `z` 5 (on the deck brought twice), not the ground's. |
 | brought_asset | M6 | `a`'s own pack binds `heavy` (1000 triangles), the parent's binds only `light`; `[budget] triangles = 2000`; then 500 | build; build | The manifest's `assets.heavy.pack` is `a` and chunk [0, 0] counts 1010 triangles; then `build.over_budget` naming `heavy`, exit 1. |
+| import_skirt | M7 | `a` at 0.5 m posts holds a face (path (2, 5.3) to (14, 10.9), half-width 0.5, base 0.5, `cut` 1), brought unmoved onto 2 m posts; the same face written in a world of its own at 2 m (`own.toml`) | build each | Own: 37 triangles, cut quads (2, 3), (4, 4), (5, 4), (3, 3) uncut. Brought: 10 cut quads in a chain from (1, 2) to (6, 5), (3, 3) cut and (4, 3) not, 58 triangles (41 with the import's own skirt and cut). |
+| surface_dropped | M7 | `a`'s deck (path (1, 4) to (7, 4)) with `a` placed at (2147480, 8), past the lattice | build | `import.surface_dropped`, subject `a.feature.span`, `data.surface` `a.span.top`; exit 0. |
+| blend_path_end | M7 | Parent 0, `a`'s 4 at (32, 0), its path `track` from (0, 32); `blend = "= 1 - smoothstep(4, 8, dist('a.track.start', 40))"` | build | Height 4 at (32, 32) and (36, 32), 0 at (44, 32): a three-part place read in `blend` (6.3). |
+| brought_no_pack | M7 | A parent with no `pack`; `a`'s pack binds `heavy` (1000 triangles), placed once | build | The manifest lists `heavy` with `pack` `a`; chunk 0 counts 1000 triangles (10). |
+| place_view_unheld | M7 | place_held's `a` and blend, and a parent point `on = { ref = "a.gate" }` in place of the path | build | Height 0 at (32, 32) and 3.375 at (44, 32), the blend's: a view holds nothing (6.7); `import.place_blended` with `data.weight` 0. |
 
 Rules of this chapter with no case yet, owed by M4 slice 3 (each row able to fail): a footprint
 naming a parent region (stays where it is when the import moves); `authority.squeezed` where the
@@ -851,6 +891,7 @@ chunks reused away from the old and new footprint; change report causes in the p
 | Selecting an import's features by kind from the parent (`'a/kind:x'`, or a give-like export). | The first world that needs one; `atlas`, M6. |
 | Naming the sides of a footprint by what they face (TODO: "the sides facing part X"), beyond `follows` with `span`. | `border`'s join layer in M4, if `span` fractions break when the outline changes. |
 | A filter when a fine import is read onto coarse posts. | The first world where `import.coarser` shows lost detail on foot. |
+| A world's own cutting strip narrower than half its quad's diagonal (6.1: a brought one cuts as if that wide; a world's own still cuts the staircase `build.md` 6.5 gives, lib/land's `lip` 0.5 at 1 m posts or coarser). Widen it in the core for every world, or a library check. | The first world of its own at coarse posts with a sheer face; the owner's (M7 slice 1). |
 | `max_grade`'s default 0.5. | The M4 worlds' seam measures (`strait`, `border`, `county`). |
 | An import's own rule growing past its edge, fading (TODO). | `border`'s fringe in M4; until then a parent scatter in the join layer. |
 | A parent that offers what a part may take without the part declaring it. | Not planned: R11 makes it opt-in per input. |

@@ -516,7 +516,7 @@ func make_far_instances() -> MeshInstance3D:
 				var t := _instance_transform(cols, n, true)
 				for part in parts:
 					var tint: Color = part[1] * (cols.tint[n] if part[2] else 1.0)
-					_far_box(verts, normals, tints, uvs, t, part[0], Color(tint.r, tint.g, tint.b), uv)
+					_far_frustum(verts, normals, tints, uvs, t, part, Color(tint.r, tint.g, tint.b), uv)
 	if verts.is_empty():
 		return null
 	var arrays := []
@@ -537,18 +537,22 @@ func make_far_instances() -> MeshInstance3D:
 ## Ours: a far instance is its asset's outline in FAR_BANDS bands of its height. One box of the
 ## bounds drew a wood as a wall of solid blocks from the ground to the crowns (M6 slice 2, atlas at
 ## 96 m); a box per band follows a stem under a crown, a crown narrowing to its top, and is a box
-## still for a box.
+## still for a box. M7: each band is a frustum between the outlines of the asset's surface about
+## its two ends (`far_ring`), each outline an octagon (its box cut by its diagonal extents), so a
+## crown is round and a cone tapers; a box's outlines are its box.
 const FAR_BANDS := 3
 
 
 func _far_parts(asset: String):
-	## [[bounds (asset frame), linear colour, whether the row's tint multiplies it], ...], or null
-	## for an asset not drawn or without bounds. The asset's height (its bounds' z) is cut in
-	## FAR_BANDS equal bands; each band is the box of the asset's surface within it (each triangle
-	## clipped to the band), and a band no surface reaches is left out. A model's band takes the
-	## mean albedo of its triangles whose centre lies in it, by area (else the model's mean); a
-	## primitive's or stand-in's every band its `colour`. Neighbouring bands of the same box and
-	## colour are one box.
+	## [[bounds (asset frame), linear colour, whether the row's tint multiplies it, bottom ring,
+	## top ring], ...], or null for an asset not drawn or without bounds. The asset's height (its
+	## bounds' z) is cut in FAR_BANDS equal bands; the ring at each of the FAR_BANDS + 1 band ends
+	## z_k is the 8-sided outline ([x0, y0, x1, y1, least and most x + y, least and most x - y]) of
+	## the surface within half a band of z_k (each triangle clipped there), and band k runs from
+	## ring k to ring k + 1 (its bounds the box of both). A ring no surface reaches is its
+	## neighbour's. A model's band takes the mean albedo of its triangles whose centre lies in it,
+	## by area (else the model's mean); a primitive's or stand-in's every band its `colour`.
+	## Neighbouring bands of the same rings and colour are one.
 	var a: Dictionary = _manifest.get("assets", {}).get(asset, {})
 	var b: Array = a.get("bounds", [])
 	var mesh := _asset_mesh_of(asset)
@@ -559,15 +563,20 @@ func _far_parts(asset: String):
 	var flat := Color(c[0], c[1], c[2])
 	var z0: float = b[2]
 	var dz: float = (float(b[5]) - z0) / FAR_BANDS
+	var whole := [b[0], b[1], b[3], b[4], float(b[0]) + float(b[1]), float(b[3]) + float(b[4]), float(b[0]) - float(b[4]), float(b[3]) - float(b[1])]
 	if dz <= 0.0:
-		return [[b, flat, not model]]
+		return [[b, flat, not model, whole, whole]]
 	var lo: Array[Vector2] = []
 	var hi: Array[Vector2] = []
+	var dlo: Array[Vector2] = []   # per ring: the least (x + y, x - y) of the surface about it
+	var dhi: Array[Vector2] = []
 	var sum: Array[Color] = []
 	var area: Array[float] = []
-	for k in FAR_BANDS:
+	for k in FAR_BANDS + 1:
 		lo.append(Vector2(INF, INF))
 		hi.append(Vector2(-INF, -INF))
+		dlo.append(Vector2(INF, INF))
+		dhi.append(Vector2(-INF, -INF))
 		sum.append(Color(0, 0, 0))
 		area.append(0.0)
 	var all_sum := Color(0, 0, 0)
@@ -591,8 +600,8 @@ func _far_parts(asset: String):
 			area[kc] += ar
 			all_sum += albedo * ar
 			all_area += ar
-			for k in FAR_BANDS:
-				var bz0 := z0 + k * dz
+			for k in FAR_BANDS + 1:
+				var bz0 := z0 + (k - 0.5) * dz
 				var bz1 := bz0 + dz
 				var pts: Array[Vector2] = []
 				for e in 3:
@@ -608,25 +617,45 @@ func _far_parts(asset: String):
 				for pt in pts:
 					lo[k] = lo[k].min(pt)
 					hi[k] = hi[k].max(pt)
+					var d := Vector2(pt.x + pt.y, pt.x - pt.y)
+					dlo[k] = dlo[k].min(d)
+					dhi[k] = dhi[k].max(d)
 	var mean := all_sum / all_area if all_area > 0.0 else DEFAULT_GROUND.srgb_to_linear()
+	var rings: Array = []
+	for k in FAR_BANDS + 1:
+		rings.append([lo[k].x, lo[k].y, hi[k].x, hi[k].y, dlo[k].x, dhi[k].x, dlo[k].y, dhi[k].y] if lo[k].x <= hi[k].x else null)
+	if rings.all(func(r): return r == null):
+		return null
+	for k in FAR_BANDS + 1:   # a ring no surface reaches takes its nearest reached neighbour's
+		var d := 1
+		while rings[k] == null:
+			if k - d >= 0 and rings[k - d] != null:
+				rings[k] = rings[k - d].duplicate()
+			elif k + d <= FAR_BANDS and rings[k + d] != null:
+				rings[k] = rings[k + d].duplicate()
+			d += 1
 	var parts: Array = []
 	for k in FAR_BANDS:
-		if lo[k].x > hi[k].x:
-			continue
 		var col := flat
 		if model:
 			var mc := sum[k] / area[k] if area[k] > 0.0 else mean
 			col = Color(mc.r, mc.g, mc.b)
-		var box := [lo[k].x, lo[k].y, z0 + k * dz, hi[k].x, hi[k].y, z0 + (k + 1) * dz]
+		var r0: Array = rings[k]
+		var r1: Array = rings[k + 1]
+		var box := [minf(r0[0], r1[0]), minf(r0[1], r1[1]), z0 + k * dz, maxf(r0[2], r1[2]), maxf(r0[3], r1[3]), z0 + (k + 1) * dz]
 		if not parts.is_empty():
 			var last: Array = parts[-1]
 			var lb: Array = last[0]
-			if absf(lb[0] - box[0]) < 0.01 and absf(lb[1] - box[1]) < 0.01 and absf(lb[3] - box[3]) < 0.01 \
-					and absf(lb[4] - box[4]) < 0.01 and last[1].is_equal_approx(col) and absf(lb[5] - box[2]) < 1e-6:
+			if _same_ring(last[3], last[4]) and _same_ring(last[4], r0) and _same_ring(r0, r1) \
+					and last[1].is_equal_approx(col) and absf(lb[5] - box[2]) < 1e-6:
 				lb[5] = box[5]
 				continue
-		parts.append([box, col, not model])
+		parts.append([box, col, not model, r0, r1])
 	return parts if not parts.is_empty() else null
+
+
+static func _same_ring(a: Array, b: Array) -> bool:
+	return range(8).all(func(i): return absf(float(a[i]) - float(b[i])) < 0.01)
 
 
 static func _far_box(verts: PackedVector3Array, normals: PackedVector3Array, tints: PackedColorArray,
@@ -666,6 +695,99 @@ static func _far_box(verts: PackedVector3Array, normals: PackedVector3Array, tin
 				normals.append(nrm)
 				tints.append(colour)
 				uvs.append(uv)
+
+
+static func far_ring(r: Array) -> PackedVector2Array:
+	## A ring's eight corners (asset frame), counter-clockwise from the south side's west end:
+	## its box [x0, y0, x1, y1] cut by its diagonal extents [u0, u1, v0, v1] (u = x + y,
+	## v = x - y). A corner a slab only touches repeats its neighbour, so every ring has eight
+	## and two rings join corner to corner.
+	var x0: float = r[0]
+	var y0: float = r[1]
+	var x1: float = r[2]
+	var y1: float = r[3]
+	var u0: float = r[4]
+	var u1: float = r[5]
+	var v0: float = r[6]
+	var v1: float = r[7]
+	return PackedVector2Array([
+		Vector2(clampf(u0 - y0, x0, x1), y0), Vector2(clampf(v1 + y0, x0, x1), y0),
+		Vector2(x1, clampf(x1 - v1, y0, y1)), Vector2(x1, clampf(u1 - x1, y0, y1)),
+		Vector2(clampf(u1 - y1, x0, x1), y1), Vector2(clampf(v0 + y1, x0, x1), y1),
+		Vector2(x0, clampf(x0 - v0, y0, y1)), Vector2(x0, clampf(u0 - x0, y0, y1)),
+	])
+
+
+static func far_outline(r: Array) -> PackedVector2Array:
+	## A ring's outline with its repeated corners once: a box's is its four corners.
+	var kept := PackedVector2Array()
+	for p in far_ring(r):
+		if kept.is_empty() or kept[kept.size() - 1].distance_to(p) > 1e-3:
+			kept.append(p)
+	if kept.size() > 1 and kept[0].distance_to(kept[kept.size() - 1]) <= 1e-3:
+		kept.remove_at(kept.size() - 1)
+	return kept
+
+
+static func _far_frustum(verts: PackedVector3Array, normals: PackedVector3Array, tints: PackedColorArray,
+		uvs: PackedVector2Array, t: Transform3D, part: Array, colour: Color, uv: Vector2) -> void:
+	## A band from its bottom ring at its bounds' z0 to its top ring at z1, placed by t: its sides
+	## and its top, wound clockwise seen from outside (Godot's front faces). A band whose two rings
+	## are one box is drawn as _far_box draws it, flat; a round band's sides are shaded round
+	## (each vertex's normal its level direction from the band's axis), its top flat.
+	var b: Array = part[0]
+	if part.size() < 5:
+		_far_box(verts, normals, tints, uvs, t, b, colour, uv)
+		return
+	var bottom := far_ring(part[3])
+	var top_r := far_ring(part[4])
+	if _same_ring(part[3], part[4]) and far_outline(part[3]).size() == 4:
+		_far_box(verts, normals, tints, uvs, t, [part[3][0], part[3][1], b[2], part[3][2], part[3][3], b[5]], colour, uv)
+		return
+	var round := far_outline(part[3]).size() > 4 or far_outline(part[4]).size() > 4
+	var z0: float = b[2]
+	var z1: float = b[5]
+	var centre: Vector3 = t * g((float(b[0]) + float(b[3])) / 2.0, (float(b[1]) + float(b[4])) / 2.0, (z0 + z1) / 2.0)
+	var up := (t.basis * Vector3.UP).normalized()
+	var tris := []   # [a, b, c, outward normal, round]
+	for i in 8:
+		var j := (i + 1) % 8
+		var p0 := t * g(bottom[i].x, bottom[i].y, z0)
+		var p1 := t * g(bottom[j].x, bottom[j].y, z0)
+		var p2 := t * g(top_r[j].x, top_r[j].y, z1)
+		var p3 := t * g(top_r[i].x, top_r[i].y, z1)
+		for tri in [[p0, p1, p2], [p0, p2, p3]]:
+			tris.append([tri[0], tri[1], tri[2], true])
+	var cap: Array[Vector3] = []
+	for p in far_outline(part[4]):
+		cap.append(t * g(p.x, p.y, z1))
+	for i in range(1, cap.size() - 1):
+		tris.append([cap[0], cap[i], cap[i + 1], false])
+	for tri in tris:
+		var a: Vector3 = tri[0]
+		var bb: Vector3 = tri[1]
+		var cc: Vector3 = tri[2]
+		var cr := (bb - a).cross(cc - a)
+		if cr.length() < 1e-8:
+			continue   # a side between two corners a slab only touched
+		var nrm := cr.normalized()
+		if nrm.dot((a + bb + cc) / 3.0 - centre) < 0.0:
+			nrm = -nrm
+		if cr.dot(nrm) > 0.0:   # counter-clockwise from outside: turn it
+			var tmp := bb
+			bb = cc
+			cc = tmp
+		for v in [a, bb, cc]:
+			verts.append(v)
+			var vn := nrm
+			if tri[3] and round:
+				var rr: Vector3 = v - centre
+				rr -= up * rr.dot(up)
+				if rr.length() > 1e-6:
+					vn = rr.normalized()
+			normals.append(vn)
+			tints.append(colour)
+			uvs.append(uv)
 
 
 static func _far_steps(a: int, b: int, quads: int) -> Array[int]:

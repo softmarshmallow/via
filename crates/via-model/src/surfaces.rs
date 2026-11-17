@@ -333,6 +333,13 @@ pub struct SurfaceOut {
     /// "Skirt"): the mesh covers the cut cells in it, so a cut quad is not left open past the
     /// bound. `None` for a region owner or a surface with no `cut`.
     pub skirt: Option<via_geom::Region>,
+    /// A path owner's line and the strip's half width in millimetres, for a surface with `cut`:
+    /// a world that brings it strokes its skirt again by its own posts (`composition.md` 6.1).
+    pub(crate) strip: Option<(Arc<Vec<P>>, i64)>,
+    /// A brought cutting strip narrower than half a quad's diagonal of the coarser world that
+    /// brings it, widened to it: the quads whose centre it holds are cut, the formula read there
+    /// past the bound (`composition.md` 6.1). `None`: the bound decides.
+    pub(crate) cut_band: Option<via_geom::Region>,
     pub material: Option<String>,
     /// Whether this surface's `formula.not_finite` was said in this build (2.7: once, at the
     /// first failing point asked).
@@ -392,8 +399,25 @@ impl SurfaceOut {
     /// This surface of import `id`, placed by `frame` and lifted by `lift` (`composition.md`
     /// 6.1): its place and owner scoped (`<id>.<place>`), its bound and skirt taken through the
     /// frame point by point (every piece and hole), its `base` read in its own frame plus the
-    /// lift. `None` when a point of it leaves the lattice.
-    pub(crate) fn brought(&self, id: &str, frame: via_num::Frame, lift: f64) -> Option<SurfaceOut> {
+    /// lift. A skirt is stroked again from the brought line by `resolution`, the posts of the
+    /// world that brings it, whose cut quads it covers (`build.md` 10, "Skirt"): the import's
+    /// own skirt reached past the bound only as far as the import's finer quads (`coast` at
+    /// 0.5 m in `atlas` at 2 m: the cliff's foot open, M6 close). `None` when a point of it
+    /// leaves the lattice.
+    ///
+    /// On posts coarser than the import's (`own`, the import's resolution), a cutting strip
+    /// narrower than half a quad's diagonal holds the centres of only some of the quads it crosses:
+    /// a staircase of single cut quads whose uncut neighbours straddle the step and leave the
+    /// hole's side open to a walker. There the strip cuts as if that wide (`cut_band`), and the
+    /// skirt reaches a quad's half diagonal past the band.
+    pub(crate) fn brought(
+        &self,
+        id: &str,
+        frame: via_num::Frame,
+        lift: f64,
+        resolution: Option<i64>,
+        own: Option<i64>,
+    ) -> Option<SurfaceOut> {
         let pt = |q: &P| frame.to_world((q.x, q.y)).ok().map(|(x, y)| P::new(x, y));
         let ring = |r: &[P]| r.iter().map(pt).collect::<Option<Vec<P>>>();
         let region = |r: &via_geom::Region| -> Option<via_geom::Region> {
@@ -423,9 +447,26 @@ impl SurfaceOut {
                 },
             },
         };
-        let skirt = match &self.skirt {
-            Some(r) => Some(region(r)?),
+        let strip = match &self.strip {
+            Some((pts, mm)) => Some((Arc::new(ring(pts)?), *mm)),
             None => None,
+        };
+        let mut cut_band = None;
+        let skirt = match (&strip, resolution, &self.skirt) {
+            (Some((pts, mm)), Some(r), _) => {
+                let reach = skirt_reach(r);
+                let mut w = *mm;
+                if own.is_some_and(|o| o < r) && w < reach {
+                    w = reach;
+                    cut_band =
+                        via_geom::offset::stroke(&self.owner, pts, w, w, Join::Round, Cap::Butt)
+                            .ok();
+                }
+                let w = w + reach;
+                via_geom::offset::stroke(&self.owner, pts, w, w, Join::Round, Cap::Butt).ok()
+            }
+            (_, _, Some(r)) => Some(region(r)?),
+            _ => None,
         };
         Some(SurfaceOut {
             place: format!("{id}.{}", self.place),
@@ -436,10 +477,18 @@ impl SurfaceOut {
             base: Arc::new(self.base.placed(frame, lift)),
             cut: self.cut,
             skirt,
+            strip,
+            cut_band,
             material: self.material.clone(),
             said: Arc::new(AtomicBool::new(false)),
         })
     }
+}
+
+/// How far a cut quad of side `resolution` (millimetres) reaches past the strip that holds its
+/// centre: half its diagonal, rounded up (`build.md` 10, "Skirt").
+fn skirt_reach(resolution: i64) -> i64 {
+    (resolution * 7072 + 9999) / 10000
 }
 
 /// `surface.not_surface` (4.1) on `subject`, whose `surface` names `name`; `None` when the
@@ -616,6 +665,7 @@ pub(crate) fn kind_surfaces(
             let subject = Subject::entity("feature", id.as_str());
             let place = format!("{id}.{}", s.name);
             let mut skirt: Option<via_geom::Region> = None;
+            let mut strip: Option<(Arc<Vec<P>>, i64)> = None;
             // A formula that did not pass its check was said there; this surface is left out.
             failed.insert(place.clone());
             let bound = match (geo, s.bound) {
@@ -650,8 +700,9 @@ pub(crate) fn kind_surfaces(
                             // A cut quad has its centre in the strip, so it reaches at most half
                             // a quad's diagonal past it: the skirt is the strip grown by that.
                             if s.cut.is_some() {
+                                strip = Some((Arc::new(line.pts.clone()), mm));
                                 if let Some(g) = d.grid {
-                                    let reach = (g.resolution * 7072 + 9999) / 10000;
+                                    let reach = skirt_reach(g.resolution);
                                     skirt = via_geom::offset::stroke(
                                         id,
                                         &line.pts,
@@ -740,6 +791,8 @@ pub(crate) fn kind_surfaces(
                     bound,
                     base: Arc::new(base),
                     skirt: if cut.is_some() { skirt } else { None },
+                    strip: if cut.is_some() { strip } else { None },
+                    cut_band: None,
                     cut,
                     material: s.material.clone(),
                     said: Arc::new(AtomicBool::new(false)),
@@ -1486,7 +1539,10 @@ pub(crate) fn cut_quads(
     let half = r.div_euclid(2);
     for s in surfaces.values() {
         let Some(cut) = s.cut else { continue };
-        let (lo, hi) = s.bound.bbox();
+        let (lo, hi) = match s.cut_band.as_ref().and_then(via_geom::Region::bbox) {
+            Some(b) => b,
+            None => s.bound.bbox(),
+        };
         // The quads whose centre can lie in the bound's box.
         let i0 = ((lo.x - half - x0).div_euclid(r)).max(0) as usize;
         let j0 = ((lo.y - half - y0).div_euclid(r)).max(0) as usize;
@@ -1495,7 +1551,22 @@ pub(crate) fn cut_quads(
         for j in j0..j1 {
             for i in i0..i1 {
                 let c = (x0 + i as i64 * r + half, y0 + j as i64 * r + half);
-                let z = match s.z_in_build(c, diags) {
+                let z = match &s.cut_band {
+                    // A widened band (`composition.md` 6.1) reads the formula past the bound.
+                    Some(band) if band.side(P::new(c.0, c.1)) == via_geom::pred::Side::Out => {
+                        continue
+                    }
+                    // Past the bound the surface does not stand: a fault there cuts nothing and
+                    // is not the owner's (`composition.md` 6.1). Inside, as any surface (2.7).
+                    Some(_) if !s.inside(c) => Ok(s
+                        .base
+                        .eval(&[c])
+                        .ok()
+                        .and_then(|v| v.first().copied())
+                        .filter(|z| z.is_finite())),
+                    _ => s.z_in_build(c, diags),
+                };
+                let z = match z {
                     Ok(Some(z)) => z,
                     Ok(None) => continue,
                     // `formula.not_finite` was said on the owner (2.7); the build fails.
@@ -1604,7 +1675,7 @@ pub(crate) fn meshes(
             surfaces
                 .values()
                 .filter(|o| o.kind == s.kind && o.name == s.name && o.cut.is_some())
-                .filter_map(SurfaceOut::region)
+                .filter_map(|o| o.cut_band.as_ref().or_else(|| o.region()))
                 .collect()
         } else {
             Vec::new()

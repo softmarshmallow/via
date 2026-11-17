@@ -76,7 +76,8 @@ Mechanisms that carry the goal line:
   Godot.
 
 Carried over from the old workspace: `crates/via-terrain` only, as an erosion library that a step
-calls (its `run_given` / `Given` entry, the seed derivation in `crates/via-artifact/src/seed.rs`,
+calls (its `run_given` / `Given` entry, the seed derivation of `crates/via-artifact/src/seed.rs`,
+now `via-num`'s `sub_seed` since the M7 cutover,
 and the thread-count determinism test pattern in `crates/via-terrain/tests/determinism.rs`).
 Retired: `via-ecology`, `via-suitability`, `via-viz`, the old `via` CLI, `experiments/`, `.vrast`.
 

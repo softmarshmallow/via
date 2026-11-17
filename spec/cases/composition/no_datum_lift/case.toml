@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "Neither world declares a datum and the import has no lift; the import's ground stands at 4.25 and the parent's at 1.5: import.no_datum carries data.lift_hint -2.75 (the median of the parent's height outside the edge less the import's own inside), and the hint names `lift = -2.75`."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.build.diag.datum]
+code     = "import.no_datum"
+severity = "warning"
+data     = { lift_hint = -2.75 }
+data_has = ["write"]

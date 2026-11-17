@@ -1,0 +1,12 @@
+name       = "no_datum_lift"
+extent     = [0, 0, 32, 16]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 1.5
+
+[import.a]
+file = "a/world.toml"
+at   = [8, 0]

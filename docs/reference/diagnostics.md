@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-359 codes in 23 groups. 0 have no bad and fixed example yet; their explain text is the
+360 codes in 23 groups. 0 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -29,7 +29,7 @@ chapter's summary and hint.
 | [`geom`](#geom) | `spec/geometry.md` | 31 |
 | [`graph`](#graph) | `spec/graph.md` | 9 |
 | [`identity`](#identity) | `spec/identity.md` | 29 |
-| [`import`](#import) | `spec/composition.md` | 19 |
+| [`import`](#import) | `spec/composition.md` | 20 |
 | [`load`](#load) | `spec/build.md` | 5 |
 | [`num`](#num) | `spec/numbers.md` | 12 |
 | [`pack`](#pack) | `spec/assets.md` | 14 |
@@ -567,7 +567,7 @@ Fixed: kind = "edge"
 | `build.internal` | error | 1 |  | A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3. |
 | `build.no_facts` | error | 2 |  | `--stand-ins` was asked for and the pack has no facts file. Hint: run `via pack accept`. (M2.) |
 | `build.not_a_build` | error | 1 |  | `--out`, `<out>.partial` or `<out>.old` is a file, a non-empty folder `via` did not write, or the world file's own folder; nothing was deleted. Hint: name an empty or new folder. |
-| `build.over_budget` | error | 6 | `chunk`, `measure`, `value`, `limit`, `asset`, `share`, `instances` | A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`. Hint: thin that asset there, or the waiver line to write. (M6.) |
+| `build.over_budget` | error | 6 | `chunk`, `measure`, `value`, `limit`, `asset`, `share`, `instances`, `from` | A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`, `data.from` (the import its instances come from, or ""). Hint: thin that asset there (by a change of that import when `from` names one), or the waiver line to write. (M6.) |
 | `build.pack_root_far` | warning | 1 |  | No relative path leads from the build directory to the pack's root (another drive); `pack_root` is `null`. Hint: build onto the pack's drive, or tell the loader where the pack is. |
 | `build.store_inside` | error | 1 |  | The store resolves inside the build directory, which every build replaces. Hint: drop `--store`, or name a folder outside `--out`. |
 | `build.waiver_unused` | warning | 6 | `waiver` | A `[budget.waive.<id>]` whose chunk is within the world's limit for every measure it writes, or whose `at` is no chunk (5.1); `data.waiver` is its id. Hint: delete the waiver. (M6.) |
@@ -667,9 +667,12 @@ error, milestone 6, `spec/build.md`.
 A chunk holds more than the world's [budget] allows for one measure: triangles, instances or
 instance groups. A budget that only warned was skipped until the frame rate collapsed, so an
 over-budget chunk fails the build. The record names the chunk, the measure, the asset with the
-largest share of it there and that share.
-To fix: Thin or swap the named asset in that chunk, or, when the target can draw it, waive that
-chunk with a reason: the hint gives the line.
+largest share of it there and that share, and data.from the import its instances there come
+from ("" for the world's own).
+To fix: Thin or swap the named asset in that chunk (an import's by a change of that import, named
+in its changes), or, when the target can draw it, waive that chunk with a reason: the hint gives
+the line. To set a budget, read each chunk's triangles, count and groups in the manifest of a
+build with none.
 Bad:   [budget]
        triangles = 400000            (chunk [3, 4] holds 612000)
 Fixed: [budget.waive.c3_4]
@@ -3120,11 +3123,12 @@ Fixed: by = ["s"]
 | `import.given_type` | error | 4 | `accepts` | What is given is not the form the given `accepts`; `data.accepts`. (M4) |
 | `import.given_unknown` | error | 4 | `nearest` | `give` names a name the import does not declare in `[given]`; the nearest name. (M4) |
 | `import.lift_on_datum` | error | 4 |  | `lift` on an import that declares the parent's datum. (M4) |
-| `import.no_datum` | warning | 4 | `write` | The import or the parent declares no datum and the import has no `lift`; the line to add in `data.write`. (M4) |
+| `import.no_datum` | warning | 4 | `write`, `lift_hint` | The import or the parent declares no datum and the import has no `lift`; the line to add in `data.write`, and `data.lift_hint` the lift that meets this world's ground across the edge (5). (M4) |
 | `import.outside` | warning | 4 | `area` | Part of an import's footprint lies past the parent's extent and is not brought; `data.area`. (M4) |
 | `import.overlap` | warning | 4 | `area` | Two imports' footprints, as placed, intersect with an area above 0; `data.area` (6.8). (M4) |
 | `import.place_blended` | warning | 4 | `weight`, `moved` | A place the parent names stands where the import's weight is below 1; `data.weight`, `data.moved`. (M4) |
-| `import.seam` | warning | 4 | `grade` | A step in the ground across the join steeper than `max_grade`, worst first by data.grade. (M4) |
+| `import.seam` | warning | 4 | `grade`, `lift_hint` | A step in the ground across the join steeper than `max_grade`, worst first by data.grade; `data.lift_hint` the lift that meets this world's ground across the edge (5). (M4) |
+| `import.surface_dropped` | warning | 7 | `surface` | A kind surface of an import leaves the lattice where the import is placed and is not brought; `data.surface` (6.1). (M7) |
 
 ### `import.binding_differs`
 
@@ -3324,8 +3328,9 @@ warning, milestone 4, `spec/composition.md`.
 ```text
 The import or the parent does not name what its height zero is, and the import has no lift, so
 nothing says the two zeros agree. Heights are taken as they are. `data.write` holds the line to
-add.
-To fix: Name one datum in both world files, or give the import a lift.
+add; `data.lift_hint` the lift that meets this world's ground across the import's edge (the
+median step there), when the edge crosses this world's posts.
+To fix: Name one datum in both world files, or give the import a lift (the hint names one).
 Bad:   (no datum in either world file)
 Fixed: datum = "b"           (in both world files)
 ```
@@ -3374,14 +3379,29 @@ warning, milestone 4, `spec/composition.md`, worst first by `data.grade`.
 ```text
 Across the edge of an import's ground, two neighbouring posts of the surface differ by more than
 the import's max_grade allows, rise over run. Nothing anchored owns that ground. `data.grade`
-holds the steepest; the position is its post inside the footprint.
-To fix: Write a blend that fades over the edge, place an anchored feature that owns the join, or
-raise max_grade if the step is meant.
+holds the steepest; the position is its post inside the footprint. `data.lift_hint` is the lift
+that meets this world's ground across the edge (the median step).
+To fix: Write a blend that fades over the edge, place an anchored feature that owns the join, set
+the lift the hint names when the whole import stands off, or raise max_grade if the step is meant.
 Bad:   [import.a]            (its ground stands 4 m above the parent's at its edge)
        file = "a/world.toml"
 Fixed: [import.a]
        file  = "a/world.toml"
        blend = "= smoothstep(0, 8, d)"
+```
+
+### `import.surface_dropped`
+
+warning, milestone 7, `spec/composition.md`.
+
+```text
+An import's kind surfaces come with their features (composition.md 6.1), taken point by point
+through the import's frame. A point of this one lands past the lattice (numbers.md 3) where the
+import is placed, so the surface is not brought: no mesh, no cut, nothing stands on it.
+`data.surface` holds its scoped name.
+To fix: Place the import nearer the lattice's middle, or keep the surface inside the import.
+Bad:   at = [2147480, 0]     (a surface 7 m long inside the import)
+Fixed: at = [2147000, 0]
 ```
 
 ## load

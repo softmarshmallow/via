@@ -406,6 +406,20 @@ length that starts each `absorb` and `draw` keeps `["ab", "c"]` and `["a", "bc"]
 the usual 53-bit mapping. `identity.md`'s digest is `stream(0, ["name", class] ++ parts)`: this
 function, not a second one (principle 10).
 
+One more derivation is kept, from the earlier Rust code (its own there), for the one model drawn
+from it, `lib/terrain`'s program (`protocol.md` 8):
+
+```
+sub_seed(seed, label, salt) = mix(fold mix over label's bytes, starting from splitmix64(seed ^ 0x5851F42D4C957F2D), salt)
+```
+
+It absorbs no length, so it keeps labels apart less well than `stream`; it stays, bit for bit,
+because every settled landscape (basin, atlas and their cases) is drawn from it, and a new user
+takes `stream`. It is not in the vector file: its values on the old code's vectors are pinned
+where it is used (`crates/via-terrain/tests/carried.rs`), so the null digest of section 10 does
+not move. Moved into `via-num` from the retired crate `via-artifact` at the M7 cutover (ours;
+decided, open to the owner).
+
 The first part says who draws, so streams of different users never meet:
 
 | Drawn by | Parts | Keys | Defined in |

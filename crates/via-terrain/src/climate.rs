@@ -17,7 +17,6 @@ use via_num as num;
 use crate::config::TerrainConfig;
 use crate::grid::Grid;
 use crate::noise;
-use via_artifact::seed;
 
 /// Prevailing wind: one of the 8 D8 directions, derived from the seed like
 /// every other boundary condition.
@@ -38,7 +37,7 @@ pub fn prevailing_wind(cfg: &TerrainConfig) -> Wind {
         (0, -1),
         (1, -1),
     ];
-    let k = (seed::derive(cfg.seed, "climate", 0) % 8) as usize;
+    let k = (num::sub_seed(cfg.seed, "climate", 0) % 8) as usize;
     Wind {
         dx: DIRS[k].0,
         dy: DIRS[k].1,
@@ -172,7 +171,7 @@ pub fn compute_precipitation(cfg: &TerrainConfig, grid: &Grid, h: &[f64], wind: 
 /// north→south gradient, and low-amplitude noise for texture. Water cells
 /// get the sea-level value.
 pub fn compute_temperature(cfg: &TerrainConfig, grid: &Grid, h: &[f64]) -> Vec<f64> {
-    let s_noise = seed::derive(cfg.seed, "climate", 1);
+    let s_noise = num::sub_seed(cfg.seed, "climate", 1);
     let sea = cfg.sea_level_m;
     let (w, hh) = (grid.w as f64, grid.h as f64);
     (0..grid.n() as u32)

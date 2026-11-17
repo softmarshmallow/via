@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "composition.md 6.3: a blend reads `dist('a.track.start', 40)`, a place of three parts (a path's end inside the import), as it reads a two-part place: a's ground whole within 4 m of the track's start at (32, 32), the parent's 0 by 8 m. Before M7 a three-part name was doc.not_yet (M6 close fresh-agent run)."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.build.file.start]
+path  = "build/w/fields/height.npy"
+post  = [32, 32]
+value = 4
+[action.build.file.near]
+path  = "build/w/fields/height.npy"
+post  = [36, 32]
+value = 4
+[action.build.file.far]
+path  = "build/w/fields/height.npy"
+post  = [44, 32]
+value = 0

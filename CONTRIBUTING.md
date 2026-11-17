@@ -42,6 +42,11 @@ Every milestone in [`docs/plan.md`](docs/plan.md) runs in this order.
   user's step does. A test enforces it.
 - **All maths goes through `via-num`** (R26), the one module that fixes how numbers are computed
   on every system. A test enforces it.
+- **One way in: no second core.** The tree holds the core crates and libraries that reach a build
+  through the step protocol. Code kept from before the rewrite is a utility, an archetype or a
+  higher-level module that via includes, never a second core beside it: no document reader, store,
+  maths, seed derivation or raster of its own. Today that is `crates/via-terrain` alone, the
+  erosion program behind `lib/terrain` (`spec/protocol.md` 8, settled at the M7 cutover).
 - **No non-finite value in a build** (R26). A NaN or an infinity is an error that names the
   formula, the place and the fix, never a stored value.
 - **Never commit private material.** It lives only in the gitignored `spike/local/` folder and is

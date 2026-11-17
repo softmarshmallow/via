@@ -10,7 +10,9 @@ extends SceneTree
 ## - with the water option, the far water covers every wet post sampled on the far grid, and
 ##   without it there is none;
 ## - a far instance is its asset's outline by bands: a box is one box of its bounds, a cone's bands
-##   narrow upward inside its bounds, a sphere's middle band is its widest;
+##   narrow upward inside its bounds, a sphere's rings widen to its middle and narrow to its top,
+##   each an octagon (its surface's diagonal extents cut its box's corners) where a box keeps its
+##   four, each band a frustum between its rings;
 ## - every generated mesh has a copy with no body, shown exactly while the mesh is not loaded.
 ## Prints one line per check; exits 0 when all pass.
 
@@ -118,8 +120,34 @@ func _run() -> void:
 			narrows = narrows and float(part[0][0]) >= -0.4 - 1e-3 and float(part[0][3]) <= 0.4 + 1e-3
 	check("far instances: a cone's bands narrow upward, inside its bounds", narrows, str(cone))
 	var ball = loader._far_parts("tree_oak")
-	var widest: bool = ball is Array and ball.size() == 3 and float(ball[1][0][3]) > float(ball[0][0][3]) and float(ball[1][0][3]) > float(ball[2][0][3])
-	check("far instances: a sphere's middle band is its widest", widest, str(ball))
+	# M7: rings at the band ends; a sphere's widen from its foot to its middle and narrow to its
+	# top, its middle rings octagons inside its box; a box's ring is its box
+	var rings: Array = []
+	if ball is Array and ball.size() == 3:
+		rings = [ball[0][3], ball[1][3], ball[2][3], ball[2][4]]
+	var w := rings.map(func(r): return float(r[2]) - float(r[0]))
+	check("far instances: a sphere's rings widen to its middle and narrow to its top", rings.size() == 4
+		and w[1] > w[0] and w[2] > w[3], "%s" % [w])
+	var mid_ring := Loader.far_outline(rings[1]) if rings.size() == 4 else PackedVector2Array()
+	var inside := mid_ring.size() == 8
+	for q in mid_ring:
+		inside = inside and q.x >= float(rings[1][0]) - 1e-3 and q.x <= float(rings[1][2]) + 1e-3 \
+			and q.y >= float(rings[1][1]) - 1e-3 and q.y <= float(rings[1][3]) + 1e-3
+	var box_ring := Loader.far_outline(box[0][3]) if box is Array and box[0].size() > 3 else PackedVector2Array()
+	check("far instances: a box's ring is its box, a sphere's middle ring an octagon inside its box",
+		box_ring.size() == 4 and inside, "%s; %s" % [box_ring, mid_ring])
+	# the far mesh of a sphere: a frustum per band, no face left open between bands
+	var vs := PackedVector3Array()
+	var ns := PackedVector3Array()
+	var cs := PackedColorArray()
+	var us := PackedVector2Array()
+	for part in (ball if ball is Array else []):
+		Loader._far_frustum(vs, ns, cs, us, Transform3D.IDENTITY, part, Color(1, 1, 1), Vector2.ZERO)
+	var top_y := -INF
+	for v in vs:
+		top_y = maxf(top_y, v.y)
+	check("far instances: a sphere's bands drawn as frusta up to its top", vs.size() > 0 and vs.size() % 3 == 0
+		and is_equal_approx(top_y, float(ball[2][0][5])), "%d vertices, top %.3f" % [vs.size(), top_y])
 	root.free()
 	# far meshes
 	if meshes != "":

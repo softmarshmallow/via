@@ -9,7 +9,9 @@ extends SceneTree
 ##     each the same node as before; the others loaded are made again, from the after build;
 ##   - the loaded chunks are the same `at`s after as before;
 ##   - with every chunk loaded, the streamed root then holds what the after build made whole holds
-##     (instances, bodies, generated meshes, chunks), each once.
+##     (instances, bodies, generated meshes, chunks), each once;
+##   - with --mixed, with every chunk loaded at least one chunk is kept and one made again (the
+##     loader suite's fixtures: the ford's move changes three of four chunks' digests).
 ## Prints one line per check and exits 0 when all pass, 1 otherwise.
 
 const Loader := preload("res://addons/via_loader/loader.gd")
@@ -17,6 +19,7 @@ const Stream := preload("res://addons/via_loader/stream.gd")
 const StreamTest := preload("res://tests/test_stream.gd")
 
 var failed := 0
+var mixed := false
 
 
 func _initialize() -> void:
@@ -103,6 +106,9 @@ func once(before: String, after: String, at: Vector2, radius: float, what: Strin
 	check("%s: a kept chunk is the same node, a changed one a new node, the same chunks loaded" % what,
 		same_nodes == want_kept.size() and fresh == want_made.size() and now.size() == ids.size(),
 		"%d same, %d new, %d loaded after against %d before" % [same_nodes, fresh, now.size(), ids.size()])
+	if mixed and radius == INF:
+		check("%s: at least one chunk kept and one made again" % what, not r.kept.is_empty() and not r.made.is_empty(),
+			"%d kept, %d made" % [r.kept.size(), r.made.size()])
 	check("%s: every kept or made chunk is under the after build's root" % what,
 		now.values().all(func(c): return c.get_parent() == rb))
 	if radius == INF:
@@ -129,6 +135,9 @@ func _run() -> void:
 			"--before": before = args[k + 1]
 			"--after": after = args[k + 1]
 			"--radius": radius = float(args[k + 1])
+			"--mixed":
+				mixed = true
+				k -= 1
 			"--at":
 				at = Vector2(float(args[k + 1]), float(args[k + 2]))
 				k += 1

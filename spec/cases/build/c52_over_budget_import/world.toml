@@ -1,0 +1,20 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+datum      = "sea"
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.l0]
+asset = "light"
+at    = [4, 40]
+
+[import.a]
+file = "a/world.toml"
+at   = [8, 8]
+
+[budget]
+triangles = 2000

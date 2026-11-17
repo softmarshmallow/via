@@ -276,7 +276,13 @@ The store is a folder of write-once files named by digest. Where it lives is `bu
   coordinating thread, was about 15 s of city's change build (M6 slice 1, `sample` of
   move_avenue; protocol in `examples/city/expect.toml`, M6 slice 2). A crash
   loses at most queued records, which only makes the store colder. Case
-  `store::key_records_are_written_behind` (crate test).
+  `store::key_records_are_written_behind` (crate test). The wait is bounded (ours, M7): a writer
+  that panics takes its record off the queue and the store is `graph.store_unavailable`, and once
+  no writer is left the waiting thread lands what is queued itself; before, a panicking writer
+  hung the build record's write (case `store::a_writer_that_panics_does_not_hang_the_flush`).
+- A folder of the store removed while a build writes (a store cleaned by hand) is made again on
+  the next write into it, once; only a second failure makes the store unavailable (ours, M7; case
+  `store::a_folder_removed_during_a_build_is_made_again`).
 - Deleting the store is always safe: the next build runs everything and gives the same bytes
   (section 7).
 - The store keeps every key it has seen, so building with a change, without it, and with it again
@@ -298,6 +304,15 @@ bug in scatter, a new tie rule. An engine release that changes none of these kee
 reuses the store. The engine's version string is in no key except one: it is a parameter of
 `write:manifest.json`, which records it (`build.md` 4), so a new release rewrites the manifest and
 nothing else.
+
+**A working binary keeps its tree's epoch.** A `via` built from a working tree between releases
+holds the epoch and version of the tree it was built from, so two such binaries whose code differs
+share one store's results: the store cannot tell them apart, and the second replays what the first
+computed (found in M6, where a build on a store another binary had written replayed its values).
+Compare two binaries on one store per binary (`--store` with a fresh folder each), and raise the
+epoch with any change to the engine that may change a value's bytes, as above. Not a digest of the
+binary in every key: each rebuild of `via` would then make every store cold, for changes that
+compute nothing differently (most rebuilds). Ours (M7 slice 1; decided, open to the owner).
 
 ### 3.4 Diagnostics are part of the value
 
@@ -461,6 +476,14 @@ holds the item, so moving one item re-runs its call alone. The join node `step:<
 call in item id order; it is what references to the step's output read, and where
 `identity.key_collision` (`identity.md` 2.5) is found. A selector that matches nothing is
 `graph.for_each_empty`. M1 keeps room for item ids and the join; the rest is written with M3.
+
+The items are listed from the model's build, and kept in the store as a memo (5.1) under the
+graph's leaves, the step and its selector: a build whose leaves are unchanged (a build back to a
+base, `--against` another) lists them without making the model's build. When they are not kept,
+the model's build is started beside the rank's graph, so it overlaps the lookups before the first
+step (section 8). Ours (M7). The leaves hold the build key, and the key holds
+`locations.pack_root` by place (6.2), so a folder at another depth misses every memo (items,
+requests, trace answers) and makes the model's build again: open (TODO, "From M7 slice 1").
 
 ## 6. Running
 
@@ -672,13 +695,21 @@ fresh store into a fresh directory, and the two directories are compared.
 
 - Nodes are started in a topological order of the node graph: ready nodes are taken in id order,
   onto as many threads as `--threads` allows (`build.md` 14). The thread count is in no key and no
-  build file.
+  build file. `--threads` counts the threads that evaluate nodes and run steps; the key writers
+  (3.2) work beside them at any count, and above one thread a `for_each` step's items are listed
+  beside the first lookups (ours, M7 slice 1: at `--threads 1` that warm-up is skipped, so one is
+  one where it can be). Neither changes a byte (`threads` case).
 - The traces of the ready steps (5.1) are replayed on as many threads before those nodes are looked
   up (ours, M6): each replay reads only the store and the view, so its match is the one the lookup
   would find, and the lookup takes the matches in id order. Steps sharing a static key and steps
   forced by `--rerun-step` replay at their lookup, so a damaged trace is dropped once and in
   order. Why: replays answered one by one were about 13 s of city's change build (protocol in
   `examples/city/expect.toml`, M6 slice 2).
+- The key records of the ready nodes that are not steps, and the stored objects a batch's inputs
+  are read from, are read and checked on as many threads before the lookup and the batch take them
+  in id order (ours, M7): a read is a function of the store alone, so the node settles as if it
+  had been read there. Why: one file opened at a time on the coordinating thread was about 8 s of
+  city's `move_avenue` (`sample`, protocol in `examples/city/expect.toml`, M7 slice 1).
 - Every value is a function of its inputs only. Whatever combines many values (a field's rows, the
   outputs of `for_each` calls, the instances of several producers, diagnostics) does so in an order
   fixed by keys and ids, never in the order work finished. Reductions inside a node follow

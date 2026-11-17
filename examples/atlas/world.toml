@@ -55,8 +55,23 @@ triangles = 100000                            # source triangles per 128 m chunk
 # The plain as first stated: under the sea in the far south, a shore near y = 95, a long gentle
 # rise north with low rolls, and uplands in the north third. The terrain step settles it
 # (layers/land.toml). Its own field, so the step and the road costs read what it started from.
+# In the wild's kept corner the plain is the slope the wild agreed for its neighbour (its own `agreed`,
+# 18 m at its y = 240 rising 0.17 m a metre north, here with its lift 9.5 and its frame 1980 m north):
+# the wild was built to meet that slope there, and the plain's own lay 12 m under its west exit
+# (`join_wild_west` blocked at 73.9 degrees, M6 close). Whole along the wild's two edges of the corner,
+# faded to the plain's own by 160 m into it and north of its exit's height (its 24 m rise to the
+# north, for the monastery of `border`, is not taken: no neighbour stands there here). Whole for 30 m
+# under the wild past the corner's edges, so the terrain step (16 m cells) settles no shelf at the
+# exit (with the corner's edge on the wild's, the plain came out 10 m under the exit 2 m from it); and
+# only ever raised (`max`), so the agreed slope's low south end makes no hollow the step would fill.
+# M7 slice 1.
 [field.start]
-base = "= sea - 10 + 10 * smoothstep(0, 120, y) + 0.012 * y + 6 * fbm(400, 3, seed = 'rolls') * smoothstep(100, 500, y) + 40 * smoothstep(1800, 2560, y) * (0.5 + 0.5 * fbm(700, 3, seed = 'uplands'))"
+base = "= max(plain, mix(plain, wild_agreed, corner))"
+
+[field.start.let]
+plain       = "= sea - 10 + 10 * smoothstep(0, 120, y) + 0.012 * y + 6 * fbm(400, 3, seed = 'rolls') * smoothstep(100, 500, y) + 40 * smoothstep(1800, 2560, y) * (0.5 + 0.5 * fbm(700, 3, seed = 'uplands'))"
+wild_agreed = "= 27.5 + 0.17 * (y - 2220)"
+corner      = "= (1 - smoothstep(30, 120, dist('wild.meet', 130))) * (1 - smoothstep(20, 160, dist('wild.footprint', 170))) * (1 - smoothstep(2420, 2520, y))"
 
 [field.height]                                # lib/land: the surface; no unit, as every import's
 role = "surface"
@@ -153,16 +168,16 @@ at    = [2330, 0]
 lift  = 2                                     # its sea, at its own 0, on ours at 2 (README "Lifts")
 blend = "= smoothstep(0, 12, d)"
 
-[import.college]
+[import.college]                              # lift at its arrival (README "Lifts", M7 slice 1)
 file  = "../college/world.toml"
 at    = [2380, 420]
-lift  = -3.5
+lift  = -0.1
 blend = "= smoothstep(0, 24, d)"
 
-[import.market]
+[import.market]                               # lift at its main street's start (README "Lifts", M7 slice 1)
 file  = "../market/world.toml"
 at    = [2760, 420]
-lift  = -16.5
+lift  = -11.6
 blend = "= smoothstep(0, 16, d)"
 
 [import.glade]
@@ -189,10 +204,10 @@ at    = [1960, 1300]
 lift  = -31
 blend = "= smoothstep(0, 24, d)"
 
-[import.vale]
+[import.vale]                                 # lift at its valley road's start (README "Lifts", M7 slice 1)
 file  = "../vale/world.toml"
 at    = [2420, 1300]
-lift  = -52.5
+lift  = -15.5
 blend = "= smoothstep(0, 24, d)"
 
 [import.monastery]

@@ -1,0 +1,9 @@
+name       = "x"
+extent     = [0, 0, 8, 8]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 0

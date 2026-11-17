@@ -1,0 +1,5 @@
+# composition.md Conformance, surface_dropped: a deck (a path owner).
+[kind.deck]
+[kind.deck.surface.top]
+base  = "= 3"
+bound = "= 1"

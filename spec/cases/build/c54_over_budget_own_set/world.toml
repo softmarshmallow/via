@@ -1,0 +1,32 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+datum      = "sea"
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[set.heavy_rack.item.a]
+asset = "heavy"
+at    = [-2, 0]
+
+[set.heavy_rack.item.b]
+asset = "heavy"
+at    = [0, 0]
+
+[set.heavy_rack.item.c]
+asset = "heavy"
+at    = [2, 0]
+
+[instance.rack]
+set = "heavy_rack"
+at  = [20, 20]
+
+[import.a]
+file = "a/world.toml"
+at   = [40, 40]
+
+[budget]
+triangles = 2000

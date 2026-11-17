@@ -56,6 +56,9 @@ pub struct Inner {
     /// Key records queued and not yet on disk, by path; the condition is told when one lands.
     queued: Mutex<HashMap<PathBuf, Arc<Vec<u8>>>>,
     landed: Condvar,
+    /// A test's fault: the next landing panics.
+    #[cfg(test)]
+    panic_in_land: AtomicBool,
 }
 
 /// The writer threads of [`Store::put_key`].
@@ -121,6 +124,8 @@ impl Store {
                 dirs: Mutex::new(HashSet::new()),
                 queued: Mutex::new(HashMap::new()),
                 landed: Condvar::new(),
+                #[cfg(test)]
+                panic_in_land: AtomicBool::new(false),
             }),
             behind: Mutex::new(None),
         };
@@ -146,18 +151,43 @@ impl Store {
     }
 
     /// Waits until every key record queued by [`Store::put_key`] is on disk (or the store
-    /// became unavailable).
+    /// became unavailable). The wait is bounded by the writers: once none is left to write (all
+    /// ended, or none started), what is still queued is landed here (`graph.md` 3.2).
     pub fn flush(&self) {
-        let mut q = self
-            .queued
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        while !q.is_empty() {
-            q = self
-                .landed
-                .wait(q)
+        loop {
+            let q = self
+                .queued
+                .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if q.is_empty() {
+                return;
+            }
+            let (q, _) = self
+                .landed
+                .wait_timeout(q, std::time::Duration::from_millis(100))
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if q.is_empty() {
+                return;
+            }
+            let left: Vec<(PathBuf, Arc<Vec<u8>>)> =
+                q.iter().map(|(p, b)| (p.clone(), b.clone())).collect();
+            drop(q);
+            if self.writers_left() {
+                continue;
+            }
+            for (target, bytes) in left {
+                self.inner.land_guarded(&target, &bytes);
+            }
         }
+    }
+
+    /// True while some writer thread can still take a queued record.
+    fn writers_left(&self) -> bool {
+        self.behind
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|b| b.threads.iter().any(|t| !t.is_finished()))
     }
 
     /// Queues `bytes` for `target`, starting the writer threads on first use; written here
@@ -189,7 +219,7 @@ impl Store {
             .is_some_and(|b| b.tx.send((target.clone(), bytes.clone())).is_ok());
         drop(b);
         if !sent {
-            self.inner.land(&target, &bytes);
+            self.inner.land_guarded(&target, &bytes);
         }
     }
 
@@ -207,7 +237,7 @@ impl Store {
                     let Some((target, bytes)) = job else {
                         break;
                     };
-                    inner.land(&target, &bytes);
+                    inner.land_guarded(&target, &bytes);
                 });
             match t {
                 Ok(t) => threads.push(t),
@@ -227,8 +257,30 @@ impl Store {
 }
 
 impl Inner {
+    /// [`Inner::land`], with a panic caught: the record is taken off the queue and the store is
+    /// unavailable, so [`Store::flush`] never waits for a write that will not come.
+    fn land_guarded(&self, target: &Path, bytes: &[u8]) {
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.land(target, bytes)));
+        if r.is_err() {
+            self.unavailable(&io::Error::other(format!(
+                "writing `{}` panicked",
+                self.rel(target)
+            )));
+            let mut q = self
+                .queued
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            q.remove(target);
+            self.landed.notify_all();
+        }
+    }
+
     /// Writes a queued record and takes it off the queue.
     fn land(&self, target: &Path, bytes: &[u8]) {
+        #[cfg(test)]
+        if self.panic_in_land.swap(false, Ordering::SeqCst) {
+            panic!("a test's writer panic");
+        }
         self.write_once(target, bytes);
         let mut q = self
             .queued
@@ -331,7 +383,7 @@ impl Inner {
             .root
             .join("tmp")
             .join(format!("{}-{n}", std::process::id()));
-        let result = (|| -> io::Result<Written> {
+        let attempt = || -> io::Result<Written> {
             if let Some(dir) = target.parent() {
                 self.ensure_dir(dir)?;
             }
@@ -347,7 +399,15 @@ impl Inner {
                 Err(_) if !target.exists() => fs::rename(&tmp, target).map(|()| Written::Created),
                 Err(_) => Ok(Written::Existed),
             }
-        })();
+        };
+        let mut result = attempt();
+        if matches!(&result, Err(e) if e.kind() == io::ErrorKind::NotFound) {
+            // A folder the cache held was removed during the build: made again, once.
+            if let Ok(mut d) = self.dirs.lock() {
+                d.clear();
+            }
+            result = attempt();
+        }
         let _ = fs::remove_file(&tmp);
         match result {
             Ok(w) => w,
@@ -642,6 +702,58 @@ mod tests {
             "a later store reads the records"
         );
         assert!(s2.take_run_diags().is_empty());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_writer_that_panics_does_not_hang_the_flush() {
+        // TODO "To M7": a writer thread that panicked in `land` left its record queued, and
+        // `flush` (so `put_build`) waited for it with no bound.
+        let root = scratch("panics");
+        let s = Arc::new(Store::open(&root));
+        s.panic_in_land.store(true, Ordering::SeqCst);
+        let keys: Vec<Digest> = (0..50u32).map(|i| Digest::of(&i.to_le_bytes())).collect();
+        let rec = KeyRecord {
+            value: Digest::of(b"v"),
+            diags: Vec::new(),
+        };
+        for k in &keys {
+            s.put_key(k, &rec);
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        let s2 = s.clone();
+        // Detached, so a hang fails the case instead of hanging the test run.
+        std::thread::spawn(move || {
+            s2.put_build(&Digest::of(b"build"), b"record");
+            let _ = tx.send(());
+        });
+        assert!(
+            rx.recv_timeout(std::time::Duration::from_secs(20)).is_ok(),
+            "put_build returned"
+        );
+        assert!(s.queued.lock().unwrap().is_empty());
+        let diags = s.take_run_diags();
+        assert_eq!(diags.len(), 1, "{diags:?}");
+        assert_eq!(
+            *diags[0].code(),
+            via_diag::DiagCode::Core(codes::graph::STORE_UNAVAILABLE)
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_folder_removed_during_a_build_is_made_again() {
+        // TODO "To M7": the folder cache assumed no folder is removed during a build, so a write
+        // after one was made the store unavailable.
+        let root = scratch("removed");
+        let s = Store::open(&root);
+        let a = s.put_object(b"one");
+        fs::remove_dir_all(root.join("objects")).unwrap();
+        fs::remove_dir_all(root.join("tmp")).unwrap();
+        let b = s.put_object(b"two");
+        assert!(s.object_path(&b).is_file());
+        assert!(!s.object_path(&a).is_file());
+        assert!(s.take_run_diags().is_empty(), "the store stays available");
         let _ = fs::remove_dir_all(&root);
     }
 

@@ -42,23 +42,30 @@ The target shape, from `docs/plan.md`. Folders appear as their milestone reaches
 
 ```
 spec/            normative: chapters, schemas, vectors, conformance cases
-crates/          the engine: num, diag, doc, expr, geom, raster, graph, model, proto, cli (+ step, erosion)
+crates/          the engine: num, diag, doc, expr, geom, raster, graph, model, proto, cli, step
+                 (+ terrain: lib/terrain's erosion program, library tier; xtask: the checks)
 sdk/python/      thin port: pure Python, never links the engine
 lib/             our libraries: kinds as TOML + steps in Python, through the SDK only
-                 (land, water, ways, town, building, review, map)
+                 (land, water, ways, town, building, review, map; terrain's step is a program)
 engines/godot/   loader addon and the review viewer (eye-height sheets)
+engines/gltf/    a second reader of the build directory (glTF)
+tools/           the conformance runner, the pack generator, the map renderer
+fixtures/        the spike's exported oracle data and the kernel's fixtures
 examples/        the final examples, each with change files and ground bookmarks
-docs/            doctrine, challenges, design; pre-reboot research in docs/archive/
+docs/            doctrine, challenges, design, references
 spike/           the concept phase, kept as record and oracle until M7
 ```
 
-Of the old workspace, only `crates/via-terrain` carries over, as an erosion library a step calls.
-Its design records are in `docs/archive/adr/`.
+Of the old workspace, only `crates/via-terrain` carries over, as the erosion program behind
+`lib/terrain` (`spec/protocol.md` 8 admits it); its design records are in
+`crates/via-terrain/docs/adr/`. The rest was dropped at the M7 cutover and is in the history at
+the tag `spike-final`.
 
 ## Where to read
 
 | Document | What it is |
 |---|---|
+| [`docs/charter.md`](docs/charter.md) | One page: the intended use, what we own, what we do not, and what we do not promise. Read it first. |
 | [`docs/doctrine.md`](docs/doctrine.md) | The goal, the principles, the eleven nouns and every ruling. It decides details. |
 | [`docs/plan.md`](docs/plan.md) | The rewrite plan: milestones M0 to M7 and milestone one, `ford`. |
 | [`spec/`](spec/) | The contract: chapters, schemas, test vectors and conformance cases. Start with `spec/vocabulary.md`. |
@@ -69,7 +76,6 @@ Its design records are in `docs/archive/adr/`.
 | `examples/<name>/README.md` | What each example world shows and what is still wrong with it. |
 | [`TODO.md`](TODO.md) | Open items with their context, each filed to a milestone or a chapter. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How work is done and the engineering rules. |
-| [`docs/archive/`](docs/archive/) | The research project before the 2026-11 reboot, kept as record. |
 
 ## License
 

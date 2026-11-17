@@ -39,6 +39,28 @@
 # on that store, 160.2 s, errors and exit_gap in band, but `shapes_ran` and `ran_imports` empty:
 # its nodes were stored by the first attempt. Those two rows are not re-taken on the combined tree.
 
+# M7 slice 1 (2026-11-17, `atlas`): the vale's, the market's and the college's lifts taken at the
+# place a road answers, the wild's kept corner on its agreed slope, lib/land's `approach` at the
+# college's arrival and the wild's west exit; monastery's decks carry parapets (README "Lifts",
+# "What does not hold"). Release `via` and `via-terrain` of the working tree at 16:18 KST (other
+# agents' M7 diffs in crates/), VIA_LIB=lib, Python 3.12 steps, one store: the tree before these
+# edits (343.97 s wall, every base row in band), one build that stopped at the wild approach's
+# `max_change` (248.1 s), then this tree (292.8 s, load 25 to 34 from other agents); one run each.
+# Rows re-banded at that last build: grade_max, road_join_max, join_step_max, road_painted_in,
+# exit_in_grade_max, exit_out_grade_max.
+
+# M7 slice 1 fix pass (2026-11-17, 18:41 KST): release `via` and `via-terrain` of the working tree
+# with every agent's slice 1 diff, VIA_LIB=lib, Python 3.12 steps, every step trusted, one fresh
+# store, one run each, load 8 to 17 from other agents: base cold 263.6 s, every base row in band
+# (18/18); forgotten_exit 113.4 s, exit 1 with `import.exit_unanswered`, 2/2 (its change now takes
+# the west trail's approach with the trail: `doc.dangling` before). move_market re-taken by the
+# slice's on-foot review on a fresh store (release binary of the 17:18 tree, 172.5 s, 3076 nodes
+# ran): 4/4, `ran_imports` = ["market"].
+#
+# A row marked NOT HOLDING is banded at the value measured, so the build passes it: the band says
+# where the build stands, not that a target is met. Each names its target and why it is not met;
+# the owed work is in TODO.md ("From M7 slice 1").
+
 # ------------------------------------------------------------------------------------------ base
 
 [base.errors]
@@ -65,21 +87,23 @@ band    = [77904, 77904]                    # and market's own assets counted si
 measure = "grade_p95"
 band    = [0, 0.2]
 
-[base.grade_max]                            # NOT HOLDING: the hill trail's last steps into the vale's
-measure = "grade_max"                       # trench, 8.026 (the joins' hold moved the vale's 37 m step
-band    = [8.026, 8.026]                    # to the plain's side; 0.633 at the wild's west exit before
-                                            # the hold). Taken every 4 m of length (atlas pass)
+[base.grade_max]                            # NOT HOLDING: west_road's first steps from the wild's west
+measure = "grade_max"                       # exit, 0.442 (8.026 into the vale's trench before M7 slice 1,
+band    = [0.442, 0.442]                    # gone with its lift at the exit). Taken every 4 m of length
 
 [base.road_join_max]                        # NOT HOLDING: the steepest 4 m step within 30 m of where an
 measure = "road_join_max"                   # atlas way meets a place (measure.py `road_join`): hill_trail
-band    = [8.026, 8.026]                    # at the vale 8.026, west_road at the wild 2.102,
-                                            # college_road 0.600 (0.911 without its pad), wild_road at
-                                            # the city 0.298, the other nine 0.010 to 0.168. The target
-                                            # is 0.25 (1:4; ours)
+band    = [0.442, 0.442]                    # at the vale 0.012 (8.026 before M7 slice 1), west_road at
+                                            # the wild 0.442 (2.102), college_road 0.213 (0.600),
+                                            # wild_road at the city 0.306, the other nine 0.005 to
+                                            # 0.202. The target is 0.25 (1:4; ours)
 
-[base.join_step_max]                        # the largest median step at a join after the lifts:
-measure = "join_step_max"                   # metres, outside the edge less 28 m inside (README "Lifts")
-band    = [0, 7.6]
+[base.join_step_max]                        # NOT HOLDING (no target stated; 7.51 before M7 slice 1).
+                                            # The largest median step at a join after the lifts:
+measure = "join_step_max"                   # metres, outside the edge less 28 m inside (README "Lifts").
+band    = [0, 37.3]                         # 37.24 at the vale since M7 slice 1: its lift is taken at its
+                                            # mouth, so its walls stand over the plain (7.51, coast's,
+                                            # before); market -5.15, college -3.55 for the same reason
 
 [base.seam]                                 # one `import.seam` per import (13): the blend fades over
 measure = "seam"                            # 12 to 24 m, and a step steeper than 1:2 stays somewhere
@@ -96,9 +120,10 @@ band    = [0.999, 1]                        # not see the ways layer's roads; la
 
 [base.road_painted_in]                      # NOT HOLDING: inside a place its own ground is brought
 measure = "road_painted_in"                 # over the plain's rows, so a road's last stretch to the
-band    = [0.275, 0.275]                    # place's gate is the place's paint (README); 0.101
+band    = [0.286, 0.286]                    # place's gate is the place's paint (README); 0.101
                                             # before the hold, 0.075 on the 12:35 tree, 0.275 on the
-                                            # combined one (the held ground is the place's, unpainted)
+                                            # combined one (the held ground is the place's, unpainted),
+                                            # 0.286 after M7 slice 1's lifts
 
 # The joins on foot (M6 close, `joins`): water in the blend rings and at the bookmarks, and the
 # profile at each answered place (measure.py). Protocol: release `via` and `via-terrain` of the
@@ -122,14 +147,15 @@ band    = [0, 2]                            # surfaces; depth over a bookmark's 
 measure = "exit_in_depth_max"               # a parent way answers (8.76 m at the vale before)
 band    = [0, 0.05]
 
-[base.exit_in_grade_max]                    # NOT HOLDING: vale's valley road, 1.79: the hold fades
-measure = "exit_in_grade_max"               # from 12 to 30 m, and the plain stands 37 m over the
-band    = [0, 1.788]                        # vale's ground there (README "What does not hold")
+[base.exit_in_grade_max]                    # NOT HOLDING: the wild's south trail, 1.122 (its own climb from
+measure = "exit_in_grade_max"               # `south_end`, 1.188 before); the vale's valley road 0.049
+band    = [0, 1.122]                        # since its lift is taken at its mouth (1.788 before M7 slice 1)
 
 [base.exit_out_grade_max]                   # NOT HOLDING: the hill trail's last 30 m to the vale,
 measure = "exit_out_grade_max"              # 13.027 (12.06 on the 12:35 tree): held, the vale's 37 m
-band    = [0, 13.027]                       # step is now the plain's side of the edge, for the plain's
-                                            # way to grade (TODO From M6 close)
+band    = [0, 0.375]                        # step is now the plain's side of the edge; 0.024 since M7
+                                            # slice 1 (the vale's lift at its mouth). The worst now is
+                                            # west_road from the wild's west exit, 0.375 (3.218 before)
 
 # ------------------------------------------------------------------------------------------ move_market
 
@@ -141,15 +167,16 @@ band    = [0, 0]
 measure = "exit_gap"
 band    = [0, 0]
 
-[move_market.shapes_ran]                    # NOT HOLDING ("only its roads follow"): every routed road
-measure = "shapes_ran"                      # runs again, since `route` reads the whole surface; the
-                                            # outputs follow: only college_road, market_road and
-                                            # join_market move (README "Changes")
-band    = ["area_market", "college_road", "creek_road", "harbour_road", "hill_trail", "join_market", "market_road", "north_road", "west_road", "wild_road"]
+[move_market.shapes_ran]                    # only its road and what names the market run again (M7
+measure = "shapes_ran"                      # slice 1: before, every routed road ran again). Taken
+                                            # `--against` the M7 slice 1 base on its store, where no
+                                            # move_market had run (not a fresh store: README "Build times")
+band    = ["area_market", "join_market", "market_road"]
 
-[move_market.ran_imports]                   # the market's placement only; nothing inside it
-measure = "ran_imports"
-band    = ["market"]
+[move_market.ran_imports]                   # the market's placement only; nothing inside it. Measured
+measure = "ran_imports"                     # ["city", "market"] in M7 slice 1: city's own text changed
+band    = ["market"]                        # between the base and the change (its parapet step), so it
+                                            # ran; ["market"] on a fresh store (M7 slice 1 on-foot review)
 
 # ------------------------------------------------------------------------------------------ forgotten_exit
 

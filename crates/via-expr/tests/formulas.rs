@@ -635,7 +635,9 @@ fn case_20_selector_form_and_class() {
     );
     assert_eq!(c("= f('brook')").map(|e| e.0), Some("formula.selector"));
     assert_eq!(c("= f('hieght')").map(|e| e.0), Some("formula.selector"));
-    assert_eq!(c("= dist('a.b.c', 10)").map(|e| e.0), Some("doc.not_yet"));
+    // A place of three parts (a path's end inside an import) is read as a two-part one: the
+    // selection phase resolves it (composition.md 6.3, M7).
+    assert_eq!(c("= dist('a.b.c', 10)"), None);
     assert_eq!(c("= f(height)").map(|e| e.0), Some("formula.unknown_name"));
     assert_eq!(c("= f(1)").map(|e| e.0), Some("formula.type"));
     assert_eq!(c("= dist('kind:k', 10) + f('tag:ground')"), None);

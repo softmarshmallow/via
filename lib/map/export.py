@@ -59,6 +59,9 @@ east, then by name); the key stays the feature's name. Each plan's labels are th
 then by key) at the first of eight positions round the anchor (a region's centred first) where
 the text's box, `glyph` per character at the plan's zoom, meets no box already placed, covers no
 other label's anchor and lies inside the extent; one that fits nowhere gets `box` null (shown only closer in, the game's call).
+On the ground plan a box also covers no footprint where any of its positions can (M7): the first
+position clear of footprints too, else the first clear of labels and anchors alone (a label over
+a dense town's roofs rather than none).
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -307,17 +310,47 @@ PRIORITY = {"region": 0, "poi": 1, "label": 2, "room": 3}
 POSITIONS = [(1, 1), (-1, 1), (1, -1), (-1, -1), (1, 0), (-1, 0), (0, 1), (0, -1)]
 
 
-def place_labels(labels, zoom, glyph, extent):
+def box_meets_ring(b, ring):
+    """Whether the open box b (x0, y0, x1, y1) and the polygon ring meet: a vertex of one inside
+    the other, or an edge of the ring crossing the box."""
+    if any(b[0] < x < b[2] and b[1] < y < b[3] for x, y in ring):
+        return True
+    if any(in_ring(ring, x, y) for x, y in ((b[0], b[1]), (b[2], b[1]), (b[2], b[3]), (b[0], b[3]))):
+        return True
+    for (ax, ay), (bx, by) in zip(ring, ring[1:] + ring[:1]):
+        # Liang-Barsky: does the segment enter the box's interior?
+        t0, t1 = 0.0, 1.0
+        dx, dy = bx - ax, by - ay
+        for pp, qq in ((-dx, ax - b[0]), (dx, b[2] - ax), (-dy, ay - b[1]), (dy, b[3] - ay)):
+            if pp == 0:
+                if qq <= 0:
+                    t0, t1 = 1.0, 0.0
+                    break
+                continue
+            r = qq / pp
+            if pp < 0:
+                t0 = max(t0, r)
+            else:
+                t1 = min(t1, r)
+        if t0 < t1:
+            return True
+    return False
+
+
+def place_labels(labels, zoom, glyph, extent, footprints=()):
     """Give each label a `box` (world metres, x0 y0 x1 y1) where its text stands clear of every
-    other label's at ``zoom`` pixels per metre, greedily (module docstring), or null. Ours."""
+    other label's at ``zoom`` pixels per metre, greedily (module docstring), or null; clear of
+    ``footprints`` (vectors.json's) where any position can be. Ours."""
     gap = 2.0 / zoom  # metres between the anchor and the text
     placed = []
     anchors = [(e["key"], e["at"][0], e["at"][1]) for e in labels]
+    rings = [(box_of(pc[0]), [tuple(v[:2]) for v in pc[0]]) for f in footprints for pc in f["pieces"] if pc]
     for e in sorted(labels, key=lambda e: (PRIORITY.get(e["class"], 9), e["key"])):
         w = (len(e["text"]) * glyph[0] + 2) / zoom
         h = (glyph[1] + 2) / zoom
         cands = ([(0, 0)] if e["class"] == "region" else []) + POSITIONS
         e["box"] = None
+        free = []  # the positions clear of labels, anchors and the extent's edge, in order
         for dx, dy in cands:
             cx = e["at"][0] + dx * (w / 2 + gap)
             cy = e["at"][1] + dy * (h / 2 + gap)
@@ -328,9 +361,14 @@ def place_labels(labels, zoom, glyph, extent):
                 continue
             if any(k != e["key"] and b[0] < x < b[2] and b[1] < y < b[3] for k, x, y in anchors):
                 continue
-            placed.append(b)
-            e["box"] = [round(v, 3) for v in b]
-            break
+            free.append(b)
+        if not free:
+            continue
+        clear = [b for b in free if not any(b[0] < q[2] and q[0] < b[2] and b[1] < q[3] and q[1] < b[3]
+                                            and box_meets_ring(b, ring) for q, ring in rings)]
+        b = (clear or free)[0]
+        placed.append(b)
+        e["box"] = [round(v, 3) for v in b]
 
 
 def piece_box(asset_bounds, x, y, face, scale):
@@ -740,7 +778,8 @@ def make_map(world, p):
         lst.sort(key=lambda e: e["name"])
     name_rooms(labels)
     for plan_floor, zoom in [(None, p["label_zoom"])] + [(fd["index"], p["floor_label_zoom"]) for fd in floor_docs]:
-        place_labels([e for e in labels if e["floor"] == plan_floor], zoom, p["glyph"], grid["extent"])
+        place_labels([e for e in labels if e["floor"] == plan_floor], zoom, p["glyph"], grid["extent"],
+                     footprints if plan_floor is None else ())
     labels.sort(key=lambda e: (e["floor"] is not None, e["floor"] or 0, e["class"], e["key"]))
     vectors = {"footprints": footprints, "regions": regions, "water": water, "ways": ways}
 

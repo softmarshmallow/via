@@ -1,21 +1,27 @@
-//! Deterministic value noise. Hand-rolled on splitmix64 so that every bit of
-//! simulation input is a pure function of (seed, coordinates) — no external
-//! noise crate whose internals could drift under us.
+//! The model's value noise: the forcing texture of its starting surface, uplift and rain
+//! (`fields.rs`, `climate.rs`). Every draw is a pure function of (seed, coordinates), hashed by
+//! `via-num`'s SplitMix64 mix and mapped by its `unit` (`numbers.md` 7.2), so the library holds no
+//! hash of its own. It is not the core's gradient noise (`formulas.md` 8.2): it is the earlier Rust
+//! code's, kept bit for bit because every settled landscape is drawn from it.
 
-use via_num::splitmix64;
+use via_num as num;
 
 #[inline]
 fn hash2(seed: u64, x: i64, y: i64) -> u64 {
-    let mut h = splitmix64(seed ^ (x as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
-    h = splitmix64(h ^ (y as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F));
-    h
+    let h = num::mix_word(seed, (x as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+    num::mix_word(h, (y as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F))
+}
+
+/// A word to `[-1, 1)`: `2 * unit(u) - 1`, exact up to the subtraction.
+#[inline]
+fn signed_unit(u: u64) -> f64 {
+    2.0 * num::unit(u) - 1.0
 }
 
 /// Uniform lattice value in [-1, 1).
 #[inline]
 fn lattice(seed: u64, x: i64, y: i64) -> f64 {
-    const SCALE: f64 = 2.0 / 9_007_199_254_740_992.0; // 2 / 2^53
-    ((hash2(seed, x, y) >> 11) as f64) * SCALE - 1.0
+    signed_unit(hash2(seed, x, y))
 }
 
 #[inline]
@@ -45,7 +51,7 @@ pub fn fbm(seed: u64, x: f64, y: f64, octaves: u32) -> f64 {
     let mut freq = 1.0;
     let mut norm = 0.0;
     for k in 0..octaves {
-        let oct_seed = splitmix64(seed ^ (k as u64).wrapping_mul(0xA24B_AED4_963E_E407));
+        let oct_seed = num::mix_word(seed, (k as u64).wrapping_mul(0xA24B_AED4_963E_E407));
         sum += amp * value(oct_seed, x * freq, y * freq);
         norm += amp;
         amp *= 0.5;
@@ -56,16 +62,15 @@ pub fn fbm(seed: u64, x: f64, y: f64, octaves: u32) -> f64 {
 
 /// Per-cell white jitter in [-1, 1), for symmetry breaking.
 pub fn cell_jitter(seed: u64, cell_index: u32) -> f64 {
-    const SCALE: f64 = 2.0 / 9_007_199_254_740_992.0;
-    ((splitmix64(seed ^ (cell_index as u64).wrapping_mul(0xD6E8_FEB8_6659_FD93)) >> 11) as f64)
-        * SCALE
-        - 1.0
+    signed_unit(num::mix_word(
+        seed,
+        (cell_index as u64).wrapping_mul(0xD6E8_FEB8_6659_FD93),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use via_num as num;
 
     #[test]
     fn value_noise_is_bounded_and_stable() {

@@ -1,0 +1,13 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+datum      = "sea"
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.statue]
+asset = "heavy"
+at    = [4, 4]

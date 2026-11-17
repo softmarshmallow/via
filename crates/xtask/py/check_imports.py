@@ -1,4 +1,5 @@
-"""Library code imports only the SDK and the standard library (R19b, CONTRIBUTING.md).
+"""Library code imports only the SDK and the standard library (R19b, CONTRIBUTING.md), and a
+library step does not read its library's kinds file (spec/protocol.md 7).
 
 Run by `cargo run -p xtask -- check` through uv, with an isolated interpreter (`python -I`), so
 nothing from the repository or a user's site-packages is importable while it runs. It parses each
@@ -41,7 +42,29 @@ def check_file(lib_root, path):
         return out
 
     library = library_of(lib_root, path)
+    # A library step never reads its kinds file (spec/protocol.md 7, "A library's kinds file is
+    # not code"): the file is left out of the step's trust digest, so a step that opened it would
+    # be keyed by neither trust nor code and replay stale results. A test is not a step.
+    is_step = not os.path.basename(path).startswith("test_")
+    docstrings = set()
     for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            body = node.body
+            if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+                docstrings.add(id(body[0].value))
+    for node in ast.walk(tree):
+        if (
+            is_step
+            and isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and "kinds.toml" in node.value
+            and id(node) not in docstrings
+        ):
+            add(node, "names `kinds.toml`: a library step does not read its kinds file; it receives what the file says through the build (protocol.md 7)")
+        if is_step and isinstance(node, ast.Import) and any(a.name.split(".")[0] == "tomllib" for a in node.names):
+            add(node, "imports `tomllib`: a library step does not read its kinds file; it receives what the file says through the build (protocol.md 7)")
+        if is_step and isinstance(node, ast.ImportFrom) and node.level == 0 and (node.module or "").split(".")[0] == "tomllib":
+            add(node, "imports from `tomllib`: a library step does not read its kinds file; it receives what the file says through the build (protocol.md 7)")
         if isinstance(node, ast.Import):
             for alias in node.names:
                 top = alias.name.split(".")[0]

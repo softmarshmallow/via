@@ -450,7 +450,7 @@ class CaseRun:
         untouched = {p: _snapshot(self.work / p, set()) for p in t.get("untouched", [])}
         holding = self.work / t["holding"] if "holding" in t else None
         try:
-            proc = self.run_process(args + ["--diagnostics", str(diag_file)], self.work, env, holding)
+            proc = self.run_process(args + ["--diagnostics", str(diag_file)], self.work / t.get("cwd", "."), env, holding)
         except subprocess.TimeoutExpired:
             self.fail(label, "U1", f"exit {t['exit']}", f"no exit within {self.s.timeout:.0f} s")
             raise _Stop
@@ -547,7 +547,7 @@ class CaseRun:
 
         # U6: clean equals incremental, 1 thread equals 8.
         if is_build and out is not None and "no_rerun" not in t:
-            self._rerun(label, run_id, args, env, t["out"], code)
+            self._rerun(label, run_id, args, env, t["out"], code, t.get("cwd", "."))
 
         self._keep_result(a.id, out, code, proc.stdout, ran)
         self.record[run_id] = self._record_entry(out, code)
@@ -788,18 +788,19 @@ class CaseRun:
                             break
         return diffs
 
-    def _rerun(self, label: str, run_id: str, args: list[str], env: dict[str, str], out: str, code: int) -> None:
+    def _rerun(self, label: str, run_id: str, args: list[str], env: dict[str, str], out: str, code: int,
+               cwd: str = ".") -> None:
         clean1 = self.work.parent / f"{self.work.name}.clean1-{run_id}"
         self.siblings.append(clean1)
         self._input_copy(clean1, args, out)
-        r1 = self._build_in(clean1, args, env, 1, f"{run_id}.clean1")
+        r1 = self._build_in(clean1 / cwd, args, env, 1, f"{run_id}.clean1")
         diffs = self._compare_builds(self.work, code, clean1, r1.returncode, out)
         if not diffs:
             return
         clean8 = self.work.parent / f"{self.work.name}.clean8-{run_id}"
         self.siblings.append(clean8)
         self._input_copy(clean8, args, out)
-        r8 = self._build_in(clean8, args, env, 8, f"{run_id}.clean8")
+        r8 = self._build_in(clean8 / cwd, args, env, 8, f"{run_id}.clean8")
         incremental_ok = not self._compare_builds(self.work, code, clean8, r8.returncode, out)
         threads_ok = not self._compare_builds(clean8, r8.returncode, clean1, r1.returncode, out)
         if incremental_ok and not threads_ok:

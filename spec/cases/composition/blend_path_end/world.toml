@@ -1,0 +1,15 @@
+name       = "blend_path_end"
+extent     = [0, 0, 96, 64]
+resolution = 1
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 0
+
+# composition.md 6.3: a blend reads a place of three parts, the start of a's track.
+[import.a]
+file      = "a/world.toml"
+at        = [32, 0]
+blend     = "= 1 - smoothstep(4, 8, dist('a.track.start', 40))"
+max_grade = 5

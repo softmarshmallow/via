@@ -417,13 +417,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
-name = "via-artifact"
-version = "0.1.0"
-dependencies = [
- "via-num",
-]
-
-[[package]]
 name = "via-cli"
 version = "0.1.0"
 dependencies = [
@@ -550,7 +543,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "toml",
- "via-artifact",
  "via-num",
  "via-proto",
  "via-step",

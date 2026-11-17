@@ -16,9 +16,9 @@ members = [
     "crates/via-step",
     # Repository checks (deny-list, maths through via-num, the function table).
     "crates/xtask",
-    # Carried over: the erosion library and its file format, ported to via-num in M2.
+    # Library tier, outside the deny-list: lib/terrain's program, the erosion model carried over
+    # from the old workspace (docs/plan.md, "Carried over"; spec/protocol.md 8).
     "crates/via-terrain",
-    "crates/via-artifact",
 ]
 
 [workspace.package]
@@ -28,7 +28,7 @@ rust-version = "1.92"
 license = "MIT"
 
 [workspace.dependencies]
-# Used by the carried-over erosion library only, until its M2 port.
+# rayon: the erosion model's parallel loops (via-terrain), at any thread count the same bits.
 rayon = "1.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -44,11 +44,10 @@ via-raster = { path = "crates/via-raster" }
 via-graph = { path = "crates/via-graph" }
 via-model = { path = "crates/via-model" }
 via-proto = { path = "crates/via-proto" }
-via-artifact = { path = "crates/via-artifact" }
+via-step = { path = "crates/via-step" }
 via-terrain = { path = "crates/via-terrain" }
 
-# Applied by every new crate with `[lints] workspace = true`. via-terrain and via-artifact do not
-# opt in, and allow disallowed_methods themselves, until their M2 port to via-num.
+# Applied by every crate with `[lints] workspace = true`, via-terrain included.
 [workspace.lints.clippy]
 # R26 and numbers.md 8: every float operation beyond the allow-list goes through via-num. The list
 # itself is clippy.toml. via-num opts in too: it computes through libm, not these methods, and any

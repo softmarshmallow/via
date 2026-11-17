@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "Budget triangles 2000; the world's own instance rack with a set of three heavy items (1000 triangles each, named rack.a, rack.b, rack.c) in chunk [0, 0], beside an import a: build.over_budget naming heavy with data.from = \"\", exit 1. A dotted own name is not an import's (build.md 5.1, case 54)."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/yard"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/yard"
+
+[action.build.diag.triangles]
+code = "build.over_budget"
+data = { chunk = [0, 0], measure = "triangles", value = 3010, limit = 2000, asset = "heavy", share = 99, instances = 3, from = "" }

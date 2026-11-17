@@ -39,6 +39,10 @@ PALETTE = {"none": (236, 232, 222), "water": (120, 170, 220), "footprint": (150,
 GROUND = [(186, 214, 150), (226, 210, 160), (170, 160, 150), (200, 200, 180), (160, 190, 130)]
 NAMED = {"grass": (186, 214, 150), "sand": (232, 214, 160), "rock": (165, 160, 155)}
 WAYS = [(250, 250, 250), (240, 200, 120), (230, 150, 90), (90, 130, 200)]
+# Ways by class (M7): darker than every ground colour above, so an earth road on grass reads (it
+# was white on pale green, faint at the map's zoom); a class not named here takes WAYS in turn.
+WAY_NAMED = {"road": (176, 98, 44), "trail": (150, 96, 60), "path": (128, 84, 56), "lane": (196, 128, 64),
+             "street": (120, 116, 112), "freeway": (214, 120, 40), "bridge": (90, 90, 90)}
 
 
 def colours(classes):
@@ -52,6 +56,8 @@ def colours(classes):
             g += 1
         elif n.startswith("water:"):
             out[c["id"]] = (70, 120, 200)
+        elif n.startswith("way:") and n[4:] in WAY_NAMED:
+            out[c["id"]] = WAY_NAMED[n[4:]]
         else:
             out[c["id"]] = WAYS[w % len(WAYS)]
             w += 1

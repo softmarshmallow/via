@@ -443,6 +443,14 @@ def write_build(out, downstream, pack_dir):
     def put(path, data):
         files[path] = data
 
+    def material_entry(m):
+        e = {"colour": MATERIALS[m]["colour"], "params": {}}
+        if "file" in MATERIALS[m]:
+            e["file"] = MATERIALS[m]["file"]
+            e["digest"] = blake3((pack_dir / MATERIALS[m]["file"]).read_bytes())
+            e["repeat"] = MATERIALS[m]["repeat"]
+        return e
+
     height = grid(ground)
     put("fields/height.npy", npy("<f4", (NY, NX), height))
     wat = grid(water)
@@ -455,6 +463,30 @@ def write_build(out, downstream, pack_dir):
     for j in range(NY):
         for i in range(NX):
             post_bytes[(i, j)] = hamilton(weights_at(*post_xy(i, j), lanes))
+
+    def bits(v):  # a single-precision value's bits, as an unsigned integer
+        return struct.unpack("<I", struct.pack("<f", v))[0]
+
+    def chunk_digest(i0, j0, i1, j1, mine, wentry):
+        # build.md 5.2: the BLAKE3 of one object's canonical JSON (no closing line feed). The
+        # fixture has no cut, meshes, features or footprints listed per chunk, so those keys are
+        # empty; what the ford's move changes (the beck's ground and water) changes a chunk's.
+        def window(values):
+            return blake3(b"".join(struct.pack("<f", values[j * NX + i])
+                                   for j in range(j0, j1 + 1) for i in range(i0, i1 + 1)))
+        rows_ = [[rows[n]["name"], rows[n]["asset"], rows[n]["x"], rows[n]["y"], rows[n]["face"] % 360000,
+                  bits(rows[n]["z"]), bits(rows[n]["scale"]), bits(rows[n]["tint"])] for n in mine]
+        obj = {
+            "assets": {a: blake3(canonical(asset_entry(ASSETS[a]))[:-1])
+                       for a in sorted({rows[n]["asset"] for n in mine})},
+            "features": {}, "footprints": {},
+            "fields": {"clearing": window(clearing), "height": window(height), "water": window(wat)},
+            "instances": blake3(canonical(rows_)[:-1]),
+            "materials": {m: blake3(canonical(material_entry(m))[:-1]) for m in wentry["materials"]},
+            "meshes": {},
+            "weights": {"material": blake3(files[wentry["file"]]) if wentry["file"] else None},
+        }
+        return blake3(canonical(obj)[:-1])
 
     chunk_entries = []
     for cx, cy, i0, j0, i1, j1 in chunks():
@@ -474,6 +506,7 @@ def write_build(out, downstream, pack_dir):
             by_asset[a] = (first, count + 1)
         chunk_entries.append({
             "at": [cx, cy], "count": len(mine),
+            "digest": chunk_digest(i0, j0, i1, j1, mine, wentry),
             "instances": {a: [f, c] for a, (f, c) in sorted(by_asset.items())},
             "posts": [i0, j0, i1, j1],
             "triangles": sum(ASSETS[rows[n]["asset"]]["triangles"] for n in mine),
@@ -496,14 +529,7 @@ def write_build(out, downstream, pack_dir):
                 "taxon": None, "type": "scalar", "unit": unit}
 
     used_assets = sorted({r["asset"] for r in rows})
-    materials = {}
-    for m in mat_ids:
-        e = {"colour": MATERIALS[m]["colour"], "params": {}}
-        if "file" in MATERIALS[m]:
-            e["file"] = MATERIALS[m]["file"]
-            e["digest"] = blake3((pack_dir / MATERIALS[m]["file"]).read_bytes())
-            e["repeat"] = MATERIALS[m]["repeat"]
-        materials[m] = e
+    materials = {m: material_entry(m) for m in mat_ids}
     diagnostics = canonical({"counts": {"error": 0, "failed_on": 0, "info": 0, "warning": 0},
                              "diagnostics": [], "format": "via-diagnostics-1", "lints": [], "status": 0})
     manifest = {

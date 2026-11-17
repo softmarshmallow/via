@@ -657,6 +657,19 @@ changes whether a step can run, never what a build contains.
   code folder that is, or holds, the folder of the world file is `protocol.code_folder`, whose hint
   is to move the script into a folder of its own: otherwise every edit to the world would need
   trusting again.
+- **A library's kinds file is not code.** A `lib:` step's code folder is its library's folder,
+  less the library's `kinds.toml` at its root: a document the engine reads as text (`documents.md`
+  4), which never runs, as a world's text needs no trust. Its statements key the steps that read
+  them (`graph.md` 5.1), so an edit still re-runs what it changes, and a comment re-runs nothing.
+  Every other file of the folder is digested, whatever its type: a step may read or run any of
+  them. Ours (M7 slice 1; decided, open to the owner): a comment in lib/water's kinds file untrusted
+  every world's `fill` in the M6 close (case 78, `library_kinds_edited`).
+  **So a library step must not read its kinds file**; it receives what the file says through the
+  build (its `params` and the features it is served). A step that opened the file would be keyed
+  by neither trust nor code and replay stale results. `xtask check` (`python-imports`) refuses a
+  library step (any `.py` under `lib/` not named `test_*`) that imports `tomllib` or names
+  `kinds.toml` outside a docstring; it reads text, so a step that builds the name another way is
+  not caught (found by the M7 slice 1 review; ours).
 - **The code folder's digest** covers its files in path order, each by relative path and content.
   Left out: `__pycache__` folders, names starting with `.`, and symbolic links, so a call, an editor
   or the system does not change it. In a file that is valid UTF-8 with no NUL byte, each CRLF is
@@ -669,8 +682,7 @@ changes whether a step can run, never what a build contains.
   A `command` of one word naming a configured program is not trusted again when the program's file
   changes, but that file's digest is in the step's static key (`graph.md` 5.1), so the step runs
   again; `via trust` lists such a step as "none: installed code is not covered". The terrain
-  library ships so today (`["via-terrain"]`); whether a library may be a program and not a `lib:`
-  folder of Python is open (section 8, R19a).
+  library ships so (`["via-terrain"]`), a program section 8 admits (R34).
 - **Libraries.** Trusting is by digest, so a library trusted once is trusted in every world, and any
   edit to its code asks again. A library shipped inside the `via` binary is trusted when its code
   folder's digest equals the one the binary carries. A library found elsewhere, such as `lib/` named
@@ -722,11 +734,26 @@ Pure Python, 3.11 or later, with NumPy as its one dependency. It never links or 
 (R20); it speaks section 3, or reads section 2's request. Our libraries use it and nothing else
 (R19b).
 
-One library does not yet: `lib/terrain`'s step and lint are the Rust program `via-terrain`, which
-links core crates no user step can reach (`via-num`, the seed derivation, the store) and computes
-its own noise. Nothing in this chapter admits a Rust door, so R19a and R19b are not met for it. Open
-for the owner: publish `via-step`, `via-num` and the seed derivation as a supported door, or move
-the library to Python on this SDK. Until then its code is covered by the static key only (7).
+One library is a program instead (R34: no private door is about reach, not language):
+`lib/terrain`'s step and lint are the Rust program `via-terrain`, an erosion model. It is admitted
+on these terms, which the M7 cutover checked (ours; decided, open to the owner):
+
+- It reaches the build only through this protocol: a worker on section 3's descriptors through
+  `via-step`, or a plain command reading section 2's request. It reads fields and feature lists as
+  blobs of the `objects` folder (4) through `via-proto`'s column and blob readers, the Rust side of
+  the door the SDK speaks, and returns a document, field files and diagnostics (5).
+- It holds no second core: no document reader, no store of its own; its maths and seeds go through
+  `via-num` (`numbers.md` 8, and `sub_seed` of 7.2, moved there from the retired `via-artifact`).
+  What it computes itself is the model: its value noise (not `formulas.md` 8.2's gradient noise),
+  its own grid of nodes and the algorithms on it. Those differ from `via-raster`'s post-lattice
+  ones in bits, so folding them in would move every settled landscape.
+- Its code is covered by the static key (the program file's digest, 7), not by trust, as any
+  configured program; a reviewer builds `basin` from its committed result (7.1).
+
+`via-step` and `via-num` are not a door we support for users' steps: a user's step speaks this
+SDK, or the protocol in its own code. Whether to publish them as a Rust SDK, or to move the model
+to Python on this SDK (a port of its 7,800 lines whose transcendentals would have to be batched to
+the engine to keep `numbers.md` 9, and every settled landscape re-banded), stays open for the owner.
 
 | Part | What it is |
 |---|---|
@@ -954,6 +981,7 @@ by code, severity, subject, location and `data`.
 | 74 | M5 | A lint asking `surfaces_at` at three points and `sample` of a kind surface (`= level + 0.5 * x`) and of the terrain (`= x`) (`c74_surface_questions`) | Rows by point then `z`, none outside the extent; the kind surface's `gx` 0.5, one-sided at the bound's edge, `inside` false beyond it; the terrain's `gx` 1. |
 | 75 | M5 | `sample` of `deck.tops` where the surface is `deck.top` (`c75_sample_not_surface`) | `surface.not_surface` on the step, `data.nearest = "deck.top"`, exit 1. |
 | 77 | M6 | A lint step writing `output = "player_map"`, and an export step writing `output = "Player Map"` (`c77_output_key`) | `doc.unknown_key` at the lint's `output`; `identity.bad_id` at the export's, hint `player_map`; exit 1. |
+| 78 | M7 | A lint step in a library (`lib:marks/lint.py`), trusted; a comment added to the library's `kinds.toml`; then `lint.py` edited (`library_kinds_edited`) | No diagnostic after the comment, the step still trusted; then `protocol.untrusted_skipped`. |
 
 ## Changed from the spike
 

@@ -1,0 +1,66 @@
+format    = "via-case-1"
+summary   = "Case 43's yard with an export step: the budget settles before the gates open, so its build.over_budget skips every write node and the export (diag.skipped, stage export), exit 1; with a formula error elsewhere as well, the budget still counts and both errors are reported."
+milestone = 7
+actions   = ["program", "trust", "build", "error_trust", "error"]
+
+# build.md 5.1, "When it is checked: as soon as the counts are known". Gated, the budget ran beside
+# the write nodes (each `ran`), and beside another error it was skipped (only the formula error).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/yard"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/yard"
+
+[action.build.diag.triangles]
+code = "build.over_budget"
+data = { chunk = [0, 0], measure = "triangles", value = 6500, limit = 5000, asset = "heavy", share = 92, instances = 6, from = "" }
+
+[action.build.diag.skipped]
+code    = "diag.skipped"
+subject = "world"
+data    = { stage = "export" }
+
+[action.build.check.budget]
+fn       = "run_node"
+path     = "build/yard.run.json"
+node     = "budget:chunks"
+includes = { status = "ran", failed = true }
+
+[action.build.check.names]
+fn       = "run_node"
+path     = "build/yard.run.json"
+node     = "write:instances/names.txt"
+includes = { status = "skipped" }
+
+[action.build.nodes]
+not_ran = ["write:manifest.json", "write:instances/names.txt", "write:fields/height.npy"]
+
+[action.build.file.none]
+path   = "build/yard/export"
+exists = false
+
+[action.error_trust]
+via  = ["trust", "error.toml", "--yes"]
+exit = 0
+
+[action.error]
+via         = ["build", "error.toml", "--out", "build/error"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/error"
+
+[action.error.diag.typo]
+code = "formula.unknown_name"
+
+[action.error.diag.triangles]
+code = "build.over_budget"
+data = { chunk = [0, 0], measure = "triangles", value = 6500, limit = 5000, asset = "heavy", share = 92, instances = 6, from = "" }

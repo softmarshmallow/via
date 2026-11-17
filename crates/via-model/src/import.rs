@@ -486,8 +486,21 @@ pub(crate) fn scoped_refs(root: &Table, ids: &BTreeSet<String>) -> BTreeSet<Stri
     }
     let mut out = BTreeSet::new();
     for (top, e) in root.iter() {
-        // An import's own `file` is a path, not a place.
-        if top == "import" || top == "kind" {
+        // An import's own `file` is a path, not a place; its `blend` reads places (6.3), a path's
+        // end among them (`a.track.start`), which only this resolves.
+        if top == "import" {
+            if let Value::Table(t) = &e.item.value {
+                for (_, imp) in t.iter() {
+                    if let Value::Table(it) = &imp.item.value {
+                        if let Some(b) = it.get("blend") {
+                            walk(&b.item.value, false, ids, &mut out);
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+        if top == "kind" {
             continue;
         }
         walk(&e.item.value, true, ids, &mut out);
@@ -1083,6 +1096,20 @@ impl Imported {
                 continue;
             };
             let subject = Subject::parse(r.subject()).unwrap_or(Subject::World);
+            // The import's own file not found or unreadable: its `file` key in this world is the
+            // subject, not the command line (`composition.md` 4).
+            if subject == Subject::Cli {
+                let message = r
+                    .message()
+                    .replace("the world file", &format!("`{}`'s file", self.id));
+                let mut d = text::at_key(code, "import", &self.id, "file", &message, r.hint())
+                    .with("file", DValue::text(self.shown.clone()));
+                for (k, v) in r.data() {
+                    d = d.with(k.clone(), v.clone());
+                }
+                out.push(d);
+                continue;
+            }
             if let Some(mut d) = located(
                 code,
                 prefixed(&subject),
@@ -1957,25 +1984,8 @@ impl Imported {
                 &format!("`{id}` shares this world's datum `{x}`, so `lift` would move it off the shared zero"),
                 "remove `lift`",
             )),
-            (x, y, None) if x.is_none() || y.is_none() => diags.push(
-                text::at_header(
-                    codes::import::NO_DATUM,
-                    "import",
-                    id,
-                    &format!(
-                        "{} declares no `datum`, so nothing says the two heights share a zero",
-                        if y.is_none() { "this world" } else { "the import" }
-                    ),
-                    "write `datum = \"<name>\"` in both worlds, or `lift` on the import",
-                )
-                .with(
-                    "write",
-                    DValue::text(format!(
-                        "datum = \"{}\"",
-                        x.clone().or_else(|| y.clone()).unwrap_or_else(|| "<name>".into())
-                    )),
-                ),
-            ),
+            // `import.no_datum` is made by `join_checks`, once both grounds are built, so it can
+            // say the lift that meets them (section 5).
             _ => {}
         }
         // Fields (6.2); a given field is the parent's own, handed down, not the import's. A step's
@@ -2069,16 +2079,37 @@ impl Imported {
 
     /// The import's kind surfaces under scoped names (6.1): moved and turned with the import,
     /// their heights plus `lift`. Their meshes and the terrain's cut are made again from them on
-    /// this world's posts.
-    pub(crate) fn brought_surfaces(&self) -> Vec<(String, crate::surfaces::SurfaceOut)> {
+    /// this world's posts (`resolution`, millimetres: a skirt is stroked again by it). One whose
+    /// point leaves the lattice when placed is left out, and `import.surface_dropped` (warning)
+    /// names it on its scoped feature.
+    pub(crate) fn brought_surfaces(
+        &self,
+        world: &World,
+        resolution: Option<i64>,
+        diags: &mut Vec<Diag>,
+    ) -> Vec<(String, crate::surfaces::SurfaceOut)> {
         let lift = self.decl.lift.unwrap_or(0.0);
-        self.alone
-            .build
-            .surfaces
-            .values()
-            .filter_map(|s| s.brought(&self.id, self.frame, lift))
-            .map(|s| (s.place.clone(), s))
-            .collect()
+        let mut out = Vec::new();
+        for s in self.alone.build.surfaces.values() {
+            let own = self.alone.decls.grid.map(|g| g.resolution);
+            match s.brought(&self.id, self.frame, lift, resolution, own) {
+                Some(b) => out.push((b.place.clone(), b)),
+                None => diags.push(
+                    text::diag(
+                        codes::import::SURFACE_DROPPED,
+                        scoped_subject(&self.id, "feature", s.owner.clone()),
+                        text_site(world, Subject::entity("import", self.id.clone()), Site::Header),
+                        &format!(
+                            "`{}.{}` leaves the lattice where `{}` is placed, so it is not brought",
+                            self.id, s.place, self.id
+                        ),
+                        "place the import nearer the lattice's middle, or keep the surface inside its extent",
+                    )
+                    .with("surface", DValue::text(format!("{}.{}", self.id, s.place))),
+                ),
+            }
+        }
+        out
     }
 
     /// The brought surface a place inside the import stands on (6.1), by its scoped name: the
@@ -2233,6 +2264,57 @@ impl Imported {
     }
 }
 
+/// The lift that meets this world's ground across an import's edge (section 5, `lift_hint`):
+/// over every pair of neighbouring posts with one outside the footprint (weight 0) and one inside,
+/// neither anchored, the median of this world's height outside less the import's own height,
+/// before `lift`, at the post inside; to the centimetre. `None` when no pair crosses the edge or the
+/// import has no such surface field.
+fn lift_hint(
+    imp: &Imported,
+    grid: &Grid,
+    sname: &str,
+    z: &[f64],
+    w: &[f64],
+    anchored1: &[bool],
+) -> Option<f64> {
+    let own = imp.field_values(sname)?;
+    let nx = grid.nx as usize;
+    let ny = grid.ny as usize;
+    let mut steps: Vec<f64> = Vec::new();
+    for j in 0..ny {
+        for i in 0..nx {
+            let k = j * nx + i;
+            for n in [(i + 1 < nx).then(|| k + 1), (j + 1 < ny).then(|| k + nx)]
+                .into_iter()
+                .flatten()
+            {
+                if anchored1[k] || anchored1[n] || (w[k] > 0.0) == (w[n] > 0.0) {
+                    continue;
+                }
+                let (inside, outside) = if w[k] > 0.0 { (k, n) } else { (n, k) };
+                let (x, y) =
+                    via_raster::window::post_mm(grid, (inside % nx) as u64, (inside / nx) as u64);
+                if let Some(h) = imp.sample_length(&own, (x, y)) {
+                    steps.push(z[outside] - h);
+                }
+            }
+        }
+    }
+    if steps.is_empty() {
+        return None;
+    }
+    steps.sort_by(f64::total_cmp);
+    let m = steps.len();
+    let median = if m % 2 == 1 {
+        steps[m / 2]
+    } else {
+        (steps[m / 2 - 1] + steps[m / 2]) / 2.0
+    };
+    // To the centimetre, ties to even (`numbers.md` 3.1's rounding, on centimetres).
+    let cm = via_num::round_to_lattice(median * 100.0).ok()?;
+    Some(cm as f64 / 100.0 + 0.0)
+}
+
 /// The seam check (6.6) and places the join alters (6.7), after the parent's surface is final.
 /// `w` is each import's weight per parent post.
 pub(crate) fn join_checks(
@@ -2244,6 +2326,44 @@ pub(crate) fn join_checks(
     named: &BTreeSet<String>,
     diags: &mut Vec<Diag>,
 ) {
+    // The datum (section 5): neither side says its zero and no `lift` is written.
+    for (id, imp) in &d.imported {
+        let a = &imp.alone;
+        let (x, y) = (&a.decls.datum, &d.datum);
+        if !a.failed.is_empty() || imp.decl.lift.is_some() || (x.is_some() && y.is_some()) {
+            continue;
+        }
+        let hint = surface
+            .zip(weights.get(id))
+            .and_then(|((sname, z), w)| lift_hint(imp, grid, sname, z, w, anchored1));
+        let mut dg = text::at_header(
+            codes::import::NO_DATUM,
+            "import",
+            id,
+            &format!(
+                "{} declares no `datum`, so nothing says the two heights share a zero",
+                if y.is_none() { "this world" } else { "the import" }
+            ),
+            &match hint {
+                Some(l) => format!(
+                    "write `datum = \"<name>\"` in both worlds, or `lift = {}` on the import: the median step from its ground to this world's across its edge",
+                    text::dbl(l)
+                ),
+                None => "write `datum = \"<name>\"` in both worlds, or `lift` on the import".into(),
+            },
+        )
+        .with(
+            "write",
+            DValue::text(format!(
+                "datum = \"{}\"",
+                x.clone().or_else(|| y.clone()).unwrap_or_else(|| "<name>".into())
+            )),
+        );
+        if let Some(v) = hint.and_then(DValue::double) {
+            dg = dg.with("lift_hint", v);
+        }
+        diags.push(dg);
+    }
     let Some((sname, z)) = surface else { return };
     let nx = grid.nx as usize;
     let ny = grid.ny as usize;
@@ -2274,20 +2394,32 @@ pub(crate) fn join_checks(
                 }
             }
         }
+        let lift_hint = lift_hint(imp, grid, sname, z, w, anchored1);
         if let Some((g, at)) = worst {
             let (x, y) = via_raster::window::post_mm(grid, (at % nx) as u64, (at / nx) as u64);
-            diags.push(
-                text::at_header(
-                    codes::import::SEAM,
-                    "import",
-                    id,
-                    &format!("the ground steps across `{id}`'s edge at a grade of {} on `{sname}`, above `max_grade` {}", text::dbl(g), text::dbl(imp.decl.max_grade)),
-                    "blend the import in (`blend`), own the ground with an anchored feature, or raise `max_grade`",
-                )
-                .at(text::pos(x, y))
-                .with("grade", DValue::double(g).unwrap_or(DValue::Int(0)))
-                .with("count", DValue::Int(count as i64)),
+            let mut hint = String::from(
+                "blend the import in (`blend`), own the ground with an anchored feature, or raise `max_grade`",
             );
+            if let Some(l) = lift_hint {
+                hint.push_str(&format!(
+                    "; `lift = {}` meets this world's ground across the edge (the median step)",
+                    text::dbl(l)
+                ));
+            }
+            let mut dg = text::at_header(
+                codes::import::SEAM,
+                "import",
+                id,
+                &format!("the ground steps across `{id}`'s edge at a grade of {} on `{sname}`, above `max_grade` {}", text::dbl(g), text::dbl(imp.decl.max_grade)),
+                &hint,
+            )
+            .at(text::pos(x, y))
+            .with("grade", DValue::double(g).unwrap_or(DValue::Int(0)))
+            .with("count", DValue::Int(count as i64));
+            if let Some(l) = lift_hint.and_then(DValue::double) {
+                dg = dg.with("lift_hint", l);
+            }
+            diags.push(dg);
         }
         // Places the parent names whose weight is below 1 (6.7).
         for name in named {

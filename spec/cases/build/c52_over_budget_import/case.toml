@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "Budget triangles 2000; the import a's three heavy instances (1000 triangles each) in the parent's chunk [0, 0]: build.over_budget naming heavy with data.from = \"a\", exit 1 (build.md 5.1, case 52)."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/yard"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/yard"
+
+[action.build.diag.triangles]
+code = "build.over_budget"
+data = { chunk = [0, 0], measure = "triangles", value = 3010, limit = 2000, asset = "heavy", share = 99, instances = 3, from = "a" }

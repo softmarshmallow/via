@@ -11,10 +11,9 @@ rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 blake3 = { workspace = true }
-via-artifact = { workspace = true }
 via-num = { workspace = true }
 via-proto = { workspace = true }
-via-step = { path = "../via-step" }
+via-step = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.27"

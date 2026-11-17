@@ -62,6 +62,34 @@ field = "role:keep_out"
 value = "= 1"
 mask  = "= 1 - smoothstep(5.5, 7.5, d)"
 
+# The approach (M7, `atlas`; TODO "a ramp the master owns cannot meet an anchored place"): a pad
+# that holds, for a parent's way where it meets a place an import holds. A `pad` is `shaped`, so a
+# pad written on the parent's way end reads the ground before the import's anchored ground
+# (composition.md 6.4: that entry is `anchored`) and levels toward the plain, not the place: atlas's
+# `college_road` pad levelled toward 6.6 m where the college's arrival stands at 3.9. The approach is
+# `anchored`, so in a layer ranked above the import's it is ordered after the import's anchored
+# ground (authority.md 4: tier, then layer rank) and `under('mean')` reads the place's level. Its
+# value is the pad's bank, `clamp(v, level - grade * d, level + grade * d)`: within the import's
+# anchored ground that lies in the band it asks `v`, so the two agree (authority.md 5); where an
+# anchored entry of the import climbs away faster than `grade`, they disagree and the build says so.
+# The bank holds the grade out to `reach` metres and fades by `reach + fade`, both the world's
+# (a 5 m gap at 1:10 needs a reach of 50 m), at most `radius` together. Ours.
+[kind.approach]
+authority = "anchored"
+radius    = 82                            # `reach + fade` at most 80, and a ring post (fields.md 5.3)
+
+[kind.approach.defaults]
+grade   = 0.1                             # the steepest bank, rise over run (1:10)
+reach   = 10                              # metres the grade holds; the pad's 10
+fade    = 15                              # metres over which it fades into the ground; the pad's 15
+max_cut = 3                               # metres it may cut or bank, at most (authority.max_change)
+
+[kind.approach.effect.level]
+field      = "role:surface"
+value      = "= clamp(v, under('mean') - grade * d, under('mean') + grade * d)"
+mask       = "= 1 - smoothstep(reach, reach + fade, d)"
+max_change = "= max_cut"
+
 # A cliff (M2, `vale`): a path along the foot of a rock face, the high ground on its left (`sd`
 # above 0, numbers.md 5.5: walk the path with the face on your left hand). The face is `drop`
 # metres high and about 2 m wide. Half of it is the land above lifted, half the land below lowered,

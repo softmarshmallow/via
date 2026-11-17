@@ -310,8 +310,25 @@ reason    = "the cranes; the engine's detail levels draw a third of them past 60
   chunk's `count`, since a group is one asset), ties to the lower asset id, with its share in
   percent rounded down and its instance count. `measure` is the key's name: `triangles`,
   `instances` or `groups`. `data`: `chunk` (`[cx, cy]`), `measure`, `value`,
-  `limit`, `asset`, `share` (percent, an integer), `instances`. The hint gives the line to write: the
-  waiver for that chunk with its value, and says to thin the asset instead.
+  `limit`, `asset`, `share` (percent, an integer), `instances`, `from`. The hint gives the line to
+  write: the waiver for that chunk with its value, and says to thin the asset instead.
+- **An import's asset.** `data.from` is the import the dominant asset's instances in that chunk
+  come from (the first part of their scoped names, `composition.md` 4, when that part is one of
+  the world's `[import]` ids; the import with the most of them, ties to the lower id), or `""`
+  when they are the world's own. A world's own set items are dotted too (`kitchen_table.candle`,
+  `rules.md`'s sets): their first part is an instance, not an import, so they are the world's own
+  (found by the M7 slice 1 review: station's own candle would have named an import `kitchen_table`
+  that does not exist; case 54). The parent cannot thin an import's instances in its own text
+  (`composition.md` 11), so the hint then says to thin them by a change of that import (`changes`
+  on `[import.<id>]`), or to waive the chunk. Ours: the fresh agent of the M6 close was told to
+  thin an asset its world did not place (case 52).
+- **Setting a budget.** A world with no `[budget]` has nothing to fail, and its manifest already
+  holds what a budget would count: every chunk's `triangles`, `count` and `groups` (5). The peak
+  of each over the chunks is the least limit the world passes as built:
+  `jq '[.chunks[].triangles] | max' build/w/manifest.json` (and `count`, `groups`). Write the
+  limit from the target, then waive what the peak shows is meant. There is no
+  `build.budget_peak` record: an info on every build is noise in every world's diagnostics, and the
+  numbers are already in the manifest. Ours (M7 slice 1; decided, open to the owner).
 
   ```
   error[build.over_budget]: chunk [3, 4] (192..256 m east, 256..320 m north) holds 612000 triangles,
@@ -343,8 +360,15 @@ reason    = "the cranes; the engine's detail levels draw a third of them past 60
   moves no instance, swaps no asset and edits no pack entry reuses it. Not `instances/names.txt`
   alone: names in chunk order stay the same when a row crosses a chunk edge or changes its asset,
   and a warm build then kept a stale "within budget" that a clean build refused (found by the M6
-  slice 1 review; case 48). It is skipped when the build has an error elsewhere, as a lint is
-  (`diagnostics.md` 4). Ours; `graph.md` 1 lists it.
+  slice 1 review; case 48). Ours; `graph.md` 1 lists it.
+- **When it is checked: as soon as the counts are known.** The node is not gated (`graph.md` 6.1,
+  `diagnostics.md` 4): it settles once what it reads has settled, before the gates open, whether
+  or not another node failed. So a chunk over budget is an error before any `write` node or
+  export starts, and they are skipped (`diagnostics.md` 4, stage 5) instead of running beside it;
+  a lint runs or is skipped as beside any other error. The budget is skipped only when what it
+  reads is not usable. Why: gated, it ran beside the writes, and atlas's `over_budget` failed
+  only after 175 s of a 199 s cold build (TODO, "From M6 close"). Ours (M7 slice 1; decided,
+  open to the owner); case 53.
 
 ### 5.2 What a streaming reader reads (M6)
 
@@ -632,8 +656,11 @@ needs"; its file rules are the library's, and ours where no source is given):
   with a glyph box (`glyph`, pixels a character and a line): greedily, regions then POIs, labels,
   rooms, then by key, each at the first of eight positions round its anchor (upper right first,
   after Imhof 1975; a region centred first) where its box meets no placed box, covers no other
-  anchor and lies inside the extent. A label that fits nowhere has `box` null; the game shows it
-  closer in. `labels.json` holds the zoom and glyph it was placed at. Named areas (a district, a
+  anchor and lies inside the extent. On the ground plan a box also covers no footprint where any
+  of its positions can (M7): the first position clear of footprints too, else the first clear of
+  labels and anchors alone, so a label in a dense town stands over roofs rather than not at all
+  (atlas's labels stood over houses at the M6 close). A label that fits nowhere has `box` null;
+  the game shows it closer in. `labels.json` holds the zoom and glyph it was placed at. Named areas (a district, a
   place an import brings) are features of lib/map's kind `area`, listed in `params.regions`.
 - **Tile fingerprints.** Every plan (the ground, each floor) is cut into tiles of `tile` cells; a
   tile's fingerprint is the SHA-256 of its cells' bytes and the canonical JSON of every item whose
@@ -1229,6 +1256,26 @@ instances and their bodies, exactly as above) from its entry in `chunks`, a gene
   `join_city_north` 0.55% (1.49%), `join_wild` 0.29% (1.06%). What is left is woods (a far crown
   is flat-shaded and lighter than the drawn one) and aerial views wholly past the load radius
   (`vale.aerial` 7.34%). Ours.
+  **Rings (M7, ours).** A band is a frustum between two rings, each the outline of the asset's
+  surface within half a band of one of the band ends (each triangle clipped there): its box cut
+  by its least and most `x + y` and `x - y`, eight corners, so a round crown is an octagon, a cone
+  tapers band by band and a box keeps its four corners (a box asset is one box, as before). A
+  round band's sides are shaded round (each vertex's normal its level direction from the band's
+  axis); its top and every box are flat. Atlas at 96 m, the same protocol (M7, 126 views, one run
+  each, load average about 30 from other agents): boxes by bands (M6 close's loader) median
+  0.051%, mean 0.323%, 11 above 1%, `vale.aerial` 6.79%, `vale.tarn_above` 4.26%; rings median
+  0.054%, mean 0.274%, 10 above 1%, `vale.aerial` 4.75%, `vale.tarn_above` 3.30%,
+  `massif.to_door` 1.70% to 1.42%; 63 views better, 20 worse (by at most 0.22 points:
+  `city.ix_north_view` 0.26% to 0.47%).
+  **Why a view differs** is measured with `--far-mask` (the sheet tool, below) and
+  `tests/compare_views.py`: in every view above 1% most differing pixels lie on far instances
+  (57 to 91%), the rest on the far ground. **The bound** (decided, open to the owner): a streamed
+  view may differ from whole in 1% of its pixels plus half the share of the view its far
+  instances show. A stand-in is an outline and a mean colour, not its model's facets: on atlas
+  the drawn models differed from their stand-ins in 20 to 45% of the pixels the stand-ins
+  showed (the 14 views differing most), so a view looking mostly past the load radius (`vale.aerial`, far instances 12.7% of
+  it) meets 1% only when the model itself is drawn there. All 126 views are within it (most
+  used: `massif.to_door`, 1.42% of 1.98%).
 - Every chunk's content is the same node for node as `make` makes it, and appears once however
   often it is loaded and unloaded (the loader suite's streaming test).
 - **Walks** (M6 slice 2): the sheet's walker loads chunks in **lockstep**: a chunk begun on the
@@ -1253,7 +1300,9 @@ instances and their bodies, exactly as above) from its entry in `chunks`, a gene
   again those whose digest changed, so the same chunks are loaded after; a generated mesh is kept
   when its entry and its file's digest in `files` are the same. border `move_abbey`, every chunk
   loaded: 53 of 90 kept, 37 made, 0.36 s; coast `long_deck`: 10 of 12 kept, 3 of 4 meshes kept
-  (`tests/test_reload.gd`). `neighbours` is not read: a streamer by radius loads them anyway.
+  (`tests/test_reload.gd`). The loader suite's fixtures carry 5.2's digests (M7; written by
+  `tests/make_fixture.py`), so its reload step sees both: the ford's move keeps 1 of 4 chunks and
+  makes 3 again (`--mixed` checks that both happen). `neighbours` is not read: a streamer by radius loads them anyway.
 
 **The minimap** (M6 close; challenge 24). The loader's `addons/via_loader/minimap.gd` draws the
 player map (9.4) from the manifest alone: the first entry of `exports` (by key) whose `output` is
@@ -1262,7 +1311,11 @@ game gives it the walker's plan point, heading and feet height each frame:
 
 - **Ground**: one pixel a map cell, the north row at the top, each class in a colour: a
   `ground:<material>` class its material's `colour` (linear, shown as sRGB), water and water courses
-  one blue, ways one sand colour, footprints one dark grey, `none` clear (the colours ours).
+  one blue, ways one pale colour, footprints one dark grey, `none` clear (the colours ours). Over
+  it each way of `vectors.json` not `under` is drawn as its line, its width at the map's scale and
+  never less than 1.5 pixels, over a dark casing a pixel wider each side (M7, ours): at the whole
+  map's scale a road narrower than a pixel fell between the sampled cells and showed as faint
+  dashes (atlas's earth roads, M6 close).
 - **Floor**: the plan of the floor the feet are on, the highest whose `z` starts at or below them
   (9.4; none below the lowest): its surfaces filled, rooms outlined, wall pieces filled, doors as
   their line, links (stairs) as lines.
@@ -1273,7 +1326,14 @@ game gives it the walker's plan point, heading and feet height each frame:
   world's larger side when less), the walker at its centre and its heading up, so it turns with
   the walker. **Whole map** at a toggle (key M, `set_full`): north up, the extent fitted to the
   window. Sizes ours. `tests/test_minimap.gd` checks both on station's export
-  (`tests/fixture_map`, its manifest cut to `exports` and `materials`).
+  (`tests/fixture_map`, its manifest cut to `exports` and `materials`), and on any build's
+  (`--build`; atlas has no floors, so every height draws the ground plan).
+- **In the review viewer** (M7): the sheet tool reads the minimap of each build that exports a
+  player map. It draws the whole map, north up, without the walker, to `<side>/map.png`, and the
+  corner map on each walk's eye view (`<side>/walk/<bookmark>_eye.png`), at the eye camera's plan
+  point and facing as it looks, its feet the eye less the walker's `eye`. The bookmark views and
+  the plan views carry none, so a whole and a streamed sheet still compare view for view.
+  `sheet.json` `maps` is `{ "after", "before" }`, each `<side>/map.png` or `null`.
 
 **The place a bookmark looks at** is resolved by the core (`authority.md` 1.2) and written as
 `toward`'s `at` (9.1). In `ford`, `at_ford` and `on_bank` look at `ford`, `to_door` ("from the lane
@@ -1288,7 +1348,7 @@ them out on one sheet. It is the loader's code run by Godot, not a `via` command
 ```
 godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- \
       --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] \
-      [--stream RADIUS] [--frames SECONDS] [--page BOOKMARKS]
+      [--stream RADIUS [--far-mask]] [--frames SECONDS] [--page BOOKMARKS]
 ```
 
 - `--option` sets one loader option of the table above, repeatable; a list's items are separated
@@ -1306,6 +1366,11 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   eye to the next in name order and back to the first at 7 m/s (a run), facing the way it goes,
   for SECONDS of the machine's time, drawing the 1280 by 720 view every frame with no frame cap and
   vsync off; the first second is not counted. Each must be a number above 0, else exit 2.
+  `--far-mask` (M7, ours; with `--stream` only, else exit 2) draws each bookmark's view a second
+  time with the far layers unshaded in mask colours (far instances magenta; the far ground, its
+  skirts and water and the far meshes cyan; each still hidden where its chunk is loaded), to
+  `<side>/far/<bookmark>.png`: where it differs from the plain view a far layer shows, and its
+  hue says which. `tests/compare_views.py` reads it to say why a streamed view differs.
 - `--before` and `--after` are build directories (`build/ford` and `build/ford+downstream`).
   `--pack` names the pack's root when a manifest's `pack_root` is `null`. `--out` is written whole,
   like a build (section 13); a non-empty folder the tool did not write is refused.
@@ -1333,7 +1398,9 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   written. A world of 20 bookmarks or fewer has one page each, as before.
 - `sheet.json` and `diagnostics.json` are written before the pages are composed, so a run that
   cannot compose them keeps its walks and frames. A watchdog quits with 3 when no bookmark, walk,
-  tour frame or page has been finished for 300 s; it first puts what was written in `<out>` when
+  tour frame or page has been finished for 300 s, a build's load not counted (M7: atlas loaded
+  whole in more than 300 s under other work, so its sheet quit before its first view; the load
+  is bounded by `sheet.sh`'s kill, and its end counts as progress); it first puts what was written in `<out>` when
   `sheet.json` is among it. `sheet.sh` kills Godot after `SHEET_TIMEOUT` seconds (1800 by
   default; 360 until the M6 close, which cut off a long sheet still progressing under the 300 s
   watchdog) of the whole run.
@@ -1381,8 +1448,8 @@ before it, ours: three of atlas's brought bookmarks had no camera, M6 close), on
   (`<side>/walk/<bookmark>_eye.png`), 1280 by 720, and laid out in `<out>/walks.png`: two rows per
   bookmark, `48 + 768 * rows` high, in `sheet.png`'s columns.
 - `<out>/sheet.json` is the protocol beside the images, canonical JSON:
-  `{ "after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "pages",
-  "renderer", "size", "stream", "walk", "walks" }`. `pages` is `{ "bookmarks", "sheet", "walks" }`:
+  `{ "after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "maps",
+  "pages", "renderer", "size", "stream", "walk", "walks" }` (`maps`: The minimap, above). `pages` is `{ "bookmarks", "sheet", "walks" }`:
   bookmarks a page and the page files in order. `stream` is the load radius, or `null`; `frames` is `null`
   without `--frames`, else `{ "after", "before" }`, each `{ "fps", "frame_ms", "frames", "seconds",
   "speed", "stream", "toured_m", "view_ms" }`: `frame_ms` the time from one drawn frame to the next
@@ -1528,7 +1595,7 @@ Kind: W a world diagnostic, R a run diagnostic (11.1).
 | Code | Severity | Kind | Says |
 |---|---|---|---|
 | `build.chunk_not_multiple` | error | W | `chunk` is not a whole multiple of `resolution`, or is below it; the hint gives the nearest that are, `data.below` and `data.above`. (M6.) |
-| `build.over_budget` | error | W | A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`. Hint: thin that asset there, or the waiver line to write. (M6.) |
+| `build.over_budget` | error | W | A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`, `data.from` (the import its instances come from, or ""). Hint: thin that asset there (by a change of that import when `from` names one), or the waiver line to write. (M6.) |
 | `build.waiver_unused` | warning | W | A `[budget.waive.<id>]` whose chunk is within the world's limit for every measure it writes, or whose `at` is no chunk (5.1); `data.waiver` is its id. Hint: delete the waiver. (M6.) |
 | `build.internal` | error | W | A value reaching the writer is not finite, a weight is below 0, or a file failed its own check after writing; names the file and the post or row. A defect of ours; exit 3. |
 | `build.dir_busy` | error | R | The build directory could not be replaced because a file in it is open; names the file. Hint: close the program holding it, or build to another `--out`. |
@@ -1718,6 +1785,14 @@ numpy or the standard library, never through the SDK. Every case is also checked
 51. **Export names** (M6). An export writing `aux.json`; build; exit 0, the file is
     `export/names/aux-.json` in `files`. The step changed to write `Map.JSON` and trusted again;
     build: `protocol.output_file` naming `out/Map.JSON`, exit 1, no manifest (11.4).
+52. **An import's asset over budget** (M7). A world with `[budget] triangles = 2000` importing `a`,
+    whose three `heavy` instances (1000 triangles each) stand in the parent's chunk [0, 0]; build:
+    exit 1, `build.over_budget` with `asset = "heavy"`, `from = "a"`. Case 43's record has
+    `from = ""`.
+54. **An own set over budget** (M7). `[budget] triangles = 2000`; the world's own instance `rack`
+    with a set of three `heavy` items (1000 triangles each, named `rack.a`, `rack.b`, `rack.c`) in
+    chunk [0, 0], beside an import `a` of one light instance; build: exit 1, `build.over_budget`
+    with `asset = "heavy"`, `from = ""`: a dotted own name is not an import's.
 
 Stable names across a change are `identity.md`'s cases, not repeated here.
 

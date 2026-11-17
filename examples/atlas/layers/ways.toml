@@ -144,11 +144,25 @@ smooth    = true
 # where a road meets a place whose ground differs from the plain's at its edge; the city's gates, the quay's and the market's
 # are met within 0.25 already (measure.py `road_join`), and the vale's exit is the join's hold
 # (composition.md 6.7).
-[feature.college_road_approach]                # max_cut 6.5 since the M6 close: with the joins' hold
-kind    = "pad"                                 # (composition.md 6.7) it cuts 6.09 m at (2552, 420),
-on      = { ref = "college_road", t = 1 }      # past 6 (authority.max_change, the combined tree's
-grade   = 0.1                                   # only error); without it `college_road@college` is
-max_cut = 6.5                                   # 0.911 (M6 close, debug, one run)
+# Since M7 slice 1 the college's, the market's and the vale's lifts are taken at the place a road
+# answers (README "Lifts"), so the plain meets each there; the college's approach is lib/land's
+# `approach`, anchored, which reads the college's arrival after its anchored ground (a `pad` read the
+# plain's 6.6 m where the arrival stood at 3.9, and cut the plain 6.09 m into the terrain step's
+# water: `join_college` stood in 0.69 m of it, M6 close). The wild's west exit has one too: the corner
+# is the wild's agreed slope (world.toml `start`), and the approach holds the trail's first 20 m to
+# the exit's own level at 1:10 whatever the settling left.
+[feature.college_road_approach]
+kind    = "approach"
+on      = { ref = "college_road", t = 1 }
+grade   = 0.1
+max_cut = 6.5                                   # the pad's, from the M6 close (6.09 m cut then)
+
+[feature.west_road_approach]
+kind    = "approach"
+on      = { ref = "west_road", t = 0 }
+grade   = 0.1
+reach   = 20
+max_cut = 10                                    # the corner's plain came out 8.7 m under the exit
 
 [feature.hill_trail_approach]
 kind    = "pad"

@@ -44,6 +44,6 @@ pub use math::{
 pub use noise::{gradient_index, gradient_noise};
 pub use reduce::{maximum, mean, minimum, product, sum, CHUNK};
 pub use seed::{
-    absorb, draw, mix as mix_word, seed_name, splitmix64, stream, unit, world_seed, ROOT,
+    absorb, draw, mix as mix_word, seed_name, splitmix64, stream, sub_seed, unit, world_seed, ROOT,
 };
 pub use write::write_double;

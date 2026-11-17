@@ -1,0 +1,51 @@
+# Kinds for the composition cases (composition.md Conformance). Neutral names; no effects but
+# `pad` (sets the surface to `level` inside its region) and `keep` (holds the surface as it is).
+
+[kind.way]
+authority = "shaped"
+
+[kind.way.defaults]
+width = 4
+
+[kind.gate]                     # an exit; an answer must match its width
+exit = ["width"]
+
+[kind.gate.defaults]
+width = 6
+
+[kind.flag]                     # an exit that asks nothing to match
+exit = true
+
+[kind.stop]                     # a deliberate end, placed on an exit
+[kind.stop.defaults]
+width = 6
+
+[kind.pad]
+authority = "shaped"
+radius    = 1
+
+[kind.pad.defaults]
+level = 0
+
+[kind.pad.effect.flat]
+field = "role:surface"
+value = "= level"
+mask  = "= if(sd >= 0, 1, 0)"
+
+[kind.keep]
+authority = "anchored"
+radius    = 1
+
+[kind.keep.effect.hold]
+field = "role:surface"
+value = "= v"
+mask  = "= if(sd >= 0, 1, 0)"
+
+[kind.district]
+[kind.district.defaults]
+tone = 0
+
+[kind.square]
+[kind.zone]
+[kind.spot]
+[kind.plaza]

@@ -362,6 +362,12 @@ struct Engine<'a> {
     /// The trace each ready step matched, replayed on several threads before the ready nodes
     /// are looked up in id order: by node, the static key it was found under and the match.
     found: BTreeMap<NodeId, (Digest, Option<Found>)>,
+    /// Key records of the ready nodes, read on several threads before the lookup (section 8):
+    /// by key, the record or none.
+    keys_read: BTreeMap<Digest, Option<KeyRecord>>,
+    /// Objects of a batch's inputs, read and checked on several threads before the batch's
+    /// inputs are materialized (section 8), by value digest.
+    objects_read: BTreeMap<Digest, Option<Vec<u8>>>,
 }
 
 /// A trace that answers the same again: its name, its entry and its diagnostics.
@@ -387,6 +393,8 @@ pub fn run(plan: &dyn Plan, store: &Store, opts: &Options, roots: &[NodeId]) -> 
         run_diags: Vec::new(),
         defects: Vec::new(),
         found: BTreeMap::new(),
+        keys_read: BTreeMap::new(),
+        objects_read: BTreeMap::new(),
     };
     for r in roots {
         e.discover(r);
@@ -478,6 +486,7 @@ impl Engine<'_> {
                 .map(|(id, _)| id.clone())
                 .collect();
             self.replay_ready(&ready);
+            self.read_keys_ahead(&ready);
             for id in ready {
                 if self.lookup(&id) {
                     progress = true;
@@ -489,6 +498,7 @@ impl Engine<'_> {
                 }
             }
             self.found.clear();
+            self.keys_read.clear();
             if !batch.is_empty() {
                 progress = true;
                 self.run_batch(batch);
@@ -713,7 +723,11 @@ impl Engine<'_> {
                 None => false,
             }
         } else {
-            let Some(rec) = self.store.get_key(&k) else {
+            let read = match self.keys_read.remove(&k) {
+                Some(r) => r,
+                None => self.store.get_key(&k),
+            };
+            let Some(rec) = read else {
                 return false;
             };
             let Some(diags) = self.plan.codec().decode(&rec.diags) else {
@@ -817,6 +831,64 @@ impl Engine<'_> {
         }
     }
 
+    /// Reads the key records of the ready nodes that are not steps on several threads, so that
+    /// [`Engine::lookup`] takes each as if it had read it there (section 8). A record is a pure
+    /// function of the store; the lookup still settles the nodes one by one in id order.
+    fn read_keys_ahead(&mut self, ready: &[NodeId]) {
+        let mut keys: BTreeSet<Digest> = BTreeSet::new();
+        for id in ready {
+            let Some(d) = self.get(id).and_then(|s| s.def.as_ref()) else {
+                continue;
+            };
+            if d.step.is_some()
+                || (d.gate.skip_on_error || d.gate.traced) && !self.gates_open
+                || d.gate.skip_on_error && self.has_error
+                || d.found.iter().any(|f| f.severity() == Severity::Error)
+            {
+                continue;
+            }
+            if let Some(Some(k)) = self.key_of(id, d) {
+                keys.insert(k);
+            }
+        }
+        let keys: Vec<Digest> = keys.into_iter().collect();
+        let store = self.store;
+        let got = parallel(self.opts.threads, &keys, |k| store.get_key(k));
+        if let Some(got) = got {
+            self.keys_read.extend(keys.into_iter().zip(got));
+        }
+    }
+
+    /// Reads and checks the stored objects a batch's inputs will be materialized from, on several
+    /// threads (section 8): those of kept nodes whose value is not in memory.
+    fn read_objects_ahead(&mut self, batch: &[NodeId]) {
+        let mut want: BTreeSet<Digest> = BTreeSet::new();
+        for id in batch {
+            let Some(d) = self.get(id).and_then(|s| s.def.as_ref()) else {
+                continue;
+            };
+            for (_, t) in &d.edges {
+                let Some(ts) = self.get(t) else {
+                    continue;
+                };
+                if ts.value.is_some() || !ts.usable() {
+                    continue;
+                }
+                let kept = ts.def.as_ref().is_some_and(|d| d.step.is_some())
+                    || self.plan.persist(t) == Persist::Kept;
+                if let (true, Some(vd)) = (kept, ts.vd) {
+                    want.insert(vd);
+                }
+            }
+        }
+        let want: Vec<Digest> = want.into_iter().collect();
+        let store = self.store;
+        let got = parallel(self.opts.threads, &want, |d| store.get_object(d));
+        if let Some(got) = got {
+            self.objects_read.extend(want.into_iter().zip(got));
+        }
+    }
+
     /// A node the static checks failed (`Def::found`): keyed by its statements, parameters and
     /// errors alone, reused when that key is stored, else settled as `ran` with the errors as its
     /// value's diagnostics.
@@ -877,7 +949,11 @@ impl Engine<'_> {
         let kept = s.def.as_ref().is_some_and(|d| d.step.is_some())
             || self.plan.persist(id) == Persist::Kept;
         if kept {
-            if let Some(obj) = self.store.get_object(&vd) {
+            let read = match self.objects_read.remove(&vd) {
+                Some(r) => r,
+                None => self.store.get_object(&vd),
+            };
+            if let Some(obj) = read {
                 if let Some(v) = decode_object(&obj, &diags, self.plan.codec()) {
                     if let Some(s) = self.st.get_mut(id) {
                         s.value = Some(v.clone());
@@ -925,6 +1001,7 @@ impl Engine<'_> {
         let mut first: BTreeMap<Digest, NodeId> = BTreeMap::new();
         let mut copies: Vec<(NodeId, NodeId)> = Vec::new();
         let mut jobs: Vec<Job> = Vec::new();
+        self.read_objects_ahead(&batch);
         for id in batch {
             let Some(k) = self.get(&id).and_then(|s| s.key) else {
                 continue;
@@ -945,6 +1022,7 @@ impl Engine<'_> {
                 None => self.skip(&id),
             }
         }
+        self.objects_read.clear();
         let outs = self.compute_all(&jobs);
         for ((id, _, _), (out, ms)) in jobs.iter().zip(outs) {
             self.settle(id, out, ms, Settle::Fresh);
@@ -1526,6 +1604,39 @@ fn find_trace(plan: &dyn Plan, store: &Store, id: &NodeId, static_key: &Digest) 
 
 fn has_error(diags: &[Diag]) -> bool {
     diags.iter().any(|d| d.severity() == Severity::Error)
+}
+
+/// `f` of each item on up to `threads` threads, in the items' order; `None` when one thread or
+/// fewer than two items leave nothing to share (the caller then asks one by one).
+fn parallel<T: Sync, R: Send>(
+    threads: usize,
+    items: &[T],
+    f: impl Fn(&T) -> R + Sync,
+) -> Option<Vec<R>> {
+    let threads = threads.min(items.len());
+    if threads <= 1 {
+        return None;
+    }
+    let next = AtomicUsize::new(0);
+    let slots: Vec<Mutex<Option<R>>> = items.iter().map(|_| Mutex::new(None)).collect();
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| loop {
+                let i = next.fetch_add(1, Ordering::SeqCst);
+                if i >= items.len() {
+                    break;
+                }
+                let r = f(&items[i]);
+                if let Ok(mut slot) = slots[i].lock() {
+                    *slot = Some(r);
+                }
+            });
+        }
+    });
+    slots
+        .into_iter()
+        .map(|m| m.into_inner().ok().flatten())
+        .collect()
 }
 
 fn elapsed_ms(t: Instant) -> u64 {

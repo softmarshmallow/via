@@ -130,6 +130,7 @@ end"), and how `build.md` case 9 damages a build.
 |---|---|---|---|
 | `exit` | integer, or list of integers | yes | The exit status (`diagnostics.md` 7). A list allows any of them: the fuzz corpus's `[0, 1]`. |
 | `out` | string | on `build` and `lock` | The build directory the action writes, relative to the working folder (`build/ford`). The runner checks the binary wrote there, and reads the run report as `<out>.run.json` (`build.md` 11.3). Written even when it is the default, so the case also tests the default. |
+| `cwd` | string | no | The folder the binary runs in, relative to the working folder (default `.`). Its own path arguments are then read from there (`--out ../build/w`), as an author's would be from the world's folder; the action's other keys stay relative to the working folder. For a world built from its own folder whose import is `../x/world.toml` (`composition.md`'s `import_from_folder`). Under section 5.1 the clean build runs in the same folder of its copy. |
 | `env` | table of strings | no | Variables added for this action alone: a test switch such as the one `build.md` case 24 needs. Placeholders allowed. |
 | `holding` | string | no | A path the runner holds an operating-system advisory lock on while the action runs (`graph.md`'s `busy` case). |
 | `for_each` | string | no | A glob relative to the working folder. The action runs once per match, in bytewise order of path, with `{item}` replaced by the match. Its checks apply to every run. |

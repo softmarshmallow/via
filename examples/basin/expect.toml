@@ -16,6 +16,18 @@
 # the course's path as the step returns it; heights are the settled ground, bilinear between posts.
 # Positions in metres.
 #
+# NOT HOLDING since M2 (found by the M7 slice 1 on-foot review, re-taken in its fix pass):
+# ground_tarn_view, ground_middle and mouth_moves are OUT of their oracle bands on every commit
+# since M2. Their 2026-11-14 `measured` values came from a state never committed: the committed
+# `layers/gen/terrain/` (56ca49e) holds that state's `eroded`, while a fresh run of the terrain step
+# on the same `before` (bit-equal) gives an `eroded` up to 16.88 m away, on 56ca49e, 9ef43c9,
+# 8f7b169, 277993f and the M7 slice 1 tree alike (release `via` and `via-terrain` of each, one
+# fresh store, one run each; ground at (1260, 1740) 44.36 on every one). Not the M7 cutover, not
+# the river's `width`. The re-taken `measured` below are the working tree's at 18:41 KST
+# 2026-11-17 (release, fresh store, one run each, every change `--against` the base); the bands
+# are unchanged. Which state the old numbers came from, and whether the bands or the land move,
+# is owed (TODO, "From M7 slice 1").
+#
 # How the spike's views map to v1: its bm_bank, bm_valley, bm_haven and bm_head eyes and look
 # points stood on its found course at t = 0.55 (offset 14), 0.80 (offset 40), 0.85 and 0.03
 # (offset -30), and looked at it at t = 0.40, 0.35, 0.85 and 0.30; so the look points are course
@@ -75,7 +87,7 @@ what     = "Ground at (1260, 1740), south-east of the tarn, metres"
 oracle   = 57.35
 source   = "basin/measures.json /bookmarks bm_tarn eye z 87.35, less its eye 30"
 within   = 6                              # as ground_middle: neither the start nor the model is the spike's
-measured = 54.28                         # the spike's noise took numbers, ours names (formulas.md 5), so the
+measured = 44.36                         # NOT HOLDING (54.28 on 2026-11-14, above). The spike's noise took numbers, ours names (formulas.md 5), so the
                                          # start differs; the model takes 6.3 m off it here (60.59 to
                                          # 54.28), the spike's about 3. Was 3, a band of the bank's.
 
@@ -85,7 +97,7 @@ what     = "Ground at (1500, 1800), the middle of the basin, metres"
 oracle   = 62.38
 source   = "basin/measures.json /bookmarks bm_over look z"
 within   = 6
-measured = 56.56
+measured = 55.79                          # NOT HOLDING (56.56 on 2026-11-14, above)
 
 [measure.tarn_level]
 build    = "base"
@@ -120,7 +132,7 @@ what     = "The course's point at t = 0.85 moves east with the mouth, metres"
 oracle   = [1826.3, 836.1]
 source   = "basin@move_haven/measures.json /bookmarks bm_haven look (base 1640.4: 186 m east)"
 within   = 50
-measured = [1865.4, 805.4]
+measured = [1866.6, 804.2]                # NOT HOLDING: 51.4 m off ([1865.4, 805.4] on 2026-11-14, above)
 
 [measure.mouth_moves_upper_reach_stays]
 build    = "move_haven"

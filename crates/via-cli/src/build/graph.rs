@@ -172,6 +172,29 @@ struct Each {
     rank: Option<i64>,
 }
 
+/// A `for_each` step's items as a store object.
+fn encode_items(list: &[String]) -> Vec<u8> {
+    let mut e = via_graph::Enc::new();
+    e.str("via-items-1").len(list.len());
+    for i in list {
+        e.str(i);
+    }
+    e.finish()
+}
+
+fn decode_items(b: &[u8]) -> Option<Vec<String>> {
+    let mut d = via_graph::Dec::new(b);
+    if d.str()? != "via-items-1" {
+        return None;
+    }
+    let n = d.count()?;
+    let mut out = Vec::with_capacity(n);
+    for _ in 0..n {
+        out.push(d.str()?);
+    }
+    d.done().then_some(out)
+}
+
 fn write_id(path: &str) -> NodeId {
     NodeId::of("write", path)
 }
@@ -235,8 +258,12 @@ impl<'a> CliPlan<'a> {
                     ],
                     edges: model.file_reads(&FileReads::Instances),
                     statements,
+                    // Not gated (`build.md` 5.1, "When it is checked"): it settles as soon as what
+                    // it reads has, before the gates open, so a chunk over budget skips the
+                    // writes, lints and exports instead of running beside them (atlas
+                    // `over_budget` failed only after 175 s, TODO "From M6 close").
                     gate: Gate {
-                        skip_on_error: true,
+                        skip_on_error: false,
                         traced: false,
                     },
                     ..Def::default()
@@ -1287,7 +1314,20 @@ impl<'a> CliPlan<'a> {
     /// node kept for [`Plan::define`], and the join that reads them in item order.
     fn join_def(&self, id: &NodeId, e: &Each) -> Def {
         let (sid, _) = split_step(id);
-        let list = crate::stepview::items(self.ctx.world, &self.the_build(), e.rank, &e.kind);
+        // Kept under the model's leaves (`graph.md` 5.3), so a build that reuses every step lists
+        // them without making the model's build: atlas's unchanged build into another folder
+        // spent most of its time outside any node making it (TODO, "From M6 close").
+        let memo = self.items_memo(&NodeId::of("step", &sid), e);
+        let kept = self
+            .memo_get(&memo)
+            .and_then(|d| self.ctx.store.get_object(&d))
+            .and_then(|b| decode_items(&b));
+        let list = kept.unwrap_or_else(|| {
+            let list = crate::stepview::items(self.ctx.world, &self.the_build(), e.rank, &e.kind);
+            let d = self.ctx.store.put_object(&encode_items(&list));
+            self.memo_put(&memo, d);
+            list
+        });
         let mut join_edges = Vec::new();
         let mut items = self
             .items
@@ -1313,6 +1353,29 @@ impl<'a> CliPlan<'a> {
             edges: join_edges,
             ..Def::default()
         }
+    }
+
+    /// Makes the model's build ahead of the first node that asks for it, on the caller's thread
+    /// (`graph.md` 8): run beside the graph, it overlaps the lookups that come before any step.
+    pub fn warm(&self) {
+        let _ = self.the_build();
+    }
+
+    /// True when a `for_each` step among `steps` has no items kept under this graph's leaves, so
+    /// the graph will make the model's build to list them.
+    pub fn lists_items(&self, steps: &[&LintStep]) -> bool {
+        steps.iter().any(|l| {
+            let id = NodeId::of("step", &l.decl.id);
+            self.each
+                .get(&id)
+                .is_some_and(|e| self.memo_get(&self.items_memo(&id, e)).is_none())
+        })
+    }
+
+    /// The memo key of a `for_each` step's items: they are a function of the model's leaves.
+    fn items_memo(&self, id: &NodeId, e: &Each) -> Digest {
+        let rank = e.rank.map_or(String::new(), |r| r.to_string());
+        self.memo_key("items", id, None, &[&e.kind, &rank])
     }
 
     /// The model's build, made once.

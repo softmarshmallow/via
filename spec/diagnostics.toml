@@ -619,15 +619,18 @@ Fixed: via build world.toml --out build/a
 severity = "error"
 chapter = "build"
 milestone = 6
-summary = "A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`. Hint: thin that asset there, or the waiver line to write. (M6.)"
-data = ["chunk", "measure", "value", "limit", "asset", "share", "instances"]
+summary = "A chunk is over a `[budget]` limit (5.1); names the chunk, the measure, its value and limit, and the asset that dominates it with its share: `data.chunk`, `data.measure`, `data.value`, `data.limit`, `data.asset`, `data.share`, `data.instances`, `data.from` (the import its instances come from, or \"\"). Hint: thin that asset there (by a change of that import when `from` names one), or the waiver line to write. (M6.)"
+data = ["chunk", "measure", "value", "limit", "asset", "share", "instances", "from"]
 explain = """
 A chunk holds more than the world's [budget] allows for one measure: triangles, instances or
 instance groups. A budget that only warned was skipped until the frame rate collapsed, so an
 over-budget chunk fails the build. The record names the chunk, the measure, the asset with the
-largest share of it there and that share.
-To fix: Thin or swap the named asset in that chunk, or, when the target can draw it, waive that
-chunk with a reason: the hint gives the line.
+largest share of it there and that share, and data.from the import its instances there come
+from ("" for the world's own).
+To fix: Thin or swap the named asset in that chunk (an import's by a change of that import, named
+in its changes), or, when the target can draw it, waive that chunk with a reason: the hint gives
+the line. To set a budget, read each chunk's triangles, count and groups in the manifest of a
+build with none.
 Bad:   [budget]
        triangles = 400000            (chunk [3, 4] holds 612000)
 Fixed: [budget.waive.c3_4]
@@ -3263,13 +3266,14 @@ Fixed: [import.a]
 severity = "warning"
 chapter = "composition"
 milestone = 4
-summary = "The import or the parent declares no datum and the import has no `lift`; the line to add in `data.write`. (M4)"
-data = ["write"]
+summary = "The import or the parent declares no datum and the import has no `lift`; the line to add in `data.write`, and `data.lift_hint` the lift that meets this world's ground across the edge (5). (M4)"
+data = ["write", "lift_hint"]
 explain = """
 The import or the parent does not name what its height zero is, and the import has no lift, so
 nothing says the two zeros agree. Heights are taken as they are. `data.write` holds the line to
-add.
-To fix: Name one datum in both world files, or give the import a lift.
+add; `data.lift_hint` the lift that meets this world's ground across the import's edge (the
+median step there), when the edge crosses this world's posts.
+To fix: Name one datum in both world files, or give the import a lift (the hint names one).
 Bad:   (no datum in either world file)
 Fixed: datum = "b"           (in both world files)
 """
@@ -3321,20 +3325,37 @@ Fixed: blend = "= smoothstep(0, 1, d)"
 severity = "warning"
 chapter = "composition"
 milestone = 4
-summary = "A step in the ground across the join steeper than `max_grade`, worst first by data.grade. (M4)"
-data = ["grade"]
+summary = "A step in the ground across the join steeper than `max_grade`, worst first by data.grade; `data.lift_hint` the lift that meets this world's ground across the edge (5). (M4)"
+data = ["grade", "lift_hint"]
 worst = "grade"
 explain = """
 Across the edge of an import's ground, two neighbouring posts of the surface differ by more than
 the import's max_grade allows, rise over run. Nothing anchored owns that ground. `data.grade`
-holds the steepest; the position is its post inside the footprint.
-To fix: Write a blend that fades over the edge, place an anchored feature that owns the join, or
-raise max_grade if the step is meant.
+holds the steepest; the position is its post inside the footprint. `data.lift_hint` is the lift
+that meets this world's ground across the edge (the median step).
+To fix: Write a blend that fades over the edge, place an anchored feature that owns the join, set
+the lift the hint names when the whole import stands off, or raise max_grade if the step is meant.
 Bad:   [import.a]            (its ground stands 4 m above the parent's at its edge)
        file = "a/world.toml"
 Fixed: [import.a]
        file  = "a/world.toml"
        blend = "= smoothstep(0, 8, d)"
+"""
+
+[import.surface_dropped]
+severity = "warning"
+chapter = "composition"
+milestone = 7
+summary = "A kind surface of an import leaves the lattice where the import is placed and is not brought; `data.surface` (6.1). (M7)"
+data = ["surface"]
+explain = """
+An import's kind surfaces come with their features (composition.md 6.1), taken point by point
+through the import's frame. A point of this one lands past the lattice (numbers.md 3) where the
+import is placed, so the surface is not brought: no mesh, no cut, nothing stands on it.
+`data.surface` holds its scoped name.
+To fix: Place the import nearer the lattice's middle, or keep the surface inside the import.
+Bad:   at = [2147480, 0]     (a surface 7 m long inside the import)
+Fixed: at = [2147000, 0]
 """
 
 [load.bad_file]

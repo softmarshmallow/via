@@ -59,7 +59,7 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
       and measurements that say how far the two differ.
 - [ ] -> none yet (open; owner to confirm at the M0 sheet whether it joins doctrine section 7 beside row 44): Fit other map examples to the spike model (recreations of well-known game maps) and tune the model.
 - [ ] -> M7: Delete `spike/`. The rewrite starts from the findings, never from the spike code.
-- [ ] -> M7 (owner, 2026-11-16): **Cutover cleanup of the pre-existing code.** Before `main` moves,
+- [x] -> M7 (owner, 2026-11-16): **Cutover cleanup of the pre-existing code.** Before `main` moves,
       go through everything from before the rewrite and decide each piece: adopt, fold in, or drop.
       What stays is a utility, an archetype or a higher-level module that via includes, never a
       second core beside it.
@@ -76,6 +76,13 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
         - Old docs under `docs/archive/` and any leftover old-workspace files.
       - **Lesson:** the rewrite carried the old DEM work over as one library without settling its
         shape; leave the final tree with one way in (the core plus `lib/` through the SDK).
+      - **Done M7 slice 1 (cutover):** `via-artifact`'s seed derivation moved into `via-num`
+        (`sub_seed`, numbers.md 7.2) and the crate deleted; `via-terrain` stays a program the spec
+        admits on stated terms (R34, protocol.md 8; a Rust SDK or a Python port stays the owner's);
+        its noise is the model's own value noise, its maths through `via-num`, no second core;
+        `docs/archive/` deleted, its four ADRs moved to `crates/via-terrain/docs/` (tag `spike-final`
+        holds the old paths); basin's manifest id unchanged by the cutover (change review). The
+        charter names the nine libraries and terrain's terms.
 - [x] Refine the spike as if it were the product (done 2026-11-12): `spike/SPEC.md` states the
       contract as implemented, including a section of known limitations to review before the
       rewrite; `spike/kinds/` is the one library of kinds; `spike/check.py` guards six builds.
@@ -1387,7 +1394,7 @@ To M6:
   bank: `along` walks a path from its start only; a reversed `along` (or from the nearer end) is
   owed. city `on_central_bridge` and `on_harbor_bridge` look down river from mid-deck and now say
   `fell` off the deck's side (no parapet): aim them along, or run `parapet` (next item).
-- [ ] Parapets on monastery's, city's and townland's decks (only coast runs lib/ways `parapet`),
+- [ ] Parapets on monastery's, city's and townland's decks (M7 slice 1: monastery and city run it; townland not yet) (only coast runs lib/ways `parapet`),
   or say in each README why not (on-foot review 6).
 - [ ] Quay's `wedge_house` in `move_hill` is placed by coordinates from that build's houses (R3):
   a view that follows a produced wedge needs a name for it.
@@ -1566,7 +1573,7 @@ To M6 close (atlas on foot):
   needs a place outside the footprint). Atlas: no place's way wet at its join (8.76 -> 0), 5
   `place_blended` -> 0. measure.py's `exit_gap` read references from features.json, which holds
   none, so it measured nothing; it reads them from the layers now.
-- [ ] The vale meets the plain 37 m up: held, the hill trail falls 12.06 in its last 30 m into a
+- [x] The vale meets the plain 37 m up (done M7 slice 1, below; the wet-cut part is open there): held, the hill trail falls 12.06 in its last 30 m into a
   trench 8.5 m under the plain's water (`exit_out_grade_max`), and the vale's road climbs 1.79
   where the hold fades. Meet it at the mouth (a lower plain, a lift taken at the exit, or a ramp
   the plain owns). Also: a parent way cutting below the terrain step's level stands wet outside
@@ -1577,7 +1584,9 @@ To M6 close (atlas on foot):
   field declared below it (documents.md 4, fields.md 7); then drop the step. (Atlas pass: the
   question is written with two options, a layer's rows on a lower field at its rank, or the step
   kept, and the first recommended; the owner's to rule.)
-- [ ] Roads inside a place's outline take the place's paint (`road_painted_in` 0.10): the last
+- [ ] (M7 slice 1: not done, 0.286; a road's paint over an import's ground needs an effect, since
+  rows come before every effect and the import's ground enters as effects: lib/ways kinds paint
+  nothing yet, by lib/land's convention.) Roads inside a place's outline take the place's paint (`road_painted_in` 0.10): the last
   stretch to a gate is grass. Seams: places meet the plain as straight bare scarps with
   triangular pools; the city's freeways and east street stop about 30 m short of its edge; a wild
   tree fills the view at `join_wild_west`; `on_bridge` stands on grass short of a bare deck.
@@ -1592,7 +1601,10 @@ To M6 close (atlas on foot):
   give way to the parent's `keep_out` where a layer ranked above the import raises it, as a
   produced instance gives way to `max_change` (authority.md 2.2), with one `import.gave_way` per
   import (count, the worst post); written instances never do (`place.keep_out` as now).
-- [ ] A ramp the master owns cannot meet an anchored place: atlas's `pad` approaches (lib/land,
+- [x] (Done M7 slice 1, `atlas`: lib/land `approach`, anchored, `reach` and `fade` the world's;
+  lib/land/test_approach_world.py, 3 cases, the pad's fault among them. Measured on atlas, the
+  college has no anchored entry: the 6.6 m was the plain's road bed carried over its end; see
+  "market.arrive" in From M6 close.) A ramp the master owns cannot meet an anchored place: atlas's `pad` approaches (lib/land,
   `shaped`, grade 0.1) read the ground before the college's anchored arrival and level toward the
   plain's 6.6 m, not its 3.9 (`road_join` college_road 0.637 -> 0.558; target 0.25, ours). West
   trail at the wild's west exit 0.633: the wild's ground stands 8 m over the plain in its kept
@@ -1632,12 +1644,15 @@ To M6 close (atlas on foot):
   show it; and its main ways need a `given` of features its districts node with.)
 
 To M7:
-- [ ] A world with no `pack` whose imports bind assets has nothing to bring them into
-  (`with_brought` needs the world's pack); a brought asset's taxon is not selectable by `@taxon`
+- [x] A world with no `pack` whose imports bind assets has nothing to bring them into
+  (`with_brought` needs the world's pack). Done M7 slice 1 (core): the build's assets are the
+  union, an empty pack brought into (composition.md 10, case `brought_no_pack`). A brought asset's taxon is not selectable by `@taxon`
   in `pack.query` (only `"*"` and ids), by design here (composition.md 10, ours).
-- [ ] The store's `flush()` waits with no bound: a writer thread that panics in `land` hangs
+- [x] The store's `flush()` waits with no bound: a writer thread that panics in `land` hangs
   `put_build`; catch an unwinding writer or land what is left once the writers are gone. The
-  `dirs` cache assumes no folder is removed during a build.
+  `dirs` cache assumes no folder is removed during a build. Done M7 slice 1 (perf): both (graph.md
+  3.2; crate tests `a_writer_that_panics_does_not_hang_the_flush`,
+  `a_folder_removed_during_a_build_is_made_again`).
 - [ ] engines/godot/tests/run.sh's reload step: its fixtures hold no chunk `digest`, so the suite
   sees only "made again"; give them digests so one chunk is kept and one made.
 - [ ] lib/map labels do not avoid footprints; a test of `read_world`'s pack handling (the
@@ -1671,36 +1686,94 @@ finished fields along what a player walks.
   another folder; a case should build from where an author stands and a change and back.
 
 To M7:
-- [ ] The vale meets the plain in a trench: `hill_trail@vale` road_join 8.03, seam grade 19.53,
+- [x] The vale meets the plain in a trench: `hill_trail@vale` road_join 8.03, seam grade 19.53,
   a pool in the trench, join_vale blocked at 41.9 degrees (on-foot review). Meet it at the mouth
-  (a lower plain, a lift taken at the exit, or a ramp the plain owns).
-- [ ] The wild's west exit is a scarp: join_wild_west blocked at 73.9 degrees, wild.look_corner
+  (a lower plain, a lift taken at the exit, or a ramp the plain owns). Done M7 slice 1 (`atlas`):
+  the lift taken at the exit (atlas README "Lifts": the vale is a valley whose floor lay 37 m under
+  the plain at both ends; -52.5 -> -15.5): `hill_trail@vale` 0.012, seam grade 19.53 -> 6.19,
+  join_vale and vale.to_pass arrive. Its walls now stand 37 m over the plain (`join_step` -37.24).
+- [x] The wild's west exit is a scarp: join_wild_west blocked at 73.9 degrees, wild.look_corner
   at 54.8 (both arrived on fb09c57); `west_road@wild` 2.10. A ramp from the kept corner to the
-  wild's 47 m exit, or the corner given back to the wild.
-- [ ] coast.along_cliff falls 35.5 m through atlas: the brought cut is 31 single 2 m quads in a
+  wild's 47 m exit, or the corner given back to the wild. Done M7 slice 1 (`atlas`): the plain
+  takes the wild's agreed slope near the corner's edges (world.toml `start`), and lib/land's
+  `approach` holds the trail's first 20 m: `west_road@wild` 0.442 (target 0.25, not met),
+  join_wild_west and wild.look_corner arrive.
+- [x] coast.along_cliff falls 35.5 m through atlas: the brought cut is 31 single 2 m quads in a
   staircase along the cliff foot (coast's own is continuous at 0.5 m). Cut a quad only where the
   brought surface covers it, or close the edge in the loader; a case walking a brought face's foot.
-- [ ] market.arrive blocked 2 m in by a 1.7 m drop at (2768, 474) where the earth road meets the
+  Done M7 slice 1 (core): two faults. The brought skirt kept coast's 0.35 m reach under 2 m quads
+  (1.41 m); it is stroked again by the parent's posts. And the 1 m strip held only some quad
+  centres, so an uncut quad straddling the 20 m step stood beside each cut one with its side open
+  (the fall was through that side at (2411.9, 67.2), not a cut quad); on coarser posts a brought
+  strip narrower than half a quad's diagonal cuts as if that wide (composition.md 6.1, case
+  `import_skirt`, decided, open to the owner). Atlas, fresh store, debug binary, streamed at 96 m
+  with water: along_cliff blocked by coast.west_face.face after 61.9 m (coast alone: blocked by
+  ground after 58.3 m), no fall; at_cave_mouth and in_cave arrive. A world's own narrow strip on
+  coarse posts still cuts the staircase (composition.md Open).
+- [x] market.arrive blocked 2 m in by a 1.7 m drop at (2768, 474) where the earth road meets the
   market's paved street (the hold against the plain); grade the held step along the parent's way.
-  join_college: 0.69 m of water at (2534, 414), 8.4 m short (the parent's water under a held place).
+  Done M7 slice 1 (`atlas`): the market's lift at its street's start (-16.5 -> -11.6); arrives.
+  The cause, measured: the plain's road bed (`smoothed_along(40)` of the ground on its own line)
+  carries the plain's level 3.5 m into the place and fades by 11.5 m, over the held place's lower
+  street. Proposed (lib/ways, owner's): a way that ends on a place takes the place's level at its
+  end. New: `market.top` (the street's north end, which no atlas way answers) is blocked 0.7 m in,
+  the street 4.9 m higher over a plain that is not held there.
+- [ ] join_college: 0.69 m of water at (2534, 414), 8.4 m short (the parent's water under a held
+  place). M7 slice 1: still 0.70 m. The college's own arrival stands at 4.1 m, the plain 6.6 m (its
+  lift -3.5 -> -0.1 was measured from the old pad's cut, 3.2 m, not the college's ground); a cut
+  more than 1 m under the plain is under the terrain step's level and wet. Lift about +2.4 (not
+  built: three atlas builds); or the general fix, the step's level kept under any parent cut.
 - [ ] coast.under_deck is blocked by the brought deck inside atlas (less headroom over the blended
-  ground); city's two bridge views and monastery.bm_deck walk off a deck with no parapet.
+  ground). Ruled M7 slice 1 (core): not the join's, no hold under a brought surface. The deck is
+  at weight 1 (24 m inside coast's 12 m blend); the beck's bed reads 0.03 m higher on 2 m posts
+  (bilinear over coast's 0.5 m, `import.coarser`), clearance 1.82 m against 1.85 for a 1.8 m
+  capsule. Both builds stop at the deck's edge: coast alone 0.999 m from the target (inside
+  ARRIVE 1.0, "arrived"), atlas 1.077 m ("blocked"). Coast's view: aim it at the beck beside the
+  deck, not under it (coast's; open). City's two bridge views and monastery.bm_deck walked off a deck with no parapet, their
+  own fault alone too: done M7 slice 1, both run lib/ways's `parapet` (bm_deck and city's
+  on_*_bridge now blocked by a post, alone; in atlas only monastery's yet, city's text changed
+  after the atlas build). townland's deck has none.
+- [ ] Atlas after M7 slice 1, left (`atlas`): college's lift (+2.4, above); `market.top` (above);
+  `move_market.ran_imports` re-taken on a fresh store with no import edited between base and
+  change (measured ["city", "market"]: city's parapet edit landed between them; done in the fix
+  pass by the on-foot review, ["market"]); city's parapets
+  seen in atlas; townland's authoring (given land) not started; `road_painted_in` 0.286.
+  Lesson: a change of an import's text between a base and its change build shows as that import
+  running in the change; freeze every imported world before a timed pair. Lesson: the terrain step
+  settles at 16 m cells, so a shelf written into the plain at an import's edge came out 10 m lower
+  2 m from it; carry a written slope 30 m past the edge it must meet.
 - [ ] Far stand-ins pop at the load edge: 11 of 123 atlas views over 1% whole against streamed
   (vale-aerial 6.79%); shaded or rounder far trees, or a looser bound past the load radius
   (owner's).
 - [ ] Change builds: city move_avenue 63.3 s against 60.5 cold; atlas move_market 58% of cold;
   an unchanged build into a new directory with an export trusted 89.8 s, about 54 s in no node;
   over_budget fails only after 175 s (check the budget before writing instances).
+  M7 slice 1 (perf), protocol in examples/city/expect.toml: key records and a batch's input
+  objects read ahead on --threads (graph.md 8), the budget ungated (build.md 5.1, case 53: atlas
+  over_budget 75% -> 58% of cold, its 387 writes skipped), a `for_each` step's items kept under the
+  leaves and the model's build started beside a rank (graph.md 5.3); city's back-to-base build
+  47 -> 35 s; move_avenue paired 84/69 -> 61/75 s at load 20 to 36, not shown under 40 s. Left,
+  from `sample` of atlas built unchanged into a folder at another depth (102 s, every node
+  reused): `prepare` (placement) 59 s over the ModelPlan of each rank, the final graph and the
+  imports, and the model's build 25 s for step requests (13 s) and trace answers (12 s), whose
+  memos miss because the leaves hold the build key, which holds `locations.pack_root` by place
+  (graph.md 5.3, open). An unchanged build into a sibling folder is already null (0.6 s).
+  over_budget's remaining time is the change itself (`chunk = 160` re-runs 7693 nodes), so 30%
+  of cold needs the budget counted before the per-chunk nodes, from placement alone. Atlas
+  move_market was not timed this slice.
 - [ ] Map: the river narrows from about 25 m to 10 m at the city's south edge, the mouth is a
   stepped blob; test_minimap's floor check assumes station (atlas has no floors); no atlas
   minimap image, the minimap is in no viewer.
-- [ ] A brought surface whose point leaves the lattice is dropped with no diagnostic
+- [x] A brought surface whose point leaves the lattice is dropped with no diagnostic
   (`SurfaceOut::brought`, change review nit; practically unreachable): a warning on the scoped
-  feature. Two dev binaries with one version string share store results: a binary digest in the
-  engine version for dev builds, or say so in graph.md 3.3.
-- [ ] composition.md 6.7's hold also holds round a parent bookmark's or instance's `on.ref` of an
+  feature. Done M7 slice 1 (core): `import.surface_dropped` (case `surface_dropped`; reachable by
+  an `at` near the lattice's edge). Two dev binaries with one version string share store results: a binary digest in the
+  engine version for dev builds, or say so in graph.md 3.3. Said, M7 slice 1 (perf; graph.md
+  3.3, "A working binary keeps its tree's epoch"; decided, open to the owner).
+- [x] composition.md 6.7's hold also holds round a parent bookmark's or instance's `on.ref` of an
   import place, so adding a view changes the terrain: limit it to `starts_at`/`ends_at` (open to
-  the owner).
+  the owner). Done M7 slice 1 (core; decided, open to the owner): case `place_view_unheld`; no
+  example held a place by `on.ref` alone (theirs name paths, which never held).
 - [ ] Fresh agent (`weir`): an import's `doc.file_missing` names `cli` and "the world file" (the
   import table and its span are the subject); `import.seam` and `import.no_datum` give no lift
   hint (`data.lift_hint`: the median height difference across the outline or the held place);
@@ -1708,19 +1781,87 @@ To M7:
   as a library rule, or a core meeting tolerance: owner's); `build.over_budget` names an import's
   asset the parent cannot thin (`data.from`, and a hint to ask the import's change); no
   `build.budget_peak` info to set a budget without a first build; a formula cannot read a
-  three-part import place (`doc.not_yet`, composition.md 6.3).
+  three-part import place (`doc.not_yet`, composition.md 6.3; done M7 slice 1, core: a `blend`
+  reads it, case `blend_path_end`; an import's `blend` was never walked for scoped places).
+  Done M7 slice 1 (`messages`), but the last: an import's file faults are on `import.<id>`'s
+  `file` with `data.file` (composition.md 2, case `import_file_missing`); `data.lift_hint` on
+  `import.no_datum` and `import.seam` (composition.md 5, the median step across the edge; cases
+  `no_datum_lift`, `seam`), no_datum now made after the ground is built; `build.over_budget`
+  `data.from` and the import's change in the hint (build.md 5.1, case 52); no `budget_peak`: build.md
+  5.1 says to read the peak from the manifest (decided, open to the owner). The bridgehead: core
+  stays exact (surfaces.md 3.4, Open 4 already gives tolerances to libraries); recommended rule for
+  lib/ways' `check`: a way's end within 1 m in plan of another path kind's end with no meeting
+  between them is `end_unjoined` (warning) with the plan distance and the height gap (`sample` of
+  both surfaces), every path kind with a surface, not only `crossing`. Not built (lib/ways was not
+  this slice's); owner's to rule.
 
-- [ ] Re-take atlas `move_market`'s `shapes_ran` and `ran_imports` on a fresh store (the M6 close
+- [x] Re-take atlas `move_market`'s `shapes_ran` and `ran_imports` on a fresh store (the M6 close
   store held a panicked attempt's nodes, so both read empty); no case builds a world from its own
   folder with an import `../x` (the leading-`..` fault was found only by building atlas from its
   folder): give the runner a working folder per action, then a case.
-- [ ] Editing a library's `kinds.toml` comment re-keys trust for every step of that library (trust
+  Done M7 slice 1 (`messages`): a `via` action's `cwd` (conformance.md 3.3; runner self-test
+  `test_cwd`), case `composition/import_from_folder` (a regression guard of the runner's `cwd`: it
+  passes on the M6 close engine too). `move_market` re-taken by the M7 slice 1 on-foot review on a
+  fresh store: 4/4, `ran_imports` ["market"].
+- [x] Editing a library's `kinds.toml` comment re-keys trust for every step of that library (trust
   digests the code folder): the M6 close's lib/water note untrusted every world's `fill`. Decide
   whether trust reads only a step's code files (protocol.md, owner's).
+  Done M7 slice 1 (`messages`), the narrow form: a `lib:` step's trust digest leaves out its
+  library's root `kinds.toml` (protocol.md 7, case 78 `library_kinds_edited`); every other file
+  still counts, since a step may read or run any (decided, open to the owner). Lesson: trust and
+  the key are separate; the kinds' statements still key the steps that read them. Fix pass: a
+  library step must not read its kinds file (protocol.md 7, R52); `xtask check` refuses a step that
+  imports `tomllib` or names `kinds.toml` outside a docstring.
 
 Later:
 - [ ] On-foot sheets of the atlas changes, on the decks and in the cave; monastery alone to see
   whether its deck fall is its own.
+
+### From M7 slice 1 (2026-11-17; the change and on-foot reviews, and the fix pass)
+
+To M7 close:
+- [ ] `coast.along_cliff` falls 18.5 m in atlas (on-foot review 2; fix pass, release `via`, fresh
+  store). Not the face: the quad [2428, 2430] x [68, 70] is uncut, and its north-west post (2428,
+  70) stands at the brink, 23.5 m, its others at 3.5; its centre (2429, 69) lies past the west
+  face's butt end at the cave's left jamb and south of the cave floor's butt start at y 70, so no
+  band holds it. The walker walks under its sloped triangle and drops. Fix in the core with a
+  case: a cutting strip's band and skirt reach a quad's half diagonal past its ends too, or an
+  uncut quad beside cut ones that straddles their step is cut. Lesson: `cut_band` closed the
+  sides of a narrow strip, not its ends; check a jamb, where two cutting owners end.
+- [ ] `city.old_town_street` streamed against whole (test_stream_walks, 1 FAIL): not a dropped
+  collider (on-foot review 3's guess). Every house it meets has its body in chunk [10, 10], and
+  streamed with every chunk loaded first it parts the same 18.54 m. The trails part by 1 mm 14 m
+  in (the bodies enter the physics space in another order) and the walk grazes a house corner at
+  101 m. Owner's (R48): a bound for walks that graze a corner, or one body order for whole and
+  streamed. Lesson: load every chunk first before blaming the streamer.
+- [ ] basin's `measure.py` exits 1 on base (on-foot review 5): ground_tarn_view 44.36 (oracle
+  57.35 +-6), ground_middle 55.79 (62.38 +-6), mouth_moves 51.4 m (50). The 2026-11-14 values
+  came from a state never committed: a fresh terrain run on a bit-equal `before` gives 44.36 on
+  56ca49e, 9ef43c9, 8f7b169, 277993f and this tree (not the cutover, not the river's `width`).
+  The committed `gen/terrain/` holds that state's `eroded` and is stale for any rebuilt
+  `via-terrain` (`protocol.untrusted_stale`, `param program`), so an untrusted reviewer cannot
+  build basin (protocol.md 8 says one can). Re-taken with the reason in expect.toml; owed: which
+  state, whether the bands or the land move, and a fresh `via step commit`.
+- [ ] `market.top` blocked after 0.7 m with no blocker named (on-foot review 7): answer or hold the
+  market street's north end in atlas; the walker should name `ground` when the ground stops it.
+- [ ] Atlas rows banded at the value measured (NOT HOLDING in expect.toml): grade_max and
+  road_join_max 0.442 (target 0.25), road_painted_in 0.286, join_step_max 37.24, bookmarks_wet,
+  exit_in_grade_max 1.122, exit_out_grade_max 0.375. The places stand on plinths and in pits
+  (on-foot review 4: the lift-at-exit trade is the owner's; else a rim-fitted plain).
+- [ ] City's parapets not yet seen in an atlas sheet; city's bridge views face the parapet
+  (`on_central_bridge`, `on_harbor_bridge`, targets 697 m and 295 m off the deck): aim them along
+  the deck. `monastery.bm_tarn` falls 3.26 m off the monastery's raised edge.
+- [ ] Atlas built unchanged into a folder at another depth: 400.3 s, longer than cold (on-foot
+  review, load 9 to 69): `locations.pack_root`'s depth in the leaves' key (graph.md 5.3, open).
+  Change builds 52 to 55% of cold; over_budget 140.3 s against 263.6 s cold (53%) this pass.
+
+After the first cut:
+- [ ] `xtask check`'s kinds-file rule reads text: a step that builds the name `kinds.toml` another
+  way, or reads it with another parser, is not caught (protocol.md 7).
+
+Lesson: a dotted name is not always a scoped one. `from` took any first part as an import, and a
+world's own set item (`kitchen_table.candle`) named an import that does not exist; read a scope
+against the table that declares it.
 
 ## Framing
 
@@ -1737,12 +1878,12 @@ Later:
       models and images quickly and replace them often. Consequences: stating an asset's facts must
       be nearly free (measure, do not ask); odd pivots, facings and sizes are the normal case;
       a kit run cannot demand one exact width; a replaced asset must show what it affects.
-- [ ] -> M7: Check the ledger's engine names (section 20) and attributions (section 22) against sources,
+- [x] -> M7 (done M7 slice 1, docs; ledger header and "A second reading of sections 21 to 24"): Check the ledger's engine names (section 20) and attributions (section 22) against sources,
       and have the looks sections (21 to 24) reviewed by a second reader. Context: third draft,
       about 680 terms, all from general knowledge.
 - [ ] -> spec/vocabulary.md: Settle the names flagged in ledger section 25: `part`, `level`, `set`, `portal` and `layer`
       collide with established words; `kind`, `pack`, `deck`, `build` are open.
-- [ ] -> M7: Write the charter: what we own, what we don't, the intended use, and explicit non-promises.
+- [x] -> M7 (done M7 slice 1: `docs/charter.md`): Write the charter: what we own, what we don't, the intended use, and explicit non-promises.
       Derived from the ledger verdicts.
 - [x] -> done (R27; what carries over and what retires is in docs/plan.md): Decide what carries over from the existing repo (code, ADRs, experiments) and what is archived.
 - [ ] -> M4 (`county` proposed in docs/plan.md, the owner's to redirect): Pick the dogfood target: which game, which kind of map, at what scale.
@@ -2075,7 +2216,7 @@ Structural checks stay in the core; everything else is an opt-in rule.
       we ship the mechanism and a starter), selection everywhere a list of assets is taken, and
       usage (which worlds use an asset, which assets nothing uses). Out of scope: storage,
       versioning, import and conversion.
-- [ ] -> M7: Answer or disown the 19 open questions in `docs/faq.md`. Context: written 2026-11-12 from a
+- [x] -> M7 (done M7 slice 1, docs: each answered, or marked open for the owner or for real users): Answer or disown the 19 open questions in `docs/faq.md`. Context: written 2026-11-12 from a
       newcomer's seat; a blank answer is a design question we have not faced. Keep it a list of
       questions, not of promises.
 - [ ] -> by item below: The four things only doing can settle (filtered 2026-11-12). Everything else on this list

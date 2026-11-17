@@ -1,0 +1,14 @@
+name       = "own"
+extent     = [0, 0, 16, 16]
+resolution = 2
+datum      = "sea"
+include    = ["face"]
+
+[field.height]
+role = "surface"
+base = 0
+
+# `a`'s face written in this world at its 2 m posts: what the brought one must make.
+[feature.wall]
+kind = "face"
+path = [[2, 5.3], [14, 10.9]]

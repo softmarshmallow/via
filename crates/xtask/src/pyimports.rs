@@ -1,4 +1,6 @@
-//! Python under `lib/` imports only `viasdk` and the standard library (R19b).
+//! Python under `lib/` imports only `viasdk` and the standard library (R19b), and a library step
+//! (not a `test_` file) neither imports `tomllib` nor names `kinds.toml` outside a docstring: it
+//! does not read its kinds file (`spec/protocol.md` 7).
 //!
 //! The reading is done by `py/check_imports.py` with Python's own `ast`, run through uv with an
 //! isolated interpreter: Python's parser is the only one that reads every import form exactly,
@@ -96,7 +98,15 @@ fn self_test(root: &Path) -> Result<Vec<String>, CheckError> {
         &bad,
         "import numpy\ndef f():\n    from requests import get\n    import importlib\n    importlib.import_module('x')\nfrom .. import other\n",
     )?;
-    let result = run_script(root, &lib, &[good, bad]);
+    // A step that reads its kinds file (protocol.md 7): `tomllib` and the name, not in a
+    // docstring; the same lines in a test are not a step's.
+    let kinds_text =
+        "\"\"\"Not read: kinds.toml in a docstring.\"\"\"\nimport tomllib\nP = 'kinds.toml'\n";
+    let kinds = pkg.join("reads_kinds.py");
+    let test = pkg.join("test_kinds.py");
+    std::fs::write(&kinds, kinds_text)?;
+    std::fs::write(&test, kinds_text)?;
+    let result = run_script(root, &lib, &[good, bad, kinds, test]);
     let _ = std::fs::remove_dir_all(&dir);
     let found = result?;
     let mut lines: Vec<usize> = found
@@ -106,8 +116,22 @@ fn self_test(root: &Path) -> Result<Vec<String>, CheckError> {
         .collect();
     lines.sort();
     let mut problems = Vec::new();
-    if found.iter().any(|(p, _, _)| p.ends_with("good.py")) {
+    if found
+        .iter()
+        .any(|(p, _, _)| p.ends_with("good.py") || p.ends_with("test_kinds.py"))
+    {
         problems.push(format!("self-test: good imports were reported: {found:?}"));
+    }
+    let mut kinds_lines: Vec<usize> = found
+        .iter()
+        .filter(|(p, _, _)| p.ends_with("reads_kinds.py"))
+        .map(|(_, l, _)| *l)
+        .collect();
+    kinds_lines.sort();
+    if kinds_lines != [2, 3] {
+        problems.push(format!(
+            "self-test: planted kinds-file reads at lines 2, 3; found {kinds_lines:?}"
+        ));
     }
     if lines != [1, 3, 5, 6] {
         problems.push(format!(
@@ -128,7 +152,7 @@ pub fn check(root: &Path) -> Result<Outcome, CheckError> {
     for p in self_test(root)? {
         o.finding("crates/xtask", 0, p);
     }
-    o.note("self-test: a planted library's bad imports found, its good ones passed");
+    o.note("self-test: a planted library's bad imports and kinds-file reads found, its good ones passed");
     if files.is_empty() {
         o.note("no Python under lib/ yet: nothing to check");
         return Ok(o);

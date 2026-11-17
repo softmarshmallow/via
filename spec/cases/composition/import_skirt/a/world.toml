@@ -1,0 +1,14 @@
+name       = "a"
+extent     = [0, 0, 16, 16]
+resolution = 0.5
+datum      = "sea"
+include    = ["face"]
+
+[field.height]
+role = "surface"
+base = 0
+
+# A narrow face across its quads at a slant, as a cliff's (lib/land `sheer_cliff`).
+[feature.wall]
+kind = "face"
+path = [[2, 5.3], [14, 10.9]]

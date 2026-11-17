@@ -1992,8 +1992,9 @@ fn smoothstep(e0: f64, e1: f64, a: f64) -> f64 {
 }
 
 /// The places of import `id` a parent path joins (`composition.md` 6.7, "Held"): each named by a
-/// parent feature's `starts_at` or `ends_at`, or a parent feature or instance's `on.ref`, that is
-/// a point; in the parent's frame, millimetres.
+/// parent feature's `starts_at` or `ends_at` that is a point; in the parent's frame, millimetres.
+/// A point or instance `on` a place holds nothing, so adding a view never changes the ground (M7,
+/// decided, open to the owner).
 pub fn held_places(d: &Decls, id: &str) -> Vec<P> {
     let Some(imp) = d.imported.get(id) else {
         return Vec::new();
@@ -2006,14 +2007,6 @@ pub fn held_places(d: &Decls, id: &str) -> Vec<P> {
                 .chain(f.ends_at.iter())
                 .map(String::as_str),
         );
-        if let crate::decl::ShapeDecl::Point(crate::decl::Place::On(o)) = &f.shape {
-            names.insert(&o.reference);
-        }
-    }
-    for i in d.instances.values() {
-        if let crate::decl::Place::On(o) = &i.place {
-            names.insert(&o.reference);
-        }
     }
     let prefix = format!("{id}.");
     names

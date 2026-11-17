@@ -577,6 +577,13 @@ min_length = 6
 min_area   = 60
 kind       = "lot"
 
+[step.parapet]                              # lib/ways: each deck's two rows of posts (M7 slice 1:
+when     = "generate"                       # `on_harbor_bridge` and `on_central_bridge` walked off their
+worker   = true                             # decks' sides toward the river and fell 3.6 m, alone and
+for_each = "kind:crossing"                  # in atlas; TODO "Parapets on monastery's, city's and
+command  = ["python", "-m", "viasdk", "lib:ways/parapet.py"]   # townland's decks")
+params   = { asset = "fence_post", spacing = 2 }
+
 [step.review]                               # lib/review's measures; it checks the streets steps
 when    = "lint"                            # (authority.md 7)
 command = ["python", "-m", "viasdk", "lib:review/checks.py"]

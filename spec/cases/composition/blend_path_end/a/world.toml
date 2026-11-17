@@ -1,0 +1,11 @@
+name       = "a"
+extent     = [0, 0, 48, 64]
+resolution = 1
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 4
+
+[feature.track]
+path = [[0, 32], [20, 32]]

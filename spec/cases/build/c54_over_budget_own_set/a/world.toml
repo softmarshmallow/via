@@ -1,0 +1,13 @@
+name       = "a"
+extent     = [0, 0, 16, 16]
+resolution = 1
+datum      = "sea"
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[instance.l0]
+asset = "light"
+at    = [2, 2]

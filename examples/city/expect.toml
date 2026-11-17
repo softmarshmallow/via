@@ -75,6 +75,20 @@
 # of move_avenue after): the whole model built again per generate rank for the steps' views
 # (CliPlan::new, about 10 s on the engine's thread), three `prepare` passes (about 8 s, most in
 # `where` evaluated by networks' features), the steps themselves (36 node-seconds).
+#
+# M7 slice 1 (perf): the ready nodes' key records and a batch's input objects read on --threads
+# before the lookup (graph.md 8; a `sample` of move_avenue before: 5.4 s opening key records and
+# 2.8 s objects on the engine's thread, of 84 s), a `for_each` step's items kept under the leaves
+# and the model's build started beside a rank's graph (graph.md 5.3). Times, release `via` of a
+# worktree at HEAD 3884c68 (before) and the same with this slice's patch (after), VIA_LIB = the
+# worktree's lib, one fresh store per binary, 14 threads, wall clock, load 20 to 57 from other
+# agents' builds: cold 101.3 -> 92.9 s; move_avenue --against cold 120.5 -> 109.3 s (load 37 and
+# 57); back to base --against move_avenue 47.3 -> 35.1 s; move_avenue paired, base store cloned
+# per run and the binaries alternated, 84.3 and 69.1 s before, 61.4 and 75.4 s after. The target
+# (40 s) is not shown at this load. Every data file equal between the two binaries (manifests
+# differ only in `locations.pack_root`, which names the worktree, and `run.key`); clean equals
+# incremental for move_avenue (a fresh store) and back to base (`.previous`, changes.json and
+# the manifest's `run` aside).
 
 # ------------------------------------------------------------------------------------------ base
 

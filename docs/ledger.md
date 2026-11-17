@@ -13,9 +13,11 @@ Third draft, 2026-11-12. How it was made:
    These had one author and no review.
 4. The project's own words and what the whole list shows were added (sections 25 and 26).
 
-All of it is from general knowledge, not from sources. Engine names are in section 20 and
-attributions in section 22; both must be checked before being relied on. The structure is meant to
-be stable. The rows are not: add freely, one line each.
+All of it is from general knowledge, not from sources, except where a row cites one. On 2026-11-17
+(M7) the engine names (section 20) and the attributions (section 22) were checked against sources:
+corrections and what could not be confirmed are marked there, with the URLs; sections 21 to 24 had
+a second reader, whose doubts close section 24. The structure is meant to be stable. The rows are
+not: add freely, one line each.
 
 **Whose** is a first guess at the owner:
 
@@ -706,53 +708,80 @@ and the visible fault when they do not.
 ## 20. One thing, three names
 
 The same thing is called differently by each engine, and several common words belong to an engine
-we are not targeting. All from memory; check each before use.
+we are not targeting. First written from memory; checked against the engines' own documentation on
+2026-11-17 (M7). **Checked** names the source below that confirms the row, says "corrected" where
+the row was changed, or "not checked" where no primary source was read. Engines change: a status
+(experimental, production-ready) is as of that date.
 
-| General term here | Unreal | Godot | Note |
-|---|---|---|---|
-| runtime cell | runtime cell, runtime grid (World Partition) | none built in | Godot has no built-in world streaming |
-| placed level | Level Instance, Packed Level Actor | instanced scene | "sublevel" is the older Unreal word |
-| switchable set | Data Layer | none built in | |
-| world precision | Large World Coordinates | a double-precision build | origin shifting is the older way |
-| terrain | Landscape | none built in; a plugin | |
-| weight map | layer weightmap | a plugin's control map | "splat map" is Unity's word |
-| terrain hole | landscape visibility mask | plugin-specific | |
-| stamp | landscape brush or patch | plugin-specific | unsure of current names |
-| mesh-to-terrain blend | Runtime Virtual Texture | none built in | |
-| terrain texture streaming | Streaming Virtual Texture | none built in | |
-| displacement | Nanite displacement | none | hardware tessellation is gone from Unreal 5 |
-| assembly, saved group | Blueprint, Packed Level Actor | scene | "prefab" is Unity's word |
-| instancing | instanced static mesh, hierarchical instanced | MultiMesh | |
-| tile grid of pieces | none direct | GridMap with a MeshLibrary | |
-| merged far proxy | HLOD | visibility ranges, no merging | |
-| automatic geometric detail | Nanite | generated on import, simpler | |
-| cull distance | cull distance | visibility range | |
-| occluder | none authored | OccluderInstance3D | |
-| navigation mesh | NavMesh, navigation invokers | NavigationRegion3D | |
-| navigation link | Nav Link Proxy | NavigationLink3D | "off-mesh link" is Recast's and Unity's word |
-| surface type | Physical Material with a surface type | custom metadata | Godot's physics material has no surface type |
-| trigger, blocking, out-of-bounds region | Trigger Volume, Blocking Volume, Kill Z | Area3D, a static body | |
-| picture-change region | Post Process Volume | WorldEnvironment; no regions | |
-| sound region | Audio Volume | Area3D with an audio bus | |
-| reflection sample | Reflection Capture | ReflectionProbe | "light probe" is Unity's word |
-| dynamic bounced light | Lumen | SDFGI, VoxelGI | |
-| placement graph | PCG framework | none built in | unsure of Unreal's status |
-| crowd and traffic | Mass, ZoneGraph | none built in | unsure of status |
-| water body | Water plugin's water bodies | none built in | unsure of status |
-| scenario point | Smart Object | none built in | |
-| free labels | Gameplay Tags | groups, metadata | |
-| one file per placed thing | One File Per Actor | each scene is a text file | |
-| asset rename tracking | redirectors | resource UIDs | |
-| import cache | Derived Data Cache | the `.godot/imported` folder | |
-| cook | cook | export | |
-| editor extension | editor plugin, editor utility | EditorPlugin, GDExtension, `@tool` | |
+| General term here | Unreal | Godot | Note | Checked |
+|---|---|---|---|---|
+| runtime cell | grid cell of a runtime grid (World Partition) | none built in | Godot has no built-in world streaming | U1 |
+| placed level | Level Instance, Packed Level Actor | instanced scene | "sublevel" is level streaming's word (a persistent level with sublevels), still used in a world without World Partition; World Partition removes the need for it | U1, U2; corrected |
+| switchable set | Data Layer (a Data Layer Asset per project, a Data Layer Instance per world) | none built in | | U3 |
+| world precision | Large World Coordinates | large world coordinates: an engine built with `precision=double` | Godot uses the same name; official Godot builds do not have it, so a custom build is needed. Origin shifting is the older way | G1; corrected |
+| terrain | Landscape | none built in; a plugin | | not checked |
+| weight map | layer weightmap | a plugin's control map | "splat map" is said beyond Unity; who uses it is not checked | not checked |
+| terrain hole | the Landscape Visibility tool, with a Landscape Visibility Mask node and a hole material | plugin-specific | | U4; corrected |
+| stamp | Landscape Blueprint Brush (Landmass plugin, on edit layers), Landscape Patch (a texture patch on a patch edit layer) | plugin-specific | | U5, U6; corrected |
+| mesh-to-terrain blend | Runtime Virtual Texture | none built in | | not checked |
+| terrain texture streaming | Streaming Virtual Texture | none built in | | not checked |
+| displacement | Nanite Tessellation (dynamic displacement by a map or a material) | none | that Unreal 5 dropped hardware tessellation is not checked | U7; corrected |
+| assembly, saved group | Blueprint, Packed Level Actor | scene | "prefab" is Unity's word | not checked |
+| instancing | Instanced Static Mesh, Hierarchical Instanced Static Mesh | MultiMesh | | not checked |
+| tile grid of pieces | none direct | GridMap with a MeshLibrary | | not checked |
+| merged far proxy | HLOD | visibility ranges (the docs call them HLOD), with artist-made far meshes; no automatic merging | | U1, G2 |
+| automatic geometric detail | Nanite | mesh LOD, generated on import of a 3D scene (meshoptimizer) | | G3 |
+| cull distance | cull distance | visibility range | | not checked |
+| occluder | none authored | OccluderInstance3D | | not checked |
+| navigation mesh | NavMesh, navigation invokers | NavigationRegion3D | | not checked |
+| navigation link | Nav Link Proxy | NavigationLink3D (marked experimental in the class reference) | "off-mesh link" is Recast's and Unity's word | G4 |
+| surface type | Physical Material with a surface type | custom metadata | Godot's PhysicsMaterial has friction, rough, bounce and absorbent only | G5 |
+| trigger, blocking, out-of-bounds region | Trigger Volume, Blocking Volume, Kill Z (a World Settings height) and Kill Z Volume | Area3D, a static body | | U8 |
+| picture-change region | Post Process Volume | WorldEnvironment; no regions | | not checked |
+| sound region | Audio Volume | Area3D with an audio bus | | not checked |
+| reflection sample | Reflection Capture | ReflectionProbe | Unity calls it a Reflection Probe too; a Unity Light Probe stores indirect light, not reflections | X1; corrected |
+| dynamic bounced light | Lumen | SDFGI, VoxelGI | | not checked |
+| placement graph | PCG framework (production-ready from 5.7) | none built in | | U9; corrected |
+| crowd and traffic | Mass (MassAI, MassCrowd), ZoneGraph | none built in | the names hold; their status is not confirmed from a primary source (forum posts say the Mass AI plugins are experimental) | U10; names only |
+| water body | Water plugin's water bodies (ocean, lake, river, custom, island) | none built in | the Water plugin is listed as experimental | U11, U12; corrected |
+| scenario point | Smart Object | none built in | | U13 |
+| free labels | Gameplay Tags | groups, metadata | | not checked |
+| one file per placed thing | One File Per Actor (editor only; a cooked build embeds actors in their level) | each scene is a text file | | U14 |
+| asset rename tracking | redirectors | resource UIDs (`uid://`; scripts and shaders have `.uid` files from 4.4) | | G6 |
+| import cache | Derived Data Cache | the `.godot/imported` folder | | not checked |
+| cook | cook | export | | not checked |
+| editor extension | editor plugin, editor utility | EditorPlugin, GDExtension, `@tool` | | not checked |
+
+Sources (read 2026-11-17, the page itself or a search's summary of it; U10 is a forum thread, secondary):
+
+- U1 World Partition: https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine
+- U2 Level streaming: https://dev.epicgames.com/documentation/unreal-engine/level-streaming-overview-in-unreal-engine
+- U3 Data Layers: https://dev.epicgames.com/documentation/unreal-engine/world-partition---data-layers-in-unreal-engine
+- U4 Landscape Visibility tool: https://dev.epicgames.com/documentation/en-us/unreal-engine/landscape-visibility-tool-in-unreal-engine
+- U5 Landscape Blueprint Brushes: https://dev.epicgames.com/documentation/unreal-engine/landscape-blueprint-brushes-in-unreal-engine
+- U6 Landscape Patch: https://dev.epicgames.com/documentation/unreal-engine/landscape-patch-system
+- U7 Nanite (its Tessellation section): https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-virtualized-geometry-in-unreal-engine
+- U8 Kill Z Volume: https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/AKillZVolume
+- U9 Unreal Engine 5.7 release: https://www.unrealengine.com/news/unreal-engine-5-7-is-now-available
+- U10 Mass, Epic staff on the forum: https://forums.unrealengine.com/t/mass-entity-roadmap-vision-and-more-questions/2527030
+- U11 Water plugin index: https://dev.epicgames.com/documentation/unreal-engine/API/PluginIndex/Water
+- U12 Water body actors: https://dev.epicgames.com/documentation/unreal-engine/water-body-actors-in-unreal-engine
+- U13 Smart Objects: https://dev.epicgames.com/documentation/en-us/unreal-engine/smart-objects-in-unreal-engine---overview
+- U14 One File Per Actor: https://dev.epicgames.com/documentation/en-us/unreal-engine/one-file-per-actor-in-unreal-engine
+- G1 Large world coordinates: https://docs.godotengine.org/en/stable/tutorials/physics/large_world_coordinates.html
+- G2 Visibility ranges (HLOD): https://docs.godotengine.org/en/stable/tutorials/3d/visibility_ranges.html
+- G3 Mesh level of detail: https://docs.godotengine.org/en/stable/tutorials/3d/mesh_lod.html
+- G4 NavigationLink3D: https://docs.godotengine.org/en/latest/classes/class_navigationlink3d.html
+- G5 PhysicsMaterial: https://docs.godotengine.org/en/stable/classes/class_physicsmaterial.html
+- G6 UID changes in 4.4: https://godotengine.org/article/uid-changes-coming-to-godot-4-4/
+- X1 Unity Light Probes: https://docs.unity.com/en-us/engine/current/manual/lighting-overview/direct-and-indirect-lighting/light-probes/light-probes
 
 ## 21. Looks: the work
 
 Sections 21 to 24 are about what makes a world look good. Most of it is nobody's to check: it is
 craft and judgement. It is listed so the words are known, and so that where a rule or a measure
-could help, we notice. Written by one author, not yet reviewed by others. Attributions are from
-memory.
+could help, we notice. Written by one author; the attributions in section 22 were checked against
+sources on 2026-11-17 (M7), and a second reading of sections 21 to 24 is at the end of section 24.
 
 **Kind** is task (something people do), theory (something they rely on) or trick (a known move).
 **Tool** says what a tool could do at most: nothing, carry (hold the intent as data), rule (place
@@ -812,22 +841,34 @@ by it), or measure (report a number, never a verdict).
 | scale cue | a door, a figure or a stair that tells how big things are | theory | rule |
 | motivated light | every light having a visible source | theory | rule |
 | light as guide | the eye and the feet going to the bright place | theory | carry |
-| landmark, "weenie" | a tall, distinct thing that pulls the player; Disney's word for it | theory | carry |
-| paths, edges, districts, nodes, landmarks | the five things that make a city legible; Kevin Lynch's | theory | carry |
-| prospect and refuge | people like to see far from a sheltered spot; Appleton's | theory | measure |
+| landmark, "weenie" | a tall, distinct thing that pulls the player; Walt Disney's word for it (also spelt "wienie"; checked, A1) | theory | carry |
+| paths, edges, districts, nodes, landmarks | the five things that make a city legible; Kevin Lynch, *The Image of the City* (1960; checked, A2) | theory | carry |
+| prospect and refuge | people like to see far from a sheltered spot; Jay Appleton, *The Experience of Landscape* (1975; checked, A3) | theory | measure |
 | compression and release | a tight passage before a wide space makes it feel wider | theory | measure |
 | reveal, denial and reward | hiding a goal, then showing it | theory | measure |
 | borrowed scenery | composing a near place to include a far view | theory | measure |
-| the triangle rule | hills as triangles that hide and then reveal what is behind | theory | measure |
-| the forty-second rule | something of interest about that often along a ride | theory | measure |
-| points of interest pulling like gravity | bigger sights drawing the player from further | theory | carry |
+| the triangle rule | hills as triangles that hide and then reveal what is behind, and offer over or round; Nintendo's field design team for *Breath of the Wild*, CEDEC 2017 (added, A4) | theory | measure |
+| the forty-second rule | something of interest about that often along a ride; a folk rule of open-world design, its number (30 or 40 s) and origin (often said to be *The Witcher 3*) not confirmed (A5) | theory | measure |
+| points of interest pulling like gravity | bigger sights drawing the player from further; "gravity" is the *Breath of the Wild* team's word, same talk (added, A4) | theory | carry |
 | affordance and signifier | a thing looking like what can be done with it | theory | carry |
 | visual language | one meaning, one look, everywhere | theory | carry |
 | readability, signal and noise | what matters standing out from what does not | theory | nothing |
 | plausibility | a place that could work: where water runs, where people would build | theory | rule |
 | lived-in, imperfection | wear and disorder as proof of use | theory | rule |
-| a pattern language | recurring good arrangements of space; Alexander's | theory | carry |
+| a pattern language | recurring good arrangements of space; Christopher Alexander, Sara Ishikawa, Murray Silverstein and others, *A Pattern Language* (1977; checked, A6) | theory | carry |
 | the picturesque | landscape composed like a painting | theory | nothing |
+
+Sources for the attributions (read 2026-11-17):
+
+- A1 Imagineering usage, secondary (fan and press sources; the word's origin story is not
+  confirmed): https://touringplans.com/blog/disney-in-a-minute-what-is-a-wienie/
+- A2 https://en.wikipedia.org/wiki/The_Image_of_the_City
+- A3 https://en.wikipedia.org/wiki/Jay_Appleton
+- A4 a translation of the CEDEC 2017 talks, secondary: https://gist.github.com/idbrii/e39fe96279aa1670319bfa521d907399 ;
+  the speakers (Hidemaro Fujibayashi, Makoto Yonezu): https://80.lv/articles/the-design-secrets-of-breath-of-the-wild/
+- A5 a thesis named for the rule (Uppsala, on *The Witcher 3*), not a primary source for its origin:
+  https://openaccess.library.uitm.edu.my/Record/ndltd-UPSALLA1-oai-DiVA.org-uu-446386
+- A6 https://en.wikipedia.org/wiki/A_Pattern_Language
 
 ## 23. Looks: placement craft and tricks
 
@@ -888,6 +929,36 @@ by it), or measure (report a number, never a verdict).
 | stylisation | simplifying detail into larger, clearer shapes | theory | nothing |
 | hand-painted, toon, realistic | named looks with their own rules | theory | carry |
 | material palette | the short list of surfaces a place is allowed | theory | measure |
+
+### A second reading of sections 21 to 24 (2026-11-17, M7)
+
+Read by a second reader (an agent that did not write them), for words a practitioner would not
+use, attributions missing, and rows that are two things or sit in the wrong group. Nothing is
+removed; each is a doubt with its reason, for whoever next edits the row.
+
+| Row | Section | Doubt | Reason |
+|---|---|---|---|
+| clustering in odd numbers | 23 | name | Painters and gardeners call it the "rule of odds"; the row should carry that name. |
+| hero and supporters | 23 | name | "Hero asset" (or hero prop) is the common word; "supporters" is ours. |
+| review in context | 21 | coined | Not a practitioner's term; it restates R17 (judge from eye height). Keep, marked ours. |
+| composition pass | 21 | coined | "Composition" is common; a named "pass" for it is not. |
+| dressing to the camera | 23 | borrowed | A film term; a game has no one camera. "Detail where the player looks" says it. |
+| the three reads | 22 | unsure | Artists speak of long, mid and short reads; "the three reads" as a fixed name is not confirmed. |
+| big, medium, small | 22 | name | Usually "large, medium, small" shapes or primary, secondary and tertiary forms. |
+| compression and release | 22 | attribution | An architecture idea usually credited to Frank Lloyd Wright; not checked. |
+| borrowed scenery | 22 | attribution | Japanese garden design's *shakkei*; the row should say so. |
+| the picturesque | 22 | attribution | An 18th-century aesthetic category (William Gilpin and others); not checked. |
+| affordance and signifier | 22 | attribution | James J. Gibson's and Don Norman's words; not checked. |
+| colour script | 22 | borrowed | An animation studio's planning tool; in games it is rarer. Kept: the idea carries. |
+| the forty-second rule | 22 | folklore | Number and origin vary between sources (section 22's A5). |
+| the triangle rule, gravity | 22 | one studio | One team's words from one talk, not general vocabulary; attributed now. |
+| wet-down | 24 | borrowed | A film-set term; games say wet shading or puddles. |
+| fake depth | 24 | vague | Covers parallax occlusion, interior mapping and cards; name the technique. |
+| contact shadow, ambient occlusion | 24 | two things | Two techniques (a screen-space shadow ray, an occlusion term) in one row. |
+| roughness variation, specular breakup | 24 | duplicate | Near the same thing; one row would do. |
+| colour grading, stylisation, hand-painted | 24 | wrong group | A task and two theories in a section of tricks; their Kind column says so, the heading does not. |
+| vertical exaggeration | 23 | borrowed | A cartography term for relief maps; in games "exaggerated scale" (the row above) covers it. |
+| edge wear | 24 | tool | Marked "nothing", but it is the asset's (a texturing tool's), so "not ours" rather than nothing. |
 
 ## 25. This project's own words
 

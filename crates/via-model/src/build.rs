@@ -892,7 +892,9 @@ pub(crate) fn finish_from(
         crate::surfaces::kind_surfaces(&decls, &placed.shapes, &mut diags);
     // An import's kind surfaces come with their features (`composition.md` 6.1).
     for imp in decls.imported.values() {
-        out.surfaces.extend(imp.brought_surfaces());
+        let res = decls.grid.map(|g| g.resolution);
+        out.surfaces
+            .extend(imp.brought_surfaces(world, res, &mut diags));
     }
     let mut grounded = crate::surfaces::ground_on_surfaces(
         &decls,
