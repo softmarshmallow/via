@@ -375,7 +375,7 @@ fact is the main model's.
 
 The facts that decide where and how an instance stands are kept, per model asset, in the pack's
 **facts file**. Studios report that a revision of a placed piece's contract is the costliest change
-they make, and no source shows tooling for it (`reports/Modular city asset contracts.md`, sections 1
+they make, and no source shows tooling for it (`docs/research/Modular city asset contracts.md`, sections 1
 and 5.6); this mechanism is ours.
 
 - **Where.** The pack file's path with `.toml` replaced by `.facts.toml`: `packs/vale.toml` has

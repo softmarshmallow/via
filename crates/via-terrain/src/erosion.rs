@@ -23,14 +23,14 @@ pub fn apply_uplift(h: &mut [f64], uplift: &[f64], dt: f64, floor_m: f64) {
 }
 
 /// Braun & Willett (2013) implicit stream-power solve with n = 1, m = ½,
-/// generalized over the MFD DAG (ADR 0005): walking the topological order
+/// generalized over the MFD DAG (model.md 5.4): walking the topological order
 /// (receivers first), each cell's new elevation is the closed form
 ///   h⁺ = (h + Σᵢ cᵢ·hrᵢ⁺) / (1 + Σᵢ cᵢ),   cᵢ = K·√Q·dt·wᵢ / distᵢ,
 /// which relaxes h toward the weight-blend of its (already-updated)
 /// receivers. One out-edge reduces this exactly to the single-receiver
 /// update.
 ///
-/// Standing water (ADR 0004): `flooded` and `water_level` are frozen from
+/// Standing water (model.md 4.2): `flooded` and `water_level` are frozen from
 /// the pre-erosion state of the step. The mask MUST be static — deciding
 /// "submerged" by comparing the evolving surface against the routed copy
 /// re-classifies every freshly incised cell as flooded, and the routing

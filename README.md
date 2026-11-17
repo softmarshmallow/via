@@ -84,8 +84,8 @@ docs/            doctrine, challenges, design, references
 ```
 
 Of the old workspace, only `crates/via-terrain` carries over, as the erosion program behind
-`lib/terrain` (`spec/protocol.md` 8 admits it); its design records are in
-`crates/via-terrain/docs/adr/`. The rest was dropped at the M7 cutover and is in the history at
+`lib/terrain` (`spec/protocol.md` 8 admits it); its model is described in
+`crates/via-terrain/docs/model.md`. The rest was dropped at the M7 cutover and is in the history at
 the tag `spike-final`.
 
 ## Where to read

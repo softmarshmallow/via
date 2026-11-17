@@ -1,13 +1,13 @@
-//! The cutover (TODO, M7): the seed derivation moved from the retired `via-artifact` crate into
-//! `via-num` (`sub_seed`, `numbers.md` 7.2), and the model's value noise now hashes through
-//! `via-num`'s mix and `unit`. Both must give the old bits, since every settled landscape (basin,
-//! atlas and the derived cases) is drawn from them. The old code is copied here verbatim as the
-//! reference, and a few values are pinned as literals, so a change to both sides still fails.
+//! The cutover (TODO, M7): the seed derivation moved into `via-num` (`sub_seed`, `numbers.md`
+//! 7.2), and the model's value noise now hashes through `via-num`'s mix and `unit`. Both must
+//! give the old bits, since every settled landscape (basin, atlas and the derived cases) is drawn
+//! from them. The old code is copied here verbatim as the reference, and a few values are pinned
+//! as literals, so a change to both sides still fails.
 
 use via_num::{splitmix64, sub_seed};
 use via_terrain::noise;
 
-/// `via-artifact`'s `seed::derive`, as it stood at 0b765be.
+/// The seed derivation `sub_seed` replaced, as it stood at 0b765be.
 fn old_derive(global_seed: u64, stage: &str, salt: u64) -> u64 {
     let mut h = splitmix64(global_seed ^ 0x5851_F42D_4C95_7F2D);
     for &b in stage.as_bytes() {
@@ -67,7 +67,7 @@ fn sub_seed_gives_the_old_seeds() {
             }
         }
     }
-    // Pinned by via-artifact's own test, computed from the definition.
+    // Pinned by the old derivation's own test, computed from the definition.
     assert_eq!(sub_seed(42, "terrain", 0), 0xF07E_DA44_EA28_EFC2);
 }
 

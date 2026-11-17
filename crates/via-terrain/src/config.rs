@@ -1,6 +1,6 @@
 /// Terrain stage configuration. Every field is a physical quantity or a
 /// derivation threshold — nothing here names a landform. The step builds it from the request
-/// (`settle.rs`); no file is read into it (the old workspace's configuration files are retired).
+/// (`settle.rs`); no file is read into it.
 #[derive(Clone, Debug)]
 pub struct TerrainConfig {
     pub seed: u64,
@@ -21,13 +21,13 @@ pub struct TerrainConfig {
     /// only. 0 recovers pure detachment-limited SPL; ~1 is the continental
     /// reference. Steady-state *channel* slopes scale by (1+G); K keeps its
     /// detachment-limited calibration because hillslopes — outside the
-    /// deposition domain — set most of the relief (ADR 0004).
+    /// deposition domain — set most of the relief (model.md 4.1).
     pub g_deposition: f64,
     /// Hillslope diffusivity κ in m²/yr.
     pub kappa: f64,
     /// MFD partition exponent p (Freeman 1991): flow to each downslope
     /// neighbour ∝ slope^p. Discretization parameter, not forcing
-    /// (ADR 0005); 1.1 is Freeman's calibrated value.
+    /// (model.md 5.1); 1.1 is Freeman's calibrated value.
     pub mfd_exponent: f64,
     /// Peak tectonic uplift rate in m/yr; the uplift field scales this.
     pub uplift_max_m_per_yr: f64,
@@ -50,8 +50,8 @@ pub struct TerrainConfig {
     /// Total north→south temperature difference across the grid (°C).
     pub t_meridional_delta_c: f64,
     /// Re-saturation rate of air over open water: fraction of the remaining
-    /// humidity deficit recovered per cell along the wind. Forcing (ADR
-    /// 0003): the moisture-sweep coefficients are boundary conditions and
+    /// humidity deficit recovered per cell along the wind. Forcing
+    /// (model.md 3): the moisture-sweep coefficients are boundary conditions and
     /// live in config; only their ratios matter (the field is normalized to
     /// `precip_mean_m_per_yr`).
     pub evaporation_per_cell: f64,
@@ -74,13 +74,13 @@ impl Default for TerrainConfig {
             cell_size_m: 200.0,
             // The explicit deposition pass bounds dt: G·U·dt must stay
             // small against valley relief or the erode/deposit splitting
-            // oscillates (ADR 0004). 1e5 was stable for pure detachment;
+            // oscillates (model.md 1.3). 1e5 was stable for pure detachment;
             // with G = 1 it diverges.
             dt_years: 1.0e4,
             steps: 3000,
-            // K keeps its M2 calibration: deposition acts only on the
-            // fluvial domain, so hillslopes — which set most of the relief
-            // — see the same steady slopes as M2, while channel slopes
+            // K keeps its detachment-only calibration: deposition acts
+            // only on the fluvial domain, so hillslopes — which set most of
+            // the relief — keep their steady slopes, while channel slopes
             // carry the (1+G) factor. Rescaling K for (1+G) globally
             // flattens the landscape (measured: island relief fell to a
             // third).
@@ -93,7 +93,7 @@ impl Default for TerrainConfig {
             base_depth_m: -30.0,
             epsilon_fill_m: 1.0e-6,
             // Extraction threshold recalibrated for the MFD discharge
-            // field (ADR 0005): the smoother hybrid flux crosses a given
+            // field (model.md 5.5): the smoother hybrid flux crosses a given
             // threshold at more marginal heads, inflating first-order
             // stream counts; 1.5 km² selects a network comparable to the
             // 1.0 km² D8 one.
@@ -112,8 +112,8 @@ impl Default for TerrainConfig {
 }
 
 impl TerrainConfig {
-    /// A stage that cannot work with what it was given fails loudly
-    /// (CONTRIBUTING) — but with a diagnosis, not a numeric symptom.
+    /// A stage that cannot work with what it was given fails loudly —
+    /// but with a diagnosis, not a numeric symptom.
     pub fn validate(&self) -> Result<(), String> {
         let bad = |msg: &str| Err(format!("invalid terrain config: {msg}"));
         for (name, n) in [("size", self.size), ("rows", self.row_count())] {
@@ -163,7 +163,7 @@ impl TerrainConfig {
             return bad("precip_mean_m_per_yr must be finite and positive");
         }
         // Load-bearing thresholds: fluvial_min defines the deposition
-        // domain (ADR 0004) — zero or negative would put every dry cell in
+        // domain (model.md 4.1) — zero or negative would put every dry cell in
         // it and reintroduce the hillslope-trap smearing.
         if !(self.river_min_area_km2.is_finite() && self.river_min_area_km2 > 0.0) {
             return bad("river_min_area_km2 must be finite and positive");

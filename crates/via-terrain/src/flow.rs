@@ -57,7 +57,7 @@ pub fn priority_flood_eps(grid: &Grid, h: &mut [f64], is_seed: &[bool], eps: f64
     }
 }
 
-/// Fold shallow depressions back into the true surface (ADR 0004).
+/// Fold shallow depressions back into the true surface (model.md 4.2).
 ///
 /// After priority-flood builds the routing surface, every connected ponded
 /// component whose maximum depth is below `min_lake_depth_m` is treated as
@@ -65,8 +65,8 @@ pub fn priority_flood_eps(grid: &Grid, h: &mut [f64], is_seed: &[bool], eps: f64
 /// diffusion, which would otherwise stand as millimetre "lakes" that stop
 /// incision and trap sediment (observed: the landscape smears). Within one
 /// multi-century step such ponding sediments instantly in reality, so the
-/// true surface adopts the routed surface there, exactly as the ε-fill did
-/// before M3. Deep components survive as real lakes.
+/// true surface adopts the routed surface there, as a plain ε-fill would.
+/// Deep components survive as real lakes.
 ///
 /// Returns the total raised depth (m summed over merged cells): the merge
 /// is a declared mass source (sub-grid fill), and the run meters it so the
@@ -113,7 +113,7 @@ pub fn merge_shallow_depressions(
     merged_depth_m
 }
 
-/// Weighted multiple-flow-direction graph (Freeman 1991; ADR 0005): every
+/// Weighted multiple-flow-direction graph (Freeman 1991; model.md 5.1): every
 /// cell sends flow to each strictly lower D8 neighbour of the routing
 /// surface, weighted ∝ slope^p. CSR edges, donor lists, a topological
 /// order by routed height, and the max-weight channel tree, in one place.
@@ -140,13 +140,14 @@ impl MfdGraph {
         Self::build_inner(grid, h_route, is_base, exponent, None)
     }
 
-    /// Hybrid routing (ADR 0005, amended): flow **converges once
+    /// Hybrid routing (model.md 5.2): flow **converges once
     /// channelized** (Holmgren 1994's area-dependent convergence, taken to
     /// its binary limit at our existing fluvial threshold). Dry cells with
-    /// `discharge ≥ channel_min` keep only their steepest edge; hillslopes
-    /// and flooded cells spread. Pure MFD alone braids valley floors into
+    /// `discharge ≥ channel_min` converge onto the two neighbours that
+    /// bracket their downhill direction, or else their steepest edge;
+    /// hillslopes and flooded cells spread. Pure MFD alone braids valley floors into
     /// flat multi-thread sheets — measured: ε-flat channel cells 21 → 1228,
-    /// Horton Rb 3.2 → 5.9 at island8k.
+    /// Horton Rb 3.2 → 5.9.
     pub fn build_hybrid(
         grid: &Grid,
         h_route: &[f64],
@@ -196,7 +197,7 @@ impl MfdGraph {
                 // never sees the loss). Reachable if epsilon_fill_m is so
                 // small that hc + ε rounds back to hc on high terrain —
                 // config validation bounds ε away from that, and this is
-                // the backstop (CONTRIBUTING: fail loudly).
+                // the backstop: fail loudly.
                 assert!(
                     !edges.is_empty(),
                     "non-base cell {i} has no downslope neighbour on the routed surface \
@@ -279,7 +280,7 @@ impl MfdGraph {
         order.par_sort_unstable_by_key(|&i| (f64_key(h_route[i as usize]), i));
 
         // Channel tree: max weight, ties to the lower index (same policy
-        // as the M1 D8 receivers).
+        // as `compute_receivers`).
         let tree_receivers: Vec<u32> = (0..n as u32)
             .into_par_iter()
             .map(|i| {

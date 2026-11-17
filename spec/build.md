@@ -611,7 +611,7 @@ The player map is the map library's (`lib/map/export.py`): an export step writes
 `exports` whose `output` is `player_map` and reads `map.json` in its `folder`. Decided, M6 slice 1.
 The spike's `--map` folder is not written by the core.
 
-**What it holds** (the layer set of `reports/Game map production pipelines.md`, "What a map system
+**What it holds** (the layer set of `docs/research/Game map production pipelines.md`, "What a map system
 needs"; its file rules are the library's, and ours where no source is given):
 
 | File | Holds |

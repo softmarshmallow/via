@@ -1,6 +1,6 @@
-//! Statistical gates: the quantitative half of the QA contract (README:
-//! statistics as gates, not post-hoc evaluation). Target ranges are the
-//! empirical norms for fluvial landscapes; see the reading list.
+//! Statistical gates (model.md 6): statistics as gates, not post-hoc
+//! evaluation. Target ranges are the empirical norms for fluvial
+//! landscapes; see `docs/references.md`.
 
 use std::collections::{BTreeMap, VecDeque};
 use via_num as num;
@@ -77,14 +77,14 @@ pub struct GatesReport {
     /// the orographic rain shadow, measured not assumed.
     pub rain_shadow_ratio: Gate,
     /// |Σdetached − Σdeposited − Σexported| / Σdetached over the whole run:
-    /// the sediment-routing bookkeeping audit (ADR 0004, core).
+    /// the sediment-routing bookkeeping audit (model.md 6, core).
     pub sediment_mass_closure: Gate,
     pub sediment_detached_m3: f64,
     pub sediment_deposited_m3: f64,
     pub sediment_exported_m3: f64,
     pub sediment_mean_land_m: f64,
     /// Shallow-pond merge volume over the run (m³): the declared sub-grid
-    /// mass source (ADR 0004), reported so its magnitude is auditable
+    /// mass source (model.md 4.2), reported so its magnitude is auditable
     /// against the fluvial budget.
     pub pond_merge_m3: f64,
     /// Largest water-surface spread within one connected standing-water
@@ -131,7 +131,7 @@ pub struct GateInputs<'a> {
     /// The channel tree (max-weight receivers); tree statistics live here.
     pub receivers: &'a [u32],
     /// The full MFD graph — the residual's fluvial term must sum what
-    /// erosion actually applied over all out-edges (ADR 0005).
+    /// erosion actually applied over all out-edges (model.md 6).
     pub mfd: &'a MfdGraph,
     pub stack: &'a [u32],
     pub donors: &'a DonorGraph,
@@ -142,7 +142,7 @@ pub struct GateInputs<'a> {
     /// The same weights accumulated along the channel tree — monotone
     /// downstream, so river-membership thresholds are downstream-closed.
     /// Extraction-flavoured gates (Hack subbasin membership) use this
-    /// (ADR 0005).
+    /// (model.md 5.5).
     pub tree_discharge_cells: &'a [f64],
     pub precip: &'a [f64],
     pub wind: Wind,
@@ -237,8 +237,8 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
     // stay IN: under the single-K G-model every steady channel obeys
     // S = U(1+G)/(K√Q) regardless of cover — channel cells carry an
     // in-transit layer of order G·U·dt every step, and excluding them
-    // would measure the model wrong. The bedrock/alluvial split becomes
-    // physical with M4's erodibility contrast (ADR 0004).
+    // would measure the model wrong. A bedrock/alluvial split would need
+    // separate erodibilities, which the model does not have (model.md 6).
     // Persistent floodplains for the advisory gate are cells well above the
     // in-transit layer.
     let alluvial_sed_m = num::max(
@@ -633,7 +633,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
     // Population: thick-sediment cells within the fluvial domain. Colluvial
     // hillslope piles (diffusion bookkeeping) also exceed the thickness
     // threshold but are not floodplains and would dominate the median at
-    // coarse dt (measured: they flipped the ratio above 1 at research dt).
+    // coarse dt (measured: they flipped the ratio above 1 at dt = 1e5 yr).
     let mut flood_slopes: Vec<f64> = Vec::new();
     for i in 0..n {
         let r = inp.receivers[i] as usize;
@@ -731,7 +731,7 @@ pub fn compute(inp: &GateInputs) -> (GatesReport, GateSamples) {
         slope_area_n_cells: sa_n,
         slope_area_flat_cells_excluded: flat_excluded,
         // Core, not advisory: this is the tripwire for operator-splitting
-        // violations (ADR 0002) — a config whose dt breaks the κ∇²h·dt ≲
+        // violations (model.md 1.3) — a config whose dt breaks the κ∇²h·dt ≲
         // U·dt limit must fail, not warn.
         spl_residual_median: Gate::new(spl_residual, 0.0, 0.35, false),
         hack_exponent,

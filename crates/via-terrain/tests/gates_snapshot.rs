@@ -1,5 +1,5 @@
 //! Golden-seed snapshot of the gates report. Review diffs; never
-//! blind-accept (CONTRIBUTING).
+//! blind-accept.
 
 use via_terrain::{run, TerrainConfig};
 

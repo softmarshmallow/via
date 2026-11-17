@@ -29,7 +29,7 @@ pub struct TerrainOutput {
     pub precip_m_per_yr: Vec<f64>,
     pub temperature_c: Vec<f64>,
     /// Standing-water depth (m): routed surface − true surface. A spectrum;
-    /// consumers threshold it (ADR 0004).
+    /// consumers threshold it (model.md 3, 4.2).
     pub water_depth_m: Vec<f64>,
     /// Sediment thickness (m); bedrock = heights − sediment.
     pub sediment_m: Vec<f64>,
@@ -63,7 +63,7 @@ fn enforce_border(grid: &Grid, h: &mut [f64], sediment_m: &mut [f64], depth: f64
 
 /// Base level = ocean = border-connected water only. Enclosed sub-sea
 /// pockets are NOT base level: they are depressions that flood to their
-/// spill on the routed surface — real lakes since M3 (ADR 0004).
+/// spill on the routed surface as real lakes (model.md 4.2).
 fn ocean_mask(grid: &Grid, h: &[f64], sea: f64) -> Vec<bool> {
     let n = grid.n();
     let mut ocean = vec![false; n];
@@ -167,7 +167,7 @@ pub fn run_given(
     // shallow-pond merge is a declared mass source and is metered alongside.
     let (mut run_det, mut run_dep, mut run_exp) = (0.0f64, 0.0f64, 0.0f64);
     let mut run_pond_merge_m3 = 0.0f64;
-    // Deposition acts on the fluvial domain only (ADR 0004): same
+    // Deposition acts on the fluvial domain only (model.md 4.1): same
     // threshold the slope–area gate uses for channel membership.
     let fluvial_min_cells = (cfg.fluvial_min_area_km2 * 1.0e6) / cfg.cell_area_m2();
 
@@ -188,7 +188,7 @@ pub fn run_given(
         let is_base = base_mask(&grid, &h, cfg.sea_level_m, held);
         // Flow is routed on the flooded copy; the true surface keeps its
         // deep depressions, which stand as lakes. Shallow ponding is
-        // sub-grid noise and merges back into the terrain (ADR 0004).
+        // sub-grid noise and merges back into the terrain (model.md 4.2).
         let mut h_route = h.clone();
         flow::priority_flood_eps(&grid, &mut h_route, &is_base, cfg.epsilon_fill_m);
         run_pond_merge_m3 +=
@@ -209,7 +209,7 @@ pub fn run_given(
         let weights = weights_of(&precip);
         // Two-pass routing: the pure-MFD pass finds where water
         // concentrates, the hybrid pass converges those channels while
-        // hillslopes and standing water keep spreading (ADR 0005).
+        // hillslopes and standing water keep spreading (model.md 5.2).
         let mfd0 = flow::MfdGraph::build(&grid, &h_route, &is_base, cfg.mfd_exponent);
         let q0 = flow::accumulate_discharge_mfd(&mfd0, &weights);
         let mfd = flow::MfdGraph::build_hybrid(
@@ -303,7 +303,7 @@ pub fn run_given(
     let discharge_cells = flow::accumulate_discharge_mfd(&mfd, &weights);
     // The channel tree (max-weight receiver): statistics, extraction, and
     // the `receivers` artifact contract (self-receiver = ocean) all live
-    // on the tree; the MFD field carries the water (ADR 0005).
+    // on the tree; the MFD field carries the water (model.md 5.5).
     let receivers = mfd.tree_receivers.clone();
     let donors = DonorGraph::build(&receivers);
     let stack = flow::build_stack(&receivers, &donors);
@@ -313,10 +313,10 @@ pub fn run_given(
     // the MFD field: MFD flux is not monotone along the tree (spreading
     // cells pass only their max-weight share down it), so thresholding it
     // breaks Strahler streams mid-channel and re-births them downstream
-    // as phantom order-1 heads (measured: 27 breaks at island8k, 6 at
-    // research, contaminating the Horton population). Tree flux is
+    // as phantom order-1 heads (measured: 27 breaks on one world, 6 on
+    // another, contaminating the Horton population). Tree flux is
     // monotone by construction, restoring the downstream-closure
-    // invariant the extraction and gates machinery assumes (ADR 0005).
+    // invariant the extraction and gates machinery assumes (model.md 5.5).
     let tree_discharge = flow::accumulate_discharge(&receivers, &stack, &weights);
     let strahler = extract::strahler_orders(
         &receivers,

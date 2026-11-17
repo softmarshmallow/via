@@ -45,7 +45,7 @@ pub fn prevailing_wind(cfg: &TerrainConfig) -> Wind {
 }
 
 /// Humidity normalization anchor. The sweep coefficients themselves are
-/// forcing and live in `TerrainConfig` (ADR 0003); this is just the unit
+/// forcing and live in `TerrainConfig` (model.md 3); this is just the unit
 /// the deficit is measured against, and the field is normalized afterward.
 const HUMIDITY_CAPACITY: f64 = 1.0;
 

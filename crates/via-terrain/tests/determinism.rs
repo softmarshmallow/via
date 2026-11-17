@@ -27,7 +27,7 @@ fn bitwise_identical_across_thread_counts() {
     let b = pool4.install(|| run(&cfg, &mut |_, _| {}));
 
     // Tripwire: the hybrid channelized (SFD) routing path must actually be
-    // exercised, or this test silently stops covering it (ADR 0005).
+    // exercised, or this test silently stops covering it (model.md 5.2).
     let fluvial_min = (cfg.fluvial_min_area_km2 * 1.0e6) / cfg.cell_area_m2();
     assert!(
         a.discharge_cells.iter().cloned().fold(0.0, via_num::max) >= fluvial_min,

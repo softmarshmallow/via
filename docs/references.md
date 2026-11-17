@@ -106,7 +106,7 @@ Relevant to overlays, variants, parts and the handoff to an engine.
 
 ## Player-facing maps (minimap and world map)
 
-From a one-pass study on 2026-11-11; the full report is `reports/Game map production pipelines.md`.
+From a one-pass study on 2026-11-11; the full report is `docs/research/Game map production pipelines.md`.
 Entries marked (unread) were seen only in search summaries.
 
 - [Breath of the Wild UI session, CEDEC 2017, English summary](https://gist.github.com/idbrii/e39fe96279aa1670319bfa521d907399):
@@ -132,7 +132,7 @@ Entries marked (unread) were seen only in search summaries.
 
 ## City building and asset kits
 
-From a one-pass study on 2026-11-12; the full report is `reports/Modular city asset contracts.md`,
+From a one-pass study on 2026-11-12; the full report is `docs/research/Modular city asset contracts.md`,
 which marks what was read, seen only in summaries, or recalled.
 
 - Burgess and Purkeypile on Skyrim's kits (listed above) and the Fallout 4 follow-up (GDC 2016):

@@ -1,7 +1,7 @@
 # Ways, kits and cities: what we own
 
 Status: draft for discussion, 2026-11-12. It records what two spike worlds (`market`, `city`) and a
-study (`reports/Modular city asset contracts.md`) support, what was decided on the way, and what is
+study (`docs/research/Modular city asset contracts.md`) support, what was decided on the way, and what is
 still open. The compiler's behaviour is specified in `spike-final:spike/SPEC.md` section 12; this page is the
 reasoning. Nothing here is final.
 

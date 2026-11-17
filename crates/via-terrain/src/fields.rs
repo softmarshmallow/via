@@ -1,6 +1,6 @@
-//! Boundary-condition fields: uplift and the initial surface. These are the
-//! only exogenous inputs of the stage (README: the causal chain is rooted at
-//! uplift/climate; precipitation becomes a field of its own in M2).
+//! Boundary-condition fields: uplift and the initial surface, generated
+//! from the seed when the stage is not given them. Forcing, not process
+//! (model.md 3); precipitation is computed inside the stage (model.md 2).
 
 use rayon::prelude::*;
 use via_num as num;

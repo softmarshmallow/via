@@ -1,12 +1,12 @@
 //! Sediment routing: the deposition half of Davy & Lague (2009), in the
-//! G-coefficient form of Yuan et al. (2019). ADR 0004.
+//! G-coefficient form of Yuan et al. (2019). model.md 4.
 //!
 //! One sequential sweep in upstream→downstream (reverse stack) order routes
 //! the volume detached by the fluvial solve down the receiver tree. Dry
 //! cells keep the G-fraction of the *incoming* flux (local detachment joins
 //! the outflow — a headwater cell cannot re-bury itself), flooded cells trap
 //! flux up to their water level (lacustrine deltas), base-level cells export
-//! (marine dispersal is out of scope until M6). The sweep is a closed
+//! (the model has no marine deposition). The sweep is a closed
 //! bookkeeping system: detached = deposited + exported, and the mass-closure
 //! gate holds it to numerical precision.
 
@@ -44,7 +44,7 @@ pub struct SedimentBudget {
 /// `fluvial_min_cells`): the ξ–q model is channel physics, and on Q̃ ≈ 1
 /// hillslope cells the G/Q̃ fraction saturates at 1 — every hillslope cell
 /// becomes a perfect trap, sediment creeps downhill one cell per step, and
-/// the landscape smears into a dome (observed, ADR 0004). Hillslope
+/// the landscape smears into a dome (observed, model.md 4.1). Hillslope
 /// transport is the diffusion term's job; hillslope cells pass flux
 /// through. Flooded cells trap regardless of discharge — standing water is
 /// standing water.
@@ -81,8 +81,8 @@ pub fn route_sediment(
         if is_base[iu] {
             // Base level has no out-edges: everything arriving leaves the
             // system. (Base cells are skipped by the fluvial solve, so
-            // det_vol is 0 here; sea_level is kept in the signature for the
-            // day marine deposition arrives in M6.)
+            // det_vol is 0 here; sea_level is kept in the signature for
+            // marine deposition, which the model does not have.)
             let _ = sea_level;
             total_exp += phi;
             continue;

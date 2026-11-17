@@ -37,7 +37,7 @@ Throwaway code, under `spike/` until M7 and at the tag `spike-final` since. Firs
       "Layers" in `spike-final:spike/FINDINGS.md`). Open after the spike: namespaces per layer, which effects
       may cross layers, direction checks inside expressions, compiling or swapping one layer alone,
       and per-layer variants.
-- [x] Study the player-facing map (report: `reports/Game map production pipelines.md`). Findings:
+- [x] Study the player-facing map (report: `docs/research/Game map production pipelines.md`). Findings:
       wherever a pipeline is documented, the map is derived from the level's own data and only a
       small style layer is authored by hand; regeneration that overwrites hand edits is the
       recurring failure in shipped editors; engines ship only a camera-to-texture primitive; no
@@ -81,7 +81,7 @@ Throwaway code, under `spike/` until M7 and at the tag `spike-final` since. Firs
         (`sub_seed`, numbers.md 7.2) and the crate deleted; `via-terrain` stays a program the spec
         admits on stated terms (R34, protocol.md 8; a Rust SDK or a Python port stays the owner's);
         its noise is the model's own value noise, its maths through `via-num`, no second core;
-        `docs/archive/` deleted, its four ADRs moved to `crates/via-terrain/docs/` (tag `spike-final`
+        `docs/archive/` deleted, its four ADRs folded into `crates/via-terrain/docs/model.md` (tag `spike-final`
         holds the old paths); basin's manifest id unchanged by the cutover (change review). The
         charter names the nine libraries and terrain's terms.
 - [x] Refine the spike as if it were the product (done 2026-11-12): `spike-final:spike/SPEC.md` states the
@@ -2344,7 +2344,7 @@ Structural checks stay in the core; everything else is an opt-in rule.
 - [ ] -> spec/fields.md: Decide which picture formats and depths a field may read (16-bit PNG works; EXR, tiles for
       large worlds and colour profiles do not), and whether a picture can pass through to the
       engine as a texture. Context: the `relief` world; see FINDINGS, "Pictures as fields".
-- [ ] -> spec/assets.md: Draft the asset contract from the city study (`reports/Modular city asset contracts.md`,
+- [ ] -> spec/assets.md: Draft the asset contract from the city study (`docs/research/Modular city asset contracts.md`,
       section 5): a written front and up rule, module per axis apart from bounds, a pivot rule per
       kit checked against the model, a kit table of roles and variants, connectors, surfaces and
       clearances. Lesson from studios: the kit is cheap to build and expensive to change.
