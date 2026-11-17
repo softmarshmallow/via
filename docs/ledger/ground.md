@@ -20,12 +20,12 @@ memory.
 | landform: ridge, valley, saddle, pass, mesa, canyon, plateau | named shapes of land that rules and people refer to | Area partition | lib | none |
 | relief at three scales | terrain shape read large, medium and fine | Guidance | core | none |
 | slope, aspect, curvature | measures of the ground that rules read: steepness, the compass direction a slope faces, convex against concave; they stand in for soil depth and stability, sun and shade, exposure and gathering water | Derivation (focal) | core | partly: `slope()` |
-| flow accumulation, drainage, wetness | how much upstream ground drains through each post, and that weighed against slope: where water runs, gathers and keeps the soil moist | Derivation (global) | core | partly: `derived.md 4` |
+| flow accumulation, drainage, wetness | how much upstream ground drains through each post, and that weighed against slope: where water runs, gathers and keeps the soil moist | Derivation (global) | core | partly: `lib/land/uplands.py`, `lib/terrain/kinds.toml`, `derived.md 4` |
 | erosion | water and slumping shaping the land, simulated at build time | Simulation | lib, game | shown: `lib/terrain/kinds.toml`, `examples/basin` |
 | deposition, talus, alluvial fan | where eroded material comes to rest: broken rock piled at its resting angle below a cliff, a fan where a stream leaves the hills | Simulation | lib | partly: `lib/land/weather.py` |
 | erosion masks: flow, wear, deposit | by-products of erosion that drive ground and scatter | Simulation | core | none |
 | strata, bedrock, outcrop | rock type and layering showing through the soil | Field | lib, pack | none |
-| cliff | a face too steep or overhanging for a height field, replaced by mesh geometry | Representation switch | lib | shown: `land.cliff`, `land.sheer_cliff` |
+| cliff | a face too steep or overhanging for a height field, replaced by mesh geometry | Representation switch | lib | shown: `land.sheer_cliff`, `examples/coast` |
 | overhang, cave, arch | ground above ground, with air beneath it | Representation switch | core | partly: `land.cave`, `surfaces.md 6` |
 | pit, chasm, sinkhole | a vertical opening joining surface and underground | Representation switch | core | none |
 | floating island | a landmass with no ground link and a visible underside | Representation switch | lib | none |
@@ -34,7 +34,7 @@ memory.
 | natural or farmed terrace | stepped ground made by a river or by farming | Profile | lib | partly: `town.terrace` |
 | stamp | a reusable shape pressed into the terrain | Field | core | shown: `examples/relief` |
 | weight map, splat map | how much of each ground material lies at each post | Field | core | shown: `type`, `fields.md 1` |
-| ground material, terrain layer | one material the ground is painted with, with its own small repeating texture | Asset | pack | shown: `[material.<name>]` |
+| ground material, terrain layer | one material the ground is painted with, with its own small repeating texture | Asset | pack | partly: `[material.<name>]` |
 | material limit per tile | a cap on how many materials meet in one terrain piece | Delivery | core, loader | none |
 | rule-driven ground material | material chosen by slope, height and wetness, not painted | Derivation (local) | lib | shown: `lib/land/ground.md`, `paint` |
 | height blend, layer blend | how two ground materials mix at their border | Meeting | pack, loader | none |
@@ -68,7 +68,7 @@ Three families of method, usually combined (Galin et al. 2019):
 | faulting | repeatedly cut the terrain along random lines and offset one side | Field | lib | none |
 | feature-based construction | place ridges, rivers and hills as controlled features and build the ground from them; the next subsection | Profile | core | shown: `authority.md 2` |
 | tectonic uplift | ground rises at a mapped rate while rivers cut it down; ranges and branching valleys result (Cordonnier et al. 2016); scale: tens to hundreds of km | Simulation | lib | none |
-| hydraulic erosion | running water cuts gullies and drops sediment in fans and basins; scale: kilometres | Simulation | lib | partly: `lib/terrain/kinds.toml` |
+| hydraulic erosion | running water cuts gullies and drops sediment in fans and basins; scale: kilometres | Simulation | lib | shown: `lib/terrain/kinds.toml`, `examples/basin` |
 | thermal erosion | over-steep rock breaks and slides; leaves cliffs above rubble slopes; scale: local | Simulation | lib | shown: `lib/land/weather.py` |
 | stream power law | large-scale river incision from drainage area and slope | Simulation | lib | none |
 | drainage consistency | every valley connects downhill to an outlet; the clearest mark of real or simulated terrain | Network (directed) | lib | partly: `terrain.terrain_river` |
@@ -104,9 +104,9 @@ within procedural terrain methods.
 | feature (geography) | one real-world thing as a shape plus attributes: a river, a road, a parcel | Shape | core | shown: `[feature.<id>]` |
 | feature-based terrain | terrain defined by ridge lines, river lines and cliff lines, each with a side profile; the ground between is filled in (Hnaidi et al. 2010) | Profile | core | partly: `land.cliff` |
 | diffusion | filling the space between features by smoothly spreading their heights and slopes outward | Derivation (global) | core | none |
-| primitive | a small parametric landform (hill, crater, valley segment) with a limited area of effect | Field | core | partly: `examples/relief` |
+| primitive | a small parametric landform (hill, crater, valley segment) with a limited area of effect | Field | core | shown: `water.pond`, `land.cliff`, `radius` |
 | construction tree | primitives combined by add, blend and replace operators into one terrain (Génevaux et al. 2015) | Grammar | core | partly: `authority.md 4` |
-| feature tree (engineering design) | a part recorded as an ordered history of meaningful operations (hole, fillet), re-run when one changes | Principle | core | shown: `graph.md 1` |
+| feature tree (engineering design) | a part recorded as an ordered history of meaningful operations (hole, fillet), re-run when one changes | Principle | core | partly: `graph.md 1`, `authority.md 4` |
 | rasterisation | turning features into cells | Derivation (local) | core | shown: `authority.md 2` |
 | feature extraction | the reverse: recovering ridges, rivers or outlines from cells | Derivation (global) | core | shown: `where`, `derived.md 1` |
 
@@ -118,7 +118,7 @@ things reshape terrain, and a gameplay mechanic.
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| brush | a footprint with a radius, a strength and a falloff towards its edge | Profile | core | partly: `[kind.<k>.effect.<id>]` |
+| brush | a footprint with a radius, a strength and a falloff towards its edge | Profile | core | shown: `[kind.<k>.effect.<id>]`, `radius`, `mask` |
 | spline terraforming | ground reshaped along a curve to carry a road or river, blending back to natural ground at the sides | Profile | lib | shown: `ways.road` |
 | grading | shaping ground to a designed slope, for drainage or for a route | Profile | lib | shown: `ways.road` |
 | cut and fill | lowering ground in one place and raising it in another to fit a grade | Profile | lib | shown: `ways.freeway` |
@@ -142,7 +142,7 @@ be exposed. The layer-stack rows are from Peytavie et al. 2009.
 | rock hardness | how well a stratum resists erosion | Field | lib | none |
 | differential erosion | soft strata wear back faster than hard ones, so a rock face becomes stepped | Simulation | lib | none |
 | ledge / bench | the shelf a hard stratum leaves standing out | Derivation (local) | lib | none |
-| fold, fault | strata bent, or broken and shifted, by movement of the crust | Derivation (local) | lib | none |
+| fold, fault | strata bent, or broken and shifted, by movement of the crust | Field | lib | none |
 | strata function | layer chosen from a position's distance along the tilted stacking direction, with noise to bend the bands | Derivation (local) | lib | none |
 | band displacement | each stratum on a cliff mesh pushed out or in by its hardness, forming ledges and recesses | Derivation (local) | lib | none |
 | terracing | the same stepping applied to a heightfield: heights snapped towards levels | Derivation (local) | lib | none |
@@ -165,8 +165,8 @@ from what stands on the ground.
 | tiling texture | a small detail image repeated across the ground; sharp up close, visibly repetitive from afar | Asset | pack | partly: `repeat` |
 | tint map | a low-resolution colour field over the whole terrain, multiplied onto the detail textures | Field | core | none |
 | ground-colour inheritance | grass and small plants take the tint of the ground beneath so they blend in | Scatter | loader | none |
-| ground footprint | the material an object asks for beneath itself; placing it stamps that into the weight map | Derivation (local) | lib | shown: `paint` |
-| write-back | a later stage (scatter, road, water) changing the surface an earlier stage produced | Derivation (local) | core | shown: `paint` |
+| ground footprint | the material an object asks for beneath itself; placing it stamps that into the weight map | Derivation (local) | lib | partly: `ground`, `paint` |
+| write-back | a later stage (scatter, road, water) changing the surface an earlier stage produced | Derivation (local) | core | shown: `[kind.<k>.effect.<id>]`, `paint` |
 | skirt | extra geometry at an object's base, textured like ground, that overlaps the terrain | Meeting | pack | partly: `land.sheer_cliff`, `build.md 10` |
 
 ### Terrain analysis (abiotic data)
@@ -178,12 +178,12 @@ wetness are rows of the section's first table.
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| altitude | height above a datum; stands in for temperature (lapse rate), tree line, snow line | Derivation (local) | core | shown: `f()` |
+| altitude | height above a datum; stands in for temperature (lapse rate), tree line, snow line | Field | core | shown: `f()` |
 | topographic position | height relative to the neighbourhood: ridge, mid-slope, valley floor; stands in for landform class | Derivation (focal) | core | none |
 | occlusion / sky-view | how much of the sky surrounding terrain blocks; stands in for shelter, shade, retained moisture | Derivation (global) | core | none |
 | illumination / insolation | sunlight received over a day or year, with terrain shadows; stands in for warmth, dryness, growing conditions | Derivation (global) | core | none |
 | wind exposure | how open a location is to a prevailing wind; stands in for stunted growth, snow drift, rain shadow | Derivation (global) | core | none |
-| latitude, longitude | position across the map used as a gradient; stands in for regional climate variation | Derivation (local) | core | none |
+| latitude, longitude | position across the map used as a gradient; stands in for regional climate variation | Field | core | none |
 
 ## 3. Water
 
@@ -193,9 +193,9 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 |---|---|---|---|---|
 | sea level | the height below which there is sea | Field | core | shown: `examples/coast` |
 | ocean, sea | open water to the horizon | Field | lib, engine | partly: `examples/coast` |
-| shoreline, coast, beach | where land meets water and how the ground grades in | Meeting | core | shown: `where`, `derived.md 1` |
+| shoreline, coast, beach | where land meets water and how the ground grades in | Meeting | core | shown: `where`, `derived.md 1`, `lib/land/ground.md` |
 | lake, pond | still water held by the ground: a level surface filling a hollow | Derivation (global) | lib | shown: `water.lake`, `water.tarn`, `water.pond` |
-| water depth, bathymetry | the ground under water, as a depth field | Derivation (local) | core | partly: `lib/water/fill.py` |
+| water depth, bathymetry | the ground under water, as a depth field | Derivation (local) | core | shown: `lib/water/kinds.toml`, `water.pond` |
 | wade, swim, dive depths | the depths at which movement changes | Measure | core, game | partly: `lib/review/reach.py` |
 | watershed, drainage basin, divide | the land draining to one outlet, and its edge | Area partition | lib | none |
 | river network, tributary, confluence | rivers as a tree joining downstream | Network (directed) | lib | none |
@@ -208,7 +208,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | ford, shallows | water shallow enough to cross | Meeting | lib, game | shown: `ways.ford` |
 | rapids | a steep, rough reach of river | Network (directed) | lib | none |
 | waterfall, plunge pool | where a river drops | Meeting | lib | partly: `water.weir` |
-| flow map, current | direction and speed of water | Derivation (global) | lib, game | none |
+| flow map, current | direction and speed of water | Field | lib, game | none |
 | wetland, marsh | ground at water level | Area partition | lib | none |
 | changeable water level | a water body whose height is a world state | Overlay | core | none |
 | ice, frozen lake, glacier | water in its solid states | Overlay | lib, engine | none |
@@ -226,7 +226,7 @@ Read from sources in 2026-11.
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
 | Strahler order | stream rank that grows where equal tributaries merge | Network (directed) | lib | none |
-| priority-flood | algorithm that fills depressions so every location drains (Barnes et al. 2014) | Derivation (global) | core | shown: `derived.md 2`, `lib/water/fill.py` |
+| priority-flood | algorithm that fills depressions so every location drains (Barnes et al. 2014) | Derivation (global) | core | shown: `derived.md 4`, `lib/land/uplands.py` |
 | river-first terrain | lay out the river network, then build the terrain around it (Génevaux et al. 2013) | Network (directed) | lib | shown: `lib/terrain/kinds.toml`, `examples/basin` |
 
 ## 4. Vegetation and ecology
@@ -244,14 +244,14 @@ subsections were read in 2026-11 from the talk on *Far Cry 5*'s procedural world
 | scatter, procedural placement | many things placed by a rule | Scatter | core | shown: `[scatter.<id>]`, `rules.md 7` |
 | density map, mask | where and how thick, as a field or painted picture | Field | core | shown: `density` |
 | points and attributes | what placement rules pass along: positions with named values | Scatter | core | partly: `[scatter.<id>]` |
-| minimum spacing, Poisson-disk sampling | keeping scattered things apart: random points with a least distance between them (blue noise) | Scatter | core | shown: `spacing` |
+| minimum spacing, Poisson-disk sampling | keeping scattered things apart: random points with a least distance between them (blue noise) | Scatter | core | partly: `spacing`, `lib/vegetation/clumps.py` |
 | clumping, clustering | things gathering in groups with gaps | Scatter | core | shown: `clump`, `examples/glade` |
 | species mix, palette | which plants, in what share | Recipe | lib, pack | shown: `assets`, `weight` |
 | per-species settings | a plant's density, draw distance and collision | Asset | pack, loader | none |
 | growth stage, size variation | the same species young, mature and dying | Scatter | pack, lib | partly: `scale` |
 | hero tree, specimen | one hand-placed plant that anchors a view | Placement | pack | shown: `[instance.<id>]` |
 | canopy, forest edge, glade, meadow | the forest's cover and its openings | Area partition | lib | partly: `vegetation.wood`, `vegetation.clearing` |
-| understory, undergrowth | what grows beneath and because of the trees | Scatter | lib | partly: `lib/vegetation/clumps.py` |
+| understory, undergrowth | what grows beneath and because of the trees | Scatter | lib | shown: `around`, `examples/basin` |
 | riparian growth, reeds | plants that follow water: the band along it with its own moisture-loving growth | Scatter | lib | partly: `examples/glade` |
 | leaf litter, forest floor | ground material caused by the trees above | Derivation (local) | lib | none |
 | deadfall, snag, stump, log | dead wood standing or lying | Scatter | lib, pack | partly: `lib/packs/starter.toml` |
@@ -276,16 +276,16 @@ share of every biome per cell.
 |---|---|---|---|---|
 | biome map (boolean) | exactly one biome label per cell; exclusive, readable, easy to debug | Area partition | core | none |
 | biome weights (gradient) | a share of every biome per cell, summing to one; smooth but ambiguous when several overlap | Field | core | partly: `type` |
-| hardening | turning weights into labels by taking the strongest at each cell | Derivation (local) | core | partly: `lib/map/export.py` |
+| hardening | turning weights into labels by taking the strongest at each cell | Derivation (local) | core | shown: `lib/map/export.py` |
 | main biome, sub-biome | a coarse painted class, refined by rule into finer classes within it (the talk on Far Cry 5 (?)) | Area partition | lib | none |
-| rule classification | label chosen by thresholds on abiotic fields (Köppen climate classes, Whittaker) | Area partition | lib | partly: `lib/land/ground.md` |
+| rule classification | label chosen by thresholds on abiotic fields (Köppen climate classes, Whittaker) | Derivation (local) | lib | partly: `lib/land/ground.md` |
 | nearest-seed partition (Voronoi) | each cell takes the label of its closest seed; borders roughened by warping | Area partition | core | none |
-| parameter-space lookup | several noise fields give a cell's climate; it takes the biome nearest in that climate space | Area partition | lib | none |
+| parameter-space lookup | several noise fields give a cell's climate; it takes the biome nearest in that climate space | Derivation (local) | lib | none |
 | majority filter | each cell takes the commonest label around it; removes specks, smooths borders | Derivation (focal) | core | none |
 | border dithering | cells near a border pick a side at random by weight, so two classes intermix instead of meeting at a line | Meeting | core | none |
 | biotic layer | the living result decided from abiotic data: which species grow where | Area partition | lib | none |
 | viability | a per-species score over abiotic fields; the best-scoring species win a location | Derivation (local) | lib | partly: `density` |
-| Whittaker diagram | biome chosen from temperature and rainfall | Area partition | lib | none |
+| Whittaker diagram | biome chosen from temperature and rainfall | Derivation (local) | lib | none |
 | biome recipe | the materials and species a biome expands into | Recipe | lib | none |
 
 ### Scatter: where and how each thing stands
@@ -296,14 +296,14 @@ and creeping soil bends young trunks.
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| attribute modulation | abiotic fields set not only whether a thing is placed but its size, density, age and variant | Scatter | core | partly: `scale`, `tint` |
+| attribute modulation | abiotic fields set not only whether a thing is placed but its size, density, age and variant | Scatter | core | partly: `density` |
 | krummholz | stunted, twisted trees in the band just below the tree line | Scatter | lib | none |
 | flagging | trees shaped one-sided by a prevailing wind | Scatter | lib | none |
 | ecological ordering | large plants claim space first; smaller ones fill what remains | Scatter | core | none |
 | distance field | distance from every location to the nearest feature (water, road, building) | Derivation (global) | core | shown: `dist()`, `sdist()` |
 | direction field | a direction at every location, usually the downhill of a distance field: "towards the water" | Derivation (global) | core | none |
 | instance orientation | each instance's rotation: random spin, or read from a direction field | Scatter | core | partly: `rules.md 7` |
-| up alignment | whether an instance stands along world-up (trees) or the ground normal (rocks, low plants), or a blend | Scatter | pack | partly: `up` |
+| up alignment | whether an instance stands along world-up (trees) or the ground normal (rocks, low plants), or a blend | Scatter | pack | partly: `rules.md 6` |
 | lean | a tilt away from upright along a direction field: towards light or water, away from wind | Scatter | core | none |
 | variant selection | which model of a species is used at a location, chosen by a field (a bent trunk where it is steep) | Scatter | core | partly: `assets`, `weight` |
 | basal sweep ("pistol butt") | a trunk curved at the base and upright above, the curve bowing downhill | Asset | pack | none |

@@ -55,7 +55,7 @@ Delivery.
 | furniture against access | a pole or bin blocking a door, driveway or crossing | Measure | lib | none |
 | wire to world | a sagging wire through a tree, roof or hill | Measure | lib | none |
 | fence on a slope | panels stepping with gaps, or posts leaning | Meeting | lib | none |
-| boundary across way or stream | a fence barring a road or hanging over water | Meeting | lib | partly: `town.gate` |
+| boundary across way or stream | a fence barring a road or hanging over water | Meeting | lib | partly: `lib/town/kit.py`, `town.gate` |
 | field to field, field to wild | crop rows cut off or spilling past the boundary | Meeting | lib | none |
 
 **Buildings**

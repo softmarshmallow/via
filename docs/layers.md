@@ -38,7 +38,7 @@ Code sits in rings, from the centre outward. A ring may depend only on rings nea
 | model | The eleven nouns and what they do | substrate | the same; and no domain word in an engine crate (`xtask`, deny-list) |
 | door | The step protocol and the SDK: the only way code reaches a build | substrate | `tools/layers_check.py`: the model and the door do not depend on each other |
 | command | The `via` program, which joins model and door | model, door | `tools/layers_check.py` |
-| library | Concepts: kinds as data, steps as code | the door | Python under `lib/` imports only the SDK (`xtask`, python-imports); a library's program links neither the model nor the command (`tools/layers_check.py`) |
+| library | Concepts: kinds as data, steps as code | the door; a library's program may also link substrate crates | Python under `lib/` imports only the SDK (`xtask`, python-imports); a library's program links neither the model nor the command (`tools/layers_check.py`) |
 | world | What an author states; packs bring in assets | libraries and the format | the conformance cases |
 
 Four kinds of thing stand beside the rings and are not depended on by them:
@@ -161,26 +161,26 @@ Counted over 865 ledger rows, 50 kinds, 17 steps, 21 example worlds and 951 conf
 
 | Archetype | Ledger rows that are ours: shown, partly, none | Chapters, with their cases | Kinds | Steps | Examples that use it |
 |---|---|---|---|---|---|
-| Field | 11, 6, 15 | fields 58, formulas 52 | 0 | 1 | 21 |
-| Shape | 4, 2, 5 | geometry 85 | 0 | 0 | 21 |
-| Asset | 13, 6, 27 | assets 85 | 0 | 0 | 11 |
-| Derivation | 10, 8, 31 | formulas 52, derived 33 | 2 | 1 | 18 |
-| Simulation | 3, 2, 12 | derived 33, protocol 87 | 3 | 2 | 2 |
-| Profile | 14, 11, 11 | authority 57 | 18 | 0 | 19 |
-| Network | 8, 2, 11 | geometry 85, derived 33 | 5 | 1 | 18 |
-| Area partition | 7, 15, 20 | geometry 85 | 6 | 0 | 3 |
+| Field | 13, 5, 19 | fields 58, formulas 52 | 0 | 1 | 21 |
+| Shape | 3, 2, 5 | geometry 85 | 0 | 0 | 21 |
+| Asset | 12, 7, 28 | assets 85 | 0 | 0 | 11 |
+| Derivation | 10, 9, 28 | formulas 52, derived 33 | 2 | 1 | 18 |
+| Simulation | 4, 1, 12 | derived 33, protocol 87 | 3 | 2 | 2 |
+| Profile | 14, 11, 10 | authority 57 | 18 | 0 | 19 |
+| Network | 8, 3, 12 | geometry 85, derived 33 | 5 | 1 | 18 |
+| Area partition | 7, 13, 18 | geometry 85 | 6 | 0 | 3 |
 | Placement | 3, 0, 7 | rules 52 | 0 | 0 | 12 |
 | Linear placement | 5, 5, 13 | rules 52 | 0 | 2 | 5 |
 | Scatter | 10, 13, 18 | rules 52 | 0 | 1 | 11 |
-| Recipe | 2, 8, 9 | rules 52 | 0 | 1 | 4 |
-| Grammar | 3, 3, 12 | protocol 87 | 4 | 1 | 1 |
+| Recipe | 3, 7, 10 | rules 52 | 0 | 1 | 4 |
+| Grammar | 2, 4, 12 | protocol 87 | 4 | 1 | 1 |
 | Representation switch | 5, 2, 11 | surfaces 62 | 8 | 0 | 8 |
 | Meeting | 22, 35, 39 | authority 57, surfaces 62, composition 87 | 13 | 0 | 13 |
 | Overlay | 5, 3, 6 | documents 76, identity 50 | 0 | 0 | 21 |
-| Guidance | 0, 4, 60 | build 59 | 0 | 0 | 0 |
+| Guidance | 1, 2, 61 | build 59 | 0 | 0 | 0 |
 | Measure | 7, 5, 18 | protocol 87, build 59 | 0 | 6 | 7 |
-| Markup | 3, 2, 8 | documents 76, build 59 | 4 | 0 | 21 |
-| Delivery | 4, 8, 23 | build 59 | 0 | 1 | 1 |
+| Markup | 3, 2, 7 | documents 76, build 59 | 4 | 0 | 21 |
+| Delivery | 5, 6, 23 | build 59 | 0 | 1 | 1 |
 
 **Archetypes with no form in the engine:** Grammar, Guidance.
 
@@ -216,6 +216,6 @@ Counted over 865 ledger rows, 50 kinds, 17 steps, 21 example worlds and 951 conf
 
 | Check | Holds |
 |---|---|
-| `python3 tools/layers_check.py` | This page's tables, the rings, and section 25 of the ledger |
-| `python3 tools/ledger_check.py` | The ledger's rows, pointers and counts |
-| `cargo run -p xtask -- check` | No domain word in the engine, libraries import only the SDK, all maths through `via-num`, and the rest of the repository checks |
+| `cargo run -p xtask -- check` | Everything below, and the rest of the repository checks: no domain word in the engine, libraries import only the SDK, all maths through `via-num`. `cargo test --workspace` runs the same two record checks |
+| `python3 tools/layers_check.py` | This page's tables, the rings, the order among libraries, and section 25 of the ledger. With `--write` it refreshes "What the layout shows" and what each kind is made of |
+| `python3 tools/ledger_check.py` | The ledger's rows, pointers and counts. With `--write` it refreshes the counts |

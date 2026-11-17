@@ -26,7 +26,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | ambient particles | dust, pollen, leaves, embers, fireflies | Runtime | loader, game | none |
 | picture-change region | a region that changes the final image | Markup | game, loader | none |
 | colour script, regional palette | the planned colour and mood of each region | Guidance | game | none |
-| art style | the style everything shares; what art direction decides | Practice | game | none |
+| art style | the style everything shares; what art direction decides | Guidance | game | none |
 
 ### A stylised sky stored as masks
 
@@ -41,7 +41,7 @@ How a stylised world stores an authored look as data the engine can relight, sho
 | shading mask | painted light and dark areas of a form | Asset | pack | none |
 | rim mask | the outline that catches light from behind | Asset | pack | none |
 | threshold gradient | a painted ramp; raising a cut-off across it makes a shape grow or dissolve | Asset | pack | none |
-| volumetric cloud | the realistic alternative: clouds as a simulated density in space, lit physically | Field | engine | none |
+| volumetric cloud | the realistic alternative: clouds as a simulated density in space, lit physically | Runtime | engine | none |
 
 ## 15. Seeing far and running fast
 
@@ -78,10 +78,10 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| minimap | the small map in the corner | Delivery | core, game | shown: `lib/map/export.py`, `build.md 9` |
-| world map | the full map screen | Delivery | core, game | partly: `lib/map/export.py` |
+| minimap | the small map in the corner | Delivery | core, game | shown: `engines/godot/addons/via_loader/minimap.gd`, `lib/map/export.py` |
+| world map | the full map screen | Delivery | core, game | shown: `engines/godot/addons/via_loader/minimap.gd`, `lib/map/export.py` |
 | map marker, icon | what is shown on it | Markup | core | shown: `map.poi` |
-| place name, label | names of places, as translatable data | Markup | core | partly: `map.area` |
+| place name, label | names of places, as translatable data | Markup | core | shown: `map.area`, `map.poi`, `lib/map/export.py` |
 | contours, relief shading | how the map shows the shape of land | Derivation (focal) | core | none |
 | map reveal region | the piece of map one unlock uncovers | Markup | core | none |
 | layered map | a separate map per vertical layer | Delivery | core | partly: `lib/map/export.py` |
@@ -99,7 +99,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | source of truth | the one place a fact is edited | Principle | core | shown: `documents.md 1` |
 | hand-authored, procedural, hybrid | made by a person, by a rule, or both | Principle | core | shown: `authority.md 3` |
 | non-destructive | an edit that does not bake away what came before: change an input and what follows is made again | Principle | core | shown: `graph.md 7` |
-| override, pin, lock | a hand decision that survives regeneration and beats the rule | Principle | core | shown: `[pin.<id>]`, `[clear.<id>]`, `[lock.<id>]`, `identity.md 4` |
+| override, pin, lock | a hand decision that survives regeneration and beats the rule | Principle | core | shown: `[pin.<id>]`, `[clear.<id>]`, `identity.md 4` |
 | seed, determinism | the same input giving the same world | Principle | core | shown: `seed`, `numbers.md 9` |
 | variant | the same world in another condition | Overlay | core | shown: `[change.<name>]` |
 | layer | a separately owned document of one world | Overlay | core | shown: `[layer.<id>]` |
@@ -115,7 +115,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | references, renames | how a moved or renamed asset keeps its users | Principle | engine, loader | none |
 | unused assets, dependency size | finding what nothing uses and what costs most | Measure | pack | shown: `assets.md 8` |
 | editor-only versus shipped data | markup that helps authoring and must not ship | Delivery | core, loader | none |
-| editor extension | how our loader is delivered into each engine | Delivery | loader | partly: `engines/godot/addons` |
+| editor extension | how our loader is delivered into each engine | Practice | loader | partly: `engines/godot/addons` |
 | generator, step | user code that makes world | Practice | core | shown: `[step.<id>]`, `protocol.md 1` |
 | placement graph | a node graph of placement rules, in the engine or a tool | Practice | engine, ? | none |
 | geometry along a line | a mesh swept or lofted along a path: a cross-section carried along a curve | Profile | core | partly: `build.md 10` |

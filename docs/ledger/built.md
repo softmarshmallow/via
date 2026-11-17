@@ -12,7 +12,7 @@ subsections were read from sources in 2026-11.
 |---|---|---|---|---|
 | road network, street graph | ways and where they meet | Network (undirected) | lib | shown: `[network.<id>]`, `lib/town/streets.py` |
 | street hierarchy, way class | which ways are main, minor or mere tracks | Network (undirected) | lib | shown: `town.main_street`, `town.street`, `ways.freeway` |
-| street typology | avenue, boulevard, one-way, dead end: named kinds | Profile | lib | none |
+| street typology | avenue, boulevard, one-way, dead end: named kinds | Recipe | lib | none |
 | centreline, spline | the line a way follows | Shape | core | shown: `path`, `smooth` |
 | cross-section, profile | what a way is across its width: carriageway, shoulder, kerb and footway as offsets from the centreline | Profile | lib | shown: `[kind.<k>.effect.<id>]`, `authority.md 2` |
 | carriageway, roadway | the part vehicles use | Profile | lib | shown: `town.street` |
@@ -29,7 +29,7 @@ subsections were read from sources in 2026-11.
 | corner radius, kerb return, bulb-out | the kerb's curve round a junction corner | Meeting | lib | none |
 | median, verge, shoulder | the strips between and beside | Profile | lib | partly: `ways.road` |
 | gutter, storm drain, road crown | how a street sheds water | Profile | lib | partly: `ways.road` |
-| grade, gradient | how steep a way climbs, and the most a route may | Shape | lib | shown: `smoothed_along()` |
+| grade, gradient | how steep a way climbs, and the most a route may | Shape | lib | partly: `smoothed_along()`, `lib/town/streets.py` |
 | camber, banking, superelevation | a way's tilt across its width; through a bend, towards the inside | Profile | lib | partly: `ways.road` |
 | intersection, junction | where ways meet at one level; it needs geometry of its own | Meeting | lib | partly: `geometry.md 8` |
 | stop line, right of way | who yields, and where they wait | Markup | lib, game | none |
@@ -68,7 +68,7 @@ subsections were read from sources in 2026-11.
 | waymarker, signpost, cairn | objects that say where a way goes | Linear placement | lib | none |
 | street furniture | lamps, benches, bins, bollards along a way: elements repeated at a spacing, with room kept round each | Linear placement | lib | shown: `[run.<id>]` |
 | manhole, hydrant, utility cover | utility access in road and sidewalk | Linear placement | lib, pack | none |
-| utility pole, overhead wires, fence line | poles or posts at stations along a route, with wire or rails spanning between | Linear placement | lib | partly: `span` |
+| utility pole, overhead wires, fence line | poles or posts at stations along a route, with wire or rails spanning between | Linear placement | lib | partly: `[run.<id>]`, `lib/town/kit.py` |
 | waterway, ferry route | a route on water | Network (undirected) | lib | shown: `ways.ferry`, `examples/strait` |
 
 ### Routes
@@ -80,7 +80,7 @@ Finding and shaping a route.
 | least-cost path | route between places minimising slope and other costs (Galin et al. 2010) | Network (undirected) | core | shown: `route`, `derived.md 3` |
 | clothoid | curve whose curvature changes linearly; the standard road transition | Shape | core | none |
 | L-system streets | streets grown by rewriting rules under local constraints (Parish and Müller 2001) | Grammar | lib | none |
-| tensor-field streets | streets traced along two perpendicular direction fields (Chen et al. 2008) | Derivation (global) | lib | none |
+| tensor-field streets | streets traced along two perpendicular direction fields (Chen et al. 2008) | Network (undirected) | lib | none |
 | linear referencing | addressing a spot as distance along a curve plus sideways offset | Linear placement | core | shown: `on`, `t`, `offset` |
 
 ### Road realisation (corridor modelling)
@@ -97,7 +97,7 @@ driving-simulation standard OpenDRIVE is the most complete formal description.
 | vertical alignment (profile) | the route's height along its length: grades joined by smooth crests and sags | Shape | lib | shown: `smoothed_along()` |
 | assembly | the full cross-section as an ordered set of parts: lanes, shoulder, kerb, footway, ditch | Profile | lib | partly: `town.street` |
 | lane section | a stretch over which the number and widths of lanes stay the same; lanes are added or dropped between sections | Profile | lib | none |
-| daylighting | the side slope that runs from the road's edge out to where it meets natural ground | Meeting | lib | shown: `ways.road` |
+| daylighting | the side slope that runs from the road's edge out to where it meets natural ground | Meeting | lib | shown: `town.street`, `ways.freeway` |
 | corridor | the result of sweeping the assembly along both alignments | Profile | lib | partly: `ways.freeway` |
 
 **Surface and markings**
@@ -113,7 +113,7 @@ driving-simulation standard OpenDRIVE is the most complete formal description.
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| warrant | the condition that makes an element required: a guardrail where the drop exceeds a height, a sign before a bend | Recipe | lib | partly: `lib/ways/parapet.py` |
+| warrant | the condition that makes an element required: a guardrail where the drop exceeds a height, a sign before a bend | Recipe | lib | partly: `lib/town/kit.py`, `lib/ways/parapet.py` |
 
 **Structures**
 
@@ -153,7 +153,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 |---|---|---|---|---|
 | settlement hierarchy | hamlet, village, town, city, and their typical form | Recipe | lib | partly: `lib/town/kinds.toml` |
 | settlement siting | why a place stands here: water, flat ground, a crossing | Guidance | lib | none |
-| district, neighbourhood | an area of one character | Area partition | lib, game | shown: `town.ward` |
+| district, neighbourhood | an area of one character | Area partition | lib, game | shown: `examples/city`, `lib/town/streets.py` |
 | zoning, land use class | the per-lot rule that picks the building type | Area partition | lib | partly: `lib/town/houses.py` |
 | density, height limit, skyline | how much building a lot may carry | Field | lib | none |
 | block | the land enclosed by streets: a face of the road network | Area partition | lib | shown: `town.block`, `[network.<id>]` |
@@ -161,7 +161,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | frontage, setback | which street a building faces, and how far back | Area partition | lib | shown: `frontage`, `lib/town/houses.py` |
 | courtyard, back-of-lot | the space inside a block behind the frontages | Area partition | lib | none |
 | vacant lot, leftover land, under-bridge space | land no rule claims, which still needs filling | Area partition | lib | none |
-| plaza, square, park, playground | open public lots | Area partition | lib | partly: `vegetation.green` |
+| plaza, square, park, playground | open public lots | Area partition | lib | partly: `examples/market`, `examples/example` |
 | waterfront, promenade, marina | the city's edge on water | Meeting | lib | shown: `town.waterfront` |
 | port, container yard, rail yard | large industrial transport land | Area partition | lib | none |
 | airport: runway, taxiway, apron, terminal | an airfield and its buildings | Recipe | lib | none |
@@ -180,8 +180,8 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| footprint | the ground a building covers | Asset | pack | shown: `assets.md 3` |
-| massing | a building as plain volume: its lot shape extruded | Grammar | lib | shown: `building.building` |
+| footprint | the ground a building covers | Asset | pack | shown: `footprint`, `assets.md 2` |
+| massing | a building as plain volume: its lot shape extruded | Grammar | lib | partly: `building.building`, `lib/packs/primitive.toml` |
 | blockout, greybox | a design phase in plain shapes, for any space | Practice | core | shown: `lib/packs/primitive.toml` |
 | building typology | rowhouse, walk-up, tower, warehouse: recurring kinds | Recipe | lib, pack | partly: `lib/town/houses.py` |
 | podium and tower, stepback | a wide base with a narrower tower above | Grammar | lib | none |
@@ -192,7 +192,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | front, facing | which way a piece looks: its agreed forward axis, so a rule can aim it | Asset | pack | shown: `front` |
 | socket, connector | where one piece joins another | Asset | pack | shown: `[asset.<id>.mount.<name>]`, `connector` |
 | bay, corner, end, filler, centre | the roles pieces play in a row | Linear placement | pack, lib | shown: `lib/town/kit.py` |
-| facade | the face of a building as a pattern of pieces | Grammar | lib | partly: `lib/town/kit.py` |
+| facade | the face of a building as a pattern of pieces | Grammar | lib | partly: `lib/building/lay.py` |
 | facade variation | rules that stop neighbours looking identical | Grammar | lib | none |
 | shape grammar, facade grammar | rules that subdivide a volume into floors, bays and openings | Grammar | lib | none |
 | storey, floor | one layer of a building | Grammar | lib | shown: `building.storey` |
@@ -201,7 +201,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | rooftop props | plant, tanks, vents, antennas on a flat roof | Scatter | lib, pack | none |
 | trim, cornice, plinth | strips that finish edges | Linear placement | lib | none |
 | foundation, stilts, plinth skirt | what takes up the gap under a building | Meeting | lib, pack | partly: `sink` |
-| porch, boardwalk, steps to grade | pieces that reach the door from the ground | Meeting | lib | partly: `building.flight` |
+| porch, boardwalk, steps to grade | pieces that reach the door from the ground | Meeting | lib | partly: `building.doorway`, `building.footpath` |
 | storefront, awning, shop sign | the commercial ground floor and what projects from it | Grammar | lib, pack | none |
 | fire escape, external stair | stairs hung on a facade | Grammar | lib, pack | none |
 | party wall, blind wall, lightwell | side and back faces between unequal buildings | Meeting | lib | none |
@@ -242,7 +242,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | collision layer, mask | which kinds of thing collide with which | Asset | pack, game | none |
 | surface type | what a surface is, for footsteps and friction | Asset | pack | none |
 | climbable, no-climb | whether a face can be climbed | Asset | pack, game | none |
-| ledge, handhold | an edge a character can grab | Markup | pack, lib | none |
+| ledge, handhold | an edge a character can grab | Asset | pack, lib | none |
 | elemental surface tag | burnable, conductive, wet, frozen: what a surface does when acted on | Asset | pack, game | none |
 | breakable, destructible | a thing removed or toppled by force | Asset | pack, game | none |
 | texel density | texture pixels per metre, kept even | Asset | pack | none |

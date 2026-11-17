@@ -107,7 +107,7 @@ from sources in 2026-11 (`docs/references.md`); a row marked `(?)` is from memor
 | hide and reveal (miegakure) | the Japanese garden technique of glimpsing a feature, losing it, and meeting it again | Guidance | measure | none |
 | mystery | the pull of a scene that promises more information just out of sight (Kaplan and Kaplan 1989) | Guidance | nothing | none |
 | isovist | everything visible from one point; how it changes along a path measures a reveal | Measure | measure | none |
-| hard gate | a physical barrier: cliff, water | Guidance | measure | partly: `lib/review/reach.py` |
+| hard gate | a physical barrier: cliff, water | Guidance | measure | shown: `lib/review/reach.py`, `examples/monastery` |
 | soft gate | a discouragement: stamina, enemy strength | Guidance | carry | none |
 | chokepoint | a narrow passage all routes share | Guidance | measure | none |
 

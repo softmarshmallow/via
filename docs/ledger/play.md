@@ -29,7 +29,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | navigation agent | the body size a navigation mesh is built for | Runtime | game, loader | none |
 | agent class | separate walkability for person, horse, wagon, car | Measure | game, loader | partly: `lib/review/reach.py` |
 | navigation area, cost | ground tagged as sidewalk, road, forbidden | Markup | lib, loader | none |
-| navigation link | a jump, ladder or door joining walkable areas | Meeting | lib, game | partly: `lib/review/reach.py` |
+| navigation link | a jump, ladder or door joining walkable areas | Meeting | lib, game | partly: `build.md 9.3`, `lib/review/reach.py` |
 | navigation built ahead or live | computed at build, or around agents at run time | Runtime | engine, loader | none |
 | navigation across cells | navigation data that loads with its cell | Delivery | loader | none |
 | blocking region | a stop that is not drawn | Markup | game, loader | none |
@@ -43,7 +43,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| tags, groups | free labels game code finds things by | Markup | core, game | shown: `tags` |
+| tags, groups | free labels game code finds things by | Markup | core, game | partly: `tags`, `output` |
 | spawn point, spawn zone | where things appear; chosen out of the player's sight | Markup | game, carries | shown: `map.spawn_zone` |
 | respawn rule, refresh timer | when a taken thing or beaten enemy returns | Runtime | game | none |
 | enemy camp | a physical place enemies hold | Recipe | game, lib | none |
@@ -65,7 +65,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | guide object | a thing that leads the player along a route | Markup | game, carries | none |
 | station: campfire, forge, cooking pot | a placed spot for a crafting activity | Markup | game, carries | none |
 | shop, safehouse, service location | an enterable place with a game function | Markup | game | none |
-| interactable | something the player can use | Markup | game, carries | shown: `build.md 9`, `examples/station` |
+| interactable | something the player can use | Markup | game, carries | partly: `build.md 9` |
 | scenario point, smart object | a spot or thing telling a character what can be done there and where to stand | Markup | game, carries | none |
 | world event, random encounter | something staged where the player happens to be | Runtime | game | none |
 | emergency response, dispatch | services sent to an incident | Runtime | game | none |

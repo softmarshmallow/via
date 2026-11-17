@@ -73,8 +73,9 @@ moving between them.
 | Markup | A fact carried to the game on a shape | nothing | data, handed on unread |
 | Delivery | Packing the built world for the engine | the built world | files an engine loads |
 
-The first three state content. The next thirteen make content from content. The last four read
-the world and change nothing in it.
+The first three state content. The next thirteen make content from content. The last four change
+nothing in the world: Guidance and Markup state something about it, for the author and for the
+game, and Measure and Delivery read it.
 
 ## Contracts
 
@@ -168,8 +169,9 @@ fields that explain what it did: where water ran, where material settled.
 - **Source:** erosion as physical simulation (Musgrave et al. 1989; Mei et al. 2007); the
   simulation family of terrain methods (Galin et al. 2019); stand dynamics for forests (Oliver
   and Larson). Law 3 is ours.
-- **Is not:** a Derivation (no state), nor Runtime (it runs while the world is built, not while
-  the game runs).
+- **Is not:** a Derivation, even one that iterates: a solver that reaches one fixed answer
+  carries nothing from run to run, while a simulation's result depends on how long it ran. Nor
+  Runtime: it runs while the world is built, not while the game runs.
 - **In two genres:** water cutting gullies into a hillside; a forest thinning itself over years.
 
 ### Profile
@@ -221,8 +223,9 @@ over fields (biomes) or from the author's hand (themed regions).
   4. Where a stated class and a derived one disagree, the stated one stands.
 - **Source:** subdivision of parcels (Vanegas et al. 2012); nearest-seed diagrams; the
   classification of climate into biomes (Whittaker 1975).
-- **Is not:** an Overlay (whose pieces may overlap), nor Markup (a region that only carries
-  data).
+- **Is not:** the rule that gives each place its class, which is a Derivation: the partition is
+  what the rule leaves, pieces with names. Nor an Overlay (whose pieces may overlap), nor Markup
+  (a region that only carries data).
 - **In two genres:** biome classes over a mountain; lots along a street.
 
 ### Placement
@@ -307,7 +310,8 @@ can be placed.
 - **Source:** shape grammars (Stiny and Gips 1972); L-systems (Lindenmayer 1968); split
   grammars and CGA shape (Wonka et al. 2003; Müller et al. 2006); model synthesis and wave
   function collapse (Merrell 2007; Gumin 2016). Law 4 is ours.
-- **Is not:** a Recipe (one fixed expansion), nor an Area partition (one level of division).
+- **Is not:** a Recipe, whose parts are a fixed list, while a grammar finds its parts by rule
+  from a shape of any size; nor an Area partition (one level of division).
 - **In two genres:** a facade split into floors and bays; a branching plant.
 
 ### Representation switch
@@ -327,8 +331,8 @@ so a cliff, a cave or a bridge deck becomes a mesh.
 
 ### Meeting
 
-The place where two things join. Its form belongs to neither side: a junction, a shore, a
-doorway, the foot of a wall.
+The place where two things join or cross. Its form belongs to neither side: a junction, a
+shore, a doorway, the foot of a wall.
 
 - **Laws:**
   1. Each meeting has one stated owner. Neither side builds it twice.
@@ -337,7 +341,8 @@ doorway, the foot of a wall.
   4. A meeting nobody owns is reported: a road that enters water with no ford and no bridge.
 - **Source:** junction and kerb geometry in road design; the seam as the recurring fault of
   assembled worlds ([section 19](seams.md)). Ours as an archetype.
-- **Is not:** a Placement (which follows one side), nor a Profile.
+- **Is not:** a Placement (which follows one side), nor a Profile; nor a mismatch between two
+  descriptions of one thing, which is a Measure's finding.
 - **In two genres:** where a trail meets a road; where a house meets a slope.
 
 ### Overlay
@@ -354,7 +359,7 @@ layer with another owner, a hand edit.
 - **Source:** composition by layers and variants (Universal Scene Description); edit layers on
   terrain and data layers in engines.
 - **Is not:** the Principle of non-destructive editing, which is the property an overlay is
-  made with; nor Runtime state.
+  made with; nor Runtime state; nor a layer of paint or decals on a surface, which is content.
 - **In two genres:** winter over a valley; a festival dressing a town square.
 
 ### Guidance
@@ -399,7 +404,9 @@ appear, what a region starts, what can be used.
   2. It stays attached to its place or its thing when the world is built again.
   3. It keeps its name, so a save or a quest can point at it.
 - **Source:** volumes, triggers and tags in level editors; smart objects. Ours as an archetype.
-- **Is not:** Guidance (read by the author), nor a Placement (something seen).
+- **Is not:** Guidance (read by the author); nor a Placement (something seen); nor a fact of an
+  Asset, which travels with the asset wherever it is placed, while markup belongs to one place
+  in one world.
 - **In two genres:** a spawn zone in a wood; a shop's service point.
 
 ### Delivery
@@ -426,11 +433,44 @@ contract over the data types.
 | Mark | What it files |
 |---|---|
 | Runtime | What the engine or the game does while the game runs: streaming, weather, crowds, physics, light. The world holds only what these need as input. |
-| Practice | How people work: a role, a stage of production, a habit of review. Not content. |
-| Principle | A property asked of the whole: the same input gives the same world, a hand decision survives, a name persists. Each is a law of every archetype above, said once. |
+| Practice | How people work and the tools they work with: a role, a stage of production, a habit of review, an editor's plug-in, the code a team adds to its pipeline. Not content. |
+| Principle | A property asked of the whole: the same input gives the same world, a hand decision survives, a name persists, a metre is a metre everywhere. Each is a law of every archetype above, said once. |
 
 A row that fits neither an archetype nor a mark is filed `-`. Such rows are listed in the
 README, and are the signal that an archetype is missing or wrongly drawn.
+
+## Telling two apart
+
+Where a term could be filed two ways, these decide. Each was written after an independent
+reader, filing a fifth of the ledger from this page alone, was left torn.
+
+- **Field or Derivation.** A term that names a field without saying how its values come about
+  (a flow map, a density mask, strata, altitude) is a Field, whatever made it. A term whose
+  meaning is the computation (slope, distance to the nearest road, wetness) is a Derivation.
+- **Area partition or Derivation.** The rule that gives each place a class is a Derivation. The
+  pieces it leaves, with their names, are an Area partition.
+- **Derivation or Simulation.** One fixed answer from the inputs is a Derivation, however it is
+  solved. A result that depends on how long the process ran is a Simulation.
+- **Profile or Meeting.** A section that changes along one path is still a Profile. A Meeting
+  needs two things.
+- **Linear placement or Meeting.** A boundary that is built along a line (a fence, a wall) is
+  Linear placement. The Meeting is where something passes through or two of them join: a gate,
+  a corner.
+- **Recipe or Grammar.** A fixed list of parts is a Recipe. Parts found by rule from a shape of
+  any size are a Grammar.
+- **Asset or Markup.** A fact that travels with the asset is the Asset's. A fact that belongs to
+  one place in one world is Markup.
+- **Placement or Markup.** A seen thing whose point is its function in the game (a switch, a bus
+  stop) is filed by that function: Markup. Its model is still placed, by a Placement.
+- **Guidance or Measure.** Intent when planned and a reading when found is filed Guidance,
+  unless the term names the reading itself: a viewshed, an isovist, reach.
+- **A seam.** A fault that is one archetype's broken law is filed under that archetype (an
+  overlay left behind is Overlay). A place where two forms join is a Meeting. A mismatch between
+  what is drawn and what is played is a Measure.
+- **What a Runtime system needs.** The input the world holds for it is filed under what that
+  input is: a spawn zone is Markup, a lane graph a Network, light samples Delivery.
+- **How people do it.** A row about a way of working is Practice even when what is made has an
+  archetype: foliage painting is Practice, the foliage is Scatter.
 
 ## What every contract answers
 
@@ -480,4 +520,5 @@ The same archetypes serve both; the dials are set differently.
 |---|---|
 | 2026-11-13 | First list: fourteen archetypes, read from studio talks and one review paper. |
 | 2026-11-13 | Meeting added; 15 rows moved to it. |
+| 2026-11-18 | After a blind second filing of 173 rows (84% filed the same; Cohen's kappa 0.83), the boundaries under "Telling two apart" were written down and 16 rows refiled. Practice widened to hold tools. |
 | 2026-11-18 | Tightened to the five criteria and widened to file the whole ledger: twenty archetypes and three marks. Added: Asset, Placement, Overlay, Measure, Markup. Renamed: Curve to Shape, Field derivation to Derivation (now in four classes), Terrain-coupled network to Network. Guidance split: what is stated stays Guidance, what is read from the world is Measure. The marks Runtime, Practice and Principle file what the model leaves out. |

@@ -86,6 +86,15 @@ twice, and the counts below equal the rows. Run it with `--write` after adding r
    into rows the first already had, and 211 were added. Every `Now` was read again against the
    first cut and given a pointer; before that it recorded where an earlier prototype stood.
 
+6. The same day the merge was read by others. A second reader filed a fifth of the rows (173,
+   drawn section by section with a fixed seed) from [archetypes.md](archetypes.md) alone: 145
+   were filed the same (84%; Cohen's kappa 0.83). Of the 28 that differed, 8 followed the second
+   reader; the boundaries it found unclear are now written there under "Telling two apart", and
+   8 more rows were refiled by them. Four other readers checked every `shown` and `partly`
+   against the repository, 312 claims: 256 stood, 13 said too much, 15 too little, 27 pointed
+   at the wrong thing and 1 had nothing behind it. All 56 were corrected. The sources cited
+   were checked against their publishers: 60 of 65 stood as written and 5 were corrected.
+
 Evidence is marked where it is stated. Each table's opening line says whether it is from general
 knowledge or read from a source, and a row marked `(?)` is from memory. `docs/references.md`
 holds the sources.
@@ -119,37 +128,37 @@ loader, or whose Tool mark is not "nothing".
 
 | Archetype | Rows | Ours | Ours, shown | Ours, partly | Ours, none |
 |---|---|---|---|---|---|
-| Field | 35 | 32 | 11 | 6 | 15 |
-| Shape | 11 | 11 | 4 | 2 | 5 |
-| Asset | 50 | 46 | 13 | 6 | 27 |
-| Derivation | 51 | 49 | 10 | 8 | 31 |
-| Simulation | 17 | 17 | 3 | 2 | 12 |
-| Profile | 36 | 36 | 14 | 11 | 11 |
-| Network | 22 | 21 | 8 | 2 | 11 |
-| Area partition | 43 | 42 | 7 | 15 | 20 |
+| Field | 39 | 37 | 13 | 5 | 19 |
+| Shape | 10 | 10 | 3 | 2 | 5 |
+| Asset | 51 | 47 | 12 | 7 | 28 |
+| Derivation | 49 | 47 | 10 | 9 | 28 |
+| Simulation | 17 | 17 | 4 | 1 | 12 |
+| Profile | 35 | 35 | 14 | 11 | 10 |
+| Network | 24 | 23 | 8 | 3 | 12 |
+| Area partition | 39 | 38 | 7 | 13 | 18 |
 | Placement | 11 | 10 | 3 | 0 | 7 |
 | Linear placement | 23 | 23 | 5 | 5 | 13 |
 | Scatter | 41 | 41 | 10 | 13 | 18 |
-| Recipe | 23 | 19 | 2 | 8 | 9 |
-| Grammar | 18 | 18 | 3 | 3 | 12 |
+| Recipe | 24 | 20 | 3 | 7 | 10 |
+| Grammar | 18 | 18 | 2 | 4 | 12 |
 | Representation switch | 18 | 18 | 5 | 2 | 11 |
 | Meeting | 96 | 96 | 22 | 35 | 39 |
 | Overlay | 15 | 14 | 5 | 3 | 6 |
-| Guidance | 92 | 64 | 0 | 4 | 60 |
+| Guidance | 93 | 64 | 1 | 2 | 61 |
 | Measure | 38 | 30 | 7 | 5 | 18 |
-| Markup | 61 | 13 | 3 | 2 | 8 |
-| Delivery | 41 | 35 | 4 | 8 | 23 |
-| Runtime | 73 | 10 | 1 | 0 | 9 |
-| Practice | 34 | 23 | 5 | 2 | 16 |
-| Principle | 15 | 14 | 9 | 3 | 2 |
+| Markup | 60 | 12 | 3 | 2 | 7 |
+| Delivery | 40 | 34 | 5 | 6 | 23 |
+| Runtime | 74 | 10 | 1 | 0 | 9 |
+| Practice | 34 | 24 | 5 | 3 | 16 |
+| Principle | 15 | 14 | 8 | 4 | 2 |
 | - | 1 | 1 | 0 | 0 | 1 |
-| **All** | **865** | **683** | **154** | **145** | **384** |
+| **All** | **865** | **683** | **156** | **142** | **385** |
 
-By class: Derivation (focal) 10, Derivation (global) 19, Derivation (local) 22, Network (directed) 10, Network (undirected) 12.
+By class: Derivation (focal) 10, Derivation (global) 17, Derivation (local) 22, Network (directed) 10, Network (undirected) 14.
 
 | Section | Rows | Ours | Ours, none |
 |---|---|---|---|
-| 1. World structure and scale | 83 | 64 | 30 |
+| 1. World structure and scale | 83 | 64 | 31 |
 | 2. Terrain and ground | 101 | 94 | 49 |
 | 3. Water | 30 | 27 | 14 |
 | 4. Vegetation and ecology | 64 | 61 | 30 |

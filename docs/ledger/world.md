@@ -14,7 +14,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | region, zone, area | a named part of the world with its own character and rules | Area partition | core | partly: `map.area` |
 | sub-area, locale, named place | a named spot inside a region; shows a title on entry | Markup | core | partly: `map.area` |
 | biome | a kind of land: its ground, growth and climate together; chosen by rules over height, slope and moisture, a painted override winning | Area partition | lib | none |
-| landmark | something seen from afar that the player steers by | Guidance | core | partly: `authority.md 3` |
+| landmark | something seen from afar that the player steers by | Guidance | core | none |
 | point of interest (POI) | a place worth going to, marked for map and design; what is around it is arranged to it | Markup | lib | shown: `map.poi` |
 | vista, composition, focal point, reveal | a view arranged on purpose | Guidance | game | none |
 | sightline, viewshed | what can be seen from a point | Measure | core | none |
@@ -86,10 +86,10 @@ that names them.
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
 | enclosed city | a settlement with a hard boundary (wall, island shore) and counted entrances | Area partition | lib | partly: `town.enclosure`, `town.gate` |
-| approach | the one staged route into a place: road junction, bridge, gate | Guidance | lib | partly: `land.approach` |
+| approach | the one staged route into a place: road junction, bridge, gate | Guidance | lib | partly: `examples/monastery` |
 | ascending axis | the main street climbs from gate through square to the chief building at the highest point | Guidance | lib | none |
 | precinct | a walled or raised part of a city given to one function: cathedral, palace, harbour | Area partition | lib | partly: `town.enclosure` |
-| hamlet | a handful of buildings beside a road, with no streets of its own | Recipe | lib | partly: `examples/example` |
+| hamlet | a handful of buildings beside a road, with no streets of its own | Recipe | lib | shown: `examples/vale`, `examples/example` |
 | monument complex | a dominant structure with lesser ones laid out on its axes | Grammar | lib | none |
 | ruin field | fragments scattered around a core, thinning with distance | Scatter | lib | none |
 | radial settlement | buildings arranged around a centre, often on a basin's terraces | Grammar | lib | none |
@@ -99,7 +99,7 @@ that names them.
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
 | sparse path tree | a few trunk paths with spurs; little choice of route, almost no loops | Network (undirected) | lib | none |
-| spur | a dead-end branch that exists to reach one place | Shape | lib | partly: `ways.trail` |
+| spur | a dead-end branch that exists to reach one place | Network (undirected) | lib | partly: `ways.trail` |
 | path-free ground | areas reached only by climbing, gliding or swimming, with no path drawn at all | Guidance | game | none |
 
 **Map drawing**
@@ -118,17 +118,17 @@ place of.
 
 | Term | Meaning | Archetype | Whose | Now |
 |---|---|---|---|---|
-| top-and-side rule | flat tops are grass, steep sides are rock, with a crisp line between; nothing else decides ground cover; in place of abiotic data and viability | Area partition | lib | partly: `lib/land/ground.md` |
+| top-and-side rule | flat tops are grass, steep sides are rock, with a crisp line between; nothing else decides ground cover; in place of abiotic data and viability | Derivation (local) | lib | partly: `lib/land/ground.md` |
 | undercut shelf | a shelf that overhangs its own base, or floats free; in place of cliff as a steep heightfield region | Representation switch | lib | none |
 | faceted rock | cliffs built from large flat planes with hard edges, as if chiselled; in place of erosion detail | Asset | pack | none |
-| painted strata | rock layering shown as broad colour bands on the faces; in place of strata function and band displacement | Derivation (local) | lib | none |
+| painted strata | rock layering shown as broad colour bands on the faces; in place of strata function and band displacement | Field | lib | none |
 | accent tree | a few trees placed singly or in small clumps where they help the picture, often on a shelf's edge; in place of density-driven scatter | Placement | lib | shown: `[instance.<id>]` |
 | canopy colour code | tree colour (orange, yellow, teal) chosen to identify a region or mark a place; in place of species by ecology | Recipe | lib | partly: `tint` |
 | blade grass, ground-tinted | tall soft grass that takes the ground's colour, so fields read as one surface; in place of layered understory | Scatter | loader | none |
 | flat water with depth ramp | water coloured by depth from pale shallows to deep blue, with a light line at the shore; in place of flow and wetness simulation | Derivation (local) | loader | none |
 | stepped water | each shelf holds a level pool; water passes between shelves only as a waterfall; in place of rivers obeying continuous downhill flow | Network (directed) | lib | partly: `water.pond`, `water.weir` |
-| soft trail | a dirt path with no edge, fading into grass; in place of road cross-section | Profile | lib | shown: `ways.trail` |
-| building shelf | each building or group stands on its own flat shelf, held by a retaining wall where needed; in place of graded pad | Profile | lib | shown: `land.pad`, `town.terrace` |
+| soft trail | a dirt path with no edge, fading into grass; in place of road cross-section | Profile | lib | shown: `ways.trail`, `examples/vale` |
+| building shelf | each building or group stands on its own flat shelf, held by a retaining wall where needed; in place of graded pad | Profile | lib | partly: `land.pad`, `town.terrace` |
 | connector | the built way across a cliff band or gap: stairs, ramp, bridge, rope bridge, ladder; in place of road grade limits | Meeting | lib | partly: `building.flight`, `ways.ramp` |
 | stacked city | a city climbing shelves, districts one above another, joined by connectors; in place of blocks and lots on a street grid | Area partition | lib | none |
 | niche siting | a settlement set in a recess between cliffs, which serve as its walls and its backdrop; in place of siting by trade and defence | Guidance | game | none |
