@@ -1,4 +1,6 @@
-# Written at M0 for later; not pushed (docs/plan.md, "Comes back to you later": hosted runners).
+# Run by hand only (Actions > ci > Run workflow): hosted runners are not available to this account
+# yet, so a run on every push would only fail before it starts. Restore the push and pull_request
+# triggers once they are.
 #
 # R26: same text, same bytes on macOS, Linux and Windows. Each system runs the checks of
 # CONTRIBUTING.md and the conformance runner, which writes one record per system
@@ -7,9 +9,7 @@
 name: ci
 
 on:
-  push:
-    branches: [main, rewrite]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
