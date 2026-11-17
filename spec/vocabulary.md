@@ -625,7 +625,7 @@ The list grows when a library adds a noun.
 
 ## 8. Colliding names
 
-From `docs/ledger.md` section 25, and from review of this page.
+From `docs/ledger/names.md` section 25, and from review of this page.
 
 | Word | v1 decision | Reason |
 |---|---|---|

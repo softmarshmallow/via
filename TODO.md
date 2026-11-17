@@ -2028,6 +2028,12 @@ and the hint-text exception written in their chapters, the `names` route in the 
 - [x] Draft `docs/ledger.md` (2026-11-12): the vocabulary of a game world in 14 groups, each term with an
       owner and where the spike stands. Written from general knowledge; check engine names before
       relying on them. Keep adding to it.
+- [x] -> done (2026-11-18, `docs/ledger/`): Merge the ledger read from sources on 2026-11-13 into this one, and re-read every
+      row against the first cut. `docs/ledger.md` became the folder `docs/ledger/`: twenty
+      archetypes with contracts (`archetypes.md`), every term filed under one, and a `Now` that
+      points at what shows it, checked by `tools/ledger_check.py`. Lesson: a status column with no
+      pointer went stale unnoticed (it still described the spike a week after the spike was
+      deleted); a claim that names its evidence can be checked by a script.
 - [x] State who it is for (2026-11-12): new games, independent developers first, Godot or Unreal,
       an agent writing. Studios later, not ignored in engineering. Recorded in `docs/faq.md`.
       Consequence: porting existing worlds is low priority.
@@ -2289,6 +2295,35 @@ Structural checks stay in the core; everything else is an opt-in rule.
       weathered stack" could only be nudged with noise amplitudes.
 - [ ] -> none yet (open; in no milestone, like challenges 9 and 10, and the owner decides at the M0 sheet): Design reference matching: a bookmark solved from an image (horizon, lens, anchor points), a
       render-beside-reference sheet, and measured differences (palette, horizon, silhouette).
+
+## Genres: a stylised themed-region world
+
+- [ ] -> none yet (open; in no milestone): Answer the 22 questions a stylised themed-region open world puts to the model.
+      Context: read on 2026-11-13 from one published map and screenshots of it (`docs/ledger/world.md`,
+      "Themed regions" and the two subsections after it). Lesson: the genre moves the dials (more is
+      specified, less is derived) and keeps the archetypes; each question is a dial with no setting yet.
+      1. Is a world one continuous landscape, or a set of regions built and shipped separately? What is the unit?
+      2. When a region's biome is the author's decree, what remains of climate and ecology inside it?
+      3. What makes a seam between two unrelated regions believable?
+      4. How is a finished region kept unchanged while a neighbour is added?
+      5. How does a world end, and what is the sea made of?
+      6. How are stacked and disconnected spaces described when one height per location is not enough?
+      7. How does what the player's body can do (climb, glide, swim) turn into rules about cliffs, gaps and water?
+      8. What are the proportions of a compressed world: how big is a mountain, a town, a house, against the player?
+      9. How is "one landmark, visible from everywhere in its region" stated and checked?
+      10. How are fast-travel points and rewards spaced, and what does that spacing do to paths?
+      11. What is shared between two regions' towns, and what is swapped?
+      12. How does a place carry more than one state over time?
+      13. How much of such a world is specified outright, how much derived, and how much imported?
+      14. What does the drawn map need from the world to be produced?
+      15. Where does a setpiece end and filler begin, and how do the two join?
+      16. Is shelf terrain a kind of terrain generation, or a different thing from erosion-style landscape altogether?
+      17. What makes an expanse empty on purpose rather than unfinished?
+      18. Why are paths so sparse, and what guides the player where none is drawn?
+      19. Are a stylised world's shelves a height field with rock meshes laid against it, or one solid form?
+      20. If ground cover is only "top or side", what is left for fields and analysis to decide?
+      21. What stays the same and what is swapped when one landscape is given a different style?
+      22. Can "helps the picture" (an accent tree, framing, a skyline) be stated as a rule, or only judged?
 
 ## Player map
 

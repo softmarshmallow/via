@@ -2,7 +2,7 @@
 
 What `via` is for, what it owns, what it leaves to others, and what it does not promise. One page,
 derived from the goal and principles (`docs/doctrine.md` sections 1 and 2), the set-aside list
-(section 7), the ledger's verdicts (`docs/ledger.md`, the "Whose" column and section 26) and the
+(section 7), the ledger's verdicts (`docs/ledger/`, the "Whose" column and section 26) and the
 people it is for. A ruling that contradicts this page amends it and says so. Written 2026-11-17
 (M7); the two lines marked "ours" are choices with no ruling behind them, open to the owner.
 
