@@ -21,15 +21,29 @@ first build within 4.5 to 9 minutes; a run by another vendor's model is the owne
 `docs/reports/first-cut.md` says what holds and what does not, and `TODO.md` what is open. Nothing
 has shipped with it (`docs/charter.md`).
 
+## Install
+
+From a clone (or your fork), on macOS or Linux, with Rust and uv (or Python 3.11+):
+
+```sh
+./install.sh                     # builds via and installs it, its libraries and a Python into ~/.via
+. ~/.via/env.sh                  # puts via on PATH; add this line to your shell's profile
+```
+
+Inside a game's repository, with `via` as a submodule and the Godot loader copied into the game:
+
+```sh
+git submodule add https://github.com/softmarshmallow/via third_party/via
+third_party/via/install.sh --prefix .via-tools --godot path/to/godot-project
+```
+
+`docs/install.md` has the rest: what each needs, updating, uninstalling, the glTF export for other
+engines, the steps by hand (Windows, or working on `via` itself), and what is not there yet
+(crates.io and PyPI).
+
 ### First build of your own world
 
 ```sh
-cargo build --release -p via-cli -p via-terrain     # a cargo-built via has no shipped library root:
-export VIA_LIB=$PWD/lib                             #   name ours (documents.md 4.1)
-export PATH=$PWD/target/release:$PATH                # or your --target-dir's release folder
-uv sync --project sdk/python --python 3.12          # the SDK's venv: Python 3.12 and NumPy
-via config program python $PWD/sdk/python/.venv/bin/python   # steps run on Python 3.12 (the SDK's venv)
-via config program via-terrain $PWD/target/release/via-terrain
 via trust path/to/world.toml --yes                  # record trust in the world's steps (protocol.md)
 via build path/to/world.toml --out build/w
 ```
@@ -42,7 +56,8 @@ A change is passed by its path (`--change changes/x.toml`; a bare name holds no 
 `build.md` 14). Copy a world from `examples/` to start (its files, never its `.via/` store);
 `spec/vocabulary.md` lists every key.
 
-- **A world of your own** may live anywhere. Its `include`d libraries come from `VIA_LIB`; an
+- **A world of your own** may live anywhere. Its `include`d libraries come from the install's `lib/` (or
+  `VIA_LIB`, searched first); an
   `[import.<id>]`'s `file` is relative to the file that declares it, or absolute
   (`composition.md` 2). Diagnostics still print paths relative to the world's folder, so an import
   outside it shows as `../../…` (no absolute path in a build, `build.md` case 7).
@@ -92,6 +107,7 @@ the tag `spike-final`.
 
 | Document | What it is |
 |---|---|
+| [`docs/install.md`](docs/install.md) | Installing: for yourself from a clone or fork, inside a game's repository, into Godot or another engine, and by hand. |
 | [`docs/charter.md`](docs/charter.md) | One page: the intended use, what we own, what we do not, and what we do not promise. Read it first. |
 | [`docs/doctrine.md`](docs/doctrine.md) | The goal, the principles, the eleven nouns and every ruling. It decides details. |
 | [`docs/plan.md`](docs/plan.md) | The rewrite plan: milestones M0 to M7 and milestone one, `ford`. |

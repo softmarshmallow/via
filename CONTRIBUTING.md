@@ -7,6 +7,9 @@ doctrine disagree, the doctrine wins and this file is fixed.
 The earlier rule "Rust, whole hog, not a Rust core with a Python rim" is superseded by R19 and R20:
 a Rust core, with steps and libraries in Python through a thin SDK in its own process.
 
+To work on `via` itself, run it from the clone with `VIA_LIB` naming the repository's `lib/`
+rather than installing it: [`docs/install.md`](docs/install.md) section 7.
+
 ## How work is done
 
 Every milestone of [`docs/plan.md`](docs/plan.md) ran in this order, and work after the first cut

@@ -8,7 +8,8 @@ this page is the short way in. If the two disagree, the chapter wins and this pa
 ## Setting up
 
 The engine puts the SDK on the interpreter's path for each call (`protocol.md` 8.1): nothing is
-installed into it. You name a Python 3.11 or later that has NumPy, once:
+installed into it. `install.sh` makes a Python with NumPy and names it (`docs/install.md`). By hand,
+you name a Python 3.11 or later that has NumPy, once:
 
 ```sh
 uv sync --project sdk/python --python 3.12                      # makes sdk/python/.venv (3.12, NumPy)
