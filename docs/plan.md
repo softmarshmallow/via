@@ -1,5 +1,9 @@
 # via: the rewrite plan
 
+Status: complete. The first cut this plan describes was merged to `main` on 2026-11-18
+(`docs/reports/first-cut.md`). The page is kept as the record of what each milestone was for; how
+the repository is laid out now is `docs/layers.md`, and what is open is `TODO.md`.
+
 ## Context
 
 The spike did its job: 19 worlds, 63 recorded requests, a doctrine with rulings R1 to R19. The last

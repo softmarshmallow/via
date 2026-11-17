@@ -13,14 +13,13 @@ a person reviewing them. `via` is a working name.
 
 ## Status
 
-A rewrite is under way on branch `rewrite`, at the close of milestone M7 (the first cut: agents
-of two model families, both Claude models (Fable and Sonnet), built worlds from these documents
-alone, each world built, the first build within 4.5 to 9 minutes; a run by another vendor's model
-is the owner's; M6 joined every example in one map, `examples/atlas`, streamed in chunks, with
-budgets and the player map as data). Until `main`
-moves to it at the owner's review, `main` holds the older research tree: check out `rewrite` (a
-tree with `spec/`, `lib/` and `examples/`). The new engine builds every world under `examples/`;
-`docs/plan.md` says what each milestone adds and `TODO.md` what is open.
+The first cut is on `main` since 2026-11-18: milestones M0 to M7 of `docs/plan.md`. The engine
+builds every world under `examples/`. Thirteen of them are joined in one map, `examples/atlas`,
+streamed in chunks, with budgets and the player map as data. Agents of two model families, both
+Claude models (Fable and Sonnet), built worlds from these documents alone: each world built, the
+first build within 4.5 to 9 minutes; a run by another vendor's model is the owner's.
+`docs/reports/first-cut.md` says what holds and what does not, and `TODO.md` what is open. Nothing
+has shipped with it (`docs/charter.md`).
 
 ### First build of your own world
 
@@ -66,21 +65,22 @@ a source. Where a document cites the spike's `SPEC`, `FINDINGS`, `VOCABULARY`,
 
 ## Repository layout
 
-The target shape, from `docs/plan.md`. Folders appear as their milestone reaches them.
+`docs/layers.md` says how the folders are ordered, what may depend on what, and where every crate,
+chapter and library sits.
 
 ```
-spec/            normative: chapters, schemas, vectors, conformance cases
-crates/          the engine: num, diag, doc, expr, geom, raster, graph, model, proto, cli, step
-                 (+ terrain: lib/terrain's erosion program, library tier; xtask: the checks)
+spec/            the contract: chapters, schemas, vectors, conformance cases
+crates/          the engine: num, diag, doc, expr, geom, raster, graph, model, proto, step, cli
+                 (+ terrain: lib/terrain's erosion program, a library's; xtask: the checks)
 sdk/python/      thin port: pure Python, never links the engine
 lib/             our libraries: kinds as TOML + steps in Python, through the SDK only
-                 (land, water, ways, town, building, review, map; terrain's step is a program)
+                 (land, terrain, water, vegetation, ways, town, building, map, review; and the packs)
 engines/godot/   loader addon and the review viewer (eye-height sheets)
 engines/gltf/    a second reader of the build directory (glTF)
-tools/           the conformance runner, the pack generator, the map renderer
+tools/           the conformance runner, the pack generator, the map renderer, the two checks of docs/
 fixtures/        the spike's oracle data (exported at `spike-final`) and the kernel's fixtures
-examples/        the final examples, each with change files and ground bookmarks
-docs/            doctrine, challenges, design, references
+examples/        the example worlds, each with change files and ground bookmarks
+docs/            charter, doctrine, layers, the ledger, challenges, design notes, reports, references
 ```
 
 Of the old workspace, only `crates/via-terrain` carries over, as the erosion program behind
@@ -96,6 +96,7 @@ the tag `spike-final`.
 | [`docs/doctrine.md`](docs/doctrine.md) | The goal, the principles, the eleven nouns and every ruling. It decides details. |
 | [`docs/plan.md`](docs/plan.md) | The rewrite plan: milestones M0 to M7 and milestone one, `ford`. |
 | [`docs/reports/first-cut.md`](docs/reports/first-cut.md) | One page for the owner's review of the first cut: what holds, what does not, the open rulings and decisions. |
+| [`docs/reports/revisit.md`](docs/reports/revisit.md) | One page: what was reorganised after the first cut, how it was checked, and the verdict on each thing found. |
 | [`spec/`](spec/) | The contract: chapters, schemas, test vectors and conformance cases. Start with `spec/vocabulary.md`. |
 | [`docs/layers.md`](docs/layers.md) | How the repository is laid out: the layers of meaning, the rings of code, where every crate, chapter and library sits, and what the layout shows. |
 | [`docs/ledger/`](docs/ledger/README.md) | The vocabulary of a game world: every term filed under an archetype and an owner, with what the first cut shows of it. |

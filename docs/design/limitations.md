@@ -2,7 +2,7 @@
 
 Every known limitation of the spike, with what v1 does about it. The sources are `spike-final:spike/SPEC.md`
 section 11 ("Known limitations and inconsistencies"), section 12.8 ("Limitations added") and the
-"Known weak points" list in `docs/design/concepts.md`. One row per source bullet, in source order,
+"Known weak points" list in `docs/design/spike-tech-sheet.md`. One row per source bullet, in source order,
 grouped as the source groups them; two bullets with two answers are split (`a`, `b`). A last section
 holds limitations recorded elsewhere (`spike-final:spike/FINDINGS.md`, `TODO.md`, `docs/challenges.md`) that the
 rewrite would otherwise repeat. This is the M0 sort the plan asks for (`docs/plan.md`, M0 step 3).
@@ -188,7 +188,7 @@ Row ids: `S11.<group>.<n>` for section 11, `S12.<n>` for section 12.8, `W<n>` fo
 | S12.16 | A deck's profile is a line between its ends plus `rise`, `ramp` and `settle`; nothing else can be stated. | fix | `surfaces` 1.1: a deck's surface is any height formula over its owner's frame. M3, as S12.8. | Plan M3, challenge 38. | `doc.not_yet` (kind surfaces). |
 | S12.17 | Piers avoid only what a deck names in `over`; they can stand in a street it does not name. | fix | Library: `lib/ways`. Piers are a ways library form; they keep out of the `keep_out` role like every producer (`rules` 7.1, 8.3). The spike's feature key `over` is gone. M3. | Plan M3 (`quay`). | Not reachable (no ways library). |
 
-## Known weak points (`docs/design/concepts.md`)
+## Known weak points (`docs/design/spike-tech-sheet.md`)
 
 | # | Limitation | Verdict | Where | Proven by | Until then |
 |---|---|---|---|---|---|

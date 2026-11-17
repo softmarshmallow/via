@@ -1,8 +1,9 @@
 # via: the README we want to be true
 
-Status: design target, written 2026-11-12. Nothing here is built. It describes the tool from the
-outside only, so we can argue about the surface before the inside. `via` is a placeholder name.
-Everything marked (open) is undecided.
+Status: design target, written 2026-11-12, before anything was built. It describes the tool from
+the outside only, so we could argue about the surface before the inside. The first cut (on `main`
+since 2026-11-18) built it; where this page and `spec/` differ, `spec/` is right. `via` is a
+placeholder name. Everything marked (open) was undecided when this was written.
 
 ---
 

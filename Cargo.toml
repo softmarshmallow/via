@@ -1,8 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    # The engine (docs/plan.md, "Shape"). Dependencies point downward only:
-    # num, diag -> doc, expr, geom, raster -> graph -> model -> proto -> cli; step -> proto.
+    # The engine, in rings from the centre outward (docs/layers.md): the substrate (num, diag, doc,
+    # expr, geom, raster, graph), the model, the door (proto, step) and the command (cli). A crate
+    # depends only on its own ring or one nearer the centre, and the model and the door not on
+    # each other; `python3 tools/layers_check.py` reads every manifest and holds it.
     "crates/via-num",
     "crates/via-diag",
     "crates/via-doc",
@@ -16,8 +18,9 @@ members = [
     "crates/via-step",
     # Repository checks (deny-list, maths through via-num, the function table).
     "crates/xtask",
-    # Library tier, outside the deny-list: lib/terrain's program, the erosion model carried over
-    # from the old workspace (docs/plan.md, "Carried over"; spec/protocol.md 8).
+    # The library ring, outside the deny-list: lib/terrain's program, the erosion model carried over
+    # from the old workspace (docs/plan.md, "Carried over"; spec/protocol.md 8). It links the door
+    # and the substrate, never the model.
     "crates/via-terrain",
 ]
 
