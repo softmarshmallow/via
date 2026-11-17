@@ -8,7 +8,7 @@
 #                                                                # the run's records (R13 obligation 3)
 #
 # Protocol of the numbers below: macOS arm64 (M4 Pro), the `via` of the rewrite branch at
-# 2026-11-15 (uncommitted tree after cbecb9d, M3 slice 3, with the s4 town pass: terraces level at
+# 2026-11-15 (uncommitted tree after 9b1e23c, M3 slice 3, with the s4 town pass: terraces level at
 # the footway, stepped where it climbs, down streets ending on a main way they cross, free street
 # ends joined, form.py's edge ends; release profile), Python 3.12 (sdk/python/.venv) for the steps, a fresh store for
 # base, the changes on the same store with --against base, one build each, default threads; VIA_LIB=lib. Measured once, so the bands are the measured number:
@@ -29,7 +29,7 @@
 # 102 -> 110, lot_added 66 -> 70, houses_removed 96 -> 84, identity.reselected 1 -> 2; unrelated
 # lot_removed 3 -> 4, houses_removed_west 1 -> 0.
 
-# M6 slice 1 (perf), times only (wall clock, one run each, release `via` of HEAD 277993f with its
+# M6 slice 1 (perf), times only (wall clock, one run each, release `via` of HEAD db28af7 with its
 # lib and examples, a worktree, against the working tree of 2026-11-17 07:00 KST; fresh store, 14
 # threads, load 12 to 35 from other agents' builds): cold 15.1 -> 18.9 s; unchanged into the same
 # directory 0.2 -> 0.2 s; unchanged into a new directory 2.1 -> 0.2 s (graph.md 6.2, "Into a new
@@ -40,7 +40,7 @@
 # keep their names across move_hill (44 kept against 26; every kept lot's outline is byte-identical
 # in base and change: the review on foot, 2026-11-16). Only move_hill's three name-diff rows moved:
 # lot_removed 110 -> 92, lot_added 70 -> 52, houses_removed 84 -> 67. Same protocol, release `via`
-# of the working tree after 7056fc3 with the M4 slice 1 diff, 2026-11-16, one fresh store, one
+# of the working tree after eb8af62 with the M4 slice 1 diff, 2026-11-16, one fresh store, one
 # build each, other agents building at the same time; the review on foot measured the same three
 # numbers on its own build.
 # M4 slice 3 (`given.land`, gate `entry`): every band re-checked, none moved: base 19/19, clear_one
@@ -48,7 +48,7 @@
 # within 2e-6 m of the HEAD world's (the change review), plus `fields/land.npy`.
 
 # M5 slice 3 (town kit: corner houses, shallow houses in wedges, the town wall as a kit run):
-# release `via` of the working tree after 6f9f332 with the slice 3 diff, VIA_LIB=lib, Python 3.12
+# release `via` of the working tree after 8ca8e83 with the slice 3 diff, VIA_LIB=lib, Python 3.12
 # (sdk/python/.venv), one fresh store, base then each change --against base, one build each, other
 # agents building at the same time, 2026-11-17. The rows that moved: houses 110 -> 127, lots_held
 # 64 -> 90 (18 by 9 corner houses, 8 by shallow houses), terraces 77 -> 94, doors_level 110 -> 125
@@ -301,7 +301,7 @@ band    = [102, 102]
 # ------------------------------------------------------------------------------------------ east_gate
 # A second exit (lib/town `entry`) at (244, 120), for `county`'s `forgotten_exit`. Built alone it
 # writes no field and nothing answers it, so the town is unchanged and nothing is said. Measured
-# M4 slice 3 (fix pass, 2026-11-16): release `via` of the working tree after e67c061 with the slice 3
+# M4 slice 3 (fix pass, 2026-11-16): release `via` of the working tree after 479978b with the slice 3
 # diff, VIA_LIB=lib, Python 3.12 (sdk/python/.venv), one fresh store, base then east_gate
 # --against base, one build each, other agents building at the same time.
 

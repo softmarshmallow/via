@@ -7,7 +7,7 @@
 #   python3.11 examples/market/measure.py BUILD+<c> --base BUILD --check <c>
 #
 # Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
-# 6f9f332 (M5 slice 2) with the other slice 3 agents' edits as of 2026-11-17 01:00, VIA_LIB=lib,
+# 8ca8e83 (M5 slice 2) with the other slice 3 agents' edits as of 2026-11-17 01:00, VIA_LIB=lib,
 # Python 3.12 (sdk/python/.venv) for the steps, lib/town/kit.py with this slice's `ends = "inside"` (now `caps`, M5 close)
 # and rule 7. One fresh store: base, then `remodel` and `module` with --against base, one build
 # each. `move_street` and `move_bend` each on a fresh store of their own, --against base: on the

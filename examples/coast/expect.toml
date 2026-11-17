@@ -1,5 +1,5 @@
 # The coast's measures and their bands (measure.py says how each is taken). Taken on the M5 slice 2
-# shared tree (uncommitted, after 152bf1f, with the other slice 2 agents' core, loader and library
+# shared tree (uncommitted, after 8d2d566, with the other slice 2 agents' core, loader and library
 # work of that hour), macOS arm64, a `via` release binary of that tree, VIA_LIB=lib, Python 3.9 for
 # measure.py (3.13 for --check), one store: base built cold, each change --against base, one build
 # each, so a band is the measured number with the margin its row gives, not a target. A row whose

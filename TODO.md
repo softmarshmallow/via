@@ -171,7 +171,7 @@ Throwaway code, under `spike/` until M7 and at the tag `spike-final` since. Firs
   pruning. Cold `via build` of the working tree's townland and vale (same lib/ and examples/ for
   both binaries), fresh store per run, release, default threads, Apple M4 Pro shared with other
   agents (load average about 9), 3 runs each, alternating: townland 93.1 / 94.3 / 93.2 s at
-  cbecb9d against 27.1 / 26.9 / 26.9 s now (3.5x); vale 39.1 / 38.9 / 38.9 s against 32.6 / 32.7 /
+  9b1e23c against 27.1 / 26.9 / 26.9 s now (3.5x); vale 39.1 / 38.9 / 38.9 s against 32.6 / 32.7 /
   32.5 s (1.2x). Values unchanged by the paths: `crates/via-geom/tests/exact_fast.rs` and
   `graph.rs` `distance_tests` compare each with the plain scan.
 - -> M3: **A way that ends at a door** (relief A): `ends_at = "bothy.door"` reads the instance's
@@ -418,7 +418,7 @@ Throwaway code, under `spike/` until M7 and at the tag `spike-final` since. Firs
 - [x] -> monastery: **the switchback's first two legs ran on top of each other** (0.27 m at (256, 20)):
   each leg is a lattice walk, flat first. First turn to (228, 12), the place (240, 26) added;
   `road_self_near` 199 -> 13 (the (300, 44) turn, 4.8 m apart). The real fix is the any-angle course.
-- -> massif, basin: **expect rows OUT at cbecb9d and now alike** (slice 4 re-check): massif `rocks`
+- -> massif, basin: **expect rows OUT at 9b1e23c and now alike** (slice 4 re-check): massif `rocks`
   0 (`scatter.empty` fallen_rock) and every change's counts; basin `ground_tarn_view` 44.4,
   `ground_middle` 55.8, `mouth_moves` (1866.6, 804.2). Not from slice 4: owed a look.
 
@@ -536,7 +536,7 @@ name, lot names at size) that its worlds needed and did not get; carry them firs
 
 **-> M4, core, first (M3 debts the worlds tripped on)**
 - [ ] **A change costs a cold build.** quay `unrelated` ~100% of cold, `clear_one` 73%, unchanged 64%
-  (core report, 3 runs, HEAD ce470fd). On the m3-sheet run the slowest change is 81% (monastery) to
+  (core report, 3 runs, HEAD 6f65c52). On the m3-sheet run the slowest change is 81% (monastery) to
   128% (quay `move_hill`) of cold; city `move_avenue` 188 s against 157 s cold. The whole-extent
   fields memo runs once per plan, three plans a build (3.7 s of quay's 10). Owed: (a) a windowed
   `Fields` resolve per chunk; (b) `answer`, `define`, `compute_step` reading only what they need;
@@ -548,7 +548,7 @@ name, lot names at size) that its worlds needed and did not get; carry them firs
   6.1 -> 4.1 s, `unrelated` 9.4 -> 7.5 s, `clear_one` 6.5 -> 4.7 s, memo 3.9 -> 2.4 s. city (1 run):
   cold 176 -> 124 s, unchanged 63 -> 34 s, `move_avenue` 194 -> 159 s, memo 40 -> 11 s (single
   runs, mixed trees). Re-measured by the fix pass, 3 runs each, medians, interleaved, release `via`
-  of HEAD 7056fc3 (a worktree, its own city) against the working tree with all of slice 1, a fresh
+  of HEAD eb8af62 (a worktree, its own city) against the working tree with all of slice 1, a fresh
   store per run, unchanged and `move_avenue` `--against` cold, `totals.ms`, load 6 to 9 from
   other agents: cold 152.0 -> 102.6 s, unchanged 62.8 -> 34.1 s (41% -> 33% of cold),
   `move_avenue` 182.8 -> 100.2 s (120% -> 98%), memo 36.1 -> 9.8 s; spread under 0.6% each. Ratios
@@ -562,7 +562,7 @@ name, lot names at size) that its worlds needed and did not get; carry them firs
   Memo; test `an_unchanged_world_keys_a_plain_lint_from_the_memo`, fails at HEAD); the engine no
   longer clones a definition each pass for a node whose edges are unsettled, nor builds the
   reader map when nothing failed. quay (3 runs, medians, interleaved, fresh store per run,
-  HEAD fa672f7 against HEAD + this patch, same lib and examples, load ~8 from other agents,
+  HEAD 5a87524 against HEAD + this patch, same lib and examples, load ~8 from other agents,
   `totals.ms`; HEAD + the cost patch alone, not the combined slice 2 tree, whose `prepare` also
   builds every import inside `leaves()` and each stratum, so re-measure on the committed tree):
   cold 7.9 -> 7.5 s, unchanged 4.1 -> 2.2 s (52% -> 29% of cold), `unrelated`
@@ -1565,7 +1565,7 @@ To M6 close (atlas on foot):
 - [x] Water at the joins (`joins`, M6 close): composition.md 6.2 lays the parent's water by its
   depth over its own ground (its head view) where the joined ground is lower, and an import with
   no field derived from one it brings is dry under it (college's 7.2 m lake). Cases
-  `derived_lower`, `derived_dry_under` (fail on fb09c57). Atlas: ring posts wet 38,777 -> 3,156,
+  `derived_lower`, `derived_dry_under` (fail on b8a4e66). Atlas: ring posts wet 38,777 -> 3,156,
   bookmarks wet 15 -> 6 (`ring_wet`, `bookmarks_wet`; the six are the bridges and two of the
   places' own). The college_dry row is gone. Lesson: a derived field's offset was laid for the
   import's side only; the parent's side was a level over ground the join had replaced.
@@ -1694,7 +1694,7 @@ To M7:
   the plain at both ends; -52.5 -> -15.5): `hill_trail@vale` 0.012, seam grade 19.53 -> 6.19,
   join_vale and vale.to_pass arrive. Its walls now stand 37 m over the plain (`join_step` -37.24).
 - [x] The wild's west exit is a scarp: join_wild_west blocked at 73.9 degrees, wild.look_corner
-  at 54.8 (both arrived on fb09c57); `west_road@wild` 2.10. A ramp from the kept corner to the
+  at 54.8 (both arrived on b8a4e66); `west_road@wild` 2.10. A ramp from the kept corner to the
   wild's 47 m exit, or the corner given back to the wild. Done M7 slice 1 (`atlas`): the plain
   takes the wild's agreed slope near the corner's edges (world.toml `start`), and lib/land's
   `approach` holds the trail's first 20 m: `west_road@wild` 0.442 (target 0.25, not met),
@@ -1860,7 +1860,7 @@ To M7 close:
 - [ ] basin's `measure.py` exits 1 on base (on-foot review 5): ground_tarn_view 44.36 (oracle
   57.35 +-6), ground_middle 55.79 (62.38 +-6), mouth_moves 51.4 m (50). The 2026-11-14 values
   came from a state never committed: a fresh terrain run on a bit-equal `before` gives 44.36 on
-  56ca49e, 9ef43c9, 8f7b169, 277993f and this tree (not the cutover, not the river's `width`).
+  5013e17, 2cf9798, f295b7b, db28af7 and this tree (not the cutover, not the river's `width`).
   The committed `gen/terrain/` holds that state's `eroded` and is stale for any rebuilt
   `via-terrain` (`protocol.untrusted_stale`, `param program`), so an untrusted reviewer cannot
   build basin (protocol.md 8 says one can). Re-taken with the reason in expect.toml; owed: which

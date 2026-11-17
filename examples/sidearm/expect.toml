@@ -7,7 +7,7 @@
 #   python3.12 examples/sidearm/measure.py BUILD --check racked
 #
 # Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
-# b588abc (M5 slice 3) with the M5 close agents' edits as of 2026-11-17 03:30, VIA_LIB=lib, one
+# 91bc83e (M5 slice 3) with the M5 close agents' edits as of 2026-11-17 03:30, VIA_LIB=lib, one
 # store for both builds, each built once from the world with its change file (no --against).
 # Millimetres, against numbers.toml (the sidearm's own numbers; no source publishes any). Exact by
 # construction, so a band is one number. Before the M5 close the barrel stood 17 mm past the slide

@@ -6,7 +6,7 @@
 #   python3.11 examples/townland/measure.py BUILD --check base       # each row against its band
 #
 # Protocol: macOS arm64, a `via` release binary built from the rewrite branch's working tree at
-# 2026-11-15 18:00 KST (after cbecb9d, with the other M3 agents' uncommitted core, lib/town and
+# 2026-11-15 18:00 KST (after 9b1e23c, with the other M3 agents' uncommitted core, lib/town and
 # lib/review changes of that hour), Python 3.12 (sdk/python/.venv), one store, base built warm on
 # it, each change with --against base, default threads, VIA_LIB=lib, a machine shared with other
 # builds (base about 100 s). One build each, so a band is the measured number: where someone looks,

@@ -6,7 +6,7 @@
 #   python3.11 examples/city/measure.py BUILD --check base       # each row against its band
 #
 # Protocol: macOS arm64 (Apple M4 Pro, shared with other agents' builds), a `via` release binary
-# built from the rewrite branch's working tree on 2026-11-15 (after ce470fd, with the other M3
+# built from the rewrite branch's working tree on 2026-11-15 (after 6f65c52, with the other M3
 # slice 5 agents' uncommitted lib/ways, lib/town, lib/review and via-doc changes of that hour),
 # VIA_LIB=lib, Python 3.12 (sdk/python/.venv), one fresh store, 8 threads; base cold, then each
 # change --against base on the same store. One build each, so a band is the measured number: where
@@ -31,7 +31,7 @@
 # houses_removed 3 -> 2, blocks_kept 203 -> 200. move_avenue and move_bridge in band unchanged.
 #
 # M4 slice 1 (names): re-recorded with this protocol on the working tree of 2026-11-16 (after
-# 7056fc3, with the other M4 slice 1 agents' uncommitted changes of that hour; release `via`,
+# eb8af62, with the other M4 slice 1 agents' uncommitted changes of that hour; release `via`,
 # VIA_LIB=lib, one fresh store; base cold 126 s and 6.0 GB peak, move_avenue 151 s, move_bridge
 # 129 s, hand 56 s, 7.5 to 8.5 GB peak). The grand avenue passes four named places on its line
 # (world.toml): it ran from x 661 to 728 for a line at 700, now on it (0 m off, base and
@@ -42,9 +42,9 @@
 # too).
 #
 # M5 slice 3 (levels): re-taken 2026-11-17 on a release `via` of the working tree at 01:03 KST (after
-# 6f9f332, with the other M5 slice 3 agents' uncommitted changes), VIA_LIB=lib, one fresh store,
+# 8ca8e83, with the other M5 slice 3 agents' uncommitted changes), VIA_LIB=lib, one fresh store,
 # base cold 103 s, each change --against base. The freeway passes over each arterial on a viaduct
-# with two loop ramps; the HEAD build (6f9f332, a worktree, same binary, 106 s) gave the "before"
+# with two loop ramps; the HEAD build (8ca8e83, a worktree, same binary, 106 s) gave the "before"
 # numbers the rows quote. Every count of blocks, lots and houses is unchanged (houses 2291 both).
 # Rows marked OWED fail on purpose until the fix they name lands.
 #
@@ -52,7 +52,7 @@
 # lib/town houses.py "Per block"); the houses are those of the whole-table steps, name for name
 # (2291), and `lots_held` is counted from the houses' names (measure.py), since the steps' `rows`
 # records, equal for many blocks, merge in diagnostics.json. Times, one run each, release `via`
-# (HEAD 277993f with its lib and examples, a worktree; against the working tree of 2026-11-17
+# (HEAD db28af7 with its lib and examples, a worktree; against the working tree of 2026-11-17
 # 07:00 KST with the other M6 agents' uncommitted changes), VIA_LIB=lib, fresh store, 14 threads,
 # load 12 to 35 from other agents' builds, wall clock: cold 119 -> 128 s; unchanged into the same
 # directory 1.8 -> 1.7 s; unchanged into a new directory 17.4 -> 1.1 s (graph.md 6.2, "Into a new
@@ -80,7 +80,7 @@
 # before the lookup (graph.md 8; a `sample` of move_avenue before: 5.4 s opening key records and
 # 2.8 s objects on the engine's thread, of 84 s), a `for_each` step's items kept under the leaves
 # and the model's build started beside a rank's graph (graph.md 5.3). Times, release `via` of a
-# worktree at HEAD 3884c68 (before) and the same with this slice's patch (after), VIA_LIB = the
+# worktree at HEAD 0b765be (before) and the same with this slice's patch (after), VIA_LIB = the
 # worktree's lib, one fresh store per binary, 14 threads, wall clock, load 20 to 57 from other
 # agents' builds: cold 101.3 -> 92.9 s; move_avenue --against cold 120.5 -> 109.3 s (load 37 and
 # 57); back to base --against move_avenue 47.3 -> 35.1 s; move_avenue paired, base store cloned

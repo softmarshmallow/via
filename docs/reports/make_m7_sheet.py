@@ -292,8 +292,8 @@ OUTSIDER_VIEWS = [
 
 CUTOVER = [
     "via-artifact folded: its seed derivation moved into via-num as sub_seed; the crate dropped; via-terrain holds no second core "
-    "(M7 slice 1, e686b8c).",
-    "spike/ deleted from the tree (M7 close, 171e7e7); its record is the tag spike-final, its oracle data fixtures/oracle/. The "
+    "(M7 slice 1, 58febc6).",
+    "spike/ deleted from the tree (M7 close, ff13410); its record is the tag spike-final, its oracle data fixtures/oracle/. The "
     "oracle runs from a worktree pinned at spike-final; only exported data crosses. spike/local, spike/out and spike/build stay on "
     "disk, gitignored (whether they may go is the owner's).",
     "docs/archive dropped; docs/charter.md, docs/faq.md (34 open questions to 11, each naming who answers) and the ledger's engine "
@@ -473,7 +473,7 @@ def draw(tmp: Path, data: dict, outsiders: Path) -> None:
     p.line("What proves it here: four outsider worlds built from the documents alone (section 3, hand-copied from row 51, their "
            "views from their own runs); atlas, every example joined, built fresh by this script (page 2); conformance milestones 3 "
            "to 7 on the release binary (page 3). main has not moved: that is the owner's, locally.")
-    p.head("2. The cutover (hand-written from the commits e686b8c and 171e7e7)")
+    p.head("2. The cutover (hand-written from the commits 58febc6 and ff13410)")
     for s in CUTOVER:
         p.line("- " + s)
     _, tag = run(["git", "rev-parse", "--short", "spike-final^{commit}"])

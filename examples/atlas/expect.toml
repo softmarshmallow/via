@@ -5,7 +5,7 @@
 #   python3.12 examples/atlas/measure.py BUILD+<c> --run BUILD+<c>.run.json --check <c>
 #
 # Protocol (M6 slice 2, 2026-11-17): macOS arm64 (M4 Pro), release `via` and `via-terrain` of the
-# rewrite working tree after 33e309f with other agents' M6 slice 2 diffs, VIA_LIB=lib, Python 3.12
+# rewrite working tree after 96cab3a with other agents' M6 slice 2 diffs, VIA_LIB=lib, Python 3.12
 # steps; one fresh store: the atlas cold, the same again into a new directory, then each change with
 # `--against` the base on that store, one after another; one run each; other agents building and a
 # Godot render running at the same time. Measured once, so each band is the measured number, or a
@@ -20,7 +20,7 @@
 # 148.3 (2273), over_budget 165.6 (exit 1, 8182). Every row in band; new rows `road_painted`,
 # `road_painted_in`; moved: `[map] footprints` 2587 -> 2776, `move_market.shapes_ran` + area_market.
 
-# Atlas pass (M6 close, 2026-11-17): release `via` and `via-terrain` of fb09c57 (a clean worktree:
+# Atlas pass (M6 close, 2026-11-17): release `via` and `via-terrain` of b8a4e66 (a clean worktree:
 # none of the joins' core change), the working tree's examples and lib, VIA_LIB=lib, Python 3.12
 # steps, one store for three builds in order (the first 330.4 s, the last 255.9 s wall, load 19 to
 # 22 from other agents). Rows taken from the last: `grade_max`, `road_join_max`, `[map] water`,
@@ -59,7 +59,7 @@
 #
 # M7 close (2026-11-17, 20:06 KST, `worlds`): the college's lift +2.4, the market's north end held
 # (`market_top_approach`), the creek's two roads joined to the deck's ends and lib/ways's crossing
-# lint added. Release `via` and `via-terrain` of e686b8c (a clean worktree: none of the M7 close's
+# lint added. Release `via` and `via-terrain` of 58febc6 (a clean worktree: none of the M7 close's
 # core diffs), the working tree's examples and lib, VIA_LIB=lib, Python 3.12 steps, every step
 # trusted, one fresh store for three builds in order: before these edits 273.1 s (18/18), one that
 # exited 1 (the course's `width = 30`: `step.facts.river_lost`; reverted), this tree 163.8 s, load
@@ -137,10 +137,10 @@ band    = [0.286, 0.286]                    # place's gate is the place's paint 
 
 # The joins on foot (M6 close, `joins`): water in the blend rings and at the bookmarks, and the
 # profile at each answered place (measure.py). Protocol: release `via` and `via-terrain` of the
-# working tree at 12:35 KST 2026-11-17 (fb09c57 with other agents' diffs and composition.md 6.2's
+# working tree at 12:35 KST 2026-11-17 (b8a4e66 with other agents' diffs and composition.md 6.2's
 # re-laid parent water, the dry import and 6.7's hold), VIA_LIB=lib, Python 3.12 steps, one fresh
 # store, one cold run (382 s wall, another atlas build and the conformance run beside it). Before
-# (fb09c57 alone, same protocol, 380 s): ring_wet 38,777 of 112,975; bookmarks_wet 15 (5 of
+# (b8a4e66 alone, same protocol, 380 s): ring_wet 38,777 of 112,975; bookmarks_wet 15 (5 of
 # college's, monastery.bm_arrive 4.75 m); exit_in_depth_max 8.76 and exit_in_grade_max 2.273
 # (vale.valley_road); exit_out_grade_max 0.777 (college_road).
 

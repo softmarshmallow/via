@@ -6,7 +6,7 @@
 #   python3.13 examples/county/measure.py ... --check <section>                      # the bands
 #
 # Protocol (M4 slice 3, 2026-11-16): macOS arm64, release `via` of the rewrite working tree after
-# e67c061 with the slice 3 diffs, VIA_LIB=lib, one fresh store: the county, then each change with
+# 479978b with the slice 3 diffs, VIA_LIB=lib, one fresh store: the county, then each change with
 # `--against` the county base on the same store; one build each, other agents building at the same
 # time. Measured once, so each band is the measured number: it says where someone looks.
 # Base 7.8 s wall, 0.84 GB peak; move_town 11.1 s; forgotten_exit 7.3 s.
@@ -50,7 +50,7 @@ measure = "town_instances"                  # lots here). 324 = 249 pieces of th
 band    = [324, 324]                        # `wall` step, lib/town kit.py, M5 slice 3) + 75 houses
                                             # (68 before slice 3's corner and shallow houses, rules
                                             # 2b, 2c). Re-banded M6 slice 1, 2026-11-17: release
-                                            # `via` of the working tree after 277993f with other M6
+                                            # `via` of the working tree after db28af7 with other M6
                                             # slice 1 diffs, one fresh store, county base, every
                                             # county row passing; from its import, not a fault
 
@@ -91,7 +91,7 @@ measure = "unanswered_write"
 band    = ["ends_at = \"town.east_gate\""]
 
 # ------------------------------------------------------------------------------------------ M4 slice 4
-# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD ff094b6 with
+# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD b8c0b02 with
 # this slice's import.rs and resolve.rs hunks only (paint brought, a derived field's offset, wall
 # cells read at the nearest post; composition.md 6.2), VIA_LIB=lib, each world and import alone on a
 # fresh store, each change built --against the base on its store. One build each, other agents

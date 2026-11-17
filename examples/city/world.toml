@@ -168,7 +168,7 @@ flow      = "= river.flow"
 # The interchanges (lib/ways, R18; levels since M5 slice 3): where the freeway passes over an
 # east-west arterial. The arterial's two pieces arrive at its point by name; the freeway passes over
 # it on a viaduct (below). Its plate is `level`, the ground there less 3 m (the ground at its point
-# in the build of 6f9f332: 14.59, 16.45, 18.05, read from fields/height.npy), so the arterial dips
+# in the build of 8ca8e83: 14.59, 16.45, 18.05, read from fields/height.npy), so the arterial dips
 # under the deck: flat 16 m round, banked at 1:10 out to 40 m and fading by 44 m. A plate 56 m round
 # (the ramps landing on it) took 55 houses of the rows district with its bank to 100 m.
 [feature.ix_harbor]
@@ -189,7 +189,7 @@ reach = 40
 
 # The viaducts (lib/ways): the freeway over each interchange, 300 m from 150 m south of its point
 # to 150 m north, straight; the freeway's pieces end and start at its ends by name. Each end is at
-# the ground there (the build of 6f9f332, as above), its middle (t 0.3 to 0.7) at the ground at the
+# the ground there (the build of 8ca8e83, as above), its middle (t 0.3 to 0.7) at the ground at the
 # interchange plus 3 m: 6 m over the plate. Its steepest grade, 1.5 (deck_z - z_start) / 90 m, is
 # 5.6 % (harbor), 5.8 % (central), 6.1 % (north).
 [feature.fly_harbor_s]
@@ -240,7 +240,7 @@ deck_z    = 21.05
 # plate's bank (47 to 52 m from the interchange), at a point by name, heading east. North-west:
 # radius 40 m about (429, y + 47), counter-clockwise from (469, y + 47); south-west: radius 44 m
 # about (425, y - 43), clockwise from (469, y - 43); points every 15 degrees. `z1` is the ground at
-# the foot in the build of 6f9f332; the ramp's `foot` holds it there, 6 m round, clear of the
+# the foot in the build of 8ca8e83; the ramp's `foot` holds it there, 6 m round, clear of the
 # plate's bank (a foot 47.5 m out met it: `authority.squeezed`). Each falls 2.6 to 3.2 m over 188 m
 # (north-west) and 207 m (south-west): 2.6 % at most.
 [feature.harbor_nw_foot]

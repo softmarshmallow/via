@@ -1,6 +1,6 @@
 # The first cut: one page for the owner's review
 
-Branch `rewrite`, last commit `95f65fd` (M7 close). Nothing is pushed; `main` has not moved.
+Branch `rewrite`, last commit `4016c85` (M7 close). Nothing is pushed; `main` has not moved.
 Every number below names where it comes from; the atlas and conformance numbers are from the run
 that made [`m7-sheet.png`](m7-sheet.png) (`make_m7_sheet.py`, protocol on the sheet).
 
@@ -51,7 +51,7 @@ Holds (this run unless named):
   passed at milestone 3, 835 at 4, 888 at 5, 911 at 6, 938 at 7 of 951 cases; 1 fails at each,
   `graph/epoch`, which reads a test-only variable a release binary ignores (its case says so);
   12 are pending by their own `pending` line (`via lock`, a path across Windows drives, others).
-- Protocol for the atlas numbers: one run each, release binary of `95f65fd`, default threads, one
+- Protocol for the atlas numbers: one run each, release binary of `4016c85`, default threads, one
   fresh store, macOS arm64 (Apple M4 Pro, 14 cores) shared with other agents (load 6.5 at the
   start, 14.1 at the end); the sheet gives the load per build.
 - The outsiders (docs/challenges.md row 51): all four worlds built; first build 9 and 5 min
@@ -118,7 +118,7 @@ R20 to R38, R40 and R43 are not marked open.
 
 ## Decisions owed to the owner (from `TODO.md`, `docs/doctrine.md` 6 and `docs/plan.md`)
 
-A selection, as of `95f65fd`: the decisions that bear on the first cut; the rulings above are not
+A selection, as of `4016c85`: the decisions that bear on the first cut; the rulings above are not
 repeated. Other open TODO items name the owner too: `raise_max` and quay's hill-street rows, the
 kit rename `ends` to `caps`, a bridge over a sheer face as `geom.unowned_crossing` (geometry.md
 2.7), `along` as text (build.md 15.1), fitting other map examples and design reference matching
@@ -154,19 +154,15 @@ kit rename `ends` to `caps`, a bridge over a sheer face as `geom.unowned_crossin
 
 ## How to review
 
-- The commits on `rewrite` since `main`: `git log --oneline main..rewrite | wc -l` gives 31 (the
-  30 below and the commit that adds this page).
-  By milestone: the record and M0, 6 (`dc874f0` terrain patch, `441c3db` the reboot record,
-  `599f305`, `eeaf3ef`, `3ebf044`, `4d42543`); M1, 3 (`443e699`, `aebc2bd`, `dd4390b`); M2, 2
-  (`56ca49e`, `9ef43c9`); M3, 5 (`b8b9874` to `7056fc3`); M4, 4 (`fa672f7` to `8f7b169`); M5, 4
-  (`152bf1f` to `277993f`); M6, 3 (`33e309f`, `fb09c57`, `3884c68`); M7, 3 (`e686b8c`, `171e7e7`,
-  `95f65fd`).
+- The commits on `rewrite` since `main`: `git log --oneline main..rewrite | wc -l` gives 32 (the
+  30 below, the commit that adds this page and a cleanup commit).
+  By milestone: the record and M0, 6 (`56cb6a2` terrain patch, `eb154b5` the reboot record,
+  `29dc21a`, `a14d1cf`, `562cd90`, `92b2a00`); M1, 3 (`bae0728`, `c4e5a6c`, `0e522fe`); M2, 2
+  (`5013e17`, `2cf9798`); M3, 5 (`b83f135` to `eb8af62`); M4, 4 (`5a87524` to `f295b7b`); M5, 4
+  (`8d2d566` to `db28af7`); M6, 3 (`96cab3a`, `b8a4e66`, `0b765be`); M7, 3 (`58febc6`, `ff13410`,
+  `4016c85`).
 - Read the sheets in order, then `docs/challenges.md` and `TODO.md` for what is open.
-- This page, `m7-sheet.png`, `make_m7_sheet.py`, the README row pointing here and the M7-sheet
-  walk counts added to `examples/atlas/README.md` are committed on top of `95f65fd`, locally, as
-  the last commit of `rewrite` (so `main..rewrite` counts 31). Nothing is pushed.
-- `main` moves only when the owner moves it, locally: for example `git branch -f main rewrite`, or
-  a merge they make. The agents never push and never move `main`.
-- The sheet redraws (`--draw-only`) only from scratch folders outside the repo (its `--keep`
-  folder and the outsiders' `m7c-fresh-*/review` runs), which may be gone; then the atlas half is
-  made again by a full run, and the outsiders' views cannot be.
+- `main` moves when the owner merges `rewrite` into it (a merge commit or a fast-forward keeps
+  the milestone commits; a squash would lose them).
+- The sheet's scratch data (its `--keep` folder and the outsiders' runs) is deleted: `--draw-only`
+  cannot redraw it; a full run of `make_m7_sheet.py` makes it again, without the outsiders' views.

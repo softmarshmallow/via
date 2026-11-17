@@ -7,7 +7,7 @@
 #   python3.11 examples/strait/measure.py ... --check <section>                          # the bands
 #
 # Protocol (M4 slice 2, 2026-11-16): macOS arm64, release `via` of the rewrite working tree after
-# fa672f7 with the M4 slice 2 diffs (imports, exits, and this example's three fixes in import.rs and
+# 5a87524 with the M4 slice 2 diffs (imports, exits, and this example's three fixes in import.rs and
 # graph.rs), VIA_LIB=lib, one fresh store for the run: `a` and `b` alone, then the strait, then each
 # change with `--against` the strait base on the same store; one build each, other agents building
 # at the same time. Measured once, so each band is the measured number: it says where someone looks.
@@ -130,7 +130,7 @@ measure = "unanswered"
 band    = [1, 1]
 
 # ------------------------------------------------------------------------------------------ M4 slice 4
-# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD ff094b6 with
+# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD b8c0b02 with
 # this slice's import.rs and resolve.rs hunks only (paint brought, a derived field's offset, wall
 # cells read at the nearest post; composition.md 6.2), VIA_LIB=lib, each world and import alone on a
 # fresh store, each change built --against the base on its store. One build each, other agents
