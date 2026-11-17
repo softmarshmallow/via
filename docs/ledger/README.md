@@ -150,9 +150,9 @@ loader, or whose Tool mark is not "nothing".
 | Delivery | 40 | 34 | 5 | 6 | 23 |
 | Runtime | 74 | 10 | 1 | 0 | 9 |
 | Practice | 34 | 24 | 5 | 3 | 16 |
-| Principle | 15 | 14 | 8 | 4 | 2 |
+| Principle | 15 | 14 | 7 | 5 | 2 |
 | - | 1 | 1 | 0 | 0 | 1 |
-| **All** | **865** | **683** | **156** | **142** | **385** |
+| **All** | **865** | **683** | **155** | **143** | **385** |
 
 By class: Derivation (focal) 10, Derivation (global) 17, Derivation (local) 22, Network (directed) 10, Network (undirected) 14.
 
@@ -201,8 +201,9 @@ appearing under several headings, with where the first cut stands on each.
   by a feature, with the ground cut beneath it (`spec/surfaces.md`), shown for a cave, floors
   and decks. Pits, floating land and tunnels are none.
 - *Identity that survives.* Stable IDs, saves, overrides, hand edits, map reveal, quest hooks and
-  live updates all rest on a thing keeping its name when the world is rebuilt. Names by place
-  and hand edits are shown (`spec/identity.md`). Saves and live updates are none.
+  live updates all rest on a thing keeping its name when the world is rebuilt. Names by place,
+  pins and clears are shown (`spec/identity.md`); a lock is still refused. Saves and live
+  updates are none.
 - *Who gives way, and in what order.* Authority, sequence, blends between materials, biomes and
   districts, and every seam in section 19. Authority, order and owned meetings are stated
   (`spec/authority.md`). Meeting is still the archetype with the most rows that are ours and

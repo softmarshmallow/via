@@ -70,7 +70,7 @@ verdict is one of: done, or left, with the reason. What is left and needs work i
 | `crates/via-terrain`, a library's program, sits among the engine's crates | Left | It is a workspace member; its ring is stated, and the check refuses it the model |
 | `lib/packs` holds assets beside the kind libraries | Left | `spec/assets.md` 2 fixes where a pack is found |
 | A material's `file` and `repeat` are not written to the build, though `spec/build.md` 7 says they are; found by a reader of the claims, and seen in the code, not by a build | Left | `TODO.md`, `spec/build.md` |
-| `[lock.<id>]` is in the vocabulary and still refused; the ledger had called it shown | Done | The row now names pins and clears only |
+| `[lock.<id>]` is in the vocabulary and still refused; the ledger had called it shown | Done | The row now reads partly, and names pins and clears only |
 | Nothing checked the record | Done | `cargo run -p xtask -- check` and `cargo test --workspace` run both new checks, so CI does when it runs |
 
 ## Not read

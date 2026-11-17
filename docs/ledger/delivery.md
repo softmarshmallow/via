@@ -99,7 +99,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | source of truth | the one place a fact is edited | Principle | core | shown: `documents.md 1` |
 | hand-authored, procedural, hybrid | made by a person, by a rule, or both | Principle | core | shown: `authority.md 3` |
 | non-destructive | an edit that does not bake away what came before: change an input and what follows is made again | Principle | core | shown: `graph.md 7` |
-| override, pin, lock | a hand decision that survives regeneration and beats the rule | Principle | core | shown: `[pin.<id>]`, `[clear.<id>]`, `identity.md 4` |
+| override, pin, lock | a hand decision that survives regeneration and beats the rule | Principle | core | partly: `[pin.<id>]`, `[clear.<id>]`, `identity.md 4` |
 | seed, determinism | the same input giving the same world | Principle | core | shown: `seed`, `numbers.md 9` |
 | variant | the same world in another condition | Overlay | core | shown: `[change.<name>]` |
 | layer | a separately owned document of one world | Overlay | core | shown: `[layer.<id>]` |
