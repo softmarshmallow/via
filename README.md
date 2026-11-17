@@ -97,6 +97,7 @@ the tag `spike-final`.
 | [`docs/plan.md`](docs/plan.md) | The rewrite plan: milestones M0 to M7 and milestone one, `ford`. |
 | [`docs/reports/first-cut.md`](docs/reports/first-cut.md) | One page for the owner's review of the first cut: what holds, what does not, the open rulings and decisions. |
 | [`spec/`](spec/) | The contract: chapters, schemas, test vectors and conformance cases. Start with `spec/vocabulary.md`. |
+| [`docs/layers.md`](docs/layers.md) | How the repository is laid out: the layers of meaning, the rings of code, where every crate, chapter and library sits, and what the layout shows. |
 | [`docs/ledger/`](docs/ledger/README.md) | The vocabulary of a game world: every term filed under an archetype and an owner, with what the first cut shows of it. |
 | [`docs/challenges.md`](docs/challenges.md) | Every request made of the tool, how it fared, and the milestone that closes it. |
 | [`docs/design/blackbox.md`](docs/design/blackbox.md) | The tool seen from outside. |

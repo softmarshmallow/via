@@ -20,7 +20,7 @@ guess that the term belongs to a domain library, not a decision to write one.
 | [play.md](play.md) | 11 Movement, traversal and collision; 12 Gameplay markup; 13 A living world; 17 Persistence and a live world |
 | [delivery.md](delivery.md) | 14 Atmosphere, light and sound; 15 Seeing far and running fast; 16 The player's map; 18 Making it: pipeline and people |
 | [seams.md](seams.md) | 19 Seams: where two things meet |
-| [names.md](names.md) | 20 One thing, three names; 25 This project's own words |
+| [names.md](names.md) | 20 One thing, three names; 25 This project's own words: its nouns, its kinds and its steps |
 | [looks.md](looks.md) | 21 to 24 Looks: the work, the theories, the tricks |
 | This page | 26 What the ledger shows |
 
@@ -105,6 +105,8 @@ holds the sources.
 6. A new archetype must meet the five criteria in [archetypes.md](archetypes.md).
 7. The ledger records the domain. What we build about it is recorded where it is built: the
    `Now` column only points there.
+8. A kind or a step of ours has a row in section 25 ([names.md](names.md)) with the archetypes
+   it is made of. `python3 tools/layers_check.py` holds that section equal to `lib/`.
 
 ## 26. What the ledger shows
 
@@ -252,8 +254,6 @@ Subjects still to read from sources:
 
 ## Owed
 
-- Section 25 re-read against the first cut: its nouns, its mechanisms and its library kinds,
-  each with its archetypes.
 - Two or three scenes per section: small situations that show its concepts together, each with
   one thing to move.
 - Typical sizes and limits, each with its source.

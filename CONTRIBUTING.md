@@ -32,6 +32,8 @@ Every milestone in [`docs/plan.md`](docs/plan.md) runs in this order.
 - **No AI inside the build.** No learned model runs in a build, and no model-made data is an input
   or an output of one. AI is welcome outside: writing documents, analysis, review.
 - **Checks before a commit:** `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace`.
+  After a change to `docs/ledger/`, `docs/layers.md`, a library's kinds or the place of a crate:
+  `python3 tools/ledger_check.py` and `python3 tools/layers_check.py` (`docs/layers.md`, "Checks").
 - **Commit style:** `type(scope): summary`.
 
 ## New rules for the rewrite
