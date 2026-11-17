@@ -1,6 +1,6 @@
 # The first cut: one page for the owner's review
 
-Branch `rewrite`, last commit `4016c85` (M7 close). Nothing is pushed; `main` has not moved.
+Branch `rewrite`, last commit `c882cd9` (M7 close). It goes to `main` by pull request.
 Every number below names where it comes from; the atlas and conformance numbers are from the run
 that made [`m7-sheet.png`](m7-sheet.png) (`make_m7_sheet.py`, protocol on the sheet).
 
@@ -51,7 +51,7 @@ Holds (this run unless named):
   passed at milestone 3, 835 at 4, 888 at 5, 911 at 6, 938 at 7 of 951 cases; 1 fails at each,
   `graph/epoch`, which reads a test-only variable a release binary ignores (its case says so);
   12 are pending by their own `pending` line (`via lock`, a path across Windows drives, others).
-- Protocol for the atlas numbers: one run each, release binary of `4016c85`, default threads, one
+- Protocol for the atlas numbers: one run each, release binary of `c882cd9`, default threads, one
   fresh store, macOS arm64 (Apple M4 Pro, 14 cores) shared with other agents (load 6.5 at the
   start, 14.1 at the end); the sheet gives the load per build.
 - The outsiders (docs/challenges.md row 51): all four worlds built; first build 9 and 5 min
@@ -118,7 +118,7 @@ R20 to R38, R40 and R43 are not marked open.
 
 ## Decisions owed to the owner (from `TODO.md`, `docs/doctrine.md` 6 and `docs/plan.md`)
 
-A selection, as of `4016c85`: the decisions that bear on the first cut; the rulings above are not
+A selection, as of `c882cd9`: the decisions that bear on the first cut; the rulings above are not
 repeated. Other open TODO items name the owner too: `raise_max` and quay's hill-street rows, the
 kit rename `ends` to `caps`, a bridge over a sheer face as `geom.unowned_crossing` (geometry.md
 2.7), `along` as text (build.md 15.1), fitting other map examples and design reference matching
@@ -154,13 +154,13 @@ kit rename `ends` to `caps`, a bridge over a sheer face as `geom.unowned_crossin
 
 ## How to review
 
-- The commits on `rewrite` since `main`: `git log --oneline main..rewrite | wc -l` gives 32 (the
-  30 below, the commit that adds this page and a cleanup commit).
-  By milestone: the record and M0, 6 (`56cb6a2` terrain patch, `eb154b5` the reboot record,
-  `29dc21a`, `a14d1cf`, `562cd90`, `92b2a00`); M1, 3 (`bae0728`, `c4e5a6c`, `0e522fe`); M2, 2
-  (`5013e17`, `2cf9798`); M3, 5 (`b83f135` to `eb8af62`); M4, 4 (`5a87524` to `f295b7b`); M5, 4
-  (`8d2d566` to `db28af7`); M6, 3 (`96cab3a`, `b8a4e66`, `0b765be`); M7, 3 (`58febc6`, `ff13410`,
-  `4016c85`).
+- The commits on `rewrite` since `main`: `git log --oneline main..rewrite | wc -l` gives 34 (the
+  30 below, the commit that adds this page and three cleanup commits).
+  By milestone: the record and M0, 6 (`56cb6a2` terrain patch, `30dff13` the reboot record,
+  `19b0b58`, `007fe32`, `8364845`, `d7bde33`); M1, 3 (`007ac50`, `713b81f`, `075ae6e`); M2, 2
+  (`003d19e`, `d8e8a5c`); M3, 5 (`edc7c7b` to `f44991c`); M4, 4 (`2cc9657` to `0e57aae`); M5, 4
+  (`5495276` to `f738d84`); M6, 3 (`4aa9286`, `fe64139`, `3611e0a`); M7, 3 (`ac64d21`, `dc04433`,
+  `c882cd9`).
 - Read the sheets in order, then `docs/challenges.md` and `TODO.md` for what is open.
 - `main` moves when the owner merges `rewrite` into it (a merge commit or a fast-forward keeps
   the milestone commits; a squash would lose them).

@@ -226,7 +226,7 @@ def acceptance(data: dict) -> list[tuple[str, str]]:
     out = [x for x in out if x != ("", "")]
     out.append(("head", "3. A moved square re-runs only its district"))
     out.append(("", "spec case composition/moved_square FAILS (conformance --milestone 4: 816 passed, 1 failed, 28 pending; "
-                    "M4 slice 3 fix pass, working tree after 479978b). An import's own steps do not run inside the parent's "
+                    "M4 slice 3 fix pass, working tree after 059fbe8). An import's own steps do not run inside the parent's "
                     "build (import::built builds it eagerly in prepare), and `for_each = \"given:...\"` with a `given:` "
                     "selector is not written. No world shows it; county's town is bare (town_streets "
                     f"{v('county', 'base', 'town_streets')}, town_instances {v('county', 'base', 'town_instances')}).   NOT HELD"))

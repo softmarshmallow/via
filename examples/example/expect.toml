@@ -4,12 +4,12 @@
 #   python3.11 examples/example/measure.py build/example+move_tarn --check move_tarn   # built --against build/example
 #
 # Protocol of the numbers below: Apple M4 Pro, 14 cores, default threads, release build of the
-# rewrite branch's working tree on 2026-11-15 (after 9b1e23c), one build each, a fresh store
+# rewrite branch's working tree on 2026-11-15 (after 4d331d3), one build each, a fresh store
 # (`--store`), the cold base first and each change `--against` it on the same store, other agents
 # building at the same time (load average 6 to 8). `equals` is exact; a `band` says how far a
 # measure may move before someone looks, and why. A band is never a target (R15). The rows of
 # the run and set (`by_hand`, `east_row`, `lamps`, `stalls`, `row_follows`) were taken the same way
-# on 2026-11-16 (working tree after eb8af62), a fresh store under the scratch folder. The spike's
+# on 2026-11-16 (working tree after f44991c), a fresh store under the scratch folder. The spike's
 # example exported no measures, so there is no oracle column.
 
 # ------------------------------------------------------------------------------------------ base

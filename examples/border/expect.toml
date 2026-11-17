@@ -4,7 +4,7 @@
 #   python3.11 examples/border/measure.py BUILD --alone wild=WILD_DIR --check <section>
 #
 # Protocol (M4 slice 3, label border, 2026-11-16): macOS arm64, release `via` of the rewrite working
-# tree after 479978b with the slice 3 diffs other agents had made by then, VIA_LIB=lib. Each build on
+# tree after 059fbe8 with the slice 3 diffs other agents had made by then, VIA_LIB=lib. Each build on
 # its own FRESH store, cold: `wild` alone, the border, and each change as `--change` with no
 # `--against` (a change built against the base store fails, diag.internal on
 # `held:fringe_trees/v:build`: README Known faults). One build each, other agents building at the
@@ -28,7 +28,7 @@ band    = [2, 2]                            # import, has sheer faces since M5 s
                                             # over `gorge_e6` and `gorge_w8`, as monastery's own
                                             # `unowned` [2, 2] (geometry.md 2.7, open in TODO).
                                             # Re-banded M6 slice 1, 2026-11-17: release `via` of the
-                                            # working tree after db28af7 with other M6 slice 1
+                                            # working tree after f738d84 with other M6 slice 1
                                             # diffs, one fresh store, border base and every change
 
 [base.held]                                 # reach: gate to both exits, far_wood, crag
@@ -96,7 +96,7 @@ measure = "opening"
 band    = [4.5, 7]
 
 # ------------------------------------------------------------------------------------------ M4 slice 4
-# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD b8c0b02 with
+# Protocol (M4 slice 4, label brought, 2026-11-16): macOS arm64, release `via` of HEAD e8e6875 with
 # this slice's import.rs and resolve.rs hunks only (paint brought, a derived field's offset, wall
 # cells read at the nearest post; composition.md 6.2), VIA_LIB=lib, each world and import alone on a
 # fresh store, each change on its own fresh store with no --against (README Known faults). One build

@@ -7,7 +7,7 @@
 use via_num::{splitmix64, sub_seed};
 use via_terrain::noise;
 
-/// The seed derivation `sub_seed` replaced, as it stood at 0b765be.
+/// The seed derivation `sub_seed` replaced, as it stood at 3611e0a.
 fn old_derive(global_seed: u64, stage: &str, salt: u64) -> u64 {
     let mut h = splitmix64(global_seed ^ 0x5851_F42D_4C95_7F2D);
     for &b in stage.as_bytes() {
@@ -16,7 +16,7 @@ fn old_derive(global_seed: u64, stage: &str, salt: u64) -> u64 {
     splitmix64(h ^ salt)
 }
 
-/// `via-terrain`'s `noise::value`, as it stood at 0b765be.
+/// `via-terrain`'s `noise::value`, as it stood at 3611e0a.
 fn old_value(seed: u64, x: f64, y: f64) -> f64 {
     fn hash2(seed: u64, x: i64, y: i64) -> u64 {
         let h = splitmix64(seed ^ (x as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
@@ -42,7 +42,7 @@ fn old_value(seed: u64, x: f64, y: f64) -> f64 {
     a + (b - a) * ty
 }
 
-/// `via-terrain`'s `noise::cell_jitter`, as it stood at 0b765be.
+/// `via-terrain`'s `noise::cell_jitter`, as it stood at 3611e0a.
 fn old_jitter(seed: u64, cell_index: u32) -> f64 {
     const SCALE: f64 = 2.0 / 9_007_199_254_740_992.0;
     ((splitmix64(seed ^ (cell_index as u64).wrapping_mul(0xD6E8_FEB8_6659_FD93)) >> 11) as f64)

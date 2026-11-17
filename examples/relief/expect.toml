@@ -8,7 +8,7 @@
 # a different moor. So the oracle bounds the order of each measure, and the `expect` ranges are this
 # world's own, from the preview below.
 #
-# Protocol of every number under `preview`: macOS arm64 (Apple M4 Pro), engine 0.1.0 at 0e522fe
+# Protocol of every number under `preview`: macOS arm64 (Apple M4 Pro), engine 0.1.0 at 075ae6e
 # with the M2 work in progress, which still refuses PNG bases, `cubic`, generate steps, workers and
 # `class = "feature"` (doc.not_yet). The preview is a scratch copy of this world that the M1 engine
 # builds: each picture sampled to the posts by fields.md 4.3 (cubic for the survey) and saved as an

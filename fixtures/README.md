@@ -2,7 +2,7 @@
 
 What the spike produced, kept as an oracle for the rewrite. The spike was the throwaway Python
 compiler of the concept phase; it was deleted at M7 and its record is the tag `spike-final`
-(commit `eb154b5`). These files are data exported at that tag: what it said and measured for every
+(commit `30dff13`). These files are data exported at that tag: what it said and measured for every
 world it could build. Paths inside them (`spike/worlds/...`) are recorded as the spike wrote them
 and name files at the tag.
 

@@ -6,7 +6,7 @@
 #   python3.11 examples/college/measure.py BUILD+<c> --base BUILD --check <c>    # 3.11+, tomllib
 #
 # Protocol: Apple M4 Pro, macOS arm64, a `via` release binary built 2026-11-16 from the rewrite
-# branch's working tree (after f295b7b, with the M5 slice 1 core, spec and lib/building changes of
+# branch's working tree (after 0e57aae, with the M5 slice 1 core, spec and lib/building changes of
 # that hour uncommitted, and this slice's step-view meetings columns and `surface.unmet` hint),
 # VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, one fresh store, base built cold on it,
 # each change with --against base, default threads, a machine shared with other builds. One build

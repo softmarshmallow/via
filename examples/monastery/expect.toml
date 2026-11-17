@@ -6,7 +6,7 @@
 #   sdk/python/.venv/bin/python examples/monastery/measure.py BUILD+<c> --base BUILD --check <c>   # 3.11+
 #
 # Protocol: Apple M4 Pro, macOS arm64, a `via` release binary built at 2026-11-15 18:34 KST from the
-# rewrite branch's working tree (after 9b1e23c, with the other M3 agents' uncommitted core, lib/town,
+# rewrite branch's working tree (after 4d331d3, with the other M3 agents' uncommitted core, lib/town,
 # lib/ways and lib/review changes of that hour), VIA_LIB=lib, Python 3.12 (sdk/python/.venv), one
 # fresh store, base built cold on it (3.1 s wall), each change with --against base (2.4 to 2.5 s),
 # default threads, a machine shared with other builds. One build each, so a band is the measured
@@ -15,9 +15,9 @@
 # the place (240, 26) was added: same machine and protocol, a release binary of the working tree of
 # that hour (epoch 2), base 3 s, each change 2 to 3 s; every other row measured unchanged.
 # Re-taken 2026-11-17 (M5 slice 3: the gorge's walls as sheer faces, the court's wall a run of wall
-# bays): same machine, a release binary of the working tree at 01:03 KST (after 8ca8e83, with other
+# bays): same machine, a release binary of the working tree at 01:03 KST (after 69e03fd, with other
 # M5 slice 3 agents' uncommitted changes), VIA_LIB=lib, Python 3.12, one fresh store, base 1.4 s
-# wall, each change with --against base. The HEAD build (8ca8e83, a worktree, same binary) gave the
+# wall, each change with --against base. The HEAD build (69e03fd, a worktree, same binary) gave the
 # "before" numbers the rows quote. Rows marked OWED fail on purpose until the fix they name lands.
 
 # ------------------------------------------------------------------------------------------ base

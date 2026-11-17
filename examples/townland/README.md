@@ -27,7 +27,7 @@ engines/godot/sheet.sh --before build/townland --after build/townland+move_cross
 ```
 
 A cold build takes about 27 s at 1 m posts (release, fresh store, 3 runs, M3 slice 4; 93 s at
-9b1e23c before the kernel's fast paths, TODO.md "Distance to large regions is slow").
+4d331d3 before the kernel's fast paths, TODO.md "Distance to large regions is slow").
 
 ## What it shows (2026-11-15)
 

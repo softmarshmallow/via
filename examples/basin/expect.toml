@@ -19,9 +19,9 @@
 # NOT HOLDING since M2 (found by the M7 slice 1 on-foot review, re-taken in its fix pass):
 # ground_tarn_view, ground_middle and mouth_moves are OUT of their oracle bands on every commit
 # since M2. Their 2026-11-14 `measured` values came from a state never committed: the committed
-# `layers/gen/terrain/` (5013e17) holds that state's `eroded`, while a fresh run of the terrain step
-# on the same `before` (bit-equal) gives an `eroded` up to 16.88 m away, on 5013e17, 2cf9798,
-# f295b7b, db28af7 and the M7 slice 1 tree alike (release `via` and `via-terrain` of each, one
+# `layers/gen/terrain/` (003d19e) holds that state's `eroded`, while a fresh run of the terrain step
+# on the same `before` (bit-equal) gives an `eroded` up to 16.88 m away, on 003d19e, d8e8a5c,
+# 0e57aae, f738d84 and the M7 slice 1 tree alike (release `via` and `via-terrain` of each, one
 # fresh store, one run each; ground at (1260, 1740) 44.36 on every one). Not the M7 cutover, not
 # the river's `width`. The re-taken `measured` below are the working tree's at 18:41 KST
 # 2026-11-17 (release, fresh store, one run each, every change `--against` the base); the bands

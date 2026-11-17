@@ -9,7 +9,7 @@
 #   python3.12 examples/pistol/measure.py BUILD --check racked+optic
 #
 # Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
-# 91bc83e (M5 slice 3) with the M5 close agents' edits as of 2026-11-17 03:30, VIA_LIB=lib, one
+# 1a69ad4 (M5 slice 3) with the M5 close agents' edits as of 2026-11-17 03:30, VIA_LIB=lib, one
 # store for all nine builds, each built once from the world with its change files (no --against).
 # Millimetres. Every size is exact by construction (make_pack.py writes the parts from
 # published.toml, so a band is one number): `length`, `width`, `height` the pistol's own parts

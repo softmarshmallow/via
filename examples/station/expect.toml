@@ -1,7 +1,7 @@
 # The station's measures and their bands (measure.py says how each is taken). Taken on the M5
-# slice 2 shared tree (uncommitted, after 8d2d566), release build, one run each, resolution 0.5,
+# slice 2 shared tree (uncommitted, after 5495276), release build, one run each, resolution 0.5,
 # Python 3.9 for the steps and 3.13 for measure.py; `wall_gave_way` and `open_above_door_mm` on
-# the M5 slice 3 shared tree (uncommitted, after 8ca8e83), release build, one run, Python 3.12 for
+# the M5 slice 3 shared tree (uncommitted, after 69e03fd), release build, one run, Python 3.12 for
 # the steps and 3.13 for measure.py. The counts take in the net loft that
 # lib/building's `lay` lays (2 storeys, 3 rooms, 1 flight, 1 doorway, 4 meetings).
 

@@ -4,7 +4,7 @@ Status: **incomplete**. The macOS side ran. The Linux side did not: Docker Deskt
 during the image pull because the host disk filled up (140 MiB free on `/System/Volumes/Data`).
 No Linux digest exists yet, so nothing has been compared across systems.
 
-Date: 2026-11-13. Tree: `rewrite` at `a14d1cf`, plus the uncommitted M0 work in the tree at the
+Date: 2026-11-13. Tree: `rewrite` at `007fe32`, plus the uncommitted M0 work in the tree at the
 time of the run (49 paths in `git status --porcelain`).
 
 ## Machines
