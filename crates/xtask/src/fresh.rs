@@ -71,7 +71,7 @@ fn hooks(root: &Path) -> Result<Vec<(String, String, String)>, CheckError> {
     Ok(found)
 }
 
-/// Where generated files may live; build output, the spike and virtual environments are not read.
+/// Where generated files may live; build output and virtual environments are not read.
 const GENERATED_ROOTS: [&str; 5] = ["crates", "docs", "sdk", "spec", "tools"];
 const SKIP_DIRS: [&str; 5] = ["target", ".git", ".venv", "node_modules", "__pycache__"];
 

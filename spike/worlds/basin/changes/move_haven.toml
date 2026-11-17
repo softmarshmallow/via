@@ -1,5 +1,0 @@
-# The river's mouth moves 500 m east along the shore. Nothing else is edited: the model is run
-# again under the new fact, and the valley, its tributaries and the views on the river follow.
-[[feature]]
-id = "haven"
-at = [2000.0, 330.0]

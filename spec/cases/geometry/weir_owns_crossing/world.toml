@@ -1,0 +1,35 @@
+name       = "weir_owns_crossing"
+extent     = [0, 0, 64, 128]
+resolution = 1
+include    = ["water", "millrace"]
+
+[field.height]                              # the land falls south; the beck runs with it
+role = "surface"
+base = "= 24 + 0.05 * y"
+
+[field.water]                               # lib/water: dry, it is the ground
+tags = ["water_level"]
+base = "= f('height')"
+
+[field.clearing]
+role = "keep_out"
+base = "= 0"
+
+[feature.river]                             # north to south, edge to edge
+kind  = "beck"
+width = 10
+depth = 1.6
+flow  = 0.5
+path  = [[32, 128], [32, 0]]
+
+[feature.weir_west]                         # the weir's ends on the beck's banks, at one t
+on = { ref = "river", t = 0.5, offset = -9 }
+[feature.weir_east]
+on = { ref = "river", t = 0.5, offset = 9 }
+
+[feature.weir]
+kind      = "weir"
+starts_at = "weir_west"
+ends_at   = "weir_east"
+path      = []
+crosses   = "river"

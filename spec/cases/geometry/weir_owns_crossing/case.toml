@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "A fresh agent's weir (M7 close, task mill), reduced: a kind of the world's own across lib/water's beck, owning the meeting by names = [\"crosses\"] (no geom.unowned_crossing, geometry.md 2.7); its wall raises the line to the crest and its pond levels the water upstream only (lib/water's header, the worked weir)."
+milestone = 7
+actions   = ["build"]
+
+# The beck runs north to south down ground rising 0.05 a metre north; the weir crosses it at
+# y = 64. Its wall: the channel floor 25.6 + rise 1 = 26.6 on the line. Its pond: the crest less
+# spill 0.05, 26.55, level 2 m and 6 m upstream (the beck's own water there 26.2, 26.4); 6 m
+# downstream the beck's own, 25.8. Removing `names` from the kind gives geom.unowned_crossing.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.build.file.crest]
+path = "build/w/fields/height.npy"
+post = [32, 64]
+bits = "0x41D4CCCD"
+
+[action.build.file.pond_near]
+path = "build/w/fields/water.npy"
+post = [32, 66]
+bits = "0x41D46667"
+
+[action.build.file.pond_far]
+path = "build/w/fields/water.npy"
+post = [32, 70]
+bits = "0x41D46667"
+
+[action.build.file.below]
+path = "build/w/fields/water.npy"
+post = [32, 58]
+bits = "0x41CE6666"

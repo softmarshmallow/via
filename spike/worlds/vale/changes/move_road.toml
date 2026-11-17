@@ -1,4 +1,0 @@
-# Change 2: the road swings west through the middle of the valley.
-[[feature]]
-id = "valley_road"
-path = [[186.0, -10.0], [196.0, 80.0], [196.0, 165.0], [214.0, 250.0], [276.0, 322.0], [338.0, 400.0], [392.0, 522.0]]

@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "unowned_crossing's world: the hint names both ways to own the meeting, an end named on the other and an attribute the kind lists in names (geometry.md 2.7)."
+milestone = 7
+actions   = ["build"]
+
+# M7 close: a fresh agent's own kind (a wall across a river) met this warning, and the hint named
+# only the end; the route that fitted, `names = ["crosses"]`, was found in geometry.md 2.7. Messages
+# are not compared (diagnostics.md 1.3); this case reads the hint from the diagnostics document.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unowned_crossing]
+code = "geom.unowned_crossing"
+
+[action.build.file.hint]
+path    = ".diag/build.json"
+pointer = "/diagnostics/0/hint"
+value   = "end one on the other (`ends_at = \"a.end\"`), or on a point feature placed `on` it; or name it in an attribute your kind lists in `names` (`names = [\"<attr>\"]` and `<attr> = \"a\"`, geometry.md 2.7)"

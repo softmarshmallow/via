@@ -32,7 +32,7 @@ the world namespace (`documents.md` 3). It has the rank of the layer it is decla
 
 | Key | Takes | Required | Meaning, and its absence |
 |---|---|---|---|
-| `file` | path | yes | The imported world file, relative to the file that declares the import (`documents.md` 7.2). Not found, unreadable or of another case on disk: the `doc.*` code of `documents.md` 7.2 with subject `import.<id>` at this key and `data.file` the path from this world's folder, never `cli`: the command line named the parent, not the import (M7; the fresh agent of the M6 close was told the world file was missing). |
+| `file` | path | yes | The imported world file, relative to the file that declares the import (`documents.md` 7.2), or absolute (a world outside the repository importing an example). Not found, unreadable or of another case on disk: the `doc.*` code of `documents.md` 7.2 with subject `import.<id>` at this key and `data.file` the path from this world's folder, never `cli`: the command line named the parent, not the import (M7; the fresh agent of the M6 close was told the world file was missing). |
 | `at` | point | one of `at`, `on` | Where the import's frame origin, its world point (0, 0), lies in the parent's frame. |
 | `on` | `{ ref, t, offset }` | one of `at`, `on` | Placed on a named place of the parent, as an instance is (`geometry.md` 2.6). |
 | `face` | bearing | no | Where the import's `+y` points in the parent, degrees clockwise from north. Default 0. On `on`, added to the place's facing as for an instance. |
@@ -159,7 +159,15 @@ author's. Absent, the world declares none: its zero is its own.
   crosses the edge (a footprint over the whole extent). The median, not the mean, so a road or a
   cliff along part of the edge does not set it. Ours (M7 slice 1; decided, open to the owner): the
   fresh agent of the M6 close set its lift by trial builds. It is a hint, not a fix: between worlds
-  with no datum, only the author knows whether the zeros agree.
+  with no datum, only the author knows whether the zeros agree. It is the edge's median, not the
+  step where a parent's road arrives (M7 close: a fresh agent's market, lifted by the hint's 0.74,
+  still dropped 0.92 m in the road's last 4 m; it needed 1.66); `import.seam` reports the hint
+  measured before `lift`, so it reads the same after the lift is written. A lift at a named
+  place is open (TODO, M7 close).
+- **A lift holds where the import stands.** Moving or turning an import with no shared datum moves
+  it onto other ground, and its `lift` must be measured again; nothing re-derives it (M7 close: the
+  same market moved 100 m left the road a 3.79 m drop at the join, `lift_hint` 5.45). A shared
+  `datum` is the way to place a world that moves.
 - North is the parent frame's `+y`; an import's north turns with `face`.
 - `datum` joins `extent`, `resolution`, `seed` and `chunk` in the frame statement (`graph.md` 1) and
   is written in the manifest's `frame` (`build.md` 5).
@@ -197,7 +205,10 @@ what a world makes of its own surfaces, on its own posts and over its finished t
 - the terrain's cut (`build.md` 6.5): a quad is cut where a brought surface with `cut` holds its
   centre, by the rule a world's own surface cuts by, read on the parent's terrain. On posts
   coarser than the import's, a cutting path owner's strip narrower than half a parent quad's
-  diagonal (`ceil(0.7072 * resolution)` mm each side) cuts as if that wide, its formula read past
+  diagonal (`ceil(0.7072 * resolution)` mm each side) cuts as if that wide plus 6 mm (an arc's
+  chords stray 5 mm inside it, `geometry.md` 3.4, on posts rounded to the millimetre), round at its
+  ends: the band holds every point that near the line, past its ends too, and a quad the line
+  ends on at a corner is held; its formula read past
   the bound there (a non-finite value inside the bound is `formula.not_finite` on the owner, 2.7 of
   `surfaces.md`, as anywhere; past it, where the surface does not stand, it cuts nothing and is
   not reported; ours, M7 slice 1), and its skirt reaches that much again past it: so every quad the line crosses
@@ -206,7 +217,12 @@ what a world makes of its own surfaces, on its own posts and over its finished t
   wide, held the centres of only some of the quads they crossed, a staircase of single cut quads,
   the import's own skirt 0.35 m past the face under quads that reach 1.41 m, and an uncut quad
   straddling the 20 m step beside each cut one, whose side was open: `coast.along_cliff` fell
-  35.5 m at the face's foot. A world's own strip that narrow on its own posts cuts the same
+  35.5 m at the face's foot. The band's ends were butt until M7 close (case `import_skirt_end`;
+  ours): the west face ends at the cave's left jamb on the corner of quad [2428, 2430] x [68, 70],
+  whose centre lies a half diagonal past the end and before the cave floor's butt start; it stayed
+  uncut, straddling the 20 m brink, and `coast.along_cliff` fell 18.5 m there. Round ends at the
+  half diagonal alone still left it, their chords passing inside its centre; with the 6 mm it is
+  cut and the walk arrives (59.6 m, whole and streamed). A world's own strip that narrow on its own posts cuts the same
   staircase: its author sees it in that world (lib/land's `lip`); (open) below;
 - the surface questions (`surfaces.md` 2): `surfaces_at` and `sample` answer them by name;
 - the import's meetings (`surfaces.md` 3.3) in `meets.json`, sides scoped, moved, faces turned,
@@ -423,7 +439,10 @@ that the blend would alter is reported").
 **Held.** An exit on the import's edge under a fading blend would be such a place (its weight is
 the blend's at `d` near 0), so the import's ground is held round every place a parent path joins:
 each place of the import that a parent feature's `starts_at` or `ends_at` names that is a point
-(an exit, a point feature, a path's `start` or `end`) inside the footprint. A parent point or
+(an exit, a point feature, a path's `start` or `end`) inside the footprint. A place within a
+millimetre of the footprint's outline, and inside the import's extent, is on it (a turned
+footprint's corners are rounded to the millimetre, so a place on its edge can fall a fraction of
+one outside; case `place_held_turned`; ours, M7 close, decided, open to the owner). A parent point or
 instance `on` such a place (a view, a lamp) holds nothing: adding a view never changes the ground
 (case `place_view_unheld`; M7, decided, open to the owner: until then an `on.ref` held too, so a
 bookmark placed on a gate raised the terrain round it; a parent that wants the hold without a way
@@ -853,11 +872,15 @@ re-runs (`conformance.md` 5) apply to every build.
 | import_kind_surface | M6 | `a` (8 m square, no datum) holds a deck `span` (top 3 m, path (1, 4) to (7, 4), half-width 1) and a hollow `cave` (floor -1 m, `cut` 3, region (1, 1) to (3, 3)), a lamp (`surface = "span.top"`) and a bookmark `mid` on the deck; placed at (20, 8), `face = 90`, `lift = 2`; a parent point `view` at (24, 3) with `surface = "a.span.top"`; then `a` and `view` moved 8 m west on one store; then a parent path `ends_at = "a.span.end"` | build; query `surfaces_at`; build; build | The manifest lists meshes `a.cave` and `a.span`; cut quads at posts (21, 5) and (22, 6), none at (23, 5) or (20, 5); the lamp's `z` 5; `a.mid` at (24, 4, 5) and `view` at (24, 3, 5); at (24, 4) `surfaces_at` gives `height` 2 and `a.span.top` 5; moved, cut at (13, 5) and (14, 6), none at (21, 5), `a.mid` at (16, 4, 5); then `surface.gap`, `data.gap` 3000 (the path's end at 2 m). |
 | import_nested_stand | M6 | p imports m at (4, 4), no lift; m is import_kind_surface's parent (a lamp of `a` on `a.span.top`) | build | `m.a.lamp`'s `z` 5 (on the deck brought twice), not the ground's. |
 | brought_asset | M6 | `a`'s own pack binds `heavy` (1000 triangles), the parent's binds only `light`; `[budget] triangles = 2000`; then 500 | build; build | The manifest's `assets.heavy.pack` is `a` and chunk [0, 0] counts 1010 triangles; then `build.over_budget` naming `heavy`, exit 1. |
-| import_skirt | M7 | `a` at 0.5 m posts holds a face (path (2, 5.3) to (14, 10.9), half-width 0.5, base 0.5, `cut` 1), brought unmoved onto 2 m posts; the same face written in a world of its own at 2 m (`own.toml`) | build each | Own: 37 triangles, cut quads (2, 3), (4, 4), (5, 4), (3, 3) uncut. Brought: 10 cut quads in a chain from (1, 2) to (6, 5), (3, 3) cut and (4, 3) not, 58 triangles (41 with the import's own skirt and cut). |
+| import_skirt | M7 | `a` at 0.5 m posts holds a face (path (2, 5.3) to (14, 10.9), half-width 0.5, base 0.5, `cut` 1), brought unmoved onto 2 m posts; the same face written in a world of its own at 2 m (`own.toml`) | build each | Own: 37 triangles, cut quads (2, 3), (4, 4), (5, 4), (3, 3) uncut. Brought: 13 cut quads in a chain from (0, 2) to (7, 5), (3, 3) cut, (4, 3) cut (its centre 1421 mm from the line, within the band's 6 mm) and (2, 2) not, 73 triangles (41 with the import's own skirt and cut; 10 quads and 58 with the band at the half diagonal and its ends butt, before M7 close). |
+| import_skirt_end | M7 | `a` at 0.5 m posts holds two faces (as `import_skirt`'s): `wall` from (2.6, 5) to (8.6, 5), `jamb` from (2.6, 11) to (8, 12), ending on a quad corner; brought unmoved onto 2 m posts | build | Wall: quads (1, 2) to (4, 2) cut, (4, 2) holding its end with its centre 0.4 m past it, (0, 2) and (5, 2) not, 28 triangles. Jamb: (4, 5) and (4, 6) cut, their centres a half diagonal from its end, 31 triangles (the band round at its ends and 6 mm wider than the half diagonal). |
 | surface_dropped | M7 | `a`'s deck (path (1, 4) to (7, 4)) with `a` placed at (2147480, 8), past the lattice | build | `import.surface_dropped`, subject `a.feature.span`, `data.surface` `a.span.top`; exit 0. |
 | blend_path_end | M7 | Parent 0, `a`'s 4 at (32, 0), its path `track` from (0, 32); `blend = "= 1 - smoothstep(4, 8, dist('a.track.start', 40))"` | build | Height 4 at (32, 32) and (36, 32), 0 at (44, 32): a three-part place read in `blend` (6.3). |
 | brought_no_pack | M7 | A parent with no `pack`; `a`'s pack binds `heavy` (1000 triangles), placed once | build | The manifest lists `heavy` with `pack` `a`; chunk 0 counts 1000 triangles (10). |
 | place_view_unheld | M7 | place_held's `a` and blend, and a parent point `on = { ref = "a.gate" }` in place of the path | build | Height 0 at (32, 32) and 3.375 at (44, 32), the blend's: a view holds nothing (6.7); `import.place_blended` with `data.weight` 0. |
+| place_held_turned | M7 | place_held's join turned: parent 128 by 128, `a` at (48, 24), `face = 20`, `a.gate` at its (0, 33) on its west edge | build | No diagnostic (exact): the gate, a fraction of a millimetre off the rounded footprint, is on it and held (7, edges are inside; M7 close). |
+| seam_lift_written | M7 | No datum; `a` 4 m high but 10 m along its east edge; `lift = -4` written | build | `import.seam`, `data.grade` 6, `data.lift_hint` -4 (before `lift`, section 5); the hint says the written lift already meets the median step (read from the diagnostics document). |
+| coarser_resolutions | M7 | coarser's join | build | `import.coarser`, `data.ratio` 2; the message names both spacings, 2 m and 1 m, and the hint `resolution = 1` (read from the diagnostics document). |
 
 Rules of this chapter with no case yet, owed by M4 slice 3 (each row able to fail): a footprint
 naming a parent region (stays where it is when the import moves); `authority.squeezed` where the

@@ -11,7 +11,9 @@ extends RefCounted
 ##              to a house ends at its wall; a set's items are its placement's body);
 ##   blocked    less than STALL_PROGRESS metres nearer in STALL_TIME seconds: `by` names what it
 ##              pressed against last, an instance or `ground` (with the slope, steeper than
-##              MAX_SLOPE degrees);
+##              MAX_SLOPE degrees), or, having pressed against nothing that steep, what it stands
+##              on: `ground` with the steepest slope over the next metre ahead, or the surface or
+##              instance under its feet;
 ##   fell       it dropped more than FALL metres before landing again, beyond what the ground
 ##              itself falls under its path over that distance (a ledge), or below the ground;
 ##              a descent through the air down ground with no ledge, too steep to walk (steeper
@@ -326,6 +328,7 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 	var end := body.position - Vector3(0, HEIGHT / 2.0, 0)
 	trail.append(end)
 	var below := under(root, body.position, HEIGHT / 2.0 + SNAP, [body.get_rid()])
+	name_stop(report, below, loader, plan(end), facing)
 	root.remove_child(body)
 	body.free()
 	if stream != null:
@@ -351,6 +354,17 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 		"trail": trail,
 		"facing": facing,
 	}
+
+
+static func name_stop(report: Dictionary, below: Dictionary, loader, at: Vector2, facing: Vector2) -> void:
+	## A walk `blocked` having pressed against nothing steeper than it walks (`by` null) is named
+	## by what it stands on (build.md 15.1, M7 close): `ground` with the steepest ground slope over
+	## the next metre ahead, or the surface or instance under its feet (`below`, as under() gives).
+	if report.outcome != "blocked" or report.by != null or below.is_empty():
+		return
+	report.by = below.on
+	if below.on == "ground":
+		report.slope = steepest_between(loader, at, at + facing)
 
 
 static func summary(r) -> String:

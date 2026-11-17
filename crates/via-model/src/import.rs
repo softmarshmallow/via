@@ -886,12 +886,27 @@ impl Imported {
         None
     }
 
+    /// As [`Import::inside`], for a place of the import: edges are inside (7), and a turned
+    /// footprint's corners are rounded to the millimetre, so a place on its edge may fall a
+    /// fraction of one outside; within a millimetre of the outline is on it (M7 close: a fresh
+    /// agent's street start on a turned import's edge lost its hold). It must still lie in the
+    /// import's extent (6.1).
+    pub fn place_inside(&self, p: (i64, i64)) -> bool {
+        self.inside(p)
+            || (via_geom::pred::dist2_rings(P::new(p.0, p.1), &self.footprint.rings())
+                .and_then(|d| d.ceil())
+                .is_some_and(|d| d <= 1)
+                && self.in_extent(p))
+    }
+
     /// Whether the parent point lies in the footprint and the import's extent (6.1); on an
     /// outline is inside.
     pub fn inside(&self, p: (i64, i64)) -> bool {
-        if self.footprint.side(P::new(p.0, p.1)) == via_geom::pred::Side::Out {
-            return false;
-        }
+        self.footprint.side(P::new(p.0, p.1)) != via_geom::pred::Side::Out && self.in_extent(p)
+    }
+
+    /// Whether the parent point lies in the import's extent (6.1), to the lattice's rounding.
+    fn in_extent(&self, p: (i64, i64)) -> bool {
         let Some(g) = self.alone.decls.grid else {
             return false;
         };
@@ -2043,8 +2058,16 @@ impl Imported {
                         codes::import::COARSER,
                         "import",
                         id,
-                        &format!("this world's posts are {}x coarser than `{id}`'s; detail between them is lost", text::dbl(ratio)),
-                        "nothing if the detail does not matter; else a finer `resolution` here",
+                        &format!(
+                            "this world's posts, {} m apart, are {}x coarser than `{id}`'s, {} m (a `resolution` not written is 0.5); detail between them is lost",
+                            text::dbl(grid.resolution as f64 / 1000.0),
+                            text::dbl(ratio),
+                            text::dbl(g.resolution as f64 / 1000.0)
+                        ),
+                        &format!(
+                            "nothing if the detail does not matter; else `resolution = {}` here",
+                            text::dbl(g.resolution as f64 / 1000.0)
+                        ),
                     )
                     .with("ratio", DValue::double(ratio).unwrap_or(DValue::Int(1))),
                 );
@@ -2400,11 +2423,23 @@ pub(crate) fn join_checks(
             let mut hint = String::from(
                 "blend the import in (`blend`), own the ground with an anchored feature, or raise `max_grade`",
             );
-            if let Some(l) = lift_hint {
-                hint.push_str(&format!(
+            match (lift_hint, imp.decl.lift) {
+                // The hint is measured before `lift`, so it reads the same once written: say that
+                // the steps left are where the edge departs from its median (M7 close).
+                (Some(l), Some(w)) if (l - w).abs() < 0.005 => hint.push_str(&format!(
+                    "; the `lift = {}` you wrote already meets the edge's median step, so these are where the edge departs from it",
+                    text::dbl(w)
+                )),
+                (Some(l), Some(w)) => hint.push_str(&format!(
+                    "; `lift = {}` meets this world's ground across the edge (the median step; you wrote {})",
+                    text::dbl(l),
+                    text::dbl(w)
+                )),
+                (Some(l), None) => hint.push_str(&format!(
                     "; `lift = {}` meets this world's ground across the edge (the median step)",
                     text::dbl(l)
-                ));
+                )),
+                _ => {}
             }
             let mut dg = text::at_header(
                 codes::import::SEAM,
@@ -2421,7 +2456,9 @@ pub(crate) fn join_checks(
             }
             diags.push(dg);
         }
-        // Places the parent names whose weight is below 1 (6.7).
+        // Places the parent names whose weight is below 1 (6.7). A held place is whole by the
+        // hold, though its nearest post may lie a step outside a turned footprint.
+        let held = crate::resolve::held_places(d, id);
         for name in named {
             let Some(rest) = name.strip_prefix(&format!("{id}.")) else {
                 continue;
@@ -2429,6 +2466,9 @@ pub(crate) fn join_checks(
             let Some(Spot::At { p, .. }) = imp.spot(rest) else {
                 continue;
             };
+            if held.contains(&p) {
+                continue;
+            }
             // The nearest post, half up; a place off the posts reads nothing.
             let near = |d: i64| (d + grid.resolution / 2).div_euclid(grid.resolution);
             let Ok(i) = u64::try_from(near(p.x - grid.extent[0])) else {

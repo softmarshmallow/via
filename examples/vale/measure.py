@@ -236,7 +236,7 @@ def measure(build):
                                 "toward": f["attrs"]["toward"]["name"]}
     oracle = json.loads((HERE.parents[1] / "fixtures/oracle/vale/measures.json").read_text())
     eyes = {"bm_road_south": 1.8, "bm_hamlet": 2.2, "bm_tarn": 2.2, "bm_cliff": 1.8, "bm_overlook": 3.0,
-            "bm_mill": 2.0}          # the spike's `eye` per view (spike/worlds/vale), ground views only
+            "bm_mill": 2.0}          # the spike's `eye` per view (spike-final:spike/worlds/vale), ground views only
     ground_at = {}
     for b in oracle["bookmarks"]:
         if b["id"] in eyes:

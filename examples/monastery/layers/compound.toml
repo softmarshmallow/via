@@ -142,11 +142,10 @@ kind   = "bookmark"                         # bridge, so it moves with it (typed
 on     = { ref = "bridge", t = 0.5, offset = 20 }   # inside the moved bridge's causeway)
 toward = "bridge"
 
-[feature.bm_tarn]                           # the tarn from the gorge's rim beside it (from the outflow's
-kind   = "bookmark"                         # rim, t 0.27, the gorge's lip hid it)
-on     = { ref = "stream", t = 0.2, offset = 19 }
-toward = "look_tarn"
-eye_height = 12                             # at 1.7 m the rim hides the water below it
+[feature.bm_tarn]                           # the tarn from the gorge's floor at its outflow, walked to
+kind   = "bookmark"                         # its shore (M7 close: from the rim beside it, at eye height
+on     = { ref = "stream", t = 0.27, offset = 3 }   # 12, the walk went over the sheer wall and fell
+toward = "tarn"                             # 6.75 m alone, 3.26 in atlas)
 
 # ------------------------------------------------------------------------------------------ lints
 

@@ -98,7 +98,9 @@ id order, then the case's own files are laid over them, so a case file replaces 
 | `from` | string | yes | A path relative to the repository root: `examples/ford`, `lib/ways`, `spec/vectors/surfaces/lib`. |
 | `to` | string | no | A path relative to the working folder. Default: the same as `from`. `"."` copies a folder's contents into the working folder's root. |
 
-A case never copies from `spike/`. Private material is never a case input.
+A case never copies from `spike/`. Private material is never a case input, and since M7 (the
+spike's tracked files deleted, its record the tag `spike-final`) all `spike/` holds on disk is the
+private folders `spike/local/`, `spike/out/` and `spike/build/`, outside git.
 
 A copy takes the fixture, never what a build left beside it: it skips every `.via/` store
 (`graph.md` 3.2), `build/` directory (`build.md` 14), `*.run.json` run report and `*.lock` lock
@@ -509,7 +511,8 @@ Repository tests, not conformance (as `diagnostics.md` and `build.md` separate t
   a case folder, and its `milestone` equals the row's. Rows without one are listed as missing.
 - `diagnostics.md`'s coverage check reads the codes of every `diag` table: each registered code up
   to the current milestone with `covered_by = "conformance"` appears in some case at or below it.
-- No case copies from `spike/` and no case file names a path outside the repository.
+- No case copies from `spike/` (only the private folders are left there, 3.2) and no case file
+  names a path outside the repository.
 
 ## 8. What stays open elsewhere
 

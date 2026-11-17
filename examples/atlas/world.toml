@@ -168,10 +168,10 @@ at    = [2330, 0]
 lift  = 2                                     # its sea, at its own 0, on ours at 2 (README "Lifts")
 blend = "= smoothstep(0, 12, d)"
 
-[import.college]                              # lift at its arrival (README "Lifts", M7 slice 1)
+[import.college]                              # lift at its arrival (README "Lifts", M7 slice 1 and close)
 file  = "../college/world.toml"
 at    = [2380, 420]
-lift  = -0.1
+lift  = 2.4                                   # -0.1 left the arrival 2.5 m under the plain: the approach cut into the water
 blend = "= smoothstep(0, 24, d)"
 
 [import.market]                               # lift at its main street's start (README "Lifts", M7 slice 1)

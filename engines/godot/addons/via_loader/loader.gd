@@ -901,9 +901,12 @@ func _read_manifest() -> bool:
 
 
 func _bad_file(file: String, why: String) -> void:
-	diags.add("load.bad_file", "world", file, "%s: %s" % [file, why],
-		"build again; the directory is replaced whole, so a damaged file means it was changed by hand",
-		{"reason": why})
+	## A pack's file lies outside the build: the hint says where the loader looked, not to rebuild
+	## (M7 close: a pack_root one folder off read as a damaged build).
+	var hint := "build again; the directory is replaced whole, so a damaged file means it was changed by hand"
+	if file.begins_with("pack:"):
+		hint = "the pack's file is read from the manifest's locations.pack_root (or --pack DIR when it is null): check the path above, and that the pack's files are where the build said"
+	diags.add("load.bad_file", "world", file, "%s: %s" % [file, why], hint, {"reason": why})
 
 
 func _field_with_role(fields: Dictionary, role: String, type: String) -> String:
@@ -1201,7 +1204,7 @@ func _material_image(id: String, e: Dictionary) -> Image:
 	var root := _pack_root()
 	var path := root + "/" + String(e.file)
 	if root == "" or not FileAccess.file_exists(path):
-		_bad_file("pack:" + String(e.file), "missing" if root != "" else "the manifest's pack_root is null and no pack directory was given")
+		_bad_file("pack:" + String(e.file), ("missing at %s" % path) if root != "" else "the manifest's pack_root is null and no pack directory was given")
 	else:
 		img = Image.load_from_file(path)
 		if img == null or img.is_empty():
@@ -1387,7 +1390,7 @@ func _model_mesh(a: Dictionary) -> Mesh:
 	var root := _asset_root(a)
 	var path := root + "/" + rel
 	if root == "" or not FileAccess.file_exists(path):
-		_bad_file("pack:" + rel, "missing" if root != "" else "the manifest names no root for this asset's pack, and no pack directory was given")
+		_bad_file("pack:" + rel, ("missing at %s" % path) if root != "" else "the manifest names no root for this asset's pack, and no pack directory was given")
 		return null
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()

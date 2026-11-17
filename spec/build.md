@@ -1432,7 +1432,11 @@ before it, ours: three of atlas's brought bookmarks had no camera, M6 close), on
   target on the floor below is within 1 m in plan too. A route reaching a flight takes a point in
   the flight's own line before its foot, or the next point (its head) is nearer and the foot is
   skipped (M5 close, a fresh agent's trip); `blocked` when it gains less than 0.1 m in 1 s, naming
-  what it pressed against (an instance, or `ground` with the slope, walkable up to 40 degrees);
+  what it pressed against (an instance, or `ground` with the slope, walkable up to 40 degrees), or,
+  when it pressed against nothing steeper than that, what it stands on (`ground` with the steepest
+  slope over the next metre ahead, or the surface or instance under its feet: ours, M7 close, so a
+  stop on something is never unnamed; `market.top` was blocked by `null`; one with nothing under
+  its feet, past the built ground, keeps `by` null);
   `fell` after a drop through the air of more than 1 m beyond what the ground falls under its path
   (a ledge), or below the lowest ground, a descent down ground too steep to walk with no ledge being
   `blocked` by `ground` with its slope, as going up; at the shore of water deeper than a person
@@ -1793,6 +1797,10 @@ numpy or the standard library, never through the SDK. Every case is also checked
     with a set of three `heavy` items (1000 triangles each, named `rack.a`, `rack.b`, `rack.c`) in
     chunk [0, 0], beside an import `a` of one light instance; build: exit 1, `build.over_budget`
     with `asset = "heavy"`, `from = ""`: a dotted own name is not an import's.
+55. **An `--out` that climbs** (M7 close). `pistol` (its pack root `models/` in its folder) built
+    from its own folder with `--out ../build/w`: `locations.pack_root` resolves from the build
+    directory to the pack's root. The `..` is folded before the relative path is made; before, it
+    counted as a folder and the path missed by one (a fresh agent's `mill`).
 
 Stable names across a change are `identity.md`'s cases, not repeated here.
 

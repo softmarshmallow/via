@@ -48,6 +48,15 @@ width     = 6
 deck_z    = 4.5                                 # the banks stand about 3.5 m; the sea 2
 freeboard = 1
 
+# lib/ways's crossing lint over every crossing of the joined map, the imports' included: water
+# beneath, freeboard, each end met level, and no way ending beside a path's end of another kind
+# unjoined (`end_unjoined`, M7 close: the creek's two roads ended at `bridge_west` and
+# `bridge_east`, the points the deck is written at, so nothing joined them to the deck).
+[step.crossings]
+when    = "lint"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:ways/check.py"]
+
 # The deck's parapets: a run of posts along each edge, as lib/ways's parapet step returns them
 # (lib/ways/parapet.py, `runs`), written here because that step's `for_each = "kind:crossing"`
 # selects every import's crossing in this stratum too (the city's, coast's, which carry their own).
@@ -78,16 +87,16 @@ route     = "= 1 + 0.12 * pow(slope('height'), 2)"
 smooth    = true
 
 [feature.creek_road]                          # from the harbour town's gate to the creek's bridge
-kind      = "road"
-starts_at = "quay.gate"
-ends_at   = "bridge_west"
+kind      = "road"                            # (its end, not the point it is written at: ended at
+starts_at = "quay.gate"                       # `bridge_west`, no meeting joined it to the deck, M7 close)
+ends_at   = "creek_bridge.start"
 path      = []
 route     = "= 1 + 0.12 * pow(slope('height'), 2)"
 smooth    = true
 
 [feature.college_road]                        # over the bridge to the college's arrival
 kind      = "road"
-starts_at = "bridge_east"
+starts_at = "creek_bridge.end"
 ends_at   = "college.arrival"
 path      = []
 route     = "= 1 + 0.12 * pow(slope('height'), 2)"
@@ -163,6 +172,21 @@ on      = { ref = "west_road", t = 0 }
 grade   = 0.1
 reach   = 20
 max_cut = 10                                    # the corner's plain came out 8.7 m under the exit
+
+# The market's main street runs out at its north edge, where no road answers it, and the market's
+# ground (lifted at the street's start in the south-west) stands 12.5 m over the plain there: the
+# 16 m blend left a scarp across the street's end (`market.top` blocked 0.7 m in, M7 slice 1). The
+# end is held instead: an approach on the street 24 m inside the edge, past the blend, where the
+# ground is the market's own (18.5 m), brings the plain to it at 1:5 (11 degrees) out to 60 m, where
+# the plain lies at 6.5, and fades by 78. Ours (M7 close); a road answering the end would want the
+# same hold.
+[feature.market_top_approach]
+kind    = "approach"
+on      = { ref = "market.main_street", t = 0.9227 }
+grade   = 0.2
+reach   = 60
+fade    = 18
+max_cut = 8
 
 [feature.hill_trail_approach]
 kind    = "pad"

@@ -49,6 +49,6 @@ Every milestone in [`docs/plan.md`](docs/plan.md) runs in this order.
   erosion program behind `lib/terrain` (`spec/protocol.md` 8, settled at the M7 cutover).
 - **No non-finite value in a build** (R26). A NaN or an infinity is an error that names the
   formula, the place and the fix, never a stored value.
-- **Never commit private material.** It lives only in the gitignored `spike/local/` folder and is
-  never exported into fixtures. Search the tracked files for the private names before every
-  commit.
+- **Never commit private material.** It lives only in the gitignored `spike/local/` folder (kept
+  on disk when `spike/` was deleted at M7) and is never exported into fixtures. Search the tracked
+  files for the private names before every commit.

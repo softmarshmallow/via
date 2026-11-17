@@ -383,7 +383,7 @@ magnitude; an i64 that might is sent as a blob.
 A **table** is a set of columns of one length, one row per thing.
 
 **Attribute columns.** Attribute values are resolved, as the `attr` node holds them (`graph.md` 1):
-kind defaults and formula attributes applied (`spike/FINDINGS.md`: a step could not read a street's
+kind defaults and formula attributes applied (`spike-final:spike/FINDINGS.md`: a step could not read a street's
 width because kind defaults were not carried). An attribute's column type follows its type
 (`authority.md`):
 
@@ -489,7 +489,7 @@ After the call the engine stores every file in `out` as an object. A lint or exp
 `document.toml` (`protocol.output_table`).
 
 TOML only: the spike's lesson that generated documents should be JSON, since Python's standard
-library has no TOML writer (`spike/FINDINGS.md`), is overruled by principle 8: a returned document
+library has no TOML writer (`spike-final:spike/FINDINGS.md`), is overruled by principle 8: a returned document
 is read by the same reader as authored text, before any check, so every error in it names a line of
 `document.toml`. The SDK carries its own writer for the subset it emits. A plain command in another
 language writes TOML itself.
@@ -711,8 +711,24 @@ So a world whose steps a reader has not trusted still builds, with the bytes a t
 - `static_key` is the digest of `key`, the parts of `graph.md` 5.1's static key that do not depend
   on this machine's trust: the step's statements, its parameters (less `trusted`), its direct
   digests and its inputs' values, each by name. So a stale result names the part that differs.
-  A configured program the reading machine does not have keeps the recorded digest: a reviewer who
-  never runs the program cannot compare it; one who has it must match.
+  A configured program's digest is kept as recorded, whether or not the reading machine has the
+  program: an untrusted step never runs it there, so the reader's copy is not what the result is a
+  function of, and a copy rebuilt from the same source is other bytes (a Rust binary carries its
+  build folder's paths). The recorded digest names the program that made the result; trusting the
+  step runs the reader's own, whose digest is then in the static key. Ours (M7 close; decided,
+  open to the owner): until then a reader who had the program had to match it, so a fresh checkout
+  that built `via-terrain` could not build `basin` untrusted (`protocol.untrusted_stale`, `param
+  program`). The alternative, a program identity from its source (its crate's files, the lock file
+  and the toolchain) shared by an equal rebuild, needs the engine to read it without running the
+  program, and is not taken. What the rule gives up: a change to the program alone (its source
+  edited, the document and parameters unchanged) no longer makes a committed result
+  `protocol.untrusted_stale` for an untrusted reader, who builds the old program's result. The
+  check that remains is a trusted one: `via step commit` on a machine that trusts the step prints
+  each folder whose bytes changed, so a result current with its program prints nothing (the M7
+  close review: `basin`'s result had not been made again since M2). A mode that writes nothing and
+  exits 1 on a change is open. A case through the command line needs a second program file to
+  configure, which the runner has none of; `via-cli`'s `commit::tests` checks the rule (a recorded
+  digest, a rebuilt one, a missing one: none stale; a reseeded step: stale on `param seed`).
 - An untrusted generate step builds from it only if its static key equals the current one and every
   read of its trace gives the recorded answer now. The check runs nothing: each read is answered from
   the current graph, as reuse is (`graph.md` 5.1). Then the build uses it with
@@ -748,7 +764,10 @@ on these terms, which the M7 cutover checked (ours; decided, open to the owner):
   its own grid of nodes and the algorithms on it. Those differ from `via-raster`'s post-lattice
   ones in bits, so folding them in would move every settled landscape.
 - Its code is covered by the static key (the program file's digest, 7), not by trust, as any
-  configured program; a reviewer builds `basin` from its committed result (7.1).
+  configured program; a reviewer builds `basin` from its committed result (7.1), whose recorded
+  program digest stands for a copy built anywhere (M7 close: a fresh checkout, its own
+  `via-terrain` built by README's steps, builds `basin` untrusted with the committed result's bytes,
+  and trusted, running its own program, with the same bytes).
 
 `via-step` and `via-num` are not a door we support for users' steps: a user's step speaks this
 SDK, or the protocol in its own code. Whether to publish them as a Rust SDK, or to move the model
@@ -768,8 +787,8 @@ the engine to keep `numbers.md` 9, and every settled landscape re-banded), stays
 | `step.eval(formula, x, y, view="full")` or `step.eval(formula, window=..., view="full")` | `expr.eval`, one call per batch. |
 | `step.derive_where(...)`, `step.route(...)`, `step.descend(...)`, `step.spill(...)` | `derived.md` 4's operations, one call per batch. |
 | `step.checks` | A lint's `checks` member (2): each checked step and the stated facts it read. |
-| `step.error(...)`, `step.warning(...)`, `step.info(...)` | `diag.emit`. `hint` is a required argument. |
-| `step.out` | A document builder: `feature(key, kind, ...)`, `instance(key, asset, ...)`, `row(field, id, value=None, mask=None, paint=None, order=None)`, `field(name, array)`. It writes `document.toml` with lattice values exact from millimetres, and each field as a field file in `out` with `-0.0` written as `+0.0`. It writes text and fields and holds nothing else (R7). |
+| `step.error(...)`, `step.warning(...)`, `step.info(...)` | `diag.emit`. `hint` is a required argument; `explain` is required the first time a code is sent (3.4: without it, `protocol.no_explain`), so a step keeps one `EXPLAIN` table and passes its entry on every call. |
+| `step.out` | A document builder: `feature(key, kind, ...)` (its points and regions in millimetres, as `step.features` gives them), `instance(key, asset, ...)`, `row(field, id, value=None, mask=None, paint=None, order=None)`, `field(name, array)`. It writes `document.toml` with lattice values exact from millimetres, and each field as a field file in `out` with `-0.0` written as `+0.0`. It writes text and fields and holds nothing else (R7). |
 
 The function list `expr.eval` takes is generated from the function table (`formulas.md` section 11),
 neighbourhood functions included (`formulas.md` 8.6, R28): over a window, `expr.eval` reads each

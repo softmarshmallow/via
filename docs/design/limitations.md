@@ -1,10 +1,10 @@
 # The spike's limitations, sorted
 
-Every known limitation of the spike, with what v1 does about it. The sources are `spike/SPEC.md`
+Every known limitation of the spike, with what v1 does about it. The sources are `spike-final:spike/SPEC.md`
 section 11 ("Known limitations and inconsistencies"), section 12.8 ("Limitations added") and the
 "Known weak points" list in `docs/design/concepts.md`. One row per source bullet, in source order,
 grouped as the source groups them; two bullets with two answers are split (`a`, `b`). A last section
-holds limitations recorded elsewhere (`spike/FINDINGS.md`, `TODO.md`, `docs/challenges.md`) that the
+holds limitations recorded elsewhere (`spike-final:spike/FINDINGS.md`, `TODO.md`, `docs/challenges.md`) that the
 rewrite would otherwise repeat. This is the M0 sort the plan asks for (`docs/plan.md`, M0 step 3).
 
 Verdicts:
@@ -206,9 +206,9 @@ Limitations the spike recorded outside SPEC 11 and 12.8 that the rewrite would r
 
 | # | Limitation | Verdict | Where | Proven by | Until then |
 |---|---|---|---|---|---|
-| E1 | A path's frame is discontinuous on its medial axis, so `along()` or `sdist()` far from a path creases the terrain (`spike/FINDINGS.md`, "Frames have two real defects"). | accept | `geometry` 2.6 keeps the nearest point, lower `t` on a tie, and writes for users where the frame jumps: `t` steps across the medial axis and `d` and `sd` kink there; on a polyline no radius keeps an effect off it. A smoothed frame is (open), decided before M1 track A by the `ford_frame` vector (`geometry` Open). | `geometry` case `ford_frame`. | |
+| E1 | A path's frame is discontinuous on its medial axis, so `along()` or `sdist()` far from a path creases the terrain (`spike-final:spike/FINDINGS.md`, "Frames have two real defects"). | accept | `geometry` 2.6 keeps the nearest point, lower `t` on a tie, and writes for users where the frame jumps: `t` steps across the medial axis and `d` and `sd` kink there; on a polyline no radius keeps an effect off it. A smoothed frame is (open), decided before M1 track A by the `ford_frame` vector (`geometry` Open). | `geometry` case `ford_frame`. | |
 | E2 | Only whole features can be placed in another's frame; a path's own vertex cannot, so moving a road left a trail's start 31 m away (same FINDINGS entry). | fix | `geometry` 2.7: a path's end is placed at a named thing with `starts_at` and `ends_at` (R18), meeting that place's default mount (R31); `follows` runs a path along another (`geometry` 4). M1. | `authority` case `owner_holds`; `ford`'s lanes ending at the ford. | |
-| E3 | A tree can stand at the water's edge with its foot wet (`spike/FINDINGS.md`, "What is still wrong"). | fix | `rules` 7.1: a scatter multiplies density by `1 - keep_out`, and in `ford` the beck writes `role:keep_out` along its bed (plan, milestone one). Whether that reaches the wet edge is seen at `on_bank`. M1. | `ford`'s "no tree in the clearing" lint; seen "on the bank along the water's edge". | |
+| E3 | A tree can stand at the water's edge with its foot wet (`spike-final:spike/FINDINGS.md`, "What is still wrong"). | fix | `rules` 7.1: a scatter multiplies density by `1 - keep_out`, and in `ford` the beck writes `role:keep_out` along its bed (plan, milestone one). Whether that reaches the wet edge is seen at `on_bank`. M1. | `ford`'s "no tree in the clearing" lint; seen "on the bank along the water's edge". | |
 | E4 | `atlas` exported no water and nothing said so (`TODO.md`). | fix | `fields` 1 and `build` 6: every field is written, with its role and tags; a loader picks. M1. | `build` case 36 ("Every field written"). | |
 | E5 | The SDK's `points` are every eighth sample and do not say so (`TODO.md`, the fresh agent). | fix | `protocol` 4.3: a feature list holds every vertex, as `build` 9.1 writes them. M1. | `protocol` case 18. | |
 | E6 | Two floods that read each other silently miss an effect (`docs/challenges.md` row 5). | fix | `graph` 2.2: a loop of reads is one `graph.cycle` error. Floods are a water library kind (R14), M2 (`vale`). | `graph` case "cycle order"; `vale` (M2). | |

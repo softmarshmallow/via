@@ -242,7 +242,9 @@ pub fn lies_inside(file: &Path, dir: &Path) -> bool {
 }
 
 fn relative(from: &Path, to: &Path) -> Option<String> {
-    let (f, t) = (absolute(from), absolute(to));
+    // By name, `..` folded first: `--out ../build/w` from a world's folder is not one folder
+    // deeper than it reads (M7 close, a fresh agent's `pack_root` that missed by a folder).
+    let (f, t) = (lexical(from), lexical(to));
     let fc: Vec<_> = f.components().collect();
     let tc: Vec<_> = t.components().collect();
     if fc.first() != tc.first() {
@@ -756,6 +758,14 @@ pub fn run(a: &Args) -> Outcome {
     }
     let versions = versions();
     let key = via_graph::build_key(&versions, &parts);
+    // What the model's build and every memo under the leaves read (`graph.md` 5.3): the build
+    // key less `locations.pack_root`, which only the manifest writes, so a directory at another
+    // depth reuses them.
+    let leaves_key = {
+        let mut p = parts.clone();
+        p.flags.retain(|(f, _)| f != "pack_root");
+        via_graph::build_key(&versions, &p)
+    };
     let started = std::time::Instant::now();
     let manifest_key = std::fs::read(out_dir.join("manifest.json"))
         .ok()
@@ -917,6 +927,7 @@ pub fn run(a: &Args) -> Outcome {
                 baseline: None,
                 baseline_record: None,
                 key,
+                leaves_key,
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 pack_root: pack_root.clone(),
                 pack_roots: BTreeMap::new(),
@@ -1035,6 +1046,7 @@ pub fn run(a: &Args) -> Outcome {
         }),
         baseline_record,
         key,
+        leaves_key,
         version: env!("CARGO_PKG_VERSION").to_string(),
         pack_root: pack_root.clone(),
         pack_roots,

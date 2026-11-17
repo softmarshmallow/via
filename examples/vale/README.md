@@ -2,7 +2,7 @@
 
 A mountain valley 512 m square: a road edge to edge, a trail up the east side, a tarn that finds its
 own shore, a mill pond held to its shape, a hamlet of four houses and a cliff on the north-west wall.
-The spike's `vale` (spike/worlds/vale), rewritten in the v1 vocabulary on the libraries in `lib/`
+The spike's `vale` (spike-final:spike/worlds/vale), rewritten in the v1 vocabulary on the libraries in `lib/`
 and the starter pack (`lib/packs/starter.toml`). M2's first world (docs/plan.md).
 
 | File | What |

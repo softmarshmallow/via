@@ -2082,7 +2082,7 @@ fn unowned_crossings(decls: &Decls, placed: &Placed, diags: &mut Vec<Diag>) {
                         ib,
                         &format!("`{ia}` and `{ib}` meet here and neither owns the meeting"),
                         &format!(
-                            "end one on the other (`ends_at = \"{ia}.end\"`), or on a point feature placed `on` it"
+                            "end one on the other (`ends_at = \"{ia}.end\"`), or on a point feature placed `on` it; or name it in an attribute your kind lists in `names` (`names = [\"<attr>\"]` and `<attr> = \"{ia}\"`, geometry.md 2.7)"
                         ),
                     )
                     .at(text::pos(x, y))

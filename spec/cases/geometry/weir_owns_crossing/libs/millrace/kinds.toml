@@ -1,0 +1,33 @@
+# A fresh agent's weir (M7 close, task `mill`): a kind of the world's own across lib/water's beck.
+# Its wall raises the ground on its line to the crest; its pond raises the water upstream (sd > 0)
+# on the beck's banks only. `names = ["crosses"]` owns the meeting with the beck (geometry.md 2.7).
+
+[kind.weir]
+authority = "anchored"
+radius    = 34
+requires  = ["crosses"]
+names     = ["crosses"]
+
+[kind.weir.defaults]
+rise  = 1.0
+thick = 0.8
+spill = 0.05
+back  = 30
+reach = 10.5
+
+[kind.weir.effect.wall]
+field  = "role:surface"
+value  = "= max(v, under('min') + rise)"
+mask   = "= 1 - smoothstep(thick, thick + 0.5, d)"
+radius = 2
+
+[kind.weir.effect.pond]
+field = "tag:water_level"
+value = "= max(v, under('min') - spill)"
+mask  = "= if(sd > 0 and dist('kind:beck', 14) < reach, 1, 0) * (1 - smoothstep(back - 3, back - 1, d))"
+
+[kind.weir.effect.clear]
+field  = "role:keep_out"
+value  = "= 1"
+mask   = "= 1 - smoothstep(2, 3, d)"
+radius = 4

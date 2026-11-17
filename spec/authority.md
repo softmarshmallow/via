@@ -226,7 +226,7 @@ effect, its own or another's (`formulas.md` 6.6).
   feature a step returns has the shape the step computed in its own view (4.4).
 
 This answers the spike's known limitation that effects on a field a flood region read never reached
-the field (`spike/SPEC.md` 11): they are now applied.
+the field (`spike-final:spike/SPEC.md` 11): they are now applied.
 
 ## 3. Authority
 

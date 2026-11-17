@@ -1,0 +1,13 @@
+name       = "import_skirt_end"
+extent     = [0, 0, 16, 16]
+resolution = 2
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 0
+
+# composition.md 6.1: `a`, at 0.5 m posts, brings a cutting face that ends inside a quad.
+[import.a]
+file = "a/world.toml"
+at   = [0, 0]

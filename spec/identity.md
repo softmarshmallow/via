@@ -479,7 +479,7 @@ The report's file and JSON fields: `build.md` 11.2.
 
 The spike built both designs side by side on `example`: `[[override]]` patched a produced instance
 by id; pin and clear held intent at a place. Three trees were moved by hand, then the rule under them
-changed (`spike/FINDINGS.md`, "Three questions only doing could settle").
+changed (`spike-final:spike/FINDINGS.md`, "Three questions only doing could settle").
 
 | Rule change | By id | By place |
 |---|---|---|

@@ -1,0 +1,20 @@
+name       = "a"
+extent     = [0, 0, 16, 16]
+resolution = 0.5
+datum      = "sea"
+include    = ["face"]
+
+[field.height]
+role = "surface"
+base = 0
+
+# A narrow face that ends inside a parent quad, as a cliff's face at a cave's jamb (coast in atlas).
+[feature.wall]
+kind = "face"
+path = [[2.6, 5], [8.6, 5]]
+
+# One that ends on a parent quad's corner, (8, 12), as the west face at the cave's left jamb: the
+# quads past that corner have their centres exactly a half diagonal from its end.
+[feature.jamb]
+kind = "face"
+path = [[2.6, 11], [8, 12]]

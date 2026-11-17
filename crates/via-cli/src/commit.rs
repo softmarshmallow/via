@@ -107,13 +107,12 @@ impl Committed {
                 .collect(),
             _ => BTreeMap::new(),
         };
-        // A configured program this machine does not have (a reviewer who never runs it): its
-        // digest cannot be compared, so the recorded one stands; one it has must match.
+        // A configured program's digest stands as recorded (`protocol.md` 7.1, M7 close): an
+        // untrusted step never runs it here, so this machine's copy, missing or rebuilt from the
+        // same source into other bytes, is not what the result is a function of.
         let mut now = parts.clone();
-        if now.get("param program").map(String::as_str) == Some("missing") {
-            if let Some(r) = recorded.get("param program") {
-                now.insert("param program".into(), r.clone());
-            }
+        if let (Some(_), Some(r)) = (now.get("param program"), recorded.get("param program")) {
+            now.insert("param program".into(), r.clone());
         }
         let names: std::collections::BTreeSet<&String> =
             recorded.keys().chain(now.keys()).collect();
@@ -517,4 +516,52 @@ pub fn run(a: &crate::build::Args, only: &[(u32, String)]) -> crate::build::Outc
     o.records
         .extend(faults.iter().map(|d| d.emit(&via_diag::NoWorld)));
     o
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A committed result with `parts` as its key, for the step's trust digest `trust`.
+    fn committed(trust: &Digest, parts: &BTreeMap<String, String>) -> Committed {
+        let key = J::Obj(
+            parts
+                .iter()
+                .map(|(k, v)| (k.clone(), J::s(v.clone())))
+                .collect(),
+        );
+        Committed {
+            result: obj([
+                ("protocol", J::s(via_proto::PROTOCOL)),
+                ("trust_digest", J::s(trust.hex())),
+                ("static_key", J::s(static_key(parts).hex())),
+                ("key", key),
+            ]),
+        }
+    }
+
+    /// `protocol.md` 7.1 (M7 close): a configured program's digest stands as recorded, whether
+    /// this machine lacks the program or has a copy rebuilt into other bytes; every other part
+    /// must match.
+    #[test]
+    fn program_digest_stands_as_recorded() {
+        let trust = Digest::of(b"trust");
+        let mut parts = BTreeMap::new();
+        parts.insert("param program".to_string(), Digest::of(b"built here").hex());
+        parts.insert("param seed".to_string(), "31".to_string());
+        let c = committed(&trust, &parts);
+        assert_eq!(c.key_difference(&trust, &parts), None);
+        let mut rebuilt = parts.clone();
+        rebuilt.insert("param program".into(), Digest::of(b"built there").hex());
+        assert_eq!(c.key_difference(&trust, &rebuilt), None);
+        let mut missing = parts.clone();
+        missing.insert("param program".into(), "missing".into());
+        assert_eq!(c.key_difference(&trust, &missing), None);
+        let mut reseeded = rebuilt.clone();
+        reseeded.insert("param seed".into(), "32".into());
+        assert_eq!(
+            c.key_difference(&trust, &reseeded).as_deref(),
+            Some("the static key's part `param seed` differs")
+        );
+    }
 }

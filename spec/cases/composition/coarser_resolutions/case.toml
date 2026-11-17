@@ -1,0 +1,28 @@
+format    = "via-case-1"
+summary   = "coarser's join (parent 2, import 1): import.coarser names both spacings and the resolution that keeps the detail."
+milestone = 7
+actions   = ["build"]
+
+# M7 close: a fresh agent wrote `resolution = 1`, read "2x coarser" and could not see why (the
+# import wrote none: 0.5). The message now holds both spacings. Messages are not compared
+# (diagnostics.md 1.3); this case reads them from the diagnostics document.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.coarser]
+code = "import.coarser"
+data = { ratio = 2 }
+
+[action.build.file.message]
+path    = ".diag/build.json"
+pointer = "/diagnostics/1/message"
+value   = "this world's posts, 2 m apart, are 2x coarser than `a`'s, 1 m (a `resolution` not written is 0.5); detail between them is lost"
+
+[action.build.file.hint]
+path    = ".diag/build.json"
+pointer = "/diagnostics/1/hint"
+value   = "nothing if the detail does not matter; else `resolution = 1` here"

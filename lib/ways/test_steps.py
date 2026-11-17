@@ -76,6 +76,13 @@ class Lint(unittest.TestCase):
         recs = CHK["judge"]([dict(BRIDGE, freeboard=2.5)], MEET, {"bridge": (19.2, 19.5)}, P)
         self.assertEqual(codes(recs), [("low_deck", "bridge")])
         self.assertAlmostEqual(recs[0][5]["water"], 19.5)
+        self.assertEqual(recs[0][4], "raise `deck_z` to 22.00 or more")
+
+    def test_a_deck_under_the_water(self):
+        """A deck below the water says it stands under it (M7 close: "-0.082 m over the water")."""
+        recs = CHK["judge"]([dict(BRIDGE, deck_z=19.4)], MEET, {"bridge": (19.2, 19.5)}, P)
+        self.assertEqual(codes(recs), [("low_deck", "bridge")])
+        self.assertIn("0.100 m under the water", recs[0][3])
 
     def test_an_end_met_only_by_its_own_point_is_unmet(self):
         """`bridge.end` meets `bridge_east` (where the crossing's end is written), but no way."""
@@ -88,6 +95,57 @@ class Lint(unittest.TestCase):
         recs = CHK["judge"]([BRIDGE], meet, {"bridge": (19.2, 19.5)}, P)
         self.assertEqual(codes(recs), [("deck_gap", "bridge.start")])
         self.assertEqual(recs[0][5], {"gap": 300, "way": "lane_west.end"})
+
+    def test_an_end_beside_a_bridgehead_unjoined(self):
+        """`lane_west.end` 0.6 m in plan from `bridge.start` with no meeting between them, 0.4 m
+        under the deck: `end_unjoined` with both; with the meeting, or 1.2 m off, nothing."""
+        ends = [{"place": "bridge.start", "kind": "crossing", "at": (51000, 40000), "z": 21.72},
+                {"place": "lane_west.end", "kind": "lane", "at": (50400, 40000), "z": 21.32},
+                {"place": "lane_west.start", "kind": "lane", "at": (20000, 40000), "z": 20.0}]
+        recs = CHK["unjoined"](ends, [], P)
+        self.assertEqual(codes(recs), [("end_unjoined", "lane_west.end")])
+        self.assertEqual(recs[0][5], {"distance": 0.6, "gap": 0.4, "other": "bridge.start"})
+        self.assertEqual(recs[0][6], (50.4, 40.0))
+        self.assertIn('ends_at = "bridge.start"', recs[0][4])
+        self.assertEqual(CHK["unjoined"](ends, MEET, P), [])
+        far = [dict(e, at=(49800, 40000)) if e["place"] == "lane_west.end" else e for e in ends]
+        self.assertEqual(CHK["unjoined"](far, [], P), [])
+
+    def test_ends_of_one_kind_are_not_judged(self):
+        """Two lanes ending at one point (a fork is written by name, geometry.md 2.7), and a height
+        not sampled: no record for the lanes, the gap None for a road."""
+        ends = [{"place": "a.end", "kind": "lane", "at": (0, 0), "z": 1.0},
+                {"place": "b.start", "kind": "lane", "at": (300, 0), "z": 1.0},
+                {"place": "c.start", "kind": "road", "at": (0, 500), "z": None}]
+        recs = CHK["unjoined"](ends, [], P)
+        self.assertEqual(codes(recs), [("end_unjoined", "a.end"), ("end_unjoined", "b.start")])
+        self.assertIsNone(recs[0][5]["gap"])
+        self.assertEqual(CHK["params_of"]({"reach": 2})["reach"], 2.0)
+
+    def test_joined_through_a_point_but_not_at_a_deck(self):
+        """An import's trail and the parent's road both meeting the import's exit are joined
+        through it; the parent's road and an import's deck meeting one point are not (a crossing's
+        end is met only by a way naming it); two imports' ends are the imports' own."""
+        ends = [{"place": "wild.south_trail.end", "kind": "trail", "at": (0, 0), "z": 5.0},
+                {"place": "wild_road.end", "kind": "road", "at": (0, 0), "z": 5.0}]
+        meet = [{"a": "wild.south_end", "b": "wild.south_trail.end", "gap": 0},
+                {"a": "wild.south_end", "b": "wild_road.end", "gap": 0}]
+        self.assertEqual(CHK["unjoined"](ends, meet, P), [])
+        deck = [{"place": "creek_bridge.start", "kind": "crossing", "at": (0, 0), "z": 4.5},
+                {"place": "creek_road.end", "kind": "road", "at": (0, 0), "z": 3.5}]
+        meet = [{"a": "bridge_west", "b": "creek_bridge.start", "gap": 0},
+                {"a": "bridge_west", "b": "creek_road.end", "gap": 0}]
+        self.assertEqual(codes(CHK["unjoined"](deck, meet, P)), [("end_unjoined", "creek_road.end")])
+        theirs = [dict(e, place="city." + e["place"]) for e in deck]
+        self.assertEqual(CHK["unjoined"](theirs, [], P), [])
+
+    def test_subjects_keep_the_import_scope(self):
+        self.assertEqual(CHK["subject_of"]("townland.old_bridge", "c"), "feature.townland.old_bridge")
+        self.assertEqual(CHK["subject_of"]("wild.south_trail.end", "c"), "feature.wild.south_trail")
+        self.assertEqual(CHK["subject_of"]("bridge.start", "c"), "feature.bridge")
+        self.assertEqual(CHK["subject_of"](None, "c"), "step.c")
+        self.assertTrue(CHK["own"]("creek_bridge.start") and CHK["own"]("creek_bridge"))
+        self.assertFalse(CHK["own"]("coast.harbour_bridge") or CHK["own"]("wild.south_trail.end"))
 
     def test_middle_is_half_the_arc_length(self):
         self.assertEqual(CHK["middle"]([(0, 0), (10000, 0), (10000, 10000)]), (10000, 0))

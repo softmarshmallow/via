@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "composition.md 6.1: a cutting face (a strip 1 m wide) brought from 0.5 m posts onto 2 m posts. Written on the 2 m posts itself (`own.toml`) it cuts 3 quads in a staircase, (2, 3), (4, 4), (5, 4), with uncut quads between them across its line. Brought, it cuts as if half a parent quad's diagonal wide: 10 quads in an unbroken chain from (1, 2) to (6, 5), none skipped across the line ((4, 3) stays whole), and its skirt, stroked by the parent's posts, covers them: 58 triangles. Before M7 the import's own skirt was kept over the staircase: 41 triangles, the cut quads open past it (atlas: coast.along_cliff fell 35.5 m at the face's foot)."
+summary   = "composition.md 6.1: a cutting face (a strip 1 m wide) brought from 0.5 m posts onto 2 m posts. Written on the 2 m posts itself (`own.toml`) it cuts 3 quads in a staircase, (2, 3), (4, 4), (5, 4), with uncut quads between them across its line. Brought, it cuts as if half a parent quad's diagonal wide plus 6 mm, round at its ends: 13 quads in an unbroken chain from (0, 2) to (7, 5), none skipped across the line, the two whose edge the line ends on among them, and (4, 3), whose centre lies 1421 mm from the line, within the 6 mm; (2, 2), 1541 mm, stays whole (10 quads and 58 triangles with the band at the half diagonal and butt ends, before M7 close). Its skirt, stroked by the parent's posts, covers them: 73 triangles. Before M7 the import's own skirt was kept over the staircase: 41 triangles, the cut quads open past it (atlas: coast.along_cliff fell 35.5 m at the face's foot)."
 milestone = 7
 actions   = ["own", "brought"]
 
@@ -38,11 +38,11 @@ value   = "a.wall"
 [action.brought.file.triangles]
 path    = "build/w/manifest.json"
 pointer = "/meshes/0/triangles"
-value   = 58
+value   = 73
 
 [action.brought.file.first]
 path  = "build/w/fields/height.cut.npy"
-post  = [1, 2]
+post  = [0, 2]
 value = 1
 
 [action.brought.file.chain]
@@ -52,10 +52,10 @@ value = 1
 
 [action.brought.file.last]
 path  = "build/w/fields/height.cut.npy"
-post  = [6, 5]
+post  = [7, 5]
 value = 1
 
 [action.brought.file.whole]
 path  = "build/w/fields/height.cut.npy"
-post  = [4, 3]
+post  = [2, 2]
 value = 0

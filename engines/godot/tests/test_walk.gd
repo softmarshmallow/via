@@ -10,7 +10,7 @@ const Loader := preload("res://addons/via_loader/loader.gd")
 const Walk := preload("res://walk.gd")
 const Marks := preload("res://marks.gd")
 
-const EXPECTED := 25
+const EXPECTED := 28
 var failed := 0
 var ran := 0
 
@@ -93,6 +93,18 @@ func _run() -> void:
 	cam.free()
 	check("water is drawn from both sides", loader.water_material().cull_mode == BaseMaterial3D.CULL_DISABLED)
 	loader._water = dry_water
+
+	# a stall against nothing steep is named by what the walker stands on (build.md 15.1, M7 close)
+	var stop := {"outcome": "blocked", "by": null, "slope": null}
+	Walk.name_stop(stop, {"y": 0.0, "on": "ground"}, loader, Vector2(36, 4), Vector2(0, 1))
+	check("a stall on the ground is blocked by ground, with the slope ahead", stop.by == "ground"
+		and stop.slope != null and absf(stop.slope - Walk.steepest_between(loader, Vector2(36, 4), Vector2(36, 5))) < 1e-6, str(stop))
+	stop = {"outcome": "blocked", "by": null, "slope": null}
+	Walk.name_stop(stop, {"y": 3.0, "on": "bridge.deck"}, loader, Vector2(36, 4), Vector2(0, 1))
+	check("on a surface, by the surface, with no slope", stop.by == "bridge.deck" and stop.slope == null, str(stop))
+	stop = {"outcome": "blocked", "by": "trees#t3", "slope": null}
+	Walk.name_stop(stop, {"y": 0.0, "on": "ground"}, loader, Vector2(36, 4), Vector2(0, 1))
+	check("what it pressed against is kept", stop.by == "trees#t3", str(stop))
 
 	# the walker is removed after each walk
 	check("no walker is left in the tree", root.get_node_or_null("walker") == null)

@@ -1,7 +1,0 @@
-# A proposed change: a guesthouse outside the gate, on the uphill side of the last stretch.
-[[instance]]
-id = "guesthouse"
-asset = "house.large"
-kind = "pad"
-on = { feature = "approach", t = 0.42, offset = -13.0 }
-role = "guesthouse"

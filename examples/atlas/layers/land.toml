@@ -16,7 +16,9 @@ at = [1000, 60]
 # edge, and on by the city's own river's line to the sea. The library cuts a groove that only ever
 # falls and the model makes the valley. Its line goes on under the city (the city's river runs
 # from (1160, 1920) to (1000, 320) here, its `river` at `at` [80, 320]) and out across the plain to
-# the sea, where its course is the city's river's mouth (10 m wide, as the beck that was there),
+# the sea, where its course is the city's river's mouth (10 m wide, as the beck that was there; the
+# city's river is 30, so the water narrows to a thread past the city's south edge: at `width = 30`
+# the terrain step's facts lint found the water lost in a hollow at (994, 322), an error, M7 close),
 # because the model's water does not stop where the plain meets the city: ended at the inlet, the
 # water found its own way to the sea at 1472 m east, through the city's ground, and came out south
 # of it as a second channel (M6 slice 2 review). Under the city the course is the city's to show:

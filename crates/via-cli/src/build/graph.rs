@@ -77,6 +77,8 @@ pub struct Ctx<'a> {
     /// The build key, the engine version and the pack's root from the directory: parameters of
     /// `write:manifest.json`.
     pub key: Digest,
+    /// The build key less `locations.pack_root` (`graph.md` 5.3): what the leaves digest holds.
+    pub leaves_key: Digest,
     pub version: String,
     pub pack_root: Option<String>,
     /// `locations.pack_roots`: each import whose pack brought a model asset, to its root's path
@@ -1386,13 +1388,14 @@ impl<'a> CliPlan<'a> {
     }
 
     /// The digest of everything the model's build is made from (`graph.md` 5.1, Reuse): the
-    /// build key (versions, sources, declared inputs, trust, lookups and flags) and every leaf
+    /// build key less the pack's root (versions, sources, declared inputs, trust, lookups and
+    /// flags; 5.3) and every leaf
     /// of this graph's model, the text of each source and the bytes of each input. The joined
     /// world of a stratum differs from the world the build key names; its leaves say how.
     fn leaves_digest(&self) -> Digest {
         *self.leaves.get_or_init(|| {
             let mut e = via_graph::Enc::new();
-            e.str("via-leaves-1").str(&self.ctx.key.hex());
+            e.str("via-leaves-1").str(&self.ctx.leaves_key.hex());
             let mut ids: Vec<NodeId> = self
                 .model
                 .ids()

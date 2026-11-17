@@ -1,0 +1,21 @@
+format    = "via-case-1"
+summary   = "via explain step.crossings.low_deck with no world: exit 2, cli.unknown_code, and a hint that a step's codes are read from its world's last build."
+milestone = 7
+actions   = ["explain"]
+
+# diagnostics.md 2: a step's code is known only from a build's run report, so with no WORLD it is
+# unknown. M7 close: a fresh agent was told only that it "is not a diagnostic code". Messages are
+# not compared (diagnostics.md 1.3); this case reads the hint from the diagnostics document so a
+# hint that drops the way to the text fails it.
+
+[action.explain]
+via  = ["explain", "step.crossings.low_deck"]
+exit = 2
+
+[action.explain.diag.unknown_code]
+code = "cli.unknown_code"
+
+[action.explain.file.hint]
+path    = ".diag/explain.json"
+pointer = "/diagnostics/0/hint"
+value   = "a step's codes are read from its world's last build: write `via explain step.crossings.low_deck WORLD` (and `--out DIR` if it built elsewhere)"

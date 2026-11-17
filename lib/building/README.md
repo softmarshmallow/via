@@ -127,7 +127,27 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   building's place, its `plinth` or `porch`, not those names). Stand each door's end farther from a
   way's line than that.
 - **Turned buildings.** Any turn builds: an end that rounding to the millimetre left outside its
-  floor is moved onto it (`lay.py` rules 3 and 4, `onto`).
+  floor is moved onto it (`lay.py` rules 3 and 4, `onto`). It does not yet look right: the kit's
+  wall pieces are not turned with the outline, so a turned building's walls show as a saw-tooth with
+  open corners (M7 close, TODO). Keep a kit-walled building square to the axes for now.
+- **Where the stair goes.** The stairwell runs from 1 m (`LANDING`) before the flight's foot to its
+  head. It must reach a corner or stop at least 0.3 m short of it (`STUB_MIN`): a foot 1.0 m or less
+  from the corner, or 1.3 m or more. Between, `lay` refuses `stair` (`params`, naming the gap); before
+  M7 close it built a stub no piece closes, and the errors named produced corners you cannot write.
+- **Levelling the site.** `ground` is the mean of the terrain under the outline, and the doorway's
+  `sill` sets the ground at its end to the floor. Any shaped kind under the building (a `terrace`,
+  a way's bed) may set those posts instead, and the doorway and floor then gap (`surface.gap`, a
+  fresh agent's terrace: 29 mm, M7 close). On a slope, `plinth = 0` keeps the sill from raising a
+  mound at the door (the storey's floor cuts the terrain inside, `cut`); put no other ground-shaping
+  kind under the doorway. A yard or pad of the building's own is TODO (M7 close).
+- **Keeping trees out.** A `building` has no keep-out of its own, and a `clearing` over it puts
+  `place.keep_out` on `lay`'s own pieces. Fade the scatter's `density` near it instead:
+  `density = "= ... * smoothstep(5, 8, dist('kind:building', 10))"` (station's shrubs).
+- **Placing a building beside something.** A `region` holds absolute points and cannot be placed
+  `on` or `at` anything. To have a building follow another feature (a mill beside its weir), a
+  small generate step returns the `building` from that feature's points (`step.out.feature`, points
+  in millimetres) and a lint names it in `checks` (`authority.unchecked`). A region placed by `on`
+  and `face` is TODO (M7 close).
 - **Doors.** With no `role:door` piece in the kit a doorway is open the storey's full height
   (`storey_h`); give the kit a door piece for a lintel.
 - **Walking to an upper floor.** A storey, flight or doorway `lay` returns has a produced name,
@@ -136,7 +156,15 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   or turns; `offset` is metres to the left of the ring's travel, inward on a region, `geometry.md`
   2.6), list them in a kindless path, and give the bookmark `along = "<that path>"`. Put a point in
   the flight's own line before its foot, or the walker skips the foot (`build.md` 15.1), and judge
-  the walk by `on.stop` in `sheet.json`, not by `arrived` (arrival is in plan only).
+  the walk by `on.stop` in `sheet.json`, not by `arrived` (arrival is in plan only). The walker
+  takes a point once it is nearer the next point than that point is (`build.md` 15.1): from a door,
+  a stair's head is often nearer than its foot, so the foot is skipped. Add a turning point between
+  them, so that from where the walker stands each point is nearer than the one after it (door,
+  turn in front of the foot, foot, head, the far side of the upper floor).
+- **A view on an upper floor.** A storey's floor is a produced name, so a bookmark cannot write
+  `surface = "<storey>.floor"`. Lift the eye instead: `eye_height = storey_h + plinth + 1.7`
+  (station's tower views); the walker still starts on the storey's floor. A way to stand a view on
+  a produced storey is TODO (M7 close).
 - **Asking about it.** `via query` runs no step (`surfaces.md` 7): what `lay` returned is in the
   build's `features.json` and `meets.json`, not in `via query`'s answers.
 

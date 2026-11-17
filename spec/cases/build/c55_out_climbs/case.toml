@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "pistol (its pack root `models/` inside the world folder) built from its own folder with --out ../build/w: the manifest's pack_root resolves from the build directory (the `..` is folded before the relative path is made)."
+milestone = 7
+actions   = ["program", "trust", "build"]
+
+# build.md 4, locations.pack_root: the path from the build directory to the pack's root. M7 close:
+# a fresh agent's `via build world.toml --out ../build/mill` wrote a pack_root one folder too deep
+# (the `..` of --out was counted as a folder), and the loader drew no model.
+
+[copy.pistol]
+from = "examples/pistol"
+to   = "w"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+cwd  = "w"
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "../build/w", "--store", "../store"]
+cwd         = "w"
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.root]
+fn    = "pack_root_resolves"
+build = "build/w"

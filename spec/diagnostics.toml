@@ -2541,7 +2541,8 @@ summary = "Two paths with kinds cross or touch with no owner of the meeting (2.7
 explain = """
 Two paths with kinds cross or touch, and nothing owns the meeting: neither ends on the other or
 on a named owner, neither follows the other, and no network holds both. The record names both.
-To fix: End one on the other or on a named owner (starts_at, ends_at).
+To fix: End one on the other or on a named owner (starts_at, ends_at), or name the other path in an
+attribute the kind lists in `names` (geometry.md 2.7).
 Bad:   [feature.b]
        path = [[0, 50], [100, 50]]   (crosses a)
 Fixed: [feature.b]
@@ -3316,7 +3317,11 @@ explain = """
 The parent names a place inside an import, and the import's blend weight there is below 1, so the
 place stands on ground the import did not make. `data.weight` holds the weight; `data.moved` the
 height difference from the import's own ground.
-To fix: Make the blend reach 1 at the place, or move the place further inside the import.
+A path's end named on a place inside the import's footprint is held (composition.md 6.7), so this
+is a place outside it, or a place named by a view, which holds nothing. Weight 0 means the place
+lies outside the footprint (a place on its edge is inside, within a millimetre once turned).
+To fix: Make the blend reach 1 at the place, or move the place further inside the import; for a
+weight of 0, end the path on a place inside the footprint, a metre in from its edge.
 Bad:   blend = "= smoothstep(0, 4, d)"     (the named place is 1 m inside the edge)
 Fixed: blend = "= smoothstep(0, 1, d)"
 """

@@ -1,8 +1,10 @@
 # Fixtures
 
-What the spike produced, kept as an oracle for the rewrite. The spike is the throwaway Python
-compiler in `spike/`. These files record what it said and measured for every world it could build.
-They come from the tag `spike-final` (commit `441c3db`).
+What the spike produced, kept as an oracle for the rewrite. The spike was the throwaway Python
+compiler of the concept phase; it was deleted at M7 and its record is the tag `spike-final`
+(commit `441c3db`). These files are data exported at that tag: what it said and measured for every
+world it could build. Paths inside them (`spike/worlds/...`) are recorded as the spike wrote them
+and name files at the tag.
 
 ## The rule
 
@@ -13,7 +15,7 @@ They come from the tag `spike-final` (commit `441c3db`).
 | Everything else: counts, water measures, street form, budgets, timings, kernel areas | Compared as measures. A difference is read and explained, not fixed by tuning. |
 
 The rewrite is never optimised to these numbers (R15: a measure informs; it is never a target).
-The spike was wrong in places (see `spike/SPEC.md` section 11). Where the rewrite is right and
+The spike was wrong in places (see `spike-final:spike/SPEC.md` section 11). Where the rewrite is right and
 the spike was wrong, the fixture is updated and the reason is written in the commit.
 
 Diagnostic codes are the spike's words. Where the v1 vocabulary renames a noun, the comparison
@@ -51,6 +53,8 @@ compiler. Coordinates are metres in the world's frame (x east, y north), with no
 
 ## How it was made
 
+At the tag `spike-final` (a worktree of it; the spike is not in the tree since M7):
+
 ```
 cd via
 cargo build --release -p via                      # the old terrain binary; basin and townland need it
@@ -59,12 +63,12 @@ uv run python -m worldc worlds/<world>/world.toml [check.py's lint flags] \
     [--overlay worlds/<world>/changes/<stem>.toml | --variant <name>] --out oracle_<name>
 ```
 
-The exact command for each build is in its `summary.json`. Lint flags follow `spike/check.py`
+The exact command for each build is in its `summary.json`. Lint flags follow the spike's `check.py`
 (`--lint reach` for college, coast, example, monastery and border; `--map` for coast). An overlay
 build starts from the base build's `placed.json`, so its `changes.json` is against the base.
 Generate steps reuse their cached output under `gen/` when their inputs are unchanged, so
 `compile_seconds` for `basin` and `townland` excludes most of the terrain simulation. The exit
-status and error and warning counts of the fifteen `spike/check.py` cases matched `golden.json`. The
+status and error and warning counts of the fifteen `check.py` cases matched `golden.json`. The
 export script read each build's `diagnostics.json`, `world.json`, `report.json` and
 `budgets.json`, the step outputs under `spike/worlds/<world>/gen/` and the lint outputs under
 `spike/build/.steps/`, and replaced any absolute path with one relative to the repository. The

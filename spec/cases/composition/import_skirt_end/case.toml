@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "composition.md 6.1: two cutting faces (strips 1 m wide) brought from 0.5 m posts onto 2 m posts. `wall`, (2.6, 5) to (8.6, 5), ends inside quad (4, 2), whose centre (9, 5) lies 0.4 m past its end; `jamb`, (2.6, 11) to (8, 12), ends on the corner of quads (4, 5) and (4, 6), whose centres lie exactly a half diagonal (1414.2 mm) from its end. The widened band is round at its ends and 6 mm past the half diagonal, so each is cut and covered as the quads the faces run through: wall (1, 2) to (4, 2) cut, (0, 2) and (5, 2) not, 28 triangles; jamb (4, 5) and (4, 6) cut, 31 triangles. Before M7 close the band's ends were butt and these quads stayed uncut beside cut ones, straddling the faces' ends (atlas: coast.along_cliff fell 18.5 m where the west face ends on a quad's corner at the cave's left jamb); with round ends at the half diagonal alone the corner's quads stay uncut, the arc's chords passing inside their centres."
+milestone = 7
+actions   = ["brought"]
+
+[action.brought]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.brought.file.triangles]
+path    = "build/w/manifest.json"
+pointer = "/meshes/1/triangles"
+value   = 28
+
+[action.brought.file.jamb_triangles]
+path    = "build/w/manifest.json"
+pointer = "/meshes/0/triangles"
+value   = 31
+
+[action.brought.file.corner_south]
+path  = "build/w/fields/height.cut.npy"
+post  = [4, 5]
+value = 1
+
+[action.brought.file.corner_north]
+path  = "build/w/fields/height.cut.npy"
+post  = [4, 6]
+value = 1
+
+[action.brought.file.first]
+path  = "build/w/fields/height.cut.npy"
+post  = [1, 2]
+value = 1
+
+[action.brought.file.end]
+path  = "build/w/fields/height.cut.npy"
+post  = [4, 2]
+value = 1
+
+[action.brought.file.before]
+path  = "build/w/fields/height.cut.npy"
+post  = [0, 2]
+value = 0
+
+[action.brought.file.past]
+path  = "build/w/fields/height.cut.npy"
+post  = [5, 2]
+value = 0

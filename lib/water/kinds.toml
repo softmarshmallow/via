@@ -17,6 +17,28 @@
 #   ground is under the new level: a fade over dry ground below the level stands a wall of water
 #   where the fade ends, and nothing reports it (M6 close fresh-agent run `weir`: a 36 m half disc
 #   faded radially; confining the mask to the channel's banks fixed it).
+#   A worked weir (M7 close fresh-agent run `mill`; this library ships none yet): a kind of the
+#   world's own, its two ends `starts_at`/`ends_at` points placed `on` the beck at one `t` and
+#   offsets either side, so it is square to the water and moves with it; `names = ["crosses"]` and
+#   `crosses = "<the beck>"` own the meeting (geometry.md 2.7, else `geom.unowned_crossing`).
+#       [kind.weir]
+#       authority = "anchored"
+#       radius    = 34
+#       requires  = ["crosses"]
+#       names     = ["crosses"]
+#       defaults  = { rise = 1.0, thick = 0.8, spill = 0.05, back = 30, reach = 10.5 }
+#       [kind.weir.effect.wall]                    # the ground on the line raised to the crest
+#       field  = "role:surface"
+#       value  = "= max(v, under('min') + rise)"
+#       mask   = "= 1 - smoothstep(thick, thick + 0.5, d)"
+#       radius = 2
+#       [kind.weir.effect.pond]                    # upstream (sd > 0) and on the banks only
+#       field = "tag:water_level"
+#       value = "= max(v, under('min') - spill)"
+#       mask  = "= if(sd > 0 and dist('kind:beck', 14) < reach, 1, 0) * (1 - smoothstep(back - 3, back - 1, d))"
+#   `under('min')` reads the field the effect writes (formulas.md 8.5): in `wall` it is the
+#   channel floor, in `pond` the water, which is the finished ground (the crest) when the water's
+#   base is `= f('height')`. So the crest is not one `let`; the pond relies on that base.
 #
 # Cross profiles read `d` only, never `t` (geometry.md 2.6: the beck bends, so a frame read far
 # from its line jumps across the bisector inside each bend, limitation E1). Only the channel reads

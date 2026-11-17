@@ -390,7 +390,7 @@ not a gate.
 ### 7.3 `clump` (M2)
 
 `clump` takes one of two forms. The keys and their behaviour are ours, after the spike's `clump`
-and `around()` (`glade`, `spike/FINDINGS.md`, "Placement by cause").
+and `around()` (`glade`, `spike-final:spike/FINDINGS.md`, "Placement by cause").
 
 | Form | Keys | What it does |
 |---|---|---|
@@ -498,7 +498,7 @@ Conformance, `storey_overlap`, `ground_floor_clash`.
 | two hand instances | `place.overlap`, error: two firm decisions clash (principle 3). |
 | a hand instance and a produced instance of a producer in its layer or below | The produced one gave way before it was placed (7.5 for scatters; the same overlap test for runs and steps), counted in `place.gave_way`. A hand end piece beside its run therefore replaces the bay it overlaps. |
 | a hand instance and the instance it stands on (`on` it), or any two whose chains of `on` reach one root (M5, `assets.md` 12.1) | Not tested: it was placed there on purpose; parts on parts of one root are one thing, as one set placement's items are. |
-| neighbours `k` and `k + 1` of one run, and the last and first on a closed outline | Not tested. Kit bays measure a little over their pitch, and on a curve abutting bays overlap on the inner side even at the exact pitch: the spike's college gave 22 false overlaps this way (`spike/FINDINGS.md`, college). A step's instances are hand instances of its document, so this exemption does not reach a kit run a library lays: the library keeps its neighbours apart itself (`lib/town/kit.py` rule 7, M5 `market`: 86 false `place.overlap` before it, by rounding to the lattice and on bends). |
+| neighbours `k` and `k + 1` of one run, and the last and first on a closed outline | Not tested. Kit bays measure a little over their pitch, and on a curve abutting bays overlap on the inner side even at the exact pitch: the spike's college gave 22 false overlaps this way (`spike-final:spike/FINDINGS.md`, college). A step's instances are hand instances of its document, so this exemption does not reach a kit run a library lays: the library keeps its neighbours apart itself (`lib/town/kit.py` rule 7, M5 `market`: 86 false `place.overlap` before it, by rounding to the lattice and on bends). |
 | two items of one set placement | Not tested (section 4). |
 | any other two non-scattered produced instances, of one producer or two | `place.crowded`, warning, naming both. |
 | a lower layer's produced instance and anything in a higher layer | `place.crowded`, warning, naming both (3.4: giving way reads down only). |

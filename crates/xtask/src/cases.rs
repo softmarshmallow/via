@@ -4,8 +4,9 @@
 //! - every `spec/cases/<chapter>/<case>/case.toml` reads as TOML with `format = "via-case-1"`, an
 //!   integer `milestone` 0 to 7, a folder name in the case-id grammar and a chapter that exists
 //!   (the runner's `list` validates the whole manifest; this is the floor `cargo test` holds);
-//! - no case copies from `spike/`, and no `[copy.*]` path leaves the repository (absolute, or
-//!   through `..`), and no case file is a symbolic link;
+//! - no case copies from `spike/` (since M7 it holds only the private folders `spike/local/`,
+//!   `spike/out/` and `spike/build/`, outside git), and no `[copy.*]` path leaves the repository
+//!   (absolute, or through `..`), and no case file is a symbolic link;
 //! - `diagnostics.md`'s coverage check: every registered code up to the milestone with
 //!   `covered_by = "conformance"` (the default) is expected by some case at or below that
 //!   milestone, and every code a case expects is registered.
@@ -50,7 +51,9 @@ pub fn bad_copy_path(p: &str, is_from: bool) -> Option<&'static str> {
         .next()
         .unwrap_or("");
     if is_from && first == "spike" {
-        return Some("copies from spike/; a case never does (conformance.md 3.2)");
+        return Some(
+            "copies from spike/, which holds only private folders; a case never does (conformance.md 3.2)",
+        );
     }
     None
 }

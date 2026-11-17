@@ -2013,7 +2013,7 @@ pub fn held_places(d: &Decls, id: &str) -> Vec<P> {
         .into_iter()
         .filter_map(|n| n.strip_prefix(&prefix))
         .filter_map(|rest| match imp.spot(rest) {
-            Some(crate::place::Spot::At { p, .. }) if imp.inside((p.x, p.y)) => Some(p),
+            Some(crate::place::Spot::At { p, .. }) if imp.place_inside((p.x, p.y)) => Some(p),
             _ => None,
         })
         .collect()

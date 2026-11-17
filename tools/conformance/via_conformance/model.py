@@ -630,7 +630,9 @@ def parse_case(folder: Path, chapter: str) -> Case:
         _keys(t, where, {"from"}, {"to"})
         src = _relative(_str(t["from"], f"{where}.from"), f"{where}.from")
         if PurePosixPath(src).parts[0] == "spike":
-            raise CaseError(f"{where}.from: a case never copies from spike/ (3.2)")
+            raise CaseError(
+                f"{where}.from: a case never copies from spike/, which holds only private folders (3.2)"
+            )
         to = _str(t.get("to", src), f"{where}.to")
         if to != ".":
             _relative(to, f"{where}.to")

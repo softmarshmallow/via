@@ -2,7 +2,7 @@
 
 Status: draft for discussion, 2026-11-12. It records what two spike worlds (`market`, `city`) and a
 study (`reports/Modular city asset contracts.md`) support, what was decided on the way, and what is
-still open. The compiler's behaviour is specified in `spike/SPEC.md` section 12; this page is the
+still open. The compiler's behaviour is specified in `spike-final:spike/SPEC.md` section 12; this page is the
 reasoning. Nothing here is final.
 
 ## The question
@@ -133,7 +133,7 @@ holds facts. The proposal is to name them once and use them at every scale.
   outside, and the checks on it.
 
 First step taken: mounts with a position exist in the spike, on assets and on path ends, and a
-path can start or end at one (`spike/SPEC.md` 12.6c). What it still needs: a mount with a direction (which needs frames that nest and
+path can start or end at one (`spike-final:spike/SPEC.md` 12.6c). What it still needs: a mount with a direction (which needs frames that nest and
 turn), mounts with a type (so a wall end meets only a wall end), and checks that know which state
 they are looking at.
 

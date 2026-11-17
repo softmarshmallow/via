@@ -136,15 +136,15 @@ kind   = "bookmark"
 on     = { ref = "central_east", t = 0.03 }
 toward = "central_bridge.start"
 
-[feature.on_harbor_bridge]
-kind   = "bookmark"
-on     = { ref = "harbor_bridge", t = 0.5 }
-toward = "look_down_river"
+[feature.on_harbor_bridge]                  # mid-deck, along it to its east end (M7 close: toward
+kind   = "bookmark"                         # `look_down_river`, 697 and 295 m off the deck, it
+on     = { ref = "harbor_bridge", t = 0.5 }  # faced the parapet and the walk ended against it)
+toward = "harbor_bridge.end"
 
-[feature.on_central_bridge]
-kind   = "bookmark"
-on     = { ref = "central_bridge", t = 0.5 }
-toward = "look_down_river"
+[feature.on_central_bridge]                  # mid-deck, along it to its east end (M7 close: toward
+kind   = "bookmark"                         # `look_down_river`, 697 and 295 m off the deck, it
+on     = { ref = "central_bridge", t = 0.5 }  # faced the parapet and the walk ended against it)
+toward = "central_bridge.end"
 
 [feature.on_north_bridge]                   # mid-deck, looking along it to its east end: a walk toward
 kind   = "bookmark"                         # the central bridge, off to the side, left the deck and

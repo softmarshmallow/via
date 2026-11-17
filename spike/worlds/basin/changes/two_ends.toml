@@ -1,6 +1,0 @@
-# State only the river's two ends. The course between them is found over the starting ground
-# (it goes round high ground instead of through it), then held like a stated one.
-[[feature]]
-id = "river"
-course = "find"
-path = []

@@ -174,7 +174,10 @@ no `position` is a defect (TODO lesson: a lint finding with no location).
 - Where a name was not found, the hint gives the nearest name, `data.nearest` holds it (1.4), and
   `related` points at its declaration.
 - Messages and hints are English. Their wording is not compared by conformance; code, severity,
-  subject, location, position, `count` and `data` are.
+  subject, location, position, `count` and `data` are. One exception: a case written for a hint or
+  message that misled an agent may read its text from the diagnostics document with a file
+  `pointer` (`conformance.md` 3.4), so a rewording that drops the route it names fails; each such
+  case says the trip in a comment (ours, M7 close, decided, open to the owner).
 
 ### 1.4 Nearest name
 
@@ -182,7 +185,9 @@ Every chapter that says "the nearest name" means this: among the names visible a
 one with the least optimal-string-alignment distance (Damerau, 1964; restricted form as in Boytsov,
 2011) to the written name, if that distance is at most `max(1, floor(length / 3))` of the written
 name. Ties go to the bytewise-first name. If none is close enough, `data.nearest` is absent and the
-hint lists up to five names visible there, bytewise first. The threshold is ours.
+hint lists up to five names visible there, the nearest first by that distance, ties bytewise (M7
+close: bytewise alone listed `barn` and `box_small` for `house_tall`, not `house_low`). The
+threshold and the order are ours.
 
 ## 2. Codes and the registry
 
@@ -267,7 +272,9 @@ last build of `WORLD` (`protocol.md` 3.3); it runs nothing and does not merge th
 document error does not change its answer.
 
 An unknown code is `cli.unknown_code` (exit 2), with the nearest code. The search covers the core
-codes, and, when `WORLD` is given, the step codes recorded in its last build.
+codes, and, when `WORLD` is given, the step codes recorded in its last build. A `step.` code with
+no `WORLD` is `cli.unknown_code` whose hint says to name the world (case `explain_step_no_world`;
+M7 close: a fresh agent was told only that `step.crossings.low_deck` is not a code).
 
 The group `place` means placement (`rules.md`). It is not the "place name" of `vocabulary.md` 2.1.
 

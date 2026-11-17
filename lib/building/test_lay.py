@@ -110,6 +110,15 @@ class Stairs(unittest.TestCase):
         with self.assertRaises(ParamError):
             plan({"stair": {"t": 0.32, "width": 1, "run": 5}})  # the 8 m east edge: past it
 
+    def test_a_stairwell_stub_before_a_corner_is_refused_by_t(self):
+        """The landing 1 m before the foot: a foot 1.08 m from the corner leaves 0.08 m of wall,
+        which no piece closes (M7 close); 1.0 m reaches the corner and 1.3 m leaves 0.3 m."""
+        with self.assertRaises(ParamError) as e:
+            plan({"stair": {"t": 0.027, "width": 1, "run": 5}}, kit=KIT)
+        self.assertIn("0.080 m from the corner", str(e.exception.args))
+        for t in (0.025, 0.0325):
+            plan({"stair": {"t": t, "width": 1, "run": 5}}, kit=KIT)
+
 
 class Doors(unittest.TestCase):
     def test_the_worked_example(self):

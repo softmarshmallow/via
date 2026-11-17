@@ -1,6 +1,0 @@
-# A proposed change, kept apart. Applied with --overlay; the base files are untouched.
-[[instance]]
-id = "cottage_c"
-asset = "town.house_low"
-kind = "pad"
-on = { feature = "lane_east", t = 0.75, offset = -12.0 }

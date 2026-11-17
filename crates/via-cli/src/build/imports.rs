@@ -215,6 +215,7 @@ fn run_import(env: &Env, c: &StepsCall<'_>) -> Option<StepsDone> {
             baseline: None,
             baseline_record: None,
             key,
+            leaves_key: key,
             version: env!("CARGO_PKG_VERSION").to_string(),
             pack_root: None,
             pack_roots: BTreeMap::new(),

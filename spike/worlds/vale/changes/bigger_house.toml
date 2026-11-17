@@ -1,4 +1,0 @@
-# Change 3: one cottage becomes a house with nearly three times the footprint.
-[[instance]]
-id = "cottage_b"
-asset = "house.large"

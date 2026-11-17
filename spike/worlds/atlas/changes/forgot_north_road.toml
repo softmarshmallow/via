@@ -1,5 +1,0 @@
-# The failure case, kept to show the message: the atlas forgets to answer one of the city's exits.
-#   uv run python -m worldc worlds/atlas/world.toml --overlay worlds/atlas/changes/forgot_north_road.toml --out atlas_forgot
-[[feature]]
-id = "north_road_end"
-remove = true

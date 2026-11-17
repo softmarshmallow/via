@@ -1,7 +1,9 @@
 # Tech sheet
 
-The model as the spike implements it, by the tokens you type. One page for review. Every key with
-its default is in `spike/VOCABULARY.md` and `spike/SPEC.md`; this sheet is the map between them.
+The model as the spike implemented it (the spike is at the tag `spike-final` since M7), by the
+tokens you type. One page for review. Every key with its default is in
+`spike-final:spike/VOCABULARY.md` and `spike-final:spike/SPEC.md`; this sheet is the map between
+them.
 `ours` in the last column of a table means the compiler knows the token by name.
 
 ## What it is for

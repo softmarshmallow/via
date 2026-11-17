@@ -13,28 +13,50 @@ a person reviewing them. `via` is a working name.
 
 ## Status
 
-A rewrite is under way on branch `rewrite`, at the close of milestone M6 (whole, and handed over:
-every example joined in one map, `examples/atlas`; chunks streamed; budgets; the player map as
-data). The new engine builds every world under `examples/`; `docs/plan.md` says what each
-milestone adds and `TODO.md` what is open.
+A rewrite is under way on branch `rewrite`, at the close of milestone M7 (the first cut: agents
+of one model family built worlds from these documents alone, and the second family's run from
+`rewrite` is still owed, `TODO.md` "From M7 close"; M6 joined every example in one
+map, `examples/atlas`, streamed in chunks, with budgets and the player map as data). Until `main`
+moves to it at the owner's review, `main` holds the older research tree: check out `rewrite` (a
+tree with `spec/`, `lib/` and `examples/`). The new engine builds every world under `examples/`;
+`docs/plan.md` says what each milestone adds and `TODO.md` what is open.
 
 ### First build of your own world
 
 ```sh
 cargo build --release -p via-cli -p via-terrain     # a cargo-built via has no shipped library root:
 export VIA_LIB=$PWD/lib                             #   name ours (documents.md 4.1)
+export PATH=$PWD/target/release:$PATH
+uv sync --project sdk/python --python 3.12          # the SDK's venv: Python 3.12 and NumPy
 via config program python $PWD/sdk/python/.venv/bin/python   # steps run on Python 3.12 (the SDK's venv)
 via config program via-terrain $PWD/target/release/via-terrain
 via trust path/to/world.toml --yes                  # record trust in the world's steps (protocol.md)
 via build path/to/world.toml --out build/w
 ```
 
-A change is passed by its path (`--change changes/x.toml`; a bare name holds no `.` or `/`,
-`build.md` 14). Copy a world from `examples/` to start; `spec/vocabulary.md` lists every key.
+A step you have not trusted does not run: a generate step builds from the result committed beside
+its world (`gen/`, `protocol.md` 7.1), so `via build examples/basin/world.toml --out build/basin`
+builds `basin` without running its erosion, with `protocol.untrusted_result`; its lint is skipped.
 
-The spike under `spike/` is the record of the concept phase: 19 worlds, built in throwaway Python.
-It is kept as an oracle to compare against, never as a source, and is tagged `spike-final`. It is
-deleted at milestone M7.
+A change is passed by its path (`--change changes/x.toml`; a bare name holds no `.` or `/`,
+`build.md` 14). Copy a world from `examples/` to start (its files, never its `.via/` store);
+`spec/vocabulary.md` lists every key.
+
+- **A world of your own** may live anywhere. Its `include`d libraries come from `VIA_LIB`; an
+  `[import.<id>]`'s `file` is relative to the file that declares it, or absolute
+  (`composition.md` 2). Diagnostics still print paths relative to the world's folder, so an import
+  outside it shows as `../../…` (no absolute path in a build, `build.md` case 7).
+- **`--out`** may be relative, `..` included (`--out ../build/w`), or absolute.
+- **Steps.** A step of your own is Python on the SDK: `sdk/python/README.md` (setup, a worked lint,
+  units, what bites). Each library's reference is its `kinds.toml` header.
+- **Joining examples.** Where a parent ends a road on each example, and the lift it needed, is
+  `examples/atlas/README.md`, "Joining an example".
+
+The spike was the concept phase: 19 worlds, built in throwaway Python. It was deleted at milestone
+M7; its record is the tag `spike-final` (`git show spike-final:spike/FINDINGS.md`). What it said
+and measured is kept as data in `fixtures/oracle/`, the oracle the examples compare against, never
+a source. Where a document cites the spike's `SPEC`, `FINDINGS`, `VOCABULARY`,
+`check.py` or a world's `LOG`, it means that file at the tag.
 
 ## Repository layout
 
@@ -50,10 +72,9 @@ lib/             our libraries: kinds as TOML + steps in Python, through the SDK
 engines/godot/   loader addon and the review viewer (eye-height sheets)
 engines/gltf/    a second reader of the build directory (glTF)
 tools/           the conformance runner, the pack generator, the map renderer
-fixtures/        the spike's exported oracle data and the kernel's fixtures
+fixtures/        the spike's oracle data (exported at `spike-final`) and the kernel's fixtures
 examples/        the final examples, each with change files and ground bookmarks
 docs/            doctrine, challenges, design, references
-spike/           the concept phase, kept as record and oracle until M7
 ```
 
 Of the old workspace, only `crates/via-terrain` carries over, as the erosion program behind
@@ -72,6 +93,7 @@ the tag `spike-final`.
 | [`docs/challenges.md`](docs/challenges.md) | Every request made of the tool, how it fared, and the milestone that closes it. |
 | [`docs/design/blackbox.md`](docs/design/blackbox.md) | The tool seen from outside. |
 | [`docs/faq.md`](docs/faq.md) | Questions a newcomer would ask, each marked shown, decided, open or not ours. |
+| [`sdk/python/README.md`](sdk/python/README.md) | Writing a step of your own in Python: setup, a worked lint, units, what bites. |
 | `lib/<name>/kinds.toml` | Each library's reference: its header comment gives the kinds, the steps a world restates and their params (`lib/map` and `lib/building` also have a README; `lib/land/ground.md` is one longer note). |
 | `examples/<name>/README.md` | What each example world shows and what is still wrong with it. |
 | [`TODO.md`](TODO.md) | Open items with their context, each filed to a milestone or a chapter. |

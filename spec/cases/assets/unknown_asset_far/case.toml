@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "A world on the primitive pack naming house_tall, too far from any name for a nearest: asset.unknown, no data.nearest, and the hint lists the nearest names first (diagnostics.md 1.4)."
+milestone = 7
+actions   = ["build"]
+
+# M7 close: a fresh agent's `house_tall` got `barn`, `box_small`, ... (bytewise first), not
+# `house_low`. The listed order is ours (diagnostics.md 1.4); this case reads the hint from the
+# diagnostics document, as messages are not compared.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.unknown]
+code    = "asset.unknown"
+subject = "instance.hut"
+
+[action.build.file.hint]
+path    = ".diag/build.json"
+pointer = "/diagnostics/0/hint"
+value   = "names visible here include `house_low`, `house_narrow`, `box_small`, `rock_a`, `tree_oak`"

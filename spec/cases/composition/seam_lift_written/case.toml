@@ -1,0 +1,24 @@
+format    = "via-case-1"
+summary   = "An import with no datum, 4 m high but 10 m along its east edge, lift = -4 written: import.seam (the east edge), data.lift_hint -4 measured before lift, and a hint that says the written lift already meets the median step."
+milestone = 7
+actions   = ["build"]
+
+# composition.md 5, "The lift hint": measured before `lift`, so it reads the same once written.
+# M7 close: a fresh agent wrote the hint's lift and read the same hint again, as if nothing had
+# been applied. Messages are not compared (diagnostics.md 1.3); this case reads the hint from the
+# diagnostics document.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+
+[action.build.diag.seam]
+code = "import.seam"
+data = { grade = 6, lift_hint = -4, count = 13 }
+
+[action.build.file.hint]
+path    = ".diag/build.json"
+pointer = "/diagnostics/0/hint"
+value   = "blend the import in (`blend`), own the ground with an anchored feature, or raise `max_grade`; the `lift = -4` you wrote already meets the edge's median step, so these are where the edge departs from it"

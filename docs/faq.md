@@ -72,7 +72,8 @@ runs.
 
 **I am one person with no tools programmer. Can I use it?**
 Open, for real users. The agent stands in for the tools programmer; every world here was made that
-way, and agents of two model families build from the documents alone at the M7 close. Whether a
+way, and at the M7 close agents of one model family built from the documents alone (the second
+family's run is still owed: it was given the old tree). Whether a
 person who cannot read the documents can steer one well enough is not known.
 
 **Is it a game engine?**
@@ -423,7 +424,8 @@ the image's viewpoint, the render beside the image, and a measure of how far the
 Shown, partly. Every failure names the place and what to change (principle 8); a step runs only
 once trusted (`spec/protocol.md`); a change report says what moved; budgets and checks fail the
 build. Fresh agents built from the documents at the M5 and M6 closes, and what they tripped on was
-fixed (`TODO.md`). Agents of two model families are the M7 close.
+fixed (`TODO.md`). At the M7 close agents of one model family did the same; the second family's
+run, from `rewrite`, is still owed.
 
 ## Adopting it
 

@@ -3,14 +3,14 @@
 //! Optimal-string-alignment distance (Damerau, 1964; the restricted form as in Boytsov, 2011)
 //! over Unicode scalar values; accepted when at most `max(1, floor(length / 3))` of the written
 //! name (the threshold is ours); ties to the bytewise-first name. Without one close enough, up to
-//! five visible names, bytewise first.
+//! five visible names, the nearest first, ties bytewise.
 
 /// The answer for one written name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Nearest<'a> {
     /// The nearest name, close enough; it goes in `data.nearest`.
     Found(&'a str),
-    /// None close enough: up to five visible names, bytewise first, for the hint.
+    /// None close enough: up to five visible names, the nearest first, ties bytewise, for the hint.
     None(Vec<&'a str>),
 }
 
@@ -53,7 +53,12 @@ pub fn nearest<'a>(written: &str, visible: impl IntoIterator<Item = &'a str>) ->
     }
     match best {
         Some((_, n)) => Nearest::Found(n),
-        None => Nearest::None(names.into_iter().take(5).collect()),
+        // The nearest five, ties bytewise (the sort is stable): `house_tall` lists `house_low`
+        // before `barn` (M7 close, a fresh agent's hint).
+        None => {
+            names.sort_by_key(|n| osa_distance(written, n));
+            Nearest::None(names.into_iter().take(5).collect())
+        }
     }
 }
 
@@ -118,6 +123,30 @@ mod tests {
         assert_eq!(
             r.hint("-"),
             "names visible here include `a`, `b`, `c`, `d`, `e`"
+        );
+    }
+
+    #[test]
+    fn lists_the_nearest_first() {
+        let names = [
+            "barn",
+            "box_small",
+            "crate",
+            "fence_post",
+            "hay",
+            "house_low",
+            "house_wide",
+        ];
+        let r = nearest("house_tall", names);
+        assert_eq!(
+            r,
+            Nearest::None(vec![
+                "house_low",
+                "house_wide",
+                "box_small",
+                "fence_post",
+                "hay"
+            ])
         );
     }
 }

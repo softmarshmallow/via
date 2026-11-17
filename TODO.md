@@ -11,30 +11,30 @@ started, each ending in a document or a written decision, with the spike as the 
 
 ## Spikes
 
-Throwaway code under `spike/`. First passes are done; findings are in `spike/FINDINGS.md`.
+Throwaway code, under `spike/` until M7 and at the tag `spike-final` since. First passes are done; findings are in `spike-final:spike/FINDINGS.md`.
 
 - [x] Write the spike brief: questions, scope, asset rules, change scenario, exit criteria
-      (`spike/README.md`).
+      (`spike-final:spike/README.md`).
 - [x] Build the landscape spike: text source, compiler, Godot viewer, bookmark renders, walk mode.
 - [x] Run the change scenario and record what broke and what the compiler caught.
-- [x] Write `spike/FINDINGS.md`: the decisions the spike locks and the ones it leaves open (first pass).
+- [x] Write `spike-final:spike/FINDINGS.md`: the decisions the spike locks and the ones it leaves open (first pass).
 - [x] Spike derived features and authority: a flood-fill lake beside an anchored one
-      (see "Derived features and authority" in `spike/FINDINGS.md`).
-- [x] Spike a building layout, first pass (world `spike/worlds/college`; see "A building layout"
-      in `spike/FINDINGS.md`).
-- [x] Spike a full interior of a single building, first pass (world `spike/worlds/station`; see
-      "Interiors" in `spike/FINDINGS.md`). Original brief: a full interior of a single building. Why: no heightfield, no outdoors; rooms, doors and
+      (see "Derived features and authority" in `spike-final:spike/FINDINGS.md`).
+- [x] Spike a building layout, first pass (world `spike-final:spike/worlds/college`; see "A building layout"
+      in `spike-final:spike/FINDINGS.md`).
+- [x] Spike a full interior of a single building, first pass (world `spike-final:spike/worlds/station`; see
+      "Interiors" in `spike-final:spike/FINDINGS.md`). Original brief: a full interior of a single building. Why: no heightfield, no outdoors; rooms, doors and
       floors. Get a second opinion on whether the framework should fit this at all, or only hand off
       to an interior tool at a declared boundary (the footprint and its openings).
 - [x] Spike what a heightfield cannot hold: a cave, a sea cliff with overhang, an ocean shore
-      (world `spike/worlds/coast`; see "Volumes" in `spike/FINDINGS.md`).
+      (world `spike-final:spike/worlds/coast`; see "Volumes" in `spike-final:spike/FINDINGS.md`).
 - [x] Spike parts, first pass (the college as a seam part and the station as a portal part on
-      Coast; see "Parts" in `spike/FINDINGS.md`). Open after the spike: rotation, deriving the
+      Coast; see "Parts" in `spike-final:spike/FINDINGS.md`). Open after the spike: rotation, deriving the
       ground a part needs from the part, a shared material budget, checking a part's things against
       the master's, caching a compiled part, and an unexplained defect where terrain shows through
       the station's floor.
 - [x] Spike layers, first pass (the college split into five layer files with a people layer; see
-      "Layers" in `spike/FINDINGS.md`). Open after the spike: namespaces per layer, which effects
+      "Layers" in `spike-final:spike/FINDINGS.md`). Open after the spike: namespaces per layer, which effects
       may cross layers, direction checks inside expressions, compiling or swapping one layer alone,
       and per-layer variants.
 - [x] Study the player-facing map (report: `reports/Game map production pipelines.md`). Findings:
@@ -44,21 +44,22 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
       shipped game is documented using an image model for its map; no published way exists to
       measure whether a restyled map still registers with its data; and how multi-floor interior
       maps are produced is not documented anywhere found.
-- [x] Spike the player-facing map, first pass (see "The player-facing map" in `spike/FINDINGS.md`).
+- [x] Spike the player-facing map, first pass (see "The player-facing map" in `spike-final:spike/FINDINGS.md`).
       Open after the spike: a registration measure that works on painted water, roads and
       footprints (edge-based, not colour-based); keeping thin features such as roads through
       restyling; relief in the input being read as features (a part's seam became a painted wall);
       repainting a single changed tile in a consistent style; several seeds per variant before
       quoting any number; per-floor maps and discovery state, which were not attempted.
 - [x] Spike the reference-image workflow, first pass (worlds `stacks` and `lighthouse`; see
-      "Working from reference images" in `spike/FINDINGS.md`). Original brief: the agent starts from concept art or landmark images
+      "Working from reference images" in `spike-final:spike/FINDINGS.md`). Original brief: the agent starts from concept art or landmark images
       (likely made by an image model), not from a text description.
       Why: a detailed image fixes composition, silhouette and palette before any map exists. Test
       whether the framework is friendly to that start, and what is rightly ours to provide: for
       example a bookmark matched to the image's viewpoint, a side-by-side of render and reference,
       and measurements that say how far the two differ.
 - [ ] -> none yet (open; owner to confirm at the M0 sheet whether it joins doctrine section 7 beside row 44): Fit other map examples to the spike model (recreations of well-known game maps) and tune the model.
-- [ ] -> M7: Delete `spike/`. The rewrite starts from the findings, never from the spike code.
+- [x] -> M7 (done M7 close: tracked files removed, references point at the tag `spike-final`, the
+      private folders stay on disk, gitignored): Delete `spike/`. The rewrite starts from the findings, never from the spike code.
 - [x] -> M7 (owner, 2026-11-16): **Cutover cleanup of the pre-existing code.** Before `main` moves,
       go through everything from before the rewrite and decide each piece: adopt, fold in, or drop.
       What stays is a utility, an archetype or a higher-level module that via includes, never a
@@ -83,14 +84,14 @@ Throwaway code under `spike/`. First passes are done; findings are in `spike/FIN
         `docs/archive/` deleted, its four ADRs moved to `crates/via-terrain/docs/` (tag `spike-final`
         holds the old paths); basin's manifest id unchanged by the cutover (change review). The
         charter names the nine libraries and terrain's terms.
-- [x] Refine the spike as if it were the product (done 2026-11-12): `spike/SPEC.md` states the
+- [x] Refine the spike as if it were the product (done 2026-11-12): `spike-final:spike/SPEC.md` states the
       contract as implemented, including a section of known limitations to review before the
-      rewrite; `spike/kinds/` is the one library of kinds; `spike/check.py` guards six builds.
-- [ ] -> M0: Review `spike/SPEC.md` section 11 (known limitations and inconsistencies) and sort each line
+      rewrite; `spike-final:spike/kinds/` is the one library of kinds; `spike-final:spike/check.py` guards six builds.
+- [ ] -> M0: Review `spike-final:spike/SPEC.md` section 11 (known limitations and inconsistencies) and sort each line
       into: fix in the design, accept and document, or drop. Why: it is the most complete list of
       what the current model gets wrong, and the rewrite should start from decisions on it.
 - [x] -> done (duplicate of the refine item above): (original brief, done above) Refine the spike as if it were the product: one pipeline, focused modules, shared kinds, a
-      regression check (`spike/check.py`), and the contract written down as implemented. Why: so the
+      regression check (`spike-final:spike/check.py`), and the contract written down as implemented. Why: so the
       rewrite can filter, review and track what exists instead of rediscovering it.
 
 ### From the city's exits (2026-11-12, `city` and `atlas`)
@@ -1718,12 +1719,14 @@ To M7:
   street. Proposed (lib/ways, owner's): a way that ends on a place takes the place's level at its
   end. New: `market.top` (the street's north end, which no atlas way answers) is blocked 0.7 m in,
   the street 4.9 m higher over a plain that is not held there.
-- [ ] join_college: 0.69 m of water at (2534, 414), 8.4 m short (the parent's water under a held
+- [x] join_college: 0.69 m of water at (2534, 414), 8.4 m short (the parent's water under a held
   place). M7 slice 1: still 0.70 m. The college's own arrival stands at 4.1 m, the plain 6.6 m (its
   lift -3.5 -> -0.1 was measured from the old pad's cut, 3.2 m, not the college's ground); a cut
   more than 1 m under the plain is under the terrain step's level and wet. Lift about +2.4 (not
   built: three atlas builds); or the general fix, the step's level kept under any parent cut.
-- [ ] coast.under_deck is blocked by the brought deck inside atlas (less headroom over the blended
+  Done M7 close (`worlds`): lift +2.4; `join_college` arrives, wading 0.14 m in the road's last
+  30 m (1.86 before); the college's median step -3.55 -> -5.68. The general fix stays open (core).
+- [x] coast.under_deck is blocked by the brought deck inside atlas (less headroom over the blended
   ground). Ruled M7 slice 1 (core): not the join's, no hold under a brought surface. The deck is
   at weight 1 (24 m inside coast's 12 m blend); the beck's bed reads 0.03 m higher on 2 m posts
   (bilinear over coast's 0.5 m, `import.coarser`), clearance 1.82 m against 1.85 for a 1.8 m
@@ -1732,7 +1735,9 @@ To M7:
   deck, not under it (coast's; open). City's two bridge views and monastery.bm_deck walked off a deck with no parapet, their
   own fault alone too: done M7 slice 1, both run lib/ways's `parapet` (bm_deck and city's
   on_*_bridge now blocked by a post, alone; in atlas only monastery's yet, city's text changed
-  after the atlas build). townland's deck has none.
+  after the atlas build). townland's deck has none. Done M7 close (`worlds`): under_deck walks to
+  `deck_side`, on the beck's east bank 4.6 m downstream of the deck's line; arrives alone and in
+  atlas. Seen in atlas: coast's beck holds no water under the deck there (dry on 2 m posts).
 - [ ] Atlas after M7 slice 1, left (`atlas`): college's lift (+2.4, above); `market.top` (above);
   `move_market.ran_imports` re-taken on a fresh store with no import edited between base and
   change (measured ["city", "market"]: city's parapet edit landed between them; done in the fix
@@ -1762,7 +1767,13 @@ To M7:
   of cold needs the budget counted before the per-chunk nodes, from placement alone. Atlas
   move_market was not timed this slice.
 - [ ] Map: the river narrows from about 25 m to 10 m at the city's south edge, the mouth is a
-  stepped blob; test_minimap's floor check assumes station (atlas has no floors); no atlas
+  stepped blob (M7 close, `worlds`: the course is 10 m wide, one width from source to mouth;
+  `width = 30` made the facts lint lose the water in a hollow at the city's edge, (994, 322),
+  `step.facts.river_lost`, an error, so reverted; the blob is the terrain step's groove eroded
+  under the sea's 2 m and filled by the sea row, 60 to 100 m wide from y 216 down. Owed: the course
+  taking the city's river's width where it leaves it, or a hold at the edge (lib/terrain). The
+  city avenue said to dead-end past the outline was not found: every city way ends at its limits,
+  60 m inside the outline; six of its gates face the plain unanswered); test_minimap's floor check assumes station (atlas has no floors); no atlas
   minimap image, the minimap is in no viewer.
 - [x] A brought surface whose point leaves the lattice is dropped with no diagnostic
   (`SurfaceOut::brought`, change review nit; practically unreachable): a warning on the scoped
@@ -1793,7 +1804,13 @@ To M7:
   lib/ways' `check`: a way's end within 1 m in plan of another path kind's end with no meeting
   between them is `end_unjoined` (warning) with the plan distance and the height gap (`sample` of
   both surfaces), every path kind with a surface, not only `crossing`. Not built (lib/ways was not
-  this slice's); owner's to rule.
+  this slice's); owner's to rule. Built M7 close (`worlds`, decided, open to the owner): lib/ways'
+  check over `lane`, `road`, `trail`, `crossing` ends (a deck's height its `deck_z`, a way's the
+  surface field), at least one end the world's own; joined through a named point both meet,
+  except at a deck; tests in lib/ways/test_steps.py. Atlas runs it: its creek roads ended at the
+  deck's points, now at its ends. Lesson: a lint over a parent's view sees its imports' features
+  under scoped names and in their own frames; judge the world's own, and build a subject from the
+  whole scoped name.
 
 - [x] Re-take atlas `move_market`'s `shapes_ran` and `ran_imports` on a fresh store (the M6 close
   store held a panicked attempt's nodes, so both read empty); no case builds a world from its own
@@ -1820,7 +1837,7 @@ Later:
 ### From M7 slice 1 (2026-11-17; the change and on-foot reviews, and the fix pass)
 
 To M7 close:
-- [ ] `coast.along_cliff` falls 18.5 m in atlas (on-foot review 2; fix pass, release `via`, fresh
+- [x] `coast.along_cliff` falls 18.5 m in atlas (on-foot review 2; fix pass, release `via`, fresh
   store). Not the face: the quad [2428, 2430] x [68, 70] is uncut, and its north-west post (2428,
   70) stands at the brink, 23.5 m, its others at 3.5; its centre (2429, 69) lies past the west
   face's butt end at the cave's left jamb and south of the cave floor's butt start at y 70, so no
@@ -1828,6 +1845,12 @@ To M7 close:
   case: a cutting strip's band and skirt reach a quad's half diagonal past its ends too, or an
   uncut quad beside cut ones that straddles their step is cut. Lesson: `cut_band` closed the
   sides of a narrow strip, not its ends; check a jamb, where two cutting owners end.
+  Done M7 close (`core`): the band is round at its ends and 6 mm past the half diagonal
+  (composition.md 6.1; cases `import_skirt_end`, `import_skirt` re-taken, both fail on the old
+  binary). Round ends at the half diagonal alone left the quad: the face ends on its corner, its
+  centre exactly 1414.2 mm away, and the arc's chords pass 5 mm inside. Re-walked in atlas: arrives,
+  59.6 m, whole and streamed. Lesson: a band at exactly the reach misses the corner case its chords
+  shave; take the arc tolerance into the reach.
 - [ ] `city.old_town_street` streamed against whole (test_stream_walks, 1 FAIL): not a dropped
   collider (on-foot review 3's guess). Every house it meets has its body in chunk [10, 10], and
   streamed with every chunk loaded first it parts the same 18.54 m. The trails part by 1 mm 14 m
@@ -1842,18 +1865,40 @@ To M7 close:
   `via-terrain` (`protocol.untrusted_stale`, `param program`), so an untrusted reviewer cannot
   build basin (protocol.md 8 says one can). Re-taken with the reason in expect.toml; owed: which
   state, whether the bands or the land move, and a fresh `via step commit`.
-- [ ] `market.top` blocked after 0.7 m with no blocker named (on-foot review 7): answer or hold the
+  M7 close (`core`): committed fresh (`via step commit`, release, this tree's `via-terrain`); a
+  configured program's digest now stands as recorded for an untrusted step (protocol.md 7.1,
+  decided, open to the owner), and README gains the venv step (`uv sync --project sdk/python`)
+  and the untrusted build. Proven in a fresh worktree: basin untrusted with its own rebuilt
+  `via-terrain` gives the trusted build's `height` bytes, and trusted, running it, the same. Still
+  open: measure.py's ground_tarn_view 44.36 and ground_middle 55.79 against the oracle (the state
+  question above), and an untrusted build's `findings` 1 (the lint's `protocol.untrusted_skipped`
+  warning, counted by measure.py).
+- [x] `market.top` blocked after 0.7 m with no blocker named (on-foot review 7): answer or hold the
   market street's north end in atlas; the walker should name `ground` when the ground stops it.
+  Done M7 close (`worlds`): the end is held (`market_top_approach`, 1:5 from the market's own
+  ground 24 m inside the edge out to 60 m; the edge stood 12.5 m over the plain, not 4.9); arrives
+  after 92.6 m. A stall against nothing steep is named by what the walker stands on (build.md
+  15.1, ours, decided, open to the owner): before the hold, `blocked by ground (45 deg)`. Left: a
+  0.48 lip where the market's blended ground meets the fan, seen from the view.
 - [ ] Atlas rows banded at the value measured (NOT HOLDING in expect.toml): grade_max and
   road_join_max 0.442 (target 0.25), road_painted_in 0.286, join_step_max 37.24, bookmarks_wet,
   exit_in_grade_max 1.122, exit_out_grade_max 0.375. The places stand on plinths and in pits
   (on-foot review 4: the lift-at-exit trade is the owner's; else a rim-fitted plain).
-- [ ] City's parapets not yet seen in an atlas sheet; city's bridge views face the parapet
+- [x] City's parapets not yet seen in an atlas sheet; city's bridge views face the parapet
   (`on_central_bridge`, `on_harbor_bridge`, targets 697 m and 295 m off the deck): aim them along
   the deck. `monastery.bm_tarn` falls 3.26 m off the monastery's raised edge.
-- [ ] Atlas built unchanged into a folder at another depth: 400.3 s, longer than cold (on-foot
+  Done M7 close (`worlds`): both views mid-deck toward their deck's east end, arriving, the posts
+  seen; `bm_tarn` from the gorge's floor at the tarn's outflow to its shore (it walked off the rim
+  at eye height 12: fell 6.75 m alone, 3.26 in atlas), arrives by water. `monastery.bm_deck` still
+  faces its parapet (toward the tarn, blocked by a post): the view's, open.
+- [x] Atlas built unchanged into a folder at another depth: 400.3 s, longer than cold (on-foot
   review, load 9 to 69): `locations.pack_root`'s depth in the leaves' key (graph.md 5.3, open).
   Change builds 52 to 55% of cold; over_budget 140.3 s against 263.6 s cold (53%) this pass.
+  Done M7 close (`core`): the leaves hold the build key less `pack_root` (graph.md 5.3; case
+  `two_depths_reuse`, which checks what a reader sees: node statuses did not differ before). In a
+  fresh worktree: 85.0 s against a 276 s cold build (31%), nothing ran; where the 85 s go is open.
+- [ ] over_budget counted from placement before the per-chunk nodes run (target 30% of cold): not
+  reached at M7 close (`core`, time box).
 
 After the first cut:
 - [ ] `xtask check`'s kinds-file rule reads text: a step that builds the name `kinds.toml` another
@@ -1862,6 +1907,85 @@ After the first cut:
 Lesson: a dotted name is not always a scoped one. `from` took any first part as an import, and a
 world's own set item (`kitchen_table.candle`) named an import that does not exist; read a scope
 against the table that declares it.
+
+### From M7 close (2026-11-17; the outsider runs, `trips`)
+
+Four outsiders (two Sonnet, two Fable; tasks `mill` and `crossroads`); the table and what was fixed
+are docs/challenges.md row 51.
+- [ ] **Run the Sonnet line again, from `rewrite`.** Both Sonnet agents were given worktrees cut
+  from `main` (the old research tree) and stopped at minute 3 without building; the Fable agents
+  checked out `rewrite` themselves. M7's "two model families" is shown for one family. Cut each
+  outsider's worktree from `rewrite` (or after `main` moves) and fail fast when `spec/`, `lib/` and
+  `examples/` are missing. Lesson: check the outsider's tree before the outsider reads it.
+- [ ] **A building placed by `on` and `face`** (the `mill`'s "a mill beside its weir"): a `region`
+  holds absolute points, so following another feature took a 20-line generate step, its lint
+  (`authority.unchecked`) and views found by an absolute `near`. A region in its own frame placed
+  `on`/`at` with `face`, as an instance's footprint is (core or lib/building).
+- [ ] **lay's walls on a turned outline**: the kit's pieces are not turned with the edge, so an
+  11-degree mill showed a saw-tooth with open corners; it builds clean. lib/building README now
+  says to keep kit-walled buildings square.
+- [ ] **A view on a produced storey**: `surface = "<storey>.floor"` cannot be written (R3); the
+  eye is lifted by hand (`eye_height = storey_h + plinth + 1.7`). A way to stand `on` a produced
+  storey by `of` and a level.
+- [ ] **A building's own yard or pad**: the doorway's derived `sill` loses to any shaped ground kind
+  under it (a terrace gave `surface.gap` 29 mm); `plinth = 0` on a slope is the workaround.
+- [ ] **A `weir` in lib/water**: the header now carries the outsider's worked weir and the case
+  `weir_owns_crossing`; a shipped kind would spare the `under('min')`-per-effect reasoning.
+- [ ] **A lift at a named place** (`crossroads`): `lift_hint` is the edge's median; the road's join
+  wanted 1.66 where the hint said 0.74, and a moved import needs its lift measured again
+  (composition.md 5 now says both). Give the lift at the place a parent path ends on, or a lift
+  written as "meet the ground at `<place>`".
+- [ ] **An import's own warnings folded**: a default build of `crossroads` printed 5 `geom.cell_*`
+  warnings (about 10 infos with `--info`) from quay's own cells, none the parent's to fix. Fold an
+  import's own records into one line per code, or mark them as the import's.
+- [ ] **Knock-on diagnostics after an error**: a misspelt `starts_at` (`town.gat`) also gave
+  `formula.empty_selection` on the ground's `kind:road` mask, and not the `import.exit_unanswered`
+  the fixed build will raise. Suppress what follows from a failed feature; say what is pending.
+- [ ] **`diag.internal` on a pack found late** (found in this pass): build a world whose pack is not
+  found, then build it again in the same store with `VIA_LIB` set: `instance:<id>/v:build` "gave
+  another value when computed again". The library roots are not in the node's key, or the stored
+  failure is reused. Reproduce with `spec/cases/assets/unknown_asset_far`'s world.
+- [ ] **The sheet stalled once for 3 minutes** while another session's Godot drew, and the
+  watchdog did not fire (a `mill` run). Small; time the watchdog per view.
+- [ ] **A sheet of the world's own views**: an import's bookmarks are on the sheet too (18 of 21 in
+  `crossroads`); an option to draw only the world's own.
+
+Decided in this pass, open to the owner: a stairwell stopping 0.5 mm to 0.3 m short of a corner is
+refused by `lay` (`STUB_MIN`, ours); the nearest-name list is nearest first (diagnostics.md 1.4,
+ours); a place within a millimetre of a turned import's footprint is on it, so held
+(`place_inside`, composition.md 7's edges are inside); a deck under its water stays `low_deck`
+(warning), worded "under the water"; a world's diagnostics name an import outside its folder by a
+climbing relative path, not an absolute one (`build.md` case 7). Lesson: the trips that cost most
+were where a value had to be carried across a seam by hand (a lift, a building's place, an eye's
+height); messages were rarely the cost.
+
+From the close's change and on-foot reviews (fix pass, 2026-11-17; fixed: the loader suite's leaked
+node, README/FAQ/plan claiming two families, `place_inside` without the extent test, the 1 mm rule
+and the hint-text exception written in their chapters, the `names` route in the registry's explain,
+`program digest` loss written in protocol.md 7.1, `checked` counting the path ends, rulings R53-R59):
+- [ ] **`coast.in_cave` blocked 1.95 m short in atlas** (on-foot review 1; it arrived on the slice's
+  binary, and alone it arrives 0.991 m short against the 1 m radius). Likely R53's wider round-ended
+  band cutting the quad [2428, 2430] x [68, 70] at the cave's mouth, 1.4 m from the stop; not proven
+  (atlas not rebuilt without it). Re-aim the view off the 9 mm margin, or look at the ground the
+  band leaves at the mouth. Lesson: a cut that grows moves every walk that ends near it; re-walk the
+  views beside a changed band.
+- [ ] **A build at another depth: 153.1 s with one node run** (on-foot review 4, load 38 to 28;
+  85.0 s at lower load): memo 18.2 s and the manifest write 21.0 s; about 113 s not broken down,
+  likely writing 15216 reused values into the new folder. Let the whole-build shortcut cross depths,
+  or time the writes. Lesson: a reuse that runs nothing can still cost the copy.
+- [ ] **A count of memo hits or model builds in the run report** (change review 3): `two_depths_reuse`
+  passes on the old binary, so R55's claim is measured, not checked (graph.md 5.3 says so now).
+- [ ] **`via step commit --check`**: write nothing, exit 1 when a folder would change (change review
+  5, R54's cost): the only staleness check left for a program changed alone. `basin`'s result had
+  not been made again since M2. Lesson: an exemption from a key needs its own check beside it.
+- [ ] **Two water surfaces meet as an upright sheet at monastery's tarn outflow** (on-foot review 5,
+  look only): the stream's lighter surface stands over the tarn's in the gorge.
+- [ ] **join_college's eye shows a large grey panel in the field beside the approach** (on-foot
+  review 6): not identified.
+- [ ] **When `rewrite` is committed, `git add` the untracked files**: `sdk/python/README.md` (README
+  links it) and 27 new case folders under `spec/cases`; a patch of the tree needs `git diff
+  --binary` (basin's `.npy`). Lesson: a fresh-worktree check of an uncommitted tree copies the
+  untracked files too, or it tests less than the commit.
 
 ## Framing
 
@@ -1872,7 +1996,7 @@ against the table that declares it.
       an agent writing. Studios later, not ignored in engineering. Recorded in `docs/faq.md`.
       Consequence: porting existing worlds is low priority.
 - [x] State the goal in one line (2026-11-12): decide what matters; the world settles around it;
-      change your mind and it settles again; you never repair a map by hand. In `spike/README.md`,
+      change your mind and it settles again; you never repair a map by hand. In `spike-final:spike/README.md`,
       the design pages and the FAQ. Unproven half: that the undecided rest looks good.
 - [ ] -> spec/assets.md: Design for assets that arrive fast and uneven (2026-11-12). Assumption: creators generate
       models and images quickly and replace them often. Consequences: stating an asset's facts must
@@ -2229,7 +2353,7 @@ Structural checks stay in the core; everything else is an opt-in rule.
       4. -> M7: Whether a creator can live with text as the only source of truth. Only real users answer
          this; 1 decides how much it hurts.
 - [ ] -> by item below: From spiking the four (2026-11-12; see "Three questions only doing could settle" in
-      `spike/FINDINGS.md`):
+      `spike-final:spike/FINDINGS.md`):
       1. -> done (R3): Decided by measurement: a hand edit is stored as intent at a place (pin, clear), never
          as a patch to a produced id. Ids exist for the change report. Lesson: no id survives a
          change of spacing, and by-name once re-attached silently to a different tree.

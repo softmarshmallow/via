@@ -261,7 +261,7 @@ The store is a folder of write-once files named by digest. Where it lives is `bu
   Equal names hold equal bytes, so one store may serve many builds and build directories at once.
 - An object is checked against its name when first read in a build. A mismatch, or a file that
   cannot be read, is `graph.store_corrupt`: the entry is dropped and its node runs again.
-  The spike's cache trusted its outputs (`spike/FINDINGS.md`); this check is the answer.
+  The spike's cache trusted its outputs (`spike-final:spike/FINDINGS.md`); this check is the answer.
 - An entry written once is not forced to disk before it is renamed into place. A crash may leave
   one torn; the check above drops it on first read and its node runs again, so the store is never
   wrong, only colder. A flush per entry cost more than the work it kept (M2, `vale`).
@@ -437,7 +437,7 @@ again from the current graph, and if every answer has the recorded digest, the s
 step's value. Answering a read computes only what it names, through the store, so checking a trace
 costs what the step read and nothing more. When no trace matches, the step runs and its trace is
 added. This is a verifying trace (Mokhov, Mitchell and Peyton Jones, 2018), keyed by content rather
-than by time. It replaces the spike's one-slot hash of "the whole build below" (`spike/SPEC.md`
+than by time. It replaces the spike's one-slot hash of "the whole build below" (`spike-final:spike/SPEC.md`
 12.2, 12.8). An untrusted step built from its committed record (`protocol.md` 7, `gen/<step>/`)
 takes that record as its value, with status `reused`.
 
@@ -481,9 +481,16 @@ The items are listed from the model's build, and kept in the store as a memo (5.
 graph's leaves, the step and its selector: a build whose leaves are unchanged (a build back to a
 base, `--against` another) lists them without making the model's build. When they are not kept,
 the model's build is started beside the rank's graph, so it overlaps the lookups before the first
-step (section 8). Ours (M7). The leaves hold the build key, and the key holds
-`locations.pack_root` by place (6.2), so a folder at another depth misses every memo (items,
-requests, trace answers) and makes the model's build again: open (TODO, "From M7 slice 1").
+step (section 8). Ours (M7). The leaves hold the build key less `locations.pack_root` (6.2),
+which only `write:manifest.json` reads: so a folder at another depth reuses every memo (items,
+requests, trace answers) and every node but the manifest's, and never makes the model's build
+again (ours, M7 close: they held the whole key, and `atlas` built
+unchanged into a folder at another depth took 400 s, longer than cold; now 85.0 s against a
+276 s cold build, nothing `ran`: one machine (14 cores), release binary, one store, a fresh
+checkout, `/usr/bin/time`, one run each; where the 85 s go is not broken down: open). The memo
+reuse is measured, not checked: no member of the run report counts memo hits or model builds, and
+the node statuses were the same before (case `two_depths_reuse` checks the statuses and the
+manifest's `pack_root`, and passes on the old binary; a count in `totals` is open).
 
 ## 6. Running
 
@@ -859,6 +866,7 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
 | null, new directory | M6 | `ford` | build into `build/one`, then into `build/two`, one `--store` | second: nothing `ran`, the run report's `null` true; same files, `id`, diagnostics and output as the first |
 | import_key_text | M6 | p imports m, m imports n (a hut at (11, 1)) | build twice into one directory; edit n's world file (the hut 1 m east); build | second: nothing `ran`; third: not null, `m.n.hut` at (12, 1), as a fresh build gives (6.2, "An import enters by its text": a nested import's file reaches the key) |
 | two depths | M1 | `ford` | build into two `--out` folders at different depths with one `--store`, then the first again | each manifest's `pack_root` resolves from its own directory (`pack_root_resolves`); the third build: nothing `ran`, no run diagnostic |
+| two_depths_reuse | M7 | `ford` | build into `build/near`, then into a fresh `build/a/b/far`, one `--store` | second: only `write:manifest.json` `ran` (its `pack_root` differs); its `pack_root` resolves (5.3: the leaves hold the build key less `pack_root`). Statuses only: it passes on the old binary; the memo reuse is measured, not checked (5.3) |
 | program later | M1 | `ford` with no program configured | build; configure the program; build | first: `protocol.no_program`; second: `step:checks` `ran` (a step that did not start is not stored, 3.4) |
 | busy | M1 | the runner holds `<directory>.lock` | build | `graph.busy`, exit 1 |
 | killed | M1 | a build killed mid-run | build | builds; no `graph.busy` |

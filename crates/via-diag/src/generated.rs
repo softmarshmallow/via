@@ -2050,7 +2050,7 @@ pub(crate) static ROWS: [Row; 360] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two paths with kinds cross or touch, and nothing owns the meeting: neither ends on the other or\non a named owner, neither follows the other, and no network holds both. The record names both.\nTo fix: End one on the other or on a named owner (starts_at, ends_at).\nBad:   [feature.b]\n       path = [[0, 50], [100, 50]]   (crosses a)\nFixed: [feature.b]\n       path = [[0, 50]]\n       ends_at = \"m\"   (m a point feature on a)\n",
+        explain: "Two paths with kinds cross or touch, and nothing owns the meeting: neither ends on the other or\non a named owner, neither follows the other, and no network holds both. The record names both.\nTo fix: End one on the other or on a named owner (starts_at, ends_at), or name the other path in an\nattribute the kind lists in `names` (geometry.md 2.7).\nBad:   [feature.b]\n       path = [[0, 50], [100, 50]]   (crosses a)\nFixed: [feature.b]\n       path = [[0, 50]]\n       ends_at = \"m\"   (m a point feature on a)\n",
     },
     Row {
         code: "graph.build_file_restored",
@@ -2666,7 +2666,7 @@ pub(crate) static ROWS: [Row; 360] = [
         data: &["weight", "moved"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "The parent names a place inside an import, and the import's blend weight there is below 1, so the\nplace stands on ground the import did not make. `data.weight` holds the weight; `data.moved` the\nheight difference from the import's own ground.\nTo fix: Make the blend reach 1 at the place, or move the place further inside the import.\nBad:   blend = \"= smoothstep(0, 4, d)\"     (the named place is 1 m inside the edge)\nFixed: blend = \"= smoothstep(0, 1, d)\"\n",
+        explain: "The parent names a place inside an import, and the import's blend weight there is below 1, so the\nplace stands on ground the import did not make. `data.weight` holds the weight; `data.moved` the\nheight difference from the import's own ground.\nA path's end named on a place inside the import's footprint is held (composition.md 6.7), so this\nis a place outside it, or a place named by a view, which holds nothing. Weight 0 means the place\nlies outside the footprint (a place on its edge is inside, within a millimetre once turned).\nTo fix: Make the blend reach 1 at the place, or move the place further inside the import; for a\nweight of 0, end the path on a place inside the footprint, a metre in from its edge.\nBad:   blend = \"= smoothstep(0, 4, d)\"     (the named place is 1 m inside the edge)\nFixed: blend = \"= smoothstep(0, 1, d)\"\n",
     },
     Row {
         code: "import.seam",

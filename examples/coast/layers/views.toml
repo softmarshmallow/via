@@ -31,7 +31,10 @@ at     = [150, 96]
 toward = "harbour_bridge.end"
 along  = "harbour_bridge"                   # over the deck: long_deck's straight walk hit its side (M5 close)
 
-[feature.under_deck]                          # beside the beck downstream, looking under the deck
-kind   = "bookmark"
-at     = [176, 78]
-toward = "harbour_bridge"
+[feature.deck_side]                           # on the beck's east bank 4.6 m downstream of the deck's line
+on = { ref = "beck", t = 0.535, offset = 4.5 } # (t from the beck's source), 2.6 m past its edge; on the beck, so it moves with it
+
+[feature.under_deck]                          # beside the beck downstream, looking up it at the deck
+kind   = "bookmark"                           # (M7 close: aimed at the deck itself, the walk ended under
+at     = [176, 78]                            # it on 1.82 m of headroom, 1.077 m short inside atlas and
+toward = "deck_side"                          # 0.999 alone; ruled the view's, M7 slice 1)

@@ -1027,6 +1027,7 @@ checks that a clean build equals the incremental one.
 | Material | 1 | A material with `file` and no `repeat`; a `paint` naming `gras` | `via build` | `pack.material_repeat`; `pack.unknown_material` hint `grass`; exit 1. |
 | Dotted id | 1 | `[asset."house.low"]` | `via pack check` | `identity.bad_id`, exit 1. |
 | Unknown asset | 1 | A world on the primitive pack naming `house_lo` | `via build` | `asset.unknown`, hint `house_low`, exit 1. |
+| Unknown asset, none near | 7 | The same world naming `house_tall` | `via build` | `asset.unknown`, no `data.nearest`, and the hint lists the nearest five first: `house_low`, `house_narrow`, `box_small`, `rock_a`, `tree_oak` (`diagnostics.md` 1.4; case `unknown_asset_far`). |
 | Selection | 1 | Three assets under `plant/tree`, one under `plant` | `via build` with `@plant/tree` | Resolves to the three, ordered by id. |
 | Empty selection | 1 | `@plant/shrub`, declared, nothing filed | `via build` | `asset.empty_selection`, exit 1. |
 | Undeclared taxon | 1 | `@plant/shurb`, not declared | `via build` | `pack.unknown_taxon`, hint `plant/shrub`, exit 1. |

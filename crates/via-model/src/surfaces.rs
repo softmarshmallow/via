@@ -20,6 +20,11 @@ use crate::decl::{Attr, Decls, KindMount, KindSurface};
 use crate::place::Geo;
 use crate::text::{self, at_path};
 
+/// How far past a quad's half diagonal a narrow cutting strip's band reaches (`composition.md`
+/// 6.1, "plus 6 mm"): the arc's chord tolerance (`geometry.md` 3.4) and a millimetre of rounding.
+const BAND_PAST_MM: i64 = 6;
+const _: () = assert!(BAND_PAST_MM == via_geom::offset::ARC_TOLERANCE_MM as i64 + 1);
+
 /// Names a kind mount or surface may not take (`surfaces.md` 1, rule 3).
 const RESERVED: [&str; 3] = ["start", "end", "ground"];
 
@@ -408,8 +413,8 @@ impl SurfaceOut {
     /// On posts coarser than the import's (`own`, the import's resolution), a cutting strip
     /// narrower than half a quad's diagonal holds the centres of only some of the quads it crosses:
     /// a staircase of single cut quads whose uncut neighbours straddle the step and leave the
-    /// hole's side open to a walker. There the strip cuts as if that wide (`cut_band`), and the
-    /// skirt reaches a quad's half diagonal past the band.
+    /// hole's side open to a walker. There the strip cuts as if that wide (`cut_band`), round at
+    /// its ends, and the skirt reaches a quad's half diagonal past the band.
     pub(crate) fn brought(
         &self,
         id: &str,
@@ -456,14 +461,22 @@ impl SurfaceOut {
             (Some((pts, mm)), Some(r), _) => {
                 let reach = skirt_reach(r);
                 let mut w = *mm;
-                if own.is_some_and(|o| o < r) && w < reach {
-                    w = reach;
+                // Round at its ends too (M7 close): a quad that holds the line's end has its centre
+                // within its half diagonal of it, past the butt end where two owners end at a jamb.
+                // The band's arcs are chords inside the true arc (`geometry.md` 3.4, 5 mm) on
+                // posts rounded to the millimetre: it reaches that much further, so a quad whose
+                // centre lies exactly its half diagonal from the line's end (the line ending on
+                // its corner, as `coast`'s west face at the cave's jamb) is held.
+                let band = reach + BAND_PAST_MM;
+                let mut cap = Cap::Butt;
+                if own.is_some_and(|o| o < r) && w < band {
+                    w = band;
+                    cap = Cap::Round;
                     cut_band =
-                        via_geom::offset::stroke(&self.owner, pts, w, w, Join::Round, Cap::Butt)
-                            .ok();
+                        via_geom::offset::stroke(&self.owner, pts, w, w, Join::Round, cap).ok();
                 }
                 let w = w + reach;
-                via_geom::offset::stroke(&self.owner, pts, w, w, Join::Round, Cap::Butt).ok()
+                via_geom::offset::stroke(&self.owner, pts, w, w, Join::Round, cap).ok()
             }
             (_, _, Some(r)) => Some(region(r)?),
             _ => None,

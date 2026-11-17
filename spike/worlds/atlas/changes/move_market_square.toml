@@ -1,7 +1,0 @@
-# The change case: the market square moves 150 m west and 80 m north. Nothing else is written.
-# The old town is "round the market square", so it goes with it; the limits, the streets, the seam
-# street round it, the lots and the suburbs it used to cover all settle again.
-#   uv run python -m worldc worlds/atlas/world.toml --overlay worlds/atlas/changes/move_market_square.toml --out atlas_moved
-[[feature]]
-id = "market_square"
-ellipse = { center = [1050.0, 1640.0], size = [70.0, 54.0] }

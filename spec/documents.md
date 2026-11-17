@@ -185,7 +185,7 @@ codes for a bad, reserved or duplicate id, are `identity.md` (`identity.bad_id`,
   `instance.mill` are `identity.duplicate_id`. The check is on the id, never on the address.
 - There is no namespace per layer. Two layers declaring one id is `identity.duplicate_id`, naming
   both places. The spike let a step's output and a feature in another layer share an id unseen
-  (`spike/FINDINGS.md`); here it is an error, and no name is ever ambiguous.
+  (`spike-final:spike/FINDINGS.md`); here it is an error, and no name is ever ambiguous.
 - A `let` name is not in the world namespace: `[let] ford` beside `[feature.ford]` is legal. A `let`
   name that equals a field name, or any other name visible where formulas read it, is
   `formula.shadow` (`formulas.md` 5), raised once by that chapter. This chapter raises nothing for it.

@@ -3,7 +3,7 @@
 A village in a hollow, 256 m square: a tarn that finds its own shore, a beck down the middle with a
 footbridge over it, a crag with fallen rock at its foot, a green, two farm plots and an orchard,
 six houses, a mill and a farm. It is the canonical project: one of everything a user writes, each
-in the place it belongs. The spike's `example` (spike/worlds/example) showed the same things; this
+in the place it belongs. The spike's `example` (spike-final:spike/worlds/example) showed the same things; this
 is a new world in the v1 vocabulary (spec/vocabulary.md) on the libraries in `lib/` and the
 starter pack. M3 (docs/plan.md).
 

@@ -57,6 +57,16 @@
 # slice's on-foot review on a fresh store (release binary of the 17:18 tree, 172.5 s, 3076 nodes
 # ran): 4/4, `ran_imports` = ["market"].
 #
+# M7 close (2026-11-17, 20:06 KST, `worlds`): the college's lift +2.4, the market's north end held
+# (`market_top_approach`), the creek's two roads joined to the deck's ends and lib/ways's crossing
+# lint added. Release `via` and `via-terrain` of e686b8c (a clean worktree: none of the M7 close's
+# core diffs), the working tree's examples and lib, VIA_LIB=lib, Python 3.12 steps, every step
+# trusted, one fresh store for three builds in order: before these edits 273.1 s (18/18), one that
+# exited 1 (the course's `width = 30`: `step.facts.river_lost`; reverted), this tree 163.8 s, load
+# 20 to 28 from other agents; one run each. Every base row in band (18/18); no NOT HOLDING row
+# moved, so none is re-taken. Moved and unbanded: `join_step` college -3.55 -> -5.68, the college's
+# `exit_profile` out_depth 1.86 -> 0.14.
+#
 # A row marked NOT HOLDING is banded at the value measured, so the build passes it: the band says
 # where the build stands, not that a target is met. Each names its target and why it is not met;
 # the owed work is in TODO.md ("From M7 slice 1").
@@ -170,8 +180,11 @@ band    = [0, 0]
 [move_market.shapes_ran]                    # only its road and what names the market run again (M7
 measure = "shapes_ran"                      # slice 1: before, every routed road ran again). Taken
                                             # `--against` the M7 slice 1 base on its store, where no
-                                            # move_market had run (not a fresh store: README "Build times")
-band    = ["area_market", "join_market", "market_road"]
+                                            # move_market had run (not a fresh store: README "Build times").
+                                            # M7 close: + market_top_approach, held `on` the market's
+                                            # main street so it follows the market (on-foot review:
+                                            # release, one fresh store, base then move_market, 178.6 s)
+band    = ["area_market", "join_market", "market_road", "market_top_approach"]
 
 [move_market.ran_imports]                   # the market's placement only; nothing inside it. Measured
 measure = "ran_imports"                     # ["city", "market"] in M7 slice 1: city's own text changed

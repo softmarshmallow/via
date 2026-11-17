@@ -190,6 +190,23 @@ pub fn explain(
         }
         return Vec::new();
     }
+    // A step's code with no world: say where its text lives rather than only that the code is
+    // unknown (M7 close: a fresh agent's `via explain step.crossings.low_deck`).
+    if world.is_none()
+        && code.starts_with("step.")
+        && via_diag::explain::lookup(code, &[], at).is_err()
+    {
+        return vec![Diag::new(
+            codes::cli::UNKNOWN_CODE,
+            Subject::Cli,
+            Site::Argument(at),
+            txt(format!("`{code}` is a step's code, and no world is named")),
+            txt(format!(
+                "a step's codes are read from its world's last build: write `via explain {code} WORLD` (and `--out DIR` if it built elsewhere)"
+            )),
+        )
+        .emit(&NoWorld)];
+    }
     // Step codes recorded by the last build of WORLD.
     let mut recorded = Vec::new();
     if let Some(w) = world {

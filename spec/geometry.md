@@ -1056,7 +1056,7 @@ and line (section 3, `diagnostics.md`), and `via kernel` writes them as 7.1 says
 | `geom.face_unknown` | error | A `face` word that is not `along`, `toward` or `away`. | The nearest word. |
 | `geom.smooth_not_path` | error | `smooth` on a feature without `path`. | Remove `smooth`. |
 | `geom.meet_shape` | error | `starts_at`, `ends_at` or a way point in `path` names a whole path or a region. | Name an end, or place a point feature on it. |
-| `geom.unowned_crossing` | warning | Two paths with kinds cross or touch with no owner of the meeting (2.7); names both. | End one on the other or on a named owner. |
+| `geom.unowned_crossing` | warning | Two paths with kinds cross or touch with no owner of the meeting (2.7); names both. | End one on the other or on a named owner, or name it in an attribute the kind lists in `names`. |
 | `geom.duplicate_source` | error | One batch holds two inputs with one source id. | Give each input its own source. |
 | `geom.bad_parameter` | error | An operation parameter outside its range; names it and its value. | The range. |
 | `geom.overlap` | info | Two sources, or one with itself, run along one another; the stretch and the ids. | |
@@ -1192,6 +1192,11 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
 - `ends_at` naming a region feature; read; `geom.meet_shape`.
 - Two paths with kinds that cross, neither ending at the other; build; `geom.unowned_crossing` at the
   crossing, naming both. ford; build; none.
+- (`unowned_crossing_hint`, M7) The same; the hint names both ways to own it, an end named on the
+  other and an attribute the kind lists in `names` (read from the diagnostics document).
+- (`weir_owns_crossing`, M7) A kind of the world's own (a fresh agent's weir) across lib/water's
+  beck, `names = ["crosses"]` and `crosses = "river"`; build; no `geom.unowned_crossing`, the crest
+  and the level pond upstream exact; without `names`, `geom.unowned_crossing`.
 - `comb`; triangulate (when 3.10 is first needed); twice-areas sum exactly, no added vertex,
   counter-clockwise, in the order of 3.10.
 - Every case above; on macOS and Linux (Windows once a push is allowed), at 1 and 8 threads; same bytes.

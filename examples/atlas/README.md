@@ -63,11 +63,49 @@ the plain's road bed met it, `market.arrive` blocked 2 m in): -16.5 -> -11.6. Co
 college's own: its arrival stands at 4.1 now, 2.5 m under the plain, still; "What does not hold").
 The cost is the rest of each outline: the vale's walls now stand 37 m over the plain on its median
 (`join_step` -37.24), the market's 5.15 and the college's 3.55 (each by the lift's change).
+At the M7 close the college's lift is +2.4 (-0.1 before): its arrival stood 2.5 m under the plain,
+so its approach cut the plain below the terrain step's water and `join_college` was blocked by
+0.70 m of it. Measured on the build after: `college_road`'s last 30 m hold 0.14 m of water (1.86
+before) and climb at 0.197 (0.273), the college's own approach 0.091 (0.175); its outline's median
+step is -5.68 (-3.55), the price of the same trade.
+
+**The market's north end** (M7 close). The market's main street runs out at its north edge, which
+no road answers, and the market is lifted at the street's start in the south-west, so its north
+edge stands 12.5 m over the plain: the 16 m blend left a scarp across the street's end
+(`market.top` blocked 0.7 m in at 45 degrees). An `approach` 24 m inside the edge, where the ground
+is the market's own (18.76 m), holds the plain to it at 1:5 out to 60 m (layers/ways.toml,
+`market_top_approach`): a fan down to the plain, 14.4 m at the edge where the plain was 6.4. The
+lip inside the edge, where the market's blended ground meets the fan, is 0.48 (2.9 m in 6 m).
 
 The wild's kept corner is the plain's, but the wild was built to meet a neighbour on the slope it
 agreed there (its `agreed`: 18 m at its y = 240, rising 0.17 m a metre north), so the plain takes
 that slope near the wild's two edges of the corner (world.toml `[field.start]`), and its west exit
 at 51.3 m meets it; before, the plain lay 12 m under it (`join_wild_west` blocked at 73.9 degrees).
+
+## Joining an example
+
+What a parent needs to join each example, as atlas does (M7 close: a fresh agent found only quay's
+exit by grepping). Only quay and border's wild declare an exit (`kind = "entry"`, lib/town); the
+others are joined by ending a road on a named place of theirs, which the join then holds (6.7).
+End the road on the place, not beside it.
+
+| Example | End a parent's road on | Datum | Atlas's `lift` |
+|---|---|---|---|
+| quay | `quay.gate` (an exit) | `sea` | none, a fill (`give = { land = "height" }`) |
+| city | `city.harbor_gate_e`, `city.north_gate_e`, `city.north_gate_w` | none | -2 |
+| college | `college.arrival` | none | 2.4 |
+| market | `market.main_street.start` | none | -11.6 |
+| relief | `relief.track.start` | none | -25 |
+| vale | `vale.valley_road.start` | none | -15.5 |
+| townland | `townland.west_gate` | none | 16 |
+| wild (border) | `wild.south_end`, `wild.west_end` (exits) | none | none: its kept corner meets the plain |
+| coast, glade, example, massif, monastery | no road: placed beside the plain | none | 2, -14, -27, -31, -19 |
+
+A lift is the step between the import's zero and the parent's ground where the road arrives, so it
+holds only where the import stands: moving or turning an import with no shared datum needs its lift
+measured again (`composition.md` 5). Measure it on the road, not only from `import.no_datum`'s or
+`import.seam`'s `lift_hint`, which is the median over the whole edge: a fresh agent's market,
+lifted by the hint's 0.74, still dropped 0.92 m in the road's last 4 m and needed 1.66.
 
 ## Budget
 
@@ -183,7 +221,10 @@ move_market 115.9, move_square 168.3, forgotten_exit 108.9, over_budget 175.5.
 - **The sheet.** 123 bookmarks (13 here, the rest the places') compose in 7 pages of 20 since the
   M6 close (build.md 15.1); 84 walks arrive, 33 are blocked and 6 fall (on-foot review, streamed at
   96 m with water; equal to whole). The worst: the vale's trench, the wild's west scarp,
-  coast.along_cliff through the brought cut (TODO From M6 close).
+  coast.along_cliff through the brought cut (TODO From M6 close). At the M7 close, 126 bookmarks:
+  97 arrive, 28 are blocked, 1 falls (91, 33, 2 at M7 slice 1; streamed at 96 m with water, the
+  release binary of e686b8c): the city's two bridge views, `market.top`, `join_college`,
+  `coast.under_deck` and `monastery.bm_tarn` arrive; `coast.along_cliff` still falls (core).
 - **The river that bends** runs from its spring to the city's north edge and on along the city's
   river's line to the sea (layers/land.toml): its course carves the mouth south of the city (the
   beck `city_mouth` did, on the same line, until the atlas pass) and ends in the sea at (1008, 224),
@@ -191,4 +232,15 @@ move_market 115.9, move_square 168.3, forgotten_exit 108.9, over_budget 175.5.
   the city's river is what a walker sees. The map draws the course (`terrain_course`), not the
   stated line, which lay up to 23 m from the wet channel. The terrain lint says
   `river_wanders` (72 m at (948, 96)): retraced over the finished ground, the water strays on the
-  beach before the sea.
+  beach before the sea. At the city's south edge the water narrows from the city's 30 m river to
+  the course's 10 m channel (a thread 0.5 m deep, 6 to 10 m wide, from y 320 to 250), and on the
+  beach below y 216 it fans out 60 to 100 m wide: the terrain step's eroded groove lies under the
+  sea's 2 m there, and the sea row fills it (`terrain#standing` 0.76 m at (1008, 150), level 2.0).
+  The course's `width = 30` (the city's) was tried at the M7 close: the facts lint then found the
+  water lost in a hollow at the city's edge, (994, 322), an error (`step.facts.river_lost`), so
+  it stays 10 (TODO).
+- **The creek's bridge** (M7 close). `creek_road` and `college_road` ended at `bridge_west` and
+  `bridge_east`, the points the deck is written at, so no meeting joined either road to the deck;
+  they now name its ends (`creek_bridge.start`, `.end`), and lib/ways's crossing lint runs here
+  (`[step.crossings]`, layers/ways.toml) over the atlas's own crossing and every way end beside
+  another path's end (`end_unjoined`): 1 crossing, 2 ends, no record.

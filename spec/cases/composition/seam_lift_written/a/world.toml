@@ -1,0 +1,8 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= if(x > 6, 10, 4)"

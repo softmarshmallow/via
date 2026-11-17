@@ -1,6 +1,0 @@
-# The change case: the hill is stated 170 m further east and a little south. Nothing else is edited.
-# The river must find another way round it; the crossings, the market, every main way and every
-# street stand on the river or on a main way, so they all settle again.
-[[feature]]
-id = "tor"
-at = [960.0, 1040.0]

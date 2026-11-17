@@ -28,7 +28,8 @@ The rules (ours, written for this library; README.md is the design note):
    lies on the notch's side (on the outline: inside, surfaces.md 1.2) and the next flight starts on
    the floor. An end rounded to the millimetre outside its floor (an outline turned off the
    lattice's axes) moves on along its flight, up to 3 mm, until the floor holds it (`onto`). A notch that reaches a corner needs the next edge square to this one, or it is
-   refused (`params`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
+   refused (`params`); one that stops short of a corner by less than `STUB_MIN` (0.3 m, ours)
+   leaves a wall too short to build and is refused too (`params`, naming the stair's `t`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
    k+1>.floor"`, with `z0`, `z1` the two levels (surfaces.md 6.4).
 4. **Doors.** `doors = [{ storey, t, width }]`: a doorway square to the outline at `t`, from
    `porch` metres outside to the outline (its end moved in up to 3 mm where rounding left it
@@ -77,6 +78,7 @@ from viasdk import RpcError
 
 CLEAR = 100          # mm between a flight and the wall, and between two lanes
 LANDING = 1000       # mm of stairwell before an even flight's start and past an odd one's
+STUB_MIN = 300       # mm: the least wall a stairwell may leave before a corner (ours: a corner piece)
 FIT = 5              # mm a stretch may differ from its pieces' pitches and still close
 INNER_DOOR = 900     # mm, an opening between two rooms
 MIN_FLAT = 1500      # mm, the least flat ground beside a doorway
@@ -255,6 +257,15 @@ def stair_plan(ring, stair, storeys, wall_t=0):
             notch = (k, s0, min(e["L"], s1 + LANDING), depth[1])
         flights.append((path, f, f + 1))
         notches[f + 1] = notch
+        # A stairwell that stops short of a corner leaves a stub of wall there; under STUB_MIN no
+        # piece closes it and the corner pieces fall off the floor (M7 close: a fresh agent's
+        # notch 0.08 m from a corner gave six errors on produced names). Refuse it by `t`.
+        for gap, side in ((notch[1], "start"), (e["L"] - notch[2], "end")):
+            if 0.5 < gap < STUB_MIN:
+                raise ParamError("stair", f"the stairwell ends {gap / 1000:.3f} m from the corner at its edge's "
+                                 f"{side}: too short a wall to build there",
+                                 f"move the stair's `t` (or `run`) so the stairwell reaches that corner or stops "
+                                 f"at least {STUB_MIN / 1000:g} m from it")
     return {"flights": flights, "notches": notches, "edge": k, "span": (s0, s1)}
 
 

@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "Statuses only, passes on the old binary: the memo reuse is measured, not checked (graph.md 5.3, open: a count in totals). graph.md 5.3: one world built into a folder, then into a fresh folder at another depth with one --store: the second runs nothing but write:manifest.json, whose pack_root differs; every step and chunk is reused. Before M7 close the leaves held the whole build key, pack_root with it, and the second build made the model's build again and missed every memo (items, requests, trace answers): its node statuses were the same, so this case checks what a reader sees, not the memos; their reuse is measured (atlas into a fresh folder at another depth: 400 s before, longer than cold; 85 s after, 31% of a 276 s cold build; example: memo_ms 1446 before, 550 after)."
+milestone = 7
+actions   = ["program", "trust", "near", "far"]
+
+[copy.ford]
+from = "examples/ford"
+to   = "."
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.near]
+via         = ["build", "world.toml", "--out", "build/near", "--store", "store"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/near"
+
+[action.far]
+via         = ["build", "world.toml", "--out", "build/a/b/far", "--store", "store"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/a/b/far"
+
+[action.far.nodes]
+ran = ["write:manifest.json"]
+
+[action.far.check.root]
+fn    = "pack_root_resolves"
+build = "build/a/b/far"

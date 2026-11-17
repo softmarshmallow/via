@@ -1,0 +1,14 @@
+format    = "via-case-1"
+summary   = "place_held's join turned 20 degrees: a.gate on a's west edge, rounded to the millimetre, is still on the footprint, so it is held and raises no import.place_blended (composition.md 6.7, 7: edges are inside)."
+milestone = 7
+actions   = ["build"]
+
+# M7 close, a fresh agent's crossroads: a street's start on a turned import's edge fell a fraction
+# of a millimetre outside the rounded footprint, lost its hold, and was import.place_blended with
+# weight 0. On the old binary this case fails on the exact diagnostics.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"

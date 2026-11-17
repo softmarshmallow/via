@@ -7,7 +7,7 @@ The import rule, for this oracle data only (geometry.md 6): each coordinate in m
 the GeoJSON text, is converted to millimetres and rounded to the nearest integer, ties to even, once.
 The text is read as decimals, never as doubles, so the one rounding is the only one.
 
-The grid is townland's own (spike/worlds/townland/world.toml: extent 0 to 1600 m, resolution 2 m),
+The grid is townland's own (spike-final:spike/worlds/townland/world.toml: extent 0 to 1600 m, resolution 2 m),
 written in millimetres as `via kernel` reads it (geometry.md 7.1). Shapes past the extent are kept
 whole (geometry.md 2.8).
 

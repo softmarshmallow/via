@@ -1,15 +1,14 @@
 /target
 /runs
+__pycache__/
+.DS_Store
+
+# spike/ was deleted at M7; its record is the tag `spike-final`. Private material stays on disk in
+# these three folders, outside git (CONTRIBUTING.md); xtask's private-name check reads its
+# patterns from spike/local/ and never searches the three.
 /spike/local/
 /spike/out/
 /spike/build/
-/spike/viewer/.godot/
-/spike/.venv/
-__pycache__/
-.DS_Store
-/spike/worlds/*/gen/
-/spike/worlds/relief/inputs/
-/spike/worlds/zoo_*/
 
 # Python environments of the conformance runner and the SDK (uv).
 tools/conformance/.venv/

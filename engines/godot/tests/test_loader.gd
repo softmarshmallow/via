@@ -9,7 +9,7 @@ const Npy := preload("res://addons/via_loader/npy.gd")
 const CJson := preload("res://addons/via_loader/cjson.gd")
 const Primitives := preload("res://addons/via_loader/primitives.gd")
 
-const EXPECTED := 75
+const EXPECTED := 76
 var failed := 0
 var ran := 0
 var tests_dir := ""
@@ -30,6 +30,7 @@ func _initialize() -> void:
 	_no_manifest()
 	_bad_format()
 	_options()
+	_pack_elsewhere()
 	# a script error skips checks silently; count them so a skip fails
 	check("every check ran", ran >= EXPECTED, "%d of %d" % [ran, EXPECTED])
 	print("%s: %d check(s) failed" % ["FAIL" if failed else "PASS", failed])
@@ -501,6 +502,47 @@ func _no_manifest() -> void:
 	var root := loader.make(dir)
 	check("no manifest: load.format naming diagnostics.json", root == null and loader.diags.records.size() == 1
 		and loader.diags.records[0].code == "load.format" and loader.diags.records[0].file == "diagnostics.json")
+
+
+func _pack_elsewhere() -> void:
+	## fixture_build copied with its pack_root one folder off: each pack file is load.bad_file
+	## naming the path the loader looked in, and the hint points at pack_root, not at rebuilding
+	## (M7 close: a fresh agent's pack_root one folder deep read as a damaged build).
+	var src := tests_dir + "/fixture_build"
+	var dir := ProjectSettings.globalize_path("user://pack_elsewhere/build")
+	DirAccess.make_dir_recursive_absolute(dir)
+	_copy_tree(src, dir)
+	var m: Dictionary = _json(dir + "/manifest.json")
+	m.locations.pack_root = "../no_pack"
+	var f := FileAccess.open(dir + "/manifest.json", FileAccess.WRITE)
+	f.store_string(JSON.stringify(m))
+	f.close()
+	var loader := Loader.new()
+	var root: Node = loader.make(dir)
+	var want := (dir + "/../no_pack").simplify_path()
+	var bad := loader.diags.records.filter(func(r): return r.code == "load.bad_file" and String(r.file).begins_with("pack:"))
+	check("pack elsewhere: load.bad_file names the path looked in, the hint pack_root", bad.size() > 0
+		and String(bad[0].message).contains("missing at " + want) and String(bad[0].hint).contains("pack_root"),
+		str(bad.slice(0, 1)))
+	if root:
+		root.free()   # a node left alive is "resources still in use at exit", after PASS
+	_remove_tree(ProjectSettings.globalize_path("user://pack_elsewhere"))
+
+
+func _remove_tree(dir: String) -> void:
+	for name in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir + "/" + name)
+	for name in DirAccess.get_directories_at(dir):
+		_remove_tree(dir + "/" + name)
+	DirAccess.remove_absolute(dir)
+
+
+func _copy_tree(from: String, to: String) -> void:
+	DirAccess.make_dir_recursive_absolute(to)
+	for name in DirAccess.get_files_at(from):
+		DirAccess.copy_absolute(from + "/" + name, to + "/" + name)
+	for name in DirAccess.get_directories_at(from):
+		_copy_tree(from + "/" + name, to + "/" + name)
 
 
 func _bad_format() -> void:

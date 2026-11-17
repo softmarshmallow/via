@@ -180,7 +180,9 @@ mask  = "= 1 - smoothstep(width / 2 + 0.5, width / 2 + 2, d)"
 #
 # The parapet is a run along each edge of the deck (lib/ways/parapet.py, a generate step), and the
 # lint `lib/ways/check.py` judges that the water passes beneath (sampled under the deck's middle)
-# with `freeboard` to spare, and that each end is met by a way with a gap of 0. A world restates both:
+# with `freeboard` to spare, that each end is met by a way with a gap of 0, and that no way ends
+# within 1 m in plan of another kind of path's end with no meeting between them (`end_unjoined`,
+# M7 close: a bridgehead not named). A world restates both:
 #
 #     [step.parapet]
 #     when     = "generate"
