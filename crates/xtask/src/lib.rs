@@ -6,6 +6,8 @@
 //! case checks of `spec/conformance.md` 7 that need only the manifests and the code registry
 //! ([`cases`]: manifests read, no copy from `spike/` or outside the repository, code coverage),
 //! and every registered code's `explain` finished up to the milestone, M1 at least ([`explain`]).
+//! and the record's own checks ([`record`]: the ledger's rows and the layers page, each held by
+//! a script under `tools/`).
 //! They read the repository as text, so this crate depends on no engine crate.
 //!
 //! Not here: that every Conformance row has a case folder with an equal milestone (owed, recorded
@@ -16,7 +18,7 @@
 //!
 //! `cargo run -p xtask -- check [--milestone N]` runs every check below and exits 1 if any fails.
 //! The checks that need only the repository's text (deny-list, maths dependencies, vocabulary
-//! sync, cases at M0, explain texts to M1, limitations, Python imports) are also `cargo test` tests in `tests/workspace.rs`, so `cargo test --workspace` holds them; the
+//! sync, cases at M0, explain texts to M1, limitations, Python imports, the ledger and the layers page) are also `cargo test` tests in `tests/workspace.rs`, so `cargo test --workspace` holds them; the
 //! freshness hooks (they run cargo) and the private-name guard (it needs untracked patterns) run
 //! from the command only. Maths through `via-num` is held in two parts: the float methods by
 //! clippy's `disallowed_methods` (`clippy.toml`), and "no crate but `via-num` depends on a maths
@@ -32,6 +34,7 @@ pub mod limitations;
 pub mod mathdeps;
 pub mod private;
 pub mod pyimports;
+pub mod record;
 pub mod report;
 
 use std::path::{Path, PathBuf};
@@ -62,7 +65,7 @@ pub struct Options {
 type CheckFn = fn(&Path, &Options) -> Result<Outcome, CheckError>;
 
 /// Every check, by name, in the order they run.
-pub const CHECKS: [(&str, CheckFn); 9] = [
+pub const CHECKS: [(&str, CheckFn); 11] = [
     ("deny-list", |r, _| denylist::check(r)),
     ("maths-deps", |r, _| mathdeps::check(r)),
     ("cases", |r, o| cases::check(r, o.milestone)),
@@ -70,6 +73,8 @@ pub const CHECKS: [(&str, CheckFn); 9] = [
     ("vocabulary-sync", |r, _| denylist::check_sync(r)),
     ("python-imports", |r, _| pyimports::check(r)),
     ("limitations", |r, _| limitations::check(r)),
+    ("ledger", |r, _| record::check(r, record::LEDGER)),
+    ("layers", |r, _| record::check(r, record::LAYERS)),
     ("fresh", |r, _| fresh::check(r)),
     ("private-names", |r, o| {
         private::check(r, !o.no_local_patterns)

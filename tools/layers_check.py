@@ -11,11 +11,14 @@ What is checked:
 - the rings: a crate depends only on crates of its own ring or one nearer the centre, the model
   and the door do not depend on each other, and a library's program links neither the model
   nor the command (read from each crate's Cargo.toml);
+- the order among libraries: one names only the kinds of the libraries listed above it;
 - docs/layers.md, "The engine's form of each archetype": each archetype has one row and every
   pointer names something that exists;
 - docs/ledger/names.md, section 25: every kind of every library has one row, with what it is
   made of as read from its `kinds.toml`; every step of every library has one row; each row's
-  archetypes come from the list.
+  archetypes come from the list;
+- docs/layers.md, "What the layout shows": the block equals what is counted from the ledger,
+  section 25, the libraries, the examples and the cases.
 
 Standard library only, Python 3.9 or later.
 """
@@ -83,9 +86,11 @@ def crate_deps() -> dict[str, list[str]]:
 def check_layers() -> list[str]:
     problems = []
     found = {}
-    for t in tables(LAYERS):
-        key = "Archetype" if t[1][0] == "Archetype" and len(t[1]) == 3 else t[1][0] if t[1][0] != "Archetype" else "Counted"
-        found[key] = t
+    for heading, header, rows in tables(LAYERS):
+        if header[0] == "Path":
+            found["Path"] = (heading, header, rows)
+        elif header[0] == "Archetype" and len(header) == 3:  # the forms, not the counted table
+            found["Archetype"] = (heading, header, rows)
     where = found.get("Path")
     if not where or where[1] != ["Path", "Layer", "Ring", "Holds"]:
         return ["docs/layers.md: no table with the columns Path, Layer, Ring, Holds"]

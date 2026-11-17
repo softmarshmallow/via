@@ -62,3 +62,37 @@ fn python_imports() {
         xtask::pyimports::check(&xtask::repo_root()),
     );
 }
+
+/// The ledger's rows, pointers and counts (`tools/ledger_check.py`). Needs uv, as above.
+#[test]
+fn ledger_rows_and_pointers() {
+    if std::process::Command::new("uv")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        eprintln!("ledger_rows_and_pointers: uv not found, skipped");
+        return;
+    }
+    assert_clean(
+        "ledger",
+        xtask::record::check(&xtask::repo_root(), xtask::record::LEDGER),
+    );
+}
+
+/// The layers page, the rings and the ledger's section 25 (`tools/layers_check.py`). Needs uv.
+#[test]
+fn layers_page_and_rings() {
+    if std::process::Command::new("uv")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        eprintln!("layers_page_and_rings: uv not found, skipped");
+        return;
+    }
+    assert_clean(
+        "layers",
+        xtask::record::check(&xtask::repo_root(), xtask::record::LAYERS),
+    );
+}

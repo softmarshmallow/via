@@ -1,6 +1,6 @@
 # Contributing
 
-This file records how work is done in the rewrite and the engineering rules that hold. The goal,
+This file records how work is done and the engineering rules that hold. The goal,
 principles and rulings are in [`docs/doctrine.md`](docs/doctrine.md); where this file and the
 doctrine disagree, the doctrine wins and this file is fixed.
 
@@ -9,7 +9,8 @@ a Rust core, with steps and libraries in Python through a thin SDK in its own pr
 
 ## How work is done
 
-Every milestone in [`docs/plan.md`](docs/plan.md) runs in this order.
+Every milestone of [`docs/plan.md`](docs/plan.md) ran in this order, and work after the first cut
+keeps it.
 
 1. **Chapter first.** The mechanism is written as a chapter in `spec/`, with a tiny example. A
    mechanism taken from literature or another tool names its source; one of our own says so.
@@ -32,8 +33,9 @@ Every milestone in [`docs/plan.md`](docs/plan.md) runs in this order.
 - **No AI inside the build.** No learned model runs in a build, and no model-made data is an input
   or an output of one. AI is welcome outside: writing documents, analysis, review.
 - **Checks before a commit:** `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace`.
-  After a change to `docs/ledger/`, `docs/layers.md`, a library's kinds or the place of a crate:
-  `python3 tools/ledger_check.py` and `python3 tools/layers_check.py` (`docs/layers.md`, "Checks").
+  `cargo test --workspace` and `cargo run -p xtask -- check` also hold the ledger and the layers
+  page (`docs/layers.md`, "Checks"). After adding a row, a kind or a crate, refresh their counted
+  blocks with `python3 tools/ledger_check.py --write` and `python3 tools/layers_check.py --write`.
 - **Commit style:** `type(scope): summary`.
 
 ## New rules for the rewrite
