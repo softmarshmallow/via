@@ -1,0 +1,1 @@
+{"exports":{"map":{"folder":"export/map/","output":"player_map"}},"materials":{"dry_grass":{"colour":[0.48,0.5,0.26],"params":{}},"path":{"colour":[0.55,0.5,0.42],"params":{}}},"note":"station's player map export (examples/station, M6 close), with the manifest keys the minimap reads: engines/godot/tests/test_minimap.gd"}

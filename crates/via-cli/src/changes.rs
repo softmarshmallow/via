@@ -515,7 +515,25 @@ pub fn write(
         // A feature whose draped heights differ (`build.md` 11.2) has the surface field's
         // causes, as the graph finds them for that field, each chain extended to the feature.
         let mut drape_via: BTreeMap<String, Vec<String>> = BTreeMap::new();
-        if let Some(sn) = &e.drape {
+        // An instance with no cause of its own whose height alone differs stands on the surface
+        // field there (R25: an import's instance on the parent's finished ground, M6 close: atlas
+        // `move_market` moved `college.approach_lamps#r0` by the parent's ground and named no
+        // cause): its causes are the surface field's, as a draped feature's are.
+        let stood = (e.drape.is_none() && e.table == "instance" && all.is_empty())
+            .then(|| {
+                let (a, b) = (
+                    old.build.instances.get(&e.name)?,
+                    new.build.instances.get(&e.name)?,
+                );
+                (a.origin == b.origin && a.facing == b.facing && a.z != b.z).then_some(())?;
+                new.build
+                    .fields
+                    .iter()
+                    .find(|(_, f)| f.role.as_deref() == Some("surface"))
+                    .map(|(n, _)| n.clone())
+            })
+            .flatten();
+        if let Some(sn) = e.drape.as_ref().or(stood.as_ref()) {
             let field_chains = chains.get(&chain_key("field", sn));
             let field_found: BTreeSet<String> = field_chains
                 .map(|m| m.keys().cloned().collect())
@@ -534,7 +552,11 @@ pub fn write(
             all.extend(fc);
             for (st, v) in field_chains.into_iter().flatten() {
                 let mut v = v.clone();
-                v.push(format!("attr:{}", e.name));
+                // The thing's nearest node (11.2 `via`): a feature's `attr:`; an instance
+                // standing on the field has none of its own past the field's chunk.
+                if e.table != "instance" {
+                    v.push(format!("attr:{}", e.name));
+                }
                 drape_via.insert(st.clone(), v);
             }
         }

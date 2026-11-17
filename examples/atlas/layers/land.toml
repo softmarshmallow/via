@@ -9,14 +9,24 @@ at = [1560, 2520]
 [feature.inlet]                               # where it reaches the city: the city's own river starts here
 at = [1160, 1924]
 
+[feature.river_mouth]                         # where the city's river reaches the sea, by the river that bends
+at = [1000, 60]
+
 # The river that bends: a spring in the uplands, two bends west, into the city's river at its north
-# edge. The library cuts a groove that only ever falls and the model makes the valley.
+# edge, and on by the city's own river's line to the sea. The library cuts a groove that only ever
+# falls and the model makes the valley. Its line goes on under the city (the city's river runs
+# from (1160, 1920) to (1000, 320) here, its `river` at `at` [80, 320]) and out across the plain to
+# the sea, where its course is the city's river's mouth (10 m wide, as the beck that was there),
+# because the model's water does not stop where the plain meets the city: ended at the inlet, the
+# water found its own way to the sea at 1472 m east, through the city's ground, and came out south
+# of it as a second channel (M6 slice 2 review). Under the city the course is the city's to show:
+# its entries are `derived` (lib/terrain), below the city's `shaped` ground (composition.md 6.4).
 [feature.river]
 kind      = "terrain_river"
 starts_at = "spring"
-ends_at   = "inlet"
-path      = [[1430, 2330], [1300, 2230], [1330, 2100], [1220, 2010]]
-width     = 8
+ends_at   = "river_mouth"
+path      = [[1430, 2330], [1300, 2230], [1330, 2100], [1220, 2010], [1160, 1924], [1000, 320], [1000, 160]]
+width     = 10
 
 [step.terrain]
 when    = "generate"

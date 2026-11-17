@@ -1,0 +1,14 @@
+name       = "p"
+extent     = [0, 0, 40, 24]
+resolution = 1
+datum      = "sea"
+pack       = "m/pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.m]
+file      = "m/world.toml"
+at        = [4, 4]
+max_grade = 10

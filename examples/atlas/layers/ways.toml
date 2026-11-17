@@ -15,8 +15,8 @@ command = ["python", "-m", "viasdk", "steps/track.py"]
 [step.track.params]
 mask = "= max(1 - smoothstep(3, 3.8, dist('kind:road', 6)), 1 - smoothstep(1.2, 2, dist('kind:trail', 4)))"
 
-[feature.west_edge]                           # where the wild's west trail road leaves the map
-at = [0, 2300]
+[feature.west_junction]                       # where the west trail meets the wild road, in the wild's kept corner
+on = { ref = "wild_road", t = 0.97 }
 
 # ------------------------------------------------------------------------------------------ the creek
 # A tidal creek the atlas owns, from the hills below the glade down to the sea between the harbour
@@ -27,17 +27,10 @@ path  = [[2296, 900], [2284, 640], [2290, 400], [2276, 200], [2282, 0]]
 width = 8
 depth = 1.6
 
-# The city's river goes on to the sea: from where it leaves the city's south edge, the atlas's.
-[feature.city_mouth]
-kind      = "beck"
-starts_at = "city.river.end"
-path      = [[1000, 160]]
-ends_at   = "river_mouth"
-width     = 10
-depth     = 1.6
-
-[feature.river_mouth]
-at = [1000, 60]
+# The city's river goes on to the sea from its south edge as the river that bends (layers/land.toml):
+# its course, found on the city's river's line, carves the channel and writes the water there. Until
+# M6 slice 2 a beck of this layer (`city_mouth`) did, on the same line: two cuts on one line, whose
+# meetings nobody owned (`geom.unowned_crossing` at (1000, 320) and (1000, 160)).
 
 [feature.bridge_west]
 on = { ref = "creek", t = 0.70, offset = -14 }
@@ -54,6 +47,23 @@ crosses   = "creek"
 width     = 6
 deck_z    = 4.5                                 # the banks stand about 3.5 m; the sea 2
 freeboard = 1
+
+# The deck's parapets: a run of posts along each edge, as lib/ways's parapet step returns them
+# (lib/ways/parapet.py, `runs`), written here because that step's `for_each = "kind:crossing"`
+# selects every import's crossing in this stratum too (the city's, coast's, which carry their own).
+# `fence_post` is 0.15 m square: offset 6 / 2 - 0.075 = 2.925; the deck is 28 m (the ends 14 m
+# either side of the creek's line), so the end inset is 0.075 / 28 = 0.002679 of it.
+[run.creek_bridge_parapet_l]
+asset   = "fence_post"
+on      = { ref = "creek_bridge", span = [0.002679, 0.997321], offset = 2.925 }
+spacing = 2
+ends    = "both"
+
+[run.creek_bridge_parapet_r]
+asset   = "fence_post"
+on      = { ref = "creek_bridge", span = [0.002679, 0.997321], offset = -2.925 }
+spacing = 2
+ends    = "both"
 
 # ------------------------------------------------------------------------------------------ the roads
 # Every road: routed over the joined ground at a cost that rises with the square of its slope
@@ -99,20 +109,20 @@ path      = []
 route     = "= 1 + 0.12 * pow(slope('height'), 2) + if(inside('monastery.footprint'), 40, 0)"   # round the abbey's gorge, not through it
 smooth    = true
 
-[feature.wild_road]                           # the city's north-west gate up to the wild's south exit
-kind      = "road"
+[feature.wild_road]                           # the city's north-west gate up round the wild's east side, through
+kind      = "road"                            # its kept corner to its south exit (from the corner, as the exit faces)
 starts_at = "city.north_gate_w"
 ends_at   = "wild.south_end"
 path      = []
-route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + if(inside('wild.footprint'), 40, 0)"   # to the exit from outside, not through the wild's wood (its trees are its own)
 smooth    = true
 
-[feature.west_road]                           # in from the map's west edge to the wild's west exit
-kind      = "trail"
-starts_at = "west_edge"
-ends_at   = "wild.west_end"
+[feature.west_road]                           # from the wild's west exit out into its corner, to the wild road
+kind      = "trail"                           # (until M6 slice 2 in from the map's west edge, through the wild's
+starts_at = "wild.west_end"                   # wood, where one of its trees stood on it)
+ends_at   = "west_junction"                   # a point on the wild road: the meeting is owned (geometry.md 2.7)
 path      = []
-route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + if(inside('wild.footprint'), 40, 0)"
 smooth    = true
 
 [feature.hill_trail]                          # the relief's track to the vale's valley road
@@ -120,5 +130,28 @@ kind      = "trail"
 starts_at = "relief.track.start"
 ends_at   = "vale.valley_road.start"
 path      = []
-route     = "= 1 + 0.12 * pow(slope('height'), 2)"
+route     = "= 1 + 0.12 * pow(slope('height'), 2) + if(inside('relief.footprint'), 40, 0) + if(inside('vale.footprint'), 40, 0)"   # round the places, not over the relief's ridges (a 2.0 grade at its north-east corner)
 smooth    = true
+
+# ------------------------------------------------------------------------------------------ the approaches
+# Where a road meets a place's ground across its edge, the plain is brought to the place's level at
+# 1:10 (lib/ways's crossing's `approach`): a `pad` point (lib/land) on the road's end, its ground held
+# within `grade * d` of the level the place has there out to 10 m and faded by 25 m. A ramp the
+# master owns (composition.md 6.5: join content in a layer above the imports): the road alone
+# smoothed the step over its last few metres (`college_road` fell 2.5 m in 4 m at the college's
+# arrival). Each is named after its road, so it comes after the road's bed (authority.md 4.2: one
+# tier, one layer, then place name bytewise; `order` is a kind's entry key, not a feature's). Only
+# where a road meets a place whose ground differs from the plain's at its edge; the city's gates, the quay's and the market's
+# are met within 0.25 already (measure.py `road_join`), and the vale's exit is the join's hold
+# (composition.md 6.7).
+[feature.college_road_approach]                # max_cut 6.5 since the M6 close: with the joins' hold
+kind    = "pad"                                 # (composition.md 6.7) it cuts 6.09 m at (2552, 420),
+on      = { ref = "college_road", t = 1 }      # past 6 (authority.max_change, the combined tree's
+grade   = 0.1                                   # only error); without it `college_road@college` is
+max_cut = 6.5                                   # 0.911 (M6 close, debug, one run)
+
+[feature.hill_trail_approach]
+kind    = "pad"
+on      = { ref = "hill_trail", t = 0 }
+grade   = 0.1
+max_cut = 6

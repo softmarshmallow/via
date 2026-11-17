@@ -1,0 +1,20 @@
+name       = "derived_dry_under"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 4
+
+[field.level]                   # derived from the ground
+base = "= f('height')"
+
+[field.level.then.low]          # a level under the parent's own ground: dry here alone
+value = "= max(v, 3)"
+
+[import.a]
+file      = "a/world.toml"
+at        = [8, 0]
+max_grade = 5                   # the 4 m step at its edge is not what this case is about

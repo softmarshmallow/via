@@ -23,7 +23,7 @@ extends RefCounted
 ## - A generated mesh belongs to the chunks whose `meshes` list names it (build.md 5, M6); in a
 ##   build whose chunks hold no such list, to every chunk its plan bounds meet (Loader.mesh_rect;
 ##   every chunk when the file cannot say). It is loaded while any of them is, once.
-## - Far ground: every chunk has a coarse ground (Loader.make_far_ground: at most 8 quads a side,
+## - Far ground: every chunk has a coarse ground (Loader.make_far_ground: posts at most 8 m apart,
 ##   coloured by its weights, not collided, all chunks in one mesh and one draw call), made once
 ##   here and shown exactly while its chunk is not loaded (one texel per chunk of the mesh's
 ##   `loaded` texture), so past the load radius the view still has ground to the camera's far
@@ -33,6 +33,12 @@ extends RefCounted
 ##   (Loader.make_far_instances), one mesh and one draw call for all chunks, shown with the far
 ##   ground's texture exactly while the chunk is not loaded, so far houses stand on far ground
 ##   (M6 slice 2). `far_instances = false` before making the streamer leaves them out.
+## - Far water and skirts (M6 close): the far ground carries the water the `water` option draws, as
+##   one more mesh hidden by the same texture, and a skirt under each far chunk's edges, so neither
+##   a far tarn nor the slit where a loaded chunk's fine edge meets a far one opens on the sky.
+## - Far meshes (M6 close): every generated mesh also has a copy with no body, made once, shown
+##   exactly while the mesh is not loaded, so a deck or a cliff face past the load radius is drawn
+##   as whole draws it (`far_meshes = false` leaves them out).
 
 ## Ours: 96 m is one and a half default chunks (64 m, build.md 5), so the chunks a walker may see
 ## within 96 m are there; GUARD is a walker's reach in a few frames at any pace a game walks.
@@ -70,6 +76,10 @@ var _far: MeshInstance3D
 var _far_things: MeshInstance3D  # the far instances (Loader.make_far_instances), or null
 ## Whether the far instances are made (before the streamer's first chunk; read at construction).
 static var far_instances := true
+## Whether the far meshes are made (read at construction).
+static var far_meshes := true
+var _far_mesh_nodes := {}  # mesh index -> its copy with no body, shown while it is not loaded
+var _far_holder: Node3D
 var _far_mask: Image            # one R8 texel per chunk, at `[cx, cy]`: 255 while it is loaded
 var _far_tex: ImageTexture
 var _ats: Array[Vector2i] = []  # chunk index -> its `at`
@@ -108,6 +118,8 @@ func _setup(the_loader, the_root: Node3D) -> void:
 		_far_mask = Image.create_empty(size.x, size.y, false, Image.FORMAT_R8)
 		_far_tex = ImageTexture.create_from_image(_far_mask)
 		_far.material_override.set_shader_parameter("loaded", _far_tex)
+		for w in _far.get_children():   # the far water
+			w.material_override.set_shader_parameter("loaded", _far_tex)
 		root.add_child(_far)
 	_far_things = loader.make_far_instances() if far_instances else null
 	if _far_things != null:
@@ -139,6 +151,30 @@ func _setup(the_loader, the_root: Node3D) -> void:
 		_holder = Node3D.new()
 		_holder.name = "meshes"
 		root.add_child(_holder)
+	_far_mesh_nodes.clear()
+	_far_holder = null
+	if far_meshes and not _meshes.is_empty():
+		_far_holder = Node3D.new()
+		_far_holder.name = "far_meshes"
+		root.add_child(_far_holder)
+		for i in _meshes.size():
+			var m = loader.make_mesh(_meshes[i])
+			if m == null:
+				continue
+			for body in m.get_children():
+				m.remove_child(body)
+				body.free()
+			_far_holder.add_child(m)
+			_far_mesh_nodes[i] = m
+
+
+func _far_mesh_shown(i: int, shown: bool) -> void:
+	if _far_mesh_nodes.has(i):
+		_far_mesh_nodes[i].visible = shown
+
+
+func far_mesh_count() -> int:
+	return _far_mesh_nodes.size()
 
 
 func set_radius(radius: float) -> void:
@@ -268,6 +304,7 @@ func _attach(n: int, res: Dictionary) -> void:
 		_mesh_nodes[i] = res.meshes[i]
 	for i in _chunk_meshes[n]:
 		_mesh_refs[i] = _mesh_refs.get(i, 0) + 1
+		_far_mesh_shown(i, not _mesh_nodes.has(i))
 
 
 func _unload(n: int) -> void:
@@ -285,6 +322,7 @@ func _unload(n: int) -> void:
 			_mesh_refs.erase(i)
 			_holder.remove_child(m)
 			m.free()
+			_far_mesh_shown(i, true)
 
 
 func reload(new_loader, new_root: Node3D) -> Dictionary:
@@ -342,7 +380,7 @@ func reload(new_loader, new_root: Node3D) -> Dictionary:
 			report.meshes_kept.append(String(e.name))
 		else:
 			node.free()
-	for far in [_far, _far_things]:
+	for far in [_far, _far_things, _far_holder]:
 		if far != null and far.get_parent() == root:
 			root.remove_child(far)
 			far.free()
@@ -371,6 +409,7 @@ func reload(new_loader, new_root: Node3D) -> Dictionary:
 			_holder.remove_child(_mesh_nodes[i])
 			_mesh_nodes[i].free()
 			_mesh_nodes.erase(i)
+			_far_mesh_shown(i, true)
 	for k in ["kept", "made", "dropped", "meshes_kept"]:
 		report[k].sort()
 	return report

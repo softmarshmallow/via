@@ -13,6 +13,10 @@
 #   `flow` metres above the channel floor on the beck's line, and wets only the ground below that.
 #   It is never "so far above the ground beneath": that would lift it up the banks.
 # - What the beck keeps free of trees and props it writes on the field with role `keep_out`.
+# - A kind of your own that raises the level (a pond behind a weir) must keep its mask where the
+#   ground is under the new level: a fade over dry ground below the level stands a wall of water
+#   where the fade ends, and nothing reports it (M6 close fresh-agent run `weir`: a 36 m half disc
+#   faded radially; confining the mask to the channel's banks fixed it).
 #
 # Cross profiles read `d` only, never `t` (geometry.md 2.6: the beck bends, so a frame read far
 # from its line jumps across the bisector inside each bend, limitation E1). Only the channel reads

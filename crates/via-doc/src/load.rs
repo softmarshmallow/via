@@ -1295,6 +1295,14 @@ impl Loader<'_> {
                             }
                             other => f.hint = other.hint("write `[change.<name>]` in the world or a layer, or pass a change file's path"),
                         }
+                        // A file of that name in the world's `changes/` is what was meant
+                        // (M6 close, fresh-agent run: `--change over_budget`).
+                        let file = format!("changes/{}.toml", req.written);
+                        if !f.data.iter().any(|(k, _)| k == "nearest")
+                            && self.world_dir.join(&file).is_file()
+                        {
+                            f.hint = format!("pass its path: `--change {file}` (a name holds no `.` or `/`, build.md 14)");
+                        }
                         self.fault(f);
                     }
                 }

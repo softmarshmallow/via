@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "p imports m, m imports n (graph.md 6.2, an import enters by its text): built twice into one directory, the second runs no node; n's world file edited (hut 1 m east), the third is no null build and m.n.hut stands at (12, 1), as a fresh build gives."
+milestone = 6
+actions   = ["first", "second", "edit", "edited"]
+
+[action.first]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.first.check.hut]
+fn    = "instance_at"
+build = "build/w"
+name  = "m.n.hut"
+at    = [11, 1]
+
+[action.second]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+untouched   = ["build/w"]
+
+[action.second.nodes]
+ran = []
+
+[action.edit]
+write = "m/n/world.toml"
+from  = "later/n_world.toml"
+
+[action.edited]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.edited.check.hut]
+fn    = "instance_at"
+build = "build/w"
+name  = "m.n.hut"
+at    = [12, 1]

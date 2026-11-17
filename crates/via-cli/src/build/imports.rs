@@ -295,3 +295,126 @@ fn roots_of(env: &Env, c: &StepsCall<'_>, wdir: &std::path::Path) -> steps::Root
         include: steps::includes(c.world),
     }
 }
+
+/// What one import adds to the parent's build key (`graph.md` 6.2): a digest of its text, read
+/// as [`run_import`] and the model read it, never of its build. Its sources and their names, its
+/// `seed` and `changes`, its leaves (pack, bound files, field files), its library lookups, each of
+/// its generate steps' trust digest, trust on this machine, declared inputs and (untrusted) its
+/// committed result, and its own imports' keys in turn. Each build is a function of these, so an
+/// equal key is an equal import; an unchanged build reads each import's files and builds none
+/// (M6 close: atlas's unchanged build spent 36 s building thirteen imports for its key).
+pub fn text_key(
+    imp: &via_model::ImportText,
+    opts: &via_model::Options,
+    lib: &[PathBuf],
+    sdk: Option<&Digest>,
+    trusted: &BTreeSet<String>,
+    within: &mut Vec<PathBuf>,
+) -> Digest {
+    let mut e = via_graph::Enc::new();
+    e.str("via-import-key-1")
+        .str(&format!("seed {:?}", imp.seed))
+        .len(imp.changes.len());
+    for c in &imp.changes {
+        e.str(c);
+    }
+    // An import that reaches itself is `import.cycle` at load; it is not followed again here.
+    if within.contains(&imp.path) {
+        e.str("cycle");
+        return Digest::of(&e.finish());
+    }
+    // Loaded as the model loads it (`via_model::import`, `built`): a change file's path is from
+    // the import's folder.
+    let changes: Vec<via_doc::ChangeRequest> = imp
+        .changes
+        .iter()
+        .map(|c| {
+            let r = via_doc::ChangeRequest::new(c.clone(), 0);
+            match imp.path.parent() {
+                Some(dir) if r.is_path() => {
+                    via_doc::ChangeRequest::new(dir.join(c).to_string_lossy().into_owned(), 0)
+                }
+                _ => r,
+            }
+        })
+        .collect();
+    let mut load = via_doc::LoadOptions::from_env(opts.lib_roots.clone(), changes);
+    load.shipped_root.clone_from(&opts.shipped_root);
+    let loaded = via_doc::load(&imp.path, 0, &load);
+    let Some(world) = loaded.world else {
+        // What failed to load is decided by the file's bytes and the records it gave.
+        let bytes = std::fs::read(&imp.path).unwrap_or_default();
+        e.str("failed")
+            .str(&Digest::of(&bytes).hex())
+            .str(&format!("{:?}", loaded.records));
+        return Digest::of(&e.finish());
+    };
+    e.len(world.sources().iter().count());
+    for s in world.sources().iter() {
+        e.str(&s.name).str(&Digest::of(s.text().as_bytes()).hex());
+    }
+    e.len(world.changes().len());
+    for c in world.changes() {
+        e.str(c);
+    }
+    let wdir = crate::build::world_dir(&imp.path);
+    let mut o = opts.clone();
+    o.seed = imp.seed;
+    o.world_dir = imp.path.parent().map(PathBuf::from).unwrap_or_default();
+    o.step_out = BTreeMap::new();
+    o.given = None;
+    o.import_steps = None;
+    let (leaves, nested) = via_model::leaves_own(&world, &o);
+    e.len(leaves.len());
+    for (p, d) in &leaves {
+        e.str(p).str(&d.hex());
+    }
+    let roots = steps::Roots {
+        world_dir: wdir.clone(),
+        lib: lib.to_vec(),
+        via_lib: o.via_lib.clone(),
+        shipped: o.shipped_root.clone(),
+        include: steps::includes(&world),
+    };
+    let found = super::lookups(&world, &roots);
+    e.len(found.len());
+    for l in &found {
+        e.str(l);
+    }
+    let decls: Vec<steps::StepDecl> = steps::declared(&world, &wdir)
+        .into_iter()
+        .filter(|s| s.when == "generate")
+        .collect();
+    e.len(decls.len());
+    for s in &decls {
+        e.str(&s.id);
+        match steps::code_of(s, &roots, &wdir, sdk) {
+            Ok(c) => {
+                let t = trusted.contains(&c.trust.hex());
+                e.str(&c.trust.hex())
+                    .str(if t { "trusted" } else { "untrusted" });
+                if !t {
+                    let gen = crate::commit::folder(&s.home, &s.id, None);
+                    e.str(&steps::input_digest(&gen).map_or(String::new(), |d| d.hex()));
+                }
+            }
+            Err(d) => {
+                e.str(&format!("no code {:?}", d.code()));
+            }
+        }
+        e.len(s.inputs.len());
+        for i in &s.inputs {
+            let d =
+                steps::input_digest(&s.home.join(i)).unwrap_or_else(|| Digest::of(b"\0missing"));
+            e.str(i).str(&d.hex());
+        }
+    }
+    within.push(imp.path.clone());
+    e.len(nested.len());
+    for n in &nested {
+        e.str(&n.id)
+            .str(&text_key(n, &o, lib, sdk, trusted, within).hex());
+    }
+    within.pop();
+    Digest::of(&e.finish())
+}

@@ -20,6 +20,25 @@
 # 148.3 (2273), over_budget 165.6 (exit 1, 8182). Every row in band; new rows `road_painted`,
 # `road_painted_in`; moved: `[map] footprints` 2587 -> 2776, `move_market.shapes_ran` + area_market.
 
+# Atlas pass (M6 close, 2026-11-17): release `via` and `via-terrain` of fb09c57 (a clean worktree:
+# none of the joins' core change), the working tree's examples and lib, VIA_LIB=lib, Python 3.12
+# steps, one store for three builds in order (the first 330.4 s, the last 255.9 s wall, load 19 to
+# 22 from other agents). Rows taken from the last: `grade_max`, `road_join_max`, `[map] water`,
+# `[map] labels` (tools/map_render.py at the map's label zoom); the joins' rows fail on that
+# binary by construction (their hold and water are not in it).
+
+# M6 close fix pass (2026-11-17): the first build with every agent's M6 close diff at once. Debug
+# `via` (optimized + debuginfo) and release `via-terrain` of the working tree at 14:22 KST, VIA_LIB=
+# lib, Python 3.12 steps, every step trusted, one fresh store: cold 284.0 s (without the college
+# pad's `max_cut` 6.5, exit 0), then the pad and a lib/water edit on the same store (191.2 s, load
+# 4 to 6). Every base row below is from that last build; NOT HOLDING rows are banded at it.
+# Before the pad's 6.5 the combined tree failed (`authority.max_change` 6.09 > 6). Then each change
+# `--against` that base on the same store: forgotten_exit 149.6 s (exit 1), move_square 189.4,
+# over_budget 220.3 (exit 1), every row in band; move_market panicked in its change report (a lamp
+# of the college moved by the parent's ground with no cause, build.md 11.2; fixed) and, built again
+# on that store, 160.2 s, errors and exit_gap in band, but `shapes_ran` and `ran_imports` empty:
+# its nodes were stored by the first attempt. Those two rows are not re-taken on the combined tree.
+
 # ------------------------------------------------------------------------------------------ base
 
 [base.errors]
@@ -46,9 +65,17 @@ band    = [77904, 77904]                    # and market's own assets counted si
 measure = "grade_p95"
 band    = [0, 0.2]
 
-[base.grade_max]                            # NOT HOLDING: one step of 15.2 (the hill trail over relief's
-measure = "grade_max"                       # north-east edge); measured, so its band says where
-band    = [15.24, 15.24]                    # to look, not that it is fine
+[base.grade_max]                            # NOT HOLDING: the hill trail's last steps into the vale's
+measure = "grade_max"                       # trench, 8.026 (the joins' hold moved the vale's 37 m step
+band    = [8.026, 8.026]                    # to the plain's side; 0.633 at the wild's west exit before
+                                            # the hold). Taken every 4 m of length (atlas pass)
+
+[base.road_join_max]                        # NOT HOLDING: the steepest 4 m step within 30 m of where an
+measure = "road_join_max"                   # atlas way meets a place (measure.py `road_join`): hill_trail
+band    = [8.026, 8.026]                    # at the vale 8.026, west_road at the wild 2.102,
+                                            # college_road 0.600 (0.911 without its pad), wild_road at
+                                            # the city 0.298, the other nine 0.010 to 0.168. The target
+                                            # is 0.25 (1:4; ours)
 
 [base.join_step_max]                        # the largest median step at a join after the lifts:
 measure = "join_step_max"                   # metres, outside the edge less 28 m inside (README "Lifts")
@@ -64,11 +91,45 @@ band    = [13, 13]
 
 [base.road_painted]                         # the roads in earth outside the places (0 of about 800
 measure = "road_painted"                    # sampled points before the M6 slice 2 fix: the row could
-band    = [1, 1]                            # not see the ways layer's roads; layers/steps/track.py)
+band    = [0.999, 1]                        # not see the ways layer's roads; layers/steps/track.py);
+                                            # 0.999 with the joins' hold (one point past a held edge)
 
 [base.road_painted_in]                      # NOT HOLDING: inside a place its own ground is brought
 measure = "road_painted_in"                 # over the plain's rows, so a road's last stretch to the
-band    = [0.101, 0.101]                    # place's gate is the place's paint (README)
+band    = [0.275, 0.275]                    # place's gate is the place's paint (README); 0.101
+                                            # before the hold, 0.075 on the 12:35 tree, 0.275 on the
+                                            # combined one (the held ground is the place's, unpainted)
+
+# The joins on foot (M6 close, `joins`): water in the blend rings and at the bookmarks, and the
+# profile at each answered place (measure.py). Protocol: release `via` and `via-terrain` of the
+# working tree at 12:35 KST 2026-11-17 (fb09c57 with other agents' diffs and composition.md 6.2's
+# re-laid parent water, the dry import and 6.7's hold), VIA_LIB=lib, Python 3.12 steps, one fresh
+# store, one cold run (382 s wall, another atlas build and the conformance run beside it). Before
+# (fb09c57 alone, same protocol, 380 s): ring_wet 38,777 of 112,975; bookmarks_wet 15 (5 of
+# college's, monastery.bm_arrive 4.75 m); exit_in_depth_max 8.76 and exit_in_grade_max 2.273
+# (vale.valley_road); exit_out_grade_max 0.777 (college_road).
+
+[base.ring_wet]                             # posts of the blend rings standing more than 0.05 m
+measure = "ring_wet"                        # wet: the city's river and harbour and coast's sea
+band    = [0, 3123]                         # cross their rings, so not 0; measured (3156 on the
+                                            # 12:35 tree)
+
+[base.bookmarks_wet]                        # NOT HOLDING: quay.wall_face 3.6 m and monastery.bm_gorge
+measure = "bookmarks_wet"                   # 0.34 m; the bridges' four stand on their decks (brought
+band    = [0, 2]                            # surfaces; depth over a bookmark's own `z` since M6 close)
+
+[base.exit_in_depth_max]                    # no water on an import's way within 30 m of the place
+measure = "exit_in_depth_max"               # a parent way answers (8.76 m at the vale before)
+band    = [0, 0.05]
+
+[base.exit_in_grade_max]                    # NOT HOLDING: vale's valley road, 1.79: the hold fades
+measure = "exit_in_grade_max"               # from 12 to 30 m, and the plain stands 37 m over the
+band    = [0, 1.788]                        # vale's ground there (README "What does not hold")
+
+[base.exit_out_grade_max]                   # NOT HOLDING: the hill trail's last 30 m to the vale,
+measure = "exit_out_grade_max"              # 13.027 (12.06 on the 12:35 tree): held, the vale's 37 m
+band    = [0, 13.027]                       # step is now the plain's side of the edge, for the plain's
+                                            # way to grade (TODO From M6 close)
 
 # ------------------------------------------------------------------------------------------ move_market
 
@@ -98,7 +159,7 @@ band    = [1, 1]
 
 [forgotten_exit.unanswered_write]           # with the line that answers it
 measure = "unanswered_write"
-band    = ["ends_at = \"wild.south_end\""]
+band    = ["ends_at = \"wild.west_end\""]                 # the west trail taken (M6 slice 2: the road to the south exit)
 
 # ------------------------------------------------------------------------------------------ move_square
 
@@ -143,11 +204,11 @@ band    = ["tree_oak"]
 [map]
 classes            = { band = [21, 21] }     # none, 9 materials, water, river, stream, 7 way classes, footprint
 ways               = { band = [188, 188] }
-water              = { band = [10, 10] }     # the becks, the city's and townland's rivers, the terrain river
+water              = { band = [9, 9] }       # the becks, the city's and townland's rivers, the terrain river's course (atlas pass: `city_mouth` gone, the course carries the city's river to the sea)
 under              = { band = [1, 1] }       # coast's sea cave: in vectors only, listed as skipped
 regions            = { band = [13, 13] }     # one area per import, its footprint as placed
 footprints         = { band = [2776, 2776] } # houses, barns, sheds by their bounds; college's and market's own since M6 slice 2 (2587 before: their pack's assets were not handed)
-labels             = { band = [45, 45] }
+labels             = { band = [44, 44] }   # 45 before the atlas pass: `city_mouth`'s label
 tiles              = { band = [2000, 2000] } # 50 by 40 tiles of 64 m
 way_on_cells_min   = { band = [1, 1] }
 water_on_cells_min = { band = [1, 1] }

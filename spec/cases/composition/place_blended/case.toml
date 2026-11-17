@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "blend = smoothstep(0, 4, d) and a parent path ending at a.quay, 1 m inside the import's edge: import.place_blended with data.weight below 1."
+summary   = "blend = smoothstep(0, 4, d), a footprint of the import's east 6 m, and a parent path ending at a.quay, 1 m inside the import's extent and outside the footprint: import.place_blended with data.weight 0 (a place inside the footprint is held, composition.md 6.7)."
 milestone = 4
 actions   = ["build"]
 
@@ -11,3 +11,4 @@ out         = "build/w"
 [action.build.diag.blended]
 code     = "import.place_blended"
 data_has = ["weight", "moved"]
+data     = { weight = 0 }

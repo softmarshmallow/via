@@ -1546,40 +1546,90 @@ write the case that changes only the undecided part.
   sees (the paint), not the feature.
 
 To M6 close (atlas on foot):
-- [ ] Imports' kind surfaces, their meshes and the terrain cut are dropped silently: atlas has 1
+- [x] Imports' kind surfaces, their meshes and the terrain cut are dropped silently: atlas has 1
   mesh against city's 12, coast's 4 and monastery's 17 alone, and `height.cut` 0 cells against
   coast's 508; coast's sea cave is solid and the city's bridges are gone (`on_*_bridge` stand in
   1.5 m of river). Spec gap in composition.md 6.1: say kind surfaces and cuts come with their
   feature (heights plus `lift`, scoped names), add a case `import_kind_surface`, warn until built.
-- [ ] Water at the joins: 137,886 posts wet in atlas, 15 of 126 bookmarks in water (college's,
-  `monastery.bm_arrive` 4.75 m), two sheet walks blocked. composition.md 6.2's derived rule must
-  offset the parent's water too where the lifted ground is lower; dry the college lake.
-- [ ] Exits on a cliff: `vale.valley_road.start` falls from 14.0 m to -22.9 m within 25 m through
-  up to 8.8 m of water in the blend ring (`place_blended` moved -15.4 m). Hold the import's ground
-  round each answered exit (composition.md 6.7's `1 - smoothstep(12, 30, dist(exit))`) and
-  measure the profile along each import's way from its answered exit (worst grade, water depth).
+  Done (`surf`, M6 close): composition.md 6.1, case `import_kind_surface`; nested standing and the
+  meetings' terrain side fixed in the close (`import_nested_stand`). On foot a brought cut coarser
+  than the import's own lets coast.along_cliff fall in atlas (From M6 close).
+- [x] Water at the joins (`joins`, M6 close): composition.md 6.2 lays the parent's water by its
+  depth over its own ground (its head view) where the joined ground is lower, and an import with
+  no field derived from one it brings is dry under it (college's 7.2 m lake). Cases
+  `derived_lower`, `derived_dry_under` (fail on fb09c57). Atlas: ring posts wet 38,777 -> 3,156,
+  bookmarks wet 15 -> 6 (`ring_wet`, `bookmarks_wet`; the six are the bridges and two of the
+  places' own). The college_dry row is gone. Lesson: a derived field's offset was laid for the
+  import's side only; the parent's side was a level over ground the join had replaced.
+- [x] Held places (`joins`): composition.md 6.7 holds the import's ground within 12 m of every
+  place a parent path joins, faded to the blend by 30 m (case `place_held`; `place_blended` now
+  needs a place outside the footprint). Atlas: no place's way wet at its join (8.76 -> 0), 5
+  `place_blended` -> 0. measure.py's `exit_gap` read references from features.json, which holds
+  none, so it measured nothing; it reads them from the layers now.
+- [ ] The vale meets the plain 37 m up: held, the hill trail falls 12.06 in its last 30 m into a
+  trench 8.5 m under the plain's water (`exit_out_grade_max`), and the vale's road climbs 1.79
+  where the hold fades. Meet it at the mouth (a lower plain, a lift taken at the exit, or a ramp
+  the plain owns). Also: a parent way cutting below the terrain step's level stands wet outside
+  any import (the step's level is one metre under the ground it read, not the cut).
 - [ ] A layer cannot write a row on a field another document declares (`identity.duplicate_id`),
   and a lower row cannot read a higher layer's features, so atlas paints its roads with a step
   (layers/steps/track.py) that only returns a row. Decide whether a layer may add `then` rows to a
-  field declared below it (documents.md 4, fields.md 7); then drop the step.
+  field declared below it (documents.md 4, fields.md 7); then drop the step. (Atlas pass: the
+  question is written with two options, a layer's rows on a lower field at its rank, or the step
+  kept, and the first recommended; the owner's to rule.)
 - [ ] Roads inside a place's outline take the place's paint (`road_painted_in` 0.10): the last
   stretch to a gate is grass. Seams: places meet the plain as straight bare scarps with
   triangular pools; the city's freeways and east street stop about 30 m short of its edge; a wild
   tree fills the view at `join_wild_west`; `on_bridge` stands on grass short of a bare deck.
-- [ ] The atlas sheet (124 bookmarks) fails at compose (GL target) and its watchdog quits with 3
+  Atlas pass: `on_bridge` stands on the deck (t 0.25 of `creek_bridge`, z 4.5), which has its two
+  parapet runs (30 posts at 4.44 to 4.53 m, written in layers/ways.toml: lib/ways's parapet step's
+  `for_each = "kind:crossing"` would also select every import's crossing); `join_wild_west` looks
+  from the corner (the west trail starts at the exit now). Not seen on foot (no sheet this pass).
+- [ ] A parent's way does not clear an import's scatter: the wild's trees stood on the atlas's
+  west trail. Atlas routes round the wild instead (its footprint leaves out its kept corner, the
+  roads meet its exits from there; no tree within a metre of any atlas way). Proposed for
+  composition.md (owner's to rule): an import's produced instances (a scatter's, `<producer>#key`)
+  give way to the parent's `keep_out` where a layer ranked above the import raises it, as a
+  produced instance gives way to `max_change` (authority.md 2.2), with one `import.gave_way` per
+  import (count, the worst post); written instances never do (`place.keep_out` as now).
+- [ ] A ramp the master owns cannot meet an anchored place: atlas's `pad` approaches (lib/land,
+  `shaped`, grade 0.1) read the ground before the college's anchored arrival and level toward the
+  plain's 6.6 m, not its 3.9 (`road_join` college_road 0.637 -> 0.558; target 0.25, ours). West
+  trail at the wild's west exit 0.633: the wild's ground stands 8 m over the plain in its kept
+  corner. Needs an approach kind ordered after the import's anchored ground (anchored, reading the
+  place's level) or the hold's step graded by the parent's way (composition.md 6.7). Lesson: the
+  15.2 of M6 slice 2 was a measure fault (a post's rise over 0.28 m of path); sample a way by its
+  length, never by its own points.
+- [x] The atlas sheet (124 bookmarks) fails at compose (GL target) and its watchdog quits with 3
   after 900 s, so `sheet.json` and the walk and frame data are lost: write `sheet.json` before
   composing, and split the sheet into pages.
-- [ ] Streamer far layer: generated meshes and water are not drawn past the load radius, woods
+  Done (`godot`, M6 close): pages of 20 (build.md 15.1), `sheet.json` written before composing;
+  atlas's 123 bookmarks on 7 pages, exit 0.
+- [x] Streamer far layer: generated meshes and water are not drawn past the load radius, woods
   show as box walls; 4 of 13 atlas views differ from whole by more than 1% at 96 m (`join_vale`
   3.72%). test_stream_walks: 0.0279 m against the 0.023 m tolerance at `example.church_turn`;
   give the walker the water option.
-- [ ] The terrain river's authored polyline lies up to 23 m from its carved course, so the map
-  draws water where there is none: export the course the terrain step found.
-- [ ] Atlas times: a change costs 55 to 79% of cold (move_market 162 s against 245 s, this fix
+  Done (`godot`, M6 close): far meshes, far water, instances by bands; the walker wades
+  (`--water`); test_stream_walks passes on atlas within two frames' pace (farthest 0.0279 m).
+  Left: 11 of 123 views over 1% (From M6 close).
+- [x] The terrain river's authored polyline lies up to 23 m from its carved course, so the map
+  draws water where there is none: export the course the terrain step found. Done (atlas pass):
+  lib/terrain already returned it (`terrain#river_course`); the map draws `terrain_course` as the
+  river (world.toml `[step.map.params] water`, lib/map test `a_found_course_is_the_water_drawn`).
+  The river now runs on the city's river's line to the sea (it went under the city to 1472 m east
+  and came out as a second channel); `city_mouth` is gone, the course carves the mouth.
+- [x] Atlas times: a change costs 55 to 79% of cold (move_market 162 s against 245 s, this fix
   pass); an unchanged build into the same directory takes 36 s preparing thirteen imports. The
   export `map` alone is about 35 s of a build.
+  Partly (`perf`, M6 close): an import enters the build key by its text (graph.md 6.2), so an
+  unchanged build into the same directory takes 1.0 s (36 s before). Left in From M6 close.
 - [ ] Owed to M6 by earlier sections, not done this slice: atlas takes its plain from the erosion
-  library and townland's authoring; coast's frame rate after parts; the loader's minimap.
+  library and townland's authoring; coast's frame rate after parts; the loader's minimap. (Atlas
+  pass: the plain is the erosion library's since M6 slice 2, layers/land.toml's `via-terrain`
+  step; closed. Townland's authoring is not done: given land, townland's fixed levels (deck 8.5,
+  quay 6.6, its valley written in its own metres) stand in its own zero, so `give = { land }`
+  needs those written over the given ground first, and a townland build and an atlas build to
+  show it; and its main ways need a `given` of features its districts node with.)
 
 To M7:
 - [ ] A world with no `pack` whose imports bind assets has nothing to bring them into
@@ -1597,6 +1647,80 @@ Lesson: two reviews found five atlas faults that measure.py never saw (no road, 
 dropped surfaces, water at joins, a cliff exit), because each row measured the plan (features,
 outlines, medians) and none what stands on the ground. An example's first rows should sample the
 finished fields along what a player walks.
+
+### From M6 close (2026-11-17; the change, on-foot and fresh-agent reviews, and the fix pass)
+
+- [x] Closed in the fix pass: the parent's water at a join keyed on its own ground's head view
+  (graph.rs: a derived field's chunk reads `field:<from>/v:head` of its window; case
+  `derived_lower_head`, from the change review's probe, 4.0 warm against 2.5 clean before); an
+  instance standing on a nested import's surface stays on it (`m.a.lamp` 2 -> 5, case
+  `import_nested_stand`); a brought meeting's terrain side is the parent's finished ground, gap
+  measured again (composition.md 6.1); an import `../x/world.toml` of a world built in its own
+  folder was looked for at `x/world.toml` (`doc.file_missing` on every import of atlas, and the
+  fresh agent's climbing `file`), a unit test; a brought bookmark's `along` reads its import's
+  path (three bookmarks had no camera); the atlas college pad `max_cut` 6 -> 6.5 (the combined
+  tree's only error); `bookmarks_wet` measures over a bookmark's own `z`; run.sh takes
+  `GODOT_TESTS_OUT` and prints the sheet's errors; `sheet.sh` kills at 1800 s; `via_model::leaves`
+  removed; `doc.unknown_change` names `changes/<name>.toml` when it exists; `doc.not_yet` on a
+  three-part place in a formula says what to write; README's status and first-build steps;
+  rulings R44 to R51; an instance whose height alone moved with no cause takes the surface
+  field's (build.md 11.2: atlas `move_market` panicked on a debug binary, release wrote `[]`).
+  Atlas on the combined tree: base 18/18 re-banded, map 12/12, forgotten_exit, move_square and
+  over_budget in band.
+  Lesson: three of the five faults were found only by a probe built twice on one store, or from
+  another folder; a case should build from where an author stands and a change and back.
+
+To M7:
+- [ ] The vale meets the plain in a trench: `hill_trail@vale` road_join 8.03, seam grade 19.53,
+  a pool in the trench, join_vale blocked at 41.9 degrees (on-foot review). Meet it at the mouth
+  (a lower plain, a lift taken at the exit, or a ramp the plain owns).
+- [ ] The wild's west exit is a scarp: join_wild_west blocked at 73.9 degrees, wild.look_corner
+  at 54.8 (both arrived on fb09c57); `west_road@wild` 2.10. A ramp from the kept corner to the
+  wild's 47 m exit, or the corner given back to the wild.
+- [ ] coast.along_cliff falls 35.5 m through atlas: the brought cut is 31 single 2 m quads in a
+  staircase along the cliff foot (coast's own is continuous at 0.5 m). Cut a quad only where the
+  brought surface covers it, or close the edge in the loader; a case walking a brought face's foot.
+- [ ] market.arrive blocked 2 m in by a 1.7 m drop at (2768, 474) where the earth road meets the
+  market's paved street (the hold against the plain); grade the held step along the parent's way.
+  join_college: 0.69 m of water at (2534, 414), 8.4 m short (the parent's water under a held place).
+- [ ] coast.under_deck is blocked by the brought deck inside atlas (less headroom over the blended
+  ground); city's two bridge views and monastery.bm_deck walk off a deck with no parapet.
+- [ ] Far stand-ins pop at the load edge: 11 of 123 atlas views over 1% whole against streamed
+  (vale-aerial 6.79%); shaded or rounder far trees, or a looser bound past the load radius
+  (owner's).
+- [ ] Change builds: city move_avenue 63.3 s against 60.5 cold; atlas move_market 58% of cold;
+  an unchanged build into a new directory with an export trusted 89.8 s, about 54 s in no node;
+  over_budget fails only after 175 s (check the budget before writing instances).
+- [ ] Map: the river narrows from about 25 m to 10 m at the city's south edge, the mouth is a
+  stepped blob; test_minimap's floor check assumes station (atlas has no floors); no atlas
+  minimap image, the minimap is in no viewer.
+- [ ] A brought surface whose point leaves the lattice is dropped with no diagnostic
+  (`SurfaceOut::brought`, change review nit; practically unreachable): a warning on the scoped
+  feature. Two dev binaries with one version string share store results: a binary digest in the
+  engine version for dev builds, or say so in graph.md 3.3.
+- [ ] composition.md 6.7's hold also holds round a parent bookmark's or instance's `on.ref` of an
+  import place, so adding a view changes the terrain: limit it to `starts_at`/`ends_at` (open to
+  the owner).
+- [ ] Fresh agent (`weir`): an import's `doc.file_missing` names `cli` and "the world file" (the
+  import table and its span are the subject); `import.seam` and `import.no_datum` give no lift
+  hint (`data.lift_hint`: the median height difference across the outline or the held place);
+  no check on the height gap where a way ends at another path kind's end (the bridgehead pattern
+  as a library rule, or a core meeting tolerance: owner's); `build.over_budget` names an import's
+  asset the parent cannot thin (`data.from`, and a hint to ask the import's change); no
+  `build.budget_peak` info to set a budget without a first build; a formula cannot read a
+  three-part import place (`doc.not_yet`, composition.md 6.3).
+
+- [ ] Re-take atlas `move_market`'s `shapes_ran` and `ran_imports` on a fresh store (the M6 close
+  store held a panicked attempt's nodes, so both read empty); no case builds a world from its own
+  folder with an import `../x` (the leading-`..` fault was found only by building atlas from its
+  folder): give the runner a working folder per action, then a case.
+- [ ] Editing a library's `kinds.toml` comment re-keys trust for every step of that library (trust
+  digests the code folder): the M6 close's lib/water note untrusted every world's `fill`. Decide
+  whether trust reads only a step's code files (protocol.md, owner's).
+
+Later:
+- [ ] On-foot sheets of the atlas changes, on the decks and in the cave; monastery alone to see
+  whether its deck fall is its own.
 
 ## Framing
 

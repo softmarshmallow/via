@@ -1,0 +1,11 @@
+# composition.md Conformance, import_kind_surface: a deck over the low ground (a path owner), and
+# a hollow whose floor lies under the ground and cuts it (a region owner, surfaces.md 1.3).
+[kind.deck]
+[kind.deck.surface.top]
+base  = "= 3"
+bound = "= 1"
+
+[kind.hollow]
+[kind.hollow.surface.floor]
+base = "= -1"
+cut  = "= 3"

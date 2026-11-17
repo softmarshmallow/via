@@ -1,0 +1,18 @@
+format    = "via-case-1"
+summary   = "p imports m at (4, 4), m imports a with a lamp on a's deck (import_kind_surface's m): what stood on a surface inside an import stands on it here, nested too (composition.md 6.1): m.a.lamp stands on m.a.span.top at 5 m, not on p's ground at 0, as a.lamp does in m."
+milestone = 6
+actions   = ["build"]
+
+# m alone: a.lamp at z 5 on a.span.top (import_kind_surface). p places m with no lift, so the deck
+# stays at 5. Before the M6 close the brought lamp's surface was not recorded in m's build, and in p
+# it fell to the terrain (0 + m's ground 2: z 2; change review probe2).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/m/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.lamp]
+path = "build/w/instances/z.npy"
+all  = 5

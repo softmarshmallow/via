@@ -159,14 +159,50 @@ author's. Absent, the world declares none: its zero is its own.
 
 ### 6.1 What is brought
 
-The import's **weight** at a parent post `p` is `w(p) = blend(p)`, where `p` lies inside the
-footprint and inside the import's extent, and 0 elsewhere. The footprint is the import's extent by
+The import's **weight** at a parent post `p` is `w(p) = blend(p)`, raised round the places a parent
+path joins (6.7, "Held"), where `p` lies inside the footprint and inside the import's extent, and 0
+elsewhere. The footprint is the import's extent by
 default; points written are in the import's frame and move with it; a place of the import itself
 (`footprint = "a.yard"`) is in its frame too and moves with it; a region of the parent, or a place
 inside another import, stays where it is when this import moves (a fill's limits, drawn by the
 parent). A post on the footprint's outline is inside it, as `inside` reads an outline
 (`formulas.md` 8.4). An import's footprint that reaches past the parent's extent is
 `import.outside` (warning), with the area outside in `data.area`; that part is not brought.
+
+**Kind surfaces come with their feature** (`surfaces.md` 1). Each kind surface of a brought feature
+is a surface of the parent under its scoped place name, `<import>.<owner>.<surface>` (`a.span.top`;
+nested, `m.n.span.top`): its bound taken through the frame point by point (every piece and hole),
+its `base` read at the point in the import's frame (section 3's inverse, rounded to the lattice)
+plus `lift`, as the `surface` field is lifted (section 5): a deck stays as high over the ground it
+was built over. `cut`, `material` and its kind's name come unchanged. It is brought whole, as its
+feature is: the footprint and the blend do not clip it (ours). From these the parent's build makes
+what a world makes of its own surfaces, on its own posts and over its finished terrain:
+
+- their meshes (`build.md` 10), `meshes/<import>.<owner>.<surface>.glb`, listed in the manifest with
+  the scoped feature; a material is coloured by the parent's pack, and one it does not bind is
+  `pack.unknown_material` (error) on the scoped feature, as brought paint is (6.2);
+- the terrain's cut (`build.md` 6.5): a quad is cut where a brought surface with `cut` holds its
+  centre, by the rule a world's own surface cuts by, read on the parent's terrain;
+- the surface questions (`surfaces.md` 2): `surfaces_at` and `sample` answer them by name;
+- the import's meetings (`surfaces.md` 3.3) in `meets.json`, sides scoped, moved, faces turned,
+  heights plus `lift`; a side that is the import's terrain keeps its field's name and stands at the
+  parent's finished surface there, and the gap is measured again between the two (ours: a reader
+  of `meets.json`, a walker among them, takes a side named `height` for the parent's ground, which a
+  blend ring changes; M6 close review). What must hold at each (3.4) was checked inside the import
+  and is said there (section 4's prefixed subjects); the gap the join makes is in the file, not a
+  diagnostic (the seam check says it, 6.6).
+
+What stood on one inside the import stands on it here, at its height there plus `lift`: an instance
+(a lamp on a deck: section 3's "found again on the parent's finished surface" is that surface), a
+point feature or a place (a bookmark on a bridge, `features.json`'s `z`). The parent may **stand on** one
+by its scoped name (`surface = "a.span.top"` on a point feature or an instance, `surfaces.md` 4.1), and **meets** one where its path ends at a place of the import that stands on it: the surface
+its own build stood the place on, the one surface of a path whose `.start` or `.end` it is, or a kind
+mount's `surface` (`ends_at = "a.span.end"`, checked by 3.4: `surface.gap` names both sides). A
+parent scatter's `surface`, a parent point `on` a brought feature by the feature's name, and the
+level test of `rules.md` 8.1 read the parent's own surfaces only: (open), below. Source: atlas at M6
+slice 2 listed 1 mesh against city's 12, coast's 4 and monastery's 17, and its `height.cut` had 0
+cells against coast's 508: coast's sea cave was solid ground and city's bookmarks on its bridges
+stood in the river. The rule is ours.
 
 ### 6.2 Fields
 
@@ -178,7 +214,8 @@ Each field of the import is matched to the parent's field of the same name.
 - The parent has no field of that name: `import.field_unmatched` (warning), with `data.field` and the
   declaration to add in `data.write`. Nothing of it is brought. Lesson: `atlas` exported no water
   and nothing said so.
-- The parent has a field the import lacks: the parent's own value stands under the import.
+- The parent has a field the import lacks: the parent's own value stands under the import, unless
+  that field is derived from one the import brings (below, "An import without the derived field").
 - A field an import's generate step returns as its own (`<step>#<name>`, R32) is a produced name
   no parent can declare: it is read inside the import (by the import's rows and formulas) and is
   neither brought nor warned. To hand a step's result up, the import declares the field and the
@@ -224,6 +261,35 @@ the walks' treads. The level was the import's ground, fixed before the join's wa
 before the blend lowered it. The rule is ours; the alternative, each cutting kind drying its tread,
 leaves the other 2041 (the blend's) and asks every kind of every library to know the water.
 
+The parent's side of the same mix is laid the same way. The parent's own value `c` (the field as
+it stands before the import's entry) was stated over the parent's ground, which the join replaced
+with `h`; where `h` lies below the parent's own ground `h0`, `c` is first lowered by `h0 - h`, so the
+parent's water keeps its depth over its own ground rather than its level over ground that is no
+longer there: the import's entry sets the post to
+`(1 - m) * (c - max(0, h0 - h)) + m * (h + u - g)`, which is `h + (1 - m) * (c - max(h, h0)) +
+m * (u - g)`: a depth mixed from the two sides' depths, so the joined post is never wetter than
+either side alone. `h0` is the parent's head view of the field derived from (`authority.md` 2.3:
+its base and rows, no feature's effect and no import's entry): the ground the parent's rows, and a
+generate step reading the head view, stated their water over; so each chunk of the derived field
+that brings an import reads that head view's chunk of the same window (`graph.md` 2: a row under a
+parent's effect changes the head view and not the build view, case `derived_lower_head`). Where `h` is at or above `h0` the
+entry is the mix above, unchanged: the parent's level is never raised by the import's ground. The
+import's anchored entry (6.4) comes after its first and mixes as above with no lowering (the first
+already laid the parent's value on `h`). Source: the M6 slice 2 on-foot review of `atlas`: 137,886
+posts of the blend rings stood wet and 15 of 126 bookmarks in water, where the places' lifted
+ground lies below the plain and the plain's water (its terrain step's level, one metre under the
+plain's own ground where dry) was mixed in by `1 - m`. Ours.
+
+**An import without the derived field.** When the parent's field is derived from a field the
+import brings (its `surface`, say) and the import declares no field of the derived field's name, the
+import is dry under it: it brings an entry as above with `u - g = 0` (its first entry only; it has
+no anchored cover of the field). The parent's water was stated over the parent's ground, which the
+import replaced; the import said nothing of water over its own. Source: `college` in `atlas`
+declares no water field, and the plain's standing water (the terrain step's row, in a hollow of the
+plain's ground) stood up to 7.2 m deep over its lowered lawns; a row of the parent cannot reach
+under a step's row to dry it. Ours; an import that wants the parent's water over it declares the
+field (`base = "= f('height')"`) and brings it.
+
 A parent whose post spacing is coarser than the import's loses detail;
 `import.coarser` (info) says so once per import with `data.ratio`. No filter is applied: ours, (open)
 below. The same values are what a parent formula reads as `<import>.<field>`; outside the footprint
@@ -235,7 +301,10 @@ it reads 0, and `inside('<import>.footprint')` says where it is defined.
 frame), `d` (the distance from the footprint's outline inward, metres, 0 on the outline), the
 parent's `let` names, any parent field the import does not bring, any `<import>.<field>`, and the
 functions of `formulas.md` on the import's places by their scoped names (`dist('a.south_gate', 40)`,
-the place in the parent's frame). A
+the place in the parent's frame). A name of three parts or more (a path's end, `a.track.start`,
+or a place of a nested import) is not read yet: `doc.not_yet`, whose hint names the hold of 6.7,
+which holds such a place without a formula, and a parent point `on` it as the form that works
+(owed; M6 close fresh-agent run `weir`, which wrote 6.7's form with `glade.track.start`). A
 parent field the import brings, read by its own name in `blend` (`f('height')`, as any field is
 read), reads itself through the blend: `graph.cycle`. Out of range is `formula.range`.
 
@@ -320,17 +389,30 @@ two across a line nobody drew; (open) below.
 ### 6.7 Places the join alters
 
 A place of the import that a parent named reference names (an exit it answers, a path's end, an
-`on.ref`) and whose weight is below 1 stands on ground the import did not make.
+`on.ref`) and whose weight is below 1 stands on ground the import did not make (after the hold
+below, only a place outside the footprint).
 `import.place_blended` (warning) names it, with `data.weight` and `data.moved`, the height
 difference between the parent's finished surface and the import's own there (R8: "a named place
 that the blend would alter is reported").
 
-An exit on the import's edge under a fading blend is such a place (its weight is the blend's at
-`d` near 0). To keep it whole, raise the blend to 1 around the exit, by its scoped name:
-`blend = "= max(smoothstep(0, 40, d), 1 - smoothstep(12, 30, dist('a.south_gate', 40)))"` holds the
-import's ground within 12 m of `a.south_gate` and fades it as elsewhere past 30 m. The parent's way
-that answers the exit then meets the import's ground at the edge, and a step there is the seam
-check's (6.6). Source: the M4 slice 4 fresh-agent run (`hamlet`), which found this by trial.
+**Held.** An exit on the import's edge under a fading blend would be such a place (its weight is
+the blend's at `d` near 0), so the import's ground is held round every place a parent path joins:
+each place of the import that a parent feature's `starts_at` or `ends_at` names, or a parent
+feature or instance's `on.ref` names, that is a point (an exit, a point feature, a path's `start`
+or `end`) inside the footprint. At each post of the footprint the weight is
+`max(blend, 1 - smoothstep(12, 30, r))`, `r` the distance in metres to the nearest such place: the
+import's ground whole within 12 m of it, faded to the blend's by 30 m. The parent's way that
+answers the place then meets the import's ground at the edge, and a step there is the seam check's
+(6.6), on the parent's side, where the parent's way is the parent's to grade. A place outside the
+footprint is not held (nothing of the import is brought there) and is still
+`import.place_blended`, with `data.weight` 0. Sources: the M4 slice 4 fresh-agent run (`hamlet`)
+found the hold by trial, written in its `blend` as
+`max(smoothstep(0, 40, d), 1 - smoothstep(12, 30, dist('a.south_gate', 40)))`; in `atlas`, after
+13 blends written without it, three ways arrived on a cliff: `vale.valley_road.start` stood at
+14.0 m and the vale's road fell to -22.9 m within 25 m inside the vale's ring (`place_blended`
+moved -15.4 m at the vale, -23.9 at the relief, -11.2 at the market). The hold, its radii (from
+`hamlet`) and that it is not a key are ours: every author joining a way met it, and a key to turn it
+off has no case.
 
 ### 6.8 Two imports
 
@@ -674,6 +756,9 @@ re-runs (`conformance.md` 5) apply to every build.
 | scoped_names | M4 | A parent and an import each holding instance `hut`; a parent bookmark `on.ref = "a.hutt"`; then `on.ref = "hut2"` with `hut2` only in the import | merge each | No `identity.duplicate_id`; both `hut` and `a.hut` built; then `identity.unknown_place` nearest `a.hut`; then `identity.unknown_place` hinting `a.hut2`. |
 | weights_brought | M4 | Parent and `a` (8 m square at (8, 0)) each with a `weights` field `mix`; the parent paints `sand` everywhere, `a` paints `moss`; then `blend = 0.25` | build each | No diagnostic; post (12, 4) `moss` 255 and `sand` 0, post (2, 4) `sand` 255 and `moss` 0; then at (12, 4) `moss` 64 and `sand` 191 (`build.md` 6.2's bytes of 0.25 and 0.75). |
 | derived_brought | M4 | Parent height 0 and `a`'s 4 at (8, 0), `blend = 0.5`; both declare `level` with `base = "= f('height')"`; `a` raises its level 1 m over its west half | build | Height 2 and `level` 2 at post (12, 4) (dry: not 3); `level` 2.5 at (9, 4) (not 3.5); 0 at (2, 4). |
+| derived_lower | M6 | Parent height 4, `a`'s 0 at (8, 0), `blend = 0.5`; both declare `level` with `base = "= f('height')"`; the parent's `level` has rows `max(v, 3)` (under its ground: dry) and `max(v, 5)` west of x = 10 (1 m deep) | build | Height 2 at (12, 4); `level` 1.5 there (dry: not 2.5, which stood 0.5 m wet where neither side was); 2.5 at (9, 4) (0.5 m deep: not 3.5, 1.5 m, deeper than the parent alone). |
+| derived_dry_under | M6 | Parent height 4, `a`'s 0 at (8, 0), blend 1; the parent's `level` derived from `height` with a row `max(v, 3)`; `a` declares no `level` | build | `level` 0 at (12, 4) (a dry, not 3 m of the parent's water over `a`'s ground); 4 at (2, 4). |
+| derived_lower_head | M6 | derived_lower with a pad (level 4) over (11, 3) to (13, 5); then a row `v + 3` on the parent's `height` under the pad; then back; one store | build; build; build | `level` 4 at (12, 4); with the row, `height` still 4 there and `level` 2.5 (the head view's 7 lowers it, as a fresh build gives: a key on the build view alone kept 4); back, 4. |
 | turned_tone | M4 | `a`'s `tone` (unit `ratio`) 3 west of x = 4 and 0 east, at (8, 4), `face = 30` | build | Tone 0.5096 at post (13, 5) and 2.0096 at (13, 6), bilinear (tolerance 0.0001); 3 at (10, 6). |
 | turned_wall | M4 | `a` with a 4 m wall between its posts x = 3 and 4, at (8, 4), `face = 30` | build | Height 0 at post (13, 5) and 4 at (13, 6) (each a wall cell's nearest post; bilinear gives 0.68 and 2.68); 4 at (10, 6). |
 | field_read | M4 | A parent field `probe` with base `= a.height`; `a` at (8, 0) with height 3 | build | `probe` 3 at a post inside the footprint and 0 outside. |
@@ -694,7 +779,8 @@ re-runs (`conformance.md` 5) apply to every build.
 | blend_ground | M4 | `a`'s height -3 west of x = 4 and 2 east; parent height -5; `blend = "= smoothstep(-1, 0, a.height)"` | build | -5 at a post where `a` is -3; 2 at a post where `a` is 2. |
 | blend_range | M4 | `blend = "= 2"` | build | `formula.range`; exit 1. |
 | seam | M4 | A hard edge: import height 4 on parent height 0; then `max_grade = 5`; then a parent anchored feature over the whole edge | build each | `import.seam` with `data.grade` 4; then none; then none. |
-| place_blended | M4 | `blend = "= smoothstep(0, 4, d)"`; a parent path `ends_at = "a.quay"` with `a.quay` 1 m inside the edge | build | `import.place_blended`, `data.weight` below 1. |
+| place_blended | M4 | `blend = "= smoothstep(0, 4, d)"`; `footprint` the import's east 6 m; a parent path `ends_at = "a.quay"` with `a.quay` 1 m inside the import's extent, outside the footprint | build | `import.place_blended`, `data.weight` 0 (a place inside the footprint is held, 6.7). |
+| place_held | M6 | Parent height 0, `a`'s 4 at (32, 0), 48 by 64; `blend = "= smoothstep(0, 16, d)"`; a parent path `ends_at = "a.gate"`, `a.gate` on `a`'s west edge at (0, 32) | build | Height 4 at (32, 32) and (44, 32) (held: the blend alone gives 0 and 3.375); 0 at (32, 0), 32 m from the gate; no `import.place_blended`. |
 | field_match | M4 | `a` with a field `moss` the parent lacks; then the parent declares `moss` with `role = "keep_out"` and `a`'s `moss` has none | build each | `import.field_unmatched` with `data.field` `moss`; then `import.field_differs`, exit 1. |
 | overlap | M4 | Imports `a`, `b`, footprints overlapping by 2 m by 8 m | build | `import.overlap`, `data.area` 16. |
 | outside | M4 | `a` placed 4 m past the parent's east edge | build | `import.outside`; the build holds no `a.` instance past the edge. |
@@ -729,6 +815,8 @@ re-runs (`conformance.md` 5) apply to every build.
 | binding_same | M4 | The import's pack binds `box_small` as the parent's does; then to a 1 m box | build each | No diagnostic; then `import.binding_differs`. |
 | change_scoped | M4 | A parent change file with `[feature."a.quay"]` | build with the change | `identity.bad_id`; exit 1. |
 | given_part | M4 | A given path `r1` under `routes`; the fill's path `starts_at = "routes.r1.end"` | build | `town.stop` starts at (10, 2). |
+| import_kind_surface | M6 | `a` (8 m square, no datum) holds a deck `span` (top 3 m, path (1, 4) to (7, 4), half-width 1) and a hollow `cave` (floor -1 m, `cut` 3, region (1, 1) to (3, 3)), a lamp (`surface = "span.top"`) and a bookmark `mid` on the deck; placed at (20, 8), `face = 90`, `lift = 2`; a parent point `view` at (24, 3) with `surface = "a.span.top"`; then `a` and `view` moved 8 m west on one store; then a parent path `ends_at = "a.span.end"` | build; query `surfaces_at`; build; build | The manifest lists meshes `a.cave` and `a.span`; cut quads at posts (21, 5) and (22, 6), none at (23, 5) or (20, 5); the lamp's `z` 5; `a.mid` at (24, 4, 5) and `view` at (24, 3, 5); at (24, 4) `surfaces_at` gives `height` 2 and `a.span.top` 5; moved, cut at (13, 5) and (14, 6), none at (21, 5), `a.mid` at (16, 4, 5); then `surface.gap`, `data.gap` 3000 (the path's end at 2 m). |
+| import_nested_stand | M6 | p imports m at (4, 4), no lift; m is import_kind_surface's parent (a lamp of `a` on `a.span.top`) | build | `m.a.lamp`'s `z` 5 (on the deck brought twice), not the ground's. |
 | brought_asset | M6 | `a`'s own pack binds `heavy` (1000 triangles), the parent's binds only `light`; `[budget] triangles = 2000`; then 500 | build; build | The manifest's `assets.heavy.pack` is `a` and chunk [0, 0] counts 1010 triangles; then `build.over_budget` naming `heavy`, exit 1. |
 
 Rules of this chapter with no case yet, owed by M4 slice 3 (each row able to fail): a footprint
@@ -769,4 +857,5 @@ chunks reused away from the old and new footprint; change report causes in the p
 | Two exits that meet at one point with nothing between them. | A library kind placed `on` one naming the other answers both today; revisited with `atlas`. |
 | What leaves undeclared (R9: "what leaves is declared as an exit"): an import path cut by the footprint, or reaching the import's extent, with no exit there. A warning `import.exit_undeclared` per cut end, or nothing. | `atlas`'s river that stops at the edge, M4 slice 2: if it goes unseen on foot, the warning. |
 | A parent naming an import's produced face or cell as a place (`a.<network>.<face>`, R13 across imports). | The first parent that must place on an import's generated block; `county` in M4. |
+| A brought kind surface where the parent's own surfaces only are read (6.1): a parent scatter's `surface`, a parent point `on` a brought feature by its name, the level test (`rules.md` 8.1); and whether a footprint narrower than the import clips its surfaces (today they come whole, with their feature). | The first parent that scatters on, or places by `on` onto, an import's deck; a footprint that cuts a bridge. |
 | Matching a field by role as well as by name (an import's `surface` field named `ground` is not brought today, only warned). | The first world pair whose surface fields differ by name. |

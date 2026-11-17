@@ -229,6 +229,27 @@ class Strokes(unittest.TestCase):
             x, y = 4.3 + k / 100 * 11.4, 1.1 + k / 100 * 2.8
             self.assertEqual(rows[int(y)][int(x)], lane, (x, y))
 
+    def test_a_found_course_is_the_water_drawn(self):
+        # atlas (M6): the river is drawn by the course its terrain step found (`terrain#river_course`,
+        # a produced name), not by its stated line, which lay up to 23 m off the wet channel. The
+        # course is drawn by its `width` as any water course, and a produced name gives no label.
+        wd = world()
+        wd["features"] += [
+            {"name": "river", "kind": "terrain_river", "shape": "path", "attrs": {"width": 2.0},
+             "points": [[6.0, 1.0], [6.0, 11.0]]},
+            {"name": "terrain#river_course", "kind": "terrain_course", "shape": "path",
+             "attrs": {"width": 2.0}, "points": [[9.0, 1.0], [9.0, 11.0]]}]
+        p = E["params_of"]({"water": {"terrain_course": "river"}, "labels": {"terrain_course": ""},
+                            "cell": 1.0})
+        files, _ = E["make_map"](wd, p)
+        idx, rows = load(files)
+        vec = json.loads(files["vectors.json"])
+        self.assertEqual([w["name"] for w in vec["water"]], ["terrain#river_course"])
+        river = next(c["id"] for c in idx["classes"] if c["name"] == "water:river")
+        self.assertEqual(rows[6][9], river)               # on the course
+        self.assertNotEqual(rows[6][6], river)            # not on the stated line
+        self.assertEqual([x for x in json.loads(files["labels.json"])["labels"] if x["key"] == "terrain#river_course"], [])
+
     def test_a_building_instance_is_a_footprint(self):
         wd = world()
         wd["pack"]["house"] = {"bounds": [-2, -3, 0, 2, 3, 5], "taxon": "building/house"}

@@ -13,9 +13,24 @@ a person reviewing them. `via` is a working name.
 
 ## Status
 
-A rewrite is under way on branch `rewrite`, at milestone M4 (composition: worlds imported into
-worlds). The new engine builds every world under `examples/`; `docs/plan.md` says what each
+A rewrite is under way on branch `rewrite`, at the close of milestone M6 (whole, and handed over:
+every example joined in one map, `examples/atlas`; chunks streamed; budgets; the player map as
+data). The new engine builds every world under `examples/`; `docs/plan.md` says what each
 milestone adds and `TODO.md` what is open.
+
+### First build of your own world
+
+```sh
+cargo build --release -p via-cli -p via-terrain     # a cargo-built via has no shipped library root:
+export VIA_LIB=$PWD/lib                             #   name ours (documents.md 4.1)
+via config program python $PWD/sdk/python/.venv/bin/python   # steps run on Python 3.12 (the SDK's venv)
+via config program via-terrain $PWD/target/release/via-terrain
+via trust path/to/world.toml --yes                  # record trust in the world's steps (protocol.md)
+via build path/to/world.toml --out build/w
+```
+
+A change is passed by its path (`--change changes/x.toml`; a bare name holds no `.` or `/`,
+`build.md` 14). Copy a world from `examples/` to start; `spec/vocabulary.md` lists every key.
 
 The spike under `spike/` is the record of the concept phase: 19 worlds, built in throwaway Python.
 It is kept as an oracle to compare against, never as a source, and is tagged `spike-final`. It is
@@ -50,7 +65,7 @@ Its design records are in `docs/archive/adr/`.
 | [`docs/challenges.md`](docs/challenges.md) | Every request made of the tool, how it fared, and the milestone that closes it. |
 | [`docs/design/blackbox.md`](docs/design/blackbox.md) | The tool seen from outside. |
 | [`docs/faq.md`](docs/faq.md) | Questions a newcomer would ask, each marked shown, decided, open or not ours. |
-| `lib/<name>/kinds.toml` | Each library's reference: its header comment gives the kinds, the steps a world restates and their params (the libraries have no README; `lib/land/ground.md` is the one longer note). |
+| `lib/<name>/kinds.toml` | Each library's reference: its header comment gives the kinds, the steps a world restates and their params (`lib/map` and `lib/building` also have a README; `lib/land/ground.md` is one longer note). |
 | `examples/<name>/README.md` | What each example world shows and what is still wrong with it. |
 | [`TODO.md`](TODO.md) | Open items with their context, each filed to a milestone or a chapter. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How work is done and the engineering rules. |

@@ -4,7 +4,7 @@ extends Node
 ##
 ##   godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- \
 ##         --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...]
-##         [--stream RADIUS] [--frames SECONDS]
+##         [--stream RADIUS] [--frames SECONDS] [--page BOOKMARKS]
 ##
 ## --stream loads chunks round each eye and walker within RADIUS metres (stream.gd) instead of the
 ## whole build; --frames tours the bookmarks' eyes at TOUR_SPEED for SECONDS per build after the
@@ -14,8 +14,12 @@ extends Node
 ## draws nothing. Writes <out>/before/*.png, <out>/after/*.png (1280 by 720), <out>/sheet.png,
 ## <out>/sheet.json and <out>/diagnostics.json. <out> is written whole: into <out>.partial, then
 ## swapped in. Exit 0 when every bookmark was rendered, 1 with any error, 2 for a bad argument.
-## A watchdog quits with 3 if the run takes longer than WATCHDOG_S (plus twice --frames), so a stuck renderer never
-## leaves an unattended run waiting.
+## The sheet and the walks are laid out in pages of --page bookmarks (PAGE by default): sheet.png,
+## sheet_2.png, ... and walks.png, walks_2.png, ... (sheet.json `pages`), so no page is taller than
+## a GL render target holds. sheet.json and diagnostics.json are written before the pages are
+## composed. A watchdog quits with 3 when no bookmark, walk or page has been finished for
+## WATCHDOG_S, so a stuck renderer never leaves an unattended run waiting; it first moves what was
+## written into <out> when sheet.json is among it.
 
 const Loader := preload("res://addons/via_loader/loader.gd")
 const Diagnostics := preload("res://addons/via_loader/diagnostics.gd")
@@ -30,10 +34,15 @@ const SHOT := Vector2i(1280, 720)
 const SETTLE_FRAMES := 4
 const WATCHDOG_S := 300.0
 const PARKED := Vector2i(160, 90)
-const USAGE := "usage: godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] [--stream RADIUS] [--frames SECONDS]"
+const USAGE := "usage: godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] [--stream RADIUS] [--frames SECONDS] [--page BOOKMARKS]"
 ## The frame tour's pace, metres a second (ours): a run, five times the walker's, so a tour of a
 ## minute crosses a city's chunks.
 const TOUR_SPEED := 7.0
+## Bookmarks a page (ours): a sheet page is 48 + 384 * 20 = 7728 pixels tall and a walks page
+## 48 + 768 * 20 = 15,408, under 16,384, the largest texture side GL 3.3 drivers commonly give. One
+## sheet of atlas's 124 bookmarks was 47,664 pixels tall: its render target failed and no sheet.png
+## was written (M6 slice 2).
+const PAGE := 20
 
 var before := ""
 var after := ""
@@ -44,15 +53,21 @@ var diags := Diagnostics.new()
 var edits := {"against": null, "pins": [], "cleared": []}
 var stream_radius := 0.0
 var frames_s := 0.0
+var page := PAGE
 var _done := false
 var _watchdog_s := WATCHDOG_S
+var _petted := 0   # msec of the last finished bookmark, walk, page or tour frame
 
 
 func _ready() -> void:
 	var why := _read_arguments()
-	# a frame tour runs its seconds on each build, past the watchdog's own time
-	_watchdog_s = WATCHDOG_S + 2.0 * maxf(frames_s, 0.0)
-	get_tree().create_timer(_watchdog_s, true, false, true).timeout.connect(_watchdog)
+	_pet()
+	var dog := Timer.new()
+	dog.wait_time = 5.0
+	dog.ignore_time_scale = true
+	dog.timeout.connect(_watchdog)
+	add_child(dog)
+	dog.start()
 	if why == "":
 		why = _check_out()
 	if why != "":
@@ -64,10 +79,18 @@ func _ready() -> void:
 	await _run()
 
 
+func _pet() -> void:
+	_petted = Time.get_ticks_msec()
+
+
 func _watchdog() -> void:
-	if not _done:
-		printerr("sheet: watchdog: no result after %d s; quitting" % int(_watchdog_s))
-		_quit(3)
+	if _done or Time.get_ticks_msec() - _petted < _watchdog_s * 1000.0:
+		return
+	printerr("sheet: watchdog: nothing finished for %d s; quitting" % int(_watchdog_s))
+	if FileAccess.file_exists(out + ".partial/sheet.json"):
+		_swap()
+		printerr("sheet: what was written is in %s" % out)
+	_quit(3)
 
 
 func _quit(code: int) -> void:
@@ -88,7 +111,7 @@ func _read_arguments() -> String:
 	var n := 0
 	while n < args.size():
 		var a := args[n]
-		var takes := a in ["--before", "--after", "--out", "--pack", "--option", "--stream", "--frames"]
+		var takes := a in ["--before", "--after", "--out", "--pack", "--option", "--stream", "--frames", "--page"]
 		if not takes:
 			return "unknown argument `%s`" % a
 		if n + 1 >= args.size():
@@ -99,6 +122,10 @@ func _read_arguments() -> String:
 			"--after": after = _abs(v)
 			"--out": out = _abs(v)
 			"--pack": pack = _abs(v)
+			"--page":
+				if not v.is_valid_int() or int(v) < 1:
+					return "--page takes a whole number above 0, not `%s`" % v
+				page = int(v)
 			"--stream", "--frames":
 				if not v.is_valid_float() or float(v) <= 0.0:
 					return "%s takes a number above 0, not `%s`" % [a, v]
@@ -196,6 +223,7 @@ func _render(vp: SubViewport, dir: String, label: String, folder: String) -> Dic
 			res["write_failed"] = true
 			continue
 		res.shots[String(c.get_meta("feature"))] = {"file": file, "eye": c.get_meta("eye"), "toward": c.get_meta("toward"), "image": img}
+		_pet()
 	await _walks(vp, root, loader, label, folder, res, stream)
 	if frames_s > 0.0:
 		res.frames = await _frames(root, loader, stream)
@@ -289,6 +317,7 @@ func _frames(root: Node3D, loader, stream) -> Dictionary:
 			if now - start > 1e6:
 				work.append(stream.work_usec / 1000.0)
 			most = maxi(most, stream.loaded.size())
+		_pet()
 		await RenderingServer.frame_post_draw
 	DisplayServer.window_set_vsync_mode(vsync)
 	Engine.max_fps = cap
@@ -358,6 +387,7 @@ func _walks(vp: SubViewport, root: Node3D, loader, label: String, folder: String
 		r["plan"] = shots.plan.file
 		r["eye"] = shots.eye.file
 		res.walks[name] = {"report": r, "plan": shots.plan.image, "eye": shots.eye.image}
+		_pet()
 
 
 func _run() -> void:
@@ -422,8 +452,7 @@ func _run() -> void:
 	if two:
 		header += "    after %s" % _short(a.id)
 	header += "    Godot %s" % godot
-	var sheet: Image = await Compose.compose(self, header, rows, two)
-	var failed := sheet.save_png(partial + "/sheet.png") != OK or b.has("write_failed") or a.has("write_failed")
+	var failed: bool = b.has("write_failed") or a.has("write_failed")
 	# the walks: one row from above and one at the walker's eye per bookmark, before and after
 	var wrows: Array = []
 	var walks: Array = []
@@ -442,8 +471,11 @@ func _run() -> void:
 		walks.append({"after": ra if two else null, "before": rb, "name": n})
 	var wheader := "%s    walks    pins %d, cleared %d" % [world if world != null else "(no build)",
 		edits.pins.size(), edits.cleared.size()]
-	var wsheet: Image = await Compose.compose(self, wheader, wrows, two)
-	failed = failed or wsheet.save_png(partial + "/walks.png") != OK
+	var pages := {"sheet": [], "walks": []}
+	var n_pages := maxi(1, ceili(order.size() / float(page)))
+	for k in n_pages:
+		for what in ["sheet", "walks"]:
+			pages[what].append("%s.png" % what if k == 0 else "%s_%d.png" % [what, k + 1])
 	var doc := {
 		"after": {"id": a.id, "world": a.world} if two else null,
 		"before": {"id": b.id, "world": b.world},
@@ -453,6 +485,7 @@ func _run() -> void:
 		"frames": {"after": a.frames, "before": b.frames} if frames_s > 0.0 else null,
 		"godot": godot,
 		"light": {"bearing": Rig.LIGHT_BEARING, "elevation": Rig.LIGHT_ELEVATION},
+		"pages": {"bookmarks": page, "sheet": pages.sheet, "walks": pages.walks},
 		"renderer": RenderingServer.get_current_rendering_method(),
 		"size": [SHOT.x, SHOT.y],
 		"stream": stream_radius if stream_radius > 0.0 else null,
@@ -461,22 +494,37 @@ func _run() -> void:
 			"above_water": Walk.ABOVE_WATER},
 		"walks": walks,
 	}
+	# The protocol first, so a run that cannot compose its pages still leaves its walks and frames.
 	var f := FileAccess.open(partial + "/sheet.json", FileAccess.WRITE)
 	f.store_string(CJson.text(doc))
 	f.close()
 	diags.write(partial + "/diagnostics.json")
 	diags.print_all()
-	# swap: the old folder aside, the new one in, the old one deleted
-	_remove(out + ".old")
-	if DirAccess.dir_exists_absolute(out):
-		DirAccess.rename_absolute(out, out + ".old")
-	var err := DirAccess.rename_absolute(partial, out)
-	_remove(out + ".old")
-	if err != OK:
-		printerr("sheet: cannot move %s into place (%s)" % [partial, error_string(err)])
+	for k in n_pages:
+		var lo := k * page
+		var hi := mini(order.size(), lo + page)
+		var of := "" if n_pages == 1 else "    page %d of %d" % [k + 1, n_pages]
+		var sheet: Image = await Compose.compose(self, header + of, rows.slice(lo, hi), two)
+		failed = failed or sheet == null or sheet.save_png(partial + "/" + pages.sheet[k]) != OK
+		_pet()
+		var wsheet: Image = await Compose.compose(self, wheader + of, wrows.slice(2 * lo, 2 * hi), two)
+		failed = failed or wsheet == null or wsheet.save_png(partial + "/" + pages.walks[k]) != OK
+		_pet()
+	if not _swap():
+		printerr("sheet: cannot move %s into place" % partial)
 		failed = true
 	print("sheet: %d bookmark(s), %s" % [order.size(), out + "/sheet.png"])
 	_quit(1 if failed or diags.status() != 0 else 0)
+
+
+func _swap() -> bool:
+	## <out>.partial in as <out>: the old folder aside, the new one in, the old one deleted.
+	_remove(out + ".old")
+	if DirAccess.dir_exists_absolute(out):
+		DirAccess.rename_absolute(out, out + ".old")
+	var err := DirAccess.rename_absolute(out + ".partial", out)
+	_remove(out + ".old")
+	return err == OK
 
 
 static func _eye_text(e: Array) -> String:

@@ -799,6 +799,12 @@ bounded field (M3), when its cover differs or a sample under cover 1 differs. Wh
 | `digests` | object or `null` | For `file:` and `step:`: `{ "after", "before" }`, the digests of the file, or of the step's command and code (R26); `null` on the side where it is absent. `null` for every other form. |
 | `via` | list of strings | `graph.md` node ids: the shortest chain of edges from the node that reads the statement to the thing's nearest node, both ends included, ties by node id (`graph.md` 6.4). The thing's nodes are `shape:` and `attr:` for a feature, `instance:` or `held:` for an instance (for a pin, its `edit:` or `height:`), `footprint:` for a footprint, and for a field the `field:` node of its first differing chunk. It is one chain, not every route. |
 
+An instance whose height alone differs (same pivot in plan, same facing) and for which the graph
+finds no differing statement stands on the surface field there: its causes are that field's, as
+the graph finds them, each chain ending at the field's chunk (ours, M6 close: atlas `move_market`
+moved `college.approach_lamps#r0`, an import's lamp on the parent's finished ground, and named no
+cause, against `causes`' "never `[]`").
+
 **A summary row** (`summary[]`), `identity.md` 5's line per maker:
 
 | Key | Type | Holds |
@@ -1175,8 +1181,8 @@ instances and their bodies, exactly as above) from its entry in `chunks`, a gene
   chunks hold no `meshes`, every chunk its plan box meets (read from its `.glb`'s JSON: the node's
   translation and the `POSITION` accessor's `min` and `max`); it is loaded while any of them is,
   once. Features, paths, bookmarks and meetings are the root's and are not streamed.
-- **Far ground**: every chunk also has a coarse ground, at most 8 quads a side over every few of
-  its posts (its first and last kept, so neighbours meet on shared posts), not collided, with no
+- **Far ground**: every chunk also has a coarse ground over every few of its posts, at most 8 m
+  apart (its first and last kept, so neighbours meet on shared posts), not collided, with no
   cut, each post coloured by the chunk's material weights as the ground shader blends them (no
   texture), made once with the root's streamer as one mesh for all chunks (one draw call; a chunk
   is hidden by its texel in a texture of one texel per chunk), and shown exactly while its chunk
@@ -1184,18 +1190,45 @@ instances and their bodies, exactly as above) from its entry in `chunks`, a gene
   1280 by 720, macOS arm64, Godot 4.7.2 Compatibility, one run each under other load: 420
   against 732 fps median).
   Without it the view ended at the load radius inside the camera's far distance: the ground under
-  towns on a hill and a far bank vanished past 96 m (M6 slice 1 review on foot). Generated
-  meshes past the load radius are still not drawn: the load radius is the game's. A coarse ground
-  is the reader's level of detail, not the build's; ours.
-- **Far instances** (M6 slice 2): every chunk's instances also stand past the load radius as boxes
-  of their assets' `bounds`, placed by their rows, four sides and a top, flat, one colour per asset
-  (a primitive's `colour` times the row's tint; a model's mean surface albedo), not collided, made
+  towns on a hill and a far bank vanished past 96 m (M6 slice 1 review on foot). Eight quads a
+  chunk side (M6 slices 1 and 2) was 16 m on atlas's 128 m chunks, where a scarp's rock face
+  shrank into grass: `along_north` streamed at 96 m differed from whole in 2.45% of pixels, 0.92%
+  at 8 m (protocol below, M6 close). A coarse ground is the reader's level of detail, not the
+  build's; ours.
+- **Skirts** (M6 close): each far chunk's edge, straight between its far posts, passes over the
+  posts of a loaded neighbour's fine edge where they dip under it, a slit the sky shows through
+  from the loaded side. Each far edge segment hangs a skirt, both faces, from the segment down to
+  0.1 m below the deepest such dip, in the far ground's mesh and colours. Ours.
+- **Far water** (M6 close): with the `water` option, each far quad whose posts sampled 5 by 5
+  (its corners among them) hold any wet post (water above the ground, as the near water) has a
+  water quad over it, each corner at the water level of the wet sample nearest it, its alpha the
+  near water's for the mean depth of those samples, in the water's colour; one mesh for all
+  chunks, hidden by the far ground's texture. The far ground hides it where it stands higher, so
+  its edge falls where the far ground crosses it. Without it a far tarn was a dry hollow. Ours.
+- **Far meshes** (M6 close): every generated mesh also has a copy with no body, made once with
+  the streamer and shown exactly while the mesh itself is not loaded, so a deck or a cliff face
+  past the load radius is drawn as whole draws it (its own triangles: atlas 1 mesh, monastery 17).
+  Ours.
+- **Far instances** (M6 slice 2): every chunk's instances also stand past the load radius as their
+  asset's outline in three bands of its height (M6 close): each band the box of the asset's own
+  surface within it (each triangle clipped to the band; a band no surface reaches left out; bands
+  of the same box and colour one box), placed by their rows, four sides and a top, flat (a
+  primitive's `colour` times the row's tint; a model's band the mean albedo of its triangles
+  centred in it, by area), not collided, made
   once as one mesh for all chunks and hidden by the far ground's texture, so shown exactly while
   the chunk is not loaded. Without them the houses of a far hill town were missing from a streamed
   view: city's bookmark views streamed at 96 m against whole differ in at most 2.01% of pixels
   without them and 0.87% with them (`from_east_gate`, `central_head`; a pixel differs when a
   channel differs by more than 24 of 255; `tests/compare_views.py`, which allows 1%; macOS arm64,
-  Godot 4.7.2 Compatibility, one run each). Ours.
+  Godot 4.7.2 Compatibility, one run each). One box of the bounds drew a wood as a wall of
+  blocks from the ground to the crowns; by bands a stem stands under a crown and a crown narrows
+  to its top, and a box is still one box. Atlas at 96 m (M6 close; the sheet with `--option
+  water=tag:water_level`, whole against `--stream 96`, one run each, macOS arm64 M4 Pro, Godot
+  4.7.2 Compatibility, other agents' load 29 to 58): of the 123 views, median 0.05%, 12 above 1%;
+  of atlas's own 13, `join_vale` 2.05% (3.72% before), `along_north` 0.92% (2.47%),
+  `join_city_north` 0.55% (1.49%), `join_wild` 0.29% (1.06%). What is left is woods (a far crown
+  is flat-shaded and lighter than the drawn one) and aerial views wholly past the load radius
+  (`vale.aerial` 7.34%). Ours.
 - Every chunk's content is the same node for node as `make` makes it, and appears once however
   often it is loaded and unloaded (the loader suite's streaming test).
 - **Walks** (M6 slice 2): the sheet's walker loads chunks in **lockstep**: a chunk begun on the
@@ -1205,15 +1238,42 @@ instances and their bodies, exactly as above) from its entry in `chunks`, a gene
   (border `bank_corner`, 40.7 m), and the same bodies entering in another order move a stop
   (Godot's physics resolves a capsule against two bodies in the space's order). A streamed walk
   meets only the chunks near it, entered in the order it reached them, so it has the whole walk's
-  outcome and blocker and stops within one walk frame's pace (1.4 m/s over 1/60 s, 0.023 m) of the
-  whole walk's stop, not bit-equal: border, coast and city farthest 0.019, 0.002 and 0.020 m
-  (`tests/test_stream_walks.gd`). Ours.
+  outcome and blocker, not bit-equal. A walk is first moved where it presses two bodies at once:
+  atlas `example.church_turn` parts from whole by 0.35 mm where it crosses the seam of two chunks'
+  ground bodies (14.5 m in). So small a difference can still move by one the frame on which the
+  walker meets its target's body or its stall is judged: there the streamed walk arrived one frame
+  sooner (walked 56.564 m against 56.587) and stopped 0.0279 m off, a frame's pace along and its
+  slide along the wall across. So a streamed walk stops within two walk frames' pace (1.4 m/s over
+  1/60 s, twice: 0.047 m) of the whole walk's stop and its length is within one and a half frames'
+  pace (0.035 m). Atlas with the `water` option (M6 close, 123 walks, 41 wading, 28 stopped by
+  water): farthest 0.0279 m; border, coast and city 0.019, 0.002 and 0.020 m
+  (`tests/test_stream_walks.gd`, which takes `--water`). Ours.
 - **Reload** (M6 slice 2, 5.2): handed a rebuild of the same world (`Stream.reload`), the streamer
   keeps each loaded chunk whose `digest` is the same in both manifests, the same node, and makes
   again those whose digest changed, so the same chunks are loaded after; a generated mesh is kept
   when its entry and its file's digest in `files` are the same. border `move_abbey`, every chunk
   loaded: 53 of 90 kept, 37 made, 0.36 s; coast `long_deck`: 10 of 12 kept, 3 of 4 meshes kept
   (`tests/test_reload.gd`). `neighbours` is not read: a streamer by radius loads them anyway.
+
+**The minimap** (M6 close; challenge 24). The loader's `addons/via_loader/minimap.gd` draws the
+player map (9.4) from the manifest alone: the first entry of `exports` (by key) whose `output` is
+`player_map`, its `map.json`, `ground.npy`, `labels.json` and each floor's plan. A Control; the
+game gives it the walker's plan point, heading and feet height each frame:
+
+- **Ground**: one pixel a map cell, the north row at the top, each class in a colour: a
+  `ground:<material>` class its material's `colour` (linear, shown as sRGB), water and water courses
+  one blue, ways one sand colour, footprints one dark grey, `none` clear (the colours ours).
+- **Floor**: the plan of the floor the feet are on, the highest whose `z` starts at or below them
+  (9.4; none below the lowest): its surfaces filled, rooms outlined, wall pieces filled, doors as
+  their line, links (stairs) as lines.
+- **Labels**: the floor's labels on a floor (the ground plan's other than rooms too), the ground
+  plan's off one, drawn in their file's order; one whose text would meet one drawn, or leave the
+  map, is left out at that scale.
+- **Corner map**: 240 pixels a side, 16 in from the window's top right corner, 160 m across (the
+  world's larger side when less), the walker at its centre and its heading up, so it turns with
+  the walker. **Whole map** at a toggle (key M, `set_full`): north up, the extent fitted to the
+  window. Sizes ours. `tests/test_minimap.gd` checks both on station's export
+  (`tests/fixture_map`, its manifest cut to `exports` and `materials`).
 
 **The place a bookmark looks at** is resolved by the core (`authority.md` 1.2) and written as
 `toward`'s `at` (9.1). In `ford`, `at_ford` and `on_bank` look at `ford`, `to_door` ("from the lane
@@ -1228,7 +1288,7 @@ them out on one sheet. It is the loader's code run by Godot, not a `via` command
 ```
 godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn -- \
       --before DIR [--after DIR] --out DIR [--pack DIR] [--option NAME=VALUE ...] \
-      [--stream RADIUS] [--frames SECONDS]
+      [--stream RADIUS] [--frames SECONDS] [--page BOOKMARKS]
 ```
 
 - `--option` sets one loader option of the table above, repeatable; a list's items are separated
@@ -1264,6 +1324,19 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   sheet is 1280 pixels wide and `48 + 384 * rows` high: 1584 for `ford`'s four. Without `--after`
   it is one column, 640 wide. A bookmark in one build only has a grey cell (`#808080`) marked
   "absent" in the other.
+- **Pages** (M6 close, ours): the sheet and the walks are laid out in pages of `--page` bookmarks
+  (a whole number above 0, else exit 2; 20 by default): `sheet.png` and `walks.png` hold the first,
+  `sheet_<k>.png` and `walks_<k>.png` the k-th from 2, each with the header band (and `page k of
+  n` when there are more than one) and its own rows. At 20 a walks page is `48 + 768 * 20` = 15,408
+  pixels high, under 16,384, the largest texture side GL 3.3 drivers commonly give: one sheet of
+  atlas's 124 bookmarks (123 at the M6 close) was 47,664 pixels high, its render target failed and no `sheet.png` was
+  written. A world of 20 bookmarks or fewer has one page each, as before.
+- `sheet.json` and `diagnostics.json` are written before the pages are composed, so a run that
+  cannot compose them keeps its walks and frames. A watchdog quits with 3 when no bookmark, walk,
+  tour frame or page has been finished for 300 s; it first puts what was written in `<out>` when
+  `sheet.json` is among it. `sheet.sh` kills Godot after `SHEET_TIMEOUT` seconds (1800 by
+  default; 360 until the M6 close, which cut off a long sheet still progressing under the 300 s
+  watchdog) of the whole run.
 - **Hand edits are marked** in every render (ours). They are read from the change report of the
   after build (of the one build without `--after`) when it has a baseline (11.2), never from world
   text: an instance added with a `pin.<id>` cause is a pin, drawn as a magenta pole 9 m tall with a
@@ -1276,7 +1349,9 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   feature, the review library's text attribute, first to each of that path's points in turn, a
   point taken once within 0.3 m of it or nearer the next point than it is, then to `toward`; it
   arrives only past them all, and its progress and time limit run along that route; an `along`
-  that names no path in `features.json` is `load.bad_target` with `attribute` `along`), one `move_and_slide` per 1/60 s, colliding with
+  that names no path in `features.json` is `load.bad_target` with `attribute` `along`; a brought
+bookmark's `along`, text the core does not scope, names a path of its own import first, `<import>.`
+before it, ours: three of atlas's brought bookmarks had no camera, M6 close), one `move_and_slide` per 1/60 s, colliding with
   the ground body, every generated mesh body and every instance body the loader made. It starts on
   the highest collision straight below the bookmark's eye (the terrain, a kind surface's mesh or an
   instance; nothing, over a cut with no floor above it, and it falls), then follows what it walks
@@ -1306,8 +1381,9 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   (`<side>/walk/<bookmark>_eye.png`), 1280 by 720, and laid out in `<out>/walks.png`: two rows per
   bookmark, `48 + 768 * rows` high, in `sheet.png`'s columns.
 - `<out>/sheet.json` is the protocol beside the images, canonical JSON:
-  `{ "after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "renderer",
-  "size", "stream", "walk", "walks" }`. `stream` is the load radius, or `null`; `frames` is `null`
+  `{ "after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "pages",
+  "renderer", "size", "stream", "walk", "walks" }`. `pages` is `{ "bookmarks", "sheet", "walks" }`:
+  bookmarks a page and the page files in order. `stream` is the load radius, or `null`; `frames` is `null`
   without `--frames`, else `{ "after", "before" }`, each `{ "fps", "frame_ms", "frames", "seconds",
   "speed", "stream", "toured_m", "view_ms" }`: `frame_ms` the time from one drawn frame to the next
   on the main thread (`median`, `p99`, `max`), `fps` 1000 over those (`median`, `low_1pct` from the

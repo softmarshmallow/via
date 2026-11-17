@@ -1234,9 +1234,11 @@ impl Compiler<'_> {
                         doc::NOT_YET,
                         at,
                         format!(
-                            "`{s}` names a place inside an import, which arrives in milestone 4"
+                            "`{s}` names a path's end or a mount inside an import, which a formula does not read yet"
                         ),
-                        "remove it for now",
+                        format!(
+                            "a place a parent path joins is held already (composition.md 6.7); else stand a parent point `on = {{ ref = \"{s}\" }}` and name it"
+                        ),
                     ));
                 } else if parts.len() == 1 && self.env.fields.contains(&s) {
                     return Err(sel_err(

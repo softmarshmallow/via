@@ -1,13 +1,14 @@
 """Checks what the sheet tool wrote (spec/build.md 15.1), Python's standard library only.
 
-    python3 engines/godot/tests/check_sheet.py OUT ROWS [--one] [--before DIR] [--after DIR]
+    python3 engines/godot/tests/check_sheet.py OUT ROWS [--one] [--before DIR] [--after DIR] [--page PER]
 
 Every PNG it names is 1280 by 720 and not one colour; each bookmark's eye and target are given per
 build; with the build directories, each cell's eye and target are its own build's bookmark (its
 `at` raised by `eye_height`, and its `toward`), so the camera of the before cell looks at the before
 build's target and the after cell at the after build's;
 sheet.png is 1280 (640 with --one) by
-48 + 384 * ROWS, walks.png by 48 + 768 * ROWS, each walk's two views 1280 by 720; sheet.json is canonical and has the keys 15.1 lists; diagnostics.json is
+48 + 384 * ROWS, walks.png by 48 + 768 * ROWS (with `pages`, each page by its own rows of PER, and
+the pages' rows are ROWS), each walk's two views 1280 by 720; sheet.json is canonical and has the keys 15.1 lists; diagnostics.json is
 diagnostics.md 7's document. Images are never compared byte for byte: renderers differ.
 Prints one line per check; exit 0 when all pass.
 """
@@ -151,7 +152,7 @@ def main():
     doc = json.loads(text)
     canon = _canon(doc) + "\n"
     check("sheet.json is canonical", text == canon)
-    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "renderer", "size", "stream", "walk", "walks"])
+    check("sheet.json keys", sorted(doc) == ["after", "before", "bookmarks", "camera", "edits", "frames", "godot", "light", "pages", "renderer", "size", "stream", "walk", "walks"])
     check("without --stream and --frames, stream and frames are null", doc["stream"] is None and doc["frames"] is None)
     check("edits lists pins and cleared", isinstance(doc.get("edits"), dict) and sorted(doc["edits"]) == ["against", "cleared", "pins"])
     check("one walk per bookmark, in name order", [w["name"] for w in doc.get("walks", [])] == [b["name"] for b in doc["bookmarks"]])
@@ -192,12 +193,22 @@ def main():
                 continue
             w, h, rows, bpp = png(out / b[side])
             check(f"{b[side]} is 1280 by 720 and not one colour", (w, h) == (1280, 720) and not one_colour(rows, bpp), f"{w}x{h}")
-    w, h, rows, bpp = png(out / "sheet.png")
-    want = (640 if one else 1280, 48 + 384 * n_rows)
-    check(f"sheet.png is {want[0]} by {want[1]}", (w, h) == want, f"{w}x{h}")
-    w, h, rows, bpp = png(out / "walks.png")
-    want = (640 if one else 1280, 48 + 384 * 2 * n_rows)
-    check(f"walks.png is {want[0]} by {want[1]}", (w, h) == want, f"{w}x{h}")
+    per = int(rest[rest.index("--page") + 1]) if "--page" in rest else 20
+    n_pages = max(1, -(-n_rows // per))
+    pages = doc.get("pages") or {}
+    check(f"pages: {n_pages} of {per} bookmarks, sheet.png and walks.png first",
+          pages.get("bookmarks") == per
+          and pages.get("sheet") == ["sheet.png"] + [f"sheet_{k}.png" for k in range(2, n_pages + 1)]
+          and pages.get("walks") == ["walks.png"] + [f"walks_{k}.png" for k in range(2, n_pages + 1)], str(pages))
+    for k in range(n_pages):
+        rows_k = min(per, n_rows - k * per)
+        for what, tall in (("sheet", 384), ("walks", 768)):
+            name = (pages.get(what) or [])[k:k + 1]
+            if not name:
+                continue
+            w, h, rows, bpp = png(out / name[0])
+            want = (640 if one else 1280, 48 + tall * rows_k)
+            check(f"{name[0]} is {want[0]} by {want[1]} ({rows_k} bookmark(s))", (w, h) == want and not one_colour(rows, bpp), f"{w}x{h}")
     diag = json.loads((out / "diagnostics.json").read_text())
     check("diagnostics.json is diagnostics.md 7's document", diag.get("format") == "via-diagnostics-1"
           and set(diag) == {"counts", "diagnostics", "format", "lints", "status"})

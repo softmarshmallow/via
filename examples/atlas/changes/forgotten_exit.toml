@@ -1,8 +1,10 @@
-# An exit forgotten (composition.md 7): the road to the wild's south exit is taken away, and nothing
-# else answers `wild.south_end`. The build fails with `import.exit_unanswered`, whose `data.write`
-# is the line to write: `ends_at = "wild.south_end"`. Its view goes with it.
-[feature.wild_road]
+# An exit forgotten (composition.md 7): the trail to the wild's west exit is taken away, and nothing
+# else answers `wild.west_end`. The build fails with `import.exit_unanswered`, whose `data.write`
+# is the line to write: `ends_at = "wild.west_end"`. Its view goes with it. (Until M6 slice 2 the
+# road to the south exit was taken away; the west trail now ends on that road, so taking the road
+# would leave the trail's end on nothing, `identity.unknown_place`, before any exit is checked.)
+[feature.west_road]
 remove = true
 
-[feature.join_wild]
+[feature.join_wild_west]
 remove = true

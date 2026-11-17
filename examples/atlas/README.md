@@ -8,7 +8,7 @@ joined by the atlas's own roads, a creek and its bridge.
 ```
 world.toml          the frame, the fields, [budget], the thirteen imports and where each stands
 layers/land.toml    rank 1: the river that bends (terrain_river) and the terrain step and lint
-layers/ways.toml    rank 2: the roads that answer the places' exits, the city's river mouth, the creek and its bridge
+layers/ways.toml    rank 2: the roads that answer the places' exits, their approaches, the creek and its bridge
 layers/views.toml   rank 3: a bookmark at every join a road makes, along the roads, over the river
 changes/            move_market, forgotten_exit, move_square (+ market/move_square.toml), over_budget
 measure.py          the measures expect.toml bands (Python 3.11+, standard library)
@@ -64,8 +64,10 @@ build exits 1 with `tree_oak` named, 63%, 260 instances, and the waiver to write
 - `move_market`: the market 40 m east and 30 m north. The outputs follow: of the atlas's features
   only `market_road`, `college_road` and the view `join_market` move, and the ground changes inside
   2530..3054 m east, 410..704 m north. The work does not: every routed road runs again (below).
-- `forgotten_exit`: the road to `wild.south_end` removed: `import.exit_unanswered`, `data.write`
-  `ends_at = "wild.south_end"`, exit 1.
+- `forgotten_exit`: the trail from `wild.west_end` removed: `import.exit_unanswered`, `data.write`
+  `ends_at = "wild.west_end"`, exit 1 (the road to `wild.south_end` until the atlas pass; the west
+  trail now ends on that road, so removing the road would leave the trail's end on nothing). Not
+  re-run in the atlas pass.
 - `move_square`: the market's own square 10 m east, 6 m south, asked of the market by
   `[import.market] changes = ["../atlas/changes/market/move_square.toml"]`. The change file is in
   the market's terms but held here, since the market has none (decided, open to the owner). Of the
@@ -88,36 +90,76 @@ One fresh store, one run each, in order (protocol in expect.toml; other agents b
 A change costs about 60% of a cold build. Taken again in the M6 slice 2 fix pass (same protocol,
 load 9 to 15): cold 245.3 s, move_market 161.8, forgotten_exit 105.1, move_square 148.3,
 over_budget 165.6: a change 43 to 68% of cold. The two runs differ by up to 57% under other
-agents' load, so a time here says where to look, not a speed.
+agents' load, so a time here says where to look, not a speed. At the M6 close (on-foot review,
+release, `--threads 14`, one fresh store, load 7 to 84): cold 198.7 s, unchanged into the same
+directory 1.0 s (the 33.7 above was into a new one, before imports entered the key by their text),
+move_market 115.9, move_square 168.3, forgotten_exit 108.9, over_budget 175.5.
 
 ## What does not hold
 
-- **Water at the joins.** 39,434 posts (about 16 ha) inside the 24 m blend rings stand wet: where a
-  place's lifted ground lies below the plain, the plain's water is mixed in by `1 - w` while the
-  ground fades to the place's (composition.md 6.2's derived rule offsets the place's water, not the
-  parent's). Visible at `join_city_north`.
-- **The college's lake.** The college declares no water field; the plain's water stands under it,
-  and the terrain step's standing water (a row above every row it read) floods its low corner up
-  to 7.2 m. A row of the atlas cannot reach under a step's row.
-- **Routes re-run on any ground change.** `route` reads the whole surface, so moving one place
-  re-runs all eight routed roads (`shapes_ran`), and 2243 of 11,500 field chunk nodes: 103 s
-  against 166 s cold.
-- **An unchanged build into a new directory** ran 0 nodes and took 33.7 s: preparing the thirteen
-  imports for the build key (TODO "an unchanged rebuild ... preparing the imports").
+- **Water at the joins** (composition.md 6.2, the parent's water re-laid; `joins`, M6 close). The
+  plain's water is now mixed in by its depth over the plain's own ground, not its level over the
+  place's lower ground: posts of the blend rings standing more than 0.05 m wet fell from 38,777 to
+  3,156 of 112,975 (measure.py `ring_wet`; the rest are the city's river and harbour and coast's sea,
+  which cross their rings), bookmarks in water from 15 to 6 (`monastery.bm_arrive` dry). The six
+  left were the city's three `on_*_bridge` and townland's `on_bridge`, which stand on decks since an
+  import's kind surfaces are brought (composition.md 6.1) and are dry since measure.py reads a
+  bookmark's own `z` (M6 close), and `quay.wall_face` 3.6 m and `monastery.bm_gorge` 0.34 m, which
+  are left.
+- **The college's lake** is gone: an import that declares no water field is dry under ours
+  (composition.md 6.2, "An import without the derived field"); `college.arrival`'s approach held
+  6.53 m of water in its first 30 m and holds none. The fix is the import rule's, not a row here: a
+  row of the atlas cannot reach under the terrain step's row.
+- **Exits on a cliff.** Each place a road joins now holds the place's ground (composition.md 6.7,
+  "Held"), so no place's own way is under water at its join (`exit_in_depth_max` 8.76 -> 0) and
+  `import.place_blended` is gone (5 -> 0). But the vale's valley road starts 37 m below the plain:
+  held, that step moved to the plain's side of the edge, where the hill trail falls 12.06 in its
+  last 30 m (`exit_out_grade_max`, 0.004 before) and cuts a trench below the plain's water level
+  (11.95 m deep at most), and the vale's road still climbs at 1.79 (`exit_in_grade_max`, 2.27
+  before) where the hold fades. The atlas must meet the vale at its mouth: a lower plain there, a
+  lift taken at the exit rather than the outline's median, or a graded ramp the plain owns.
+- **Change builds.** The time is in placement and whole builds, not routes (`perf`, M6 close):
+  move_market 115.9 s, 58% of a cold 198.7 s (on-foot review, release, load 18). An unchanged
+  build into the same directory takes 1.0 s since an import enters the build key by its text
+  (graph.md 6.2; 33.7 s before); into a new directory with the map export trusted, 89.8 s, of which
+  about 54 s is in no node (TODO From M6 close).
 - **Roads inside a place.** The plain's roads are earth outside every place (`road_painted` 1.0,
   from layers/steps/track.py since M6 slice 2; before, a row of world.toml could not see the ways
   layer's roads and none was painted). Inside a place's outline its own ground is brought over the
   plain's rows, so the last stretch to its gate is the place's paint (`road_painted_in` 0.10).
   The step exists only because a layer may not write a row on a field world.toml declares (TODO).
-- **Seams, and roads over them.** One `import.seam` per place (13), worst grade 4.1. The steepest
-  4 m step of each road lies where it crosses a place's edge: `hill_trail` 15.2 at relief's
-  north-east corner (2543, 1229), `west_road` 5.95 and `wild_road` 4.31 at the wild's edges,
-  `college_road` 3.17 at the college's arrival. The roads are `shaped`: they neither hold the
-  ground across the edge nor are met by it (composition.md 6.6, 6.7).
-- **Trees on the road.** The west trail runs through the wild's wood; the wild's trees are its
-  own, placed before any parent way, and one stands on the trail (`join_wild_west`).
-- **The sheet.** 124 bookmarks (13 here, the rest the places') compose to an image 47,664 px tall:
-  the GL target fails and the sheet tool writes no `sheet.png` (shots are in `before/`).
-- **The river that bends** runs from its spring to the city's north edge, then on under the city:
-  the model's water reaches the sea at 1472 m east, through the city's ground (its course `ends`
-  `sea`); the city's own river is what a walker sees.
+- **Seams, and roads over them.** One `import.seam` per place (13), worst grade 4.1. Measured
+  every 4 m of a way's length (measure.py `along`; the 15.2, 5.95, 4.31 and 3.17 of M6 slice 2 were
+  a post's rise over a fraction of a metre of path), the steepest step within 30 m of where a road
+  meets a place (`road_join`) is 0.633: `west_road` at the wild's west exit (the wild's ground at
+  the exit 47.1 m, the plain in its kept corner 39.3), `college_road` 0.558 at the college's
+  arrival, `wild_road` 0.298 at the city's gate; the other ten 0.004 to 0.139. Target 0.25 (ours).
+  With the joins' hold (M6 close, combined tree): `hill_trail@vale` 8.026 into the vale's trench,
+  `west_road@wild` 2.102, `college_road@college` 0.600 (0.911 without its pad, whose `max_cut` is
+  6.5 since the hold made it cut 6.09 m), the rest 0.010 to 0.298.
+  The hill trail no longer crosses relief's ridges (2.03 there): its route costs 40 a metre inside
+  relief and the vale, so it leaves relief's west gate outward and goes round. The pads at the
+  college's arrival and relief's gate (layers/ways.toml, "the approaches") ramp the plain at 1:10
+  to the level they read, but they are `shaped`: they read the ground before the college's
+  anchored arrival, so they level toward the plain's 6.6 m, not its 3.9 (0.637 -> 0.558). A ramp
+  that meets an anchored place must come after that place's anchored ground: open. Without the
+  joins' hold (composition.md 6.7); with it the vale's exit is 37 m below the plain (above).
+- **Trees on the road.** Gone with the route: the wild's footprint leaves out the corner it keeps
+  for a neighbour (`footprint` in world.toml), so the corner is the plain's, and both roads reach
+  the wild's exits from it (`west_road` from `west_end` to a point on `wild_road`, which comes
+  round the wild's east side), never through its wood: no tree, wood or brush instance within its
+  half width and a metre of any atlas way (a scratch check over `instances/`). The map's way in
+  from the west edge (`west_edge`) is gone with it. A parent's way still does not clear an import's
+  scatter (TODO).
+- **The sheet.** 123 bookmarks (13 here, the rest the places') compose in 7 pages of 20 since the
+  M6 close (build.md 15.1); 84 walks arrive, 33 are blocked and 6 fall (on-foot review, streamed at
+  96 m with water; equal to whole). The worst: the vale's trench, the wild's west scarp,
+  coast.along_cliff through the brought cut (TODO From M6 close).
+- **The river that bends** runs from its spring to the city's north edge and on along the city's
+  river's line to the sea (layers/land.toml): its course carves the mouth south of the city (the
+  beck `city_mouth` did, on the same line, until the atlas pass) and ends in the sea at (1008, 224),
+  where the eroded groove falls below the sea's level; under the city the course is `derived` and
+  the city's river is what a walker sees. The map draws the course (`terrain_course`), not the
+  stated line, which lay up to 23 m from the wet channel. The terrain lint says
+  `river_wanders` (72 m at (948, 96)): retraced over the finished ground, the water strays on the
+  beach before the sea.

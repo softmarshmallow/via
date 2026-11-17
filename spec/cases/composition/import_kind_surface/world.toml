@@ -1,0 +1,22 @@
+name       = "import_kind_surface"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+# composition.md 6.1: `a`'s deck and cave come with their features, moved, turned and lifted.
+[import.a]
+file      = "a/world.toml"
+at        = [20, 8]
+face      = 90
+lift      = 2
+max_grade = 10
+
+# Standing on a brought surface by its scoped name (composition.md 6.1).
+[feature.view]
+at      = [24, 3]
+surface = "a.span.top"

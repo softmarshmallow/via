@@ -139,6 +139,10 @@ pub struct CliPlan<'a> {
     pub model: &'a ModelPlan<'a>,
     pub ctx: Ctx<'a>,
     defs: BTreeMap<NodeId, Def>,
+    /// Each `for_each` step's join, its items listed when it is first defined (5.3).
+    each: BTreeMap<NodeId, Each>,
+    /// The item nodes of each join defined so far.
+    items: Mutex<BTreeMap<NodeId, Def>>,
     data: Vec<String>,
     written: Mutex<Option<Arc<Result<out::Written, Diag>>>>,
     last: Mutex<BTreeMap<String, Vec<u8>>>,
@@ -157,6 +161,15 @@ pub struct CliPlan<'a> {
     build: std::sync::OnceLock<Arc<via_model::Build>>,
     /// The digest of everything the model's build is made from ([`CliPlan::leaves_digest`]).
     leaves: std::sync::OnceLock<Digest>,
+}
+
+/// A `for_each` generate step (`graph.md` 5.3): what each item node is made from, and the join's
+/// statements, selector and rank.
+struct Each {
+    item: Def,
+    statements: Vec<(String, Digest)>,
+    kind: String,
+    rank: Option<i64>,
 }
 
 fn write_id(path: &str) -> NodeId {
@@ -269,11 +282,7 @@ impl<'a> CliPlan<'a> {
                 checks: (!l.decl.checks.is_empty()).then(|| l.decl.checks.clone()),
             })
             .collect();
-        let build = ctx
-            .lints
-            .iter()
-            .any(|l| l.decl.for_each.is_some())
-            .then(|| model.build());
+        let mut each: BTreeMap<NodeId, Each> = BTreeMap::new();
         for l in &ctx.lints {
             let s = &l.decl;
             let lint = s.when == "lint";
@@ -416,34 +425,18 @@ impl<'a> CliPlan<'a> {
             let kind = s.for_each_kind().filter(|_| s.when == "generate");
             match kind {
                 Some(k) if def.found.is_empty() => {
-                    // One node per item, and the join that reads them in item order (5.3).
-                    let rank = ctx.world.layer_rank(&s.layer);
-                    let list = build
-                        .as_ref()
-                        .map(|b| crate::stepview::items(ctx.world, b, rank, k))
-                        .unwrap_or_default();
-                    let mut join_edges = Vec::new();
-                    for item in &list {
-                        let id = NodeId::of("step", &s.id).item(item);
-                        let mut d = def.clone();
-                        d.params.push(("item".into(), item.clone()));
-                        if let Some(sd) = model.statements().get(&format!("feature.{item}")) {
-                            d.statements.push((format!("feature.{item}"), *sd));
-                        }
-                        join_edges.push((format!("item {item}"), id.clone()));
-                        defs.insert(id, d);
-                    }
-                    defs.insert(
+                    // One node per item, and the join that reads them in item order (5.3). The
+                    // items are listed when the join is first defined ([`CliPlan::define`]): the
+                    // list reads the whole build, which a rank whose run never reaches this step
+                    // need not make (M6 close: atlas made the city's whole build for its streets
+                    // rank only to list the houses steps' blocks).
+                    each.insert(
                         NodeId::of("step", &s.id),
-                        Def {
-                            subject: Some(via_diag::Subject::entity("step", s.id.clone())),
+                        Each {
+                            item: def,
                             statements,
-                            params: vec![
-                                ("join".into(), "true".into()),
-                                ("for_each".into(), k.to_string()),
-                            ],
-                            edges: join_edges,
-                            ..Def::default()
+                            kind: k.to_string(),
+                            rank: ctx.world.layer_rank(&s.layer),
                         },
                     );
                 }
@@ -456,6 +449,8 @@ impl<'a> CliPlan<'a> {
             model,
             ctx,
             defs,
+            each,
+            items: Mutex::new(BTreeMap::new()),
             data,
             checked,
             pool: crate::stepwork::Pool::default(),
@@ -489,6 +484,7 @@ impl<'a> CliPlan<'a> {
     pub fn roots(&self) -> Vec<NodeId> {
         let mut r = self.model.ids();
         r.extend(self.defs.keys().cloned());
+        r.extend(self.each.keys().cloned());
         for l in [DIAGNOSTICS, CHANGES, MANIFEST] {
             r.push(NodeId::parse(l).expect("an id"));
         }
@@ -1285,6 +1281,38 @@ impl<'a> CliPlan<'a> {
             );
         }
         Ok((files, exports))
+    }
+
+    /// A `for_each` step's join (`graph.md` 5.3): its items listed from the build, each item's
+    /// node kept for [`Plan::define`], and the join that reads them in item order.
+    fn join_def(&self, id: &NodeId, e: &Each) -> Def {
+        let (sid, _) = split_step(id);
+        let list = crate::stepview::items(self.ctx.world, &self.the_build(), e.rank, &e.kind);
+        let mut join_edges = Vec::new();
+        let mut items = self
+            .items
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for item in &list {
+            let iid = NodeId::of("step", &sid).item(item);
+            let mut d = e.item.clone();
+            d.params.push(("item".into(), item.clone()));
+            if let Some(sd) = self.model.statements().get(&format!("feature.{item}")) {
+                d.statements.push((format!("feature.{item}"), *sd));
+            }
+            join_edges.push((format!("item {item}"), iid.clone()));
+            items.insert(iid, d);
+        }
+        Def {
+            subject: Some(via_diag::Subject::entity("step", sid.clone())),
+            statements: e.statements.clone(),
+            params: vec![
+                ("join".into(), "true".into()),
+                ("for_each".into(), e.kind.clone()),
+            ],
+            edges: join_edges,
+            ..Def::default()
+        }
     }
 
     /// The model's build, made once.
@@ -2207,6 +2235,18 @@ impl Plan for CliPlan<'_> {
                 return Defined::Def(self.step_def(id, d));
             }
             return Defined::Def(d.clone());
+        }
+        if let Some(e) = self.each.get(id) {
+            return Defined::Def(self.join_def(id, e));
+        }
+        let item = self
+            .items
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(id)
+            .cloned();
+        if let Some(d) = item {
+            return Defined::Def(self.step_def(id, &d));
         }
         self.define_last(id, known)
     }

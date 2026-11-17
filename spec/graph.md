@@ -491,6 +491,16 @@ source path (`documents.md` 2.1). No absolute path enters the key. A folder inpu
 changes the key. Which files are read is decided by the text of the files read before them, so
 equal digests for every recorded read mean the same reads.
 
+**An import enters by its text**, as `import <file as written>` with its import key: the digest of
+its `seed` and `changes`, each of its sources by name and text digest (its change files among
+them), its own leaves (pack, the files the pack binds, field files), its lookups, each of its
+generate steps' id, trust digest, whether this machine trusts it, its declared inputs and, when
+untrusted, its committed result, and each of its own imports' keys in turn. These are what its
+build is a function of, as the parent's own are, so the key builds no import: an unchanged world
+reads each import's files and runs nothing. Ours (M6 close): the key held each import's built
+digest, so atlas's unchanged build spent 36 s building its thirteen imports to learn its key. What
+a parent gives a fill is no part of it: that is a function of the parent's text, already in the key.
+
 **The build record**, kept in the store under the build key, holds: the four versions (3.3); every
 node's id, key and value digest; the build's world diagnostics as emitted; the digest of each file
 of `files` (`build.md` 4); and whether every step completed. The manifest and the reports also
@@ -816,6 +826,7 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
 | epoch guard | M1 | the examples' recorded `files` maps | build each | equal, or the epoch was raised |
 | failed step | M1 | a plain lint that exits 1 | build twice | `protocol.failed` both times; its readers `skipped`; it ran twice |
 | null, new directory | M6 | `ford` | build into `build/one`, then into `build/two`, one `--store` | second: nothing `ran`, the run report's `null` true; same files, `id`, diagnostics and output as the first |
+| import_key_text | M6 | p imports m, m imports n (a hut at (11, 1)) | build twice into one directory; edit n's world file (the hut 1 m east); build | second: nothing `ran`; third: not null, `m.n.hut` at (12, 1), as a fresh build gives (6.2, "An import enters by its text": a nested import's file reaches the key) |
 | two depths | M1 | `ford` | build into two `--out` folders at different depths with one `--store`, then the first again | each manifest's `pack_root` resolves from its own directory (`pack_root_resolves`); the third build: nothing `ran`, no run diagnostic |
 | program later | M1 | `ford` with no program configured | build; configure the program; build | first: `protocol.no_program`; second: `step:checks` `ran` (a step that did not start is not stored, 3.4) |
 | busy | M1 | the runner holds `<directory>.lock` | build | `graph.busy`, exit 1 |
@@ -872,3 +883,14 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
   is a whole-extent `build.field`, every `kind:main_street`, every lot), and a step that runs needs
   the build anyway. Node-answered reads pay only once those reads are narrowed to what a district
   uses and the houses steps are split per item (5.3).
+- **A route keyed by the corridor it searched.** A `route`'s shape reads its cost's fields over
+  the whole extent (section 2), so any ground change re-runs every routed road. A trace of the
+  chunks whose cells the search relaxed would key it narrower (a search that relaxes the same
+  cells at the same costs runs the same). Not done, since it buys no time yet: every plan's
+  placement pass computes every route and `where` region over the whole extent before any node
+  runs, and a re-run shape node only encodes that result. Ours (M6 close; atlas `move_market`,
+  release, one run, load 45): 10 shape nodes ran, 7 to their old values; 2215 of 2266 field
+  chunks and 431 of 508 `distance:kind:road` windows ran to their old values, at 68 ms and 73 s
+  of node time; of the 200 s sampled (1 ms) on the main thread, 90 s went to two plans'
+  placement passes (two per plan where a fill is given) and 39 s to building the imports. Decided when placement is kept per
+  shape across plans and runs (the open item above on reads applies to it too).

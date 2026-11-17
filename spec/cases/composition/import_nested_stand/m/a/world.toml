@@ -1,0 +1,28 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+include    = ["hold"]
+pack       = "../pack.toml"
+
+[field.height]
+role = "surface"
+base = 0
+
+# A deck over the low ground, and a hollow whose floor lies under the ground and cuts it.
+[feature.span]
+kind = "deck"
+path = [[1, 4], [7, 4]]
+
+[feature.cave]
+kind   = "hollow"
+region = [[1, 1], [3, 1], [3, 3], [1, 3]]
+
+# A point on the deck, as a bookmark on a bridge: it stands on `span.top` (surfaces.md 4.1).
+[feature.mid]
+on = { ref = "span", t = 0.5 }
+
+# A lamp on the deck (surfaces.md 4.1): it stands on `span.top`, here and brought.
+[instance.lamp]
+asset   = "light"
+at      = [4, 4.5]
+surface = "span.top"

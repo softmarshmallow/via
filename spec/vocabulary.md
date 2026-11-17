@@ -115,7 +115,7 @@ point of a field's grid, 4), a **window** (a rectangle of posts a field is evalu
   other string; an unmarked string there is `formula.unmarked`. A parser knows a formula by its key;
   in a feature attribute, which has no Takes, the mark decides (`formulas.md` 1, `documents.md` 7.1).
   Inside a formula, `t` is the fraction along a path and `d`, `sd` the distance and signed distance
-  from a feature. Formulas read fields and `let` names by name, never by role. The function list has
+  from a feature; `sd` is positive left of a path's travel and inside a region (`numbers.md` 5.5). Formulas read fields and `let` names by name, never by role. The function list has
   no `where` (it is a feature key). A function may read around a point only with a declared halo and
   cap (R28, `formulas.md` 8.6); an open-ended neighbourhood or an algorithm is a step.
 

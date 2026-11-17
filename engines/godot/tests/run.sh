@@ -2,12 +2,13 @@
 # The Godot loader suite: engines/godot/tests/run.sh
 # Runs on macOS with a display (Godot's --headless draws nothing and keeps no MultiMesh data).
 # GODOT names the binary; the default is the pinned release's macOS install. Writes only under
-# engines/godot/tests/out/. Exit 0 when every part passes.
+# engines/godot/tests/out/, or under GODOT_TESTS_OUT when set (two runs at once each need their
+# own: the suite removes its folder first). Exit 0 when every part passes.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/.." && pwd)
 GODOT=${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}
-OUT="$HERE/out"
+OUT="${GODOT_TESTS_OUT:-$HERE/out}"
 fail=0
 step() { echo "== $1"; }
 godot() { "$GODOT" --path "$ROOT" --rendering-method gl_compatibility --audio-driver Dummy "$@" 2>&1 \
@@ -34,10 +35,10 @@ r=$(godot --script res://tests/test_exposure.gd); printf '%s\n' "$r" | grep -v "
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
 step "sheet: before and after"
-rm -rf "$OUT"
+rm -rf "$OUT" && mkdir -p "$OUT"
 "$ROOT/sheet.sh" --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" --out "$OUT/pair" \
-  --option water=tag:water_level --option paths=kind:lane >/dev/null 2>&1
-s=$?; [ $s -eq 0 ] || { echo "FAIL sheet exit $s"; fail=1; }
+  --option water=tag:water_level --option paths=kind:lane >/dev/null 2>"$OUT/pair.err"
+s=$?; [ $s -eq 0 ] || { echo "FAIL sheet exit $s"; tail -20 "$OUT/pair.err"; fail=1; }
 quiet python3 "$HERE/check_sheet.py" "$OUT/pair" 5 --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" || fail=1
 python3 - "$OUT/pair/diagnostics.json" <<'EOF' || fail=1
 import json, sys
@@ -61,6 +62,11 @@ print(("ok   " if ok else "FAIL ") + "sheet.json: at_ford's eye and target moved
 sys.exit(0 if ok else 1)
 EOF
 
+step "sheet: pages of two bookmarks (5 bookmarks, 3 pages)"
+"$ROOT/sheet.sh" --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" --out "$OUT/paged" \
+  --option water=tag:water_level --option paths=kind:lane --page 2 >/dev/null 2>&1 || { echo "FAIL sheet exit"; fail=1; }
+quiet python3 "$HERE/check_sheet.py" "$OUT/paged" 5 --page 2 --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" || fail=1
+
 step "sheet: one build, rewritten in place"
 "$ROOT/sheet.sh" --before "$HERE/fixture_build" --out "$OUT/one" >/dev/null 2>&1 || { echo "FAIL sheet exit"; fail=1; }
 "$ROOT/sheet.sh" --before "$HERE/fixture_build" --out "$OUT/one" >/dev/null 2>&1 || { echo "FAIL second run over its own folder"; fail=1; }
@@ -74,6 +80,7 @@ for args in "--before $HERE/fixture_build --out $OUT/foreign" \
             "--before $HERE/fixture_build --out $OUT/bad --option diagnostics=x" \
             "--before $HERE/fixture_build --out $OUT/bad --stream 0" \
             "--before $HERE/fixture_build --out $OUT/bad --frames x" \
+            "--before $HERE/fixture_build --out $OUT/bad --page 0" \
             "--out $OUT/bad"; do
   # shellcheck disable=SC2086
   "$ROOT/sheet.sh" $args >/dev/null 2>&1
@@ -86,6 +93,10 @@ python3 "$HERE/make_floor_fixture.py" "$OUT/floor_build" || fail=1
 r=$(godot --headless --script res://tests/test_floor.gd -- --build "$OUT/floor_build"); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
+step "far layer: posts 8 m apart, skirts, far water, instances by bands, far meshes (headless)"
+r=$(godot --headless --script res://tests/test_far.gd -- --build "$HERE/fixture_build" --water tag:water_level --meshes "$OUT/floor_build"); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
 step "streaming: content once, a long walk loading and unloading chunks, load-unload-load (headless)"
 # fixture_build is 96 m by 80 m in four 64 m chunks: a 5 m load radius (unloading past 69 m) makes
 # the walk unload some, and is past the 4 m guard, so a walk loading one chunk a frame never stalls
@@ -94,12 +105,16 @@ r=$(godot --headless --fixed-fps 60 --script res://tests/test_stream.gd -- --bui
 r=$(godot --headless --fixed-fps 60 --script res://tests/test_stream.gd -- --build "$HERE/fixture_build" --radius 5 --frames); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
-step "streamed walks against whole walks: reproducible, same outcome and blocker, stop within a frame's pace (headless)"
-r=$(godot --headless --script res://tests/test_stream_walks.gd -- --build "$HERE/fixture_build" --radius 5); printf '%s\n' "$r" | grep -v "^ok"
+step "streamed walks against whole walks, wading: reproducible, same outcome and blocker, stop within two frames' pace (headless)"
+r=$(godot --headless --script res://tests/test_stream_walks.gd -- --build "$HERE/fixture_build" --radius 5 --water tag:water_level); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
 step "reload after a rebuild: kept and made again by chunk digest (headless; the fixtures hold no digest, so every chunk is made again)"
 r=$(godot --headless --script res://tests/test_reload.gd -- --before "$HERE/fixture_build" --after "$HERE/fixture_build+downstream" --radius 5); printf '%s\n' "$r" | grep -v "^ok"
+[ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
+
+step "minimap: station's player map read, turned with the walker, per floor (headless; fixture_map is station's export)"
+r=$(godot --headless --script res://tests/test_minimap.gd -- --build "$HERE/fixture_map"); printf '%s\n' "$r" | grep -v "^ok"
 [ "$(printf '%s\n' "$r" | tail -1)" = "PASS: 0 check(s) failed" ] || fail=1
 
 step "sheet: the surface each bookmark stands on"

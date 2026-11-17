@@ -613,7 +613,20 @@ pub fn run(a: &Args) -> Outcome {
         .map(|s| (s.name.clone(), Digest::of(s.text().as_bytes())))
         .collect();
     // The pack and each field's file are read too (`graph.md` 1, `source` and `input`).
-    inputs.extend(via_model::leaves(&world, &model_opts));
+    // Each import by its text (`imports::text_key`), never by its build: the key builds nothing.
+    let (own, imported) = via_model::leaves_own(&world, &model_opts);
+    inputs.extend(own);
+    for imp in &imported {
+        let k = imports::text_key(
+            imp,
+            &model_opts,
+            &a.lib,
+            sdk_digest.as_ref(),
+            &trusted,
+            &mut vec![a.world.clone()],
+        );
+        inputs.push((format!("import {}", imp.file), k));
+    }
     inputs.sort_by(|x, y| x.0.as_bytes().cmp(y.0.as_bytes()));
     inputs.dedup_by(|x, y| x.0 == y.0);
     parts.files = inputs.clone();

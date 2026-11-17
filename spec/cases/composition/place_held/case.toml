@@ -1,0 +1,25 @@
+format    = "via-case-1"
+summary   = "A parent path ends at a.gate on a's west edge under blend = smoothstep(0, 16, d): a's ground is held whole within 12 m of the gate, faded to the blend's by 30 m, and no import.place_blended (composition.md 6.7, Held)."
+milestone = 6
+actions   = ["build"]
+
+# Parent 0, a's 4. Held: 4 at the gate (32, 32) and 12 m inside it (44, 32), where the blend alone
+# gives 0 and 3.375. 32 m from the gate on the edge (32, 0): 0, the blend's.
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.gate]
+path  = "build/w/fields/height.npy"
+post  = [32, 32]
+value = 4
+[action.build.file.inside]
+path  = "build/w/fields/height.npy"
+post  = [44, 32]
+value = 4
+[action.build.file.far]
+path  = "build/w/fields/height.npy"
+post  = [32, 0]
+value = 0

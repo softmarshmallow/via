@@ -12,6 +12,7 @@ base = 0
 file = "a/world.toml"
 at   = [8, 0]
 blend = "= smoothstep(0, 4, d)"
+footprint = [[2, 0], [8, 0], [8, 8], [2, 8]]   # a.quay at (1, 4) lies outside: not held (6.7)
 
 [feature.p]
 kind    = "way"

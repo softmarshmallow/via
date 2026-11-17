@@ -495,14 +495,20 @@ pub(crate) fn scoped_refs(root: &Table, ids: &BTreeSet<String>) -> BTreeSet<Stri
     out
 }
 
-/// The canonical text of a path, `.` and `..` taken out by text.
-fn lexical(p: &Path) -> PathBuf {
+/// The canonical text of a path, `.` and `..` taken out by text: `..` takes back a folder name,
+/// and is kept where there is none to take (a relative world folder: `../q/world.toml` from a
+/// world built in its own folder; M6 close, it was `q/world.toml` and `doc.file_missing`).
+pub(crate) fn lexical(p: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for c in p.components() {
         match c {
-            std::path::Component::ParentDir => {
-                out.pop();
-            }
+            std::path::Component::ParentDir => match out.components().next_back() {
+                Some(std::path::Component::Normal(_)) => {
+                    out.pop();
+                }
+                Some(std::path::Component::RootDir | std::path::Component::Prefix(_)) => {}
+                _ => out.push(".."),
+            },
             std::path::Component::CurDir => {}
             other => out.push(other.as_os_str()),
         }
@@ -2061,6 +2067,90 @@ impl Imported {
         }
     }
 
+    /// The import's kind surfaces under scoped names (6.1): moved and turned with the import,
+    /// their heights plus `lift`. Their meshes and the terrain's cut are made again from them on
+    /// this world's posts.
+    pub(crate) fn brought_surfaces(&self) -> Vec<(String, crate::surfaces::SurfaceOut)> {
+        let lift = self.decl.lift.unwrap_or(0.0);
+        self.alone
+            .build
+            .surfaces
+            .values()
+            .filter_map(|s| s.brought(&self.id, self.frame, lift))
+            .map(|s| (s.place.clone(), s))
+            .collect()
+    }
+
+    /// The brought surface a place inside the import stands on (6.1), by its scoped name: the
+    /// surface the import's own build stood it on, the one surface of a path whose `.start` or
+    /// `.end` it is, or a kind mount's `surface`. `rest` is the place without the import's id.
+    pub(crate) fn surface_of_place(&self, rest: &str) -> Option<String> {
+        let a = &self.alone;
+        let own = a.build.place_surface.get(rest).cloned().or_else(|| {
+            let path = rest
+                .strip_suffix(".start")
+                .or_else(|| rest.strip_suffix(".end"));
+            match path.map(|f| crate::surfaces::own_surface(&a.decls, &a.build.surfaces, f)) {
+                Some(Ok(Some(s))) => Some(s.place.clone()),
+                _ => crate::surfaces::kind_mount(&a.decls, rest)
+                    .and_then(|(o, m)| m.surface.as_ref().map(|sn| format!("{o}.{sn}"))),
+            }
+        })?;
+        a.build
+            .surfaces
+            .contains_key(&own)
+            .then(|| format!("{}.{own}", self.id))
+    }
+
+    /// The import's meetings (`surfaces.md` 3.3), taken through the frame (6.1): each side a
+    /// scoped name (the import's terrain keeps its field's name: here it is this world's), its
+    /// point moved, its faces turned, its heights plus `lift`. What must hold at each was checked
+    /// inside the import.
+    ///
+    /// A side that is the import's terrain keeps its field's name and takes the parent's finished
+    /// surface at the meeting by `z_at` (the ground the parent's walker stands on there), and the
+    /// gap is measured again; the other side is the import's height plus `lift`.
+    pub(crate) fn brought_meetings(
+        &self,
+        z_at: &dyn Fn(P) -> Option<f64>,
+    ) -> Vec<crate::build::Meeting> {
+        let lift = self.decl.lift.unwrap_or(0.0);
+        let fields = &self.alone.build.fields;
+        let name = |n: &str| {
+            if fields.contains_key(n) {
+                n.to_string()
+            } else {
+                format!("{}.{n}", self.id)
+            }
+        };
+        self.alone
+            .build
+            .meetings
+            .iter()
+            .filter_map(|m| {
+                let at = self.to_parent(m.at)?;
+                let mut m2 = m.clone();
+                m2.a = name(&m.a);
+                m2.b = name(&m.b);
+                m2.at = (at.x, at.y);
+                m2.z_a += lift;
+                m2.z_b += lift;
+                let ground = z_at(at);
+                if let Some(z) = ground.filter(|_| fields.contains_key(&m.a)) {
+                    m2.z_a = z;
+                }
+                if let Some(z) = ground.filter(|_| fields.contains_key(&m.b)) {
+                    m2.z_b = z;
+                }
+                let mm = |z: f64| via_num::round_to_lattice(z * 1000.0).unwrap_or(0);
+                m2.gap = (mm(m2.z_a) - mm(m2.z_b)).abs();
+                m2.face_a = m.face_a.map(|f| self.frame.facing_to_world(f));
+                m2.face_b = m.face_b.map(|f| self.frame.facing_to_world(f));
+                Some(m2)
+            })
+            .collect()
+    }
+
     /// The import's instances and features under scoped names, taken through the frame (section
     /// 3): instances whose origin lies inside the footprint and the parent's extent, their heights
     /// found again on the parent's finished surface by `z_at`.
@@ -2085,7 +2175,15 @@ impl Imported {
                 .iter()
                 .filter_map(|q| self.to_parent(*q).map(|p| (p.x, p.y)))
                 .collect();
-            if let Some(z) = z_at(o) {
+            // On a kind surface of the import, it stands on that surface brought (6.1): its
+            // height there plus `lift`. Else on this world's finished surface (R25).
+            let brought = format!("{}.{}", self.id, b.stands.get(name).map_or("", |s| s));
+            if b.stands.contains_key(name) && out.surfaces.contains_key(&brought) {
+                i2.z = i.z + self.decl.lift.unwrap_or(0.0);
+                // Recorded, so a world importing this one finds it on the surface again (6.1,
+                // nested: `m.a.lamp` on `m.a.span.top`).
+                out.stands.insert(format!("{}.{name}", self.id), brought);
+            } else if let Some(z) = z_at(o) {
                 i2.z = z;
             }
             i2.maker = i.maker.as_ref().map(|m| format!("{}.{m}", self.id));
@@ -2517,5 +2615,26 @@ mod tests {
         let b = r(8_000, 0, 18_000, 8_000);
         assert!((overlap_area(&a, &b) - 16.0).abs() < 1e-9);
         assert_eq!(overlap_area(&a, &r(20_000, 0, 30_000, 8_000)), 0.0);
+    }
+
+    /// A `..` with no folder name before it is kept (M6 close: an import `../q/world.toml` of a
+    /// world built in its own folder was looked for at `q/world.toml`).
+    #[test]
+    fn lexical_keeps_a_leading_parent() {
+        use std::path::Path;
+        assert_eq!(
+            lexical(Path::new("../q/r/world.toml")),
+            Path::new("../q/r/world.toml")
+        );
+        assert_eq!(
+            lexical(Path::new("./../../q/world.toml")),
+            Path::new("../../q/world.toml")
+        );
+        assert_eq!(
+            lexical(Path::new("a/../../q/world.toml")),
+            Path::new("../q/world.toml")
+        );
+        assert_eq!(lexical(Path::new("a/b/../c")), Path::new("a/c"));
+        assert_eq!(lexical(Path::new("/../q")), Path::new("/q"));
     }
 }

@@ -16,9 +16,9 @@ kind   = "bookmark"
 on     = { ref = "harbour_road", t = 0.5 }
 toward = "quay.gate"
 
-[feature.on_bridge]                           # on the creek's bridge, looking east
-kind   = "bookmark"
-on     = { ref = "creek_road", t = 0.92 }
+[feature.on_bridge]                           # on the creek's bridge, looking east (on its deck: at
+kind   = "bookmark"                           # `creek_road` t 0.92 it stood on the approach, short of it)
+on     = { ref = "creek_bridge", t = 0.25 }
 toward = "bridge_east"
 
 [feature.join_college]
@@ -48,12 +48,12 @@ toward = "city.north_gate_e"
 
 [feature.join_wild]
 kind   = "bookmark"
-on     = { ref = "wild_road", t = 0.9 }
+on     = { ref = "wild_road", t = 0.985 }
 toward = "wild.south_end"
 
 [feature.join_wild_west]
 kind   = "bookmark"
-on     = { ref = "west_road", t = 0.85 }
+on     = { ref = "west_road", t = 0.25 }       # west_road starts at the exit (M6 slice 2: ended there)
 toward = "wild.west_end"
 
 [feature.join_vale]

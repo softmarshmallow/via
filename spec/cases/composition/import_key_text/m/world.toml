@@ -1,0 +1,12 @@
+name       = "m"
+extent     = [0, 0, 8, 8]
+resolution = 1
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.n]
+file = "n/world.toml"
+at   = [2, 0]

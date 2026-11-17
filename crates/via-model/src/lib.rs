@@ -64,7 +64,7 @@ mod text;
 
 pub use build::{build, Build, FeatureOut, FieldOut, FootprintOut, InstanceOut, Meeting, Options};
 pub use decl::{Budget, Limits, Tier, Waiver};
-pub use graph::{build_graph, dedupe, leaves, memo_ms, FileReads, ModelPlan, PACK};
+pub use graph::{build_graph, dedupe, leaves_own, memo_ms, FileReads, ImportText, ModelPlan, PACK};
 pub use import::{ImportSteps, StepsCall, StepsDone};
 pub use rules::scatter_name;
 

@@ -214,6 +214,11 @@ pub struct SurfaceEval {
     geo: Geo,
     owner: String,
     seed: u64,
+    /// For a surface brought from an import (`composition.md` 6.1): each import's frame, the
+    /// outermost first, that takes a point of the build into the formula's own world, and the
+    /// lifts added on the way out. Empty and 0 for a world's own surface.
+    frames: Vec<via_num::Frame>,
+    lift: f64,
 }
 
 struct OwnerReads<'a> {
@@ -267,14 +272,45 @@ impl SurfaceEval {
             world_seed: self.seed,
             feature: Some(&self.owner),
         };
-        via_expr::evaluate(
+        // A brought surface reads its formula at the point in its own world's frame, rounded to
+        // the lattice through each frame in turn (`composition.md` 6.1), and adds the lifts.
+        let own: Vec<(i64, i64)>;
+        let points = if self.frames.is_empty() {
+            points
+        } else {
+            own = points
+                .iter()
+                .map(|&p| {
+                    self.frames.iter().fold(p, |q, f| {
+                        let (x, y) = crate::import::to_import(f, q);
+                        (x.round_ties_even() as i64, y.round_ties_even() as i64)
+                    })
+                })
+                .collect();
+            &own
+        };
+        let mut v = via_expr::evaluate(
             &self.program,
             &self.binding,
             &OwnerReads { e: self },
             &setup,
             &Domain::Points(points),
         )
-        .map_err(|f| Box::new(f.error))
+        .map_err(|f| Box::new(f.error))?;
+        if self.lift != 0.0 {
+            for z in &mut v {
+                *z += self.lift;
+            }
+        }
+        Ok(v)
+    }
+
+    /// This surface as an import placed by `frame` and lifted by `lift` brings it (6.1).
+    fn placed(&self, frame: via_num::Frame, lift: f64) -> SurfaceEval {
+        let mut e = self.clone();
+        e.frames.insert(0, frame);
+        e.lift += lift;
+        e
     }
 }
 
@@ -352,6 +388,58 @@ impl SurfaceOut {
             _ => None,
         }
     }
+
+    /// This surface of import `id`, placed by `frame` and lifted by `lift` (`composition.md`
+    /// 6.1): its place and owner scoped (`<id>.<place>`), its bound and skirt taken through the
+    /// frame point by point (every piece and hole), its `base` read in its own frame plus the
+    /// lift. `None` when a point of it leaves the lattice.
+    pub(crate) fn brought(&self, id: &str, frame: via_num::Frame, lift: f64) -> Option<SurfaceOut> {
+        let pt = |q: &P| frame.to_world((q.x, q.y)).ok().map(|(x, y)| P::new(x, y));
+        let ring = |r: &[P]| r.iter().map(pt).collect::<Option<Vec<P>>>();
+        let region = |r: &via_geom::Region| -> Option<via_geom::Region> {
+            let mut pieces = Vec::with_capacity(r.pieces.len());
+            for pc in &r.pieces {
+                pieces.push(via_geom::shape::Piece {
+                    shell: ring(&pc.shell)?,
+                    holes: pc.holes.iter().map(|h| ring(h)).collect::<Option<_>>()?,
+                });
+            }
+            Some(via_geom::Region { pieces })
+        };
+        let line = |l: &via_geom::lineref::Line| {
+            Some(via_geom::lineref::Line::new(ring(&l.pts)?, l.closed))
+        };
+        let bound = match &self.bound {
+            Geo::Point { p, facing } => Geo::Point {
+                p: pt(p)?,
+                facing: facing.map(|f| frame.facing_to_world(f)),
+            },
+            Geo::Path { line: l } => Geo::Path { line: line(l)? },
+            Geo::Region { region: r, line: l } => Geo::Region {
+                region: region(r)?,
+                line: match l {
+                    Some(l) => Some(line(l)?),
+                    None => None,
+                },
+            },
+        };
+        let skirt = match &self.skirt {
+            Some(r) => Some(region(r)?),
+            None => None,
+        };
+        Some(SurfaceOut {
+            place: format!("{id}.{}", self.place),
+            owner: format!("{id}.{}", self.owner),
+            name: self.name.clone(),
+            kind: self.kind.clone(),
+            bound,
+            base: Arc::new(self.base.placed(frame, lift)),
+            cut: self.cut,
+            skirt,
+            material: self.material.clone(),
+            said: Arc::new(AtomicBool::new(false)),
+        })
+    }
 }
 
 /// `surface.not_surface` (4.1) on `subject`, whose `surface` names `name`; `None` when the
@@ -404,6 +492,8 @@ fn evaluator(
         geo: geo.clone(),
         owner: owner.to_string(),
         seed: d.seed,
+        frames: Vec::new(),
+        lift: 0.0,
     })
 }
 

@@ -7,7 +7,7 @@
 # recorded there is used (Godot can stall on quit after its work is done).
 HERE=$(cd "$(dirname "$0")" && pwd)
 GODOT=${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}
-LIMIT=${SHEET_TIMEOUT:-360}
+LIMIT=${SHEET_TIMEOUT:-1800}
 want=$(cat "$HERE/GODOT_VERSION")
 have=$("$GODOT" --version 2>/dev/null)
 case "$have" in

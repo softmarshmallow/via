@@ -1,0 +1,137 @@
+format    = "via-case-1"
+summary   = "An import's kind surfaces come with their features (composition.md 6.1): `a`'s deck and hollow, placed at (20, 8), turned 90 and lifted 2, are `a.span.top` at 5 m and `a.cave.floor` at 1 m in the parent: surfaces_at finds the deck, the manifest lists both meshes, the hollow cuts the parent's terrain (4 quads, turned), a lamp and a bookmark of `a` and a parent point with `surface = \"a.span.top\"` stand on the deck; moved 8 m west on one store, the cut, the deck and the bookmark move with it; a parent path ending at `a.span.end` meets the deck, 3 m over the path's ground: surface.gap."
+milestone = 6
+actions   = ["build", "query", "move", "move_view", "moved", "meet", "met"]
+
+# Placed at (20, 8) facing 90: a point q of `a` is (20 + q.y, 8 - q.x) here. The deck's path
+# (1, 4) to (7, 4) runs (24, 7) to (24, 1); the hollow's quads with south-west posts (1, 1) to
+# (2, 2) are the parent's (21, 5) to (22, 6). `a` declares no datum, so `lift` raises its ground
+# and its surfaces alike: the ground 0 + 2, the deck 3 + 2, the floor -1 + 2 (cut 3 over 1 > 2).
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.cave_mesh]
+path    = "build/w/manifest.json"
+pointer = "/meshes/0/feature"
+value   = "a.cave"
+
+[action.build.file.deck_mesh]
+path    = "build/w/manifest.json"
+pointer = "/meshes/1/feature"
+value   = "a.span"
+
+[action.build.file.deck_file]
+path   = "build/w/meshes/a.span.top.glb"
+exists = true
+
+[action.build.file.cut_sw]
+path  = "build/w/fields/height.cut.npy"
+post  = [21, 5]
+value = 1
+
+[action.build.file.cut_ne]
+path  = "build/w/fields/height.cut.npy"
+post  = [22, 6]
+value = 1
+
+[action.build.file.under_deck]
+path  = "build/w/fields/height.cut.npy"
+post  = [23, 5]
+value = 0
+
+[action.build.file.west]
+path  = "build/w/fields/height.cut.npy"
+post  = [20, 5]
+value = 0
+
+[action.build.file.bookmark]
+path    = "build/w/features.json"
+pointer = "/features/1/at"
+value   = [24, 4, 5]
+
+[action.build.file.lamp]
+path = "build/w/instances/z.npy"
+all  = 5
+
+[action.build.file.stands]
+path    = "build/w/features.json"
+pointer = "/features/3/at"
+value   = [24, 3, 5]
+
+[action.query]
+via         = ["query", "world.toml", "surfaces_at", "--lib", "{work}/lib", "--in", "points.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.query.file.surface]
+path    = "out.json"
+pointer = "/surface"
+value   = ["height", "a.span.top", "height"]
+
+[action.query.file.z]
+path    = "out.json"
+pointer = "/z"
+value   = [2, 5, 2]
+
+# Moved 8 m west on the same store, the parent's point with it: (12 + q.y, 8 - q.x).
+[action.move]
+replace = "world.toml"
+find    = "at        = [20, 8]"
+with    = "at        = [12, 8]"
+
+[action.move_view]
+replace = "world.toml"
+find    = "at      = [24, 3]"
+with    = "at      = [16, 3]"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.moved.file.cut_sw]
+path  = "build/w/fields/height.cut.npy"
+post  = [13, 5]
+value = 1
+
+[action.moved.file.cut_ne]
+path  = "build/w/fields/height.cut.npy"
+post  = [14, 6]
+value = 1
+
+[action.moved.file.left]
+path  = "build/w/fields/height.cut.npy"
+post  = [21, 5]
+value = 0
+
+[action.moved.file.bookmark]
+path    = "build/w/features.json"
+pointer = "/features/1/at"
+value   = [16, 4, 5]
+
+[action.moved.file.stands]
+path    = "build/w/features.json"
+pointer = "/features/3/at"
+value   = [16, 3, 5]
+
+# A parent path ending at the deck's end (`a.span.end`, now at (16, 1)) meets the deck there
+# (composition.md 6.1): its own end on the ground at 2 m, the deck at 5 m.
+[action.meet]
+replace = "world.toml"
+find    = "[feature.view]"
+with    = "[feature.road]\npath    = [[4, 1]]\nends_at = \"a.span.end\"\n\n[feature.view]"
+
+[action.met]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.met.diag.gap]
+code = "surface.gap"
+data = { place = "road.end", gap = 3000 }

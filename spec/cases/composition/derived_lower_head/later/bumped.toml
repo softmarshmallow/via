@@ -1,0 +1,34 @@
+name       = "derived_lower"
+extent     = [0, 0, 32, 16]
+resolution = 1
+datum      = "sea"
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = 4
+
+[field.level]                   # derived from the ground: equal to it where nothing else is written
+base = "= f('height')"
+
+[field.level.then.low]          # a level under the parent's own ground: dry here alone
+value = "= max(v, 3)"
+
+[field.level.then.pond]         # 1 m over the parent's own ground west of x = 10
+value = "= max(v, 5)"
+mask  = "= if(x < 10, 1, 0)"
+
+[import.a]
+file  = "a/world.toml"
+at    = [8, 0]
+blend = 0.5
+max_grade = 3                   # the 2 m step at its edge is not what this case is about
+
+[feature.flat]
+kind   = "pad"
+level  = 4
+region = [[11, 3], [13, 3], [13, 5], [11, 5]]
+
+[field.height.then.bump]
+value = "= v + 3"
+mask  = "= if(x >= 11, if(x <= 13, if(y >= 3, if(y <= 5, 1, 0), 0), 0), 0)"

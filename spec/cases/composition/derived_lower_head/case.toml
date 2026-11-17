@@ -1,0 +1,52 @@
+format    = "via-case-1"
+summary   = "derived_lower with a pad, built, then a row raising the parent's ground 3 m under the pad (the build's ground held at 4), then back, on one store (composition.md 6.2, graph.md 6.2): the parent's water is lowered by its own ground's head view, so a change to that view alone reaches the level; each build gives what a fresh one gives."
+milestone = 6
+actions   = ["first", "bump", "bumped", "back", "again"]
+
+# The pad (level 4) holds the build's ground at 4 at (12, 4) with or without the row, so
+# height.npy does not change there; the parent's own ground in its head view is 4, then 7 with the
+# row. Fresh builds (debug, this case's files): level at (12, 4) is 4 without the row and 2.5 with
+# it (lowered by the head view's 7 less the joined 4). A store that keyed the level on the build
+# view alone replayed 4 after the row (probe1 of the M6 close change review: 4.0 warm, 2.5 clean).
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.first.file.level]
+path  = "build/w/fields/level.npy"
+post  = [12, 4]
+value = 4
+
+[action.bump]
+write = "world.toml"
+from  = "later/bumped.toml"
+
+[action.bumped]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.bumped.file.ground]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 4
+[action.bumped.file.level]
+path  = "build/w/fields/level.npy"
+post  = [12, 4]
+value = 2.5
+
+[action.back]
+write = "world.toml"
+from  = "later/back.toml"
+
+[action.again]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+[action.again.file.level]
+path  = "build/w/fields/level.npy"
+post  = [12, 4]
+value = 4

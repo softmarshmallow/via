@@ -508,12 +508,39 @@ fn statement_digests(world: &World, p: &Prepared) -> BTreeMap<String, Digest> {
     out
 }
 
+/// An import as the parent's text declares it, for the build key (`graph.md` 6.2): its id, its
+/// world file as written and as found, and its `seed` and `changes`.
+#[derive(Clone, Debug)]
+pub struct ImportText {
+    pub id: String,
+    pub file: String,
+    pub path: std::path::PathBuf,
+    pub seed: Option<u64>,
+    pub changes: Vec<String>,
+}
+
 /// The files a build reads besides its sources (`graph.md` 1, `source` and `input`): the pack,
-/// as `pack:<file name>`, and each field's `file`, by its path from the world's folder. Their
-/// digests enter the build key (6.2), so a pack or a field file edited in place is never taken
-/// for an unchanged build.
-pub fn leaves(world: &World, options: &Options) -> Vec<(String, Digest)> {
-    let (decls, pack, _) = crate::build::declared(world, options);
+/// as `pack:<file name>`, and each field's `file`, by its path from the world's folder, without
+/// building any import: the world's own leaves, and its imports as declared.
+/// The build key digests an import's text instead (`graph.md` 6.2), so an unchanged build reads
+/// each import's files and builds none of them.
+pub fn leaves_own(world: &World, options: &Options) -> (Vec<(String, Digest)>, Vec<ImportText>) {
+    let (decls, pack, _) = crate::build::declared_own(world, options);
+    let imports = decls
+        .imports
+        .values()
+        .map(|i| {
+            // Lexically, as the import is loaded (`import::lexical`).
+            let path = crate::import::lexical(&options.world_dir.join(&i.file));
+            ImportText {
+                id: i.id.clone(),
+                file: i.file.clone(),
+                path,
+                seed: i.seed,
+                changes: i.changes.clone(),
+            }
+        })
+        .collect();
     let p = Prepared {
         decls,
         pack,
@@ -521,19 +548,11 @@ pub fn leaves(world: &World, options: &Options) -> Vec<(String, Digest)> {
         diags: Vec::new(),
         placing: None,
     };
-    let mut out: Vec<(String, Digest)> = leaves_of(&p, options)
+    let out = leaves_of(&p, options)
         .into_iter()
         .map(|(path, _, d)| (path, d))
         .collect();
-    // Each import's files, by its digest (`composition.md` 12: `file` is a source of the build
-    // key, never of a node's).
-    for imp in p.decls.imported.values() {
-        out.push((
-            format!("import {}", imp.shown),
-            Digest::of(imp.alone.digest.as_bytes()),
-        ));
-    }
-    out
+    (out, imports)
 }
 
 /// Each leaf as (path, node id, digest).
@@ -853,6 +872,12 @@ impl<'w> ModelPlan<'w> {
             FileReads::Meets => {
                 let d = &self.p.decls;
                 let mut pts: Vec<P> = Vec::new();
+                // An import's meetings, brought (`composition.md` 6.1).
+                for (id, imp) in &d.imported {
+                    if !imp.alone.build.meetings.is_empty() {
+                        out.extend(Self::import_reads(id));
+                    }
+                }
                 for id in self.meets_features() {
                     out.push((format!("shape {id}"), view(NodeId::of("shape", &id))));
                     out.push((format!("attr {id}"), NodeId::of("attr", &id)));
@@ -912,6 +937,21 @@ impl<'w> ModelPlan<'w> {
             // a formula, every chunk. With no cutting surface the file is all 0 and reads none.
             FileReads::Cut => {
                 let r = self.grid.map_or(0, |g| g.resolution);
+                // An import's cutting surfaces (`composition.md` 6.1): the import, its placing,
+                // and the terrain everywhere.
+                for (id, imp) in &self.p.decls.imported {
+                    if imp.alone.build.surfaces.values().any(|s| s.cut.is_some()) {
+                        out.extend(Self::import_reads(id));
+                        for f in self.surface_fields() {
+                            for (_, w) in &self.chunks {
+                                out.push((
+                                    format!("terrain {}", win_text(w)),
+                                    chunk_id(&f, BUILD, w),
+                                ));
+                            }
+                        }
+                    }
+                }
                 for id in self.cut_owners() {
                     out.push((format!("shape {id}"), view(NodeId::of("shape", &id))));
                     out.push((format!("attr {id}"), NodeId::of("attr", &id)));
@@ -926,6 +966,20 @@ impl<'w> ModelPlan<'w> {
                         for w in &under {
                             out.push((format!("terrain {}", win_text(w)), chunk_id(&f, BUILD, w)));
                         }
+                    }
+                }
+            }
+            FileReads::Mesh(owner) if self.brought_owner(owner).is_some() => {
+                if let Some((id, imp, own)) = self.brought_owner(owner) {
+                    out.extend(Self::import_reads(id));
+                    let skirted = imp
+                        .alone
+                        .build
+                        .surfaces
+                        .values()
+                        .any(|s| s.owner == own && s.skirt.is_some());
+                    if skirted {
+                        out.extend(self.file_reads(&FileReads::Cut));
                     }
                 }
             }
@@ -1050,7 +1104,7 @@ impl<'w> ModelPlan<'w> {
                     ids.push(format!("kind.{k}"));
                 }
                 let mut out = self.stmts_of(ids.iter().map(String::as_str));
-                let named: BTreeSet<&String> = kind
+                let mut named: BTreeSet<&String> = kind
                     .and_then(|k| d.kinds.get(k))
                     .map(|k| {
                         k.surfaces
@@ -1059,6 +1113,17 @@ impl<'w> ModelPlan<'w> {
                             .collect()
                     })
                     .unwrap_or_default();
+                // A brought surface's material is coloured by this world's pack (6.1).
+                if let Some((_, imp, own)) = self.brought_owner(owner) {
+                    named.extend(
+                        imp.alone
+                            .build
+                            .surfaces
+                            .values()
+                            .filter(|s| s.owner == own)
+                            .filter_map(|s| s.material.as_ref()),
+                    );
+                }
                 if self.skirted(owner) {
                     out.extend(self.file_statements(&FileReads::Cut));
                     out.sort();
@@ -1128,7 +1193,35 @@ impl<'w> ModelPlan<'w> {
                 }
             }
         }
+        // An import's, under scoped names (`composition.md` 6.1).
+        for (id, imp) in &d.imported {
+            for s in imp.alone.build.surfaces.values() {
+                out.push((format!("{id}.{}", s.place), format!("{id}.{}", s.owner)));
+            }
+        }
         out
+    }
+
+    /// The import a brought surface's owner `<import>.<owner>` comes from, and that surface's
+    /// own owner there; `None` for this world's own feature.
+    fn brought_owner<'o>(
+        &self,
+        owner: &'o str,
+    ) -> Option<(&str, &crate::import::Imported, &'o str)> {
+        if self.p.decls.features.contains_key(owner) {
+            return None;
+        }
+        let (h, rest) = owner.split_once('.')?;
+        let (h, imp) = self.p.decls.imported.get_key_value(h)?;
+        Some((h.as_str(), imp, rest))
+    }
+
+    /// What a brought surface reads (6.1): its import, built alone, and where it is placed.
+    fn import_reads(id: &str) -> [(String, NodeId); 2] {
+        [
+            (format!("built {id}"), NodeId::of("import", id)),
+            (format!("import {id}"), NodeId::of("placed", id)),
+        ]
     }
 
     /// The features `meets.json` is made from (`surfaces.md` 3.3): every one with an end at a
@@ -2145,7 +2238,23 @@ impl<'w> ModelPlan<'w> {
             .filter_map(|i| self.p.placed.plans.get(i))
             .flat_map(|pl| self.chunks_under(region_bbox(&pl.footprint, pl.origin)))
             .collect();
-        // Head views: the fields a `where` reads, and those their bases and rows read.
+        // Head views: the fields a `where` reads, and those their bases and rows read; and the
+        // field a brought field is derived from, whose head view lowers the parent's value at a
+        // join (`composition.md` 6.2).
+        for (fname, fd) in &d.fields {
+            if fd.weights {
+                continue;
+            }
+            let Some(from) = crate::resolve::derived_from(d, fname) else {
+                continue;
+            };
+            if d.imported.values().any(|imp| {
+                imp.alone.decls.fields.contains_key(fname)
+                    || crate::resolve::dry_under(d, &imp.alone.decls, fname)
+            }) {
+                head_fields.insert(from);
+            }
+        }
         let mut todo: Vec<String> = head_fields.iter().cloned().collect();
         while let Some(f) = todo.pop() {
             if let Some(info) = self.fields.get(&f) {
@@ -2404,7 +2513,9 @@ impl<'w> ModelPlan<'w> {
         for (fname, fd) in &d.fields {
             let mut set = BTreeSet::new();
             for (id, imp) in &d.imported {
-                if imp.alone.decls.fields.contains_key(fname) {
+                if imp.alone.decls.fields.contains_key(fname)
+                    || crate::resolve::dry_under(d, &imp.alone.decls, fname)
+                {
                     set.insert(id.clone());
                 }
             }
@@ -2434,6 +2545,15 @@ impl<'w> ModelPlan<'w> {
         let join: BTreeMap<String, (String, Digest)> = ids
             .iter()
             .filter_map(|id| self.stmt(&format!("import.{id}")).map(|x| (id.clone(), x)))
+            .collect();
+        let held: BTreeMap<String, (String, Digest)> = ids
+            .iter()
+            .map(|id| {
+                let ps = crate::resolve::held_places(d, id);
+                let text: Vec<String> = ps.iter().map(|p| format!("{},{}", p.x, p.y)).collect();
+                let digest = Digest::of(text.join(";").as_bytes());
+                (id.clone(), (format!("held {id}"), digest))
+            })
             .collect();
         // What each blend reads (6.3): parent fields and `let` names, as a base reads them.
         let blends: BTreeMap<String, FReads> = d
@@ -2469,6 +2589,17 @@ impl<'w> ModelPlan<'w> {
             };
             let fname = rest.split('/').next().unwrap_or(rest);
             if let Some(set) = reads.get(fname) {
+                // The parent's own ground a derived field's value was stated over, in its head
+                // view: a join lowers the value by how far the joined ground lies below it (6.2),
+                // so a change to that view alone must reach this chunk.
+                if let (Some(from), Some(w), Some(BUILD)) = (
+                    crate::resolve::derived_from(d, fname),
+                    window_of(nid),
+                    nid.view_name(),
+                ) {
+                    def.edges
+                        .push((format!("lowered over {from}"), chunk_id(&from, HEAD, &w)));
+                }
                 for id in set {
                     // The blend's reads: each read field's chunks over this chunk's window (grown
                     // by the blend's halo), in this chunk's view; its `let` names as statements.
@@ -2492,6 +2623,10 @@ impl<'w> ModelPlan<'w> {
                     def.edges
                         .push((format!("built {id}"), NodeId::of("import", id)));
                     if let Some(x) = join.get(id) {
+                        def.statements.push(x.clone());
+                    }
+                    // The places a parent path joins, which hold the weight (6.7, "Held").
+                    if let Some(x) = held.get(id) {
                         def.statements.push(x.clone());
                     }
                 }

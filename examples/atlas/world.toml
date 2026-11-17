@@ -73,14 +73,9 @@ base = "= f('height')"
 value = "= max(v, sea)"                       # below `sea` (the college's low corner) is not the sea
 mask  = "= 1 - smoothstep(160, 260, y)"
 
-# The college declares no water field, so under it the plain's water stands (composition.md 6.2: "the
-# parent's own value stands under the import"), over the college's lifted lawns. This row dries the
-# plain's own ground water there; the lake the terrain step settles in the plain's hollow at that
-# spot is a row the step returns above every row it read (lib/terrain), so it still stands: open,
-# README "What does not hold".
-[field.water.then.college_dry]
-value = "= min(v, f('height'))"
-mask  = "= if(inside('college.footprint'), 1, 0)"
+# The college declares no water field: it is dry under ours (composition.md 6.2, "An import without
+# the derived field"), so the lake the terrain step settles in the plain's hollow there does not
+# stand over its lowered lawns (7.2 m deep before, M6 slice 2 review).
 
 [field.clearing]
 role = "keep_out"
@@ -215,6 +210,10 @@ blend = "= smoothstep(0, 24, d)"
 [import.wild]                                 # border's wild, alone: its corner kept for a neighbour stays the plain
 file  = "../border/wild/world.toml"
 at    = [200, 1980]
+# Its footprint leaves out the north-east corner it keeps for a neighbour (its own `meet`, x 250 to
+# 640, y 220 to 560 in its frame): its two trails end 18 m short of that corner, facing it, so the
+# plain's roads answer them from it (layers/ways.toml) and not through its wood, whose trees are its own.
+footprint = [[0, 0], [640, 0], [640, 220], [250, 220], [250, 560], [0, 560]]
 lift  = 9.5
 blend = "= smoothstep(0, 24, d)"
 
@@ -234,7 +233,7 @@ tile    = 32                                       # 64 m tiles: 50 by 40
 reveal  = 8.0
 ways    = { freeway = "freeway", viaduct = "freeway", ramp = "freeway", main_street = "street", street = "street", road = "road", lane = "lane", trail = "trail", footpath = "path", crossing = "bridge", cave = "cave" }
 under   = ["cave"]                                 # coast's cave runs under its headland
-water   = { beck = "stream", terrain_river = "river" }
+water   = { beck = "stream", terrain_course = "river" }   # the river by the course the terrain step found (lib/terrain), not its stated line (up to 23 m off the wet channel)
 regions = { area = "label" }                       # each place, by its footprint (layers/map.toml)
 labels  = { crossing = "", cave = "", beck = "", terrain_river = "", tarn = "", lake = "", pond = "", lair = "", enclosure = "", gate = "" }
 buildings  = ["building"]                          # the pack's houses, barns and sheds: footprints by their bounds

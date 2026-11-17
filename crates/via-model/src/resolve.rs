@@ -639,6 +639,18 @@ impl<'a> Fields<'a> {
         };
         for (id, imp) in &self.d.imported {
             let Some(f) = imp.alone.decls.fields.get(field) else {
+                // Dry under a field derived from one it brings (6.2): its first entry only.
+                if dry_under(self.d, &imp.alone.decls, field) && imp.decl.authority == tier {
+                    let key = (0, imp.decl.rank, id.clone());
+                    let import = id.clone();
+                    out.push((
+                        key,
+                        Entry::Brought {
+                            import,
+                            anchored: false,
+                        },
+                    ));
+                }
                 continue;
             };
             // A given field is the parent's own, handed down (`composition.md` 8).
@@ -833,8 +845,14 @@ impl<'a> Fields<'a> {
         };
         let dom = Domain::Points(&pts);
         let v = self.eval(b, &ctx, &dom, View::Build, None)?;
-        for (k, x) in posts.into_iter().zip(v) {
-            w[k] = x;
+        // The import's ground held round each place a parent path joins (6.7, "Held").
+        let held = held_places(self.d, id);
+        for ((k, x), (px, py)) in posts.into_iter().zip(v).zip(pts) {
+            let near = held
+                .iter()
+                .map(|q| via_num::hypot((px - q.x) as f64, (py - q.y) as f64) / 1000.0)
+                .fold(f64::INFINITY, via_num::min);
+            w[k] = via_num::max(x, 1.0 - smoothstep(HOLD.0, HOLD.1, near));
         }
         Some(w)
     }
@@ -1186,18 +1204,41 @@ impl<'a> Fields<'a> {
                         writers.insert(import.clone());
                         continue;
                     }
-                    let Some(vals) = imp.field_values(field) else {
+                    // An import without a field derived from one it brings is dry under it: its
+                    // offset is 0 (6.2, "An import without the derived field").
+                    let dry = !imp.alone.decls.fields.contains_key(field);
+                    let vals = imp.field_values(field);
+                    if vals.is_none() && !dry {
                         continue;
-                    };
+                    }
                     // Both sides derived from one field the import has: the import's offset from
                     // its own, laid on this world's (6.2).
+                    let from = derived_from(self.d, field);
                     let offset = derived_base.as_ref().and_then(|h| {
-                        let from = derived_from(self.d, field)?;
-                        (derived_from(&imp.alone.decls, field)? == from)
+                        let from = from.clone()?;
+                        (dry || derived_from(&imp.alone.decls, field)? == from)
                             .then(|| imp.field_values(&from))
                             .flatten()
                             .map(|g| (h, g, crate::import::is_length(&imp.alone.decls, &from)))
                     });
+                    if offset.is_none() && dry {
+                        continue;
+                    }
+                    let vals = vals.unwrap_or_default();
+                    // The parent's own ground the parent's value was stated over: its head view of
+                    // the field derived from (6.2). The first entry lowers the parent's value by
+                    // how far the joined ground lies below it; the anchored entry does not.
+                    let own_ground: Option<Rc<Resolved>> = match (&offset, &from, *anchored) {
+                        (Some(_), Some(from), false) => {
+                            let hv = match view {
+                                View::StratumFull(r) => View::Stratum(r),
+                                _ => View::Head,
+                            };
+                            self.get(from, hv)
+                        }
+                        _ => None,
+                    };
+                    let h0 = own_ground.as_ref().and_then(|r| r.scalar.as_ref());
                     let Some(w) = self.import_weight(import) else {
                         failed = true;
                         continue;
@@ -1227,7 +1268,8 @@ impl<'a> Fields<'a> {
                         }
                         let p = via_raster::window::post_mm(&grid, i, j);
                         let v = if let Some((h, g, walls)) = &offset {
-                            let Some((v, g)) = imp.sample_pair(&vals, g, p, *walls) else {
+                            let read = if dry { g } else { &vals };
+                            let Some((v, g)) = imp.sample_pair(read, g, p, *walls) else {
                                 continue;
                             };
                             h[k] + (v - g) - lift
@@ -1253,7 +1295,11 @@ impl<'a> Fields<'a> {
                             cover[k] = via_num::max(cover[k], m);
                             rec.insert(k, (v + lift, m));
                         }
-                        cur[k] = (1.0 - m) * cur[k] + m * (v + lift);
+                        let mut c = cur[k];
+                        if let (Some(h0), Some((h, _, _))) = (h0, &offset) {
+                            c -= via_num::max(0.0, f64::from(h0.values()[k]) - h[k]);
+                        }
+                        cur[k] = (1.0 - m) * c + m * (v + lift);
                     }
                     // The import's anchored ground meets the parent's anchors (`authority.md` 5).
                     if !rec.is_empty() {
@@ -1935,9 +1981,73 @@ fn inside(b: &Geo, a: &Geo) -> bool {
     }
 }
 
+/// The radii, metres, of the hold round a joined place (`composition.md` 6.7, "Held"): whole
+/// within the first, faded to the blend's by the second. Ours, from `hamlet` (M4 slice 4).
+const HOLD: (f64, f64) = (12.0, 30.0);
+
+/// GLSL `smoothstep`, as `formulas.md` states it.
+fn smoothstep(e0: f64, e1: f64, a: f64) -> f64 {
+    let s = via_num::clamp((a - e0) / (e1 - e0), 0.0, 1.0);
+    s * s * (3.0 - 2.0 * s)
+}
+
+/// The places of import `id` a parent path joins (`composition.md` 6.7, "Held"): each named by a
+/// parent feature's `starts_at` or `ends_at`, or a parent feature or instance's `on.ref`, that is
+/// a point; in the parent's frame, millimetres.
+pub fn held_places(d: &Decls, id: &str) -> Vec<P> {
+    let Some(imp) = d.imported.get(id) else {
+        return Vec::new();
+    };
+    let mut names: BTreeSet<&str> = BTreeSet::new();
+    for f in d.features.values() {
+        names.extend(
+            f.starts_at
+                .iter()
+                .chain(f.ends_at.iter())
+                .map(String::as_str),
+        );
+        if let crate::decl::ShapeDecl::Point(crate::decl::Place::On(o)) = &f.shape {
+            names.insert(&o.reference);
+        }
+    }
+    for i in d.instances.values() {
+        if let crate::decl::Place::On(o) = &i.place {
+            names.insert(&o.reference);
+        }
+    }
+    let prefix = format!("{id}.");
+    names
+        .into_iter()
+        .filter_map(|n| n.strip_prefix(&prefix))
+        .filter_map(|rest| match imp.spot(rest) {
+            Some(crate::place::Spot::At { p, .. }) if imp.inside((p.x, p.y)) => Some(p),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Whether an import whose own declarations are `theirs` is dry under the parent's `field`
+/// (`composition.md` 6.2, "An import without the derived field"): it declares no `field`, and
+/// `field` is derived from a field it brings (same role, type and unit, not a given).
+pub fn dry_under(d: &Decls, theirs: &Decls, field: &str) -> bool {
+    if theirs.fields.contains_key(field) || d.fields.get(field).is_none_or(|f| f.weights) {
+        return false;
+    }
+    let Some(from) = derived_from(d, field) else {
+        return false;
+    };
+    let (Some(pf), Some(f)) = (d.fields.get(&from), theirs.fields.get(&from)) else {
+        return false;
+    };
+    !theirs.givens.contains_key(&from)
+        && f.role == pf.role
+        && f.weights == pf.weights
+        && f.unit == pf.unit
+}
+
 /// The field `field`'s base is derived from, when that base is another field read whole
 /// (`base = "= f('<name>')"`, `composition.md` 6.2).
-fn derived_from(d: &Decls, field: &str) -> Option<String> {
+pub(crate) fn derived_from(d: &Decls, field: &str) -> Option<String> {
     let prog = d.formulas.programs.get(&d.fields.get(field)?.base?)?;
     let via_expr::Op::Field(i) = prog.nodes.get(prog.root)?.op else {
         return None;

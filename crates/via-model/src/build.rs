@@ -225,6 +225,9 @@ pub struct Build {
     /// The kind surface a point feature or a named place stands on (`surfaces.md` 4.1, 3.3), by
     /// feature id or place name: its `z` in `features.json` is that surface's.
     pub place_surface: BTreeMap<String, String>,
+    /// The kind surface each placed instance stands on, by instance name (`surfaces.md` 4.1):
+    /// placed in a parent, it stands on that surface brought (`composition.md` 6.1).
+    pub stands: BTreeMap<String, String>,
 }
 
 impl Build {
@@ -337,6 +340,15 @@ pub(crate) fn prepare(world: &World, options: &Options) -> Prepared {
 /// they no longer place the world: city's unchanged rebuild spent 1.6 s of its 17 s placing
 /// it only to list its files (M5 close).
 pub(crate) fn declared(world: &World, options: &Options) -> (Decls, Pack, Vec<Diag>) {
+    let (mut decls, pk, mut diags) = declared_own(world, options);
+    // Imports, built alone and placed (`composition.md` 2, 3).
+    crate::import::bring(&mut decls, &pk, options, &mut diags);
+    (decls, pk, diags)
+}
+
+/// [`declared`] without its imports: the declarations with their files and the pack. The build
+/// key reads no more of an import than its text (`graph.md` 6.2), so it never builds one.
+pub(crate) fn declared_own(world: &World, options: &Options) -> (Decls, Pack, Vec<Diag>) {
     let mut diags: Vec<Diag> = Vec::new();
     let mut decls = Decls::read_given(world, options.given.as_deref());
     if let Some(s) = options.seed {
@@ -434,8 +446,6 @@ pub(crate) fn declared(world: &World, options: &Options) -> (Decls, Pack, Vec<Di
             }
         }
     }
-    // Imports, built alone and placed (`composition.md` 2, 3).
-    crate::import::bring(&mut decls, &pk, options, &mut diags);
     (decls, pk, diags)
 }
 
@@ -880,6 +890,10 @@ pub(crate) fn finish_from(
     let failed_surfaces;
     (out.surfaces, failed_surfaces) =
         crate::surfaces::kind_surfaces(&decls, &placed.shapes, &mut diags);
+    // An import's kind surfaces come with their features (`composition.md` 6.1).
+    for imp in decls.imported.values() {
+        out.surfaces.extend(imp.brought_surfaces());
+    }
     let mut grounded = crate::surfaces::ground_on_surfaces(
         &decls,
         &pk,
@@ -889,6 +903,7 @@ pub(crate) fn finish_from(
         &mut diags,
     );
     crate::surfaces::host_missing(&decls, &all, &mut grounded.gone, &mut diags);
+    out.stands = grounded.stands.clone();
     all.retain(|p| !grounded.gone.contains(&p.name));
     crate::surfaces::through(
         &decls,
@@ -950,6 +965,24 @@ pub(crate) fn finish_from(
     }
     out.meshes = crate::surfaces::meshes(&grid, &out.surfaces, out.cut.as_deref(), &pk, &mut diags);
     out.place_surface = crate::surfaces::place_surfaces(&decls, &placed, &out.surfaces, &mut diags);
+    // What stands on an import's surface stands on it brought (`composition.md` 6.1): its own
+    // places, and a place of it this world names.
+    for imp in decls.imported.values() {
+        for (n, s) in &imp.alone.build.place_surface {
+            let (n, s) = (format!("{}.{n}", imp.id), format!("{}.{s}", imp.id));
+            if out.surfaces.contains_key(&s) {
+                out.place_surface.entry(n).or_insert(s);
+            }
+        }
+    }
+    for (place, _) in placed.names.values() {
+        let brought = place
+            .split_once('.')
+            .and_then(|(h, rest)| decls.imported.get(h)?.surface_of_place(rest));
+        if let Some(s) = brought.filter(|s| out.surfaces.contains_key(s)) {
+            out.place_surface.entry(place.clone()).or_insert(s);
+        }
+    }
     for (id, f) in &decls.features {
         let Some(g) = placed.shapes.get(id) else {
             continue;
@@ -1336,6 +1369,24 @@ pub(crate) fn finish_from(
                         continue;
                     }
                 }
+            } else if let Some(s) = place
+                .split_once('.')
+                .and_then(|(h, rest)| decls.imported.get(h)?.surface_of_place(rest))
+                .and_then(|n| out.surfaces.get(&n))
+            {
+                // A place inside an import that stands on one of its surfaces (`composition.md`
+                // 6.1): that surface's height where the end lies, its base just past the bound
+                // (the place lies on the lattice the import was turned onto).
+                let z = match s.z_in_build((p.x, p.y), &mut diags) {
+                    Err(()) => continue,
+                    Ok(Some(z)) => Some(z),
+                    Ok(None) => s.base.eval(&[(p.x, p.y)]).ok().map(|v| v[0]),
+                };
+                crate::surfaces::Side {
+                    p: Some(p),
+                    z,
+                    ..Default::default()
+                }
             } else if let Some((other, oend)) = place
                 .strip_suffix(".start")
                 .map(|o| (o, "start"))
@@ -1529,6 +1580,11 @@ pub(crate) fn finish_from(
     }
     crate::surfaces::unmet(&decls, &mounts, &meetings, &mut diags);
     out.meetings = meetings;
+    let surface = fields.surface();
+    let z_at = |p: P| surface.and_then(|s| fields.read(s, View::Build, p));
+    for imp in decls.imported.values() {
+        out.meetings.extend(imp.brought_meetings(&z_at));
+    }
     out.meetings
         .sort_by(|x, y| (x.a.as_bytes(), x.b.as_bytes()).cmp(&(y.a.as_bytes(), y.b.as_bytes())));
     unowned_crossings(&decls, &placed, &mut diags);
@@ -1575,7 +1631,9 @@ pub(crate) fn finish_from(
             }
             if t == "field" {
                 for (id, imp) in &decls.imported {
-                    if imp.alone.decls.fields.contains_key(n) {
+                    if imp.alone.decls.fields.contains_key(n)
+                        || crate::resolve::dry_under(decls, &imp.alone.decls, n)
+                    {
                         v.insert(format!("import.{id}"));
                         // Layer rank orders the import's entries against the parent's (R29).
                         v.extend(layers.iter().cloned());

@@ -263,9 +263,15 @@ func make_chunk(n: int) -> Node3D:
 	return _chunk(_manifest.chunks[n], _material_field, _cols, _with_water)
 
 
-func make_far_ground(quads := 8) -> MeshInstance3D:
-	## Every chunk's ground at most `quads` quads a side (every few posts, its first and last posts
-	## kept, so neighbours meet on their shared edge posts), as one mesh, not collided and with no
+## Ours: the far ground's posts lie at most FAR_STEP metres apart. Eight quads a chunk side was
+## 8 m on a 64 m chunk and 16 m on atlas's 128 m chunks, where a scarp's rock face shrank into
+## grass past the load radius (M6 close: along_north 2.45% of pixels off whole at 96 m).
+const FAR_STEP := 8.0
+
+
+func make_far_ground(step_m := FAR_STEP) -> MeshInstance3D:
+	## Every chunk's ground with its posts at most `step_m` metres apart (every few posts, its
+	## first and last posts kept, so neighbours meet on their shared edge posts), as one mesh, not collided and with no
 	## cut, each post coloured by its chunk's material weights there as terrain.gdshader blends
 	## them (no texture): what stream.gd shows of the chunks that are not loaded, so the world does
 	## not end at the load radius (build.md 15.1, Streaming). Each vertex's UV holds its chunk's
@@ -279,12 +285,15 @@ func make_far_ground(quads := 8) -> MeshInstance3D:
 	var tints := PackedColorArray()
 	var uvs := PackedVector2Array()
 	var idx := PackedInt32Array()
+	var wverts := PackedVector3Array()
+	var wcolours := PackedColorArray()
+	var wuvs := PackedVector2Array()
 	var ground := DEFAULT_GROUND.srgb_to_linear()
 	for chunk in _manifest.get("chunks", []):
 		var p: Array = chunk.get("posts", [0, 0, 0, 0])
 		var at: Array = chunk.get("at", [0, 0])
-		var is_ := _far_steps(int(p[0]), int(p[2]), quads)
-		var js := _far_steps(int(p[1]), int(p[3]), quads)
+		var is_ := _far_steps(int(p[0]), int(p[2]), ceili((int(p[2]) - int(p[0])) * _res / step_m))
+		var js := _far_steps(int(p[1]), int(p[3]), ceili((int(p[3]) - int(p[1])) * _res / step_m))
 		# The weights planes, [m][(j - j0) * cols + (i - i0)], and each material's colour.
 		var w: Dictionary = chunk.get("weights", {}).get(_material_field, {}) if _material_field != "" else {}
 		var planes := PackedByteArray()
@@ -317,6 +326,9 @@ func make_far_ground(quads := 8) -> MeshInstance3D:
 				tints.append(c / sum if sum > 0.001 else ground)   # as terrain.gdshader blends them
 		for k in _grid_indices(is_.size(), js.size(), func(_c, _r): return true):
 			idx.append(base + k)
+		_far_skirts(verts, normals, tints, uvs, idx, base, is_, js)
+		if _with_water:
+			_far_water(wverts, wcolours, wuvs, is_, js, uv)
 	var mesh := ArrayMesh.new()
 	if not idx.is_empty():
 		var arrays := []
@@ -331,7 +343,129 @@ func make_far_ground(quads := 8) -> MeshInstance3D:
 	node.name = "far_ground"
 	node.mesh = mesh
 	node.material_override = _far_material(0.95)
+	if not wverts.is_empty():
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = wverts
+		var up := PackedVector3Array()
+		up.resize(wverts.size())
+		up.fill(Vector3.UP)
+		arrays[Mesh.ARRAY_NORMAL] = up
+		arrays[Mesh.ARRAY_COLOR] = wcolours
+		arrays[Mesh.ARRAY_TEX_UV] = wuvs
+		var wmesh := ArrayMesh.new()
+		wmesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var water := MeshInstance3D.new()
+		water.name = "far_water"
+		water.mesh = wmesh
+		water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var shader := Shader.new()
+		shader.code = "shader_type spatial;\nrender_mode blend_mix, cull_disabled;\nuniform sampler2D loaded : filter_nearest, repeat_disable;\nuniform vec4 colour : source_color;\nvoid fragment() {\n\tif (texelFetch(loaded, ivec2(floor(UV)), 0).r > 0.5) {\n\t\tdiscard;\n\t}\n\tALBEDO = colour.rgb;\n\tALPHA = COLOR.a;\n\tROUGHNESS = 0.25;\n\tSPECULAR = 0.3;\n}\n"
+		var mat := ShaderMaterial.new()
+		mat.shader = shader
+		mat.set_shader_parameter("colour", Color(WATER_COLOUR, 1.0))
+		water.material_override = mat
+		node.add_child(water)
 	return node
+
+
+## Ours: a far quad's water is found from FAR_WATER_SAMPLES by FAR_WATER_SAMPLES posts of its cell
+## (its corners included), so a tarn or a stream narrower than a far quad still shows past the load
+## radius; a skirt hangs FAR_SKIRT below the deepest a chunk's fine edge dips under its far edge.
+const FAR_WATER_SAMPLES := 5
+const FAR_SKIRT := 0.1
+
+
+func _far_skirts(verts: PackedVector3Array, normals: PackedVector3Array, tints: PackedColorArray,
+		uvs: PackedVector2Array, idx: PackedInt32Array, base: int, is_: Array[int], js: Array[int]) -> void:
+	## Each far edge of a chunk (posts every few, straight between) passes over the posts of the
+	## loaded neighbour's fine edge where they dip under it, a slit the sky shows through from the
+	## loaded side. A skirt hangs from each far edge segment to below the deepest such dip: the
+	## segment's own vertices, and the same less the dip plus FAR_SKIRT (0.1 m when it dips nowhere).
+	var cols := is_.size()
+	var south := []
+	var north := []
+	for c in cols:
+		south.append(c)
+		north.append((js.size() - 1) * cols + c)
+	var west := []
+	var east := []
+	for r in js.size():
+		west.append(r * cols)
+		east.append(r * cols + cols - 1)
+	for line in [south, north, west, east]:
+		for k in line.size() - 1:
+			var a: int = line[k]
+			var b: int = line[k + 1]
+			var pa := Vector2i(is_[a % cols], js[a / cols])
+			var pb := Vector2i(is_[b % cols], js[b / cols])
+			var ha: float = verts[base + a].y
+			var hb: float = verts[base + b].y
+			var dip := 0.0
+			var n := maxi(absi(pb.x - pa.x), absi(pb.y - pa.y))
+			for s in range(1, n):
+				var t := float(s) / n
+				var p := pa + (pb - pa) * s / n
+				dip = maxf(dip, lerpf(ha, hb, t) - _h(p.x, p.y))
+			var v0 := verts.size()
+			for q in [base + a, base + b]:
+				verts.append(verts[q])
+				normals.append(normals[q])
+				tints.append(tints[q])
+				uvs.append(uvs[q])
+			for q in [base + a, base + b]:
+				verts.append(verts[q] - Vector3(0, dip + FAR_SKIRT, 0))
+				normals.append(normals[q])
+				tints.append(tints[q])
+				uvs.append(uvs[q])
+			# both faces: a skirt is seen from either side of its edge
+			idx.append_array([v0, v0 + 1, v0 + 3, v0, v0 + 3, v0 + 2, v0, v0 + 3, v0 + 1, v0, v0 + 2, v0 + 3])
+
+
+func _far_water(wverts: PackedVector3Array, wcolours: PackedColorArray, wuvs: PackedVector2Array,
+		is_: Array[int], js: Array[int], uv: Vector2) -> void:
+	## A chunk's far water: for each far quad, the posts of FAR_WATER_SAMPLES a side over it (its
+	## corners included); where any is wet (water above ground, as the near water), a quad over the
+	## far quad with each corner at the water level of the wet sample nearest it, its alpha the
+	## near water's for the mean depth of the wet samples. The ground hides it where it stands
+	## higher, so the water's edge falls where the far ground crosses it.
+	for b in js.size() - 1:
+		for a in is_.size() - 1:
+			var i0: int = is_[a]
+			var i1: int = is_[a + 1]
+			var j0: int = js[b]
+			var j1: int = js[b + 1]
+			var wet: Array = []   # [Vector2i post, level]
+			var depth := 0.0
+			for sj in FAR_WATER_SAMPLES:
+				for si in FAR_WATER_SAMPLES:
+					var i := i0 + roundi(float(i1 - i0) * si / (FAR_WATER_SAMPLES - 1))
+					var j := j0 + roundi(float(j1 - j0) * sj / (FAR_WATER_SAMPLES - 1))
+					var k := j * _nx + i
+					if _water[k] > _height[k]:
+						wet.append([Vector2i(i, j), _water[k]])
+						depth += _water[k] - _height[k]
+			if wet.is_empty():
+				continue
+			depth /= wet.size()
+			var alpha := clampf(WATER_CLEAR + depth * WATER_THICKEN, WATER_CLEAR, WATER_COLOUR.a)
+			var corner := func(i: int, j: int) -> Vector3:
+				var best: float = wet[0][1]
+				var bd := INF
+				for w in wet:
+					var d: float = Vector2(w[0] - Vector2i(i, j)).length_squared()
+					if d < bd:
+						bd = d
+						best = w[1]
+				return g(_x0 + i * _res, _y0 + j * _res, best)
+			var sw: Vector3 = corner.call(i0, j0)
+			var se: Vector3 = corner.call(i1, j0)
+			var nw: Vector3 = corner.call(i0, j1)
+			var ne: Vector3 = corner.call(i1, j1)
+			for v in [sw, ne, se, sw, nw, ne]:
+				wverts.append(v)
+				wcolours.append(Color(1, 1, 1, alpha))
+				wuvs.append(uv)
 
 
 func _far_material(roughness: float) -> ShaderMaterial:
@@ -347,10 +481,10 @@ func _far_material(roughness: float) -> ShaderMaterial:
 
 func make_far_instances() -> MeshInstance3D:
 	## Every chunk's instances as boxes, as one mesh: each instance whose asset is drawn and has
-	## `bounds` (assets.md 2.3) is the box of its bounds placed by its row (build.md 8, scale
-	## included), its four sides and top (no bottom), flat-shaded in one colour per asset: a
-	## primitive's or stand-in's `colour` times the row's tint, as instance.gdshader draws it; a
-	## model's mean surface albedo. Not collided. What stream.gd shows of a chunk's instances
+	## `bounds` (assets.md 2.3) is its asset's outline (_far_parts: a box per height band of the
+	## asset's own surface) placed by its row (build.md 8, scale included), four sides and a top
+	## each (no bottom), flat-shaded: a primitive's or stand-in's `colour` times the row's tint, as
+	## instance.gdshader draws it; a model's band the mean albedo of its surface there. Not collided. What stream.gd shows of a chunk's instances
 	## while the chunk is not loaded, in the far ground's way (one draw call, a chunk hidden by its
 	## texel of the `loaded` texture), so houses on a far hill stand past the load radius (M6 slice
 	## 2). The reader's level of detail; ours. Null when no chunk holds an instance drawn.
@@ -370,19 +504,19 @@ func make_far_instances() -> MeshInstance3D:
 		assets.sort()
 		for asset in assets:
 			if not colour.has(asset):
-				colour[asset] = _far_colour(asset)
-			var c = colour[asset]
-			if c == null:
+				colour[asset] = _far_parts(asset)
+			var parts = colour[asset]
+			if parts == null:
 				continue
-			var b: Array = _manifest.assets[asset].bounds
 			var r: Array = groups[asset]
 			for k in int(r[1]):
 				var n := int(r[0]) + k
 				if n < 0 or n >= int(cols.count):
 					continue
 				var t := _instance_transform(cols, n, true)
-				var tint: Color = c[0] * (cols.tint[n] if c[1] else 1.0)
-				_far_box(verts, normals, tints, uvs, t, b, Color(tint.r, tint.g, tint.b), uv)
+				for part in parts:
+					var tint: Color = part[1] * (cols.tint[n] if part[2] else 1.0)
+					_far_box(verts, normals, tints, uvs, t, part[0], Color(tint.r, tint.g, tint.b), uv)
 	if verts.is_empty():
 		return null
 	var arrays := []
@@ -400,26 +534,99 @@ func make_far_instances() -> MeshInstance3D:
 	return node
 
 
-func _far_colour(asset: String):
-	## [linear colour, whether the row's tint multiplies it], or null for an asset not drawn or
-	## without bounds.
+## Ours: a far instance is its asset's outline in FAR_BANDS bands of its height. One box of the
+## bounds drew a wood as a wall of solid blocks from the ground to the crowns (M6 slice 2, atlas at
+## 96 m); a box per band follows a stem under a crown, a crown narrowing to its top, and is a box
+## still for a box.
+const FAR_BANDS := 3
+
+
+func _far_parts(asset: String):
+	## [[bounds (asset frame), linear colour, whether the row's tint multiplies it], ...], or null
+	## for an asset not drawn or without bounds. The asset's height (its bounds' z) is cut in
+	## FAR_BANDS equal bands; each band is the box of the asset's surface within it (each triangle
+	## clipped to the band), and a band no surface reaches is left out. A model's band takes the
+	## mean albedo of its triangles whose centre lies in it, by area (else the model's mean); a
+	## primitive's or stand-in's every band its `colour`. Neighbouring bands of the same box and
+	## colour are one box.
 	var a: Dictionary = _manifest.get("assets", {}).get(asset, {})
 	var b: Array = a.get("bounds", [])
 	var mesh := _asset_mesh_of(asset)
 	if mesh == null or b.size() != 6:
 		return null
-	if a.get("source") == "model":
-		var sum := Color(0, 0, 0)
-		var k := 0
-		for si in mesh.get_surface_count():
-			var m := mesh.surface_get_material(si) as BaseMaterial3D
-			if m != null:
-				sum += m.albedo_color.srgb_to_linear()
-				k += 1
-		var mean := sum / float(k) if k > 0 else DEFAULT_GROUND.srgb_to_linear()
-		return [Color(mean.r, mean.g, mean.b), false]
+	var model: bool = a.get("source") == "model" and not a.get("stand_in", false)
 	var c: Array = a.get("colour", [0.8, 0.8, 0.8])
-	return [Color(c[0], c[1], c[2]), true]
+	var flat := Color(c[0], c[1], c[2])
+	var z0: float = b[2]
+	var dz: float = (float(b[5]) - z0) / FAR_BANDS
+	if dz <= 0.0:
+		return [[b, flat, not model]]
+	var lo: Array[Vector2] = []
+	var hi: Array[Vector2] = []
+	var sum: Array[Color] = []
+	var area: Array[float] = []
+	for k in FAR_BANDS:
+		lo.append(Vector2(INF, INF))
+		hi.append(Vector2(-INF, -INF))
+		sum.append(Color(0, 0, 0))
+		area.append(0.0)
+	var all_sum := Color(0, 0, 0)
+	var all_area := 0.0
+	for si in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(si)
+		var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var ix = arrays[Mesh.ARRAY_INDEX]
+		var m := mesh.surface_get_material(si) as BaseMaterial3D
+		var albedo := m.albedo_color.srgb_to_linear() if m != null else DEFAULT_GROUND.srgb_to_linear()
+		var tris: int = (ix.size() if ix is PackedInt32Array and not ix.is_empty() else v.size()) / 3
+		for t in tris:
+			var q: Array[Vector3] = []
+			for e in 3:
+				var gv: Vector3 = v[ix[3 * t + e]] if ix is PackedInt32Array and not ix.is_empty() else v[3 * t + e]
+				q.append(Vector3(gv.x, -gv.z, gv.y))   # Godot axes to the asset frame
+			var ar := (q[1] - q[0]).cross(q[2] - q[0]).length() / 2.0
+			var zc := (q[0].z + q[1].z + q[2].z) / 3.0
+			var kc := clampi(int((zc - z0) / dz), 0, FAR_BANDS - 1)
+			sum[kc] += albedo * ar
+			area[kc] += ar
+			all_sum += albedo * ar
+			all_area += ar
+			for k in FAR_BANDS:
+				var bz0 := z0 + k * dz
+				var bz1 := bz0 + dz
+				var pts: Array[Vector2] = []
+				for e in 3:
+					var p0 := q[e]
+					var p1 := q[(e + 1) % 3]
+					if p0.z >= bz0 - 1e-6 and p0.z <= bz1 + 1e-6:
+						pts.append(Vector2(p0.x, p0.y))
+					for zc2 in [bz0, bz1]:
+						if (p0.z - zc2) * (p1.z - zc2) < 0.0:
+							var f: float = (zc2 - p0.z) / (p1.z - p0.z)
+							var x := p0.lerp(p1, f)
+							pts.append(Vector2(x.x, x.y))
+				for pt in pts:
+					lo[k] = lo[k].min(pt)
+					hi[k] = hi[k].max(pt)
+	var mean := all_sum / all_area if all_area > 0.0 else DEFAULT_GROUND.srgb_to_linear()
+	var parts: Array = []
+	for k in FAR_BANDS:
+		if lo[k].x > hi[k].x:
+			continue
+		var col := flat
+		if model:
+			var mc := sum[k] / area[k] if area[k] > 0.0 else mean
+			col = Color(mc.r, mc.g, mc.b)
+		var box := [lo[k].x, lo[k].y, z0 + k * dz, hi[k].x, hi[k].y, z0 + (k + 1) * dz]
+		if not parts.is_empty():
+			var last: Array = parts[-1]
+			var lb: Array = last[0]
+			if absf(lb[0] - box[0]) < 0.01 and absf(lb[1] - box[1]) < 0.01 and absf(lb[3] - box[3]) < 0.01 \
+					and absf(lb[4] - box[4]) < 0.01 and last[1].is_equal_approx(col) and absf(lb[5] - box[2]) < 1e-6:
+				lb[5] = box[5]
+				continue
+		parts.append([box, col, not model])
+	return parts if not parts.is_empty() else null
 
 
 static func _far_box(verts: PackedVector3Array, normals: PackedVector3Array, tints: PackedColorArray,
@@ -1702,6 +1909,11 @@ func _bookmarks(root: Node3D) -> void:
 		var along_pts: Array = []
 		if bad == "" and along != null and along != "":
 			var pf: Dictionary = by_name.get(along, {}) if along is String else {}
+			# A brought bookmark's `along` is text the core does not scope (it is not in the
+			# kind's `names`): read it in the bookmark's own import first (build.md 15.1).
+			var dot := String(name).rfind(".")
+			if along is String and dot > 0 and by_name.has("%s.%s" % [String(name).substr(0, dot), along]):
+				pf = by_name["%s.%s" % [String(name).substr(0, dot), along]]
 			if pf.get("shape") == "path" and pf.get("points", []).size() >= 2:
 				for q in pf.points:
 					along_pts.append([float(q[0]), float(q[1])])

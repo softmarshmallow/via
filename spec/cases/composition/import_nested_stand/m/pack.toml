@@ -1,0 +1,5 @@
+# composition.md Conformance, import_kind_surface: one pack, shared by the parent and `a`.
+[asset.light]
+engine    = true
+size      = [1, 1, 1]
+triangles = 10

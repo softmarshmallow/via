@@ -1,0 +1,22 @@
+format    = "via-case-1"
+summary   = "An import that brings the ground and declares no field derived from it is dry under the parent's: the parent's level of 3 does not stand over its ground of 0 (composition.md 6.2, An import without the derived field)."
+milestone = 6
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"
+[action.build.file.ground]
+path  = "build/w/fields/height.npy"
+post  = [12, 4]
+value = 0
+[action.build.file.dry]
+path  = "build/w/fields/level.npy"
+post  = [12, 4]
+value = 0
+[action.build.file.outside]
+path  = "build/w/fields/level.npy"
+post  = [2, 4]
+value = 4
