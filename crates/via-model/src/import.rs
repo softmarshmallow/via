@@ -1953,12 +1953,23 @@ fn pack_of(a: &Alone) -> &crate::pack::Pack {
     &a.pack
 }
 
-/// A path from the parent's world folder, `/`-separated.
+/// A path from the parent's world folder, `/`-separated. An absolute `file` is shown from the
+/// world folder made absolute too, so it climbs (`../far/world.toml`), never `//private/…` (M7
+/// close: a relative folder against an absolute file kept the root as a part).
 fn shown(dir: &Path, p: &Path) -> String {
-    let dir = lexical(dir);
+    let dir = if p.is_absolute() && !dir.is_absolute() {
+        std::env::current_dir().map_or_else(|_| dir.to_path_buf(), |c| c.join(dir))
+    } else {
+        dir.to_path_buf()
+    };
+    let dir = lexical(&dir);
     let a: Vec<_> = dir.components().collect();
     let b: Vec<_> = p.components().collect();
     let same = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
+    if same == 0 && p.has_root() {
+        // Nothing in common, not even the root (another drive): the file as written.
+        return p.to_string_lossy().replace('\\', "/");
+    }
     let mut parts: Vec<String> = vec!["..".to_string(); a.len() - same];
     parts.extend(
         b[same..]
@@ -2787,6 +2798,20 @@ mod tests {
         let b = r(8_000, 0, 18_000, 8_000);
         assert!((overlap_area(&a, &b) - 16.0).abs() < 1e-9);
         assert_eq!(overlap_area(&a, &r(20_000, 0, 30_000, 8_000)), 0.0);
+    }
+
+    #[test]
+    fn shown_climbs_to_an_absolute_file() {
+        // M7 close: `file` absolute and the world folder relative printed `//private/…`.
+        use std::path::Path;
+        let cwd = std::env::current_dir().unwrap();
+        let far = cwd.parent().unwrap().join("far").join("world.toml");
+        assert_eq!(shown(Path::new(""), &far), "../far/world.toml");
+        assert_eq!(shown(Path::new("w"), &far), "../../far/world.toml");
+        assert_eq!(
+            shown(Path::new("w"), Path::new("w/a/world.toml")),
+            "a/world.toml"
+        );
     }
 
     /// A `..` with no folder name before it is kept (M6 close: an import `../q/world.toml` of a

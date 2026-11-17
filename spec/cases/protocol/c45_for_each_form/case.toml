@@ -33,3 +33,13 @@ out  = "build/w"
 [action.empty.diag.empty]
 code = "graph.for_each_empty"
 subject = "step.gen"
+
+# M7 close (task `mill`, the second model family; the first put `lay` a layer up): `lay` beside
+# the step that returned its building matched nothing, and the hint named only "at or below the
+# step's layer". It now says a sibling step's returns are not in the view. Messages are not
+# compared (diagnostics.md 1.3); this reads the hint from the diagnostics document (record 0 is
+# identity.no_previous).
+[action.empty.file.hint]
+path    = ".diag/empty.json"
+pointer = "/diagnostics/1/hint"
+value   = "add a feature of kind `none` at or below the step's layer, or remove the step; a feature another step of this layer returns is not in its view; put this step in a layer above that step (authority.md 4.4)"

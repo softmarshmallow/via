@@ -142,25 +142,63 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   kind under the doorway. A yard or pad of the building's own is TODO (M7 close).
 - **Keeping trees out.** A `building` has no keep-out of its own, and a `clearing` over it puts
   `place.keep_out` on `lay`'s own pieces. Fade the scatter's `density` near it instead:
-  `density = "= ... * smoothstep(5, 8, dist('kind:building', 10))"` (station's shrubs).
+  `density = "= ... * smoothstep(5, 8, dist('kind:building', 10))"` (station's shrubs). A house
+  placed as an instance with `ground = "pad"` (lib/land) needs nothing: the pad writes `keep_out`
+  5.5 m past its footprint and `margin`, and every scatter applies `keep_out` itself (`rules.md`
+  7.1); a density that also fades by it is `scatter.keep_out_twice`.
 - **Placing a building beside something.** A `region` holds absolute points and cannot be placed
   `on` or `at` anything. To have a building follow another feature (a mill beside its weir), a
   small generate step returns the `building` from that feature's points (`step.out.feature`, points
   in millimetres) and a lint names it in `checks` (`authority.unchecked`). A region placed by `on`
-  and `face` is TODO (M7 close).
+  and `face` is TODO (M7 close). **`lay` and `check` then go in a layer above that step**: a step
+  never sees what another step of its own layer returned (`authority.md` 4.4), so in the same layer
+  `lay` says only `graph.for_each_empty` (an info, in `diagnostics.json` only) and no building is
+  laid. The Sonnet `mill` agent met this at M7 close (the Fable one put `lay` a layer up):
+
+  ```toml
+  # world.toml: the step that returns the building stays here
+  [layer.laying]
+  file = "layers/laying.toml"
+  rank = 1
+
+  # layers/laying.toml
+  [step.lay]
+  when     = "generate"
+  worker   = true
+  for_each = "kind:building"
+  command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+  [step.check]
+  when    = "lint"
+  worker  = true
+  command = ["python", "-m", "viasdk", "lib:building/check.py"]
+  checks  = ["lay", "<your step>"]
+  params  = { kits = ["structure/kit"] }
+  ```
+
+  A view on the building goes in that layer too, or a higher one, since what `lay` returns is not
+  in a lower layer's view either. A step's own document may name its own keys (`starts_at`, `on`,
+  a bookmark's `toward`) as `protocol.md` 5 says; the Godot loader reads a bookmark's `along` the
+  same way (`build.md` 15.1).
 - **Doors.** With no `role:door` piece in the kit a doorway is open the storey's full height
   (`storey_h`); give the kit a door piece for a lintel.
 - **Walking to an upper floor.** A storey, flight or doorway `lay` returns has a produced name,
   which text may not write (R3), so a bookmark cannot name it as `toward`. Place your own kindless
   point features `on = { ref = "<building>", t, offset }` (they follow the building when it moves
   or turns; `offset` is metres to the left of the ring's travel, inward on a region, `geometry.md`
-  2.6), list them in a kindless path, and give the bookmark `along = "<that path>"`. Put a point in
+  2.6), list them in a kindless path, and give the bookmark `along = "<that path>"`. From a step,
+  `step.out.feature(key, at=...)` with no `kind` writes a kindless point or path; a kindless path
+  is a guide, so it raises no `geom.unowned_crossing` against `lay`'s doorways and flights
+  (`geometry.md` 2.7; a path of a kind of your own raises one at each). Put a point in
   the flight's own line before its foot, or the walker skips the foot (`build.md` 15.1), and judge
   the walk by `on.stop` in `sheet.json`, not by `arrived` (arrival is in plan only). The walker
   takes a point once it is nearer the next point than that point is (`build.md` 15.1): from a door,
   a stair's head is often nearer than its foot, so the foot is skipped. Add a turning point between
   them, so that from where the walker stands each point is nearer than the one after it (door,
-  turn in front of the foot, foot, head, the far side of the upper floor).
+  turn in front of the foot, foot, head, the far side of the upper floor). The walker starts on the
+  highest floor under the bookmark's eye (`build.md` 15.1): a walk up starts from a bookmark on the
+  ground floor (at the door), and a walk down from one on the upper floor. A path that climbs from
+  a bookmark already standing on the upper floor walks off it and `fell` (M7 close). Two bookmarks,
+  one per direction, each with its own path.
 - **A view on an upper floor.** A storey's floor is a produced name, so a bookmark cannot write
   `surface = "<storey>.floor"`. Lift the eye instead: `eye_height = storey_h + plinth + 1.7`
   (station's tower views); the walker still starts on the storey's floor. A way to stand a view on

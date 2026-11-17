@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "A fresh agent's weir (M7 close, task mill), reduced: a kind of the world's own across lib/water's beck, owning the meeting by names = [\"crosses\"] (no geom.unowned_crossing, geometry.md 2.7); its wall raises the line to the crest and its pond levels the water upstream only (lib/water's header, the worked weir)."
+summary   = "A fresh agent's weir (M7 close, task mill), shipped as lib/water's `weir` across its beck, owning the meeting by names = [\"crosses\"] (no geom.unowned_crossing, geometry.md 2.7); its wall raises the line to the crest and its pond levels the water upstream only (lib/water's `weir`)."
 milestone = 7
 actions   = ["build"]
 
@@ -9,7 +9,7 @@ actions   = ["build"]
 # downstream the beck's own, 25.8. Removing `names` from the kind gives geom.unowned_crossing.
 
 [action.build]
-via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+via         = ["build", "world.toml", "--out", "build/w"]
 exit        = 0
 diagnostics = "exact"
 out         = "build/w"

@@ -1912,11 +1912,19 @@ against the table that declares it.
 
 Four outsiders (two Sonnet, two Fable; tasks `mill` and `crossroads`); the table and what was fixed
 are docs/challenges.md row 51.
-- [ ] **Run the Sonnet line again, from `rewrite`.** Both Sonnet agents were given worktrees cut
-  from `main` (the old research tree) and stopped at minute 3 without building; the Fable agents
-  checked out `rewrite` themselves. M7's "two model families" is shown for one family. Cut each
-  outsider's worktree from `rewrite` (or after `main` moves) and fail fast when `spec/`, `lib/` and
-  `examples/` are missing. Lesson: check the outsider's tree before the outsider reads it.
+- [x] **Run the Sonnet line again, from `rewrite`.** Done (`trips2`): both built, first build 7 and
+  4.5 min; 22 trips, 8 met by both families; table and fixes in docs/challenges.md row 51. Both
+  families are Claude models: a run by another vendor's model is the owner's. Lesson: check the
+  outsider's tree before the outsider reads it.
+- [ ] **A weir a view can see** (Sonnet `mill`): lib/water's `weir` writes ground and water only,
+  so a bookmark toward it shows running water; a crest mesh (a kind surface, as a crossing's deck)
+  or a pack asset on its line.
+- [ ] **`formula.outside_field` names the library's line** (Sonnet `crossroads`): an import moved
+  past the extent gave the error at `lib:ways/kinds.toml:89:12` ("'link' has a sample beyond the
+  extent"), not at the road's end or the import that moved. Name the feature's end that lies
+  outside and the change that moved it.
+- [ ] **`via build --help`** (Sonnet `crossroads`): a subcommand's `--help` is not understood;
+  `via --help` lists every flag.
 - [ ] **A building placed by `on` and `face`** (the `mill`'s "a mill beside its weir"): a `region`
   holds absolute points, so following another feature took a 20-line generate step, its lint
   (`authority.unchecked`) and views found by an absolute `near`. A region in its own frame placed
@@ -1929,18 +1937,21 @@ are docs/challenges.md row 51.
   storey by `of` and a level.
 - [ ] **A building's own yard or pad**: the doorway's derived `sill` loses to any shaped ground kind
   under it (a terrace gave `surface.gap` 29 mm); `plinth = 0` on a slope is the workaround.
-- [ ] **A `weir` in lib/water**: the header now carries the outsider's worked weir and the case
-  `weir_owns_crossing`; a shipped kind would spare the `under('min')`-per-effect reasoning.
+- [x] **A `weir` in lib/water**: shipped in `trips2` (cases `weir_owns_crossing`,
+  `weir_off_lattice`, `weir_off_lattice_r2`).
 - [ ] **A lift at a named place** (`crossroads`): `lift_hint` is the edge's median; the road's join
   wanted 1.66 where the hint said 0.74, and a moved import needs its lift measured again
   (composition.md 5 now says both). Give the lift at the place a parent path ends on, or a lift
   written as "meet the ground at `<place>`".
-- [ ] **An import's own warnings folded**: a default build of `crossroads` printed 5 `geom.cell_*`
-  warnings (about 10 infos with `--info`) from quay's own cells, none the parent's to fix. Fold an
-  import's own records into one line per code, or mark them as the import's.
-- [ ] **Knock-on diagnostics after an error**: a misspelt `starts_at` (`town.gat`) also gave
-  `formula.empty_selection` on the ground's `kind:road` mask, and not the `import.exit_unanswered`
-  the fixed build will raise. Suppress what follows from a failed feature; say what is pending.
+- [ ] **An import's own warnings folded** (both families): a default build of `crossroads` printed
+  5 `geom.cell_*` warnings (about 10 infos with `--info`) from quay's own cells, none the parent's
+  to fix; Sonnet's printed 9 and the college's `place.*` too. README now says they are the
+  import's. Fold an import's own records into one line per code, or mark them as the import's.
+- [ ] **Knock-on diagnostics after an error** (both families; Sonnet: `college.arival` also gave
+  the world's own lint step's "road `link` not found", since steps still ran): a misspelt
+  `starts_at` (`town.gat`) also gave `formula.empty_selection` on the ground's `kind:road` mask,
+  and not the `import.exit_unanswered` the fixed build will raise. Suppress what follows from a
+  failed feature; say what is pending.
 - [ ] **`diag.internal` on a pack found late** (found in this pass): build a world whose pack is not
   found, then build it again in the same store with `VIA_LIB` set: `instance:<id>/v:build` "gave
   another value when computed again". The library roots are not in the node's key, or the stored
@@ -1958,6 +1969,30 @@ ours); a place within a millimetre of a turned import's footprint is on it, so h
 climbing relative path, not an absolute one (`build.md` case 7). Lesson: the trips that cost most
 were where a value had to be carried across a seam by hand (a lift, a building's place, an eye's
 height); messages were rarely the cost.
+Decided in the second run (`trips2`) and its fix pass, open to the owner: rulings R60 to R63 (the
+weir's radii, a returned bookmark's `along`, a step's report on an import's feature landing on the
+import, an absolute import shown climbing).
+
+From the second run's change and on-foot reviews (fix pass 2, 2026-11-17; fixed: a step's subject
+`feature.<import>.<name>` now maps to the import (R62, case `subject_imported`), the weir's radii
+at 2 m posts (R60, case `weir_off_lattice_r2`), the `for_each_empty` hint's wording, the
+kindless-path chain tested (case `kindless_returned`, SDK test), the "met by both" count (8; the
+layer split was Sonnet's alone), the walker's `through` naming far trees (`Walk.inside`,
+test_walk), the anchored-beck note in lib/water, spec conformance rows, rulings R60 to R63):
+- [ ] **`lay` beside its building's step is still quiet on the console** (on-foot review 2): with
+  `lay` in the same layer as the step that returns its building, the console reads "0 errors, 0
+  warnings" and no mill is built; the hint is in `diagnostics.json` only, since
+  `graph.for_each_empty` is an info (most worlds' optional steps match nothing, so a warning there
+  is noise). Warn when a step of the same layer returns that kind, which is known only after that
+  step runs; or print a `for_each` step that matched nothing in the summary. Lesson: an info that
+  explains a missing building is silence to a newcomer.
+- [ ] **An upgrade note for a library that starts shipping a kind** (on-foot review 3): Sonnet's
+  `mill` declared its own `weir`; on this tree it is `identity.duplicate_id` with lib/water's. The
+  message is clear, but the hint could say which library is newer, and a changelog of shipped kinds
+  would say it before the build does.
+- [ ] **The Sonnet `mill` run's scratch kept its target, store and build** (on-foot review 6,
+  748 MB, and a stray `world/orld.toml`), though its report said deleted; not ours to remove.
+  Check the outsider's cleanup line against `du` before trusting it.
 
 From the close's change and on-foot reviews (fix pass, 2026-11-17; fixed: the loader suite's leaked
 node, README/FAQ/plan claiming two families, `place_inside` without the extent test, the 1 mm rule
@@ -1983,8 +2018,9 @@ and the hint-text exception written in their chapters, the `names` route in the 
 - [ ] **join_college's eye shows a large grey panel in the field beside the approach** (on-foot
   review 6): not identified.
 - [ ] **When `rewrite` is committed, `git add` the untracked files**: `sdk/python/README.md` (README
-  links it) and 27 new case folders under `spec/cases`; a patch of the tree needs `git diff
-  --binary` (basin's `.npy`). Lesson: a fresh-worktree check of an uncommitted tree copies the
+  links it) and 27 new case folders under `spec/cases` (32 with `trips2`'s `kind_empty`,
+  `subject_imported`, `weir_off_lattice`, `weir_off_lattice_r2`, `kindless_returned`); a patch of
+  the tree needs `git diff --binary` (basin's `.npy`). Lesson: a fresh-worktree check of an uncommitted tree copies the
   untracked files too, or it tests less than the commit.
 
 ## Framing

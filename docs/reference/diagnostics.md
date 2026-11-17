@@ -2664,6 +2664,9 @@ info, milestone 3, `spec/graph.md`.
 ```text
 A for_each selector matched nothing in the step's view; the step did not run. (M3)
 To fix: Check the selector names the kind or tag the step should serve; nothing if the empty view is intended.
+A feature that another step of the same layer returns is not in the step's view (authority.md 4.4):
+put the step in a layer above the step that returns it (a library's step over what a step of
+your own returns, M7 close).
 Bad:   for_each = "kind:plaza"   (no feature has kind `plaza`)
 Fixed: for_each = "kind:terrace"
 ```

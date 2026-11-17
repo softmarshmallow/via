@@ -1,0 +1,16 @@
+format    = "via-case-1"
+summary   = "lib/water's `weir` with its line between posts (y = 65.2): its wall fades to 0 by 1.3 m, inside its radius 4, so no ring post is cut and the build has no diagnostic (fields.md 5.3)."
+milestone = 7
+actions   = ["build"]
+
+# M7 close (task `mill`, the second model family): the worked weir in lib/water's header had
+# `radius = 2` on its wall, whose mask `1 - smoothstep(thick, thick + 0.5, d)` is 0 only from
+# 1.3 m. The ring is (1, 2] at 1 m posts; on the lattice (weir_owns_crossing, y = 64) no post lies
+# in (1, 1.3), so it passed. Here the post y = 64 lies 1.2 m from the line, mask 0.104 > 0.02:
+# with radius 2 the build gives field.effect_cut (warning) and this case fails.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"

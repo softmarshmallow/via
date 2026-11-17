@@ -28,6 +28,11 @@ buildings = ["building"]          # taxon paths of assets drawn as footprints by
 regions = { area = "label" }      # named areas, and the attribute their label reads
 ```
 
+A kind not named in any of these tables is not on the map, and nothing says so: name an import's
+way kinds too (`main_street`, `street`, `lane` for lib/town's; `road` for lib/ways'), since its
+features keep their kinds. `vectors.json` lists what was drawn by kind; check it against your
+kinds (M7 close, `crossroads`).
+
 `export.py`'s docstring lists every param and its default. lib/map knows no kind but its own
 `poi`: what a lane or a storey is on the map is the world's to say.
 

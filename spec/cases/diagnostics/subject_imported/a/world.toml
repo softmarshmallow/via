@@ -1,0 +1,11 @@
+name       = "a"
+extent     = [0, 0, 8, 8]
+resolution = 1
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.spot]                              # a point of no kind
+at = [4, 4]

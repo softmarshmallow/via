@@ -1,0 +1,16 @@
+name       = "subject_imported"
+extent     = [0, 0, 16, 16]
+resolution = 1
+datum      = "sea"
+
+[field.height]
+role = "surface"
+base = 0
+
+[import.a]
+file = "a/world.toml"
+at   = [4, 4]
+
+[step.look]
+when    = "lint"
+command = ["python", "steps/lint.py"]

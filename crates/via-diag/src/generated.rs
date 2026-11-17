@@ -2094,7 +2094,7 @@ pub(crate) static ROWS: [Row; 360] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A for_each selector matched nothing in the step's view; the step did not run. (M3)\nTo fix: Check the selector names the kind or tag the step should serve; nothing if the empty view is intended.\nBad:   for_each = \"kind:plaza\"   (no feature has kind `plaza`)\nFixed: for_each = \"kind:terrace\"\n",
+        explain: "A for_each selector matched nothing in the step's view; the step did not run. (M3)\nTo fix: Check the selector names the kind or tag the step should serve; nothing if the empty view is intended.\nA feature that another step of the same layer returns is not in the step's view (authority.md 4.4):\nput the step in a layer above the step that returns it (a library's step over what a step of\nyour own returns, M7 close).\nBad:   for_each = \"kind:plaza\"   (no feature has kind `plaza`)\nFixed: for_each = \"kind:terrace\"\n",
     },
     Row {
         code: "graph.input_missing",

@@ -60,6 +60,9 @@ def lint(step):
                          position=(at[0] / 1000, at[1] / 1000), explain=EXPLAIN["steep"])
 ```
 
+`examples/ford` has lanes and no road, so there this lint finds nothing: try it with
+`select="kind:lane"` and a small `limit` (`0.01` warns on both lanes).
+
 ## What bites
 
 - **Units.** Feature geometry is millimetres, in and out: `step.features(...).points(f)` gives
@@ -87,6 +90,19 @@ def lint(step):
       return out
   ```
 
+- **What an import brought.** `step.features(...)` lists an import's features too, under dotted
+  names (`college.approach`). A diagnostic on one (`college.approach` or
+  `feature.college.approach`) lands on the import, `import.college`, with `approach` in
+  `data.place` (`spec/diagnostics.md` 6): the import's text, fixed there, not in this world. To
+  lint only this world's own, filter them out (`"." not in name`) or select with `within=`. A path written with `route` is routed before a step reads it: a generate step at
+  its layer or above reads the routed points (M7 close, `crossroads`).
+- **A feature of no kind.** `step.out.feature(key, at=...)` with no `kind` writes none: a point or
+  path a walk or a view names (a kindless path raises no `geom.unowned_crossing`). An empty kind
+  is `authority.unknown_kind`.
+- **Names in the returned document.** Inside it, `starts_at`, `ends_at`, `on.ref`, a kind's `names`
+  attributes and `surface` name the document's own keys first (`protocol.md` 5), and the Godot
+  loader reads a bookmark's `along` the same way: write `along = "walk"` for the key `walk`.
+  What the step returns is seen by a step a layer above it, never by another step of its layer.
 - **A step that reads stated facts.** A generate step that reads features the text states (a
   weir, to place a building beside it) needs a lint that names it in `checks`, or the build says
   `authority.unchecked` (`authority.md`).

@@ -50,6 +50,15 @@
 # wrote `role:keep_out` would loop through every instance it looks at, since an instance's
 # placement reads keep_out (rules.md 8.3) and the bookmark's `toward` reads the instance
 # (graph.cycle, seen on `vale`). Stand a view on a way or a bank whose own keep_out clears it.
+#
+# Aiming a view (M7 close, both tasks): the camera looks straight at `toward`, so a far `toward`
+# over a rise shows the rise; to see a road leave a gate, aim at a point along the road (a point
+# feature placed `on` it), not at its far end. The walker walks straight to `toward` as well: a view
+# from a bridge's deck looking along the water walks off the deck and reports `fell`, which is true
+# and says nothing of the view; judge such a view by its picture, or give it an `along` on the deck.
+# To stand a view on a deck, place it by `at` with `surface = "<crossing>.deck"`; `on` the crossing
+# already places it, so `surface` there is `surface.placed_twice`, and `on` alone names no deck to
+# stand on (a step can return the point `at` the crossing's middle, as the `mill` run did).
 
 [kind.bookmark]                           # derived, the default
 output   = "bookmark"

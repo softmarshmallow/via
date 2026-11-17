@@ -1418,7 +1418,9 @@ godot --path engines/godot --rendering-method gl_compatibility res://sheet.tscn 
   arrives only past them all, and its progress and time limit run along that route; an `along`
   that names no path in `features.json` is `load.bad_target` with `attribute` `along`; a brought
 bookmark's `along`, text the core does not scope, names a path of its own import first, `<import>.`
-before it, ours: three of atlas's brought bookmarks had no camera, M6 close), one `move_and_slide` per 1/60 s, colliding with
+before it, ours: three of atlas's brought bookmarks had no camera, M6 close; a bookmark a step
+returned names a path of the step's own document first, `<step>#` before it, as `protocol.md` 5
+scopes a name there, ours: M7 close, a step's `along = "walk"` gave `load.bad_target`), one `move_and_slide` per 1/60 s, colliding with
   the ground body, every generated mesh body and every instance body the loader made. It starts on
   the highest collision straight below the bookmark's eye (the terrain, a kind surface's mesh or an
   instance; nothing, over a cut with no floor above it, and it falls), then follows what it walks

@@ -1177,6 +1177,15 @@ impl StepWorld for Mapper<'_> {
                 }
             }
         }
+        // `feature.<import>.<name>` names what the bare `<import>.<name>` names: the SDK lists an
+        // import's feature under its dotted name, and a step that writes it as a feature address
+        // means that place (`diagnostics.md` 6; M7 close, task `crossroads`).
+        if let Some(rest) = written.strip_prefix("feature.") {
+            let first = rest.split(['.', '#']).next().unwrap_or("");
+            if matches!(self.world.find(first), Some((top, _)) if top == "import") {
+                return self.map_subject(rest);
+            }
+        }
         if let Some((head, _)) = written.split_once('#') {
             // `instance.<producer>#<key>`, as a hand instance is written, names the same produced
             // instance as the bare `<producer>#<key>` (a run's member, a scatter's tree).

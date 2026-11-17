@@ -525,7 +525,7 @@ func _run() -> void:
 			line += "    after: %s" % Walk.summary(ra)
 		wrows.append({"label": line + "    (from above)",
 			"before": wb.plan if wb != null else null, "after": wa.plan if wa != null else null})
-		wrows.append({"label": "walk %s    at the walker's eye, %.0f m short of where it stopped, facing on (back, at the world's edge)" % [n, Walk.BACK],
+		wrows.append({"label": "walk %s    at the walker's eye, %.0f m short of where it stopped, facing on (or back, when stopped at the world's edge)" % [n, Walk.BACK],
 			"before": wb.eye if wb != null else null, "after": wa.eye if wa != null else null})
 		walks.append({"after": ra if two else null, "before": rb, "name": n})
 	var wheader := "%s    walks    pins %d, cleared %d" % [world if world != null else "(no build)",

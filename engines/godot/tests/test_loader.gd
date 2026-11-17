@@ -9,7 +9,7 @@ const Npy := preload("res://addons/via_loader/npy.gd")
 const CJson := preload("res://addons/via_loader/cjson.gd")
 const Primitives := preload("res://addons/via_loader/primitives.gd")
 
-const EXPECTED := 76
+const EXPECTED := 79
 var failed := 0
 var ran := 0
 var tests_dir := ""
@@ -31,6 +31,7 @@ func _initialize() -> void:
 	_bad_format()
 	_options()
 	_pack_elsewhere()
+	_along_scope()
 	# a script error skips checks silently; count them so a skip fails
 	check("every check ran", ran >= EXPECTED, "%d of %d" % [ran, EXPECTED])
 	print("%s: %d check(s) failed" % ["FAIL" if failed else "PASS", failed])
@@ -566,3 +567,20 @@ func _options() -> void:
 	var loader := Loader.new()
 	check("option: a water selector matching no field is an option error",
 		loader.make(tests_dir + "/fixture_build", {"water": "tag:lava"}) == null and loader.option_error != "")
+
+
+func _along_scope() -> void:
+	## A bookmark's `along` is scoped as a name in a returned document or an import is (build.md
+	## 15.1). M7 close (task `mill`): a step returned a bookmark with `along = "walk"`, its own
+	## path's key, and the loader looked for `walk` and gave load.bad_target.
+	var walk := {"name": "site#walk", "shape": "path"}
+	var brought := {"name": "town.walk", "shape": "path"}
+	var plain := {"name": "walk", "shape": "path"}
+	var by_name := {"site#walk": walk, "town.walk": brought, "walk": plain}
+	check("along: a returned bookmark reads its step's own key first",
+		Loader.along_feature(by_name, "site#look", "walk") == walk)
+	check("along: a brought bookmark reads its import's first",
+		Loader.along_feature(by_name, "town.look", "walk") == brought)
+	check("along: a written bookmark reads the name as written",
+		Loader.along_feature({"walk": plain}, "look", "walk") == plain
+		and Loader.along_feature(by_name, "site#look", "nowhere").is_empty())

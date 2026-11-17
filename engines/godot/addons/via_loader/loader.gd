@@ -1913,6 +1913,23 @@ func _rise_over(p0: Vector2, p1: Vector2, p2: Vector2, z0: float, z1: float, z2:
 	return most
 
 
+static func along_feature(by_name: Dictionary, name: String, along) -> Dictionary:
+	## The feature a bookmark's `along` names (build.md 15.1). It is text the core does not scope
+	## (it is not in the kind's `names`), so the loader scopes it as protocol.md 5 and composition
+	## scope a name: a bookmark a step returned (`<step>#<key>`) reads it in that step's document
+	## first (`<step>#<along>`, M7 close: a step's walk named by its key), a brought bookmark in its
+	## own import (`<import>.<along>`, M6 close), then as written.
+	if not (along is String):
+		return {}
+	var hash := name.rfind("#")
+	if hash > 0 and by_name.has("%s#%s" % [name.substr(0, hash), along]):
+		return by_name["%s#%s" % [name.substr(0, hash), along]]
+	var dot := name.rfind(".")
+	if dot > 0 and by_name.has("%s.%s" % [name.substr(0, dot), along]):
+		return by_name["%s.%s" % [name.substr(0, dot), along]]
+	return by_name.get(along, {})
+
+
 static func _along(line: Array[Vector2], cum: Array[float], u: float) -> Vector2:
 	## The point at arc length `u` along the polyline (`cum` its running lengths).
 	if line.size() == 1:
@@ -2033,12 +2050,7 @@ func _bookmarks(root: Node3D) -> void:
 		var along = attrs.get("along", "")
 		var along_pts: Array = []
 		if bad == "" and along != null and along != "":
-			var pf: Dictionary = by_name.get(along, {}) if along is String else {}
-			# A brought bookmark's `along` is text the core does not scope (it is not in the
-			# kind's `names`): read it in the bookmark's own import first (build.md 15.1).
-			var dot := String(name).rfind(".")
-			if along is String and dot > 0 and by_name.has("%s.%s" % [String(name).substr(0, dot), along]):
-				pf = by_name["%s.%s" % [String(name).substr(0, dot), along]]
+			var pf: Dictionary = along_feature(by_name, String(name), along)
 			if pf.get("shape") == "path" and pf.get("points", []).size() >= 2:
 				for q in pf.points:
 					along_pts.append([float(q[0]), float(q[1])])

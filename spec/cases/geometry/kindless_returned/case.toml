@@ -1,0 +1,37 @@
+format    = "via-case-1"
+summary   = "A step returns a path through viasdk's `out.feature(key, path=...)` with no kind, across a path with a kind: it loads as a guide, and no geom.unowned_crossing follows (geometry.md 2.7)."
+milestone = 7
+actions   = ["program", "trust", "build"]
+
+# M7 close (task `mill`, the second model family): viasdk's `out.feature` took `kind` as required
+# and always wrote it, so a returned walk path was `kind = ""` (authority.unknown_kind) or, given a
+# kind of the world's own, raised geom.unowned_crossing at each doorway and flight it crossed. On
+# that SDK this case fails: the call has no `kind` and raises TypeError, so the step fails.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--lib", "{work}/libs", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.check.walk]
+fn     = "names_count"
+path   = "build/w/features.json"
+prefix = "walk"
+count  = 1
+
+[action.build.diag.owned]
+code    = "geom.unowned_crossing"
+records = 0
+
+[action.build.diag.unknown]
+code    = "authority.unknown_kind"
+records = 0

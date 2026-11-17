@@ -1,0 +1,12 @@
+name       = "kindless_returned"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["w"]
+
+[feature.a]
+kind = "way"
+path = [[0, 8], [16, 8]]
+
+[step.walks]                                # returns a kindless path across `a`
+when    = "generate"
+command = ["python", "-m", "viasdk", "steps/walks.py"]

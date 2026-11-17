@@ -1,0 +1,11 @@
+name       = "kind_empty"
+extent     = [0, 0, 16, 16]
+resolution = 1
+
+[field.height]
+role = "surface"
+base = 0
+
+[feature.spot]                              # as an SDK that always wrote `kind` returned it
+kind = ""
+at   = [8, 8]

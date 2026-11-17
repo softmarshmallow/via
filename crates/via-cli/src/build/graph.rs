@@ -1656,7 +1656,7 @@ impl<'a> CliPlan<'a> {
                 )),
                 crate::txt(match kind.strip_prefix("given:") {
                     Some(g) => format!("give `{g}` a feature, or remove the step"),
-                    None => format!("add a feature of kind `{kind}` at or below the step's layer, or remove the step"),
+                    None => format!("add a feature of kind `{kind}` at or below the step's layer, or remove the step; a feature another step of this layer returns is not in its view; put this step in a layer above that step (authority.md 4.4)"),
                 }),
             ));
         }

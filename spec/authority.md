@@ -36,7 +36,9 @@ A kind may also own a bounded surface and mounts (R25). Those tables are `surfac
 A feature without `kind` is a guide: a shape that does nothing. It has no effects and no tier.
 
 A feature's `kind`, or an instance's `ground` (`rules.md` 2.1), that names no kind in the world's
-kind namespace (`documents.md` 3) is `authority.unknown_kind` (error), with the nearest kind as hint.
+kind namespace (`documents.md` 3) is `authority.unknown_kind` (error), with the nearest kind as
+hint. An empty `kind = ""` is the same error, its hint to leave `kind` out for a feature of no kind
+(ours, M7 close; case `kind_empty`).
 
 ### 1.1 Attributes
 
@@ -685,6 +687,7 @@ Six entries fit a 32-bit float exactly.
 | requires | M1 | A pond without `water_height` | build | `authority.requires` naming `water_height` and the kind's line. |
 | guide_tier | M1 | A guide with `authority = "anchored"` | build | `authority.no_kind`. |
 | unknown_kind | M1 | A feature with `kind = "pnod"`, and an instance with `ground = "pnod"`, in section 9's library | build | `authority.unknown_kind` at each line, hint `pond`; exit 1. |
+| kind_empty | M7 | A feature with `kind = ""` (as an SDK that always wrote `kind` returned it) | build | `authority.unknown_kind`, its hint to leave `kind` out for a feature of no kind (read from the diagnostics document); exit 1. |
 | window | M1 | Section 9 `wide` | evaluate `height` whole and by windows, one cut through the overlap (as `numbers.md`'s window_equals_whole) | The window equals the same cut of the whole; diagnostics equal the whole build's. |
 | step_head | M2 | A generate step that reads `height`'s head view and returns a row; an anchored pond below it | build | The pond's value holds over the row; a clean build equals the incremental one. |
 | step_view | M2 | A step that reads `height`'s full view and returns a row on it | build | `authority.step_view`. |

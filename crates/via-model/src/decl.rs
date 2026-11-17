@@ -2072,11 +2072,17 @@ impl Decls {
                             id,
                             "kind",
                             &format!("`{k}` names no kind of this world"),
-                            &text::near_hint(
-                                k,
-                                self.kinds.keys().map(String::as_str),
-                                "include the library that declares it",
-                            ),
+                            &if k.is_empty() {
+                                // M7 close: an SDK that always wrote `kind` gave `kind = ""`.
+                                "leave `kind` out for a feature of no kind, or name a kind"
+                                    .to_string()
+                            } else {
+                                text::near_hint(
+                                    k,
+                                    self.kinds.keys().map(String::as_str),
+                                    "include the library that declares it",
+                                )
+                            },
                         ),
                         k,
                         self.kinds.keys().map(String::as_str),

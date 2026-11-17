@@ -10,7 +10,7 @@ const Loader := preload("res://addons/via_loader/loader.gd")
 const Walk := preload("res://walk.gd")
 const Marks := preload("res://marks.gd")
 
-const EXPECTED := 28
+const EXPECTED := 29
 var failed := 0
 var ran := 0
 
@@ -130,6 +130,10 @@ func _run() -> void:
 	check("one pole and ball and ring per pin, one ring and post per removed", m.get_child_count() == 3 + 2 * 2, str(m.get_child_count()))
 	m.free()
 	root.queue_free()
+	# M7 close (on-foot review of `trips2`): Geometry2D.is_point_in_polygon said this walker, 115 m
+	# off, stood inside a tree's 1 m footprint, so `through` named a tree the walk never passed.
+	var plan := PackedVector2Array([Vector2(193.687698364258, 131.036056518555), Vector2(193.202941894531, 131.910705566406), Vector2(192.328292846680, 131.425949096680), Vector2(192.813049316406, 130.551300048828)])
+	check("a footprint far off is not walked through", not Walk.inside(Vector2(106.294425964355, 59.041198730469), plan) and Walk.inside(Vector2(193.0, 131.2), plan))
 	check("every check ran", ran >= EXPECTED - 1, "%d of %d" % [ran + 1, EXPECTED])
 	print("%s: %d check(s) failed" % ["FAIL" if failed else "PASS", failed])
 	quit(1 if failed else 0)

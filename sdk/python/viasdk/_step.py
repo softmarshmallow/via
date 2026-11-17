@@ -103,9 +103,12 @@ class Out:
                 lines.append(f"{k} = {_toml_value(v)}")
         self._tables.append("\n".join(lines) + "\n")
 
-    def feature(self, key, kind, at=None, path=None, region=None, authority=None, **attrs):
-        """A feature: a point ``at``, a ``path`` or a ``region`` ring, in millimetres."""
-        lines = [f"[feature.{_key(key)}]", f"kind = {_toml_str(kind)}"]
+    def feature(self, key, kind=None, at=None, path=None, region=None, authority=None, **attrs):
+        """A feature: a point ``at``, a ``path`` or a ``region`` ring, in millimetres. ``kind=None``
+        writes no ``kind``: a feature of no kind (a point a walk or a view names, geometry.md)."""
+        lines = [f"[feature.{_key(key)}]"]
+        if kind is not None:
+            lines.append(f"kind = {_toml_str(kind)}")
         if authority is not None:
             lines.append(f"authority = {_toml_str(authority)}")
         if at is not None:

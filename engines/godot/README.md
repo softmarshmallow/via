@@ -22,6 +22,10 @@ engines/godot/sheet.sh --before build/city --out review/city_frames --option wat
 godot --headless --fixed-fps 60 --path engines/godot --script res://tests/test_stream.gd -- --build build/vale --log stream.json
 ```
 
-Both need a display: Godot's `--headless` draws nothing and keeps no `MultiMesh` data. The fixture
-builds are written by `tests/make_fixture.py` (Python's standard library only); `--check` says
-whether the files on disk still match it. The floor test is the one part that runs headless: it reads data and physics only, never a render.
+A world with water passes `--option water=<the field>` (lib/water's worlds: `--option
+water=tag:water_level`, build.md 15.1); without it no water is drawn, and the loader says
+`load.fields_not_drawn` (info) naming the field. `--option paths=kind:<k>` draws that kind's paths
+as strips (a lane's bed shows without it too). Both need a display: Godot's `--headless` draws
+nothing and keeps no `MultiMesh` data. The fixture builds are written by `tests/make_fixture.py`
+(Python's standard library only); `--check` says whether the files on disk still match it. The
+floor test is the one part that runs headless: it reads data and physics only, never a render.

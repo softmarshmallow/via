@@ -1,0 +1,15 @@
+format    = "via-case-1"
+summary   = "lib/water's `weir` at 2 m posts with its line between posts (y = 65.2): `wall` is 0 from 1.3 m and `clear` from 3 m, short of their rings (2, 4] and (4, 6], so no ring post is cut and the build has no diagnostic (fields.md 5.3)."
+milestone = 7
+actions   = ["build"]
+
+# M7 close (change review 3 of `trips2`): with `wall` at radius 3 and `clear` at 4, the shipped
+# weir held at 1 m posts only. At 2 m (Sonnet's `crossroads` resolution) the rings (1, 3] and
+# (2, 4] took both fades, and this world gave field.effect_cut on `wall` and `clear`; at that
+# radius this case fails.
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/w"

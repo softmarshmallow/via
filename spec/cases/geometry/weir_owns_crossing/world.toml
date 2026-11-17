@@ -1,7 +1,7 @@
 name       = "weir_owns_crossing"
 extent     = [0, 0, 64, 128]
 resolution = 1
-include    = ["water", "millrace"]
+include    = ["water"]
 
 [field.height]                              # the land falls south; the beck runs with it
 role = "surface"

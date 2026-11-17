@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "A lint step that reports on a feature an import brought, written as a feature address (subject = \"feature.a.spot\"): the warning lands on the import, `import.a`, with `spot` in data.place, as the bare `a.spot` does (diagnostics.md 6)."
+milestone = 7
+actions   = ["program", "trust", "build"]
+
+# M7 close (task `crossroads`, the second model family): a grade lint over `kind:road` was handed
+# the imports' roads too (`college.approach`) and sent each as `feature.<name>`; ten records were
+# diag.malformed, "names nothing in this world", while the bare dotted name mapped to the import.
+# On that code this case fails: the build exits 1 with diag.malformed and no step warning.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.steep]
+code    = "step.look.steep"
+subject = "import.a"
+
+[action.build.file.place]
+path    = ".diag/build.json"
+pointer = "/diagnostics/0/data/place"
+value   = "spot"

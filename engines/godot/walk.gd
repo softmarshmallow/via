@@ -136,6 +136,25 @@ static func plan(v: Vector3) -> Vector2:
 	return Vector2(v.x, -v.z)
 
 
+## Whether `p` lies inside the ring `ring` in plan (an even-odd crossing test). Not
+## Geometry2D.is_point_in_polygon, which in Godot 4.7.2 answered true for a point 115 m from a 1 m
+## footprint, so a walk reported "through" a tree it never passed (M7 close, the on-foot review of
+## the second outsider run).
+static func inside(p: Vector2, ring: PackedVector2Array) -> bool:
+	var n := ring.size()
+	if n < 3:
+		return false
+	var c := false
+	var j := n - 1
+	for i in n:
+		var a := ring[i]
+		var b := ring[j]
+		if (a.y > p.y) != (b.y > p.y) and p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x:
+			c = not c
+		j = i
+	return c
+
+
 ## Walks once. `root` is the loaded build in its viewport (its bodies already in the physics
 ## space); `loader` the Loader that made it; `from` the eye's world point (x, y, z: a bookmark's
 ## `at` raised by its eye height) and `to` the target's; `target` the name of what `to` is; `along`
@@ -292,7 +311,7 @@ static func walk(root: Node3D, loader, from: Vector3, to: Vector3, target: Strin
 		if d > deepest.depth:
 			deepest = {"depth": d, "at": [q.x, q.y]}
 		for u in unbodied:
-			if not through.has(u.name) and Geometry2D.is_point_in_polygon(q, u.plan):
+			if not through.has(u.name) and inside(q, u.plan):
 				through[u.name] = true
 		# what it pressed against this step: the most upright surface it touched
 		var hit = null

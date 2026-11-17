@@ -17,28 +17,17 @@
 #   ground is under the new level: a fade over dry ground below the level stands a wall of water
 #   where the fade ends, and nothing reports it (M6 close fresh-agent run `weir`: a 36 m half disc
 #   faded radially; confining the mask to the channel's banks fixed it).
-#   A worked weir (M7 close fresh-agent run `mill`; this library ships none yet): a kind of the
-#   world's own, its two ends `starts_at`/`ends_at` points placed `on` the beck at one `t` and
-#   offsets either side, so it is square to the water and moves with it; `names = ["crosses"]` and
-#   `crosses = "<the beck>"` own the meeting (geometry.md 2.7, else `geom.unowned_crossing`).
-#       [kind.weir]
-#       authority = "anchored"
-#       radius    = 34
-#       requires  = ["crosses"]
-#       names     = ["crosses"]
-#       defaults  = { rise = 1.0, thick = 0.8, spill = 0.05, back = 30, reach = 10.5 }
-#       [kind.weir.effect.wall]                    # the ground on the line raised to the crest
-#       field  = "role:surface"
-#       value  = "= max(v, under('min') + rise)"
-#       mask   = "= 1 - smoothstep(thick, thick + 0.5, d)"
-#       radius = 2
-#       [kind.weir.effect.pond]                    # upstream (sd > 0) and on the banks only
-#       field = "tag:water_level"
-#       value = "= max(v, under('min') - spill)"
-#       mask  = "= if(sd > 0 and dist('kind:beck', 14) < reach, 1, 0) * (1 - smoothstep(back - 3, back - 1, d))"
-#   `under('min')` reads the field the effect writes (formulas.md 8.5): in `wall` it is the
-#   channel floor, in `pond` the water, which is the finished ground (the crest) when the water's
-#   base is `= f('height')`. So the crest is not one `let`; the pond relies on that base.
+#   The `weir` below (a fresh agent's, M7 close task `mill`, shipped after both model families
+#   wrote their own) does this: its pond is held to the beck's banks.
+# - A beck crossed by an anchored kind that writes the ground where the beck does stays `shaped`,
+#   the default: two anchored statements on one field's posts that disagree are
+#   `authority.conflict` (authority.md 5). The `weir`'s `wall` raises the channel floor to its
+#   crest, and lib/ways' `crossing`'s `heads` holds the banks at its ends near `deck_z`, both on
+#   posts the beck's channel and banks write. lib/ways' `ford` is anchored too but keeps the ground
+#   the beck left within `beck_reach`, so it agrees: `examples/ford` writes its beck `anchored`.
+# - A kind of your own goes in a library of your own, never in the world file
+#   (`doc.kind_outside_library`): a folder `<lib root>/<name>/kinds.toml`, its root on `VIA_LIB` or
+#   given by `--lib`, and `<name>` in the world's `include` (documents.md 4).
 #
 # Cross profiles read `d` only, never `t` (geometry.md 2.6: the beck bends, so a frame read far
 # from its line jumps across the bisector inside each bend, limitation E1). Only the channel reads
@@ -203,3 +192,64 @@ mask  = "= 1 - smoothstep(0.5, 1, d)"
 field = "role:keep_out"
 value = "= 1"
 mask  = "= 1 - smoothstep(3, 5, d)"
+
+# A weir (M7 close: the `mill` task's fresh agents of both model families each wrote one; shipped
+# from the first's, case `geometry/weir_owns_crossing`). A path across a beck, its two ends
+# `starts_at`/`ends_at` points placed `on` the beck at one `t` and offsets either side, so it is
+# square to the water and moves with it; `crosses = "<the beck>"` owns the meeting
+# (geometry.md 2.7, else `geom.unowned_crossing`):
+#
+#     [feature.weir_west]
+#     on = { ref = "river", t = 0.5, offset = -10 }
+#     [feature.weir_east]
+#     on = { ref = "river", t = 0.5, offset = 10 }
+#     [feature.weir]
+#     kind      = "weir"
+#     starts_at = "weir_west"
+#     ends_at   = "weir_east"
+#     path      = []
+#     crosses   = "river"
+#
+# `under('min')` reads the field the effect writes (formulas.md 8.5): in `wall` it is the channel
+# floor, in `pond` the water, which is the finished ground (the crest) when the water's base is
+# `= f('height')`. So the crest is not one `let`; the pond relies on that base. The pond rises
+# upstream only (`sd > 0`: the left of the weir's travel, so start it at the negative offset, the
+# right bank of the beck's travel, as above) and on the beck's banks only. The weir writes ground
+# and water, no mesh: a view sees the step in the water and the raised pond, not a wall.
+#
+# Each effect's `radius` stands past where its mask is 0 by more than a post (`resolution`), since
+# the ring (radius - resolution, radius] must be clear wherever the line lies between posts
+# (fields.md 5.3): `wall` is 0 from `thick + 0.5` = 1.3 m and `clear` from 3 m, so radius 4 and 6
+# hold at a resolution up to 2.7 m and 3 m. A larger `thick` needs a larger `wall` radius.
+[kind.weir]
+authority = "anchored"
+radius    = 34                            # `back` and 4 m
+requires  = ["crosses"]
+names     = ["crosses"]
+
+[kind.weir.defaults]
+rise  = 1.0                               # metres the crest stands over the channel floor
+thick = 0.8                               # metres from the line the crest holds before it falls
+spill = 0.05                              # metres the pond stands below the crest
+back  = 30                                # metres upstream the pond reaches
+reach = 10.5                              # metres from the beck's line the pond may wet
+
+[kind.weir.effect.wall]                   # the ground on the line raised to the crest
+field  = "role:surface"
+value  = "= max(v, under('min') + rise)"
+mask   = "= 1 - smoothstep(thick, thick + 0.5, d)"
+radius = 4                                # 0 from 1.3 m, short of the ring (2, 4] at 2 m posts.
+# With radius 2 the ring (1, 2] at 1 m posts took the fade wherever the line lay between posts, and
+# radius 3 at 2 m posts likewise: `field.effect_cut` on a weir off the lattice (M7 close; cases
+# `geometry/weir_off_lattice` and `geometry/weir_off_lattice_r2`).
+
+[kind.weir.effect.pond]                   # upstream (sd > 0) and on the banks only
+field = "tag:water_level"
+value = "= max(v, under('min') - spill)"
+mask  = "= if(sd > 0 and dist('kind:beck', 14) < reach, 1, 0) * (1 - smoothstep(back - 3, back - 1, d))"
+
+[kind.weir.effect.clear]                  # no tree on the crest
+field  = "role:keep_out"
+value  = "= 1"
+mask   = "= 1 - smoothstep(2, 3, d)"
+radius = 6                                # 0 from 3 m, short of the ring (4, 6] at 2 m posts

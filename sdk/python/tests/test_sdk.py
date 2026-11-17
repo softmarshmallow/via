@@ -424,6 +424,21 @@ class Document(unittest.TestCase):
 
             tomllib.loads(text)
 
+    def test_out_writes_a_feature_of_no_kind(self):
+        # M7 close (`mill`, the second model family): `feature` always wrote `kind`, so a kindless
+        # walk point came back as `kind = ""`, `authority.unknown_kind`.
+        from viasdk._step import Out
+
+        with tempfile.TemporaryDirectory() as d:
+            out = Out(d)
+            out.feature("stair_head", at=(1500, 2000))
+            out.feature("walk", None, path=[(0, 0), (1500, 2000)])
+            import tomllib
+
+            got = tomllib.loads(out.text())
+            self.assertEqual(got["feature"]["stair_head"], {"at": [1.5, 2]})
+            self.assertEqual(got["feature"]["walk"], {"path": [[0, 0], [1.5, 2]]})
+
     def test_out_writes_a_run_and_refuses_other_tables(self):
         from viasdk._step import Out
 

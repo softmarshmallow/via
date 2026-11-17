@@ -402,7 +402,11 @@ A step sends diagnostics by `diag.emit` (`protocol.md` 3.3). Each holds `severit
   always added, a step can never raise a core code or another step's.
 - The subject is an entity address, key path, bare id, place name, produced name or selector, mapped
   to the canonical form by 1.1. A produced name becomes its producer, with the name moved into
-  `occurrences`. A step never writes file or line: the site is the subject's key path if it has
+  `occurrences`. A feature an import brought, which a step reads under its dotted name
+  (`<import>.<name>`), maps by 1.1's place-name rule to the import, with `<name>` in `data.place`;
+  `feature.<import>.<name>` maps the same, since a step that read the dotted name writes it as a
+  feature address (ours, M7 close: a grade lint over `kind:road` reported on the imports' roads
+  that way and got `diag.malformed`; case `subject_imported`). A step never writes file or line: the site is the subject's key path if it has
   one, else its header; for a selector, the key in the step's table that wrote it (`for_each`), else
   the step's header.
 - `position` enters the lattice as 1.2 says.
@@ -627,6 +631,8 @@ Each case runs through the command line (R20): input; action; what must hold.
   `failed_on = true`, no outputs; without the flag, exit 0 and outputs written.
 - A lint step that sends a diagnostic with no hint; build; one `diag.malformed`, exit 1.
 - A lint step that sends `subject = "feature.nowhere"`; build; `diag.malformed`.
+- A lint step that sends `subject = "feature.a.spot"`, `spot` a feature of the import `a`; build;
+  the step's warning with subject `import.a` and `data.place = "spot"`, no `diag.malformed`.
 - A lint step that sends a produced name as subject; build; the subject is its producer and the name
   is in `occurrences`.
 - A lint step that sends a `position` outside the world's extent; build; `diag.malformed`.

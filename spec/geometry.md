@@ -1194,9 +1194,16 @@ An action that is a kernel operation, or `read` of a written `path` or `region`,
   crossing, naming both. ford; build; none.
 - (`unowned_crossing_hint`, M7) The same; the hint names both ways to own it, an end named on the
   other and an attribute the kind lists in `names` (read from the diagnostics document).
-- (`weir_owns_crossing`, M7) A kind of the world's own (a fresh agent's weir) across lib/water's
-  beck, `names = ["crosses"]` and `crosses = "river"`; build; no `geom.unowned_crossing`, the crest
-  and the level pond upstream exact; without `names`, `geom.unowned_crossing`.
+- (`weir_owns_crossing`, M7) lib/water's `weir` (shipped from a fresh agent's) across its beck,
+  `names = ["crosses"]` and `crosses = "river"`; build; no `geom.unowned_crossing`, the crest and
+  the level pond upstream exact; without `names`, `geom.unowned_crossing`.
+- (`weir_off_lattice`, `weir_off_lattice_r2`, M7) The same weir with its line between posts
+  (y = 65.2), at resolution 1 and 2; build; no diagnostic: each effect's mask is 0 before its
+  ring (`fields.md` 5.3), so no `field.effect_cut`; at the old radii (wall 2 at 1 m, wall 3 and
+  clear 4 at 2 m), `field.effect_cut`.
+- (`kindless_returned`, M7) A step returns, through viasdk's `out.feature` with no `kind`, a path
+  across a path with a kind; build; the path loads as a guide, no `geom.unowned_crossing` and no
+  `authority.unknown_kind`; returned with the kind, `geom.unowned_crossing`.
 - `comb`; triangulate (when 3.10 is first needed); twice-areas sum exactly, no added vertex,
   counter-clockwise, in the order of 3.10.
 - Every case above; on macOS and Linux (Windows once a push is allowed), at 1 and 8 threads; same bytes.

@@ -14,9 +14,10 @@ a person reviewing them. `via` is a working name.
 ## Status
 
 A rewrite is under way on branch `rewrite`, at the close of milestone M7 (the first cut: agents
-of one model family built worlds from these documents alone, and the second family's run from
-`rewrite` is still owed, `TODO.md` "From M7 close"; M6 joined every example in one
-map, `examples/atlas`, streamed in chunks, with budgets and the player map as data). Until `main`
+of two model families, both Claude models (Fable and Sonnet), built worlds from these documents
+alone, each world built, the first build within 4.5 to 9 minutes; a run by another vendor's model
+is the owner's; M6 joined every example in one map, `examples/atlas`, streamed in chunks, with
+budgets and the player map as data). Until `main`
 moves to it at the owner's review, `main` holds the older research tree: check out `rewrite` (a
 tree with `spec/`, `lib/` and `examples/`). The new engine builds every world under `examples/`;
 `docs/plan.md` says what each milestone adds and `TODO.md` what is open.
@@ -26,7 +27,7 @@ tree with `spec/`, `lib/` and `examples/`). The new engine builds every world un
 ```sh
 cargo build --release -p via-cli -p via-terrain     # a cargo-built via has no shipped library root:
 export VIA_LIB=$PWD/lib                             #   name ours (documents.md 4.1)
-export PATH=$PWD/target/release:$PATH
+export PATH=$PWD/target/release:$PATH                # or your --target-dir's release folder
 uv sync --project sdk/python --python 3.12          # the SDK's venv: Python 3.12 and NumPy
 via config program python $PWD/sdk/python/.venv/bin/python   # steps run on Python 3.12 (the SDK's venv)
 via config program via-terrain $PWD/target/release/via-terrain
@@ -50,7 +51,12 @@ A change is passed by its path (`--change changes/x.toml`; a bare name holds no 
 - **Steps.** A step of your own is Python on the SDK: `sdk/python/README.md` (setup, a worked lint,
   units, what bites). Each library's reference is its `kinds.toml` header.
 - **Joining examples.** Where a parent ends a road on each example, and the lift it needed, is
-  `examples/atlas/README.md`, "Joining an example".
+  `examples/atlas/README.md`, "Joining an example". The usual round: import with any `lift` (or
+  none), build, write the `lift` the `import.seam` hint names, build again, then measure the join
+  where your road meets the import and adjust (`composition.md` 5: the hint is the edge's median).
+  An import's own warnings print with its id before the subject (`town.…`); they are its own, not
+  yours to fix. A step lists an import's features under dotted names; its report on one lands on
+  the import (`import.<id>`, the name in `data.place`).
 
 The spike was the concept phase: 19 worlds, built in throwaway Python. It was deleted at milestone
 M7; its record is the tag `spike-final` (`git show spike-final:spike/FINDINGS.md`). What it said
