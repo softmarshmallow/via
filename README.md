@@ -95,6 +95,7 @@ the tag `spike-final`.
 | [`docs/charter.md`](docs/charter.md) | One page: the intended use, what we own, what we do not, and what we do not promise. Read it first. |
 | [`docs/doctrine.md`](docs/doctrine.md) | The goal, the principles, the eleven nouns and every ruling. It decides details. |
 | [`docs/plan.md`](docs/plan.md) | The rewrite plan: milestones M0 to M7 and milestone one, `ford`. |
+| [`docs/reports/first-cut.md`](docs/reports/first-cut.md) | One page for the owner's review of the first cut: what holds, what does not, the open rulings and decisions. |
 | [`spec/`](spec/) | The contract: chapters, schemas, test vectors and conformance cases. Start with `spec/vocabulary.md`. |
 | [`docs/challenges.md`](docs/challenges.md) | Every request made of the tool, how it fared, and the milestone that closes it. |
 | [`docs/design/blackbox.md`](docs/design/blackbox.md) | The tool seen from outside. |

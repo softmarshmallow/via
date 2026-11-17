@@ -225,6 +225,9 @@ move_market 115.9, move_square 168.3, forgotten_exit 108.9, over_budget 175.5.
   97 arrive, 28 are blocked, 1 falls (91, 33, 2 at M7 slice 1; streamed at 96 m with water, the
   release binary of e686b8c): the city's two bridge views, `market.top`, `join_college`,
   `coast.under_deck` and `monastery.bm_tarn` arrive; `coast.along_cliff` still falls (core).
+  After the M7 close's core fix (R53), on the M7 sheet (release binary of 95f65fd, one fresh
+  store, streamed at 96 m with water): 97 arrive, 29 are blocked, none falls; `coast.along_cliff`
+  arrives (59.6 m) and `coast.in_cave` is blocked 1.95 m short (TODO).
 - **The river that bends** runs from its spring to the city's north edge and on along the city's
   river's line to the sea (layers/land.toml): its course carves the mouth south of the city (the
   beck `city_mouth` did, on the same line, until the atlas pass) and ends in the sea at (1008, 224),
