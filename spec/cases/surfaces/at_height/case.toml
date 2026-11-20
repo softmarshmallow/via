@@ -1,0 +1,111 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 (R65): at = [x, y, z] stands a hand instance, a pin, a set and a point feature on the kind surface at the point whose height is nearest z; two instances at one plan point on two floors do not overlap; raising the upper floor re-grounds them (causes its level), and raising it past half a storey takes them to the lower floor; each rebuild equals a clean one (U6)."
+milestone = 5
+actions   = ["base", "low", "raise", "far"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# Two floors over one outline, at 10.3 and 13.3. Everything in the world file writes a height
+# nearer the upper: `high` 13 (300 mm under it), the pin 12.9, the set and the point 13.3.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.file.z]
+path = "build/base/instances/z.npy"
+all  = 13.3
+
+[action.base.file.count]
+path    = "build/base/manifest.json"
+pointer = "/instances/count"
+value   = 4
+
+# Features in id order: hall_1, hall_g, spot.
+[action.base.file.spot]
+path    = "build/base/features.json"
+pointer = "/features/2/at"
+value   = [28, 25, 13.3]
+
+# `low` at the plan point of `high`, its height 10.4: the lower floor. One plan point, two
+# floors: no place.overlap. Features in id order: at_high, at_low, hall_1, hall_g, spot.
+[action.low]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "low", "--against", "build/base", "--out", "build/low"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/low"
+
+[action.low.diag.no_overlap]
+code    = "place.overlap"
+records = 0
+
+[action.low.file.high]
+path    = "build/low/features.json"
+pointer = "/features/0/attrs/toward/at"
+value   = [30, 26, 13.3]
+
+[action.low.file.low]
+path    = "build/low/features.json"
+pointer = "/features/1/attrs/toward/at"
+value   = [30, 26, 10.3]
+
+# The upper floor raised to 14: still the nearer for each, so each stands at 14.
+[action.raise]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "raise", "--against", "build/base", "--out", "build/raise"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/raise"
+
+[action.raise.file.z]
+path = "build/raise/instances/z.npy"
+all  = 14.0
+
+[action.raise.file.spot]
+path    = "build/raise/features.json"
+pointer = "/features/2/at"
+value   = [28, 25, 14]
+
+[action.raise.check.high]
+fn     = "entry_causes"
+path   = "build/raise/changes.json"
+table  = "instance"
+prefix = "high"
+named  = ["feature.hall_1.level"]
+
+[action.raise.check.set]
+fn     = "entry_causes"
+path   = "build/raise/changes.json"
+table  = "instance"
+prefix = "pairs."
+named  = ["feature.hall_1.level"]
+
+[action.raise.check.pin]
+fn     = "entry_causes"
+path   = "build/raise/changes.json"
+table  = "instance"
+prefix = "mark"
+named  = ["feature.hall_1.level"]
+
+# The upper floor raised to 17, more than half a storey: the lower floor is now the nearer for
+# every height written, so each stands at 10.3 (4.1: z chooses and sets nothing).
+[action.far]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "far", "--against", "build/base", "--out", "build/far"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/far"
+
+[action.far.file.z]
+path = "build/far/instances/z.npy"
+all  = 10.3
+
+[action.far.file.spot]
+path    = "build/far/features.json"
+pointer = "/features/2/at"
+value   = [28, 25, 10.3]

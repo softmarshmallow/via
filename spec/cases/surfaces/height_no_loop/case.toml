@@ -1,0 +1,60 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 (R65): the plan of a thing placed by a height holds no choice, so a flight that ends at its door, and whose own tread is a candidate under it, closes no loop: the hut stands at 13.3 as with surface = hall_1.floor. A loop that does pass through a choice (a second hut on the first's door, the flight ending at the second's) is graph.cycle at the first hut's at, never diag.internal."
+milestone = 5
+actions   = ["build", "named", "loop"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.build.diag.cycle]
+code    = "graph.cycle"
+records = 0
+
+[action.build.file.z]
+path = "build/w/instances/z.npy"
+all  = 13.3
+
+# The same world with the surface named: the same instance file.
+[action.named]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "named", "--out", "build/named"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/named"
+
+[action.named.file.z]
+path = "build/named/instances/z.npy"
+all  = 13.3
+
+# A second hut on the first one's door stands where the first stands, so it reads the first's
+# height; the flight now ends at the second's door, and its tread still holds the first's
+# origin. The loop passes through the first hut's choice: it is located at its `at`.
+[action.loop]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "loop", "--out", "build/loop"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/loop"
+
+[action.loop.diag.cycle]
+code    = "graph.cycle"
+subject = "instance.hut"
+file    = "world.toml"
+line    = 20
+
+[action.loop.diag.internal]
+code    = "diag.internal"
+records = 0

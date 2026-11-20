@@ -1,0 +1,566 @@
+# What a kit build measures (docs/research/Modular kit failures in studios.md, section 13: the
+# difficulties studios report with modular kits, rebuilt on one plain kit). Measures, never bytes
+# (R15): each row names a measure of `measure.py` and the band it must fall in. Taken by
+#
+#   python3 examples/kit/measure.py BUILD                        # base
+#   python3 examples/kit/measure.py BUILD+<c> --base BUILD       # a change, built with --against
+#   python3.11 examples/kit/measure.py BUILD+<c> --base BUILD --check <c>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built 2026-11-20 from the working tree
+# after 640a7df with K1 of docs/plan-kits.md (R64, R65, epoch 3), VIA_LIB=lib, Python 3.12
+# (sdk/python/.venv) for the steps, lib/building's `lay` and `check` of the same tree with K2 (a
+# place by `side` and `at`, the kit against itself). One fresh store: base, then each change with
+# --against base, one build each; `window_module` is `window` and `module` together. Measured
+# once on 2026-11-20, so a band is the measured number: not a target, it says where someone
+# looks. The same builds before any mend, and after the library's first mends, are in README.md,
+# "The record".
+
+# ------------------------------------------------------------------------------------------ base
+# The base: two buildings, every stretch of wall closing.
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.pieces]
+measure = "pieces"
+band    = [53, 53]
+
+[base.wall]
+measure = "wall"
+band    = [35, 35]
+
+[base.wall_half]
+measure = "wall_half"
+band    = [4, 4]
+
+[base.corner]
+measure = "corner"
+band    = [12, 12]
+
+[base.door]
+measure = "door"
+band    = [2, 2]
+
+[base.open]
+measure = "open"
+band    = [1, 1]
+
+[base.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+[base.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+[base.outside_max_mm]
+measure = "outside_max_mm"
+band    = [0, 0]
+
+[base.floor_off_mm]
+measure = "floor_off_mm"
+band    = [0, 0]
+
+[base.stack_over_mm]
+measure = "stack_over_mm"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ stub
+# A corner remodelled with a 0.6 m stub. The revision is named (asset.revised), the fault is
+# named (kit_corner), and each corner and the wall piece it now overlaps are named
+# (place.crowded, R64). Nothing gives way: the walls are whole and the overlap is measured.
+
+[stub.errors]
+measure = "errors"
+band    = [0, 0]
+
+[stub.warnings]
+measure = "warnings"
+band    = [14, 14]
+
+[stub.revised]
+measure = "revised"
+band    = [1, 1]
+
+[stub.revised_named]
+measure = "revised_named"
+band    = [12, 12]
+
+[stub.revised_all]
+measure = "revised_all"
+band    = [1, 1]
+
+[stub.kit_corner]
+measure = "kit_corner"
+band    = [1, 1]
+
+[stub.crowded]
+measure = "crowded"
+band    = [12, 12]
+
+[stub.gave_way]
+measure = "gave_way"
+band    = [0, 0]
+
+[stub.removed]
+measure = "removed"
+band    = [0, 0]
+
+[stub.moved]
+measure = "moved"
+band    = [0, 0]
+
+[stub.open]
+measure = "open"
+band    = [1, 1]
+
+[stub.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+[stub.overlaps]
+measure = "overlaps"
+band    = [12, 12]
+
+[stub.overlap_max_mm]
+measure = "overlap_max_mm"
+band    = [300, 300]
+
+[stub.outside_max_mm]
+measure = "outside_max_mm"
+band    = [300, 300]
+
+# ------------------------------------------------------------------------------------------ module
+# The bay on a 3.2 m module. Every wall is re-fitted with half bays; each building says so
+# (fillers_only) and the kit says why (kit_module).
+
+[module.errors]
+measure = "errors"
+band    = [0, 0]
+
+[module.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[module.fillers_only]
+measure = "fillers_only"
+band    = [2, 2]
+
+[module.kit_module]
+measure = "kit_module"
+band    = [1, 1]
+
+[module.revised]
+measure = "revised"
+band    = [0, 0]
+
+[module.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[module.wall]
+measure = "wall"
+band    = [0, 0]
+
+[module.wall_half]
+measure = "wall_half"
+band    = [74, 74]
+
+[module.added]
+measure = "added"
+band    = [70, 70]
+
+[module.removed]
+measure = "removed"
+band    = [35, 35]
+
+[module.open]
+measure = "open"
+band    = [1, 1]
+
+[module.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+# ------------------------------------------------------------------------------------------ pivot
+# The bay's origin moved to its end. Named, and nothing moves: the pivot is the pack's rule.
+
+[pivot.errors]
+measure = "errors"
+band    = [0, 0]
+
+[pivot.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[pivot.revised]
+measure = "revised"
+band    = [1, 1]
+
+[pivot.revised_named]
+measure = "revised_named"
+band    = [35, 35]
+
+[pivot.revised_all]
+measure = "revised_all"
+band    = [1, 1]
+
+[pivot.pivot_moved]
+measure = "pivot_moved"
+band    = [1, 1]
+
+[pivot.moved]
+measure = "moved"
+band    = [0, 0]
+
+[pivot.added]
+measure = "added"
+band    = [0, 0]
+
+[pivot.removed]
+measure = "removed"
+band    = [0, 0]
+
+[pivot.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+# ------------------------------------------------------------------------------------------ tall
+# The bay 0.3 m taller than a storey. The revision, the clash with the storey above
+# (kit_height) and the uneven kit (kit_uneven) are each named.
+
+[tall.errors]
+measure = "errors"
+band    = [0, 0]
+
+[tall.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[tall.revised]
+measure = "revised"
+band    = [1, 1]
+
+[tall.revised_named]
+measure = "revised_named"
+band    = [35, 35]
+
+[tall.revised_all]
+measure = "revised_all"
+band    = [1, 1]
+
+[tall.kit_height]
+measure = "kit_height"
+band    = [1, 1]
+
+[tall.kit_uneven]
+measure = "kit_uneven"
+band    = [1, 1]
+
+[tall.stack_over_mm]
+measure = "stack_over_mm"
+band    = [300, 300]
+
+[tall.moved]
+measure = "moved"
+band    = [0, 0]
+
+[tall.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+# ------------------------------------------------------------------------------------------ off_module
+# The hall a metre longer. Three stretches are reported open, and the fourth, beside the
+# door, as a gap a metre wider than its door (gap_wide). The door and the stair keep their
+# places: they are written by a side and a distance along it.
+
+[off_module.errors]
+measure = "errors"
+band    = [0, 0]
+
+[off_module.warnings]
+measure = "warnings"
+band    = [4, 4]
+
+[off_module.wall_open]
+measure = "wall_open"
+band    = [3, 3]
+
+[off_module.gap_wide]
+measure = "gap_wide"
+band    = [1, 1]
+
+[off_module.open]
+measure = "open"
+band    = [4, 4]
+
+[off_module.open_max_mm]
+measure = "open_max_mm"
+band    = [13000, 13000]
+
+[off_module.open_sum_mm]
+measure = "open_sum_mm"
+band    = [38500, 38500]
+
+[off_module.removed]
+measure = "removed"
+band    = [10, 10]
+
+[off_module.added]
+measure = "added"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ ell
+# The annex as an L, with the kit's inside corner piece. Every side closes.
+
+[ell.errors]
+measure = "errors"
+band    = [0, 0]
+
+[ell.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[ell.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[ell.kit_ell]
+measure = "kit_ell"
+band    = [0, 0]
+
+[ell.corner]
+measure = "corner"
+band    = [13, 13]
+
+[ell.corner_in]
+measure = "corner_in"
+band    = [1, 1]
+
+[ell.open]
+measure = "open"
+band    = [1, 1]
+
+[ell.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+[ell.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+[ell.outside_max_mm]
+measure = "outside_max_mm"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ window
+# A window bay pinned over one bay, its place carrying its floor's height (R65). It takes
+# that bay's place, on the floor, and nothing else.
+
+[window.errors]
+measure = "errors"
+band    = [0, 0]
+
+[window.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[window.wall_window]
+measure = "wall_window"
+band    = [1, 1]
+
+[window.pin_removed]
+measure = "pin_removed"
+band    = [1, 1]
+
+[window.added]
+measure = "added"
+band    = [1, 1]
+
+[window.removed]
+measure = "removed"
+band    = [1, 1]
+
+[window.floor_off_mm]
+measure = "floor_off_mm"
+band    = [0, 0]
+
+[window.open]
+measure = "open"
+band    = [1, 1]
+
+[window.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+# ------------------------------------------------------------------------------------------ window_up
+# The same on the storey above.
+
+[window_up.errors]
+measure = "errors"
+band    = [0, 0]
+
+[window_up.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[window_up.wall_window]
+measure = "wall_window"
+band    = [1, 1]
+
+[window_up.pin_removed]
+measure = "pin_removed"
+band    = [1, 1]
+
+[window_up.added]
+measure = "added"
+band    = [1, 1]
+
+[window_up.removed]
+measure = "removed"
+band    = [1, 1]
+
+[window_up.floor_off_mm]
+measure = "floor_off_mm"
+band    = [0, 0]
+
+[window_up.open]
+measure = "open"
+band    = [1, 1]
+
+[window_up.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+# ------------------------------------------------------------------------------------------ wide_door
+# A door 0.2 m wider than the kit's frame. The wall leaves 4.5 m where 1.7 m is needed,
+# and says so; no place on that side closes round a 1.7 m gap, and it says that too.
+
+[wide_door.errors]
+measure = "errors"
+band    = [0, 0]
+
+[wide_door.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[wide_door.gap_wide]
+measure = "gap_wide"
+band    = [1, 1]
+
+[wide_door.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[wide_door.open]
+measure = "open"
+band    = [3, 3]
+
+[wide_door.open_sum_mm]
+measure = "open_sum_mm"
+band    = [9000, 9000]
+
+[wide_door.added]
+measure = "added"
+band    = [1, 1]
+
+[wide_door.removed]
+measure = "removed"
+band    = [2, 2]
+
+# ------------------------------------------------------------------------------------------ door_off
+# The door half a metre off. The wall leaves 3 m for it, and the build says where it
+# would close: 4.05 or 5.55 m along its side.
+
+[door_off.errors]
+measure = "errors"
+band    = [0, 0]
+
+[door_off.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[door_off.gap_wide]
+measure = "gap_wide"
+band    = [1, 1]
+
+[door_off.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[door_off.open]
+measure = "open"
+band    = [3, 3]
+
+[door_off.open_sum_mm]
+measure = "open_sum_mm"
+band    = [7500, 7500]
+
+# ------------------------------------------------------------------------------------------ stair_off
+# The stair as it was first written. The storey above has 0.7 m and 5.8 m of wall either
+# side of the stairwell; each is reported with how far it is off.
+
+[stair_off.errors]
+measure = "errors"
+band    = [0, 0]
+
+[stair_off.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[stair_off.wall_open]
+measure = "wall_open"
+band    = [2, 2]
+
+[stair_off.gap_wide]
+measure = "gap_wide"
+band    = [0, 0]
+
+[stair_off.open]
+measure = "open"
+band    = [1, 1]
+
+[stair_off.open_sum_mm]
+measure = "open_sum_mm"
+band    = [12000, 12000]
+
+# ------------------------------------------------------------------------------------------ window_module
+# The pinned window with the bay on a 3.2 m module: the pin keeps its place and takes
+# the two half bays under it, on its own floor.
+
+[window_module.errors]
+measure = "errors"
+band    = [0, 0]
+
+[window_module.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[window_module.fillers_only]
+measure = "fillers_only"
+band    = [2, 2]
+
+[window_module.wall_window]
+measure = "wall_window"
+band    = [1, 1]
+
+[window_module.pin_removed]
+measure = "pin_removed"
+band    = [2, 2]
+
+[window_module.floor_off_mm]
+measure = "floor_off_mm"
+band    = [0, 0]
+
+[window_module.open]
+measure = "open"
+band    = [1, 1]
+
+[window_module.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]

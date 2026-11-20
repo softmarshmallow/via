@@ -111,6 +111,7 @@ the tag `spike-final`.
 | [`docs/charter.md`](docs/charter.md) | One page: the intended use, what we own, what we do not, and what we do not promise. Read it first. |
 | [`docs/doctrine.md`](docs/doctrine.md) | The goal, the principles, the eleven nouns and every ruling. It decides details. |
 | [`docs/plan.md`](docs/plan.md) | The rewrite plan: milestones M0 to M7 and milestone one, `ford`. |
+| [`docs/plan-kits.md`](docs/plan-kits.md) | The plan after the first cut: owning the modular building kit, milestones K1 to K10. |
 | [`docs/reports/first-cut.md`](docs/reports/first-cut.md) | One page for the owner's review of the first cut: what holds, what does not, the open rulings and decisions. |
 | [`docs/reports/revisit.md`](docs/reports/revisit.md) | One page: what was reorganised after the first cut, how it was checked, and the verdict on each thing found. |
 | [`spec/`](spec/) | The contract: chapters, schemas, test vectors and conformance cases. Start with `spec/vocabulary.md`. |

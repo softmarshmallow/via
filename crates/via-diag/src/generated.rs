@@ -5,7 +5,7 @@ use crate::registry::{CoveredBy, Row};
 use crate::Severity;
 
 /// Every core code, sorted bytewise by code.
-pub(crate) static ROWS: [Row; 360] = [
+pub(crate) static ROWS: [Row; 361] = [
     Row {
         code: "asset.bad_footprint",
         severity: Severity::Error,
@@ -2391,7 +2391,7 @@ pub(crate) static ROWS: [Row; 360] = [
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "What a pin removed: the instances of its by producers that its footprint overlapped, with count\nand names. Information only.\nTo fix: Nothing if intended; narrow by to keep them.\nBad:   by = [\"s\", \"t\"]   (removed instances of t that should stay)\nFixed: by = [\"s\"]\n",
+        explain: "What a pin removed: the instances of its by producers that its footprint overlapped on its own\nlevel (what stands on another surface over or under it stays), with count and names. Information\nonly.\nTo fix: Nothing if intended; narrow by to keep them.\nBad:   by = [\"s\", \"t\"]   (removed instances of t that should stay)\nFixed: by = [\"s\"]\n",
     },
     Row {
         code: "identity.pins_overlap",
@@ -3047,11 +3047,11 @@ pub(crate) static ROWS: [Row; 360] = [
         severity: Severity::Warning,
         chapter: "rules",
         milestone: 1,
-        summary: "Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both.",
+        summary: "Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both.",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two produced instances overlap, or one overlaps a thing in a higher layer. A warning: both stay.\nThe record names both.\nTo fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names\nthe lower producer.\nBad:   two runs along one path at the same offset\nFixed: on = { ref = \"a\", span = [0.1, 0.4], offset = 4 }   for one of them\n",
+        explain: "Two produced instances overlap, or one overlaps a thing in a higher layer, or a member of a run\nthat a step returned overlaps an instance the same step returned: a step wrote both at once, so\nneither gives way. A warning: both stay. The record names both.\nTo fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names\nthe lower producer. For two things of one step, change what the step returns, or move one of the\nthings it was given (two calls of one step do not see each other's output).\nBad:   two runs along one path at the same offset\nFixed: on = { ref = \"a\", span = [0.1, 0.4], offset = 4 }   for one of them\n",
     },
     Row {
         code: "place.gave_way",
@@ -3835,6 +3835,17 @@ pub(crate) static ROWS: [Row; 360] = [
         explain: "A surface and a mount share a name.\nTo fix: Rename the surface or the mount.\nBad:   [kind.span.surface.top] and [kind.span.mount.top]\nFixed: [kind.span.surface.top] and [kind.span.mount.top_west]\n",
     },
     Row {
+        code: "surface.none_at",
+        severity: Severity::Error,
+        chapter: "surfaces",
+        milestone: 5,
+        summary: "Its `at` carries a height, and no kind surface's bound holds the plan point (4.1). Hint: drop the third number to stand on the terrain, or move it onto a surface.",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "A placement's at has three numbers. The third is a height that chooses which kind surface at that\npoint the thing stands on, the one whose height there is nearest. Here no kind surface that its\nlayer sees holds the point, so there is nothing to choose from. The terrain is never chosen this\nway: two numbers mean the terrain.\nTo fix: Drop the third number to stand on the terrain, or move the point onto a surface.\nBad:   at = [40, 40, 13.3]   (no surface there)\nFixed: at = [40, 40]   or   at = [30, 26, 13.3]\n",
+    },
+    Row {
         code: "surface.not_surface",
         severity: Severity::Error,
         chapter: "surfaces",
@@ -3883,11 +3894,11 @@ pub(crate) static ROWS: [Row; 360] = [
         severity: Severity::Error,
         chapter: "surfaces",
         milestone: 5,
-        summary: "`surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`.",
+        summary: "`surface` written with `on`, or with a height in `at`: each already says the surface. Hint: drop `surface`, or place it by `at` with two numbers.",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A placement writes both on and surface. On already decides what it stands on (the surface of the\nthing or mount it is on), so the two could disagree.\nTo fix: Drop surface, or place it by at with surface.\nBad:   on = { ref = \"hall\", t = 0.5 } and surface = \"hall.top\"\nFixed: at = [30, 26] and surface = \"hall.top\"\n",
+        explain: "A placement says twice what it stands on: surface written with on, or with a height as the third\nnumber of at. On already decides it (the surface of the thing or mount it is on), and so does a\nheight (the surface nearest it), so the two could disagree.\nTo fix: Drop surface, or place it by at with two numbers and surface.\nBad:   on = { ref = \"hall\", t = 0.5 } and surface = \"hall.top\"\nFixed: at = [30, 26] and surface = \"hall.top\"\n",
     },
     Row {
         code: "surface.through",
@@ -4594,7 +4605,7 @@ pub mod codes {
         use crate::registry::Code;
         /// `place.asset_or_set` (error): A placement writes both `asset` and `set`, or neither.
         pub const ASSET_OR_SET: Code = Code::from_index(275);
-        /// `place.crowded` (warning): Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both.
+        /// `place.crowded` (warning): Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both.
         pub const CROWDED: Code = Code::from_index(276);
         /// `place.gave_way` (info): A producer's candidates dropped by overlap and by relief, as counts, with their box.
         pub const GAVE_WAY: Code = Code::from_index(277);
@@ -4758,29 +4769,31 @@ pub mod codes {
         pub const MOUNT_FACE: Code = Code::from_index(346);
         /// `surface.name_clash` (error): A surface and a mount share a name.
         pub const NAME_CLASH: Code = Code::from_index(347);
+        /// `surface.none_at` (error): Its `at` carries a height, and no kind surface's bound holds the plan point (4.1). Hint: drop the third number to stand on the terrain, or move it onto a surface.
+        pub const NONE_AT: Code = Code::from_index(348);
         /// `surface.not_surface` (error): Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces.
-        pub const NOT_SURFACE: Code = Code::from_index(348);
+        pub const NOT_SURFACE: Code = Code::from_index(349);
         /// `surface.off_bound` (warning): Part of its footprint lies outside its surface's bound; the share.
-        pub const OFF_BOUND: Code = Code::from_index(349);
+        pub const OFF_BOUND: Code = Code::from_index(350);
         /// `surface.outside` (error): Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code.
-        pub const OUTSIDE: Code = Code::from_index(350);
+        pub const OUTSIDE: Code = Code::from_index(351);
         /// `surface.owner_shape` (error): A surface on a point kind, a path owner without `bound`, or a region owner with one.
-        pub const OWNER_SHAPE: Code = Code::from_index(351);
-        /// `surface.placed_twice` (error): `surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`.
-        pub const PLACED_TWICE: Code = Code::from_index(352);
+        pub const OWNER_SHAPE: Code = Code::from_index(352);
+        /// `surface.placed_twice` (error): `surface` written with `on`, or with a height in `at`: each already says the surface. Hint: drop `surface`, or place it by `at` with two numbers.
+        pub const PLACED_TWICE: Code = Code::from_index(353);
         /// `surface.through` (warning): Its height reaches through another surface above its origin; names it.
-        pub const THROUGH: Code = Code::from_index(353);
+        pub const THROUGH: Code = Code::from_index(354);
         /// `surface.too_early` (error): `meetings()` called at `generate`.
-        pub const TOO_EARLY: Code = Code::from_index(354);
+        pub const TOO_EARLY: Code = Code::from_index(355);
         /// `surface.two_terrains` (error): Two surface fields at the top level. Hint: make one a kind's surface.
-        pub const TWO_TERRAINS: Code = Code::from_index(355);
+        pub const TWO_TERRAINS: Code = Code::from_index(356);
         /// `surface.unknown_mount` (error): `meets` names a mount the kind lacks; lists the kind's mounts.
-        pub const UNKNOWN_MOUNT: Code = Code::from_index(356);
+        pub const UNKNOWN_MOUNT: Code = Code::from_index(357);
         /// `surface.unknown_surface` (error): `surface` names a surface the kind lacks; lists the kind's surfaces.
-        pub const UNKNOWN_SURFACE: Code = Code::from_index(357);
+        pub const UNKNOWN_SURFACE: Code = Code::from_index(358);
         /// `surface.unmet` (warning): A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector \<c\> here: `ends_at = \"<place>\"`".
-        pub const UNMET: Code = Code::from_index(358);
+        pub const UNMET: Code = Code::from_index(359);
         /// `surface.which` (error): `on` a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it `on` a mount.
-        pub const WHICH: Code = Code::from_index(359);
+        pub const WHICH: Code = Code::from_index(360);
     }
 }

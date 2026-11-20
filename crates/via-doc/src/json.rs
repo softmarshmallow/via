@@ -77,6 +77,7 @@ fn number(norm: &str, integer: bool, takes: Option<Takes>) -> String {
         Some(
             Takes::Length
             | Takes::Point
+            | Takes::PointZ
             | Takes::Points
             | Takes::Ways
             | Takes::Lengths(_)
@@ -105,7 +106,7 @@ fn number(norm: &str, integer: bool, takes: Option<Takes>) -> String {
 fn element(takes: Option<Takes>) -> Option<Takes> {
     match takes {
         Some(Takes::Points | Takes::Ways | Takes::Footprint) => Some(Takes::Point),
-        Some(Takes::Point | Takes::Lengths(_)) => Some(Takes::Length),
+        Some(Takes::Point | Takes::PointZ | Takes::Lengths(_)) => Some(Takes::Length),
         Some(Takes::Numbers(_) | Takes::NumberOrPair) => Some(Takes::Number),
         Some(Takes::Choices) => Some(Takes::Table(Shape::Choice)),
         Some(Takes::Free) => Some(Takes::Free),
@@ -185,8 +186,13 @@ fn value(item: &Item, takes: Option<Takes>) -> J {
             let el = element(takes);
             J::Arr(
                 xs.iter()
-                    .map(|x| match &x.value {
+                    .enumerate()
+                    .map(|(k, x)| match &x.value {
                         Value::Table(t) => J::Obj(table(t, el, Mode::Values)),
+                        // The third number of a point with a height is a number, not a length.
+                        _ if takes == Some(Takes::PointZ) && k == 2 => {
+                            value(x, Some(Takes::Number))
+                        }
                         _ => value(x, el),
                     })
                     .collect(),

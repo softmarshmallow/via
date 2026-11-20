@@ -20,7 +20,8 @@ How each is taken (ours, M5 slice 1):
 - `instances`, `dressing`: every instance, and those that are not wall pieces (`*_wall*` names) and
   not laid by lib/building's `lay` (`lay#*`).
 - `laid`, `laid_off_floor` (M5 slice 2): the net loft's instances (`lay#<storey>_*`, a run's
-  members `lay#<storey>_<run>#r<k>`), and those whose z is not their storey's `level` within 1 mm.
+  members `lay#<storey>_<run>#r<k>`), and those whose z is not their storey's `level` less their
+  asset's `sink` within 1 mm (the loft's lintel is lifted to its door's head by its `sink`).
 - `on_floor`, `off_floor`, `off_floor_groups`: of the instances placed on a storey (a hand instance
   or set with `surface = "<storey>.floor"`, a run `on` a storey, read from the world's text), those
   whose z is within 1 mm of the storey's level less their asset's `sink` (pack.toml; the `*_top`
@@ -131,11 +132,12 @@ def measure(build, surfaces=None):
     out["dressing"] = sum(1 for n in names if "_wall" not in n and not n.startswith(("shrubs#", "lay#")))
     laid = [(n, v) for n, v in zip(names, z) if n.startswith("lay#")]
     out["laid"] = len(laid)
-    out["laid_off_floor"] = sum(1 for n, v in laid
-                                if abs(v - level.get(re.match(r"(lay#\w+?_s\d+)", n).group(1), 1e9)) > 0.001)
     on = placed_on_floors()
     sinks = pack_sinks()
     asset_of = row_assets(d)
+    out["laid_off_floor"] = sum(1 for r, (n, v) in enumerate(zip(names, z)) if n.startswith("lay#")
+                                and abs(v - (level.get(re.match(r"(lay#\w+?_s\d+)", n).group(1), 1e9)
+                                             - sinks.get(asset_of.get(r), 0.0))) > 0.001)
     good, bad, groups = 0, 0, set()
     for r, (n, v) in enumerate(zip(names, z)):
         head = re.split(r"[.#]", n)[0]

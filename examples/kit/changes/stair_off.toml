@@ -1,0 +1,6 @@
+# A stair that does not suit the kit: 2 m along the north side and 4.5 m long, as it was first
+# written. The storey above leaves out its stairwell, and the wall either side of it (0.7 m and
+# 5.8 m) is no whole number of half bays (section 4 of the report, stacking: stairs must fit the
+# module). The build says how far each wall is off.
+[feature.hall]
+stair = { side = 2, at = 2.0, width = 1, run = 4.5 }

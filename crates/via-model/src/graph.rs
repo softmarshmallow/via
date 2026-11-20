@@ -8,7 +8,8 @@
 //! field and chunk, and in view `build-nofootprint` per `keep_out` field and chunk under a hand
 //! instance; `distance` per writer (or selector read) and chunk its window meets; `measure` per
 //! effect that calls `under` or `smoothed_along`; `rule`, `held` and `height` per producer;
-//! `height` per hand instance and pin. The command line adds `write`, `step` and `input`.
+//! `height` per hand instance and pin; `overlap` per hand instance and `pincheck` per pin, the
+//! two check nodes no node reads. The command line adds `write`, `step` and `input`.
 //!
 //! Every definition is worked out once, from the text and the placement pass (shapes and plans,
 //! which every build that is not the null build runs, and which are cheap): which chunks an
@@ -394,7 +395,8 @@ fn edge_key(label: &str) -> Option<via_diag::KeyPath> {
     }
     if label.contains(' ') {
         return match head {
-            "base" | "where" => Some(via_diag::KeyPath::key(head)),
+            // `at among <surface>`: the height in a thing's own `at` (`surfaces.md` 4.1).
+            "base" | "where" | "at" => Some(via_diag::KeyPath::key(head)),
             _ => None,
         };
     }
@@ -806,9 +808,17 @@ impl<'w> ModelPlan<'w> {
                 }
                 out.extend(self.surface_at(&pts));
                 out.extend(self.brought_reads());
+                // A point placed by a height, and a target that names an instance placed by
+                // one, take the `z` of the surface the height chose (`surfaces.md` 4.1): the
+                // candidates, which no shape or plan holds. A candidate moved to a layer above
+                // the point left its `z` on that floor in a warm build.
+                out.extend(self.chosen_reads());
             }
             FileReads::Instances => {
                 out.extend(self.brought_reads());
+                // What a pin removes is decided on levels (`identity.md` 4.2), and a run's
+                // member has no node: the file reads what every height chose.
+                out.extend(self.chosen_reads());
                 // A run's members have no node of their own (`rules.md` 5): the file reads what
                 // lays them, the run's `on` target (its shape and attributes, so moved ends
                 // re-lay it: coast `long_deck`, 18 posts kept where 26 were laid), and the
@@ -931,6 +941,8 @@ impl<'w> ModelPlan<'w> {
                     pts.push(*p);
                 }
                 out.extend(self.surface_at(&pts));
+                // A place that stands where a height chose (a point feature a path ends at).
+                out.extend(self.chosen_reads());
             }
             // The posts of the quads whose centre a cutting surface's bound can hold: under a
             // region owner, its box grown by one post; under a path owner, whose strip's width is
@@ -1022,6 +1034,7 @@ impl<'w> ModelPlan<'w> {
                     ids.push(format!("feature.{id}"));
                 }
                 ids.extend(d.instances.keys().map(|i| format!("instance.{i}")));
+                ids.extend(self.chosen_kinds());
                 self.stmts_of(ids.iter().map(String::as_str))
             }
             // The surfaces' formulas (`base`, `bound`, `cut`, `material`) are their kinds'
@@ -1061,6 +1074,7 @@ impl<'w> ModelPlan<'w> {
                         }
                     }
                 }
+                ids.extend(self.chosen_kinds());
                 self.stmts_of(ids.iter().map(String::as_str))
             }
             // A point's or a named place's `z` stands on a kind surface (`surfaces.md` 4.1, 3.3):
@@ -1091,6 +1105,7 @@ impl<'w> ModelPlan<'w> {
                         ids.push(format!("feature.{head}"));
                     }
                 }
+                ids.extend(self.chosen_kinds());
                 self.stmts_of(ids.iter().map(String::as_str))
             }
             // The mesh carries its material's colour (`build.md` 10), which is pack.toml's
@@ -1535,9 +1550,15 @@ impl<'w> ModelPlan<'w> {
         if d.features.contains_key(head) {
             return vec![view(NodeId::of("shape", head))];
         }
-        if d.instances.contains_key(head) {
+        if let Some(host) = d.instances.get(head) {
             let mut v = vec![view(NodeId::of("instance", head))];
-            if head != name {
+            // A mount lies on its instance's surface (`surfaces.md` 3.2), so its reader reads
+            // that instance's height too. Not where a height in `at` chose the surface (4.1):
+            // the choice reads the candidates' shapes, and a shape that ends at the mount reads
+            // the host's plan, which the choice does not move. Read through the height there,
+            // a path to the host's door whose own surface is a candidate closed a loop. What
+            // stands on such a mount reads the host's height from its own `height` node.
+            if head != name && host.height.is_none() {
                 v.push(view(NodeId::of("height", head)));
             }
             return v;
@@ -1864,6 +1885,10 @@ impl<'w> ModelPlan<'w> {
             ];
             stmts.extend(d.set_stmts(i.set.as_deref()));
             let statements = self.stmts_of(stmts.iter().map(String::as_str));
+            // The plan holds no choice by height (`surfaces.md` 4.1, R65): a thing's origin,
+            // facing and frame are the same whichever surface its height chooses. The choice is
+            // read where level and height are decided: its `height` and `overlap` nodes, and
+            // every node that tests a level against it.
             defs.push((
                 view(NodeId::of("instance", id)),
                 Def {
@@ -1909,7 +1934,18 @@ impl<'w> ModelPlan<'w> {
             if let Some(owner) = self.surface_owner(i) {
                 self.grounded_on(&owner, &mut edges, &mut statements);
             }
-            // An instance a step returned is held by every hand edit (`identity.md` 4.1).
+            // A height in its `at` chose among the kind surfaces at the point: a moved, raised
+            // or re-layered candidate chooses again.
+            if let Some(h) = &i.height {
+                self.chosen_among(None, &h.among, &mut edges, &mut statements);
+            }
+            // On a mount of a host placed by height: the host's height, which the plan's edge
+            // leaves out ([`ModelPlan::targets`]).
+            if let Some(host) = self.host_by_height(&i.place) {
+                edges.push(("on.ref".into(), view(NodeId::of("height", host))));
+            }
+            // An instance a step returned is held by every hand edit (`identity.md` 4.1): a pin
+            // removes it when the two stand on one level (4.2), so it reads each pin's choice.
             if id
                 .split_once('#')
                 .is_some_and(|(m, _)| d.steps.contains_key(m))
@@ -1917,6 +1953,7 @@ impl<'w> ModelPlan<'w> {
                 for e in d.pins.keys().chain(d.clears.keys()) {
                     edges.push((format!("edit {e}"), view(NodeId::of("edit", e))));
                 }
+                self.pins_chosen(&mut edges, &mut statements);
             }
             // The overlap test of two hand instances (`rules.md` 8.1) is its own check node,
             // which reads this instance's inputs and every other hand instance's plan; no height
@@ -1926,6 +1963,10 @@ impl<'w> ModelPlan<'w> {
             if hands.len() > 1 {
                 let mut over = edges.clone();
                 over.push(("height".into(), view(NodeId::of("height", id))));
+                // Two things overlap only on one level (8.1): what each other one's height
+                // chose is not in its plan.
+                let mut over_statements = statements.clone();
+                self.instances_chosen(Some(id), &mut over, &mut over_statements);
                 for other in hands.iter().filter(|o| *o != id) {
                     over.push((
                         format!("overlap {other}"),
@@ -1936,7 +1977,7 @@ impl<'w> ModelPlan<'w> {
                     view(NodeId::of("overlap", id)),
                     Def {
                         subject: subject.clone(),
-                        statements: statements.clone(),
+                        statements: over_statements,
                         edges: over,
                         ..Def::default()
                     },
@@ -1997,6 +2038,7 @@ impl<'w> ModelPlan<'w> {
             );
             let mut edges = Vec::new();
             self.place_edges(&pin.place, &mut edges);
+            // As an instance's plan, the pin's holds no choice by height (`surfaces.md` 4.1).
             defs.push((
                 view(NodeId::of("edit", id)),
                 Def {
@@ -2014,11 +2056,70 @@ impl<'w> ModelPlan<'w> {
                 .map(|pl| region_bbox(&pl.footprint, pl.origin));
             let mut edges = vec![("plan".to_string(), view(NodeId::of("edit", id)))];
             edges.extend(self.standing_edges(at, false));
+            let mut statements = statements;
+            if let Some(owner) = Self::owner_of(d, pin.surface.as_deref()) {
+                self.grounded_on(&owner, &mut edges, &mut statements);
+            }
+            // A height in its `at` (`identity.md` 4.2, `surfaces.md` 4.1): as an instance's.
+            if let Some(h) = &pin.height {
+                self.chosen_among(None, &h.among, &mut edges, &mut statements);
+            }
             defs.push((
                 view(NodeId::of("height", id)),
                 Def {
-                    subject,
+                    subject: subject.clone(),
                     statements,
+                    edges,
+                    ..Def::default()
+                },
+            ));
+            // What the pin removes and overlaps (`identity.md` 4.2) is its own check node, which
+            // no node reads: it reads everything the removal is decided from. Every statement
+            // (a run has no node, so its members are read as its text and its stretch), each
+            // scatter's run, every edit, every instance's plan, and for the level test of
+            // `rules.md` 8.1 the owner of every kind surface and what each height chose. Held
+            // by the pin's `height` or a scatter's `held`, the record changed with a run's line
+            // or a surface's bound that neither node reads (`diag.internal`, a node not stable).
+            let mut edges: Vec<(String, NodeId)> = Vec::new();
+            for s in d.scatters.keys() {
+                edges.push((format!("rule {s}"), view(NodeId::of("rule", s))));
+            }
+            for e in d.pins.keys().chain(d.clears.keys()) {
+                edges.push((format!("edit {e}"), view(NodeId::of("edit", e))));
+            }
+            for i in d.instances.keys() {
+                edges.push((format!("instance {i}"), view(NodeId::of("instance", i))));
+            }
+            for (r, run) in &d.runs {
+                let mut on = Vec::new();
+                self.place_edges(&run.place, &mut on);
+                edges.extend(on.into_iter().map(|(l, n)| (format!("run {r} {l}"), n)));
+            }
+            for (f, fd) in &d.features {
+                let owns = fd
+                    .kind
+                    .as_ref()
+                    .and_then(|k| d.kinds.get(k))
+                    .is_some_and(|k| !k.surfaces.is_empty());
+                if owns {
+                    edges.push((format!("level {f}"), view(NodeId::of("shape", f))));
+                    edges.push((format!("level {f}"), NodeId::of("attr", f)));
+                }
+            }
+            let mut all: Vec<(String, Digest)> =
+                self.stmts.iter().map(|(s, g)| (s.clone(), *g)).collect();
+            self.pins_chosen(&mut edges, &mut all);
+            self.instances_chosen(None, &mut edges, &mut all);
+            edges.sort();
+            edges.dedup();
+            defs.push((
+                view(NodeId::of("pincheck", id)),
+                Def {
+                    subject,
+                    statements: all,
+                    // The pin is its key's own argument: every pin's check reads the same
+                    // statements and edges, and one key gave one pin's record to all.
+                    params: vec![("pin".into(), id.clone())],
                     edges,
                     ..Def::default()
                 },
@@ -2110,7 +2211,28 @@ impl<'w> ModelPlan<'w> {
             for (h, i) in &d.instances {
                 if self.p.pack.assets.get(&i.asset).is_none_or(|a| a.solid) {
                     edges.push((format!("gives way {h}"), view(NodeId::of("instance", h))));
+                    // A placed set's items are laid from the set's statement, which the plan's
+                    // value does not hold: an item moved under a candidate left this run as it
+                    // was, and the next reader found it not stable.
+                    st.extend(d.set_stmts(i.set.as_deref()));
                 }
+            }
+            // It gives way to every run's members too (`rules.md` 7.5), which have no node: a
+            // run's statement, its set's and its stretch lay them.
+            for (r, run) in &d.runs {
+                st.push(format!("run.{r}"));
+                if let crate::sets::What::Set(x) = &run.what {
+                    st.extend(d.set_stmts(Some(x)));
+                }
+                let mut on = Vec::new();
+                self.place_edges(&run.place, &mut on);
+                // Not itself: a run laid `on` one of its own instances has no length, and says so.
+                let own = view(NodeId::of("rule", id));
+                edges.extend(
+                    on.into_iter()
+                        .filter(|(_, n)| *n != own)
+                        .map(|(l, n)| (format!("gives way run {r} {l}"), n)),
+                );
             }
             // `clump.around` (`rules.md` 7.3) reads the named scatter's output.
             if let Some(crate::decl::Clump::Around { of, .. }) = &s.clump {
@@ -2137,6 +2259,9 @@ impl<'w> ModelPlan<'w> {
             if let Some(o) = &owner {
                 self.grounded_on(o, &mut edges, &mut statements);
             }
+            // It gives way to a hand instance on its own level (`rules.md` 8.1): what each
+            // one's height chose is not in the plan it reads above.
+            self.instances_chosen(None, &mut edges, &mut statements);
             defs.push((
                 view(NodeId::of("rule", id)),
                 Def {
@@ -2148,10 +2273,15 @@ impl<'w> ModelPlan<'w> {
             ));
             let mut st: Vec<String> = vec![format!("scatter.{id}"), "world".into()];
             let mut edges = vec![("rule".to_string(), view(NodeId::of("rule", id)))];
+            // A pin removes only what stands on its level (`identity.md` 4.2). The level test
+            // (`rules.md` 8.1) reads what the pin's height chose, which its plan does not hold,
+            // and the bound of the surface either stands on: the scatter's own, below.
+            let mut speaking: Vec<&crate::decl::PinDecl> = Vec::new();
             for (p, pin) in &d.pins {
                 if pin.by.as_ref().is_none_or(|b| b.contains(id)) {
                     st.push(format!("pin.{p}"));
                     edges.push((format!("edit {p}"), view(NodeId::of("edit", p))));
+                    speaking.push(pin);
                 }
             }
             for (c, clear) in &d.clears {
@@ -2160,11 +2290,20 @@ impl<'w> ModelPlan<'w> {
                     edges.push((format!("edit {c}"), view(NodeId::of("edit", c))));
                 }
             }
+            let mut statements = self.stmts_of(st.iter().map(String::as_str));
+            for pin in &speaking {
+                if let Some(h) = &pin.height {
+                    self.chosen_among(Some(&pin.id), &h.among, &mut edges, &mut statements);
+                }
+            }
+            if let (Some(o), false) = (&owner, speaking.is_empty()) {
+                self.grounded_on(o, &mut edges, &mut statements);
+            }
             defs.push((
                 view(NodeId::of("held", id)),
                 Def {
                     subject: subject.clone(),
-                    statements: self.stmts_of(st.iter().map(String::as_str)),
+                    statements,
                     edges,
                     ..Def::default()
                 },
@@ -2704,6 +2843,131 @@ impl<'w> ModelPlan<'w> {
         }
     }
 
+    /// The edges of a choice by height (`surfaces.md` 4.1, R65): the shape and attributes of the
+    /// owner of each kind surface the choice was made among, and its kind's statements (the
+    /// surface's `base` and `bound`). A surface that comes to hold the point, or stops, or
+    /// moves to a layer the thing does not see, changes this list, and with it the key.
+    ///
+    /// `of` is `None` on the thing's own node, where the edge is made by its `at` (so a loop
+    /// through it is reported there, [`edge_key`]); on another reader it names the thing.
+    fn chosen_among(
+        &self,
+        of: Option<&str>,
+        among: &[String],
+        edges: &mut Vec<(String, NodeId)>,
+        statements: &mut Vec<(String, Digest)>,
+    ) {
+        let d = &self.p.decls;
+        for place in among {
+            let Some(owner) = Self::owner_of(d, Some(place)) else {
+                continue;
+            };
+            let label = match of {
+                None => format!("at among {place}"),
+                Some(who) => format!("level of {who} among {place}"),
+            };
+            edges.push((label.clone(), view(NodeId::of("shape", &owner))));
+            edges.push((label, NodeId::of("attr", &owner)));
+            if let Some(k) = d.features.get(&owner).and_then(|f| f.kind.as_ref()) {
+                statements.extend(self.stmts_of([format!("kind.{k}").as_str()]));
+            }
+        }
+        statements.sort();
+        statements.dedup();
+    }
+
+    /// What every height in an `at` chose, as a build file reads it: of every instance, pin
+    /// and point feature.
+    fn chosen_reads(&self) -> Vec<(String, NodeId)> {
+        let (mut edges, mut statements) = (Vec::new(), Vec::new());
+        self.instances_chosen(None, &mut edges, &mut statements);
+        self.pins_chosen(&mut edges, &mut statements);
+        self.features_chosen(&mut edges, &mut statements);
+        edges.sort();
+        edges.dedup();
+        edges
+    }
+
+    /// The kind statements beside [`ModelPlan::chosen_reads`]: a candidate surface's `base` and
+    /// `bound` are its owner's kind's.
+    fn chosen_kinds(&self) -> Vec<String> {
+        let d = &self.p.decls;
+        let among = d
+            .instances
+            .values()
+            .filter_map(|i| i.height.as_ref())
+            .chain(d.pins.values().filter_map(|p| p.height.as_ref()))
+            .chain(d.features.values().filter_map(|f| f.height.as_ref()))
+            .flat_map(|h| h.among.iter());
+        let mut out: Vec<String> = among
+            .filter_map(|place| Self::owner_of(d, Some(place)))
+            .filter_map(|o| d.features.get(&o).and_then(|f| f.kind.clone()))
+            .map(|k| format!("kind.{k}"))
+            .collect();
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    /// What every pin's height chose, for a node that tests a level against any pin.
+    fn pins_chosen(
+        &self,
+        edges: &mut Vec<(String, NodeId)>,
+        statements: &mut Vec<(String, Digest)>,
+    ) {
+        for (id, pin) in &self.p.decls.pins {
+            if let Some(h) = &pin.height {
+                self.chosen_among(Some(id), &h.among, edges, statements);
+            }
+        }
+    }
+
+    /// What every instance's height chose, but `less`'s own, for a node that tests a level
+    /// against any instance (an overlap, a giving way, a pin's removal).
+    fn instances_chosen(
+        &self,
+        less: Option<&str>,
+        edges: &mut Vec<(String, NodeId)>,
+        statements: &mut Vec<(String, Digest)>,
+    ) {
+        for (id, i) in &self.p.decls.instances {
+            if less == Some(id.as_str()) {
+                continue;
+            }
+            if let Some(h) = &i.height {
+                self.chosen_among(Some(id), &h.among, edges, statements);
+            }
+        }
+    }
+
+    /// What every point feature's height chose: `features.json` holds its `z`.
+    fn features_chosen(
+        &self,
+        edges: &mut Vec<(String, NodeId)>,
+        statements: &mut Vec<(String, Digest)>,
+    ) {
+        for (id, f) in &self.p.decls.features {
+            if let Some(h) = &f.height {
+                self.chosen_among(Some(id), &h.among, edges, statements);
+            }
+        }
+    }
+
+    /// The host placed by height whose mount a placement stands `on` (`<instance>.<mount>`):
+    /// [`ModelPlan::targets`] keeps that host's height out of a plan's edges.
+    fn host_by_height(&self, place: &Place) -> Option<&str> {
+        let Place::On(o) = place else { return None };
+        let (head, _) = o.reference.split_once('.')?;
+        let (name, host) = self.p.decls.instances.get_key_value(head)?;
+        host.height.is_some().then_some(name.as_str())
+    }
+
+    /// The feature that owns a kind surface named `<feature>.<surface>`, when it is declared.
+    fn owner_of(d: &crate::decl::Decls, surface: Option<&str>) -> Option<String> {
+        let head = surface?.split('.').next()?;
+        d.features.contains_key(head).then(|| head.to_string())
+    }
+
     fn surface_owner(&self, i: &crate::decl::InstanceDecl) -> Option<String> {
         self.surface_owner_at(i, 0)
     }
@@ -3083,9 +3347,40 @@ impl<'w> ModelPlan<'w> {
                 });
             }
         }
-        let cycles = g.cycles();
+        let mut cycles = g.cycles();
         if cycles.is_empty() {
             return;
+        }
+        // A loop through a choice by height (`surfaces.md` 4.1): the edge is made by the
+        // thing's `at`, and what breaks it there is naming the surface, not removing the key.
+        for c in &mut cycles {
+            let by_height = |r: &via_diag::Related| {
+                matches!(&r.site, Site::Key(k) if k.to_string() == "at")
+                    && r.note.as_str().starts_with("at -> ")
+            };
+            if !c.diag.related_list().iter().any(by_height) {
+                continue;
+            }
+            let hint = format!(
+                "{}; the height in `at` reads every surface at its point: write two numbers with \
+                 `surface = \"<feature>.<surface>\"`, or move the thing off the surface that \
+                 reads it",
+                c.diag.hint().as_str()
+            );
+            let Ok(hint) = via_diag::Text::new(hint) else {
+                continue;
+            };
+            let mut d = Diag::new(
+                codes::graph::CYCLE,
+                c.diag.subject().clone(),
+                c.diag.site().clone(),
+                c.diag.message().clone(),
+                hint,
+            );
+            for r in c.diag.related_list() {
+                d = d.related(r.clone());
+            }
+            c.diag = d;
         }
         let mut covered: BTreeSet<String> = BTreeSet::new();
         for c in &cycles {
@@ -3182,23 +3477,24 @@ impl<'w> ModelPlan<'w> {
     /// The nodes a statement's diagnostic belongs to; `late` for the producers' and checks'
     /// stage.
     fn owners(&self, d: &Diag, late: bool) -> Vec<NodeId> {
-        // What a pin removed is found by the scatter's held run, so it belongs to that node,
-        // whose key holds the run; the pin's own nodes do not (their value is the same either way).
-        if *d.code() == via_diag::DiagCode::Core(codes::identity::PIN_REMOVED) {
+        // What a pin removed or overlaps, and the clear it stands in, is found from every
+        // producer's output and every level: it belongs to the pin's check node, whose key
+        // holds them all. The pin's `height` and a scatter's `held` do not (a run's line, or the
+        // bound of a surface a member stands on, changed the record under them).
+        if late
+            && [
+                codes::identity::PIN_REMOVED,
+                codes::identity::PIN_OVERLAP,
+                codes::identity::PINS_OVERLAP,
+                codes::identity::PIN_IN_CLEAR,
+            ]
+            .iter()
+            .any(|c| *d.code() == via_diag::DiagCode::Core(*c))
+        {
             if let Subject::Entity { collection, id, .. } = d.subject() {
-                if let Some(pin) = self.p.decls.pins.get(id).filter(|_| collection == "pin") {
-                    let held: Vec<NodeId> = self
-                        .p
-                        .decls
-                        .scatters
-                        .keys()
-                        .filter(|s| pin.by.as_ref().is_none_or(|b| b.contains(*s)))
-                        .map(|s| view(NodeId::of("held", s)))
-                        .filter(|n| self.defs.contains_key(n))
-                        .collect();
-                    if !held.is_empty() {
-                        return held;
-                    }
+                let check = view(NodeId::of("pincheck", id));
+                if collection == "pin" && self.defs.contains_key(&check) {
+                    return vec![check];
                 }
             }
         }
@@ -4090,13 +4386,15 @@ impl Plan for ModelPlan<'_> {
                     Some(p) => e.byte(1).str(&format!("{p:?}")),
                     None => e.byte(0),
                 };
-                // The surface it stands on is part of its plan: another instance's overlap test
-                // reads it (`rules.md` 8.1, M5).
+                // The surface it names is part of its plan: another instance's overlap test
+                // reads it (`rules.md` 8.1, M5). One a height chose is not (`surfaces.md` 4.1):
+                // its readers read the choice themselves.
                 let surface = self
                     .p
                     .decls
                     .instances
                     .get(&s)
+                    .filter(|i| i.height.is_none())
                     .and_then(|i| i.surface.as_ref());
                 match surface {
                     Some(sn) => e.byte(1).str(sn),
@@ -4182,6 +4480,16 @@ impl Plan for ModelPlan<'_> {
                 diags.extend(w.routed.get(id).cloned().unwrap_or_default());
                 let mut e = Enc::new();
                 e.str("via-facts-1").len(diags.len());
+                for d in &diags {
+                    e.str(&format!("{d:?}"));
+                }
+                Self::val(e.finish(), diags)
+            }
+            "pincheck" => {
+                let w = self.whole();
+                let diags = w.routed.get(id).cloned().unwrap_or_default();
+                let mut e = Enc::new();
+                e.str("via-pincheck-1").len(diags.len());
                 for d in &diags {
                     e.str(&format!("{d:?}"));
                 }

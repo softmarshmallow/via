@@ -1,0 +1,4 @@
+# A piece's pivot moved late: the bay is re-exported with its model origin at one end (section 2
+# of the report: "pick a pivot, and stick with it"; a moved pivot means hand repair of every
+# placement).
+pack = "packs/pivot.toml"

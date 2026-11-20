@@ -1,0 +1,4 @@
+# A piece no longer stacks: the bay is re-exported 3.3 m high on a 3 m storey (section 4 of the
+# report, stacking: floors without thickness and pieces of the wrong height show only when a
+# second storey stands on the first).
+pack = "packs/tall.toml"

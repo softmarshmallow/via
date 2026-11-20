@@ -1,0 +1,43 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# Each by the upper floor's height (surfaces.md 4.1).
+[instance.desk]
+asset = "box"
+at    = [30, 26, 13.3]
+
+[pin.mark]
+asset = "box"
+at    = [24, 26, 13.3]
+
+[feature.spot]
+kind = "marker"
+at   = [28, 25, 13.3]
+
+# A view whose target is the desk: its `z` in features.json is the desk's floor.
+[feature.at_desk]
+kind   = "sight"
+at     = [5, 5]
+toward = "desk"
+
+[layer.top]
+file  = "top.toml"
+owner = "tests"
+rank  = 1

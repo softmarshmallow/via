@@ -11,7 +11,7 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-360 codes in 23 groups. 0 have no bad and fixed example yet; their explain text is the
+361 codes in 23 groups. 0 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
@@ -38,7 +38,7 @@ chapter's summary and hint.
 | [`run`](#run) | `spec/rules.md` | 4 |
 | [`scatter`](#scatter) | `spec/rules.md` | 5 |
 | [`set`](#set) | `spec/rules.md` | 3 |
-| [`surface`](#surface) | `spec/surfaces.md` | 27 |
+| [`surface`](#surface) | `spec/surfaces.md` | 28 |
 
 ## asset
 
@@ -3020,8 +3020,9 @@ Fixed: by = ["s", "t"]
 info, milestone 1, `spec/identity.md`.
 
 ```text
-What a pin removed: the instances of its by producers that its footprint overlapped, with count
-and names. Information only.
+What a pin removed: the instances of its by producers that its footprint overlapped on its own
+level (what stands on another surface over or under it stays), with count and names. Information
+only.
 To fix: Nothing if intended; narrow by to keep them.
 Bad:   by = ["s", "t"]   (removed instances of t that should stay)
 Fixed: by = ["s"]
@@ -3834,7 +3835,7 @@ Fixed: taxon = "prop/box"
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
 | `place.asset_or_set` | error | 1 |  | A placement writes both `asset` and `set`, or neither. |
-| `place.crowded` | warning | 1 |  | Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both. |
+| `place.crowded` | warning | 1 |  | Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both. |
 | `place.gave_way` | info | 1 |  | A producer's candidates dropped by overlap and by relief, as counts, with their box. |
 | `place.keep_out` | warning | 1 |  | An instance stands where `keep_out` is above 0; names the field and the position. |
 | `place.margin_alone` | error | 1 |  | `margin` without `ground`. |
@@ -3865,10 +3866,12 @@ Fixed: [instance.a]
 warning, milestone 1, `spec/rules.md`.
 
 ```text
-Two produced instances overlap, or one overlaps a thing in a higher layer. A warning: both stay.
-The record names both.
+Two produced instances overlap, or one overlaps a thing in a higher layer, or a member of a run
+that a step returned overlaps an instance the same step returned: a step wrote both at once, so
+neither gives way. A warning: both stay. The record names both.
 To fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names
-the lower producer.
+the lower producer. For two things of one step, change what the step returns, or move one of the
+things it was given (two calls of one step do not see each other's output).
 Bad:   two runs along one path at the same offset
 Fixed: on = { ref = "a", span = [0.1, 0.4], offset = 4 }   for one of them
 ```
@@ -4612,11 +4615,12 @@ Fixed: [instance.front_lamps] set = "lamp_pair", on = { ref = "cottage.front" }
 | `surface.meets_twice` | error | 3 |  | The mount is in two `meets` pairs; names both others. |
 | `surface.mount_face` | error | 3 |  | A face word on a kind mount. Hint: a number, 0 along travel, 180 against. |
 | `surface.name_clash` | error | 3 |  | A surface and a mount share a name. |
+| `surface.none_at` | error | 5 |  | Its `at` carries a height, and no kind surface's bound holds the plan point (4.1). Hint: drop the third number to stand on the terrain, or move it onto a surface. |
 | `surface.not_surface` | error | 5 |  | Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces. |
 | `surface.off_bound` | warning | 3 |  | Part of its footprint lies outside its surface's bound; the share. |
 | `surface.outside` | error | 3 |  | Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code. |
 | `surface.owner_shape` | error | 3 |  | A surface on a point kind, a path owner without `bound`, or a region owner with one. |
-| `surface.placed_twice` | error | 5 |  | `surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`. |
+| `surface.placed_twice` | error | 5 |  | `surface` written with `on`, or with a height in `at`: each already says the surface. Hint: drop `surface`, or place it by `at` with two numbers. |
 | `surface.through` | warning | 3 |  | Its height reaches through another surface above its origin; names it. |
 | `surface.too_early` | error | 2 |  | `meetings()` called at `generate`. |
 | `surface.two_terrains` | error | 1 |  | Two surface fields at the top level. Hint: make one a kind's surface. |
@@ -4796,6 +4800,20 @@ Bad:   [kind.span.surface.top] and [kind.span.mount.top]
 Fixed: [kind.span.surface.top] and [kind.span.mount.top_west]
 ```
 
+### `surface.none_at`
+
+error, milestone 5, `spec/surfaces.md`.
+
+```text
+A placement's at has three numbers. The third is a height that chooses which kind surface at that
+point the thing stands on, the one whose height there is nearest. Here no kind surface that its
+layer sees holds the point, so there is nothing to choose from. The terrain is never chosen this
+way: two numbers mean the terrain.
+To fix: Drop the third number to stand on the terrain, or move the point onto a surface.
+Bad:   at = [40, 40, 13.3]   (no surface there)
+Fixed: at = [40, 40]   or   at = [30, 26, 13.3]
+```
+
 ### `surface.not_surface`
 
 error, milestone 5, `spec/surfaces.md`.
@@ -4846,9 +4864,10 @@ Fixed: [kind.span.surface.top] base = ..., bound = "= width / 2"
 error, milestone 5, `spec/surfaces.md`.
 
 ```text
-A placement writes both on and surface. On already decides what it stands on (the surface of the
-thing or mount it is on), so the two could disagree.
-To fix: Drop surface, or place it by at with surface.
+A placement says twice what it stands on: surface written with on, or with a height as the third
+number of at. On already decides it (the surface of the thing or mount it is on), and so does a
+height (the surface nearest it), so the two could disagree.
+To fix: Drop surface, or place it by at with two numbers and surface.
 Bad:   on = { ref = "hall", t = 0.5 } and surface = "hall.top"
 Fixed: at = [30, 26] and surface = "hall.top"
 ```

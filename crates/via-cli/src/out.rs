@@ -22,8 +22,10 @@ pub const FORMAT: &str = "via-build-1";
 
 /// The numerics epoch (`graph.md` 3.3): raised by any engine change that may change the bytes of
 /// a value. Written in `manifest.json`'s `engine` and in every key. 2 from M3 slice 4: a smoothed
-/// course is held to the extent (`derived.md` 3 step 6), which moves stored courses.
-pub const EPOCH: u64 = 2;
+/// course is held to the extent (`derived.md` 3 step 6), which moves stored courses. 3 from K1 of
+/// `docs/plan-kits.md` (R64, R65): a step's run no longer gives way to its own step's instances,
+/// and a pin removes on its own level only, which changes held instances a store may hold.
+pub const EPOCH: u64 = 3;
 
 /// The epoch this binary builds with: [`EPOCH`], and in a test build (debug assertions on) plus
 /// `VIA_TEST_EPOCH_OFFSET` when it is set to an integer (`graph.md` 7, case `epoch`). It goes

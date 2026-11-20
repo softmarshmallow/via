@@ -596,7 +596,8 @@ error. Unrequested changes are checked after step 7 (6.1). `diagnostics.json` is
   millimetres and millidegrees the core holds, by `numbers.md` 3.4, never through a double (R24:
   the core holds millimetres, text holds decimal metres). An `integer` key is a JSON integer. The world `seed` is a
   string of 16 lowercase hexadecimal digits (`numbers.md` 3.4). Any other number is a double in the
-  shortest form of `numbers.md` 3.4. A number inside `params`, which has no type, is its normalised
+  shortest form of `numbers.md` 3.4; the height of a point with one, the third number of `at`
+  (`vocabulary.md` 2.4), is such a number, beside two lengths. A number inside `params`, which has no type, is its normalised
   text (section 2).
 - Strings are raw UTF-8. Only `"`, `\` and U+0000 to U+001F are escaped: `\"`, `\\`, and `\u00xx`
   with lowercase hexadecimal. Nothing else is escaped. A formula string is printed as written,

@@ -1,0 +1,67 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 (R65), warm: the upper floor moved to a layer above an instance, a pin, a point feature and a target's instance, each placed by its height: none sees it any more, each stands on the lower floor, and features.json and the instance files rebuilt on the base's store equal a clean build's. No statement, shape or attribute of the floor changed, only its layer."
+milestone = 5
+actions   = ["base", "cut", "top", "moved"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# Features in id order: at_desk, hall_1, hall_g, other, spot.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.file.z]
+path = "build/base/instances/z.npy"
+all  = 13.3
+
+[action.base.file.spot]
+path    = "build/base/features.json"
+pointer = "/features/4/at"
+value   = [28, 25, 13.3]
+
+[action.base.file.target]
+path    = "build/base/features.json"
+pointer = "/features/0/attrs/toward/at"
+value   = [30, 26, 13.3]
+
+# The upper floor's table leaves the world file and is written in the layer of rank 1.
+[action.cut]
+replace = "world.toml"
+find    = '''[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+'''
+with    = ""
+
+[action.top]
+write = "top.toml"
+from  = "later/top.toml"
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--against", "build/base", "--out", "build/moved"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/moved"
+
+[action.moved.file.z]
+path = "build/moved/instances/z.npy"
+all  = 10.3
+
+[action.moved.file.spot]
+path    = "build/moved/features.json"
+pointer = "/features/4/at"
+value   = [28, 25, 10.3]
+
+[action.moved.file.target]
+path    = "build/moved/features.json"
+pointer = "/features/0/attrs/toward/at"
+value   = [30, 26, 10.3]

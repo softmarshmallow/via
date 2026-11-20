@@ -1,0 +1,72 @@
+format    = "via-case-1"
+summary   = "identity.md 4.2 (R65): a pin on the terrain beside a raised surface, overlapping only the overhang of a box that stands on it, removes nothing (two levels); moved under the surface, its footprint meets the bound, the terrain and the surface are one level (rules.md 8.1), and the box over it is removed, count 1."
+milestone = 5
+actions   = ["base", "beside", "under"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# A surface at 14 with no `cut` over ground at 10; six boxes along its south edge, each half
+# over the edge (y 19.5 to 20.5), at x = 21, 23, ... 31.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.file.z]
+path = "build/w/instances/z.npy"
+all  = 14.0
+
+# The pin at [25, 19.2], two numbers: on the terrain. Its footprint (y 18.7 to 19.7) overlaps
+# edge#r2's overhang and does not meet the surface's bound (y from 20): two levels, nothing
+# removed, nothing said. Before R65 the box was removed.
+[action.beside]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "beside", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.beside.diag.none_removed]
+code    = "identity.pin_removed"
+records = 0
+
+[action.beside.diag.none_overlap]
+code    = "identity.pin_overlap"
+records = 0
+
+[action.beside.check.edge]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "edge#"
+count  = 6
+
+[action.beside.check.mark]
+fn    = "instance_at"
+build = "build/w"
+name  = "mark"
+at    = [25, 19.2]
+
+# The pin at [25, 20.3]: still on the terrain, and now its footprint meets the bound, so the two
+# are one level (rules.md 8.1) and the box over it is removed.
+[action.under]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "under", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.under.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["edge#r2"] }
+
+[action.under.check.edge]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "edge#"
+count  = 5

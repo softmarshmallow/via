@@ -1,0 +1,4 @@
+# A door off the kit's door size: the hall's door is 1.6 m wide where the kit's frame is made for
+# 1.4 m (section 6 of the report: one door size across kits is what lets them join).
+[feature.hall]
+doors = [{ storey = 0, side = 0, at = 4.05, width = 1.6 }]

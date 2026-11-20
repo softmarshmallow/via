@@ -128,11 +128,11 @@ pub fn query(a: &QueryArgs) -> Vec<Record> {
     let Some(world) = l.world else {
         return records;
     };
-    let b = via_model::build(
-        &world,
-        &via_model::Options::from_load(&a.world, &opts),
-        None,
-    );
+    // It runs no step (`surfaces.md` 7): a height in `at` whose floor a step would return
+    // stands on the terrain here.
+    let mut options = via_model::Options::from_load(&a.world, &opts);
+    options.steps_unrun = true;
+    let b = via_model::build(&world, &options, None);
     for d in &b.diagnostics {
         if *d.code() != via_diag::DiagCode::Core(codes::identity::NO_PREVIOUS) {
             records.push(d.emit(&world));

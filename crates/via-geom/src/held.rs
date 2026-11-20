@@ -1,6 +1,11 @@
 //! Hand edits on a producer's instances (`spec/identity.md` 4.1 to 4.3): clears, then pins. The
 //! one routine a build and `via kernel names` both use. Every test is exact, in integer
 //! millimetres.
+//!
+//! A pin removes what it would clash with (4.2): a footprint that overlaps its own, on its
+//! level. The overlap is tested here; the level is the caller's to say ([`Levels`]), since it
+//! reads what each thing stands on, which this crate does not know. `via kernel names` has one
+//! level.
 
 use crate::diag::{Code, GeomDiag};
 use crate::overlay::{boolean, BoolOp};
@@ -60,6 +65,25 @@ pub struct Pin {
     pub by: Option<Vec<String>>,
 }
 
+/// Whether a pin stands on one level with another thing (`identity.md` 4.2, `rules.md` 8.1):
+/// asked only of two whose footprints may overlap.
+pub struct Levels<'a> {
+    /// A pin and an instance.
+    pub instance: &'a dyn Fn(&Pin, &Instance) -> bool,
+    /// Two pins.
+    pub pin: &'a dyn Fn(&Pin, &Pin) -> bool,
+}
+
+impl Levels<'_> {
+    /// Everything on one level: plan overlap alone decides.
+    pub fn one() -> Levels<'static> {
+        Levels {
+            instance: &|_, _| true,
+            pin: &|_, _| true,
+        }
+    }
+}
+
 fn speaks_to(by: &Option<Vec<String>>, producer: &str) -> bool {
     by.as_ref().is_none_or(|b| b.iter().any(|p| p == producer))
 }
@@ -88,6 +112,16 @@ pub fn removed_by(
     clears: &[Clear],
     pins: &[Pin],
 ) -> Result<Vec<(String, String)>, GeomDiag> {
+    removed_by_on(removed, clears, pins, &Levels::one())
+}
+
+/// [`removed_by`] where a pin removes only on its level, as [`hold_on`] applies it.
+pub fn removed_by_on(
+    removed: &[Instance],
+    clears: &[Clear],
+    pins: &[Pin],
+    levels: &Levels<'_>,
+) -> Result<Vec<(String, String)>, GeomDiag> {
     let mut clears: Vec<&Clear> = clears.iter().collect();
     clears.sort_by(|a, b| a.id.cmp(&b.id));
     let mut pins: Vec<&Pin> = pins.iter().collect();
@@ -101,7 +135,10 @@ pub fn removed_by(
             }
         }
         for p in &pins {
-            if speaks_to(&p.by, &i.producer) && overlaps(&p.footprint, &i.footprint)? {
+            if speaks_to(&p.by, &i.producer)
+                && (levels.instance)(p, i)
+                && overlaps(&p.footprint, &i.footprint)?
+            {
                 out.push((i.name.clone(), format!("pin.{}", p.id)));
                 continue 'each;
             }
@@ -115,6 +152,18 @@ pub fn hold(
     instances: Vec<Instance>,
     clears: &[Clear],
     pins: &[Pin],
+) -> Result<(Vec<Instance>, Vec<GeomDiag>), GeomDiag> {
+    hold_on(instances, clears, pins, &Levels::one())
+}
+
+/// [`hold`] where a pin removes, and overlaps, only what stands on its level (`identity.md`
+/// 4.2): an instance or another pin over or under it in plan, on another level, is left alone
+/// and nothing is said of it.
+pub fn hold_on(
+    instances: Vec<Instance>,
+    clears: &[Clear],
+    pins: &[Pin],
+    levels: &Levels<'_>,
 ) -> Result<(Vec<Instance>, Vec<GeomDiag>), GeomDiag> {
     let mut diags = Vec::new();
     let mut live = instances;
@@ -137,7 +186,7 @@ pub fn hold(
     pins.sort_by(|a, b| a.id.cmp(&b.id));
     for (i, a) in pins.iter().enumerate() {
         for b in &pins[i + 1..] {
-            if overlaps(&a.footprint, &b.footprint)? {
+            if (levels.pin)(a, b) && overlaps(&a.footprint, &b.footprint)? {
                 diags.push(
                     GeomDiag::new(
                         Code::PinsOverlap,
@@ -154,7 +203,7 @@ pub fn hold(
         let mut removed: Vec<String> = Vec::new();
         let mut keep = Vec::with_capacity(live.len());
         for inst in live {
-            if overlaps(&p.footprint, &inst.footprint)? {
+            if (levels.instance)(p, &inst) && overlaps(&p.footprint, &inst.footprint)? {
                 if speaks_to(&p.by, &inst.producer) {
                     removed.push(inst.name.clone());
                     continue;

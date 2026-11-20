@@ -1,0 +1,102 @@
+format    = "via-case-1"
+summary   = "identity.md 4.2 (R65): a pin whose at carries the upper floor's height stands on that floor and removes only the box it overlaps there (up#r2, count 1); the box under it on the lower floor stays. The same pin with the lower floor's height removes low#r2 alone."
+milestone = 5
+actions   = ["base", "pin", "both", "ground"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# A row of six boxes on the upper floor, 1 m inside its south edge, at x = 21, 23, ... 31.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.base.check.up]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "up#"
+count  = 6
+
+# The pin at [25, 21, 13.3]: on the upper floor (every z 13.3), in place of up#r2.
+[action.pin]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "pin", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.pin.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["up#r2"] }
+
+[action.pin.file.z]
+path = "build/w/instances/z.npy"
+all  = 13.3
+
+[action.pin.check.mark]
+fn    = "instance_at"
+build = "build/w"
+name  = "mark"
+at    = [25, 21]
+
+# The same pin with a second row on the lower floor, under the first: before R65 a pin removed
+# every instance its footprint overlapped in plan, on every floor.
+[action.both]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "both", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.both.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["up#r2"] }
+
+[action.both.check.low]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "low#"
+count  = 6
+
+[action.both.check.under]
+fn    = "instance_at"
+build = "build/w"
+name  = "low#r2"
+at    = [25, 21]
+
+[action.both.check.up]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "up#"
+count  = 5
+
+# The pin with the lower floor's height: it removes the lower box and leaves the upper.
+[action.ground]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "ground", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.ground.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["low#r2"] }
+
+[action.ground.check.up]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "up#"
+count  = 6
+
+[action.ground.check.low]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "low#"
+count  = 5

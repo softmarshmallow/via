@@ -1,0 +1,8 @@
+[feature.other]
+kind = "marker"
+at   = [5, 6]
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3

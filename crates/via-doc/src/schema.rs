@@ -25,6 +25,8 @@ pub enum Takes {
     Formula,
     /// `[x, y]`.
     Point,
+    /// `[x, y]`, or `[x, y, z]` with a height: two lengths and a number (`surfaces.md` 4.1).
+    PointZ,
     /// A list of points.
     Points,
     /// A path's way points: each a point or a name (`derived.md` 3).
@@ -76,6 +78,7 @@ impl Takes {
             Takes::Bool => "`true` or `false`",
             Takes::Formula => "a formula string or a number",
             Takes::Point => "a point `[x, y]`",
+            Takes::PointZ => "a point `[x, y]`, or `[x, y, z]` with a height",
             Takes::Points => "a list of points",
             Takes::Ways => "a list of points and names",
             Takes::Lengths(4) => "4 lengths",
@@ -302,7 +305,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
         Shape::Feature => &[
             ("kind", Ok(T::Name)),
             ("authority", Ok(T::Str)),
-            ("at", Ok(T::Point)),
+            ("at", Ok(T::PointZ)),
             ("on", Ok(T::Table(Shape::On))),
             ("path", Ok(T::Ways)),
             ("region", Ok(T::Points)),
@@ -358,7 +361,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
         Shape::Instance => &[
             ("asset", Ok(T::Name)),
             ("set", Ok(T::Name)),
-            ("at", Ok(T::Point)),
+            ("at", Ok(T::PointZ)),
             ("on", Ok(T::Table(Shape::On))),
             ("face", Ok(T::Facing)),
             ("surface", Ok(T::Name)),
@@ -388,7 +391,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
         Shape::Pin => &[
             ("asset", Ok(T::Name)),
             ("set", NotYet(3)),
-            ("at", Ok(T::Point)),
+            ("at", Ok(T::PointZ)),
             ("on", Ok(T::Table(Shape::On))),
             ("face", Ok(T::Facing)),
             ("by", Ok(T::Names)),

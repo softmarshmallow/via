@@ -1,0 +1,15 @@
+name       = "bare"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# No step and no floor: nothing a step could add is missing, so the height is an error here as
+# in a build.
+[instance.desk]
+asset = "box"
+at    = [30, 26, 13.3]

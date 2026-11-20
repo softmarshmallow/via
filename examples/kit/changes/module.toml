@@ -1,0 +1,4 @@
+# A piece's module changed late: the bay is re-exported on a 3.2 m module in place of 3 m (section
+# 2 of the report: footprint, pivot, snap rule and door size freeze first, and a late change is
+# repaired by hand across hundreds of placements).
+pack = "packs/module.toml"

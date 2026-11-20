@@ -27,7 +27,7 @@ door_narrow      = { band = [0, 0] }        # the lint's clear width at each doo
 doors_measured   = { band = [3, 3] }
 clear_min_mm     = { band = [1100, 3000] }  # every door and the step 1.1 m clear (0.20 m at slice 1)
 meshes           = { band = [12, 12] }      # a floor per storey, a tread per flight
-laid             = { band = [100, 140] }    # the loft's walls and corners
+laid             = { band = [70, 76] }      # the loft's walls and corners: 73, since it was sized to its kit (119 with the 0.1 m slip, 46 of them)
 laid_off_floor   = { band = [0, 0] }        # each on its storey's floor
 in_flight        = { band = [0, 0] }        # no dressing on a flight's line below its tread (M5 close)
 

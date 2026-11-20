@@ -324,6 +324,9 @@ pub fn scatter_all(
     let keep_out = f.keep_out(View::Build);
     let mut raw: Vec<held::Instance> = Vec::new();
     let mut facts: BTreeMap<String, (f64, f64)> = BTreeMap::new();
+    // What each produced instance stands on and its span above it (`rules.md` 8.1): a pin
+    // removes only what stands on its level (`identity.md` 4.2).
+    let mut stand: BTreeMap<String, (String, f64, f64)> = BTreeMap::new();
     // The kind surfaces a scatter stands on (`surfaces.md` 4.1, M5): their bounds are plan only,
     // ready with their owners (4.3). Their own faults are said by the build's grounding.
     let levels = crate::surfaces::Levels::new(d, &placed.shapes);
@@ -775,6 +778,7 @@ pub fn scatter_all(
                 group.push(fp.clone());
             }
             facts.insert(name.clone(), (scale, tint));
+            stand.insert(name.clone(), mine);
             raw.push(held::Instance {
                 name,
                 producer: s.id.clone(),
@@ -829,6 +833,7 @@ pub fn scatter_all(
                 face: p.facing,
                 footprint: p.footprint.clone(),
             });
+            stand.insert(p.name.clone(), crate::surfaces::level(d, pack, p));
             stepped.insert(p.name.clone(), p.clone());
         }
         out.stepped = stepped.keys().cloned().collect();
@@ -976,8 +981,12 @@ pub fn scatter_all(
         }
     }
     let mut pins = Vec::new();
+    // Each pin's level: the terrain, or the kind surface a height in its `at` chose
+    // (`identity.md` 4.2, `surfaces.md` 4.1).
+    let mut pin_stand: BTreeMap<String, (String, f64, f64)> = BTreeMap::new();
     for (id, p) in &pin_plans {
-        let by = d.pins.get(id).and_then(|x| x.by.clone());
+        let decl = d.pins.get(id);
+        let by = decl.and_then(|x| x.by.clone());
         if let Some(by) = &by {
             for b in by {
                 if !d.scatters.contains_key(b)
@@ -988,6 +997,14 @@ pub fn scatter_all(
                 }
             }
         }
+        // A height that chose no surface: the pin is not placed (`surface.none_at`, said where
+        // it is grounded), so it removes nothing. Its `by` was checked above all the same.
+        if decl.is_some_and(|x| x.height.is_some() && x.surface.is_none()) {
+            continue;
+        }
+        let (lo, hi) = crate::surfaces::span(pack, &p.asset, p.scale);
+        let on = decl.and_then(|x| x.surface.clone()).unwrap_or_default();
+        pin_stand.insert(id.clone(), (on, lo, hi));
         // A pin inside a clear (R31) and in keep_out.
         for c in &clears {
             let inside = match &c.place {
@@ -1040,14 +1057,29 @@ pub fn scatter_all(
         });
     }
     let all_raw = raw.clone();
-    match held::hold(raw, &clears, &pins) {
+    // The level test of `rules.md` 8.1, as every overlap test reads it. A thing with no record
+    // here (none is expected) is taken to share the pin's level, as before R65.
+    let pin_and_instance =
+        |p: &Pin, i: &held::Instance| match (pin_stand.get(&p.id), stand.get(&i.name)) {
+            (Some(a), Some(b)) => levels.clash(a, &p.footprint, b, &i.footprint),
+            _ => true,
+        };
+    let two_pins = |a: &Pin, b: &Pin| match (pin_stand.get(&a.id), pin_stand.get(&b.id)) {
+        (Some(x), Some(y)) => levels.clash(x, &a.footprint, y, &b.footprint),
+        _ => true,
+    };
+    let on_levels = held::Levels {
+        instance: &pin_and_instance,
+        pin: &two_pins,
+    };
+    match held::hold_on(raw, &clears, &pins, &on_levels) {
         Ok((live, gd)) => {
             let kept: BTreeSet<&str> = live.iter().map(|i| i.name.as_str()).collect();
             let gone: Vec<held::Instance> = all_raw
                 .into_iter()
                 .filter(|i| !kept.contains(i.name.as_str()))
                 .collect();
-            if let Ok(by) = held::removed_by(&gone, &clears, &pins) {
+            if let Ok(by) = held::removed_by_on(&gone, &clears, &pins, &on_levels) {
                 out.removed_by.extend(by);
             }
             for g in gd {
@@ -1419,6 +1451,61 @@ pub fn ground_and_check(
                     site: Site::Header,
                     position: Some(text::pos(h.origin.x, h.origin.y)),
                     note: via_diag::text!("the instance in the higher layer"),
+                }),
+            );
+        }
+    }
+    // A member of a run a step returned and an instance of that step's own document (8.1, 3.4,
+    // R64): the run did not give way, both stand; `place.crowded`, naming both, once for each
+    // member and instance.
+    let mut told: BTreeSet<(&str, &str)> = BTreeSet::new();
+    for p in all.iter().filter(|p| !p.pin) {
+        let Some(run) = d.run_of(&p.name) else {
+            continue;
+        };
+        let Some(step) = d.step_of(run) else {
+            continue;
+        };
+        if !solid(p) {
+            continue;
+        }
+        let member = p.name.split_once('.').map_or(p.name.as_str(), |(m, _)| m);
+        for h in &hands {
+            if d.step_of(&h.name) != Some(step)
+                || !solid(h)
+                || !levels.clash(
+                    &crate::surfaces::level(d, pack, p),
+                    &p.footprint,
+                    &crate::surfaces::level(d, pack, h),
+                    &h.footprint,
+                )
+                || !overlaps(&p.footprint, &h.footprint)
+                || !told.insert((member, h.name.as_str()))
+            {
+                continue;
+            }
+            let (hs, hsite) = crate::place::declared_at(d, &h.name)
+                .unwrap_or((Subject::entity("instance", h.name.as_str()), Site::Header));
+            diags.push(
+                at_header(
+                    codes::place::CROWDED,
+                    "run",
+                    run,
+                    &format!(
+                        "`{member}` of `{run}` and `{}` overlap; the step `{step}` returned both, so neither gives way",
+                        h.name
+                    ),
+                    &format!(
+                        "the step `{step}` returned both: change what it returns, or move one of the things it was given"
+                    ),
+                )
+                .at(text::pos(p.origin.x, p.origin.y))
+                .with("instances", DValue::texts([member.to_string(), h.name.clone()]))
+                .related(via_diag::Related {
+                    subject: hs,
+                    site: hsite,
+                    position: Some(text::pos(h.origin.x, h.origin.y)),
+                    note: via_diag::text!("the instance of the same step"),
                 }),
             );
         }

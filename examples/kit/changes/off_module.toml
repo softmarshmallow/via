@@ -1,0 +1,5 @@
+# The plan leaves the module: the hall is a metre longer, so its long sides hold 13 m, which no
+# count of 3 m bays and 1.5 m half bays makes (section 7 of the report, leftover length). The door
+# and the stair are written by a side and a distance along it, so they keep their places.
+[feature.hall]
+region = [[10, 10], [23.6, 10], [23.6, 19.6], [10, 19.6]]

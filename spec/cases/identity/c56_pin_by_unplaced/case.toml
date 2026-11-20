@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "identity.md 4.1, 4.2: a pin whose height chose no surface is not placed (surface.none_at), and its `by` is checked all the same: identity.unknown_producer in the same build."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.none_at]
+code    = "surface.none_at"
+subject = "pin.mark"
+
+[action.build.diag.by]
+code    = "identity.unknown_producer"
+subject = "pin.mark"

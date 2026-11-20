@@ -270,7 +270,7 @@ chapter = "authority"
 sections = ["Features", "Kinds, effects, kind surfaces and kind mounts"]
 
 [key."at"]
-takes = "point"
+takes = "point, or point with a height"
 chapter = "geometry"
 sections = ["Features", "Placement"]
 

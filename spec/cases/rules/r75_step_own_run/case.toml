@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "rules.md 3.4, 8.1 (R64): a run in a step's returned document does not give way to an instance of that same document: all four members and make#post stand, no place.gave_way, one place.crowded naming make#row#r1 and make#post."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+# The run's members stand at 2, 6, 10 and 14 m of the lane (2 m boxes); `post` is a box 0.4 m
+# east of the second. Before R64 the member gave way to the instance its own step returned,
+# said as an info (the kit example's `stub`: twelve wall pieces under their own corners).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.crowded]
+code     = "place.crowded"
+severity = "warning"
+subject  = 'run."make#row"'
+data     = { instances = ["make#row#r1", "make#post"] }
+
+[action.build.diag.no_gave_way]
+code    = "place.gave_way"
+records = 0
+
+[action.build.check.member]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#row#r1"
+at    = [6, 32]
+
+[action.build.check.post]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#post"
+at    = [6.4, 32]
+
+[action.build.check.all]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "make#"
+count  = 5

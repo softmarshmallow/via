@@ -1,0 +1,58 @@
+# The plain kit with its bay re-exported on a 3.2 m module in place of 3 m
+# (packs/make_kit.py, changes/module.toml). Written by make_kit.py from packs/plain.toml: edit that.
+# The facts file beside it is the one accepted before the re-export.
+
+root = "module"
+
+[taxon."structure/plain"]
+[taxon."structure"]
+defaults = { collision = "box" }
+
+# The bay: 3 m of wall, the module.
+[asset.wall]
+file   = "wall.glb"
+taxon  = "structure/plain"
+tags   = ["role:wall"]
+params = { pitch = 3.2 }
+
+# The half bay: 1.5 m, a half module, for what whole bays leave.
+[asset.wall_half]
+file   = "wall_half.glb"
+taxon  = "structure/plain"
+tags   = ["role:filler"]
+params = { pitch = 1.5 }
+
+# The window bay: the bay with an opening, on the bay's footprint. A second piece in the bay's
+# role: `lay` takes the first id of a role, so nothing places it but a hand (changes/window.toml).
+[asset.wall_window]
+file   = "wall_window.glb"
+taxon  = "structure/plain"
+tags   = ["role:wall"]
+params = { pitch = 3.0 }
+
+# The outside corner: a post as thick as the wall. It takes its own 0.3 m from each wall.
+[asset.corner]
+file  = "corner.glb"
+taxon = "structure/plain"
+tags  = ["role:corner"]
+
+# The inside corner: the notch the two walls leave and 1.2 m of each wall, so with the post's
+# 0.3 m an L's sides are whole half bays (lib/building/lay.py rule 6, "Corners"). It is placed by
+# the notch's middle, which is the model's own origin, and it claims the L it stands on.
+[asset.corner_in]
+file   = "corner_in.glb"
+taxon  = "structure/plain"
+tags   = ["role:corner_in"]
+params = { reach = 1.2 }
+pivot  = "origin"
+footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]   # the L, not its box
+
+# The door: a frame one half bay wide, for a doorway 1.4 m wide and the 0.1 m `lay` leaves.
+[asset.door]
+file   = "door.glb"
+taxon  = "structure/plain"
+tags   = ["role:door"]
+params = { pitch = 1.5 }
+
+[material.ground]
+colour = [0.5, 0.5, 0.48]

@@ -1,0 +1,38 @@
+format    = "via-case-1"
+summary   = "identity.md 4.2 (R65), warm, with a scatter in the world: the pin's record is no longer held by the scatter's held node, which reads neither the run nor the tread; widening the tread under the run rebuilds on the base's store as a clean build does."
+milestone = 5
+actions   = ["base", "wide"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.mark]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+records = 0
+
+[action.wide]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "wide", "--against", "build/base", "--out", "build/wide"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/wide"
+
+[action.wide.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.wide.diag.mark]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["pots#r2"] }

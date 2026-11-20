@@ -1,0 +1,5 @@
+# A door half a metre off: the hall's door stands 4.5 m along its side, where the wall either side
+# of it is no whole number of half bays (section 7 of the report, leftover length). The build
+# says where it would close.
+[feature.hall]
+doors = [{ storey = 0, side = 0, at = 4.5, width = 1.4 }]

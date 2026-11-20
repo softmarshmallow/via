@@ -1246,3 +1246,48 @@ fn change_file_rehome_follows_its_own_adds() {
     assert_eq!(w.home("scatter", "under"), Some("d"));
     assert_eq!(w.home("clear", "c1"), Some("d"));
 }
+
+#[test]
+fn at_with_a_height() {
+    // `surfaces.md` 4.1 (R65), `vocabulary.md` 2.4: `at` on an instance, a pin and a point
+    // feature takes two lengths, or two lengths and a number, the height; the merged world
+    // writes the height as a number. A set item's `at` and a clear's take two numbers only, and
+    // four numbers are no point anywhere.
+    let l = merge(
+        &simple(&format!(
+            "{HEAD}[instance.a]\nasset = \"box\"\nat = [1, 2.5, 13.3004]\n\n\
+             [pin.p]\nasset = \"box\"\nat = [3, 4, 10]\n\n\
+             [feature.f]\nat = [5, 6, -0.5]\n\n\
+             [instance.b]\nasset = \"box\"\nat = [7, 8]\n"
+        )),
+        &[],
+    );
+    assert_eq!(codes(&l), Vec::<String>::new());
+    let j = json(&l);
+    for want in [
+        r#""at":[1,2.5,13.3004]"#,
+        r#""at":[3,4,10]"#,
+        r#""at":[5,6,-0.5]"#,
+        r#""at":[7,8]"#,
+    ] {
+        assert!(j.contains(want), "{want} in {j}");
+    }
+    for bad in [
+        "[set.s.item.i]\nasset = \"box\"\nat = [1, 2, 3]\n",
+        "[clear.c]\nat = [1, 2, 3]\nradius = 2\n",
+        "[instance.a]\nasset = \"box\"\nat = [1, 2, 3, 4]\n",
+        "[instance.a]\nasset = \"box\"\nat = [1, 2, \"high\"]\n",
+    ] {
+        let l = merge(&simple(&format!("{HEAD}{bad}")), &[]);
+        assert_eq!(codes(&l), ["doc.type"], "{bad}");
+    }
+    // The plan point stays on the lattice: a fourth decimal there is too precise, in the
+    // height it is not.
+    let l = merge(
+        &simple(&format!(
+            "{HEAD}[instance.a]\nasset = \"box\"\nat = [1.0001, 2, 3]\n"
+        )),
+        &[],
+    );
+    assert_eq!(codes(&l), ["num.too_precise"]);
+}

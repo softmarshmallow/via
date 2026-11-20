@@ -1,0 +1,30 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [16, 32]]
+
+[feature.far]
+path = [[32, 48], [48, 48]]
+
+[step.make]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]
+
+# The world's own hand instance: the step's run gives way to it, as before R64.
+[instance.crate]
+asset = "box_small"
+at    = [6.4, 32]
+
+# The world's own run: its member at [42, 48] gives way to the step's `stone`, as before.
+[run.fence]
+asset = "box_small"
+on    = { ref = "far" }
+count = 4

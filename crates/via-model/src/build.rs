@@ -49,6 +49,11 @@ pub struct Options {
     /// The prefix of this world's node ids in the build that holds it: `""` for the world built,
     /// `<id>.` for an import, `<id>.<nested>.` for an import's import (`composition.md` 12).
     pub prefix: String,
+    /// This run runs no step and joins no step's returned document (`via query`,
+    /// `surfaces.md` 7): what a generate step would return is not in the world it builds. A
+    /// height in `at` that finds no kind surface, in a world that declares a generate step,
+    /// then stands on the terrain and nothing is said (4.1).
+    pub steps_unrun: bool,
 }
 
 impl Options {
@@ -77,6 +82,7 @@ impl Options {
             given: None,
             import_steps: None,
             prefix: String::new(),
+            steps_unrun: false,
         }
     }
 }
@@ -351,6 +357,7 @@ pub(crate) fn declared(world: &World, options: &Options) -> (Decls, Pack, Vec<Di
 pub(crate) fn declared_own(world: &World, options: &Options) -> (Decls, Pack, Vec<Diag>) {
     let mut diags: Vec<Diag> = Vec::new();
     let mut decls = Decls::read_given(world, options.given.as_deref());
+    decls.steps_unrun = options.steps_unrun;
     if let Some(s) = options.seed {
         decls.seed = s;
     }
@@ -484,6 +491,9 @@ fn place_rounds(decls: &mut Decls, pk: &Pack) -> (Placed, Option<Vec<Diag>>) {
                 ));
             }
             pd.extend(gave);
+            // Every shape is placed: a height in `at` now chooses its surface, on plans
+            // (`surfaces.md` 4.1, 4.3 step 3), before any level is read.
+            crate::surfaces::choose_by_height(decls, &placed.shapes);
             return (placed, Some(pd));
         }
     }
@@ -1818,6 +1828,10 @@ pub(crate) fn feature_deps(d: &Decls, id: &str, seen: &mut BTreeSet<String>) -> 
         s.insert(format!("pin.{base}"));
         s.insert(crate::graph::PACK.to_string());
         s.insert(format!("asset:{}", p.asset));
+        // The kind surface a height in its `at` chose (`surfaces.md` 4.1): its owner.
+        if let Some(sn) = &p.surface {
+            s.extend(feature_deps(d, sn, seen));
+        }
         match &p.place {
             crate::decl::Place::On(o) => s.extend(feature_deps(d, &o.reference, seen)),
             crate::decl::Place::Of(o) => s.extend(feature_deps(d, &o.of, seen)),
@@ -1941,6 +1955,12 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
                 for p in d.pins.values() {
                     if p.by.as_ref().is_none_or(|b| b.contains(m)) {
                         s.insert(format!("pin.{}", p.id));
+                        // A pin removes what stands on its level (`identity.md` 4.2): the owner
+                        // of the surface its height chose is a cause of what it removes, as the
+                        // thing's own surface is above.
+                        if let Some(sn) = &p.surface {
+                            s.extend(feature_deps(d, sn, &mut BTreeSet::new()));
+                        }
                     }
                 }
                 s

@@ -157,6 +157,26 @@ pub fn point(v: &Value) -> Option<Result<(i64, i64), NumError>> {
     Some(x.and_then(|x| y.map(|y| (x, y))))
 }
 
+/// A point `[x, y]` in millimetres, or `[x, y, z]` with a height in metres (`surfaces.md` 4.1):
+/// two lengths and a number.
+#[allow(clippy::type_complexity)]
+pub fn point_z(v: &Value) -> Option<Result<((i64, i64), Option<f64>), NumError>> {
+    let Value::List(xs) = v else { return None };
+    if xs.len() != 2 && xs.len() != 3 {
+        return None;
+    }
+    let x = length(&xs[0].value)?;
+    let y = length(&xs[1].value)?;
+    let z = match xs.get(2) {
+        Some(h) => Some(number(&h.value)?),
+        None => None,
+    };
+    Some(x.and_then(|x| {
+        let y = y?;
+        Ok(((x, y), z.transpose()?))
+    }))
+}
+
 /// A list of points in millimetres.
 pub fn points(v: &Value) -> Option<Result<Vec<(i64, i64)>, NumError>> {
     let Value::List(xs) = v else { return None };

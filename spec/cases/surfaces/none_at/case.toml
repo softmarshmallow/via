@@ -1,0 +1,30 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 (R65): a height in at where no kind surface's bound holds the plan point is surface.none_at on the instance, the pin and the point feature; none is placed; exit 1."
+milestone = 5
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.instance]
+code    = "surface.none_at"
+subject = "instance.desk"
+
+[action.build.diag.pin]
+code    = "surface.none_at"
+subject = "pin.mark"
+
+[action.build.diag.point]
+code    = "surface.none_at"
+subject = "feature.spot"

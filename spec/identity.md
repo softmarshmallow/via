@@ -307,7 +307,7 @@ Hand edits apply to each producer's output in this order:
 |---|---|---|
 | 1 | lock | Inside its `region`, the output is replaced by the lock's record (4.4). |
 | 2 | clear | Removes every instance whose origin is inside its place (4.3), recorded items included. |
-| 3 | pin | Places its instance once, as a written thing (4.2); removes every instance whose footprint overlaps the pin's, except recorded items: an overlap with one is `identity.lock_pin_clash` (4.4). |
+| 3 | pin | Places its instance once, as a written thing (4.2); removes every instance it would clash with, one whose footprint overlaps the pin's on the pin's level (4.2, `rules.md` 8.1), except recorded items: an overlap with one is `identity.lock_pin_clash` (4.4). |
 
 The order is ours. A clear inside a lock refines it: "keep this wood as it is, but empty this spot".
 A pin comes last because it is the most specific statement.
@@ -325,6 +325,17 @@ so a clear removes what it covers and nothing else moves.
 - A pin's instance is named by the pin's id (world namespace) and is a written thing: table
   `instance`, summary maker `null`, cause `pin.<id>`. It is placed once whatever `by` lists and is in
   no producer's held output; `by` says only whose instances it removes.
+- **What a pin stands on.** The terrain, or with `at = [x, y, z]` the kind surface at its point
+  whose height is nearest `z` (`surfaces.md` 4.1, R65): a window on an upper floor, a bench on a
+  deck. A pin takes no `surface` key, and `on` a thing gives it no surface.
+- **What a pin removes (R65).** Only what it would clash with: an instance of a `by` producer whose
+  footprint overlaps the pin's and that stands on one level with it, by the level test of
+  `rules.md` 8.1 (one surface, or the terrain and a surface that count as one there, and height
+  spans that meet). An instance under or over the pin in plan, on another storey, stays. Reason:
+  a pin is a written thing, and two written things clash only on one level; removing by plan
+  alone took 6 m of wall from the storey above a pinned window (the kit example's `window`).
+  `identity.pin_overlap` and `identity.pins_overlap` below read the same test: two pins one over
+  the other on two floors do not overlap.
 - Every instance a pin removes is listed by one `identity.pin_removed` (info) per pin: the count and
   the names. A pin that removes nothing raises none. With the default `by`, a pin inside a cell's
   building removes the building, and this is the message that says so (R13).
@@ -674,6 +685,33 @@ carries its subject and the file and line of the text at fault.
 24. (M3) on the grid of case 25, a pin inside a cell's building with the default `by`: the building
     is removed and `identity.pin_removed` names it. With `by = ["ribs"]`, a producer in its layer or
     below that placed nothing there: nothing is removed, `identity.pin_overlap` names both.
+
+51. (M5) Two storeys over one outline, a row of boxes laid on each by a run `on` it; a pin `at` a
+    box's place with the upper floor's height: `identity.pin_removed` names that upper box alone,
+    count 1; the lower row is whole and the pin's `z` is the upper floor's. With the lower
+    floor's height it removes the lower box alone (case `pin_on_floor`).
+52. (M5) A deck that stands clear of the ground (a surface with no `cut`), a row of boxes laid
+    along its edge by a run `on` it, each box half over the edge; a pin `at` two numbers on the
+    ground beside the deck, overlapping a box's overhang and not the deck: the pin stands on the
+    terrain, the box stays, and no `identity.pin_removed` is said. The same pin moved a metre in,
+    under the deck: the terrain and a surface whose bound the terrain thing's footprint meets are
+    one level (`rules.md` 8.1), so the box over it is removed, count 1 (case `pin_under_floor`).
+
+53. (M5) Warm. A run on a raised surface with no `cut`, each member reaching past its bound, and a
+    pin on the terrain beside it; a pin on such a surface by a height, and a run on the terrain
+    beside it; a run on the terrain and a pin over its third member. Widening both surfaces on the
+    base's store: each of the first two pins now removes the member it overlaps, count 1, the
+    change report names the surface's `width` as the cause, and the build equals a clean one.
+    Moving the third run's line from under its pin, likewise: nothing removed there (case
+    `pin_bound_warm`; the record's node read neither the bound nor the line, 4.2, `graph.md` 1).
+54. (M5) Warm. Case 53's first group with a scatter elsewhere in the world: the same (case
+    `pin_bound_scatter`; the record was held by the scatter's `held` node).
+55. (M5) Warm. A generate step returns a raised surface and an instance on it that reaches past its
+    bound; a pin on the terrain beside it; the step's `params` widen the surface: the pin removes
+    the instance, count 1, as in a clean build (case `pin_step_bound`).
+56. (M5) A pin `at` three numbers off every surface, with `by = ["tres"]`: `surface.none_at` and
+    `identity.unknown_producer` in the one build, exit 1: a pin that is not placed has its `by`
+    checked all the same (case `pin_by_unplaced`).
 
 **Names under change**
 

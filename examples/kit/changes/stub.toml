@@ -1,0 +1,4 @@
+# A piece remodelled, and the remodel breaks its neighbours: the corner post is re-exported with a
+# 0.6 m stub along one wall (docs/research/Modular kit failures in studios.md, section 3: a corner
+# piece with a stub joined once and missed by half a footprint when the layout looped back).
+pack = "packs/stub.toml"

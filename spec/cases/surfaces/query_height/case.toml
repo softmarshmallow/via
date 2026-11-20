@@ -1,0 +1,77 @@
+format    = "via-case-1"
+summary   = "surfaces.md 7, 4.1 (R65): a point feature, an instance and a pin placed by height on a floor a generate step returns: the build places them on it, z 13.3; via query, which runs no step, answers surfaces_at with the terrain alone, exit 0, and says nothing of the heights. A world with no generate step and no floor is surface.none_at in the query too."
+milestone = 5
+actions   = ["program", "trust", "build", "query", "bare"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via         = ["trust", "world.toml", "--yes", "--lib", "{work}/lib"]
+exit        = 0
+diagnostics = "includes"
+
+# Features in id order: make#loft, spot.
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.file.z]
+path = "build/w/instances/z.npy"
+all  = 13.3
+
+[action.build.file.count]
+path    = "build/w/manifest.json"
+pointer = "/instances/count"
+value   = 2
+
+[action.build.file.spot]
+path    = "build/w/features.json"
+pointer = "/features/1/at"
+value   = [28, 25, 13.3]
+
+# The query runs no step: the floor is not there, and the three heights choose nothing. Not an
+# error in this run; the answer is the terrain's row.
+[action.query]
+via         = ["query", "world.toml", "surfaces_at", "--lib", "{work}/lib", "--in", "points.json", "--out", "out.json"]
+exit        = 0
+diagnostics = "includes"
+
+[action.query.diag.none_at]
+code    = "surface.none_at"
+records = 0
+
+[action.query.file.surface]
+path    = "out.json"
+pointer = "/surface"
+value   = ["height"]
+
+[action.query.file.z]
+path    = "out.json"
+pointer = "/z/0"
+value   = 10
+
+# No generate step in the world: the height finds nothing and nothing could add it.
+[action.bare]
+via         = ["query", "bare.toml", "surfaces_at", "--lib", "{work}/lib", "--in", "points.json", "--out", "bare.json"]
+exit        = 1
+diagnostics = "includes"
+
+[action.bare.diag.none_at]
+code    = "surface.none_at"
+subject = "instance.desk"
+
+[action.bare.file.none]
+path   = "bare.json"
+exists = false

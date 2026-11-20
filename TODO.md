@@ -485,6 +485,15 @@ open, and its place here is its destination.
       lane until the order was patched. Lesson: the rewrite needs one graph of references,
       resolved once, with one cycle report.
       (From the list before the rewrite, Surface and delivery.)
+- [ ] **Two keys that still miss a read** (found fixing K1's graph edges, not mended). The
+  `identity.pin_in_keep_out` record lives on a pin's `height` node, which has no edge to the
+  `keep_out` fields. An `overlap` node reads another instance's written `surface` but not that
+  surface's owner, so the terrain-against-surface clause of the level test for two hand instances
+  can go stale on a warm rebuild. Lesson from K1: a record must live in a node that reads
+  everything the test behind it reads; two older holes of this kind (a pin's records, and a
+  scatter's `rule` not reading the runs and sets it gives way to) failed warm builds with
+  `diag.internal` before R65 and were found only when a new check node read them.
+      (From K1's fix pass, 2026-11-20.)
 
 ### `spec/authority.md`
 
@@ -548,6 +557,17 @@ open, and its place here is its destination.
       (From M5 close, 2026-11-17.)
 - [ ] -> spec/rules.md: Design the producer model: how procedural generators emit the explicit core form.
       (From the list before the rewrite, Core model.)
+- [ ] **The level test takes every floor of a cutting kind for the ground** (8.1, R40: "one whose
+  kind writes `cut`"). A two-number pin or hand instance on the terrain under an upper storey
+  still clashes with what stands on that storey: the kit's first `window` pin, built today,
+  still removes two bays upstairs. A height in `at` (R65) is the way to say the floor; the
+  clause should read the surface's own height against the terrain, not its kind.
+      (From K1 and K2 of docs/plan-kits.md, 2026-11-20.)
+- [ ] **Warning or error for a wall that does not close, and for two things one step returned
+  that overlap** (`step.lay.wall_open`, `place.crowded`, R64). Each builds, with a hole or an
+  overlap and a warning. A studio's kit check stops the build. Decide per code, or give a world
+  a way to say which warnings stop it.
+      (From K1 and K2 of docs/plan-kits.md, 2026-11-20.)
 
 ### `spec/surfaces.md`
 
@@ -589,6 +609,14 @@ open, and its place here is its destination.
       (2026-11-12). A path should arrive square to a door, a stair should land at its height, and
       a road should not end at a window.
       (From the list before the rewrite, Surface and delivery; was -> M5.)
+- [ ] **A height in `at` (R65), what is owed.** A record of what each height chose, said when it
+  changes against the baseline as `identity.reselected` is for a selection. An import's kind
+  surfaces are not candidates. The SDK's `Out.instance` and `Out.feature` write two numbers, so
+  a step cannot return a place with a height. No case covers a candidate whose `base` fails at
+  the point. In `via query`, which runs no step, a height stands its thing on the nearest floor
+  the run does have, or the terrain: not always the floor a build chooses. It goes when the
+  query runs generate steps (TODO, From M5 close).
+      (From K1 and K2 of docs/plan-kits.md, 2026-11-20.)
 
 ### `spec/identity.md`
 
@@ -643,7 +671,6 @@ open, and its place here is its destination.
          outflow; "A to B at no more than N percent". Candidates for the domain library.
       7. -> M7: Repeat the fresh-agent test with a different model family before trusting it.
       (From the list before the rewrite, Surface and delivery; was -> by item below.)
-
 ### `spec/derived.md`
 
 - [ ] a route cost of the course's own grade (direction-aware), so a main way can
@@ -1374,6 +1401,23 @@ open, and its place here is its destination.
       sockets constrain room sizes from the start); and carry dressing down to small props on
       furniture, which needs assets to declare their surfaces.
       (From the list before the rewrite, Assets and buildings; was -> M5.)
+- [ ] **The stairwell's side has no wall on the storey above** (`role:wall_tall`, README "not
+  built"): 6 m open in the kit example's hall, and every measure of it carries that number.
+      (From the plain kit, 2026-11-20; examples/kit and its README.)
+- [ ] **Corners past the plain case.** `params.reach` on an outside corner (a piece with a leg
+  along each wall) is covered by a unit test only, no example. A corner that is not a right
+  angle still gets a square box turned to the wall after it, as before. A T-junction of walls
+  and a wall's free end have no role.
+      (From the plain kit's mends, 2026-11-20.)
+- [ ] **Two doors on one side are each told alone.** `gap_wide`'s hint finds where one door would
+  close with the side's other openings held where they are; two doors both half a metre off are
+  each told no place closes, though moving both would. Solve a side's openings together.
+      (From the review of K1 and K2, 2026-11-20.)
+- [ ] **A side is named by its number** (`side`, `at` on a door and a stair). A plan that gains a
+  corner renumbers the sides after it, so a door on a later side must be written again
+  (`examples/kit`: the annex's door is on side 0 so that `ell` does not move it). A side named
+  by a point near it, as a selection is, would hold.
+      (From K1 and K2 of docs/plan-kits.md, 2026-11-20.)
 
 ### `lib/map`
 
@@ -1597,6 +1641,24 @@ open, and its place here is its destination.
 - [ ] example: the bush on `at_mill`'s eye; the church path 7.5 m short of the door.
       (From the M3 close, 2026-11-15.)
 
+### `examples/kit`
+
+- [ ] The six styled kits the owner listed (medieval or fantasy village, modern city, traditional
+  East Asian, industrial, classical, terrain-adapting), each for the structure it forces: roofs
+  over irregular plans, floors by bays, the roof as the main kit, pieces joined in three
+  dimensions, every size from one module, meeting a slope. The research found no account by a
+  developer of roofs on irregular plans, of slopes, or of classical or industrial kits: those
+  examples test our own design and are to be labelled so.
+      (From the owner, 2026-11-19; the plain kit came first.)
+- [ ] A kit we did not make. Every piece here is ours, so it fits where we meant it to. A freely
+  licensed kit fetched on demand and never committed is the only test on pieces someone else
+  shaped (challenge 33).
+      (From the plain kit, 2026-11-20; examples/kit and its README.)
+- [ ] No roofs (a roof depends on the whole plan; `lay` places one `role:roof` asset per
+  building), no rooms, and no variation between bays: `lay` takes the first id of a role, so
+  `wall_window` is placed by a pin only.
+      (From the plain kit, 2026-11-20; examples/kit and its README.)
+
 ### `examples/market`
 
 - [ ] examples/market: the rows stand on the ground as it lies (no terrace): 85 of 189 doors within
@@ -1607,6 +1669,11 @@ open, and its place here is its destination.
       one, judged on three changes (piece remodelled, piece's module or pivot changed, street moved).
       Box kit done (M5 slice 3, examples/market, all three changes measured); the real kit is owed.
       (From the list before the rewrite, Surface and delivery; was -> M5.)
+- [ ] examples/market `measure.py` divides `instances/z.npy` by 1000 with x, y and face;
+  build.md 8 says z is metres (`<f4`). Its door measures (`doors_level`, `doors_off`) so read a
+  floor about a centimetre above the ground at each piece's origin. Check them, and the "85 of
+  189 doors" figure.
+      (Found writing examples/kit's measure, 2026-11-20.)
 
 ### `examples/massif`
 

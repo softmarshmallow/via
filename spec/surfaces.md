@@ -90,6 +90,9 @@ is the source.
 - Field reads (`v`, `f`, `slope`, `under`, `smoothed_along`), shape functions (`dist`, `sdist`, `near`,
   `inside`, `along`) and per-post `let` names are not visible: `formula.unknown_name`. Reading a
   field from a surface formula is Open 9.
+- So a kind surface's height at a point is known from plans alone, before any field settles (4.3,
+  step 3). `at` with a height (4.1) and the level test (`rules.md` 8.1) rely on it; the terrain's
+  height is not known then.
 - `t`, `d`, `sd`, `x` or `y` in `bound` is `formula.rate`. A bound that is not above 0 or not finite
   is `surface.bound`.
 
@@ -181,6 +184,7 @@ Every surface at each point.
   are in.
 - Rows for one point are ordered by `z`, lowest first; ties by surface place name, bytewise.
 - A point outside the extent has no rows.
+- `at` with a height (4.1) chooses among a point's rows, the terrain's left out, in this order.
 
 ### 2.2 `sample(surface, points)` (new)
 
@@ -443,6 +447,7 @@ library's convention, shown in 6.3 and illustrative only:
 | `on` anything else (a path, a region with no surface, an instance) | the terrain |
 | `at` | the terrain, unless `surface` names another (M5, below) |
 | `at` with `surface = "<feature>.<surface>"` (M5) | that kind surface |
+| `at = [x, y, z]`, with a height (R65) | the kind surface at `[x, y]` whose height there is nearest `z` (below) |
 | a scatter (`within`) | the terrain, unless `surface` names another (M5) |
 | a scatter with `surface` (M5) | that kind surface; a candidate outside its bound is no candidate (below) |
 
@@ -496,6 +501,55 @@ library's convention, shown in 6.3 and illustrative only:
     down through its floor at a lens 9.85 m up, given the terrain's 0.01.
   - The core sees no word "host": `hosts` is dropped (1.3). A roof garden is a kind surface of the
     roof's owner, and its trees are a scatter with `surface`.
+- **`at` with a height (R65, decided, open to the owner).** `at = [x, y, z]` on a hand instance,
+  a set it places, a pin or a point feature: the thing stands on one kind surface, chosen by the
+  height `z` (metres, a number). Reason: a produced name is never written (R3), so a floor a step
+  returned cannot be named in `surface`; and a selection by place cannot tell two floors that lie
+  one over the other. Rules:
+  - **The candidates** are the kind surfaces whose bound holds the plan point (1.2, edges in) and
+    whose owner lies in the thing's layer or below: references reach down only, so a surface
+    above it is absent, as from a step's view (2.6). The terrain is never a candidate: this is
+    decided on plans (4.3, step 1), where a kind surface's height is known (1.1) and the
+    terrain's is not. Two numbers mean the terrain, as before. A surface an import brings
+    (`composition.md` 6.1) is not yet a candidate: the choice reads this world's own features
+    (left; `surface` may still name one).
+  - **The choice** is the candidate whose height at the point is nearest `z`. Both are rounded to
+    the lattice first, and the distance is `abs(round_mm(base) - round_mm(z))` in whole
+    millimetres, as a meeting's gap is (2.4), so a tie is exact. A tie goes to the lower surface,
+    then by surface place name, bytewise: the first such row of `surfaces_at` (2.1).
+  - **`z` chooses and sets nothing.** The thing's height is the chosen surface's at its origin
+    (4.2), whatever `z` says; a `z` far from every floor still chooses the nearest.
+  - **No candidate** is `surface.none_at` (error), not placed: no kind surface's bound holds the
+    point. Hint: "drop the third number to stand on the terrain, or move it onto a surface". A
+    candidate whose `base` fails at the point fails as 2.7 says, and the thing is not placed.
+    Not in a run that runs no step though the world declares a generate step (`via query`,
+    section 7): the floor a step would return is not there to be chosen, so the thing stands on
+    the terrain as with two numbers, and nothing is said.
+  - **With `surface`** it is `surface.placed_twice` (error): both say the surface. With `ground`
+    it is `surface.ground_off_terrain`, as with `surface`.
+  - From there the thing is one placed with `surface` naming the chosen surface, in every rule of
+    this chapter and of `rules.md`: a set's items stand on it, each at its own origin
+    (`surface.outside` for one off its bound); its level is that surface (`rules.md` 8.1); what
+    stands `on` it or on its mounts stands there too. It depends on the owner of every candidate
+    as on an `on` reference: a moved or raised owner, or one moved to a layer the thing does not
+    see, chooses again and re-grounds it, and the change report lists it as grounded on the
+    owner it stands on (rule 8).
+  - **The choice is no part of the plan.** A thing's origin, facing and frame are the same
+    whichever surface its height chooses; only its level and its height read the candidates
+    (`graph.md` 2, "choice by height"). So a path that ends at the thing's door and whose own
+    surface lies under the thing is no loop: the path reads the plan, the choice reads the path.
+    A loop that does pass through a choice (a second thing on the first's mount, and a candidate
+    that ends at the second) is `graph.cycle` at the thing's `at`, naming every edge; its hint
+    adds what breaks it there: two numbers with `surface`, or the thing moved off the surface
+    that reads it.
+  - A set item's `at` is in its set's frame and takes two numbers; so do a clear's and an
+    import's. A run and a scatter take no `at`.
+  - A pin stands on the terrain unless its `at` carries a height: a pin takes no `surface`, and
+    `on` a thing gives it no surface (`identity.md` 4.2).
+  - Cost: the third number is a height someone reads off a build or a plan, and a floor that
+    moves by more than half a storey takes the thing to another floor; the build does not yet
+    say so (a record of what each such place chose, as `identity.reselected` keeps for
+    selections, is owed).
 - **Outside a bound.** Two codes, one per bound, so no condition has two:
   - An origin outside the extent, the terrain's bound, is `place.outside` (error, not placed),
     owned by `rules.md` 8.4. It applies whatever the thing stands on, and it is checked first. From
@@ -514,7 +568,8 @@ library's convention, shown in 6.3 and illustrative only:
 ### 4.2 Height and footprint
 
 - An instance's pivot is at `sample(surface, origin).z - sink`, with `sink` scaled (`assets.md`).
-  Nothing else lifts it: the spike's `mount` height and `atop` are gone (`vocabulary.md` section 6).
+  Nothing else lifts it: the spike's `mount` height and `atop` are gone (`vocabulary.md` section 6),
+  and the third number of `at` chooses the surface without setting the height (4.1).
 - `ground = "<kind>"` makes the footprint, grown by `margin`, a feature of that kind (`rules.md`
   2.1). Its effects write the terrain only (rule 5). So `ground` on an instance that stands on a kind
   surface is `surface.ground_off_terrain` (error). Scattered instances carry no `ground` (`rules.md`
@@ -544,7 +599,8 @@ checks. For surfaces it reads:
    field's value is final only after this. A levelling kind reads the ground with `under('mean')`,
    which reads the field as written before its own effect (`formulas.md` 8.5), so it is not a cycle.
 3. **Kind surfaces.** Their formulas read no field (1.1), only their owner's shape and attributes,
-   so they are ready once features are.
+   so they are ready once features are. A height in `at` (4.1) is resolved here, from plans, so
+   the level test and every giving way (`rules.md` 8.1) already know what each thing stands on.
 4. **Grounding.** Every `z` from the final surfaces; then relief.
 5. **Meetings, then checks.**
 
@@ -912,7 +968,14 @@ via query WORLD surfaces_at|sample|relief|meetings --in FILE --out FILE
   answers, so `surfaces_at` inside a laid house gives the terrain only and `meetings` lists the
   declared meetings only. Ask a built world instead: its `meets.json` holds every meeting, and a
   step's own `surfaces_at` sees what the steps below it returned (`protocol.md`). Running generate
-  steps here is owed (TODO, From M5 close). It writes no build directory, run report or
+  steps here is owed (TODO, From M5 close). A height in `at` (4.1) chooses among the kind surfaces
+  this run has: where the world declares a generate step and no kind surface holds the point, the
+  surface it would choose is one a step returns, which is not in this run's answers, so the
+  thing (an instance, a pin, a point feature) stands on the terrain as with two numbers and
+  nothing is said. A pin so placed removes what it would on the terrain; the terrain and a floor
+  over it are one level (`rules.md` 8.1), so that is what it removes there in a build too. A
+  world with no generate step has nothing a step could add: there the height is
+  `surface.none_at`, as in a build. It writes no build directory, run report or
   `.previous`. `meetings` takes no `--in`. `relief` asks the terrain only (a kind surface is a
   usage error; owed with the step runner).
 - Both files are canonical JSON (`documents.md` 8): one object whose keys are column names, each a
@@ -959,7 +1022,8 @@ has a place.
 | `surface.unmet` | warning | the mount | A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: `ends_at = \"<place>\"`". | M5 |
 | `surface.cut` | error | the feature | Its surface's `cut` is below 0 or not finite; gives the value. | M5 |
 | `surface.not_surface` | error | the placement | Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces. | M5 |
-| `surface.placed_twice` | error | the placement | `surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`. | M5 |
+| `surface.placed_twice` | error | the placement | `surface` written with `on`, or with a height in `at`: each already says the surface. Hint: drop `surface`, or place it by `at` with two numbers. | M5 |
+| `surface.none_at` | error | the placement | Its `at` carries a height, and no kind surface's bound holds the plan point (4.1). Hint: drop the third number to stand on the terrain, or move it onto a surface. | M5 |
 
 ## Conformance
 
@@ -1045,6 +1109,15 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 | meets_connector_edit | M5 | 6.3 with both lanes; `way` changed to `cart` in `kinds.toml` on the lane and both heads | build, then the edit `--against` | `meets.json`'s connector columns `cart`; the warm build equals a clean one. |
 | meets_crossing_removed | M5 | 6.3; the crossing removed and the lanes ending free | build, then the edit `--against` | `meets.json` with 4 rows, then none; the warm build equals a clean one. |
 | step_run_on_floor | M5 | a generate step returning a storey at 13.3 over ground at 10 and a run `on` it | build | Members `make#edge#r0` to `r2`, every `z` 13.3: a returned run's member is `<step>#<run>#r<k>`, its run read before the last `#` (`identity.md` 2.3). |
+
+| at_height | M5 | 6.4's two storeys at 10.3 and 13.3; `high` `at = [30, 26, 13]`, a pin `at = [24, 26, 12.9]`, a set placed `at = [26, 23, 13.3]` and a point feature `at = [28, 25, 13.3]`; changes adding `low` `at = [30, 26, 10.4]`, raising `hall_1` to 14, and raising it to 17 | build, then each change `--against` | Every `z` 13.3 and the point's `at` `[28, 25, 13.3]` in `features.json`. With `low`: it stands at 10.3 under `high` at 13.3, and no `place.overlap`. At 14: every `z` 14, each instance's cause the storey's `level`. At 17, more than half a storey: every `z` 10.3, the lower floor now the nearer. Each warm build equals a clean one (4.1, R65). |
+| at_height_tie | M5 | The two storeys and `mid` `at = [30, 26, 11.8]`, 1500 mm from each; two roofs over one point at 16.0004 and 16 (`m_roof`, `n_roof`) and `lip` `at` that point with height 16; two roofs at 16 over another point (`b_roof`, `a_roof`) and `post` there with height 16; changes placing a box beside `post` with `surface = "a_roof.garden"`, and with `b_roof.garden` | build, then each change | `mid` at `z` 10.3, the lower floor. `lip` at `z` 16, on `n_roof`: both heights are 16 000 mm on the lattice, a tie, to the lower. `post` stands on `a_roof.garden`, the first name: the box on that surface overlaps it (`place.overlap`, exit 1), the box on `b_roof.garden` does not (4.1). |
+| none_at | M5 | The two storeys; an instance, a pin and a point feature each `at` three numbers off every floor | build | `surface.none_at` on each of the three; none placed; exit 1. |
+| height_and_surface | M5 | `desk` with `at = [30, 26, 13.3]` and `surface = "hall_1.floor"` | build | `surface.placed_twice`; exit 1. |
+| layer_moved | M5 | The two storeys in the world file; an instance, a pin, a point feature and a view's target instance, each by the upper floor's height; then the upper floor's table moved to a layer of rank 1 | build, then the edit `--against` | Every `z` 13.3, the point's and the target's `at` at 13.3 in `features.json`; then every one 10.3, and the warm build equals a clean one: no statement, shape or attribute of the floor changed, only its layer (4.1). |
+| height_no_loop | M5 | A hut `at = [30, 26, 13.3]` on a floor; a flight with `ends_at = "hut.door"` whose tread holds the hut's origin; changes naming the surface instead, and placing a second hut `on` the first's door with the flight ending at the second's | build, then each change | Exit 0, the hut at `z` 13.3, no `graph.cycle`, as with `surface = "hall_1.floor"`. The second change: `graph.cycle` on `instance.hut` at its `at`, exit 1; never `diag.internal` (4.1). |
+| query_height | M5 | A generate step returns a floor at 13.3 over ground at 10; a point feature, an instance and a pin each `at` three numbers on it. Then the same placements in a world with no step and no floor | build; `surfaces_at` at the instance's point; then `surfaces_at` on the second world | The build places all three on the floor, every `z` 13.3. The query exits 0 and writes its file, the terrain's one row: it runs no step, and says nothing of the heights (section 7). On the world with no step: `surface.none_at`, exit 1, no file. |
+| layer_below | M5 | `hall_g` in the world file, `hall_1` in a layer of rank 1; `desk` `at = [30, 26, 13.3]` in the world file | build | `desk` at `z` 10.3: the storey above its layer is no candidate (4.1). |
 
 ## Changed from the spike
 

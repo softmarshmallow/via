@@ -299,10 +299,34 @@ fn pin_in_cell() {
     assert_eq!(by[0].1, "pin.well");
     let removed = diags.iter().find(|d| d.code == Code::PinRemoved).unwrap();
     assert_eq!(removed.data.get("count"), Some(&via_diag::Value::Int(1)));
-    let (held, diags) = hold(inst, &[], &[pin(Some(vec!["trees_other".into()]))]).unwrap();
+    let (held, diags) = hold(inst.clone(), &[], &[pin(Some(vec!["trees_other".into()]))]).unwrap();
     assert_eq!(held.len(), 10);
     assert!(diags.iter().any(|d| d.code == Code::PinOverlap));
     assert!(!diags.iter().any(|d| d.code == Code::PinRemoved));
+    // identity.md 4.2 (R65): a pin removes, and overlaps, only what stands on its level. On
+    // another level than every instance it removes nothing and says nothing; two pins at one
+    // plan point on two levels do not overlap, and on one level they do.
+    let apart = via_geom::held::Levels {
+        instance: &|_, _| false,
+        pin: &|_, _| false,
+    };
+    let (held, diags) = via_geom::held::hold_on(inst.clone(), &[], &[pin(None)], &apart).unwrap();
+    assert_eq!(held.len(), 10);
+    assert!(diags.is_empty(), "{diags:?}");
+    assert!(
+        via_geom::held::removed_by_on(&gone, &[], &[pin(None)], &apart)
+            .unwrap()
+            .is_empty()
+    );
+    let other = Pin {
+        id: "well_up".into(),
+        ..pin(None)
+    };
+    let two = [pin(None), other];
+    let (_, diags) = via_geom::held::hold_on(Vec::new(), &[], &two, &apart).unwrap();
+    assert!(!diags.iter().any(|d| d.code == Code::PinsOverlap));
+    let (_, diags) = hold(Vec::new(), &[], &two).unwrap();
+    assert!(diags.iter().any(|d| d.code == Code::PinsOverlap));
 }
 
 /// identity.md 2.3, roles by travel: where the clip cuts a source, the kept part starts or ends

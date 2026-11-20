@@ -60,7 +60,7 @@ asset fact for a distance kept around a footprint (`assets.md` 2.4).
 |---|---|---|---|---|
 | `asset` | name | one of `asset`, `set` | | An asset id the pack binds (`assets.md`). |
 | `set` | name | one of `asset`, `set` | | A set to place as one unit (section 4, M3). |
-| `at` | point | one of `at`, `on` | | A coordinate in the world frame. Plan only. |
+| `at` | point, or point with a height | one of `at`, `on` | | A coordinate in the world frame. Plan only; a third number says which surface it stands on (3.1). |
 | `on` | `{ ref, t, offset }` or `{ of, class, near, t, offset }` | one of `at`, `on` | | A place on a named or selected thing (section 3). |
 | `face` | number or word | no | see 3.3 | Which way the instance's front looks. |
 | `scale` | number | no | `1` | Uniform scale of the asset, or of the set's frame. Greater than 0. |
@@ -74,7 +74,8 @@ a kind: it lends its footprint to a kind through `ground`. `authority` is not an
 feature takes its kind's authority (2.1). To make the ground under it firmer, change the kind, or
 write a separate region feature with its own `authority`.
 
-A height is never written. The instance stands on the surface beneath its origin (section 6).
+A height is never set by text. The instance stands on the surface beneath its origin (section 6);
+a third number in `at` only says which surface, where one lies over another (3.1).
 
 ### 2.1 `ground`: an instance lending its footprint
 
@@ -111,6 +112,13 @@ Every placed thing in this chapter takes the one grammar:
 
 - `at = [x, y]`: a coordinate in the frame of the table it is in. On an instance, run or pin that
   is the world frame; on a set item, the set's frame (section 4).
+- `at = [x, y, z]`: the same plan point, and a height `z` in metres (a number, `numbers.md` 3.3)
+  that chooses what the thing stands on: the kind surface at that point whose height there is
+  nearest `z` (`surfaces.md` 4.1). The height it then takes is that surface's, never `z` itself.
+  Two numbers mean the terrain, as before. On a hand instance (a set placed by one included), a
+  pin and a point feature; a set item's `at`, in its set's frame, takes two numbers only. Ours
+  (R65): a floor a step returned has a produced name, which text never writes (3.2), so `surface`
+  cannot name it, and a selection by place cannot tell two floors that lie one over the other.
 - `on = { ref, t, offset }`: a place on an authored thing. `ref` is a place name (`identity.md`).
 - `on = { of, class, near, t, offset }`: a place on a produced thing, selected by a point near it
   (`identity.md` 3). This is the only way to stand on a generated street, cell or instance (R3,
@@ -175,7 +183,7 @@ with no cycle: plan, then pad, then surface, then height. These are `graph.md`'s
 | (height) | the final surface | each instance's height |
 | `within` on a scatter | the named region or selection | the scatter |
 | `clump.around` | the named producer's held output | the scatter |
-| giving way, non-scattered producer | the plans of hand instances in its layer or below, whose solidity is not `none`, that do not stand on its own output | its output before hand edits |
+| giving way, non-scattered producer | the plans of hand instances in its layer or below, whose solidity is not `none`, that do not stand on its own output; for a run a step returned, less the instances of that step's own document (below) | its output before hand edits |
 | giving way, scatter | the same, plus the held output of every non-scattered producer in its layer or below, solidity not `none`; the `surface` and `keep_out` fields; every field its `density` reads | the scatter's output before hand edits |
 | any producer | the pins, clears and locks whose `by` names it (`identity.md` 4.1) | its held output |
 
@@ -196,6 +204,21 @@ hand instance or a produced instance in a higher layer that overlaps a lower lay
 instance is reported (`place.crowded`, 8.1), never silently resolved; the hint is a clear or a pin
 in the higher layer with `by` naming the lower producer. Whether R21's reasoning should extend to
 placement, so lower derived things give way to firmer things above, is (open), section 15.
+
+**A step's own run and instances (R64).** A run in a step's returned document does not give way to
+an instance of that same step's document: the two whose produced names begin with one `<step>#`,
+`<step>` a declared step. Giving way is a firm decision beating a rule (principle 3); a step that
+returns a run and an instance wrote both at once, from one computation, so neither is the firmer.
+Where a member and such an instance overlap on one level (8.1), both stay and the overlap is
+`place.crowded` (warning), naming both. Everything else is unchanged: a step's run gives way to the
+world's hand instances and to the instances of any other document in its layer or below, another
+step's included, and a world's run gives way to a step's instances. Every call of a `for_each`
+step is the one step: a run one item's call returned does not give way to an instance another
+item's call returned, since a step's instances are not a hand's firm decisions, whichever call
+made them; a call cannot see another's output, so what the author changes there is one of the
+things the step was given. Cost: a step that leaned on
+giving way to drop a member under its own piece leaves the member out itself. Ours (the kit
+example's `stub`: a corner 0.3 m over its wall removed twelve wall pieces, said as infos).
 
 ## 4. Set (M3)
 
@@ -277,7 +300,9 @@ is not made, with one `run.outside` warning for the run.
 
 A member gives way as any produced instance (3.4): one whose solid footprint, or a solid item of the
 set it places, overlaps a solid hand instance of its layer or below is not made, with its items,
-counted in one `place.gave_way` for the run. Neighbours of one run are never tested. A `span` value
+counted in one `place.gave_way` for the run. A run a step returned does not give way to an instance
+of that step's own document (3.4, R64): the two stay, with `place.crowded`. Neighbours of one run
+are never tested. A `span` value
 outside 0 to 1 is `geom.t_range`; an `ends` word other than `"half"` or `"both"` is `doc.type`.
 Ours.
 
@@ -287,8 +312,10 @@ A placement is plan only. Height comes from the surface beneath the origin, by `
 questions (R25), in the height node (3.4). This chapter fixes only:
 
 - Every instance, set item, run member and scattered instance grounds at its own origin.
-- Text never writes a height for any of them. A thing that should stand higher stands on a surface
-  that is higher (a deck, a floor, a table top), which `surfaces.md` defines.
+- Text never sets a height for any of them. A thing that should stand higher stands on a surface
+  that is higher (a deck, a floor, a table top), which `surfaces.md` defines. The third number of
+  `at` (3.1) chooses that surface by its height and sets nothing: the thing's `z` is the
+  surface's.
 - Instances stand upright. Tilting to the slope is (open), section 15.
 
 ## 7. Scatter (M1; `clump` M2)
@@ -459,7 +486,8 @@ and every member keeps its name. Other scattered instances are not tested agains
 producer from which nothing gave way raises no `place.gave_way`.
 
 **Which producer places first.** Hand instances first. Then runs and steps, each giving way to hand
-instances as above (8.1). Then scatters, giving way to both. Runs and steps do not give way to each
+instances as above (8.1), a step's run not to its own document's instances (3.4, R64). Then
+scatters, giving way to both. Runs and steps do not give way to each
 other, and scatters do not give way to each other: there is no order between them, and overlaps
 between runs and steps are reported (8.1). This settles the question `assets.md` leaves here.
 
@@ -480,7 +508,8 @@ or one kind surface: `surfaces.md` 4.1, a set's items by their placement's, a ru
 `on`) and their height spans above it meet. A thing's span is `-sink` to `-sink` plus its
 `bounds` height, both scaled (`assets.md` 2.4); spans meet when their insides do, so a piece
 standing on another's top passes, and a span of no height meets one it touches. This holds for
-`place.overlap`, `place.crowded` and every giving way (7.5, runs and steps). Reason: the test runs
+`place.overlap`, `place.crowded`, every giving way (7.5, runs and steps) and what a pin removes
+or overlaps (`identity.md` 4.2, R65). Reason: the test runs
 on plans (`surfaces.md` 4.3, step 1), before any field settles, so it may read only declarations
 and asset facts; two storeys are two surfaces, so a thing on one never clashes with a thing on the
 other (station: ten shell pieces of the ground floor gave way to furniture upstairs), and a roof
@@ -497,6 +526,7 @@ Conformance, `storey_overlap`, `ground_floor_clash`.
 |---|---|
 | two hand instances | `place.overlap`, error: two firm decisions clash (principle 3). |
 | a hand instance and a produced instance of a producer in its layer or below | The produced one gave way before it was placed (7.5 for scatters; the same overlap test for runs and steps), counted in `place.gave_way`. A hand end piece beside its run therefore replaces the bay it overlaps. |
+| a member of a run a step returned and an instance of that step's own document (3.4, R64) | `place.crowded`, warning, naming both; neither gives way. One record for each member and instance that overlap on one level. |
 | a hand instance and the instance it stands on (`on` it), or any two whose chains of `on` reach one root (M5, `assets.md` 12.1) | Not tested: it was placed there on purpose; parts on parts of one root are one thing, as one set placement's items are. |
 | neighbours `k` and `k + 1` of one run, and the last and first on a closed outline | Not tested. Kit bays measure a little over their pitch, and on a curve abutting bays overlap on the inner side even at the exact pitch: the spike's college gave 22 false overlaps this way (`spike-final:spike/FINDINGS.md`, college). A step's instances are hand instances of its document, so this exemption does not reach a kit run a library lays: the library keeps its neighbours apart itself (`lib/town/kit.py` rule 7, M5 `market`: 86 false `place.overlap` before it, by rounding to the lattice and on bends). |
 | two items of one set placement | Not tested (section 4). |
@@ -557,7 +587,7 @@ On generated content (R13): a network or a cells table (`geometry.md` 8) is a ma
 producer, so a hand edit never acts on it and `by` never names it. A hand edit acts on what
 producers place there: a clear `on` a selected cell removes the instances whose origin lies in it,
 from every producer its `by` reaches, a step's included; a pin inside a cell removes what its
-footprint overlaps and says so (`identity.md` 4.2, 4.3). The cells themselves stay, since other
+footprint overlaps on its own level (8.1) and says so (`identity.md` 4.2, 4.3). The cells themselves stay, since other
 things are built on them (`identity.md` 4.1).
 
 ## 10. Library forms that lower to rules (M3, M5)
@@ -679,7 +709,7 @@ Codes this chapter introduces. Unknown names, cycles and bad `on` tables are `id
 | `place.margin_alone` | error | `margin` without `ground`. | Add `ground = "<kind>"`, or remove `margin`. |
 | `place.no_footprint` | error | `ground` on an asset with no footprint; only a model measures a point footprint, `assets.md` 2.4 (M2). | Declare the asset's `footprint`, or remove `ground`. |
 | `place.overlap` | error | Two hand instances' footprints overlap; names both. | Move one; the overlap's size is given. |
-| `place.crowded` | warning | Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both. | Change one producer's `on` or `span`, or add a clear or pin in the higher layer with `by` naming the lower producer. |
+| `place.crowded` | warning | Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both. | Change one producer's `on` or `span`, or add a clear or pin in the higher layer with `by` naming the lower producer; for a step's own two, change what the step returns, or move one of the things it was given. |
 | `place.relief` | warning | Relief under an instance exceeds its asset's `max_relief`; gives both numbers and the position. | Move it, give it `ground` with a kind that levels, or choose an asset with a larger `max_relief`. |
 | `place.keep_out` | warning | An instance stands where `keep_out` is above 0; names the field and the position. | Move it, or change the kind whose effect writes `keep_out` there. |
 | `place.gave_way` | info | A producer's candidates dropped by overlap and by relief, as counts, with their box. | Widen the space or change the hand instances it gives way to; nothing if intended. |
@@ -788,12 +818,25 @@ no `max_relief`. Fixtures are `spec/cases/rules/<case>/`.
 | r72 end_piece | A hand end piece overlapping the run's last bay | build | That bay gave way, `place.gave_way` 1; no error. |
 | r73 clear_member | A clear over `fence#r3` | build | That member removed; neighbours unmoved. |
 | r74 member_keys | A run of four members on pads; then a hand instance added, built again in the same store | build; add; build | No `diag.internal`; the warm build equals a clean one (each member's nodes are keyed by its name, `graph.md` 3.1). |
+| r78 give_way_warm | A scatter over a run and a placed set; changes giving the run more members and moving a set item | build; each change `--against` | Each warm build exits 0 and equals a clean one: the scatter's rule reads the run and the set it gives way to (7.5; `graph.md` 2, scatter). |
+
+**M5: a step's own run and instances (R64)**
+
+Each world has one generate step, `make`, whose returned document holds a run of four 2 m boxes
+along a 16 m lane, at 2 m, 6 m, 10 m and 14 m of it.
+
+| Case | Input | Action | Must hold |
+|---|---|---|---|
+| r75 step_own_run | The step also returns an instance `post`, a box 0.4 m east of the run's second member | build | All four members and `make#post` stand; no `place.gave_way`; `place.crowded` naming `make#row#r1` and `make#post`; exit 0. |
+| r76 step_run_hand | The step also returns `stone`, clear of its run. The world writes a hand instance `crate`, a box 0.4 m east of the run's second member, and its own run `fence` with a member under `stone` | build | `make#row#r1` gave way to `crate` and `fence#r2` to `make#stone`, one `place.gave_way` each; no `place.crowded`: what R64 did not change. |
+| r77 step_calls | A `for_each` step over two paths: the call for `a` returns the run along it, the call for `b` an instance 0.4 m east of that run's second member | build | Both stand; no `place.gave_way`; `place.crowded` naming `make#a_row#r1` and `make#b_post`: every call is the one step. |
 
 ## 14. Changed from the spike
 
 - Every table keyed by id (R1). Instance ids are checked for uniqueness (`identity.md`).
 - One placement grammar. `atop`, `beside`, `against`, `slide`, `yaw`, `turn`, `mount` (height) and
-  `in` are gone. A height is never written; surfaces decide it (R25).
+  `in` are gone. A height is never set by text; surfaces decide it (R25), and a third number in
+  `at` only chooses among them (3.1, R65).
 - `kind` and `margin` on an instance became `ground` and `margin`; the footprint feature now keeps
   every piece, takes its kind's authority, and has a name.
 - A set passes scale and tint to its items, may hold a set, and its items are places. `group` is

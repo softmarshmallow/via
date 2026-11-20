@@ -1,0 +1,97 @@
+name       = "kit"
+extent     = [0, 0, 64, 64]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/plain.toml"               # the plain kit, beside the world (packs/make_kit.py)
+
+# Two buildings from one plain kit, laid by lib/building's `lay` (README.md). The buildings are the
+# base that closes: every stretch of wall is a whole number of bays and half bays. The changes
+# beside this file (changes/) each recreate one difficulty a studio reported with a modular kit
+# (docs/research/Modular kit failures in studios.md), and expect.toml records what a build says of
+# each.
+#
+# The kit's numbers are the pack's: a 3 m bay, a 1.5 m half bay, walls 0.3 m thick, a storey 3 m.
+# `lay` takes a building's `region` as the outer face of its walls and shortens each side by what
+# the corner at each end takes (lib/building/README.md, "Sizing a plan to its kit"): 0.3 m for the
+# post at an outside corner, so a side between two holds its length less 0.6 m.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ buildings
+
+# The hall: 12.6 by 9.6 m, two storeys. Its sides hold 12 m (four bays) and 9 m (three bays). The
+# door stands one bay from the south-west corner, so the south wall is a bay, the door's half bay,
+# two bays and a half bay. The stair climbs 5 m along the north wall from 2.8 m west of its east
+# corner: the storey above leaves out its stairwell from 1 m before the stair's foot to its head,
+# so its north wall is a half bay, the stairwell's 6 m with no wall, a bay and a half bay.
+[feature.hall]
+kind     = "building"
+region   = [[10, 10], [22.6, 10], [22.6, 19.6], [10, 19.6]]   # counter-clockwise from the south-west
+storeys  = 2
+storey_h = 3.0
+doors    = [{ storey = 0, side = 0, at = 4.05, width = 1.4 }]   # its middle 4.05 m along the south side
+stair    = { side = 2, at = 2.8, width = 1, run = 5 }           # from 2.8 m along the north side
+kit      = "structure/plain"
+
+# The annex: 9.6 m square, one storey. Each side holds 9 m: three bays, or with the door on the
+# south side a bay, the door's half bay, a bay and a half bay.
+[feature.annex]
+kind     = "building"
+region   = [[32, 10], [41.6, 10], [41.6, 19.6], [32, 19.6]]
+storey_h = 3.0
+doors    = [{ storey = 0, side = 0, at = 4.05, width = 1.4 }]   # its middle 4.05 m along the south side
+kit      = "structure/plain"
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]                                  # lib/building's lint: reach, doors' clear width and
+when    = "lint"                              # each piece's width against its pitch
+worker  = true
+checks  = ["lay"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/plain"] }
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_hall]
+at = [16.3, 14.8]
+
+[feature.look_annex]
+at = [36.8, 14.8]
+
+[feature.look_between]
+at = [27, 14.8]
+
+[feature.hall_corner]                         # the hall's south-west corner, from outside at eye height
+kind   = "bookmark"
+at     = [4, 4]
+toward = "look_hall"
+
+[feature.annex_corner]                        # the annex's south-east corner
+kind   = "bookmark"
+at     = [48, 4]
+toward = "look_annex"
+
+[feature.over]                                # both from the south, above: the walls' plan
+kind       = "bookmark"
+at         = [27, 1]
+toward     = "look_between"
+eye_height = 30

@@ -2949,8 +2949,9 @@ chapter = "identity"
 milestone = 1
 summary = "What a pin removed: count and names."
 explain = """
-What a pin removed: the instances of its by producers that its footprint overlapped, with count
-and names. Information only.
+What a pin removed: the instances of its by producers that its footprint overlapped on its own
+level (what stands on another surface over or under it stays), with count and names. Information
+only.
 To fix: Nothing if intended; narrow by to keep them.
 Bad:   by = ["s", "t"]   (removed instances of t that should stay)
 Fixed: by = ["s"]
@@ -3797,12 +3798,14 @@ Fixed: [instance.a]
 severity = "warning"
 chapter = "rules"
 milestone = 1
-summary = "Two produced instances overlap (8.1), or one overlaps a thing in a higher layer; names both."
+summary = "Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both."
 explain = """
-Two produced instances overlap, or one overlaps a thing in a higher layer. A warning: both stay.
-The record names both.
+Two produced instances overlap, or one overlaps a thing in a higher layer, or a member of a run
+that a step returned overlaps an instance the same step returned: a step wrote both at once, so
+neither gives way. A warning: both stay. The record names both.
 To fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names
-the lower producer.
+the lower producer. For two things of one step, change what the step returns, or move one of the
+things it was given (two calls of one step do not see each other's output).
 Bad:   two runs along one path at the same offset
 Fixed: on = { ref = "a", span = [0.1, 0.4], offset = 4 }   for one of them
 """
@@ -4712,6 +4715,21 @@ Bad:   [kind.span.surface.top] and [kind.span.mount.top]
 Fixed: [kind.span.surface.top] and [kind.span.mount.top_west]
 """
 
+[surface.none_at]
+severity = "error"
+chapter = "surfaces"
+milestone = 5
+summary = "Its `at` carries a height, and no kind surface's bound holds the plan point (4.1). Hint: drop the third number to stand on the terrain, or move it onto a surface."
+explain = """
+A placement's at has three numbers. The third is a height that chooses which kind surface at that
+point the thing stands on, the one whose height there is nearest. Here no kind surface that its
+layer sees holds the point, so there is nothing to choose from. The terrain is never chosen this
+way: two numbers mean the terrain.
+To fix: Drop the third number to stand on the terrain, or move the point onto a surface.
+Bad:   at = [40, 40, 13.3]   (no surface there)
+Fixed: at = [40, 40]   or   at = [30, 26, 13.3]
+"""
+
 [surface.not_surface]
 severity = "error"
 chapter = "surfaces"
@@ -4765,11 +4783,12 @@ Fixed: [kind.span.surface.top] base = ..., bound = "= width / 2"
 severity = "error"
 chapter = "surfaces"
 milestone = 5
-summary = "`surface` written with `on`, which already says the surface. Hint: drop `surface`, or place it by `at`."
+summary = "`surface` written with `on`, or with a height in `at`: each already says the surface. Hint: drop `surface`, or place it by `at` with two numbers."
 explain = """
-A placement writes both on and surface. On already decides what it stands on (the surface of the
-thing or mount it is on), so the two could disagree.
-To fix: Drop surface, or place it by at with surface.
+A placement says twice what it stands on: surface written with on, or with a height as the third
+number of at. On already decides it (the surface of the thing or mount it is on), and so does a
+height (the surface nearest it), so the two could disagree.
+To fix: Drop surface, or place it by at with two numbers and surface.
 Bad:   on = { ref = "hall", t = 0.5 } and surface = "hall.top"
 Fixed: at = [30, 26] and surface = "hall.top"
 """

@@ -1,0 +1,32 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# Off every floor: the terrain is no candidate (surfaces.md 4.1), so there is nothing to choose.
+[instance.desk]
+asset = "box"
+at    = [40, 40, 13.3]
+
+[pin.mark]
+asset = "box"
+at    = [41, 44, 13.3]
+
+[feature.spot]
+kind = "marker"
+at   = [45, 45, 13.3]

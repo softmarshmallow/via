@@ -185,9 +185,9 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | blockout, greybox | a design phase in plain shapes, for any space | Practice | core | shown: `lib/packs/primitive.toml` |
 | building typology | rowhouse, walk-up, tower, warehouse: recurring kinds | Recipe | lib, pack | partly: `lib/town/houses.py` |
 | podium and tower, stepback | a wide base with a narrower tower above | Grammar | lib | none |
-| modular kit | pieces made to fit together | Asset | pack, lib | shown: `lib/town/kit.py`, `examples/market` |
-| module, grid, snapping | the size pieces share and lock to | Asset | pack | partly: `examples/market` |
-| kit metrics | the kit's agreed dimensions: bay, storey, door | Asset | pack | partly: `examples/market` |
+| modular kit | pieces made to fit together | Asset | pack, lib | shown: `lib/town/kit.py`, `examples/market`, `examples/kit` |
+| module, grid, snapping | the size pieces share and lock to | Asset | pack | partly: `examples/market`, `examples/kit` |
+| kit metrics | the kit's agreed dimensions: bay, storey, door | Asset | pack | partly: `examples/market`, `examples/kit` |
 | pivot, origin | the point a piece is placed by | Asset | pack | shown: `pivot` |
 | front, facing | which way a piece looks: its agreed forward axis, so a rule can aim it | Asset | pack | shown: `front` |
 | socket, connector | where one piece joins another | Asset | pack | shown: `[asset.<id>.mount.<name>]`, `connector` |

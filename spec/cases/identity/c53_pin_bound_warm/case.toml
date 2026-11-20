@@ -1,0 +1,95 @@
+format    = "via-case-1"
+summary   = "identity.md 4.2 (R65), warm: what a pin removes reads the level test, and so the bound of the surface either thing stands on, and every run's line. A tread widened under a terrain pin, a tread widened under a pin placed by height, and a run's line moved from under a pin each rebuild on the base's store as a clean build does, with the cause named."
+milestone = 5
+actions   = ["base", "wide", "moved"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# Three groups. A: a run on a raised tread with no `cut`, each member 0.4 m past its bound, and
+# a pin on the terrain beside it. B: a pin on such a tread by a height, and a run on the terrain
+# beside it. C: a run on the terrain and a pin over its third member.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.low]
+code    = "identity.pin_removed"
+subject = "pin.low"
+data    = { count = 1, names = ["posts#r2"] }
+
+[action.base.diag.mark]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+records = 0
+
+[action.base.diag.high]
+code    = "identity.pin_removed"
+subject = "pin.high"
+records = 0
+
+# Both treads widened to a half width of 1.5: each pin's footprint, or the member's, now meets
+# the bound, so the two are one level (rules.md 8.1) and each pin removes the member it overlaps.
+# The record changed under nodes that did not read the bound: `diag.internal`, a node not stable.
+[action.wide]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "wide", "--against", "build/base", "--out", "build/wide"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/wide"
+
+[action.wide.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.wide.diag.mark]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["pots#r2"] }
+
+[action.wide.diag.high]
+code    = "identity.pin_removed"
+subject = "pin.high"
+data    = { count = 1, names = ["fence#r2"] }
+
+[action.wide.check.pots]
+fn     = "entry_causes"
+path   = "build/wide/changes.json"
+table  = "instance"
+prefix = "pots#r2"
+named  = ["feature.ramp_a.width"]
+
+[action.wide.check.fence]
+fn     = "entry_causes"
+path   = "build/wide/changes.json"
+table  = "instance"
+prefix = "fence#r2"
+named  = ["feature.ramp_b.width"]
+
+# The third run's line moved 6 m north, from under its pin: nothing is removed there.
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "moved", "--against", "build/base", "--out", "build/moved"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/moved"
+
+[action.moved.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.moved.diag.low]
+code    = "identity.pin_removed"
+subject = "pin.low"
+records = 0
+
+[action.moved.check.posts]
+fn     = "names_count"
+path   = "build/moved/instances/names.txt"
+prefix = "posts#"
+count  = 5

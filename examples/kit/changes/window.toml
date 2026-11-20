@@ -1,0 +1,9 @@
+# One bay swapped by hand: a window bay pinned where the second bay east of the hall's door stands
+# (section 11 of the report, hand edits against regeneration; section 8, variants on one footprint).
+# A pin is intent at a place (identity.md 4.2): it removes what its footprint overlaps on its own
+# level. The third number of `at` is the height of the hall's ground floor (10.3 m), which says
+# the floor it stands on (surfaces.md 4.1): a floor `lay` returned has no name text may write.
+[pin.south_window]
+asset = "wall_window"
+at    = [16.3, 10.15, 10.3]
+face  = 180

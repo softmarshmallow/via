@@ -1,0 +1,40 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# A flat tread at 12, clear of the ground (no `cut`); half width 0.5, y from 23.5 to 24.5.
+[feature.ramp]
+kind  = "flight"
+path  = [[20, 24], [30, 24]]
+z0    = 12
+z1    = 12
+width = 1
+
+# Members on the tread, 0.4 m off its centre line: footprints reach 0.4 m past its bound.
+[run.pots]
+asset = "box"
+on    = { ref = "ramp", span = [0, 1], offset = 0.4 }
+count = 5
+
+# A scatter away from all of it: the pin speaks to it too.
+[feature.yard]
+region = [[40, 40], [50, 40], [50, 50], [40, 50]]
+
+[scatter.bush]
+assets  = ["shrub"]
+within  = "yard"
+spacing = 3
+
+# On the terrain beside the tread (two numbers): footprint y 24.7 to 25.7.
+[pin.mark]
+asset = "box"
+at    = [25, 25.2]
+
+[change.wide.feature.ramp]
+width = 3

@@ -112,12 +112,12 @@ toward  = "store_lamp"                        # the line crosses x = 23.3 at y =
 surface = "cottage.floor"
 
 # The net loft (laid by `lay`): its storeys are `lay#net_loft_s*`, a produced name text may not
-# write (R3), so these views stand by `at` alone, eye over the ground, and the walker starts on the
-# highest floor below the eye. The foot looks up the flight along the north wall to the top, so its
-# walk climbs it. `loft_top` is what it looks at: its eye is written over the upper floor
-# (`lay#net_loft_s1`, level 3.509 over the ground's 0.011 there, in a build of the slice 3 tree), so
-# it looks back down the flight and the walker starts on that floor and walks down it. At 1.7 its
-# eye was under that floor: all grey, its walk blocked on the ground floor at the rooms' wall.
+# write (R3). The foot stands by `at` on the ground and looks up the flight along the north wall to
+# the top, so its walk climbs it. `loft_top` is what it looks at: its `at` carries a height (3.5 m,
+# the upper floor's level to the nearest half metre), so it stands on the floor nearest that
+# height, `lay#net_loft_s1` (surfaces.md 4.1, R65), looks back down the flight, and its walker
+# starts on that floor and walks down it. Before R65 its eye was written 5.2 m over the ground to
+# clear the floor: at 1.7 its eye was under it, all grey, its walk blocked at the rooms' wall.
 
 [feature.loft_foot]
 kind   = "bookmark"
@@ -125,10 +125,9 @@ at     = [54.0, 45.6]
 toward = "loft_top"
 
 [feature.loft_top]
-kind       = "bookmark"
-at         = [46.8, 45.6]
-toward     = "loft_foot"
-eye_height = 5.2                              # 3.509 - 0.011 + 1.7: 1.7 over the upper floor
+kind   = "bookmark"
+at     = [46.8, 45.6, 3.5]
+toward = "loft_foot"
 
 [feature.out_front]                           # out through the front door: the walk leaves the floor
 kind    = "bookmark"                          # for the ground at the sill's height

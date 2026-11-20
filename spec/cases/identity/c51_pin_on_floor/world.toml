@@ -1,0 +1,47 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# The first 12 m of the outline is its south edge; 1 m inward, six boxes 2 m apart.
+[run.up]
+asset = "box"
+on    = { ref = "hall_1", span = [0, 0.3], offset = 1 }
+count = 6
+
+[change.pin.pin.mark]
+asset = "box"
+at    = [25, 21, 13.3]
+
+[change.both.run.low]
+asset = "box"
+on    = { ref = "hall_g", span = [0, 0.3], offset = 1 }
+count = 6
+
+[change.both.pin.mark]
+asset = "box"
+at    = [25, 21, 13.3]
+
+[change.ground.run.low]
+asset = "box"
+on    = { ref = "hall_g", span = [0, 0.3], offset = 1 }
+count = 6
+
+[change.ground.pin.mark]
+asset = "box"
+at    = [25, 21, 10.3]

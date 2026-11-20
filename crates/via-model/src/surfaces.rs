@@ -1061,13 +1061,30 @@ struct Stance {
     surface: Option<String>,
     on: Option<String>,
     ground: bool,
+    /// The third number of its `at` and the point it was written at (R65): `surface` is then
+    /// what the height chose, `None` where it chose nothing.
+    height: Option<(crate::decl::Height, (i64, i64))>,
 }
 
 /// The stance of a placement: a hand instance and its set items by the instance's declaration, a
 /// run member and its items by the run's `on`, a scattered instance by its scatter's `surface`.
 fn stance(d: &Decls, p: &crate::rules::Placement) -> Option<Stance> {
+    let at = |h: &Option<crate::decl::Height>, pl: &crate::decl::Place| match (h, pl) {
+        (Some(h), crate::decl::Place::At(q)) => Some((h.clone(), *q)),
+        _ => None,
+    };
     if p.pin {
-        return None;
+        // A pin stands on the terrain unless its `at` carries a height (`identity.md` 4.2).
+        let pin = d.pins.get(&p.name)?;
+        let height = at(&pin.height, &pin.place)?;
+        return Some(Stance {
+            subject: Subject::entity("pin", p.name.as_str()),
+            key: format!("pin.{}", p.name),
+            surface: pin.surface.clone(),
+            on: None,
+            ground: false,
+            height: Some(height),
+        });
     }
     let on_ref = |pl: &crate::decl::Place| match pl {
         crate::decl::Place::On(o) => Some(o.reference.clone()),
@@ -1083,6 +1100,7 @@ fn stance(d: &Decls, p: &crate::rules::Placement) -> Option<Stance> {
                 surface: decl.surface.clone(),
                 on: on_ref(&decl.place),
                 ground: decl.ground.is_some(),
+                height: at(&decl.height, &decl.place),
             })
         }
         Some(m) => {
@@ -1093,6 +1111,7 @@ fn stance(d: &Decls, p: &crate::rules::Placement) -> Option<Stance> {
                     surface: None,
                     on: on_ref(&r.place),
                     ground: r.ground.is_some(),
+                    height: None,
                 });
             }
             let s = d.scatters.get(m)?;
@@ -1102,6 +1121,7 @@ fn stance(d: &Decls, p: &crate::rules::Placement) -> Option<Stance> {
                 surface: Some(s.surface.clone()?),
                 on: None,
                 ground: false,
+                height: None,
             })
         }
     }
@@ -1139,6 +1159,20 @@ pub(crate) fn ground_on_surfaces(
             said.insert(st.key.clone(), true);
             g.gone.insert(p.name.clone());
         };
+        if let (Some((h, at)), None) = (&st.height, &st.surface) {
+            if h.among.is_empty() {
+                fault(none_at(subject, &st.key, *at), &mut said, &mut g, diags);
+            } else {
+                // A candidate's formula failed at the point: its fault is said on its owner
+                // (2.7), once, and this thing is not placed.
+                for s in h.among.iter().filter_map(|n| surfaces.get(n)) {
+                    let _ = s.z_in_build(*at, diags);
+                }
+                said.insert(st.key.clone(), true);
+                g.gone.insert(p.name.clone());
+            }
+            continue;
+        }
         let name = if let Some(name) = &st.surface {
             if st.on.is_some() {
                 fault(
@@ -1250,7 +1284,8 @@ pub(crate) fn ground_on_surfaces(
                 g.stands.insert(p.name.clone(), s.place.clone());
                 // Hand instances and set items only (4.2): a step's returned instance by its
                 // name, as its `maker` is set only when the world has a hand edit.
-                if p.maker.is_none() && !d.produced_instance(&p.name) {
+                // A pin is checked by `identity.md` 4.2 only (`rules.md` 8).
+                if p.maker.is_none() && !p.pin && !d.produced_instance(&p.name) {
                     footprint_on(d, pack, s, p, &subject, diags);
                 }
             }
@@ -1845,6 +1880,18 @@ pub(crate) fn place_surfaces(
         let Some(Geo::Point { p, .. }) = placed.shapes.get(id) else {
             continue;
         };
+        if let (Some(h), None) = (&f.height, &f.surface) {
+            // The height chose nothing (4.1, R65): no candidate, or one whose formula failed
+            // there, said on its owner (2.7).
+            if h.among.is_empty() {
+                diags.push(none_at(subject, &format!("feature.{id}"), (p.x, p.y)));
+            } else {
+                for s in h.among.iter().filter_map(|n| surfaces.get(n)) {
+                    let _ = s.z_in_build((p.x, p.y), diags);
+                }
+            }
+            continue;
+        }
         let Some(sn) = &f.surface else {
             // A point `on` a thing stands where an instance `on` it would (4.1, row 1 to 3):
             // the one kind surface of a feature, or a mount's surface. A point laid on the
@@ -1963,6 +2010,137 @@ pub(crate) fn path_end_meets(d: &Decls, place: &str) -> Option<String> {
         "start" => f.starts_at.clone(),
         "end" => f.ends_at.clone(),
         _ => None,
+    }
+}
+
+/// `surface.none_at` (4.1, R65): a height in `at` where no kind surface holds the plan point.
+fn none_at(subject: Subject, what: &str, at: (i64, i64)) -> Diag {
+    text::diag(
+        codes::surface::NONE_AT,
+        subject,
+        Site::Key(text::path(&["at"])),
+        &format!(
+            "`{what}` writes a height at [{}, {}], and no kind surface holds that point",
+            via_num::write_length(at.0),
+            via_num::write_length(at.1)
+        ),
+        "drop the third number to stand on the terrain, or move it onto a surface",
+    )
+    .at(text::pos(at.0, at.1))
+}
+
+/// A height in millimetres on the lattice (`numbers.md` 3.1), as a meeting's gap rounds one
+/// (2.4); one past the lattice's range stands at its end, so "nearest" keeps its order.
+fn height_mm(z: f64) -> i64 {
+    via_num::round_to_lattice(z * 1000.0).unwrap_or(if z > 0.0 {
+        via_num::LATTICE_MAX
+    } else {
+        -via_num::LATTICE_MAX
+    })
+}
+
+/// The choice of 4.1 (R65) for one plan point: among the kind surfaces whose bound holds it and
+/// whose owner lies at `rank` or below, the one whose height there is nearest `z`, in whole
+/// millimetres; a tie to the lower, then by place name. Gives the candidates by place name and
+/// the chosen one; `None` chosen where there is no candidate or a candidate's formula fails
+/// there.
+fn nearest_surface(
+    d: &Decls,
+    kinds: &BTreeMap<String, SurfaceOut>,
+    at: (i64, i64),
+    z: f64,
+    rank: i64,
+) -> (Vec<String>, Option<String>) {
+    let want = height_mm(z);
+    let mut among = Vec::new();
+    let mut best: Option<(i64, f64, &str)> = None;
+    let mut failed = false;
+    // Place names in bytewise order, so the first of equals is the tie's.
+    for s in kinds.values() {
+        let seen = d.features.get(&s.owner).is_some_and(|f| f.rank <= rank);
+        if !seen || !s.inside(at) {
+            continue;
+        }
+        among.push(s.place.clone());
+        let Some(h) = s.base.eval(&[at]).ok().and_then(|v| v.first().copied()) else {
+            failed = true;
+            continue;
+        };
+        let apart = (height_mm(h) - want).abs();
+        if best.is_none_or(|(a, low, _)| apart < a || (apart == a && h < low)) {
+            best = Some((apart, h, s.place.as_str()));
+        }
+    }
+    let chosen = if failed {
+        None
+    } else {
+        best.map(|(_, _, n)| n.to_string())
+    };
+    (among, chosen)
+}
+
+/// Resolves every height written in `at` (4.1, R65) to the kind surface it chooses, on plans:
+/// the shapes are placed, and a kind surface's `base` reads no field (1.1). The choice is
+/// written to the thing's `surface`, so from here it is a thing placed with `surface`: its
+/// level, its grounding, what stands on it and its graph edges read that one key. A hand
+/// instance (a set it places included), a pin and a point feature; each sees the surfaces of
+/// its own layer and below.
+pub(crate) fn choose_by_height(d: &mut Decls, shapes: &BTreeMap<String, Geo>) {
+    use crate::decl::{Place, ShapeDecl};
+    let any = d.instances.values().any(|i| i.height.is_some())
+        || d.pins.values().any(|p| p.height.is_some())
+        || d.features.values().any(|f| f.height.is_some());
+    if !any {
+        return;
+    }
+    let kinds = kind_surfaces(d, shapes, &mut Vec::new()).0;
+    // A run that runs no step, in a world that declares a generate step (`surfaces.md` 7): the
+    // surface a height would choose may be one a step returns, which is not here. A height that
+    // finds no candidate is then dropped: the thing stands on the terrain, as with two numbers.
+    let may_miss = d.steps_unrun && d.steps.values().any(|s| s.when == "generate");
+    let mut chosen: Vec<(&'static str, String, Vec<String>, Option<String>)> = Vec::new();
+    for (id, i) in &d.instances {
+        if let (Some(h), Place::At(at)) = (&i.height, &i.place) {
+            let (among, to) = nearest_surface(d, &kinds, *at, h.z, i.rank);
+            chosen.push(("instance", id.clone(), among, to));
+        }
+    }
+    for (id, p) in &d.pins {
+        if let (Some(h), Place::At(at)) = (&p.height, &p.place) {
+            let (among, to) = nearest_surface(d, &kinds, *at, h.z, p.rank);
+            chosen.push(("pin", id.clone(), among, to));
+        }
+    }
+    for (id, f) in &d.features {
+        if let (Some(h), ShapeDecl::Point(Place::At(at))) = (&f.height, &f.shape) {
+            let (among, to) = nearest_surface(d, &kinds, *at, h.z, f.rank);
+            chosen.push(("feature", id.clone(), among, to));
+        }
+    }
+    for (top, id, among, to) in chosen {
+        let (height, surface) = match top {
+            "instance" => match d.instances.get_mut(&id) {
+                Some(i) => (&mut i.height, &mut i.surface),
+                None => continue,
+            },
+            "pin" => match d.pins.get_mut(&id) {
+                Some(p) => (&mut p.height, &mut p.surface),
+                None => continue,
+            },
+            _ => match d.features.get_mut(&id) {
+                Some(f) => (&mut f.height, &mut f.surface),
+                None => continue,
+            },
+        };
+        if may_miss && among.is_empty() {
+            *height = None;
+            *surface = None;
+            continue;
+        }
+        if let Some(h) = height {
+            h.among = among;
+        }
+        *surface = to;
     }
 }
 

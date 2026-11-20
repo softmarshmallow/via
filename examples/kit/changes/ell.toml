@@ -1,0 +1,8 @@
+# An inside corner: the annex becomes an L, its north-east quarter taken out (section 4 of the
+# report, corners: a thick wall overlaps itself at an inside corner and leaves a notch at an
+# outside one, and the kit needs a piece for each). `lay` shortens a side by what the corner at
+# each end takes: 0.3 m for the post at an outside corner, 1.2 m for the kit's inside corner. So
+# the 5.1 m sides hold 4.5 m, the two 4.5 m sides at the inside corner 3 m each, and every side
+# is whole half bays.
+[feature.annex]
+region = [[32, 10], [41.6, 10], [41.6, 15.1], [37.1, 15.1], [37.1, 19.6], [32, 19.6]]

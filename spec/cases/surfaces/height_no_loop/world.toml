@@ -1,0 +1,41 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [40, 20], [40, 40], [20, 40]]
+level  = 13.3
+
+# The hut stands on the floor by a height: 13.3 is the floor's, and the flight's tread under it
+# is at 13.53 there.
+[instance.hut]
+asset = "hut"
+at    = [30, 26, 13.3]
+
+# A flight that ends at the hut's door, wide enough that its tread holds the hut's origin: a
+# candidate for the hut's height, whose shape reads the hut's plan.
+[feature.stair]
+kind    = "flight"
+ends_at = "hut.door"
+path    = [[30, 21]]
+z0      = 14
+z1      = 13.3
+width   = 8
+
+[change.named.instance.hut]
+at      = [30, 26]
+surface = "hall_1.floor"
+
+[change.loop.instance.shed]
+asset = "hut"
+on    = { ref = "hut.door" }
+
+[change.loop.feature.stair]
+ends_at = "shed.door"

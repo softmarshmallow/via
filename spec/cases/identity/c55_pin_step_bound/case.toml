@@ -1,0 +1,60 @@
+format    = "via-case-1"
+summary   = "identity.md 4.2 (R65), warm, a step's returned instance: it stands on the tread its step returned, past the bound; a terrain pin beside it removes it once the step widens the tread, on the base's store as in a clean build."
+milestone = 5
+actions   = ["program", "trust", "base", "wide"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via         = ["trust", "world.toml", "--yes", "--lib", "{work}/lib", "--change", "wide"]
+exit        = 0
+diagnostics = "includes"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.mark]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+records = 0
+
+[action.base.check.pot]
+fn    = "instance_at"
+build = "build/base"
+name  = "make#pot"
+at    = [25, 24.4]
+
+[action.wide]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "wide", "--against", "build/base", "--out", "build/wide"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/wide"
+
+[action.wide.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.wide.diag.mark]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["make#pot"] }
+
+[action.wide.check.pot]
+fn     = "instance_at"
+build  = "build/wide"
+name   = "make#pot"
+at     = [25, 24.4]
+absent = true

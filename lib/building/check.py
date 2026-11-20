@@ -35,9 +35,37 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
 6. **The kit.** Of every asset under the taxons in `kits` with `params.pitch`, one whose `bounds`
    width differs from its pitch by more than `pitch_slack` metres is `kit_pitch` (warning): a bay
    that measures 6.44 m at a 6 m pitch (the college's) overlaps its neighbour by 0.44 m.
+7. **The kit's corners.** `lay` gives a corner the box its reach states (lay.py rule 6), where `T`
+   is the thickness of the taxon's first `role:wall` piece and `reach` is `params.reach` (by
+   default `T` outside, 0 inside). `role:corner` is `reach` square. `role:corner_in` is placed by
+   the middle of its notch, so its `bounds` span x from `-(reach + T / 2)` to `T / 2` and y from
+   `-T / 2` to `reach + T / 2`. A corner whose `bounds` differ from that by more than `pitch_slack`
+   on any side is `kit_corner` (warning), with its measured plan and the plan it should have: a
+   post re-exported with a stub along one wall is 0.9 by 0.3 m where 0.3 m square is laid for,
+   and an inside corner turned the wrong way, or left on the default pivot, is found here.
+9. **The kit against itself** (docs/research/Modular kit failures in studios.md, sections 2 and 3:
+   what a studio settles on untextured proof pieces before any art). Per taxon in `kits` that has
+   a `role:wall` piece, with `m` the pitch of its smallest wall piece (its `role:filler`, else its
+   bay) and `T` the bay's thickness:
+   - `kit_module` (warning): the bay's pitch, or the door piece's width, is no whole number of
+     `m`. The lengths that close then follow no one module (a 3.2 m bay beside a 1.5 m half bay;
+     a hall of one size beside a room of another, which joins once and misses when a plan loops).
+   - `kit_ell` (warning): the outside corner's reach and the inside corner's do not add up to a
+     whole number of `m`, so no plan with an inside corner closes (lay.py rule 6, "Corners"), and
+     a building of this kit has one. The data names the buildings and the reach an inside corner
+     piece would need. A kit that only ever walls rectangles is not told.
+   - `kit_slip` (warning): a filler shorter than the wall is thick. It closes any length, so it
+     hides every plan that was not sized to the kit, and is laid by the dozen where it is used.
+   - `kit_uneven` (warning): the wall pieces (`wall`, `filler`, `door`) differ in thickness, or
+     `wall`, `filler` and the corners differ in height, by more than `pitch_slack`. A door piece
+     may be any height: a leaf, a frame, or a lintel over an open doorway.
+8. **The kit against the storey.** For every building of two storeys or more, each piece of its
+   `kit` that is a wall or a corner (`wall`, `filler`, `corner`, `corner_in`) whose `bounds`
+   height differs from the building's `storey_h` by more than `pitch_slack` is `kit_height`
+   (warning): a taller piece stands into the storey above, a shorter one stops short of it.
 
 `params`: `riser_max` (0.19 m), `going_min` (0.25 m), `turn_max` (45), `inner_door` (0.9 m),
-`pitch_slack` (0.05 m), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
+`pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
 `checked` (info) counts what was judged.
 
 The clear width is the plan's: two boxes' footprints, not their collision meshes (the engine's).
@@ -69,6 +97,25 @@ EXPLAIN = {
     "wider than their pitch.",
     "kit_pitch": "A kit piece's measured width differs from the pitch it repeats at: its neighbours "
     "in a run overlap or leave a gap.",
+    "kit_corner": "A corner piece's measured plan is not what its reach states (`params.reach`; by "
+    "default the wall's thickness for `role:corner`, nothing for `role:corner_in`). The walls beside "
+    "it are laid for that plan, so the piece overlaps them, leaves a gap or stands outside the "
+    "outline. Correct the model, or state the reach it really takes.",
+    "kit_module": "The kit's pieces do not share one module: the bay, or the door piece, is not a "
+    "whole number of its smallest wall piece. Lengths that close then follow no one module, and a "
+    "plan sized for one piece fails with another. Make each a multiple of the smallest.",
+    "kit_ell": "The kit's corners cannot close a plan with an inside corner: what the outside corner "
+    "and the inside corner take from a wall must add up to a whole number of the smallest wall piece "
+    "(lib/building/README.md, Sizing a plan to its kit). Give the kit a `role:corner_in` piece with "
+    "the reach the data names.",
+    "kit_slip": "A filler shorter than the wall is thick closes any length, so it hides plans that "
+    "were not sized to the kit and is laid by the dozen. Size the plan's sides to the kit and take "
+    "the piece out.",
+    "kit_uneven": "Pieces that stand in one wall differ in thickness or height: they step where "
+    "they meet. Make them one thickness and one storey high.",
+    "kit_height": "A kit piece's measured height is not the storey height of a building that stacks "
+    "it: on a storey below another it stands into the one above, or stops short of it. Make the "
+    "piece one storey high, or set the building's `storey_h` to the kit's.",
     "checked": "What the building check judged: storeys, rooms, flights, meetings and kit pieces.",
 }
 
@@ -148,6 +195,14 @@ def surface_of(place, kinds):
     if kind == "storey" and part == "floor":
         return owner
     return None
+
+
+def number(v):
+    """A pack param as a number, or None where it says none or says something that is no length
+    (which `lay` reports when it reads the kit: lay.py `kit_number`)."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
+        return None
+    return float(v)
 
 
 def footprint(piece):
@@ -291,7 +346,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                         {"clear": round(w / 1000, 3), "need": inner / 1000, "pieces": [lo, hi]},
                         (end[0] / 1000, end[1] / 1000)))
     for r in sorted(kit_rows, key=lambda r: r["id"]):
-        pitch = (r.get("params") or {}).get("pitch")
+        pitch = number((r.get("params") or {}).get("pitch"))
         b = r.get("bounds")
         if pitch is None or not b:
             continue
@@ -300,6 +355,133 @@ def judge(features, meetings, kit_rows, p, pieces=()):
             out.append(("warning", "kit_pitch", r["id"], f"`{r['id']}` is {width:g} m wide at a "
                         f"{float(pitch):g} m pitch", "measure the piece again or correct its `params.pitch`",
                         {"asset": r["id"], "width": width, "pitch": float(pitch)}, None))
+    wall_roles = ("role:wall", "role:filler", "role:corner", "role:corner_in", "role:door")
+    by_taxon = {}
+    for r in sorted(kit_rows, key=lambda r: r["id"]):
+        by_taxon.setdefault(r.get("taxon"), []).append(r)
+    for taxon in sorted(by_taxon, key=str):
+        rows = by_taxon[taxon]
+        wall = next((r for r in rows if "role:wall" in (r.get("tags") or []) and r.get("bounds")), None)
+        if wall is None:
+            continue
+        T = (wall["bounds"][4] - wall["bounds"][1]) / 1000.0
+        for r in rows:
+            tags, b = r.get("tags") or [], r.get("bounds")
+            inner = "role:corner_in" in tags
+            if not b or not (inner or "role:corner" in tags):
+                continue
+            reach = number((r.get("params") or {}).get("reach"))
+            reach = reach if reach is not None else (0.0 if inner else T)
+            w, d = (b[3] - b[0]) / 1000.0, (b[4] - b[1]) / 1000.0
+            if inner:
+                want = [-(reach + T / 2), -T / 2, T / 2, reach + T / 2]
+                got = [b[0] / 1000.0, b[1] / 1000.0, b[3] / 1000.0, b[4] / 1000.0]
+                if any(abs(g - v) > p["pitch_slack"] for g, v in zip(got, want)):
+                    out.append(("warning", "kit_corner", r["id"], f"`{r['id']}` spans x {got[0]:g} to {got[2]:g} m "
+                                f"and y {got[1]:g} to {got[3]:g} m where an inside corner reaching {reach:g} m "
+                                f"spans x {want[0]:g} to {want[2]:g} m and y {want[1]:g} to {want[3]:g} m",
+                                "put the model's origin at the notch's middle with `pivot = \"origin\"`, a leg "
+                                "along each wall (lay.py rule 6), or state the reach it takes",
+                                {"asset": r["id"], "plan": got, "reach": reach, "want": want}, None))
+            elif abs(w - reach) > p["pitch_slack"] or abs(d - reach) > p["pitch_slack"]:
+                out.append(("warning", "kit_corner", r["id"], f"`{r['id']}` is {w:g} by {d:g} m where its "
+                            f"reach ({reach:g} m) makes it {reach:g} m square",
+                            "correct the model, or state the reach it takes in `params.reach`",
+                            {"asset": r["id"], "plan": [w, d], "reach": reach, "square": reach}, None))
+    slack = p["pitch_slack"]
+
+    def turns_in(ring):
+        """Whether an outline has an inside corner: a turn against the way it winds."""
+        n = len(ring)
+        area = sum(ring[i][0] * ring[(i + 1) % n][1] - ring[(i + 1) % n][0] * ring[i][1] for i in range(n))
+        for i in range(n):
+            a, b, c = ring[i - 1], ring[i], ring[(i + 1) % n]
+            if ((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])) * area < 0:
+                return True
+        return False
+    ells = {}
+    for f in sorted((f for f in features if f["kind"] == "building"), key=lambda f: f["name"]):
+        if f["attrs"].get("kit") and turns_in(f["ring"]):
+            ells.setdefault(f["attrs"]["kit"], []).append(f["name"])
+
+    def off(length, m):
+        """How far `length` is from a whole number of `m`, metres."""
+        r = length % m
+        return min(r, m - r)
+    for taxon in sorted(by_taxon, key=str):
+        rows = by_taxon[taxon]
+        role = {}
+        for r in rows:
+            for t in r.get("tags") or []:
+                if t.startswith("role:") and r.get("bounds"):
+                    role.setdefault(t[5:], r)
+
+        def pitch_of(r):
+            v = number((r.get("params") or {}).get("pitch"))
+            return v if v is not None else (r["bounds"][3] - r["bounds"][0]) / 1000.0
+        if "wall" not in role:
+            continue
+        wall = role["wall"]
+        T = (wall["bounds"][4] - wall["bounds"][1]) / 1000.0
+        m = pitch_of(role["filler"]) if "filler" in role else pitch_of(wall)
+        if m <= 0:
+            continue
+        for name in ("wall", "door"):
+            if name in role and off(pitch_of(role[name]), m) > slack:
+                r = role[name]
+                out.append(("warning", "kit_module", r["id"], f"`{r['id']}` takes {pitch_of(r):g} m of wall, "
+                            f"no whole number of the kit's smallest piece ({m:g} m)",
+                            f"make it a multiple of {m:g} m", {"asset": r["id"], "pitch": pitch_of(r), "module": m},
+                            None))
+        if "corner" in role:
+            def reach_of(r, default):
+                v = number((r.get("params") or {}).get("reach"))
+                return v if v is not None else default
+            r_out = reach_of(role["corner"], T)
+            inner = role.get("corner_in") or role["corner"]
+            r_in = reach_of(inner, 0.0)
+            if off(r_out + r_in, m) > slack and taxon in ells:
+                need = (m - r_out % m) % m
+                out.append(("warning", "kit_ell", inner["id"], f"the corners of `{taxon}` take {r_out:g} m "
+                            f"and {r_in:g} m of a wall, no whole number of its smallest piece ({m:g} m): "
+                            f"{', '.join('`' + n + '`' for n in ells[taxon])}, with an inside corner, will not close",
+                            f"give the kit a `role:corner_in` piece reaching {need:g} m",
+                            {"taxon": taxon, "outside": r_out, "inside": r_in, "module": m, "reach": round(need, 3),
+                             "buildings": ells[taxon]}, None))
+        if "filler" in role and m < T - slack:
+            r = role["filler"]
+            out.append(("warning", "kit_slip", r["id"], f"`{r['id']}` is {m:g} m long in a wall {T:g} m thick: "
+                        "a filler that closes any length", "size the plans to the kit and take the piece out",
+                        {"asset": r["id"], "pitch": m, "thick": T}, None))
+        thick = {r["id"]: (r["bounds"][4] - r["bounds"][1]) / 1000.0 for n, r in role.items()
+                 if n in ("wall", "filler", "door")}
+        high = {r["id"]: (r["bounds"][5] - r["bounds"][2]) / 1000.0 for n, r in role.items()
+                if "role:" + n in wall_roles and n != "door"}       # a door piece may be a leaf or a lintel
+        for what, sizes in (("thick", thick), ("high", high)):
+            if max(sizes.values()) - min(sizes.values()) > slack:
+                out.append(("warning", "kit_uneven", wall["id"], f"the wall pieces of `{taxon}` are not one size: "
+                            + ", ".join(f"`{i}` {v:g} m {what}" for i, v in sorted(sizes.items())),
+                            "make them one thickness and one storey high",
+                            {"taxon": taxon, "measure": what, "pieces": sorted(sizes),
+                             "sizes": [sizes[i] for i in sorted(sizes)]}, None))
+    stacked = {}
+    for f in sorted((f for f in features if f["kind"] == "building"), key=lambda f: f["name"]):
+        a = f["attrs"]
+        if a.get("kit") and int(a.get("storeys") or 1) >= 2:
+            stacked.setdefault((a["kit"], float(a.get("storey_h") or 3.2)), []).append(f["name"])
+    for (taxon, storey_h), names in sorted(stacked.items()):
+        for r in by_taxon.get(taxon, []):
+            b = r.get("bounds")
+            if not b or not any(t in wall_roles and t != "role:door" for t in (r.get("tags") or [])):
+                continue
+            high = (b[5] - b[2]) / 1000.0
+            if abs(high - storey_h) > p["pitch_slack"]:
+                how = (f"it stands {high - storey_h:g} m into the storey above" if high > storey_h
+                       else f"it stops {storey_h - high:g} m short of the storey above")
+                out.append(("warning", "kit_height", r["id"], f"`{r['id']}` is {high:g} m high on the "
+                            f"{storey_h:g} m storeys of {', '.join('`' + n + '`' for n in names)}: {how}",
+                            "make the piece one storey high, or set `storey_h` to the kit's",
+                            {"asset": r["id"], "height": high, "storey_h": storey_h, "buildings": names}, None))
     out.append(("info", "checked", None, f"{len(storeys)} storeys, {len(rooms)} rooms, {len(flights)} "
                 f"flights, {len(meetings)} meetings ({nturn} with a turn), {measured} doorways measured, "
                 f"{len(kit_rows)} kit pieces", "none needed",
@@ -327,7 +509,7 @@ def _json(v):
 def read_features(step):
     out = []
     for kind, cols in (("storey", ["level"]), ("room", ["storey"]), ("flight", ["z0", "z1"]),
-                       ("doorway", ["sill_z"]), ("footpath", [])):
+                       ("doorway", ["sill_z"]), ("footpath", []), ("building", ["kit", "storey_h", "storeys"])):
         try:
             fl = step.features(select=f"kind:{kind}", columns=cols)
         except Exception:                         # a kind no feature has: nothing to judge
@@ -359,7 +541,8 @@ def read_kits(step, taxons):
         t = step.pack(select="@" + taxon, columns=["bounds", "params"])
         for r, i in enumerate(_list(t.get("id", []))):
             tags = _json(_list(t["tags"])[r]) if "tags" in t else []
-            rows.append({"id": i, "bounds": [int(v) for v in _list(_list(t["bounds"])[r])] if "bounds" in t else None,
+            rows.append({"id": i, "taxon": taxon,
+                         "bounds": [int(v) for v in _list(_list(t["bounds"])[r])] if "bounds" in t else None,
                          "params": (_json(_list(t["params"])[r]) or {}) if "params" in t else {},
                          "tags": tags if isinstance(tags, list) else [tags]})
     return rows
@@ -406,6 +589,6 @@ def address(code, subject):
     """A judged name as a diagnostic subject (diagnostics.md 1.1): a feature, or a place on one
     (`walk.end`), is `feature.<the name's first part>`. A kit piece is a pack asset, no entity of
     the world, so the step itself is the subject and the piece is named in the message and data."""
-    if not subject or code == "kit_pitch":
+    if not subject or code.startswith("kit_"):
         return None
     return "feature." + subject.split(".")[0]

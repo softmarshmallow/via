@@ -128,6 +128,7 @@ pub(crate) fn read_givens(d: &mut Decls, root: &Table, given: Option<&GivenIn>) 
             holds: None,
             route: None,
             surface: None,
+            height: None,
         };
         match accepts.as_str() {
             "field" => {

@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "rules.md 3.4 (R64): every call of a for_each step is the one step: the run the call for `a` returned does not give way to the instance the call for `b` returned; both stand, no place.gave_way, place.crowded naming both."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+# The run's members stand at 2, 6, 10 and 14 m of `a` (2 m boxes); `b`'s call returns a box
+# 0.4 m east of the second. A call cannot see the other's output, so the record's hint names what
+# the step was given beside what it returns.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.crowded]
+code     = "place.crowded"
+severity = "warning"
+subject  = 'run."make#a_row"'
+data     = { instances = ["make#a_row#r1", "make#b_post"] }
+
+[action.build.diag.no_gave_way]
+code    = "place.gave_way"
+records = 0
+
+[action.build.check.member]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#a_row#r1"
+at    = [6, 32]
+
+[action.build.check.post]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#b_post"
+at    = [6.4, 32]
+
+[action.build.check.all]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "make#"
+count  = 5

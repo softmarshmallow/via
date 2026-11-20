@@ -1,0 +1,54 @@
+format    = "via-case-1"
+summary   = "surfaces.md 4.1 (R65), the tie: a height 1500 mm from each of two floors takes the lower; heights are compared rounded to the millimetre, so two surfaces 0.4 mm apart tie and the lower is taken; two at one height tie to the first place name (a_roof.garden), seen by what it then overlaps."
+milestone = 5
+actions   = ["base", "beside_a", "beside_b"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# Features in id order: a_roof, at_lip, at_mid, b_roof, hall_1, hall_g, m_roof, n_roof.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+# 11.8 is 1500 mm from 10.3 and from 13.3: the lower.
+[action.base.file.mid]
+path    = "build/base/features.json"
+pointer = "/features/2/attrs/toward/at"
+value   = [30, 26, 10.3]
+
+# m_roof at 16.0004 and n_roof at 16 both round to 16000 mm, so 16 is 0 mm from each: the lower,
+# n_roof, though m_roof's name comes first. On m_roof it would stand at 16.0004.
+[action.base.file.lip]
+path    = "build/base/features.json"
+pointer = "/features/1/attrs/toward/at"
+value   = [10, 46, 16]
+
+# a_roof and b_roof at one height over `post`: the first place name, a_roof.garden. A box
+# beside it placed on a_roof.garden by name is on its level and overlaps it; the same box on
+# b_roof.garden is not.
+[action.beside_a]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "beside_a", "--out", "build/a"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/a"
+
+[action.beside_a.diag.overlap]
+code = "place.overlap"
+
+[action.beside_b]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "beside_b", "--out", "build/b"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/b"
+
+[action.beside_b.diag.no_overlap]
+code    = "place.overlap"
+records = 0

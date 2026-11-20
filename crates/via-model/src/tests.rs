@@ -913,6 +913,16 @@ const CASE_ROWS: &[(&str, &[&str])] = &[
     ("step, recorded", &["graph/causes_of_step"]),
     ("write", &["graph/downstream"]),
     ("give (M4)", &["composition/give_moved"]),
+    // A height in `at` (`surfaces.md` 4.1): its readers are heights, checks and build files, and
+    // a candidate that moves, widens or changes layer is a change no plan shows.
+    (
+        "choice by height",
+        &[
+            "surfaces/at_height",
+            "surfaces/layer_moved",
+            "identity/c53_pin_bound_warm",
+        ],
+    ),
 ];
 
 /// `graph.md` 2's edge table against the code (TODO "From M5 slice 3": `follows` had no edge from

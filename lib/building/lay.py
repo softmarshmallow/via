@@ -17,7 +17,7 @@ The rules (ours, written for this library; README.md is the design note):
    mean of the terrain read at every post inside the outline (edges included) and at its vertices,
    rounded to the millimetre, and every level is rounded to the millimetre so a floor and the f32
    post under its sill round to one millimetre (surfaces.md 3.4, `gap`).
-3. **Stair.** `stair = { t, width, run }`: the flights climb along the outline edge holding `t`,
+3. **Stair.** `stair = { side, at, width, run }` (or `{ t, width, run }`): the flights climb along the outline edge holding that place (`where`: `side` and `at` are a side of the outline and the metres along it; `t` is a share of the whole outline, and moves when any side grows),
    from `s0` (the point at `t`, along that edge) to `s1 = s0 + run`, in lanes `CLEAR` (0.1 m) off
    the wall's inner face and off each other: lane 0's centre is `T + CLEAR + width / 2` in, lane
    1's one lane further, where `T` is the kit's wall thickness (0 with no kit: surfaces.md 6.4's
@@ -31,7 +31,7 @@ The rules (ours, written for this library; README.md is the design note):
    refused (`params`); one that stops short of a corner by less than `STUB_MIN` (0.3 m, ours)
    leaves a wall too short to build and is refused too (`params`, naming the stair's `t`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
    k+1>.floor"`, with `z0`, `z1` the two levels (surfaces.md 6.4).
-4. **Doors.** `doors = [{ storey, t, width }]`: a doorway square to the outline at `t`, from
+4. **Doors.** `doors = [{ storey, side, at, width }]` (or `t` for `side` and `at`, as rule 3): a doorway square to the outline there, from
    `porch` metres outside to the outline (its end moved in up to 3 mm where rounding left it
    outside, as rule 3's), `ends_at = "<storey>.floor"`, `sill_z` its level, `flat`
    at least the posts' diagonal so the sill effect holds every post round the end (kinds.toml). A
@@ -44,16 +44,44 @@ The rules (ours, written for this library; README.md is the design note):
    with `storey` naming its storey. A cut that crosses the outline more than twice (the room would
    be two pieces) is refused. Two rooms beside each other share an opening `inner_door` (0.9 m)
    wide at the middle of their cut: the wall pieces there leave it open (the walk crosses it).
-6. **Walls** (with `kit`, a taxon path of pieces tagged `role:wall`, `role:corner`, `role:filler`,
-   `role:door`, `role:roof`): along every stretch of a storey's outline that lies on the footprint's
+6. **Walls** (with `kit`, a taxon path of pieces tagged `role:wall`, `role:corner`,
+   `role:corner_in`, `role:filler`, `role:door`, `role:roof`): along every stretch of a storey's outline that lies on the footprint's
    outline, less the corners and a clear gap for each doorway and flight that crosses it, one `run` of wall pieces at their pitch
    (`params.pitch`, else their `bounds` width) and one of fillers for what is left: the most wall
    pieces such that the rest is a whole number of fillers within `FIT` (5 mm). A stretch that does
    not close is `wall_open` (warning) naming the lengths near it that would. Runs stand on the
    storey's floor (`on` a storey: its one surface, surfaces.md 4.1), `offset` half a wall's
-   thickness inward, their front (+y) outward. A corner piece stands in each corner's square, a
+   thickness inward, their front (+y) outward. A corner piece stands at each corner, a
    door leaf in each doorway, an inner wall between rooms leaving its opening, each `at` with
    `surface = "<storey>.floor"` (surfaces.md 4.1, M5).
+   **Corners.** The outline is the walls' outer face. A corner takes `reach` metres of each wall it
+   joins, measured from the outline's vertex (`params.reach` on the corner piece), and a wall
+   stretch is its side less the reach of the corner at each end. At an outside corner (the outline
+   turns left) the piece is `role:corner` and its reach defaults to the wall's thickness `T`: a
+   post. Its box is `reach` square, in the corner. At an inside corner (the outline turns right)
+   the piece is `role:corner_in`, and its reach defaults to 0: a post in the notch the two walls
+   leave. A kit with no `role:corner_in` has its `role:corner` stand there, taking nothing, where
+   that piece is a post (it says no reach, or the wall's thickness). It is placed by the notch's middle, which is on
+   the floor; the middle of a piece that reaches along both walls is not (it lies in the quarter
+   the plan leaves out), so such a piece says `pivot = "origin"` in its pack and has its model's
+   origin at the notch's middle. In the asset frame it then spans x from `-(reach + T / 2)` to
+   `T / 2` and y from `-T / 2` to `reach + T / 2` (lib/building's `check` compares, rule 7). Both
+   corners face out of the wall that follows them round the outline. Why two pieces: with
+   posts alone, a side between two outside corners holds its length less `2T` and a side from an
+   outside corner to an inside one its length less `T`, so the two sides that make up one side of
+   an L are `T` short of it and no L closes on the kit's module. It closes when the two reaches
+   add up to a whole number of the smallest piece (a post of 0.3 m outside and an inside corner
+   reaching 1.2 m, on a 1.5 m half bay: examples/kit). Studios answer the inside corner in the
+   corner piece, never with a filler as thin as the wall (docs/research/Modular kit failures in
+   studios.md, sections 3 and 4).
+   A corner with no piece (the kit has no `role:corner`, or the outline turns in and the kit's
+   corner is no post and it has no `role:corner_in`) is counted and said once per building
+   (`corner_none`). A side shorter than what its two corners take is `side_short`, and gets no
+   wall. A door whose opening reaches into what a corner takes is refused (`params`), with the
+   stretch of the side its middle may stand on.
+   **A fit that drops the bay.** A stretch at least one bay long that closes with fillers alone
+   is counted; a building with any is `fillers_only` (warning): the bay's pitch fits none of them
+   (a bay re-exported on another module re-fits every wall in fillers, and nothing else says so).
    **The clear gap.** A doorway or a flight crosses a stretch where its centreline comes within
    `width / 2` of the wall's band (from the outline to `T` in). The wall leaves it `width + margin`
    (`params.margin`, 0.1 m) clear, centred on where it crosses, and each side of the gap is pulled
@@ -61,12 +89,19 @@ The rules (ours, written for this library; README.md is the design note):
    the clear width between wall instances is never less than the path's width plus the margin.
    Before, the gap was the door's width to the pitch, and a piece wider than its pitch closed it
    (TODO, M5 slice 1: the station's front door 0.20 m clear, its tower step 0.29 m).
+   A stretch beside a gap that does not close is shortened to the next length that does, so the
+   gap widens. What the wall then leaves, less what the gap needs (the path's width and the
+   margin, or the kit's door piece, `role:door`, where that is wider), is open wall. More than the
+   margin of it is `gap_wide` (warning), naming the door or flight and the metres left open: a
+   door may sit a margin loose in its wall, not a piece's length. The kit's door piece is its
+   door size; a door asked wider than it is told so here.
 7. **Roof.** `roof = "garden"`: a `roof` region over the footprint whose `garden` is at the top
    storey's level plus `storey_h`. Otherwise, with a `role:roof` piece in the kit, one instance at
    the footprint's middle on the top floor, facing out of the longest edge.
 
 `params` of the step: `inner_door` (0.9 m), `margin` (0.1 m). Codes are `step.<id>.<code>`: `params` (error, the
-building's attribute), `wall_open` (warning), `laid` (info, what was returned).
+building's attribute or a kit piece's param), `wall_open`, `side_short`, `corner_none`,
+`fillers_only`, `gap_wide` (warnings), `laid` (info, what was returned).
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -88,8 +123,23 @@ EXPLAIN = {
     "params": "An attribute of a building is outside what the building library's lay step takes; "
     "the message names the attribute and what it must be (lib/building/lay.py, its rules).",
     "wall_open": "A stretch of wall cannot be closed with whole wall pieces and fillers at their "
-    "pitch: the pieces would leave a gap or overlap. The data lists lengths near it that would "
-    "close; move a door or a corner, or add a filler of another pitch to the kit.",
+    "pitch: the pieces would leave a gap or overlap. The data lists the lengths near it that would "
+    "close: resize that side, or move the door or stair that cuts it. A stretch is its side less "
+    "what the corner at each end takes (`params.reach`); a plan with an inside corner closes only "
+    "when the kit has an inside corner piece (`role:corner_in`) whose reach, with the outside "
+    "corner's, is a whole number of the smallest piece. A filler made to fit one gap is a patch: it "
+    "hides the fault and the kit grows by a piece for every plan.",
+    "fillers_only": "Stretches of wall long enough for a bay were closed with fillers alone: the "
+    "bay's pitch fits none of them. If the bay's module was changed, the plan's sides no longer "
+    "suit it; resize them to the lengths `wall_open` would name, or restore the module.",
+    "side_short": "A side of the outline is shorter than what the corners at its two ends take from "
+    "it (`params.reach`), so no wall can be laid on it and the two corner pieces overlap.",
+    "corner_none": "The walls turn where the kit has no piece to stand: an outside corner needs a "
+    "`role:corner` piece and an inside corner a `role:corner_in` piece, or a post for either "
+    "(lib/building/README.md, Sizing a plan to its kit).",
+    "gap_wide": "The wall beside a door or a flight was shortened to a length that closes, so the "
+    "gap is wider than the door piece or the path: the rest stands open. Move the door so the wall "
+    "either side is a whole number of pieces, or make the door the width of the kit's door piece.",
     "laid": "What the building library's lay step returned for one building: storeys, rooms, "
     "flights, doorways, footpaths, wall runs and pieces.",
 }
@@ -141,6 +191,34 @@ def at_t(es, t):
             return k, min(max(s - c, 0.0), e["L"])
         c += e["L"]
     raise AssertionError("unreachable")
+
+
+def where(es, spec, key):
+    """(edge index, mm along it) of a door or a stair: `t`, a share of the whole outline, or
+    `side` and `at`, a side of the outline (side `k` runs from its point `k` to the next, counter-
+    clockwise) and the metres along it from where it starts. The second keeps its place when
+    another side grows."""
+    def number(v):
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    if "side" in spec or "at" in spec:
+        if "t" in spec:
+            raise ParamError(key, f"`{key}` says both `t` and `side`", "write `side` and `at`, or `t`")
+        k, at = spec.get("side"), spec.get("at")
+        if not (isinstance(k, int) and not isinstance(k, bool)) or not number(at):
+            raise ParamError(key, f"`{key}` needs `side` (a whole number) and `at` (metres along that side)",
+                             "write both, as `side = 0, at = 4.05`")
+        s = float(at) * 1000
+        if not 0 <= k < len(es):
+            raise ParamError(key, f"`{key}` names side {k}; the outline has sides 0 to {len(es) - 1}",
+                             f"write a side from 0 to {len(es) - 1}")
+        if not 0 <= s <= es[k]["L"] + 1e-6:
+            raise ParamError(key, f"`{key}` is {s / 1000:g} m along side {k}, which is {es[k]['L'] / 1000:g} m long",
+                             "write `at` from 0 to the side's length")
+        return k, min(s, es[k]["L"])
+    if not number(spec.get("t")):
+        raise ParamError(key, f"`{key}` says no place: `t` is a number from 0 to 1" if "t" in spec
+                         else f"`{key}` says no place", "write `side` and `at`, or `t`")
+    return at_t(es, float(spec["t"]))
 
 
 def local(e, s, v):
@@ -235,16 +313,16 @@ def stair_plan(ring, stair, storeys, wall_t=0):
         return {"flights": [], "notches": {}, "edge": None}
     if stair is None:
         raise ParamError("stair", f"a building of {storeys} storeys has no `stair`",
-                         "write `stair = { t, width, run }`: where along the outline the flights climb")
+                         "write `stair = { side, at, width, run }`: where along the outline the flights climb")
     es = edges(ring)
-    k, s0 = at_t(es, float(stair["t"]))
+    k, s0 = where(es, stair, "stair")
     e = es[k]
     w = int(round(float(stair.get("width", 1)) * 1000))
     run = int(round(float(stair["run"]) * 1000))
     s1 = s0 + run
     if w <= 0 or run <= 0 or s1 > e["L"] + 1e-6:
         raise ParamError("stair", f"the stair runs {run / 1000:g} m from {s0 / 1000:g} m along an edge "
-                         f"{e['L'] / 1000:g} m long", "move `t` or shorten `run` so the flight stays on one edge")
+                         f"{e['L'] / 1000:g} m long", "move it or shorten `run` so the flight stays on one edge")
     lane = [wall_t + CLEAR + w / 2, wall_t + CLEAR + w / 2 + (w + CLEAR)]
     depth = [wall_t + w + 2 * CLEAR, wall_t + 2 * w + 3 * CLEAR]
     flights, notches = [], {}
@@ -264,7 +342,7 @@ def stair_plan(ring, stair, storeys, wall_t=0):
             if 0.5 < gap < STUB_MIN:
                 raise ParamError("stair", f"the stairwell ends {gap / 1000:.3f} m from the corner at its edge's "
                                  f"{side}: too short a wall to build there",
-                                 f"move the stair's `t` (or `run`) so the stairwell reaches that corner or stops "
+                                 f"move the stair (or change its `run`) so the stairwell reaches that corner or stops "
                                  f"at least {STUB_MIN / 1000:g} m from it")
     return {"flights": flights, "notches": notches, "edge": k, "span": (s0, s1)}
 
@@ -315,12 +393,12 @@ def door_plan(ring, door, porch, walk_out):
     """A doorway path (outside to the outline), a footpath (further out, ending at the doorway's
     start), the edge and the interval along it the door opens (rule 4)."""
     es = edges(ring)
-    k, s = at_t(es, float(door["t"]))
+    k, s = where(es, door, "doors")
     e = es[k]
     w = int(round(float(door.get("width", 1)) * 1000))
     if s - w / 2 < 0 or s + w / 2 > e["L"]:
-        raise ParamError("doors", f"a door {w / 1000:g} m wide at t = {door['t']} runs past a corner",
-                         "move `t` along the wall or narrow the door")
+        raise ParamError("doors", f"a door {w / 1000:g} m wide {s / 1000:g} m along side {k} runs past a corner",
+                         "move it along the wall or narrow the door")
     on = rnd(local(e, s, 0))
     out = rnd(local(e, s, -porch))
     far = rnd(local(e, s, -(porch + walk_out)))
@@ -462,6 +540,22 @@ def fit(length, pitch, filler, tol=FIT):
     return None, (below, above)
 
 
+def gap_places(a, b, need, wall, filler, near, tol=FIT):
+    """Where the middle of a gap `need` mm wide may lie between `a` and `b` (mm along a side) so the
+    wall each side of it is whole pieces: the nearest such middle at or below `near`, and the
+    nearest above it (None where there is none)."""
+    room = b - a - need
+    if room < -tol:
+        return None, None
+    lengths = sorted({n * wall + k * filler for n in range(int(room // wall) + 2)
+                      for k in (range(int(room // filler) + 2) if filler else (0,))})
+    ok = [a + left + need / 2 for left in lengths
+          if left <= room + tol and (room - left <= tol or fit(room - left, wall, filler, tol)[0] is not None)]
+    below = max((c for c in ok if c <= near + tol), default=None)
+    above = min((c for c in ok if c > near + tol), default=None)
+    return below, above
+
+
 def kit_pieces(rows):
     """{role: {id, pitch (mm), thick (mm)}} from pack rows (id, tags, bounds, params); the first
     id bytewise per role."""
@@ -476,10 +570,41 @@ def kit_pieces(rows):
             b = r["bounds"]
             width = b[3] - b[0] if b else 0
             thick = b[4] - b[1] if b else 0
-            pitch = r["params"].get("pitch")
-            out[role] = {"id": r["id"], "pitch": int(round(float(pitch) * 1000)) if pitch else width,
-                         "thick": thick, "width": width}
+            pitch, reach = (kit_number(r, k) for k in ("pitch", "reach"))
+            out[role] = {"id": r["id"], "pitch": int(round(pitch * 1000)) if pitch else width,
+                         "thick": thick, "width": width,
+                         "reach": int(round(reach * 1000)) if reach is not None else None}
     return out
+
+
+def kit_number(row, key):
+    """A kit piece's `params.<key>` in metres, None where it says none; not a number, or below
+    0, is the kit's fault and is said as one (`params`)."""
+    v = (row.get("params") or {}).get(key)
+    if v is None:
+        return None
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
+        raise ParamError("kit", f"the kit piece `{row['id']}` has `params.{key} = {v!r}`, not a length",
+                         f"write `params.{key}` as metres, 0 or more")
+    return float(v)
+
+
+def corner_of(kit, convex, T):
+    """`(piece or None, reach mm)` for a corner (rule 6): at an outside corner the kit's `corner`,
+    reaching the wall's thickness unless it says; at an inside one its `corner_in`, reaching
+    nothing unless it says, else its `corner` where that is a post, reaching nothing."""
+    post = kit.get("corner")
+    if convex:
+        return post, (T if post is None or post.get("reach") is None else post["reach"])
+    piece = kit.get("corner_in")
+    if piece is not None:
+        return piece, (0 if piece.get("reach") is None else piece["reach"])
+    # No inside corner piece: a post stands in the notch and takes nothing from either wall,
+    # whatever it takes at an outside corner. A corner piece that is no post (it says a reach
+    # other than the wall's thickness) is not made for the notch, and none is placed.
+    if post is not None and post.get("reach") in (None, T):
+        return post, 0
+    return None, 0
 
 
 def overhang(kit):
@@ -537,11 +662,12 @@ def wall_stretches(ring, footprint, crossers=(), T=0, margin=MARGIN, over=0.0):
         if host is None:
             continue
         gaps = []
-        for path, w in crossers:
+        for c in crossers:
+            path, w = c[0], c[1]
             g = crossing_gap(re, path, w, T, (w + margin) / 2 + over)
             if g is not None:
-                gaps.append(g)
-        out.append({"edge": i, "L": re["L"], "gaps": sorted(gaps), "start_corner": re["a"] in fset,
+                gaps.append((g[0], g[1], c[2] if len(c) > 2 else None, w))
+        out.append({"edge": i, "side": host[0], "L": re["L"], "gaps": sorted(gaps), "start_corner": re["a"] in fset,
                     "end_corner": re["b"] in fset, "e": re})
     for i, p in enumerate(ring):
         if p not in fset:
@@ -559,14 +685,27 @@ def convex_at(corners, p):
     return False
 
 
-def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), margin=MARGIN):
-    """Runs and instances for one storey's walls (rule 6). Returns (runs, instances, open)."""
+def storey_of(key):
+    """The storey's number from its key `<building>_s<k>`."""
+    tail = str(key).rsplit("_s", 1)[-1]
+    return int(tail) if tail.isdigit() else 0
+
+
+def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), margin=MARGIN, notes=None):
+    """Runs and instances for one storey's walls (rule 6). Returns (runs, instances, open).
+    `crossers` are `(path, width mm[, label])`; `notes`, a list, takes what the fit did that a
+    reader should know: `fillers_only` stretches and `gap_wide` gaps."""
     wall, filler = kit.get("wall"), kit.get("filler")
     runs, insts, opens = [], [], []
+    notes = [] if notes is None else notes
     if wall is None:
         return runs, insts, opens
     T = wall["thick"]
-    stretches, corners = wall_stretches(ring, footprint, crossers, T, margin, overhang(kit))
+    over = overhang(kit)
+    stretches, corners = wall_stretches(ring, footprint, crossers, T, margin, over)
+
+    def reach_at(p):
+        return corner_of(kit, convex_at(corners, p), T)[1]
     res = edges(ring)
     starts, c = [], 0.0
     for e in res:
@@ -575,16 +714,22 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
     total = c
     for st in stretches:
         e = st["e"]
-        a = T if st["start_corner"] and convex_at(corners, e["a"]) else 0.0
-        b = st["L"] - (T if st["end_corner"] and convex_at(corners, e["b"]) else 0.0)
+        a = float(reach_at(e["a"])) if st["start_corner"] else 0.0
+        b = st["L"] - (reach_at(e["b"]) if st["end_corner"] else 0.0)
+        if b - a < -FIT:
+            notes.append({"code": "side_short", "side": st["side"], "length": st["L"], "takes": st["L"] - (b - a),
+                          "at": rnd(local(e, st["L"] / 2, 0))})
+            continue
         pieces, at, after_gap = [], a, False
-        for g0, g1 in st["gaps"]:
+        for g0, g1, _, _ in st["gaps"]:
             pieces.append((at, min(g0, b), after_gap, True))
             at, after_gap = max(at, g1), True
         pieces.append((at, b, after_gap, False))
         step_max = max(wall["pitch"], filler["pitch"] if filler else 0)
+        ends = []                       # each piece's ends as laid, for the gaps between them
         for j, (p0, p1, gap0, gap1) in enumerate(pieces):
             L = p1 - p0
+            ends.append((p0, p1))
             if L <= FIT:
                 continue
             got, near = fit(L, wall["pitch"], filler["pitch"] if filler else 0)
@@ -600,11 +745,21 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
                     p0 += cut
                 L = p1 - p0
                 got, near = fit(L, wall["pitch"], filler["pitch"] if filler else 0)
+                ends[-1] = (p0, p1)
             key = f"{prefix}_w{st['edge']}_{j}"
             if got is None:
-                opens.append({"key": key, "length": L, "near": near, "at": rnd(local(e, (p0 + p1) / 2, 0))})
+                # What bounds the stretch: a corner, a gap (a door or a flight), or neither, which
+                # is the edge of a stairwell cut out of this storey (rule 3).
+                well = (not gap0 and j == 0 and not st["start_corner"]) or \
+                       (not gap1 and j == len(pieces) - 1 and not st["end_corner"])
+                opens.append({"key": key, "length": L, "near": near, "side": st["side"], "stairwell": well,
+                              "storey": storey_of(storey_key),
+                              "at": rnd(local(e, (p0 + p1) / 2, 0))})
                 continue
             n, k = got
+            if n == 0 and k and L >= wall["pitch"] - FIT:
+                notes.append({"code": "fillers_only", "key": key, "length": L, "fillers": k,
+                              "at": rnd(local(e, (p0 + p1) / 2, 0))})
             s0 = starts[st["edge"]] + p0
             s_mid = s0 + n * wall["pitch"]
             s1 = starts[st["edge"]] + p1
@@ -615,13 +770,31 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
             if k:
                 runs.append({"key": key + "f", "asset": filler["id"], "count": k, "ref": storey_key,
                              "span": [round(s_mid / total, 9), round(s1 / total, 9)], **common})
-    corner = kit.get("corner")
-    if corner is not None:
-        for c_ in corners:
-            nb, na = c_["before"]["n"], c_["after"]["n"]
-            p = (c_["at"][0] + (nb[0] + na[0]) * T / 2, c_["at"][1] + (nb[1] + na[1]) * T / 2)
-            insts.append({"key": f"{prefix}_c{ring.index(c_['at'])}", "asset": corner["id"], "at": rnd(p),
-                          "face": outward(c_["after"])})
+        # What each gap was left, against what stands in it (rule 6, "the clear gap").
+        door_w = kit["door"].get("width", kit["door"]["pitch"]) if kit.get("door") else None
+        for j, (g0, g1, label, w) in enumerate(st["gaps"]):
+            left = ends[j + 1][0] - ends[j][1] - 2 * over
+            need = g1 - g0 - 2 * over
+            if label and label[0] == "door" and door_w:
+                need = max(need, door_w)
+            if left - need > margin + FIT:
+                lo = st["gaps"][j - 1][1] if j else a
+                hi = st["gaps"][j + 1][0] if j + 1 < len(st["gaps"]) else b
+                places = gap_places(lo, hi, need + 2 * over, wall["pitch"], filler["pitch"] if filler else 0,
+                                    (g0 + g1) / 2)
+                notes.append({"code": "gap_wide", "label": label, "left": left, "need": need, "path": w,
+                              "side": st["side"], "places": places, "others": len(st["gaps"]) > 1,
+                              "at": rnd(local(e, (ends[j][1] + ends[j + 1][0]) / 2, 0))})
+    for c_ in corners:
+        piece, r = corner_of(kit, c_["convex"], T)
+        if piece is None:
+            notes.append({"code": "corner_none", "outside": c_["convex"], "at": c_["at"]})
+            continue
+        nb, na = c_["before"]["n"], c_["after"]["n"]
+        half = r / 2 if c_["convex"] else T / 2       # the box's middle outside, the notch's inside
+        p = (c_["at"][0] + (nb[0] + na[0]) * half, c_["at"][1] + (nb[1] + na[1]) * half)
+        insts.append({"key": f"{prefix}_c{ring.index(c_['at'])}", "asset": piece["id"], "at": rnd(p),
+                      "face": outward(c_["after"])})
     leaf = kit.get("door")
     fes = edges(footprint)
     if leaf is not None:
@@ -697,7 +870,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
     for k in range(1, storeys):
         rings.append(notch_ring(footprint, sp["notches"][k]))
     out = {"storeys": [], "rooms": [], "flights": [], "doorways": [], "footpaths": [], "runs": [],
-           "instances": [], "open": [], "openings": [], "roof": None}
+           "instances": [], "open": [], "openings": [], "roof": None, "notes": []}
     for k in range(storeys):
         out["storeys"].append({"key": f"{prefix}_s{k}", "region": rings[k], "level": lv[k]})
     for path, lo, hi in sp["flights"]:
@@ -722,7 +895,26 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             hi = max(n[2] for n in sp["notches"].values())
             if dp["s"] + dp["width"] / 2 > lo and dp["s"] - dp["width"] / 2 < hi and k == dp["edge"]:
                 raise ParamError("doors", f"door {i} opens into the stairwell",
-                                 "move the door's `t` or the stair's")
+                                 "move the door or the stair along the wall")
+        if kit and kit.get("wall"):
+            ring_ = footprint
+            k_ = dp["edge"]
+            e_ = edges(ring_)[k_]
+
+            def turns_left(v):
+                a_, b_, c_ = ring_[v - 1], ring_[v], ring_[(v + 1) % len(ring_)]
+                return (b_[0] - a_[0]) * (c_[1] - b_[1]) - (b_[1] - a_[1]) * (c_[0] - b_[0]) > 0
+            r0 = corner_of(kit, turns_left(k_), wall_t)[1]
+            r1 = corner_of(kit, turns_left((k_ + 1) % len(ring_)), wall_t)[1]
+            piece = kit["door"].get("width", kit["door"]["pitch"]) if kit.get("door") else 0
+            half = max(piece, dp["width"] + margin) / 2
+            lo, hi = r0 + half, e_["L"] - r1 - half
+            if dp["s"] < lo - FIT or dp["s"] > hi + FIT:
+                raise ParamError("doors", f"door {i} is {dp['s'] / 1000:g} m along side {k_}: its opening "
+                                 f"({2 * half / 1000:g} m) runs into a corner, which takes "
+                                 f"{(r0 if dp['s'] < lo else r1) / 1000:g} m of that wall",
+                                 f"keep its middle between {lo / 1000:g} and {hi / 1000:g} m along the side"
+                                 if hi >= lo else "the side is too short for this door: use another side")
         doors_by_storey.setdefault(st, []).append(dp)
         key = f"{prefix}_d{i}"
         dp["doorway"][-1] = onto(rings[st], dp["doorway"][-1], dp["doorway"][0])
@@ -750,11 +942,11 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             out["open"].extend(opens)
     if kit:
         for k in range(storeys):
-            crossers = [(d["path"], dp["width"]) for d, dp in zip(
+            crossers = [(d["path"], dp["width"], ("door", d["key"])) for d, dp in zip(
                 [d for d in out["doorways"] if d["ends_at"] == f"{prefix}_s{k}.floor"], doors_by_storey.get(k, []))]
-            crossers += [(f["path"], int(round(f["width"] * 1000))) for f in out["flights"]]
+            crossers += [(f["path"], int(round(f["width"] * 1000)), ("flight", f["key"])) for f in out["flights"]]
             runs, insts, opens = wall_plan(rings[k], footprint, doors_by_storey.get(k, []), kit,
-                                           f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin)
+                                           f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin, out["notes"])
             for it in insts:
                 it["surface"] = f"{prefix}_s{k}.floor"
             out["runs"].extend(runs)
@@ -877,13 +1069,65 @@ def generate(step):
     write(step, out)
     for i, w in enumerate(out["open"]):
         below, above = w["near"]
+        moves = " or ".join(f"{(v - w['length']) / 1000:+g} m" for v in (below, above) if v is not None)
+        hint = (f"it ends at the stairwell: move the stair's `at`, or change its `run`, so this wall is {moves}"
+                if w.get("stairwell") and moves
+                else "resize the side to a length that closes, or move the door or stair that cuts it")
+        where_ = f" on side {w['side']} of storey {w.get('storey', 0)}" if "side" in w else ""
         step.warning("wall_open", name,
-                     f"a wall stretch of {w['length'] / 1000:g} m does not close with the kit's pieces",
-                     "move a door or a corner, or add a filler of another pitch",
+                     f"a wall stretch of {w['length'] / 1000:g} m{where_} does not close with the kit's pieces", hint,
                      position=(w["at"][0] / 1000, w["at"][1] / 1000),
                      data={"length": round(w["length"] / 1000, 3),
-                           "closes": [round(v / 1000, 3) for v in (below, above) if v is not None]},
+                           "closes": [round(v / 1000, 3) for v in (below, above) if v is not None],
+                           **({"side": w["side"], "storey": w.get("storey", 0),
+                               "stairwell": bool(w.get("stairwell"))} if "side" in w else {})},
                      **({"explain": EXPLAIN["wall_open"]} if i == 0 else {}))
+    for n in (n for n in out["notes"] if n["code"] == "side_short"):
+        step.warning("side_short", name,
+                     f"side {n['side']} is {n['length'] / 1000:g} m long and its two corners take "
+                     f"{n['takes'] / 1000:g} m of it: no wall is laid there",
+                     "lengthen the side, or use corner pieces that take less",
+                     position=(n["at"][0] / 1000, n["at"][1] / 1000),
+                     data={"side": n["side"], "length": round(n["length"] / 1000, 3),
+                           "takes": round(n["takes"] / 1000, 3)}, explain=EXPLAIN["side_short"])
+    bare = [n for n in out["notes"] if n["code"] == "corner_none"]
+    if bare:
+        outside = sum(1 for n in bare if n["outside"])
+        inside = len(bare) - outside
+        step.warning("corner_none", name,
+                     f"{len(bare)} corners of the walls have no piece: the kit has none for "
+                     + " or ".join(w for w, c in (("an outside corner (`role:corner`)", outside),
+                                                  ("an inside corner (`role:corner_in`)", inside)) if c),
+                     "give the kit the corner piece, with the `params.reach` it takes from each wall",
+                     position=(bare[0]["at"][0] / 1000, bare[0]["at"][1] / 1000),
+                     data={"outside": outside, "inside": inside}, explain=EXPLAIN["corner_none"])
+    only = [n for n in out["notes"] if n["code"] == "fillers_only"]
+    if only:
+        pitch = kit["wall"]["pitch"] / 1000
+        step.warning("fillers_only", name,
+                     f"{len(only)} wall stretches a bay or more long hold fillers only: the bay's pitch "
+                     f"({pitch:g} m) fits none of them",
+                     "resize the sides to suit the bay, or restore the bay's module",
+                     position=(only[0]["at"][0] / 1000, only[0]["at"][1] / 1000),
+                     data={"stretches": len(only), "fillers": sum(n["fillers"] for n in only), "pitch": pitch},
+                     explain=EXPLAIN["fillers_only"])
+    for i, g in enumerate(n for n in out["notes"] if n["code"] == "gap_wide"):
+        what = f"{g['label'][0]} `{g['label'][1]}`" if g["label"] else "a path"
+        over = (g["left"] - g["need"]) / 1000
+        places = [round(c / 1000, 3) for c in g.get("places") or () if c is not None]
+        hint = (f"put its middle {' or '.join(f'{c:g}' for c in places)} m along side {g['side']} "
+                f"(`side = {g['side']}, at = {places[0]:g}`), where the wall either side closes" if places
+                else "no place on this side closes round it with the side's other openings where they are: "
+                "move them together, or resize the side" if g.get("others")
+                else "no place on this side closes round it: make it the kit's door size, or resize the side")
+        step.warning("gap_wide", name,
+                     f"the wall leaves {g['left'] / 1000:g} m at {what}, which needs {g['need'] / 1000:g} m: "
+                     f"{over:g} m stands open", hint,
+                     position=(g["at"][0] / 1000, g["at"][1] / 1000),
+                     data={"left": round(g["left"] / 1000, 3), "need": round(g["need"] / 1000, 3),
+                           "open": round(over, 3), "path": round(g["path"] / 1000, 3),
+                           "side": g.get("side"), "closes_at": places},
+                     **({"explain": EXPLAIN["gap_wide"]} if i == 0 else {}))
     step.info("laid", name,
               f"{len(out['storeys'])} storeys, {len(out['rooms'])} rooms, {len(out['flights'])} flights, "
               f"{len(out['doorways'])} doorways, {len(out['runs'])} wall runs, {len(out['instances'])} pieces",

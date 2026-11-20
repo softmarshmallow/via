@@ -377,6 +377,15 @@ impl<'w> Checker<'w> {
             (Takes::Point, Value::List(xs)) => {
                 xs.len() == 2 && xs.iter().all(|x| self.item_ok(Takes::Length, x, e, ctx))
             }
+            (Takes::PointZ, Value::List(xs)) => {
+                (xs.len() == 2 || xs.len() == 3)
+                    && xs[..2]
+                        .iter()
+                        .all(|x| self.item_ok(Takes::Length, x, e, ctx))
+                    && xs[2..]
+                        .iter()
+                        .all(|x| self.item_ok(Takes::Number, x, e, ctx))
+            }
             (Takes::Points, Value::List(xs)) => {
                 xs.iter().all(|x| self.item_ok(Takes::Point, x, e, ctx))
             }
@@ -537,8 +546,10 @@ impl<'w> Checker<'w> {
     fn type_fault(&mut self, takes: Takes, e: &Entry, ctx: &Ctx) {
         let written = e.item.value.form_word();
         let mut hint = format!("write {}", takes.words());
-        if let (Value::Str(s), Takes::Number | Takes::Integer | Takes::Point | Takes::Length) =
-            (&e.item.value, takes)
+        if let (
+            Value::Str(s),
+            Takes::Number | Takes::Integer | Takes::Point | Takes::PointZ | Takes::Length,
+        ) = (&e.item.value, takes)
         {
             if s.text.starts_with('=') {
                 hint = format!("this key takes no formula; write {}", takes.words());

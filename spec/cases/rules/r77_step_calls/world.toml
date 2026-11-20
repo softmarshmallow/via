@@ -1,0 +1,25 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+include    = ["plots"]
+
+[field.height]
+role = "surface"
+base = 20
+
+# Two items of one `for_each` step. The call for `a` returns a run along it; the call for `b`
+# returns an instance 0.4 m east of the second member of a's run.
+[feature.a]
+kind = "plot"
+path = [[0, 32], [16, 32]]
+
+[feature.b]
+kind = "plot"
+path = [[0, 40], [16, 40]]
+
+[step.make]
+when     = "generate"
+worker   = true
+for_each = "kind:plot"
+command  = ["python", "-m", "viasdk", "steps/make.py"]

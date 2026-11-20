@@ -69,9 +69,10 @@ Asset side (packs, `spec/assets.md` 2.7): a door leaf asset has one mount, `entr
 `face` 180 (into the building), `connector = "foot"`; a whole-building asset (the college's hall)
 has the same `entry` mount, so a walk `ends_at = "hall.entry"` and follows the instance when it is
 moved and turned (case `surfaces/moved_turned`). Kit pieces carry `params.pitch` (assets.md 10) and
-tags for their role (`role:wall`, `role:corner`, `role:door`, `role:filler`, `role:roof`) and
-state (`state:open`). A door leaf the `lay` step places in a doorway carries no mount with a
-connector: the doorway ends at the floor, not at the leaf, so a `foot` mount on the leaf would be
+tags for their role (`role:wall`, `role:corner`, `role:corner_in`, `role:door`, `role:filler`,
+`role:roof`) and state (`state:open`). A corner piece may carry `params.reach`, the metres of each
+wall it takes ("Sizing a plan to its kit", below). A door leaf the `lay` step places in a doorway
+carries no mount with a connector: the doorway ends at the floor, not at the leaf, so a `foot` mount on the leaf would be
 `surface.unmet`. The `entry` mount is for whole-building assets placed by hand.
 
 ## Steps (through `viasdk` only)
@@ -111,7 +112,8 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
    room reachable from the terrain by walking floors and crossing only at meetings (`surfaces.md`
    4.4, the reach lint of `lib/review` asked per building); stair going and riser within a profile;
    door `turn` under 45 degrees; kit pieces measured against `params.pitch` (the college's 6.44 m bay
-   at a 6 m pitch); a published object's measured size against its numbers (the pistol: its
+   at a 6 m pitch), a corner against the plan its reach states (`kit_corner`) and a wall piece
+   against the storey height of a building that stacks it (`kit_height`); a published object's measured size against its numbers (the pistol: its
    measure reads the state from where the build placed the slide, spec/assets.md 12.4, not from a
    `state:` tag, so a racked slide is not a fault; examples/pistol/measure.py).
 
@@ -181,6 +183,38 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   same way (`build.md` 15.1).
 - **Doors.** With no `role:door` piece in the kit a doorway is open the storey's full height
   (`storey_h`); give the kit a door piece for a lintel.
+- **Sizing a plan to its kit** (after the first cut, from examples/kit). A building's `region` is
+  the outer face of its walls. A wall stretch is a side less what the corner at each end takes,
+  its `reach`: by default the wall's thickness at an outside corner (a post) and nothing at an
+  inside one (a post in the notch). Each stretch must be a whole number of bays and fillers.
+  - *A rectangle* closes when each side, less two outside reaches, is whole pieces.
+  - *A plan with an inside corner* (an L, a T, a court) closes only when the kit has an inside
+    corner piece, `role:corner_in`, whose reach with the outside corner's makes a whole number of
+    the smallest piece: a 0.3 m post and an inside corner reaching 1.2 m, on a 1.5 m half bay.
+    With posts alone the sides either side of an inside corner come out one wall's thickness
+    short of the side opposite, whatever the plan's size. Do not close them with a filler as thin
+    as the wall: that piece exists for one plan, and the next plan needs another.
+  - *An inside corner piece* is placed by the middle of the notch the two walls leave, so its
+    pack entry says `pivot = "origin"` and its model's origin is there, with one leg along each
+    wall; declare its `footprint` as the L it stands on. `check` compares its measured plan
+    (`kit_corner`).
+  - *A door* stands where the wall either side of it is whole pieces, and is the kit's door size:
+    the door piece's width, less the 0.1 m margin. A wall cut back to close beside a door leaves
+    the gap wider, and more than the margin of that is `gap_wide`, whose hint gives the two
+    nearest places along the side where the door would close.
+  - *A stair* takes its stairwell's length out of the wall of the storey above (1 m before its
+    foot to its head): what is left either side must close too. Where it does not, `wall_open`
+    says the stretch ends at the stairwell and how far it is off.
+  - *Write a door and a stair by `side` and `at`*: a side of the outline (side `k` runs from its
+    point `k` to the next, counter-clockwise) and the metres along it. They then keep their place
+    when another side grows, which `t`, a share of the whole outline, does not. A side is named
+    by its number, so a plan that gains a corner renumbers the sides after it.
+  - *The kit itself is checked* (`check`, with `kits`): pieces that share no module
+    (`kit_module`), corners that cannot close an inside corner a building has (`kit_ell`), a
+    filler shorter than the wall is thick (`kit_slip`), wall pieces of more than one thickness or
+    height (`kit_uneven`). The contract is `docs/design/kit-contract.md`.
+  - *A bay re-exported on another module* fits nowhere, and `lay` closes every wall in fillers:
+    `fillers_only` says so. A piece taller or shorter than `storey_h` is `kit_height`.
 - **Walking to an upper floor.** A storey, flight or doorway `lay` returns has a produced name,
   which text may not write (R3), so a bookmark cannot name it as `toward`. Place your own kindless
   point features `on = { ref = "<building>", t, offset }` (they follow the building when it moves
@@ -199,6 +233,10 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   ground floor (at the door), and a walk down from one on the upper floor. A path that climbs from
   a bookmark already standing on the upper floor walks off it and `fell` (M7 close). Two bookmarks,
   one per direction, each with its own path.
+- **A place on a laid floor (R65).** `at = [x, y, z]` stands a hand instance, a pin, a set or a
+  point feature on the floor at that point whose height is nearest `z`, with no name written: a
+  window pinned in place of a bay, a view on an upper floor (`examples/station`, `loft_top`), a
+  chair in a laid room. The two notes below were written before it and still work.
 - **A view on an upper floor.** A storey's floor is a produced name, so a bookmark cannot write
   `surface = "<storey>.floor"`. Lift the eye instead: `eye_height = storey_h + plinth + 1.7`
   (station's tower views); the walker still starts on the storey's floor. A way to stand a view on

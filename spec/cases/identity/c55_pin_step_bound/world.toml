@@ -1,0 +1,23 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[step.make]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]
+params  = { width = 1 }
+
+# On the terrain beside the tread the step returns (two numbers): footprint y 24.7 to 25.7.
+[pin.mark]
+asset = "box"
+at    = [25, 25.2]
+
+[change.wide.step.make]
+params = { width = 3 }

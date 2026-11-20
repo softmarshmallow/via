@@ -1,0 +1,74 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# 1500 mm from each floor: a tie goes to the lower (surfaces.md 4.1).
+[instance.mid]
+asset = "box"
+at    = [30, 26, 11.8]
+
+# Two surfaces 0.4 mm apart: one height on the lattice, so a tie, to the lower.
+[feature.m_roof]
+kind   = "roof"
+region = [[6, 42], [14, 42], [14, 50], [6, 50]]
+eaves  = 16.0004
+
+[feature.n_roof]
+kind   = "roof"
+region = [[6, 42], [14, 42], [14, 50], [6, 50]]
+eaves  = 16
+
+[instance.lip]
+asset = "box"
+at    = [10, 46, 16]
+
+# Two surfaces at one height: a tie in height too, to the first place name.
+[feature.b_roof]
+kind   = "roof"
+region = [[40, 40], [50, 40], [50, 50], [40, 50]]
+eaves  = 16
+
+[feature.a_roof]
+kind   = "roof"
+region = [[44, 44], [54, 44], [54, 54], [44, 54]]
+eaves  = 16
+
+[instance.post]
+asset = "box"
+at    = [46, 46, 16]
+
+[feature.at_mid]
+kind   = "sight"
+at     = [5, 5]
+toward = "mid"
+
+[feature.at_lip]
+kind   = "sight"
+at     = [5, 6]
+toward = "lip"
+
+[change.beside_a.instance.other]
+asset   = "box"
+at      = [46.5, 46]
+surface = "a_roof.garden"
+
+[change.beside_b.instance.other]
+asset   = "box"
+at      = [46.5, 46]
+surface = "b_roof.garden"

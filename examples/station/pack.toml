@@ -74,7 +74,10 @@ colour    = [0.7, 0.12, 0.1]
 
 # The net loft's kit (lib/building README, "Asset side"): `lay` reads pieces under a taxon by their
 # `role:` tag, `params.pitch` along x, thickness along y (front +y, outward). A storey is 3.2 m, so
-# a piece stands from its floor to the floor above. No door leaf: a shut leaf would bar the walk.
+# a piece stands from its floor to the floor above. The module is the half bay, 0.5 m: every side
+# of the loft is whole half bays between its corner posts (lib/building/README.md, "Sizing a plan
+# to its kit"). No door leaf, since a shut leaf would bar the walk: the door piece is a lintel over
+# an open doorway three half bays wide.
 
 [asset.kit_wall]
 primitive = "box"
@@ -84,12 +87,21 @@ tags      = ["role:wall"]
 params    = { pitch = 1.0 }
 colour    = [0.62, 0.6, 0.56]
 
-[asset.kit_filler]              # a 0.1 m slip: every stretch a whole number of decimetres closes
+[asset.kit_half]                # the half bay: what whole bays leave
 primitive = "box"
-size      = [0.1, 0.3, 3.2]
+size      = [0.5, 0.3, 3.2]
 taxon     = "structure/kit"
 tags      = ["role:filler"]
-params    = { pitch = 0.1 }
+params    = { pitch = 0.5 }
+colour    = [0.62, 0.6, 0.56]
+
+[asset.kit_lintel]              # the wall over a doorway, from the door's head (2.1 m) to the floor above
+primitive = "box"
+size      = [1.5, 0.3, 1.1]
+taxon     = "structure/kit"
+tags      = ["role:door"]
+params    = { pitch = 1.5 }
+sink      = -2.1                # lifted to the door's head: nothing stands on a thing
 colour    = [0.62, 0.6, 0.56]
 
 [asset.kit_corner]

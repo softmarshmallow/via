@@ -1,0 +1,74 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# A: a flat tread at 12, clear of the ground (no `cut`); half width 0.5, y from 23.5 to 24.5.
+[feature.ramp_a]
+kind  = "flight"
+path  = [[20, 24], [30, 24]]
+z0    = 12
+z1    = 12
+width = 1
+
+# Members on the tread, 0.4 m off its centre line: footprints y 23.9 to 24.9.
+[run.pots]
+asset = "box"
+on    = { ref = "ramp_a", span = [0, 1], offset = 0.4 }
+count = 5
+
+# On the terrain beside the tread (two numbers): footprint y 24.7 to 25.7.
+[pin.mark]
+asset = "box"
+at    = [25, 25.2]
+
+# B: the same tread 10 m north, y from 33.5 to 34.5.
+[feature.ramp_b]
+kind  = "flight"
+path  = [[20, 34], [30, 34]]
+z0    = 12
+z1    = 12
+width = 1
+
+[feature.line_b]
+kind = "lane"
+path = [[20.3, 35.3], [30.3, 35.3]]
+
+# Members on the terrain beside the tread: footprints y 34.8 to 35.8.
+[run.fence]
+asset = "box"
+on    = { ref = "line_b", span = [0, 1] }
+count = 5
+
+# On the tread by its height: footprint y 33.9 to 34.9.
+[pin.high]
+asset = "box"
+at    = [25.3, 34.4, 12]
+
+# C: a run on the terrain, and a pin over its third member.
+[feature.line_c]
+kind = "lane"
+path = [[40, 24], [50, 24]]
+
+[run.posts]
+asset = "box"
+on    = { ref = "line_c", span = [0, 1] }
+count = 5
+
+[pin.low]
+asset = "box"
+at    = [45, 24.6]
+
+[change.wide.feature.ramp_a]
+width = 3
+
+[change.wide.feature.ramp_b]
+width = 3
+
+[change.moved.feature.line_c]
+path = [[40, 30], [50, 30]]

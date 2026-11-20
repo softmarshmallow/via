@@ -243,6 +243,19 @@ pub enum Place {
     Of(Select),
 }
 
+/// The third number of `at` (`surfaces.md` 4.1, R65): the height that chooses the kind surface a
+/// thing stands on. The choice is made on plans, once shapes are placed
+/// ([`crate::surfaces::choose_by_height`]), and written to the thing's `surface`, so every later
+/// reader sees a thing placed with `surface`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Height {
+    /// As written, metres.
+    pub z: f64,
+    /// The kind surfaces the choice was made among, by place name: those at the plan point that
+    /// the thing's layer sees. Empty until chosen, and where there is none (`surface.none_at`).
+    pub among: Vec<String>,
+}
+
 /// A path along another feature, `follows = { ref, span, offset }` (`geometry.md` 4).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Follows {
@@ -291,8 +304,10 @@ pub struct FeatureDecl {
     /// `route` on a path (`derived.md` 3): the cost per metre, a formula over posts.
     pub route: Option<FormulaId>,
     /// `surface = "<feature>.<surface>"` on a point (`surfaces.md` 4.1, M5): the kind surface its
-    /// `z` is read from.
+    /// `z` is read from. With `height`, the one it chose.
     pub surface: Option<String>,
+    /// The third number of a point's `at` (`surfaces.md` 4.1, R65).
+    pub height: Option<Height>,
 }
 
 impl FeatureDecl {
@@ -327,7 +342,10 @@ pub struct InstanceDecl {
     /// The set it places (`rules.md` 4); then `asset` is empty.
     pub set: Option<String>,
     /// `surface = "<feature>.<surface>"` (`surfaces.md` 4.1, M5): the kind surface it stands on.
+    /// With `height`, the one it chose.
     pub surface: Option<String>,
+    /// The third number of `at` (`surfaces.md` 4.1, R65).
+    pub height: Option<Height>,
 }
 
 /// One choice of a scatter's `assets` (`rules.md` 7.4).
@@ -391,6 +409,10 @@ pub struct PinDecl {
     pub face: Option<Face>,
     pub by: Option<Vec<String>>,
     pub rank: i64,
+    /// The third number of `at` (`surfaces.md` 4.1, R65; `identity.md` 4.2).
+    pub height: Option<Height>,
+    /// The kind surface `height` chose; a pin writes no `surface` key, so `None` is the terrain.
+    pub surface: Option<String>,
 }
 
 /// A clear (`identity.md` 4.3).
@@ -613,6 +635,8 @@ pub struct Decls {
     pub pins: BTreeMap<String, PinDecl>,
     pub clears: BTreeMap<String, ClearDecl>,
     pub steps: BTreeMap<String, StepDecl>,
+    /// The run that reads this world runs no step ([`crate::Options::steps_unrun`]).
+    pub steps_unrun: bool,
     /// `[network.<id>]` tables (`geometry.md` 8.1).
     pub networks: BTreeMap<String, crate::makers::NetworkDecl>,
     /// `[cells.<id>]` tables (`geometry.md` 8.2).
@@ -1815,8 +1839,9 @@ impl Decls {
 
     fn read_place(&mut self, top: &str, id: &str, t: &Table) -> Option<Place> {
         if let Some(v) = t.value("at") {
-            return match text::point(v) {
-                Some(Ok(p)) => Some(Place::At(p)),
+            // A third number is a height, read by [`Decls::read_height`] where the table takes one.
+            return match text::point_z(v) {
+                Some(Ok((p, _))) => Some(Place::At(p)),
                 Some(Err(e)) => {
                     self.push(text::num_diag(&e, top, id, &["at"]));
                     None
@@ -1871,6 +1896,28 @@ impl Decls {
             t: t_,
             offset,
         }))
+    }
+
+    /// The third number of `at` (`surfaces.md` 4.1, R65), where [`Decls::read_place`] read the
+    /// point; a fault in it was said there.
+    fn read_height(t: &Table) -> Option<Height> {
+        let z = text::point_z(t.value("at")?)?.ok()?.1?;
+        Some(Height {
+            z,
+            among: Vec::new(),
+        })
+    }
+
+    /// A height in `at` beside `surface` (`surfaces.md` 4.1): each already says the surface.
+    fn height_and_surface(&mut self, top: &str, id: &str) {
+        self.push(at_key(
+            codes::surface::PLACED_TWICE,
+            top,
+            id,
+            "surface",
+            &format!("`{top}.{id}` writes both a height in `at` and `surface`"),
+            "drop `surface`, or place it by `at` with two numbers",
+        ));
     }
 
     /// `t` and `offset` of an `on` table (`geometry.md` 2.6), `None` after a fault.
@@ -2179,6 +2226,12 @@ impl Decls {
                 }
             };
             let face = self.read_face("feature", id, t);
+            let surface = t.str("surface").map(str::to_string);
+            let height = Self::read_height(t);
+            if height.is_some() && surface.is_some() {
+                self.height_and_surface("feature", id);
+                continue;
+            }
             // `holds` and `route` (`derived.md` 2 and 3), each where it stands alone said first.
             let has_where = matches!(shape, ShapeDecl::Where(_));
             let is_path = matches!(shape, ShapeDecl::Path(_));
@@ -2381,7 +2434,8 @@ impl Decls {
                     smooth,
                     holds,
                     route,
-                    surface: t.str("surface").map(str::to_string),
+                    surface,
+                    height,
                 },
             );
         }
@@ -2541,6 +2595,12 @@ impl Decls {
                 continue;
             };
             let face = self.read_face("instance", id, t);
+            let surface = t.str("surface").map(str::to_string);
+            let height = Self::read_height(t);
+            if height.is_some() && surface.is_some() {
+                self.height_and_surface("instance", id);
+                continue;
+            }
             let Some(Ranged::Fixed(scale)) =
                 self.read_scale_tint("instance", id, t, "scale", false)
             else {
@@ -2635,7 +2695,8 @@ impl Decls {
                     margin,
                     rank: world.rank("instance", id).unwrap_or(0),
                     set,
-                    surface: t.str("surface").map(str::to_string),
+                    surface,
+                    height,
                 },
             );
         }
@@ -2995,6 +3056,8 @@ impl Decls {
                     face,
                     by,
                     rank: world.rank("pin", id).unwrap_or(0),
+                    height: Self::read_height(t),
+                    surface: None,
                 },
             );
         }

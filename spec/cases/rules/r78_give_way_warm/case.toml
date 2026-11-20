@@ -1,0 +1,45 @@
+format    = "via-case-1"
+summary   = "rules.md 7.5, graph.md 2 (scatter), warm: a scatter gives way to a run's members and a placed set's items, so its rule reads the run's statement and stretch and the set's; a run given more members and a set item moved each rebuild on the base's store as a clean build does."
+milestone = 3
+actions   = ["base", "more", "reset"]
+
+# The scatter's rule node read neither, so its value changed under one key: the next reader found
+# `rule:trees` not stable (`diag.internal`). Found while fixing R65's pin check, which reads it.
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.more]
+via         = ["build", "world.toml", "--change", "more", "--against", "build/base", "--out", "build/more"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/more"
+
+[action.more.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.more.check.row]
+fn     = "names_count"
+path   = "build/more/instances/names.txt"
+prefix = "row#"
+count  = 9
+
+[action.reset]
+via         = ["build", "world.toml", "--change", "reset", "--against", "build/base", "--out", "build/reset"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/reset"
+
+[action.reset.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.reset.check.item]
+fn    = "instance_at"
+build = "build/reset"
+name  = "pair_at.a"
+at    = [7, 55]

@@ -274,6 +274,188 @@ class Walls(unittest.TestCase):
         self.assertLessEqual(bottom[0][1], 3450 + 1)
         self.assertGreaterEqual(bottom[-1][0], 4550 - 1)
 
+    def test_a_corner_takes_its_reach_from_each_wall(self):
+        """Rule 6, corners: an outside corner that says `reach` shortens both its walls by it and
+        its box is `reach` square in the corner; without `reach` it is a post as thick as the wall."""
+        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        post = {"wall": {"id": "bay", "pitch": 3000, "thick": 300}, "corner": {"id": "post", "pitch": 300, "thick": 300}}
+        runs, insts, opens = L["wall_plan"](ring, ring, [], post, "b", "b_s0")
+        self.assertEqual(opens, [])
+        self.assertEqual(sorted(r["count"] for r in runs), [3, 3, 4, 4])
+        self.assertEqual(sorted(i["at"] for i in insts), [(150, 150), (150, 9450), (12450, 150), (12450, 9450)])
+        legged = dict(post, corner={"id": "ell", "pitch": 1800, "thick": 1800, "reach": 1800})
+        ring = [(0, 0), (15600, 0), (15600, 9600), (0, 9600)]          # 15.6 - 3.6 = 12 m, 9.6 - 3.6 = 6 m
+        runs, insts, opens = L["wall_plan"](ring, ring, [], legged, "b", "b_s0")
+        self.assertEqual(opens, [])
+        self.assertEqual(sorted(r["count"] for r in runs), [2, 2, 4, 4])
+        self.assertEqual(sorted(i["at"] for i in insts), [(900, 900), (900, 8700), (14700, 900), (14700, 8700)])
+
+    ELL = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]   # inside corner at (5100, 5100)
+    HALF = {"wall": {"id": "bay", "pitch": 3000, "thick": 300}, "filler": {"id": "half", "pitch": 1500, "thick": 300},
+            "corner": {"id": "post", "pitch": 300, "thick": 300}}
+
+    def test_an_ell_does_not_close_on_posts(self):
+        """With a post at every corner, the two sides at the inside corner hold their length less
+        one post, the others less two: 4.5 m sides hold 4.2 m and stay open, whatever the L."""
+        runs, insts, opens = L["wall_plan"](self.ELL, self.ELL, [], self.HALF, "b", "b_s0")
+        self.assertEqual(sorted(o["length"] for o in opens), [4200, 4200])
+        # the post still stands in the notch the two walls leave, as before
+        self.assertIn((4950, 4950), [i["at"] for i in insts])
+
+    def test_an_ell_closes_with_an_inside_corner(self):
+        """`role:corner_in` reaching 1.2 m: with the post's 0.3 m outside that is one half bay, so
+        every side of the L is whole pieces. It is placed by the middle of the notch, as the
+        post is: a point on the floor, where the middle of its own box is not."""
+        kit = dict(self.HALF, corner_in={"id": "inner", "pitch": 1500, "thick": 1500, "reach": 1200})
+        runs, insts, opens = L["wall_plan"](self.ELL, self.ELL, [], kit, "b", "b_s0")
+        self.assertEqual(opens, [])
+        inner = [i for i in insts if i["asset"] == "inner"]
+        self.assertEqual([(i["at"], i["face"]) for i in inner], [((4950, 4950), 90.0)])
+        self.assertEqual(len([i for i in insts if i["asset"] == "post"]), 5)
+        total = sum(L["edges"](self.ELL)[k]["L"] for k in range(6))
+        laid = sum((r["span"][1] - r["span"][0]) * total for r in runs)
+        # the outline less five posts on two walls each and the inside corner's two reaches
+        self.assertAlmostEqual(laid, total - 5 * 2 * 300 - 2 * 1200, delta=1)
+
+    def test_fillers_only_is_noted(self):
+        """A bay whose pitch fits no stretch: every wall closes in half bays, and each stretch a
+        bay or more long is noted."""
+        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        kit = dict(self.HALF, wall={"id": "bay", "pitch": 3200, "thick": 300})
+        notes = []
+        runs, _, opens = L["wall_plan"](ring, ring, [], kit, "b", "b_s0", notes=notes)
+        self.assertEqual(opens, [])
+        self.assertEqual({r["asset"] for r in runs}, {"half"})
+        self.assertEqual(sorted((n["code"], n["fillers"]) for n in notes),
+                         [("fillers_only", 6), ("fillers_only", 6), ("fillers_only", 8), ("fillers_only", 8)])
+        notes = []
+        L["wall_plan"](ring, ring, [], self.HALF, "b", "b_s0", notes=notes)
+        self.assertEqual(notes, [])
+
+    def test_a_gap_wider_than_its_door_is_noted(self):
+        """A door 1.6 m wide in a kit whose door piece is 1.5 m: the walls either side are cut back
+        to lengths that close and leave 4.5 m, 2.8 m more than the 1.7 m the door needs. The same
+        door at 1.4 m is left 1.5 m, its piece's width, and nothing is noted."""
+        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        kit = dict(self.HALF, door={"id": "frame", "pitch": 1500, "thick": 300, "width": 1500})
+        path = [(4050, -2000), (4050, 0)]
+        for width, want in ((1400, []), (1600, [("gap_wide", 4500, 1700)])):
+            notes = []
+            L["wall_plan"](ring, ring, [], kit, "b", "b_s0", [(path, width, ("door", "b_d0"))], notes=notes)
+            self.assertEqual([(n["code"], round(n["left"]), round(n["need"])) for n in notes], want)
+
+    def test_a_place_by_side_and_distance(self):
+        """`side` and `at` name the same place as the `t` that works out to it, and keep it when
+        another side grows; `t` does not."""
+        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        es = L["edges"](ring)
+        self.assertEqual(L["where"](es, {"side": 0, "at": 4.05}, "doors"), (0, 4050.0))
+        k, s = L["where"](es, {"t": 4.05 / 44.4}, "doors")
+        self.assertEqual(k, 0)
+        self.assertAlmostEqual(s, 4050, delta=0.01)
+        self.assertEqual(L["where"](es, {"side": 2, "at": 2.8}, "stair"), (2, 2800.0))
+        longer = L["edges"]([(0, 0), (13600, 0), (13600, 9600), (0, 9600)])
+        self.assertEqual(L["where"](longer, {"side": 0, "at": 4.05}, "doors"), (0, 4050.0))
+        self.assertAlmostEqual(L["where"](longer, {"t": 4.05 / 44.4}, "doors")[1], 4232.4, delta=0.1)
+        for bad in ({"side": 4, "at": 1}, {"side": 0, "at": 13}, {"side": 0}, {"side": 0, "at": 1, "t": 0.1}, {},
+                    {"side": 1.7, "at": 1}, {"side": -1, "at": 1}, {"side": True, "at": 1}, {"side": 0, "at": True},
+                    {"side": "0", "at": 1}, {"side": 0, "at": [1]}, {"side": 0, "at": float("nan")},
+                    {"t": "x"}, {"t": None}, {"t": True}):
+            with self.assertRaises(ParamError, msg=bad):
+                L["where"](es, bad, "doors")
+
+    def test_a_door_by_side_lays_the_same_house(self):
+        a = dict(ATTRS, doors=[{"storey": 0, "t": 0.4, "width": 1}])
+        b = dict(ATTRS, doors=[{"storey": 0, "side": 1, "at": 4.0, "width": 1}])    # 16 m along 40 m: 4 m up side 1
+        self.assertEqual(plan(a, kit=KIT), plan(b, kit=KIT))
+
+    def test_where_a_gap_would_close(self):
+        """A 1.5 m gap in 12 m of wall on a 1.5 m half bay: its middle may lie at 0.3 + 0.75 and
+        every 1.5 m on. A 1.7 m gap leaves 10.3 m, which no split closes."""
+        self.assertEqual(L["gap_places"](300, 12300, 1500, 3000, 1500, 4050), (4050, 5550))
+        self.assertEqual(L["gap_places"](300, 12300, 1500, 3000, 1500, 4500), (4050, 5550))
+        self.assertEqual(L["gap_places"](300, 12300, 1700, 3000, 1500, 4050), (None, None))
+        self.assertEqual(L["gap_places"](300, 1300, 1500, 3000, 1500, 800), (None, None))
+        ring = [(0, 0), (13600, 0), (13600, 9600), (0, 9600)]          # a metre off the module
+        kit = dict(self.HALF, door={"id": "frame", "pitch": 1500, "thick": 300, "width": 1500})
+        notes = []
+        L["wall_plan"](ring, ring, [], kit, "b", "b_s0", [([(4050, -2000), (4050, 0)], 1400, ("door", "b_d0"))],
+                       notes=notes)
+        (g,) = notes
+        self.assertEqual((g["code"], g["side"], g["places"]), ("gap_wide", 0, (None, None)))
+
+    def test_an_open_wall_beside_a_stairwell_says_so(self):
+        """A stair 2 m along its side and 4.5 m long leaves the storey above 0.7 m and 5.8 m of
+        wall either side of its stairwell: both open, both marked as ending at the stairwell. At
+        2.8 m and 5 m long both close."""
+        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        attrs = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": {"side": 2, "at": 2.0, "width": 1, "run": 4.5}}
+        out = L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)
+        self.assertEqual(sorted((o["length"], o["stairwell"]) for o in out["open"]), [(700, True), (5800, True)])
+        attrs["stair"] = {"side": 2, "at": 2.8, "width": 1, "run": 5}
+        self.assertEqual(L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)["open"], [])
+
+    def test_a_kit_number_that_is_no_length_is_said(self):
+        rows = [{"id": "bay", "tags": ["role:wall"], "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}},
+                {"id": "post", "tags": ["role:corner"], "bounds": [-150, -150, 0, 150, 150, 3000], "params": {}}]
+        self.assertEqual(L["kit_pieces"](rows)["corner"]["reach"], None)
+        for key, bad in (("reach", "wide"), ("reach", -1), ("reach", True), ("pitch", "3")):
+            broken = [dict(r, params=dict(r["params"], **{key: bad})) if r["id"] == "post" else r for r in rows]
+            with self.assertRaises(ParamError, msg=(key, bad)) as cm:
+                L["kit_pieces"](broken)
+            self.assertEqual(cm.exception.key, "kit")
+
+    def test_what_stands_at_an_inside_corner(self):
+        """With no inside corner piece a post stands in the notch and takes nothing, even where the
+        post says its own reach; a corner that is no post is not put in the notch, and the
+        corner with no piece is noted."""
+        post = dict(self.HALF, corner={"id": "post", "pitch": 300, "thick": 300, "reach": 300})
+        self.assertEqual(L["corner_of"](post, False, 300), (post["corner"], 0))
+        self.assertEqual(L["corner_of"](post, True, 300), (post["corner"], 300))
+        legged = dict(self.HALF, corner={"id": "ell", "pitch": 1800, "thick": 1800, "reach": 1800})
+        self.assertEqual(L["corner_of"](legged, False, 300), (None, 0))
+        notes = []
+        _, insts, _ = L["wall_plan"](self.ELL, self.ELL, [], legged, "b", "b_s0", notes=notes)
+        self.assertEqual(len(insts), 5)
+        self.assertEqual([(n["code"], n["outside"], n["at"]) for n in notes if n["code"] == "corner_none"],
+                         [("corner_none", False, (5100, 5100))])
+        bare = {k: v for k, v in self.HALF.items() if k != "corner"}
+        notes = []
+        L["wall_plan"](self.ELL, self.ELL, [], bare, "b", "b_s0", notes=notes)
+        self.assertEqual(sum(n["code"] == "corner_none" for n in notes), 6)
+
+    def test_a_side_shorter_than_its_corners(self):
+        """A 3 m side between two corners that take 1.8 m each: no wall, and the side is noted."""
+        ring = [(0, 0), (15600, 0), (15600, 3000), (0, 3000)]
+        kit = dict(self.HALF, corner={"id": "ell", "pitch": 1800, "thick": 1800, "reach": 1800})
+        notes = []
+        runs, _, opens = L["wall_plan"](ring, ring, [], kit, "b", "b_s0", notes=notes)
+        self.assertEqual(sorted((n["side"], n["length"], n["takes"]) for n in notes if n["code"] == "side_short"),
+                         [(1, 3000, 3600), (3, 3000, 3600)])
+        self.assertEqual(opens, [])
+        self.assertEqual(sorted(r["count"] for r in runs), [4, 4])
+
+    def test_a_door_in_a_corner_is_refused(self):
+        """A door whose 1.5 m opening would reach into the post at its side's start: refused, with
+        the stretch its middle may stand on (1.05 to 11.55 m of a 12.6 m side)."""
+        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        kit = dict(self.HALF, door={"id": "frame", "pitch": 1500, "thick": 300, "width": 1500})
+        attrs = {"storeys": 1, "storey_h": 3.0, "doors": [{"storey": 0, "side": 0, "at": 0.9, "width": 1.4}]}
+        with self.assertRaises(ParamError) as cm:
+            L["plan"]("hall", ring, attrs, 10.0, GRID, kit)
+        self.assertEqual(cm.exception.key, "doors")
+        self.assertIn("between 1.05 and 11.55 m", cm.exception.hint)
+        attrs["doors"][0]["at"] = 1.05
+        self.assertEqual(L["plan"]("hall", ring, attrs, 10.0, GRID, kit)["open"], [])
+
+    def test_an_open_wall_names_the_outline_side(self):
+        """On the storey above, the stairwell adds edges to the storey's outline; an open stretch
+        still says the building's side, the number `side` takes."""
+        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        attrs = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": {"side": 2, "at": 2.0, "width": 1, "run": 4.5}}
+        out = L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)
+        self.assertEqual({o["side"] for o in out["open"]}, {2})
+
     def test_wall_faces_out(self):
         out = plan(kit=KIT)
         faces = {r["key"].split("_w")[1]: r["face"] for r in out["runs"] if r["ref"] == "hall_s0"}

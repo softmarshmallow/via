@@ -93,7 +93,7 @@ The **Takes** column says what a key accepts:
 | Type | Accepts |
 |---|---|
 | `length` | A plan coordinate or plan distance in metres, at most three decimals, held as integer millimetres on the lattice (`numbers.md` 3.1). |
-| `point` | `[x, y]`, two lengths. |
+| `point` | `[x, y]`, two lengths. With a height, `[x, y, z]`: two lengths and a number, where a row says so (`at`). |
 | `number` | A finite double (`numbers.md` 3.3). |
 | `integer` | A TOML integer. |
 | `bool` | `true` or `false`. |
@@ -109,7 +109,8 @@ point of a field's grid, 4), a **window** (a rectangle of posts a field is evalu
 
 - Numbers are finite. TOML's `inf` and `nan` are rejected with a code (R26).
 - A length is metres with at most three decimals. More is an error, never rounded (R24: integer
-  millimetres in the core). Heights are not lengths: they are field values (`numbers.md` 3.1).
+  millimetres in the core). Heights are not lengths: they are field values (`numbers.md` 3.1), and
+  the third number of `at` is a number.
 - A formula is a string in our closed expression language (R6), always marked by a leading `=`:
   `base = "= 20 + 0.06 * y"`. A number is a constant formula. A key that takes a formula takes no
   other string; an unmarked string there is `formula.unmarked`. A parser knows a formula by its key;
@@ -237,7 +238,7 @@ placement of the head is ours; `authority.md` 4 is the source and this summary f
 | `[feature.<id>]` | table | Declares a feature. Its keys: 2.3. | geometry |
 | `kind` | name | Its kind. Without one it is a guide: a shape that does nothing, a line to measure from or an outline to plant in. | authority |
 | `authority` | string | `derived`, `shaped`, `anchored`. On a kind: its features' default, itself `derived` by default. On a feature: overrides its kind's. | authority |
-| `at` | point | A coordinate in the frame of the table it is in: the world's, or a set's for an item. Plan only: height comes from the surface beneath (`surfaces`). | geometry |
+| `at` | point, or point with a height | A coordinate in the frame of the table it is in: the world's, or a set's for an item. Plan only: height comes from the surface beneath (`surfaces`). On an instance, a pin and a point feature a third number, a height in metres, says which kind surface that is where one lies over another: the one whose height there is nearest (`surfaces.md` 4.1); it sets no height. | geometry |
 | `on` | inline table | A place on a named or selected thing: see Placement. | geometry |
 | `path` | list of points and names | A polyline. With `starts_at` / `ends_at`, every point other than the ends those give. An entry may name a place, as `starts_at` does (`derived.md` 3). | geometry |
 | `region` | list of points | A closed polygon. Read counter-clockwise; `t = 0` is its first written point. | geometry |
@@ -290,7 +291,7 @@ One grammar for features, instances, sets, rules and hand edits.
 | Key | Takes | Meaning | Chapter |
 |---|---|---|---|
 | `at` | | See Features. | geometry |
-| `surface` | name | On a placement by `at` (an instance, a set, a point feature) or a scatter (M5); not on a run, which is always `on` (`surfaces.md` 4.1): the kind surface, `<feature>.<surface>`, it stands on instead of the terrain. Not with `on` (`surface.placed_twice`). `surfaces.md` 4.1. | surfaces |
+| `surface` | name | On a placement by `at` (an instance, a set, a point feature) or a scatter (M5); not on a run, which is always `on` (`surfaces.md` 4.1): the kind surface, `<feature>.<surface>`, it stands on instead of the terrain. Not with `on`, nor with a height in `at` (`surface.placed_twice`). `surfaces.md` 4.1. | surfaces |
 | `on` | `{ ref, t, offset }` or `{ of, class, near, t, offset }` | On an authored thing by name (`ref`), or on a produced thing selected by a point near it (`of`). Never both (`identity.on_both`). Runs take `span` in place of `t`. Scatters take no `on`: they use `within`. | geometry |
 | `ref` | name | In `on`: the place name it is placed on (2.1): a feature, an instance, a mount, a path end, a set item, an import's place. Never a produced name (`identity.key_in_text`). | geometry |
 | `of` | name | In `on` or `within`: the maker selected from, by its id. | identity |

@@ -1,0 +1,65 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+# A height in `at` chooses the floor (surfaces.md 4.1): 13 is 300 mm from the upper floor and
+# 2700 mm from the lower.
+[instance.high]
+asset = "box"
+at    = [30, 26, 13]
+
+[pin.mark]
+asset = "box"
+at    = [24, 26, 12.9]
+
+[set.pair.item.a]
+asset = "box"
+at    = [-1, 0]
+[set.pair.item.b]
+asset = "box"
+at    = [1, 0]
+
+[instance.pairs]
+set = "pair"
+at  = [26, 23, 13.3]
+
+[feature.spot]
+kind = "marker"
+at   = [28, 25, 13.3]
+
+# The same plan point as `high`, on the other floor; two views that name the two.
+[change.low.instance.low]
+asset = "box"
+at    = [30, 26, 10.4]
+
+[change.low.feature.at_high]
+kind   = "sight"
+at     = [5, 5]
+toward = "high"
+
+[change.low.feature.at_low]
+kind   = "sight"
+at     = [5, 6]
+toward = "low"
+
+[change.raise.feature.hall_1]
+level = 14
+
+[change.far.feature.hall_1]
+level = 17

@@ -12,7 +12,7 @@ that `lay` lays: two storeys of a primitive kit, a door, a straight flight, thre
 | File | What |
 |---|---|
 | `world.toml` | Storeys, rooms, flights, doorways, footpaths; wall runs ending 1.1 m clear of each door and the step; dressing as sets, runs and hand instances with `surface`; the net loft, one `building` laid by `lib:building/lay.py`; the building check (`lib:building/check.py`, measuring each door's clear width). |
-| `pack.toml` (kit) | `kit_wall`, `kit_filler` (a 0.1 m slip), `kit_corner` under `structure/kit`, with `role:` tags and `params.pitch`, for `lay`. |
+| `pack.toml` (kit) | `kit_wall` (1 m), `kit_half` (0.5 m), `kit_corner`, `kit_lintel` (over the door) under `structure/kit`, with `role:` tags and `params.pitch`, for `lay`. The loft is sized to it: until K2 of `docs/plan-kits.md` a 0.1 m slip closed sides that were not, 46 of them. |
 | `pack.toml` | Primitives for the furniture and walls (the shipped packs have none); `*_top` ids lowered onto table tops. |
 | `layers/views.toml` | Bookmarks at each door and inside every room; one out of the front door, one down the step, two up the loft's flight. |
 | `changes/move_stair.toml` | `stair_2` and its stairwell 30 degrees on: both meetings hold, every room reached. |

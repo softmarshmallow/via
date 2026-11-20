@@ -88,6 +88,14 @@ impl Decls {
         self.runs.contains_key(m).then_some(m)
     }
 
+    /// The declared step whose returned document holds a produced name, `<step>#...`
+    /// (`protocol.md` 5, Names): its instances, its runs and their members alike. `None` for a
+    /// name the world's own text or another maker gave.
+    pub fn step_of<'n>(&self, name: &'n str) -> Option<&'n str> {
+        let (step, _) = name.split_once('#')?;
+        self.steps.contains_key(step).then_some(step)
+    }
+
     /// The layer rank of a placed name (`authority.md` 3): a hand instance's, or its set item's
     /// (`<instance>.<item>`); a run member's (`<run>#r<k>`, and its items) is its run's. 0 when it
     /// names neither.
@@ -999,6 +1007,10 @@ fn point_at(line: &Line, s: i64, off: i64) -> Option<(P, i64, P)> {
 /// A run's members give way (`rules.md` 3.4, 5): a member, or an item of it, whose solid
 /// footprint overlaps a solid hand instance of the run's layer or below is not placed, with its
 /// items; counted in one `place.gave_way` per run. Neighbours of one run are never tested.
+///
+/// A run in a step's returned document does not give way to an instance of that same step's
+/// document (3.4, R64): the step wrote both at once, so neither is the firmer. Their overlap is
+/// `place.crowded`, said with the checks ([`crate::rules::ground_and_check`]).
 pub(crate) fn runs_give_way(
     d: &Decls,
     pack: &crate::pack::Pack,
@@ -1025,12 +1037,14 @@ pub(crate) fn runs_give_way(
             continue;
         }
         let rank = d.runs[run].rank;
+        let own = d.step_of(run);
         let hit = hands.iter().any(|h| {
             let hrank = d
                 .instances
                 .get(h.name.split('.').next().unwrap_or(&h.name))
                 .map_or(0, |i| i.rank);
             hrank <= rank
+                && (own.is_none() || d.step_of(&h.name) != own)
                 && levels.clash(
                     &crate::surfaces::level(d, pack, p),
                     &p.footprint,

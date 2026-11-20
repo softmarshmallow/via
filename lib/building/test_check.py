@@ -200,6 +200,78 @@ class Profile(unittest.TestCase):
                {"id": "rock", "bounds": [-1000, -1000, 0, 1000, 1000, 1000], "params": {}}]
         self.assertEqual(codes(C["judge"]([], [], kit, P)), [("kit_pitch", "bay")])
 
+    PLAIN = [{"id": "wall", "taxon": "k", "tags": ["role:wall"], "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}},
+             {"id": "half", "taxon": "k", "tags": ["role:filler"], "bounds": [-750, -150, 0, 750, 150, 3000], "params": {"pitch": 1.5}},
+             {"id": "corner", "taxon": "k", "tags": ["role:corner"], "bounds": [-150, -150, 0, 150, 150, 3000], "params": {}},
+             {"id": "corner_in", "taxon": "k", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
+              "params": {"reach": 1.2}}]
+
+    def test_kit_corner(self):
+        """A post is as thick as the wall; an inside corner spans its reach along each wall from
+        the notch it is placed by. A post re-exported with a 0.6 m stub is 0.9 by 0.3 m and is
+        named; so is an inside corner with no reach said, or left on the default pivot."""
+        self.assertEqual(codes(C["judge"]([], [], self.PLAIN, P)), [])
+        stub = [dict(r, bounds=[-450, -150, 0, 450, 150, 3000]) if r["id"] == "corner" else r for r in self.PLAIN]
+        (rec,) = [r for r in C["judge"]([], [], stub, P) if r[1] == "kit_corner"]
+        self.assertEqual((rec[1], rec[2]), ("kit_corner", "corner"))
+        self.assertEqual(rec[5], {"asset": "corner", "plan": [0.9, 0.3], "reach": 0.3, "square": 0.3})
+        short = [dict(r, params={}) if r["id"] == "corner_in" else r for r in self.PLAIN]   # no reach said
+        self.assertIn(("kit_corner", "corner_in"), codes(C["judge"]([], [], short, P)))
+        centred = [dict(r, bounds=[-750, -750, 0, 750, 750, 3000]) if r["id"] == "corner_in" else r for r in self.PLAIN]
+        self.assertEqual(codes(C["judge"]([], [], centred, P)), [("kit_corner", "corner_in")])
+
+    def test_kit_height(self):
+        """A bay 3.3 m high stands 0.3 m into the storey above on a 3 m storey; one storey alone
+        has nothing above it, and a kit no building stacks is not judged."""
+        tall = [dict(r, bounds=r["bounds"][:5] + [3300]) if r["id"] == "wall" else r for r in self.PLAIN]
+
+        def building(storeys, kit="k"):
+            return {"name": "hall", "kind": "building", "ring": HALL, "path": HALL,
+                    "attrs": {"kit": kit, "storey_h": 3.0, "storeys": storeys}}
+        (rec,) = [r for r in C["judge"]([building(2)], [], tall, P) if r[1] == "kit_height"]
+        self.assertEqual((rec[1], rec[2]), ("kit_height", "wall"))
+        self.assertEqual(rec[5], {"asset": "wall", "height": 3.3, "storey_h": 3.0, "buildings": ["hall"]})
+        self.assertEqual(codes(C["judge"]([building(1)], [], tall, P)), [("kit_uneven", "wall")])
+        self.assertEqual(codes(C["judge"]([building(2, "other")], [], tall, P)), [("kit_uneven", "wall")])
+        self.assertEqual(codes(C["judge"]([building(2)], [], self.PLAIN, P)), [])
+
+    def test_the_kit_against_itself(self):
+        """The plain kit passes. Without its inside corner an L cannot close, and the check says
+        what reach would. A 3.2 m bay beside a 1.5 m half bay shares no module; a 0.1 m slip in a
+        0.3 m wall is a patch; a bay 3.3 m high among 3 m pieces is uneven."""
+        kit = self.PLAIN
+        half = next(r for r in kit if r["id"] == "half")
+        self.assertEqual(codes(C["judge"]([], [], kit, P)), [])
+        posts = [r for r in kit if r["id"] != "corner_in"]
+        ell = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
+
+        def building(ring):
+            return {"name": "annex", "kind": "building", "ring": ring, "path": ring,
+                    "attrs": {"kit": "k", "storey_h": 3.0, "storeys": 1}}
+        self.assertEqual(codes(C["judge"]([building(HALL)], [], posts, P)), [])     # a rectangle is not told
+        for ring in (ell, ell[::-1]):                                                # however it winds
+            (rec,) = [r for r in C["judge"]([building(ring)], [], posts, P) if r[0] != "info"]
+            self.assertEqual((rec[1], rec[2]), ("kit_ell", "corner"))
+            self.assertEqual(rec[5], {"taxon": "k", "outside": 0.3, "inside": 0.0, "module": 1.5, "reach": 1.2,
+                                      "buildings": ["annex"]})
+        self.assertEqual(codes(C["judge"]([building(ell)], [], kit, P)), [])
+        wide = [dict(r, bounds=[-1600, -150, 0, 1600, 150, 3000], params={"pitch": 3.2}) if r["id"] == "wall" else r
+                for r in kit]
+        self.assertEqual(codes(C["judge"]([], [], wide, P)), [("kit_module", "wall")])
+        slip = [dict(half, bounds=[-50, -150, 0, 50, 150, 3000], params={"pitch": 0.1}) if r["id"] == "half" else r
+                for r in kit]
+        self.assertIn(("kit_slip", "half"), codes(C["judge"]([], [], slip, P)))
+        tall = [dict(r, bounds=r["bounds"][:5] + [3300]) if r["id"] == "wall" else r for r in kit]
+        (rec,) = [r for r in C["judge"]([], [], tall, P) if r[0] != "info"]
+        self.assertEqual((rec[1], rec[5]["measure"]), ("kit_uneven", "high"))
+
+    def test_a_param_that_is_no_length_is_left_to_lay(self):
+        """`reach = "wide"` or `pitch = true` raises nothing here: `lay` says it when it reads the
+        kit, and this check reads the piece as if it said none."""
+        for key, bad in (("reach", "wide"), ("reach", True), ("pitch", "3"), ("pitch", -2)):
+            kit = [dict(r, params=dict(r["params"], **{key: bad})) for r in self.PLAIN]
+            C["judge"]([], [], kit, P)
+
     def test_params(self):
         for bad in ({"riser": 1}, {"going_min": 0}, {"kits": "a"}):
             with self.assertRaises(C["ParamError"]):

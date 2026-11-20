@@ -192,10 +192,15 @@ ends_at = "back_door.start"
 
 [feature.net_loft]
 kind     = "building"
-region   = [[44, 40], [54.6, 40], [54.6, 46.5], [44, 46.5]]   # counter-clockwise from the south-west
+# Sized to its kit (pack.toml: a 1 m bay, a 0.5 m half bay, posts 0.3 m): each side is whole half
+# bays and 0.6 m of posts, 10.6 by 6.6 m. The door's middle is 1.55 m along the south side, so the
+# wall either side of its 1.5 m opening is whole half bays. The stair starts 1.8 m along the north
+# side: the storey above leaves out its stairwell from 0.8 m to 6.8 m, a half bay and 3.5 m of wall
+# either side.
+region   = [[44, 40], [54.6, 40], [54.6, 46.6], [44, 46.6]]   # counter-clockwise from the south-west
 storeys  = 2
-doors    = [{ storey = 0, t = 0.04386, width = 1 }]    # x = 45.5, west of the rooms' cut
-stair    = { t = 0.526316, width = 1, run = 5 }       # 0.9 m along the north wall from its corner
+doors    = [{ storey = 0, side = 0, at = 1.55, width = 1.4 }]   # x = 45.55, west of the rooms' cut
+stair    = { side = 2, at = 1.8, width = 1, run = 5 }           # from x = 52.8 west to x = 47.8
 rooms    = [{ storey = 0, shares = [1, 2] }, { storey = 1, shares = [1] }]   # cut at x = 47.53, clear of the flight
 kit      = "structure/kit"
 
@@ -206,6 +211,7 @@ when     = "generate"
 worker   = true
 for_each = "kind:building"
 command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+params   = { inner_door = 1.0 }               # the opening between the loft's rooms: two half bays
 
 [step.check]                                  # lib/building's lint: reach between surfaces and rooms,
 when    = "lint"                              # and the clear width at each door between the pack's

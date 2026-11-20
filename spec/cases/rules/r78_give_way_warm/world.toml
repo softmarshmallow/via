@@ -1,0 +1,42 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 10
+
+# A scatter over everything: it gives way to the run's members and to the set's items
+# (rules.md 7.5), neither of which has a node of its own.
+[scatter.trees]
+assets  = ["tree_oak"]
+spacing = 4
+jitter  = 0
+density = 1
+
+[feature.line]
+path = [[10, 30], [50, 30]]
+
+[run.row]
+asset = "box_small"
+on    = { ref = "line" }
+count = 5
+
+[set.pair.item.a]
+asset = "box_small"
+at    = [-2, 0]
+
+[set.pair.item.b]
+asset = "box_small"
+at    = [2, 0]
+
+[instance.pair_at]
+set = "pair"
+at  = [12, 52]
+
+[change.more.run.row]
+count = 9
+
+[change.reset.set.pair.item.a]
+at = [-5, 3]

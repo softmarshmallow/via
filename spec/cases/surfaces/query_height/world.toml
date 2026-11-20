@@ -1,0 +1,27 @@
+name       = "loft"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[step.make]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]
+
+# Each on the floor the step returns, by its height (surfaces.md 4.1): text cannot name it.
+[instance.desk]
+asset = "box"
+at    = [30, 26, 13.3]
+
+[pin.mark]
+asset = "box"
+at    = [24, 26, 13.3]
+
+[feature.spot]
+kind = "marker"
+at   = [28, 25, 13.3]

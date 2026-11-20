@@ -1,0 +1,8 @@
+# The same swap one storey up: a window bay pinned where a bay of the hall's upper south wall is
+# centred (section 11 of the report). The third number of `at` is the upper floor's height
+# (13.3 m), so the pin stands on that floor and removes the one bay it overlaps there; the wall
+# under it, on the ground floor, is left as it is (identity.md 4.2, surfaces.md 4.1).
+[pin.south_window_up]
+asset = "wall_window"
+at    = [14.8, 10.15, 13.3]
+face  = 180

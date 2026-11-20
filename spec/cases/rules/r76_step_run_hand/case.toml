@@ -1,0 +1,74 @@
+format    = "via-case-1"
+summary   = "rules.md 3.4, 8.1 (R64, what did not change): a step's run still gives way to the world's hand instance (make#row#r1 under crate), and the world's run to a step's instance (fence#r2 under make#stone); one place.gave_way each, no place.crowded."
+milestone = 5
+actions   = ["program", "trust", "build"]
+
+# `make` returns the run of r75 and an instance `stone` away from it, at [41.4, 48]. The world
+# writes `crate` 0.4 m east of the run's second member, and its own run `fence` with a member at
+# [42, 48], under the stone.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.step_run]
+code    = "place.gave_way"
+subject = 'run."make#row"'
+data    = { overlap = 1 }
+
+[action.build.diag.world_run]
+code    = "place.gave_way"
+subject = "run.fence"
+data    = { overlap = 1 }
+
+[action.build.diag.no_crowded]
+code    = "place.crowded"
+records = 0
+
+[action.build.check.gone]
+fn     = "instance_at"
+build  = "build/w"
+name   = "make#row#r1"
+at     = [6, 32]
+absent = true
+
+[action.build.check.crate]
+fn    = "instance_at"
+build = "build/w"
+name  = "crate"
+at    = [6.4, 32]
+
+[action.build.check.row]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "make#row#"
+count  = 3
+
+[action.build.check.fence_gone]
+fn     = "instance_at"
+build  = "build/w"
+name   = "fence#r2"
+at     = [42, 48]
+absent = true
+
+[action.build.check.fence]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "fence#"
+count  = 3
+
+[action.build.check.stone]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#stone"
+at    = [41.4, 48]

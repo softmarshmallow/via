@@ -1,0 +1,25 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+# 13.3 is the upper floor's height, and that floor lies in the layer above: references reach
+# down only (surfaces.md 4.1), so the desk chooses among the floors of its own layer.
+[instance.desk]
+asset = "box"
+at    = [30, 26, 13.3]
+
+[layer.top]
+file  = "top.toml"
+owner = "tests"
+rank  = 1
