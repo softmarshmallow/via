@@ -1562,6 +1562,7 @@ impl<'a> View<'a> {
                     "collision",
                     "primitive",
                     "params",
+                    "shared",
                 ]
                 .into_iter()
                 .map(str::to_string),
@@ -1651,6 +1652,17 @@ impl<'a> View<'a> {
                         .iter()
                         .map(|a| {
                             a.params
+                                .as_ref()
+                                .and_then(|t| serde_json::to_value(t).ok())
+                                .map_or_else(String::new, |v| v.to_string())
+                        })
+                        .collect(),
+                )),
+                "shared" => Shaped::flat(Column::Str(
+                    assets
+                        .iter()
+                        .map(|a| {
+                            a.shared
                                 .as_ref()
                                 .and_then(|t| serde_json::to_value(t).ok())
                                 .map_or_else(String::new, |v| v.to_string())

@@ -1,0 +1,8 @@
+# `shared` on an asset: refused. It is never one asset's (assets.md 2.5).
+[taxon."kit/plain"]
+
+[asset.bay]
+primitive = "box"
+size      = [3, 0.3, 3]
+taxon     = "kit/plain"
+shared    = { module = 3.0 }

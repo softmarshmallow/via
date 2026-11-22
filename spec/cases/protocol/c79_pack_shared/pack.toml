@@ -1,0 +1,30 @@
+# A kit is a taxon's assets, and says once what they share (assets.md 2.5, R66).
+[taxon."kit/plain"]
+defaults = { shared = { module = 3.0, wall = 0.3, storeys = ["ground", "upper"] } }
+
+[taxon."kit/plain/tall"]         # the nearest one is taken whole: no `wall` here
+defaults = { shared = { module = 4.0 } }
+
+[taxon."prop"]
+
+[asset.bay]
+primitive = "box"
+size      = [3, 0.3, 3]
+taxon     = "kit/plain"
+params    = { pitch = 3.0 }
+colour    = [0.5, 0.5, 0.5]
+
+[asset.post]
+primitive = "box"
+size      = [0.3, 0.3, 3]
+taxon     = "kit/plain"
+
+[asset.tall_bay]
+primitive = "box"
+size      = [4, 0.3, 4]
+taxon     = "kit/plain/tall"
+
+[asset.crate]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "prop"

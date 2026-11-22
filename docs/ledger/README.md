@@ -130,7 +130,7 @@ loader, or whose Tool mark is not "nothing".
 |---|---|---|---|---|---|
 | Field | 39 | 37 | 13 | 5 | 19 |
 | Shape | 10 | 10 | 3 | 2 | 5 |
-| Asset | 51 | 47 | 12 | 7 | 28 |
+| Asset | 51 | 47 | 13 | 6 | 28 |
 | Derivation | 49 | 47 | 10 | 9 | 28 |
 | Simulation | 17 | 17 | 4 | 1 | 12 |
 | Profile | 35 | 35 | 14 | 11 | 10 |
@@ -152,7 +152,7 @@ loader, or whose Tool mark is not "nothing".
 | Practice | 34 | 24 | 5 | 3 | 16 |
 | Principle | 15 | 14 | 7 | 5 | 2 |
 | - | 1 | 1 | 0 | 0 | 1 |
-| **All** | **865** | **683** | **156** | **144** | **383** |
+| **All** | **865** | **683** | **157** | **143** | **383** |
 
 By class: Derivation (focal) 10, Derivation (global) 17, Derivation (local) 22, Network (directed) 10, Network (undirected) 14.
 

@@ -729,6 +729,11 @@ takes = "table"
 chapter = "assets"
 sections = ["Pack"]
 
+[key."shared"]
+takes = "table"
+chapter = "assets"
+sections = ["Pack"]
+
 [key."[asset.<id>]"]
 takes = "table"
 chapter = "assets"

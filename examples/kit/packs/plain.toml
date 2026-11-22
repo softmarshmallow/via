@@ -4,13 +4,28 @@
 # Every model is glTF's convention: +Y up, front +Z, origin at the base centre (packgen's), so
 # front, up and pivot take their defaults. lib/building's `lay` reads a piece's part in a wall from
 # its `role:` tag, the length it repeats at from `params.pitch`, and the wall's thickness from the
-# wall bay's measured bounds. Every piece is 0.3 m thick and 3 m high: one storey.
+# kit's `shared.wall`. Every piece is 0.3 m thick and 3 m high: one storey.
 
 root = "plain"
 
-[taxon."structure/plain"]
 [taxon."structure"]
 defaults = { collision = "box" }
+
+# What the kit's pieces share, stated once (spec/assets.md 2.5; lib/building/lay.py rule 11):
+# `lay` lays by these, and `check` holds every piece to them (`kit_stated`).
+[taxon."structure/plain".defaults.shared]
+module = 3.0                     # the bay: a side is whole bays and half bays between its corners
+wall   = 0.3                     # every wall piece's thickness
+storey = [3.0, 4.0]              # the wall pieces' heights: a storey, and the taller ground storey's
+door   = 1.4                     # the doorway the door piece is made for
+
+# The kit's stair, sized to its floor tile (1.5 m): a lane one tile deep, and a landing and a run
+# of whole tiles, so a stairwell is whole tiles however many storeys climb it.
+[taxon."structure/plain".defaults.shared.stair]
+lane    = 1.5
+width   = 1.3
+run     = 4.5
+landing = 1.5
 
 # The bay: 3 m of wall, the module.
 [asset.wall]

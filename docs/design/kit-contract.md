@@ -68,6 +68,44 @@ filed together as a kit must state once what they share, and a rule must lay by 
 taxon is to carry those facts; it does not yet, and this table is still how they are read. Owed
 at K6, with the second kit.
 
+## What a kit states
+
+A kit is a taxon's pieces, and what they share is written once, in that taxon's `defaults.shared`
+(`spec/assets.md` 2.5; R66; Asset law 5 of `docs/ledger/archetypes.md`). The core reads it for
+nothing and hands it to a step with each piece (`pack.query`, column `shared`). No asset may
+write its own.
+
+```toml
+[taxon."structure/plain".defaults.shared]
+module = 3.0                     # the bay
+wall   = 0.3                     # every wall piece's thickness
+storey = [3.0, 4.0]              # the wall pieces' heights
+door   = 1.4                     # the doorway the door piece is made for
+
+[taxon."structure/plain".defaults.shared.stair]
+lane    = 1.5                    # how deep one lane of the stairwell is
+width   = 1.3
+run     = 4.5
+landing = 1.5
+```
+
+| Key | What lib/building does with it |
+|---|---|
+| `wall` | It is the wall's thickness in every rule, in place of the bay's measured box. |
+| `stair` | `width` and `run` are a building's stair's where it writes none; `landing` and `lane` size the stairwell. A lane, a landing and a run of whole floor tiles give stairwells of whole tiles on every storey. |
+| `door` | A door that writes no `width` takes it. |
+| `module`, `storey` | Not laid by: a stretch closes by its pieces' pitches and a storey's height is the building's. `check` holds the pieces to them. |
+
+Every key is optional. What one piece alone takes of a layout stays on the piece (`params.pitch`,
+`reach`, `span`: R69). `check` holds each piece to what its kit states (`kit_stated`: a wall piece
+of another thickness, a bay of another module, a piece of none of the stated storeys), and a kit
+that states nothing is told once (`kit_unstated`, info) with what was worked out of its bay and
+the line that would state it. Such a kit is still laid, by its pieces, as before.
+
+Before this the plain kit's own author stated its storey wrongly at the first try (3 m, where the
+kit also has 4 m ground-storey pieces), and `kit_stated` named the three pieces: the statement and
+the pieces check each other.
+
 ## Two readers
 
 `lib/building/lay.py` lays the walls of a building round its outline. `lib/town/kit.py` lays a row
@@ -124,9 +162,10 @@ another side grows.
   valley must be whole pieces from the inside corner, and the walls there are whole pieces from
   1.5 m off it, so a wing that closes its walls cannot close its roof: the roof needs a reach of
   its own at a valley.
-- **The stair as part of the kit.** Its lanes, clearances and landing are the library's numbers,
-  not the kit's, so a stairwell is whole floor tiles only where a world sizes the stair by hand,
-  and the second stairwell of a three-storey building (two lanes deep) is not.
+- **The kit's facts in lib/town.** lib/building lays by what a kit states (below); lib/town's
+  rows of pieces along a street still read each piece's pitch alone and state nothing of a kit.
+- **A storey's height taken from the kit.** A building still writes `storey_h`; the kit's
+  `storey` only holds the pieces to it.
 - **A wall's free end and a T-junction of walls** have no role.
 - **Sockets between two kits** (a door size shared across kits, a glue kit, a plug for a hole):
   K9. The core has typed connectors (`spec/assets.md` 2.7); no library kit uses one.

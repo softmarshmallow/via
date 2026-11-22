@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0); K5 follows them. Next: K6. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6's first step, the kit stating what its pieces share, follows them. Next: K6's city block. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -96,6 +96,10 @@ Changed so far:
   failed after a floor's height changed in a layered world), which is mended; seven faults older
   than it, of which two are mended and five filed; and nine untested branches, now held by six
   new cases and one more action (`TODO.md`, `spec/graph.md`).
+- **K6, first step, 2026-11-23.** R66's mechanism is built before the second kit, not with it:
+  the second kit should be written against a contract that already has a place for its facts.
+  A taxon's `defaults.shared` in the pack, read by lib/building (`wall`, `stair`, `door` laid
+  by; `module`, `storey` checked). It is its own commit, since it changes the pack format.
 
 Checks before each commit: the library's tests, `cargo run -p xtask -- check`, and, where a crate
 changed, `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace` and the

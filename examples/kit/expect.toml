@@ -16,7 +16,10 @@
 # again on 2026-11-23 with K4, when the wall over the hall's stairwell first stood: `open` fell
 # by one and `open_sum_mm` by 6000 in every build, and the hall gained a bay's worth of pieces.
 # K5 moved six rows, measured the same day: `stub` names all twelve overlaps again, and a
-# variant renames no bay. A band is the measured number: not a target, it says where someone looks. The same builds
+# variant renames no bay. K6's first step (the kit states what its pieces share, R66; release
+# `via` of the working tree after 660ec5b) moved nine, measured the same day: `tower`'s floors
+# close, `slab_off` and `stair_off` leave 2.25 m2 open, and `module`, `tall` and `window_module`
+# each gain the warning that names the re-exported bay against the kit's own statement. A band is the measured number: not a target, it says where someone looks. The same builds
 # before any mend, and after the library's first mends, are in README.md, "The record".
 
 # ------------------------------------------------------------------------------------------ base
@@ -180,7 +183,8 @@ band    = [300, 300]
 
 # ------------------------------------------------------------------------------------------ module
 # The bay on a 3.2 m module. Every wall is re-fitted with half bays; each building says so
-# (fillers_only) and the kit says why (kit_module).
+# (fillers_only) and the kit says why (kit_module, and since K6 kit_stated: the bay takes 3.2 m
+# where the kit states a module of 3 m).
 
 [module.errors]
 measure = "errors"
@@ -188,7 +192,7 @@ band    = [0, 0]
 
 [module.warnings]
 measure = "warnings"
-band    = [5, 5]
+band    = [6, 6]
 
 # The bay changed pitch, so its two variants are no longer its size: each is told.
 [module.kit_variant]
@@ -280,7 +284,8 @@ band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ tall
 # The bay 0.3 m taller than a storey. The revision, the clash with the storey above
-# (kit_height) and the uneven kit (kit_uneven) are each named.
+# (kit_height) and the uneven kit (kit_uneven) are each named, and since K6 the bay against the
+# storeys the kit states (kit_stated: 3.3 m where it states 3 or 4 m).
 
 [tall.errors]
 measure = "errors"
@@ -288,7 +293,7 @@ band    = [0, 0]
 
 [tall.warnings]
 measure = "warnings"
-band    = [5, 5]
+band    = [6, 6]
 
 # The bay changed height, so its two variants are no longer its size: each is told.
 [tall.kit_variant]
@@ -558,7 +563,9 @@ band    = [1500, 1500]
 # The stair as it was first written, off the module. Before K4 the storey above had 0.7 m and
 # 5.8 m of wall either side of the stairwell, both open (2 `wall_open`, 12 m open with the
 # stairwell). The wall now stands over the stairwell on its footing and closes wherever the stair
-# is. The floor is what still minds: the stairwell is not whole tiles.
+# is. The floor is what still minds: the stairwell is not whole tiles. Since K6 the kit states
+# its stair's lane, so the stairwell is one tile deep whatever the stair's width (4.65 m2 stood
+# open before); it starts and ends between tiles, and 2.25 m2 is open.
 
 [stair_off.errors]
 measure = "errors"
@@ -574,7 +581,7 @@ band    = [1, 1]
 
 [stair_off.slab_open_dm2]
 measure = "slab_open_dm2"
-band    = [465, 465]
+band    = [225, 225]
 
 [stair_off.wall_open]
 measure = "wall_open"
@@ -602,7 +609,7 @@ band    = [0, 0]
 
 [window_module.warnings]
 measure = "warnings"
-band    = [5, 5]
+band    = [6, 6]
 
 # The bay changed pitch, so its two variants are no longer its size: each is told.
 [window_module.kit_variant]
@@ -844,8 +851,10 @@ band    = [0, 0]
 # The ground storey takes the kit's 4 m pieces, the two above the 3 m ones. Two flights, so two
 # stairwells: the wall over each stands on a footing and every side closes (15 m stood open in
 # this building on the tree before K4, and `ground_h` was no key). The roof covers the outline
-# once. The second stairwell, two lanes deep (2.9 m inside the wall), is not whole floor tiles:
-# said once, 5.25 m2 of floor open beside it.
+# once. Before K6 the second stairwell, two lanes deep (2.9 m inside the wall, from 1 m along it),
+# was not whole floor tiles: 5.25 m2 of floor open beside it, said once. The lanes and the landing
+# were the library's numbers. Since K6 they are the kit's, one tile each, and both stairwells are
+# whole tiles: nothing open, no warning.
 
 [tower.errors]
 measure = "errors"
@@ -853,7 +862,7 @@ band    = [0, 0]
 
 [tower.warnings]
 measure = "warnings"
-band    = [1, 1]
+band    = [0, 0]
 
 [tower.pieces]
 measure = "pieces"
@@ -941,11 +950,11 @@ band    = [0, 0]
 
 [tower.slab_open]
 measure = "slab_open"
-band    = [1, 1]
+band    = [0, 0]
 
 [tower.slab_open_dm2]
 measure = "slab_open_dm2"
-band    = [525, 525]
+band    = [0, 0]
 
 [tower.slab_double_dm2]
 measure = "slab_double_dm2"
@@ -1121,9 +1130,11 @@ measure = "overlaps"
 band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ slab_off
-# A stairwell off the floor's module (K4): the hall's stair 1 m wide, so its stairwell is 1.2 m
-# deep inside the wall where a tile is 1.5 m. The walls close as in the base. The four tiles
-# beside the stairwell are not laid: 1.8 m2 of floor open, said once with the width that closes.
+# A stairwell off the floor's grid. At K4 this was the hall's stair 1 m wide, its stairwell 1.2 m
+# deep where a tile is 1.5 m: 1.8 m2 open. Since K6 the lane is the kit's, a tile deep whatever
+# the width, so the change moves the stair half a metre along instead: the stairwell starts and
+# ends between tiles. The walls close as in the base. The tiles beside the stairwell are not laid:
+# 2.25 m2 of floor open, said once.
 
 [slab_off.errors]
 measure = "errors"
@@ -1139,7 +1150,7 @@ band    = [1, 1]
 
 [slab_off.slab_open_dm2]
 measure = "slab_open_dm2"
-band    = [180, 180]
+band    = [225, 225]
 
 [slab_off.slab_double_dm2]
 measure = "slab_double_dm2"
@@ -1147,7 +1158,7 @@ band    = [0, 0]
 
 [slab_off.floor]
 measure = "floor"
-band    = [128, 128]
+band    = [127, 127]
 
 [slab_off.open]
 measure = "open"

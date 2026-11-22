@@ -194,6 +194,24 @@ The rules (ours, written for this library; README.md is the design note):
    reason, and the flat roof is laid in its place where the kit has a floor tile. Source: ours;
    the research found no developer's account of roofs from pieces (docs/research/Modular kit
    failures in studios.md, section 9).
+11. **What a kit states.** A kit is a taxon's pieces, and what they share it says once: the
+   `shared` table in that taxon's `defaults` (spec/assets.md 2.5; R66 of docs/doctrine.md; Asset
+   law 5 of docs/ledger/archetypes.md). `lay` reads five of its keys, each optional: `wall`, the
+   walls' thickness, which is then `T` in every rule above in place of the bay's measured box;
+   `stair = { lane, width, run, landing }`, the kit's stair: `width` and `run` are a building's
+   stair's where it writes none, `landing` replaces `LANDING`, and `lane` is how deep one lane
+   is (lane 0's centre is `T + lane / 2` in and its stairwell `lane` deep, lane 1 one `lane`
+   further), in place of the width and `CLEAR` each side, so a kit whose lane is whole floor
+   tiles gets stairwells that are; `door`, the width of the doorway its door piece is made for,
+   which a door that writes no `width` takes; `module` and `storey` (one height or a list),
+   which `lay` does not lay by (a stretch closes by its pieces' pitches, a storey's height is
+   the building's) and `check` holds the pieces to (`kit_stated`). What a piece alone takes of a
+   layout stays on the piece: `params.pitch`, `reach`, `span` (R69). A kit that states nothing
+   is laid by its pieces as before, and `check` says so once (`kit_unstated`, info). Two
+   `shared` tables among a kit's rows, a key not in this list or a value that is no length
+   above 0 is `params` (error). Source: the studios' accounts of a kit as a system and not a
+   list of assets, and of the metrics written down before the first piece (docs/research/
+   Modular kit failures in studios.md, sections 1 and 2).
 
 `params` of the step: `inner_door` (0.9 m), `margin` (0.1 m). Codes are `step.<id>.<code>`: `params` (error, the
 building's attribute or a kit piece's param), `wall_open`, `side_short`, `corner_none`,
@@ -567,33 +585,49 @@ def posts_in(ring, grid):
 # --- stair ------------------------------------------------------------------------------------
 
 
-def stair_plan(ring, stair, storeys, wall_t=0):
+def stair_plan(ring, stair, storeys, wall_t=0, stated=None):
     """Flights and stairwells (rule 3). Returns {flights: [(path mm, lower, upper)], notches:
-    {storey: (edge, a, b, depth)}} with `a`, `b` mm along the edge."""
+    {storey: (edge, a, b, depth)}} with `a`, `b` mm along the edge, and the flights' `width` (mm).
+    `stated` is the kit's stair (`kit_shared`, rule 11): its `width` and `run` are the building's
+    where the building writes none, its `landing` replaces `LANDING`, and its `lane` is how deep
+    one lane is, in place of the width and `CLEAR` each side."""
     if storeys < 2:
         return {"flights": [], "notches": {}, "edge": None}
     if stair is None:
         raise ParamError("stair", f"a building of {storeys} storeys has no `stair`",
                          "write `stair = { side, at, width, run }`: where along the outline the flights climb")
+    stated = stated or {}
     es = edges(ring)
     k, s0 = where(es, stair, "stair")
     e = es[k]
-    w = int(round(float(stair.get("width", 1)) * 1000))
-    run = int(round(float(stair["run"]) * 1000))
+    w = int(round(float(stair["width"]) * 1000)) if "width" in stair else stated.get("width", 1000)
+    if "run" not in stair and "run" not in stated:
+        raise ParamError("stair", "the stair has no `run`, and the kit states none",
+                         "write `run`, the metres the flight climbs along the wall")
+    run = int(round(float(stair["run"]) * 1000)) if "run" in stair else stated["run"]
+    landing = stated.get("landing", LANDING)
     s1 = s0 + run
     if w <= 0 or run <= 0 or s1 > e["L"] + 1e-6:
         raise ParamError("stair", f"the stair runs {run / 1000:g} m from {s0 / 1000:g} m along an edge "
                          f"{e['L'] / 1000:g} m long", "move it or shorten `run` so the flight stays on one edge")
-    lane = [wall_t + CLEAR + w / 2, wall_t + CLEAR + w / 2 + (w + CLEAR)]
-    depth = [wall_t + w + 2 * CLEAR, wall_t + 2 * w + 3 * CLEAR]
+    if stated.get("lane"):
+        deep = stated["lane"]
+        if w > deep:
+            raise ParamError("stair", f"the stair is {w / 1000:g} m wide and the kit's lane is {deep / 1000:g} m",
+                             f"write a `width` of {deep / 1000:g} m or less, or leave it out for the kit's")
+        lane = [wall_t + deep / 2, wall_t + 1.5 * deep]
+        depth = [wall_t + deep, wall_t + 2 * deep]
+    else:
+        lane = [wall_t + CLEAR + w / 2, wall_t + CLEAR + w / 2 + (w + CLEAR)]
+        depth = [wall_t + w + 2 * CLEAR, wall_t + 2 * w + 3 * CLEAR]
     flights, notches = [], {}
     for f in range(storeys - 1):
         if f % 2 == 0:
             path = [rnd(local(e, s0, lane[0])), rnd(local(e, s1, lane[0]))]
-            notch = (k, max(0.0, s0 - LANDING), s1, depth[0])
+            notch = (k, max(0.0, s0 - landing), s1, depth[0])
         else:
             path = [rnd(local(e, s1, lane[1])), rnd(local(e, s0, lane[1]))]
-            notch = (k, s0, min(e["L"], s1 + LANDING), depth[1])
+            notch = (k, s0, min(e["L"], s1 + landing), depth[1])
         flights.append((path, f, f + 1))
         notches[f + 1] = notch
         # A stairwell that stops short of a corner leaves a stub of wall there; under STUB_MIN no
@@ -607,7 +641,8 @@ def stair_plan(ring, stair, storeys, wall_t=0):
                                  f"{side}: too short a wall to build there",
                                  f"move the stair (or change its `run`) so the stairwell reaches that corner or stops "
                                  f"at least {STUB_MIN / 1000:g} m from it")
-    return {"flights": flights, "notches": notches, "edge": k, "span": (s0, s1)}
+    return {"flights": flights, "notches": notches, "edge": k, "span": (s0, s1), "width": w,
+            "lane": stated.get("lane")}
 
 
 def notch_ring(ring, notch):
@@ -652,13 +687,14 @@ def notch_ring(ring, notch):
 # --- doors ------------------------------------------------------------------------------------
 
 
-def door_plan(ring, door, porch, walk_out):
+def door_plan(ring, door, porch, walk_out, stated=None):
     """A doorway path (outside to the outline), a footpath (further out, ending at the doorway's
-    start), the edge and the interval along it the door opens (rule 4)."""
+    start), the edge and the interval along it the door opens (rule 4). A door that writes no
+    `width` takes `stated` (mm), the kit's (rule 11), else 1 m."""
     es = edges(ring)
     k, s = where(es, door, "doors")
     e = es[k]
-    w = int(round(float(door.get("width", 1)) * 1000))
+    w = int(round(float(door["width"]) * 1000)) if "width" in door else (stated or 1000)
     if s - w / 2 < 0 or s + w / 2 > e["L"]:
         raise ParamError("doors", f"a door {w / 1000:g} m wide {s / 1000:g} m along side {k} runs past a corner",
                          "move it along the wall or narrow the door")
@@ -832,6 +868,54 @@ def variant_off(v, bay):
 
 
 BY_HEIGHT = ("wall", "filler", "corner", "corner_in", "door")      # the roles a storey's height chooses among
+SHARED = ("module", "wall", "door", "storey", "stair")             # what a kit may state once (rule 11)
+STAIR_KEYS = ("lane", "width", "run", "landing")
+
+
+def kit_shared(rows):
+    """What a kit states once (rule 11): the `shared` table of its taxon's `defaults`
+    (spec/assets.md 2.5), which every piece's row carries. Returns {} where the kit states
+    nothing, else, in mm, those of: `module`, `wall`, `door` (lengths), `storey` (a sorted list
+    of heights, from one height or a list), `stair` ({lane, width, run, landing}, each where
+    stated). A kit is one taxon's pieces and says a thing once: two tables among its rows, a key
+    this library does not read, or a value that is not a length above 0, is the kit's fault and
+    is said as one (`params`)."""
+    tables = []
+    for r in rows or []:
+        t = r.get("shared") or {}
+        if t and t not in tables:
+            tables.append(t)
+    if not tables:
+        return {}
+    if len(tables) > 1:
+        raise ParamError("kit", "the kit's pieces carry two `shared` tables: some are filed at a taxon below "
+                         "that writes its own", "state `shared` once, in the `defaults` of the kit's own taxon")
+    t = tables[0]
+
+    def mm(v, key):
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
+            raise ParamError("kit", f"the kit states `shared.{key} = {v!r}`, not a length above 0",
+                             f"write `shared.{key}` as metres")
+        return int(round(v * 1000))
+    out = {}
+    for k, v in t.items():
+        if k not in SHARED:
+            raise ParamError("kit", f"the kit states `shared.{k}`, which `lay` does not read",
+                             "a building kit states " + ", ".join(f"`{x}`" for x in SHARED))
+        if k == "storey":
+            out[k] = sorted({mm(x, k) for x in (v if isinstance(v, list) else [v])})
+        elif k == "stair":
+            if not isinstance(v, dict) or any(x not in STAIR_KEYS for x in v):
+                raise ParamError("kit", f"the kit states `shared.stair = {v!r}`",
+                                 "write `stair = { lane, width, run, landing }`, each in metres and each optional")
+            out[k] = {x: mm(y, f"stair.{x}") for x, y in v.items()}
+        else:
+            out[k] = mm(v, k)
+    st = out.get("stair") or {}
+    if st.get("lane") and st.get("width") and st["width"] > st["lane"]:
+        raise ParamError("kit", f"the kit's stair is {st['width'] / 1000:g} m wide in a lane of "
+                         f"{st['lane'] / 1000:g} m", "make `shared.stair.lane` at least its `width`")
+    return out
 
 
 def kit_rows(rows, word=None, height=None):
@@ -859,7 +943,9 @@ def kit_rows(rows, word=None, height=None):
 
 def kit_pieces(rows, word=None, height=None):
     """{role: {id, pitch (mm), thick (mm), width, high, box, reach, span}} from pack rows (id,
-    tags, bounds, params), for a storey of kind `word` and `height` mm (`kit_rows`). One piece per
+    tags, bounds, params, shared), for a storey of kind `word` and `height` mm (`kit_rows`). The
+    bay also holds `stated`, what the kit states once (`kit_shared`), and where that states the
+    wall's thickness the bay's `thick` is the stated one and `measured` its own. One piece per
     role: a piece with no `variant:` tag before one with, then a piece tagged for this kind of
     storey before an untagged one, then the first id bytewise (docs/design/kit-contract.md). For `wall` that piece is the kit's bay; the
     other `role:wall` pieces that carry `variant:<word>` are its variants, in `wall["variants"]` by
@@ -910,6 +996,14 @@ def kit_pieces(rows, word=None, height=None):
                 else:
                     bay["variants"][w] = v
                     bay["refused"].pop(w, None)
+    stated = kit_shared(rows)
+    if "wall" in out:
+        # What the kit states is what a wall is laid by (rule 11); the bay's own measure stays in
+        # `measured`, for `check` to hold against it (`kit_stated`).
+        out["wall"]["measured"] = out["wall"]["thick"]
+        out["wall"]["stated"] = stated
+        if stated.get("wall"):
+            out["wall"]["thick"] = stated["wall"]
     return out
 
 
@@ -1489,7 +1583,8 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             raise ParamError("kit", f"the kit's walls are {wall_t / 1000:g} m thick on the ground storey and "
                              f"{other['wall']['thick'] / 1000:g} m on storey {k}: walls of two thicknesses do not stack",
                              "make the bay of every storey one thickness")
-    sp = stair_plan(footprint, stair, storeys, wall_t)
+    stated = ((kit or {}).get("wall") or {}).get("stated") or {}
+    sp = stair_plan(footprint, stair, storeys, wall_t, stated.get("stair"))
     rings, footings = [footprint], {}
     for k in range(1, storeys):
         notch = sp["notches"][k]
@@ -1518,7 +1613,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
         path[-1] = onto(rings[hi], path[-1], path[-2])
         out["flights"].append({"key": f"{prefix}_f{lo}", "path": path,
                                "starts_at": f"{prefix}_s{lo}.floor", "ends_at": f"{prefix}_s{hi}.floor",
-                               "z0": lv[lo], "z1": lv[hi], "width": float(stair.get("width", 1))})
+                               "z0": lv[lo], "z1": lv[hi], "width": sp["width"] / 1000})
     res_mm = int((grid or {}).get("resolution_mm") or 1000)
     flat = max(MIN_FLAT, int(math.ceil(res_mm * math.sqrt(2))))
     doors_by_storey = {}
@@ -1527,7 +1622,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
         if st != 0:
             raise ParamError("doors", f"door {i} is on storey {st}; a door above the ground storey "
                              "needs a balcony, not laid yet", "put the door on storey 0")
-        dp = door_plan(footprint, d, porch, walk_out)
+        dp = door_plan(footprint, d, porch, walk_out, stated.get("door"))
         if sp.get("edge") == dp["edge"]:
             k = sp["edge"]
             lo = min(n[1] for n in sp["notches"].values())
@@ -1642,8 +1737,10 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 def whole(v):
                     return min(v % tile["pitch"], tile["pitch"] - v % tile["pitch"]) <= FIT
                 if not (whole(deep) and whole(lo) and whole(hi)):       # the stairwell is what is off the tiles
-                    note.update({"side": side, "deep": deep, "from": lo, "to": hi,
-                                 "width": (n_ * tile["pitch"] - (lanes + 1) * CLEAR) / lanes, "tiles": n_})
+                    note.update({"side": side, "deep": deep, "from": lo, "to": hi, "lane": sp.get("lane"),
+                                 "width": (n_ * tile["pitch"] - (lanes + 1) * CLEAR) / lanes, "tiles": n_,
+                                 "deep_whole": whole(deep), "long_whole": whole(hi - lo),
+                                 "moves": [-(lo % tile["pitch"]), tile["pitch"] - lo % tile["pitch"]]})
             out["notes"].append(note)
     top = storeys - 1
     roof = attrs.get("roof") or ""
@@ -1749,7 +1846,7 @@ def read_ground(step, ring):
 def read_kit(step, taxon):
     if not taxon:
         return None
-    t = step.pack(select="@" + taxon, columns=["bounds", "params"])
+    t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
     ids = _list(t.get("id", []))
     rows = []
     for r, i in enumerate(ids):
@@ -1757,7 +1854,8 @@ def read_kit(step, taxon):
         b = _list(t["bounds"])[r] if "bounds" in t else None
         rows.append({"id": i, "tags": tags if isinstance(tags, list) else [tags],
                      "bounds": [int(v) for v in _list(b)] if b is not None else None,
-                     "params": _json(_list(t["params"])[r]) or {} if "params" in t else {}})
+                     "params": _json(_list(t["params"])[r]) or {} if "params" in t else {},
+                     "shared": _json(_list(t["shared"])[r]) or {} if "shared" in t else {}})
     return rows
 
 
@@ -1898,6 +1996,16 @@ def generate(step):
                     f"inside of side {n['side']}: a tile is {n['tile'] / 1000:g} m")
             hint = (f"a stair `width` of {n['width'] / 1000:g} m makes this stairwell {n['tiles']} tiles deep; place it "
                     "and size its `run` so the stairwell starts and ends a whole number of tiles along the wall's inner face")
+            if n.get("lane") and not n["deep_whole"]:      # the kit states its lane (rule 11): the depth is the kit's
+                hint = (f"the kit's stair lane is {n['lane'] / 1000:g} m, no whole number of its {n['tile'] / 1000:g} m "
+                        "tiles: that is the kit's to correct (`shared.stair.lane`)")
+            elif n.get("lane") and n["long_whole"]:
+                hint = (f"move the stair {n['moves'][0] / 1000:+g} or {n['moves'][1] / 1000:+g} m along the wall (`at`): "
+                        "its stairwell then starts and ends on whole tiles")
+            elif n.get("lane"):
+                hint = (f"the stairwell is {(n['to'] - n['from']) / 1000:g} m long, no whole number of tiles: size the "
+                        "stair's `run` so that it and the landing are, and place it (`at`) so the stairwell starts a "
+                        "whole number of tiles along the wall's inner face")
         else:
             said = (f"{n['cells']} floor tiles of {what} cannot be laid whole: the floor inside the walls is no whole "
                     f"number of {n['tile'] / 1000:g} m tiles there")

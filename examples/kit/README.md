@@ -66,8 +66,11 @@ says each now (`door_off`, `stair_off`, `off_module`, below):
 - **The plan's sizes.** A side must be a whole number of half bays plus 0.6 m of posts.
 - **The door's place.** The wall either side of the door is a whole number of half bays.
 - **The stair's place and length.** Until K4 the wall either side of the stairwell had to close
-  too. It no longer does; what the stair still owes the kit is a stairwell of whole floor tiles,
-  which is why the hall's stair is 1.3 m wide.
+  too. It no longer does; what the stair still owes the kit is a stairwell of whole floor tiles.
+  Until K6 that was worked out by hand as well (a stair 1.3 m wide). Now the kit states its
+  stair: a lane, a landing and a run of whole tiles, which a building takes by writing only where
+  the stair is, on the tiles' grid (`at = 3.3`: 1.5 m of landing from 1.5 m along the wall's
+  inner face).
 
 ## What each change shows now
 
@@ -82,7 +85,7 @@ Each row is one build against the base. "Says" is the build's diagnostics; "does
 | `off_module` | The plan leaves the module: the hall a metre longer | 3 `wall_open`, each with the two nearest lengths that close; `gap_wide` beside the door; 2 `slab_open` | Three sides unbuilt (13 m each: the north on both storeys, the south above); 1 m open beside the door; the floors a third of a tile short along one edge. The door and stair keep their places |
 | `door_off` | A door half a metre off the module | `gap_wide`: the wall leaves 3 m; put its middle 4.05 or 5.55 m along side 0 | 1.5 m open beside the frame |
 | `wide_door` | A door off the kit's door size: 1.6 m where the frame is made for 1.4 m | `gap_wide`: the wall leaves 4.5 m where 1.7 m is needed; no place on this side closes round it | 1.5 m open either side of the frame |
-| `stair_off` | A stair that does not fit the module | `slab_open`: 5 tiles beside a stairwell 1.2 m deep, and the stair width that closes | Every wall closes (before K4: 0.7 m and 5.8 m of wall unbuilt either side of the stairwell, and 2 `wall_open`). 4.65 m2 of the floor above lies under no tile |
+| `stair_off` | A stair that does not fit the module: its own width and run, 2 m along the wall | `slab_open`: the tiles beside a stairwell that starts and ends between tiles; the lane is the kit's | Every wall closes (before K4: 0.7 m and 5.8 m of wall unbuilt either side of the stairwell, and 2 `wall_open`). 2.25 m2 of the floor above lies under no tile (4.65 m2 before K6, when the stairwell's depth was the stair's width and not the kit's lane) |
 | `ell` | An inside corner: the annex as an L | Nothing | Every side closes with the kit's inside corner piece |
 | `window` | One bay swapped by hand for a window bay | `identity.pin_removed` names 1 | The window takes its bay's place, on its floor. Its `at` carries the floor's height |
 | `window_up` | The same swap on the storey above | `identity.pin_removed` names 1 | One bay swapped upstairs; the wall under it untouched |
@@ -91,11 +94,11 @@ Each row is one build against the base. "Says" is the build's diagnostics; "does
 | `mixed` | The same piece side by side: every bay chosen among window, vent and plain, never the piece before it (`fill` with a choice) | Nothing | 12 window, 15 vent, 11 plain; no two bays alike touch (24 pairs in the base) |
 | `window_at` | An edit kept as an input: one bay named by a point along a side (`bays`), the swap `window_up` makes with a pin | Nothing | One window bay upstairs; no pin, nothing removed, and no name changes: the bay keeps its name with another piece in it |
 | `wide_window` | A variant that is not the bay's size: the window bay re-exported 3.2 m long, its pitch in the pack still 3 m, and asked for on two walls | `variant_none`, once: length 3.2 m for the bay's 3 m, the bay stands in its place; `kit_variant` and `kit_pitch` name the piece | No piece moves: 38 bays, no window, no overlap. The model's measured box is compared, not only the pitch the pack states |
-| `tower` | Building upward: a third building, three storeys, its ground storey 4 m high, under a gable roof | `slab_open`: the second stairwell, two lanes and 2.9 m deep, is not whole tiles | The ground storey is the kit's 4 m pieces (11 shopfront bays, a half bay, 4 posts, a door), the two above its 3 m ones. Every side of every storey closes over both stairwells. The roof covers the outline once, on the eaves; its ridge and gables meet. 5.25 m2 of the top floor lies under no tile |
+| `tower` | Building upward: a third building, three storeys, its ground storey 4 m high, under a gable roof | Nothing (before K6, `slab_open`: the second stairwell, two lanes and 2.9 m deep, was not whole tiles) | The ground storey is the kit's 4 m pieces (11 shopfront bays, a half bay, 4 posts, a door), the two above its 3 m ones. Every side of every storey closes over both stairwells. The roof covers the outline once, on the eaves; its ridge and gables meet. Every floor is whole tiles round both stairwells, whose lane and landing are the kit's (5.25 m2 of the top floor lay under no tile before K6) |
 | `roofs` | Roofs from pieces: a gable over the hall, a flat roof of floor tiles over the annex | Nothing | 16 slope pieces and 4 gable halves on the hall, 36 tiles on the annex; each roof covers its outline once |
 | `roof_ell` | A roof the kit cannot lay: a gable asked for over an L | `roof_none`: not a rectangle; the flat roof is laid in its place | The L is covered by tiles inside its walls; no slope piece is laid, cut or stretched |
 | `roof_deep` | A roof piece is made for one depth: the hall 1.5 m deeper | `roof_none`: 11.1 m deep, the slope piece made for 9.6 m; the flat roof laid | The walls close on the deeper plan; the roof is flat |
-| `slab_off` | A stairwell off the floor's module: the hall's stair 1 m wide | `slab_open`: 4 tiles beside a stairwell 1.2 m deep; a width of 1.3 m closes | The walls close; 1.8 m2 of floor, a strip 0.3 m wide along the stairwell, lies under no tile |
+| `slab_off` | A stairwell off the floor's grid: the hall's stair half a metre along from where the kit's landing puts it on whole tiles | `slab_open`: the tiles beside a stairwell 1.5 m deep that runs from 1 to 7 m along the wall's inner face | The walls close; 2.25 m2 of floor at the stairwell's two ends lies under no tile. (At K4 this change was a stair 1 m wide, 1.8 m2 open; the kit's lane now makes the stairwell a tile deep whatever the width) |
 | `tall_ground` | A storey height the kit has no pieces for: the annex 5 m high | 3 `kit_height`: the 4 m bay, half bay and post each 1 m short | The nearest pieces are laid, the 4 m ones; the walls' tops stand 1 m under the roof |
 
 Every fault is now said, with its cause, and no build removes a piece on its own account. No
@@ -133,9 +136,8 @@ the sums agree.
 
 ## Still open
 
-- **The stair is not the kit's.** Its lanes and clearances are the library's numbers, so a
-  stairwell is whole floor tiles only where the stair is sized by hand (1.3 m here), and the
-  second stairwell of three storeys never is (`tower`).
+- **A storey's height is still the building's.** The kit states its storeys and `check` holds
+  the pieces to them, but a building writes `storey_h` itself.
 - **No piece for a top storey.** A kit may tag a piece `storey:top` and a building may give its top
   storey a height (`top_h`); the library's tests hold both, and this kit shows neither.
 - **A gable roof on rectangles only,** of the one depth its slope piece is made for. A gable over
@@ -176,6 +178,16 @@ stands, so `open` fell by one and 6 m everywhere and the hall has three more bay
 changed its meaning with it. On the tree before K4, a three-storey building on this kit left
 15 m of wall open (12 m of it unsaid), `ground_h` was no key of a building, and a roof asked
 for by a word the library did not know was passed over in silence.
+
+K6's first step (measured 2026-11-23): the kit states what its pieces share, in its taxon's
+`defaults.shared` (R66): the module, the wall's thickness, the storeys' heights, the door's size
+and the stair. Before it, on the tree at 660ec5b, the wall's thickness was the bay's measured
+box, the stair's lanes and landing were the library's numbers, and `tower` left 5.25 m2 of floor
+open that no stair width could close. After: `tower` builds with no warning, a door and a stair
+are written by their place alone, and a piece that differs from the kit's statement is named
+against it (`kit_stated`; `module` and `tall` each gain one). The statement was itself wrong at
+the first try (a storey of 3 m, where the kit has 4 m ground-storey pieces) and the check named
+the three pieces. Nine rows moved; 266 of 266 pass.
 
 ![Upward](../../docs/reports/kit-upward-sheet.png)
 

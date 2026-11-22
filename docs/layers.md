@@ -157,15 +157,15 @@ Each archetype followed through the layers, and the holes that shows. Written by
 
 <!-- shows: begin -->
 
-Counted over 865 ledger rows, 51 kinds, 17 steps, 22 example worlds and 989 conformance cases.
+Counted over 865 ledger rows, 51 kinds, 17 steps, 22 example worlds and 990 conformance cases.
 
 | Archetype | Ledger rows that are ours: shown, partly, none | Chapters, with their cases | Kinds | Steps | Examples that use it |
 |---|---|---|---|---|---|
 | Field | 13, 5, 19 | fields 58, formulas 52 | 0 | 1 | 22 |
 | Shape | 3, 2, 5 | geometry 85 | 0 | 0 | 22 |
-| Asset | 12, 7, 28 | assets 85 | 0 | 0 | 12 |
+| Asset | 13, 6, 28 | assets 85 | 0 | 0 | 12 |
 | Derivation | 10, 9, 28 | formulas 52, derived 33 | 2 | 1 | 18 |
-| Simulation | 4, 1, 12 | derived 33, protocol 87 | 3 | 2 | 2 |
+| Simulation | 4, 1, 12 | derived 33, protocol 88 | 3 | 2 | 2 |
 | Profile | 14, 11, 10 | authority 57 | 18 | 0 | 19 |
 | Network | 8, 3, 12 | geometry 85, derived 33 | 5 | 1 | 18 |
 | Area partition | 7, 13, 18 | geometry 85 | 6 | 0 | 3 |
@@ -173,12 +173,12 @@ Counted over 865 ledger rows, 51 kinds, 17 steps, 22 example worlds and 989 conf
 | Linear placement | 6, 5, 13 | rules 68 | 0 | 2 | 5 |
 | Scatter | 10, 13, 18 | rules 68 | 0 | 1 | 11 |
 | Recipe | 3, 7, 10 | rules 68 | 0 | 1 | 4 |
-| Grammar | 2, 5, 10 | protocol 87 | 5 | 1 | 2 |
+| Grammar | 2, 5, 10 | protocol 88 | 5 | 1 | 2 |
 | Representation switch | 5, 2, 11 | surfaces 77 | 9 | 0 | 8 |
 | Meeting | 22, 35, 39 | authority 57, surfaces 77, composition 87 | 13 | 0 | 13 |
 | Overlay | 5, 3, 6 | documents 76, identity 57 | 0 | 0 | 22 |
 | Guidance | 1, 2, 61 | build 59 | 0 | 0 | 0 |
-| Measure | 7, 5, 18 | protocol 87, build 59 | 0 | 6 | 8 |
+| Measure | 7, 5, 18 | protocol 88, build 59 | 0 | 6 | 8 |
 | Markup | 3, 2, 7 | documents 76, build 59 | 4 | 0 | 22 |
 | Delivery | 5, 6, 23 | build 59 | 0 | 1 | 1 |
 
@@ -188,7 +188,7 @@ Counted over 865 ledger rows, 51 kinds, 17 steps, 22 example worlds and 989 conf
 
 **Steps that do in code what the engine has a form for:** `lib/land/uplands.py` (Field, 445 lines); `lib/town/houses.py` (Recipe, 1150 lines); `lib/town/kit.py` (Linear placement, 629 lines); `lib/town/streets.py` (Network, 936 lines); `lib/vegetation/clumps.py` (Scatter, 346 lines); `lib/water/fill.py` (Derivation, 123 lines); `lib/ways/parapet.py` (Linear placement, 161 lines).
 
-**Concepts as data and as code:** 1718 lines of kinds, 10169 lines of steps (tests left out).
+**Concepts as data and as code:** 1718 lines of kinds, 10352 lines of steps (tests left out).
 
 **One library naming another's kinds:** `review` names `town.main_street`; `review` names `town.street`; `review` names `town.waterfront`; `review` names `ways.crossing`; `review` names `ways.trail`; `ways` names `water.beck`.
 

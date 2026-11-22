@@ -14,7 +14,7 @@ use crate::text;
 pub const HEADER: &str = "# Written by via pack accept. Do not edit.";
 
 /// The keys of an entry, in the order 4.1 writes them.
-pub const KEYS: [&str; 18] = [
+pub const KEYS: [&str; 19] = [
     "bounds",
     "origin",
     "footprint",
@@ -32,6 +32,7 @@ pub const KEYS: [&str; 18] = [
     "tags",
     "mounts",
     "params",
+    "shared",
     "files",
 ];
 
@@ -206,6 +207,13 @@ pub fn entry(a: &Asset) -> Vec<(&'static str, String)> {
         let json = canonical_json(&toml::Value::Table(p.clone()));
         out.push((
             "params",
+            basic(&via_graph::Digest::of(json.as_bytes()).hex()),
+        ));
+    }
+    if let Some(p) = &a.shared {
+        let json = canonical_json(&toml::Value::Table(p.clone()));
+        out.push((
+            "shared",
             basic(&via_graph::Digest::of(json.as_bytes()).hex()),
         ));
     }

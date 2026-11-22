@@ -87,6 +87,15 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    outline turns in) whose `bounds` height differs from that storey's height by more than
    `pitch_slack` is `kit_height` (warning): a taller piece stands into the storey above, a
    shorter one stops short of it. A storey whose height no piece of a role has is said this way.
+10. **The kit against what it states** (lay.py rule 11; R66 of docs/doctrine.md). A kit states
+   once what its pieces share, in its taxon's `defaults.shared`, and each piece is held to it:
+   `kit_stated` (warning) for a `wall`, `filler` or `door` piece whose measured thickness is not
+   the stated `wall`; a `role:wall` piece whose pitch is not the stated `module`, or a filler of
+   whose pitch the module is no whole number; a `wall`, `filler` or `corner` piece whose height
+   is none of the stated `storey` heights; each by more than `pitch_slack`. So a piece
+   re-exported a little thicker is told against the kit's own word, not against whichever piece
+   was read first. A kit that states nothing is `kit_unstated` (info), once, with what was worked
+   out of its bay and the line that would state it.
 
 `params`: `riser_max` (0.19 m), `going_min` (0.25 m), `turn_max` (45), `inner_door` (0.9 m),
 `pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
@@ -145,6 +154,13 @@ EXPLAIN = {
     "kit_deck": "A floor tile or a roof piece is not what the building library lays it for: a tile is "
     "square on the kit's module; a roof slope is as deep as the span it states; a gable half is that span "
     "long, as high as the slope and as thick as the walls (lay.py rules 9 and 10).",
+    "kit_stated": "A kit states once what its pieces share (the `shared` table of its taxon's `defaults`), "
+    "and a piece differs from it: a wall piece of another thickness, a bay of another module, a piece of "
+    "another storey height. The building library lays by what the kit states, so the piece is laid as if it "
+    "were what the kit says. Correct the piece, or the statement.",
+    "kit_unstated": "A kit that states nothing its pieces share is laid by what the building library works out "
+    "of its bay. State the module, the wall's thickness and the storey once, in the `defaults.shared` of the "
+    "kit's taxon, and every piece is held to them.",
     "kit_bay": "A kit's bays are all tagged for other kinds of storey than one a building has, so that "
     "storey has no piece to be walled with. An untagged bay serves every storey with none of its own.",
     "kit_height": "A kit piece's measured height is not the storey height of a building that stacks "
@@ -625,6 +641,64 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                         "make the bay of every storey one thickness: walls stack flush or not at all",
                         {"taxon": taxon, "measure": "thick", "pieces": sorted(sizes),
                          "sizes": [sizes[i] for i in sorted(sizes)]}, None))
+    for taxon in sorted(by_taxon, key=str):      # what the kit states, against its pieces (rule 10)
+        rows = [r for r in by_taxon[taxon] if r.get("bounds")]
+        bays = [r for r in rows if "role:wall" in (r.get("tags") or [])]
+        if not bays:
+            continue
+        tables = []
+        for r in by_taxon[taxon]:
+            t = r.get("shared") or {}
+            if t and t not in tables:
+                tables.append(t)
+        plain = [r for r in bays if tag(r, "variant:") is None] or bays
+
+        def pitch_(r):
+            v = number((r.get("params") or {}).get("pitch"))
+            return v if v is not None else (r["bounds"][3] - r["bounds"][0]) / 1000.0
+
+        def thick_(r):
+            return (r["bounds"][4] - r["bounds"][1]) / 1000.0
+
+        def high_(r):
+            return (r["bounds"][5] - r["bounds"][2]) / 1000.0
+        if not tables:
+            found = {"module": pitch_(plain[0]), "wall": thick_(plain[0]),
+                     "storey": sorted({high_(r) for r in plain})}
+            out.append(("info", "kit_unstated", str(taxon), f"`{taxon}` states nothing its pieces share: its "
+                        f"module ({found['module']:g} m), its wall's thickness ({found['wall']:g} m) and its storey "
+                        f"({', '.join(f'{h:g}' for h in found['storey'])} m) are worked out of its bay",
+                        f"state them once in the pack: `[taxon.\"{taxon}\"]` with `defaults = {{ shared = {{ module = "
+                        f"{found['module']:g}, wall = {found['wall']:g}, storey = {found['storey'][0]:g} }} }}`",
+                        {"taxon": str(taxon), **found}, None))
+            continue
+        if len(tables) > 1:                       # `lay` refuses it (`params`): nothing to hold the pieces to
+            continue
+        st = tables[0]
+        wall_, module_ = number(st.get("wall")), number(st.get("module"))
+        storeys_ = st.get("storey")
+        storeys_ = [number(v) for v in (storeys_ if isinstance(storeys_, list) else [storeys_])] if storeys_ else []
+        storeys_ = [v for v in storeys_ if v]
+        for r in rows:
+            roles = [t[5:] for t in (r.get("tags") or []) if t.startswith("role:")]
+            said = []
+            if wall_ and any(x in ("wall", "filler", "door") for x in roles) and abs(thick_(r) - wall_) > slack:
+                said.append((f"is {thick_(r):g} m thick where the kit states walls of {wall_:g} m", "wall", thick_(r), wall_))
+            if module_ and "wall" in roles and abs(pitch_(r) - module_) > slack:
+                said.append((f"takes {pitch_(r):g} m of wall where the kit states a module of {module_:g} m",
+                             "module", pitch_(r), module_))
+            if module_ and "filler" in roles and pitch_(r) > 0 and off(module_, pitch_(r)) > slack:
+                said.append((f"takes {pitch_(r):g} m of wall, of which the kit's module ({module_:g} m) is no "
+                             "whole number", "module", pitch_(r), module_))
+            if storeys_ and any(x in ("wall", "filler", "corner") for x in roles) and min(
+                    abs(high_(r) - h) for h in storeys_) > slack:
+                said.append((f"is {high_(r):g} m high where the kit states a storey of "
+                             + " or ".join(f"{h:g}" for h in storeys_) + " m", "storey", high_(r),
+                             min(storeys_, key=lambda h: abs(high_(r) - h))))
+            for text, fact, got, want in said:
+                out.append(("warning", "kit_stated", r["id"], f"`{r['id']}` {text}",
+                            f"correct the piece, or what `{taxon}` states in `shared.{fact}`",
+                            {"asset": r["id"], "taxon": str(taxon), "fact": fact, "piece": got, "stated": want}, None))
     seen, kept = set(), []
     for rec in out[start:]:                      # one kit read for several kinds of storey says a fault once
         if (rec[1], rec[2], rec[3]) not in seen:
@@ -710,12 +784,13 @@ def read_meetings(step):
 def read_kits(step, taxons):
     rows = []
     for taxon in taxons:
-        t = step.pack(select="@" + taxon, columns=["bounds", "params"])
+        t = step.pack(select="@" + taxon, columns=["bounds", "params", "shared"])
         for r, i in enumerate(_list(t.get("id", []))):
             tags = _json(_list(t["tags"])[r]) if "tags" in t else []
             rows.append({"id": i, "taxon": taxon,
                          "bounds": [int(v) for v in _list(_list(t["bounds"])[r])] if "bounds" in t else None,
                          "params": (_json(_list(t["params"])[r]) or {}) if "params" in t else {},
+                         "shared": (_json(_list(t["shared"])[r]) or {}) if "shared" in t else {},
                          "tags": tags if isinstance(tags, list) else [tags]})
     return rows
 

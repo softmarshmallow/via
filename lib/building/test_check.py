@@ -209,6 +209,34 @@ class Profile(unittest.TestCase):
              {"id": "corner_in", "taxon": "k", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
               "params": {"reach": 1.2}}]
 
+    def test_a_kit_that_states_nothing_is_told_once(self):
+        """Rule 10: what was worked out of the bay, and the line that would state it."""
+        recs = [r for r in C["judge"]([], [], self.PLAIN, P) if r[1] == "kit_unstated"]
+        self.assertEqual([(r[0], r[2]) for r in recs], [("info", "k")])
+        self.assertEqual(recs[0][5], {"taxon": "k", "module": 3.0, "wall": 0.3, "storey": [3.0]})
+        self.assertIn("shared = { module = 3, wall = 0.3, storey = 3 }", recs[0][4])
+
+    def test_a_piece_is_held_to_what_its_kit_states(self):
+        """A kit that states a 3 m module, 0.3 m walls and a 3 m storey: a bay re-exported 0.4 m
+        thick, a bay of 3.2 m, a half bay of 1.4 m and a post 3.3 m high are each named against the
+        kit's own word. The same kit with pieces as stated says nothing."""
+        stated = {"module": 3.0, "wall": 0.3, "storey": [3.0, 4.0], "stair": {"lane": 1.5}}
+        good = [dict(r, shared=stated) for r in self.PLAIN]
+        self.assertEqual([r for r in C["judge"]([], [], good, P) if r[1] in ("kit_stated", "kit_unstated")], [])
+
+        def changed(id_, **kw):
+            return [dict(r, shared=stated, **(kw if r["id"] == id_ else {})) for r in self.PLAIN]
+
+        def said(rows):
+            return [(r[2], r[5]["fact"], r[5]["piece"], r[5]["stated"]) for r in C["judge"]([], [], rows, P)
+                    if r[1] == "kit_stated"]
+        self.assertEqual(said(changed("wall", bounds=[-1500, -200, 0, 1500, 200, 3000])), [("wall", "wall", 0.4, 0.3)])
+        self.assertEqual(said(changed("wall", params={"pitch": 3.2})), [("wall", "module", 3.2, 3.0)])
+        self.assertEqual(said(changed("half", params={"pitch": 1.4})), [("half", "module", 1.4, 3.0)])
+        self.assertEqual(said(changed("corner", bounds=[-150, -150, 0, 150, 150, 3300])), [("corner", "storey", 3.3, 3.0)])
+        # A piece of the kit's other stated storey is not named.
+        self.assertEqual(said(changed("corner", bounds=[-150, -150, 0, 150, 150, 4000])), [])
+
     def test_kit_corner(self):
         """A post is as thick as the wall; an inside corner spans its reach along each wall from
         the notch it is placed by. A post re-exported with a 0.6 m stub is 0.9 by 0.3 m and is

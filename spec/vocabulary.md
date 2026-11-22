@@ -424,6 +424,7 @@ A pack is a document users write. It may name files; a world may not (principle 
 | `root` | string | The folder every file of the pack is found under, relative to the pack file. Default the pack file's folder. | assets |
 | `[defaults]` | table | Values for declared facts every asset takes unless it, or a taxon above it, writes them. | assets |
 | `[taxon."<path>"]` | table | One entry of the pack's taxonomy, keyed by path (the exception to R1). Key: `defaults`. | assets |
+| `shared` | table | In `defaults` only, of a taxon or the pack: what the assets filed there state once (a kit's module, its wall's thickness). Any keys; read by the core for nothing; reaches every asset at or below the taxon, the nearest taken whole. Never on an asset. | assets |
 | `[asset.<id>]` | table | One asset, with exactly one source marker: `file` (a model, M2), `primitive`, or `engine = true`. Keys per source: `assets.md` 2.2. | assets |
 | `engine` | bool | `true`: an engine-made asset, made by the loader from `params`. | assets |
 | `primitive` | string | One of `assets.md` 6's shape words. | assets |

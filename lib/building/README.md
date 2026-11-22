@@ -139,8 +139,8 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   floor is moved onto it (`lay.py` rules 3 and 4, `onto`). It does not yet look right: the kit's
   wall pieces are not turned with the outline, so a turned building's walls show as a saw-tooth with
   open corners (M7 close, TODO). Keep a kit-walled building square to the axes for now.
-- **Where the stair goes.** The stairwell runs from 1 m (`LANDING`) before the flight's foot to its
-  head. It must reach a corner or stop at least 0.3 m short of it (`STUB_MIN`): a foot 1.0 m or less
+- **Where the stair goes.** The stairwell runs from 1 m (`LANDING`, or the landing the kit
+  states) before the flight's foot to its head. It must reach a corner or stop at least 0.3 m short of it (`STUB_MIN`): a foot 1.0 m or less
   from the corner, or 1.3 m or more. Between, `lay` refuses `stair` (`params`, naming the gap); before
   M7 close it built a stub no piece closes, and the errors named produced corners you cannot write.
 - **Levelling the site.** `ground` is the mean of the terrain under the outline, and the doorway's
@@ -264,6 +264,25 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     whichever piece it holds, and a pin on its neighbour keeps its target. Until K5 a run held
     one asset and a stretch was split into a run per spell of one piece, which renamed the bays
     after a swap (`examples/kit`, `window_at`: three names for one piece); R68 ruled the run.
+- **What a kit states** (K6 of `docs/plan-kits.md`; R66). Design note; the rule is `lay.py` rule
+  11 and `check.py` rule 10; the contract is `docs/design/kit-contract.md`, "What a kit states".
+  Source: the studios' accounts of a kit as a system and of metrics written down before the
+  first piece (docs/research/Modular kit failures in studios.md, sections 1 and 2).
+  - *Where.* The `shared` table of the kit's taxon's `defaults`, in the pack (`spec/assets.md`
+    2.5). The core reads it for nothing; `lay` and `check` ask for it with the pieces.
+  - *What `lay` lays by.* `wall`: the walls' thickness, in place of the bay's measured box.
+    `stair = { lane, width, run, landing }`: a building's stair writes where it is (`side`,
+    `at`) and takes the rest from the kit; `lane` is how deep one lane of the stairwell is, in
+    place of the stair's width and 0.1 m each side. `door`: a door's width where it writes none.
+  - *What `check` holds the pieces to.* `wall`, `module`, `storey` (one height or a list):
+    `kit_stated` names a piece that differs. A kit that states nothing is `kit_unstated` (info),
+    with what was worked out of its bay and the line that would state it; it is laid as before.
+  - *Why the stair.* An opening in a floor is a module too. With the library's own lanes (the
+    stair's width and 0.1 m each side) and its 1 m landing, no stair width made the second
+    stairwell of a three-storey building whole 1.5 m tiles (`examples/kit`, `tower`: 5.25 m2
+    open). A kit whose lane, landing and run are whole tiles gets whole stairwells on every
+    storey, and `slab_open` then says how far to move a stair that stands between tiles.
+  - *Not yet.* A building's `storey_h` is still its own; lib/town does not read `shared`.
 - **Building upward** (K4 of `docs/plan-kits.md`, from examples/kit). Design note; the rules are
   `lay.py` rules 2, 6, 9 and 10. Source: a facade read as base, ground storey, repeating storeys
   and top (docs/research/Modular city asset contracts.md, section 5); the studios' accounts of

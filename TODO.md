@@ -559,13 +559,6 @@ open, and its place here is its destination.
       33's run half (cut by the extent) owed. The `kitrun` fit lint of rules.md 10 is struck: a
       kit's fit is the library's (R67).
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
-- [ ] **A kit states what its pieces share, once** (R66; Asset law 5, which fails today). The
-      module, the wall's thickness, the storeys' heights, the door size, the corners' reach,
-      the floor tile and the roof's span are each worked out from the pieces by lib/building
-      and again by lib/town. The mechanism: a pack's taxon carries the kit's facts, read with
-      its pieces (`spec/assets.md` 5), and the kit states its stair with them. Owed at K6, with
-      the second kit.
-      (From K5 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **Bodies laid edge to edge that meet by the lattice's rounding are touching** (R69, owed).
       Until the overlap test can tell, lib/building lays no floor tile off the axes. Candidates:
       a tolerance of a lattice unit for two things one step returned; rows of tiles as runs.
@@ -1429,12 +1422,14 @@ open, and its place here is its destination.
       sockets constrain room sizes from the start); and carry dressing down to small props on
       furniture, which needs assets to declare their surfaces.
       (From the list before the rewrite, Assets and buildings; was -> M5.)
-- [ ] **The stair is not part of the kit.** Its lanes, clearances (0.1 m) and landing (1 m) are
-  lay.py's numbers, so a stairwell is whole floor tiles only where the world sizes the stair by
-  hand (1.3 m wide on a 1.5 m tile), and the second stairwell of three storeys, two lanes deep
-  (2.9 m), is not: `examples/kit` `tower`, 5.25 m2 of floor open, said. Lesson: an opening in a
-  floor is a module too. A kit should state its stair (or a stair piece), as it states its door.
-      (From K4 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **What a kit states, where it is not yet read.** lib/building lays by a kit's
+  `defaults.shared` (R66, K6: `wall`, `stair`, `door`; `module` and `storey` are checked). Left:
+  lib/town's rows read each piece's pitch alone; a building still writes `storey_h`, which the
+  kit's `storey` could give; the kits of `station`, `college`, `market` and `quay` state nothing
+  (`kit_unstated`, info). Lesson: the first statement written for the plain kit was wrong (one
+  storey height of two) and the check caught it: a stated fact is only worth having with the
+  check that holds the pieces to it.
+      (From K6 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **No floor tile on a building turned off the axes.** A tile is an instance on the
   millimetre lattice; off the axes two that abut overlap by the rounding, and two instances of
   one step in one place are `place.overlap`, an error (49 on the annex at 30 degrees). Walls

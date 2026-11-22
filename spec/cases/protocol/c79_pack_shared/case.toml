@@ -1,0 +1,66 @@
+format    = "via-case-1"
+summary   = "assets.md 2.5 (R66), protocol.md 3.3: `shared` in a taxon's defaults reaches every asset filed at or below it, the nearest taken whole, and pack.query gives it as the `shared` column. Two assets of one kit read one table, though one writes its own params; an asset of a taxon below with its own `shared` reads that one whole; an asset filed elsewhere reads none. The kit's module edited: the lint runs again. A colour edited: it is reused. `shared` on an asset: doc.unknown_key."
+milestone = 7
+actions   = ["program", "trust", "first", "module", "again", "colour", "recoloured", "bad"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.first]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.first.nodes]
+ran_includes = ["step:look"]
+
+[action.first.diag.read]
+code = "step.look.read"
+data = { ids = ["bay", "crate", "post", "tall_bay"], module = [3.0, 0, 3.0, 4.0], wall = [0.3, 0, 0.3, 0], none = ["crate"] }
+
+[action.module]
+replace = "pack.toml"
+find    = "shared = { module = 3.0, wall = 0.3"
+with    = "shared = { module = 3.3, wall = 0.3"
+
+[action.again]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.again.nodes]
+ran_includes = ["step:look"]
+
+[action.again.diag.read]
+code = "step.look.read"
+data = { module = [3.3, 0, 3.3, 4.0] }
+
+[action.colour]
+replace = "pack.toml"
+find    = "colour    = [0.5, 0.5, 0.5]"
+with    = "colour    = [0.6, 0.5, 0.5]"
+
+[action.recoloured]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.recoloured.nodes]
+not_ran = ["step:look"]
+
+[action.bad]
+via         = ["pack", "check", "bad.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.bad.diag.unknown]
+code    = "doc.unknown_key"
+subject = "asset.bay.shared"

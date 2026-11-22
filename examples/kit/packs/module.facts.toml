@@ -14,6 +14,7 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:corner"]
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "corner.glb" = "d5e0dafa51a19cdf17788e12e57a0669e9494384e5bceaf73039325b19387c81" }
 
 [asset.corner_in]
@@ -31,6 +32,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:corner_in"]
 params = "1483040f4591fc4ccdd6692ce4d9fae8f04706d1662eb5892a9db088f45b16e4"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "corner_in.glb" = "50ca1c7dd7f3939c4604191cc3cdcbec168e209b74a107445aeb543bbeeb6c9d" }
 
 [asset.door]
@@ -48,6 +50,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:door"]
 params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "door.glb" = "eeebe232bf2a143b3c5d319d0d0a940f7bb2d52a9d6698635148de17da1c9e2e" }
 
 [asset.floor]
@@ -65,6 +68,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:floor"]
 params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "floor.glb" = "f4409a6172d18ddb76eea2ad046cfe6baa362b2ea1d2f16bc6aa7dc5947c205d" }
 
 [asset.ground_corner]
@@ -81,6 +85,7 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:corner", "storey:ground"]
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "ground_corner.glb" = "d37171c09e76710372ef6ad867cb54a0559e1b5442a993720c0e030dc4037122" }
 
 [asset.ground_door]
@@ -98,6 +103,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:door", "storey:ground"]
 params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "ground_door.glb" = "5f64b8dff29054859bfb82daea044623e7ace50bae58a30de8499f206fe15d6e" }
 
 [asset.ground_half]
@@ -115,6 +121,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:filler", "storey:ground"]
 params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "ground_half.glb" = "3055bf2b8272130df5a4254d6ab942594dd8db067a1b695322c81740155c7fe3" }
 
 [asset.ground_wall]
@@ -132,6 +139,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:wall", "storey:ground"]
 params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "ground_wall.glb" = "d72dbddb9e950370f69794510414c360aa73a59da35ed0620759f7ef85988458" }
 
 [asset.roof_gable]
@@ -149,6 +157,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:roof_gable"]
 params = "c856a5b74bc2a643de5ee523795231e17743b3e683fa20742bdfc078edb932a7"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "roof_gable.glb" = "f7077a9e31dda3310c7fcad9be6ab251b9e84f23b68f70dd4685e1d3ad85886d" }
 
 [asset.roof_slope]
@@ -166,6 +175,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:roof_slope"]
 params = "d95a1b6c162cb1b304fcd8474927c7fde565e55b116512c6914cd73aca574286"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "roof_slope.glb" = "a5bcfbcd745845747f3948607d2831ac83490e89767992054797067c2476fb0a" }
 
 [asset.wall]
@@ -183,6 +193,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:wall"]
 params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "wall.glb" = "8e22ce7d5b350502a3bc03bdfb564efe62d6e03169beb64f8edcf007c430d278" }
 
 [asset.wall_half]
@@ -200,6 +211,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:filler"]
 params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "wall_half.glb" = "4e91d93b77e0ed5b881a1dd0149d18cfcb36df73e6606b50d4c9f95e8b42055b" }
 
 [asset.wall_vent]
@@ -217,6 +229,7 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:wall", "variant:vent"]
 params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "wall_vent.glb" = "e02222f5ec2dea702afeec93b1aff97fd44b41285d4f28092ef9b0409e1e1b2c" }
 
 [asset.wall_window]
@@ -234,4 +247,5 @@ colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
 tags = ["role:wall", "variant:window"]
 params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "bae1fff8166cfb39cab31ea7dcf5c1ba22e193a8c7c5ad873715ade13625c056"
 files = { "wall_window.glb" = "7e24f446a17f618d80b1744865027fb68c6f35a4a48b22eab9724023551df367" }

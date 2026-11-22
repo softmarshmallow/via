@@ -187,7 +187,7 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | podium and tower, stepback | a wide base with a narrower tower above | Grammar | lib | none |
 | modular kit | pieces made to fit together | Asset | pack, lib | shown: `lib/town/kit.py`, `lib/building/lay.py`, `examples/market`, `examples/kit` |
 | module, grid, snapping | the size pieces share and lock to | Asset | pack | partly: `examples/market`, `examples/kit` |
-| kit metrics | the kit's agreed dimensions: bay, storey, door | Asset | pack | partly: `examples/market`, `examples/kit` |
+| kit metrics | the kit's agreed dimensions: bay, storey, door | Asset | pack | shown: `shared`, `assets.md 2.5`, `lib/building/lay.py`, `examples/kit` |
 | pivot, origin | the point a piece is placed by | Asset | pack | shown: `pivot` |
 | front, facing | which way a piece looks: its agreed forward axis, so a rule can aim it | Asset | pack | shown: `front` |
 | socket, connector | where one piece joins another | Asset | pack | shown: `[asset.<id>.mount.<name>]`, `connector` |

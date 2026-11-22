@@ -1353,6 +1353,117 @@ class Decks(unittest.TestCase):
                          ["hall_roof_g0_0", "hall_roof_g0_1", "hall_roof_g2_0", "hall_roof_g2_1"])
 
 
+class Stated(unittest.TestCase):
+    """Rule 11: a kit states once what its pieces share, and `lay` lays by it."""
+
+    @staticmethod
+    def rows(shared=None, thick=300):
+        def row(id_, role, size, **params):
+            w, d = size
+            return {"id": id_, "tags": [f"role:{role}"], "bounds": [-w // 2, -d // 2, 0, w // 2, d // 2, 3000],
+                    "params": params, "shared": shared or {}}
+        return [row("wall", "wall", (3000, thick), pitch=3), row("half", "filler", (1500, thick), pitch=1.5),
+                row("corner", "corner", (300, 300)), row("door", "door", (1500, thick), pitch=1.5),
+                row("tile", "floor", (1500, 1500), pitch=1.5)]
+
+    PLAIN = {"module": 3.0, "wall": 0.3, "storey": 3.0, "door": 1.4,
+             "stair": {"lane": 1.5, "width": 1.3, "run": 4.5, "landing": 1.5}}
+    HALL = [(10000, 10000), (22600, 10000), (22600, 19600), (10000, 19600)]
+
+    def test_what_a_kit_states_is_read_in_millimetres(self):
+        got = L["kit_shared"](self.rows(dict(self.PLAIN, storey=[4.0, 3.0])))
+        self.assertEqual(got, {"module": 3000, "wall": 300, "storey": [3000, 4000], "door": 1400,
+                               "stair": {"lane": 1500, "width": 1300, "run": 4500, "landing": 1500}})
+        self.assertEqual(L["kit_shared"](self.rows()), {})
+        self.assertEqual(L["kit_shared"](None), {})
+
+    def test_a_kit_says_a_thing_once_and_as_a_length(self):
+        two = self.rows(self.PLAIN)
+        two[1] = dict(two[1], shared={"module": 4.0})
+        for rows, word in ((two, "two `shared` tables"),
+                           (self.rows({"wall": 0}), "not a length"),
+                           (self.rows({"wall": "thin"}), "not a length"),
+                           (self.rows({"wall": True}), "not a length"),
+                           (self.rows({"modul": 3.0}), "does not read"),
+                           (self.rows({"stair": {"lanes": 1.5}}), "shared.stair"),
+                           (self.rows({"stair": 1.5}), "shared.stair"),
+                           (self.rows({"stair": {"lane": 1.0, "width": 1.3}}), "wide in a lane")):
+            with self.assertRaises(L["ParamError"]) as c:
+                L["kit_shared"](rows)
+            self.assertEqual(c.exception.key, "kit")
+            self.assertIn(word, c.exception.message)
+
+    def test_the_stated_wall_is_the_thickness_laid_by(self):
+        """A bay re-exported 0.35 m thick in a kit that states 0.3 m walls: the wall is laid as the
+        kit states, and the bay's own measure is kept for `check`."""
+        kit = L["kit_pieces"](self.rows(self.PLAIN, thick=350))
+        self.assertEqual((kit["wall"]["thick"], kit["wall"]["measured"]), (300, 350))
+        self.assertEqual(kit["wall"]["stated"]["wall"], 300)
+        loose = L["kit_pieces"](self.rows(None, thick=350))
+        self.assertEqual((loose["wall"]["thick"], loose["wall"]["measured"], loose["wall"]["stated"]), (350, 350, {}))
+
+    def plan(self, attrs, shared=PLAIN, storeys=2):
+        rows = self.rows(shared)
+        a = {"storeys": storeys, "storey_h": 3.0, "plinth": 0.3, "porch": 2, "walk_out": 3,
+             "doors": [{"storey": 0, "side": 0, "at": 4.05}], **attrs}
+        return L["plan"]("hall", self.HALL, a, 10.0, GRID, None, kits=lambda w, h: L["kit_pieces"](rows, w, h))
+
+    def test_a_stair_takes_the_kits_width_run_and_lane(self):
+        """The building writes where the stair is; its width, run, landing and lane are the kit's.
+        Lane 0's middle is half a lane inside the wall's inner face, and the stairwell is one
+        lane deep and a landing and a run long: 1.5 m by 6 m, one tile by four, from 1.5 m along
+        the wall's inner face."""
+        out = self.plan({"stair": {"side": 2, "at": 3.3}})
+        flight = out["flights"][0]
+        self.assertEqual(flight["width"], 1.3)
+        (x0, y0), (x1, y1) = flight["path"]
+        self.assertEqual((abs(x1 - x0), y0, y1), (4500, 19600 - 300 - 750, 19600 - 300 - 750))
+        self.assertFalse([n for n in out["notes"] if n["code"] == "slab_open"])
+
+    def test_three_storeys_of_a_kit_with_a_lane_of_tiles_leave_no_floor_open(self):
+        """The second stairwell is two lanes deep and lies a landing further along. With the
+        library's own lanes (the width and 0.1 m each side) and its 1 m landing it is 2.9 m deep
+        and starts 2.5 m along: no whole number of 1.5 m tiles either way. With the kit's lane
+        and landing of one tile it is 3 m deep from 3 m along."""
+        stated = self.plan({"stair": {"side": 2, "at": 3.3}}, storeys=3)
+        self.assertFalse([n for n in stated["notes"] if n["code"] == "slab_open"])
+        loose = self.plan({"stair": {"side": 2, "at": 2.8, "width": 1.3, "run": 5}},
+                          shared={"wall": 0.3}, storeys=3)
+        self.assertTrue([n for n in loose["notes"] if n["code"] == "slab_open"])
+
+    def test_a_stairwell_between_tiles_says_how_far_to_move_the_stair(self):
+        """The kit's lane, landing and run are whole tiles, so a stairwell off the grid is off by
+        where the stair stands: half a metre early here, and the note holds the two moves."""
+        out = self.plan({"stair": {"side": 2, "at": 2.8}})
+        note = next(n for n in out["notes"] if n["code"] == "slab_open")
+        self.assertEqual((note["deep_whole"], note["long_whole"], note["from"], note["to"]), (True, True, 1000, 7000))
+        self.assertEqual(note["moves"], [-1000, 500])
+
+    def test_a_building_may_still_write_its_own_stair(self):
+        out = self.plan({"stair": {"side": 2, "at": 2.8, "width": 1.0, "run": 4.5}})
+        self.assertEqual(out["flights"][0]["width"], 1.0)
+        (x0, _), (x1, _) = out["flights"][0]["path"]
+        self.assertEqual(abs(x1 - x0), 4500)
+        with self.assertRaises(L["ParamError"]) as c:
+            self.plan({"stair": {"side": 2, "at": 2.8, "width": 1.6}})
+        self.assertIn("the kit's lane is 1.5 m", c.exception.message)
+
+    def test_a_stair_with_no_run_anywhere_is_refused(self):
+        with self.assertRaises(L["ParamError"]) as c:
+            self.plan({"stair": {"side": 2, "at": 3.3}}, shared={"wall": 0.3})
+        self.assertEqual(c.exception.key, "stair")
+        self.assertIn("no `run`", c.exception.message)
+
+    def test_a_door_takes_the_kits_width(self):
+        """The plain kit's door piece is made for a 1.4 m doorway: a door that writes no width gets
+        it, and the south wall closes round it as it does round a door that writes 1.4."""
+        stated = self.plan({"stair": {"side": 2, "at": 3.3}})
+        written = self.plan({"stair": {"side": 2, "at": 3.3}, "doors": [{"storey": 0, "side": 0, "at": 4.05, "width": 1.4}]})
+        self.assertEqual(stated["runs"], written["runs"])
+        self.assertFalse(stated["open"])
+        self.assertEqual(L["door_plan"](self.HALL, {"side": 0, "at": 4.05}, 2000, 3000)["width"], 1000)
+
+
 class FakeOut:
     def __init__(self):
         self.features, self.instances, self.tables = {}, {}, {}

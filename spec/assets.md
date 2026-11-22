@@ -47,6 +47,7 @@ word below is added there, with the Takes and Meaning this chapter gives, before
 - on an asset: `engine`, `primitive`, `size`, `detail`, `front`, `up`, `pivot`, `solidity`, `sink`,
   `max_relief`, `colour`, `params`; `triangles` on an engine-made asset; `collision` (M2);
 - on a taxon: `defaults`;
+- in `defaults` only: `shared` (R66, K6);
 - on a material: `colour`, `repeat`, `params`;
 - terms: facts file, measured fact, declared fact, stand-in;
 - commands: `via pack check`, `via pack list`, `via pack accept`;
@@ -271,12 +272,26 @@ For each declared fact, first found wins:
 3. the pack's `[defaults]`;
 4. the default in 2.4.
 
-`defaults` may hold `front`, `up`, `pivot`, `solidity`, `collision`, `sink`, `max_relief`, `colour`
-and `params`.
+`defaults` may hold `front`, `up`, `pivot`, `solidity`, `collision`, `sink`, `max_relief`, `colour`,
+`params` and `shared`.
 Any other key there is `doc.unknown_key`, naming the nearest allowed one. This is the
 pack-lookup rule `documents.md` 6.2 defers to: the nearest `params` default is taken whole, never
 merged with a farther one. A value reaches an asset
 only if its source takes that key as optional (2.2).
+
+**`shared`: what the assets filed together state once (R66, K6).** `shared` is a table of any keys,
+read by the core for nothing, as `params` is. It is written in `defaults` only, of a taxon or of
+the pack, and never on an asset (`doc.unknown_key` there): it reaches every asset filed at that
+taxon or below it, from every source, and no asset can write another. The nearest one is taken
+whole, as `params` is. So a kit, which is a taxon's assets (`docs/design/kit-contract.md`), says
+its module, its wall's thickness and its storey once, and a library reads them with any of its
+pieces through `pack.query`'s `shared` column (`protocol.md` 3.3). Ours. Reason: what a kit's
+pieces share was written nowhere, so each library worked it out of the pieces it found, twice and
+not always alike (Asset law 5, `docs/ledger/archetypes.md`); a `params` default cannot carry it,
+since a piece that writes its own `params` takes none of the default. Cost: a second free table
+beside `params`, told apart by who writes it: `params` is one asset's, `shared` is never one
+asset's. The loader is not handed it: it is a rule's reading, and the build's files do not hold
+it.
 
 ### 2.6 Materials
 
@@ -402,7 +417,7 @@ Two correct implementations write the same bytes.
 - One table `[asset.<id>]` per model asset, sorted by id bytewise, separated by one blank line.
 - Keys in this order, each `key = value` on one line, absent facts omitted: `bounds`, `origin`,
   `footprint`, `triangles`, `detail_triangles`, `front`, `up`, `pivot`, `solidity`, `collision`,
-  `sink`, `max_relief`, `colour`, `taxon`, `tags`, `mounts`, `params`, `files`.
+  `sink`, `max_relief`, `colour`, `taxon`, `tags`, `mounts`, `params`, `shared`, `files`.
 - Lattice values are written in `numbers.md` 3.4's exact metre form; `colour` components as
   `numbers.md` 3.4 writes a double; integers as decimal digits. Lists as `[a, b]` with `, ` between
   items; strings as TOML basic strings.
@@ -411,7 +426,8 @@ Two correct implementations write the same bytes.
   keys sorted; a mount without one writes no `connector`, so M2 facts files stay byte-equal.
   Absent when the asset has none.
 - `params` is the BLAKE3 digest (`build.md` 3.3) of the canonical JSON (`documents.md` 8) of the
-  resolved `params`. Absent when there are none.
+  resolved `params`. Absent when there are none. `shared` (K6) is the same digest of the resolved
+  `shared`, and absent when there is none, so a facts file written before it stays byte-equal.
 - `files` is an inline table from each bound file's path (relative to `root`, `/` separators) to its
   digest, sorted by path.
 - LF line ends, and a final newline.
@@ -451,7 +467,7 @@ facts file.
 | A used asset the facts file lacks | `asset.unaccepted` (info) | Builds. |
 | Any of `bounds`, `origin`, `footprint`, `front`, `up`, `pivot`, `solidity`, `sink`, `max_relief`, `mounts` | `asset.revised` (warning), one per asset | Builds with the new facts. Lists each fact old and new, then every instance of the asset in this build. |
 | `taxon` or `tags`, and no fact of the row above | `asset.refiled` (info) | Builds. What a selection now picks shows in the change report as swaps. |
-| Only `files`, `triangles`, `detail_triangles`, `collision`, `colour` or `params` | `asset.remodelled` (info), with old and new triangles | Builds. Nothing moves: a geometry-only revision passes. |
+| Only `files`, `triangles`, `detail_triangles`, `collision`, `colour`, `params` or `shared` | `asset.remodelled` (info), with old and new triangles | Builds. Nothing moves by the core's hand: a geometry-only revision passes, and a step that reads `params` or `shared` runs again by its own trace (`protocol.md` 4.4). |
 | An unreadable or malformed facts file | `pack.bad_facts` (error) | Stops. Hint: delete it and run `via pack accept`. |
 
 - The build uses the current files and text for every result. Outside stand-ins (section 9), the
@@ -484,7 +500,8 @@ classifies assets only. A field's `taxon` is not checked against it: the core gi
 
 - A taxon is declared as `[taxon."<path>"]`. A path is ids joined by `/`: `"plant/tree"`. A segment
   that is not an id, an empty segment (`//`) or a leading or trailing `/` is `identity.bad_id`. Declaring
-  a taxon declares every taxon above it. Keys: `defaults` (2.5), or none.
+  a taxon declares every taxon above it. Keys: `defaults` (2.5), or none. What the assets filed
+  at a taxon share is said in its `defaults.shared` (2.5).
 - An asset is filed at one taxon: `taxon = "plant/tree"`. A taxon the pack does not declare is
   `pack.unknown_taxon`, naming the nearest declared path. An asset with no `taxon` is filed nowhere
   and is reachable by id only.
@@ -796,7 +813,7 @@ the core took is above (2.4 `passable`, 2.7 `connector`); the rest is the buildi
   library computes from the pitch. Written as `params.pitch` (2.2) on the piece, checked against
   `bounds` by the kit lint (the college's 6.44 m bay at a 6 m pitch).
 - **Kit table, roles, variants, allowed stretch. Library**, over `taxon`, `tags`, `params` and
-  facts.
+  facts. What the kit's pieces share is stated once, in the taxon's `defaults.shared` (2.5, R66).
 - **States. Library.** The same thing in another condition (a door open) is another asset id,
   filed with a `state:<word>` tag; a check that knows the state reads the instance's asset and its
   tags. A thing with parts in another arrangement (a slide racked) is section 12.4. The core has no

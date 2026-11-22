@@ -81,6 +81,9 @@ pub struct Asset {
     pub model: Option<crate::asset::ModelFacts>,
     /// The resolved `params` (2.5: the nearest one taken whole), handed to the loader unread.
     pub params: Option<toml::Table>,
+    /// The resolved `shared` (2.5, R66): what the assets filed at its taxon state once, from the
+    /// nearest `defaults` that writes it. Never the asset's own; read by the core for nothing.
+    pub shared: Option<toml::Table>,
 }
 
 impl Asset {
@@ -1139,13 +1142,14 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
 }
 
 /// The keys `defaults` may hold (2.5).
-const DEFAULT_KEYS: [&str; 9] = [
+const DEFAULT_KEYS: [&str; 10] = [
     "collision",
     "colour",
     "front",
     "max_relief",
     "params",
     "pivot",
+    "shared",
     "sink",
     "solidity",
     "up",
@@ -1243,7 +1247,16 @@ fn read_asset(
         return None;
     }
     for k in a.keys() {
-        if !ASSET_KEYS.contains(&k.as_str()) {
+        if k == "shared" {
+            // What assets filed together state once is never one asset's (2.5, R66).
+            r.fault(
+                codes::doc::UNKNOWN_KEY,
+                &subject,
+                Some(k),
+                "`shared` is not a key of an asset: it is what the assets of a taxon state once",
+                "write it in the taxon's table: `defaults = { shared = { ... } }` (assets.md 2.5)",
+            );
+        } else if !ASSET_KEYS.contains(&k.as_str()) {
             r.fault(
                 codes::doc::UNKNOWN_KEY,
                 &subject,
@@ -1739,6 +1752,11 @@ fn read_asset(
         }
     }
     let params = declared("params").and_then(|v| v.as_table()).cloned();
+    // `shared` is never the asset's own (2.5): a taxon's or the pack's, the nearest taken whole.
+    let shared = inherited
+        .get(taxon_of, "shared")
+        .and_then(|v| v.as_table())
+        .cloned();
     let asset = Asset {
         id: id.to_string(),
         source: if model.is_some() {
@@ -1767,6 +1785,7 @@ fn read_asset(
         origin,
         model,
         params,
+        shared,
     };
     Some((asset, own))
 }

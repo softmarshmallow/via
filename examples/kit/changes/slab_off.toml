@@ -1,5 +1,7 @@
-# A stairwell off the floor's module: the hall's stair 1 m wide where 1.3 m makes its stairwell one
-# tile deep. The walls no longer mind (they stand on a footing over the stairwell); the floor
-# does: the tiles beside the stairwell cannot be laid whole.
+# A stairwell off the floor's grid: the hall's stair half a metre along from where the kit's
+# landing and run put its stairwell on whole tiles. The kit states the stair's lane, so the
+# stairwell is still one tile deep; it starts and ends between tiles. The walls do not mind (they
+# stand on a footing over the stairwell); the floor does: the tiles beside the stairwell cannot
+# be laid whole.
 [feature.hall]
-stair = { side = 2, at = 2.8, width = 1, run = 5 }
+stair = { side = 2, at = 2.8 }

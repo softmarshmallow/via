@@ -2,8 +2,9 @@
 # (lib/building/README.md, "Building upward"). The ground storey takes the kit's 4 m pieces (a
 # storey takes the pieces of its own height), the two above the 3 m ones. Two flights climb the
 # north wall, the second back over the first, so two storeys have a stairwell beside that wall:
-# the wall over each stands on a footing, not on the floor. The stair is 1.3 m wide so that the
-# first stairwell is one floor tile deep; the second, two lanes deep, is not whole tiles.
+# the wall over each stands on a footing, not on the floor. The stair's lane and landing are the
+# kit's, one floor tile each, and its run is four tiles (6 m, for the 4 m storey), so both
+# stairwells are whole tiles: the first one lane deep, the second two.
 [feature.tower]
 kind     = "building"
 region   = [[10, 30], [19.6, 30], [19.6, 39.6], [10, 39.6]]
@@ -11,8 +12,8 @@ storeys  = 3
 storey_h = 3.0
 ground_h = 4.0
 roof     = "gable"
-doors    = [{ storey = 0, side = 0, at = 4.05, width = 1.4 }]
-stair    = { side = 2, at = 1.3, width = 1.3, run = 6.5 }
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+stair    = { side = 2, at = 1.8, run = 6 }
 kit      = "structure/plain"
 
 [feature.look_tower]
