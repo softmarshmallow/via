@@ -1,6 +1,7 @@
 # via: the kit plan
 
-Status: approved 2026-11-20, running. The plan after the first cut (`docs/plan.md`): own the
+Status: approved 2026-11-20, running. K1 and K2 are committed (f529008, after the research,
+cc99109); K3 follows them. Next: K4. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -63,6 +64,13 @@ Changed so far:
   share a module; and they answer leftover length differently for a reason the contract states.
   "A check before a build" became a build that says what would close: a build of a plan takes a
   fifth of a second, so what was missing was the answer, not an earlier question.
+
+- **K3, 2026-11-22.** "A rule that neighbours may not repeat" holds inside one wall stretch, not
+  across a door or a corner. And a variant renames the bays after it, because a run holds one
+  asset: found here, filed under `spec/rules.md` in `TODO.md`, and left for K5 to rule, since it
+  is the core's half of "choosing among pieces" and not the library's. The review found that
+  "a variant with another footprint is refused" held only for the pitch a pack states, not for
+  the model: mended, and `wide_window` is now that case.
 
 Checks before each commit: the library's tests, `cargo run -p xtask -- check`, and, where a crate
 changed, `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace` and the

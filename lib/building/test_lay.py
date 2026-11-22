@@ -456,6 +456,302 @@ class Walls(unittest.TestCase):
         out = L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)
         self.assertEqual({o["side"] for o in out["open"]}, {2})
 
+    ROWS = [{"id": "wall", "tags": ["role:wall"], "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}},
+            {"id": "wall_arch", "tags": ["role:wall", "variant:arch"], "bounds": [-1500, -150, 0, 1500, 150, 3000],
+             "params": {"pitch": 3}},
+            {"id": "wall_half", "tags": ["role:filler"], "bounds": [-750, -150, 0, 750, 150, 3000], "params": {"pitch": 1.5}},
+            {"id": "wall_window", "tags": ["role:wall", "variant:window"], "bounds": [-1500, -150, 0, 1500, 150, 3000],
+             "params": {"pitch": 3}},
+            {"id": "a_wide", "tags": ["role:wall", "variant:wide"], "bounds": [-1600, -150, 0, 1600, 150, 3000],
+             "params": {"pitch": 3.2}},
+            {"id": "corner", "tags": ["role:corner"], "bounds": [-150, -150, 0, 150, 150, 3000], "params": {}}]
+    RECT = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+
+    def test_the_bay_and_its_variants(self):
+        """The bay is the first `role:wall` piece with no `variant:` tag, whatever its id; a variant
+        of another size is refused with what differs."""
+        kit = L["kit_pieces"](self.ROWS)
+        self.assertEqual(kit["wall"]["id"], "wall")
+        self.assertEqual({w: v["id"] for w, v in kit["wall"]["variants"].items()},
+                         {"arch": "wall_arch", "window": "wall_window"})
+        self.assertEqual(kit["wall"]["refused"], {"wide": {
+            "id": "a_wide", "why": "pitch 3.2 m for the bay's 3 m, length 3.2 m for the bay's 3 m"}})
+
+    def variant(self, **over):
+        return dict({"id": "v", "tags": ["role:wall", "variant:v"], "bounds": [-1500, -150, 0, 1500, 150, 3000],
+                     "params": {"pitch": 3}}, **over)
+
+    def test_a_variant_is_the_bays_box_not_only_its_pitch(self):
+        """A variant re-exported longer, thicker, taller or off its origin is refused though its
+        `params.pitch` still says the bay's: it would stand over its neighbour (the review of K3).
+        5 mm is within the fit; 6 mm is not."""
+        for bounds, word in (([-1700, -150, 0, 1700, 150, 3000], "length 3.4 m"),
+                             ([-1500, -100, 0, 1500, 100, 3000], "thickness 0.2 m"),
+                             ([-1500, -150, 0, 1500, 150, 3300], "height 3.3 m"),
+                             ([-1500, 50, 0, 1500, 350, 3000], "its box lies 0.2 m off the bay's about its origin"),
+                             ([-1500, -150, 0, 1500, 156, 3000], "thickness 0.306 m")):
+            kit = L["kit_pieces"](self.ROWS[:1] + [self.variant(bounds=bounds)])
+            self.assertEqual(kit["wall"]["variants"], {}, bounds)
+            self.assertIn(word, kit["wall"]["refused"]["v"]["why"])
+        kit = L["kit_pieces"](self.ROWS[:1] + [self.variant(bounds=[-1500, -150, 0, 1500, 155, 3000])])
+        self.assertEqual(list(kit["wall"]["variants"]), ["v"])
+        picks = L["picks_of"]({"fill": [{"sides": [0], "pattern": ["v"]}]})
+        long = L["kit_pieces"](self.ROWS + [self.variant(bounds=[-1700, -150, 0, 1700, 150, 3000])])
+        runs, _, _ = L["wall_plan"](self.RECT, self.RECT, [], long, "b", "b_s0", picks=picks, name="hall")
+        self.assertEqual(self.laid(runs, 0), [("b_w0_0", "wall", 4)])
+
+    def test_the_words_of_a_kit(self):
+        """Of two pieces with one word the first that is the bay's size is taken; a piece answers
+        to each of its `variant:` tags; `wall` is no variant's word; in a kit of variants alone the
+        first is the bay and answers to its own word; an untagged piece is its role's, whatever
+        its id."""
+        bad = self.variant(id="win_a", tags=["role:wall", "variant:window"], bounds=[-1600, -150, 0, 1600, 150, 3000])
+        good = self.variant(id="win_b", tags=["role:wall", "variant:window", "variant:glass"])
+        kit = L["kit_pieces"](self.ROWS[:1] + [bad, good])
+        self.assertEqual({w: v["id"] for w, v in kit["wall"]["variants"].items()}, {"window": "win_b", "glass": "win_b"})
+        self.assertEqual(kit["wall"]["refused"], {})
+        kit = L["kit_pieces"](self.ROWS[:1] + [self.variant(tags=["role:wall", "variant:wall"])])
+        self.assertEqual((kit["wall"]["variants"], list(kit["wall"]["refused"])), ({}, ["wall"]))
+        only = L["kit_pieces"]([self.variant(id="arch", tags=["role:wall", "variant:arch"]),
+                                self.variant(id="bow", tags=["role:wall", "variant:bow"])])
+        self.assertEqual((only["wall"]["id"], sorted(only["wall"]["variants"])), ("arch", ["arch", "bow"]))
+        kit = L["kit_pieces"](self.ROWS + [self.variant(id="a_half_glass", tags=["role:filler", "variant:glass"],
+                                                        bounds=[-750, -150, 0, 750, 150, 3000])])
+        self.assertEqual(kit["filler"]["id"], "wall_half")
+
+    def test_no_choice_lays_the_bay_as_before(self):
+        kit = L["kit_pieces"](self.ROWS)
+        plain = L["kit_pieces"]([r for r in self.ROWS if not any(t.startswith("variant:") for t in r["tags"])])
+        a = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", "b_s0")
+        b = L["wall_plan"](self.RECT, self.RECT, [], plain, "b", "b_s0")
+        self.assertEqual(a, b)
+
+    def laid(self, runs, edge):
+        """`[(key, asset, count)]` of one side's runs in order along it."""
+        return [(r["key"], r["asset"], r["count"]) for r in sorted(runs, key=lambda r: r["span"][0])
+                if r["key"].startswith(f"b_w{edge}_")]
+
+    @staticmethod
+    def stations(runs, edge, total):
+        """Where the bays of one side stand, mm along the ring, as rules.md 5.1 places a run's
+        members (`ends = "half"`): `[(station, asset)]` in order."""
+        out = []
+        for r in runs:
+            if r["key"].startswith(f"b_w{edge}_") and not r["key"].endswith("f"):
+                a, b = round(r["span"][0] * total), round(r["span"][1] * total)
+                out += [(a + (2 * k + 1) * (b - a) // (2 * r["count"]), r["asset"]) for k in range(r["count"])]
+        return sorted(out)
+
+    def test_a_fill_lays_its_pattern_in_spells(self):
+        """`["window", "wall"]` along the 12 m south side: four runs of one piece each, the first
+        keeping the stretch's key, joined end to end with no gap."""
+        kit = L["kit_pieces"](self.ROWS)
+        picks = L["picks_of"]({"fill": [{"sides": [0], "pattern": ["window", "wall"]}]})
+        runs, _, opens = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", "b_s0", picks=picks, name="hall")
+        self.assertEqual(opens, [])
+        self.assertEqual(self.laid(runs, 0), [("b_w0_0", "wall_window", 1), ("b_w0_0b1", "wall", 1),
+                                              ("b_w0_0b2", "wall_window", 1), ("b_w0_0b3", "wall", 1)])
+        south = sorted((r["span"] for r in runs if r["key"].startswith("b_w0_")))
+        self.assertTrue(all(abs(a[1] - b[0]) < 1e-9 for a, b in zip(south, south[1:])))
+        self.assertAlmostEqual((south[-1][1] - south[0][0]) * 44400, 12000, delta=0.01)
+        self.assertEqual(self.laid(runs, 1), [("b_w1_0", "wall", 3)])           # the other sides as before
+        two = L["picks_of"]({"fill": [{"pattern": ["window", "window", "wall"]}]})
+        runs, _, _ = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", "b_s0", picks=two, name="hall")
+        self.assertEqual(self.laid(runs, 0), [("b_w0_0", "wall_window", 2), ("b_w0_0b2", "wall", 1),
+                                              ("b_w0_0b3", "wall_window", 1)])
+
+    def test_split_runs_stand_where_the_one_run_stood(self):
+        """A side 4 mm longer than its pieces closes with slack (within `FIT`), which the one run
+        spreads over its bays. Each spell spans its share, so every bay stands within a millimetre
+        of where the one run stood it; with half bays after them, the bays end where the fillers
+        start."""
+        kit = L["kit_pieces"](self.ROWS)
+        slack = [(0, 0), (12604, 0), (12604, 9600), (0, 9600)]
+        total = 2 * (12604 + 9600)
+        picks = L["picks_of"]({"fill": [{"sides": [0], "pattern": ["window", "wall"]}]})
+        one, _, _ = L["wall_plan"](slack, slack, [], kit, "b", "b_s0")
+        split, _, opens = L["wall_plan"](slack, slack, [], kit, "b", "b_s0", picks=picks, name="hall")
+        self.assertEqual(opens, [])
+        a, b = self.stations(one, 0, total), self.stations(split, 0, total)
+        self.assertEqual(len(b), 4)
+        self.assertTrue(all(abs(x[0] - y[0]) <= 1 for x, y in zip(a, b)), (a, b))
+        last = max((r for r in split if r["key"].startswith("b_w0_")), key=lambda r: r["span"][1])
+        self.assertAlmostEqual(last["span"][1] * total, 12604 - 300, delta=0.001)     # the last spell reaches the corner
+        halves = [(0, 0), (14100, 0), (14100, 9600), (0, 9600)]                    # 13.5 m: four bays and a half bay
+        runs, _, _ = L["wall_plan"](halves, halves, [], kit, "b", "b_s0", picks=picks, name="hall")
+        bays = [r for r in runs if r["key"].startswith("b_w0_") and not r["key"].endswith("f")]
+        (fill,) = [r for r in runs if r["key"] == "b_w0_0f"]
+        self.assertAlmostEqual(max(r["span"][1] for r in bays), fill["span"][0], places=9)
+        self.assertAlmostEqual(fill["span"][0] * 2 * (14100 + 9600), 300 + 12000, delta=0.001)
+
+    def test_a_fill_names_its_storeys_and_sides_and_a_later_one_lies_over(self):
+        bv = L["bay_variants"]
+        up = L["picks_of"]({"fill": [{"storeys": [1], "pattern": ["window"]}]})
+        self.assertEqual((bv(3, 300, 3000, 0, 0, up, "hall"), bv(3, 300, 3000, 0, 1, up, "hall")),
+                         ([None] * 3, ["window"] * 3))
+        south = L["picks_of"]({"fill": [{"pattern": ["arch"]}, {"sides": [0], "pattern": ["window", "wall"]}]})
+        self.assertEqual(bv(3, 300, 3000, 0, 0, south, "hall"), ["window", None, "window"])
+        self.assertEqual(bv(3, 300, 3000, 1, 0, south, "hall"), ["arch"] * 3)
+
+    def test_a_choice_is_made_from_the_place(self):
+        """A list of words is a choice by place: the same every time; another for another building,
+        storey or side; and for one bay the same whatever else the stretch holds, unless a bay
+        beside it with the same word came or went."""
+        bv, kit = L["bay_variants"], L["kit_pieces"](self.ROWS)
+        picks = L["picks_of"]({"fill": [{"pattern": [["window", "arch", "wall"]]}]})
+        a = bv(20, 300, 3000, 0, 0, picks, "hall")
+        self.assertEqual(a, bv(20, 300, 3000, 0, 0, picks, "hall"))
+        self.assertEqual({x for x in a}, {"window", "arch", None})
+        for other in (bv(20, 300, 3000, 0, 0, picks, "annex"), bv(20, 300, 3000, 0, 1, picks, "hall"),
+                      bv(20, 300, 3000, 1, 0, picks, "hall")):
+            self.assertNotEqual(a, other)
+        whole = 0
+        for i in range(200):
+            name = f"house{i}"
+            full, less = bv(20, 300, 3000, 0, 0, picks, name), bv(19, 3300, 3000, 0, 0, picks, name)
+            self.assertTrue(all(x != y for x, y in zip(full, full[1:])), name)       # no two that touch alike
+            diff = [x != y for x, y in zip(full[1:], less)]
+            self.assertEqual(diff, sorted(diff, reverse=True), name)                 # only next to what went
+            self.assertLessEqual(sum(diff), 6, name)
+            whole += not any(diff)
+        self.assertGreater(whole, 100)
+        ring = [(0, 0), (60600, 0), (60600, 9600), (0, 9600)]              # twenty bays along the south side
+        runs, _, opens = L["wall_plan"](ring, ring, [], kit, "b", "b_s0", picks=picks, name="hall")
+        self.assertEqual(opens, [])
+        self.assertEqual(sum(c for _, _, c in self.laid(runs, 0)), 20)
+        self.assertTrue(all(c == 1 for _, _, c in self.laid(runs, 0)))     # no two alike, so every spell is one
+
+    def test_two_pieces_go_in_turn_and_words_of_one_piece_are_one(self):
+        """Two pieces can only alternate, which is done by the bay's number along the side, so it
+        too holds for a bay that does not move. A word the kit cannot give lays the bay, as `wall`
+        does: the two are one piece, and the choice is among pieces."""
+        bv, variants = L["bay_variants"], L["kit_pieces"](self.ROWS)["wall"]["variants"]
+        two = L["picks_of"]({"fill": [{"pattern": [["window", "wall"]]}]})
+        for name in ("hall", "annex", "mill"):
+            a = bv(20, 300, 3000, 0, 0, two, name, variants)
+            self.assertTrue(all(x != y for x, y in zip(a, a[1:])))
+            self.assertEqual(a[1:], bv(19, 3300, 3000, 0, 0, two, name, variants))
+            self.assertEqual(a, bv(20, 1500, 3000, 0, 0, two, name, variants))    # a start on a half pitch too
+        same = L["picks_of"]({"fill": [{"pattern": [["wall", "glass", "wide", "window"]]}]})
+        for name in (f"house{i}" for i in range(50)):
+            a = [w if w in variants else None for w in bv(20, 300, 3000, 0, 0, same, name, variants)]
+            self.assertTrue(all(x != y for x, y in zip(a, a[1:])), name)
+
+    def test_a_choice_leaves_out_the_fixed_word_beside_it(self):
+        bv, variants = L["bay_variants"], L["kit_pieces"](self.ROWS)["wall"]["variants"]
+        picks = L["picks_of"]({"fill": [{"pattern": [["window", "arch"], "window"]}]})
+        for name in ("hall", "annex", "mill", "quay"):
+            self.assertEqual(bv(6, 300, 3000, 0, 0, picks, name, variants), ["arch", "window"] * 3)
+        three = L["picks_of"]({"fill": [{"pattern": [["window", "arch", "wall"], "window"]}]})
+        for name in (f"house{i}" for i in range(50)):
+            a = bv(20, 300, 3000, 0, 0, three, name, variants)
+            self.assertTrue(all(x != y for x, y in zip(a, a[1:])), name)
+
+    def test_one_bay_by_a_point_along_its_side(self):
+        """`bays`: the bay that holds 7 m along the south side (the third: 6.3 to 9.3 m) takes the
+        window, over what a fill gave it. A point in a corner's reach names no bay and is noted,
+        at the point asked for."""
+        kit = L["kit_pieces"](self.ROWS)
+        attrs = {"storeys": 1, "storey_h": 3.0, "doors": [],
+                 "fill": [{"sides": [0], "pattern": ["arch"]}],
+                 "bays": [{"storey": 0, "side": 0, "at": 7.0, "variant": "window"},
+                          {"storey": 0, "side": 1, "at": 0.1, "variant": "window"}]}
+        out = L["plan"]("hall", self.RECT, attrs, 10.0, GRID, kit)
+        south = [(r["asset"], r["count"]) for r in sorted(out["runs"], key=lambda r: r["span"][0])
+                 if r["key"].startswith("hall_s0_w0_")]
+        self.assertEqual(south, [("wall_arch", 2), ("wall_window", 1), ("wall_arch", 1)])
+        self.assertEqual([(n["code"], n["index"], n["side"], tuple(n["at"])) for n in out["notes"]],
+                         [("bay_none", 1, 1, (12600, 100))])
+
+    def test_the_bay_that_holds_the_point(self):
+        """Not the nearest start: 9.2 m is still the third bay (6.3 to 9.3 m). A point on a joint is
+        the bay after it, whatever the float; before the first bay or past the last is none.
+        `bays` names its storey and its side, and `wall` there puts the bay back."""
+        bv = L["bay_variants"]
+
+        def at(x, storey=0, side=0, n=4, first=300, pitch=3000, variant="window", fill=()):
+            picks = L["picks_of"]({"fill": list(fill), "bays": [{"storey": 1, "side": 2, "at": x, "variant": variant}]})
+            return bv(n, first, pitch, side, storey, picks, "hall"), picks["bays"][0]["hit"]
+        self.assertEqual(at(9.2, 1, 2), ([None, None, "window", None], True))
+        self.assertEqual(at(9.3, 1, 2), ([None, None, None, "window"], True))
+        self.assertEqual(at(0.3, 1, 2), (["window", None, None, None], True))
+        self.assertEqual(at(0.299, 1, 2), ([None] * 4, False))
+        self.assertEqual(at(12.3, 1, 2), ([None] * 4, False))
+        self.assertEqual(at(-1, 1, 2), ([None] * 4, False))
+        self.assertEqual(at(5.0, 0, 2), ([None] * 4, False))                 # another storey
+        self.assertEqual(at(5.0, 1, 0), ([None] * 4, False))                 # another side
+        self.assertEqual(at(32.3, 1, 2, n=40, pitch=1000)[0].index("window"), 32)
+        self.assertEqual(at(513.3, 1, 2, n=400, pitch=1500)[0].index("window"), 342)
+        self.assertEqual(at(5.0, 1, 2, variant="wall", fill=[{"pattern": ["arch"]}]),
+                         (["arch", None, "arch", "arch"], True))
+
+    def test_a_variant_the_kit_cannot_give(self):
+        """Asked for once and noted once per word, on however many storeys and sides: the bay is
+        laid. A word in a choice is noted though no bay took it."""
+        kit = L["kit_pieces"](self.ROWS)
+        picks = L["picks_of"]({"fill": [{"sides": [0], "pattern": ["wide", "glass"]}],
+                               "bays": [{"side": 3, "at": 4, "variant": "bow"}]})
+        notes = []
+        for storey in ("b_s0", "b_s1"):
+            runs, _, _ = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", storey, picks=picks, name="hall", notes=notes)
+            self.assertEqual(self.laid(runs, 0), [("b_w0_0", "wall", 4)])
+        self.assertEqual(sorted((n["variant"], (n["refused"] or {}).get("id")) for n in notes),
+                         [("bow", None), ("glass", None), ("wide", "a_wide")])
+
+    def test_picks_are_checked(self):
+        nan = float("nan")
+        for attrs in ({"bays": [{"storey": 0, "side": 0, "at": 1}]}, {"bays": [{"side": 0.5, "at": 1, "variant": "w"}]},
+                      {"bays": "window"}, {"fill": [{"pattern": []}]}, {"fill": [{"pattern": [3]}]},
+                      {"fill": [{"sides": "south", "pattern": ["wall"]}]}, {"fill": [{"pattern": [[]]}]},
+                      {"fill": [{"storey": 1, "side": 0, "pattern": ["window"]}]},         # the keys `bays` takes
+                      {"fill": [{"pattern": ["window"], "seed": 3}]},
+                      {"bays": [{"side": 0, "at": 1, "variant": "w", "storeys": [0]}]},
+                      {"bays": [{"side": 0, "at": nan, "variant": "w"}]},
+                      {"bays": [{"side": 0, "at": float("inf"), "variant": "w"}]},
+                      {"bays": [{"side": 0, "at": 1e306, "variant": "w"}]},
+                      {"bays": [{"side": 0, "at": True, "variant": "w"}]},
+                      {"bays": [{"side": 0, "at": 1, "variant": ""}]},
+                      {"bays": [{"side": True, "at": 1, "variant": "w"}]},
+                      {"fill": [{"pattern": [""]}]}, {"fill": [{"pattern": [["window", "window", "vent"]]}]},
+                      {"fill": [{"storeys": [], "pattern": ["window"]}]}, {"fill": [{"sides": [1.5], "pattern": ["w"]}]},
+                      {"fill": 0}, {"fill": ""}, {"fill": {}}, {"bays": False}, {"fill": ["window"]}, {"bays": [3]}):
+            with self.assertRaises(ParamError, msg=attrs):
+                L["picks_of"](attrs)
+        self.assertEqual(L["picks_of"]({}), {"bays": [], "fill": []})
+        self.assertEqual(L["picks_of"]({"bays": None, "fill": []}), {"bays": [], "fill": []})
+        with self.assertRaises(ParamError) as c:
+            L["picks_of"]({"fill": 0})
+        self.assertEqual(c.exception.key, "fill")
+
+    def test_picks_name_what_the_building_has(self):
+        """A storey or a side the building has not is refused, not laid nowhere in silence; so are
+        `fill` and `bays` with no kit."""
+        kit = L["kit_pieces"](self.ROWS)
+        base = {"storeys": 1, "storey_h": 3.0, "doors": []}
+        for more in ({"fill": [{"storeys": [1], "pattern": ["window"]}]}, {"fill": [{"sides": [4], "pattern": ["window"]}]},
+                     {"bays": [{"storey": 1, "side": 0, "at": 5, "variant": "window"}]},
+                     {"bays": [{"side": 9, "at": 5, "variant": "window"}]}):
+            with self.assertRaises(ParamError, msg=more):
+                L["plan"]("hall", self.RECT, dict(base, **more), 10.0, GRID, kit)
+        with self.assertRaises(ParamError):
+            L["plan"]("hall", self.RECT, dict(base, fill=[{"pattern": ["window"]}]), 10.0, GRID, None)
+        L["plan"]("hall", self.RECT, dict(base, fill=[{"storeys": [0], "sides": [3], "pattern": ["window"]}]), 10.0, GRID, kit)
+
+    def test_a_vertex_in_a_straight_side_starts_the_next_side(self):
+        """Sides are counted as doors count them: a point in the middle of a straight wall ends one
+        side and starts the next, so `fill` and `bays` reach the second half by its own number."""
+        ring = [(0, 0), (6300, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        stretches, _ = L["wall_stretches"](ring, ring)
+        self.assertEqual([(s["edge"], s["side"], s["off"]) for s in stretches],
+                         [(0, 0, 0), (1, 1, 0), (2, 2, 0), (3, 3, 0), (4, 4, 0)])
+
+    def test_every_attribute_has_its_default(self):
+        """An attribute `lay` reads that kinds.toml does not declare is never handed to the step."""
+        import tomllib
+        with open(os.path.join(HERE, "kinds.toml"), "rb") as f:
+            defaults = tomllib.load(f)["kind"]["building"]["defaults"]
+        self.assertEqual(sorted(set(L["ATTRS"]) - set(defaults)), [])
+
     def test_wall_faces_out(self):
         out = plan(kit=KIT)
         faces = {r["key"].split("_w")[1]: r["face"] for r in out["runs"] if r["ref"] == "hall_s0"}
@@ -537,6 +833,26 @@ class Step(unittest.TestCase):
         on = s.out.tables[("run", runs[0])]["on"]
         self.assertIn(on["ref"], ("hall_s0", "hall_s1"))
         self.assertTrue(all(i["surface"].endswith(".floor") for i in s.out.instances.values()))
+
+    def test_variants_are_said(self):
+        """`generate` says a word the kit has not, a variant it refuses (naming the piece), and a
+        `bays` point no bay holds; and lays the variant it has."""
+        class Kit(FakeStep):
+            def pack(self, select, columns=()):
+                rows = super().pack(select, columns)
+                rows["id"] += ["bay_glass", "bay_wide"]
+                rows["tags"] += ['["role:wall", "variant:glass"]', '["role:wall", "variant:wide"]']
+                rows["bounds"] += [[-500, -150, 0, 500, 150, 3000], [-600, -150, 0, 600, 150, 3000]]
+                rows["params"] += ['{"pitch": 1}', '{"pitch": 1}']
+                return rows
+        s = Kit(dict(ATTRS, kit="building/kit/box", fill=[{"storeys": [0], "sides": [1], "pattern": ["glass", "wide", "bow"]}],
+                     bays=[{"storey": 0, "side": 1, "at": 0.1, "variant": "glass"}]))
+        L["generate"](s)
+        said = [(x[0], x[1], (x[3] or {}).get("variant"), (x[3] or {}).get("asset")) for x in s.said if x[0] != "info"]
+        self.assertEqual(sorted(said), [("warning", "bay_none", "glass", None), ("warning", "variant_none", "bow", ""),
+                                        ("warning", "variant_none", "wide", "bay_wide")])
+        glass = [k for (sec, k), v in s.out.tables.items() if sec == "run" and v["asset"] == "bay_glass"]
+        self.assertTrue(glass and all(k.startswith("hall_s0_w1_") for k in glass), glass)
 
     def test_a_bad_attribute_is_one_error_and_nothing_returned(self):
         s = FakeStep(dict(ATTRS, doors=[{"storey": 1, "t": 0.4}]))

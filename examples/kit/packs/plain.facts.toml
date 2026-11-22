@@ -84,6 +84,23 @@ tags = ["role:filler"]
 params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 files = { "wall_half.glb" = "4e91d93b77e0ed5b881a1dd0149d18cfcb36df73e6606b50d4c9f95e8b42055b" }
 
+[asset.wall_vent]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 48
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:wall", "variant:vent"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+files = { "wall_vent.glb" = "e02222f5ec2dea702afeec93b1aff97fd44b41285d4f28092ef9b0409e1e1b2c" }
+
 [asset.wall_window]
 bounds = [-1.5, -0.15, 0, 1.5, 0.15, 3]
 origin = [0, 0, 0]
@@ -97,6 +114,6 @@ collision = "box"
 sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/plain"
-tags = ["role:wall"]
+tags = ["role:wall", "variant:window"]
 params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 files = { "wall_window.glb" = "7e24f446a17f618d80b1744865027fb68c6f35a4a48b22eab9724023551df367" }

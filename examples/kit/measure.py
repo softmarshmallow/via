@@ -34,19 +34,21 @@ has and each storey's level.
   `open_max_mm` and `open_sum_mm`. Two intervals that share more than `TOL` are an overlap:
   `overlaps`, `overlap_max_mm`. The whole outline is measured on every storey, so a stairwell's
   side with no wall over it is open wall (lib/building/README.md, "not built").
+- `alike`: the pairs of bays (pieces tagged `role:wall`: the bay and its variants) that touch along
+  a side of one storey and are one asset. A wall of the kit's bay alone counts every joint.
 - `outside_max_mm`: the most a corner of a piece's plan lies outside its building's outline. It
   tests corners only, so a piece that spans a cut-out of the outline with all its corners inside
   is not seen.
 - **Stacking.** `stack_over_mm` is the most a piece's top (its `z` plus its bounds' height) stands
   above the level of the storey over it; `stack_under_mm` the most it stops short of it.
 - **What the build said.** `errors`, `warnings`; `wall_open`, `fillers_only`, `gap_wide`
-  (`step.lay.*` records);
+  `variant_none`, `bay_none` (`step.lay.*` records);
   `revised` (`asset.revised` records), `revised_named` (the instances they name) and `revised_all`
   (1 when every record names exactly the build's instances of its asset); `pivot_moved`
   (`asset.pivot_moved`); `gave_way` (the members `place.gave_way` records count); `pin_removed`
   (the instances `identity.pin_removed` names); `overlap`, `crowded` (`place.overlap`,
   `place.crowded`); `kit_pitch`, `kit_corner`, `kit_height`, `kit_module`, `kit_ell`, `kit_slip`,
-  `kit_uneven`, `door_narrow`, `unreached` (`step.check.*`).
+  `kit_uneven`, `kit_variant`, `door_narrow`, `unreached` (`step.check.*`).
 - With --base: `kept`, `added`, `removed` pieces by name; `moved` the kept ones whose origin or face
   differ by more than 1 mm or 0.001 degree.
 """
@@ -143,25 +145,35 @@ def outside(ring, p):
     return 0.0 if inside or best < 1e-9 else best
 
 
+def covers(p, e, n, L, pts, half):
+    """The interval of a side (start `p`, along `e`, inward `n`, length `L`) that a plan covers
+    inside the wall's band, or None."""
+    poly = [((q[0] - p[0]) * e[0] + (q[1] - p[1]) * e[1], (q[0] - p[0]) * n[0] + (q[1] - p[1]) * n[1]) for q in pts]
+    for axis, bound, above in ((0, 0.0, True), (0, L, False), (1, -BAND, True), (1, half, False)):
+        poly = clip(poly, axis, bound, above)
+        if len(poly) < 3:
+            return None
+    us, vs = [q[0] for q in poly], [q[1] for q in poly]
+    if max(us) - min(us) > 1e-9 and max(vs) - min(vs) > 1e-9:
+        return (min(us), max(us))
+    return None
+
+
+def alike(ring, bays, half):
+    """Pairs of bays that touch along a side and are one asset: `bays` are `(asset, plan)`."""
+    count = 0
+    for p, e, n, L in sides(ring):
+        ivs = sorted((iv, a) for a, pts in bays for iv in [covers(p, e, n, L, pts, half)] if iv)
+        count += sum(1 for (i0, a0), (i1, a1) in zip(ivs, ivs[1:]) if abs(i1[0] - i0[1]) <= TOL and a0 == a1)
+    return count
+
+
 def walls(ring, plans, half):
     """Open stretches and overlaps along a ring's sides, in metres: `(open, overlaps)`. `half` is
     half the wall's thickness: the band a piece must reach into to cover a side."""
     opens, overs = [], []
     for p, e, n, L in sides(ring):
-        ivs = []
-        for pts in plans:
-            poly = [((q[0] - p[0]) * e[0] + (q[1] - p[1]) * e[1], (q[0] - p[0]) * n[0] + (q[1] - p[1]) * n[1])
-                    for q in pts]
-            for axis, bound, above in ((0, 0.0, True), (0, L, False), (1, -BAND, True), (1, half, False)):
-                poly = clip(poly, axis, bound, above)
-                if len(poly) < 3:
-                    break
-            if len(poly) < 3:
-                continue
-            us, vs = [q[0] for q in poly], [q[1] for q in poly]
-            if max(us) - min(us) > 1e-9 and max(vs) - min(vs) > 1e-9:
-                ivs.append((min(us), max(us)))
-        ivs.sort()
+        ivs = sorted(iv for iv in (covers(p, e, n, L, pts, half) for pts in plans) if iv)
         at = 0.0
         for u0, u1 in ivs:
             if u0 - at > TOL:
@@ -182,7 +194,7 @@ def measures(d):
     pieces = {n: r for n, r in rows.items() if r["asset"] in kit}
     m = {"pieces": len(pieces)}
     by_asset = Counter(r["asset"] for r in pieces.values())
-    for a in ("wall", "wall_half", "wall_window", "corner", "corner_in", "door"):
+    for a in ("wall", "wall_half", "wall_window", "wall_vent", "corner", "corner_in", "door"):
         m[a] = by_asset.get(a, 0)
 
     rings = {n: [tuple(p) for p in f["pieces"][0]["outer"]] for n, f in feats.items() if f.get("kind") == "building"}
@@ -214,6 +226,9 @@ def measures(d):
             o, v = walls(rings[b], [pts for _, pts in storey.get((b, k), {}).values()], half)
             opens += [(x, b, k) for x in o]
             overs += [(x, b, k) for x in v]
+    m["alike"] = sum(alike(rings[b], [(r["asset"], pts) for r, pts in storey.get((b, k), {}).values()
+                                      if "role:wall" in assets[r["asset"]]["tags"]], half)
+                     for b in sorted(rings) for k in range(len(levels[b])))
     m["open"] = len(opens)
     m["open_max_mm"] = round(max((s[0] for s in opens), default=0.0) * 1000)
     m["open_sum_mm"] = round(sum(s[0] for s in opens) * 1000)
@@ -238,10 +253,10 @@ def measures(d):
     m["wall_open"] = codes.get("step.lay.wall_open", 0)
     m["pivot_moved"] = codes.get("asset.pivot_moved", 0)
     m["overlap"], m["crowded"] = codes.get("place.overlap", 0), codes.get("place.crowded", 0)
-    for c in ("kit_pitch", "kit_corner", "kit_height", "kit_module", "kit_ell", "kit_slip", "kit_uneven",
+    for c in ("kit_pitch", "kit_corner", "kit_height", "kit_module", "kit_ell", "kit_slip", "kit_uneven", "kit_variant",
               "door_narrow", "unreached"):
         m[c] = codes.get("step.check." + c, 0)
-    for c in ("fillers_only", "gap_wide"):
+    for c in ("fillers_only", "gap_wide", "variant_none", "bay_none"):
         m[c] = codes.get("step.lay." + c, 0)
     m["gave_way"] = sum(int((x.get("data") or {}).get("overlap", 0)) + int((x.get("data") or {}).get("relief", 0))
                         for x in diags if x["code"] == "place.gave_way")

@@ -1,0 +1,5 @@
+# One bay named by a rule: the bay 5 m along the south side of the hall's upper storey is a window
+# bay (section 11 of the report: an edit kept as an input to the generator, so it holds when the
+# plan changes). The same swap as changes/window_up.toml, which pins it by hand.
+[feature.hall]
+bays = [{ storey = 1, side = 0, at = 5.0, variant = "window" }]

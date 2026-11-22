@@ -38,6 +38,14 @@ class KitTest(unittest.TestCase):
         self.assertEqual((KIT["wall"]["pitch"], KIT["filler"]["sink"]), (2.0, 0.5))
         self.assertAlmostEqual(KIT["corner"]["depth"], 0.8)
 
+    def test_the_bay_is_never_a_variant(self):
+        # A variant sorts before the bay by id; the bay is still the piece with no `variant:` tag
+        # (docs/design/kit-contract.md). With variants alone, the first id stands.
+        arch = {"id": "arch_bay", "tags": ["role:wall", "variant:arch"], "bounds": [-1000, -250, 0, 1000, 250, 1600],
+                "params": {"pitch": 2.0}, "sink": 0.5}
+        self.assertEqual(K["kit_pieces"]([arch] + ROWS)["wall"]["id"], "wall_bay")
+        self.assertEqual(K["kit_pieces"]([arch])["wall"]["id"], "arch_bay")
+
     def test_ends_inclusive(self):
         # 10.6 m with an end pier on each end: the piers are centred on the stretch's two ends,
         # and between their faces (9.4 m... less 0.3 each side: 10.0 m) four bays and four fillers.

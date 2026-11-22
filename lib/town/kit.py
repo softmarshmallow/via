@@ -143,10 +143,12 @@ def params(raw):
 
 def kit_pieces(rows):
     """{role: {id, pitch, width, depth, sink, plan}} (metres) from pack rows (id, tags, bounds in
-    mm, params, sink, footprint in mm); the first id bytewise per role. `pitch` is `params.pitch`,
-    else the bounds' width; `plan` the footprint's depth, else the bounds'."""
+    mm, params, sink, footprint in mm); the first id bytewise per role, a piece with no
+    `variant:` tag before one with (a variant is never the bay: docs/design/kit-contract.md).
+    `pitch` is `params.pitch`, else the bounds' width; `plan` the footprint's depth, else the
+    bounds'."""
     out = {}
-    for r in sorted(rows, key=lambda r: r["id"]):
+    for r in sorted(rows, key=lambda r: (any(t.startswith("variant:") for t in r["tags"]), r["id"])):
         for tag in r["tags"]:
             if not tag.startswith("role:") or tag[5:] in out:
                 continue

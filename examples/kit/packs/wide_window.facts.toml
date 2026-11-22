@@ -1,0 +1,119 @@
+# Written by via pack accept. Do not edit.
+
+[asset.corner]
+bounds = [-0.15, -0.15, 0, 0.15, 0.15, 3]
+origin = [0, 0, 0]
+footprint = [[-0.15, -0.15], [0.15, -0.15], [0.15, 0.15], [-0.15, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:corner"]
+files = { "corner.glb" = "d5e0dafa51a19cdf17788e12e57a0669e9494384e5bceaf73039325b19387c81" }
+
+[asset.corner_in]
+bounds = [-1.35, -0.15, 0, 0.15, 1.35, 3]
+origin = [0, 0, 0]
+footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:corner_in"]
+params = "1483040f4591fc4ccdd6692ce4d9fae8f04706d1662eb5892a9db088f45b16e4"
+files = { "corner_in.glb" = "50ca1c7dd7f3939c4604191cc3cdcbec168e209b74a107445aeb543bbeeb6c9d" }
+
+[asset.door]
+bounds = [-0.75, -0.15, 0, 0.75, 0.15, 3]
+origin = [0, 0, 0]
+footprint = [[-0.75, -0.15], [0.75, -0.15], [0.75, 0.15], [-0.75, 0.15]]
+triangles = 36
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:door"]
+params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+files = { "door.glb" = "eeebe232bf2a143b3c5d319d0d0a940f7bb2d52a9d6698635148de17da1c9e2e" }
+
+[asset.wall]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:wall"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+files = { "wall.glb" = "8e22ce7d5b350502a3bc03bdfb564efe62d6e03169beb64f8edcf007c430d278" }
+
+[asset.wall_half]
+bounds = [-0.75, -0.15, 0, 0.75, 0.15, 3]
+origin = [0, 0, 0]
+footprint = [[-0.75, -0.15], [0.75, -0.15], [0.75, 0.15], [-0.75, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:filler"]
+params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+files = { "wall_half.glb" = "4e91d93b77e0ed5b881a1dd0149d18cfcb36df73e6606b50d4c9f95e8b42055b" }
+
+[asset.wall_vent]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 48
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:wall", "variant:vent"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+files = { "wall_vent.glb" = "e02222f5ec2dea702afeec93b1aff97fd44b41285d4f28092ef9b0409e1e1b2c" }
+
+[asset.wall_window]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 60
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:wall", "variant:window"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+files = { "wall_window.glb" = "7e24f446a17f618d80b1744865027fb68c6f35a4a48b22eab9724023551df367" }

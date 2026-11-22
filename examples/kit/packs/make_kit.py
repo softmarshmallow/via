@@ -1,5 +1,5 @@
 """Writes the plain kit and its revised copies: packs/plain/*.glb (the kit) and, for each revised
-piece (`stub`, `module`, `pivot`, `tall`), a folder of models, a pack file and a facts file, each
+piece (`stub`, `module`, `pivot`, `tall`, `wide_window`), a folder of models, a pack file and a facts file, each
 for the change of the same name.
 
     python3 examples/kit/packs/make_kit.py
@@ -60,6 +60,18 @@ def window(width):
     ]
 
 
+def vent(width):
+    """The wall bay with a slot under its head, `OPENING` wide and 0.4 m high: a second variant."""
+    w, t, o = width / 2, T / 2, OPENING / 2
+    lo = HEAD - 0.4
+    return [
+        ("render", packgen.box(-w, 0.0, -t, w, lo, t)),
+        ("render", packgen.box(-w, HEAD, -t, w, H, t)),
+        ("render", packgen.box(-w, lo, -t, -o, HEAD, t)),
+        ("render", packgen.box(o, lo, -t, w, HEAD, t)),
+    ]
+
+
 def post(along=0.0):
     """A corner post `T` square. `along` metres of stub run on from one side of it along x: the
     corner piece with a stub (the `stub` change)."""
@@ -93,6 +105,7 @@ PLAIN = {
     "wall.glb": panel(BAY),
     "wall_half.glb": panel(HALF),
     "wall_window.glb": window(BAY),
+    "wall_vent.glb": vent(BAY),
     "corner.glb": post(),
     "corner_in.glb": inside_corner(REACH_IN),
     "door.glb": door(),
@@ -103,6 +116,8 @@ REVISED = {
     "module": {"wall.glb": panel(3.2)},                   # the bay on a 3.2 m module
     "pivot": {"wall.glb": panel(BAY, shift=BAY / 2)},     # the bay's origin at its end, not its middle
     "tall": {"wall.glb": panel(BAY, high=3.3)},           # the bay 0.3 m taller than a storey
+    # the window bay 3.2 m long, its pitch in the pack still 3 m: the model changed, the text did not
+    "wide_window": {"wall_window.glb": window(3.2)},
 }
 
 
@@ -111,6 +126,7 @@ NOTES = {
     "module": "its bay re-exported on a 3.2 m module in place of 3 m",
     "pivot": "its bay re-exported with the model's origin at one end, not the middle",
     "tall": "its bay re-exported 3.3 m high, 0.3 m more than a storey",
+    "wide_window": "its window bay re-exported 3.2 m long, where the bay is 3 m and the pack still says a 3 m pitch",
 }
 
 

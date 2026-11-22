@@ -1,0 +1,9 @@
+# No two neighbours alike: every bay of both buildings is a window bay, a vent bay or a plain bay,
+# chosen from where it stands and never the piece the bay before it took (section 8 of the
+# report: players notice the same piece side by side; one studio's rule that identical buildings
+# may not be neighbours).
+[feature.hall]
+fill = [{ pattern = [["window", "vent", "wall"]] }]
+
+[feature.annex]
+fill = [{ pattern = [["window", "vent", "wall"]] }]

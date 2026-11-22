@@ -1,0 +1,8 @@
+# A variant that is not the bay's size: the window bay is re-exported 3.2 m long (packs/make_kit.py),
+# its pitch in the pack still 3 m, and the hall asks for it along two walls (section 8 of the
+# report: variants must share a footprint and a pivot to swap in place). `lay` reads the model's
+# measured box, refuses it and lays the bay.
+pack = "packs/wide_window.toml"
+
+[feature.hall]
+fill = [{ storeys = [0, 1], sides = [0, 2], pattern = ["window", "wall"] }]

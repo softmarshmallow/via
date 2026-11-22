@@ -95,17 +95,54 @@ The rules (ours, written for this library; README.md is the design note):
    margin of it is `gap_wide` (warning), naming the door or flight and the metres left open: a
    door may sit a margin loose in its wall, not a piece's length. The kit's door piece is its
    door size; a door asked wider than it is told so here.
+8. **Variants of the bay.** A kit may hold several `role:wall` pieces: the bay (the first with no
+   `variant:` tag) and its variants, each tagged `variant:<word>` (a window bay, a vent, an arch).
+   A variant stands where a bay stood, so it is the bay's size: its `params.pitch` and its measured
+   box (length, thickness, height, and where the box lies about the piece's origin), each within
+   `FIT`. One that is not is refused, and where it is asked for the bay is laid and `variant_none`
+   (warning) says what differs; so is a word no piece carries. Of two pieces with one word the
+   first that is the bay's size is taken. A building chooses in two ways, the second over the
+   first:
+   - `fill = [{ storeys, sides, pattern }]`: on those storeys and sides (`"all"`, or lists), the
+     bays of each stretch take the words of `pattern` in turn, from the stretch's start, round
+     again as often as it takes. `"wall"` is the kit's bay. A later entry is laid over an earlier.
+     An entry of `pattern` that is a list of words is a choice among them, made from the bay's
+     place alone (the building's name, the storey, the side and the distance along it): nothing is
+     drawn, so a build is the same every time, and a bay that does not move keeps its word. Two
+     bays that touch in one stretch do not take one piece where the words allow it: a choice
+     leaves out the fixed word before and after it in the pattern; two pieces are laid in turn
+     along the side; among three or more, a bay whose word is the one the bay before it kept
+     takes another, which is neither that word nor the next bay's. So a bay's piece can change
+     only when a bay beside it with the same word comes or goes. Bays either side of a door, a
+     corner or a half bay do not touch and are not compared. A word may stand once in a choice:
+     there are no weights.
+   - `bays = [{ storey, side, at, variant }]`: the bay that holds the point `at` metres along that
+     side takes the variant; a point on a joint is the bay after it. It is an input, not an edit
+     of what was laid: when the plan or the module changes, the bay that then holds the point
+     takes it. Where no whole bay holds it (a half bay, a corner, a door, no wall) nothing is
+     swapped and `bay_none` (warning) says so. It is laid whatever stands beside it.
+   A storey or a side the building has not, a key these tables do not take, and `fill` or `bays`
+   on a building with no kit are `params` (error). Fillers, corners and doors have no variants.
+   A run holds one asset (rules.md 5), so a stretch is one run per spell of one piece: the first
+   keeps the stretch's key and a later one adds the number of its first bay (`<stretch>b<k>`),
+   each spanning its share of the stretch, so a bay stands where the one run stood it and a
+   stretch of the kit's bay alone is named as it always was. Source: one-dimensional patterns
+   over roles in studios' kit recipes and engines' placement grammars (docs/research/Modular
+   city asset contracts.md, section 5); edits kept as inputs to the generator, not as changes to
+   its output (docs/research/Modular kit failures in studios.md, section 11); a rule that
+   neighbours may not repeat (the same report, section 8).
 7. **Roof.** `roof = "garden"`: a `roof` region over the footprint whose `garden` is at the top
    storey's level plus `storey_h`. Otherwise, with a `role:roof` piece in the kit, one instance at
    the footprint's middle on the top floor, facing out of the longest edge.
 
 `params` of the step: `inner_door` (0.9 m), `margin` (0.1 m). Codes are `step.<id>.<code>`: `params` (error, the
 building's attribute or a kit piece's param), `wall_open`, `side_short`, `corner_none`,
-`fillers_only`, `gap_wide` (warnings), `laid` (info, what was returned).
+`fillers_only`, `gap_wide`, `variant_none`, `bay_none` (warnings), `laid` (info, what was returned).
 
 Library code imports only viasdk and the standard library (R19b).
 """
 
+import hashlib
 import json
 import math
 
@@ -137,6 +174,11 @@ EXPLAIN = {
     "corner_none": "The walls turn where the kit has no piece to stand: an outside corner needs a "
     "`role:corner` piece and an inside corner a `role:corner_in` piece, or a post for either "
     "(lib/building/README.md, Sizing a plan to its kit).",
+    "variant_none": "A building asks for a variant of the bay that the kit cannot give: no `role:wall` "
+    "piece carries that `variant:` tag, or the piece that does is not the bay's pitch, thickness and "
+    "height. A variant stands where a bay stood, so it must be the bay's size. The kit's bay is laid.",
+    "bay_none": "A `bays` entry names a point along a side where no whole bay stands, so no piece is "
+    "swapped: only a bay has variants, never a half bay, a corner or a door.",
     "gap_wide": "The wall beside a door or a flight was shortened to a length that closes, so the "
     "gap is wider than the door piece or the path: the rest stands open. Move the door so the wall "
     "either side is a whole number of pieces, or make the door the width of the kit's door piece.",
@@ -556,24 +598,66 @@ def gap_places(a, b, need, wall, filler, near, tol=FIT):
     return below, above
 
 
+def variant_off(v, bay):
+    """What makes the piece `v` not the bay's size (rule 8), as words; empty when it is."""
+    off = [f"{word} {v[k] / 1000:g} m for the bay's {bay[k] / 1000:g} m"
+           for k, word in (("pitch", "pitch"), ("width", "length"), ("thick", "thickness"), ("high", "height"))
+           if abs(v[k] - bay[k]) > FIT]
+    if not off and v["box"] and bay["box"]:
+        d = max(abs(x - y) for x, y in zip(v["box"], bay["box"]))
+        if d > FIT:
+            off.append(f"its box lies {d / 1000:g} m off the bay's about its origin")
+    return off
+
+
 def kit_pieces(rows):
-    """{role: {id, pitch (mm), thick (mm)}} from pack rows (id, tags, bounds, params); the first
-    id bytewise per role."""
-    out = {}
-    for r in sorted(rows, key=lambda r: r["id"]):
+    """{role: {id, pitch (mm), thick (mm), width, high, box, reach}} from pack rows (id, tags,
+    bounds, params). One piece per role: a piece with no `variant:` tag before one with, then the
+    first id bytewise (docs/design/kit-contract.md). For `wall` that piece is the kit's bay; the
+    other `role:wall` pieces that carry `variant:<word>` are its variants, in `wall["variants"]` by
+    word when they are the bay's size (`variant_off`), else in `wall["refused"]` with what differs
+    (rule 8). Of two pieces with one word the first that is the bay's size is taken. In a kit
+    whose every wall piece is a variant, the bay answers to its own word. `wall` itself is no
+    variant's word."""
+    def piece(r):
+        b = r["bounds"]
+        width = b[3] - b[0] if b else 0
+        pitch, reach = (kit_number(r, k) for k in ("pitch", "reach"))
+        return {"id": r["id"], "pitch": int(round(pitch * 1000)) if pitch else width,
+                "thick": b[4] - b[1] if b else 0, "width": width, "high": b[5] - b[2] if b else 0,
+                "box": list(b) if b else None,
+                "reach": int(round(reach * 1000)) if reach is not None else None}
+
+    def words(r):
+        return [t[8:] for t in r["tags"] if t.startswith("variant:")]
+    out, walls = {}, []
+    for r in sorted(rows, key=lambda r: (bool(words(r)), r["id"])):
         for tag in r["tags"]:
             if not tag.startswith("role:"):
                 continue
             role = tag[5:]
-            if role in out:
-                continue
-            b = r["bounds"]
-            width = b[3] - b[0] if b else 0
-            thick = b[4] - b[1] if b else 0
-            pitch, reach = (kit_number(r, k) for k in ("pitch", "reach"))
-            out[role] = {"id": r["id"], "pitch": int(round(pitch * 1000)) if pitch else width,
-                         "thick": thick, "width": width,
-                         "reach": int(round(reach * 1000)) if reach is not None else None}
+            if role == "wall":
+                walls.append(r)
+            elif role not in out:
+                out[role] = piece(r)
+    if walls:
+        bay = dict(piece(walls[0]), variants={}, refused={})
+        out["wall"] = bay
+        for w in words(walls[0]):
+            bay["variants"][w] = piece(walls[0])
+        for r in walls[1:]:
+            v = piece(r)
+            off = variant_off(v, bay)
+            for w in words(r):
+                if w in bay["variants"]:
+                    continue
+                if w == "wall":
+                    bay["refused"].setdefault(w, {"id": r["id"], "why": "`wall` is the bay's own word"})
+                elif off:
+                    bay["refused"].setdefault(w, {"id": r["id"], "why": ", ".join(off)})
+                else:
+                    bay["variants"][w] = v
+                    bay["refused"].pop(w, None)
     return out
 
 
@@ -656,7 +740,7 @@ def wall_stretches(ring, footprint, crossers=(), T=0, margin=MARGIN, over=0.0):
             if abs(da) > 0.5:
                 continue
             off = (re["a"][0] - fe["a"][0]) * fe["e"][0] + (re["a"][1] - fe["a"][1]) * fe["e"][1]
-            if -0.5 <= off <= fe["L"] + 0.5:
+            if -0.5 <= off < fe["L"] - 0.5:         # a start at a side's far end is the next side's
                 host = (k, off)
                 break
         if host is None:
@@ -667,7 +751,7 @@ def wall_stretches(ring, footprint, crossers=(), T=0, margin=MARGIN, over=0.0):
             g = crossing_gap(re, path, w, T, (w + margin) / 2 + over)
             if g is not None:
                 gaps.append((g[0], g[1], c[2] if len(c) > 2 else None, w))
-        out.append({"edge": i, "side": host[0], "L": re["L"], "gaps": sorted(gaps), "start_corner": re["a"] in fset,
+        out.append({"edge": i, "side": host[0], "off": host[1], "L": re["L"], "gaps": sorted(gaps), "start_corner": re["a"] in fset,
                     "end_corner": re["b"] in fset, "e": re})
     for i, p in enumerate(ring):
         if p not in fset:
@@ -685,24 +769,164 @@ def convex_at(corners, p):
     return False
 
 
+def picks_of(attrs, storeys=None, sides=None, kit=True):
+    """`bays` and `fill` of a building, checked (rule 8): `{"bays": [...], "fill": [...]}`, `at` in
+    whole mm. With `storeys` and `sides` (how many the building has), an entry that names one it
+    has not is refused; so is either table on a building with no `kit`."""
+    def whole(v):
+        return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+    def word(v):
+        return isinstance(v, str) and v != ""
+    out = {"bays": [], "fill": []}
+    for key in ("bays", "fill"):
+        v = attrs.get(key)
+        if v is not None and not isinstance(v, list):
+            raise ParamError(key, f"`{key}` is a list of tables", "write it as `[{ ... }]`, or leave it out")
+        if v and not kit:
+            raise ParamError(key, f"`{key}` chooses among a kit's pieces, and the building has no `kit`",
+                             "give the building a `kit`, or take `" + key + "` out")
+    for i, b in enumerate(attrs.get("bays") or []):
+        ok = (isinstance(b, dict) and whole(b.get("storey", 0)) and whole(b.get("side"))
+              and isinstance(b.get("at"), (int, float)) and not isinstance(b.get("at"), bool)
+              and math.isfinite(b["at"]) and abs(b["at"]) <= 1e6 and word(b.get("variant")))
+        extra = sorted(set(b) - {"storey", "side", "at", "variant"}) if isinstance(b, dict) else []
+        if not ok or extra:
+            raise ParamError("bays", f"bay {i} is not `{{ storey, side, at, variant }}`"
+                             + (f": it has `{extra[0]}`" if extra else ""),
+                             "write the storey and side as whole numbers, `at` as metres along that side, "
+                             "`variant` as a word a kit piece carries (`variant:<word>`, or \"wall\" for the bay)")
+        for key, have in (("storey", storeys), ("side", sides)):
+            if have is not None and b.get(key, 0) >= have:
+                raise ParamError("bays", f"bay {i} names {key} {b.get(key, 0)} of a building with {have}",
+                                 f"count {key}s from 0")
+        out["bays"].append({"storey": b.get("storey", 0), "side": b["side"], "at": int(round(float(b["at"]) * 1000)),
+                            "variant": b["variant"], "hit": False, "index": i})
+    for i, f in enumerate(attrs.get("fill") or []):
+        pattern = f.get("pattern") if isinstance(f, dict) else None
+        ok = (isinstance(pattern, list) and pattern and all(
+            word(x) or (isinstance(x, list) and x and all(word(y) for y in x) and len(set(x)) == len(x))
+            for x in pattern))
+        for key in ("storeys", "sides"):
+            v = f.get(key, "all") if isinstance(f, dict) else None
+            ok = ok and (v == "all" or (isinstance(v, list) and v and all(whole(x) for x in v)))
+        extra = sorted(set(f) - {"storeys", "sides", "pattern"}) if isinstance(f, dict) else []
+        if not ok or extra:
+            raise ParamError("fill", f"fill {i} is not `{{ storeys, sides, pattern }}`"
+                             + (f": it has `{extra[0]}`" if extra else ""),
+                             "write `storeys` and `sides` as \"all\" or lists of whole numbers, and `pattern` "
+                             "as a list of variant words (\"wall\" for the kit's bay), or lists of words to choose "
+                             "among, each word once")
+        for key, have in (("storeys", storeys), ("sides", sides)):
+            v = f.get(key, "all")
+            if have is not None and v != "all" and max(v) >= have:
+                raise ParamError("fill", f"fill {i} names {key[:-1]} {max(v)} of a building with {have}",
+                                 f"count {key} from 0")
+        out["fill"].append({"storeys": f.get("storeys", "all"), "sides": f.get("sides", "all"), "pattern": pattern})
+    return out
+
+
+def asked(picks):
+    """Every variant word a building's `fill` and `bays` name, sorted; never `wall`."""
+    words = {b["variant"] for b in picks["bays"]}
+    for f in picks["fill"]:
+        for item in f["pattern"]:
+            words.update([item] if isinstance(item, str) else item)
+    return sorted(words - {"wall"})
+
+
+def _hash(*parts):
+    """A number from a place: the same in every build and on every machine."""
+    return int.from_bytes(hashlib.blake2b("\0".join(str(p) for p in parts).encode(), digest_size=8).digest(), "big")
+
+
+def bay_variants(n, first, pitch, side, storey, picks, name, variants=None):
+    """The variant word of each of the `n` bays of one stretch, None for the kit's bay (rule 8).
+    `first` is where the first bay starts, mm along the outline's side `side`; `variants` the
+    words the kit can give (`kit_pieces`), by which two words are known to lay one piece: a word it
+    cannot give lays the bay, as `"wall"` does (with None, every word is its own piece).
+    A `fill` gives each bay the word of its pattern at the bay's number in the stretch. A list of
+    words there is a choice made from the bay's place (the building's name, its storey, its side
+    and how far along it stands), so that two bays that touch do not take one piece where the
+    words allow it; rule 8 says how. A `bays` entry then names one bay by a point along the side."""
+    def piece(w):
+        if w == "wall" or (variants is not None and w not in variants):
+            return None
+        return w if variants is None else variants[w]["id"]
+    out = [None] * n
+    place = [int(round(first + i * pitch)) for i in range(n)]
+    for f in picks["fill"]:
+        if (f["storeys"] != "all" and storey not in f["storeys"]) or (f["sides"] != "all" and side not in f["sides"]):
+            continue
+        pat = f["pattern"]
+
+        def fixed(i):
+            return pat[i % len(pat)] if 0 <= i < n and isinstance(pat[i % len(pat)], str) else None
+        cands, raw = [None] * n, [None] * n
+        for i in range(n):
+            item = pat[i % len(pat)]
+            if isinstance(item, str):
+                raw[i] = item
+                continue
+            c, seen = [], set()
+            for w in item:                      # one word for each piece: two words of one piece are one
+                if piece(w) not in seen:
+                    seen.add(piece(w))
+                    c.append(w)
+            beside = {piece(w) for w in (fixed(i - 1), fixed(i + 1)) if w is not None}
+            c = [w for w in c if piece(w) not in beside] or c
+            cands[i] = c
+            if len(c) == 2:                     # two pieces can only go in turn: by the bay's number along the side
+                raw[i] = c[(place[i] // int(pitch) + _hash(name, storey, side)) % 2]
+            else:
+                raw[i] = c[_hash(name, storey, side, place[i]) % len(c)]
+        final = list(raw)
+        for i in range(1, n):
+            c = cands[i]
+            if c is None or len(c) < 3 or piece(final[i - 1]) != piece(raw[i]):
+                continue
+            avoid = {piece(raw[i])} | ({piece(raw[i + 1])} if i + 1 < n else set())
+            rest = [w for w in c if piece(w) not in avoid]
+            if rest:
+                final[i] = rest[(_hash(name, storey, side, place[i]) >> 20) % len(rest)]
+        for i in range(n):
+            out[i] = None if final[i] == "wall" else final[i]
+    for b in picks["bays"]:
+        if b["storey"] != storey or b["side"] != side or not n:
+            continue
+        i = (b["at"] - place[0]) // int(pitch)          # a point on a joint is the bay after it
+        if 0 <= i < n:
+            out[i] = None if b["variant"] == "wall" else b["variant"]
+            b["hit"] = True
+    return out
+
+
 def storey_of(key):
     """The storey's number from its key `<building>_s<k>`."""
     tail = str(key).rsplit("_s", 1)[-1]
     return int(tail) if tail.isdigit() else 0
 
 
-def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), margin=MARGIN, notes=None):
-    """Runs and instances for one storey's walls (rule 6). Returns (runs, instances, open).
+def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), margin=MARGIN, notes=None,
+              picks=None, name=""):
+    """Runs and instances for one storey's walls (rules 6 and 8). Returns (runs, instances, open).
     `crossers` are `(path, width mm[, label])`; `notes`, a list, takes what the fit did that a
-    reader should know: `fillers_only` stretches and `gap_wide` gaps."""
+    reader should know: `fillers_only` stretches, `gap_wide` gaps, a variant the kit has not.
+    `picks` (`picks_of`) and the building's `name` choose each bay's variant."""
     wall, filler = kit.get("wall"), kit.get("filler")
     runs, insts, opens = [], [], []
     notes = [] if notes is None else notes
+    picks = picks or {"bays": [], "fill": []}
     if wall is None:
         return runs, insts, opens
     T = wall["thick"]
     over = overhang(kit)
     stretches, corners = wall_stretches(ring, footprint, crossers, T, margin, over)
+    variants = wall.get("variants") or {}
+    for w in asked(picks):
+        if w not in variants and not any(x["code"] == "variant_none" and x["variant"] == w for x in notes):
+            notes.append({"code": "variant_none", "variant": w, "refused": (wall.get("refused") or {}).get(w),
+                          "at": rnd(footprint[0])})
 
     def reach_at(p):
         return corner_of(kit, convex_at(corners, p), T)[1]
@@ -764,9 +988,26 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
             s_mid = s0 + n * wall["pitch"]
             s1 = starts[st["edge"]] + p1
             common = {"face": outward(e), "offset": round(T / 2000, 3), "ends": "half"}
-            if n:
-                runs.append({"key": key, "asset": wall["id"], "count": n, "ref": storey_key,
-                             "span": [round(s0 / total, 9), round((s_mid if k else s1) / total, 9)], **common})
+            # Each bay's piece: the kit's bay, or the variant its place was given (rule 8). A run
+            # holds one asset, so a stretch is as many runs as it has spells of one piece; the
+            # first keeps the stretch's key, a later one adds the number of its first bay.
+            words = bay_variants(n, st["off"] + p0, wall["pitch"], st["side"], storey_of(storey_key), picks, name,
+                                 variants)
+            pieces_ = [variants[w]["id"] if w in variants else wall["id"] for w in words]
+            # Each spell spans its share of the bays' length, so a bay stands where the one run of
+            # the whole stretch stood it, slack and all (rules.md 5.1).
+            bays_end = s_mid if k else s1
+            b0 = 0
+            while b0 < n:
+                b1 = b0
+                while b1 < n and pieces_[b1] == pieces_[b0]:
+                    b1 += 1
+                runs.append({"key": key if b0 == 0 else f"{key}b{b0}", "asset": pieces_[b0], "count": b1 - b0,
+                             "ref": storey_key,
+                             "span": [round((s0 if b0 == 0 else s0 + (bays_end - s0) * b0 / n) / total, 9),
+                                      round((bays_end if b1 == n else s0 + (bays_end - s0) * b1 / n) / total, 9)],
+                             **common})
+                b0 = b1
             if k:
                 runs.append({"key": key + "f", "asset": filler["id"], "count": k, "ref": storey_key,
                              "span": [round(s_mid / total, 9), round(s1 / total, 9)], **common})
@@ -940,18 +1181,26 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 it["surface"] = f"{prefix}_s{st}.floor"
             out["instances"].extend(insts)
             out["open"].extend(opens)
+    picks = picks_of(attrs, storeys, len(footprint), bool(kit))
     if kit:
         for k in range(storeys):
             crossers = [(d["path"], dp["width"], ("door", d["key"])) for d, dp in zip(
                 [d for d in out["doorways"] if d["ends_at"] == f"{prefix}_s{k}.floor"], doors_by_storey.get(k, []))]
             crossers += [(f["path"], int(round(f["width"] * 1000)), ("flight", f["key"])) for f in out["flights"]]
             runs, insts, opens = wall_plan(rings[k], footprint, doors_by_storey.get(k, []), kit,
-                                           f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin, out["notes"])
+                                           f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin, out["notes"],
+                                           picks, name)
             for it in insts:
                 it["surface"] = f"{prefix}_s{k}.floor"
             out["runs"].extend(runs)
             out["instances"].extend(insts)
             out["open"].extend(opens)
+    if kit:
+        for b in picks["bays"]:
+            if not b["hit"]:
+                out["notes"].append({"code": "bay_none", "index": b["index"], "storey": b["storey"],
+                                     "side": b["side"], "at_m": b["at"] / 1000, "variant": b["variant"],
+                                     "at": rnd(local(edges(footprint)[b["side"]], b["at"], 0))})
     top = storeys - 1
     if attrs.get("roof") == "garden":
         out["roof"] = {"key": f"{prefix}_roof", "region": footprint, "eaves": round(lv[top] + storey_h, 3)}
@@ -973,7 +1222,8 @@ def key_of(name):
 # --- the step ---------------------------------------------------------------------------------
 
 
-ATTRS = ["storeys", "storey_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms", "kit", "roof"]
+ATTRS = ["storeys", "storey_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms", "kit", "roof",
+         "bays", "fill"]
 
 
 def _list(col):
@@ -1101,6 +1351,25 @@ def generate(step):
                      "give the kit the corner piece, with the `params.reach` it takes from each wall",
                      position=(bare[0]["at"][0] / 1000, bare[0]["at"][1] / 1000),
                      data={"outside": outside, "inside": inside}, explain=EXPLAIN["corner_none"])
+    for i, n in enumerate(n for n in out["notes"] if n["code"] == "variant_none"):
+        r = n.get("refused")
+        step.warning("variant_none", name,
+                     (f"the variant `{n['variant']}` is `{r['id']}`, which is not the bay's size ({r['why']}): "
+                      "the kit's bay stands in its place" if r else
+                      f"the kit has no piece tagged `variant:{n['variant']}`: the kit's bay stands in its place"),
+                     ("make the piece the bay's pitch, thickness and height" if r else
+                      "tag a `role:wall` piece `variant:" + n["variant"] + "`, or name a variant the kit has"),
+                     position=(n["at"][0] / 1000, n["at"][1] / 1000),
+                     data={"variant": n["variant"], "asset": r["id"] if r else ""},
+                     **({"explain": EXPLAIN["variant_none"]} if i == 0 else {}))
+    for i, n in enumerate(n for n in out["notes"] if n["code"] == "bay_none"):
+        step.warning("bay_none", name,
+                     f"bay {n['index']} asks for `{n['variant']}` {n['at_m']:g} m along side {n['side']} of storey "
+                     f"{n['storey']}, where no whole bay stands: a half bay, a corner, a door or no wall",
+                     "move `at` onto a bay, or resize the side so a bay stands there",
+                     position=(n["at"][0] / 1000, n["at"][1] / 1000),
+                     data={"side": n["side"], "storey": n["storey"], "at": n["at_m"], "variant": n["variant"]},
+                     **({"explain": EXPLAIN["bay_none"]} if i == 0 else {}))
     only = [n for n in out["notes"] if n["code"] == "fillers_only"]
     if only:
         pitch = kit["wall"]["pitch"] / 1000

@@ -272,6 +272,40 @@ class Profile(unittest.TestCase):
             kit = [dict(r, params=dict(r["params"], **{key: bad})) for r in self.PLAIN]
             C["judge"]([], [], kit, P)
 
+    def test_kit_variant(self):
+        """A window bay the bay's size passes; one re-exported 3.2 m long is named with what differs.
+        The bay is the piece with no `variant:` tag, even where a variant's id sorts first."""
+        win = {"id": "a_window", "taxon": "k", "tags": ["role:wall", "variant:window"],
+               "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}}
+        self.assertEqual(codes(C["judge"]([], [], self.PLAIN + [win], P)), [])
+        wide = dict(win, bounds=[-1600, -150, 0, 1600, 150, 3000], params={"pitch": 3.2})
+        (rec,) = [r for r in C["judge"]([], [], self.PLAIN + [wide], P) if r[0] != "info"]
+        self.assertEqual((rec[1], rec[2]), ("kit_variant", "a_window"))
+        self.assertEqual(rec[5], {"asset": "a_window", "variant": "window", "bay": "wall", "differs": ["pitch", "length"]})
+
+    def test_kit_variant_is_the_box_as_lay_reads_it(self):
+        """Thickness, height, and a box off its origin are each named, though the pitch is the
+        bay's; 5 mm passes and 6 mm does not, as in `lay`; `wall` is no variant's word. A thin
+        variant whose id sorts first is not taken for the wall by the corner rule."""
+        def win(**over):
+            return dict({"id": "a_window", "taxon": "k", "tags": ["role:wall", "variant:window"],
+                         "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}}, **over)
+        for bounds, differs in (([-1500, -100, 0, 1500, 100, 3000], ["thickness"]),
+                                ([-1500, -150, 0, 1500, 150, 3300], ["height"]),
+                                ([-1700, -150, 0, 1700, 150, 3000], ["length"]),
+                                ([-1500, 50, 0, 1500, 350, 3000], ["box"]),
+                                ([-1500, -150, 0, 1500, 156, 3000], ["thickness"])):
+            recs = [r for r in C["judge"]([], [], self.PLAIN + [win(bounds=bounds)], P) if r[1] == "kit_variant"]
+            self.assertEqual([r[5]["differs"] for r in recs], [differs], bounds)
+            lay = L["kit_pieces"]([dict(r, params=dict(r["params"])) for r in self.PLAIN + [win(bounds=bounds)]])
+            self.assertEqual(list(lay["wall"]["refused"]), ["window"], bounds)        # the two agree
+        thin = [r for r in C["judge"]([], [], self.PLAIN + [win(bounds=[-1500, -100, 0, 1500, 100, 3000])], P)]
+        self.assertEqual(codes(thin), [("kit_variant", "a_window")])               # and no `kit_corner`
+        ok = win(bounds=[-1500, -150, 0, 1500, 155, 3000])
+        self.assertEqual(codes(C["judge"]([], [], self.PLAIN + [ok], P)), [])
+        (rec,) = [r for r in C["judge"]([], [], self.PLAIN + [win(tags=["role:wall", "variant:wall"])], P) if r[0] != "info"]
+        self.assertEqual((rec[1], rec[5]["differs"]), ("kit_variant", ["word"]))
+
     def test_params(self):
         for bad in ({"riser": 1}, {"going_min": 0}, {"kits": "a"}):
             with self.assertRaises(C["ParamError"]):

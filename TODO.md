@@ -528,6 +528,14 @@ open, and its place here is its destination.
 - [ ] `[pin] set` still `doc.not_yet`; `on = { of = "<run>", near }` (select a member) and the
       mount of a member (rules.md 15, "a lamp on a fence post") are not written.
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
+- [ ] **A run holds one asset, so a wall of mixed pieces is several runs** and a bay's name
+      depends on what stands before it. lib/building splits a stretch into a run per spell of one
+      piece (`<stretch>`, `<stretch>b<k>`): swapping one bay renames the bays after it
+      (`examples/kit` `window_at`: 1 piece, 3 names), and a pin on one of those loses its target.
+      Candidates: a run's `asset` as a list by station; a first station number on a run. Lesson:
+      the station is the name only while one run is the whole wall. To be ruled at K5 ("choosing
+      among pieces").
+      (From K3 of docs/plan-kits.md, 2026-11-22.)
 - [ ] Run members are not tested against other producers (`place.crowded`); the `kitrun` fit
       lint (rules.md 10) is not written; identity.md case 33's run half (cut by the extent) owed.
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
@@ -1413,6 +1421,19 @@ open, and its place here is its destination.
   close with the side's other openings held where they are; two doors both half a metre off are
   each told no place closes, though moving both would. Solve a side's openings together.
       (From the review of K1 and K2, 2026-11-20.)
+- [ ] **Variants of the bay only, and only of its size** (lay.py rule 8). Not built: a variant of
+  a filler, a corner or a door; a variant of another length (a half-bay window, a double bay),
+  which is a fit and not a swap; a weight on a choice; a choice that reads what stands beside
+  the wall (a door facing a street). The no-repeat rule holds inside one stretch, not across a
+  door or a corner. Lesson: a variant that must be the bay's size is the whole reason a swap
+  needs no refit; anything looser is another rule.
+      (From K3 of docs/plan-kits.md, 2026-11-22.)
+- [ ] **A vertex in the middle of a straight wall gets a corner piece.** `wall_stretches` takes
+  every vertex of the outline for a corner and a straight one for an inside corner (`turn > 0`
+  is false), so a wall with a point in its middle is cut there and given a `corner_in`. Sides
+  are now numbered through it as doors number them; the corner is still laid. Lesson: a corner
+  is a turn, not a vertex.
+      (From the review of K3, 2026-11-22; older than K3.)
 - [ ] **A side is named by its number** (`side`, `at` on a door and a stair). A plan that gains a
   corner renumbers the sides after it, so a door on a later side must be written again
   (`examples/kit`: the annex's door is on side 0 so that `ell` does not move it). A side named
@@ -1655,8 +1676,7 @@ open, and its place here is its destination.
   shaped (challenge 33).
       (From the plain kit, 2026-11-20; examples/kit and its README.)
 - [ ] No roofs (a roof depends on the whole plan; `lay` places one `role:roof` asset per
-  building), no rooms, and no variation between bays: `lay` takes the first id of a role, so
-  `wall_window` is placed by a pin only.
+  building) and no rooms. Variation between bays came with K3 (`fill`, `bays`).
       (From the plain kit, 2026-11-20; examples/kit and its README.)
 
 ### `examples/market`

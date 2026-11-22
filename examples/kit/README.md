@@ -1,6 +1,6 @@
 # kit
 
-Two buildings from one plain kit, and eleven changes that each recreate a difficulty studios report
+Two buildings from one plain kit, and fifteen changes that each recreate a difficulty studios report
 with modular kits (`docs/research/Modular kit failures in studios.md`, section 13). The example
 asks one question of each: what does a build say, and what does it do?
 
@@ -8,6 +8,7 @@ It has been built three times, and each state is kept ("The record", below). Fir
 tree as it stood, changing nothing, to record what the tool did. Then after the building library
 was mended where the faults were its own. Then after two rulings on the engine's rules (R64, R65)
 and the kit contract (`docs/design/kit-contract.md`). The table here is what the tool does now.
+Four changes came later, with the variants of a piece (K3 of `docs/plan-kits.md`).
 
 The kit is a studio's proof kit: untextured pieces at their exact sizes, the stage where a kit's
 contract is settled before any art. It is grey on purpose.
@@ -15,9 +16,9 @@ contract is settled before any art. It is grey on purpose.
 | File | What |
 |---|---|
 | `world.toml` | Level ground, two `building` features (lib/building), the `lay` and `check` steps, three views. |
-| `packs/plain.toml`, `packs/plain/` | The kit: `wall` (a 3 m bay), `wall_half` (1.5 m), `wall_window` (the bay with an opening), `corner` (a post for outside corners), `corner_in` (the piece for inside corners), `door` (a frame 1.5 m wide). Every piece 0.3 m thick and 3 m high. Made by `packs/make_kit.py`; facts in `plain.facts.toml`. |
-| `packs/stub.toml`, `module.toml`, `pivot.toml`, `tall.toml` | The kit with one piece re-exported, written by `make_kit.py` from `plain.toml`; their facts files are the kit's, accepted before. |
-| `changes/` | The eleven changes; `window` and `module` are also built together. |
+| `packs/plain.toml`, `packs/plain/` | The kit: `wall` (a 3 m bay), `wall_half` (1.5 m), `wall_window` and `wall_vent` (the bay with an opening: its variants `window` and `vent`), `corner` (a post for outside corners), `corner_in` (the piece for inside corners), `door` (a frame 1.5 m wide). Every piece 0.3 m thick and 3 m high. Made by `packs/make_kit.py`; facts in `plain.facts.toml`. |
+| `packs/stub.toml`, `module.toml`, `pivot.toml`, `tall.toml`, `wide_window.toml` | The kit with one piece re-exported, written by `make_kit.py` from `plain.toml`; their facts files are the kit's, accepted before. |
+| `changes/` | The fifteen changes; `window` and `module` are also built together. |
 | `expect.toml`, `measure.py` | What each build measured, with the protocol. |
 
 ## Build
@@ -34,7 +35,7 @@ python3.11 examples/kit/measure.py build/kit+stub --base build/kit --check stub
 engines/godot/sheet.sh --before build/kit --after build/kit+stub --out review/kit_stub
 ```
 
-Trust each change on its own: four of them set `pack`, and two changes that write one key cannot
+Trust each change on its own: five of them set `pack`, and two changes that write one key cannot
 be trusted in one command.
 
 ## The base
@@ -42,7 +43,8 @@ be trusted in one command.
 The hall is 12.6 by 9.6 m and two storeys; the annex is 9.6 m square and one. `lay` takes a
 building's region as the outer face of its walls and stands a corner post inside each corner, so a
 side between two corners holds its length less 0.6 m: 12 m (four bays) and 9 m (three bays). 53
-pieces: 35 bays, 4 half bays, 12 corners, 2 doors. 0 errors, 0 warnings.
+pieces: 35 bays, 4 half bays, 12 corners, 2 doors. 0 errors, 0 warnings. Every wall is the one
+bay: 21 joints where a bay meets the same bay (`alike`).
 
 `measure.py` does not read what `lay` says of itself. It takes each building's outline, each piece's
 place and the plan of each piece's model, and measures how much of every side of every storey is
@@ -69,8 +71,8 @@ Each row is one build against the base. "Says" is the build's diagnostics; "does
 |---|---|---|---|
 | `pivot` | A piece's pivot moved late: the bay's model origin is at its end, not its middle | `asset.revised` names all 35 bays; `asset.pivot_moved` | 0 of 53 pieces move. The pivot is a rule of the pack, not the model's origin |
 | `stub` | A corner piece re-exported with a 0.6 m stub along one wall | `asset.revised` names all 12 corners; `kit_corner`: 0.9 by 0.3 m where 0.3 m square is laid for; 12 `place.crowded`, each naming a corner and the wall piece it overlaps | Nothing gives way. The walls are whole; 12 overlaps of 0.3 m, and the corners reach 0.3 m outside the outlines |
-| `module` | A piece's module changed late: the bay on a 3.2 m module | `fillers_only`, once per building; `kit_module`: 3.2 m is no whole number of 1.5 m | 74 half bays stand where 35 bays and 4 half bays stood; the walls close |
-| `tall` | A piece that no longer stacks: the bay 3.3 m high on a 3 m storey | `asset.revised`; `kit_height`: 0.3 m into the storey above; `kit_uneven` | The hall's ground-storey bays stand 0.3 m into the storey above |
+| `module` | A piece's module changed late: the bay on a 3.2 m module | `fillers_only`, once per building; `kit_module`: 3.2 m is no whole number of 1.5 m; 2 `kit_variant`: the window and vent bays are still 3 m | 74 half bays stand where 35 bays and 4 half bays stood; the walls close |
+| `tall` | A piece that no longer stacks: the bay 3.3 m high on a 3 m storey | `asset.revised`; `kit_height`: 0.3 m into the storey above; `kit_uneven`; 2 `kit_variant`: the two variants are still 3 m high | The hall's ground-storey bays stand 0.3 m into the storey above |
 | `off_module` | The plan leaves the module: the hall a metre longer | 3 `wall_open`, each with the two nearest lengths that close; `gap_wide` beside the door | Three stretches unbuilt (13 m, 13 m, 5.5 m); 1 m open beside the door. The door and stair keep their places |
 | `door_off` | A door half a metre off the module | `gap_wide`: the wall leaves 3 m; put its middle 4.05 or 5.55 m along side 0 | 1.5 m open beside the frame |
 | `wide_door` | A door off the kit's door size: 1.6 m where the frame is made for 1.4 m | `gap_wide`: the wall leaves 4.5 m where 1.7 m is needed; no place on this side closes round it | 1.5 m open either side of the frame |
@@ -78,7 +80,11 @@ Each row is one build against the base. "Says" is the build's diagnostics; "does
 | `ell` | An inside corner: the annex as an L | Nothing | Every side closes with the kit's inside corner piece |
 | `window` | One bay swapped by hand for a window bay | `identity.pin_removed` names 1 | The window takes its bay's place, on its floor. Its `at` carries the floor's height |
 | `window_up` | The same swap on the storey above | `identity.pin_removed` names 1 | One bay swapped upstairs; the wall under it untouched |
-| `window` and `module` | The swapped bay, then the module changed under it | `identity.pin_removed` names 2; `fillers_only`; `kit_module` | The pin keeps its place and takes the two half bays under it, on its own floor |
+| `window` and `module` | The swapped bay, then the module changed under it | `identity.pin_removed` names 2; `fillers_only`; `kit_module`; 2 `kit_variant` | The pin keeps its place and takes the two half bays under it, on its own floor |
+| `windows` | A facade as a pattern of pieces: window and plain bays in turn on two walls of the hall, both storeys (`fill`) | Nothing | 7 bays are window bays; every wall closes as before |
+| `mixed` | The same piece side by side: every bay chosen among window, vent and plain, never the piece before it (`fill` with a choice) | Nothing | 10 window, 15 vent, 10 plain; no two bays alike touch (21 pairs in the base) |
+| `window_at` | An edit kept as an input: one bay named by a point along a side (`bays`), the swap `window_up` makes with a pin | Nothing | One window bay upstairs; no pin, nothing removed. Three names change for the one piece ("Still open") |
+| `wide_window` | A variant that is not the bay's size: the window bay re-exported 3.2 m long, its pitch in the pack still 3 m, and asked for on two walls | `variant_none`, once: length 3.2 m for the bay's 3 m, the bay stands in its place; `kit_variant` and `kit_pitch` name the piece | No piece moves: 35 bays, no window, no overlap. The model's measured box is compared, not only the pitch the pack states |
 
 Every fault is now said, with its cause, and no build removes a piece on its own account. No
 build stops: each is a warning. Whether some should be errors is open (`TODO.md`).
@@ -122,7 +128,13 @@ the sums agree.
   what stands on it. A height in `at` is what says the floor.
 - **A side is named by its number.** A plan that gains a corner renumbers the sides after it, so
   the annex's door is on side 0, which `ell` does not move.
-- **Variants.** `wall_window` is placed by a pin only: `lay` takes the first piece of a role (K3).
+- **A variant renames the bays after it.** A run holds one asset, so a stretch with a variant is a
+  run per spell of one piece, and the bays after the first spell take new names: `window_at`
+  changes one piece and three names, `windows` seven of each. A pin on a renamed bay loses its
+  target. The limit is the run's (`spec/rules.md` 5), ruled at K5.
+- **Variants of the bay only,** and only of its size. A half-bay window, a double bay, a door or a
+  corner with variants are not built; nor is a weight on a choice. Bays either side of a door, a
+  corner or a half bay do not touch, so they are not kept unlike.
 - **Warning or error.** A wall that does not close builds, with a hole and a warning.
 
 ## The record
@@ -142,7 +154,14 @@ The same builds at three states, same protocol as `expect.toml` (2026-11-20).
 | `wide_door` | Nothing said | Said (`gap_wide`) | Said, with where it would close |
 
 Before any mend: one right, six said in part, two silent. `window_up`, `door_off` and `stair_off`
-were added with the mends they show.
+were added with the mends they show. `windows`, `mixed`, `window_at` and `wide_window` came with
+K3 (measured 2026-11-22), which also gave the kit its seventh piece; since then `module` and
+`tall` name the bay's two variants as well, which a re-exported bay leaves at the old size.
+
+![Variants chosen by place](../../docs/reports/kit-mixed-sheet.png)
+
+The base (left) and `mixed` (right): each bay a window, a vent or a plain bay, chosen from where
+it stands, no two that touch alike.
 
 ![The stub change, before the mends](../../docs/reports/kit-stub-sheet.png)
 

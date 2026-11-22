@@ -1,4 +1,4 @@
-# The plain kit (examples/kit): six pieces of one module, made by packs/make_kit.py.
+# The plain kit (examples/kit): seven pieces of one module, made by packs/make_kit.py.
 # Its facts file, plain.facts.toml, is written by `via pack accept examples/kit/packs/plain.toml`.
 #
 # Every model is glTF's convention: +Y up, front +Z, origin at the base centre (packgen's), so
@@ -26,12 +26,18 @@ taxon  = "structure/plain"
 tags   = ["role:filler"]
 params = { pitch = 1.5 }
 
-# The window bay: the bay with an opening, on the bay's footprint. A second piece in the bay's
-# role: `lay` takes the first id of a role, so nothing places it but a hand (changes/window.toml).
+# The window bay and the vent bay: the bay with an opening, on the bay's footprint. Variants of
+# the bay (lib/building/lay.py rule 8): a building asks for them by word, in `fill` or `bays`.
 [asset.wall_window]
 file   = "wall_window.glb"
 taxon  = "structure/plain"
-tags   = ["role:wall"]
+tags   = ["role:wall", "variant:window"]
+params = { pitch = 3.0 }
+
+[asset.wall_vent]
+file   = "wall_vent.glb"
+taxon  = "structure/plain"
+tags   = ["role:wall", "variant:vent"]
 params = { pitch = 3.0 }
 
 # The outside corner: a post as thick as the wall. It takes its own 0.3 m from each wall.

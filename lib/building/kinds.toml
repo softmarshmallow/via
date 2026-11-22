@@ -46,6 +46,8 @@ stair    = {}                            # { t, width, run }: needed from two st
 rooms    = []                            # [{ storey, shares }]
 kit      = ""                            # a taxon path of wall pieces; "" places none
 roof     = ""                            # "garden": a walkable roof; else the kit's `role:roof`
+bays     = []                            # [{ storey, side, at, variant }]: one bay's variant, by a point along a side
+fill     = []                            # [{ storeys, sides, pattern }]: the bays' variants in turn along each wall
 
 [kind.storey]                            # one floor of a building: a region and its floor
 authority = "anchored"

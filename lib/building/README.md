@@ -36,7 +36,8 @@ Library text in the form a user writes. Attributes illustrative until the code; 
   mean ground under the outline, default 0.3), `front` (a bearing, the main door's side: not
   taken yet, `kinds.toml` has no default for it and `lay` reads `doors`), `doors`
   (a list of `{ storey, t, width }` on the outline, `t` as `on` takes it), `stair` (`{ t, width,
-  run }`, where along the inner outline the stair climbs), `kit` (a taxon of pieces). No surface of
+  run }`, where along the inner outline the stair climbs), `kit` (a taxon of pieces), `fill` and
+  `bays` (which variant of the kit's bay stands where, "Choosing a bay's piece", below). No surface of
   its own: its storeys own them. Its footprint is solid: a `ground = "pad"` instance per building is
   the town kit's convention, kept.
 - **`storey`** (region owner, anchored). `[kind.storey.surface.floor] base = "= level"`,
@@ -71,7 +72,8 @@ has the same `entry` mount, so a walk `ends_at = "hall.entry"` and follows the i
 moved and turned (case `surfaces/moved_turned`). Kit pieces carry `params.pitch` (assets.md 10) and
 tags for their role (`role:wall`, `role:corner`, `role:corner_in`, `role:door`, `role:filler`,
 `role:roof`) and state (`state:open`). A corner piece may carry `params.reach`, the metres of each
-wall it takes ("Sizing a plan to its kit", below). A door leaf the `lay` step places in a doorway
+wall it takes ("Sizing a plan to its kit", below). A second `role:wall` piece carries
+`variant:<word>` ("Choosing a bay's piece", below). A door leaf the `lay` step places in a doorway
 carries no mount with a connector: the doorway ends at the floor, not at the leaf, so a `foot` mount on the leaf would be
 `surface.unmet`. The `entry` mount is for whole-building assets placed by hand.
 
@@ -215,6 +217,47 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     height (`kit_uneven`). The contract is `docs/design/kit-contract.md`.
   - *A bay re-exported on another module* fits nowhere, and `lay` closes every wall in fillers:
     `fillers_only` says so. A piece taller or shorter than `storey_h` is `kit_height`.
+- **Choosing a bay's piece** (K3 of `docs/plan-kits.md`, from examples/kit). Design note; the rule
+  is `lay.py` rule 8. A kit's `role:wall` pieces are its bay (the first with no `variant:` tag) and
+  the bay's variants, each tagged `variant:<word>`: a window bay, a vent, an arch. A variant stands
+  where a bay stood, so it must be the bay's size: its `params.pitch`, and its measured box
+  (length, thickness, height, and where the box lies about the origin), each to 5 mm. The box is
+  compared because a re-export changes the model and not the pack's text. One that is not is
+  refused: `check` names the piece (`kit_variant`), and where a building asks for it `lay` lays
+  the bay and says `variant_none`, as it does for a word no piece carries. Nothing is stretched
+  and nothing is swapped for a near fit. A building chooses by rule, never by a pin:
+  - *A pattern along the walls.* `fill = [{ storeys = [0, 1], sides = [0, 2], pattern = ["window",
+    "wall"] }]`: on those storeys and sides (each `"all"` when left out), the bays of each wall
+    stretch take the pattern's words in turn from the stretch's start. `"wall"` is the kit's bay.
+    A later entry of `fill` is laid over an earlier one.
+  - *No two neighbours alike.* A pattern entry that is itself a list, `pattern = [["window", "vent",
+    "wall"]]`, is a choice among those words. It is made from the bay's place alone (the
+    building's name, the storey, the side, the distance along it), not from a seed and not from
+    the bay's number in its stretch, so the same world lays the same wall and a bay that does
+    not move keeps its word. Two bays that touch do not take one piece where the words allow:
+    two pieces go in turn along the side; among three or more, a bay whose word is the one the
+    bay before it kept takes another. So a bay's piece changes only when a bay beside it with
+    the same word comes or goes (in 200 trials of removing a wall's first bay, more than half
+    changed nothing else, and none changed more than the bays next to it). A word may stand
+    once in a choice (no weights); two words that lay one piece count as one. Bays either side
+    of a door, a corner or a half bay do not touch and are not compared.
+  - *One bay.* `bays = [{ storey = 1, side = 0, at = 5.0, variant = "window" }]`: the bay that
+    holds the point 5 m along side 0. It is an input to `lay`, not an edit of what `lay` returned,
+    so when the plan or the module changes, the bay that then holds the point takes it; a point
+    on a joint is the bay after it. A point in a half bay, a corner, a door or no wall swaps
+    nothing: `bay_none`. `bays` is laid over `fill`, whatever stands beside it.
+  - *What is refused outright* (`params`, an error for that building): a storey or a side the
+    building has not, a key these tables do not take (`storey` for `storeys` would otherwise fill
+    every wall in silence), and `fill` or `bays` on a building with no `kit`.
+  - *What has no variants.* Fillers, corners and doors: one piece per role, and for every role a
+    piece with no `variant:` tag is read before one with. A window in a half bay
+    needs a half-bay window piece and a rule for it (TODO).
+  - *Names.* A run holds one asset (`spec/rules.md` 5), so a stretch with variants is one run per
+    spell of one piece: `<stretch>` for the first, `<stretch>b<k>` for one that starts at bay
+    `k`. A stretch of the bay alone is named as before. **Swapping one bay renames the bays after
+    it in its stretch** (`examples/kit`, `window_at`: one piece changes, three names do), so a pin
+    on one of those is left without its target. This is the run's limit, not the kit's (TODO,
+    `spec/rules.md`; ruled at K5).
 - **Walking to an upper floor.** A storey, flight or doorway `lay` returns has a produced name,
   which text may not write (R3), so a bookmark cannot name it as `toward`. Place your own kindless
   point features `on = { ref = "<building>", t, offset }` (they follow the building when it moves

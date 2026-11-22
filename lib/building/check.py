@@ -36,7 +36,8 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    width differs from its pitch by more than `pitch_slack` metres is `kit_pitch` (warning): a bay
    that measures 6.44 m at a 6 m pitch (the college's) overlaps its neighbour by 0.44 m.
 7. **The kit's corners.** `lay` gives a corner the box its reach states (lay.py rule 6), where `T`
-   is the thickness of the taxon's first `role:wall` piece and `reach` is `params.reach` (by
+   is the thickness of the taxon's bay (its first `role:wall` piece with no `variant:` tag, as
+   `lay` reads it: for every role a piece with no such tag comes before one with) and `reach` is `params.reach` (by
    default `T` outside, 0 inside). `role:corner` is `reach` square. `role:corner_in` is placed by
    the middle of its notch, so its `bounds` span x from `-(reach + T / 2)` to `T / 2` and y from
    `-T / 2` to `reach + T / 2`. A corner whose `bounds` differ from that by more than `pitch_slack`
@@ -56,6 +57,11 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
      piece would need. A kit that only ever walls rectangles is not told.
    - `kit_slip` (warning): a filler shorter than the wall is thick. It closes any length, so it
      hides every plan that was not sized to the kit, and is laid by the dozen where it is used.
+   - `kit_variant` (warning): a `role:wall` piece tagged `variant:<word>` is not the bay's size:
+     its pitch, or its measured box (length, thickness, height, or where the box lies about the
+     origin), differs from the bay's by more than 5 mm, read in whole millimetres as `lay` reads
+     them (lay.py rule 8). `lay` refuses it, and lays the bay where it is asked for. So is a piece
+     tagged `variant:wall`: `wall` is the bay's own word.
    - `kit_uneven` (warning): the wall pieces (`wall`, `filler`, `door`) differ in thickness, or
      `wall`, `filler` and the corners differ in height, by more than `pitch_slack`. A door piece
      may be any height: a leaf, a frame, or a lintel over an open doorway.
@@ -111,6 +117,8 @@ EXPLAIN = {
     "kit_slip": "A filler shorter than the wall is thick closes any length, so it hides plans that "
     "were not sized to the kit and is laid by the dozen. Size the plan's sides to the kit and take "
     "the piece out.",
+    "kit_variant": "A variant of the bay is not the bay's size. A variant stands where a bay stood, "
+    "so it must share the bay's pitch, thickness and height; `lay` lays the bay in its place.",
     "kit_uneven": "Pieces that stand in one wall differ in thickness or height: they step where "
     "they meet. Make them one thickness and one storey high.",
     "kit_height": "A kit piece's measured height is not the storey height of a building that stacks "
@@ -357,7 +365,8 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                         {"asset": r["id"], "width": width, "pitch": float(pitch)}, None))
     wall_roles = ("role:wall", "role:filler", "role:corner", "role:corner_in", "role:door")
     by_taxon = {}
-    for r in sorted(kit_rows, key=lambda r: r["id"]):
+    # For every role a piece with no `variant:` tag comes before one with, then by id: lay.py's order.
+    for r in sorted(kit_rows, key=lambda r: (any(t.startswith("variant:") for t in r.get("tags") or []), r["id"])):
         by_taxon.setdefault(r.get("taxon"), []).append(r)
     for taxon in sorted(by_taxon, key=str):
         rows = by_taxon[taxon]
@@ -411,6 +420,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
     for taxon in sorted(by_taxon, key=str):
         rows = by_taxon[taxon]
         role = {}
+        walls = [r for r in rows if "role:wall" in (r.get("tags") or []) and r.get("bounds")]
         for r in rows:
             for t in r.get("tags") or []:
                 if t.startswith("role:") and r.get("bounds"):
@@ -453,6 +463,29 @@ def judge(features, meetings, kit_rows, p, pieces=()):
             out.append(("warning", "kit_slip", r["id"], f"`{r['id']}` is {m:g} m long in a wall {T:g} m thick: "
                         "a filler that closes any length", "size the plans to the kit and take the piece out",
                         {"asset": r["id"], "pitch": m, "thick": T}, None))
+        def mm(r):
+            """A wall piece's sizes in whole mm, as lay.py's `kit_pieces` reads them."""
+            v, b = number((r.get("params") or {}).get("pitch")), r["bounds"]
+            return {"pitch": int(round(v * 1000)) if v else b[3] - b[0], "length": b[3] - b[0],
+                    "thickness": b[4] - b[1], "height": b[5] - b[2]}
+        for r in walls:
+            words = [t[8:] for t in r["tags"] if t.startswith("variant:")]
+            if r is wall or not words:
+                continue
+            got, want = mm(r), mm(wall)
+            bad = [f"{k} {got[k] / 1000:g} m for `{wall['id']}`'s {want[k] / 1000:g} m" for k in got
+                   if abs(got[k] - want[k]) > 5]
+            differs = [k for k in got if abs(got[k] - want[k]) > 5]
+            shift = max(abs(x - y) for x, y in zip(r["bounds"], wall["bounds"]))
+            if not bad and shift > 5:
+                bad, differs = [f"its box lies {shift / 1000:g} m off `{wall['id']}`'s about its origin"], ["box"]
+            if "wall" in words:
+                bad, differs = bad + ["`wall` is the bay's own word, never a variant's"], differs + ["word"]
+            if bad:
+                out.append(("warning", "kit_variant", r["id"],
+                            f"`{r['id']}` (`variant:{words[0]}`) cannot stand for the bay: " + ", ".join(bad),
+                            "make the variant the bay's pitch and the bay's box: it stands where a bay stood",
+                            {"asset": r["id"], "variant": words[0], "bay": wall["id"], "differs": differs}, None))
         thick = {r["id"]: (r["bounds"][4] - r["bounds"][1]) / 1000.0 for n, r in role.items()
                  if n in ("wall", "filler", "door")}
         high = {r["id"]: (r["bounds"][5] - r["bounds"][2]) / 1000.0 for n, r in role.items()

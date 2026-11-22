@@ -1,0 +1,5 @@
+# Variants by a pattern: on both storeys of the hall, the bays of the south and north walls are a
+# window bay and a plain bay in turn (section 8 of the report: variants on one footprint, and a
+# facade as a pattern of pieces). The half bays, the corners and the door keep their pieces.
+[feature.hall]
+fill = [{ storeys = [0, 1], sides = [0, 2], pattern = ["window", "wall"] }]

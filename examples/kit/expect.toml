@@ -9,10 +9,11 @@
 # Protocol of the numbers below: macOS arm64, release `via` built 2026-11-20 from the working tree
 # after 640a7df with K1 of docs/plan-kits.md (R64, R65, epoch 3), VIA_LIB=lib, Python 3.12
 # (sdk/python/.venv) for the steps, lib/building's `lay` and `check` of the same tree with K2 (a
-# place by `side` and `at`, the kit against itself). One fresh store: base, then each change with
-# --against base, one build each; `window_module` is `window` and `module` together. Measured
-# once on 2026-11-20, so a band is the measured number: not a target, it says where someone
-# looks. The same builds before any mend, and after the library's first mends, are in README.md,
+# place by `side` and `at`, the kit against itself) and K3 (variants of the bay). One fresh store:
+# base, then each change with --against base, one build each; `window_module` is `window` and
+# `module` together. Measured once on 2026-11-20 and, with K3's rows and the kit's seventh piece,
+# again on 2026-11-22 (release `via` of f529008, after the review of K3), so a band is the measured number: not a target,
+# it says where someone looks. The same builds before any mend, and after the library's first mends, are in README.md,
 # "The record".
 
 # ------------------------------------------------------------------------------------------ base
@@ -41,6 +42,11 @@ band    = [4, 4]
 [base.corner]
 measure = "corner"
 band    = [12, 12]
+
+# Joints between two bays of one asset along a side: every one, in a wall of one piece.
+[base.alike]
+measure = "alike"
+band    = [21, 21]
 
 [base.door]
 measure = "door"
@@ -145,7 +151,12 @@ band    = [0, 0]
 
 [module.warnings]
 measure = "warnings"
-band    = [3, 3]
+band    = [5, 5]
+
+# The bay changed pitch, so its two variants are no longer its size: each is told.
+[module.kit_variant]
+measure = "kit_variant"
+band    = [2, 2]
 
 [module.fillers_only]
 measure = "fillers_only"
@@ -240,7 +251,12 @@ band    = [0, 0]
 
 [tall.warnings]
 measure = "warnings"
-band    = [3, 3]
+band    = [5, 5]
+
+# The bay changed height, so its two variants are no longer its size: each is told.
+[tall.kit_variant]
+measure = "kit_variant"
+band    = [2, 2]
 
 [tall.revised]
 measure = "revised"
@@ -539,7 +555,12 @@ band    = [0, 0]
 
 [window_module.warnings]
 measure = "warnings"
-band    = [3, 3]
+band    = [5, 5]
+
+# The bay changed pitch, so its two variants are no longer its size: each is told.
+[window_module.kit_variant]
+measure = "kit_variant"
+band    = [2, 2]
 
 [window_module.fillers_only]
 measure = "fillers_only"
@@ -564,3 +585,209 @@ band    = [1, 1]
 [window_module.open_sum_mm]
 measure = "open_sum_mm"
 band    = [6000, 6000]
+
+# ------------------------------------------------------------------------------------------ windows
+# Variants by a pattern (K3): window and plain bays in turn on the hall's south and north walls,
+# both storeys. Seven bays become windows; no wall opens, nothing overlaps. `added` and `removed`
+# are names, not pieces: a run holds one asset, so a stretch is a run per spell and the bays after
+# the first spell take new names (README.md, "Still open").
+
+[windows.errors]
+measure = "errors"
+band    = [0, 0]
+
+[windows.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[windows.pieces]
+measure = "pieces"
+band    = [53, 53]
+
+[windows.wall_window]
+measure = "wall_window"
+band    = [7, 7]
+
+[windows.wall]
+measure = "wall"
+band    = [28, 28]
+
+[windows.alike]
+measure = "alike"
+band    = [14, 14]
+
+[windows.open]
+measure = "open"
+band    = [1, 1]
+
+[windows.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+[windows.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+[windows.moved]
+measure = "moved"
+band    = [0, 0]
+
+[windows.added]
+measure = "added"
+band    = [7, 7]
+
+[windows.removed]
+measure = "removed"
+band    = [7, 7]
+
+# ------------------------------------------------------------------------------------------ mixed
+# No two neighbours alike (K3): every bay of both buildings is chosen among window, vent and plain
+# from its place, never the piece before it. `alike` falls from 21 to 0.
+
+[mixed.errors]
+measure = "errors"
+band    = [0, 0]
+
+[mixed.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[mixed.pieces]
+measure = "pieces"
+band    = [53, 53]
+
+[mixed.alike]
+measure = "alike"
+band    = [0, 0]
+
+[mixed.wall_window]
+measure = "wall_window"
+band    = [10, 10]
+
+[mixed.wall_vent]
+measure = "wall_vent"
+band    = [15, 15]
+
+[mixed.wall]
+measure = "wall"
+band    = [10, 10]
+
+[mixed.open]
+measure = "open"
+band    = [1, 1]
+
+[mixed.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+[mixed.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ window_at
+# One bay named by a point along a side (K3): the swap of `window_up` with no pin, so nothing is
+# removed by a hand. One piece changes; three names do, the swapped bay's and the two after it in
+# its stretch.
+
+[window_at.errors]
+measure = "errors"
+band    = [0, 0]
+
+[window_at.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[window_at.pieces]
+measure = "pieces"
+band    = [53, 53]
+
+[window_at.wall_window]
+measure = "wall_window"
+band    = [1, 1]
+
+[window_at.pin_removed]
+measure = "pin_removed"
+band    = [0, 0]
+
+[window_at.bay_none]
+measure = "bay_none"
+band    = [0, 0]
+
+[window_at.open]
+measure = "open"
+band    = [1, 1]
+
+[window_at.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+[window_at.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+[window_at.added]
+measure = "added"
+band    = [3, 3]
+
+[window_at.removed]
+measure = "removed"
+band    = [3, 3]
+
+# ------------------------------------------------------------------------------------------ wide_window
+# A variant that is not the bay's size (K3): the window bay re-exported 3.2 m long, its pitch in
+# the pack still 3 m, and asked for along two walls. `lay` refuses it once, by its measured length,
+# and lays the bay; `check` names the piece twice (its pitch, and as a variant). No piece moves and
+# nothing overlaps. Before the review of K3 the stated pitch alone was compared: 7 window bays
+# were laid, each 0.1 m over its neighbours (13 overlaps), with `kit_pitch` the only word.
+
+[wide_window.errors]
+measure = "errors"
+band    = [0, 0]
+
+[wide_window.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[wide_window.kit_pitch]
+measure = "kit_pitch"
+band    = [1, 1]
+
+[wide_window.variant_none]
+measure = "variant_none"
+band    = [1, 1]
+
+[wide_window.kit_variant]
+measure = "kit_variant"
+band    = [1, 1]
+
+[wide_window.wall_window]
+measure = "wall_window"
+band    = [0, 0]
+
+[wide_window.wall]
+measure = "wall"
+band    = [35, 35]
+
+[wide_window.added]
+measure = "added"
+band    = [0, 0]
+
+[wide_window.removed]
+measure = "removed"
+band    = [0, 0]
+
+[wide_window.moved]
+measure = "moved"
+band    = [0, 0]
+
+[wide_window.open]
+measure = "open"
+band    = [1, 1]
+
+[wide_window.open_sum_mm]
+measure = "open_sum_mm"
+band    = [6000, 6000]
+
+[wide_window.overlaps]
+measure = "overlaps"
+band    = [0, 0]
