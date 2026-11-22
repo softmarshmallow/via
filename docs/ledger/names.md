@@ -108,6 +108,7 @@ has and on which fields, its surfaces, its mounts, and whether it is an exit or 
 | Kind | Library | Archetypes | Made of |
 |---|---|---|---|
 | `building` | `building` | Grammar | anchored |
+| `row` | `building` | Linear placement, Grammar | anchored |
 | `storey` | `building` | Grammar, Representation switch | anchored; surface floor with a cut |
 | `footing` | `building` | Grammar, Representation switch | anchored; surface top |
 | `room` | `building` | Grammar | anchored |
@@ -166,6 +167,7 @@ A library declares no step; a world restates the step's table (`spec/protocol.md
 | Step | When | Archetypes | What it does |
 |---|---|---|---|
 | `lib/building/lay.py` | generate | Grammar | One building becomes storeys, their footings, rooms, flights, doorways, footpaths, wall runs, floor tiles and a roof |
+| `lib/building/row.py` | generate | Linear placement, Grammar | Every row becomes its buildings: each lot sized in the kit's bays, wall to wall, told what each side faces |
 | `lib/building/check.py` | lint | Measure | Whether every storey and room can be reached, and stairs, doors and kit are within their limits |
 | `lib/land/uplands.py` | generate | Field | A hillside made from noise and the water that runs off it |
 | `lib/land/weather.py` | generate | Simulation | Ground steeper than its angle of repose sheds downhill |

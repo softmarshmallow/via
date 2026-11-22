@@ -488,8 +488,15 @@ pub fn compare<'a>(
                 subject,
                 site,
                 &format!(
-                    "`{id}` was remodelled ({}); triangles {old_t} -> {new_t}; nothing moves",
-                    names(&rest).join(", ")
+                    "`{id}` was remodelled ({}); triangles {old_t} -> {new_t}; {}",
+                    names(&rest).join(", "),
+                    // The core reads `params` and `shared` for nothing; a step that reads them
+                    // runs again and may lay what it returns elsewhere (4.2).
+                    if names(&rest).iter().any(|n| n == "params" || n == "shared") {
+                        "the core moves nothing, and a step that reads what changed runs again"
+                    } else {
+                        "nothing moves"
+                    }
                 ),
                 "none needed; accept to record it",
             )

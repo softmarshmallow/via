@@ -1,0 +1,13 @@
+# What `fill` by facing is for: the four rows with no `fill`. Every bay is then the kit's own, a
+# window or a shopfront, whatever it faces, as on the block written by hand.
+[feature.south]
+fill = []
+
+[feature.east]
+fill = []
+
+[feature.north]
+fill = []
+
+[feature.west]
+fill = []

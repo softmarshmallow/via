@@ -1,0 +1,5 @@
+# The district border (section 11 of the report): the second building of the south row made a
+# bay wider. The row is one statement, so the buildings after it move along and none stands in
+# another; the row now runs a bay past its frontage, and says so.
+[feature.south]
+lots = [{ bays = 4 }, { bays = 4 }, { bays = 5 }, { bays = 3 }, { bays = 4 }]

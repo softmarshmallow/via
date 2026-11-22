@@ -1,0 +1,122 @@
+name       = "block"
+extent     = [0, 0, 96, 80]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/city.toml"                # the city kit, beside the world (packs/make_kit.py)
+
+# One city block, written as four rows of buildings (lib/building/row.py). A row is a frontage and
+# its lots in bays (from `at` to `to`); the library sizes each building to the kit, stands them wall to wall, and
+# tells each which of its sides faces a neighbour. `by_hand.toml` beside this file is the same
+# block as twelve buildings written by hand, kept so that the two can be measured against each
+# other (README.md).
+#
+# The block is 60 by 46.8 m, walked counter-clockwise from its south-west corner. The south and
+# north rows run its whole length, so the corner buildings are theirs; the east and west rows
+# stand between them, 12.6 m (a row's depth: four bays and two posts) in from each end.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ rows
+
+# What every row shares is written on each: a row is one statement, and the block has no table of
+# its own yet (README.md, "Still open").
+
+[feature.south]                               # along the south street, west to east
+kind     = "row"
+at       = [18, 16]
+to       = [78, 16]
+kit      = "structure/city"
+depth    = 4
+lots     = [{ bays = 4 }, { bays = 3 }, { bays = 5 }, { bays = 3 }, { bays = 4 }]
+heights  = [3, 4, 5]
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]
+
+[feature.east]                                # along the east street, south to north, between the two long rows
+kind     = "row"
+at       = [78, 28.6]
+to       = [78, 50.2]
+kit      = "structure/city"
+depth    = 4
+lots     = [{ bays = 7, storeys = 3 }]
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]
+
+[feature.north]                               # along the north street, east to west
+kind     = "row"
+at       = [78, 62.8]
+to       = [18, 62.8]
+kit      = "structure/city"
+depth    = 4
+lots     = [{ bays = 3 }, { bays = 4 }, { bays = 4 }, { bays = 5 }, { bays = 3 }]
+heights  = [3, 4, 5]
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]
+
+[feature.west]                                # along the west street, north to south
+kind     = "row"
+at       = [18, 50.2]
+to       = [18, 28.6]
+kit      = "structure/city"
+depth    = 4
+lots     = [{ bays = 7, storeys = 3 }]
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.rows]                                   # every row's buildings (lib/building/row.py)
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:building/row.py"]
+
+# `lay` walls every building, written here or returned by `rows`: it reads a step's output, so it
+# stands in a layer above this one (protocol.md 3.3).
+[layer.walls]
+file  = "walls.toml"
+owner = "walls"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_block]
+at = [48, 39.4]
+
+[feature.look_south]
+at = [48, 22]
+
+[feature.over]                                # the whole block from the south, above
+kind       = "bookmark"
+at         = [48, 2]
+toward     = "look_block"
+eye_height = 45
+
+[feature.street]                              # the south row from the street, at eye height
+kind   = "bookmark"
+at     = [30, 4]
+toward = "look_south"
+
+[feature.corner]                              # the south-west corner from outside
+kind   = "bookmark"
+at     = [8, 6]
+toward = "look_block"

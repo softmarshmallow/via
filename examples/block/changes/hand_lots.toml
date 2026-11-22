@@ -1,0 +1,17 @@
+# The facade that does not divide (docs/research/Modular kit failures in studios.md, section 7):
+# the south side cut into five lots of 12 m, as a surveyor or a lot-cutting rule would, and a
+# building on each lot. 12 m is no whole number of bays and posts (12.6 m is, and 9.6 m).
+[feature.s0]
+region = [[18, 16], [30, 16], [30, 28.6], [18, 28.6]]
+
+[feature.s1]
+region = [[30, 16], [42, 16], [42, 28.6], [30, 28.6]]
+
+[feature.s2]
+region = [[42, 16], [54, 16], [54, 28.6], [42, 28.6]]
+
+[feature.s3]
+region = [[54, 16], [66, 16], [66, 28.6], [54, 28.6]]
+
+[feature.s4]
+region = [[66, 16], [78, 16], [78, 28.6], [66, 28.6]]

@@ -237,6 +237,24 @@ class Profile(unittest.TestCase):
         # A piece of the kit's other stated storey is not named.
         self.assertEqual(said(changed("corner", bounds=[-150, -150, 0, 150, 150, 4000])), [])
 
+    def test_a_parapet_is_held_to_its_own_height_and_to_no_storeys(self):
+        """The wall round a flat roof is no storey: a 1.1 m parapet bay in a kit that states 3 m
+        storeys and a 1.1 m parapet is not named; one re-exported 1.4 m high is, against the
+        parapet's height; and with no parapet stated it is held to nothing."""
+        stated = {"module": 3.0, "wall": 0.3, "storey": 3.0, "parapet": 1.1}
+
+        def kit(high, shared=stated):
+            return [dict(r, shared=shared) for r in self.PLAIN] + [
+                {"id": "parapet", "taxon": "k", "tags": ["role:wall", "storey:parapet"],
+                 "bounds": [-1500, -150, 0, 1500, 150, high], "params": {"pitch": 3}, "shared": shared}]
+
+        def said(rows):
+            return [(r[2], r[5]["fact"], r[5]["piece"], r[5]["stated"]) for r in C["judge"]([], [], rows, P)
+                    if r[1] == "kit_stated"]
+        self.assertEqual(said(kit(1100)), [])
+        self.assertEqual(said(kit(1400)), [("parapet", "parapet", 1.4, 1.1)])
+        self.assertEqual(said(kit(1400, {"module": 3.0, "wall": 0.3, "storey": 3.0})), [])
+
     def test_kit_corner(self):
         """A post is as thick as the wall; an inside corner spans its reach along each wall from
         the notch it is placed by. A post re-exported with a 0.6 m stub is 0.9 by 0.3 m and is

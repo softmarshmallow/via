@@ -276,11 +276,13 @@ For each declared fact, first found wins:
 `params` and `shared`.
 Any other key there is `doc.unknown_key`, naming the nearest allowed one. This is the
 pack-lookup rule `documents.md` 6.2 defers to: the nearest `params` default is taken whole, never
-merged with a farther one. A value reaches an asset
+merged with a farther one. `params` and `shared` there are tables: any other value is `doc.type`
+(K6: it was read as none, and hid the table of the taxon above). A value reaches an asset
 only if its source takes that key as optional (2.2).
 
 **`shared`: what the assets filed together state once (R66, K6).** `shared` is a table of any keys,
-read by the core for nothing, as `params` is. It is written in `defaults` only, of a taxon or of
+read by the core for nothing, as `params` is: a library reads the keys it knows and passes over
+the rest, so two libraries may share one kit's table. It is written in `defaults` only, of a taxon or of
 the pack, and never on an asset (`doc.unknown_key` there): it reaches every asset filed at that
 taxon or below it, from every source, and no asset can write another. The nearest one is taken
 whole, as `params` is. So a kit, which is a taxon's assets (`docs/design/kit-contract.md`), says

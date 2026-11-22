@@ -203,6 +203,9 @@ open, and its place here is its destination.
 
 ### `spec/geometry.md`
 
+- [ ] A path an import brings is in no crossing check (`geometry.md` 2.7): two imported paths,
+      or an imported one and one of the world's, cross with nothing said. Older than R71.
+      (From K6 of docs/plan-kits.md, 2026-11-23; the independent review.)
 - [ ] **Distance to large regions is slow.** A fill lake from marching squares has thousands
   of vertices; exact `project_region` per post made vale take ~6 min. A box bound now prunes
   segments; a grid of segments per region is the next step if it is still slow.
@@ -235,7 +238,8 @@ open, and its place here is its destination.
 - [ ] geometry.md 2.7: a bridge's line over a sheer face is `geom.unowned_crossing` (monastery 2,
   every change): a deck over a face is no meeting, and a crossing names only the water it crosses.
   A kind listing more than one name in `names`, or a face (a path whose kind lays no way) left out
-  of the check: decide (open to the owner).
+  of the check: decide (open to the owner). R71 (K6) does not settle it: the deck lands on the
+  brink, where the face's own surface is at the deck's height, so by heights the two do meet.
       (From M5 slice 3, levels and sheer faces, 2026-11-17.)
 - [ ] -> spec/geometry.md: **Main ways are found in the order written,** and join only by a discount. A network search that
   places junctions is the real thing; this is the "network and faces" mechanism again (R13).
@@ -515,6 +519,14 @@ open, and its place here is its destination.
 
 ### `spec/authority.md`
 
+- [ ] **A name attribute cannot be left out.** An attribute a kind lists in `names` must name
+      something on every feature of the kind: an empty default is `identity.unknown_place`. So a
+      library cannot say "this flight lies over that one" or "this doorway is of that row" on
+      some features and not others, which is what both of K6's library mends for a false
+      `geom.unowned_crossing` needed (the third flight of a stair over its first; a doorway
+      ending on its row's frontage). R71 and a row written as a point went round it. An empty
+      name read as "names nothing" would let a kind state an optional relation.
+      (From K6 of docs/plan-kits.md, 2026-11-23.)
 - [ ] A run member's pad past its kind's `max_change` is `authority.max_change` (as written),
       not given way: `Decls::produced_instance` and the give-way rounds know scatters and steps only.
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
@@ -986,6 +998,10 @@ open, and its place here is its destination.
 
 ### `spec/assets.md`
 
+- [ ] An unknown key on a taxon is silent: `[taxon.x] shared = { ... }` written beside `defaults`
+      and not in it builds with exit 0 and states nothing (`assets.md` 5 says `defaults` or
+      none). Older than K6, which made it matter.
+      (From K6 of docs/plan-kits.md, 2026-11-23; the independent review.)
 - [ ] A mount with a height (spec/assets.md 12.2, owed): parts lie on flat ground only, a part at
   two heights is two assets, an accessory's asset states its socket's height. Build when a world
   needs it.
@@ -1386,6 +1402,38 @@ open, and its place here is its destination.
 
 ### `lib/building`
 
+- [ ] **What K6's review found and K6 did not mend.** (1) A diagnostic `lay` says of a building a
+  row returned is located on `[step.rows]`, and records of one code on one building fold into
+  the first: a second storey's `wall_open` is not shown. (2) `check` gives two `kit_variant`,
+  both false, for a one-storey building of the city kit (its ground-storey blank bay is held to
+  the upper bay). (3) A building past the world's extent makes `lay` raise (`RpcError`), by hand
+  or from a row. (4) A party wall is blank to its top: 68 blank bays of `examples/block` look out
+  over a lower neighbour's roof, since `faces` says what stands beside a side and not how high.
+  (5) A flight that ends on the far wall leaves 1.5 m of wall unbuilt (a lot of the plain kit
+  exactly as long as a landing and the run: `row.py` now keeps a landing past the head; `lay`
+  written by hand still does it). Lesson: the review's mutation run left 10 of 34 standing, among
+  them the whole of one new check; tests written with the code pin what the author thought of.
+      (From K6 of docs/plan-kits.md, 2026-11-23; the independent review.)
+- [ ] **A block is four statements, not one.** `row.py` (K6) lays buildings in bays along one
+  frontage. A block of four rows repeats the kit, the depth and the `fill` on each, and its side
+  rows are written a row's depth in from the corners by hand (the one sum left: 12.6 m); two
+  rows written to one corner are refused and said (`row_meets`), not solved. A `block` feature
+  (a region, its sides' lots) would own its corners. Also from K6: a side only part of which a
+  neighbour stands against has one word in `faces`, so where that part is under half its windows
+  stay (`examples/block`: 4); a lot is named by its number, so a lot written before others
+  renames them; a corner building has one door, on its row's street; and what a row passes on to
+  its buildings is eight attributes named one by one. Lesson: twelve buildings by hand were 192
+  numbers and 312 unseen faults; the unit an author writes in should be the kit's.
+      (From K6 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **A storey with another outline than its building's:** a set-back (K6 asked for it and did
+  not build it), an overhanging storey (K7). Every rule of `lay.py` takes one outline for all
+  storeys: the stair's side, the footing, the walls' corners, the floor's grid.
+      (From K6 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **Three of four instances of a city block are floor tiles** (3,719 of 4,949). A floor of
+  1.5 m tiles is whole only on the tile's grid and costs a tile each 2.25 m2; a block of twelve
+  buildings takes about a minute to build, most of it in `lay`'s calls and their tiles. A floor
+  piece a bay square, or a floor as one mesh per storey, is the question.
+      (From K6 of docs/plan-kits.md, 2026-11-23; measured on examples/block.)
 - [ ] lib/building `lay`: an inner wall between rooms leaves no gap for a flight (the station loft's
   walk up its flight was blocked at 2.89 m with the cut at x = 49.3), and a door may land on a
   rooms' cut (the lint's `door_narrow` said 0 m clear). Refuse or move either (`params`).

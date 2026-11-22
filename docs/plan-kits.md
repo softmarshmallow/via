@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6's first step, the kit stating what its pieces share, follows them. Next: K6's city block. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6's first step, the kit stating what its pieces share (aa93d3a); K6's city block follows them. Next: K7. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -100,6 +100,15 @@ Changed so far:
   the second kit should be written against a contract that already has a place for its facts.
   A taxon's `defaults.shared` in the pack, read by lib/building (`wall`, `stair`, `door` laid
   by; `module`, `storey` checked). It is its own commit, since it changes the pack format.
+- **K6, the block, 2026-11-23.** Built: the city kit, one block by hand and as rows, twelve
+  changes, the row of buildings in bays, `faces`, the parapet, and one ruling the block forced
+  (R71: two paths on two levels do not meet). **Not built: the set-back.** It needs a storey
+  whose outline is not its building's, which every rule of `lay.py` takes as given; an
+  overhanging storey is the same mechanism, so both are K7's. And the block has no feature of
+  its own: four rows state it, and the corners are still the author's sum (filed). The
+  independent review found eleven defects; the gravest was R71 as first written, which compared
+  two heights at one point and hid real meetings. It now compares ranges of height over the
+  ground both paths cover, with half a metre between them.
 
 Checks before each commit: the library's tests, `cargo run -p xtask -- check`, and, where a crate
 changed, `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace` and the

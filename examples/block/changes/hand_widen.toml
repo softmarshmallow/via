@@ -1,0 +1,5 @@
+# The district border (section 11 of the report): one building of a row made a bay wider, by
+# hand. Its neighbours are tables of their own with coordinates of their own, so nothing moves
+# them: the wider building now stands 3 m into the next.
+[feature.s1]
+region = [[30.6, 16], [43.2, 16], [43.2, 28.6], [30.6, 28.6]]

@@ -1,0 +1,59 @@
+name       = "stairs"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# Two flights on one line in plan, two storeys apart: the stair of a building of four storeys,
+# whose third flight climbs over its first. Each owns a sloping surface (`tread`).
+[feature.up_0]
+kind = "flight"
+path = [[20, 20], [30, 20]]
+z0   = 10
+z1   = 13
+
+[feature.up_2]
+kind = "flight"
+path = [[20, 20], [30, 20]]
+z0   = 16
+z1   = 19
+
+# A level walk across both, half way along: at 11.5 m, the lower flight's height there.
+[feature.walk]
+kind = "flight"
+path = [[25, 15], [25, 25]]
+z0   = 11.5
+z1   = 11.5
+
+# A lane across both, which owns no surface: nothing says how high it lies.
+[feature.yard]
+kind = "lane"
+path = [[22, 15], [22, 25]]
+
+# A ramp down the lower flight's own line, the other way: 13 to 10. One line in plan with both
+# flights; it shares the lower one's heights and none of the upper one's.
+[feature.down]
+kind = "flight"
+path = [[20, 20], [30, 20]]
+z0   = 13
+z1   = 10
+
+# The walk half a metre higher. Under its 1 m width the lower flight climbs from 11.35 to 11.65:
+# 0.35 m below the walk, less than the half metre that tells two paths apart.
+[change.raise.feature.walk]
+z0 = 12
+z1 = 12
+
+# The walk at 14.5 m: more than half a metre from every flight where it crosses them.
+[change.clear.feature.walk]
+z0 = 14.5
+z1 = 14.5
+
+# The walk at 17.5 m: the upper flight's height where it crosses that one.
+[change.upper.feature.walk]
+z0 = 17.5
+z1 = 17.5

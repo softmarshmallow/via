@@ -1,0 +1,116 @@
+format    = "via-case-1"
+summary   = "geometry.md 2.7 (R71): two paths that each own a kind surface meet only where those surfaces come within half a metre of one height over the ground both cover. A flight and the flight two storeys over it, one line in plan: no geom.unowned_crossing. A ramp down the lower flight's line the other way: it meets that flight (one point of height in common, not at the end the stretch is reported at) and not the upper one. A level walk across both at the lower one's height: it meets the lower flight and the ramp. Raised 0.5 m, 0.35 m over the flight under its own width: still. Raised to 14.5: neither. To 17.5: the upper flight. A lane with no surface meets every one throughout. Each change on the base's store."
+milestone = 7
+actions   = ["base", "raise", "clear", "upper"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+# The ramp and the lower flight: one line, opposite ways, one height in common half way.
+[action.base.diag.ramp]
+code     = "geom.unowned_crossing"
+severity = "warning"
+subject  = "feature.up_0"
+
+# The walk meets the ramp and the lower flight.
+[action.base.diag.walk]
+code    = "geom.unowned_crossing"
+subject = "feature.walk"
+records = 2
+
+[action.base.diag.yard]
+code    = "geom.unowned_crossing"
+subject = "feature.yard"
+records = 3
+
+# The upper flight is named by nothing: not with the lower flight, the ramp or the walk.
+[action.base.diag.stacked]
+code    = "geom.unowned_crossing"
+subject = "feature.up_2"
+records = 0
+
+[action.raise]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "raise", "--against", "build/base", "--out", "build/raise"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/raise"
+
+[action.raise.diag.walk]
+code    = "geom.unowned_crossing"
+subject = "feature.walk"
+records = 2
+
+[action.raise.diag.yard]
+code    = "geom.unowned_crossing"
+subject = "feature.yard"
+records = 3
+
+[action.raise.diag.stacked]
+code    = "geom.unowned_crossing"
+subject = "feature.up_2"
+records = 0
+
+[action.raise.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.clear]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "clear", "--against", "build/base", "--out", "build/clear"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/clear"
+
+[action.clear.diag.walk]
+code    = "geom.unowned_crossing"
+subject = "feature.walk"
+records = 0
+
+[action.clear.diag.yard]
+code    = "geom.unowned_crossing"
+subject = "feature.yard"
+records = 3
+
+[action.clear.diag.stacked]
+code    = "geom.unowned_crossing"
+subject = "feature.up_2"
+records = 0
+
+[action.clear.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.upper]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "upper", "--against", "build/base", "--out", "build/upper"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/upper"
+
+[action.upper.diag.walk]
+code    = "geom.unowned_crossing"
+subject = "feature.walk"
+records = 1
+
+[action.upper.diag.yard]
+code    = "geom.unowned_crossing"
+subject = "feature.yard"
+records = 3
+
+[action.upper.diag.stacked]
+code    = "geom.unowned_crossing"
+subject = "feature.up_2"
+records = 0
+
+[action.upper.diag.internal]
+code    = "diag.internal"
+records = 0

@@ -192,8 +192,8 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | front, facing | which way a piece looks: its agreed forward axis, so a rule can aim it | Asset | pack | shown: `front` |
 | socket, connector | where one piece joins another | Asset | pack | shown: `[asset.<id>.mount.<name>]`, `connector` |
 | bay, corner, end, filler, centre | the roles pieces play in a row | Linear placement | pack, lib | shown: `lib/town/kit.py` |
-| facade | the face of a building as a pattern of pieces | Grammar | lib | partly: `lib/building/lay.py`, `examples/kit` |
-| facade variation | rules that stop neighbours looking identical | Linear placement | lib | shown: `lib/building/lay.py`, `examples/kit` |
+| facade | the face of a building as a pattern of pieces | Grammar | lib | partly: `lib/building/lay.py`, `examples/kit`, `examples/block` |
+| facade variation | rules that stop neighbours looking identical | Linear placement | lib | shown: `lib/building/lay.py`, `lib/building/row.py`, `examples/kit`, `examples/block` |
 | shape grammar, facade grammar | rules that subdivide a volume into floors, bays and openings | Grammar | lib | none |
 | storey, floor | one layer of a building | Grammar | lib | shown: `building.storey` |
 | basement, sub-grade level | floors below the street | Grammar | lib | none |
@@ -202,9 +202,9 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | trim, cornice, plinth | strips that finish edges | Linear placement | lib | none |
 | foundation, stilts, plinth skirt | what takes up the gap under a building | Meeting | lib, pack | partly: `sink` |
 | porch, boardwalk, steps to grade | pieces that reach the door from the ground | Meeting | lib | partly: `building.doorway`, `building.footpath` |
-| storefront, awning, shop sign | the commercial ground floor and what projects from it | Grammar | lib, pack | partly: `lib/building/lay.py`, `examples/kit` |
+| storefront, awning, shop sign | the commercial ground floor and what projects from it | Grammar | lib, pack | partly: `lib/building/lay.py`, `examples/kit`, `examples/block` |
 | fire escape, external stair | stairs hung on a facade | Grammar | lib, pack | none |
-| party wall, blind wall, lightwell | side and back faces between unequal buildings | Meeting | lib | none |
+| party wall, blind wall, lightwell | side and back faces between unequal buildings | Meeting | lib | partly: `lib/building/row.py`, `examples/block` |
 | assembly, saved group | pieces saved and reused as one | Recipe | core | shown: `[set.<id>]` |
 | hero asset | a one-off made for one place | Asset | pack | shown: `[asset.<id>]` |
 | set dressing, props, clutter | things that make a place lived in | Scatter | lib | shown: `examples/station` |

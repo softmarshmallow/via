@@ -18,7 +18,7 @@ A kit is the pieces under one taxon of a pack (`spec/assets.md` 5). A world name
 | Stated or measured | Where | Meaning |
 |---|---|---|
 | `role:<word>` | a tag | The part the piece plays. One piece per role is read: a piece with no `variant:` tag before one with, then the first id, bytewise. |
-| `storey:<word>` | a tag | The kind of storey the piece is made for: `ground`, `upper` or `top`. It is laid there only, and read there before an untagged piece of its role. |
+| `storey:<word>` | a tag | The kind of storey the piece is made for: `ground`, `upper` or `top`. It is laid there only, and read there before an untagged piece of its role. `storey:parapet` marks the wall round a flat roof: a bay, and a filler and a corner where the kit has them, laid on the roof as a storey's walls are (K6). |
 | `params.span` | the pack, on a roof piece | The plan distance from the eave to the ridge the piece is made for: half the depth of the building it roofs. |
 | `variant:<word>` | a tag, beside `role:wall` | A variant of the bay: a piece that may stand where a bay stands. The bay is the first `role:wall` piece with no such tag. |
 | `params.pitch` | the pack | The length of wall the piece takes, metres. Without it, the measured width. |
@@ -94,7 +94,7 @@ landing = 1.5
 | `wall` | It is the wall's thickness in every rule, in place of the bay's measured box. |
 | `stair` | `width` and `run` are a building's stair's where it writes none; `landing` and `lane` size the stairwell. A lane, a landing and a run of whole floor tiles give stairwells of whole tiles on every storey. |
 | `door` | A door that writes no `width` takes it. |
-| `module`, `storey` | Not laid by: a stretch closes by its pieces' pitches and a storey's height is the building's. `check` holds the pieces to them. |
+| `module`, `storey`, `parapet` | Not laid by: a stretch closes by its pieces' pitches and a storey's height is the building's. `check` holds the pieces to them (`parapet`: the height of the pieces tagged `storey:parapet`). |
 
 Every key is optional. What one piece alone takes of a layout stays on the piece (`params.pitch`,
 `reach`, `span`: R69). `check` holds each piece to what its kit states (`kit_stated`: a wall piece
@@ -166,6 +166,7 @@ another side grows.
   rows of pieces along a street still read each piece's pitch alone and state nothing of a kit.
 - **A storey's height taken from the kit.** A building still writes `storey_h`; the kit's
   `storey` only holds the pieces to it.
+- **A storey with another outline than its building's:** a set-back, an overhang (K7).
 - **A wall's free end and a T-junction of walls** have no role.
 - **Sockets between two kits** (a door size shared across kits, a glue kit, a plug for a hole):
   K9. The core has typed connectors (`spec/assets.md` 2.7); no library kit uses one.

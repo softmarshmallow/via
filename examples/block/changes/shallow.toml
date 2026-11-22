@@ -1,0 +1,7 @@
+# A lot the kit's stair does not fit: the west side as two lots in a row two bays deep, the first
+# two bays wide. No side of that lot is long enough for the stairwell, and it has three storeys.
+# The second lot stands, well clear of the south row.
+[feature.west]
+depth = 2
+lots  = [{ bays = 2, storeys = 3 }, { bays = 4, storeys = 3 }]
+to    = [18, 31]

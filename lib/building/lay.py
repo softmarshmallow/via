@@ -191,25 +191,31 @@ The rules (ours, written for this library; README.md is the design note):
    (`square`), turned or not. A roof that cannot be laid (no kit; a flat roof on a building
    turned off the axes, as rule 9; for a gable: not a rectangle, a depth that is not twice a slope's span, an eave that is not whole pieces, a
    gable piece of another span, a kit without the pieces) is `roof_none` (warning) with its
-   reason, and the flat roof is laid in its place where the kit has a floor tile. Source: ours;
+   reason, and the flat roof is laid in its place where the kit has a floor tile. **The
+   parapet.** Round a flat roof that was asked for, the kit's wall pieces tagged
+   `storey:parapet` (a bay, and a filler and a corner where the kit has them) are laid along the
+   outline exactly as a storey's walls are (rule 6), standing on the roof: runs
+   `<building>_roof_w<side>_<j>`, corners `<building>_roof_c<i>`. A kit with no such bay gets
+   none. A stretch that does not close is `wall_open`, said of the parapet. Source: ours;
    the research found no developer's account of roofs from pieces (docs/research/Modular kit
    failures in studios.md, section 9).
 11. **What a kit states.** A kit is a taxon's pieces, and what they share it says once: the
    `shared` table in that taxon's `defaults` (spec/assets.md 2.5; R66 of docs/doctrine.md; Asset
-   law 5 of docs/ledger/archetypes.md). `lay` reads five of its keys, each optional: `wall`, the
+   law 5 of docs/ledger/archetypes.md). `lay` reads six of its keys, each optional: `wall`, the
    walls' thickness, which is then `T` in every rule above in place of the bay's measured box;
    `stair = { lane, width, run, landing }`, the kit's stair: `width` and `run` are a building's
    stair's where it writes none, `landing` replaces `LANDING`, and `lane` is how deep one lane
    is (lane 0's centre is `T + lane / 2` in and its stairwell `lane` deep, lane 1 one `lane`
    further), in place of the width and `CLEAR` each side, so a kit whose lane is whole floor
    tiles gets stairwells that are; `door`, the width of the doorway its door piece is made for,
-   which a door that writes no `width` takes; `module` and `storey` (one height or a list),
+   which a door that writes no `width` takes; `module`, `storey` (one height or a list) and
+   `parapet` (the height of its `storey:parapet` pieces),
    which `lay` does not lay by (a stretch closes by its pieces' pitches, a storey's height is
    the building's) and `check` holds the pieces to (`kit_stated`). What a piece alone takes of a
    layout stays on the piece: `params.pitch`, `reach`, `span` (R69). A kit that states nothing
    is laid by its pieces as before, and `check` says so once (`kit_unstated`, info). Two
-   `shared` tables among a kit's rows, a key not in this list or a value that is no length
-   above 0 is `params` (error). Source: the studios' accounts of a kit as a system and not a
+   `shared` tables among a kit's rows, or a value of one of these keys that is no length
+   above 0, is `params` (error); a key not in this list is another library's, and is passed over. Source: the studios' accounts of a kit as a system and not a
    list of assets, and of the metrics written down before the first piece (docs/research/
    Modular kit failures in studios.md, sections 1 and 2).
 
@@ -868,7 +874,7 @@ def variant_off(v, bay):
 
 
 BY_HEIGHT = ("wall", "filler", "corner", "corner_in", "door")      # the roles a storey's height chooses among
-SHARED = ("module", "wall", "door", "storey", "stair")             # what a kit may state once (rule 11)
+SHARED = ("module", "wall", "door", "storey", "parapet", "stair")  # what a kit may state once (rule 11)
 STAIR_KEYS = ("lane", "width", "run", "landing")
 
 
@@ -877,9 +883,9 @@ def kit_shared(rows):
     (spec/assets.md 2.5), which every piece's row carries. Returns {} where the kit states
     nothing, else, in mm, those of: `module`, `wall`, `door` (lengths), `storey` (a sorted list
     of heights, from one height or a list), `stair` ({lane, width, run, landing}, each where
-    stated). A kit is one taxon's pieces and says a thing once: two tables among its rows, a key
-    this library does not read, or a value that is not a length above 0, is the kit's fault and
-    is said as one (`params`)."""
+    stated). A kit is one taxon's pieces and says a thing once: two tables among its rows, or a
+    value of a key read here that is not a length above 0, is the kit's fault and is said as one
+    (`params`). A key this library does not read is another's, and is passed over."""
     tables = []
     for r in rows or []:
         t = r.get("shared") or {}
@@ -899,9 +905,8 @@ def kit_shared(rows):
         return int(round(v * 1000))
     out = {}
     for k, v in t.items():
-        if k not in SHARED:
-            raise ParamError("kit", f"the kit states `shared.{k}`, which `lay` does not read",
-                             "a building kit states " + ", ".join(f"`{x}`" for x in SHARED))
+        if k not in SHARED:              # another library's key: `shared` holds any (spec/assets.md 2.5)
+            continue
         if k == "storey":
             out[k] = sorted({mm(x, k) for x in (v if isinstance(v, list) else [v])})
         elif k == "stair":
@@ -961,6 +966,7 @@ def kit_pieces(rows, word=None, height=None):
         return {"id": r["id"], "pitch": int(round(pitch * 1000)) if pitch else width,
                 "thick": b[4] - b[1] if b else 0, "width": width, "high": b[5] - b[2] if b else 0,
                 "box": list(b) if b else None,
+                "storey": next((t[7:] for t in r["tags"] if t.startswith("storey:")), None),
                 "reach": int(round(reach * 1000)) if reach is not None else None,
                 "span": int(round(span * 1000)) if span is not None else None}
 
@@ -1125,6 +1131,12 @@ def picks_of(attrs, storeys=None, sides=None, kit=True):
     def word(v):
         return isinstance(v, str) and v != ""
     out = {"bays": [], "fill": []}
+    faces = attrs.get("faces") or []
+    if not isinstance(faces, list) or not all(word(w) for w in faces) or (
+            faces and sides is not None and len(faces) != sides):
+        raise ParamError("faces", f"`faces` is not a word for each of the outline's {sides} sides",
+                         "write one word a side, in the outline's order: `faces = [\"front\", \"party\", "
+                         "\"back\", \"party\"]`, or leave it out")
     for key in ("bays", "fill"):
         v = attrs.get(key)
         if v is not None and not isinstance(v, list):
@@ -1156,13 +1168,27 @@ def picks_of(attrs, storeys=None, sides=None, kit=True):
         for key in ("storeys", "sides"):
             v = f.get(key, "all") if isinstance(f, dict) else None
             ok = ok and (v == "all" or (isinstance(v, list) and v and all(whole(x) for x in v)))
-        extra = sorted(set(f) - {"storeys", "sides", "pattern"}) if isinstance(f, dict) else []
+        facing = f.get("faces") if isinstance(f, dict) else None
+        ok = ok and (facing is None or (isinstance(facing, list) and facing and all(word(x) for x in facing)))
+        extra = sorted(set(f) - {"storeys", "sides", "faces", "pattern"}) if isinstance(f, dict) else []
         if not ok or extra:
             raise ParamError("fill", f"fill {i} is not `{{ storeys, sides, pattern }}`"
                              + (f": it has `{extra[0]}`" if extra else ""),
-                             "write `storeys` and `sides` as \"all\" or lists of whole numbers, and `pattern` "
+                             "write `storeys` and `sides` as \"all\" or lists of whole numbers (or `faces` as a "
+                             "list of the words the building's `faces` gives its sides), and `pattern` "
                              "as a list of variant words (\"wall\" for the kit's bay), or lists of words to choose "
                              "among, each word once")
+        if facing is not None:
+            # By what a side faces (rule 12): the sides whose word in the building's `faces` is
+            # one of these. A word no side has matches none, and is no fault: a row gives every
+            # building one `fill`, and a building in its middle has no `end`.
+            if "sides" in f:
+                raise ParamError("fill", f"fill {i} has both `sides` and `faces`", "say which sides by one of them")
+            if not faces:
+                raise ParamError("fill", f"fill {i} names `faces`, and the building says of no side what it faces",
+                                 "give the building `faces`, a word for each side of its outline in order, or "
+                                 "name the `sides` by number")
+            f = dict(f, sides=[k for k, w in enumerate(faces) if w in facing] or [-1])
         for key, have in (("storeys", storeys), ("sides", sides)):
             v = f.get(key, "all")
             if have is not None and v != "all" and max(v) >= have:
@@ -1777,6 +1803,20 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 why = "the kit has no `role:floor` piece"
         if laid:
             out["roof"] = {"key": rkey, "region": footprint, "eaves": eaves}
+        if laid and roof == "flat" and kits:
+            # The parapet (rule 10): the kit's wall pieces tagged `storey:parapet`, laid round the
+            # outline as a storey's walls are, on the roof.
+            pk = kits("parapet", None)
+            if (pk.get("wall") or {}).get("storey") == "parapet":
+                runs, insts, opens = wall_plan(footprint, footprint, [], pk, rkey, rkey, (), margin, out["notes"],
+                                               None, name)
+                for it in insts:
+                    it["surface"] = f"{rkey}.garden"
+                for o_ in opens:
+                    o_["parapet"] = True
+                out["runs"].extend(runs)
+                out["instances"].extend(insts)
+                out["open"].extend(opens)
         if why:
             cx = sum(p[0] for p in footprint) / len(footprint)
             cy = sum(p[1] for p in footprint) / len(footprint)
@@ -1799,7 +1839,7 @@ def key_of(name):
 # --- the step ---------------------------------------------------------------------------------
 
 
-ATTRS = ["storeys", "storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms",
+ATTRS = ["storeys", "storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms", "faces",
          "kit", "roof", "bays", "fill"]
 
 
@@ -1906,7 +1946,8 @@ def generate(step):
         hint = (f"it ends at the stairwell: move the stair's `at`, or change its `run`, so this wall is {moves}"
                 if w.get("stairwell") and moves
                 else "resize the side to a length that closes, or move the door or stair that cuts it")
-        where_ = f" on side {w['side']} of storey {w.get('storey', 0)}" if "side" in w else ""
+        where_ = (f" on side {w['side']} of the parapet" if w.get("parapet")
+                  else f" on side {w['side']} of storey {w.get('storey', 0)}" if "side" in w else "")
         said = f"a wall stretch of {w['length'] / 1000:g} m{where_} does not close with the kit's pieces"
         if w.get("unfloored"):
             said = (f"`{w['key']}` on storey {w.get('storey', 0)} has neither the storey's floor nor its footing "

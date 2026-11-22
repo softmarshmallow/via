@@ -1376,6 +1376,8 @@ class Stated(unittest.TestCase):
                                "stair": {"lane": 1500, "width": 1300, "run": 4500, "landing": 1500}})
         self.assertEqual(L["kit_shared"](self.rows()), {})
         self.assertEqual(L["kit_shared"](None), {})
+        # A key `lay` does not read is another library's: `shared` holds any keys.
+        self.assertEqual(L["kit_shared"](self.rows({"wall": 0.3, "street": {"kerb": 0.15}})), {"wall": 300})
 
     def test_a_kit_says_a_thing_once_and_as_a_length(self):
         two = self.rows(self.PLAIN)
@@ -1384,7 +1386,6 @@ class Stated(unittest.TestCase):
                            (self.rows({"wall": 0}), "not a length"),
                            (self.rows({"wall": "thin"}), "not a length"),
                            (self.rows({"wall": True}), "not a length"),
-                           (self.rows({"modul": 3.0}), "does not read"),
                            (self.rows({"stair": {"lanes": 1.5}}), "shared.stair"),
                            (self.rows({"stair": 1.5}), "shared.stair"),
                            (self.rows({"stair": {"lane": 1.0, "width": 1.3}}), "wide in a lane")):

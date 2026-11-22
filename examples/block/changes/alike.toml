@@ -1,0 +1,9 @@
+# Neighbours that repeat (section 8 of the report): the two long rows with no `heights`, every
+# lot four storeys. Lots of one width side by side are then one building twice.
+[feature.south]
+heights = []
+storeys = 4
+
+[feature.north]
+heights = []
+storeys = 4

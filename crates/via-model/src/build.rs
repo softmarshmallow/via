@@ -2068,6 +2068,9 @@ fn unowned_crossings(decls: &Decls, placed: &Placed, diags: &mut Vec<Diag>) {
             .values()
             .any(|m| m.inputs.iter().any(|x| x == a) && m.inputs.iter().any(|x| x == b))
     };
+    // Two paths that each own a kind surface meet only where those surfaces are at one height
+    // (R71): a flight and the flight two storeys over it are one line in plan and never meet.
+    let levels = std::cell::OnceCell::new();
     for (k, (ia, fa, la)) in paths.iter().enumerate() {
         for (ib, fb, lb) in &paths[k + 1..] {
             if in_one_network(ia, ib) {
@@ -2108,6 +2111,12 @@ fn unowned_crossings(decls: &Decls, placed: &Placed, diags: &mut Vec<Diag>) {
                 if na.iter().any(|t| lies_on(t, ib))
                     || nb.iter().any(|t| lies_on(t, ia))
                     || na.iter().any(|t| nb.contains(t))
+                {
+                    continue;
+                }
+                if levels
+                    .get_or_init(|| crate::surfaces::Levels::new(decls, &placed.shapes))
+                    .apart(ia, ib, (x, y))
                 {
                     continue;
                 }

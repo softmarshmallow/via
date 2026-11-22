@@ -1,0 +1,5 @@
+# A narrow lot: the south row's second lot two bays wide (6.6 m) and its third six, the row as long
+# as before. The kit's stairwell (9.6 m with its two landings) does not fit along a back of 6.6 m,
+# so that building's stair climbs its side.
+[feature.south]
+lots = [{ bays = 4 }, { bays = 2 }, { bays = 6 }, { bays = 3 }, { bays = 4 }]

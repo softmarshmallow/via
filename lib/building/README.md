@@ -283,6 +283,40 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     open). A kit whose lane, landing and run are whole tiles gets whole stairwells on every
     storey, and `slab_open` then says how far to move a stair that stands between tiles.
   - *Not yet.* A building's `storey_h` is still its own; lib/town does not read `shared`.
+- **A row of buildings** (K6 of `docs/plan-kits.md`, from examples/block). Design note; the rules
+  are `row.py`'s eight, `lay.py` rule 12 (`faces`) and rule 10 (the parapet). Source: a city block
+  as lots along a frontage (docs/research/Modular city asset contracts.md, section 2); the
+  studios' accounts of leftover length, of neighbours that may not repeat and of a change at a
+  district's border (docs/research/Modular kit failures in studios.md, sections 7, 8 and 11).
+  The row itself is our own design.
+  - *Why.* One block written by hand was twelve `building` tables and 192 numbers, each a sum of
+    bays and posts worked out by the author; and a region cannot say what stands beside it, so
+    312 windows and shopfronts faced a neighbour's wall and nothing said so.
+  - *A row.* `kind = "row"`: a point (`at`) and `to`, the frontage; `kit`; `depth` in bays;
+    `lots = [{ bays, storeys, door }]`. The step `row.py` returns one `building` for each lot,
+    sized from the kit's module and its corner's reach, wall to wall from `at`, on the left of
+    the way to `to`. `lay` then walls them: it runs over `kind:building`, so a world declares it
+    in a layer above the `rows` step.
+  - *Closure.* The lots are summed against the frontage. Where they differ the row says how far
+    (`row_open`) and, where that is whole bays, how many. Every lot is still returned.
+  - *What a side faces.* Each building gets `faces`, a word for each side: `front`, `back`,
+    `party` (a neighbour's wall lies along it) or `end` (the open end of a row). A `fill` entry
+    may name `faces` in place of `sides`, so one line on the row blanks every party wall. A
+    building written by hand may write `faces` itself.
+  - *Heights.* A lot that writes no `storeys` takes one of the row's `heights`, never its
+    neighbour's where the list holds two different numbers, the same in every build.
+  - *Door and stair.* The door stands in a bay of the front; the stair is the kit's, along the
+    back, or along a side where the back is too short for a landing, the run and a landing past
+    its head. A lot no side of which holds the
+    stairwell is refused (`row_stair`).
+  - *Two rows at a corner.* A lot that stands where another row's does is refused and said
+    (`row_meets`). The block has no feature of its own yet: the author still writes where each
+    side's row starts and ends.
+  - *The parapet.* A kit's wall pieces tagged `storey:parapet` are laid round a flat roof as a
+    storey's walls are, on the roof.
+  - *Not yet.* A side only part of which a neighbour stands against is one word: where that
+    part is less than half, its windows stay (`examples/block`: 4). A set-back storey: a storey
+    still has its building's outline (K7, with overhanging storeys). A block as one feature.
 - **Building upward** (K4 of `docs/plan-kits.md`, from examples/kit). Design note; the rules are
   `lay.py` rules 2, 6, 9 and 10. Source: a facade read as base, ground storey, repeating storeys
   and top (docs/research/Modular city asset contracts.md, section 5); the studios' accounts of

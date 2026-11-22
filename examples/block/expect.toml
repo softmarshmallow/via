@@ -1,0 +1,481 @@
+# What a block build measures (docs/plan-kits.md, K6; docs/research/Modular kit failures in
+# studios.md, sections 7, 8 and 11). Measures, never bytes (R15): each row names a measure of
+# `measure.py` and the band it must fall in. Taken by
+#
+#   python3 examples/block/measure.py BUILD --world examples/block/world.toml             # base
+#   python3 examples/block/measure.py BUILD+<c> --world ... --base BUILD                  # a change, built with --against
+#   python3.11 examples/block/measure.py BUILD+<c> --world ... --base BUILD --check <c>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
+# aa93d3a with K6 of docs/plan-kits.md (R71; `shared`), VIA_LIB=lib, Python 3.12
+# (sdk/python/.venv) for the steps, lib/building's `row`, `lay` and `check` of the working tree.
+# One fresh store for `world.toml` and one for `by_hand.toml`: the base, then each change with
+# --against the base, one build each. Measured 2026-11-23, after the review's fix pass. A band is the measured number: not a
+# target, it says where someone looks. `setback` and `hand_setback` are not here: each is exit 1,
+# `doc.unknown_key`, and leaves no build to measure (README.md).
+
+# ------------------------------------------------------------------------------------------ base
+# The block as four rows: every wall closes, no shopfront on the yard, no two neighbours alike.
+# Four openings still face a neighbour: one bay of two north buildings' backs, on two storeys each,
+# where the building round the corner stands against 3 m of the back (a side has one word).
+# 68 blank bays look out over a lower neighbour's roof: a party wall is blank to its top.
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[base.storeys]
+measure = "storeys"
+band    = [48, 48]
+
+[base.pieces]
+measure = "pieces"
+band    = [1230, 1230]
+
+[base.tiles]
+measure = "tiles"
+band    = [3719, 3719]
+
+[base.parapet]
+measure = "parapet"
+band    = [248, 248]
+
+[base.open]
+measure = "open"
+band    = [0, 0]
+
+[base.open_sum_mm]
+measure = "open_sum_mm"
+band    = [0, 0]
+
+[base.party_windows]
+measure = "party_windows"
+band    = [4, 4]
+
+[base.yard_shopfronts]
+measure = "yard_shopfronts"
+band    = [0, 0]
+
+[base.blank_above]
+measure = "blank_above"
+band    = [68, 68]
+
+[base.parapet_open]
+measure = "parapet_open"
+band    = [0, 0]
+
+[base.repeats]
+measure = "repeats"
+band    = [0, 0]
+
+[base.stacked]
+measure = "stacked"
+band    = [0, 0]
+
+[base.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[base.written_buildings]
+measure = "written_buildings"
+band    = [0, 0]
+
+[base.written_rows]
+measure = "written_rows"
+band    = [4, 4]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [52, 52]
+
+# ------------------------------------------------------------------------------------------ frontage
+# The south frontage 2 m longer than its lots: said once (row_open), and nothing moves.
+
+[frontage.errors]
+measure = "errors"
+band    = [0, 0]
+
+[frontage.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[frontage.row_open]
+measure = "row_open"
+band    = [1, 1]
+
+[frontage.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[frontage.open]
+measure = "open"
+band    = [0, 0]
+
+[frontage.moved]
+measure = "moved"
+band    = [0, 0]
+
+[frontage.added]
+measure = "added"
+band    = [0, 0]
+
+[frontage.removed]
+measure = "removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ widen
+# The second south building a bay wider: the row runs a bay past its frontage and says so; the
+# buildings after it move along and none stands in another (by hand: hand_widen).
+
+[widen.errors]
+measure = "errors"
+band    = [0, 0]
+
+[widen.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[widen.row_open]
+measure = "row_open"
+band    = [1, 1]
+
+[widen.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[widen.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[widen.open]
+measure = "open"
+band    = [0, 0]
+
+[widen.moved]
+measure = "moved"
+band    = [1138, 1138]
+
+[widen.added]
+measure = "added"
+band    = [112, 112]
+
+[widen.removed]
+measure = "removed"
+band    = [4, 4]
+
+# ------------------------------------------------------------------------------------------ corner
+# The west row written along the whole west side: its two end lots stand where the north and south
+# rows' corner buildings do, and are not returned. The middle lot is now lot 1, so its instances
+# are removed and added under the new name.
+
+[corner.errors]
+measure = "errors"
+band    = [0, 0]
+
+[corner.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[corner.row_meets]
+measure = "row_meets"
+band    = [2, 2]
+
+[corner.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[corner.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[corner.open]
+measure = "open"
+band    = [0, 0]
+
+[corner.added]
+measure = "added"
+band    = [538, 538]
+
+[corner.removed]
+measure = "removed"
+band    = [538, 538]
+
+# ------------------------------------------------------------------------------------------ alike
+# The long rows with no `heights`, every lot four storeys: one pair of neighbours alike.
+
+[alike.errors]
+measure = "errors"
+band    = [0, 0]
+
+[alike.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[alike.repeats]
+measure = "repeats"
+band    = [1, 1]
+
+[alike.storeys]
+measure = "storeys"
+band    = [46, 46]
+
+[alike.open]
+measure = "open"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ no_fill
+# The rows with no `fill`: every bay the kit's own, as on the block by hand.
+
+[no_fill.errors]
+measure = "errors"
+band    = [0, 0]
+
+[no_fill.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[no_fill.party_windows]
+measure = "party_windows"
+band    = [312, 312]
+
+[no_fill.yard_shopfronts]
+measure = "yard_shopfronts"
+band    = [36, 36]
+
+[no_fill.moved]
+measure = "moved"
+band    = [412, 412]
+
+[no_fill.added]
+measure = "added"
+band    = [0, 0]
+
+[no_fill.removed]
+measure = "removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ narrow
+# A lot two bays wide: its stair climbs its side; everything closes.
+
+[narrow.errors]
+measure = "errors"
+band    = [0, 0]
+
+[narrow.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[narrow.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[narrow.open]
+measure = "open"
+band    = [0, 0]
+
+[narrow.party_windows]
+measure = "party_windows"
+band    = [4, 4]
+
+[narrow.storeys]
+measure = "storeys"
+band    = [48, 48]
+
+# ------------------------------------------------------------------------------------------ shallow
+# A lot no side of which holds the kit's stair: refused (row_stair); the lot after it stands.
+
+[shallow.errors]
+measure = "errors"
+band    = [0, 0]
+
+[shallow.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[shallow.row_stair]
+measure = "row_stair"
+band    = [1, 1]
+
+[shallow.row_open]
+measure = "row_open"
+band    = [0, 0]
+
+[shallow.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[shallow.open]
+measure = "open"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ tall
+# The east building eight storeys high: seven flights in two lanes, no crossing said (R71).
+
+[tall.errors]
+measure = "errors"
+band    = [0, 0]
+
+[tall.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[tall.stacked]
+measure = "stacked"
+band    = [0, 0]
+
+[tall.storeys]
+measure = "storeys"
+band    = [53, 53]
+
+[tall.open]
+measure = "open"
+band    = [0, 0]
+
+[tall.added]
+measure = "added"
+band    = [655, 655]
+
+[tall.removed]
+measure = "removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ by_hand
+# The same block as twelve buildings written by hand, and what a region cannot say.
+
+[by_hand.errors]
+measure = "errors"
+band    = [0, 0]
+
+[by_hand.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[by_hand.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[by_hand.storeys]
+measure = "storeys"
+band    = [46, 46]
+
+[by_hand.pieces]
+measure = "pieces"
+band    = [1204, 1204]
+
+[by_hand.tiles]
+measure = "tiles"
+band    = [3723, 3723]
+
+[by_hand.parapet]
+measure = "parapet"
+band    = [248, 248]
+
+[by_hand.open]
+measure = "open"
+band    = [0, 0]
+
+[by_hand.open_sum_mm]
+measure = "open_sum_mm"
+band    = [0, 0]
+
+[by_hand.party_windows]
+measure = "party_windows"
+band    = [312, 312]
+
+[by_hand.yard_shopfronts]
+measure = "yard_shopfronts"
+band    = [36, 36]
+
+[by_hand.blank_above]
+measure = "blank_above"
+band    = [0, 0]
+
+[by_hand.parapet_open]
+measure = "parapet_open"
+band    = [0, 0]
+
+[by_hand.repeats]
+measure = "repeats"
+band    = [1, 1]
+
+[by_hand.stacked]
+measure = "stacked"
+band    = [0, 0]
+
+[by_hand.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[by_hand.written_buildings]
+measure = "written_buildings"
+band    = [12, 12]
+
+[by_hand.written_rows]
+measure = "written_rows"
+band    = [0, 0]
+
+[by_hand.written_numbers]
+measure = "written_numbers"
+band    = [192, 192]
+
+# ------------------------------------------------------------------------------------------ hand_lots
+# The south side as five lots of 12 m: no side of them closes.
+
+[hand_lots.errors]
+measure = "errors"
+band    = [0, 0]
+
+[hand_lots.warnings]
+measure = "warnings"
+band    = [72, 72]
+
+[hand_lots.open]
+measure = "open"
+band    = [38, 38]
+
+[hand_lots.open_sum_mm]
+measure = "open_sum_mm"
+band    = [380700, 380700]
+
+[hand_lots.open_said]
+measure = "open_said"
+band    = [43, 43]
+
+[hand_lots.gap_wide]
+measure = "gap_wide"
+band    = [5, 5]
+
+[hand_lots.slab_open]
+measure = "slab_open"
+band    = [24, 24]
+
+# ------------------------------------------------------------------------------------------ hand_widen
+# One building a bay wider, by hand: it stands 3 m into the next.
+
+[hand_widen.errors]
+measure = "errors"
+band    = [0, 0]
+
+[hand_widen.warnings]
+measure = "warnings"
+band    = [107, 107]
+
+[hand_widen.crowded]
+measure = "crowded"
+band    = [107, 107]
+
+[hand_widen.open]
+measure = "open"
+band    = [0, 0]
+
+[hand_widen.moved]
+measure = "moved"
+band    = [37, 37]

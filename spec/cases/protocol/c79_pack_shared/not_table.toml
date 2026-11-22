@@ -1,0 +1,8 @@
+# `shared` that is no table: refused, not read as none (assets.md 2.5).
+[taxon."kit/plain"]
+defaults = { shared = 3 }
+
+[asset.bay]
+primitive = "box"
+size      = [3, 0.3, 3]
+taxon     = "kit/plain"

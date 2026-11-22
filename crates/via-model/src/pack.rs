@@ -1172,6 +1172,19 @@ fn check_defaults(r: &mut Reader<'_>, subject: &str, d: &toml::Table) {
             r.near(k, DEFAULT_KEYS, text::undeclared);
         }
     }
+    // `params` and `shared` are tables (2.5): another value there was read as none, and hid the
+    // table of the taxon above without a word.
+    for k in ["params", "shared"] {
+        if let Some(v) = d.get(k).filter(|v| !v.is_table()) {
+            r.fault(
+                codes::doc::TYPE,
+                subject,
+                Some(k),
+                &format!("`{k}` takes a table; found {}", form_word(v)),
+                &format!("write `{k} = {{ ... }}`"),
+            );
+        }
+    }
     check_axes(r, subject, d);
 }
 

@@ -286,7 +286,23 @@ provenance (3.1). A point where two such paths cross or touch is owned when it i
 named onto the other or onto a point on it (`starts_at`, `ends_at`), when one `follows` the other,
 when one names the other in an attribute its kind lists in `names` (one was found from the other,
 as a course returned by a step names the river it was followed from), or when both are inputs of
-one network, which owns its junctions. Any other is `geom.unowned_crossing`
+one network, which owns its junctions. And two paths meet only on one level (R71). Where each
+owns a kind surface, the heights of those surfaces are read on plans (`rules.md` 8.1 rule 2, as R70
+reads one) over the ground their bounds share: at the point where the lines cross, and on a
+lattice over the box the two bounds have in common, at most 96 steps a side and no finer than
+0.25 m, at every lattice point both bounds hold. One path's surfaces span a range of heights
+there and the other's another. Where the two ranges are 0.5 m or more apart, the lines cross in
+plan and the paths do not meet: one passes over the other. Ours. Reason: a stair of four storeys
+has its third flight over its first, one line in plan and two storeys apart, and each such pair
+was reported (`examples/block`: ten for twelve buildings; `station`: 16). The ranges are taken over
+the shared ground, not at the one point, because two ramps on one line in opposite directions, or
+a walk along part of a flight at a height the flight passes, do meet, and the point a shared
+stretch is reported at is only one of its ends. The half metre is ours: less than any storey and
+more than a kerb, so two decks a hand apart are one junction. A path that owns no surface, or
+none whose height can be read there, is told apart from nothing: nothing says how high it lies.
+Cost: a pair is judged whole, so two paths that meet at one crossing and pass at another are
+reported at both. Any other is
+`geom.unowned_crossing`
 (warning) at the point, naming both, with the hint to end one on the other or on a named owner.
 This is R18's "a meeting nobody owns shows as a stub, a doubled deck"; ford's lanes end on the ford,
 so ford raises none.

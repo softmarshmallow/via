@@ -1,0 +1,204 @@
+name       = "block"
+extent     = [0, 0, 96, 80]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/city.toml"                # the city kit, beside the world (packs/make_kit.py)
+
+# One city block as an author writes it with what the building library had before K6 of
+# docs/plan-kits.md: twelve `building` features, each a region in metres worked out by hand so that
+# its sides close on the kit (README.md, "By hand"). It is kept beside world.toml, which is the
+# same block written as rows, so that what the build says of this one can be measured again.
+#
+# The block is 60 by 46.8 m. A row of five buildings stands along its south side and another along
+# its north, each building 12.6 m deep (four bays and two posts); one building 21.6 m long closes
+# each of the west and east sides between them; a yard is left in the middle. A building's side is
+# 3 m for each bay and 0.6 m for its two corner posts, so every x and y below is a sum of those.
+# Its door is 4.05 m along its street side (a bay, then the door's half bay), and its stair
+# climbs the kit's 6 m along its yard side from 1.8 m (a landing of one floor tile).
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ buildings
+
+[feature.s0]                  # the south-west corner: fronts south and west
+kind     = "building"
+region   = [[18, 16], [30.6, 16], [30.6, 28.6], [18, 28.6]]
+storeys  = 4
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+stair    = { side = 2, at = 1.8 }
+kit      = "structure/city"
+
+[feature.s1]
+kind     = "building"
+region   = [[30.6, 16], [40.2, 16], [40.2, 28.6], [30.6, 28.6]]
+storeys  = 3
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+stair    = { side = 2, at = 1.8 }
+kit      = "structure/city"
+
+[feature.s2]
+kind     = "building"
+region   = [[40.2, 16], [55.8, 16], [55.8, 28.6], [40.2, 28.6]]
+storeys  = 5
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+stair    = { side = 2, at = 1.8 }
+kit      = "structure/city"
+
+[feature.s3]
+kind     = "building"
+region   = [[55.8, 16], [65.4, 16], [65.4, 28.6], [55.8, 28.6]]
+storeys  = 3
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+stair    = { side = 2, at = 1.8 }
+kit      = "structure/city"
+
+[feature.s4]                  # the south-east corner: fronts south and east
+kind     = "building"
+region   = [[65.4, 16], [78, 16], [78, 28.6], [65.4, 28.6]]
+storeys  = 4
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+stair    = { side = 2, at = 1.8 }
+kit      = "structure/city"
+
+[feature.w0]                  # the west side, between the two rows: fronts west
+kind     = "building"
+region   = [[18, 28.6], [30.6, 28.6], [30.6, 50.2], [18, 50.2]]
+storeys  = 3
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 3, at = 4.05 }]
+stair    = { side = 1, at = 1.8 }
+kit      = "structure/city"
+
+[feature.e0]                  # the east side: fronts east
+kind     = "building"
+region   = [[65.4, 28.6], [78, 28.6], [78, 50.2], [65.4, 50.2]]
+storeys  = 3
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 1, at = 4.05 }]
+stair    = { side = 3, at = 1.8 }
+kit      = "structure/city"
+
+[feature.n0]                  # the north-west corner: fronts north and west
+kind     = "building"
+region   = [[18, 50.2], [27.6, 50.2], [27.6, 62.8], [18, 62.8]]
+storeys  = 4
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 2, at = 4.05 }]
+stair    = { side = 0, at = 1.8 }
+kit      = "structure/city"
+
+[feature.n1]
+kind     = "building"
+region   = [[27.6, 50.2], [43.2, 50.2], [43.2, 62.8], [27.6, 62.8]]
+storeys  = 3
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 2, at = 4.05 }]
+stair    = { side = 0, at = 1.8 }
+kit      = "structure/city"
+
+[feature.n2]
+kind     = "building"
+region   = [[43.2, 50.2], [55.8, 50.2], [55.8, 62.8], [43.2, 62.8]]
+storeys  = 5
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 2, at = 4.05 }]
+stair    = { side = 0, at = 1.8 }
+kit      = "structure/city"
+
+[feature.n3]
+kind     = "building"
+region   = [[55.8, 50.2], [68.4, 50.2], [68.4, 62.8], [55.8, 62.8]]
+storeys  = 5
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 2, at = 4.05 }]
+stair    = { side = 0, at = 1.8 }
+kit      = "structure/city"
+
+[feature.n4]                  # the north-east corner: fronts north and east
+kind     = "building"
+region   = [[68.4, 50.2], [78, 50.2], [78, 62.8], [68.4, 62.8]]
+storeys  = 4
+storey_h = 3.3
+ground_h = 4.5
+roof     = "flat"
+doors    = [{ storey = 0, side = 2, at = 4.05 }]
+stair    = { side = 0, at = 1.8 }
+kit      = "structure/city"
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/city"] }
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_block]
+at = [48, 39.4]
+
+[feature.look_south]
+at = [48, 22]
+
+[feature.over]                                # the whole block from the south, above
+kind       = "bookmark"
+at         = [48, 2]
+toward     = "look_block"
+eye_height = 45
+
+[feature.street]                              # the south row from the street, at eye height
+kind   = "bookmark"
+at     = [30, 4]
+toward = "look_south"
+
+[feature.corner]                              # the south-west corner from outside
+kind   = "bookmark"
+at     = [8, 6]
+toward = "look_block"

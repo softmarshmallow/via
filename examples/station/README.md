@@ -53,6 +53,8 @@ Measured with `measure.py` and read on the sheet (`engines/godot/sheet.sh`, both
   (`open_above_door_mm` 0, was 9350). `at_back_door` walks in through the door.
 - With the passage closed the walker still crosses the step (`down_step` arrives in the store):
   a closed door is the meeting taken away (the lint reports the tower unreached), not a leaf.
-- Stacked flights cross in plan: 16 `geom.unowned_crossing` warnings.
+- Stacked flights crossed in plan: 16 `geom.unowned_crossing` warnings, each false, until K6 of
+  `docs/plan-kits.md` (R71, 2026-11-23: two paths that each own a surface meet only where those
+  surfaces are at one height). Now none.
 - lib/building's `lay` leaves no gap in a wall between rooms for a flight: with the loft's cut at
   x = 49.3 the walk up its flight stopped at 2.89 m against it. The cut is now west of the flight.

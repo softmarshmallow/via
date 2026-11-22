@@ -1,0 +1,4 @@
+# A set-back: the top storey of the tallest building drawn back from the street by a bay, with a
+# terrace before it. Written as an author would guess it.
+[feature.s2]
+setback = [{ storey = 4, side = 0, by = 3.0 }]

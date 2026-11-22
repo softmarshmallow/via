@@ -363,6 +363,8 @@ shore, a doorway, the foot of a wall.
   2. Which side gives way is stated. Where neither may, it is an error.
   3. When either side moves, the meeting is made again.
   4. A meeting nobody owns is reported: a road that enters water with no ford and no bridge.
+  5. Two things meet only on one level: a stair's flight and the flight two storeys over it
+     cross in plan and do not meet (R70 for things placed, R71 for paths).
 - **Source:** junction and kerb geometry in road design; the seam as the recurring fault of
   assembled worlds ([section 19](seams.md)). Ours as an archetype.
 - **Is not:** a Placement (which follows one side), nor a Profile; nor a mismatch between two
@@ -551,3 +553,4 @@ The same archetypes serve both; the dials are set differently.
 | 2026-11-18 | After a blind second filing of 173 rows (84% filed the same; Cohen's kappa 0.83), the boundaries under "Telling two apart" were written down and 16 rows refiled. Practice widened to hold tools. |
 | 2026-11-18 | Tightened to the five criteria and widened to file the whole ledger: twenty archetypes and three marks. Added: Asset, Placement, Overlay, Measure, Markup. Renamed: Curve to Shape, Field derivation to Derivation (now in four classes), Terrain-coupled network to Network. Guidance split: what is stated stays Guidance, what is read from the world is Measure. The marks Runtime, Practice and Principle file what the model leaves out. |
 | 2026-11-23 | After building from a kit (`docs/plan-kits.md` K1 to K4), the four gaps the studios' accounts showed were ruled (R66 to R70 in `docs/doctrine.md`). No archetype was added. Asset gained laws 5 and 6 (a kit states what its pieces share; what it can close is decided from its facts) and law 2 says what a piece takes apart from what it is. Linear placement gained laws 5 and 6 (whole pieces or a refusal; a choice among pieces by place, the station keeping its name). Area partition and Grammar each gained the law of closure. |
+| 2026-11-23 | After one city block from a second kit (`docs/plan-kits.md` K6, `examples/block`). No archetype was added. A row of buildings in bays is Linear placement over Grammar, held to law 5 (its lots are summed against its frontage); what a side faces is a relation a row works out, not an Asset's or a Placement's. Meeting gained law 5 (two things meet only on one level, R71). Asset law 5 now holds for lib/building: a kit states what its pieces share (`shared`, R66). Left open: a block as one statement (Area partition), and a storey with another outline than its building's. |

@@ -1,0 +1,5 @@
+# The facade that does not divide (docs/research/Modular kit failures in studios.md, section 7):
+# the south frontage 2 m longer than its lots. No whole number of bays is 2 m, so no lot can take
+# it up: the row says how far it stops short, and that the difference is no bay.
+[feature.south]
+to = [80, 16]

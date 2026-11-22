@@ -50,6 +50,26 @@ kit      = ""                            # a taxon path of wall pieces; "" place
 roof     = ""                            # "garden": a walkable roof; else the kit's `role:roof`
 bays     = []                            # [{ storey, side, at, variant }]: one bay's variant, by a point along a side
 fill     = []                            # [{ storeys, sides, pattern }]: the bays' variants in turn along each wall
+faces    = []                            # a word for each side of the outline, in order: what it faces ("front", "party", "back", "end"); `fill` may choose by it
+
+[kind.row]                               # buildings side by side along a frontage, written in bays (row.py)
+authority = "anchored"
+
+[kind.row.defaults]                      # a point, `at`: where the row starts
+to       = []                            # [x, y]: where its frontage ends; buildings on the left of the way there, fronts to its right
+kit      = ""                            # the kit every building of the row is laid from
+depth    = 4                             # bays deep
+lots     = []                            # [{ bays, storeys, door }]: the buildings in order along the path
+heights  = []                            # storeys a lot takes when it writes none: never its neighbour's
+storeys  = 1                             # a lot's storeys with no `heights`
+storey_h = 3.2                           # these eight are each building's (kind.building, above)
+ground_h = 0
+top_h    = 0
+plinth   = 0.3
+porch    = 2
+walk_out = 3
+roof     = ""
+fill     = []
 
 [kind.storey]                            # one floor of a building: a region and its floor
 authority = "anchored"

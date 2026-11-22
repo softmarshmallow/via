@@ -1,0 +1,136 @@
+# The city kit (examples/block): fifteen pieces of one module, made by packs/make_kit.py.
+# Its facts file, city.facts.toml, is written by `via pack accept examples/block/packs/city.toml`.
+#
+# Every model is glTF's convention: +Y up, front +Z, origin at the base centre (packgen's), so
+# front, up and pivot take their defaults. lib/building's `lay` reads a piece's part in a wall from
+# its `role:` tag, the storey it serves from its `storey:` tag and its height, and the length it
+# repeats at from `params.pitch` (docs/design/kit-contract.md).
+
+root = "city"
+
+[taxon."structure"]
+defaults = { collision = "box" }
+
+# What the kit's pieces share, stated once (spec/assets.md 2.5; lib/building/lay.py rule 11).
+[taxon."structure/city".defaults.shared]
+module = 3.0                     # the bay: a side is whole bays and half bays between its corners
+wall   = 0.3                     # every wall piece's thickness
+storey = [3.3, 4.5]              # a storey, and the ground storey
+door   = 1.4                     # the doorway the door pieces are made for
+parapet = 1.1                    # the wall round a flat roof
+
+# The kit's stair, sized to its floor tile (1.5 m): a lane and a landing of one tile and a run of
+# four, long enough for the 4.5 m ground storey (24 risers, a going of 0.26 m).
+[taxon."structure/city".defaults.shared.stair]
+lane    = 1.5
+width   = 1.3
+run     = 6.0
+landing = 1.5
+
+# ---- the storeys above the ground storey, 3.3 m
+
+# The bay: 3 m of wall with a window, the module. What a street sees.
+[asset.bay]
+file   = "bay.glb"
+taxon  = "structure/city"
+tags   = ["role:wall"]
+params = { pitch = 3.0 }
+
+# The same bay with no window, for a wall another building stands against.
+[asset.bay_blank]
+file   = "bay_blank.glb"
+taxon  = "structure/city"
+tags   = ["role:wall", "variant:blank"]
+params = { pitch = 3.0 }
+
+# The bay with two narrow windows.
+[asset.bay_slot]
+file   = "bay_slot.glb"
+taxon  = "structure/city"
+tags   = ["role:wall", "variant:slot"]
+params = { pitch = 3.0 }
+
+[asset.half]
+file   = "half.glb"
+taxon  = "structure/city"
+tags   = ["role:filler"]
+params = { pitch = 1.5 }
+
+[asset.post]
+file  = "post.glb"
+taxon = "structure/city"
+tags  = ["role:corner"]
+
+[asset.door]
+file   = "door.glb"
+taxon  = "structure/city"
+tags   = ["role:door"]
+params = { pitch = 1.5 }
+
+# ---- the ground storey, 4.5 m: a storey takes the pieces of its own height and word
+
+# The shopfront: the ground storey's bay.
+[asset.ground_bay]
+file   = "ground_bay.glb"
+taxon  = "structure/city"
+tags   = ["role:wall", "storey:ground"]
+params = { pitch = 3.0 }
+
+[asset.ground_blank]
+file   = "ground_blank.glb"
+taxon  = "structure/city"
+tags   = ["role:wall", "storey:ground", "variant:blank"]
+params = { pitch = 3.0 }
+
+[asset.ground_half]
+file   = "ground_half.glb"
+taxon  = "structure/city"
+tags   = ["role:filler", "storey:ground"]
+params = { pitch = 1.5 }
+
+[asset.ground_post]
+file  = "ground_post.glb"
+taxon = "structure/city"
+tags  = ["role:corner", "storey:ground"]
+
+[asset.ground_door]
+file   = "ground_door.glb"
+taxon  = "structure/city"
+tags   = ["role:door", "storey:ground"]
+params = { pitch = 1.5 }
+
+# ---- the floor
+
+# The floor tile: one half bay square, sunk by its thickness so its top is the floor. It tiles a
+# storey's floor inside the walls, and a flat roof.
+[asset.tile]
+file   = "tile.glb"
+taxon  = "structure/city"
+tags   = ["role:floor"]
+params = { pitch = 1.5 }
+sink   = 0.2
+
+# ---- the parapet: the wall round a flat roof, laid as a storey's walls are
+
+[asset.parapet]
+file   = "parapet.glb"
+taxon  = "structure/city"
+tags   = ["role:wall", "storey:parapet"]
+params = { pitch = 3.0 }
+
+[asset.parapet_half]
+file   = "parapet_half.glb"
+taxon  = "structure/city"
+tags   = ["role:filler", "storey:parapet"]
+params = { pitch = 1.5 }
+
+[asset.parapet_post]
+file  = "parapet_post.glb"
+taxon = "structure/city"
+tags  = ["role:corner", "storey:parapet"]
+
+[material.ground]
+colour = [0.5, 0.5, 0.48]
+
+[material.road]
+colour = [0.3, 0.3, 0.32]

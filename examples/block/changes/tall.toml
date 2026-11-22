@@ -1,0 +1,4 @@
+# A tall building: the east side eight storeys high. Its stair's third flight climbs over its
+# first, the fourth over the second, and so on: one line in plan, two storeys apart (R71).
+[feature.east]
+lots = [{ bays = 7, storeys = 8 }]

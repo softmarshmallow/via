@@ -1,0 +1,6 @@
+# Two rows that both run to a corner: the west row written along the whole west side, from the
+# north-west corner to the south-west one, where the north and south rows already stand.
+[feature.west]
+at   = [18, 62.8]
+to   = [18, 16]
+lots = [{ bays = 4, storeys = 3 }, { bays = 7, storeys = 3 }, { bays = 4, storeys = 3 }]

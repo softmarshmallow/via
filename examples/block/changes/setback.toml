@@ -1,0 +1,4 @@
+# A set-back: the top storey of the east building drawn back from the street by a bay, with a
+# terrace before it. Not built: a storey has its building's outline (README.md, "Still open").
+[feature.east]
+setback = [{ storey = 2, side = 0, by = 3.0 }]

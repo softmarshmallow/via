@@ -2193,6 +2193,16 @@ pub(crate) fn span(pack: &crate::pack::Pack, asset: &str, scale: f64) -> (f64, f
     }
 }
 
+/// The least gap, in millimetres of height, at which one path passes over another and does not
+/// meet it (`geometry.md` 2.7, R71). Ours: half a metre, less than any storey and more than a
+/// kerb or a step, so two decks a hand apart are one junction and a flight under a flight is
+/// not.
+const APART_MIN: i64 = 500;
+/// The finest lattice, in millimetres, the heights of two paths' surfaces are read on (R71).
+const APART_STEP: i64 = 250;
+/// The most steps a side of that lattice (R71).
+const APART_STEPS: i64 = 96;
+
 /// A height in whole millimetres at each plan point asked so far; `None` where it cannot be read.
 type HeightsAt = BTreeMap<(i64, i64), Option<i64>>;
 
@@ -2258,6 +2268,82 @@ impl Levels {
             .min();
         self.lowest.borrow_mut().insert(at, l);
         l
+    }
+
+    /// Whether two paths whose lines cross in plan pass one over the other and do not meet
+    /// (`geometry.md` 2.7, R71). Each must own a kind surface. Their heights are read on plans
+    /// over the ground the two bounds share: at `at`, where the lines cross, and on a lattice
+    /// over the box the bounds have in common, at most [`APART_STEPS`] steps a side and no
+    /// finer than [`APART_STEP`]. One path's surfaces span a range of heights there, and the
+    /// other's another; the paths are apart where the gap between the two ranges is
+    /// [`APART_MIN`] or more. A path that owns no surface, or none whose height can be read
+    /// there, is told apart from nothing.
+    pub(crate) fn apart(&self, a: &str, b: &str, at: (i64, i64)) -> bool {
+        let of = |owner: &str| -> Vec<&SurfaceOut> {
+            self.kinds
+                .values()
+                .filter(|s| {
+                    s.place
+                        .strip_prefix(owner)
+                        .is_some_and(|rest| rest.starts_with('.'))
+                })
+                .collect()
+        };
+        let (sa, sb) = (of(a), of(b));
+        if sa.is_empty() || sb.is_empty() {
+            return false;
+        }
+        let mut points = vec![at];
+        for x in &sa {
+            for y in &sb {
+                let (Some((alo, ahi)), Some((blo, bhi))) = (
+                    x.region().and_then(via_geom::Region::bbox),
+                    y.region().and_then(via_geom::Region::bbox),
+                ) else {
+                    continue;
+                };
+                let (x0, y0) = (alo.x.max(blo.x), alo.y.max(blo.y));
+                let (x1, y1) = (ahi.x.min(bhi.x), ahi.y.min(bhi.y));
+                if x0 > x1 || y0 > y1 {
+                    continue;
+                }
+                let step = APART_STEP.max((x1 - x0).max(y1 - y0) / APART_STEPS);
+                let mut py = y0;
+                loop {
+                    let mut px = x0;
+                    loop {
+                        if x.inside((px, py)) && y.inside((px, py)) {
+                            points.push((px, py));
+                        }
+                        if px >= x1 {
+                            break;
+                        }
+                        px = (px + step).min(x1);
+                    }
+                    if py >= y1 {
+                        break;
+                    }
+                    py = (py + step).min(y1);
+                }
+            }
+        }
+        let range = |surfaces: &[&SurfaceOut]| -> Option<(i64, i64)> {
+            let mut out: Option<(i64, i64)> = None;
+            for s in surfaces {
+                for p in points.iter().filter(|p| s.inside(**p)) {
+                    if let Some(h) = self.height(&s.place, *p) {
+                        out = Some(out.map_or((h, h), |(lo, hi)| (lo.min(h), hi.max(h))));
+                    }
+                }
+            }
+            out
+        };
+        match (range(&sa), range(&sb)) {
+            (Some((alo, ahi)), Some((blo, bhi))) => {
+                blo - ahi >= APART_MIN || alo - bhi >= APART_MIN
+            }
+            _ => false,
+        }
     }
 
     /// Whether the terrain and the kind surface a thing stands on are one level (8.1): the
