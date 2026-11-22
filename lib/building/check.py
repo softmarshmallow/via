@@ -24,7 +24,7 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    library judges it).
 5. **Doorways, clear.** At each doorway's inner end (where it meets its floor), the clear width
    across the doorway between the wall pieces beside it: every instance of an asset under `kits`
-   that is not a door leaf (`role:door`), whose footprint (its `bounds`, scaled and turned by its
+   that is not a door leaf (`role:door`), a floor tile or a roof piece, whose footprint (its `bounds`, scaled and turned by its
    `face`) reaches within `DEPTH` (1 m) of that end along the doorway and whose foot `z` stands
    within `LOW` (0.5 m) below and `HIGH` (2 m) above its `sill_z` (so the storey above's walls,
    in plan over the doorway, are not counted), is an obstacle across it;
@@ -45,8 +45,11 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    post re-exported with a stub along one wall is 0.9 by 0.3 m where 0.3 m square is laid for,
    and an inside corner turned the wrong way, or left on the default pivot, is found here.
 9. **The kit against itself** (docs/research/Modular kit failures in studios.md, sections 2 and 3:
-   what a studio settles on untextured proof pieces before any art). Per taxon in `kits` that has
-   a `role:wall` piece, with `m` the pitch of its smallest wall piece (its `role:filler`, else its
+   what a studio settles on untextured proof pieces before any art). A kit is judged once for
+   each kind of storey its buildings have (rule 8: the word and the height), from the pieces that
+   storey reads, and a fault found for several is said once; a kit no building uses is judged
+   from its pieces with no `storey:` tag, once for each height its bays have. A variant is `kit_variant` only when no kind of storey
+   that reads it can lay it. Per taxon in `kits` that has a `role:wall` piece, with `m` the pitch of its smallest wall piece (its `role:filler`, else its
    bay) and `T` the bay's thickness:
    - `kit_module` (warning): the bay's pitch, or the door piece's width, is no whole number of
      `m`. The lengths that close then follow no one module (a 3.2 m bay beside a 1.5 m half bay;
@@ -62,13 +65,28 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
      origin), differs from the bay's by more than 5 mm, read in whole millimetres as `lay` reads
      them (lay.py rule 8). `lay` refuses it, and lays the bay where it is asked for. So is a piece
      tagged `variant:wall`: `wall` is the bay's own word.
-   - `kit_uneven` (warning): the wall pieces (`wall`, `filler`, `door`) differ in thickness, or
-     `wall`, `filler` and the corners differ in height, by more than `pitch_slack`. A door piece
-     may be any height: a leaf, a frame, or a lintel over an open doorway.
-8. **The kit against the storey.** For every building of two storeys or more, each piece of its
-   `kit` that is a wall or a corner (`wall`, `filler`, `corner`, `corner_in`) whose `bounds`
-   height differs from the building's `storey_h` by more than `pitch_slack` is `kit_height`
-   (warning): a taller piece stands into the storey above, a shorter one stops short of it.
+   - `kit_deck` (warning): a `role:floor` tile that is not square, or of which `m` is no whole
+     number (a floor inside walls sized to the kit is then not whole tiles); a `role:roof_slope`
+     whose measured depth is not its `params.span`, or a `role:roof_gable` whose length is not; a
+     gable half that does not rise as the slope does, is not `T` thick, or is made for another
+     span than the slope; a kit with one of the two roof pieces and not the other.
+   - `kit_bay` (warning): a kind of storey some building has, for which the kit has no bay: its
+     only `role:wall` pieces with no `variant:` tag are tagged for other storeys. `lay` walls
+     that storey with a variant, or not at all.
+   - `kit_uneven` (warning): the bays of the kit's storeys differ in thickness; or the wall
+     pieces one storey reads (`wall`, `filler`, `door`) differ in thickness, or its `wall`,
+     `filler` and corners differ in height, by more than `pitch_slack`. A door piece may be any
+     height: a leaf, a frame, or a lintel over an open doorway. An inside corner piece is held
+     to the others' height only where some building of the kit turns in: one no building uses is
+     not judged.
+8. **The kit against the storey.** A storey reads the kit as `lay` does (lay.py rule 6, "Pieces
+   by storey": for each role the pieces nearest its own height, and of its own word,
+   `storey:ground`, `storey:upper` or `storey:top`, before the untagged). For every building that
+   stacks or is roofed (two storeys or more, a `ground_h` or `top_h`, or `roof` flat or gable),
+   the piece each of its storeys gets for `wall`, `filler` and `corner` (and `corner_in` where the
+   outline turns in) whose `bounds` height differs from that storey's height by more than
+   `pitch_slack` is `kit_height` (warning): a taller piece stands into the storey above, a
+   shorter one stops short of it. A storey whose height no piece of a role has is said this way.
 
 `params`: `riser_max` (0.19 m), `going_min` (0.25 m), `turn_max` (45), `inner_door` (0.9 m),
 `pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
@@ -85,6 +103,9 @@ import math
 DEPTH = 1000         # mm along a doorway from its inner end within which a piece stands beside it
 LOW, HIGH = 0.5, 2.0  # metres below and above a doorway's sill a piece's foot stands to be beside it
 REACH = 3000         # mm across a doorway past which a piece does not narrow it
+
+# What stands in no one's way across a doorway: the door's own piece, a floor tile, the roof.
+LIES_FLAT = ("role:door", "role:floor", "role:roof", "role:roof_slope", "role:roof_gable")
 
 DEFAULTS = {"riser_max": 0.19, "going_min": 0.25, "turn_max": 45.0, "inner_door": 0.9,
             "pitch_slack": 0.05, "kits": []}
@@ -121,6 +142,11 @@ EXPLAIN = {
     "so it must share the bay's pitch, thickness and height; `lay` lays the bay in its place.",
     "kit_uneven": "Pieces that stand in one wall differ in thickness or height: they step where "
     "they meet. Make them one thickness and one storey high.",
+    "kit_deck": "A floor tile or a roof piece is not what the building library lays it for: a tile is "
+    "square on the kit's module; a roof slope is as deep as the span it states; a gable half is that span "
+    "long, as high as the slope and as thick as the walls (lay.py rules 9 and 10).",
+    "kit_bay": "A kit's bays are all tagged for other kinds of storey than one a building has, so that "
+    "storey has no piece to be walled with. An untagged bay serves every storey with none of its own.",
     "kit_height": "A kit piece's measured height is not the storey height of a building that stacks "
     "it: on a storey below another it stands into the one above, or stops short of it. Make the "
     "piece one storey high, or set the building's `storey_h` to the kit's.",
@@ -365,9 +391,38 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                         {"asset": r["id"], "width": width, "pitch": float(pitch)}, None))
     wall_roles = ("role:wall", "role:filler", "role:corner", "role:corner_in", "role:door")
     by_taxon = {}
-    # For every role a piece with no `variant:` tag comes before one with, then by id: lay.py's order.
-    for r in sorted(kit_rows, key=lambda r: (any(t.startswith("variant:") for t in r.get("tags") or []), r["id"])):
+    # For every role a piece with no `variant:` tag comes before one with, and one with no
+    # `storey:` tag before one with, then by id: lay.py's order for a storey with no word.
+    def tag(r, head):
+        return next((t[len(head):] for t in r.get("tags") or [] if t.startswith(head)), None)
+    for r in sorted(kit_rows, key=lambda r: (tag(r, "variant:") is not None, tag(r, "storey:") is not None, r["id"])):
         by_taxon.setdefault(r.get("taxon"), []).append(r)
+
+    def storey_rows(rows, word, height):
+        """The rows a storey of kind `word`, `height` mm reads: lay.py's `kit_rows`, in its order
+        (a piece tagged for this storey before an untagged one)."""
+        rows = [r for r in rows if tag(r, "storey:") in (None, word)]
+        if height is not None:
+            for role in ("wall", "filler", "corner", "corner_in", "door"):
+                mine = [r for r in rows if "role:" + role in (r.get("tags") or []) and r.get("bounds")
+                        and tag(r, "variant:") is None]
+                near = min((abs(r["bounds"][5] - r["bounds"][2] - height) for r in mine), default=0)
+                fits = [r for r in mine if abs(r["bounds"][5] - r["bounds"][2] - height) <= near + 5]
+                if len(fits) < len(mine):
+                    drop = {id(r) for r in mine} - {id(r) for r in fits}
+                    rows = [r for r in rows if id(r) not in drop]
+        return sorted(rows, key=lambda r: (tag(r, "variant:") is not None, tag(r, "storey:") is None, r["id"]))
+
+    def storeys_of(a):
+        """`[(word, height mm)]` of a building's storeys: lay.py's `storey_kinds`."""
+        n, h = int(a.get("storeys") or 1), float(a.get("storey_h") or 3.2)
+        g, top = float(a.get("ground_h") or 0) or h, float(a.get("top_h") or 0) or h
+        return [("ground", int(round(g * 1000))) if k == 0 else ("top", int(round(top * 1000))) if k == n - 1
+                else ("upper", int(round(h * 1000))) for k in range(n)]
+    kit_kinds = {}                               # taxon -> the kinds of storey its buildings have
+    for f in features:
+        if f["kind"] == "building" and f["attrs"].get("kit"):
+            kit_kinds.setdefault(f["attrs"]["kit"], set()).update(storeys_of(f["attrs"]))
     for taxon in sorted(by_taxon, key=str):
         rows = by_taxon[taxon]
         wall = next((r for r in rows if "role:wall" in (r.get("tags") or []) and r.get("bounds")), None)
@@ -417,10 +472,29 @@ def judge(features, meetings, kit_rows, p, pieces=()):
         """How far `length` is from a whole number of `m`, metres."""
         r = length % m
         return min(r, m - r)
-    for taxon in sorted(by_taxon, key=str):
-        rows = by_taxon[taxon]
+    start = len(out)
+    refused, thicks = {}, {}
+    def kinds_of(taxon):
+        """The kinds of storey a kit is judged for: its buildings', else one for each height its
+        untagged bays have (no storey says which pieces go together, so their heights do)."""
+        if kit_kinds.get(taxon):
+            return sorted(kit_kinds[taxon], key=str)
+        highs = sorted({r["bounds"][5] - r["bounds"][2] for r in by_taxon[taxon]
+                        if "role:wall" in (r.get("tags") or []) and r.get("bounds") and tag(r, "variant:") is None
+                        and tag(r, "storey:") is None})
+        return [(None, h) for h in highs] if len(highs) > 1 else [(None, None)]
+    for taxon, word, height in [(t_, w, h) for t_ in sorted(by_taxon, key=str) for w, h in kinds_of(t_)]:
+        rows = storey_rows(by_taxon[taxon], word, height)
         role = {}
         walls = [r for r in rows if "role:wall" in (r.get("tags") or []) and r.get("bounds")]
+        if word is not None and not any(tag(r, "variant:") is None for r in walls) and any(
+                "role:wall" in (r.get("tags") or []) and tag(r, "variant:") is None for r in by_taxon[taxon]):
+            names = sorted(f["name"] for f in features if f["kind"] == "building" and f["attrs"].get("kit") == taxon
+                           and (word, height) in storeys_of(f["attrs"]))
+            out.append(("warning", "kit_bay", str(taxon), f"`{taxon}` has no bay for the {word} storeys of "
+                        + ", ".join("`" + n + "`" for n in names) + ": its bays are tagged for other storeys",
+                        f"give the kit a `role:wall` piece with no `storey:` tag, or one tagged `storey:{word}`",
+                        {"taxon": str(taxon), "storey": word, "buildings": names}, None))
         for r in rows:
             for t in r.get("tags") or []:
                 if t.startswith("role:") and r.get("bounds"):
@@ -433,6 +507,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
             continue
         wall = role["wall"]
         T = (wall["bounds"][4] - wall["bounds"][1]) / 1000.0
+        thicks.setdefault(taxon, {})[wall["id"]] = T
         m = pitch_of(role["filler"]) if "filler" in role else pitch_of(wall)
         if m <= 0:
             continue
@@ -481,15 +556,57 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                 bad, differs = [f"its box lies {shift / 1000:g} m off `{wall['id']}`'s about its origin"], ["box"]
             if "wall" in words:
                 bad, differs = bad + ["`wall` is the bay's own word, never a variant's"], differs + ["word"]
-            if bad:
-                out.append(("warning", "kit_variant", r["id"],
-                            f"`{r['id']}` (`variant:{words[0]}`) cannot stand for the bay: " + ", ".join(bad),
-                            "make the variant the bay's pitch and the bay's box: it stands where a bay stood",
-                            {"asset": r["id"], "variant": words[0], "bay": wall["id"], "differs": differs}, None))
+            # A variant is at fault when no kind of storey that reads it can lay it: a 3 m window
+            # bay is no fault of a kit whose ground storey is 4 m.
+            refused.setdefault((taxon, r["id"]), []).append(
+                ("warning", "kit_variant", r["id"],
+                 f"`{r['id']}` (`variant:{words[0]}`) cannot stand for the bay: " + ", ".join(bad),
+                 "make the variant the bay's pitch and the bay's box: it stands where a bay stood",
+                 {"asset": r["id"], "variant": words[0], "bay": wall["id"], "differs": differs}, None) if bad else None)
         thick = {r["id"]: (r["bounds"][4] - r["bounds"][1]) / 1000.0 for n, r in role.items()
                  if n in ("wall", "filler", "door")}
         high = {r["id"]: (r["bounds"][5] - r["bounds"][2]) / 1000.0 for n, r in role.items()
                 if "role:" + n in wall_roles and n != "door"}       # a door piece may be a leaf or a lintel
+        deck = []
+        if "floor" in role:
+            b = role["floor"]["bounds"]
+            w, d = (b[3] - b[0]) / 1000.0, (b[4] - b[1]) / 1000.0
+            tp = pitch_of(role["floor"])
+            if abs(w - d) > slack or tp <= 0 or off(m, tp) > slack:
+                deck.append((role["floor"], f"`{role['floor']['id']}` is {w:g} by {d:g} m at a {tp:g} m pitch: a floor "
+                             f"tile is square, and the kit's smallest wall piece ({m:g} m) is a whole number of tiles, "
+                             "or a floor sized to the walls is not whole tiles"))
+        slope, gable = role.get("roof_slope"), role.get("roof_gable")
+        for r in (slope, gable):
+            span = number((r.get("params") or {}).get("span")) if r else None
+            if r is None:
+                continue
+            long = (r["bounds"][4] - r["bounds"][1]) / 1000.0 if r is slope else (r["bounds"][3] - r["bounds"][0]) / 1000.0
+            if span is None or abs(long - span) > slack:
+                deck.append((r, f"`{r['id']}` measures {long:g} m from eave to ridge and states "
+                             + ("no `params.span`" if span is None else f"a span of {span:g} m")))
+        if slope and gable:
+            hs, hg = ((r["bounds"][5] - r["bounds"][2]) / 1000.0 for r in (slope, gable))
+            tg = (gable["bounds"][4] - gable["bounds"][1]) / 1000.0
+            if abs(hs - hg) > slack:
+                deck.append((gable, f"`{gable['id']}` rises {hg:g} m and `{slope['id']}` {hs:g} m: the gable does not "
+                             "meet the roof"))
+            if abs(tg - T) > slack:
+                deck.append((gable, f"`{gable['id']}` is {tg:g} m thick on walls {T:g} m thick"))
+            ss, sg = (number((r.get("params") or {}).get("span")) for r in (slope, gable))
+            if ss is not None and sg is not None and abs(ss - sg) > slack:
+                deck.append((gable, f"`{gable['id']}` is made for a span of {sg:g} m and `{slope['id']}` for {ss:g} m: "
+                             "no roof takes both"))
+        elif slope or gable:
+            r = slope or gable
+            deck.append((r, f"`{taxon}` has `{r['id']}` and no " + ("`role:roof_gable`" if slope else "`role:roof_slope`")
+                         + " piece: a gable roof needs both"))
+        for r, said in deck:
+            out.append(("warning", "kit_deck", r["id"], said,
+                        "correct the piece or what the pack states of it (lay.py rules 9 and 10)",
+                        {"asset": r["id"], "taxon": taxon}, None))
+        if taxon not in ells and "corner_in" in role:       # an inside corner no building has is not held to a storey
+            high.pop(role["corner_in"]["id"], None)
         for what, sizes in (("thick", thick), ("high", high)):
             if max(sizes.values()) - min(sizes.values()) > slack:
                 out.append(("warning", "kit_uneven", wall["id"], f"the wall pieces of `{taxon}` are not one size: "
@@ -497,24 +614,45 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                             "make them one thickness and one storey high",
                             {"taxon": taxon, "measure": what, "pieces": sorted(sizes),
                              "sizes": [sizes[i] for i in sorted(sizes)]}, None))
+    for key in sorted(refused, key=str):
+        if all(refused[key]):
+            out.append(refused[key][0])
+    for taxon in sorted(thicks, key=str):
+        if max(thicks[taxon].values()) - min(thicks[taxon].values()) > slack:
+            sizes = thicks[taxon]
+            out.append(("warning", "kit_uneven", min(sizes), f"the bays of `{taxon}`'s storeys are not one thickness: "
+                        + ", ".join(f"`{i}` {v:g} m thick" for i, v in sorted(sizes.items())),
+                        "make the bay of every storey one thickness: walls stack flush or not at all",
+                        {"taxon": taxon, "measure": "thick", "pieces": sorted(sizes),
+                         "sizes": [sizes[i] for i in sorted(sizes)]}, None))
+    seen, kept = set(), []
+    for rec in out[start:]:                      # one kit read for several kinds of storey says a fault once
+        if (rec[1], rec[2], rec[3]) not in seen:
+            seen.add((rec[1], rec[2], rec[3]))
+            kept.append(rec)
+    out[start:] = kept
     stacked = {}
     for f in sorted((f for f in features if f["kind"] == "building"), key=lambda f: f["name"]):
         a = f["attrs"]
-        if a.get("kit") and int(a.get("storeys") or 1) >= 2:
-            stacked.setdefault((a["kit"], float(a.get("storey_h") or 3.2)), []).append(f["name"])
-    for (taxon, storey_h), names in sorted(stacked.items()):
-        for r in by_taxon.get(taxon, []):
-            b = r.get("bounds")
-            if not b or not any(t in wall_roles and t != "role:door" for t in (r.get("tags") or [])):
-                continue
-            high = (b[5] - b[2]) / 1000.0
-            if abs(high - storey_h) > p["pitch_slack"]:
-                how = (f"it stands {high - storey_h:g} m into the storey above" if high > storey_h
-                       else f"it stops {storey_h - high:g} m short of the storey above")
-                out.append(("warning", "kit_height", r["id"], f"`{r['id']}` is {high:g} m high on the "
-                            f"{storey_h:g} m storeys of {', '.join('`' + n + '`' for n in names)}: {how}",
-                            "make the piece one storey high, or set `storey_h` to the kit's",
-                            {"asset": r["id"], "height": high, "storey_h": storey_h, "buildings": names}, None))
+        if not a.get("kit") or not (int(a.get("storeys") or 1) >= 2 or a.get("ground_h") or a.get("top_h")
+                                    or a.get("roof") in ("flat", "gable")):
+            continue
+        roles = ("wall", "filler", "corner") + (("corner_in",) if turns_in(f["ring"]) else ())
+        for word, height in sorted(set(storeys_of(a))):
+            rows = storey_rows(by_taxon.get(a["kit"], []), word, height)
+            for name in roles:
+                r = next((r for r in rows if "role:" + name in (r.get("tags") or []) and r.get("bounds")), None)
+                if r is not None and abs(r["bounds"][5] - r["bounds"][2] - height) > p["pitch_slack"] * 1000:
+                    stacked.setdefault((r["id"], height), [r, []])[1].append(f["name"])
+    for (_, height), (r, names) in sorted(stacked.items()):
+        high, storey_h = (r["bounds"][5] - r["bounds"][2]) / 1000.0, height / 1000.0
+        names = sorted(set(names))
+        how = (f"it stands {high - storey_h:g} m into the storey above" if high > storey_h
+               else f"it stops {storey_h - high:g} m short of the storey above")
+        out.append(("warning", "kit_height", r["id"], f"`{r['id']}` is {high:g} m high on the "
+                    f"{storey_h:g} m storeys of {', '.join('`' + n + '`' for n in names)}: {how}",
+                    "make the piece the storey's height, or the storey the piece's (`storey_h`, `ground_h`, `top_h`)",
+                    {"asset": r["id"], "height": high, "storey_h": storey_h, "buildings": names}, None))
     out.append(("info", "checked", None, f"{len(storeys)} storeys, {len(rooms)} rooms, {len(flights)} "
                 f"flights, {len(meetings)} meetings ({nturn} with a turn), {measured} doorways measured, "
                 f"{len(kit_rows)} kit pieces", "none needed",
@@ -542,7 +680,8 @@ def _json(v):
 def read_features(step):
     out = []
     for kind, cols in (("storey", ["level"]), ("room", ["storey"]), ("flight", ["z0", "z1"]),
-                       ("doorway", ["sill_z"]), ("footpath", []), ("building", ["kit", "storey_h", "storeys"])):
+                       ("doorway", ["sill_z"]), ("footpath", []),
+                       ("building", ["kit", "storey_h", "storeys", "ground_h", "top_h", "roof"])):
         try:
             fl = step.features(select=f"kind:{kind}", columns=cols)
         except Exception:                         # a kind no feature has: nothing to judge
@@ -584,7 +723,7 @@ def read_kits(step, taxons):
 def read_pieces(step, taxons, kit_rows):
     """Placed instances of the kits' assets that are not door leaves, with their asset's bounds."""
     bounds = {r["id"]: r["bounds"] for r in kit_rows
-              if r.get("bounds") and "role:door" not in (r.get("tags") or [])}
+              if r.get("bounds") and not any(t in LIES_FLAT for t in (r.get("tags") or []))}
     out = []
     for taxon in taxons:
         t = step.instances(select="@" + taxon)

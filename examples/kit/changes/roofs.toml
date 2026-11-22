@@ -1,0 +1,7 @@
+# Roofs from pieces: a gable over the hall (slopes from each long side's eave to the ridge, a gable
+# under each end) and a flat roof of floor tiles over the annex.
+[feature.hall]
+roof = "gable"
+
+[feature.annex]
+roof = "flat"

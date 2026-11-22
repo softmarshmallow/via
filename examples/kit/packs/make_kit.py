@@ -38,6 +38,10 @@ HALF = 1.5         # metres: the half bay and the door frame
 SILL, HEAD = 0.9, 2.1     # metres above the floor: a window's sill, a window's and a door's head
 OPENING = 1.5      # metres: a window's width
 REACH_IN = 1.2     # metres of each wall the inside corner takes: with the post's T, one half bay
+GROUND_H = 4.0     # metres: the taller ground storey some buildings have, and its pieces' height
+SLAB = 0.2         # metres: a floor tile's thickness, below the floor it tops
+SPAN = 4.8         # metres in plan from a roof's eave to its ridge: half of a 9.6 m deep building
+RISE = 2.4         # metres a roof slope climbs over its span
 
 
 def panel(width, high=H, shift=0.0):
@@ -72,11 +76,70 @@ def vent(width):
     ]
 
 
-def post(along=0.0):
+def shop(width, high):
+    """The ground storey's bay: `width` long, `high` tall, an opening 2.4 m wide from 0.3 to 3 m,
+    four boxes round it, inside the bay's own box."""
+    w, t, o, lo, hi = width / 2, T / 2, 1.2, 0.3, 3.0
+    return [
+        ("render", packgen.box(-w, 0.0, -t, w, lo, t)),
+        ("render", packgen.box(-w, hi, -t, w, high, t)),
+        ("render", packgen.box(-w, lo, -t, -o, hi, t)),
+        ("render", packgen.box(o, lo, -t, w, hi, t)),
+    ]
+
+
+def solid(faces):
+    """Triangles of a convex solid from its faces, each a list of three or four points in the
+    ASSET's frame (x along the piece, y its front, z up), wound to look outward. Returned in the
+    model's frame (glTF: +Y up, front +Z), which is the asset's turned, never mirrored
+    (spec/assets.md 2.3): model (x, y, z) = asset (-x, z, y)."""
+    pts = [p for f in faces for p in f]
+    c = tuple(sum(p[i] for p in pts) / len(pts) for i in range(3))
+    out = []
+    for f in faces:
+        a, b, d = f[0], f[1], f[2]
+        u, v = tuple(b[i] - a[i] for i in range(3)), tuple(d[i] - a[i] for i in range(3))
+        n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+        if sum(n[i] * (a[i] - c[i]) for i in range(3)) < 0:
+            f = list(reversed(f))
+        for k in range(1, len(f) - 1):
+            out.append(tuple((-q[0], q[2], q[1]) for q in (f[0], f[k], f[k + 1])))
+    return out
+
+
+def roof_slope(pitch, span, rise):
+    """A roof slope: a wedge `pitch` long along the eave (x), `span` deep in plan, climbing from
+    0 at its front edge (the eave, +y) to `rise` at its back (the ridge). Placed by the middle of
+    its plan, front out of the building, as a wall piece is."""
+    x, y = pitch / 2, span / 2
+    e0, e1 = (-x, y, 0.0), (x, y, 0.0)                 # the eave
+    b0, b1 = (-x, -y, 0.0), (x, -y, 0.0)               # under the ridge
+    r0, r1 = (-x, -y, rise), (x, -y, rise)             # the ridge
+    return [("slate", solid([[e0, e1, r1, r0], [e0, b0, b1, e1], [b0, r0, r1, b1], [e0, r0, b0], [e1, b1, r1]]))]
+
+
+def roof_gable(span, rise):
+    """Half a gable: a wall `T` thick and `span` long (x) under the roof's edge, 0 high at +x and
+    `rise` at -x. Two stand on each end of a roof, the second turned about, their high ends met."""
+    x, t = span / 2, T / 2
+    lo0, lo1 = (x, -t, 0.0), (x, t, 0.0)
+    b0, b1 = (-x, -t, 0.0), (-x, t, 0.0)
+    r0, r1 = (-x, -t, rise), (-x, t, rise)
+    return [("render", solid([[lo0, lo1, r1, r0], [lo0, b0, b1, lo1], [b0, r0, r1, b1], [lo0, r0, b0], [lo1, b1, r1]]))]
+
+
+def floor_tile():
+    """A floor tile: one half bay square and `SLAB` thick. The pack sinks it by its thickness, so
+    its top is the floor it lies on."""
+    h = HALF / 2
+    return [("render", packgen.box(-h, 0.0, -h, h, SLAB, h))]
+
+
+def post(along=0.0, high=H):
     """A corner post `T` square. `along` metres of stub run on from one side of it along x: the
     corner piece with a stub (the `stub` change)."""
     t = T / 2
-    return [("stone", packgen.box(-t - along, 0.0, -t, t, H, t))]
+    return [("stone", packgen.box(-t - along, 0.0, -t, t, high, t))]
 
 
 def inside_corner(reach):
@@ -91,13 +154,13 @@ def inside_corner(reach):
     ]
 
 
-def door():
-    """A door frame one half bay wide: two jambs and the wall over the head."""
+def door(high=H):
+    """A door frame one half bay wide: two jambs and the wall over the head, `high` tall."""
     w, t, j = HALF / 2, T / 2, 0.05
     return [
         ("timber", packgen.box(-w, 0.0, -t, -w + j, HEAD, t)),
         ("timber", packgen.box(w - j, 0.0, -t, w, HEAD, t)),
-        ("render", packgen.box(-w, HEAD, -t, w, H, t)),
+        ("render", packgen.box(-w, HEAD, -t, w, high, t)),
     ]
 
 
@@ -109,6 +172,15 @@ PLAIN = {
     "corner.glb": post(),
     "corner_in.glb": inside_corner(REACH_IN),
     "door.glb": door(),
+    # the ground storey 4 m high: its own bay, half bay, post and door frame
+    "ground_wall.glb": shop(BAY, GROUND_H),
+    "ground_half.glb": panel(HALF, high=GROUND_H),
+    "ground_corner.glb": post(high=GROUND_H),
+    "ground_door.glb": door(GROUND_H),
+    # floors and roofs
+    "floor.glb": floor_tile(),
+    "roof_slope.glb": roof_slope(HALF, SPAN, RISE),
+    "roof_gable.glb": roof_gable(SPAN, RISE),
 }
 
 REVISED = {

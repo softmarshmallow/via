@@ -1,0 +1,5 @@
+# A storey height the kit has no pieces for: the annex's ground storey 5 m high, where the kit's
+# pieces are 3 m and 4 m (the report, section 5: pieces that stop stacking when a height changes).
+[feature.annex]
+ground_h = 5.0
+roof     = "flat"

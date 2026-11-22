@@ -41,8 +41,12 @@ Library text in the form a user writes. Attributes illustrative until the code; 
   its own: its storeys own them. Its footprint is solid: a `ground = "pad"` instance per building is
   the town kit's convention, kept.
 - **`storey`** (region owner, anchored). `[kind.storey.surface.floor] base = "= level"`,
-  `cut = "= headroom"`. Requires `level`. An upper storey's region excludes its stairwell (a notch
-  or a hole), so a walker on it cannot step into the stair's void.
+  `cut = "= headroom"`. Requires `level`. An upper storey's region excludes its stairwell (a
+  notch), so a walker on it cannot step into the stair's void.
+- **`footing`** (region owner, anchored; K4). `[kind.footing.surface.top] base = "= level"`. The top
+  of the wall below, where a storey has no floor under an outer wall: the strip, one wall thick,
+  of the side a stair climbs along. That side's wall pieces stand on it ("Building upward",
+  below). It is not a floor: nothing ends at it and no room is cut from it.
 - **`room`** (region owner). A space inside a storey that the library names for dressing and the
   player map; it owns no surface (the storey's floor is the room's floor). A door between two rooms
   of one storey is no feature: the floor is continuous, the inner wall run leaves the door's width
@@ -71,7 +75,8 @@ Asset side (packs, `spec/assets.md` 2.7): a door leaf asset has one mount, `entr
 has the same `entry` mount, so a walk `ends_at = "hall.entry"` and follows the instance when it is
 moved and turned (case `surfaces/moved_turned`). Kit pieces carry `params.pitch` (assets.md 10) and
 tags for their role (`role:wall`, `role:corner`, `role:corner_in`, `role:door`, `role:filler`,
-`role:roof`) and state (`state:open`). A corner piece may carry `params.reach`, the metres of each
+`role:roof`, `role:floor`, `role:roof_slope`, `role:roof_gable`), for the kind of storey they are
+made for (`storey:ground`, `storey:upper`, `storey:top`) and state (`state:open`). A corner piece may carry `params.reach`, the metres of each
 wall it takes ("Sizing a plan to its kit", below). A second `role:wall` piece carries
 `variant:<word>` ("Choosing a bay's piece", below). A door leaf the `lay` step places in a doorway
 carries no mount with a connector: the doorway ends at the floor, not at the leaf, so a `foot` mount on the leaf would be
@@ -204,9 +209,11 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     the door piece's width, less the 0.1 m margin. A wall cut back to close beside a door leaves
     the gap wider, and more than the margin of that is `gap_wide`, whose hint gives the two
     nearest places along the side where the door would close.
-  - *A stair* takes its stairwell's length out of the wall of the storey above (1 m before its
-    foot to its head): what is left either side must close too. Where it does not, `wall_open`
-    says the stretch ends at the stairwell and how far it is off.
+  - *A stair* no longer decides where a wall closes: the wall over its stairwell stands on a
+    footing and is laid as on the ground ("Building upward", below; before K4 the stairwell's
+    length came out of that wall, and what was left either side had to close). It still shapes
+    the floor above: where the kit has a floor tile, a stairwell that is not whole tiles deep
+    and long leaves the tiles beside it out (`slab_open`, with the stair width that closes).
   - *Write a door and a stair by `side` and `at`*: a side of the outline (side `k` runs from its
     point `k` to the next, counter-clockwise) and the metres along it. They then keep their place
     when another side grows, which `t`, a share of the whole outline, does not. A side is named
@@ -258,6 +265,79 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     it in its stretch** (`examples/kit`, `window_at`: one piece changes, three names do), so a pin
     on one of those is left without its target. This is the run's limit, not the kit's (TODO,
     `spec/rules.md`; ruled at K5).
+- **Building upward** (K4 of `docs/plan-kits.md`, from examples/kit). Design note; the rules are
+  `lay.py` rules 2, 6, 9 and 10. Source: a facade read as base, ground storey, repeating storeys
+  and top (docs/research/Modular city asset contracts.md, section 5); the studios' accounts of
+  pieces that stop stacking and of roofs as the part a kit covers last
+  (docs/research/Modular kit failures in studios.md, sections 5 and 9). The roofs here are our own
+  design: the research found no developer's account of roofs from pieces.
+  - *Storeys of two heights.* `ground_h` and `top_h` on a building (0: as `storey_h`) are the
+    heights of its ground storey and its top storey; the storeys between repeat at `storey_h`. A
+    building of one storey has a ground storey only; of two, a ground and a top.
+  - *Pieces by storey.* A storey takes the pieces of its own height: of each role, the pieces
+    nearest the storey's height stay and the others are left out there, so one kit serves a
+    building with a 4 m ground storey and one whose ground storey is 3 m, and a bay re-exported
+    a little too tall is still its storey's bay and not replaced by one of another storey. Among those, a piece tagged `storey:ground`, `storey:upper` or `storey:top` is laid on
+    that kind of storey only, and is read before an untagged piece of its role; an untagged piece
+    serves every storey with no piece of its own. So a kit states a shopfront bay, a taller door
+    and a taller corner for the ground storey and nothing else changes. Every rule of a kit
+    (module, reach, variants) is read per storey from the pieces that storey gets. `check` holds
+    each piece to the height of the storey it serves (`kit_height`, which so also says a storey
+    whose nearest piece of a role is of another height), the bays of all storeys to one thickness
+    (`kit_uneven`: walls stack flush or not at all, and `lay` refuses two thicknesses outright),
+    and says a kind of storey the kit has no bay for (`kit_bay`).
+  - *A wall stands on the wall below, not on the floor.* Where a stairwell opens the floor beside
+    an outer wall, the storey above has no floor under that wall, and `lay` built none (6 m open
+    in examples/kit). Now the side the stair climbs along gets a `footing`: a region as wide as
+    the wall is thick along that whole side, with one surface at the storey's level, which the
+    wall pieces of that side and its two corners stand on. The storey's own region keeps off it:
+    that side is moved in by the wall's thickness, and the stairwell is a notch from there, held
+    off the walls beside it by one wall's thickness, or by what the corner piece there takes
+    where that is more. The stair therefore no longer decides where the wall above closes: each
+    bay above stands over the bay below. Needs a kit (with none there is no wall and the notch
+    is cut from the outline as before) and square corners at both ends of that side, to the
+    2 mm a corner rounded to the lattice may be off, so a rectangle turned off the axes has its
+    footing; where a corner is not square there is none, and `wall_open` says the side stands
+    open over the stairwell. A corner piece stands on the footing where its placing point lies
+    in it (a post at an outside corner of the stair's side), else on the floor (an inside corner
+    piece, a wide pier). A stairwell that would come within a wall's thickness of another wall,
+    or out of the building, is refused.
+  - *Names.* A wall run is named by its storey and the outline's side: `<storey>_w<side>_<j>`,
+    `j` counting the stretches a door cuts the side into. On a ground storey this is the name it
+    always had. On a storey over a stairwell the sides after the stair's were numbered by the
+    notched ring's edges and are renamed once by this change.
+  - *Floor slabs.* A kit's `role:floor` piece is a square tile one module on a side, its top at
+    the floor and its thickness below it (`sink`). `lay` tiles each storey's floor inside the
+    walls: the outline moved in by the wall's thickness, on a grid from the first corner of side
+    0. A plan sized to a kit whose outside corners take the wall's thickness is whole tiles
+    there, where the kit's module is a whole number of tiles (`kit_deck`). A tile is laid only
+    where it lies wholly on the floor, so a stairwell that is not whole tiles wide and long
+    leaves the floor short of it: `slab_open` (warning), with the stair width that would make
+    that stairwell whole tiles deep. On a building turned off the axes no tile is laid, and
+    `slab_open` says so once: tiles are instances on the millimetre lattice, and off the axes
+    two that abut overlap by the rounding, which the core takes for two things in one place.
+    Walls do not have this trouble, since neighbours of one run are never compared (TODO).
+  - *Roofs from pieces.* Every roof piece stands at the eaves (the top storey's level plus its
+    height), on the surface of a `roof` feature over the footprint. `roof = "flat"`: the floor
+    tiles again, laid as on a floor; the walls' tops stand round them. `roof = "gable"`, on a
+    rectangle: slope pieces from each long side's eave to the ridge, and a gable under each end.
+    A slope piece (`role:roof_slope`) is a wedge that states `params.pitch`, its length along the
+    eave, and `params.span`, the plan distance from the eave to the ridge; its measured height is
+    the roof's rise. It is made for one depth of building, twice its span, as the roof pieces of
+    real kits are. The slopes run between the gables: along each long side less the wall's
+    thickness at each end, which must be whole pieces. A gable half (`role:roof_gable`) is a
+    wall as thick as the kit's, one span long, rising to the ridge; two stand on each short
+    side, the second turned about. The ridge lies along the longer sides (the first, of equal
+    ones).
+  - *A roof that cannot be laid is refused with its reason* (`roof_none`, warning): a gable on a
+    plan that is not a rectangle; a depth no slope piece's span is half of; an eave that is not
+    whole slope pieces between the gables; a kit without the pieces. The building then gets the
+    flat roof where the kit has a floor tile, and the message says so; else none. Nothing is
+    stretched or cut to fit. A rectangle is four sides each square to the next, to the same 2 mm
+    as a footing's corners, so a turned one takes its gable; a flat roof on a turned building is
+    refused, as its floor tiles are. A gable over an L is not built here: its valley and the slopes
+    beside it need the roof's module to agree with the inside corner's reach, which is a rule
+    of its own (K7 of the plan, pitched roofs over plans that are not rectangles).
 - **Walking to an upper floor.** A storey, flight or doorway `lay` returns has a produced name,
   which text may not write (R3), so a bookmark cannot name it as `toward`. Place your own kindless
   point features `on = { ref = "<building>", t, offset }` (they follow the building when it moves
@@ -312,9 +392,10 @@ note is fixed.
   (4.3), and a returned document's name does not resolve to the document's own keys first (5,
   "Names": `ends_at = "hall_d0.start"` is `identity.unknown_place`, whose hint asks for the
   produced name R3 forbids in text).
-- **Library:** `furnish`; doors above the ground storey (a balcony); the outer wall along an upper
-  storey's stairwell (no floor there for a piece to stand on: needs a two-storey piece in the kit,
-  `role:wall_tall`); rails along a stairwell's open sides; a pitched roof scaled to the outline;
+- **Library:** `furnish`; doors above the ground storey (a balcony); rails along a stairwell's
+  open sides; a pitched roof over a plan that is not a rectangle (a gable from pieces is laid on
+  rectangles since K4, "Building upward"; the outer wall over a stairwell, listed here until then,
+  stands on its footing); a plinth course and steps to a door;
   the walk lint over kind surfaces in `lib/review` (the SDK has `meetings()` but not `surfaces_at`
   or `sample`, so `check` judges reach by meetings and room openings, not by posts); the measured
   object against its published numbers (the pistol).

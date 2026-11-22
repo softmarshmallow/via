@@ -6,18 +6,20 @@
 #   python3 examples/kit/measure.py BUILD+<c> --base BUILD       # a change, built with --against
 #   python3.11 examples/kit/measure.py BUILD+<c> --base BUILD --check <c>
 #
-# Protocol of the numbers below: macOS arm64, release `via` built 2026-11-20 from the working tree
-# after 640a7df with K1 of docs/plan-kits.md (R64, R65, epoch 3), VIA_LIB=lib, Python 3.12
-# (sdk/python/.venv) for the steps, lib/building's `lay` and `check` of the same tree with K2 (a
-# place by `side` and `at`, the kit against itself) and K3 (variants of the bay). One fresh store:
-# base, then each change with --against base, one build each; `window_module` is `window` and
-# `module` together. Measured once on 2026-11-20 and, with K3's rows and the kit's seventh piece,
-# again on 2026-11-22 (release `via` of f529008, after the review of K3), so a band is the measured number: not a target,
-# it says where someone looks. The same builds before any mend, and after the library's first mends, are in README.md,
-# "The record".
+# Protocol of the numbers below: macOS arm64, release `via` of f529008 (K1 of docs/plan-kits.md:
+# R64, R65, epoch 3), VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's
+# `lay` and `check` of the working tree with K2 (a place by `side` and `at`, the kit against
+# itself), K3 (variants of the bay) and K4 (the wall over a stairwell on its footing, storeys of
+# two heights, floor tiles, roofs). One fresh store: base, then each change with --against base,
+# one build each; `window_module` is `window` and `module` together. Every row was measured
+# again on 2026-11-23 with K4, when the wall over the hall's stairwell first stood: `open` fell
+# by one and `open_sum_mm` by 6000 in every build, and the hall gained a bay's worth of pieces.
+# A band is the measured number: not a target, it says where someone looks. The same builds
+# before any mend, and after the library's first mends, are in README.md, "The record".
 
 # ------------------------------------------------------------------------------------------ base
-# The base: two buildings, every stretch of wall closing.
+# The base: two buildings, every stretch of wall closing, the storey above included (no wall was
+# laid over the hall's stairwell before K4: `open` 1, 6 m), and every floor whole tiles.
 
 [base.errors]
 measure = "errors"
@@ -29,15 +31,15 @@ band    = [0, 0]
 
 [base.pieces]
 measure = "pieces"
-band    = [53, 53]
+band    = [54, 54]
 
 [base.wall]
 measure = "wall"
-band    = [35, 35]
+band    = [38, 38]
 
 [base.wall_half]
 measure = "wall_half"
-band    = [4, 4]
+band    = [2, 2]
 
 [base.corner]
 measure = "corner"
@@ -46,7 +48,37 @@ band    = [12, 12]
 # Joints between two bays of one asset along a side: every one, in a wall of one piece.
 [base.alike]
 measure = "alike"
-band    = [21, 21]
+band    = [24, 24]
+
+[base.floor]
+measure = "floor"
+band    = [128, 128]
+
+# Square decimetres of floor, inside the walls and off the stairwell, under no tile.
+[base.slab_open_dm2]
+measure = "slab_open_dm2"
+band    = [0, 0]
+
+[base.slab_double_dm2]
+measure = "slab_double_dm2"
+band    = [0, 0]
+
+[base.deck_off_mm]
+measure = "deck_off_mm"
+band    = [0, 0]
+
+# No tile in a wall or over the stairwell, none reaching into its neighbour, none outside.
+[base.slab_stray_dm2]
+measure = "slab_stray_dm2"
+band    = [0, 0]
+
+[base.slab_lap_mm]
+measure = "slab_lap_mm"
+band    = [0, 0]
+
+[base.deck_outside_mm]
+measure = "deck_outside_mm"
+band    = [0, 0]
 
 [base.door]
 measure = "door"
@@ -54,11 +86,11 @@ band    = [2, 2]
 
 [base.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [base.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 [base.overlaps]
 measure = "overlaps"
@@ -80,6 +112,10 @@ band    = [0, 0]
 # A corner remodelled with a 0.6 m stub. The revision is named (asset.revised), the fault is
 # named (kit_corner), and each corner and the wall piece it now overlaps are named
 # (place.crowded, R64). Nothing gives way: the walls are whole and the overlap is measured.
+# The build names 11 of the 12 overlaps measured: the twelfth is between a corner that stands on
+# the footing over the stairwell and a wall piece that stands on the storey's floor beside it,
+# two surfaces at one height, which the core's overlap test takes for two levels (rules.md 8.1;
+# TODO.md, spec/rules.md).
 
 [stub.errors]
 measure = "errors"
@@ -87,7 +123,7 @@ band    = [0, 0]
 
 [stub.warnings]
 measure = "warnings"
-band    = [14, 14]
+band    = [13, 13]
 
 [stub.revised]
 measure = "revised"
@@ -107,7 +143,7 @@ band    = [1, 1]
 
 [stub.crowded]
 measure = "crowded"
-band    = [12, 12]
+band    = [11, 11]
 
 [stub.gave_way]
 measure = "gave_way"
@@ -123,11 +159,11 @@ band    = [0, 0]
 
 [stub.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [stub.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 [stub.overlaps]
 measure = "overlaps"
@@ -180,23 +216,23 @@ band    = [0, 0]
 
 [module.wall_half]
 measure = "wall_half"
-band    = [74, 74]
+band    = [78, 78]
 
 [module.added]
 measure = "added"
-band    = [70, 70]
+band    = [76, 76]
 
 [module.removed]
 measure = "removed"
-band    = [35, 35]
+band    = [38, 38]
 
 [module.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [module.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ pivot
 # The bay's origin moved to its end. Named, and nothing moves: the pivot is the pack's rule.
@@ -215,7 +251,7 @@ band    = [1, 1]
 
 [pivot.revised_named]
 measure = "revised_named"
-band    = [35, 35]
+band    = [38, 38]
 
 [pivot.revised_all]
 measure = "revised_all"
@@ -239,7 +275,7 @@ band    = [0, 0]
 
 [pivot.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ tall
 # The bay 0.3 m taller than a storey. The revision, the clash with the storey above
@@ -264,7 +300,7 @@ band    = [1, 1]
 
 [tall.revised_named]
 measure = "revised_named"
-band    = [35, 35]
+band    = [38, 38]
 
 [tall.revised_all]
 measure = "revised_all"
@@ -288,7 +324,7 @@ band    = [0, 0]
 
 [tall.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ off_module
 # The hall a metre longer. Three stretches are reported open, and the fourth, beside the
@@ -301,7 +337,7 @@ band    = [0, 0]
 
 [off_module.warnings]
 measure = "warnings"
-band    = [4, 4]
+band    = [6, 6]
 
 [off_module.wall_open]
 measure = "wall_open"
@@ -321,11 +357,11 @@ band    = [13000, 13000]
 
 [off_module.open_sum_mm]
 measure = "open_sum_mm"
-band    = [38500, 38500]
+band    = [40000, 40000]
 
 [off_module.removed]
 measure = "removed"
-band    = [10, 10]
+band    = [12, 12]
 
 [off_module.added]
 measure = "added"
@@ -360,11 +396,11 @@ band    = [1, 1]
 
 [ell.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [ell.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 [ell.overlaps]
 measure = "overlaps"
@@ -408,11 +444,11 @@ band    = [0, 0]
 
 [window.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [window.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ window_up
 # The same on the storey above.
@@ -447,11 +483,11 @@ band    = [0, 0]
 
 [window_up.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [window_up.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ wide_door
 # A door 0.2 m wider than the kit's frame. The wall leaves 4.5 m where 1.7 m is needed,
@@ -475,11 +511,11 @@ band    = [0, 0]
 
 [wide_door.open]
 measure = "open"
-band    = [3, 3]
+band    = [2, 2]
 
 [wide_door.open_sum_mm]
 measure = "open_sum_mm"
-band    = [9000, 9000]
+band    = [3000, 3000]
 
 [wide_door.added]
 measure = "added"
@@ -511,15 +547,17 @@ band    = [0, 0]
 
 [door_off.open]
 measure = "open"
-band    = [3, 3]
+band    = [2, 2]
 
 [door_off.open_sum_mm]
 measure = "open_sum_mm"
-band    = [7500, 7500]
+band    = [1500, 1500]
 
 # ------------------------------------------------------------------------------------------ stair_off
-# The stair as it was first written. The storey above has 0.7 m and 5.8 m of wall either
-# side of the stairwell; each is reported with how far it is off.
+# The stair as it was first written, off the module. Before K4 the storey above had 0.7 m and
+# 5.8 m of wall either side of the stairwell, both open (2 `wall_open`, 12 m open with the
+# stairwell). The wall now stands over the stairwell on its footing and closes wherever the stair
+# is. The floor is what still minds: the stairwell is not whole tiles.
 
 [stair_off.errors]
 measure = "errors"
@@ -527,11 +565,19 @@ band    = [0, 0]
 
 [stair_off.warnings]
 measure = "warnings"
-band    = [2, 2]
+band    = [1, 1]
+
+[stair_off.slab_open]
+measure = "slab_open"
+band    = [1, 1]
+
+[stair_off.slab_open_dm2]
+measure = "slab_open_dm2"
+band    = [465, 465]
 
 [stair_off.wall_open]
 measure = "wall_open"
-band    = [2, 2]
+band    = [0, 0]
 
 [stair_off.gap_wide]
 measure = "gap_wide"
@@ -539,11 +585,11 @@ band    = [0, 0]
 
 [stair_off.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [stair_off.open_sum_mm]
 measure = "open_sum_mm"
-band    = [12000, 12000]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ window_module
 # The pinned window with the bay on a 3.2 m module: the pin keeps its place and takes
@@ -580,11 +626,11 @@ band    = [0, 0]
 
 [window_module.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [window_module.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ windows
 # Variants by a pattern (K3): window and plain bays in turn on the hall's south and north walls,
@@ -602,15 +648,15 @@ band    = [0, 0]
 
 [windows.pieces]
 measure = "pieces"
-band    = [53, 53]
+band    = [54, 54]
 
 [windows.wall_window]
 measure = "wall_window"
-band    = [7, 7]
+band    = [8, 8]
 
 [windows.wall]
 measure = "wall"
-band    = [28, 28]
+band    = [30, 30]
 
 [windows.alike]
 measure = "alike"
@@ -618,11 +664,11 @@ band    = [14, 14]
 
 [windows.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [windows.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 [windows.overlaps]
 measure = "overlaps"
@@ -634,11 +680,11 @@ band    = [0, 0]
 
 [windows.added]
 measure = "added"
-band    = [7, 7]
+band    = [10, 10]
 
 [windows.removed]
 measure = "removed"
-band    = [7, 7]
+band    = [10, 10]
 
 # ------------------------------------------------------------------------------------------ mixed
 # No two neighbours alike (K3): every bay of both buildings is chosen among window, vent and plain
@@ -654,7 +700,7 @@ band    = [0, 0]
 
 [mixed.pieces]
 measure = "pieces"
-band    = [53, 53]
+band    = [54, 54]
 
 [mixed.alike]
 measure = "alike"
@@ -662,7 +708,7 @@ band    = [0, 0]
 
 [mixed.wall_window]
 measure = "wall_window"
-band    = [10, 10]
+band    = [12, 12]
 
 [mixed.wall_vent]
 measure = "wall_vent"
@@ -670,15 +716,15 @@ band    = [15, 15]
 
 [mixed.wall]
 measure = "wall"
-band    = [10, 10]
+band    = [11, 11]
 
 [mixed.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [mixed.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 [mixed.overlaps]
 measure = "overlaps"
@@ -699,7 +745,7 @@ band    = [0, 0]
 
 [window_at.pieces]
 measure = "pieces"
-band    = [53, 53]
+band    = [54, 54]
 
 [window_at.wall_window]
 measure = "wall_window"
@@ -715,11 +761,11 @@ band    = [0, 0]
 
 [window_at.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [window_at.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 [window_at.overlaps]
 measure = "overlaps"
@@ -766,7 +812,7 @@ band    = [0, 0]
 
 [wide_window.wall]
 measure = "wall"
-band    = [35, 35]
+band    = [38, 38]
 
 [wide_window.added]
 measure = "added"
@@ -782,12 +828,371 @@ band    = [0, 0]
 
 [wide_window.open]
 measure = "open"
-band    = [1, 1]
+band    = [0, 0]
 
 [wide_window.open_sum_mm]
 measure = "open_sum_mm"
-band    = [6000, 6000]
+band    = [0, 0]
 
 [wide_window.overlaps]
 measure = "overlaps"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ tower
+# Upward (K4): a third building of three storeys, the ground one 4 m high, under a gable roof.
+# The ground storey takes the kit's 4 m pieces, the two above the 3 m ones. Two flights, so two
+# stairwells: the wall over each stands on a footing and every side closes (15 m stood open in
+# this building on the tree before K4, and `ground_h` was no key). The roof covers the outline
+# once. The second stairwell, two lanes deep (2.9 m inside the wall), is not whole floor tiles:
+# said once, 5.25 m2 of floor open beside it.
+
+[tower.errors]
+measure = "errors"
+band    = [0, 0]
+
+[tower.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[tower.pieces]
+measure = "pieces"
+band    = [103, 103]
+
+[tower.added]
+measure = "added"
+band    = [49, 49]
+
+[tower.ground_wall]
+measure = "ground_wall"
+band    = [11, 11]
+
+[tower.ground_half]
+measure = "ground_half"
+band    = [1, 1]
+
+[tower.ground_corner]
+measure = "ground_corner"
+band    = [4, 4]
+
+[tower.ground_door]
+measure = "ground_door"
+band    = [1, 1]
+
+[tower.wall]
+measure = "wall"
+band    = [62, 62]
+
+[tower.open]
+measure = "open"
+band    = [0, 0]
+
+[tower.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+[tower.floor_off_mm]
+measure = "floor_off_mm"
+band    = [0, 0]
+
+[tower.stack_over_mm]
+measure = "stack_over_mm"
+band    = [0, 0]
+
+[tower.stack_under_mm]
+measure = "stack_under_mm"
+band    = [0, 0]
+
+[tower.roof_slope]
+measure = "roof_slope"
+band    = [12, 12]
+
+[tower.roof_gable]
+measure = "roof_gable"
+band    = [4, 4]
+
+[tower.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[tower.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[tower.eave_off_mm]
+measure = "eave_off_mm"
+band    = [0, 0]
+
+[tower.ridge_off_mm]
+measure = "ridge_off_mm"
+band    = [0, 0]
+
+[tower.gable_turned]
+measure = "gable_turned"
+band    = [0, 0]
+
+[tower.eaves_gap_mm]
+measure = "eaves_gap_mm"
+band    = [0, 0]
+
+[tower.deck_off_mm]
+measure = "deck_off_mm"
+band    = [0, 0]
+
+[tower.slab_open]
+measure = "slab_open"
+band    = [1, 1]
+
+[tower.slab_open_dm2]
+measure = "slab_open_dm2"
+band    = [525, 525]
+
+[tower.slab_double_dm2]
+measure = "slab_double_dm2"
+band    = [0, 0]
+
+[tower.slab_stray_dm2]
+measure = "slab_stray_dm2"
+band    = [0, 0]
+
+[tower.slab_lap_mm]
+measure = "slab_lap_mm"
+band    = [0, 0]
+
+[tower.deck_outside_mm]
+measure = "deck_outside_mm"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ roofs
+# Roofs from pieces (K4): a gable over the hall, a flat roof of floor tiles over the annex. Each
+# covers its outline once (the flat one inside the walls' tops), on the eaves, with nothing said.
+
+[roofs.errors]
+measure = "errors"
+band    = [0, 0]
+
+[roofs.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[roofs.pieces]
+measure = "pieces"
+band    = [54, 54]
+
+[roofs.roof_slope]
+measure = "roof_slope"
+band    = [16, 16]
+
+[roofs.roof_gable]
+measure = "roof_gable"
+band    = [4, 4]
+
+[roofs.floor]
+measure = "floor"
+band    = [164, 164]
+
+[roofs.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[roofs.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[roofs.eave_off_mm]
+measure = "eave_off_mm"
+band    = [0, 0]
+
+[roofs.ridge_off_mm]
+measure = "ridge_off_mm"
+band    = [0, 0]
+
+[roofs.gable_turned]
+measure = "gable_turned"
+band    = [0, 0]
+
+[roofs.eaves_gap_mm]
+measure = "eaves_gap_mm"
+band    = [0, 0]
+
+[roofs.deck_off_mm]
+measure = "deck_off_mm"
+band    = [0, 0]
+
+[roofs.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[roofs.slab_lap_mm]
+measure = "slab_lap_mm"
+band    = [0, 0]
+
+[roofs.deck_outside_mm]
+measure = "deck_outside_mm"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ roof_ell
+# A gable asked for over an L (K4): refused with its reason, the flat roof laid in its place. A
+# gable over a plan that is not a rectangle is K7's.
+
+[roof_ell.errors]
+measure = "errors"
+band    = [0, 0]
+
+[roof_ell.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[roof_ell.roof_none]
+measure = "roof_none"
+band    = [1, 1]
+
+[roof_ell.roof_slope]
+measure = "roof_slope"
+band    = [0, 0]
+
+[roof_ell.roof_gable]
+measure = "roof_gable"
+band    = [0, 0]
+
+[roof_ell.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[roof_ell.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[roof_ell.slab_open_dm2]
+measure = "slab_open_dm2"
+band    = [0, 0]
+
+[roof_ell.deck_off_mm]
+measure = "deck_off_mm"
+band    = [0, 0]
+
+[roof_ell.open]
+measure = "open"
+band    = [0, 0]
+
+[roof_ell.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ roof_deep
+# A roof piece is made for one depth of building (K4): the hall 1.5 m deeper than twice the slope
+# piece's span. The walls close; the gable is refused with the depth it is made for; the flat roof
+# is laid.
+
+[roof_deep.errors]
+measure = "errors"
+band    = [0, 0]
+
+[roof_deep.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[roof_deep.roof_none]
+measure = "roof_none"
+band    = [1, 1]
+
+[roof_deep.roof_slope]
+measure = "roof_slope"
+band    = [0, 0]
+
+[roof_deep.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[roof_deep.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[roof_deep.slab_open_dm2]
+measure = "slab_open_dm2"
+band    = [0, 0]
+
+[roof_deep.open]
+measure = "open"
+band    = [0, 0]
+
+[roof_deep.overlaps]
+measure = "overlaps"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ slab_off
+# A stairwell off the floor's module (K4): the hall's stair 1 m wide, so its stairwell is 1.2 m
+# deep inside the wall where a tile is 1.5 m. The walls close as in the base. The four tiles
+# beside the stairwell are not laid: 1.8 m2 of floor open, said once with the width that closes.
+
+[slab_off.errors]
+measure = "errors"
+band    = [0, 0]
+
+[slab_off.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[slab_off.slab_open]
+measure = "slab_open"
+band    = [1, 1]
+
+[slab_off.slab_open_dm2]
+measure = "slab_open_dm2"
+band    = [180, 180]
+
+[slab_off.slab_double_dm2]
+measure = "slab_double_dm2"
+band    = [0, 0]
+
+[slab_off.floor]
+measure = "floor"
+band    = [128, 128]
+
+[slab_off.open]
+measure = "open"
+band    = [0, 0]
+
+[slab_off.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[slab_off.pieces]
+measure = "pieces"
+band    = [54, 54]
+
+# ------------------------------------------------------------------------------------------ tall_ground
+# A storey height the kit has no pieces for (K4): the annex's ground storey 5 m, the kit's pieces
+# 3 m and 4 m. The nearest are laid, the 4 m ones, and each is named as 1 m short; the walls' tops
+# stand 1 m under the flat roof's eaves.
+
+[tall_ground.errors]
+measure = "errors"
+band    = [0, 0]
+
+[tall_ground.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[tall_ground.kit_height]
+measure = "kit_height"
+band    = [3, 3]
+
+[tall_ground.ground_wall]
+measure = "ground_wall"
+band    = [11, 11]
+
+[tall_ground.ground_corner]
+measure = "ground_corner"
+band    = [4, 4]
+
+[tall_ground.eaves_gap_mm]
+measure = "eaves_gap_mm"
+band    = [1000, 1000]
+
+[tall_ground.open]
+measure = "open"
+band    = [0, 0]
+
+[tall_ground.roof_open_dm2]
+measure = "roof_open_dm2"
 band    = [0, 0]

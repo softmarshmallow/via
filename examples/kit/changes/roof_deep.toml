@@ -1,0 +1,6 @@
+# A roof piece is made for one depth of building: the hall 1.5 m deeper than the slope piece's
+# span allows. The walls still close (the sides are whole pieces); the gable is refused with the
+# depth it is made for, and the flat roof laid.
+[feature.hall]
+region = [[10, 10], [22.6, 10], [22.6, 21.1], [10, 21.1]]
+roof   = "gable"

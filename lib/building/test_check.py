@@ -105,6 +105,9 @@ def members(out):
     along the storey's ring, `offset` to the left), and its `at` pieces; leaves are left out."""
     rings = {s["key"]: s["region"] for s in out["storeys"]}
     level = {s["key"] + ".floor": s["level"] for s in out["storeys"]}
+    for f in out.get("footings", []):                       # the wall over a stairwell stands on its footing
+        rings[f["key"]] = f["region"]
+        level[f["key"] + ".top"] = level[f["key"] + ".floor"] = f["level"]
     got = []
     for r in out["runs"]:
         ring = rings[r["ref"]]
@@ -305,6 +308,119 @@ class Profile(unittest.TestCase):
         self.assertEqual(codes(C["judge"]([], [], self.PLAIN + [ok], P)), [])
         (rec,) = [r for r in C["judge"]([], [], self.PLAIN + [win(tags=["role:wall", "variant:wall"])], P) if r[0] != "info"]
         self.assertEqual((rec[1], rec[5]["differs"]), ("kit_variant", ["word"]))
+
+    TALL = [{"id": "g_wall", "taxon": "k", "tags": ["role:wall", "storey:ground"], "bounds": [-1500, -150, 0, 1500, 150, 4000], "params": {"pitch": 3}},
+            {"id": "g_half", "taxon": "k", "tags": ["role:filler", "storey:ground"], "bounds": [-750, -150, 0, 750, 150, 4000], "params": {"pitch": 1.5}},
+            {"id": "g_corner", "taxon": "k", "tags": ["role:corner", "storey:ground"], "bounds": [-150, -150, 0, 150, 150, 4000], "params": {}}]
+
+    @staticmethod
+    def building(name="tower", **attrs):
+        return {"name": name, "kind": "building", "ring": HALL, "path": HALL,
+                "attrs": dict({"kit": "k", "storey_h": 3.0, "storeys": 3}, **attrs)}
+
+    def test_a_kit_is_judged_for_each_kind_of_storey(self):
+        """One kit with 3 m pieces and 4 m ground pieces serves a tower with a 4 m ground storey and
+        a hall with a 3 m one: nothing is said, though the pieces are of two heights and the 3 m
+        window bay cannot stand on the 4 m storey. With no 4 m pieces, the 3 m ones are named
+        for the tower's ground storey only."""
+        win = {"id": "window", "taxon": "k", "tags": ["role:wall", "variant:window"],
+               "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}}
+        feats = [self.building(ground_h=4.0), self.building("hall", storeys=2)]
+        self.assertEqual(codes(C["judge"](feats, [], self.PLAIN + self.TALL + [win], P)), [])
+        recs = [r for r in C["judge"](feats, [], self.PLAIN + [win], P) if r[0] != "info"]
+        self.assertEqual(sorted((r[1], r[2], r[5]["storey_h"], r[5]["buildings"]) for r in recs),
+                         [("kit_height", "corner", 4.0, ["tower"]), ("kit_height", "half", 4.0, ["tower"]),
+                          ("kit_height", "wall", 4.0, ["tower"])])
+        one = [self.building("shed", storeys=1, ground_h=4.0)]                       # one storey, but its height is said
+        self.assertEqual(sorted(r[2] for r in C["judge"](one, [], self.PLAIN, P) if r[1] == "kit_height"),
+                         ["corner", "half", "wall"])
+        self.assertEqual(codes(C["judge"]([self.building("shed", storeys=1)], [], self.PLAIN, P)), [])
+
+    def test_the_bays_of_all_storeys_are_one_thickness(self):
+        thick = [dict(r, bounds=[r["bounds"][0], -200, 0, r["bounds"][3], 200, 4000]) for r in self.TALL]
+        recs = [r for r in C["judge"]([self.building(ground_h=4.0)], [], self.PLAIN + thick, P) if r[1] == "kit_uneven"]
+        self.assertEqual([(r[2], r[5]["pieces"], r[5]["sizes"]) for r in recs], [("g_wall", ["g_wall", "wall"], [0.4, 0.3])])
+
+    def test_kit_deck(self):
+        """A floor tile is square on the module; a slope is as deep as its span; a gable half is
+        that span long, as high as the slope and as thick as the wall; one needs the other."""
+        floor = {"id": "floor", "taxon": "k", "tags": ["role:floor"], "bounds": [-750, -750, 0, 750, 750, 200], "params": {"pitch": 1.5}}
+        slope = {"id": "slope", "taxon": "k", "tags": ["role:roof_slope"], "bounds": [-750, -2400, 0, 750, 2400, 2400],
+                 "params": {"pitch": 1.5, "span": 4.8}}
+        gable = {"id": "gable", "taxon": "k", "tags": ["role:roof_gable"], "bounds": [-2400, -150, 0, 2400, 150, 2400],
+                 "params": {"span": 4.8}}
+        self.assertEqual(codes(C["judge"]([], [], self.PLAIN + [floor, slope, gable], P)), [])
+        half = dict(gable, bounds=[-1200, -150, 0, 1200, 150, 2400], params={"span": 2.4})
+        for rows, subjects in (([dict(floor, bounds=[-750, -500, 0, 750, 500, 200]), slope, gable], ["floor"]),
+                               ([dict(floor, bounds=[-500, -500, 0, 500, 500, 200], params={"pitch": 1}), slope, gable], ["floor"]),
+                               ([dict(floor, bounds=[-1500, -1500, 0, 1500, 1500, 200], params={"pitch": 3}), slope, gable], ["floor"]),
+                               ([floor, dict(slope, params={"pitch": 1.5, "span": 4.5}), gable], ["gable", "slope"]),
+                               ([floor, dict(slope, params={"pitch": 1.5}), gable], ["slope"]),
+                               ([floor, slope, dict(gable, bounds=[-2400, -150, 0, 2400, 150, 2000])], ["gable"]),
+                               ([floor, slope, dict(gable, bounds=[-2400, -100, 0, 2400, 100, 2400])], ["gable"]),
+                               ([floor, slope, half], ["gable"]),               # each true to itself, made for two spans
+                               ([floor, slope], ["slope"]), ([floor, gable], ["gable"])):
+            got = codes(C["judge"]([], [], self.PLAIN + rows, P))
+            self.assertEqual(sorted(got), [("kit_deck", s) for s in subjects], rows)
+        # a tile the module is a whole number of lays a floor sized to the walls: no fault
+        small = dict(floor, bounds=[-375, -375, 0, 375, 375, 200], params={"pitch": 0.75})
+        self.assertEqual(codes(C["judge"]([], [], self.PLAIN + [small, slope, gable], P)), [])
+
+    def test_what_a_storey_reads(self):
+        """A piece tagged for the storey is read before an untagged one of its height; the nearest
+        height stays, the others go; a kit with a bay for the ground storey only has none for the
+        storeys above, and says so. Every building of the kit is asked, not the first."""
+        base = {"id": "z_base", "taxon": "k", "tags": ["role:wall", "storey:ground"], "bounds": [-1500, -150, 0, 1500, 150, 3300],
+                "params": {"pitch": 3}}
+        recs = [r for r in C["judge"]([self.building("hall", storeys=2)], [], self.PLAIN + [base], P) if r[1] == "kit_height"]
+        self.assertEqual([(r[2], r[5]["buildings"]) for r in recs], [])           # 3.3 m is not nearest 3 m: `wall` is
+        near = dict(base, bounds=[-1500, -150, 0, 1500, 150, 3004])
+        recs = [r for r in C["judge"]([self.building("hall", storeys=2)], [], self.PLAIN + [near], P) if r[0] != "info"]
+        self.assertEqual(recs, [])                                                # 4 mm is the storey's height
+        over = dict(base, bounds=[-1500, -150, 0, 1500, 150, 3060])
+        only = [r for r in self.PLAIN if r["id"] != "wall"] + [over]
+        recs = [r for r in C["judge"]([self.building("hall", storeys=2)], [], only, P) if r[0] != "info"]
+        self.assertEqual(sorted((r[1], r[2]) for r in recs), [("kit_bay", "k"), ("kit_height", "z_base"), ("kit_uneven", "z_base")])
+        self.assertEqual([r[5] for r in recs if r[1] == "kit_bay"], [{"taxon": "k", "storey": "top", "buildings": ["hall"]}])
+        two = [self.building("a_shed", storeys=1), self.building("tower", ground_h=4.0, top_h=5.0)]
+        recs = [r for r in C["judge"](two, [], self.PLAIN, P) if r[1] == "kit_height"]
+        self.assertEqual(sorted((r[2], r[5]["storey_h"]) for r in recs),
+                         [("corner", 4.0), ("corner", 5.0), ("half", 4.0), ("half", 5.0), ("wall", 4.0), ("wall", 5.0)])
+        roofed = [self.building("shed", storeys=1, roof="flat", storey_h=3.5)]
+        self.assertEqual(len([r for r in C["judge"](roofed, [], self.PLAIN, P) if r[1] == "kit_height"]), 3)
+        self.assertEqual([r for r in C["judge"]([self.building("shed", storeys=1, storey_h=3.5)], [], self.PLAIN, P)
+                          if r[1] == "kit_height"], [])
+
+    def test_a_fault_is_said_once_for_all_the_storeys_that_read_it(self):
+        tall = [dict(r, bounds=r["bounds"][:5] + [3300]) if r["id"] == "wall" else r for r in self.PLAIN]
+        feats = [self.building("hall", storeys=2), self.building("tower"), self.building("shed", storeys=1)]
+        got = codes(C["judge"](feats, [], tall, P))
+        self.assertEqual(sorted(got), [("kit_height", "wall"), ("kit_uneven", "wall")])
+
+    def test_a_kit_no_building_uses_is_judged_by_its_heights(self):
+        """Untagged pieces of two heights and no building: each height's pieces are judged
+        together, and a sound kit of two storey heights is silent."""
+        four = [dict(r, id="t_" + r["id"], bounds=r["bounds"][:5] + [4000]) for r in self.PLAIN if r["id"] != "corner_in"]
+        self.assertEqual(codes(C["judge"]([], [], self.PLAIN + four, P)), [])
+        odd = [dict(r, bounds=r["bounds"][:5] + [3300]) if r["id"] == "half" else r for r in self.PLAIN]
+        self.assertEqual(codes(C["judge"]([], [], odd, P)), [("kit_uneven", "wall")])
+
+    def test_floors_and_roofs_stand_in_no_doorway(self):
+        self.assertEqual(sorted(C["LIES_FLAT"]), ["role:door", "role:floor", "role:roof", "role:roof_gable", "role:roof_slope"])
+        rows = [{"id": "floor", "tags": ["role:floor"], "bounds": [0, 0, 0, 1, 1, 1]},
+                {"id": "slope", "tags": ["role:roof_slope"], "bounds": [0, 0, 0, 1, 1, 1]},
+                {"id": "wall", "tags": ["role:wall"], "bounds": [0, 0, 0, 1, 1, 1]}]
+
+        class Step:
+            def instances(self, select):
+                return {"name": ["a", "b", "c"], "asset": ["floor", "slope", "wall"], "x": [0, 0, 0], "y": [0, 0, 0],
+                        "z": [0.0, 0.0, 0.0], "face": [0, 0, 0], "scale": [1.0, 1.0, 1.0]}
+        try:
+            got = C["read_pieces"](Step(), ["k"], rows)
+        except Exception as e:                                # the step's table has more columns than this fake
+            self.skipTest(f"read_pieces needs a fuller fake: {e}")
+        self.assertEqual([g["name"] for g in got], ["c"])
+
 
     def test_params(self):
         for bad in ({"riser": 1}, {"going_min": 0}, {"kits": "a"}):

@@ -1,4 +1,4 @@
-# The plain kit (examples/kit): seven pieces of one module, made by packs/make_kit.py.
+# The plain kit (examples/kit): fourteen pieces of one module, made by packs/make_kit.py.
 # Its facts file, plain.facts.toml, is written by `via pack accept examples/kit/packs/plain.toml`.
 #
 # Every model is glTF's convention: +Y up, front +Z, origin at the base centre (packgen's), so
@@ -63,6 +63,58 @@ file   = "door.glb"
 taxon  = "structure/plain"
 tags   = ["role:door"]
 params = { pitch = 1.5 }
+
+# ---- the ground storey 4 m high (lib/building/README.md, "Building upward"). A storey takes the
+# pieces of its own height, so these stand only where a building says `ground_h = 4`.
+
+[asset.ground_wall]
+file   = "ground_wall.glb"
+taxon  = "structure/plain"
+tags   = ["role:wall", "storey:ground"]
+params = { pitch = 3.0 }
+
+[asset.ground_half]
+file   = "ground_half.glb"
+taxon  = "structure/plain"
+tags   = ["role:filler", "storey:ground"]
+params = { pitch = 1.5 }
+
+[asset.ground_corner]
+file  = "ground_corner.glb"
+taxon = "structure/plain"
+tags  = ["role:corner", "storey:ground"]
+
+[asset.ground_door]
+file   = "ground_door.glb"
+taxon  = "structure/plain"
+tags   = ["role:door", "storey:ground"]
+params = { pitch = 1.5 }
+
+# ---- floors and roofs
+
+# The floor tile: one half bay square, sunk by its thickness so its top is the floor. It tiles a
+# storey's floor inside the walls, and a flat roof.
+[asset.floor]
+file   = "floor.glb"
+taxon  = "structure/plain"
+tags   = ["role:floor"]
+params = { pitch = 1.5 }
+sink   = 0.2
+
+# The roof slope: 1.5 m along the eave, 4.8 m in plan from the eave to the ridge, climbing 2.4 m.
+# Made for a building 9.6 m deep, as both of the example's are.
+[asset.roof_slope]
+file   = "roof_slope.glb"
+taxon  = "structure/plain"
+tags   = ["role:roof_slope"]
+params = { pitch = 1.5, span = 4.8 }
+
+# Half a gable: the wall under the roof's edge at each end, 4.8 m long, as thick as the walls.
+[asset.roof_gable]
+file   = "roof_gable.glb"
+taxon  = "structure/plain"
+tags   = ["role:roof_gable"]
+params = { span = 4.8 }
 
 [material.ground]
 colour = [0.5, 0.5, 0.48]

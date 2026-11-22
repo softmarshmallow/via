@@ -18,6 +18,8 @@ A kit is the pieces under one taxon of a pack (`spec/assets.md` 5). A world name
 | Stated or measured | Where | Meaning |
 |---|---|---|
 | `role:<word>` | a tag | The part the piece plays. One piece per role is read: a piece with no `variant:` tag before one with, then the first id, bytewise. |
+| `storey:<word>` | a tag | The kind of storey the piece is made for: `ground`, `upper` or `top`. It is laid there only, and read there before an untagged piece of its role. |
+| `params.span` | the pack, on a roof piece | The plan distance from the eave to the ridge the piece is made for: half the depth of the building it roofs. |
 | `variant:<word>` | a tag, beside `role:wall` | A variant of the bay: a piece that may stand where a bay stands. The bay is the first `role:wall` piece with no such tag. |
 | `params.pitch` | the pack | The length of wall the piece takes, metres. Without it, the measured width. |
 | `params.reach` | the pack, on a corner | The length of each wall a corner takes, from the outline's vertex. |
@@ -36,7 +38,10 @@ A piece lies along its x axis with its front on +y. A wall piece is as thick as 
 | `corner` | both | Where a line turns. In a building, the outside corner. |
 | `corner_in` | lib/building | The inside corner of a building's outline. Placed by the middle of its notch (`pivot = "origin"`). |
 | `door` | lib/building | What stands in a doorway: a frame or a leaf. Its width is the kit's door size. |
-| `roof` | lib/building | One piece for a whole roof. Roofs from pieces are K4. |
+| `roof` | lib/building | One piece for a whole roof, where a building asks for none by name. |
+| `floor` | lib/building | A square tile, one module on a side, sunk by its thickness. It tiles each storey's floor inside the walls, and a flat roof. |
+| `roof_slope` | lib/building | A wedge from the eave to the ridge, `params.pitch` along the eave and `params.span` deep. |
+| `roof_gable` | lib/building | Half a gable: a wall one span long, as thick as the bay, rising to the ridge. Two stand at each end of a gable roof, the second turned about. |
 | `end` | lib/town | The piece at a row's free end and either side of a gap. |
 
 ## The kit as a whole
@@ -48,7 +53,10 @@ lib/building's `check` holds the kit to them (`lib/building/check.py`, rule 9):
 |---|---|---|
 | The module | The pitch of the smallest wall piece: the filler's, else the bay's. | `kit_module`: the bay and the door piece are whole numbers of it. |
 | The wall's thickness | The bay's measured depth. | `kit_uneven`: wall, filler and door are one thickness. |
-| The storey | The pieces' measured height. | `kit_uneven`: one height; `kit_height`: the height of a building that stacks them. |
+| The storey | The pieces' measured height. A storey takes, of each role, the pieces nearest its own height, so one kit may hold a 3 m and a 4 m bay. | `kit_uneven`: the pieces one storey reads are one height; `kit_height`: each is the height of the storey it serves. |
+| One wall thickness for all storeys | The bays' measured depth. | `kit_uneven`; `lay` refuses a building whose storeys' bays differ (`params`). |
+| The floor's module | The floor tile's pitch. | `kit_deck`: the tile is square, a whole number of the module. `slab_open`, from `lay`: a floor or a stairwell that is not whole tiles. |
+| The roof's depth | The slope piece's span, twice which is the building's depth. | `kit_deck`: slope and gable agree in span and rise, the gable is the wall's thickness. `roof_none`, from `lay`: a building the roof does not fit, with the reason. |
 | The door size | The door piece's width, less the margin `lay` leaves (0.1 m). | `gap_wide`, from `lay`: a door asked wider. |
 | The corners' reach | `params.reach`: the wall's thickness outside and nothing inside, unless said. | `kit_corner`: the model is the plan its reach states. `kit_ell`: the two reaches add up to whole modules, or no plan with an inside corner closes. |
 | No patch piece | A filler is not shorter than the wall is thick. | `kit_slip`. |
@@ -107,8 +115,15 @@ another side grows.
 - **A wall of mixed pieces as one thing.** A run holds one asset, so `lay` splits a stretch into a
   run per spell and the bays after a swap take new names. The research's gap "choosing among
   pieces" is here in the core, and is ruled at K5.
-- **Roles by storey** (a base, a ground storey, a repeating storey, a top) and **roofs from
-  pieces** (K4).
+- **A base course,** and steps to a door (K7). Storeys by height and by word, floors, and gable
+  roofs on rectangles came with K4.
+- **A pitched roof on a plan that is not a rectangle** (K7). On the plain kit the slopes beside a
+  valley must be whole pieces from the inside corner, and the walls there are whole pieces from
+  1.5 m off it, so a wing that closes its walls cannot close its roof: the roof needs a reach of
+  its own at a valley.
+- **The stair as part of the kit.** Its lanes, clearances and landing are the library's numbers,
+  not the kit's, so a stairwell is whole floor tiles only where a world sizes the stair by hand,
+  and the second stairwell of a three-storey building (two lanes deep) is not.
 - **A wall's free end and a T-junction of walls** have no role.
 - **Sockets between two kits** (a door size shared across kits, a glue kit, a plug for a hole):
   K9. The core has typed connectors (`spec/assets.md` 2.7); no library kit uses one.

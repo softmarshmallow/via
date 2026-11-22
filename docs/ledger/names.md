@@ -109,6 +109,7 @@ has and on which fields, its surfaces, its mounts, and whether it is an exit or 
 |---|---|---|---|
 | `building` | `building` | Grammar | anchored |
 | `storey` | `building` | Grammar, Representation switch | anchored; surface floor with a cut |
+| `footing` | `building` | Grammar, Representation switch | anchored; surface top |
 | `room` | `building` | Grammar | anchored |
 | `doorway` | `building` | Meeting | 1 effect on role:surface |
 | `flight` | `building` | Meeting, Representation switch | surface tread |
@@ -164,7 +165,7 @@ A library declares no step; a world restates the step's table (`spec/protocol.md
 
 | Step | When | Archetypes | What it does |
 |---|---|---|---|
-| `lib/building/lay.py` | generate | Grammar | One building becomes storeys, rooms, flights, doorways, footpaths, wall runs and a roof |
+| `lib/building/lay.py` | generate | Grammar | One building becomes storeys, their footings, rooms, flights, doorways, footpaths, wall runs, floor tiles and a roof |
 | `lib/building/check.py` | lint | Measure | Whether every storey and room can be reached, and stairs, doors and kit are within their limits |
 | `lib/land/uplands.py` | generate | Field | A hillside made from noise and the water that runs off it |
 | `lib/land/weather.py` | generate | Simulation | Ground steeper than its angle of repose sheds downhill |

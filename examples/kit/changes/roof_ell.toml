@@ -1,0 +1,6 @@
+# A gable asked for over an L: refused with its reason, and the flat roof laid in its place (the
+# report, section 9: roofs are what a kit covers last, and a tool that cannot roof a plan should
+# say so, not improvise). The annex as changes/ell.toml makes it.
+[feature.annex]
+region = [[32, 10], [41.6, 10], [41.6, 15.1], [37.1, 15.1], [37.1, 19.6], [32, 19.6]]
+roof   = "gable"

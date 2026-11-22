@@ -111,13 +111,20 @@ class Stairs(unittest.TestCase):
             plan({"stair": {"t": 0.32, "width": 1, "run": 5}})  # the 8 m east edge: past it
 
     def test_a_stairwell_stub_before_a_corner_is_refused_by_t(self):
-        """The landing 1 m before the foot: a foot 1.08 m from the corner leaves 0.08 m of wall,
-        which no piece closes (M7 close); 1.0 m reaches the corner and 1.3 m leaves 0.3 m."""
-        with self.assertRaises(ParamError) as e:
-            plan({"stair": {"t": 0.027, "width": 1, "run": 5}}, kit=KIT)
-        self.assertIn("0.080 m from the corner", str(e.exception.args))
+        """The landing 1 m before the foot: where the stairwell is cut from the outline (no kit, or
+        a corner that is not square), a foot 1.08 m from the corner leaves 0.08 m of wall, which
+        no piece closes (M7 close); 1.0 m reaches the corner and 1.3 m leaves 0.3 m. Where the
+        wall stands on a footing no stub is left, and the stair may stand anywhere (K4)."""
+        slant = [(20000, 20000), (32000, 20000), (33000, 28000), (20000, 28000)]
+        for kw in ({}, {"kit": KIT, "ring": slant}):
+            with self.assertRaises(ParamError) as e:
+                plan({"stair": {"t": 0.027 if not kw else 1080 / L["edges"](slant)[0]["L"] * 12000 / sum(
+                    x["L"] for x in L["edges"](slant)), "width": 1, "run": 5}}, **kw)
+            self.assertIn("m from the corner", str(e.exception.args))
         for t in (0.025, 0.0325):
-            plan({"stair": {"t": t, "width": 1, "run": 5}}, kit=KIT)
+            plan({"stair": {"t": t, "width": 1, "run": 5}})
+        out = plan({"stair": {"t": 0.027, "width": 1, "run": 5}}, kit=KIT)
+        self.assertEqual((out["open"], len(out["footings"])), ([], 1))
 
 
 class Doors(unittest.TestCase):
@@ -249,15 +256,18 @@ class Walls(unittest.TestCase):
 
     def test_a_flight_stands_clear_of_the_wall(self):
         """Rule 3: with a 0.3 m wall the flight's lane is measured from the wall's inner face, so
-        its strip (centre 0.9 m in, 1 m wide) starts 0.1 m clear of the wall; and the storey above
-        loses the 0.3 m too."""
+        its strip (centre 0.9 m in, 1 m wide) starts 0.1 m clear of the wall. The storey above
+        keeps off that wall's footing (the south side moved in 0.3 m), and its stairwell is cut
+        from there, 0.3 m off the west wall it used to reach."""
         out = plan(kit=KIT)
         (f,) = out["flights"]
         self.assertEqual(f["path"], [(21000, 20900), (26000, 20900)])
         self.assertEqual(f["path"][0][1] - 500 - 20000, 300 + 100)
         self.assertTrue(same_ring(out["storeys"][1]["region"],
-                                  [(26000, 20000), (32000, 20000), (32000, 28000), (20000, 28000),
-                                   (20000, 21500), (26000, 21500)]))
+                                  [(20000, 20300), (20300, 20300), (20300, 21500), (26000, 21500), (26000, 20300),
+                                   (32000, 20300), (32000, 28000), (20000, 28000)]))
+        self.assertEqual(out["footings"], [{"key": "hall_s1_footing", "level": 13.3, "side": 0, "region": [
+            (20000, 20000), (32000, 20000), (32000, 20300), (20000, 20300)]}])
 
     def test_a_flight_crossing_the_outline_gets_a_gap(self):
         """A flight (1 m) that crosses a wall stretch, square or along its band, is left its width
@@ -384,16 +394,27 @@ class Walls(unittest.TestCase):
         (g,) = notes
         self.assertEqual((g["code"], g["side"], g["places"]), ("gap_wide", 0, (None, None)))
 
-    def test_an_open_wall_beside_a_stairwell_says_so(self):
-        """A stair 2 m along its side and 4.5 m long leaves the storey above 0.7 m and 5.8 m of
-        wall either side of its stairwell: both open, both marked as ending at the stairwell. At
-        2.8 m and 5 m long both close."""
+    def test_a_stair_no_longer_decides_where_the_wall_above_closes(self):
+        """A stair 2 m along its side and 4.5 m long used to leave the storey above 0.7 m and 5.8 m
+        of wall either side of its stairwell, both open. The wall over a stairwell now stands on
+        its footing, the whole side as on the ground: nothing is open, wherever the stair is."""
         ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
-        attrs = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": {"side": 2, "at": 2.0, "width": 1, "run": 4.5}}
+        for stair in ({"side": 2, "at": 2.0, "width": 1, "run": 4.5}, {"side": 2, "at": 2.8, "width": 1, "run": 5},
+                      {"side": 1, "at": 1.0, "width": 1.2, "run": 6.1}):
+            attrs = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": stair}
+            out = L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)
+            self.assertEqual(out["open"], [], stair)
+            self.assertEqual([f["side"] for f in out["footings"]], [stair["side"]])
+
+    def test_a_stair_side_with_a_corner_that_is_not_square_stands_open(self):
+        """No footing where the side's neighbour is not square to it: the stairwell is cut from the
+        outline as before, and the wall over it is open, marked as ending at the stairwell."""
+        ring = [(0, 0), (12600, 0), (13600, 9600), (0, 9600)]
+        attrs = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": {"side": 2, "at": 3.0, "width": 1, "run": 4.5}}
         out = L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)
-        self.assertEqual(sorted((o["length"], o["stairwell"]) for o in out["open"]), [(700, True), (5800, True)])
-        attrs["stair"] = {"side": 2, "at": 2.8, "width": 1, "run": 5}
-        self.assertEqual(L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)["open"], [])
+        self.assertEqual(out["footings"], [])
+        self.assertTrue(any(o["stairwell"] and o["side"] == 2 for o in out["open"]), out["open"])
+        self.assertEqual(len(out["storeys"][1]["region"]), 8)                    # the notch, from the outline
 
     def test_a_kit_number_that_is_no_length_is_said(self):
         rows = [{"id": "bay", "tags": ["role:wall"], "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}},
@@ -449,12 +470,12 @@ class Walls(unittest.TestCase):
         self.assertEqual(L["plan"]("hall", ring, attrs, 10.0, GRID, kit)["open"], [])
 
     def test_an_open_wall_names_the_outline_side(self):
-        """On the storey above, the stairwell adds edges to the storey's outline; an open stretch
-        still says the building's side, the number `side` takes."""
-        ring = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
-        attrs = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": {"side": 2, "at": 2.0, "width": 1, "run": 4.5}}
+        """A side that does not close on the storey above says the building's side, the number
+        `side` takes, as on the ground."""
+        ring = [(0, 0), (13600, 0), (13600, 9600), (0, 9600)]
+        attrs = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": {"side": 1, "at": 2.0, "width": 1, "run": 4.5}}
         out = L["plan"]("hall", ring, attrs, 10.0, GRID, self.HALF)
-        self.assertEqual({o["side"] for o in out["open"]}, {2})
+        self.assertEqual(sorted((o["side"], o["storey"]) for o in out["open"]), [(0, 0), (0, 1), (2, 0), (2, 1)])
 
     ROWS = [{"id": "wall", "tags": ["role:wall"], "bounds": [-1500, -150, 0, 1500, 150, 3000], "params": {"pitch": 3}},
             {"id": "wall_arch", "tags": ["role:wall", "variant:arch"], "bounds": [-1500, -150, 0, 1500, 150, 3000],
@@ -759,6 +780,574 @@ class Walls(unittest.TestCase):
         self.assertEqual(faces["2_0"], 0.0)
 
 
+def stations(run, ring):
+    """Where the core stands a run's members, mm along `ring` (rules.md 5.1, `ends = "half"`)."""
+    P = round(sum(math.dist(p, q) for p, q in zip(ring, ring[1:] + ring[:1])))
+    a, b = round(run["span"][0] * P), round(run["span"][1] * P)
+    return [a + (2 * k + 1) * (b - a) // (2 * run["count"]) for k in range(run["count"])]
+
+
+def point_at(ring, s, offset):
+    """The point `s` mm along `ring`, `offset` mm to the left."""
+    c = 0.0
+    for p, q in zip(ring, ring[1:] + ring[:1]):
+        L_ = math.dist(p, q)
+        if s <= c + L_:
+            e = ((q[0] - p[0]) / L_, (q[1] - p[1]) / L_)
+            return (round(p[0] + e[0] * (s - c) - e[1] * offset), round(p[1] + e[1] * (s - c) + e[0] * offset))
+        c += L_
+    raise AssertionError(s)
+
+
+class Upward(unittest.TestCase):
+    """K4: storeys of two heights, pieces by storey, and the wall over a stairwell on its footing."""
+
+    def row(id_, role, size, high=3000, tags=(), **params):
+        w, d = size
+        return {"id": id_, "tags": [f"role:{role}", *tags], "bounds": [-w // 2, -d // 2, 0, w // 2, d // 2, high],
+                "params": params}
+    ROWS = [row("wall", "wall", (3000, 300), pitch=3), row("half", "filler", (1500, 300), pitch=1.5),
+            row("post", "corner", (300, 300)), row("door", "door", (1500, 300), pitch=1.5),
+            row("window", "wall", (3000, 300), tags=("variant:window",), pitch=3),
+            row("g_wall", "wall", (3000, 300), 4000, ("storey:ground",), pitch=3),
+            row("g_half", "filler", (1500, 300), 4000, ("storey:ground",), pitch=1.5),
+            row("g_post", "corner", (300, 300), 4000, ("storey:ground",)),
+            row("g_door", "door", (1500, 300), 4000, ("storey:ground",), pitch=1.5),
+            row("g_shop", "wall", (3000, 300), 4000, ("storey:ground", "variant:shop"), pitch=3)]
+    row = staticmethod(row)
+    RECT = [(0, 0), (12600, 0), (12600, 9600), (0, 9600)]
+    STAIR = {"side": 2, "at": 2.8, "width": 1, "run": 5}
+
+    def kits(self, rows=None):
+        rows = self.ROWS if rows is None else rows
+        return lambda word, height: L["kit_pieces"](rows, word, height)
+
+    def plan(self, ring=None, **attrs):
+        a = {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": self.STAIR}
+        a.update(attrs)
+        return L["plan"]("hall", ring or self.RECT, a, 10.0, GRID, None, kits=self.kits())
+
+    def test_storeys_of_two_heights(self):
+        """The ground storey 4 m, the top 3.5 m, the one between at `storey_h`: each level is the
+        heights below it, the flights climb between them, and the eaves are the top's own height
+        up. With neither said, nothing changes."""
+        self.assertEqual(L["storey_kinds"](1, 3.0), [("ground", 3.0)])
+        self.assertEqual(L["storey_kinds"](2, 3.0, 4.0), [("ground", 4.0), ("top", 3.0)])
+        self.assertEqual(L["storey_kinds"](4, 3.0, 4.0, 3.5), [("ground", 4.0), ("upper", 3.0), ("upper", 3.0), ("top", 3.5)])
+        attrs = dict(ATTRS, storeys=3, stair={"t": 0.025, "width": 1, "run": 5}, roof="garden")
+        out = L["plan"]("hall", HALL, dict(attrs, ground_h=4.0, top_h=3.5), 10.0, GRID)
+        self.assertEqual([s["level"] for s in out["storeys"]], [10.3, 14.3, 17.3])
+        self.assertEqual([(f["z0"], f["z1"]) for f in out["flights"]], [(10.3, 14.3), (14.3, 17.3)])
+        self.assertEqual(out["roof"]["eaves"], 20.8)
+        same = L["plan"]("hall", HALL, attrs, 10.0, GRID)
+        self.assertEqual(same, L["plan"]("hall", HALL, dict(attrs, ground_h=0, top_h=0), 10.0, GRID))
+        self.assertEqual([s["level"] for s in same["storeys"]], [10.3, 13.3, 16.3])
+        for bad in ({"ground_h": 0.2}, {"top_h": -1}, {"ground_h": "tall"}):
+            with self.assertRaises(ParamError, msg=bad):
+                L["plan"]("hall", HALL, dict(attrs, **bad), 10.0, GRID)
+
+    def test_a_storey_takes_the_pieces_of_its_height_and_its_word(self):
+        ids = lambda kit: {r: kit[r]["id"] for r in ("wall", "filler", "corner", "door")}       # noqa: E731
+        kp = L["kit_pieces"]
+        tall = {"wall": "g_wall", "filler": "g_half", "corner": "g_post", "door": "g_door"}
+        plain = {"wall": "wall", "filler": "half", "corner": "post", "door": "door"}
+        self.assertEqual(ids(kp(self.ROWS, "ground", 4000)), tall)
+        self.assertEqual(ids(kp(self.ROWS, "ground", 3000)), plain)         # a 3 m ground storey: the 3 m pieces
+        self.assertEqual(ids(kp(self.ROWS, "upper", 3000)), plain)
+        self.assertEqual(ids(kp(self.ROWS, "top", 4000)), plain)            # tagged for another storey: left out
+        self.assertEqual(ids(kp(self.ROWS)), plain)                         # no word: no tagged piece
+        self.assertEqual(sorted(kp(self.ROWS, "ground", 4000)["wall"]["variants"]), ["shop"])
+        self.assertEqual(sorted(kp(self.ROWS, "ground", 3000)["wall"]["variants"]), ["window"])
+        # of one height, the piece tagged for the storey is read before the untagged one
+        rows = self.ROWS + [self.row("z_base", "wall", (3000, 300), 3000, ("storey:ground",), pitch=3)]
+        self.assertEqual(kp(rows, "ground", 3000)["wall"]["id"], "z_base")
+        self.assertEqual(kp(rows, "upper", 3000)["wall"]["id"], "wall")
+        # no piece of the storey's height: the nearest stay (and `check` says `kit_height`)
+        self.assertEqual(kp(self.ROWS[:5], "ground", 4000)["wall"]["id"], "wall")
+        self.assertEqual(ids(kp(self.ROWS, "ground", 5000)), tall)
+        # a bay re-exported 0.3 m too tall is still the bay of a 3 m ground storey, not the 4 m one
+        high = [dict(r, bounds=r["bounds"][:5] + [3300]) if r["id"] == "wall" else r for r in self.ROWS]
+        self.assertEqual(ids(kp(high, "ground", 3000)), plain)
+        self.assertEqual(kp(high, "ground", 3000)["wall"]["high"], 3300)
+
+    def test_a_tall_ground_storey_is_laid_with_its_own_pieces(self):
+        out = self.plan(storeys=3, ground_h=4.0, stair={"side": 2, "at": 1.3, "width": 1.3, "run": 6.5},
+                        doors=[{"storey": 0, "side": 0, "at": 4.05, "width": 1.4}])
+        by = lambda k: {r["asset"] for r in out["runs"] if r["key"].startswith(f"hall_s{k}_")}   # noqa: E731
+        self.assertEqual((by(0), by(1), by(2)), ({"g_wall", "g_half"}, {"wall"}, {"wall"}))
+        posts = {i["key"]: i["asset"] for i in out["instances"]}
+        self.assertEqual((posts["hall_s0_c0"], posts["hall_s1_c0"], posts["hall_s0_door0"]), ("g_post", "post", "g_door"))
+        self.assertEqual(out["open"], [])
+        low = self.plan(doors=[{"storey": 0, "side": 0, "at": 4.05, "width": 1.4}])            # a 3 m ground storey
+        self.assertEqual({r["asset"] for r in low["runs"]}, {"wall", "half"})
+        self.assertEqual(low["notes"], [])
+
+    def test_walls_of_two_thicknesses_do_not_stack(self):
+        rows = [dict(r, bounds=[r["bounds"][0], -200, 0, r["bounds"][3], 200, 4000]) if r["id"] == "g_wall" else r
+                for r in self.ROWS]
+        with self.assertRaises(ParamError) as c:
+            L["plan"]("hall", self.RECT, {"storeys": 2, "storey_h": 3.0, "ground_h": 4.0, "doors": [], "stair": self.STAIR},
+                      10.0, GRID, None, kits=self.kits(rows))
+        self.assertEqual(c.exception.key, "kit")
+
+    def test_the_footing_and_the_storey_share_out_the_outline(self):
+        """The footing is the stair side's strip, a wall thick, its first edge the side itself. The
+        storey keeps off it and off its stairwell, which stops a wall's thickness short of the
+        walls beside it: storey, footing and stairwell make up the outline's area."""
+        out = self.plan()
+        (f,) = out["footings"]
+        self.assertEqual((f["key"], f["level"], f["side"]), ("hall_s1_footing", 13.3, 2))
+        self.assertEqual(f["region"], [(12600, 9600), (0, 9600), (0, 9300), (12600, 9300)])
+        storey = out["storeys"][1]["region"]
+        well = 6000 * 1200                                   # 1 m before the foot to the head; one lane and its clear
+        self.assertAlmostEqual(area(storey) + area(f["region"]) + well, area(self.RECT))
+        self.assertTrue(same_ring(storey, [(0, 0), (12600, 0), (12600, 9300), (10800, 9300), (10800, 8100),
+                                           (4800, 8100), (4800, 9300), (0, 9300)]))
+        tight = self.plan(stair={"side": 2, "at": 1.0, "width": 1, "run": 5})["storeys"][1]["region"]
+        self.assertIn((12300, 9300), tight)                  # a stairwell that reached the corner now stops 0.3 m off it
+        self.assertNotIn((12600, 9300), [p for p in tight if p[1] < 9300])
+        flight = out["flights"][0]
+        self.assertTrue(L["inside"](storey, flight["path"][-1]))
+        self.assertTrue(L["inside"](out["storeys"][0]["region"], flight["path"][0]))
+
+    def test_every_side_above_closes_as_on_the_ground(self):
+        """The storey over the stairwell has the ground storey's walls: the same runs by name, the
+        same pieces, each bay over the bay below. The stair's side stands on the footing, the
+        others on the storey; the two corners at the stair side's ends on the footing."""
+        out = self.plan()
+        self.assertEqual(out["open"], [])
+        ground = {r["key"][len("hall_s0"):]: r for r in out["runs"] if r["key"].startswith("hall_s0_")}
+        above = {r["key"][len("hall_s1"):]: r for r in out["runs"] if r["key"].startswith("hall_s1_")}
+        self.assertEqual(sorted(ground), sorted(above))
+        rings = {"hall_s0": out["storeys"][0]["region"], "hall_s1": out["storeys"][1]["region"],
+                 "hall_s1_footing": out["footings"][0]["region"]}
+        for key, g in ground.items():
+            a = above[key]
+            self.assertEqual((a["asset"], a["count"], a["face"], a["offset"]), (g["asset"], g["count"], g["face"], g["offset"]))
+            self.assertEqual(a["ref"], "hall_s1_footing" if key.startswith("_w2_") else "hall_s1", key)
+            here = [point_at(rings[a["ref"]], s, a["offset"] * 1000) for s in stations(a, rings[a["ref"]])]
+            below = [point_at(rings["hall_s0"], s, g["offset"] * 1000) for s in stations(g, rings["hall_s0"])]
+            self.assertEqual(here, below, key)
+        self.assertEqual(sum(r["count"] for r in above.values() if r["asset"] == "wall"), 4 + 3 + 4 + 3)
+        on = {i["key"]: i["surface"] for i in out["instances"] if i["key"].startswith("hall_s1_c")}
+        self.assertEqual(on, {"hall_s1_c0": "hall_s1.floor", "hall_s1_c1": "hall_s1.floor",
+                              "hall_s1_c2": "hall_s1_footing.top", "hall_s1_c3": "hall_s1_footing.top"})
+        at = {i["key"][len("hall_s1"):]: i["at"] for i in out["instances"] if i["key"].startswith("hall_s1_c")}
+        self.assertEqual(at, {i["key"][len("hall_s0"):]: i["at"] for i in out["instances"] if i["key"].startswith("hall_s0_c")})
+
+    def test_three_storeys_close_over_both_stairwells(self):
+        """Two flights, the second back over the first and two lanes deep: each storey above has
+        its footing and its own stairwell, and no wall is open (15 m was, in examples/kit)."""
+        out = self.plan(storeys=3, stair={"side": 2, "at": 1.3, "width": 1.3, "run": 6.5})
+        self.assertEqual(out["open"], [])
+        self.assertEqual([(f["key"], f["level"]) for f in out["footings"]],
+                         [("hall_s1_footing", 13.3), ("hall_s2_footing", 16.3)])
+        one, two = out["storeys"][1]["region"], out["storeys"][2]["region"]
+        strip = 12600 * 300
+        self.assertAlmostEqual(area(self.RECT) - area(one) - strip, 7500 * 1500)       # 1 m before the foot to the head
+        self.assertAlmostEqual(area(self.RECT) - area(two) - strip, 7500 * 2900)       # the foot to 1 m past the head
+        for k in (1, 2):
+            walls = [r for r in out["runs"] if r["key"].startswith(f"hall_s{k}_w")]
+            self.assertEqual(sum(r["count"] for r in walls), 14)
+            self.assertEqual({r["ref"] for r in walls if "_w2_" in r["key"]}, {f"hall_s{k}_footing"})
+        for f in out["flights"]:
+            lo, hi = int(f["starts_at"][6]), int(f["ends_at"][6])
+            self.assertTrue(L["inside"](out["storeys"][lo]["region"], f["path"][0]), f["key"])
+            self.assertTrue(L["inside"](out["storeys"][hi]["region"], f["path"][-1]), f["key"])
+
+    def test_a_stair_side_that_ends_at_an_inside_corner(self):
+        """An L whose stair climbs the side between an outside and an inside corner: the footing
+        is that side's strip, the storey's ring runs on past the inside corner by the wall's
+        thickness, the inside corner piece stands on the floor, and every side closes."""
+        ell = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
+        rows = self.ROWS + [{"id": "corner_in", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
+                             "params": {"reach": 1.2}}]
+        out = L["plan"]("hall", ell, {"storeys": 2, "storey_h": 3.0, "doors": [],
+                                      "stair": {"side": 2, "at": 1.0, "width": 1, "run": 3.2}},
+                        10.0, GRID, None, kits=self.kits(rows))
+        self.assertEqual(out["open"], [])
+        (f,) = out["footings"]
+        self.assertEqual(f["region"], [(9600, 5100), (5100, 5100), (5100, 4800), (9600, 4800)])
+        storey = out["storeys"][1]["region"]
+        self.assertIn((5100, 4800), storey)                    # the side before the inside corner, a wall's thickness longer
+        self.assertAlmostEqual(area(storey) + area(f["region"]) + (4200 - 300) * 1200, area(ell))
+        on = {i["asset"]: i["surface"] for i in out["instances"] if i["key"].startswith("hall_s1_c")}
+        self.assertEqual(on["corner_in"], "hall_s1.floor")
+        self.assertEqual({r["ref"] for r in out["runs"] if r["key"].startswith("hall_s1_w2_")}, {"hall_s1_footing"})
+        ground = sorted((r["key"][7:], r["asset"], r["count"]) for r in out["runs"] if r["key"].startswith("hall_s0_"))
+        above = sorted((r["key"][7:], r["asset"], r["count"]) for r in out["runs"] if r["key"].startswith("hall_s1_"))
+        self.assertEqual(ground, above)
+
+    @staticmethod
+    def turned(ring, degrees, about=(6000, 5000)):
+        c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+        return [(round(about[0] + (x - about[0]) * c - (y - about[1]) * s),
+                 round(about[1] + (x - about[0]) * s + (y - about[1]) * c)) for x, y in ring]
+
+    def bays(self, out, k, rings=None):
+        """Where the core stands the wall bays of storey `k`: `{run key less the storey: [points]}`."""
+        rings = {s["key"]: s["region"] for s in out["storeys"]}
+        rings.update({f["key"]: f["region"] for f in out["footings"]})
+        got = {}
+        for r in out["runs"]:
+            if r["key"].startswith(f"hall_s{k}_w"):
+                ring = rings[r["ref"]]
+                P = round(sum(math.dist(p, q) for p, q in zip(ring, ring[1:] + ring[:1])))
+                a, b = round(r["span"][0] * P), round(r["span"][1] * P)
+                n = r["count"]
+                at = ([a + (2 * i + 1) * (b - a) // (2 * n) for i in range(n)] if r["ends"] == "half"
+                      else [a + i * (b - a) // (n - 1) for i in range(n)])
+                got[r["key"][len(f"hall_s{k}"):]] = [point_at(ring, s, r["offset"] * 1000) for s in at]
+        return got
+
+    def assert_over(self, out, k, slack=2):
+        ground, above = self.bays(out, 0), self.bays(out, k)
+        self.assertEqual(sorted(ground), sorted(above))
+        for key in ground:
+            for p, q in zip(ground[key], above[key]):
+                self.assertLessEqual(math.dist(p, q), slack, (key, p, q))
+
+    def test_a_turned_building_keeps_its_walls_over_its_walls(self):
+        """A rectangle turned off the axes has corners rounded to the millimetre, square only to a
+        part in ten thousand. It still gets its footing, is never refused for a stairwell on the
+        line of its own wall, and every bay above stands over the bay below (the review of K4:
+        bays up to 1.5 m off, with nothing said)."""
+        stair = {"side": 2, "at": 1.3, "width": 1.3, "run": 6.5}
+        for degrees in (11, 30, 45, 0.5, 89.5, 123.4):
+            for side in (0, 1, 2, 3):
+                ring = self.turned(self.RECT, degrees)
+                if side % 2:
+                    stair_ = dict(stair, side=side)       # 9.6 m sides
+                else:
+                    stair_ = dict(stair, side=side)
+                out = self.plan(ring, storeys=3, stair=stair_)
+                self.assertEqual(len(out["footings"]), 2, (degrees, side))
+                self.assertEqual(out["open"], [], (degrees, side))
+                for k in (1, 2):
+                    self.assert_over(out, k)
+                for f in out["flights"]:
+                    self.assertTrue(L["inside"](out["storeys"][int(f["ends_at"][6])]["region"], f["path"][-1]))
+
+    def test_two_sides_in_one_line_are_not_mistaken(self):
+        """A U: its two prongs' ends lie in one line, and the stair climbs the back. Each prong's
+        wall above stands over its own wall below (the review of K4: one took the other's span)."""
+        u = [(0, 0), (15600, 0), (15600, 9600), (10500, 9600), (10500, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
+        rows = self.ROWS + [{"id": "corner_in", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
+                             "params": {"reach": 1.2}}]
+        out = L["plan"]("hall", u, {"storeys": 2, "storey_h": 3.0, "doors": [],
+                                    "stair": {"side": 0, "at": 2.8, "width": 1, "run": 5}},
+                        10.0, GRID, None, kits=self.kits(rows))
+        self.assertEqual(out["open"], [])
+        self.assert_over(out, 1, slack=0)
+
+    def test_a_stairwell_edge_in_line_with_a_side_is_not_mistaken(self):
+        ell = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
+        rows = self.ROWS + [{"id": "corner_in", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
+                             "params": {"reach": 1.2}}]
+        # the first stairwell starts 5.1 m along side 0, in line with side 3 (x = 5100)
+        for stair in ({"side": 0, "at": 6.1, "width": 1, "run": 2.4}, {"side": 5, "at": 1.3, "width": 1.3, "run": 3.0}):
+            out = L["plan"]("hall", ell, {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": stair},
+                            10.0, GRID, None, kits=self.kits(rows))
+            self.assertEqual(out["open"], [], stair)
+            self.assert_over(out, 1, slack=0)
+
+    def test_a_wide_corner_keeps_the_stairwell_off_it(self):
+        """A corner pier 0.75 m square stands with its middle 0.375 m in along both walls: past
+        the footing. The stairwell is held off the corner by what the pier takes, so the pier has
+        floor under it (the review of K4: it stood over the stairwell, an error in the build). A
+        corner that takes less than the wall is thick does not move the bays beside it."""
+        for reach, at in ((0.75, 1.3), (0.6, 1.3), (0.15, 1.0)):
+            rows = [dict(r, params={"reach": reach}, bounds=[-375, -375, 0, 375, 375, 3000]) if r["id"] == "post" else r
+                    for r in self.ROWS]
+            ring = [(0, 0), (12600 + 2 * round(reach * 1000) - 600, 0), (12600 + 2 * round(reach * 1000) - 600, 9000 + 2 * round(reach * 1000)),
+                    (0, 9000 + 2 * round(reach * 1000))]
+            for side in (0, 2, 3):
+                out = L["plan"]("hall", ring, {"storeys": 2, "storey_h": 3.0, "doors": [],
+                                               "stair": {"side": side, "at": at, "width": 1.3, "run": 5}},
+                                10.0, GRID, None, kits=self.kits(rows))
+                self.assertEqual(out["open"], [], (reach, side))
+                self.assert_over(out, 1, slack=0)
+                rings = {"hall_s1.floor": out["storeys"][1]["region"], "hall_s1_footing.top": out["footings"][0]["region"]}
+                for i in out["instances"]:
+                    if i["key"].startswith("hall_s1_c"):
+                        self.assertTrue(L["inside"](rings[i["surface"]], i["at"]), (reach, side, i))
+
+    def test_a_stairwell_that_nears_another_wall_is_refused(self):
+        """The stairwell keeps a wall's thickness off every side but its own: one that would reach
+        into a yard's wall, or out of a narrow wing, is refused, along its whole length and not
+        only at its corners. One that lies along the line of its own wall's inner face is not."""
+        u = [(0, 0), (15600, 0), (15600, 9600), (10500, 9600), (10500, 1300), (5100, 1300), (5100, 9600), (0, 9600)]
+        rows = self.ROWS + [{"id": "corner_in", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
+                             "params": {"reach": 1.2}}]
+        with self.assertRaises(ParamError) as c:
+            L["plan"]("hall", u, {"storeys": 2, "storey_h": 3.0, "doors": [],
+                                  "stair": {"side": 0, "at": 2.8, "width": 1, "run": 9}},
+                      10.0, GRID, None, kits=self.kits(rows))
+        self.assertIn("deeper than the building", c.exception.message)
+        wing = [(0, 0), (9600, 0), (9600, 2000), (0, 2000)]
+        with self.assertRaises(ParamError):
+            self.plan(wing, storeys=3, stair={"side": 0, "at": 1.3, "width": 1, "run": 5})
+        self.plan(wing, storeys=2, stair={"side": 0, "at": 1.3, "width": 1, "run": 5})       # one lane fits
+
+    def test_a_variant_is_asked_of_the_storeys_it_is_asked_on(self):
+        """A fill on the storey above, where the 3 m window bay stands, is no fault of the 4 m
+        ground storey that has no such variant (the review of K4: a false `variant_none`)."""
+        out = self.plan(ground_h=4.0, fill=[{"storeys": [1], "pattern": ["window"]}],
+                        bays=[{"storey": 1, "side": 0, "at": 5, "variant": "window"}])
+        self.assertEqual([n for n in out["notes"] if n["code"] == "variant_none"], [])
+        self.assertEqual({r["asset"] for r in out["runs"] if r["key"].startswith("hall_s1_")}, {"window"})
+        low = self.plan(ground_h=4.0, fill=[{"storeys": [0], "pattern": ["window"]}])
+        self.assertEqual([(n["variant"], n["refused"]["id"]) for n in low["notes"] if n["code"] == "variant_none"],
+                         [("window", "window")])
+
+    def test_an_inner_wall_above_starts_at_the_wall_as_below(self):
+        """Rooms of a storey with a footing are cut from its floor, but the wall between them is
+        laid from the outline's faces, where it was before the footing: from the stairwell's edge
+        (1.5 m in, at the cut) to the far wall, its opening at the middle of that, 24.75 m."""
+        rooms = [{"storey": 0, "shares": [1, 1]}, {"storey": 1, "shares": [1, 1]}]
+        out = L["plan"]("hall", HALL, dict(ATTRS, rooms=rooms, stair={"t": 0.025, "width": 1, "run": 5}), 10.0, GRID, KIT)
+        self.assertEqual([(o["storey"], tuple(o["at"]), o["width"]) for o in out["openings"]],
+                         [(0, (26000, 24000), 900), (1, (26000, 24750), 900)])
+        inner = sorted(tuple(i["at"]) for i in out["instances"] if i["key"].startswith("hall_s1_i"))
+        self.assertEqual(inner[0], (26000, 22300))
+        self.assertAlmostEqual(sum(area(r["region"]) for r in out["rooms"] if r["storey"] == "hall_s1"),
+                               area(out["storeys"][1]["region"]))
+
+    def test_only_a_top_height(self):
+        out = L["plan"]("hall", HALL, dict(ATTRS, storeys=3, top_h=4.0, roof="garden"), 10.0, GRID)
+        self.assertEqual(([s["level"] for s in out["storeys"]], out["roof"]["eaves"]), ([10.3, 13.3, 16.3], 20.3))
+
+    def test_no_wall_above_no_footing(self):
+        """A kit with a bay for the ground storey only walls no storey above, and cuts no footing
+        for a wall that is not there."""
+        rows = [r for r in self.ROWS if r["id"].startswith("g_")]
+        out = L["plan"]("hall", self.RECT, {"storeys": 2, "storey_h": 3.0, "ground_h": 4.0, "doors": [], "stair": self.STAIR},
+                        10.0, GRID, None, kits=self.kits(rows))
+        self.assertEqual(out["footings"], [])
+        self.assertEqual({r["key"][:7] for r in out["runs"]}, {"hall_s0"})
+
+    def test_what_height_keeps_and_leaves_out(self):
+        """Pieces within the fit of the nearest height all stay; an inside corner is chosen by
+        height as a post is."""
+        rows = self.ROWS + [self.row("wall_b", "wall", (3000, 300), 3003, pitch=3),
+                            {"id": "in3", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000], "params": {"reach": 1.2}},
+                            {"id": "in4", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 4000], "params": {"reach": 1.2}}]
+        ids = {r["id"] for r in L["kit_rows"](rows, "upper", 3000)}
+        self.assertTrue({"wall", "wall_b", "in3"} <= ids and "in4" not in ids, ids)
+        self.assertEqual(L["kit_pieces"](rows, "ground", 4000)["corner_in"]["id"], "in4")
+
+    def test_where_a_footing_cannot_be_and_where_its_stairwell_stops(self):
+        """A neighbour no longer than the wall is thick gives no footing. A stairwell that ran to
+        the end corner stops a wall's thickness short of it. One that would come within a wall's
+        thickness of a yard's wall is refused, though it stays inside the outline; 0.4 m off, it is
+        not."""
+        stub = [(0, 0), (12600, 0), (12600, 9600), (300, 9600), (300, 9300), (0, 9300)]
+        self.assertFalse(L["square_ends"](stub, 2, 300))
+        self.assertTrue(L["square_ends"](self.RECT, 2, 300))
+        end = self.plan(stair={"side": 2, "at": 7.6, "width": 1, "run": 5})["storeys"][1]["region"]
+        self.assertTrue({(300, 9300), (300, 8100)} <= set(end), end)
+        rows = self.ROWS + [{"id": "corner_in", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
+                             "params": {"reach": 1.2}}]
+
+        def u(yard):
+            ring = [(0, 0), (15600, 0), (15600, 9600), (10500, 9600), (10500, yard), (5100, yard), (5100, 9600), (0, 9600)]
+            return L["plan"]("hall", ring, {"storeys": 2, "storey_h": 3.0, "doors": [],
+                                            "stair": {"side": 0, "at": 2.8, "width": 1, "run": 9}},
+                             10.0, GRID, None, kits=self.kits(rows))
+        with self.assertRaises(ParamError):
+            u(1700)                                       # 0.2 m from the yard's wall
+        self.assertEqual(len(u(1900)["footings"]), 1)     # 0.4 m
+
+    def test_no_kit_no_footing(self):
+        out = L["plan"]("hall", self.RECT, {"storeys": 2, "storey_h": 3.0, "doors": [], "stair": self.STAIR}, 10.0, GRID)
+        self.assertEqual((out["footings"], out["runs"]), ([], []))
+        self.assertTrue(same_ring(out["storeys"][1]["region"], [(0, 0), (12600, 0), (12600, 9600), (10800, 9600),
+                                                                (10800, 8400), (4800, 8400), (4800, 9600), (0, 9600)]))
+
+    def test_a_bay_is_chosen_on_the_stair_side_above(self):
+        out = self.plan(bays=[{"storey": 1, "side": 2, "at": 5.0, "variant": "window"}],
+                        fill=[{"storeys": [1], "sides": [1], "pattern": ["window"]}])
+        won = sorted((r["key"], r["ref"], r["count"]) for r in out["runs"] if r["asset"] == "window")
+        self.assertEqual(won, [("hall_s1_w1_0", "hall_s1", 3), ("hall_s1_w2_0b1", "hall_s1_footing", 1)])
+        self.assertEqual([n["code"] for n in out["notes"]], [])
+
+    def test_rooms_of_a_storey_over_a_stairwell_fill_it(self):
+        out = self.plan(rooms=[{"storey": 1, "shares": [1, 1]}])
+        self.assertAlmostEqual(sum(area(r["region"]) for r in out["rooms"]), area(out["storeys"][1]["region"]))
+
+
+class Decks(unittest.TestCase):
+    """K4: floor tiles and roofs from pieces (rules 9 and 10)."""
+    ROWS = Upward.ROWS + [
+        {"id": "floor", "tags": ["role:floor"], "bounds": [-750, -750, 0, 750, 750, 200], "params": {"pitch": 1.5}},
+        {"id": "slope", "tags": ["role:roof_slope"], "bounds": [-750, -2400, 0, 750, 2400, 2400],
+         "params": {"pitch": 1.5, "span": 4.8}},
+        {"id": "gable", "tags": ["role:roof_gable"], "bounds": [-2400, -150, 0, 2400, 150, 2400], "params": {"span": 4.8}}]
+    RECT = Upward.RECT
+
+    def plan(self, ring=None, rows=None, **attrs):
+        rows = self.ROWS if rows is None else rows
+        a = {"storeys": 1, "storey_h": 3.0, "doors": []}
+        a.update(attrs)
+        return L["plan"]("hall", ring or self.RECT, a, 10.0, GRID, None,
+                         kits=lambda w, h: L["kit_pieces"](rows, w, h))
+
+    @staticmethod
+    def tiles(out, prefix):
+        return [i for i in out["instances"] if i["key"].startswith(prefix + "_f") and i["asset"] == "floor"]
+
+    def test_inset(self):
+        self.assertEqual(L["inset"](self.RECT, 300), [(300, 300), (12300, 300), (12300, 9300), (300, 9300)])
+        ell = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
+        self.assertEqual(L["inset"](ell, 300), [(300, 300), (9300, 300), (9300, 4800), (4800, 4800), (4800, 9300), (300, 9300)])
+
+    def test_a_floor_is_whole_tiles_inside_the_walls(self):
+        """12.6 by 9.6 m less its walls is 12 by 9 m: 8 by 6 tiles of 1.5 m, each on the floor, none
+        twice, their middles on the grid from the inner corner."""
+        out = self.plan()
+        tiles = self.tiles(out, "hall_s0")
+        self.assertEqual(len(tiles), 48)
+        self.assertEqual(len({t["key"] for t in tiles}), 48)
+        self.assertEqual({tuple(t["at"]) for t in tiles},
+                         {(300 + 750 + 1500 * i, 300 + 750 + 1500 * j) for i in range(8) for j in range(6)})
+        self.assertEqual({t["surface"] for t in tiles}, {"hall_s0.floor"})
+        self.assertEqual([n for n in out["notes"] if n["code"] == "slab_open"], [])
+        self.assertEqual(self.tiles(self.plan(rows=Upward.ROWS), "hall_s0"), [])      # no tile in the kit: no floor laid
+
+    def test_an_ell_is_tiled_round_its_inside_corner(self):
+        ell = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
+        rows = self.ROWS + [{"id": "corner_in", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 3000],
+                             "params": {"reach": 1.2}}]
+        out = self.plan(ell, rows)
+        tiles = self.tiles(out, "hall_s0")
+        self.assertEqual(len(tiles), 6 * 3 + 3 * 3)             # 9 by 4.5 m and 4.5 by 4.5 m inside the walls
+        self.assertEqual([n for n in out["notes"] if n["code"] == "slab_open"], [])
+        self.assertTrue(all(not (t["at"][0] > 4800 and t["at"][1] > 4800) for t in tiles))
+
+    def test_a_stairwell_of_whole_tiles_and_one_that_is_not(self):
+        """A stair 1.3 m wide makes its stairwell 1.5 m deep inside the wall, one tile: the floor
+        above is whole tiles round it. At 1 m wide it is 1.2 m deep: the tiles beside it are left
+        out and the note says the width that closes."""
+        fits = self.plan(storeys=2, stair={"side": 2, "at": 2.8, "width": 1.3, "run": 5})
+        self.assertEqual([n for n in fits["notes"] if n["code"] == "slab_open"], [])
+        self.assertEqual(len(self.tiles(fits, "hall_s1")), 48 - 4)           # 6 m by 1.5 m of stairwell
+        off = self.plan(storeys=2, stair={"side": 2, "at": 2.8, "width": 1, "run": 5})
+        (n,) = [n for n in off["notes"] if n["code"] == "slab_open"]
+        self.assertEqual((n["storey"], n["cells"], n["side"], n["deep"], n["width"], n["tiles"]), (1, 4, 2, 1200, 1300, 1))
+        self.assertEqual(len(self.tiles(off, "hall_s1")), 48 - 4)
+        ring = off["storeys"][1]["region"]
+        for t in self.tiles(off, "hall_s1"):                                  # every tile laid lies wholly on the floor
+            x, y = t["at"]
+            self.assertTrue(all(L["inside"](ring, (x + dx, y + dy)) for dx in (-745, 745) for dy in (-745, 745)), t)
+        long = self.plan([(0, 0), (13100, 0), (13100, 9600), (0, 9600)])       # 12.5 m inside: a third of a tile over
+        (n,) = [n for n in long["notes"] if n["code"] == "slab_open"]
+        self.assertEqual((n["storey"], n["cells"], "side" in n), (0, 6, False))
+        both = self.plan([(0, 0), (13100, 0), (13100, 9600), (0, 9600)], storeys=2,
+                         stair={"side": 2, "at": 2.8, "width": 1.3, "run": 5})
+        self.assertEqual([(n["storey"], "side" in n) for n in both["notes"] if n["code"] == "slab_open"],
+                         [(0, False), (1, False)])            # the plan is off the tiles, not the stairwell: it is not blamed
+
+    def test_a_tile_is_named_by_its_cell_and_faces_side_0(self):
+        out = self.plan()
+        at = {t["key"]: (tuple(t["at"]), t["face"]) for t in self.tiles(out, "hall_s0")}
+        self.assertEqual(at["hall_s0_f0_0"], ((1050, 1050), 180.0))
+        self.assertEqual(at["hall_s0_f7_5"], ((11550, 8550), 180.0))
+        self.assertEqual(at["hall_s0_f3_1"], ((5550, 2550), 180.0))
+
+    def test_a_tile_is_laid_only_where_the_whole_of_it_has_floor(self):
+        """A floor with a bite 0.6 m wide between a cell's corners: its four corners have floor,
+        its middle has not, and no tile is laid there. The note stands at the first such cell.
+        On a building turned off the axes no tile is laid at all, and `short` is None."""
+        tile = L["kit_pieces"](self.ROWS)["floor"]
+        floor = [(0, 0), (900, 0), (900, 1500), (1500, 1500), (1500, 0), (12600, 0), (12600, 9600), (0, 9600)]
+        insts, (short, first) = L["slab_plan"](floor, self.RECT, 300, tile, "b", "b.floor")
+        self.assertEqual((len(insts), short, tuple(first)), (47, 1, (1050, 1050)))
+        self.assertNotIn("b_f0_0", {i["key"] for i in insts})
+        two = [(0, 0), (900, 0), (900, 1500), (1500, 1500), (1500, 0), (12600, 0), (12600, 9000), (0, 9000)]
+        _, (short, first) = L["slab_plan"](two, self.RECT, 300, tile, "b", "b.floor")
+        self.assertEqual((short, tuple(first)), (9, (1050, 1050)))            # the first, not the last, of the nine
+        turned = Upward.turned(self.RECT, 30)
+        self.assertEqual(L["slab_plan"](turned, turned, 300, tile, "b", "b.floor"), ([], (None, None)))
+        out = self.plan(turned, roof="flat")
+        self.assertEqual([(n["code"], n.get("turned"), n.get("flat")) for n in out["notes"]],
+                         [("slab_open", True, None), ("roof_none", None, False)])
+        self.assertEqual(out["roof"], None)
+
+    def test_a_gable_over_a_square_and_over_a_turned_rectangle(self):
+        """Of equal sides the first carries the eave. A rectangle turned off the axes, its corners
+        rounded to the millimetre, is still a rectangle, and its gable faces are whole
+        millidegrees."""
+        square_ = [(0, 0), (9600, 0), (9600, 9600), (0, 9600)]
+        out = self.plan(square_, roof="gable")
+        self.assertEqual(sorted(r["key"] for r in out["runs"] if r["asset"] == "slope"), ["hall_roof_e0", "hall_roof_e2"])
+        for degrees in (11, 30, 77.7):
+            out = self.plan(Upward.turned(self.RECT, degrees), roof="gable")
+            self.assertEqual([n for n in out["notes"] if n["code"] == "roof_none"], [], degrees)
+            self.assertEqual(sum(r["count"] for r in out["runs"] if r["asset"] == "slope"), 16)
+            for i in out["instances"]:
+                self.assertAlmostEqual(i["face"] * 1000, round(i["face"] * 1000), places=6)
+
+    def test_a_flat_roof_is_the_floor_again_at_the_eaves(self):
+        out = self.plan(roof="flat", storeys=2, stair={"side": 2, "at": 2.8, "width": 1.3, "run": 5})
+        self.assertEqual(out["roof"], {"key": "hall_roof", "region": self.RECT, "eaves": 16.3})
+        tiles = self.tiles(out, "hall_roof")
+        self.assertEqual((len(tiles), {t["surface"] for t in tiles}), (48, {"hall_roof.garden"}))
+        bare = self.plan(roof="flat", rows=Upward.ROWS)
+        self.assertEqual(bare["roof"], None)
+        self.assertEqual([(n["roof"], n["flat"]) for n in bare["notes"] if n["code"] == "roof_none"], [("flat", False)])
+        with self.assertRaises(ParamError):
+            self.plan(roof="dome")
+
+    def test_a_gable_roof(self):
+        """Slopes along the two 12.6 m sides, eight 1.5 m pieces each between the gables, their
+        middles half a span in; two gable halves on each short side, the second turned about."""
+        out = self.plan(roof="gable")
+        self.assertEqual(out["roof"], {"key": "hall_roof", "region": self.RECT, "eaves": 13.3})
+        runs = {r["key"]: r for r in out["runs"] if r["key"].startswith("hall_roof_")}
+        self.assertEqual(sorted(runs), ["hall_roof_e0", "hall_roof_e2"])
+        P = 2 * (12600 + 9600)
+        for key, start, face in (("hall_roof_e0", 0, 180.0), ("hall_roof_e2", 12600 + 9600, 0.0)):
+            r = runs[key]
+            self.assertEqual((r["asset"], r["count"], r["ref"], r["offset"], r["face"], r["ends"]),
+                             ("slope", 8, "hall_roof", 2.4, face, "half"))
+            self.assertEqual(stations(r, self.RECT), [start + 300 + 750 + 1500 * k for k in range(8)])
+        self.assertEqual(point_at(self.RECT, stations(runs["hall_roof_e2"], self.RECT)[0], 2400), (11550, 7200))
+        gables = {i["key"]: (tuple(i["at"]), i["face"], i["surface"]) for i in out["instances"] if i["asset"] == "gable"}
+        self.assertEqual(gables, {"hall_roof_g1_0": ((12450, 2400), 90.0, "hall_roof.garden"),
+                                  "hall_roof_g1_1": ((12450, 7200), 270.0, "hall_roof.garden"),
+                                  "hall_roof_g3_0": ((150, 7200), 270.0, "hall_roof.garden"),
+                                  "hall_roof_g3_1": ((150, 2400), 90.0, "hall_roof.garden")})
+        self.assertEqual([n for n in out["notes"] if n["code"] == "roof_none"], [])
+        self.assertEqual(self.tiles(out, "hall_roof"), [])
+
+    def test_a_gable_that_cannot_be_laid_says_why_and_falls_back(self):
+        ell = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
+        no_gable = [r for r in self.ROWS if r["id"] != "gable"]
+        short = [dict(r, params={"span": 4.5}) if r["id"] == "gable" else r for r in self.ROWS]
+        for ring, rows, word in ((ell, None, "not a rectangle"),
+                                 ([(0, 0), (12600, 0), (12600, 11100), (0, 11100)], None, "11.1 m deep"),
+                                 ([(0, 0), (13100, 0), (13100, 9600), (0, 9600)], None, "12.5 m, no whole number"),
+                                 (None, no_gable, "has no `role:roof_slope` and `role:roof_gable`"),
+                                 (None, short, "span of 4.5 m")):
+            out = self.plan(ring, rows, roof="gable")
+            (n,) = [n for n in out["notes"] if n["code"] == "roof_none"]
+            self.assertIn(word, n["why"])
+            self.assertTrue(n["flat"])
+            self.assertTrue(self.tiles(out, "hall_roof"), word)
+            self.assertEqual([r for r in out["runs"] if r["asset"] == "slope"], [])
+            self.assertEqual(out["roof"]["key"], "hall_roof")
+        self.assertIn("14.1 or 15.6 m", self.plan([(0, 0), (14600, 0), (14600, 9600), (0, 9600)], roof="gable")["notes"][-1]["why"])
+        none = L["plan"]("hall", self.RECT, {"storeys": 1, "storey_h": 3.0, "doors": [], "roof": "gable"}, 10.0, GRID)
+        self.assertEqual([(n["code"], n["flat"]) for n in none["notes"]], [("roof_none", False)])
+
+    def test_the_ridge_lies_along_the_longer_sides(self):
+        tall = [(0, 0), (9600, 0), (9600, 12600), (0, 12600)]
+        out = self.plan(tall, roof="gable")
+        self.assertEqual(sorted(r["key"] for r in out["runs"] if r["asset"] == "slope"), ["hall_roof_e1", "hall_roof_e3"])
+        self.assertEqual(sorted(i["key"] for i in out["instances"] if i["asset"] == "gable"),
+                         ["hall_roof_g0_0", "hall_roof_g0_1", "hall_roof_g2_0", "hall_roof_g2_1"])
+
+
 class FakeOut:
     def __init__(self):
         self.features, self.instances, self.tables = {}, {}, {}
@@ -824,15 +1413,17 @@ class Step(unittest.TestCase):
         self.assertEqual([x[:2] for x in s.said], [("info", "laid")])
         f = s.out.features
         self.assertEqual(sorted(f), ["hall_d0", "hall_f0", "hall_p0", "hall_s0", "hall_s0_r0", "hall_s0_r1",
-                                     "hall_s1"])
+                                     "hall_s1", "hall_s1_footing"])
+        self.assertEqual((f["hall_s1_footing"]["kind"], f["hall_s1_footing"]["level"]), ("footing", 13.3))
         self.assertEqual(f["hall_s1"]["level"], 10.3 + 3.0)
         self.assertEqual(f["hall_d0"]["ends_at"], "hall_s0.floor")
         self.assertEqual(f["hall_s0_r0"]["storey"], "hall_s0")
         runs = [k for (sec, k) in s.out.tables if sec == "run"]
         self.assertTrue(runs)
         on = s.out.tables[("run", runs[0])]["on"]
-        self.assertIn(on["ref"], ("hall_s0", "hall_s1"))
-        self.assertTrue(all(i["surface"].endswith(".floor") for i in s.out.instances.values()))
+        self.assertIn(on["ref"], ("hall_s0", "hall_s1", "hall_s1_footing"))
+        self.assertEqual(sorted({i["surface"] for i in s.out.instances.values()}),
+                         ["hall_s0.floor", "hall_s1.floor", "hall_s1_footing.top"])
 
     def test_variants_are_said(self):
         """`generate` says a word the kit has not, a variant it refuses (naming the piece), and a
@@ -853,6 +1444,23 @@ class Step(unittest.TestCase):
                                         ("warning", "variant_none", "wide", "bay_wide")])
         glass = [k for (sec, k), v in s.out.tables.items() if sec == "run" and v["asset"] == "bay_glass"]
         self.assertTrue(glass and all(k.startswith("hall_s0_w1_") for k in glass), glass)
+
+    def test_floors_and_roofs_are_said_and_written(self):
+        class Kit(FakeStep):
+            def pack(self, select, columns=()):
+                rows = super().pack(select, columns)
+                rows["id"] += ["tile"]
+                rows["tags"] += ['["role:floor"]']
+                rows["bounds"] += [[-500, -500, 0, 500, 500, 200]]
+                rows["params"] += ['{"pitch": 1}']
+                return rows
+        s = Kit(dict(ATTRS, kit="building/kit/box", roof="gable"))
+        L["generate"](s)
+        said = sorted((x[1], (x[3] or {}).get("storey"), (x[3] or {}).get("fallback")) for x in s.said if x[0] == "warning")
+        self.assertEqual(said, [("roof_none", None, "flat"), ("slab_open", -1, None), ("slab_open", 0, None),
+                                ("slab_open", 1, None)])
+        self.assertEqual(s.out.features["hall_roof"]["kind"], "roof")
+        self.assertTrue(any(k.startswith("hall_roof_f") for k in s.out.instances))
 
     def test_a_bad_attribute_is_one_error_and_nothing_returned(self):
         s = FakeStep(dict(ATTRS, doors=[{"storey": 1, "t": 0.4}]))

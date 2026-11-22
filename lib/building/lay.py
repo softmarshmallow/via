@@ -16,7 +16,11 @@ The rules (ours, written for this library; README.md is the design note):
 2. **Levels.** `level_k = ground + plinth + k * storey_h`, in world metres, where `ground` is the
    mean of the terrain read at every post inside the outline (edges included) and at its vertices,
    rounded to the millimetre, and every level is rounded to the millimetre so a floor and the f32
-   post under its sill round to one millimetre (surfaces.md 3.4, `gap`).
+   post under its sill round to one millimetre (surfaces.md 3.4, `gap`). **Storeys of two
+   heights.** Storey 0 is the `ground` storey, the last of two or more the `top`, the rest `upper`.
+   `ground_h` and `top_h` (0: as `storey_h`) are the heights of the ground and the top storey, and
+   a level is then the ground, the plinth and the heights of the storeys below. The eaves are the
+   top storey's level and its own height.
 3. **Stair.** `stair = { side, at, width, run }` (or `{ t, width, run }`): the flights climb along the outline edge holding that place (`where`: `side` and `at` are a side of the outline and the metres along it; `t` is a share of the whole outline, and moves when any side grows),
    from `s0` (the point at `t`, along that edge) to `s1 = s0 + run`, in lanes `CLEAR` (0.1 m) off
    the wall's inner face and off each other: lane 0's centre is `T + CLEAR + width / 2` in, lane
@@ -29,7 +33,23 @@ The rules (ours, written for this library; README.md is the design note):
    the floor. An end rounded to the millimetre outside its floor (an outline turned off the
    lattice's axes) moves on along its flight, up to 3 mm, until the floor holds it (`onto`). A notch that reaches a corner needs the next edge square to this one, or it is
    refused (`params`); one that stops short of a corner by less than `STUB_MIN` (0.3 m, ours)
-   leaves a wall too short to build and is refused too (`params`, naming the stair's `t`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
+   leaves a wall too short to build and is refused too (`params`, naming the stair's `t`).
+   **The footing.** A wall stands on the wall below, not on the floor. With a kit, where the two
+   corners of the stair's side are square, the storey above gets a `footing` (`<storey>_footing`):
+   the strip of that side as deep as the wall is thick, its first edge the side itself, with one
+   surface at the storey's level. The storey's own ring keeps off it: that side is moved in by
+   `T`, and the stairwell is a notch from the moved side, held `T` off the walls beside it,
+   or by what the corner piece there takes of the wall where that is more, so it never reaches
+   a corner and no corner piece stands over it. The walls of that storey are then laid round the
+   whole outline as on the ground (rule 6), each bay over the bay below; the stair's side stands
+   on the footing, the others on the storey's floor, and a corner piece on the footing where
+   its placing point lies in it, else on the floor. The stair no longer decides where a wall
+   closes, and no stub of wall is left beside a stairwell (`STUB_MIN` holds only where the
+   stairwell is cut from the outline). Square is to the 2 mm a corner rounded to the lattice may
+   be off (`square`), so a rectangle turned off the axes has its footing. A stairwell that
+   would come within `T` of any other side, or leave the outline, is refused (`params`). With no
+   kit there is no wall and no footing; with a corner that is not square there is no footing,
+   and the side stands open over the stairwell (`wall_open`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
    k+1>.floor"`, with `z0`, `z1` the two levels (surfaces.md 6.4).
 4. **Doors.** `doors = [{ storey, side, at, width }]` (or `t` for `side` and `at`, as rule 3): a doorway square to the outline there, from
    `porch` metres outside to the outline (its end moved in up to 3 mm where rounding left it
@@ -45,7 +65,8 @@ The rules (ours, written for this library; README.md is the design note):
    be two pieces) is refused. Two rooms beside each other share an opening `inner_door` (0.9 m)
    wide at the middle of their cut: the wall pieces there leave it open (the walk crosses it).
 6. **Walls** (with `kit`, a taxon path of pieces tagged `role:wall`, `role:corner`,
-   `role:corner_in`, `role:filler`, `role:door`, `role:roof`): along every stretch of a storey's outline that lies on the footprint's
+   `role:corner_in`, `role:filler`, `role:door`, `role:roof`, `role:floor`, `role:roof_slope`,
+   `role:roof_gable`): along every stretch of a storey's outline that lies on the footprint's
    outline, less the corners and a clear gap for each doorway and flight that crosses it, one `run` of wall pieces at their pitch
    (`params.pitch`, else their `bounds` width) and one of fillers for what is left: the most wall
    pieces such that the rest is a whole number of fillers within `FIT` (5 mm). A stretch that does
@@ -131,13 +152,54 @@ The rules (ours, written for this library; README.md is the design note):
    city asset contracts.md, section 5); edits kept as inputs to the generator, not as changes to
    its output (docs/research/Modular kit failures in studios.md, section 11); a rule that
    neighbours may not repeat (the same report, section 8).
-7. **Roof.** `roof = "garden"`: a `roof` region over the footprint whose `garden` is at the top
-   storey's level plus `storey_h`. Otherwise, with a `role:roof` piece in the kit, one instance at
-   the footprint's middle on the top floor, facing out of the longest edge.
+   **Pieces by storey.** Each storey reads the kit for itself (`kit_rows`). It takes the pieces
+   of its own height: for each of `wall` (its bays), `filler`, `corner`, `corner_in` and `door`,
+   the pieces nearest the storey's height stay (within `FIT` of the nearest) and the role's
+   others are left out; where the nearest is not the storey's height `check` says `kit_height`. A piece tagged
+   `storey:ground`, `storey:upper` or `storey:top` is for that kind of storey only, and there it
+   is read before an untagged piece of its role. The bays of all storeys are one thickness, or
+   the building is refused (`params`). **Names.** A run is `<storey>_w<side>_<j>`: the outline's
+   side and the number of the stretch a door cuts it into; a corner piece `<storey>_c<vertex>`.
+   On a storey whose stairwell is cut from the outline (no footing) the numbers are its own
+   ring's edges and vertices.
+7. **Roof.** `roof = "garden"`: a `roof` region over the footprint whose `garden` is at the
+   eaves. `"flat"` and `"gable"` are rule 10. With none said and a `role:roof` piece in the kit,
+   one instance at the footprint's middle on the top floor, facing out of the longest edge. Any
+   other word is refused (`params`).
+9. **Floors** (with a `role:floor` piece in the storey's kit: a square tile, its `params.pitch` on
+   a side, sunk in the pack by its thickness so its top is the floor). Each storey's floor is
+   tiled inside the walls: on a grid of the tile's pitch from the first corner of side 0 moved in
+   by `T`, along side 0 and square to it, a cell holds a tile (`<storey>_f<i>_<j>`, `at` its
+   middle, `surface` the storey's floor) where it lies wholly on the storey's ring and inside the
+   outline moved in by `T`. A cell that lies partly on the floor holds none and the floor stands
+   open there: `slab_open` (warning), with the stair width that would make its stairwell whole
+   tiles deep. Nothing is cut to fit. On a building whose side 0 lies along neither axis no tile
+   is laid and `slab_open` says so once: tiles are instances on the millimetre lattice, and off
+   the axes two that abut overlap by the rounding (rules.md 8.1).
+10. **Roofs from pieces.** Every roof piece stands at the eaves, on the `garden` of a `roof`
+   feature over the footprint (`<building>_roof`). `roof = "flat"`: the floor tiles, laid as rule
+   9 lays them over the whole footprint (`<building>_roof_f<i>_<j>`); the walls' tops stand round
+   them. `roof = "gable"`, on a rectangle: the ridge lies along the longer sides (the first of
+   equal ones). `role:roof_slope` is a wedge that climbs from its front edge to its back,
+   `params.pitch` long along the eave and `params.span` deep in plan; the building's depth must be
+   twice the span within `FIT`. One run of slopes stands along each long side
+   (`<building>_roof_e<side>`), from `T` in at one end to `T` in at the other, which must be whole
+   pieces, their middles half a span in from the eave and their fronts out. `role:roof_gable`
+   is half a gable: a wall `T` thick, one `params.span` long, low at its +x end and as high as
+   the slope at its -x end. Two stand on each short side (`<building>_roof_g<side>_0`, `_1`),
+   half a span and a span and a half along it, the first's front out and the second's in, so
+   their high ends meet under the ridge. A rectangle is four sides each square to the next
+   (`square`), turned or not. A roof that cannot be laid (no kit; a flat roof on a building
+   turned off the axes, as rule 9; for a gable: not a rectangle, a depth that is not twice a slope's span, an eave that is not whole pieces, a
+   gable piece of another span, a kit without the pieces) is `roof_none` (warning) with its
+   reason, and the flat roof is laid in its place where the kit has a floor tile. Source: ours;
+   the research found no developer's account of roofs from pieces (docs/research/Modular kit
+   failures in studios.md, section 9).
 
 `params` of the step: `inner_door` (0.9 m), `margin` (0.1 m). Codes are `step.<id>.<code>`: `params` (error, the
 building's attribute or a kit piece's param), `wall_open`, `side_short`, `corner_none`,
-`fillers_only`, `gap_wide`, `variant_none`, `bay_none` (warnings), `laid` (info, what was returned).
+`fillers_only`, `gap_wide`, `variant_none`, `bay_none`, `slab_open`, `roof_none` (warnings), `laid`
+(info, what was returned).
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -182,6 +244,13 @@ EXPLAIN = {
     "gap_wide": "The wall beside a door or a flight was shortened to a length that closes, so the "
     "gap is wider than the door piece or the path: the rest stands open. Move the door so the wall "
     "either side is a whole number of pieces, or make the door the width of the kit's door piece.",
+    "slab_open": "A floor tile is laid only where it lies wholly on the floor, inside the walls. Where "
+    "the floor is no whole number of tiles (beside a stairwell that is not whole tiles wide and long, or in "
+    "a plan not sized to its kit) the tiles that would hang over the edge are left out and the floor "
+    "stands open there. Nothing is cut to fit.",
+    "roof_none": "The roof asked for cannot be laid from the kit's pieces on this plan. A roof piece is "
+    "made for one depth of building and whole lengths of eave; nothing is stretched or cut. Where the "
+    "kit has a floor tile the flat roof is laid in its place.",
     "laid": "What the building library's lay step returned for one building: storeys, rooms, "
     "flights, doorways, footpaths, wall runs and pieces.",
 }
@@ -318,12 +387,163 @@ def same_dir(u, v):
     return abs(u[0] * v[1] - u[1] * v[0]) < 1e-9 and u[0] * v[0] + u[1] * v[1] > 0
 
 
+def square(a, b):
+    """True when two edges are square to each other, to the 2 mm over the shorter one that
+    corners rounded to the lattice may be off (a rectangle turned off the axes is still one)."""
+    return abs(a["e"][0] * b["e"][0] + a["e"][1] * b["e"][1]) * min(a["L"], b["L"]) <= 2.0
+
+
+def seg_dist(p, e):
+    """mm from a point to an edge."""
+    u = (p[0] - e["a"][0]) * e["e"][0] + (p[1] - e["a"][1]) * e["e"][1]
+    u = max(0.0, min(e["L"], u))
+    return math.hypot(p[0] - e["a"][0] - e["e"][0] * u, p[1] - e["a"][1] - e["e"][1] * u)
+
+
 # --- levels -----------------------------------------------------------------------------------
 
 
-def levels(ground_m, plinth, storey_h, storeys):
+def levels(ground_m, plinth, heights, storeys=None):
+    """Each storey's level (rule 2): the ground, the plinth, and the heights of the storeys below.
+    `heights` is one height in metres per storey, or one number for `storeys` storeys alike."""
     g = round(ground_m, 3)
-    return [round(g + plinth + k * storey_h, 3) for k in range(storeys)]
+    if storeys is not None:
+        return [round(g + plinth + k * heights, 3) for k in range(storeys)]
+    out, below = [], 0
+    for h in heights:
+        out.append(round(g + plinth + below / 1000, 3))
+        below += int(round(h * 1000))
+    return out
+
+
+def storey_kinds(storeys, storey_h, ground_h=0, top_h=0):
+    """`[(word, height in metres)]` for each storey (rule 2): the first is `ground`, the last of
+    two or more `top`, the rest `upper`; `ground_h` and `top_h` are their heights where not 0."""
+    out = []
+    for k in range(storeys):
+        if k == 0:
+            out.append(("ground", ground_h or storey_h))
+        elif k == storeys - 1:
+            out.append(("top", top_h or storey_h))
+        else:
+            out.append(("upper", storey_h))
+    return out
+
+
+def square_ends(footprint, k, T):
+    """Whether side `k` can have a footing (rule 3): each neighbouring side square to it, and
+    longer than the wall is thick."""
+    es = edges(footprint)
+    e, n = es[k], len(footprint)
+    return all(square(o, e) and o["L"] > T + 0.5 for o in (es[(k - 1) % n], es[(k + 1) % n]))
+
+
+def footing_plan(footprint, notch, T, reach=None):
+    """Where a storey has a stairwell beside an outer wall (rule 3): the footing its wall stands
+    on, and the storey's own ring. Returns `(storey ring, footing ring)`, or None when a corner at
+    either end of that side is not square.
+    The footing is the strip of that side `T` deep, its first edge the side itself. The storey's
+    ring is the outline with that side moved in by `T` and the stairwell cut from the moved side,
+    kept off the walls beside it by `T`, or by what the corner piece at that end takes of the
+    wall where that is more (`reach`, mm at the side's start and end), so a notch never reaches a
+    corner and a corner piece never stands over it. A stairwell that comes within `T` of any
+    other side, or leaves the outline, is refused."""
+    k, a, b, depth = notch
+    if not square_ends(footprint, k, T):
+        return None
+    es = edges(footprint)
+    e, n = es[k], len(footprint)
+    r0, r1 = reach or (T, T)
+    p0, p1 = footprint[k], footprint[(k + 1) % n]
+    q0 = rnd((p0[0] + e["n"][0] * T, p0[1] + e["n"][1] * T))
+    q1 = rnd((p1[0] + e["n"][0] * T, p1[1] + e["n"][1] * T))
+    footing = [p0, p1, q1, q0]
+    moved = list(footprint)
+    moved[k], moved[(k + 1) % n] = q0, q1
+    a, b = max(a, float(max(T, r0))), min(b, e["L"] - max(T, r1))
+    if b - a <= 0.5 or depth - T <= 0.5:
+        return moved, footing
+    # The stairwell's three inner sides, every quarter metre, each 2 mm inside it (a point on a
+    # line is a coin's toss off the axes): on the building, and a wall's thickness off every side
+    # but the stair's own.
+    along = [a + 2 + i * (b - a - 4) / max(1, math.ceil((b - a) / 250)) for i in range(max(1, math.ceil((b - a) / 250)) + 1)]
+    deep = [T + i * (depth - 2 - T) / max(1, math.ceil((depth - T) / 250)) for i in range(max(1, math.ceil((depth - T) / 250)) + 1)]
+    pts = [local(e, s, depth - 2) for s in along] + [local(e, s, v) for s in (a + 2, b - 2) for v in deep]
+    others = [o for i, o in enumerate(es) if i != k]
+    if not all(inside(footprint, q) and all(seg_dist(q, o) >= T - 2 for o in others) for q in pts):
+        raise ParamError("stair", "the stairwell is deeper than the building beside it",
+                         "make the building deeper there, the stair narrower, or move it along the wall")
+    return notch_ring(moved, (k, a, b, depth - T)), footing
+
+
+def on_footing(runs, insts, footprint, floor, floor_key, footing, footing_key, side):
+    """Walls laid round the outline as on a storey with no stairwell (`wall_plan` with the
+    outline for its ring), put where they stand (rule 3): the runs of `side` on the footing, the
+    others on the storey's ring, each `span` measured along its own ring; a corner piece on the
+    footing where its placing point lies in it, else on the floor. Returns what found nothing to
+    stand on, as `(runs, instances)`: they are taken out.
+    A run's edge on its ring is the one its middle lies on (within 3 mm: corners are rounded to
+    the lattice), so two sides in one line, or a stairwell's edge in line with a side, are not
+    mistaken for each other. A stretch that would start before its ring's first point or end past
+    its last is written by its members' own stations (`ends = "both"`), so no bay moves."""
+    fes, res, ges = edges(footprint), edges(floor), edges(footing)
+
+    def starts(es_):
+        out, c = [], 0.0
+        for e in es_:
+            out.append(c)
+            c += e["L"]
+        return out, c
+    fstart, ftotal = starts(fes)
+    rstart, rtotal = starts(res)
+    _, gtotal = starts(ges)
+
+    def side_of(s):
+        return max(i for i in range(len(fes)) if fstart[i] <= s + 1e-6)
+    lost_runs, lost_insts = [], []
+    for r in runs:
+        u0, u1 = r["span"][0] * ftotal, r["span"][1] * ftotal
+        i = side_of((u0 + u1) / 2)
+        fe, half = fes[i], (u1 - u0) / 2
+        mid = local(fe, (u0 + u1) / 2 - fstart[i], 0)
+        if i == side:
+            where_, ref = [(0.0, ges[0])], footing_key
+            total = gtotal
+        else:
+            where_, ref = list(zip(rstart, res)), floor_key
+            total = rtotal
+        found = None
+        for start, re in where_:
+            u = (mid[0] - re["a"][0]) * re["e"][0] + (mid[1] - re["a"][1]) * re["e"][1]
+            v = (mid[0] - re["a"][0]) * re["n"][0] + (mid[1] - re["a"][1]) * re["n"][1]
+            if re["e"][0] * fe["e"][0] + re["e"][1] * fe["e"][1] > 0.999 and abs(v) <= 3 and -0.5 <= u <= re["L"] + 0.5:
+                found = start + u
+                break
+        if found is None:
+            lost_runs.append(r)
+            continue
+        lo, hi = found - half, found + half
+        r["ref"] = ref
+        if lo < 0 or hi > total:
+            step = (hi - lo) / r["count"]
+            first, last = lo + step / 2, hi - step / 2
+            if r["count"] >= 2:
+                r["ends"], r["span"] = "both", [round(first / total, 9), round(last / total, 9)]
+            else:
+                h = min(first, total - first, step / 2)
+                r["span"] = [round((first - h) / total, 9), round((first + h) / total, 9)]
+        else:
+            r["span"] = [round(lo / total, 9), round(hi / total, 9)]
+    for it in insts:
+        if inside(footing, it["at"]):
+            it["surface"] = f"{footing_key}.top"
+        elif inside(floor, it["at"]):
+            it["surface"] = f"{floor_key}.floor"
+        else:
+            lost_insts.append(it)
+    runs[:] = [r for r in runs if not any(r is x for x in lost_runs)]
+    insts[:] = [i for i in insts if not any(i is x for x in lost_insts)]
+    return lost_runs, lost_insts
 
 
 def posts_in(ring, grid):
@@ -381,6 +601,8 @@ def stair_plan(ring, stair, storeys, wall_t=0):
         # piece closes it and the corner pieces fall off the floor (M7 close: a fresh agent's
         # notch 0.08 m from a corner gave six errors on produced names). Refuse it by `t`.
         for gap, side in ((notch[1], "start"), (e["L"] - notch[2], "end")):
+            if wall_t and square_ends(ring, k, wall_t):
+                continue                         # the wall there stands on a footing: no stub is left (rule 3)
             if 0.5 < gap < STUB_MIN:
                 raise ParamError("stair", f"the stairwell ends {gap / 1000:.3f} m from the corner at its edge's "
                                  f"{side}: too short a wall to build there",
@@ -610,10 +832,37 @@ def variant_off(v, bay):
     return off
 
 
-def kit_pieces(rows):
-    """{role: {id, pitch (mm), thick (mm), width, high, box, reach}} from pack rows (id, tags,
-    bounds, params). One piece per role: a piece with no `variant:` tag before one with, then the
-    first id bytewise (docs/design/kit-contract.md). For `wall` that piece is the kit's bay; the
+BY_HEIGHT = ("wall", "filler", "corner", "corner_in", "door")      # the roles a storey's height chooses among
+
+
+def kit_rows(rows, word=None, height=None):
+    """The pack rows one storey reads (rule 6, "Pieces by storey"). A row tagged `storey:<word>`
+    is for that kind of storey only, so with `word` the rows of other words are left out, and
+    with none every tagged row is. With `height` (mm), for each role a storey's height chooses
+    among, the rows nearest that height stay (those within `FIT` of the nearest) and the role's
+    others are left out. Where the nearest is not the storey's height, `check` says so
+    (`kit_height`): a bay re-exported 0.3 m too tall is still its storey's bay."""
+    def tagged(r):
+        return next((t[7:] for t in r["tags"] if t.startswith("storey:")), None)
+    rows = [r for r in rows if tagged(r) in (None, word)]
+    if height is not None:
+        for role in BY_HEIGHT:
+            # Of the walls, the bays choose: a variant is held to its storey's bay afterwards.
+            mine = [r for r in rows if f"role:{role}" in r["tags"] and r["bounds"]
+                    and not any(t.startswith("variant:") for t in r["tags"])]
+            near = min((abs(r["bounds"][5] - r["bounds"][2] - height) for r in mine), default=0)
+            fits = [r for r in mine if abs(r["bounds"][5] - r["bounds"][2] - height) <= near + FIT]
+            if len(fits) < len(mine):
+                drop = {id(r) for r in mine} - {id(r) for r in fits}
+                rows = [r for r in rows if id(r) not in drop]
+    return rows
+
+
+def kit_pieces(rows, word=None, height=None):
+    """{role: {id, pitch (mm), thick (mm), width, high, box, reach, span}} from pack rows (id,
+    tags, bounds, params), for a storey of kind `word` and `height` mm (`kit_rows`). One piece per
+    role: a piece with no `variant:` tag before one with, then a piece tagged for this kind of
+    storey before an untagged one, then the first id bytewise (docs/design/kit-contract.md). For `wall` that piece is the kit's bay; the
     other `role:wall` pieces that carry `variant:<word>` are its variants, in `wall["variants"]` by
     word when they are the bay's size (`variant_off`), else in `wall["refused"]` with what differs
     (rule 8). Of two pieces with one word the first that is the bay's size is taken. In a kit
@@ -623,15 +872,19 @@ def kit_pieces(rows):
         b = r["bounds"]
         width = b[3] - b[0] if b else 0
         pitch, reach = (kit_number(r, k) for k in ("pitch", "reach"))
+        span = kit_number(r, "span")
         return {"id": r["id"], "pitch": int(round(pitch * 1000)) if pitch else width,
                 "thick": b[4] - b[1] if b else 0, "width": width, "high": b[5] - b[2] if b else 0,
                 "box": list(b) if b else None,
-                "reach": int(round(reach * 1000)) if reach is not None else None}
+                "reach": int(round(reach * 1000)) if reach is not None else None,
+                "span": int(round(span * 1000)) if span is not None else None}
 
     def words(r):
         return [t[8:] for t in r["tags"] if t.startswith("variant:")]
     out, walls = {}, []
-    for r in sorted(rows, key=lambda r: (bool(words(r)), r["id"])):
+    rows = kit_rows(rows, word, height)
+    for r in sorted(rows, key=lambda r: (bool(words(r)), not any(t.startswith("storey:") for t in r["tags"]),
+                                         r["id"])):
         for tag in r["tags"]:
             if not tag.startswith("role:"):
                 continue
@@ -826,10 +1079,13 @@ def picks_of(attrs, storeys=None, sides=None, kit=True):
     return out
 
 
-def asked(picks):
-    """Every variant word a building's `fill` and `bays` name, sorted; never `wall`."""
-    words = {b["variant"] for b in picks["bays"]}
+def asked(picks, storey=None):
+    """Every variant word a building's `fill` and `bays` name (for `storey`, where one is given),
+    sorted; never `wall`."""
+    words = {b["variant"] for b in picks["bays"] if storey is None or b["storey"] == storey}
     for f in picks["fill"]:
+        if storey is not None and f["storeys"] != "all" and storey not in f["storeys"]:
+            continue
         for item in f["pattern"]:
             words.update([item] if isinstance(item, str) else item)
     return sorted(words - {"wall"})
@@ -923,7 +1179,7 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
     over = overhang(kit)
     stretches, corners = wall_stretches(ring, footprint, crossers, T, margin, over)
     variants = wall.get("variants") or {}
-    for w in asked(picks):
+    for w in asked(picks, storey_of(storey_key)):
         if w not in variants and not any(x["code"] == "variant_none" and x["variant"] == w for x in notes):
             notes.append({"code": "variant_none", "variant": w, "refused": (wall.get("refused") or {}).get(w),
                           "at": rnd(footprint[0])})
@@ -1083,6 +1339,121 @@ def inner_walls(openings, footprint, kit, prefix):
 # --- the plan of one building -----------------------------------------------------------------
 
 
+# --- floors and roofs from pieces (rules 9 and 10) ---------------------------------------------
+
+def inset(ring, d):
+    """`ring` (counter-clockwise) with every side moved `d` mm inward: each vertex goes to where
+    the two moved sides meet. Sides that are parallel at a vertex (a point in a straight wall)
+    move it straight in."""
+    es = edges(ring)
+    out = []
+    for i, p in enumerate(ring):
+        a, b = es[i - 1], es[i]
+        cross = a["e"][0] * b["e"][1] - a["e"][1] * b["e"][0]
+        if abs(cross) < 1e-9:
+            out.append((p[0] + b["n"][0] * d, p[1] + b["n"][1] * d))
+            continue
+        # the point q with (q - p).n_a = d and (q - p).n_b = d
+        na, nb = a["n"], b["n"]
+        det = na[0] * nb[1] - na[1] * nb[0]
+        out.append((p[0] + d * (nb[1] - na[1]) / det, p[1] + d * (na[0] - nb[0]) / det))
+    return out
+
+
+def slab_plan(floor, footprint, T, tile, prefix, surface):
+    """Floor tiles over `floor` (a storey's ring, or the footprint for a flat roof), inside the
+    walls (rule 9). Returns (instances, short): `short` is how many grid cells lie partly on the
+    floor and so hold no tile, with the middle of the first.
+    The grid is the tile's pitch, from the first corner of side 0 moved in by the wall's
+    thickness, along side 0 and square to it. A cell holds a tile when every one of 25 points
+    spread over it (`FIT` in from its edges) lies on the floor and inside the walls' inner face.
+    On a building whose side 0 does not lie along an axis no tile is laid, and `short` is None:
+    tiles are instances, placed on the millimetre lattice, and off the axes two that abut overlap
+    by the rounding, which the core takes for two things in one place (rules.md 8.1)."""
+    m = tile["pitch"]
+    es = edges(footprint)
+    e0, n0 = es[0]["e"], es[0]["n"]
+    if min(abs(e0[0]), abs(e0[1])) > 1e-12:
+        return [], (None, None)                  # turned off the axes: see the docstring
+    inner = inset(footprint, T)
+    o = inner[0]
+
+    def uv(p):
+        return ((p[0] - o[0]) * e0[0] + (p[1] - o[1]) * e0[1], (p[0] - o[0]) * n0[0] + (p[1] - o[1]) * n0[1])
+
+    def at(u, v):
+        return (o[0] + e0[0] * u + n0[0] * v, o[1] + e0[1] * u + n0[1] * v)
+    us, vs = [uv(p)[0] for p in inner], [uv(p)[1] for p in inner]
+    i0, i1 = math.floor((min(us) + FIT) / m), math.ceil((max(us) - FIT) / m)
+    j0, j1 = math.floor((min(vs) + FIT) / m), math.ceil((max(vs) - FIT) / m)
+    steps = [FIT + k * (m - 2 * FIT) / 4 for k in range(5)]
+    insts, short, first = [], 0, None
+    for i in range(i0, i1):
+        for j in range(j0, j1):
+            pts = [at(i * m + a, j * m + b) for a in steps for b in steps]
+            on = [inside(inner, p) and inside(floor, p) for p in pts]
+            if all(on):
+                insts.append({"key": f"{prefix}_f{i - i0}_{j - j0}", "asset": tile["id"],
+                              "at": rnd(at((i + 0.5) * m, (j + 0.5) * m)), "face": outward(es[0]), "surface": surface})
+            elif any(on):
+                short += 1
+                first = first or rnd(at((i + 0.5) * m, (j + 0.5) * m))
+    return insts, (short, first)
+
+
+def rectangle(ring):
+    """True when `ring` is four sides, each square to the next (`square`)."""
+    es = edges(ring)
+    return len(ring) == 4 and all(square(es[i - 1], es[i]) for i in range(4))
+
+
+def gable_plan(footprint, kit, T, prefix):
+    """A gable roof over a rectangle (rule 10): (runs, instances), or (None, why) when it cannot
+    be laid, `why` a sentence for `roof_none`.
+    Slopes: one run of `role:roof_slope` pieces along each long side, from the wall's thickness in
+    at one end to the same at the other, their middles half a span in from the eave, fronts out.
+    Gables: two `role:roof_gable` halves on each short side, each half a wall's thickness in, the
+    first's front out and the second's in, so their high ends meet under the ridge."""
+    slope, gable = kit.get("roof_slope"), kit.get("roof_gable")
+    if slope is None or gable is None:
+        return None, "the kit has no `role:roof_slope` and `role:roof_gable` pieces"
+    if not rectangle(footprint):
+        return None, "the plan is not a rectangle, and a gable over any other plan is not built"
+    es = edges(footprint)
+    long = max(range(4), key=lambda i: (es[i]["L"], -i))
+    L, D = es[long]["L"], es[(long + 1) % 4]["L"]
+    span = slope.get("span")
+    if not span or abs(2 * span - D) > FIT:
+        return None, (f"the building is {D / 1000:g} m deep and the kit's slope piece is made for "
+                      f"{2 * (span or 0) / 1000:g} m (twice its span)")
+    if not gable.get("span") or abs(gable["span"] - span) > FIT:
+        return None, (f"the gable piece is made for a span of {(gable.get('span') or 0) / 1000:g} m and the "
+                      f"slope piece for {span / 1000:g} m")
+    eave = L - 2 * T
+    n = int(round(eave / slope["pitch"])) if slope["pitch"] else 0
+    if n < 1 or abs(n * slope["pitch"] - eave) > FIT:
+        below, above = int(eave // slope["pitch"]) * slope["pitch"] + 2 * T, (int(eave // slope["pitch"]) + 1) * slope["pitch"] + 2 * T
+        return None, (f"the eave between the gables is {eave / 1000:g} m, no whole number of {slope['pitch'] / 1000:g} m "
+                      f"slope pieces: a side of {below / 1000:g} or {above / 1000:g} m would close")
+    starts, c = [], 0.0
+    for e in es:
+        starts.append(c)
+        c += e["L"]
+    runs, insts = [], []
+    for i in (long, (long + 2) % 4):
+        runs.append({"key": f"{prefix}_e{i}", "asset": slope["id"], "count": n, "ref": prefix,
+                     "span": [round((starts[i] + T) / c, 9), round((starts[i] + L - T) / c, 9)],
+                     "face": outward(es[i]), "offset": round(span / 2000, 3), "ends": "half"})
+    for i in ((long + 1) % 4, (long + 3) % 4):
+        e = es[i]
+        out = outward(e)
+        insts.append({"key": f"{prefix}_g{i}_0", "asset": gable["id"], "at": rnd(local(e, span / 2, T / 2)),
+                      "face": out, "surface": f"{prefix}.garden"})
+        insts.append({"key": f"{prefix}_g{i}_1", "asset": gable["id"], "at": rnd(local(e, D - span / 2, T / 2)),
+                      "face": round((out + 180.0) % 360.0, 3), "surface": f"{prefix}.garden"})
+    return runs, insts
+
+
 def _num(attrs, key, default, lo=None, integer=False):
     v = attrs.get(key, default)
     try:
@@ -1094,24 +1465,54 @@ def _num(attrs, key, default, lo=None, integer=False):
     return v
 
 
-def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, margin=MARGIN):
-    """Everything one building returns, as plain data (the step writes it): rules 1 to 7."""
+def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, margin=MARGIN, kits=None):
+    """Everything one building returns, as plain data (the step writes it): rules 1 to 10.
+    `kit` is one kit for every storey (`kit_pieces`); `kits`, where given, is a function of a
+    storey's word and its height in mm that gives that storey's kit, and `kit` is not read."""
     footprint = ccw(ring)
     prefix = key_of(name)
     storeys = _num(attrs, "storeys", 1, 1, integer=True)
     storey_h = _num(attrs, "storey_h", 3.2, 0.5)
+    ground_h, top_h = _num(attrs, "ground_h", 0, 0), _num(attrs, "top_h", 0, 0)
+    for key, v in (("ground_h", ground_h), ("top_h", top_h)):
+        if 0 < v < 0.5:
+            raise ParamError(key, f"`{key}` is {v}, below 0.5", f"write `{key}` as 0.5 or more, or 0 for `storey_h`")
     plinth = _num(attrs, "plinth", 0.3, 0)
     porch = int(round(_num(attrs, "porch", 2, 0.5) * 1000))
     walk_out = int(round(_num(attrs, "walk_out", 3, 0) * 1000))
-    lv = levels(ground_m, plinth, storey_h, storeys)
+    kinds = storey_kinds(storeys, storey_h, ground_h, top_h)
+    heights = [h for _, h in kinds]
+    lv = levels(ground_m, plinth, heights) if ground_h or top_h else levels(ground_m, plinth, storey_h, storeys)
+    kit_of = [kits(w, int(round(h * 1000))) for w, h in kinds] if kits else [kit] * storeys
+    kit = kit_of[0]
     stair = attrs.get("stair") or None
     wall_t = (kit or {}).get("wall", {}).get("thick", 0) if kit and kit.get("wall") else 0
+    for k, other in enumerate(kit_of):
+        if other and other.get("wall") and abs(other["wall"]["thick"] - wall_t) > FIT:
+            raise ParamError("kit", f"the kit's walls are {wall_t / 1000:g} m thick on the ground storey and "
+                             f"{other['wall']['thick'] / 1000:g} m on storey {k}: walls of two thicknesses do not stack",
+                             "make the bay of every storey one thickness")
     sp = stair_plan(footprint, stair, storeys, wall_t)
-    rings = [footprint]
+    rings, footings = [footprint], {}
     for k in range(1, storeys):
-        rings.append(notch_ring(footprint, sp["notches"][k]))
+        notch = sp["notches"][k]
+        stood = None
+        if wall_t and kit_of[k] and kit_of[k].get("wall"):
+            n_ = len(footprint)
+
+            def takes(v):                        # what the corner piece at an outside corner takes of the wall
+                a_, b_, c_ = footprint[v - 1], footprint[v], footprint[(v + 1) % n_]
+                left = (b_[0] - a_[0]) * (c_[1] - b_[1]) - (b_[1] - a_[1]) * (c_[0] - b_[0]) > 0
+                return corner_of(kit_of[k], True, wall_t)[1] if left else wall_t
+            stood = footing_plan(footprint, notch, wall_t, (takes(notch[0]), takes((notch[0] + 1) % n_)))
+        if stood:
+            rings.append(stood[0])
+            footings[k] = {"key": f"{prefix}_s{k}_footing", "region": stood[1], "level": lv[k], "side": notch[0]}
+        else:
+            rings.append(notch_ring(footprint, notch))
     out = {"storeys": [], "rooms": [], "flights": [], "doorways": [], "footpaths": [], "runs": [],
-           "instances": [], "open": [], "openings": [], "roof": None, "notes": []}
+           "instances": [], "open": [], "openings": [], "roof": None, "notes": [],
+           "footings": [footings[k] for k in sorted(footings)], "kit": kit, "heights": heights}
     for k in range(storeys):
         out["storeys"].append({"key": f"{prefix}_s{k}", "region": rings[k], "level": lv[k]})
     for path, lo, hi in sp["flights"]:
@@ -1170,13 +1571,21 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             raise ParamError("rooms", f"rooms name storey {st}; the building has {storeys}",
                              f"write a storey from 0 to {storeys - 1}")
         rooms, openings = room_plan(rings[st], footprint, r.get("shares") or [], inner)
+        if st in footings:
+            # An inner wall is laid from the outline's faces (`inner_walls` takes the outer wall's
+            # thickness off each end): its line is cut from the outline, not from the floor that
+            # keeps off the footing.
+            try:
+                _, openings = room_plan(notch_ring(footprint, sp["notches"][st]), footprint, r.get("shares") or [], inner)
+            except ParamError:
+                pass
         for i, ring_ in enumerate(rooms):
             out["rooms"].append({"key": f"{prefix}_s{st}_r{i}", "region": ring_, "storey": f"{prefix}_s{st}"})
         for o in openings:
             o["storey"] = st
             out["openings"].append(o)
-        if kit:
-            insts, opens = inner_walls(openings, footprint, kit, f"{prefix}_s{st}")
+        if kit_of[st]:
+            insts, opens = inner_walls(openings, footprint, kit_of[st], f"{prefix}_s{st}")
             for it in insts:
                 it["surface"] = f"{prefix}_s{st}.floor"
             out["instances"].extend(insts)
@@ -1187,11 +1596,24 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             crossers = [(d["path"], dp["width"], ("door", d["key"])) for d, dp in zip(
                 [d for d in out["doorways"] if d["ends_at"] == f"{prefix}_s{k}.floor"], doors_by_storey.get(k, []))]
             crossers += [(f["path"], int(round(f["width"] * 1000)), ("flight", f["key"])) for f in out["flights"]]
-            runs, insts, opens = wall_plan(rings[k], footprint, doors_by_storey.get(k, []), kit,
-                                           f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin, out["notes"],
-                                           picks, name)
-            for it in insts:
-                it["surface"] = f"{prefix}_s{k}.floor"
+            if not kit_of[k]:
+                continue
+            if k in footings:
+                # Over a stairwell the walls are laid round the outline as on any storey, and the
+                # stair's side stands on its footing (rule 3).
+                f = footings[k]
+                runs, insts, opens = wall_plan(footprint, footprint, [], kit_of[k], f"{prefix}_s{k}", f"{prefix}_s{k}",
+                                               crossers, margin, out["notes"], picks, name)
+                lost = on_footing(runs, insts, footprint, rings[k], f"{prefix}_s{k}", f["region"], f["key"], f["side"])
+                for x in lost[0] + lost[1]:      # nothing under it: said, not laid
+                    opens.append({"key": x["key"], "length": 0, "near": (None, None), "storey": k, "unfloored": True,
+                                  "at": rnd(x["at"]) if "at" in x else rnd(footprint[f["side"]])})
+            else:
+                runs, insts, opens = wall_plan(rings[k], footprint, doors_by_storey.get(k, []), kit_of[k],
+                                               f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin, out["notes"],
+                                               picks, name)
+                for it in insts:
+                    it["surface"] = f"{prefix}_s{k}.floor"
             out["runs"].extend(runs)
             out["instances"].extend(insts)
             out["open"].extend(opens)
@@ -1201,9 +1623,70 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 out["notes"].append({"code": "bay_none", "index": b["index"], "storey": b["storey"],
                                      "side": b["side"], "at_m": b["at"] / 1000, "variant": b["variant"],
                                      "at": rnd(local(edges(footprint)[b["side"]], b["at"], 0))})
+    for k in range(storeys):                     # floors (rule 9)
+        tile = (kit_of[k] or {}).get("floor")
+        if not tile:
+            continue
+        insts, (short, first) = slab_plan(rings[k], footprint, wall_t, tile, f"{prefix}_s{k}", f"{prefix}_s{k}.floor")
+        out["instances"].extend(insts)
+        if short is None:
+            if not any(n["code"] == "slab_open" and n.get("turned") for n in out["notes"]):
+                out["notes"].append({"code": "slab_open", "storey": k, "cells": 0, "at": rnd(footprint[0]),
+                                     "tile": tile["pitch"], "turned": True})
+        elif short:
+            note = {"code": "slab_open", "storey": k, "cells": short, "at": first, "tile": tile["pitch"]}
+            if k in sp["notches"]:
+                side, a, b, depth = sp["notches"][k]
+                L_ = edges(footprint)[side]["L"]
+                lanes = 1 if (k - 1) % 2 == 0 else 2
+                deep, lo, hi = depth - wall_t, max(a, wall_t) - wall_t, min(b, L_ - wall_t) - wall_t
+                n_ = max(1, int(round(deep / tile["pitch"])))      # the nearest whole number of tiles
+
+                def whole(v):
+                    return min(v % tile["pitch"], tile["pitch"] - v % tile["pitch"]) <= FIT
+                if not (whole(deep) and whole(lo) and whole(hi)):       # the stairwell is what is off the tiles
+                    note.update({"side": side, "deep": deep, "from": lo, "to": hi,
+                                 "width": (n_ * tile["pitch"] - (lanes + 1) * CLEAR) / lanes, "tiles": n_})
+            out["notes"].append(note)
     top = storeys - 1
-    if attrs.get("roof") == "garden":
-        out["roof"] = {"key": f"{prefix}_roof", "region": footprint, "eaves": round(lv[top] + storey_h, 3)}
+    roof = attrs.get("roof") or ""
+    if not isinstance(roof, str) or roof not in ("", "garden", "flat", "gable"):
+        raise ParamError("roof", f"`roof` is {roof!r}", "write \"flat\", \"gable\" or \"garden\", or leave it out")
+    eaves = round(lv[top] + heights[top], 3)
+    if roof == "garden":
+        out["roof"] = {"key": f"{prefix}_roof", "region": footprint, "eaves": eaves}
+    elif roof in ("flat", "gable"):               # roofs from pieces (rule 10)
+        rkey, kt = f"{prefix}_roof", kit_of[top] or {}
+        tile, why, laid = kt.get("floor"), None, False
+        if not kt.get("wall"):
+            why = "the building has no `kit`"
+        elif roof == "gable":
+            runs, insts = gable_plan(footprint, kt, wall_t, rkey)
+            if runs is None:
+                why = insts
+            else:
+                out["runs"].extend(runs)
+                out["instances"].extend(insts)
+                laid = True
+        if not laid and kt.get("wall"):
+            if tile:
+                insts, (short, first) = slab_plan(footprint, footprint, wall_t, tile, rkey, f"{rkey}.garden")
+                out["instances"].extend(insts)
+                laid = short is not None
+                if short is None:
+                    why = (why + "; and " if why else "") + ("the building is turned off the axes, where floor tiles "
+                                                             "do not abut to the millimetre and none is laid")
+                elif short:
+                    out["notes"].append({"code": "slab_open", "storey": -1, "cells": short, "at": first,
+                                         "tile": tile["pitch"]})
+            elif roof == "flat":
+                why = "the kit has no `role:floor` piece"
+        if laid:
+            out["roof"] = {"key": rkey, "region": footprint, "eaves": eaves}
+        if why:
+            cx = sum(p[0] for p in footprint) / len(footprint)
+            cy = sum(p[1] for p in footprint) / len(footprint)
+            out["notes"].append({"code": "roof_none", "roof": roof, "why": why, "flat": laid, "at": rnd((cx, cy))})
     elif kit and kit.get("roof"):
         cx = sum(p[0] for p in footprint) / len(footprint)
         cy = sum(p[1] for p in footprint) / len(footprint)
@@ -1222,8 +1705,8 @@ def key_of(name):
 # --- the step ---------------------------------------------------------------------------------
 
 
-ATTRS = ["storeys", "storey_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms", "kit", "roof",
-         "bays", "fill"]
+ATTRS = ["storeys", "storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms",
+         "kit", "roof", "bays", "fill"]
 
 
 def _list(col):
@@ -1278,13 +1761,15 @@ def read_kit(step, taxon):
         rows.append({"id": i, "tags": tags if isinstance(tags, list) else [tags],
                      "bounds": [int(v) for v in _list(b)] if b is not None else None,
                      "params": _json(_list(t["params"])[r]) or {} if "params" in t else {}})
-    return kit_pieces(rows)
+    return rows
 
 
 def write(step, out):
     o = step.out
     for s in out["storeys"]:
         o.feature(s["key"], "storey", region=s["region"], level=s["level"])
+    for f in out["footings"]:
+        o.feature(f["key"], "footing", region=f["region"], level=f["level"])
     for r in out["rooms"]:
         o.feature(r["key"], "room", region=r["region"], storey=r["storey"])
     for f in out["flights"]:
@@ -1310,12 +1795,14 @@ def generate(step):
         inner = int(round(float((step.params or {}).get("inner_door", INNER_DOOR / 1000)) * 1000))
         margin = int(round(float((step.params or {}).get("margin", MARGIN / 1000)) * 1000))
         ring, attrs = read_building(step, name)
-        kit = read_kit(step, attrs.get("kit"))
-        out = plan(name, ring, attrs, read_ground(step, ring), step.grid, kit, inner, margin)
+        rows = read_kit(step, attrs.get("kit"))
+        kits = (lambda word, height: kit_pieces(rows, word, height)) if rows is not None else None
+        out = plan(name, ring, attrs, read_ground(step, ring), step.grid, None, inner, margin, kits)
     except ParamError as e:
         step.error("params", name, f"{name}: {e.message}", e.hint, explain=EXPLAIN["params"],
                    data={"attribute": e.key})
         return
+    kit = out["kit"]
     write(step, out)
     for i, w in enumerate(out["open"]):
         below, above = w["near"]
@@ -1324,8 +1811,12 @@ def generate(step):
                 if w.get("stairwell") and moves
                 else "resize the side to a length that closes, or move the door or stair that cuts it")
         where_ = f" on side {w['side']} of storey {w.get('storey', 0)}" if "side" in w else ""
-        step.warning("wall_open", name,
-                     f"a wall stretch of {w['length'] / 1000:g} m{where_} does not close with the kit's pieces", hint,
+        said = f"a wall stretch of {w['length'] / 1000:g} m{where_} does not close with the kit's pieces"
+        if w.get("unfloored"):
+            said = (f"`{w['key']}` on storey {w.get('storey', 0)} has neither the storey's floor nor its footing "
+                    "under it: it is not laid")
+            hint = "move the stair, or change the plan, so the storey's floor reaches under its walls"
+        step.warning("wall_open", name, said, hint,
                      position=(w["at"][0] / 1000, w["at"][1] / 1000),
                      data={"length": round(w["length"] / 1000, 3),
                            "closes": [round(v / 1000, 3) for v in (below, above) if v is not None],
@@ -1397,6 +1888,33 @@ def generate(step):
                            "open": round(over, 3), "path": round(g["path"] / 1000, 3),
                            "side": g.get("side"), "closes_at": places},
                      **({"explain": EXPLAIN["gap_wide"]} if i == 0 else {}))
+    for i, n in enumerate(n for n in out["notes"] if n["code"] == "slab_open"):
+        what = "the flat roof" if n["storey"] < 0 else f"storey {n['storey']}"
+        if n.get("turned"):
+            said = ("no floor tile is laid: the building is turned off the axes, where tiles placed on the millimetre "
+                    "lattice do not abut and would stand in each other's place")
+            hint = "keep a building with a tiled floor square to the axes for now"
+        elif "side" in n:
+            said = (f"{n['cells']} floor tiles of {what} cannot be laid whole beside the stairwell, which is "
+                    f"{n['deep'] / 1000:g} m deep and runs from {n['from'] / 1000:g} to {n['to'] / 1000:g} m along the "
+                    f"inside of side {n['side']}: a tile is {n['tile'] / 1000:g} m")
+            hint = (f"a stair `width` of {n['width'] / 1000:g} m makes this stairwell {n['tiles']} tiles deep; place it "
+                    "and size its `run` so the stairwell starts and ends a whole number of tiles along the wall's inner face")
+        else:
+            said = (f"{n['cells']} floor tiles of {what} cannot be laid whole: the floor inside the walls is no whole "
+                    f"number of {n['tile'] / 1000:g} m tiles there")
+            hint = "size the plan to the kit: each side, less its walls, a whole number of tiles"
+        step.warning("slab_open", name, said, hint, position=(n["at"][0] / 1000, n["at"][1] / 1000),
+                     data={"storey": n["storey"], "cells": n["cells"], "tile": n["tile"] / 1000,
+                           **({"side": n["side"], "deep": n["deep"] / 1000, "width": n["width"] / 1000} if "side" in n else {})},
+                     **({"explain": EXPLAIN["slab_open"]} if i == 0 else {}))
+    for n in (n for n in out["notes"] if n["code"] == "roof_none"):
+        step.warning("roof_none", name,
+                     f"the {n['roof']} roof is not laid: {n['why']}"
+                     + (". The flat roof is laid in its place" if n["flat"] else ". The building has no roof"),
+                     "size the building to the roof pieces, give the kit the pieces, or ask for a roof it can lay",
+                     position=(n["at"][0] / 1000, n["at"][1] / 1000),
+                     data={"roof": n["roof"], "fallback": "flat" if n["flat"] else ""}, explain=EXPLAIN["roof_none"])
     step.info("laid", name,
               f"{len(out['storeys'])} storeys, {len(out['rooms'])} rooms, {len(out['flights'])} flights, "
               f"{len(out['doorways'])} doorways, {len(out['runs'])} wall runs, {len(out['instances'])} pieces",

@@ -157,7 +157,7 @@ Each archetype followed through the layers, and the holes that shows. Written by
 
 <!-- shows: begin -->
 
-Counted over 865 ledger rows, 50 kinds, 17 steps, 22 example worlds and 969 conformance cases.
+Counted over 865 ledger rows, 51 kinds, 17 steps, 22 example worlds and 969 conformance cases.
 
 | Archetype | Ledger rows that are ours: shown, partly, none | Chapters, with their cases | Kinds | Steps | Examples that use it |
 |---|---|---|---|---|---|
@@ -173,8 +173,8 @@ Counted over 865 ledger rows, 50 kinds, 17 steps, 22 example worlds and 969 conf
 | Linear placement | 5, 5, 13 | rules 56 | 0 | 2 | 5 |
 | Scatter | 10, 13, 18 | rules 56 | 0 | 1 | 11 |
 | Recipe | 3, 7, 10 | rules 56 | 0 | 1 | 4 |
-| Grammar | 2, 4, 12 | protocol 87 | 4 | 1 | 2 |
-| Representation switch | 5, 2, 11 | surfaces 70 | 8 | 0 | 8 |
+| Grammar | 2, 4, 12 | protocol 87 | 5 | 1 | 2 |
+| Representation switch | 5, 2, 11 | surfaces 70 | 9 | 0 | 8 |
 | Meeting | 22, 35, 39 | authority 57, surfaces 70, composition 87 | 13 | 0 | 13 |
 | Overlay | 5, 3, 6 | documents 76, identity 56 | 0 | 0 | 22 |
 | Guidance | 1, 2, 61 | build 59 | 0 | 0 | 0 |
@@ -184,11 +184,11 @@ Counted over 865 ledger rows, 50 kinds, 17 steps, 22 example worlds and 969 conf
 
 **Archetypes with no form in the engine:** Grammar, Guidance.
 
-**Kinds no example writes (7):** `building.roof`, `land.firm_pad`, `terrain.terrain_course`, `vegetation.clearing`, `vegetation.green`, `vegetation.wood`, `water.weir`.
+**Kinds no example writes (8):** `building.footing`, `building.roof`, `land.firm_pad`, `terrain.terrain_course`, `vegetation.clearing`, `vegetation.green`, `vegetation.wood`, `water.weir`.
 
 **Steps that do in code what the engine has a form for:** `lib/land/uplands.py` (Field, 445 lines); `lib/town/houses.py` (Recipe, 1150 lines); `lib/town/kit.py` (Linear placement, 629 lines); `lib/town/streets.py` (Network, 936 lines); `lib/vegetation/clumps.py` (Scatter, 346 lines); `lib/water/fill.py` (Derivation, 123 lines); `lib/ways/parapet.py` (Linear placement, 161 lines).
 
-**Concepts as data and as code:** 1709 lines of kinds, 9514 lines of steps (tests left out).
+**Concepts as data and as code:** 1718 lines of kinds, 10171 lines of steps (tests left out).
 
 **One library naming another's kinds:** `review` names `town.main_street`; `review` names `town.street`; `review` names `town.waterfront`; `review` names `ways.crossing`; `review` names `ways.trail`; `ways` names `water.beck`.
 

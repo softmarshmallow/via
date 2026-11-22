@@ -1,7 +1,7 @@
 # via: the kit plan
 
-Status: approved 2026-11-20, running. K1 and K2 are committed (f529008, after the research,
-cc99109); K3 follows them. Next: K4. The plan after the first cut (`docs/plan.md`): own the
+Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
+K3 (38b8822); K4 follows them. Next: K5. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -71,6 +71,20 @@ Changed so far:
   is the core's half of "choosing among pieces" and not the library's. The review found that
   "a variant with another footprint is refused" held only for the pitch a pack states, not for
   the model: mended, and `wide_window` is now that case.
+
+- **K4, 2026-11-22.** Three changes, each from working the case before writing code.
+  "Roofs on rectangles and L-shapes" is a flat roof on both and a gable on rectangles; a gable
+  over an L is refused with its reason and left to K7, which already owns pitched roofs on plans
+  that are not rectangles. Worked on the plain kit, the slopes beside a valley must be whole
+  pieces from the inside corner, and the walls there are whole pieces from 1.5 m off it (the
+  inside corner's reach and the post), so a wing that closes its walls cannot close its roof: the
+  roof needs a reach of its own at a valley, which is a rule, not a piece. "A base" (a plinth
+  course) moves to K7 with plinths and steps to doors: it only matters where there is a plinth
+  to show. And "another ground storey" became storeys of two heights and pieces chosen by the
+  storey's height, because with a tag alone one kit could not serve a building with a 4 m
+  ground storey and another with a 3 m one. The review then showed the footing and the tiles
+  wrong off the axes (walls above up to 1.5 m off the walls below, tiles failing the build):
+  mended for the walls and the gable; floor tiles are not laid on a turned building, and say so.
 
 Checks before each commit: the library's tests, `cargo run -p xtask -- check`, and, where a crate
 changed, `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace` and the

@@ -528,6 +528,15 @@ open, and its place here is its destination.
 - [ ] `[pin] set` still `doc.not_yet`; `on = { of = "<run>", near }` (select a member) and the
       mount of a member (rules.md 15, "a lamp on a fence post") are not written.
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
+- [ ] **Two kind surfaces at one height are two levels** (rules.md 8.1: two things are tested
+      only when they stand on one surface). lib/building's `footing` (the strip a wall stands on
+      over a stairwell) and its storey's floor are one level to the eye and two to the test: a
+      corner piece on the footing that overlaps a wall piece on the floor beside it is not
+      reported (`examples/kit` `stub`: 11 of 12 overlaps named, the measure counts 12).
+      Candidates: surfaces whose owners declare one `base` and whose bounds touch count as one
+      level, as the terrain and a ground floor do (R40); or a library lint. Belongs with the
+      level test's other open item below. To be ruled at K5.
+      (From K4 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **A run holds one asset, so a wall of mixed pieces is several runs** and a bay's name
       depends on what stands before it. lib/building splits a stretch into a run per spell of one
       piece (`<stretch>`, `<stretch>b<k>`): swapping one bay renames the bays after it
@@ -1409,9 +1418,30 @@ open, and its place here is its destination.
       sockets constrain room sizes from the start); and carry dressing down to small props on
       furniture, which needs assets to declare their surfaces.
       (From the list before the rewrite, Assets and buildings; was -> M5.)
-- [ ] **The stairwell's side has no wall on the storey above** (`role:wall_tall`, README "not
-  built"): 6 m open in the kit example's hall, and every measure of it carries that number.
-      (From the plain kit, 2026-11-20; examples/kit and its README.)
+- [ ] **The stair is not part of the kit.** Its lanes, clearances (0.1 m) and landing (1 m) are
+  lay.py's numbers, so a stairwell is whole floor tiles only where the world sizes the stair by
+  hand (1.3 m wide on a 1.5 m tile), and the second stairwell of three storeys, two lanes deep
+  (2.9 m), is not: `examples/kit` `tower`, 5.25 m2 of floor open, said. Lesson: an opening in a
+  floor is a module too. A kit should state its stair (or a stair piece), as it states its door.
+      (From K4 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **No floor tile on a building turned off the axes.** A tile is an instance on the
+  millimetre lattice; off the axes two that abut overlap by the rounding, and two instances of
+  one step in one place are `place.overlap`, an error (49 on the annex at 30 degrees). Walls
+  escape it because neighbours of one run are never compared. `lay` lays none and says so
+  (`slab_open`), and refuses a flat roof there. Candidates: rows of tiles as runs (needs a run
+  along a line a step returns, standing on a named surface); a tolerance of a lattice unit in
+  the overlap test. Lesson: "touching edges do not overlap" holds on the lattice only.
+      (From the review of K4, 2026-11-23.)
+- [ ] **A flight that ends within a wall's thickness of the wall ahead cuts a gap in it.**
+  `wall_stretches` takes a flight's path for a crossing where it only comes near (a stair run to
+  0.3 m of the far wall: 50 mm of that wall opens on both storeys). Older than K4; met again in
+  its review.
+      (From the review of K4, 2026-11-23.)
+- [ ] **A gable over a plan that is not a rectangle** is refused (`roof_none`) and the flat roof
+  laid: K7. A base course and steps to a door: K7 too. `STUB_MIN` (a stairwell 0.3 m short of a
+  corner is refused) was for the wall stub beside it; with a footing no stub exists, and the
+  rule now only keeps a thin strip of floor from being cut. Revisit it with the stair above.
+      (From K4 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **Corners past the plain case.** `params.reach` on an outside corner (a piece with a leg
   along each wall) is covered by a unit test only, no example. A corner that is not a right
   angle still gets a square box turned to the wall after it, as before. A T-junction of walls
@@ -1675,8 +1705,8 @@ open, and its place here is its destination.
   licensed kit fetched on demand and never committed is the only test on pieces someone else
   shaped (challenge 33).
       (From the plain kit, 2026-11-20; examples/kit and its README.)
-- [ ] No roofs (a roof depends on the whole plan; `lay` places one `role:roof` asset per
-  building) and no rooms. Variation between bays came with K3 (`fill`, `bays`).
+- [ ] No rooms, and no furniture on its floors. Variation between bays came with K3 (`fill`,
+  `bays`); storeys of two heights, floors and roofs with K4.
       (From the plain kit, 2026-11-20; examples/kit and its README.)
 
 ### `examples/market`

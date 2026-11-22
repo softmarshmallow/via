@@ -26,8 +26,8 @@ open_above_door_mm = { band = [0, 0] }      # the tower's doorway is the ground 
 door_narrow      = { band = [0, 0] }        # the lint's clear width at each door (check.py rule 5)
 doors_measured   = { band = [3, 3] }
 clear_min_mm     = { band = [1100, 3000] }  # every door and the step 1.1 m clear (0.20 m at slice 1)
-meshes           = { band = [12, 12] }      # a floor per storey, a tread per flight
-laid             = { band = [70, 76] }      # the loft's walls and corners: 73, since it was sized to its kit (119 with the 0.1 m slip, 46 of them)
+meshes           = { band = [13, 13] }      # a floor per storey, a tread per flight, and the loft's footing (lib/building, K4: 12 before)
+laid             = { band = [75, 81] }      # the loft's walls and corners: 78, with the wall over its stairwell (73 before K4, when none was laid there; 119 with the 0.1 m slip)
 laid_off_floor   = { band = [0, 0] }        # each on its storey's floor
 in_flight        = { band = [0, 0] }        # no dressing on a flight's line below its tread (M5 close)
 

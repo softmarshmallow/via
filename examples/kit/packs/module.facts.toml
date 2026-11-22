@@ -50,6 +50,124 @@ tags = ["role:door"]
 params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 files = { "door.glb" = "eeebe232bf2a143b3c5d319d0d0a940f7bb2d52a9d6698635148de17da1c9e2e" }
 
+[asset.floor]
+bounds = [-0.75, -0.75, 0, 0.75, 0.75, 0.2]
+origin = [0, 0, 0]
+footprint = [[-0.75, -0.75], [0.75, -0.75], [0.75, 0.75], [-0.75, 0.75]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0.2
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:floor"]
+params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+files = { "floor.glb" = "f4409a6172d18ddb76eea2ad046cfe6baa362b2ea1d2f16bc6aa7dc5947c205d" }
+
+[asset.ground_corner]
+bounds = [-0.15, -0.15, 0, 0.15, 0.15, 4]
+origin = [0, 0, 0]
+footprint = [[-0.15, -0.15], [0.15, -0.15], [0.15, 0.15], [-0.15, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:corner", "storey:ground"]
+files = { "ground_corner.glb" = "d37171c09e76710372ef6ad867cb54a0559e1b5442a993720c0e030dc4037122" }
+
+[asset.ground_door]
+bounds = [-0.75, -0.15, 0, 0.75, 0.15, 4]
+origin = [0, 0, 0]
+footprint = [[-0.75, -0.15], [0.75, -0.15], [0.75, 0.15], [-0.75, 0.15]]
+triangles = 36
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:door", "storey:ground"]
+params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+files = { "ground_door.glb" = "5f64b8dff29054859bfb82daea044623e7ace50bae58a30de8499f206fe15d6e" }
+
+[asset.ground_half]
+bounds = [-0.75, -0.15, 0, 0.75, 0.15, 4]
+origin = [0, 0, 0]
+footprint = [[-0.75, -0.15], [0.75, -0.15], [0.75, 0.15], [-0.75, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:filler", "storey:ground"]
+params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+files = { "ground_half.glb" = "3055bf2b8272130df5a4254d6ab942594dd8db067a1b695322c81740155c7fe3" }
+
+[asset.ground_wall]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 4]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 48
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:wall", "storey:ground"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+files = { "ground_wall.glb" = "d72dbddb9e950370f69794510414c360aa73a59da35ed0620759f7ef85988458" }
+
+[asset.roof_gable]
+bounds = [-2.4, -0.15, 0, 2.4, 0.15, 2.4]
+origin = [0, 0, 0]
+footprint = [[-2.4, -0.15], [2.4, -0.15], [2.4, 0.15], [-2.4, 0.15]]
+triangles = 8
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:roof_gable"]
+params = "c856a5b74bc2a643de5ee523795231e17743b3e683fa20742bdfc078edb932a7"
+files = { "roof_gable.glb" = "f7077a9e31dda3310c7fcad9be6ab251b9e84f23b68f70dd4685e1d3ad85886d" }
+
+[asset.roof_slope]
+bounds = [-0.75, -2.4, 0, 0.75, 2.4, 2.4]
+origin = [0, 0, 0]
+footprint = [[-0.75, -2.4], [0.75, -2.4], [0.75, 2.4], [-0.75, 2.4]]
+triangles = 8
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/plain"
+tags = ["role:roof_slope"]
+params = "d95a1b6c162cb1b304fcd8474927c7fde565e55b116512c6914cd73aca574286"
+files = { "roof_slope.glb" = "a5bcfbcd745845747f3948607d2831ac83490e89767992054797067c2476fb0a" }
+
 [asset.wall]
 bounds = [-1.5, -0.15, 0, 1.5, 0.15, 3]
 origin = [0, 0, 0]

@@ -38,6 +38,8 @@ authority = "anchored"
 [kind.building.defaults]                 # every attribute a building takes is declared here
 storeys  = 1                             # how many storeys
 storey_h = 3.2                           # metres from one floor to the next
+ground_h = 0                             # the ground storey's height; 0: as storey_h
+top_h    = 0                             # the top storey's height (of two or more); 0: as storey_h
 plinth   = 0.3                           # the ground floor above the mean ground under the outline
 porch    = 2                             # metres a doorway runs out from the wall
 walk_out = 3                             # metres of footpath beyond each doorway (0: none)
@@ -57,6 +59,13 @@ defaults  = { headroom = 2.6 }
 [kind.storey.surface.floor]
 base = "= level"
 cut  = "= headroom"                      # no terrain shows inside the room (surfaces.md 1.3)
+
+[kind.footing]                           # the top of the wall below, where a storey has no floor under an
+authority = "anchored"                   # outer wall (beside a stairwell): what that wall stands on
+requires  = ["level"]
+
+[kind.footing.surface.top]
+base = "= level"
 
 [kind.room]                              # a named space on a storey; the storey's floor is its floor
 authority = "anchored"
