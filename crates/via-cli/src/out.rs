@@ -24,8 +24,12 @@ pub const FORMAT: &str = "via-build-1";
 /// a value. Written in `manifest.json`'s `engine` and in every key. 2 from M3 slice 4: a smoothed
 /// course is held to the extent (`derived.md` 3 step 6), which moves stored courses. 3 from K1 of
 /// `docs/plan-kits.md` (R64, R65): a step's run no longer gives way to its own step's instances,
-/// and a pin removes on its own level only, which changes held instances a store may hold.
-pub const EPOCH: u64 = 3;
+/// and a pin removes on its own level only, which changes held instances a store may hold. 4 from
+/// K5 of `docs/plan-kits.md` (R69, R70): two instances one step returned that overlap are
+/// `place.crowded` where they were `place.overlap`, two kind surfaces at one height are one level,
+/// and only the lowest surface with `cut` is one level with the terrain, which changes what gives
+/// way, what a pin removes and the diagnostics a store may hold.
+pub const EPOCH: u64 = 4;
 
 /// The epoch this binary builds with: [`EPOCH`], and in a test build (debug assertions on) plus
 /// `VIA_TEST_EPOCH_OFFSET` when it is set to an integer (`graph.md` 7, case `epoch`). It goes

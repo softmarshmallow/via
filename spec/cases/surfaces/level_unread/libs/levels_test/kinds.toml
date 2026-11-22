@@ -1,0 +1,18 @@
+# A floor whose height cannot be read along one line of the plan: `0 / (x - 30.25)` is 0 off the
+# line x = 30.25 and not a number on it (surfaces.md 2.7). No post and no quad centre of a 1 m
+# grid lies on that line, so nothing but a thing placed there asks for the height on it.
+[kind.broken_floor]
+authority = "anchored"
+requires  = ["level"]
+
+[kind.broken_floor.surface.floor]
+base = "= level + 0 / (x - 30.25)"
+cut  = 2.6
+
+[kind.sound_floor]
+authority = "anchored"
+requires  = ["level"]
+
+[kind.sound_floor.surface.floor]
+base = "= level"
+cut  = 2.6

@@ -1908,6 +1908,21 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
             }
         }
     }
+    // What gives way and what a pin removes is decided on levels (`rules.md` 8.1): the terrain
+    // is one level only with the lowest kind surface that writes `cut` at a place (R70), so the
+    // owner of every such surface is a cause of what a produced instance gave way to or was
+    // removed by. The surface each thing stands on is among its own statements already.
+    let mut level_deps: BTreeSet<String> = BTreeSet::new();
+    for (f, fd) in &d.features {
+        let cuts = fd
+            .kind
+            .as_ref()
+            .and_then(|k| d.kinds.get(k))
+            .is_some_and(|k| k.surfaces.values().any(|x| x.cut.is_some()));
+        if cuts {
+            level_deps.extend(feature_deps(d, f, &mut BTreeSet::new()));
+        }
+    }
     let names: Vec<(String, Option<String>)> = out
         .instances
         .iter()
@@ -1917,6 +1932,7 @@ fn deps_of(d: &Decls, placed: &crate::place::Placed, out: &mut Build) {
         let mut s = match &maker {
             Some(m) => {
                 let mut s = frame_deps();
+                s.extend(level_deps.iter().cloned());
                 match d.runs.get(m) {
                     // A run's member reads the run, the sets it places and its stretch.
                     Some(r) => {

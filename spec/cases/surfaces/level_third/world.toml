@@ -1,0 +1,56 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# Two storeys over one outline, each with `cut`. Everything below stands on the upper one or on
+# the terrain: nothing stands on `hall_g`, and only its level changes.
+[feature.hall_g]
+kind   = "storey"
+region = [[16, 16], [40, 16], [40, 32], [16, 32]]
+level  = 10
+
+[feature.hall_1]
+kind   = "storey"
+region = [[16, 16], [40, 16], [40, 32], [16, 32]]
+level  = 13
+
+# A hut on the upper floor (6 m by 4 m).
+[instance.upper_hut]
+asset   = "hut"
+at      = [32, 24]
+surface = "hall_1.floor"
+
+# A row of boxes on the terrain, three of them under the hut.
+[feature.lane]
+kind = "lane"
+path = [[4, 24], [60, 24]]
+
+[run.row]
+asset = "box"
+on    = { ref = "lane" }
+count = 28
+
+# Shrubs on the upper floor, and a pin on the terrain (two numbers) under some of them.
+[scatter.bush]
+assets  = ["shrub"]
+spacing = 2
+surface = "hall_1.floor"
+
+[pin.mark]
+asset = "hut"
+at    = [22, 29]
+
+# The floor nothing stands on rises above the other: `hall_1` is now the lowest, the ground.
+[change.raise.feature.hall_g]
+level = 16
+
+# A box on the terrain under the hut, clear of the row.
+[change.barrel.instance.barrel]
+asset = "box"
+at    = [32, 25.2]

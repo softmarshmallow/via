@@ -144,10 +144,9 @@ The rules (ours, written for this library; README.md is the design note):
      swapped and `bay_none` (warning) says so. It is laid whatever stands beside it.
    A storey or a side the building has not, a key these tables do not take, and `fill` or `bays`
    on a building with no kit are `params` (error). Fillers, corners and doors have no variants.
-   A run holds one asset (rules.md 5), so a stretch is one run per spell of one piece: the first
-   keeps the stretch's key and a later one adds the number of its first bay (`<stretch>b<k>`),
-   each spanning its share of the stretch, so a bay stands where the one run stood it and a
-   stretch of the kit's bay alone is named as it always was. Source: one-dimensional patterns
+   A stretch's bays are one run, named as it always was: of the kit's bay alone it names the
+   one `asset`; where a variant stands in it, it names each station's piece (`assets`, rules.md 5,
+   R68), so a bay keeps its place and its name whichever piece it holds. Source: one-dimensional patterns
    over roles in studios' kit recipes and engines' placement grammars (docs/research/Modular
    city asset contracts.md, section 5); edits kept as inputs to the generator, not as changes to
    its output (docs/research/Modular kit failures in studios.md, section 11); a rule that
@@ -1250,20 +1249,18 @@ def wall_plan(ring, footprint, doors, kit, prefix, storey_key, crossers=(), marg
             words = bay_variants(n, st["off"] + p0, wall["pitch"], st["side"], storey_of(storey_key), picks, name,
                                  variants)
             pieces_ = [variants[w]["id"] if w in variants else wall["id"] for w in words]
-            # Each spell spans its share of the bays' length, so a bay stands where the one run of
-            # the whole stretch stood it, slack and all (rules.md 5.1).
+            # One run for the stretch's bays, whatever they are: where they are not all one piece
+            # it names each station's (`assets`, rules.md 5, R68), so a bay keeps its name
+            # whichever piece it holds.
             bays_end = s_mid if k else s1
-            b0 = 0
-            while b0 < n:
-                b1 = b0
-                while b1 < n and pieces_[b1] == pieces_[b0]:
-                    b1 += 1
-                runs.append({"key": key if b0 == 0 else f"{key}b{b0}", "asset": pieces_[b0], "count": b1 - b0,
-                             "ref": storey_key,
-                             "span": [round((s0 if b0 == 0 else s0 + (bays_end - s0) * b0 / n) / total, 9),
-                                      round((bays_end if b1 == n else s0 + (bays_end - s0) * b1 / n) / total, 9)],
-                             **common})
-                b0 = b1
+            if n:
+                run = {"key": key, "count": n, "ref": storey_key,
+                       "span": [round(s0 / total, 9), round(bays_end / total, 9)], **common}
+                if len(set(pieces_)) == 1:
+                    run = {"key": key, "asset": pieces_[0], **{x: run[x] for x in run if x != "key"}}
+                else:
+                    run["assets"] = pieces_
+                runs.append(run)
             if k:
                 runs.append({"key": key + "f", "asset": filler["id"], "count": k, "ref": storey_key,
                              "span": [round(s_mid / total, 9), round(s1 / total, 9)], **common})
@@ -1783,7 +1780,8 @@ def write(step, out):
         r = out["roof"]
         o.feature(r["key"], "roof", region=r["region"], eaves=r["eaves"])
     for r in out["runs"]:
-        o.table("run", r["key"], asset=r["asset"], count=r["count"], ends=r["ends"], face=r["face"],
+        what = {"assets": r["assets"]} if "assets" in r else {"asset": r["asset"]}
+        o.table("run", r["key"], **what, count=r["count"], ends=r["ends"], face=r["face"],
                 on={"ref": r["ref"], "span": r["span"], "offset": r["offset"]})
     for it in out["instances"]:
         o.instance(it["key"], it["asset"], at=it["at"], face=it["face"], surface=it["surface"])

@@ -263,6 +263,24 @@ open, and its place here is its destination.
 
 ### `spec/graph.md`
 
+- [ ] **Warm builds that differ from clean ones, found by K5's review and older than it.** Each
+      reproduces on the engine before K5. (1) The debug check `change entry ... has no cause`
+      (crates/via-cli/src/changes.rs) fires when a hand instance is added over a run's member,
+      when a hand instance a member had given way to is deleted, and when a pack's `solidity` or
+      `sink` edit changes what a scatter gives way to: the entry is right, its cause is missing.
+      (2) `height:<instance>` is not stable when a terrain instance raises `surface.through`
+      and that surface's level or kind then changes (exit 3). (3) A clean build exits 3 for a
+      run of an asset with an unmet mount connector: `surface.unmet` on a member is raised at
+      the header, which has no span. (4) After a model is exported again a run's
+      `place.gave_way` record is missing or stale in the warm `diagnostics.json`, though its
+      instance files are right. (5) A removed member of an `assets` run also lists
+      `asset.<its own asset>` as a cause when it was that asset's last instance; an `asset` run
+      does not. Lesson: the review's fuzz (edits to levels, bounds, kinds, packs and layers,
+      warm against clean, 6,500 steps) found these in an hour where the cases found none; a
+      fuzz of that shape belongs in the checks. Mended at K5: a scatter's `held` and the
+      `overlap` check now read what their diagnostics are decided by (cases `level_crowded`,
+      `r90`).
+      (From K5 of docs/plan-kits.md, 2026-11-23; the independent review.)
 - [ ] A store keeps a lint's diagnostics across a rebuilt binary: after a fix to step subjects
       the old `diag.malformed` came back until the store was wiped (node keys hold no engine version).
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
@@ -528,26 +546,30 @@ open, and its place here is its destination.
 - [ ] `[pin] set` still `doc.not_yet`; `on = { of = "<run>", near }` (select a member) and the
       mount of a member (rules.md 15, "a lamp on a fence post") are not written.
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
-- [ ] **Two kind surfaces at one height are two levels** (rules.md 8.1: two things are tested
-      only when they stand on one surface). lib/building's `footing` (the strip a wall stands on
-      over a stairwell) and its storey's floor are one level to the eye and two to the test: a
-      corner piece on the footing that overlaps a wall piece on the floor beside it is not
-      reported (`examples/kit` `stub`: 11 of 12 overlaps named, the measure counts 12).
-      Candidates: surfaces whose owners declare one `base` and whose bounds touch count as one
-      level, as the terrain and a ground floor do (R40); or a library lint. Belongs with the
-      level test's other open item below. To be ruled at K5.
-      (From K4 of docs/plan-kits.md, 2026-11-23.)
-- [ ] **A run holds one asset, so a wall of mixed pieces is several runs** and a bay's name
-      depends on what stands before it. lib/building splits a stretch into a run per spell of one
-      piece (`<stretch>`, `<stretch>b<k>`): swapping one bay renames the bays after it
-      (`examples/kit` `window_at`: 1 piece, 3 names), and a pin on one of those loses its target.
-      Candidates: a run's `asset` as a list by station; a first station number on a run. Lesson:
-      the station is the name only while one run is the whole wall. To be ruled at K5 ("choosing
-      among pieces").
-      (From K3 of docs/plan-kits.md, 2026-11-22.)
-- [ ] Run members are not tested against other producers (`place.crowded`); the `kitrun` fit
-      lint (rules.md 10) is not written; identity.md case 33's run half (cut by the extent) owed.
+- [ ] **A level test makes every produced instance depend on every owner of a surface that
+      cuts** (R70 as built). A change report may then list a changed floor as a cause of an
+      instance that changed for another reason, and a node that tests levels runs again when any
+      surface owner changes. Narrow the read to the surfaces whose bound holds the thing's
+      place. Also: `asset.unknown` for an entry of a run's `assets` points at the key's line, not
+      the entry's column; and the assets of a set's items may be unkeyed against a pack's
+      revision as a run's were (a warm build kept a stale `z` after a `sink` changed; mended for
+      runs).
+      (From K5 of docs/plan-kits.md, 2026-11-23; the implementer's own notes.)
+- [ ] Run members are not tested against other producers (`place.crowded`); identity.md case
+      33's run half (cut by the extent) owed. The `kitrun` fit lint of rules.md 10 is struck: a
+      kit's fit is the library's (R67).
       (From M4 slice 1, 2026-11-16, left when `run` and `set` landed.)
+- [ ] **A kit states what its pieces share, once** (R66; Asset law 5, which fails today). The
+      module, the wall's thickness, the storeys' heights, the door size, the corners' reach,
+      the floor tile and the roof's span are each worked out from the pieces by lib/building
+      and again by lib/town. The mechanism: a pack's taxon carries the kit's facts, read with
+      its pieces (`spec/assets.md` 5), and the kit states its stair with them. Owed at K6, with
+      the second kit.
+      (From K5 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **Bodies laid edge to edge that meet by the lattice's rounding are touching** (R69, owed).
+      Until the overlap test can tell, lib/building lays no floor tile off the axes. Candidates:
+      a tolerance of a lattice unit for two things one step returned; rows of tiles as runs.
+      (From K5 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **Clumps of different parents and scatters still interpenetrate** (rules.md 15). Members now
   give way to their parent and earlier siblings; a scatter giving way to lower layers' scatters is
   the next question, decided at eye height.
@@ -574,17 +596,6 @@ open, and its place here is its destination.
       (From M5 close, 2026-11-17.)
 - [ ] -> spec/rules.md: Design the producer model: how procedural generators emit the explicit core form.
       (From the list before the rewrite, Core model.)
-- [ ] **The level test takes every floor of a cutting kind for the ground** (8.1, R40: "one whose
-  kind writes `cut`"). A two-number pin or hand instance on the terrain under an upper storey
-  still clashes with what stands on that storey: the kit's first `window` pin, built today,
-  still removes two bays upstairs. A height in `at` (R65) is the way to say the floor; the
-  clause should read the surface's own height against the terrain, not its kind.
-      (From K1 and K2 of docs/plan-kits.md, 2026-11-20.)
-- [ ] **Warning or error for a wall that does not close, and for two things one step returned
-  that overlap** (`step.lay.wall_open`, `place.crowded`, R64). Each builds, with a hole or an
-  overlap and a warning. A studio's kit check stops the build. Decide per code, or give a world
-  a way to say which warnings stop it.
-      (From K1 and K2 of docs/plan-kits.md, 2026-11-20.)
 
 ### `spec/surfaces.md`
 

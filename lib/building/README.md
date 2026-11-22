@@ -259,12 +259,11 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   - *What has no variants.* Fillers, corners and doors: one piece per role, and for every role a
     piece with no `variant:` tag is read before one with. A window in a half bay
     needs a half-bay window piece and a rule for it (TODO).
-  - *Names.* A run holds one asset (`spec/rules.md` 5), so a stretch with variants is one run per
-    spell of one piece: `<stretch>` for the first, `<stretch>b<k>` for one that starts at bay
-    `k`. A stretch of the bay alone is named as before. **Swapping one bay renames the bays after
-    it in its stretch** (`examples/kit`, `window_at`: one piece changes, three names do), so a pin
-    on one of those is left without its target. This is the run's limit, not the kit's (TODO,
-    `spec/rules.md`; ruled at K5).
+  - *Names.* A stretch's bays are one run, named `<stretch>` as before. Where a variant stands in
+    it the run names each station's piece (`assets`, `spec/rules.md` 5), so a bay keeps its name
+    whichever piece it holds, and a pin on its neighbour keeps its target. Until K5 a run held
+    one asset and a stretch was split into a run per spell of one piece, which renamed the bays
+    after a swap (`examples/kit`, `window_at`: three names for one piece); R68 ruled the run.
 - **Building upward** (K4 of `docs/plan-kits.md`, from examples/kit). Design note; the rules are
   `lay.py` rules 2, 6, 9 and 10. Source: a facade read as base, ground storey, repeating storeys
   and top (docs/research/Modular city asset contracts.md, section 5); the studios' accounts of

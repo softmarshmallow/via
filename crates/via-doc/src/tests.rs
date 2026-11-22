@@ -1248,6 +1248,38 @@ fn change_file_rehome_follows_its_own_adds() {
 }
 
 #[test]
+fn a_run_names_a_list_of_assets() {
+    // `rules.md` 5 (R68): `assets` on a run is a list of asset ids, one for each member, and the
+    // merged world keeps it as written. A scatter's choices (`{ id, weight }`) are not a run's:
+    // a table there, or a single name, is no list of names.
+    let l = merge(
+        &simple(&format!(
+            "{HEAD}[feature.line]\npath = [[0, 8], [32, 8]]\n\n\
+             [run.row]\nassets = [\"box\", \"post\", \"box\"]\non = {{ ref = \"line\" }}\n"
+        )),
+        &[],
+    );
+    assert_eq!(codes(&l), Vec::<String>::new());
+    let j = json(&l);
+    let want = r#""assets":["box","post","box"]"#;
+    assert!(j.contains(want), "{want} in {j}");
+    for bad in [
+        "assets = [{ id = \"box\", weight = 2 }]",
+        "assets = \"box\"",
+        "assets = [1, 2]",
+    ] {
+        let l = merge(
+            &simple(&format!(
+                "{HEAD}[feature.line]\npath = [[0, 8], [32, 8]]\n\n\
+                 [run.row]\n{bad}\non = {{ ref = \"line\" }}\n"
+            )),
+            &[],
+        );
+        assert_eq!(codes(&l), ["doc.type"], "{bad}");
+    }
+}
+
+#[test]
 fn at_with_a_height() {
     // `surfaces.md` 4.1 (R65), `vocabulary.md` 2.4: `at` on an instance, a pin and a point
     // feature takes two lengths, or two lengths and a number, the height; the merged world

@@ -1,0 +1,28 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [48, 32]]
+
+[run.row]
+assets = ["box_small", "lamp_post", "lamp_post", "fence_post"]
+on     = { ref = "lane" }
+
+# 1.5 m north of the third station: clear of a lamp post there, over a box's footprint.
+[instance.crate]
+asset = "box_small"
+at    = [30, 33.5]
+
+# One entry changed: station 1 takes a fence post.
+[change.swap.run.row]
+assets = ["box_small", "fence_post", "lamp_post", "fence_post"]
+
+# One entry changed to a larger asset: station 2 takes a box, which the crate is over.
+[change.wide.run.row]
+assets = ["box_small", "lamp_post", "box_small", "fence_post"]

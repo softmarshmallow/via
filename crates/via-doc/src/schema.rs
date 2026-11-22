@@ -440,6 +440,7 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
         Shape::Run => &[
             ("asset", Ok(T::Name)),
             ("set", Ok(T::Name)),
+            ("assets", Ok(T::Names)),
             ("on", Ok(T::Table(Shape::On))),
             ("count", Ok(T::Integer)),
             ("spacing", Ok(T::Length)),

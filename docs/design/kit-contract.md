@@ -63,7 +63,10 @@ lib/building's `check` holds the kit to them (`lib/building/check.py`, rule 9):
 | A variant is the bay's size | Its stated pitch and its measured box (length, thickness, height, place about the origin) within 5 mm of the bay's. | `kit_variant`; `variant_none`, from `lay`, where a building asks for one that is not, or that the kit has not. |
 
 That these are worked out twice, and stated nowhere once, is the gap the research calls "the kit
-as a unit". It is ruled at K5.
+as a unit". Ruled at K5 (R66 in `docs/doctrine.md`): a kit is no archetype of its own, but assets
+filed together as a kit must state once what they share, and a rule must lay by that. The pack's
+taxon is to carry those facts; it does not yet, and this table is still how they are read. Owed
+at K6, with the second kit.
 
 ## Two readers
 
@@ -99,6 +102,9 @@ Three things the studios' accounts ask for and this does not give: a variant of 
 (a double bay, a half-bay window), which is a fit problem and not a swap; a choice that depends on
 what stands beside the wall (a door facing a street); and a weight on each word. None is built.
 
+A stretch of mixed pieces is one run that names each station's piece (`assets`, R68), so a bay
+keeps its name whichever piece it holds.
+
 Only lib/building chooses. lib/town's kit run lays the bay alone: in a kit with variants it takes
 the first `role:wall` piece with no `variant:` tag, as lib/building does, and no variant.
 
@@ -112,9 +118,6 @@ another side grows.
 ## Not in the contract yet
 
 - **Variants of a filler, a corner or a door,** and a variant of another length than the bay.
-- **A wall of mixed pieces as one thing.** A run holds one asset, so `lay` splits a stretch into a
-  run per spell and the bays after a swap take new names. The research's gap "choosing among
-  pieces" is here in the core, and is ruled at K5.
 - **A base course,** and steps to a door (K7). Storeys by height and by word, floors, and gable
   roofs on rectangles came with K4.
 - **A pitched roof on a plan that is not a rectangle** (K7). On the plain kit the slopes beside a

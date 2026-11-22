@@ -1,0 +1,99 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (R70): of the kind surfaces whose kind writes cut, only the lowest at a place is one level with the terrain. A terrain scatter gives way to a hut on the ground floor and not to a hut on the floor above; a box on the terrain under the upper hut does not clash with it. With the two floors' levels changed about, on the base's store, the scatter gives way to the other hut and the box clashes, as in a clean build."
+milestone = 7
+actions   = ["base", "swapped", "barrel", "barrel_swapped"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+# The ground hut's footprint, 6 m by 4 m round [22, 24], less a hair at its edges: no shrub.
+[action.base.check.ground]
+fn     = "no_origin_inside"
+build  = "build/base"
+prefix = "bush#"
+points = [[19.01, 22.01], [24.99, 22.01], [24.99, 25.99], [19.01, 25.99]]
+
+# The lattice cell (16, 12) is under the upper hut: its shrub stands, on the terrain.
+[action.base.check.under_upper]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "bush#s2000_16_12"
+count  = 1
+
+[action.base.check.under_ground]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "bush#s2000_11_12"
+count  = 0
+
+# hall_1 at 10 and hall_g at 13: the upper hut now stands on the lowest floor.
+[action.swapped]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "swapped", "--against", "build/base", "--out", "build/swapped"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/swapped"
+
+[action.swapped.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.swapped.check.upper]
+fn     = "no_origin_inside"
+build  = "build/swapped"
+prefix = "bush#"
+points = [[29.01, 22.01], [34.99, 22.01], [34.99, 25.99], [29.01, 25.99]]
+
+[action.swapped.check.under_ground]
+fn     = "names_count"
+path   = "build/swapped/instances/names.txt"
+prefix = "bush#s2000_11_12"
+count  = 1
+
+[action.swapped.check.under_upper]
+fn     = "names_count"
+path   = "build/swapped/instances/names.txt"
+prefix = "bush#s2000_16_12"
+count  = 0
+
+# A box on the terrain under the hut on the upper floor: two levels, no clash. Before R70 every
+# floor of a kind that writes cut was the ground, and this was place.overlap.
+[action.barrel]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "barrel", "--against", "build/base", "--out", "build/barrel"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/barrel"
+
+[action.barrel.diag.no_overlap]
+code    = "place.overlap"
+records = 0
+
+[action.barrel.check.barrel]
+fn    = "instance_at"
+build = "build/barrel"
+name  = "barrel"
+at    = [32, 24]
+
+# The same box once the hut over it stands on the lowest floor: one level, a clash.
+[action.barrel_swapped]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "barrel", "--change", "swapped", "--against", "build/barrel", "--out", "build/both"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/both"
+
+[action.barrel_swapped.diag.overlap]
+code = "place.overlap"
+
+[action.barrel_swapped.diag.internal]
+code    = "diag.internal"
+records = 0

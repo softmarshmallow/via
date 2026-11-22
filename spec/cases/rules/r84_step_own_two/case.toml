@@ -1,0 +1,46 @@
+format    = "via-case-1"
+summary   = "rules.md 3.4, 8.1 (R69): two instances of one step's returned document that overlap are place.crowded, a warning naming both, and both stay; they were place.overlap, an error. Exit 0, all three of the step's instances in the build."
+milestone = 7
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.crowded]
+code     = "place.crowded"
+severity = "warning"
+subject  = 'instance."make#stone"'
+data     = { instances = ["make#post", "make#stone"] }
+
+[action.build.diag.no_overlap]
+code    = "place.overlap"
+records = 0
+
+[action.build.check.post]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#post"
+at    = [6, 32]
+
+[action.build.check.stone]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#stone"
+at    = [6.4, 32]
+
+[action.build.check.all]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "make#"
+count  = 3

@@ -1,0 +1,17 @@
+# The case's own pack: three boxes. `later/pack.toml` makes `post` 3 m square.
+[taxon."prop"]
+
+[asset.post]
+primitive = "box"
+size      = [0.4, 0.4, 2]
+taxon     = "prop"
+
+[asset.rail]
+primitive = "box"
+size      = [0.4, 0.4, 1]
+taxon     = "prop"
+
+[asset.crate]
+primitive = "box"
+size      = [2, 2, 2]
+taxon     = "prop"

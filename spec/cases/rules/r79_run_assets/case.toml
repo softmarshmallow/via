@@ -1,0 +1,85 @@
+format    = "via-case-1"
+summary   = "rules.md 5 (R68): a run that names a list of three assets stands exactly where the same run with one asset and count = 3 stands (x, y, z, facing, names row#r0 to row#r2), and member k holds the entry at index k."
+milestone = 7
+actions   = ["one", "list"]
+
+# Rows of a chunk are sorted by asset, then by name (build.md 8), so `names.txt` beside the
+# chunk's rows by asset says which asset each member holds.
+
+[action.one]
+via         = ["build", "one/world.toml", "--out", "one/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "one/build/w"
+
+[action.one.file.names]
+path = "one/build/w/instances/names.txt"
+text = "row#r0\nrow#r1\nrow#r2\n"
+
+[action.one.check.r0]
+fn    = "instance_at"
+build = "one/build/w"
+name  = "row#r0"
+at    = [3, 32]
+
+[action.one.check.r1]
+fn    = "instance_at"
+build = "one/build/w"
+name  = "row#r1"
+at    = [9, 32]
+
+[action.one.check.r2]
+fn    = "instance_at"
+build = "one/build/w"
+name  = "row#r2"
+at    = [15, 32]
+
+[action.one.file.z]
+path = "one/build/w/instances/z.npy"
+all  = 20.0
+
+[action.one.file.face]
+path = "one/build/w/instances/face.npy"
+all  = 90000
+
+[action.list]
+via         = ["build", "list/world.toml", "--out", "list/build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "list/build/w"
+
+# box_small holds row 0, fence_post row 1, lamp_post row 2: r0, r2, r1.
+[action.list.file.names]
+path = "list/build/w/instances/names.txt"
+text = "row#r0\nrow#r2\nrow#r1\n"
+
+[action.list.file.assets]
+path    = "list/build/w/manifest.json"
+pointer = "/chunks/0/instances"
+value   = { box_small = [0, 1], fence_post = [1, 1], lamp_post = [2, 1] }
+
+[action.list.check.r0]
+fn    = "instance_at"
+build = "list/build/w"
+name  = "row#r0"
+at    = [3, 32]
+
+[action.list.check.r1]
+fn    = "instance_at"
+build = "list/build/w"
+name  = "row#r1"
+at    = [9, 32]
+
+[action.list.check.r2]
+fn    = "instance_at"
+build = "list/build/w"
+name  = "row#r2"
+at    = [15, 32]
+
+[action.list.file.z]
+path = "list/build/w/instances/z.npy"
+all  = 20.0
+
+[action.list.file.face]
+path = "list/build/w/instances/face.npy"
+all  = 90000

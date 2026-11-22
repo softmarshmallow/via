@@ -1,5 +1,5 @@
 format    = "via-case-1"
-summary   = "surfaces.md 4.1 (R65), the tie: a height 1500 mm from each of two floors takes the lower; heights are compared rounded to the millimetre, so two surfaces 0.4 mm apart tie and the lower is taken; two at one height tie to the first place name (a_roof.garden), seen by what it then overlaps."
+summary   = "surfaces.md 4.1 (R65), the tie: a height 1500 mm from each of two floors takes the lower; heights are compared rounded to the millimetre, so two surfaces 0.4 mm apart tie and the lower is taken; two at one height tie to the first place name (a_roof.garden), seen by the bound it hangs off (surface.off_bound). Re-recorded with R70 (rules.md 8.1): two kind surfaces at one height are one level, so a box beside the post overlaps it from either surface."
 milestone = 5
 actions   = ["base", "beside_a", "beside_b"]
 
@@ -31,9 +31,18 @@ path    = "build/base/features.json"
 pointer = "/features/1/attrs/toward/at"
 value   = [10, 46, 16]
 
-# a_roof and b_roof at one height over `post`: the first place name, a_roof.garden. A box
-# beside it placed on a_roof.garden by name is on its level and overlaps it; the same box on
-# b_roof.garden is not.
+# a_roof and b_roof at one height over `post`: the first place name, a_roof.garden. Its footprint
+# hangs 0.3 m off a_roof's west edge and not off b_roof's, so the warning names the surface the
+# tie chose. Until R70 the choice was seen by what the post overlapped: a box beside it on
+# a_roof.garden clashed and the same box on b_roof.garden did not.
+[action.base.diag.chosen]
+code    = "surface.off_bound"
+subject = "instance.post"
+data    = { surface = "a_roof.garden" }
+
+# Re-recorded with R70 (rules.md 8.1, levels): two kind surfaces at one height are one level, so
+# the box beside the post overlaps it whichever of the two it names. `beside_b` was exit 0 with no
+# `place.overlap`.
 [action.beside_a]
 via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "beside_a", "--out", "build/a"]
 exit        = 1
@@ -41,14 +50,15 @@ diagnostics = "includes"
 out         = "build/a"
 
 [action.beside_a.diag.overlap]
-code = "place.overlap"
+code    = "place.overlap"
+subject = "instance.post"
 
 [action.beside_b]
 via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "beside_b", "--out", "build/b"]
-exit        = 0
+exit        = 1
 diagnostics = "includes"
 out         = "build/b"
 
-[action.beside_b.diag.no_overlap]
+[action.beside_b.diag.overlap]
 code    = "place.overlap"
-records = 0
+subject = "instance.post"

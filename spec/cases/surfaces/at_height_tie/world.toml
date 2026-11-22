@@ -38,7 +38,9 @@ eaves  = 16
 asset = "box"
 at    = [10, 46, 16]
 
-# Two surfaces at one height: a tie in height too, to the first place name.
+# Two surfaces at one height: a tie in height too, to the first place name. `post` stands 0.2 m
+# inside a_roof's west edge and well inside b_roof, so its footprint (1 m by 1 m) hangs 0.3 m off
+# a_roof alone: which surface the tie chose is seen by `surface.off_bound`.
 [feature.b_roof]
 kind   = "roof"
 region = [[40, 40], [50, 40], [50, 50], [40, 50]]
@@ -51,7 +53,7 @@ eaves  = 16
 
 [instance.post]
 asset = "box"
-at    = [46, 46, 16]
+at    = [44.2, 46, 16]
 
 [feature.at_mid]
 kind   = "sight"
@@ -63,12 +65,14 @@ kind   = "sight"
 at     = [5, 6]
 toward = "lip"
 
+# A box half over `post`, on each of the two surfaces by name. Two kind surfaces at one height
+# are one level (rules.md 8.1, R70), so it overlaps `post` on either.
 [change.beside_a.instance.other]
 asset   = "box"
-at      = [46.5, 46]
+at      = [44.7, 46]
 surface = "a_roof.garden"
 
 [change.beside_b.instance.other]
 asset   = "box"
-at      = [46.5, 46]
+at      = [44.7, 46]
 surface = "b_roof.garden"

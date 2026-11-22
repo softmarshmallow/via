@@ -1,0 +1,46 @@
+format    = "via-case-1"
+summary   = "rules.md 5 (R68), protocol.md 5: a run a step returns takes `assets` as a run in the world's text does: make#row#r0 to make#row#r2 stand at 3, 9 and 15 m of the lane, each with the asset at its index."
+milestone = 7
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+# box_small, fence_post, lamp_post: r0, r2, r1.
+[action.build.file.names]
+path = "build/w/instances/names.txt"
+text = "make#row#r0\nmake#row#r2\nmake#row#r1\n"
+
+[action.build.file.assets]
+path    = "build/w/manifest.json"
+pointer = "/chunks/0/instances"
+value   = { box_small = [0, 1], fence_post = [1, 1], lamp_post = [2, 1] }
+
+[action.build.check.r0]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#row#r0"
+at    = [3, 32]
+
+[action.build.check.r1]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#row#r1"
+at    = [9, 32]
+
+[action.build.check.r2]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#row#r2"
+at    = [15, 32]

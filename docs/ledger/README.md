@@ -137,10 +137,10 @@ loader, or whose Tool mark is not "nothing".
 | Network | 24 | 23 | 8 | 3 | 12 |
 | Area partition | 39 | 38 | 7 | 13 | 18 |
 | Placement | 11 | 10 | 3 | 0 | 7 |
-| Linear placement | 23 | 23 | 5 | 5 | 13 |
+| Linear placement | 24 | 24 | 6 | 5 | 13 |
 | Scatter | 41 | 41 | 10 | 13 | 18 |
 | Recipe | 24 | 20 | 3 | 7 | 10 |
-| Grammar | 18 | 18 | 2 | 4 | 12 |
+| Grammar | 17 | 17 | 2 | 5 | 10 |
 | Representation switch | 18 | 18 | 5 | 2 | 11 |
 | Meeting | 96 | 96 | 22 | 35 | 39 |
 | Overlay | 15 | 14 | 5 | 3 | 6 |
@@ -152,7 +152,7 @@ loader, or whose Tool mark is not "nothing".
 | Practice | 34 | 24 | 5 | 3 | 16 |
 | Principle | 15 | 14 | 7 | 5 | 2 |
 | - | 1 | 1 | 0 | 0 | 1 |
-| **All** | **865** | **683** | **155** | **143** | **385** |
+| **All** | **865** | **683** | **156** | **144** | **383** |
 
 By class: Derivation (focal) 10, Derivation (global) 17, Derivation (local) 22, Network (directed) 10, Network (undirected) 14.
 
@@ -166,7 +166,7 @@ By class: Derivation (focal) 10, Derivation (global) 17, Derivation (local) 22, 
 | 6. Ways: roads, streets, paths | 79 | 78 | 39 |
 | 7. Rail and transit | 10 | 9 | 9 |
 | 8. Settlements and city structure | 22 | 22 | 11 |
-| 9. Buildings and kits | 40 | 39 | 15 |
+| 9. Buildings and kits | 40 | 39 | 13 |
 | 10. Asset facts | 30 | 30 | 23 |
 | 11. Movement, traversal and collision | 27 | 8 | 4 |
 | 12. Gameplay markup | 38 | 1 | 0 |

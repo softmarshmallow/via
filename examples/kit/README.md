@@ -76,7 +76,7 @@ Each row is one build against the base. "Says" is the build's diagnostics; "does
 | Change | The difficulty it recreates | What the build says | What the build does |
 |---|---|---|---|
 | `pivot` | A piece's pivot moved late: the bay's model origin is at its end, not its middle | `asset.revised` names all 38 bays; `asset.pivot_moved` | 0 of 54 pieces move. The pivot is a rule of the pack, not the model's origin |
-| `stub` | A corner piece re-exported with a 0.6 m stub along one wall | `asset.revised` names all 12 corners; `kit_corner`: 0.9 by 0.3 m where 0.3 m square is laid for; 11 `place.crowded`, each naming a corner and the wall piece it overlaps | Nothing gives way. The walls are whole; 12 overlaps of 0.3 m measured, and the corners reach 0.3 m outside the outlines. The twelfth overlap is not named ("Still open") |
+| `stub` | A corner piece re-exported with a 0.6 m stub along one wall | `asset.revised` names all 12 corners; `kit_corner`: 0.9 by 0.3 m where 0.3 m square is laid for; 12 `place.crowded`, each naming a corner and the wall piece it overlaps | Nothing gives way. The walls are whole; 12 overlaps of 0.3 m measured, and the corners reach 0.3 m outside the outlines |
 | `module` | A piece's module changed late: the bay on a 3.2 m module | `fillers_only`, once per building; `kit_module`: 3.2 m is no whole number of 1.5 m; 2 `kit_variant`: the window and vent bays are still 3 m | 78 half bays stand where 38 bays and 2 half bays stood; the walls close |
 | `tall` | A piece that no longer stacks: the bay 3.3 m high on a 3 m storey | `asset.revised`; `kit_height`: 0.3 m into the storey above; `kit_uneven`; 2 `kit_variant`: the two variants are still 3 m high | The hall's ground-storey bays stand 0.3 m into the storey above |
 | `off_module` | The plan leaves the module: the hall a metre longer | 3 `wall_open`, each with the two nearest lengths that close; `gap_wide` beside the door; 2 `slab_open` | Three sides unbuilt (13 m each: the north on both storeys, the south above); 1 m open beside the door; the floors a third of a tile short along one edge. The door and stair keep their places |
@@ -89,7 +89,7 @@ Each row is one build against the base. "Says" is the build's diagnostics; "does
 | `window` and `module` | The swapped bay, then the module changed under it | `identity.pin_removed` names 2; `fillers_only`; `kit_module`; 2 `kit_variant` | The pin keeps its place and takes the two half bays under it, on its own floor |
 | `windows` | A facade as a pattern of pieces: window and plain bays in turn on two walls of the hall, both storeys (`fill`) | Nothing | 8 bays are window bays; every wall closes as before |
 | `mixed` | The same piece side by side: every bay chosen among window, vent and plain, never the piece before it (`fill` with a choice) | Nothing | 12 window, 15 vent, 11 plain; no two bays alike touch (24 pairs in the base) |
-| `window_at` | An edit kept as an input: one bay named by a point along a side (`bays`), the swap `window_up` makes with a pin | Nothing | One window bay upstairs; no pin, nothing removed. Three names change for the one piece ("Still open") |
+| `window_at` | An edit kept as an input: one bay named by a point along a side (`bays`), the swap `window_up` makes with a pin | Nothing | One window bay upstairs; no pin, nothing removed, and no name changes: the bay keeps its name with another piece in it |
 | `wide_window` | A variant that is not the bay's size: the window bay re-exported 3.2 m long, its pitch in the pack still 3 m, and asked for on two walls | `variant_none`, once: length 3.2 m for the bay's 3 m, the bay stands in its place; `kit_variant` and `kit_pitch` name the piece | No piece moves: 38 bays, no window, no overlap. The model's measured box is compared, not only the pitch the pack states |
 | `tower` | Building upward: a third building, three storeys, its ground storey 4 m high, under a gable roof | `slab_open`: the second stairwell, two lanes and 2.9 m deep, is not whole tiles | The ground storey is the kit's 4 m pieces (11 shopfront bays, a half bay, 4 posts, a door), the two above its 3 m ones. Every side of every storey closes over both stairwells. The roof covers the outline once, on the eaves; its ridge and gables meet. 5.25 m2 of the top floor lies under no tile |
 | `roofs` | Roofs from pieces: a gable over the hall, a flat roof of floor tiles over the annex | Nothing | 16 slope pieces and 4 gable halves on the hall, 36 tiles on the annex; each roof covers its outline once |
@@ -133,10 +133,6 @@ the sums agree.
 
 ## Still open
 
-- **An overlap across a footing is not named.** The footing a wall stands on over a stairwell and
-  the floor beside it are two surfaces at one height, and the core tests two things for overlap
-  only when they stand on one (`spec/rules.md` 8.1). In `stub`, the corner on the footing
-  overlaps a wall piece on the floor: measured, not said. `kit_corner` still names the piece.
 - **The stair is not the kit's.** Its lanes and clearances are the library's numbers, so a
   stairwell is whole floor tiles only where the stair is sized by hand (1.3 m here), and the
   second stairwell of three storeys never is (`tower`).
@@ -144,19 +140,15 @@ the sums agree.
   storey a height (`top_h`); the library's tests hold both, and this kit shows neither.
 - **A gable roof on rectangles only,** of the one depth its slope piece is made for. A gable over
   an L is K7's: on this kit the slopes beside a valley cannot be whole pieces where the walls are.
-- **A pin with two numbers stands on the terrain,** and the terrain counts as one level with every
-  floor whose kind cuts the ground away (R40), so such a pin under an upper floor still removes
-  what stands on it. A height in `at` is what says the floor.
 - **A side is named by its number.** A plan that gains a corner renumbers the sides after it, so
   the annex's door is on side 0, which `ell` does not move.
-- **A variant renames the bays after it.** A run holds one asset, so a stretch with a variant is a
-  run per spell of one piece, and the bays after the first spell take new names: `window_at`
-  changes one piece and three names, `windows` seven of each. A pin on a renamed bay loses its
-  target. The limit is the run's (`spec/rules.md` 5), ruled at K5.
 - **Variants of the bay only,** and only of its size. A half-bay window, a double bay, a door or a
   corner with variants are not built; nor is a weight on a choice. Bays either side of a door, a
   corner or a half bay do not touch, so they are not kept unlike.
-- **Warning or error.** A wall that does not close builds, with a hole and a warning.
+- **A wall that does not close builds,** with a hole and a warning. Ruled (R67): a world in the
+  making must build to be looked at, and a gate that needs an error has `--fail-on`.
+- **The kit states nothing of itself.** Its module, thickness, heights and door size are read from
+  its pieces by each library (R66: owed at K6).
 
 ## The record
 
@@ -189,6 +181,13 @@ for by a word the library did not know was passed over in silence.
 
 `roofs` (left) and `tower` (right): a gable over the hall and a flat roof over the annex; a third
 building of three storeys with its ground storey 4 m high.
+
+K5 (2026-11-23), the review of the archetypes against all this, ruled five things (R66 to R70 in
+`docs/doctrine.md`) and built three in the core. Two show here. A wall stretch is one run that
+names each station's piece, so `window_at` and `windows` change no name (three and ten before).
+Two surfaces at one height are one level, so `stub` names its twelfth overlap, the one across
+the footing, and a pin on the ground under an upper floor no longer removes what stands on
+that floor.
 
 ![Variants chosen by place](../../docs/reports/kit-mixed-sheet.png)
 

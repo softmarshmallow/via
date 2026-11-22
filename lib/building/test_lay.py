@@ -548,8 +548,9 @@ class Walls(unittest.TestCase):
         self.assertEqual(a, b)
 
     def laid(self, runs, edge):
-        """`[(key, asset, count)]` of one side's runs in order along it."""
-        return [(r["key"], r["asset"], r["count"]) for r in sorted(runs, key=lambda r: r["span"][0])
+        """`[(key, asset, count)]` of one side's runs in order along it; for a run that names each
+        station's piece (`assets`), the list of them in place of the one asset."""
+        return [(r["key"], r.get("assets") or r["asset"], r["count"]) for r in sorted(runs, key=lambda r: r["span"][0])
                 if r["key"].startswith(f"b_w{edge}_")]
 
     @staticmethod
@@ -560,49 +561,51 @@ class Walls(unittest.TestCase):
         for r in runs:
             if r["key"].startswith(f"b_w{edge}_") and not r["key"].endswith("f"):
                 a, b = round(r["span"][0] * total), round(r["span"][1] * total)
-                out += [(a + (2 * k + 1) * (b - a) // (2 * r["count"]), r["asset"]) for k in range(r["count"])]
+                out += [(a + (2 * k + 1) * (b - a) // (2 * r["count"]), (r.get("assets") or [r["asset"]] * r["count"])[k])
+                        for k in range(r["count"])]
         return sorted(out)
 
-    def test_a_fill_lays_its_pattern_in_spells(self):
-        """`["window", "wall"]` along the 12 m south side: four runs of one piece each, the first
-        keeping the stretch's key, joined end to end with no gap."""
+    def test_a_fill_lays_its_pattern_in_one_run(self):
+        """`["window", "wall"]` along the 12 m south side: one run, named as the stretch always was,
+        that names each station's piece (R68). A side of one piece still names the one asset."""
         kit = L["kit_pieces"](self.ROWS)
         picks = L["picks_of"]({"fill": [{"sides": [0], "pattern": ["window", "wall"]}]})
         runs, _, opens = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", "b_s0", picks=picks, name="hall")
         self.assertEqual(opens, [])
-        self.assertEqual(self.laid(runs, 0), [("b_w0_0", "wall_window", 1), ("b_w0_0b1", "wall", 1),
-                                              ("b_w0_0b2", "wall_window", 1), ("b_w0_0b3", "wall", 1)])
-        south = sorted((r["span"] for r in runs if r["key"].startswith("b_w0_")))
-        self.assertTrue(all(abs(a[1] - b[0]) < 1e-9 for a, b in zip(south, south[1:])))
-        self.assertAlmostEqual((south[-1][1] - south[0][0]) * 44400, 12000, delta=0.01)
+        self.assertEqual(self.laid(runs, 0), [("b_w0_0", ["wall_window", "wall", "wall_window", "wall"], 4)])
+        (south,) = [r for r in runs if r["key"] == "b_w0_0"]
+        self.assertNotIn("asset", south)
+        self.assertAlmostEqual((south["span"][1] - south["span"][0]) * 44400, 12000, delta=0.01)
         self.assertEqual(self.laid(runs, 1), [("b_w1_0", "wall", 3)])           # the other sides as before
-        two = L["picks_of"]({"fill": [{"pattern": ["window", "window", "wall"]}]})
-        runs, _, _ = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", "b_s0", picks=two, name="hall")
-        self.assertEqual(self.laid(runs, 0), [("b_w0_0", "wall_window", 2), ("b_w0_0b2", "wall", 1),
-                                              ("b_w0_0b3", "wall_window", 1)])
+        self.assertNotIn("assets", [r for r in runs if r["key"] == "b_w1_0"][0])
+        plain, _, _ = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", "b_s0")
+        same = lambda r: {k: v for k, v in r.items() if k not in ("asset", "assets")}      # noqa: E731
+        self.assertEqual([same(r) for r in runs], [same(r) for r in plain])    # nothing but the pieces differs
+        one = L["picks_of"]({"fill": [{"sides": [0], "pattern": ["window"]}]})
+        runs, _, _ = L["wall_plan"](self.RECT, self.RECT, [], kit, "b", "b_s0", picks=one, name="hall")
+        self.assertEqual(self.laid(runs, 0), [("b_w0_0", "wall_window", 4)])    # all one variant: the one asset
 
-    def test_split_runs_stand_where_the_one_run_stood(self):
-        """A side 4 mm longer than its pieces closes with slack (within `FIT`), which the one run
-        spreads over its bays. Each spell spans its share, so every bay stands within a millimetre
-        of where the one run stood it; with half bays after them, the bays end where the fillers
-        start."""
+    def test_a_mixed_run_stands_where_the_one_run_stood(self):
+        """A side 4 mm longer than its pieces closes with slack, which the run spreads over its
+        bays: with a variant in it the run is the same run, so no bay moves. With half bays after
+        them, the bays end where the fillers start."""
         kit = L["kit_pieces"](self.ROWS)
         slack = [(0, 0), (12604, 0), (12604, 9600), (0, 9600)]
         total = 2 * (12604 + 9600)
         picks = L["picks_of"]({"fill": [{"sides": [0], "pattern": ["window", "wall"]}]})
         one, _, _ = L["wall_plan"](slack, slack, [], kit, "b", "b_s0")
-        split, _, opens = L["wall_plan"](slack, slack, [], kit, "b", "b_s0", picks=picks, name="hall")
+        mixed, _, opens = L["wall_plan"](slack, slack, [], kit, "b", "b_s0", picks=picks, name="hall")
         self.assertEqual(opens, [])
-        a, b = self.stations(one, 0, total), self.stations(split, 0, total)
-        self.assertEqual(len(b), 4)
-        self.assertTrue(all(abs(x[0] - y[0]) <= 1 for x, y in zip(a, b)), (a, b))
-        last = max((r for r in split if r["key"].startswith("b_w0_")), key=lambda r: r["span"][1])
-        self.assertAlmostEqual(last["span"][1] * total, 12604 - 300, delta=0.001)     # the last spell reaches the corner
+        a, b = self.stations(one, 0, total), self.stations(mixed, 0, total)
+        self.assertEqual([x[0] for x in a], [x[0] for x in b])
+        self.assertEqual([x[1] for x in b], ["wall_window", "wall", "wall_window", "wall"])
+        (run,) = [r for r in mixed if r["key"] == "b_w0_0"]
+        self.assertAlmostEqual(run["span"][1] * total, 12604 - 300, delta=0.001)       # the run reaches the corner
         halves = [(0, 0), (14100, 0), (14100, 9600), (0, 9600)]                    # 13.5 m: four bays and a half bay
         runs, _, _ = L["wall_plan"](halves, halves, [], kit, "b", "b_s0", picks=picks, name="hall")
-        bays = [r for r in runs if r["key"].startswith("b_w0_") and not r["key"].endswith("f")]
+        (bays,) = [r for r in runs if r["key"] == "b_w0_0"]
         (fill,) = [r for r in runs if r["key"] == "b_w0_0f"]
-        self.assertAlmostEqual(max(r["span"][1] for r in bays), fill["span"][0], places=9)
+        self.assertAlmostEqual(bays["span"][1], fill["span"][0], places=9)
         self.assertAlmostEqual(fill["span"][0] * 2 * (14100 + 9600), 300 + 12000, delta=0.001)
 
     def test_a_fill_names_its_storeys_and_sides_and_a_later_one_lies_over(self):
@@ -639,8 +642,9 @@ class Walls(unittest.TestCase):
         ring = [(0, 0), (60600, 0), (60600, 9600), (0, 9600)]              # twenty bays along the south side
         runs, _, opens = L["wall_plan"](ring, ring, [], kit, "b", "b_s0", picks=picks, name="hall")
         self.assertEqual(opens, [])
-        self.assertEqual(sum(c for _, _, c in self.laid(runs, 0)), 20)
-        self.assertTrue(all(c == 1 for _, _, c in self.laid(runs, 0)))     # no two alike, so every spell is one
+        ((key, pieces, count),) = self.laid(runs, 0)
+        self.assertEqual((key, count, len(pieces)), ("b_w0_0", 20, 20))
+        self.assertTrue(all(x != y for x, y in zip(pieces, pieces[1:])))   # no two that touch alike
 
     def test_two_pieces_go_in_turn_and_words_of_one_piece_are_one(self):
         """Two pieces can only alternate, which is done by the bay's number along the side, so it
@@ -678,9 +682,8 @@ class Walls(unittest.TestCase):
                  "bays": [{"storey": 0, "side": 0, "at": 7.0, "variant": "window"},
                           {"storey": 0, "side": 1, "at": 0.1, "variant": "window"}]}
         out = L["plan"]("hall", self.RECT, attrs, 10.0, GRID, kit)
-        south = [(r["asset"], r["count"]) for r in sorted(out["runs"], key=lambda r: r["span"][0])
-                 if r["key"].startswith("hall_s0_w0_")]
-        self.assertEqual(south, [("wall_arch", 2), ("wall_window", 1), ("wall_arch", 1)])
+        south = [(r["key"], r["assets"]) for r in out["runs"] if r["key"].startswith("hall_s0_w0_")]
+        self.assertEqual(south, [("hall_s0_w0_0", ["wall_arch", "wall_arch", "wall_window", "wall_arch"])])
         self.assertEqual([(n["code"], n["index"], n["side"], tuple(n["at"])) for n in out["notes"]],
                          [("bay_none", 1, 1, (12600, 100))])
 
@@ -1167,8 +1170,10 @@ class Upward(unittest.TestCase):
     def test_a_bay_is_chosen_on_the_stair_side_above(self):
         out = self.plan(bays=[{"storey": 1, "side": 2, "at": 5.0, "variant": "window"}],
                         fill=[{"storeys": [1], "sides": [1], "pattern": ["window"]}])
-        won = sorted((r["key"], r["ref"], r["count"]) for r in out["runs"] if r["asset"] == "window")
-        self.assertEqual(won, [("hall_s1_w1_0", "hall_s1", 3), ("hall_s1_w2_0b1", "hall_s1_footing", 1)])
+        won = sorted((r["key"], r["ref"], r.get("assets") or r["asset"]) for r in out["runs"]
+                     if "window" in (r.get("assets") or [r["asset"]]))
+        self.assertEqual(won, [("hall_s1_w1_0", "hall_s1", "window"),
+                               ("hall_s1_w2_0", "hall_s1_footing", ["wall", "window", "wall", "wall"])])
         self.assertEqual([n["code"] for n in out["notes"]], [])
 
     def test_rooms_of_a_storey_over_a_stairwell_fill_it(self):
@@ -1442,8 +1447,9 @@ class Step(unittest.TestCase):
         said = [(x[0], x[1], (x[3] or {}).get("variant"), (x[3] or {}).get("asset")) for x in s.said if x[0] != "info"]
         self.assertEqual(sorted(said), [("warning", "bay_none", "glass", None), ("warning", "variant_none", "bow", ""),
                                         ("warning", "variant_none", "wide", "bay_wide")])
-        glass = [k for (sec, k), v in s.out.tables.items() if sec == "run" and v["asset"] == "bay_glass"]
+        glass = [k for (sec, k), v in s.out.tables.items() if sec == "run" and "bay_glass" in v.get("assets", [])]
         self.assertTrue(glass and all(k.startswith("hall_s0_w1_") for k in glass), glass)
+        self.assertTrue(all("asset" not in s.out.tables[("run", k)] for k in glass))
 
     def test_floors_and_roofs_are_said_and_written(self):
         class Kit(FakeStep):

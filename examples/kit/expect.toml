@@ -6,15 +6,17 @@
 #   python3 examples/kit/measure.py BUILD+<c> --base BUILD       # a change, built with --against
 #   python3.11 examples/kit/measure.py BUILD+<c> --base BUILD --check <c>
 #
-# Protocol of the numbers below: macOS arm64, release `via` of f529008 (K1 of docs/plan-kits.md:
-# R64, R65, epoch 3), VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's
+# Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
+# bf60bb0 with K5 of docs/plan-kits.md (R68, R69, R70; epoch 4), VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's
 # `lay` and `check` of the working tree with K2 (a place by `side` and `at`, the kit against
 # itself), K3 (variants of the bay) and K4 (the wall over a stairwell on its footing, storeys of
-# two heights, floor tiles, roofs). One fresh store: base, then each change with --against base,
+# two heights, floor tiles, roofs) and K5 (a wall stretch is one run that names each station's
+# piece). One fresh store: base, then each change with --against base,
 # one build each; `window_module` is `window` and `module` together. Every row was measured
 # again on 2026-11-23 with K4, when the wall over the hall's stairwell first stood: `open` fell
 # by one and `open_sum_mm` by 6000 in every build, and the hall gained a bay's worth of pieces.
-# A band is the measured number: not a target, it says where someone looks. The same builds
+# K5 moved six rows, measured the same day: `stub` names all twelve overlaps again, and a
+# variant renames no bay. A band is the measured number: not a target, it says where someone looks. The same builds
 # before any mend, and after the library's first mends, are in README.md, "The record".
 
 # ------------------------------------------------------------------------------------------ base
@@ -112,10 +114,9 @@ band    = [0, 0]
 # A corner remodelled with a 0.6 m stub. The revision is named (asset.revised), the fault is
 # named (kit_corner), and each corner and the wall piece it now overlaps are named
 # (place.crowded, R64). Nothing gives way: the walls are whole and the overlap is measured.
-# The build names 11 of the 12 overlaps measured: the twelfth is between a corner that stands on
-# the footing over the stairwell and a wall piece that stands on the storey's floor beside it,
-# two surfaces at one height, which the core's overlap test takes for two levels (rules.md 8.1;
-# TODO.md, spec/rules.md).
+# The build names all 12 overlaps measured. After K4 it named 11: the twelfth is between a corner
+# that stands on the footing over the stairwell and a wall piece on the storey's floor beside
+# it, two surfaces at one height, which the core took for two levels until R70.
 
 [stub.errors]
 measure = "errors"
@@ -123,7 +124,7 @@ band    = [0, 0]
 
 [stub.warnings]
 measure = "warnings"
-band    = [13, 13]
+band    = [14, 14]
 
 [stub.revised]
 measure = "revised"
@@ -143,7 +144,7 @@ band    = [1, 1]
 
 [stub.crowded]
 measure = "crowded"
-band    = [11, 11]
+band    = [12, 12]
 
 [stub.gave_way]
 measure = "gave_way"
@@ -634,9 +635,9 @@ band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ windows
 # Variants by a pattern (K3): window and plain bays in turn on the hall's south and north walls,
-# both storeys. Seven bays become windows; no wall opens, nothing overlaps. `added` and `removed`
-# are names, not pieces: a run holds one asset, so a stretch is a run per spell and the bays after
-# the first spell take new names (README.md, "Still open").
+# both storeys. Eight bays become windows; no wall opens, nothing overlaps. No name changes
+# (`added` and `removed` are names): a stretch is one run that names each station's piece (R68).
+# Before K5 a run held one asset, the stretch was a run per spell, and ten names changed.
 
 [windows.errors]
 measure = "errors"
@@ -680,11 +681,11 @@ band    = [0, 0]
 
 [windows.added]
 measure = "added"
-band    = [10, 10]
+band    = [0, 0]
 
 [windows.removed]
 measure = "removed"
-band    = [10, 10]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ mixed
 # No two neighbours alike (K3): every bay of both buildings is chosen among window, vent and plain
@@ -732,8 +733,8 @@ band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ window_at
 # One bay named by a point along a side (K3): the swap of `window_up` with no pin, so nothing is
-# removed by a hand. One piece changes; three names do, the swapped bay's and the two after it in
-# its stretch.
+# removed by a hand. One piece changes and no name does (three did before K5, the swapped bay's
+# and the two after it in its stretch).
 
 [window_at.errors]
 measure = "errors"
@@ -773,11 +774,11 @@ band    = [0, 0]
 
 [window_at.added]
 measure = "added"
-band    = [3, 3]
+band    = [0, 0]
 
 [window_at.removed]
 measure = "removed"
-band    = [3, 3]
+band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ wide_window
 # A variant that is not the bay's size (K3): the window bay re-exported 3.2 m long, its pitch in

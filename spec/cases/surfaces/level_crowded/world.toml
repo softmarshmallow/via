@@ -1,0 +1,40 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# Two storeys over one outline, each with `cut`: only the lowest is the ground (rules.md 8.1).
+[feature.hall_g]
+kind   = "storey"
+region = [[16, 16], [40, 16], [40, 32], [16, 32]]
+level  = 10
+
+[feature.hall_1]
+kind   = "storey"
+region = [[16, 16], [40, 16], [40, 32], [16, 32]]
+level  = 13
+
+# Shrubs on the terrain, in the base layer.
+[scatter.grass]
+assets  = ["shrub"]
+spacing = 2
+
+# A hut on the upper floor, written in a higher layer: the scatter does not give way to it
+# (rules.md 3.4), and where the two share a level each shrub under it is `place.crowded`.
+[layer.top]
+file  = "top.toml"
+owner = "tests"
+rank  = 1
+
+# The upper floor comes down to the ground floor's height: both are the ground.
+[change.down.feature.hall_1]
+level = 10
+
+# The hut moves 6 m east, on the upper floor still.
+[change.east.instance.upper_hut]
+at = [34, 24]

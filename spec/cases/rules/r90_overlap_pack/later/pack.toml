@@ -1,0 +1,12 @@
+# The pack once `wide` is solid: nothing else changed.
+[taxon."prop"]
+
+[asset.box]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "prop"
+
+[asset.wide]
+primitive = "box"
+size      = [3, 1, 2]
+taxon     = "prop"

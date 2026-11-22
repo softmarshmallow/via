@@ -1,0 +1,89 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (R70) with 3.4 (R64, R69): a step returns a floor and a ledge at one height and things on both. Two of its instances, one on each surface, overlapping: place.crowded. A member of its run on the floor under its instance on the ledge: place.crowded, and the member stays. The same member of the run under a hand instance of the world on the ledge: it gives way. With the ledge raised to another height none is compared."
+milestone = 7
+actions   = ["program", "trust", "base", "raised"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via         = ["trust", "world.toml", "--yes", "--lib", "{work}/lib", "--change", "raised"]
+exit        = 0
+diagnostics = "includes"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+# Two instances of the step, on two surfaces at one height.
+[action.base.diag.pair]
+code     = "place.crowded"
+severity = "warning"
+subject  = 'instance."make#urn"'
+data     = { instances = ["make#chest", "make#urn"] }
+
+# The step's run on the floor and its instance on the ledge.
+[action.base.diag.member]
+code     = "place.crowded"
+severity = "warning"
+subject  = 'run."make#row"'
+data     = { instances = ["make#row#r2", "make#post"] }
+
+# The step's run and the world's hand instance on the ledge: the member gives way.
+[action.base.diag.gave_way]
+code    = "place.gave_way"
+subject = 'run."make#row"'
+data    = { overlap = 1, relief = 0 }
+
+[action.base.check.row]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "make#row#"
+count  = 5
+
+[action.base.check.kept]
+fn    = "instance_at"
+build = "build/base"
+name  = "make#row#r2"
+at    = [25, 21]
+
+[action.base.file.z]
+path = "build/base/instances/z.npy"
+all  = 13.3
+
+# The ledge at 15: the crate still stands on it (the nearer to its height), and nothing on the
+# ledge is compared with anything on the floor.
+[action.raised]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "raised", "--against", "build/base", "--out", "build/raised"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/raised"
+
+[action.raised.diag.no_crowded]
+code    = "place.crowded"
+records = 0
+
+[action.raised.diag.no_gave_way]
+code    = "place.gave_way"
+records = 0
+
+[action.raised.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.raised.check.row]
+fn     = "names_count"
+path   = "build/raised/instances/names.txt"
+prefix = "make#row#"
+count  = 6

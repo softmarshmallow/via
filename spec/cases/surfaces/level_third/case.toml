@@ -1,0 +1,82 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (R70), graph.md 3 (level): every node that tests two levels reads the height of every kind surface, not only of those the two things stand on. Two storeys over one outline; a hut and a scatter on the upper one, a run and a pin on the terrain, nothing on the lower one. The lower one raised above the other, on the base's store: the run's members under the hut give way, the pin removes the shrubs over it, and a box on the terrain under the hut clashes, each as in a clean build."
+milestone = 7
+actions   = ["base", "raise", "barrel", "barrel_raise"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# hall_g at 10 is the lowest: hall_1 at 13 is not the ground, so nothing on it meets the terrain.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.check.row]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "row#"
+count  = 28
+
+[action.base.diag.none_removed]
+code    = "identity.pin_removed"
+records = 0
+
+# hall_g at 16: hall_1 is the lowest. The run's members have no node: the instance files' write
+# reads the levels. The pin's removal is the scatter's held node's.
+[action.raise]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "raise", "--against", "build/base", "--out", "build/raise"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/raise"
+
+[action.raise.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.raise.diag.gave_way]
+code    = "place.gave_way"
+subject = "run.row"
+data    = { overlap = 4, relief = 0 }
+
+[action.raise.check.row]
+fn     = "names_count"
+path   = "build/raise/instances/names.txt"
+prefix = "row#"
+count  = 24
+
+[action.raise.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 12 }
+
+# A box on the terrain under the hut: two levels while hall_g is the lowest.
+[action.barrel]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "barrel", "--against", "build/base", "--out", "build/barrel"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/barrel"
+
+[action.barrel.diag.no_overlap]
+code    = "place.overlap"
+records = 0
+
+# The same box once hall_g is raised: the two instances' overlap node reads that level.
+[action.barrel_raise]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "barrel", "--change", "raise", "--against", "build/barrel", "--out", "build/both"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/both"
+
+[action.barrel_raise.diag.overlap]
+code = "place.overlap"
+
+[action.barrel_raise.diag.internal]
+code    = "diag.internal"
+records = 0

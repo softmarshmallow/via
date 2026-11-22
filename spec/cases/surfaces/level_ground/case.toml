@@ -1,0 +1,41 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 rule 3 (R70): which kind surface is the ground. Only a surface whose kind writes cut, holding the plan point and lower there, keeps another from being the ground. A box on the upper floor over the ground floor and a box on the terrain half over it: two levels. On the upper floor's overhang, where the ground floor does not reach: one level, place.overlap. On the ground floor with a lower deck that writes no cut under it: the floor is still the ground, place.overlap. On that deck: one level by its bound, place.overlap."
+milestone = 7
+actions   = ["build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+# The pair over the ground floor is named by neither of its two.
+[action.build.diag.under_in]
+code    = "place.overlap"
+subject = "instance.up_in"
+records = 0
+
+[action.build.diag.under_t]
+code    = "place.overlap"
+subject = "instance.t_in"
+records = 0
+
+[action.build.diag.overhang]
+code    = "place.overlap"
+subject = "instance.up_over"
+
+[action.build.diag.floor]
+code    = "place.overlap"
+subject = "instance.t_g"
+
+[action.build.diag.deck]
+code    = "place.overlap"
+subject = "instance.t_deck"

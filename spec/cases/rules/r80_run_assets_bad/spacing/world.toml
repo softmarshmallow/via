@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [18, 32]]
+
+# The list is the count: it cannot be stretched to a spacing.
+[run.row]
+assets  = ["box_small", "lamp_post", "fence_post"]
+on      = { ref = "lane" }
+spacing = 6

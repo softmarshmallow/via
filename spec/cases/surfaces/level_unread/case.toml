@@ -1,0 +1,36 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (R70), a height that cannot be read on plans: a lower floor whose base fails at the plan point is left out of the comparison, so the floor above it is still the ground there, as before R70, and a terrain box clashes with the box on it; a metre away, where the lower floor's height is read, the two are two levels."
+milestone = 7
+actions   = ["base", "east"]
+
+# A kind surface's `base` reads no field (surfaces.md 1.1), so the only height that cannot be
+# read on plans is one whose formula fails at the point (2.7). A thing that stands on such a
+# surface there is not placed, so what can be seen is this: a failing surface is never taken for
+# the lower one.
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/base"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.overlap]
+code = "place.overlap"
+
+[action.base.diag.finite]
+code    = "formula.not_finite"
+records = 0
+
+[action.east]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--change", "east", "--out", "build/east"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/east"
+
+[action.east.diag.no_overlap]
+code    = "place.overlap"
+records = 0

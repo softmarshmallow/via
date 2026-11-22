@@ -1,0 +1,70 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (R70): two kind surfaces of two features are one level where their heights at the two things' plan points are equal to the millimetre. A box on each, overlapping: not compared at 13.3 and 14; place.overlap at 13.3 and 13.3, and at 13.3 and 13.3004 or 13.2996 (one height on the lattice, to the nearest millimetre); not compared at 13.3 and 13.301. Each change is built on the base's store."
+milestone = 7
+actions   = ["base", "same", "near", "under", "off"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.no_overlap]
+code    = "place.overlap"
+records = 0
+
+[action.same]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "same", "--against", "build/base", "--out", "build/same"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/same"
+
+[action.same.diag.overlap]
+code    = "place.overlap"
+subject = "instance.on_ledge"
+
+[action.same.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.near]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "near", "--against", "build/base", "--out", "build/near"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/near"
+
+[action.near.diag.overlap]
+code    = "place.overlap"
+subject = "instance.on_ledge"
+
+[action.under]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "under", "--against", "build/base", "--out", "build/under"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/under"
+
+[action.under.diag.overlap]
+code    = "place.overlap"
+subject = "instance.on_ledge"
+
+[action.off]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "off", "--against", "build/base", "--out", "build/off"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/off"
+
+[action.off.diag.no_overlap]
+code    = "place.overlap"
+records = 0
+
+[action.off.diag.internal]
+code    = "diag.internal"
+records = 0

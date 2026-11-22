@@ -1,0 +1,32 @@
+format    = "via-case-1"
+summary   = "graph.md 3 (level), rules.md 8.1: two hand instances' overlap check reads each one's asset facts (solidity, sink, bounds), which no plan holds. Two instances one over the other, one of an asset with solidity none: no place.overlap. The pack edited so that asset is solid, on the base's store: place.overlap, exit 1, as in a clean build. Before the fix of K5's review the warm build kept exit 0."
+milestone = 7
+actions   = ["base", "solid", "build"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.none]
+code    = "place.overlap"
+records = 0
+
+[action.solid]
+write = "pack.toml"
+from  = "later/pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/next"
+
+[action.build.diag.overlap]
+code     = "place.overlap"
+severity = "error"
+
+[action.build.diag.internal]
+code    = "diag.internal"
+records = 0

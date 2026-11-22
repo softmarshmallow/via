@@ -120,11 +120,21 @@ can be placed and measured, not reasoned into.
 - **Laws:**
   1. A world names an asset by its id or by where it is filed, never by its file.
   2. Everything a rule needs to know about it is a stated or measured fact. A missing fact is
-     reported, not guessed.
+     reported, not guessed. What it takes of a layout (the length of a row it fills, the corner
+     it turns) is stated, and is what a rule lays by; its body is measured, and is what another
+     thing meets. Where the two differ it is said (R69).
   3. Swapping one asset for another with the same facts changes the look and nothing else.
   4. A revised asset names every place it changes.
+  5. Assets filed together as a kit state once what they share: a module, a thickness, a
+     height, what joins what. A rule lays by what the kit states, and each piece is measured
+     against it (R66).
+  6. What a kit can close is decided from its facts, before any world uses it: whether a row of
+     its pieces can turn a corner and come back, whether its floor fits inside its walls (R66).
 - **Source:** the contract of modular kits in game practice (`docs/references.md`, "City building
-  and asset kits"). Ours as an archetype: no source read states these laws.
+  and asset kits"), which calls a kit a system and not a list of assets
+  (`docs/research/Modular kit failures in studios.md`, section 1). Ours as an archetype: no
+  source read states these laws. A kit is not an archetype of its own: it writes nothing a set
+  of assets does not (R66).
 - **Is not:** a Placement, which is an asset at a place.
 - **In two genres:** a boulder; a wall bay of a town kit.
 
@@ -221,8 +231,10 @@ over fields (biomes) or from the author's hand (themed regions).
   2. A piece keeps its name when a piece elsewhere is split or moved.
   3. A change to what divides the area changes only the pieces that touch the change.
   4. Where a stated class and a derived one disagree, the stated one stands.
+  5. Where the pieces are of fixed size (tiles of a floor), the area is whole pieces, or what is
+     left over is refused and said. Nothing is cut to fit (R67).
 - **Source:** subdivision of parcels (Vanegas et al. 2012); nearest-seed diagrams; the
-  classification of climate into biomes (Whittaker 1975).
+  classification of climate into biomes (Whittaker 1975). Law 5 is ours.
 - **Is not:** the rule that gives each place its class, which is a Derivation: the partition is
   what the rule leaves, pieces with names. Nor an Overlay (whose pieces may overlap), nor Markup
   (a region that only carries data).
@@ -257,8 +269,16 @@ wire, road markings, a row of trees.
   3. A run starts and ends with its end pieces, whatever the length between.
   4. Nothing is placed where the path crosses something that needs the room, such as a gate or
      a junction, unless stated.
+  5. Where its pieces are of fixed length, a stretch is whole pieces, or it is refused and said
+     with the nearest lengths that close. Nothing is stretched, cut or patched to hide a
+     remainder. A run with no module (a fence by its spacing) stretches, and says nothing (R67).
+  6. What stands at a station may be chosen among stated alternatives by the station's place.
+     The choice is the same in every build and does not change when stations elsewhere change,
+     and a station keeps its name whichever piece it holds (R68).
 - **Source:** linear referencing (ISO 19148); fence and spline-mesh tools in engines; span rules
-  in bridge design.
+  in bridge design. Laws 5 and 6 are ours, from what studios say went wrong with kits
+  (`docs/research/Modular kit failures in studios.md`, sections 7 and 8) and from
+  `examples/kit`.
 - **Is not:** a Profile (a continuous section), nor a Scatter (over an area).
 - **In two genres:** a field fence with its rails; lamps along a street.
 
@@ -307,6 +327,10 @@ can be placed.
      re-derives only what that rule made.
   3. Every piece can be traced to the rule that made it.
   4. A piece edited by hand stays edited when the rules run again, or the clash is reported.
+  5. Where what is left is filled with pieces of fixed size (a kit), each shape closes on whole
+     pieces, or it is refused and said with the sizes that close. A shape the pieces cannot fill
+     (a roof over a plan they were not made for) is refused with its reason and falls back to a
+     stated whole, never to an improvised one (R67).
 - **Source:** shape grammars (Stiny and Gips 1972); L-systems (Lindenmayer 1968); split
   grammars and CGA shape (Wonka et al. 2003; Müller et al. 2006); model synthesis and wave
   function collapse (Merrell 2007; Gumin 2016). Law 4 is ours.
@@ -458,6 +482,10 @@ reader, filing a fifth of the ledger from this page alone, was left torn.
   a corner.
 - **Recipe or Grammar.** A fixed list of parts is a Recipe. Parts found by rule from a shape of
   any size are a Grammar.
+- **A kit.** The pieces and what they share are Asset (laws 5 and 6): a kit is no archetype of
+  its own. A row of its pieces is Linear placement, and so is the choice of which piece stands
+  at a station. A building laid from it, storey by storey, is a Grammar. The kit's check is a
+  Measure.
 - **Asset or Markup.** A fact that travels with the asset is the Asset's. A fact that belongs to
   one place in one world is Markup.
 - **Placement or Markup.** A seen thing whose point is its function in the game (a switch, a bus
@@ -522,3 +550,4 @@ The same archetypes serve both; the dials are set differently.
 | 2026-11-13 | Meeting added; 15 rows moved to it. |
 | 2026-11-18 | After a blind second filing of 173 rows (84% filed the same; Cohen's kappa 0.83), the boundaries under "Telling two apart" were written down and 16 rows refiled. Practice widened to hold tools. |
 | 2026-11-18 | Tightened to the five criteria and widened to file the whole ledger: twenty archetypes and three marks. Added: Asset, Placement, Overlay, Measure, Markup. Renamed: Curve to Shape, Field derivation to Derivation (now in four classes), Terrain-coupled network to Network. Guidance split: what is stated stays Guidance, what is read from the world is Measure. The marks Runtime, Practice and Principle file what the model leaves out. |
+| 2026-11-23 | After building from a kit (`docs/plan-kits.md` K1 to K4), the four gaps the studios' accounts showed were ruled (R66 to R70 in `docs/doctrine.md`). No archetype was added. Asset gained laws 5 and 6 (a kit states what its pieces share; what it can close is decided from its facts) and law 2 says what a piece takes apart from what it is. Linear placement gained laws 5 and 6 (whole pieces or a refusal; a choice among pieces by place, the station keeping its name). Area partition and Grammar each gained the law of closure. |

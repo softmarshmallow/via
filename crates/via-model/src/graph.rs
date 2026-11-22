@@ -817,8 +817,12 @@ impl<'w> ModelPlan<'w> {
             FileReads::Instances => {
                 out.extend(self.brought_reads());
                 // What a pin removes is decided on levels (`identity.md` 4.2), and a run's
-                // member has no node: the file reads what every height chose.
+                // member has no node: the file reads what every height chose, and the height of
+                // every kind surface a level is told by (`rules.md` 8.1, R70).
                 out.extend(self.chosen_reads());
+                let (mut level_edges, mut none) = (Vec::new(), Vec::new());
+                self.levels_read(&mut level_edges, &mut none);
+                out.extend(level_edges);
                 // A run's members have no node of their own (`rules.md` 5): the file reads what
                 // lays them, the run's `on` target (its shape and attributes, so moved ends
                 // re-lay it: coast `long_deck`, 18 posts kept where 26 were laid), and the
@@ -1067,6 +1071,9 @@ impl<'w> ModelPlan<'w> {
                     if let crate::sets::What::Set(x) = &run.what {
                         ids.extend(d.set_stmts(Some(x)));
                     }
+                    // Every asset the run names (`rules.md` 5, R68): a member's footprint,
+                    // its span and its `sink` are its own asset's facts.
+                    ids.extend(run.asset_ids().into_iter().map(|a| format!("asset:{a}")));
                     if let Place::On(o) = &run.place {
                         let head = o.reference.split('.').next().unwrap_or(&o.reference);
                         if let Some(k) = d.features.get(head).and_then(|f| f.kind.as_ref()) {
@@ -1075,6 +1082,8 @@ impl<'w> ModelPlan<'w> {
                     }
                 }
                 ids.extend(self.chosen_kinds());
+                // The level test of a member's giving way and of a pin's removal (R70).
+                ids.extend(self.level_kinds());
                 self.stmts_of(ids.iter().map(String::as_str))
             }
             // A point's or a named place's `z` stands on a kind surface (`surfaces.md` 4.1, 3.3):
@@ -1954,6 +1963,11 @@ impl<'w> ModelPlan<'w> {
                     edges.push((format!("edit {e}"), view(NodeId::of("edit", e))));
                 }
                 self.pins_chosen(&mut edges, &mut statements);
+                // The level a pin and this instance share is told by the kind surfaces'
+                // heights (`rules.md` 8.1, R70).
+                if !d.pins.is_empty() {
+                    self.levels_read(&mut edges, &mut statements);
+                }
             }
             // The overlap test of two hand instances (`rules.md` 8.1) is its own check node,
             // which reads this instance's inputs and every other hand instance's plan; no height
@@ -1967,6 +1981,26 @@ impl<'w> ModelPlan<'w> {
                 // chose is not in its plan.
                 let mut over_statements = statements.clone();
                 self.instances_chosen(Some(id), &mut over, &mut over_statements);
+                // Two kind surfaces at one height are one level, and of those with `cut` only
+                // the lowest is the ground (8.1, R70): the test reads every surface's height.
+                self.levels_read(&mut over, &mut over_statements);
+                // And each one's span and solidity are its asset's facts (`sink`, `bounds`,
+                // `solidity`), which no plan holds: a pack that changes one tests again. Every
+                // asset's, since a placed set's items bring their own.
+                over_statements.extend(
+                    self.stmts_of(
+                        self.p
+                            .pack
+                            .assets
+                            .keys()
+                            .map(|a| format!("asset:{a}"))
+                            .collect::<Vec<_>>()
+                            .iter()
+                            .map(String::as_str),
+                    ),
+                );
+                over_statements.sort();
+                over_statements.dedup();
                 for other in hands.iter().filter(|o| *o != id) {
                     over.push((
                         format!("overlap {other}"),
@@ -2007,6 +2041,8 @@ impl<'w> ModelPlan<'w> {
             if let crate::sets::What::Set(s) = &run.1.what {
                 stmts.extend(d.set_stmts(Some(s)));
             }
+            // The footprint is its member's own asset's (`rules.md` 5, R68).
+            stmts.extend(run.1.asset_ids().into_iter().map(|a| format!("asset:{a}")));
             let mut edges = Vec::new();
             self.place_edges(&run.1.place, &mut edges);
             defs.push((
@@ -2260,8 +2296,10 @@ impl<'w> ModelPlan<'w> {
                 self.grounded_on(o, &mut edges, &mut statements);
             }
             // It gives way to a hand instance on its own level (`rules.md` 8.1): what each
-            // one's height chose is not in the plan it reads above.
+            // one's height chose is not in the plan it reads above, nor is the height of the
+            // kind surface either stands on (R70).
             self.instances_chosen(None, &mut edges, &mut statements);
+            self.levels_read(&mut edges, &mut statements);
             defs.push((
                 view(NodeId::of("rule", id)),
                 Def {
@@ -2290,14 +2328,43 @@ impl<'w> ModelPlan<'w> {
                     edges.push((format!("edit {c}"), view(NodeId::of("edit", c))));
                 }
             }
+            // A hand instance in a higher layer that one of its instances overlaps is this
+            // scatter's `place.crowded` (`rules.md` 8.1), and every diagnostic of a scatter is
+            // this node's. The rule above reads those instances and gives the same value when
+            // one moves, since it gives way to none of them: so this node reads them itself.
+            let above: Vec<(&String, &crate::decl::InstanceDecl)> = d
+                .instances
+                .iter()
+                .filter(|(_, i)| i.rank > s.rank)
+                .collect();
+            // Which two overlap is told from asset facts: each one's footprint and solidity.
+            if !above.is_empty() {
+                st.push(PACK.into());
+                st.extend(assets.iter().cloned());
+            }
+            for (h, i) in &above {
+                edges.push((format!("crowded {h}"), view(NodeId::of("instance", h))));
+                st.extend(d.set_stmts(i.set.as_deref()));
+            }
             let mut statements = self.stmts_of(st.iter().map(String::as_str));
             for pin in &speaking {
                 if let Some(h) = &pin.height {
                     self.chosen_among(Some(&pin.id), &h.among, &mut edges, &mut statements);
                 }
             }
-            if let (Some(o), false) = (&owner, speaking.is_empty()) {
+            let levelled = !speaking.is_empty() || !above.is_empty();
+            if let (Some(o), true) = (&owner, levelled) {
                 self.grounded_on(o, &mut edges, &mut statements);
+            }
+            // A pin on the terrain and an instance on a kind surface share a level only where
+            // that surface is the lowest with `cut` there, and two kind surfaces where their
+            // heights are equal (8.1, R70). The same test decides `place.crowded` against a
+            // higher layer's instance, with what that instance's height chose.
+            if !above.is_empty() {
+                self.instances_chosen(None, &mut edges, &mut statements);
+            }
+            if levelled {
+                self.levels_read(&mut edges, &mut statements);
             }
             defs.push((
                 view(NodeId::of("held", id)),
@@ -2874,6 +2941,45 @@ impl<'w> ModelPlan<'w> {
         }
         statements.sort();
         statements.dedup();
+    }
+
+    /// What the level test of `rules.md` 8.1 reads beside what each thing stands on (R70): a kind
+    /// surface's height at a plan point, and which surface with `cut` is the lowest there. The
+    /// shape and attributes of every feature that owns a kind surface, labelled `level
+    /// <feature>`, and those owners' kind statements (`base`, `bound`, `cut`). A node that tests
+    /// two levels reads them all: which surfaces hold a point is not known before the test.
+    fn levels_read(
+        &self,
+        edges: &mut Vec<(String, NodeId)>,
+        statements: &mut Vec<(String, Digest)>,
+    ) {
+        let d = &self.p.decls;
+        for (f, fd) in &d.features {
+            let Some(k) = fd.kind.as_ref() else { continue };
+            if d.kinds.get(k).is_none_or(|kd| kd.surfaces.is_empty()) {
+                continue;
+            }
+            edges.push((format!("level {f}"), view(NodeId::of("shape", f))));
+            edges.push((format!("level {f}"), NodeId::of("attr", f)));
+            statements.extend(self.stmts_of([format!("kind.{k}").as_str()]));
+        }
+        statements.sort();
+        statements.dedup();
+    }
+
+    /// The kind statements beside [`ModelPlan::levels_read`], for a build file's key.
+    fn level_kinds(&self) -> Vec<String> {
+        let d = &self.p.decls;
+        let mut out: Vec<String> = d
+            .features
+            .values()
+            .filter_map(|f| f.kind.as_ref())
+            .filter(|k| d.kinds.get(*k).is_some_and(|kd| !kd.surfaces.is_empty()))
+            .map(|k| format!("kind.{k}"))
+            .collect();
+        out.sort();
+        out.dedup();
+        out
     }
 
     /// What every height in an `at` chose, as a build file reads it: of every instance, pin
@@ -3585,10 +3691,13 @@ impl<'w> ModelPlan<'w> {
                     {
                         vec![Self::merge_id()]
                     }
-                    // Two hand instances' overlap: their check node, which no height reads.
+                    // Two hand instances' overlap, and that of two instances one step returned
+                    // (`rules.md` 3.4, R69): their check node, which no height reads.
                     "instance"
                         if late
-                            && *d.code() == via_diag::DiagCode::Core(codes::place::OVERLAP)
+                            && [codes::place::OVERLAP, codes::place::CROWDED]
+                                .iter()
+                                .any(|c| *d.code() == via_diag::DiagCode::Core(*c))
                             && self.defs.contains_key(&view(NodeId::of("overlap", id))) =>
                     {
                         vec![view(NodeId::of("overlap", id))]

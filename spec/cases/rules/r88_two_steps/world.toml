@@ -1,0 +1,19 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+# Two steps, each returning one box, 0.4 m apart.
+[step.make]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]
+
+[step.more]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/more.py"]

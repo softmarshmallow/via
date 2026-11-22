@@ -1,0 +1,57 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# Three storeys over one outline, each with `cut`.
+[feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10.3
+
+[feature.hall_1]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 13.3
+
+[feature.hall_2]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 16.3
+
+# A row of six boxes on each, 1 m inside the south edge, at x = 21, 23, ... 31.
+[run.low]
+asset = "box"
+on    = { ref = "hall_g", span = [0, 0.3], offset = 1 }
+count = 6
+
+[run.mid]
+asset = "box"
+on    = { ref = "hall_1", span = [0, 0.3], offset = 1 }
+count = 6
+
+[run.top]
+asset = "box"
+on    = { ref = "hall_2", span = [0, 0.3], offset = 1 }
+count = 6
+
+# Two numbers: on the terrain, under the third box of every row.
+[pin.mark]
+asset = "box"
+at    = [25, 21]
+
+# hall_g and hall_1 change places: hall_1 is the lowest.
+[change.swapped.feature.hall_g]
+level = 13.3
+
+[change.swapped.feature.hall_1]
+level = 10.3
+
+# hall_1 at hall_g's height: both are the lowest.
+[change.tie.feature.hall_1]
+level = 10.3

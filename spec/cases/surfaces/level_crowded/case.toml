@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (R70), graph.md 3 (level): a lower layer's scatter and a hand instance in a higher layer are place.crowded where they share a level, and that diagnostic is the scatter's held node's, which reads the levels and the instance though no pin speaks to the scatter. A hut on the upper of two storeys, shrubs on the terrain: no place.crowded. The upper floor brought down to the lower one's height, on the base's store: place.crowded for each shrub under the hut, exit 0, as in a clean build. Then the hut moved along the floor: the same number under its new place."
+milestone = 7
+actions   = ["base", "down", "down_east"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.none]
+code    = "place.crowded"
+records = 0
+
+# Before the fix of K5's review this warm build was exit 3, diag.internal: the node gave another
+# value when computed again, since it read none of what its diagnostic is decided by.
+[action.down]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "down", "--against", "build/base", "--out", "build/down"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/down"
+
+[action.down.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.down.diag.crowded]
+code     = "place.crowded"
+subject  = "scatter.grass"
+severity = "warning"
+records  = 8
+
+[action.down_east]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "down", "--change", "east", "--against", "build/down", "--out", "build/east"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/east"
+
+[action.down_east.diag.internal]
+code    = "diag.internal"
+records = 0

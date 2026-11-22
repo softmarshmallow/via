@@ -25,6 +25,9 @@ use crate::text::{self, at_header, at_key, at_path};
 pub enum What {
     Asset(String),
     Set(String),
+    /// A run's `assets` (`rules.md` 5, R68): one asset id for each member, in station order.
+    /// Never an item's.
+    Assets(Vec<String>),
 }
 
 /// One item of a set, in the set's frame (`rules.md` 4).
@@ -66,6 +69,16 @@ pub struct RunDecl {
 }
 
 impl RunDecl {
+    /// Every asset id the run names: its `asset`, or each entry of its `assets` (`rules.md` 5).
+    /// None for a run of a set, whose items name theirs.
+    pub fn asset_ids(&self) -> Vec<&str> {
+        match &self.what {
+            What::Asset(a) => vec![a.as_str()],
+            What::Assets(xs) => xs.iter().map(String::as_str).collect(),
+            What::Set(_) => Vec::new(),
+        }
+    }
+
     /// The place name the stretch reads.
     pub fn reference(&self) -> &str {
         match &self.place {
@@ -277,7 +290,7 @@ impl Decls {
                 .filter(|(_, sd)| {
                     sd.items.values().any(|i| match &i.what {
                         What::Set(n) => !self.sets.contains_key(n),
-                        What::Asset(_) => false,
+                        What::Asset(_) | What::Assets(_) => false,
                     })
                 })
                 .map(|(k, _)| k.clone())
@@ -470,12 +483,47 @@ impl Decls {
         }
     }
 
-    fn read_run(&mut self, world: &World, id: &str, t: &Table) -> Option<RunDecl> {
-        let (asset, set) = self.read_what("run", id, t)?;
-        let what = match set {
-            Some(s) => What::Set(s),
-            None => What::Asset(asset),
+    /// A run's `asset`, `set` or `assets`: exactly one (`place.asset_or_set`, `rules.md` 5).
+    /// `assets` is a list of asset ids, one for each member (R68); the schema holds its form.
+    fn read_run_what(&mut self, id: &str, t: &Table) -> Option<What> {
+        let Some(list) = t.value("assets") else {
+            if t.get("asset").is_none() && t.get("set").is_none() {
+                self.push(at_header(
+                    codes::place::ASSET_OR_SET,
+                    "run",
+                    id,
+                    "the run writes none of `asset`, `set` and `assets`",
+                    "write one of `asset`, `set`, `assets`",
+                ));
+                return None;
+            }
+            let (asset, set) = self.read_what("run", id, t)?;
+            return Some(match set {
+                Some(s) => What::Set(s),
+                None => What::Asset(asset),
+            });
         };
+        if let Some(other) = ["asset", "set"].into_iter().find(|k| t.get(k).is_some()) {
+            self.push(at_header(
+                codes::place::ASSET_OR_SET,
+                "run",
+                id,
+                &format!("the run writes both `{other}` and `assets`"),
+                "keep one of `asset`, `set`, `assets`",
+            ));
+            return None;
+        }
+        let Value::List(xs) = list else { return None };
+        let mut ids = Vec::with_capacity(xs.len());
+        for x in xs {
+            let Value::Str(a) = &x.value else { return None };
+            ids.push(a.text.to_string());
+        }
+        Some(What::Assets(ids))
+    }
+
+    fn read_run(&mut self, world: &World, id: &str, t: &Table) -> Option<RunDecl> {
+        let what = self.read_run_what(id, t)?;
         let Some(on) = t.table("on") else {
             self.push(at_header(
                 codes::place::NO_POSITION,
@@ -578,7 +626,50 @@ impl Decls {
                 }
             },
         };
-        if t.get("count").is_some() == t.get("spacing").is_some() {
+        // `assets` is the count (`rules.md` 5, R68): no `spacing` beside it, and a `count` beside
+        // it says the list's length again.
+        if let What::Assets(ids) = &what {
+            let n = ids.len() as i64;
+            if t.get("spacing").is_some() {
+                self.push(at_key(
+                    codes::run::COUNT_OR_SPACING,
+                    "run",
+                    id,
+                    "spacing",
+                    &format!(
+                        "the run writes `spacing` beside `assets`, whose {n} entries are the count"
+                    ),
+                    "remove `spacing`: a run with `assets` has one member for each entry",
+                ));
+                return None;
+            }
+            if n == 0 {
+                self.push(at_key(
+                    codes::run::COUNT,
+                    "run",
+                    id,
+                    "assets",
+                    "`assets` is empty: the run would have no member",
+                    "name one asset for each member, or remove the run",
+                ));
+                return None;
+            }
+            if let Some(c) = count.filter(|c| *c != n) {
+                self.push(
+                    at_key(
+                        codes::run::COUNT,
+                        "run",
+                        id,
+                        "count",
+                        &format!("`count = {c}` beside `assets`, which names {n}"),
+                        &format!("write `count = {n}`, or remove `count`: the list is the count"),
+                    )
+                    .with("count", DValue::Int(c))
+                    .with("assets", DValue::Int(n)),
+                );
+                return None;
+            }
+        } else if t.get("count").is_some() == t.get("spacing").is_some() {
             self.push(at_header(
                 codes::run::COUNT_OR_SPACING,
                 "run",
@@ -607,17 +698,38 @@ impl Decls {
                 return None;
             }
         };
+        // The number of members written: `count`, or the length of `assets`.
+        let count = match &what {
+            What::Assets(ids) => Some(ids.len() as i64),
+            _ => count,
+        };
+        let counted = if matches!(what, What::Assets(_)) && t.get("count").is_none() {
+            "assets"
+        } else {
+            "count"
+        };
         if let Some(c) = count {
             if c < 1 || (both && c < 2 && !self.closed_ref(&place, span)) {
                 let least = if both { 2 } else { 1 };
-                self.push(at_key(
-                    codes::run::COUNT,
-                    "run",
-                    id,
-                    "count",
-                    &format!("`count = {c}` is too few"),
-                    &format!("write `count = {least}` or more"),
-                ));
+                self.push(if counted == "assets" {
+                    at_key(
+                        codes::run::COUNT,
+                        "run",
+                        id,
+                        "assets",
+                        &format!("`assets` names {c}, too few with `ends = \"both\"`"),
+                        &format!("name {least} assets or more, or write `ends = \"half\"`"),
+                    )
+                } else {
+                    at_key(
+                        codes::run::COUNT,
+                        "run",
+                        id,
+                        "count",
+                        &format!("`count = {c}` is too few"),
+                        &format!("write `count = {least}` or more"),
+                    )
+                });
                 return None;
             }
         }
@@ -769,6 +881,8 @@ impl Placer<'_> {
                     let s = s.clone();
                     self.place_set(top, id, &full, &s, p, fa, sc, ti, unit, rank);
                 }
+                // A run's list (`rules.md` 5): an item names one asset or one set.
+                What::Assets(_) => {}
             }
         }
         self.out.plans.insert(name.to_string(), host.clone());
@@ -864,15 +978,54 @@ impl Placer<'_> {
         }
         let whole = closed && r.span == (0.0, 1.0);
         if r.both && !whole && r.count.is_some_and(|c| c < 2) {
+            let listed = matches!(r.what, What::Assets(_));
             self.diags.push(at_key(
                 codes::run::COUNT,
                 "run",
                 id,
-                "count",
+                if listed { "assets" } else { "count" },
                 "`ends = \"both\"` on an open stretch needs 2 members",
-                "write `count = 2` or more",
+                if listed {
+                    "name 2 assets or more"
+                } else {
+                    "write `count = 2` or more"
+                },
             ));
             return;
+        }
+        // Each entry of `assets` is an asset the pack binds (`rules.md` 5, R68): one it does not
+        // is said at that entry, by its index, whether or not its member would be made.
+        if let (What::Assets(ids), false) = (&r.what, self.pack.failed) {
+            let mut unknown = false;
+            for (k, a) in ids.iter().enumerate() {
+                if self.pack.assets.contains_key(a) {
+                    continue;
+                }
+                unknown = true;
+                let site = Site::Key(text::path(&["assets"]).index(k as u32));
+                self.diags.push(
+                    text::with_nearest(
+                        text::diag(
+                            codes::asset::UNKNOWN,
+                            Subject::entity("run", id),
+                            site,
+                            &format!("the pack binds no asset `{a}`, entry {k} of `assets`"),
+                            &text::near_hint(
+                                a,
+                                self.pack.assets.keys().map(String::as_str),
+                                "name an asset the pack declares",
+                            ),
+                        ),
+                        a,
+                        self.pack.assets.keys().map(String::as_str),
+                        |n: &str| self.pack.declaration("asset", n),
+                    )
+                    .with("index", DValue::Int(k as i64)),
+                );
+            }
+            if unknown {
+                return;
+            }
         }
         let rounded = |sp: i64| (2 * len + sp).div_euclid(2 * sp);
         let n = match (r.count, r.spacing) {
@@ -928,8 +1081,15 @@ impl Placer<'_> {
                 }
             };
             let name = format!("{id}#r{k}");
-            let plan = match &r.what {
-                What::Asset(asset) => self
+            // What stands at station `k`: the run's one asset, or the entry of `assets` at
+            // index `k` (`rules.md` 5, R68), whatever became of the stations before it.
+            let one = match &r.what {
+                What::Asset(asset) => Some(asset.as_str()),
+                What::Assets(ids) => ids.get(k as usize).map(String::as_str),
+                What::Set(_) => None,
+            };
+            let plan = match (&r.what, one) {
+                (_, Some(asset)) => self
                     .plan_at(
                         "run",
                         id,
@@ -946,12 +1106,13 @@ impl Placer<'_> {
                         self.out.plans.insert(name.clone(), pl.clone());
                         pl
                     }),
-                What::Set(s) => {
+                (What::Set(s), _) => {
                     let s = s.clone();
                     self.place_set(
                         "run", id, &name, &s, p, facing, r.scale, r.tint, &name, r.rank,
                     )
                 }
+                _ => None,
             };
             let Some(plan) = plan else { continue };
             if let Some(g) = &r.ground {

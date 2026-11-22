@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "rules.md 3.4 (R69): every call of a for_each step is the one step: an instance the call for `a` returned and one the call for `b` returned that overlap are place.crowded, naming both, and both stay; exit 0."
+milestone = 7
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.crowded]
+code     = "place.crowded"
+severity = "warning"
+subject  = 'instance."make#b_post"'
+data     = { instances = ["make#a_post", "make#b_post"] }
+
+[action.build.diag.no_overlap]
+code    = "place.overlap"
+records = 0
+
+[action.build.check.a]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#a_post"
+at    = [6, 32]
+
+[action.build.check.b]
+fn    = "instance_at"
+build = "build/w"
+name  = "make#b_post"
+at    = [6.4, 32]

@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [18, 32]]
+
+# The same run with a list of assets, one for each station (rules.md 5, R68): the list is the
+# count, and member k places the entry at index k.
+[run.row]
+assets = ["box_small", "lamp_post", "fence_post"]
+on     = { ref = "lane" }

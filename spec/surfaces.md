@@ -92,7 +92,9 @@ is the source.
   field from a surface formula is Open 9.
 - So a kind surface's height at a point is known from plans alone, before any field settles (4.3,
   step 3). `at` with a height (4.1) and the level test (`rules.md` 8.1) rely on it; the terrain's
-  height is not known then.
+  height is not known then. The level test reads it twice (R70): two kind surfaces whose heights
+  at the two things' plan points are equal to the millimetre are one level, and of the surfaces
+  that stand on the ground at a place only the lowest is one level with the terrain.
 - `t`, `d`, `sd`, `x` or `y` in `bound` is `formula.rate`. A bound that is not above 0 or not finite
   is `surface.bound`.
 
@@ -529,7 +531,8 @@ library's convention, shown in 6.3 and illustrative only:
     it is `surface.ground_off_terrain`, as with `surface`.
   - From there the thing is one placed with `surface` naming the chosen surface, in every rule of
     this chapter and of `rules.md`: a set's items stand on it, each at its own origin
-    (`surface.outside` for one off its bound); its level is that surface (`rules.md` 8.1); what
+    (`surface.outside` for one off its bound); its level is that surface's (`rules.md` 8.1), which
+    it shares with any kind surface at the same height there (R70); what
     stands `on` it or on its mounts stands there too. It depends on the owner of every candidate
     as on an `on` reference: a moved or raised owner, or one moved to a layer the thing does not
     see, chooses again and re-grounds it, and the change report lists it as grounded on the
@@ -600,7 +603,8 @@ checks. For surfaces it reads:
    which reads the field as written before its own effect (`formulas.md` 8.5), so it is not a cycle.
 3. **Kind surfaces.** Their formulas read no field (1.1), only their owner's shape and attributes,
    so they are ready once features are. A height in `at` (4.1) is resolved here, from plans, so
-   the level test and every giving way (`rules.md` 8.1) already know what each thing stands on.
+   the level test and every giving way (`rules.md` 8.1) already know what each thing stands on,
+   and how high each kind surface lies under it (R70).
 4. **Grounding.** Every `z` from the final surfaces; then relief.
 5. **Meetings, then checks.**
 
@@ -972,8 +976,9 @@ via query WORLD surfaces_at|sample|relief|meetings --in FILE --out FILE
   this run has: where the world declares a generate step and no kind surface holds the point, the
   surface it would choose is one a step returns, which is not in this run's answers, so the
   thing (an instance, a pin, a point feature) stands on the terrain as with two numbers and
-  nothing is said. A pin so placed removes what it would on the terrain; the terrain and a floor
-  over it are one level (`rules.md` 8.1), so that is what it removes there in a build too. A
+  nothing is said. A pin so placed removes what it would on the terrain; the terrain and the
+  lowest floor over it are one level (`rules.md` 8.1, R70), so on a ground floor that is what it
+  removes there in a build too. A
   world with no generate step has nothing a step could add: there the height is
   `surface.none_at`, as in a build. It writes no build directory, run report or
   `.previous`. `meetings` takes no `--in`. `relief` asks the terrain only (a kind surface is a
@@ -1111,13 +1116,20 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 | step_run_on_floor | M5 | a generate step returning a storey at 13.3 over ground at 10 and a run `on` it | build | Members `make#edge#r0` to `r2`, every `z` 13.3: a returned run's member is `<step>#<run>#r<k>`, its run read before the last `#` (`identity.md` 2.3). |
 
 | at_height | M5 | 6.4's two storeys at 10.3 and 13.3; `high` `at = [30, 26, 13]`, a pin `at = [24, 26, 12.9]`, a set placed `at = [26, 23, 13.3]` and a point feature `at = [28, 25, 13.3]`; changes adding `low` `at = [30, 26, 10.4]`, raising `hall_1` to 14, and raising it to 17 | build, then each change `--against` | Every `z` 13.3 and the point's `at` `[28, 25, 13.3]` in `features.json`. With `low`: it stands at 10.3 under `high` at 13.3, and no `place.overlap`. At 14: every `z` 14, each instance's cause the storey's `level`. At 17, more than half a storey: every `z` 10.3, the lower floor now the nearer. Each warm build equals a clean one (4.1, R65). |
-| at_height_tie | M5 | The two storeys and `mid` `at = [30, 26, 11.8]`, 1500 mm from each; two roofs over one point at 16.0004 and 16 (`m_roof`, `n_roof`) and `lip` `at` that point with height 16; two roofs at 16 over another point (`b_roof`, `a_roof`) and `post` there with height 16; changes placing a box beside `post` with `surface = "a_roof.garden"`, and with `b_roof.garden` | build, then each change | `mid` at `z` 10.3, the lower floor. `lip` at `z` 16, on `n_roof`: both heights are 16 000 mm on the lattice, a tie, to the lower. `post` stands on `a_roof.garden`, the first name: the box on that surface overlaps it (`place.overlap`, exit 1), the box on `b_roof.garden` does not (4.1). |
+| at_height_tie | M5 | The two storeys and `mid` `at = [30, 26, 11.8]`, 1500 mm from each; two roofs over one point at 16.0004 and 16 (`m_roof`, `n_roof`) and `lip` `at` that point with height 16; two roofs at 16 over another point (`b_roof`, `a_roof`) and `post` there with height 16, 0.2 m inside `a_roof`'s edge and well inside `b_roof`; changes placing a box beside `post` with `surface = "a_roof.garden"`, and with `b_roof.garden` | build, then each change | `mid` at `z` 10.3, the lower floor. `lip` at `z` 16, on `n_roof`: both heights are 16 000 mm on the lattice, a tie, to the lower. `post` stands on `a_roof.garden`, the first name: `surface.off_bound` names that surface, whose edge alone its footprint hangs off (4.1). The box overlaps `post` from either surface (`place.overlap`, exit 1): two kind surfaces at one height are one level (`rules.md` 8.1, R70). Re-recorded with R70: the tie's choice was seen by the box on `b_roof.garden` not overlapping. |
 | none_at | M5 | The two storeys; an instance, a pin and a point feature each `at` three numbers off every floor | build | `surface.none_at` on each of the three; none placed; exit 1. |
 | height_and_surface | M5 | `desk` with `at = [30, 26, 13.3]` and `surface = "hall_1.floor"` | build | `surface.placed_twice`; exit 1. |
 | layer_moved | M5 | The two storeys in the world file; an instance, a pin, a point feature and a view's target instance, each by the upper floor's height; then the upper floor's table moved to a layer of rank 1 | build, then the edit `--against` | Every `z` 13.3, the point's and the target's `at` at 13.3 in `features.json`; then every one 10.3, and the warm build equals a clean one: no statement, shape or attribute of the floor changed, only its layer (4.1). |
 | height_no_loop | M5 | A hut `at = [30, 26, 13.3]` on a floor; a flight with `ends_at = "hut.door"` whose tread holds the hut's origin; changes naming the surface instead, and placing a second hut `on` the first's door with the flight ending at the second's | build, then each change | Exit 0, the hut at `z` 13.3, no `graph.cycle`, as with `surface = "hall_1.floor"`. The second change: `graph.cycle` on `instance.hut` at its `at`, exit 1; never `diag.internal` (4.1). |
 | query_height | M5 | A generate step returns a floor at 13.3 over ground at 10; a point feature, an instance and a pin each `at` three numbers on it. Then the same placements in a world with no step and no floor | build; `surfaces_at` at the instance's point; then `surfaces_at` on the second world | The build places all three on the floor, every `z` 13.3. The query exits 0 and writes its file, the terrain's one row: it runs no step, and says nothing of the heights (section 7). On the world with no step: `surface.none_at`, exit 1, no file. |
 | layer_below | M5 | `hall_g` in the world file, `hall_1` in a layer of rank 1; `desk` `at = [30, 26, 13.3]` in the world file | build | `desk` at `z` 10.3: the storey above its layer is no candidate (4.1). |
+| level_equal | M7 | A floor at 13.3 and a ledge of another feature beside it, over one stretch of plan; a box on each by `surface`, half over each other; changes setting the ledge to 13.3, to 13.3004, to 13.2996 and to 13.301, where the base has 14 | build, then each change `--against` | At 14: no `place.overlap`. At 13.3, at 13.3004 and at 13.2996, one height on the lattice, a height going to the nearest millimetre: `place.overlap`, exit 1. At 13.301: none (`rules.md` 8.1, R70). No `diag.internal`. |
+| level_equal_step | M7 | A generate step returns a floor and a ledge over it at one height, an instance on each half over the other, a run on the floor and an instance on the ledge over its third member; the world writes a crate on the ledge, by a height, over the run's fifth member; a change raising the ledge to 15 | build, then the change `--against` | `place.crowded` naming the step's two instances, and `place.crowded` naming the run's third member and the step's instance over it, both standing (`rules.md` 3.4, R64, R69); the fifth member gave way to the crate, `place.gave_way` 1. Raised: no `place.crowded`, no `place.gave_way`, six members; the warm build equals a clean one. |
+| level_lowest | M7 | Two storeys over one outline at 10 and 13, a hut on each; a terrain scatter over the extent; changes that change the two levels about, and that place a box on the terrain under the upper hut | build, then each change `--against` | No shrub inside the ground hut's footprint, and one under the upper hut. Levels changed about: none under the hut now on the lowest floor, one under the other. The box under the upper hut: no `place.overlap`; with the levels changed about: `place.overlap`, exit 1. Each warm build equals a clean one (`rules.md` 8.1, R70). |
+| level_unread | M7 | Two floors over one outline, each with `cut`; the lower one's `base` is not a number on the line `x = 30.25`. A box on the upper floor on that line and a box on the terrain half over it; a change moving both 1 m east | build, then the change | On the line the lower floor's height cannot be read, so it is left out and the upper floor is the ground: `place.overlap`, exit 1, and no `formula.not_finite`. A metre east: two levels, exit 0 (`rules.md` 8.1). |
+| level_ground | M7 | A ground floor (`cut`) under the west part of an upper floor (`cut`) that overhangs it to the east, and a deck with no `cut` lower than the ground floor; four pairs, a box on a surface and a box on the terrain half over it: on the upper floor over the ground floor, on the overhang, on the ground floor over the deck, on the deck | build | `place.overlap` for the last three and not the first, exit 1: a lower floor keeps another from being the ground only where it holds the point, and only with `cut` (`rules.md` 8.1, rule 3). |
+| level_third | M7 | Two storeys over one outline; a hut and a scatter on the upper one, a run and a pin on the terrain, nothing on the lower one; changes raising the lower one above the other, and placing a box on the terrain under the hut | build, then each change `--against` | Lower floor at 10: 28 members, nothing removed by the pin, no `place.overlap`. Raised to 16: four members under the hut gave way, the pin removed 12 shrubs, and the box clashes, exit 1. No `diag.internal`: every node that tests two levels reads every kind surface's height, also of a surface neither thing stands on (`graph.md` 3, level). |
+| level_crowded | M7 | Two storeys over one outline at 10 and 13; a terrain scatter in the base layer; a hut on the upper floor in a layer of rank 1; changes bringing the upper floor down to 10, and moving the hut 6 m | build, then each change `--against` | No `place.crowded`; with the floor down, eight, one for each shrub under the hut, exit 0; with the hut moved, exit 0. No `diag.internal`: a scatter's `held` reads the levels and the higher layer's instances, with or without a pin (`graph.md` 3, level; before the fix the warm build was exit 3). |
 
 ## Changed from the spike
 

@@ -1,0 +1,2 @@
+# A kind for the case's two paths, so one `for_each` step is called once for each.
+[kind.plot]

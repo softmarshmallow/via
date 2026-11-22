@@ -1,0 +1,41 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["levels_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# Two floors over one outline, each with `cut`: the lower one's height cannot be read on the
+# line x = 30.25.
+[feature.under]
+kind   = "broken_floor"
+region = [[20, 20], [40, 20], [40, 28], [20, 28]]
+level  = 10
+
+[feature.over]
+kind   = "sound_floor"
+region = [[20, 20], [40, 20], [40, 28], [20, 28]]
+level  = 13
+
+# On the upper floor, on that line. The lower floor's height there cannot be read, so it is left
+# out, and the upper floor is the lowest whose height is known: the ground (rules.md 8.1).
+[instance.chest]
+asset   = "box"
+at      = [30.25, 24]
+surface = "over.floor"
+
+# On the terrain, 0.35 m east: half over the chest in plan.
+[instance.barrel]
+asset = "box"
+at    = [30.6, 24]
+
+# Both a metre east, off the line: the lower floor's height is read, 10, and the upper floor is
+# not the ground.
+[change.east.instance.chest]
+at = [31.25, 24]
+
+[change.east.instance.barrel]
+at = [31.6, 24]

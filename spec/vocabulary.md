@@ -324,13 +324,13 @@ One grammar for features, instances, sets, rules and hand edits.
 
 | Key | Takes | Meaning | Chapter |
 |---|---|---|---|
-| `[run.<id>]` | table | An `asset` or `set` repeated along a path or outline: `on = { ref, span, offset }` or `{ of, class, near, span, offset }`, `count` or `spacing`, `ends`, `face`, and `scale`, `tint`, `ground`, `margin` copied to every member. No `seed`. | rules |
+| `[run.<id>]` | table | An `asset` or `set` repeated along a path or outline, or a list of `assets` laid along it, one for each member: `on = { ref, span, offset }` or `{ of, class, near, span, offset }`, `count` or `spacing` (with `assets` the list is the count: never `spacing`, and a `count` only equal to the list's length), `ends`, `face`, and `scale`, `tint`, `ground`, `margin` copied to every member. No `seed`. | rules |
 | `count` | integer | How many. A literal, never a formula. | rules |
 | `spacing` | length | Distance between neighbours. On a scatter: the side of a lattice cell. | rules |
 | `ends` | string | On a run: `"half"` (default), a half step free at each end; `"both"`, a member at each end. | rules |
 | `[scatter.<id>]` | table | A density turned into instances: `assets`, `spacing`, `jitter`, `density`, `within`, `scale`, `tint`, `clump`, `seed`. | rules |
 | `jitter` | number | On a scatter: the share of the lattice cell a candidate may move across, 0 to 1. Default 0.8. Read exactly in millionths (`numbers.md` 3.3). | rules |
-| `assets` | list | Choices, each an asset id, `@<taxon path>` or `{ id, weight }`. A value, replaced whole. | assets |
+| `assets` | list | The assets a rule places. On a scatter: choices, each an asset id, `@<taxon path>` or `{ id, weight }`. On a run: an asset id for each member, in station order, and nothing else (`rules.md` 5, R68). A value, replaced whole. | assets |
 | `id`, `weight` | name; number | In an `assets` choice: an asset id or `@<taxon path>`, and its weight (default 1), read exactly in millionths (`numbers.md` 3.3, `rules.md` 7.4). | rules |
 | `density` | formula | 0 to 1 at each point. | rules |
 | `clump` | inline table | How instances gather by cause (R5). One of two forms: `members`, `radius`, `shrink`; or `around`, `radius` (`rules.md` 7.3). A value, replaced whole. | rules |

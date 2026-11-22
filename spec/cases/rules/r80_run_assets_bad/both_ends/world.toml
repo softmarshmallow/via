@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [18, 32]]
+
+# `ends = "both"` on an open stretch needs two members: a list of one is too short.
+[run.row]
+assets = ["box_small"]
+on     = { ref = "lane" }
+ends   = "both"

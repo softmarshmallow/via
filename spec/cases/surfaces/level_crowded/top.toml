@@ -1,0 +1,4 @@
+[instance.upper_hut]
+asset   = "hut"
+at      = [28, 24]
+surface = "hall_1.floor"

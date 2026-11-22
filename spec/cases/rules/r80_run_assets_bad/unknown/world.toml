@@ -1,0 +1,16 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [18, 32]]
+
+# Entries 1 and 3 name no asset of the pack.
+[run.row]
+assets = ["box_small", "box_smal", "fence_post", "nothing_like_it"]
+on     = { ref = "lane" }

@@ -362,7 +362,7 @@ impl Placed {
 
 pub struct Placer<'a> {
     pub(crate) d: &'a Decls,
-    pack: &'a Pack,
+    pub(crate) pack: &'a Pack,
     pub out: Placed,
     visiting: Vec<String>,
     pub(crate) failed: BTreeSet<String>,

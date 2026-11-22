@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+# The two boxes of r84, written by hand in the world's own text: two firm decisions.
+[instance.post]
+asset = "box_small"
+at    = [6, 32]
+
+[instance.stone]
+asset = "box_small"
+at    = [6.4, 32]

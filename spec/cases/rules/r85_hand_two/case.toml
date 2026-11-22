@@ -1,0 +1,19 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (what R69 did not change): the two overlapping boxes of r84 written by hand in the world's text are place.overlap, an error naming both, exit 1; no place.crowded."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.overlap]
+code     = "place.overlap"
+severity = "error"
+subject  = "instance.stone"
+
+[action.build.diag.no_crowded]
+code    = "place.crowded"
+records = 0

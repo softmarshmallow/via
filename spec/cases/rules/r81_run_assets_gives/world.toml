@@ -1,0 +1,32 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [48, 32]]
+
+# Stations at 6, 18, 30 and 42 m of the lane: a house (8 m by 6 m), two lamp posts (0.2 m) and a
+# fence post.
+[run.row]
+assets = ["house_low", "lamp_post", "lamp_post", "fence_post"]
+on     = { ref = "lane" }
+
+# 4.5 m north of the first station: clear of a lamp post there, and over the house's footprint.
+[instance.crate_a]
+asset = "box_small"
+at    = [6, 36.5]
+
+# 0.5 m east of the second station: over its lamp post.
+[instance.crate_b]
+asset = "box_small"
+at    = [18.5, 32]
+
+# 1.5 m north of the third station: over a house's footprint there, clear of its lamp post.
+[instance.crate_c]
+asset = "box_small"
+at    = [30, 33.5]

@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [18, 32]]
+
+# One asset at three stations: 3, 9 and 15 m of the lane (rules.md 5.1, ends "half").
+[run.row]
+asset = "box_small"
+on    = { ref = "lane" }
+count = 3

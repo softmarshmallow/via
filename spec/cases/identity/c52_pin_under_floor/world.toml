@@ -27,3 +27,14 @@ at    = [25, 19.2]
 [change.under.pin.mark]
 asset = "box"
 at    = [25, 20.3]
+
+# The pin under the stage again, and a ground floor under both: a storey, whose kind writes `cut`,
+# level with the terrain.
+[change.floored.pin.mark]
+asset = "box"
+at    = [25, 20.3]
+
+[change.floored.feature.hall_g]
+kind   = "storey"
+region = [[20, 20], [32, 20], [32, 28], [20, 28]]
+level  = 10

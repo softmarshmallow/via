@@ -1,0 +1,70 @@
+format    = "via-case-1"
+summary   = "graph.md 3 (write), rules.md 5 (R68): a run's members have no node, so the instance files read the facts of every asset a run names. A pack edit that makes `post` 3 m square, on the base's store: the member of a run of `asset = post` beside a crate gives way, and so does the `post` member of a run of `assets`; every other member stands where it stood. As in a clean build."
+milestone = 7
+actions   = ["base", "widen", "build"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.check.row]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "row#"
+count  = 4
+
+[action.base.check.mix]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "mix#"
+count  = 4
+
+[action.widen]
+write = "pack.toml"
+from  = "later/pack.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/next"
+
+[action.build.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.build.diag.row]
+code    = "place.gave_way"
+subject = "run.row"
+data    = { overlap = 1, relief = 0 }
+
+[action.build.diag.mix]
+code    = "place.gave_way"
+subject = "run.mix"
+data    = { overlap = 1, relief = 0 }
+
+[action.build.check.row]
+fn     = "names_count"
+path   = "build/next/instances/names.txt"
+prefix = "row#"
+count  = 3
+
+[action.build.check.mix]
+fn     = "names_count"
+path   = "build/next/instances/names.txt"
+prefix = "mix#"
+count  = 3
+
+[action.build.check.row_gone]
+fn     = "names_count"
+path   = "build/next/instances/names.txt"
+prefix = "row#r2"
+count  = 0
+
+[action.build.check.mix_gone]
+fn     = "names_count"
+path   = "build/next/instances/names.txt"
+prefix = "mix#r1"
+count  = 0

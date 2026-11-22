@@ -1,0 +1,49 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# Two storeys over one outline, each with `cut`: a ground floor level with the terrain and a
+# floor above it. Only the lowest is the ground (rules.md 8.1, R70).
+[feature.hall_g]
+kind   = "storey"
+region = [[16, 16], [40, 16], [40, 32], [16, 32]]
+level  = 10
+
+[feature.hall_1]
+kind   = "storey"
+region = [[16, 16], [40, 16], [40, 32], [16, 32]]
+level  = 13
+
+# A hut on each floor (6 m by 4 m), 10 m apart.
+[instance.ground_hut]
+asset   = "hut"
+at      = [22, 24]
+surface = "hall_g.floor"
+
+[instance.upper_hut]
+asset   = "hut"
+at      = [32, 24]
+surface = "hall_1.floor"
+
+# Shrubs on the terrain over the whole extent.
+[scatter.bush]
+assets  = ["shrub"]
+spacing = 2
+
+# The two floors change places: hall_1 is now the lowest.
+[change.swapped.feature.hall_g]
+level = 13
+
+[change.swapped.feature.hall_1]
+level = 10
+
+# A box on the terrain (two numbers) under the upper hut.
+[change.barrel.instance.barrel]
+asset = "box"
+at    = [32, 24]

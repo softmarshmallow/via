@@ -122,7 +122,9 @@ Each class in more detail:
   `seed`, the scatter's `seed`, purpose, `i`, `j`, member index). Members are class `instance` like
   their parents: `of = "trees"` selects both, which is meant.
 - **Run.** Station `k` counted from `span[0]` toward `span[1]`. A run's instances are a sequence by
-  intent, so the station is the place. A run a step returns is itself `<step>#<key>`, so its members
+  intent, so the station is the place. A station keeps its name whichever asset it holds: in a
+  run that names a list of assets (`rules.md` 5, R68), changing one entry changes that member's
+  asset and no name. A run a step returns is itself `<step>#<key>`, so its members
   are `<step>#<key>#r<k>`: the run that made a name is what stands before its last `#` (case
   `surfaces/step_run_on_floor`).
 - **Junction.** `geometry.md` 3.2's junction. Its parts are each source that meets there, with its
@@ -330,8 +332,10 @@ so a clear removes what it covers and nothing else moves.
   deck. A pin takes no `surface` key, and `on` a thing gives it no surface.
 - **What a pin removes (R65).** Only what it would clash with: an instance of a `by` producer whose
   footprint overlaps the pin's and that stands on one level with it, by the level test of
-  `rules.md` 8.1 (one surface, or the terrain and a surface that count as one there, and height
-  spans that meet). An instance under or over the pin in plan, on another storey, stays. Reason:
+  `rules.md` 8.1 (one surface, two kind surfaces at one height, or the terrain and the lowest
+  surface that stands on the ground there; and height spans that meet). An instance under or
+  over the pin in plan, on another storey, stays; so a pin with two numbers, which stands on the
+  terrain, removes under two or more storeys only what stands on the lowest (R70). Reason:
   a pin is a written thing, and two written things clash only on one level; removing by plan
   alone took 6 m of wall from the storey above a pinned window (the kit example's `window`).
   `identity.pin_overlap` and `identity.pins_overlap` below read the same test: two pins one over
@@ -696,6 +700,8 @@ carries its subject and the file and line of the text at fault.
     terrain, the box stays, and no `identity.pin_removed` is said. The same pin moved a metre in,
     under the deck: the terrain and a surface whose bound the terrain thing's footprint meets are
     one level (`rules.md` 8.1), so the box over it is removed, count 1 (case `pin_under_floor`).
+    With a ground floor under the deck as well, a surface that writes `cut` and lies lower: the
+    deck is no longer the ground (R70), and the same pin removes nothing.
 
 53. (M5) Warm. A run on a raised surface with no `cut`, each member reaching past its bound, and a
     pin on the terrain beside it; a pin on such a surface by a height, and a run on the terrain
@@ -712,6 +718,12 @@ carries its subject and the file and line of the text at fault.
 56. (M5) A pin `at` three numbers off every surface, with `by = ["tres"]`: `surface.none_at` and
     `identity.unknown_producer` in the one build, exit 1: a pin that is not placed has its `by`
     checked all the same (case `pin_by_unplaced`).
+57. (M7) Three storeys over one outline, each with `cut`, a row of boxes laid on each; a pin `at`
+    two numbers, on the terrain, under the third box of every row: `identity.pin_removed` names
+    the box on the lowest storey alone, count 1 (`rules.md` 8.1, R70; before it the pin removed
+    one from every storey). Warm, on the base's store: with the two lower storeys' levels changed
+    about, the pin removes the box on the new lowest; with both at one height, the box on each,
+    count 2. Each build equals a clean one (case `pin_lowest_floor`).
 
 **Names under change**
 

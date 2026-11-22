@@ -1,0 +1,26 @@
+format    = "via-case-1"
+summary   = "rules.md 8.1 (what R69 did not change): the instances of two steps that overlap are two documents' firm decisions: place.overlap, an error naming both, exit 1; no place.crowded. R69 reaches the instances of one step only."
+milestone = 7
+actions   = ["program", "trust", "build"]
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes"]
+exit = 0
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.overlap]
+code     = "place.overlap"
+severity = "error"
+
+[action.build.diag.no_crowded]
+code    = "place.crowded"
+records = 0

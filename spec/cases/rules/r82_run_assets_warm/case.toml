@@ -1,0 +1,88 @@
+format    = "via-case-1"
+summary   = "rules.md 5 (R68), warm: changing one entry of a run's `assets` changes that member's asset and no other member's name or place; the change report holds that member alone, swapped, cause run.row.assets. An entry changed to a larger asset gives way where the old one stood. Each warm build equals a clean one."
+milestone = 7
+actions   = ["base", "swap", "wide"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.check.all]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "row#"
+count  = 4
+
+[action.swap]
+via         = ["build", "world.toml", "--change", "swap", "--against", "build/base", "--out", "build/swap"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/swap"
+
+[action.swap.diag.internal]
+code    = "diag.internal"
+records = 0
+
+# One entry in the report: row#r1, its asset swapped, where it stood.
+[action.swap.check.one]
+fn      = "json_count"
+path    = "build/swap/changes.json"
+pointer = "/entries"
+count   = 1
+
+[action.swap.file.entry]
+path     = "build/swap/changes.json"
+pointer  = "/entries/0"
+includes = { name = "row#r1", table = "instance", what = ["swapped"], before = { asset = "lamp_post", at = [18, 32, 20], face = 90000, values = {} }, after = { asset = "fence_post", at = [18, 32, 20], face = 90000, values = {} } }
+
+[action.swap.check.cause]
+fn     = "entry_causes"
+path   = "build/swap/changes.json"
+table  = "instance"
+prefix = "row#r1"
+named  = ["run.row.assets"]
+
+[action.swap.check.kept]
+fn     = "names_kept"
+first  = "build/base/instances/names.txt"
+second = "build/swap/instances/names.txt"
+prefix = "row#"
+
+[action.swap.file.assets]
+path    = "build/swap/manifest.json"
+pointer = "/chunks/0/instances"
+value   = { box_small = [0, 2], fence_post = [2, 2], lamp_post = [4, 1] }
+
+# Station 2 takes a box (2 m by 2 m), which the crate 1.5 m north of it is over: that member
+# gives way by its own footprint, and no other changes.
+[action.wide]
+via         = ["build", "world.toml", "--change", "wide", "--against", "build/base", "--out", "build/wide"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/wide"
+
+[action.wide.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.wide.diag.gave_way]
+code    = "place.gave_way"
+subject = "run.row"
+data    = { overlap = 1, relief = 0 }
+
+[action.wide.check.one]
+fn      = "json_count"
+path    = "build/wide/changes.json"
+pointer = "/entries"
+count   = 1
+
+[action.wide.file.entry]
+path     = "build/wide/changes.json"
+pointer  = "/entries/0"
+includes = { name = "row#r2", table = "instance", what = ["removed"] }
+
+[action.wide.file.names]
+path = "build/wide/instances/names.txt"
+text = "crate\nrow#r0\nrow#r3\nrow#r1\n"

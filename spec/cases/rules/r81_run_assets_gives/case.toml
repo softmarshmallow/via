@@ -1,0 +1,39 @@
+format    = "via-case-1"
+summary   = "rules.md 5 (R68): each member of a run with `assets` gives way by its own asset's footprint: the house at station 0 and the lamp post at station 1 give way to the crates over them, the lamp post at station 2 stands beside a crate a house would meet; stations 2 and 3 keep their names, places and assets."
+milestone = 7
+actions   = ["build"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.build.diag.gave_way]
+code    = "place.gave_way"
+subject = "run.row"
+data    = { overlap = 2, relief = 0 }
+
+# The three crates (box_small), then fence_post, then lamp_post: row#r3 holds the fence post and
+# row#r2 the lamp post, as the list says of stations 3 and 2, though two members before them
+# were not made.
+[action.build.file.names]
+path = "build/w/instances/names.txt"
+text = "crate_a\ncrate_b\ncrate_c\nrow#r3\nrow#r2\n"
+
+[action.build.file.assets]
+path    = "build/w/manifest.json"
+pointer = "/chunks/0/instances"
+value   = { box_small = [0, 3], fence_post = [3, 1], lamp_post = [4, 1] }
+
+[action.build.check.r2]
+fn    = "instance_at"
+build = "build/w"
+name  = "row#r2"
+at    = [30, 32]
+
+[action.build.check.r3]
+fn    = "instance_at"
+build = "build/w"
+name  = "row#r3"
+at    = [42, 32]

@@ -1,0 +1,27 @@
+name       = "hall"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+# The step returns a floor and a ledge over it, each a kind surface, with things on both.
+[step.make]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]
+params  = { eaves = 13.3 }
+
+# A crate of the world's own text on the ledge the step returned, over the fifth member of the
+# step's run. The ledge's name is a produced one, which text never writes, so the crate is placed
+# by a height: at 13.3 the floor and the ledge tie, and the tie goes to the first place name,
+# `make#ledge.garden` (surfaces.md 4.1); at 15 the ledge is the nearer.
+[instance.crate]
+asset = "box"
+at    = [29.4, 21, 15]
+
+[change.raised.step.make]
+params = { eaves = 15 }

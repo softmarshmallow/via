@@ -818,6 +818,71 @@ at    = [-3, 1]
 base = "= 21 + 0.05 * y"
 "#;
 
+/// A world of one line and a run along it that names a list of assets (`rules.md` 5, R68).
+const LISTED: &str = r#"name    = "listed"
+extent  = [0, 0, 64, 64]
+resolution = 1
+pack    = "p"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.line]
+path = [[0, 32], [48, 32]]
+
+[run.row]
+assets = ["box_a", "stem", "stem", "box_a"]
+on     = { ref = "line" }
+
+[change.swap.run.row]
+assets = ["box_a", "stem", "box_a", "box_a"]
+
+[change.over.instance.lump]
+asset = "stem"
+at    = [18.2, 32]
+"#;
+
+#[test]
+fn a_run_of_listed_assets_keeps_its_stations() {
+    // Member `k` holds the entry at index `k`, at the place a run of four of one asset gives it.
+    let d = world_dir(LISTED);
+    let (base, codes) = run(&d, &[], None);
+    assert!(errors(&base).is_empty(), "{codes:?}");
+    let row = |b: &Build| -> Vec<(String, String, i64, i64)> {
+        b.instances
+            .iter()
+            .filter(|(n, _)| n.starts_with("row#"))
+            .map(|(n, i)| (n.clone(), i.asset.clone(), i.origin.0, i.origin.1))
+            .collect()
+    };
+    let want = |assets: [&str; 4]| -> Vec<(String, String, i64, i64)> {
+        assets
+            .iter()
+            .enumerate()
+            .map(|(k, a)| {
+                (
+                    format!("row#r{k}"),
+                    a.to_string(),
+                    6000 + 12000 * k as i64,
+                    32000,
+                )
+            })
+            .collect()
+    };
+    assert_eq!(row(&base), want(["box_a", "stem", "stem", "box_a"]));
+    // One entry changed: that member's asset, and nothing else of any member.
+    let (swap, _) = run(&d, &["swap"], None);
+    assert_eq!(row(&swap), want(["box_a", "stem", "box_a", "box_a"]));
+    // A hand instance over station 1: that member gives way, and stations 2 and 3 keep their
+    // names and their assets (the list is read by station, not by what was made).
+    let (over, codes) = run(&d, &["over"], None);
+    assert!(codes.iter().any(|c| c == "place.gave_way"), "{codes:?}");
+    let mut kept = want(["box_a", "stem", "stem", "box_a"]);
+    kept.remove(1);
+    assert_eq!(row(&over), kept);
+}
+
 /// One edge a reference makes: the reader's node id (a prefix, for a chunk), the label's prefix
 /// and the target's id (a prefix).
 type Probe = (&'static str, &'static str, &'static str);
@@ -923,6 +988,23 @@ const CASE_ROWS: &[(&str, &[&str])] = &[
             "identity/c53_pin_bound_warm",
         ],
     ),
+    // The level test (`rules.md` 8.1, R70) reads every kind surface's height: its readers are
+    // checks, producers and build files, and a level changed under another is a change no plan
+    // shows.
+    (
+        "level",
+        &[
+            "surfaces/level_equal",
+            "surfaces/level_equal_step",
+            "surfaces/level_lowest",
+            "surfaces/level_third",
+            "identity/c57_pin_lowest_floor",
+            "rules/r90_overlap_pack",
+        ],
+    ),
+    // A scatter and a higher layer's hand instance (`rules.md` 8.1): the scatter's `held` holds
+    // the diagnostic, and reads what decides it.
+    ("crowded from above", &["surfaces/level_crowded"]),
 ];
 
 /// `graph.md` 2's edge table against the code (TODO "From M5 slice 3": `follows` had no edge from

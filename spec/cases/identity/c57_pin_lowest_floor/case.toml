@@ -1,0 +1,99 @@
+format    = "via-case-1"
+summary   = "identity.md 4.2, rules.md 8.1 (R70): a pin with two numbers stands on the terrain; under three storeys whose kind writes cut it removes only what stands on the lowest (low#r2, count 1), where it removed a box from every storey. With the floors' levels changed on the base's store it removes what stands on the new lowest, and on both of two floors at one height, as in a clean build."
+milestone = 7
+actions   = ["base", "swapped", "tie"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[copy.pack]
+from = "spec/vectors/surfaces/pack.toml"
+to   = "pack.toml"
+
+# The limit recorded when R65 was built (TODO, "the level test takes every floor of a cutting
+# kind for the ground"): the pin removed low#r2, mid#r2 and top#r2.
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["low#r2"] }
+
+[action.base.check.low]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "low#"
+count  = 5
+
+[action.base.check.mid]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "mid#"
+count  = 6
+
+[action.base.check.top]
+fn     = "names_count"
+path   = "build/base/instances/names.txt"
+prefix = "top#"
+count  = 6
+
+[action.base.check.over]
+fn    = "instance_at"
+build = "build/base"
+name  = "mid#r2"
+at    = [25, 21]
+
+# hall_1 at 10.3 and hall_g at 13.3: the lowest floor is hall_1, so the pin removes mid#r2.
+[action.swapped]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "swapped", "--against", "build/base", "--out", "build/swapped"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/swapped"
+
+[action.swapped.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 1, names = ["mid#r2"] }
+
+[action.swapped.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.swapped.check.low]
+fn     = "names_count"
+path   = "build/swapped/instances/names.txt"
+prefix = "low#"
+count  = 6
+
+[action.swapped.check.mid]
+fn     = "names_count"
+path   = "build/swapped/instances/names.txt"
+prefix = "mid#"
+count  = 5
+
+# hall_g and hall_1 both at 10.3: a tie, and both are the lowest.
+[action.tie]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "tie", "--against", "build/base", "--out", "build/tie"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/tie"
+
+[action.tie.diag.removed]
+code    = "identity.pin_removed"
+subject = "pin.mark"
+data    = { count = 2, names = ["low#r2", "mid#r2"] }
+
+[action.tie.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.tie.check.top]
+fn     = "names_count"
+path   = "build/tie/instances/names.txt"
+prefix = "top#"
+count  = 6

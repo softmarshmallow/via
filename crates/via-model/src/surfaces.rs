@@ -2144,15 +2144,33 @@ pub(crate) fn choose_by_height(d: &mut Decls, shapes: &BTreeMap<String, Geo>) {
     }
 }
 
-/// What a thing stands on and how high it reaches above it (`rules.md` 8.1, M5): the place name
-/// of the kind surface its declaration names (`""` for the terrain), and its span above that
-/// surface in metres, `-sink` to `-sink` plus its bounds' height, all scaled. Plan only: read from
-/// the declarations and the asset's facts, never from a field (4.3 step 1).
-pub(crate) fn level(
-    d: &Decls,
-    pack: &crate::pack::Pack,
-    p: &crate::rules::Placement,
-) -> (String, f64, f64) {
+/// What a thing stands on and how high it reaches above it (`rules.md` 8.1): plan only, read
+/// from the declarations and the asset's facts, never from a field (4.3 step 1).
+#[derive(Clone, Debug)]
+pub(crate) struct Level {
+    /// The place name of the kind surface the thing's declaration names; `""` for the terrain.
+    pub surface: String,
+    /// Its span above that surface in metres: `-sink` to `-sink` plus its bounds' height, scaled.
+    pub lo: f64,
+    pub hi: f64,
+    /// Its own plan point, where a surface's height is read for it (8.1, R70).
+    pub at: (i64, i64),
+}
+
+impl Level {
+    pub(crate) fn new(surface: String, span: (f64, f64), at: P) -> Level {
+        Level {
+            surface,
+            lo: span.0,
+            hi: span.1,
+            at: (at.x, at.y),
+        }
+    }
+}
+
+/// The [`Level`] of a placed thing: what its declaration says it stands on, its asset's span
+/// and its origin.
+pub(crate) fn level(d: &Decls, pack: &crate::pack::Pack, p: &crate::rules::Placement) -> Level {
     let surface = match stance(d, p) {
         Some(st) => match (&st.surface, &st.on) {
             (Some(s), _) => s.clone(),
@@ -2161,8 +2179,7 @@ pub(crate) fn level(
         },
         None => String::new(),
     };
-    let (lo, hi) = span(pack, &p.asset, p.scale);
-    (surface, lo, hi)
+    Level::new(surface, span(pack, &p.asset, p.scale), p.origin)
 }
 
 /// An asset's height span above the surface it stands on, metres (`rules.md` 8.1).
@@ -2176,10 +2193,19 @@ pub(crate) fn span(pack: &crate::pack::Pack, asset: &str, scale: f64) -> (f64, f
     }
 }
 
-/// The kind surfaces the level test reads (`rules.md` 8.1): their bounds and `cut`, plan only
-/// (made from the owners' shapes, 4.3 step 3).
+/// A height in whole millimetres at each plan point asked so far; `None` where it cannot be read.
+type HeightsAt = BTreeMap<(i64, i64), Option<i64>>;
+
+/// The kind surfaces the level test reads (`rules.md` 8.1): their bounds, `cut` and heights,
+/// plan only (made from the owners' shapes, 4.3 step 3; a `base` reads no field, 1.1).
 pub(crate) struct Levels {
     kinds: BTreeMap<String, SurfaceOut>,
+    /// Each surface's height at a plan point, as read once; `None` where its `base` fails
+    /// there (2.7).
+    heights: std::cell::RefCell<BTreeMap<String, HeightsAt>>,
+    /// The height of the lowest surface with `cut` whose bound holds a plan point, as read once;
+    /// `None` where none holds it with a height that can be read.
+    lowest: std::cell::RefCell<HeightsAt>,
 }
 
 impl Levels {
@@ -2191,37 +2217,96 @@ impl Levels {
             } else {
                 BTreeMap::new()
             },
+            heights: Default::default(),
+            lowest: Default::default(),
+        }
+    }
+
+    /// A kind surface's height at a plan point, on plans (8.1, R70): its `base` there, rounded
+    /// to the lattice in whole millimetres as a height in `at` is (4.1). `None` where it cannot
+    /// be read: no such surface, or a `base` that fails or is not finite there (2.7).
+    fn height(&self, surface: &str, at: (i64, i64)) -> Option<i64> {
+        if let Some(h) = self.heights.borrow().get(surface).and_then(|m| m.get(&at)) {
+            return *h;
+        }
+        let h = self
+            .kinds
+            .get(surface)
+            .and_then(|s| s.base.eval(&[at]).ok())
+            .and_then(|v| v.first().copied())
+            .filter(|z| z.is_finite())
+            .map(height_mm);
+        self.heights
+            .borrow_mut()
+            .entry(surface.to_string())
+            .or_default()
+            .insert(at, h);
+        h
+    }
+
+    /// The height of the lowest kind surface with `cut` whose bound holds the plan point, among
+    /// those whose height can be read there (8.1, R70).
+    fn lowest_cut(&self, at: (i64, i64)) -> Option<i64> {
+        if let Some(l) = self.lowest.borrow().get(&at) {
+            return *l;
+        }
+        let l = self
+            .kinds
+            .values()
+            .filter(|s| s.cut.is_some() && s.inside(at))
+            .filter_map(|s| self.height(&s.place, at))
+            .min();
+        self.lowest.borrow_mut().insert(at, l);
+        l
+    }
+
+    /// Whether the terrain and the kind surface a thing stands on are one level (8.1): the
+    /// surface stands on the ground. Its kind writes `cut`, or its bound meets the footprint of
+    /// the thing on the terrain (R40); and no surface with `cut` holds the plan point of the
+    /// thing on it and stands lower there (R70: only the lowest is the ground). A surface whose
+    /// own height cannot be read keeps the first clause alone.
+    fn ground(&self, terrain: &via_geom::Region, on: &Level) -> bool {
+        let Some(s) = self.kinds.get(&on.surface) else {
+            return false;
+        };
+        if s.cut.is_none()
+            && !s
+                .region()
+                .is_some_and(|r| crate::rules::overlaps(terrain, r))
+        {
+            return false;
+        }
+        match (self.height(&on.surface, on.at), self.lowest_cut(on.at)) {
+            (Some(h), Some(low)) => low >= h,
+            _ => true,
         }
     }
 
     /// Whether two things can clash (`rules.md` 8.1): one level, and spans whose insides meet
-    /// (a span of no height meets one it touches). The terrain is one level with a kind surface
-    /// that has `cut` (a ground floor let into it) or whose bound the terrain thing's footprint
-    /// meets; two different kind surfaces never are.
+    /// (a span of no height meets one it touches). One surface is one level; so are two kind
+    /// surfaces whose heights, each at its own thing's plan point, are equal to the millimetre
+    /// (R70), and the terrain with a kind surface that stands on the ground ([`Levels::ground`]).
     pub(crate) fn clash(
         &self,
-        a: &(String, f64, f64),
+        a: &Level,
         fa: &via_geom::Region,
-        b: &(String, f64, f64),
+        b: &Level,
         fb: &via_geom::Region,
     ) -> bool {
-        if a.0 != b.0 {
-            let (ground, on) = match (a.0.is_empty(), b.0.is_empty()) {
-                (true, false) => (fa, &b.0),
-                (false, true) => (fb, &a.0),
-                _ => return false,
+        if a.surface != b.surface {
+            let one = match (a.surface.is_empty(), b.surface.is_empty()) {
+                (true, false) => self.ground(fa, b),
+                (false, true) => self.ground(fb, a),
+                _ => match (self.height(&a.surface, a.at), self.height(&b.surface, b.at)) {
+                    (Some(x), Some(y)) => x == y,
+                    _ => false,
+                },
             };
-            let Some(s) = self.kinds.get(on) else {
-                return false;
-            };
-            let meets = s
-                .region()
-                .is_some_and(|r| crate::rules::overlaps(ground, r));
-            if s.cut.is_none() && !meets {
+            if !one {
                 return false;
             }
         }
-        let (lo, hi) = (via_num::max(a.1, b.1), via_num::min(a.2, b.2));
-        lo < hi || ((a.1 == a.2 || b.1 == b.2) && lo <= hi)
+        let (lo, hi) = (via_num::max(a.lo, b.lo), via_num::min(a.hi, b.hi));
+        lo < hi || ((a.lo == a.hi || b.lo == b.hi) && lo <= hi)
     }
 }

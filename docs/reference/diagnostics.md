@@ -3834,8 +3834,8 @@ Fixed: taxon = "prop/box"
 
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
-| `place.asset_or_set` | error | 1 |  | A placement writes both `asset` and `set`, or neither. |
-| `place.crowded` | warning | 1 |  | Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both. |
+| `place.asset_or_set` | error | 1 |  | A placement writes both `asset` and `set`, or neither; a run writes more than one of `asset`, `set` and `assets`, or none. |
+| `place.crowded` | warning | 1 |  | Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or two things one step returned overlap, a member of its run and its instance or two of its instances; names both. |
 | `place.gave_way` | info | 1 |  | A producer's candidates dropped by overlap and by relief, as counts, with their box. |
 | `place.keep_out` | warning | 1 |  | An instance stands where `keep_out` is above 0; names the field and the position. |
 | `place.margin_alone` | error | 1 |  | `margin` without `ground`. |
@@ -3843,7 +3843,7 @@ Fixed: taxon = "prop/box"
 | `place.no_position` | error | 1 |  | An instance or pin has neither `at` nor `on`; a run has no `on`. |
 | `place.on_form` | error | 1 |  | `span` in an instance's `on`, or `t` in a run's `on`. (`t` or `offset` on a thing with no length is `geom.no_length`.) |
 | `place.outside` | error | 1 |  | A hand instance or set item whose origin is outside the extent; not placed (8.4). |
-| `place.overlap` | error | 1 |  | Two hand instances' footprints overlap; names both. |
+| `place.overlap` | error | 1 |  | Two hand instances' footprints overlap on one level (8.1); names both. Two instances one step returned are `place.crowded`. |
 | `place.range` | error | 1 |  | On an instance, run or set item: `scale` not above 0, `tint` below 0, `margin` below 0, or a `[lo, hi]` pair (only a scatter draws). |
 | `place.relief` | warning | 1 |  | Relief under an instance exceeds its asset's `max_relief`; gives both numbers and the position. |
 
@@ -3852,8 +3852,10 @@ Fixed: taxon = "prop/box"
 error, milestone 1, `spec/rules.md`.
 
 ```text
-A placement writes both `asset` and `set`, or neither. It places one asset or one set.
-To fix: Keep one of asset and set.
+A placement writes both `asset` and `set`, or neither. It places one asset or one set. A run may
+name a list of assets, one for each member, in place of either: it writes exactly one of `asset`,
+`set` and `assets`.
+To fix: Keep one of asset and set; on a run, one of asset, set and assets.
 Bad:   [instance.a]
        asset = "b"
        set = "c"
@@ -3866,9 +3868,9 @@ Fixed: [instance.a]
 warning, milestone 1, `spec/rules.md`.
 
 ```text
-Two produced instances overlap, or one overlaps a thing in a higher layer, or a member of a run
-that a step returned overlaps an instance the same step returned: a step wrote both at once, so
-neither gives way. A warning: both stay. The record names both.
+Two produced instances overlap, or one overlaps a thing in a higher layer, or two things one step
+returned overlap: a member of its run and its instance, or two of its instances. A step wrote
+both at once, so neither gives way. A warning: both stay. The record names both.
 To fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names
 the lower producer. For two things of one step, change what the step returns, or move one of the
 things it was given (two calls of one step do not see each other's output).
@@ -3974,8 +3976,9 @@ Fixed: at = [250, 10]
 error, milestone 1, `spec/rules.md`.
 
 ```text
-Two hand instances' footprints overlap. Both are placed as written, so neither gives way. The
-record names both and the overlap's size.
+Two hand instances' footprints overlap on one level. Both are placed as written, so neither gives
+way. The record names both and the overlap's size. Two instances that one step returned are not
+two hands' decisions: their overlap is place.crowded, a warning.
 To fix: Move one by at least the overlap's size.
 Bad:   [instance.a] at = [10, 10]   and   [instance.b] at = [12, 10]   (each 4 m wide)
 Fixed: [instance.b] at = [15, 10]
@@ -4438,8 +4441,8 @@ Fixed: when = "generate"
 
 | Code | Severity | M | Data | Summary |
 |---|---|---|---|---|
-| `run.count` | error | 3 |  | `count` below 1, or below 2 with `ends = "both"` on an open stretch (M3). |
-| `run.count_or_spacing` | error | 3 |  | A run writes both `count` and `spacing`, or neither (M3). |
+| `run.count` | error | 3 |  | `count` below 1, or below 2 with `ends = "both"` on an open stretch; `assets` empty, or too short for its `ends`; or `count` beside `assets` that is not the list's length, with both numbers (M3). |
+| `run.count_or_spacing` | error | 3 |  | A run writes both `count` and `spacing`, or neither; or `spacing` beside `assets` (M3). |
 | `run.no_length` | error | 3 |  | The run's `on` names a thing with no length, or its stretch is zero millimetres (M3). |
 | `run.outside` | warning | 3 |  | Members fell outside the extent and were not made; gives the count (M3). |
 
@@ -4448,8 +4451,10 @@ Fixed: when = "generate"
 error, milestone 3, `spec/rules.md`.
 
 ```text
-count below 1, or below 2 with ends = "both" on an open stretch.
-To fix: The least allowed count.
+count below 1, or below 2 with ends = "both" on an open stretch. On a run with assets, whose list
+is the count: the list is empty or too short for its ends, or count is written beside it and is
+not the list's length (the record gives both numbers).
+To fix: The least allowed count. Beside assets, the list's length, or no count.
 Bad:   count = 1, ends = "both"   (on a path)
 Fixed: count = 2, ends = "both"
 ```
@@ -4459,8 +4464,9 @@ Fixed: count = 2, ends = "both"
 error, milestone 3, `spec/rules.md`.
 
 ```text
-A run writes both count and spacing, or neither.
-To fix: Keep one.
+A run writes both count and spacing, or neither. Or it writes spacing beside assets: a run with
+assets has one member for each entry of the list, so the list is the count.
+To fix: Keep one. With assets, drop spacing; a count there must equal the list's length (run.count).
 Bad:   count = 4, spacing = 3
 Fixed: count = 4
 ```

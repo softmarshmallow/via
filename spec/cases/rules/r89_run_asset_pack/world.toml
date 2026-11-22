@@ -1,0 +1,35 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 20
+
+[feature.lane]
+path = [[0, 32], [48, 32]]
+
+[feature.back]
+path = [[0, 44], [48, 44]]
+
+# A run of one asset: stations at 6, 18, 30 and 42 m.
+[run.row]
+asset = "post"
+on    = { ref = "lane" }
+count = 4
+
+# A run that names an asset for each station (R68): `post` at stations 1 and 3.
+[run.mix]
+assets = ["rail", "post", "rail", "post"]
+on     = { ref = "back" }
+
+# 1.5 m north of `row`'s third station and of `mix`'s second: clear of a 0.4 m post, over a
+# 3 m one.
+[instance.crate_row]
+asset = "crate"
+at    = [30, 33.5]
+
+[instance.crate_mix]
+asset = "crate"
+at    = [18, 45.5]

@@ -185,24 +185,24 @@ From general knowledge (2026-11-12), re-read against the first cut on 2026-11-18
 | blockout, greybox | a design phase in plain shapes, for any space | Practice | core | shown: `lib/packs/primitive.toml` |
 | building typology | rowhouse, walk-up, tower, warehouse: recurring kinds | Recipe | lib, pack | partly: `lib/town/houses.py` |
 | podium and tower, stepback | a wide base with a narrower tower above | Grammar | lib | none |
-| modular kit | pieces made to fit together | Asset | pack, lib | shown: `lib/town/kit.py`, `examples/market`, `examples/kit` |
+| modular kit | pieces made to fit together | Asset | pack, lib | shown: `lib/town/kit.py`, `lib/building/lay.py`, `examples/market`, `examples/kit` |
 | module, grid, snapping | the size pieces share and lock to | Asset | pack | partly: `examples/market`, `examples/kit` |
 | kit metrics | the kit's agreed dimensions: bay, storey, door | Asset | pack | partly: `examples/market`, `examples/kit` |
 | pivot, origin | the point a piece is placed by | Asset | pack | shown: `pivot` |
 | front, facing | which way a piece looks: its agreed forward axis, so a rule can aim it | Asset | pack | shown: `front` |
 | socket, connector | where one piece joins another | Asset | pack | shown: `[asset.<id>.mount.<name>]`, `connector` |
 | bay, corner, end, filler, centre | the roles pieces play in a row | Linear placement | pack, lib | shown: `lib/town/kit.py` |
-| facade | the face of a building as a pattern of pieces | Grammar | lib | partly: `lib/building/lay.py` |
-| facade variation | rules that stop neighbours looking identical | Grammar | lib | none |
+| facade | the face of a building as a pattern of pieces | Grammar | lib | partly: `lib/building/lay.py`, `examples/kit` |
+| facade variation | rules that stop neighbours looking identical | Linear placement | lib | shown: `lib/building/lay.py`, `examples/kit` |
 | shape grammar, facade grammar | rules that subdivide a volume into floors, bays and openings | Grammar | lib | none |
 | storey, floor | one layer of a building | Grammar | lib | shown: `building.storey` |
 | basement, sub-grade level | floors below the street | Grammar | lib | none |
-| roof, eave, ridge, gable | the top and its parts | Grammar | lib | partly: `building.roof` |
+| roof, eave, ridge, gable | the top and its parts | Grammar | lib | partly: `building.roof`, `lib/building/lay.py`, `examples/kit` |
 | rooftop props | plant, tanks, vents, antennas on a flat roof | Scatter | lib, pack | none |
 | trim, cornice, plinth | strips that finish edges | Linear placement | lib | none |
 | foundation, stilts, plinth skirt | what takes up the gap under a building | Meeting | lib, pack | partly: `sink` |
 | porch, boardwalk, steps to grade | pieces that reach the door from the ground | Meeting | lib | partly: `building.doorway`, `building.footpath` |
-| storefront, awning, shop sign | the commercial ground floor and what projects from it | Grammar | lib, pack | none |
+| storefront, awning, shop sign | the commercial ground floor and what projects from it | Grammar | lib, pack | partly: `lib/building/lay.py`, `examples/kit` |
 | fire escape, external stair | stairs hung on a facade | Grammar | lib, pack | none |
 | party wall, blind wall, lightwell | side and back faces between unequal buildings | Meeting | lib | none |
 | assembly, saved group | pieces saved and reused as one | Recipe | core | shown: `[set.<id>]` |

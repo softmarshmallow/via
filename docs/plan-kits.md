@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822); K4 follows them. Next: K5. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0); K5 follows them. Next: K6. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -85,6 +85,17 @@ Changed so far:
   ground storey and another with a 3 m one. The review then showed the footing and the tiles
   wrong off the axes (walls above up to 1.5 m off the walls below, tiles failing the build):
   mended for the walls and the gable; floor tiles are not laid on a turned building, and say so.
+
+- **K5, 2026-11-23.** The review ruled five things, not four (R66 to R70): the two surfaces at
+  one height that K4 met are their own ruling. It added no archetype. It also built the three
+  rulings whose mechanism is the core's (a run that names each station's piece, two things one
+  step returned, levels by height), because K3 and K4 had each recorded a fault that only the
+  core could mend and K6 leans on the first. Two are ruled and owed: the kit stating what its
+  pieces share (K6, with the second kit) and bodies that meet by the lattice's rounding.
+  The independent review of the engine change found one fault of the change (a warm build
+  failed after a floor's height changed in a layered world), which is mended; seven faults older
+  than it, of which two are mended and five filed; and nine untested branches, now held by six
+  new cases and one more action (`TODO.md`, `spec/graph.md`).
 
 Checks before each commit: the library's tests, `cargo run -p xtask -- check`, and, where a crate
 changed, `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace` and the

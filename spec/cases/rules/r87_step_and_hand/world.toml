@@ -1,0 +1,18 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "primitive"
+
+[field.height]
+role = "surface"
+base = 20
+
+# A hand instance of the world's own text, 0.4 m east of the box the step returns.
+[instance.crate]
+asset = "box_small"
+at    = [6.4, 32]
+
+[step.make]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/make.py"]

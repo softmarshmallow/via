@@ -1,0 +1,14 @@
+# The case's own pack. `wide` has no solidity here, so nothing clashes with it; `later/pack.toml`
+# drops that line.
+[taxon."prop"]
+
+[asset.box]
+primitive = "box"
+size      = [1, 1, 1]
+taxon     = "prop"
+
+[asset.wide]
+primitive = "box"
+size      = [3, 1, 2]
+taxon     = "prop"
+solidity  = "none"

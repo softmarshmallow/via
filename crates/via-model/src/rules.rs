@@ -326,7 +326,7 @@ pub fn scatter_all(
     let mut facts: BTreeMap<String, (f64, f64)> = BTreeMap::new();
     // What each produced instance stands on and its span above it (`rules.md` 8.1): a pin
     // removes only what stands on its level (`identity.md` 4.2).
-    let mut stand: BTreeMap<String, (String, f64, f64)> = BTreeMap::new();
+    let mut stand: BTreeMap<String, crate::surfaces::Level> = BTreeMap::new();
     // The kind surfaces a scatter stands on (`surfaces.md` 4.1, M5): their bounds are plan only,
     // ready with their owners (4.3). Their own faults are said by the build's grounding.
     let levels = crate::surfaces::Levels::new(d, &placed.shapes);
@@ -719,10 +719,11 @@ pub fn scatter_all(
             // Giving way reads down only (`rules.md` 3.4): a hand instance in a higher layer is
             // not given way to; an overlap with it is `place.crowded` (8.1).
             // Only hand instances on its surface whose heights meet its own (8.1, M5).
-            let mine = {
-                let (lo, hi) = crate::surfaces::span(pack, &asset, scale);
-                (s.surface.clone().unwrap_or_default(), lo, hi)
-            };
+            let mine = crate::surfaces::Level::new(
+                s.surface.clone().unwrap_or_default(),
+                crate::surfaces::span(pack, &asset, scale),
+                origin,
+            );
             let overlap = a.solid
                 && hand
                     .iter()
@@ -983,7 +984,7 @@ pub fn scatter_all(
     let mut pins = Vec::new();
     // Each pin's level: the terrain, or the kind surface a height in its `at` chose
     // (`identity.md` 4.2, `surfaces.md` 4.1).
-    let mut pin_stand: BTreeMap<String, (String, f64, f64)> = BTreeMap::new();
+    let mut pin_stand: BTreeMap<String, crate::surfaces::Level> = BTreeMap::new();
     for (id, p) in &pin_plans {
         let decl = d.pins.get(id);
         let by = decl.and_then(|x| x.by.clone());
@@ -1002,9 +1003,15 @@ pub fn scatter_all(
         if decl.is_some_and(|x| x.height.is_some() && x.surface.is_none()) {
             continue;
         }
-        let (lo, hi) = crate::surfaces::span(pack, &p.asset, p.scale);
         let on = decl.and_then(|x| x.surface.clone()).unwrap_or_default();
-        pin_stand.insert(id.clone(), (on, lo, hi));
+        pin_stand.insert(
+            id.clone(),
+            crate::surfaces::Level::new(
+                on,
+                crate::surfaces::span(pack, &p.asset, p.scale),
+                p.origin,
+            ),
+        );
         // A pin inside a clear (R31) and in keep_out.
         for c in &clears {
             let inside = match &c.place {
@@ -1358,7 +1365,7 @@ pub fn ground_and_check(
         }
         // Relief (8.2) and keep_out (8.3) for hand instances. One that stands on a kind surface
         // takes its relief over that surface when grounded there (`surfaces.md` 4.2).
-        let on_terrain = crate::surfaces::level(d, pack, p).0.is_empty();
+        let on_terrain = crate::surfaces::level(d, pack, p).surface.is_empty();
         if let (Some(limit), true) = (a.max_relief, on_terrain) {
             if let Some((lo, hi)) = relief(f, surface, &p.footprint) {
                 if hi - lo > limit * p.scale {
@@ -1552,6 +1559,34 @@ pub fn ground_and_check(
                         .unwrap_or((Subject::entity("instance", n), Site::Header))
                 };
                 let ((sb, hb), (sa, ha)) = (head(&b.name), head(&a.name));
+                // Two instances of one step's returned document (3.4, R69), whichever call of
+                // a `for_each` step made each: the step wrote both at once, so neither is the
+                // firmer. Both stay; `place.crowded`, naming both.
+                if let Some(step) = d.step_of(&a.name).filter(|s| d.step_of(&b.name) == Some(s)) {
+                    diags.push(
+                        text::diag(
+                            codes::place::CROWDED,
+                            sb,
+                            hb,
+                            &format!(
+                                "`{}` and `{}` overlap; the step `{step}` returned both, so neither gives way",
+                                a.name, b.name
+                            ),
+                            &format!(
+                                "the step `{step}` returned both: change what it returns, or move one of the things it was given"
+                            ),
+                        )
+                        .at(text::pos(b.origin.x, b.origin.y))
+                        .with("instances", DValue::texts([a.name.clone(), b.name.clone()]))
+                        .related(via_diag::Related {
+                            subject: sa,
+                            site: ha,
+                            position: Some(text::pos(a.origin.x, a.origin.y)),
+                            note: via_diag::text!("the other instance of the same step"),
+                        }),
+                    );
+                    continue;
+                }
                 let msg = format!("`{}` and `{}` overlap", a.name, b.name);
                 diags.push(
                     text::diag(codes::place::OVERLAP, sb, hb, &msg, "move one")

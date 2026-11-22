@@ -1,0 +1,72 @@
+format    = "via-case-1"
+summary   = "rules.md 5 (R68): beside `assets`, a `count` that is not the list's length is run.count naming both numbers; `spacing` is run.count_or_spacing; an empty list is run.count; an id the pack does not bind is asset.unknown at that entry, by its index; `asset` beside `assets` is place.asset_or_set; a list of one with ends = both is run.count."
+milestone = 7
+actions   = ["count", "spacing", "empty", "unknown", "both", "both_ends"]
+
+[action.count]
+via         = ["build", "count/world.toml", "--out", "count/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "count/build/w"
+
+[action.count.diag.count]
+code    = "run.count"
+subject = "run.row"
+data    = { count = 4, assets = 3 }
+
+[action.spacing]
+via         = ["build", "spacing/world.toml", "--out", "spacing/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "spacing/build/w"
+
+[action.spacing.diag.spacing]
+code    = "run.count_or_spacing"
+subject = "run.row"
+
+[action.empty]
+via         = ["build", "empty/world.toml", "--out", "empty/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "empty/build/w"
+
+[action.empty.diag.empty]
+code    = "run.count"
+subject = "run.row"
+
+[action.unknown]
+via         = ["build", "unknown/world.toml", "--out", "unknown/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "unknown/build/w"
+
+# One record for each unknown entry, at the `assets` key, with the entry's index in `data`.
+[action.unknown.diag.first]
+code    = "asset.unknown"
+subject = "run.row"
+data    = { index = 1, nearest = "box_small" }
+
+[action.unknown.diag.second]
+code    = "asset.unknown"
+subject = "run.row"
+data    = { index = 3 }
+
+[action.both]
+via         = ["build", "both/world.toml", "--out", "both/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "both/build/w"
+
+[action.both.diag.both]
+code    = "place.asset_or_set"
+subject = "run.row"
+
+[action.both_ends]
+via         = ["build", "both_ends/world.toml", "--out", "both_ends/build/w"]
+exit        = 1
+diagnostics = "includes"
+out         = "both_ends/build/w"
+
+[action.both_ends.diag.both_ends]
+code    = "run.count"
+subject = "run.row"

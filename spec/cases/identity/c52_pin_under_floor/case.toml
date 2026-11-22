@@ -1,7 +1,7 @@
 format    = "via-case-1"
-summary   = "identity.md 4.2 (R65): a pin on the terrain beside a raised surface, overlapping only the overhang of a box that stands on it, removes nothing (two levels); moved under the surface, its footprint meets the bound, the terrain and the surface are one level (rules.md 8.1), and the box over it is removed, count 1."
+summary   = "identity.md 4.2 (R65, R70): a pin on the terrain beside a raised surface, overlapping only the overhang of a box that stands on it, removes nothing (two levels); moved under the surface, its footprint meets the bound, the terrain and the surface are one level (rules.md 8.1), and the box over it is removed, count 1. With a ground floor under the surface, a kind surface that writes cut and lies lower, the raised surface is no longer the ground and the same pin removes nothing (R70)."
 milestone = 5
-actions   = ["base", "beside", "under"]
+actions   = ["base", "beside", "under", "floored"]
 
 [copy.lib]
 from = "spec/vectors/surfaces/lib"
@@ -70,3 +70,34 @@ fn     = "names_count"
 path   = "build/w/instances/names.txt"
 prefix = "edge#"
 count  = 5
+
+# Added with R70 (rules.md 8.1): the same pin, with a ground floor (a storey, `cut`, at 10) under
+# the stage. Of the surfaces that stand on the ground only the lowest is the ground, so the stage
+# at 14 and the terrain are two levels: nothing is removed. Before R70 the pin removed edge#r2
+# here as in `under`. `under` itself is unchanged by R70: a lone surface is the ground by its
+# bound however high it stands, since the terrain's height is not known on plans.
+[action.floored]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--change", "floored", "--out", "build/w"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w"
+
+[action.floored.diag.none_removed]
+code    = "identity.pin_removed"
+records = 0
+
+[action.floored.diag.none_overlap]
+code    = "identity.pin_overlap"
+records = 0
+
+[action.floored.check.edge]
+fn     = "names_count"
+path   = "build/w/instances/names.txt"
+prefix = "edge#"
+count  = 6
+
+[action.floored.check.mark]
+fn    = "instance_at"
+build = "build/w"
+name  = "mark"
+at    = [25, 20.3]

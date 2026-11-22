@@ -1,0 +1,17 @@
+# The pack once `post` is 3 m square: nothing else changed.
+[taxon."prop"]
+
+[asset.post]
+primitive = "box"
+size      = [3, 3, 2]
+taxon     = "prop"
+
+[asset.rail]
+primitive = "box"
+size      = [0.4, 0.4, 1]
+taxon     = "prop"
+
+[asset.crate]
+primitive = "box"
+size      = [2, 2, 2]
+taxon     = "prop"

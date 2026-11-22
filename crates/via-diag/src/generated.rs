@@ -3036,22 +3036,22 @@ pub(crate) static ROWS: [Row; 361] = [
         severity: Severity::Error,
         chapter: "rules",
         milestone: 1,
-        summary: "A placement writes both `asset` and `set`, or neither.",
+        summary: "A placement writes both `asset` and `set`, or neither; a run writes more than one of `asset`, `set` and `assets`, or none.",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A placement writes both `asset` and `set`, or neither. It places one asset or one set.\nTo fix: Keep one of asset and set.\nBad:   [instance.a]\n       asset = \"b\"\n       set = \"c\"\nFixed: [instance.a]\n       asset = \"b\"\n",
+        explain: "A placement writes both `asset` and `set`, or neither. It places one asset or one set. A run may\nname a list of assets, one for each member, in place of either: it writes exactly one of `asset`,\n`set` and `assets`.\nTo fix: Keep one of asset and set; on a run, one of asset, set and assets.\nBad:   [instance.a]\n       asset = \"b\"\n       set = \"c\"\nFixed: [instance.a]\n       asset = \"b\"\n",
     },
     Row {
         code: "place.crowded",
         severity: Severity::Warning,
         chapter: "rules",
         milestone: 1,
-        summary: "Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both.",
+        summary: "Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or two things one step returned overlap, a member of its run and its instance or two of its instances; names both.",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two produced instances overlap, or one overlaps a thing in a higher layer, or a member of a run\nthat a step returned overlaps an instance the same step returned: a step wrote both at once, so\nneither gives way. A warning: both stay. The record names both.\nTo fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names\nthe lower producer. For two things of one step, change what the step returns, or move one of the\nthings it was given (two calls of one step do not see each other's output).\nBad:   two runs along one path at the same offset\nFixed: on = { ref = \"a\", span = [0.1, 0.4], offset = 4 }   for one of them\n",
+        explain: "Two produced instances overlap, or one overlaps a thing in a higher layer, or two things one step\nreturned overlap: a member of its run and its instance, or two of its instances. A step wrote\nboth at once, so neither gives way. A warning: both stay. The record names both.\nTo fix: Change one producer's on or span, or add a clear or pin in the higher layer whose by names\nthe lower producer. For two things of one step, change what the step returns, or move one of the\nthings it was given (two calls of one step do not see each other's output).\nBad:   two runs along one path at the same offset\nFixed: on = { ref = \"a\", span = [0.1, 0.4], offset = 4 }   for one of them\n",
     },
     Row {
         code: "place.gave_way",
@@ -3135,11 +3135,11 @@ pub(crate) static ROWS: [Row; 361] = [
         severity: Severity::Error,
         chapter: "rules",
         milestone: 1,
-        summary: "Two hand instances' footprints overlap; names both.",
+        summary: "Two hand instances' footprints overlap on one level (8.1); names both. Two instances one step returned are `place.crowded`.",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two hand instances' footprints overlap. Both are placed as written, so neither gives way. The\nrecord names both and the overlap's size.\nTo fix: Move one by at least the overlap's size.\nBad:   [instance.a] at = [10, 10]   and   [instance.b] at = [12, 10]   (each 4 m wide)\nFixed: [instance.b] at = [15, 10]\n",
+        explain: "Two hand instances' footprints overlap on one level. Both are placed as written, so neither gives\nway. The record names both and the overlap's size. Two instances that one step returned are not\ntwo hands' decisions: their overlap is place.crowded, a warning.\nTo fix: Move one by at least the overlap's size.\nBad:   [instance.a] at = [10, 10]   and   [instance.b] at = [12, 10]   (each 4 m wide)\nFixed: [instance.b] at = [15, 10]\n",
     },
     Row {
         code: "place.range",
@@ -3542,22 +3542,22 @@ pub(crate) static ROWS: [Row; 361] = [
         severity: Severity::Error,
         chapter: "rules",
         milestone: 3,
-        summary: "`count` below 1, or below 2 with `ends = \"both\"` on an open stretch (M3).",
+        summary: "`count` below 1, or below 2 with `ends = \"both\"` on an open stretch; `assets` empty, or too short for its `ends`; or `count` beside `assets` that is not the list's length, with both numbers (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "count below 1, or below 2 with ends = \"both\" on an open stretch.\nTo fix: The least allowed count.\nBad:   count = 1, ends = \"both\"   (on a path)\nFixed: count = 2, ends = \"both\"\n",
+        explain: "count below 1, or below 2 with ends = \"both\" on an open stretch. On a run with assets, whose list\nis the count: the list is empty or too short for its ends, or count is written beside it and is\nnot the list's length (the record gives both numbers).\nTo fix: The least allowed count. Beside assets, the list's length, or no count.\nBad:   count = 1, ends = \"both\"   (on a path)\nFixed: count = 2, ends = \"both\"\n",
     },
     Row {
         code: "run.count_or_spacing",
         severity: Severity::Error,
         chapter: "rules",
         milestone: 3,
-        summary: "A run writes both `count` and `spacing`, or neither (M3).",
+        summary: "A run writes both `count` and `spacing`, or neither; or `spacing` beside `assets` (M3).",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A run writes both count and spacing, or neither.\nTo fix: Keep one.\nBad:   count = 4, spacing = 3\nFixed: count = 4\n",
+        explain: "A run writes both count and spacing, or neither. Or it writes spacing beside assets: a run with\nassets has one member for each entry of the list, so the list is the count.\nTo fix: Keep one. With assets, drop spacing; a count there must equal the list's length (run.count).\nBad:   count = 4, spacing = 3\nFixed: count = 4\n",
     },
     Row {
         code: "run.no_length",
@@ -4603,9 +4603,9 @@ pub mod codes {
     /// The group `place`, owned by `spec/rules.md`.
     pub mod place {
         use crate::registry::Code;
-        /// `place.asset_or_set` (error): A placement writes both `asset` and `set`, or neither.
+        /// `place.asset_or_set` (error): A placement writes both `asset` and `set`, or neither; a run writes more than one of `asset`, `set` and `assets`, or none.
         pub const ASSET_OR_SET: Code = Code::from_index(275);
-        /// `place.crowded` (warning): Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or a member of a run a step returned overlaps an instance of that step's own document; names both.
+        /// `place.crowded` (warning): Two produced instances overlap (8.1), one overlaps a thing in a higher layer, or two things one step returned overlap, a member of its run and its instance or two of its instances; names both.
         pub const CROWDED: Code = Code::from_index(276);
         /// `place.gave_way` (info): A producer's candidates dropped by overlap and by relief, as counts, with their box.
         pub const GAVE_WAY: Code = Code::from_index(277);
@@ -4621,7 +4621,7 @@ pub mod codes {
         pub const ON_FORM: Code = Code::from_index(282);
         /// `place.outside` (error): A hand instance or set item whose origin is outside the extent; not placed (8.4).
         pub const OUTSIDE: Code = Code::from_index(283);
-        /// `place.overlap` (error): Two hand instances' footprints overlap; names both.
+        /// `place.overlap` (error): Two hand instances' footprints overlap on one level (8.1); names both. Two instances one step returned are `place.crowded`.
         pub const OVERLAP: Code = Code::from_index(284);
         /// `place.range` (error): On an instance, run or set item: `scale` not above 0, `tint` below 0, `margin` below 0, or a `[lo, hi]` pair (only a scatter draws).
         pub const RANGE: Code = Code::from_index(285);
@@ -4703,9 +4703,9 @@ pub mod codes {
     /// The group `run`, owned by `spec/rules.md`.
     pub mod run {
         use crate::registry::Code;
-        /// `run.count` (error): `count` below 1, or below 2 with `ends = "both"` on an open stretch (M3).
+        /// `run.count` (error): `count` below 1, or below 2 with `ends = "both"` on an open stretch; `assets` empty, or too short for its `ends`; or `count` beside `assets` that is not the list's length, with both numbers (M3).
         pub const COUNT: Code = Code::from_index(321);
-        /// `run.count_or_spacing` (error): A run writes both `count` and `spacing`, or neither (M3).
+        /// `run.count_or_spacing` (error): A run writes both `count` and `spacing`, or neither; or `spacing` beside `assets` (M3).
         pub const COUNT_OR_SPACING: Code = Code::from_index(322);
         /// `run.no_length` (error): The run's `on` names a thing with no length, or its stretch is zero millimetres (M3).
         pub const NO_LENGTH: Code = Code::from_index(323);

@@ -1,0 +1,17 @@
+name       = "rules"
+extent     = [0, 0, 64, 64]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 10
+
+# Two hand instances, one over the other.
+[instance.a]
+asset = "wide"
+at    = [18.6, 24]
+
+[instance.b]
+asset = "box"
+at    = [18, 24.4]
