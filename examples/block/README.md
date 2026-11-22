@@ -48,7 +48,7 @@ And three changes made by hand:
 |---|---|---|---|
 | `hand_lots` | The south side cut into five lots of 12 m, as a lot-cutting rule would | `wall_open` for every stretch, each with the two nearest lengths that close; `gap_wide` at five doors | 38 stretches unbuilt, 380.7 m of wall over 19 storeys |
 | `hand_widen` | One building made a bay wider | 107 `place.crowded`, one for each two pieces in one place | The wider building stands 3 m into the next. Nothing else moved: each neighbour is a table of its own |
-| `hand_setback` | The top storey drawn back from the street | `doc.unknown_key` | Nothing built |
+| `hand_setback` | The top storey drawn back from the street, as an author guessed the key before it existed (`side`, where the key takes `sides`) | Before K7: `doc.unknown_key`. Now `params`: it is not `{ storey, sides, by }`, with what each is | Nothing built |
 
 ## As rows
 
@@ -98,7 +98,7 @@ Each row is one build against the base (`world.toml`).
 | `narrow` | A lot two bays wide in the south row | Nothing | Its stair climbs its side, since its back is too short for the kit's stairwell. Every wall and floor closes |
 | `shallow` | A lot no side of which holds the kit's stair: the west side as two lots two bays deep | `row_stair`: lot 0, 2 bays wide and 3 storeys high, is not returned | 12 buildings: the second lot stands, and the first is a gap |
 | `tall` | A building of eight storeys | Nothing (before R71: a false `geom.unowned_crossing` for every flight over another) | Seven flights in two lanes; every floor whole tiles round the stairwells |
-| `setback` | A set-back storey | `doc.unknown_key` | Nothing built: see below |
+| `setback` | A set-back: the east building's top storey a bay back from the street | `slab_open`: 14 tiles of the terrace cannot be laid whole, it is 2.7 m deep inside its parapet; `wall_open`: 2.4 m of the terrace's parapet at each end | The storey's walls close on its own outline and the roof covers it. The terrace has one row of whole tiles, its front parapet and four posts; 1.2 m of its depth and its two side parapets are open (below) |
 
 ## Pattern against archetype
 
@@ -111,7 +111,7 @@ Each row is one build against the base (`world.toml`).
 | A corner building with two fronts | Linear placement ends | `end` in `faces` | Holds: an open end is a second front. Its door is on one street only |
 | Two rows meeting at a corner | Area partition (a block is its frontages) | `row_meets` refuses the second | Said, not solved: the author still writes where each side's row starts. The block needs a table of its own |
 | Stacked stairs | Meeting (two paths meet only on one level) | Core, R71 | Holds |
-| A set-back | Grammar: a storey with another outline than its building's | Nowhere | Not built. The same mechanism as an overhanging storey: K7 |
+| A set-back | Grammar: a storey with another outline than its building's | `setback`, lay.py rule 14 (K7) | Holds for the storey. The terrace does not close on this kit: whole bays less one wall is no whole number of its tiles or parapet pieces |
 
 ## Still open
 
@@ -122,7 +122,9 @@ Each row is one build against the base (`world.toml`).
   (`blank_above`): `faces` says what stands beside a side, not how high it stands.
 - **Off the axes.** A row may run at any angle and finds its party walls; `lay` then lays no
   floor tile on a turned building and its walls meet by rounding (`lib/building/README.md`).
-- **A set-back.** A storey has its building's outline. With overhanging storeys, in K7.
+- **A terrace that closes.** A set-back of whole bays leaves a terrace one wall's thickness
+  short of whole tiles and two posts short of whole parapet pieces. It is said; the kit has no
+  piece for the difference.
 - **A corner building's second door, and a chamfered corner.** Not built.
 - **A lot's name is its number.** A lot written before others renames them (`corner`: 538
   instances removed and added again for a building that did not move).

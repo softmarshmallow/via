@@ -34,7 +34,8 @@ How each is taken (ours).
   `doors_served`, those of them with a piece tagged `role:steps` of the building within 1.5 m.
 - `row_step_max_mm`: the most two buildings whose outlines share a metre of side differ in floor.
 - **Walls.** As examples/block's measure: each building, storey and side, the pieces named for
-  it; `open`, `open_sum_mm`.
+  it, on the storey's own outline (the box of its floor and its footing: the building's unless
+  the storey overhangs); `open`, `open_sum_mm`.
 - `errors`, `warnings`: the build's records. `base_short`, `foot_open`, `roof_none`: the
   buildings `lay` said each of, the `count` of the folded record. `off_bound`:
   `surface.off_bound` records (a thing partly off the floor it stands on). `gave_way`: members
@@ -157,10 +158,14 @@ def measures(d):
         return next(((b, tail[len(k) + 1:]) for k, b in by_key if name.startswith("lay#") and tail.startswith(k + "_")), None)
     floor = {}
     doors = []
+    storey_ring, footing_ring = {}, {}
     for n, f in feats.items():
         o = owner(n)
         if not o:
             continue
+        st = re.fullmatch(r"s(\d+)(_footing)?", o[1])
+        if st and f.get("kind") in ("storey", "footing"):
+            (footing_ring if st.group(2) else storey_ring)[(o[0], int(st.group(1)))] = ring_of(f)
         if f.get("kind") == "storey" and o[1] == "s0":
             floor[o[0]] = f["attrs"]["level"]
         if f.get("kind") == "doorway":
@@ -244,8 +249,20 @@ def measures(d):
     names = sorted(b for b in buildings if b in floor)
     m["row_step_max_mm"] = int(round(1000 * max([abs(floor[p] - floor[q]) for i, p in enumerate(names)
                                                  for q in names[i + 1:] if shared(rings[p], rings[q]) >= 1.0] or [0.0])))
+    def outline_of(b, k):
+        """Storey `k`'s outline: the box, along the building's own sides, of its floor and of the
+        footing beside it: the building's, unless the storey is set back or overhangs."""
+        ring = rings[b]
+        pts = list(storey_ring.get((b, k)) or []) + list(footing_ring.get((b, k)) or [])
+        if not pts or len(ring) != 4:
+            return ring
+        (o, e, _), (_, f, _) = sides(ring)[0], sides(ring)[1]
+        us = [(p[0] - o[0]) * e[0] + (p[1] - o[1]) * e[1] for p in pts]
+        vs = [(p[0] - o[0]) * f[0] + (p[1] - o[1]) * f[1] for p in pts]
+        return [(o[0] + e[0] * u + f[0] * v, o[1] + e[1] * u + f[1] * v)
+                for u, v in ((min(us), min(vs)), (max(us), min(vs)), (max(us), max(vs)), (min(us), max(vs)))]
     gaps = [g for b, f in sorted(buildings.items()) for k in range(int(f["attrs"].get("storeys") or 1))
-            for g in open_of(rings[b], laid.get((b, k), []))]
+            for g in open_of(outline_of(b, k), laid.get((b, k), []))]
     m["open"] = len(gaps)
     m["open_sum_mm"] = int(round(sum(gaps) * 1000))
     # A step's records of one code on the things it returned are folded into one, with a `count`

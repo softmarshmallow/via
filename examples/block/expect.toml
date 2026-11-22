@@ -7,12 +7,13 @@
 #   python3.11 examples/block/measure.py BUILD+<c> --world ... --base BUILD --check <c>
 #
 # Protocol of the numbers below: macOS arm64, release `via` built from the working tree after
-# aa93d3a with K6 of docs/plan-kits.md (R71; `shared`), VIA_LIB=lib, Python 3.12
+# e469406 with K7's second slice of docs/plan-kits.md (a storey's own outline), VIA_LIB=lib, Python 3.12
 # (sdk/python/.venv) for the steps, lib/building's `row`, `lay` and `check` of the working tree.
 # One fresh store for `world.toml` and one for `by_hand.toml`: the base, then each change with
-# --against the base, one build each. Measured 2026-11-23, after the review's fix pass. A band is the measured number: not a
-# target, it says where someone looks. `setback` and `hand_setback` are not here: each is exit 1,
-# `doc.unknown_key`, and leaves no build to measure (README.md).
+# --against the base, one build each. Measured again 2026-11-23 with K7's second slice, which
+# added `setback`; no other row moved. A band is the measured number: not a
+# target, it says where someone looks. `hand_setback` is not here: it was written before the key
+# existed, as an author guessed it, and is exit 1 (`params`), with no build to measure.
 
 # ------------------------------------------------------------------------------------------ base
 # The block as four rows: every wall closes, no shopfront on the yard, no two neighbours alike.
@@ -346,6 +347,55 @@ band    = [655, 655]
 [tall.removed]
 measure = "removed"
 band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ setback
+# The east building's top storey a bay back from the street (lay.py rule 14): its walls close on
+# its own outline and the roof covers it. The terrace, 3 m less a wall, is no whole number of the
+# kit's tiles or parapet pieces: 14 tiles short and 2.4 m of parapet open at each end, both said.
+
+[setback.errors]
+measure = "errors"
+band    = [0, 0]
+
+[setback.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[setback.open]
+measure = "open"
+band    = [0, 0]
+
+[setback.open_said]
+measure = "open_said"
+band    = [1, 1]
+
+[setback.slab_open]
+measure = "slab_open"
+band    = [1, 1]
+
+[setback.parapet_open]
+measure = "parapet_open"
+band    = [0, 0]
+
+[setback.parapet]
+measure = "parapet"
+band    = [257, 257]
+
+[setback.storeys]
+measure = "storeys"
+band    = [48, 48]
+
+[setback.added]
+measure = "added"
+band    = [25, 25]
+
+[setback.removed]
+measure = "removed"
+band    = [60, 60]
+
+[setback.moved]
+measure = "moved"
+band    = [182, 182]
 
 # ------------------------------------------------------------------------------------------ by_hand
 # The same block as twelve buildings written by hand, and what a region cannot say.

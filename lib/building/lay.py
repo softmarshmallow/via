@@ -217,6 +217,24 @@ The rules (ours, written for this library; README.md is the design note):
    foundation layer of Fallout 4's facade stack are the only shipped accounts; flat ground is a
    stated precondition of the tools that say anything (docs/research/Modular kit failures in
    studios.md, section 4, "Meeting the ground"). The rule is ours.
+14. **A storey with its own outline.** `setback = [{ storey, sides, by }]`: from that storey up,
+   those sides of the outline stand `by` metres inside the footprint; `overhang`, the same,
+   outside it. Each storey then has its own outline (the footprint with its sides moved,
+   `shift_ring`), and every rule above is that storey's on its own outline: its walls close on
+   it (rule 6), its floor is tiled inside it (rule 9), and the roof covers the top storey's
+   (rule 10). On a rectangle only. Sides that meet at a corner are not moved together, and the
+   side a stair climbs and the two that meet it keep the building's outline, so the stairwell
+   is where it was on every storey. Each is `params` (error) otherwise. **The terrace.** Where a
+   storey stands inside the one below, the strip between the two outlines is a `roof` feature
+   at that storey's level, `<building>_t<storey>_<side>`, tiled (rule 9) from inside its parapet
+   to the wall above, with the kit's parapet (rule 10) on its three outer sides. Under an
+   overhang nothing is laid: the storey's own floor tiles are its underside. Nothing is fitted:
+   a move that leaves a side no whole number of pieces is `wall_open`, as on any plan, and a
+   terrace that is no whole number of tiles deep is `slab_open`. On a kit whose walls are laid
+   from their outer face, a set-back of whole bays leaves a terrace one wall's thickness short
+   of whole tiles, and its side parapets two posts short of whole pieces: both are said, and
+   neither is closed (README.md, "A storey with its own outline"). Source: ours; the set-back
+   of a city block and the jetty of a timber house are named in no developer's account read.
 11. **What a kit states.** A kit is a taxon's pieces, and what they share it says once: the
    `shared` table in that taxon's `defaults` (spec/assets.md 2.5; R66 of docs/doctrine.md; Asset
    law 5 of docs/ledger/archetypes.md). `lay` reads six of its keys, each optional: `wall`, the
@@ -1545,6 +1563,75 @@ def slab_plan(floor, footprint, T, tile, prefix, surface):
     return insts, (short, first)
 
 
+def shift_ring(ring, ds):
+    """`ring` (counter-clockwise) with side `i` moved `ds[i]` mm inward (outward where negative):
+    each vertex goes to where the two moved sides meet. Whole millimetres."""
+    es = edges(ring)
+    out = []
+    for i, p in enumerate(ring):
+        a, b = es[i - 1], es[i]
+        na, nb, da, db = a["n"], b["n"], ds[i - 1], ds[i]
+        det = na[0] * nb[1] - na[1] * nb[0]
+        if abs(det) < 1e-9:
+            out.append(rnd((p[0] + nb[0] * db, p[1] + nb[1] * db)))
+            continue
+        out.append(rnd((p[0] + (da * nb[1] - db * na[1]) / det, p[1] + (na[0] * db - nb[0] * da) / det)))
+    return out
+
+
+def offsets_of(attrs, storeys, footprint, stair_side=None):
+    """Per storey, per side, the mm that side stands inside the footprint (outside where
+    negative): `setback` and `overhang`, checked (rule 14). Each is `[{ storey, sides, by }]`:
+    from `storey` up, those sides stand `by` metres in (a set-back) or out (an overhang)."""
+    n = len(footprint)
+    out = [[0] * n for _ in range(storeys)]
+    for key, sign in (("setback", 1), ("overhang", -1)):
+        v = attrs.get(key)
+        if v in (None, []):
+            continue
+        if not isinstance(v, list):
+            raise ParamError(key, f"`{key}` is a list of tables", "write it as `[{ storey, sides, by }]`")
+        if not rectangle(footprint):
+            raise ParamError(key, f"a `{key}` is laid on a rectangle only, and this outline is not one",
+                             f"take `{key}` out, or make the building a rectangle")
+        for i, e in enumerate(v):
+            ok = (isinstance(e, dict) and set(e) <= {"storey", "sides", "by"}
+                  and isinstance(e.get("storey"), (int, float)) and not isinstance(e.get("storey"), bool)
+                  and e["storey"] == int(e["storey"]) and e["storey"] >= 1
+                  and isinstance(e.get("sides"), list) and e["sides"]
+                  and all(isinstance(x, (int, float)) and not isinstance(x, bool) and x == int(x) and 0 <= x < n
+                          for x in e["sides"])
+                  and isinstance(e.get("by"), (int, float)) and not isinstance(e.get("by"), bool)
+                  and math.isfinite(e["by"]) and 0 < e["by"] <= 1000)
+            if not ok:
+                raise ParamError(key, f"{key} {i} is not `{{ storey, sides, by }}`",
+                                 "write `storey` as a storey above the ground one (from 1), `sides` as a list of the "
+                                 f"outline's sides (0 to {n - 1}) and `by` as metres above 0")
+            if e["storey"] >= storeys:
+                raise ParamError(key, f"{key} {i} names storey {int(e['storey'])} of a building with {storeys}",
+                                 "count storeys from 0")
+            sides = sorted({int(x) for x in e["sides"]})
+            if any((b_ - a_) % n in (1, n - 1) for a_ in sides for b_ in sides if a_ != b_):
+                raise ParamError(key, f"{key} {i} moves two sides that meet at a corner",
+                                 "move opposite sides, or one side: a terrace round a corner is not laid")
+            for k in range(int(e["storey"]), storeys):
+                for x in sides:
+                    out[k][x] += sign * int(round(e["by"] * 1000))
+    if stair_side is not None:
+        for k in range(storeys):
+            for x in (stair_side - 1, stair_side, (stair_side + 1) % n):
+                if out[k][x]:
+                    raise ParamError("setback", f"side {x % n} is moved on storey {k}, and the stair climbs side "
+                                     f"{stair_side}: that side and the two it meets keep the building's outline",
+                                     "move the side opposite the stair, or put the stair on another side")
+    for k in range(storeys):
+        for x in range(n):
+            if out[k][x] + out[k][(x + 2) % n] >= edges(footprint)[(x + 1) % n]["L"] - 1000 and (out[k][x] or out[k][(x + 2) % n]):
+                raise ParamError("setback", f"storey {k} is set back to less than a metre deep",
+                                 "set it back less")
+    return out
+
+
 def rectangle(ring):
     """True when `ring` is four sides, each square to the next (`square`)."""
     es = edges(ring)
@@ -1610,7 +1697,7 @@ def _num(attrs, key, default, lo=None, integer=False):
 
 
 def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, margin=MARGIN, kits=None, foot=None):
-    """Everything one building returns, as plain data (the step writes it): rules 1 to 13.
+    """Everything one building returns, as plain data (the step writes it): rules 1 to 14.
     `kit` is one kit for every storey (`kit_pieces`); `kits`, where given, is a function of a
     storey's word and its height in mm that gives that storey's kit, and `kit` is not read.
     `foot` is the ground along the outline, [(x mm, y mm, metres)] (`read_foot`): with it the
@@ -1640,26 +1727,31 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                              "make the bay of every storey one thickness")
     stated = ((kit or {}).get("wall") or {}).get("stated") or {}
     sp = stair_plan(footprint, stair, storeys, wall_t, stated.get("stair"))
+    # Each storey's own outline (rule 14): the footprint, with the sides a `setback` or an
+    # `overhang` moves. `crown` is the top storey's, which the roof covers.
+    moved = offsets_of(attrs, storeys, footprint, sp.get("edge"))
+    outline = [shift_ring(footprint, ds) if any(ds) else footprint for ds in moved]
+    crown = outline[-1]
     rings, footings = [footprint], {}
     for k in range(1, storeys):
         notch = sp["notches"][k]
         stood = None
         if wall_t and kit_of[k] and kit_of[k].get("wall"):
-            n_ = len(footprint)
+            n_ = len(outline[k])
 
             def takes(v):                        # what the corner piece at an outside corner takes of the wall
-                a_, b_, c_ = footprint[v - 1], footprint[v], footprint[(v + 1) % n_]
+                a_, b_, c_ = outline[k][v - 1], outline[k][v], outline[k][(v + 1) % n_]
                 left = (b_[0] - a_[0]) * (c_[1] - b_[1]) - (b_[1] - a_[1]) * (c_[0] - b_[0]) > 0
                 return corner_of(kit_of[k], True, wall_t)[1] if left else wall_t
-            stood = footing_plan(footprint, notch, wall_t, (takes(notch[0]), takes((notch[0] + 1) % n_)))
+            stood = footing_plan(outline[k], notch, wall_t, (takes(notch[0]), takes((notch[0] + 1) % n_)))
         if stood:
             rings.append(stood[0])
             footings[k] = {"key": f"{prefix}_s{k}_footing", "region": stood[1], "level": lv[k], "side": notch[0]}
         else:
-            rings.append(notch_ring(footprint, notch))
+            rings.append(notch_ring(outline[k], notch))
     out = {"storeys": [], "rooms": [], "flights": [], "doorways": [], "footpaths": [], "runs": [],
            "instances": [], "open": [], "openings": [], "roof": None, "notes": [],
-           "footings": [footings[k] for k in sorted(footings)], "kit": kit, "heights": heights}
+           "footings": [footings[k] for k in sorted(footings)], "kit": kit, "heights": heights, "terraces": []}
     for k in range(storeys):
         out["storeys"].append({"key": f"{prefix}_s{k}", "region": rings[k], "level": lv[k]})
     for path, lo, hi in sp["flights"]:
@@ -1717,13 +1809,13 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
         if not 0 <= st < storeys:
             raise ParamError("rooms", f"rooms name storey {st}; the building has {storeys}",
                              f"write a storey from 0 to {storeys - 1}")
-        rooms, openings = room_plan(rings[st], footprint, r.get("shares") or [], inner)
+        rooms, openings = room_plan(rings[st], outline[st], r.get("shares") or [], inner)
         if st in footings:
             # An inner wall is laid from the outline's faces (`inner_walls` takes the outer wall's
             # thickness off each end): its line is cut from the outline, not from the floor that
             # keeps off the footing.
             try:
-                _, openings = room_plan(notch_ring(footprint, sp["notches"][st]), footprint, r.get("shares") or [], inner)
+                _, openings = room_plan(notch_ring(outline[st], sp["notches"][st]), outline[st], r.get("shares") or [], inner)
             except ParamError:
                 pass
         for i, ring_ in enumerate(rooms):
@@ -1732,7 +1824,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             o["storey"] = st
             out["openings"].append(o)
         if kit_of[st]:
-            insts, opens = inner_walls(openings, footprint, kit_of[st], f"{prefix}_s{st}")
+            insts, opens = inner_walls(openings, outline[st], kit_of[st], f"{prefix}_s{st}")
             for it in insts:
                 it["surface"] = f"{prefix}_s{st}.floor"
             out["instances"].extend(insts)
@@ -1749,14 +1841,14 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 # Over a stairwell the walls are laid round the outline as on any storey, and the
                 # stair's side stands on its footing (rule 3).
                 f = footings[k]
-                runs, insts, opens = wall_plan(footprint, footprint, [], kit_of[k], f"{prefix}_s{k}", f"{prefix}_s{k}",
+                runs, insts, opens = wall_plan(outline[k], outline[k], [], kit_of[k], f"{prefix}_s{k}", f"{prefix}_s{k}",
                                                crossers, margin, out["notes"], picks, name)
-                lost = on_footing(runs, insts, footprint, rings[k], f"{prefix}_s{k}", f["region"], f["key"], f["side"])
+                lost = on_footing(runs, insts, outline[k], rings[k], f"{prefix}_s{k}", f["region"], f["key"], f["side"])
                 for x in lost[0] + lost[1]:      # nothing under it: said, not laid
                     opens.append({"key": x["key"], "length": 0, "near": (None, None), "storey": k, "unfloored": True,
-                                  "at": rnd(x["at"]) if "at" in x else rnd(footprint[f["side"]])})
+                                  "at": rnd(x["at"]) if "at" in x else rnd(outline[k][f["side"]])})
             else:
-                runs, insts, opens = wall_plan(rings[k], footprint, doors_by_storey.get(k, []), kit_of[k],
+                runs, insts, opens = wall_plan(rings[k], outline[k], doors_by_storey.get(k, []), kit_of[k],
                                                f"{prefix}_s{k}", f"{prefix}_s{k}", crossers, margin, out["notes"],
                                                picks, name)
                 for it in insts:
@@ -1796,17 +1888,17 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
         tile = (kit_of[k] or {}).get("floor")
         if not tile:
             continue
-        insts, (short, first) = slab_plan(rings[k], footprint, wall_t, tile, f"{prefix}_s{k}", f"{prefix}_s{k}.floor")
+        insts, (short, first) = slab_plan(rings[k], outline[k], wall_t, tile, f"{prefix}_s{k}", f"{prefix}_s{k}.floor")
         out["instances"].extend(insts)
         if short is None:
             if not any(n["code"] == "slab_open" and n.get("turned") for n in out["notes"]):
-                out["notes"].append({"code": "slab_open", "storey": k, "cells": 0, "at": rnd(footprint[0]),
+                out["notes"].append({"code": "slab_open", "storey": k, "cells": 0, "at": rnd(outline[k][0]),
                                      "tile": tile["pitch"], "turned": True})
         elif short:
             note = {"code": "slab_open", "storey": k, "cells": short, "at": first, "tile": tile["pitch"]}
             if k in sp["notches"]:
                 side, a, b, depth = sp["notches"][k]
-                L_ = edges(footprint)[side]["L"]
+                L_ = edges(outline[k])[side]["L"]
                 lanes = 1 if (k - 1) % 2 == 0 else 2
                 deep, lo, hi = depth - wall_t, max(a, wall_t) - wall_t, min(b, L_ - wall_t) - wall_t
                 n_ = max(1, int(round(deep / tile["pitch"])))      # the nearest whole number of tiles
@@ -1819,20 +1911,54 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                                  "deep_whole": whole(deep), "long_whole": whole(hi - lo),
                                  "moves": [-(lo % tile["pitch"]), tile["pitch"] - lo % tile["pitch"]]})
             out["notes"].append(note)
+    for k in range(1, storeys):                  # terraces (rule 14)
+        for i, (now, was) in enumerate(zip(moved[k], moved[k - 1])):
+            if now <= was:
+                continue
+            n_ = len(footprint)
+            a_, b_ = outline[k - 1][i], outline[k - 1][(i + 1) % n_]
+            b2, a2 = outline[k][(i + 1) % n_], outline[k][i]
+            key = f"{prefix}_t{k}_{i}"
+            strip = [a_, b_, b2, a2]
+            e_in = edges(strip)[0]["n"]          # into the building, across the terrace
+            out["terraces"].append({"key": key, "region": strip, "eaves": lv[k]})
+            tile = (kit_of[k - 1] or {}).get("floor")
+            if tile:
+                # Tiles lie inside the parapet on three sides and run to the wall above on the
+                # fourth: the ring `slab_plan` insets is the strip grown by `T` under that wall.
+                grown = [a_, b_, (b2[0] + e_in[0] * wall_t, b2[1] + e_in[1] * wall_t),
+                         (a2[0] + e_in[0] * wall_t, a2[1] + e_in[1] * wall_t)]
+                insts, (short, first) = slab_plan(strip, grown, wall_t, tile, key, f"{key}.garden")
+                out["instances"].extend(insts)
+                if short:
+                    out["notes"].append({"code": "slab_open", "storey": k, "cells": short, "at": first,
+                                         "tile": tile["pitch"], "terrace": True,
+                                         "deep": (now - was) - wall_t})
+            pk = kits("parapet", None) if kits else {}
+            if (pk.get("wall") or {}).get("storey") == "parapet":
+                runs, insts, opens = wall_plan(strip, strip, [], pk, key, key, (), margin, out["notes"], None, name)
+                runs = [r for r in runs if "_w2_" not in r["key"]]       # no parapet against the wall above
+                for it in insts:
+                    it["surface"] = f"{key}.garden"
+                for o_ in opens:
+                    o_["parapet"] = True
+                out["runs"].extend(runs)
+                out["instances"].extend(insts)
+                out["open"].extend(o_ for o_ in opens if o_.get("side") != 2)
     top = storeys - 1
     roof = attrs.get("roof") or ""
     if not isinstance(roof, str) or roof not in ("", "garden", "flat", "gable"):
         raise ParamError("roof", f"`roof` is {roof!r}", "write \"flat\", \"gable\" or \"garden\", or leave it out")
     eaves = round(lv[top] + heights[top], 3)
     if roof == "garden":
-        out["roof"] = {"key": f"{prefix}_roof", "region": footprint, "eaves": eaves}
+        out["roof"] = {"key": f"{prefix}_roof", "region": crown, "eaves": eaves}
     elif roof in ("flat", "gable"):               # roofs from pieces (rule 10)
         rkey, kt = f"{prefix}_roof", kit_of[top] or {}
         tile, why, laid = kt.get("floor"), None, False
         if not kt.get("wall"):
             why = "the building has no `kit`"
         elif roof == "gable":
-            runs, insts = gable_plan(footprint, kt, wall_t, rkey)
+            runs, insts = gable_plan(crown, kt, wall_t, rkey)
             if runs is None:
                 why = insts
             else:
@@ -1841,7 +1967,7 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 laid = True
         if not laid and kt.get("wall"):
             if tile:
-                insts, (short, first) = slab_plan(footprint, footprint, wall_t, tile, rkey, f"{rkey}.garden")
+                insts, (short, first) = slab_plan(crown, crown, wall_t, tile, rkey, f"{rkey}.garden")
                 out["instances"].extend(insts)
                 laid = short is not None
                 if short is None:
@@ -1853,13 +1979,13 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
             elif roof == "flat":
                 why = "the kit has no `role:floor` piece"
         if laid:
-            out["roof"] = {"key": rkey, "region": footprint, "eaves": eaves}
+            out["roof"] = {"key": rkey, "region": crown, "eaves": eaves}
         if laid and roof == "flat" and kits:
             # The parapet (rule 10): the kit's wall pieces tagged `storey:parapet`, laid round the
             # outline as a storey's walls are, on the roof.
             pk = kits("parapet", None)
             if (pk.get("wall") or {}).get("storey") == "parapet":
-                runs, insts, opens = wall_plan(footprint, footprint, [], pk, rkey, rkey, (), margin, out["notes"],
+                runs, insts, opens = wall_plan(crown, crown, [], pk, rkey, rkey, (), margin, out["notes"],
                                                None, name)
                 for it in insts:
                     it["surface"] = f"{rkey}.garden"
@@ -1869,13 +1995,13 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 out["instances"].extend(insts)
                 out["open"].extend(opens)
         if why:
-            cx = sum(p[0] for p in footprint) / len(footprint)
-            cy = sum(p[1] for p in footprint) / len(footprint)
+            cx = sum(p[0] for p in crown) / len(crown)
+            cy = sum(p[1] for p in crown) / len(crown)
             out["notes"].append({"code": "roof_none", "roof": roof, "why": why, "flat": laid, "at": rnd((cx, cy))})
     elif kit and kit.get("roof"):
-        cx = sum(p[0] for p in footprint) / len(footprint)
-        cy = sum(p[1] for p in footprint) / len(footprint)
-        es = edges(footprint)
+        cx = sum(p[0] for p in crown) / len(crown)
+        cy = sum(p[1] for p in crown) / len(crown)
+        es = edges(crown)
         longest = max(range(len(es)), key=lambda i: (es[i]["L"], -i))
         out["instances"].append({"key": f"{prefix}_roof", "asset": kit["roof"]["id"], "at": rnd((cx, cy)),
                                  "face": outward(es[longest]), "surface": f"{prefix}_s{top}.floor"})
@@ -1891,6 +2017,7 @@ def key_of(name):
 
 
 ATTRS = ["storeys", "storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "doors", "stair", "rooms", "faces",
+         "setback", "overhang",
          "kit", "roof", "bays", "fill"]
 
 
@@ -1982,6 +2109,8 @@ def write(step, out):
         o.feature(p["key"], "footpath", path=p["path"], ends_at=p["ends_at"])
     if out["roof"]:
         r = out["roof"]
+        o.feature(r["key"], "roof", region=r["region"], eaves=r["eaves"])
+    for r in out.get("terraces") or []:
         o.feature(r["key"], "roof", region=r["region"], eaves=r["eaves"])
     for r in out["runs"]:
         what = {"assets": r["assets"]} if "assets" in r else {"asset": r["asset"]}
@@ -2099,6 +2228,11 @@ def generate(step):
             said = ("no floor tile is laid: the building is turned off the axes, where tiles placed on the millimetre "
                     "lattice do not abut and would stand in each other's place")
             hint = "keep a building with a tiled floor square to the axes for now"
+        elif n.get("terrace"):
+            said = (f"{n['cells']} floor tiles of the terrace before storey {n['storey']} cannot be laid whole: it is "
+                    f"{n['deep'] / 1000:g} m deep inside its parapet, no whole number of {n['tile'] / 1000:g} m tiles")
+            hint = ("a set-back of whole bays leaves a terrace that deep less one wall's thickness: the kit needs a "
+                    "tile of the difference, or the terrace is left open there")
         elif "side" in n:
             said = (f"{n['cells']} floor tiles of {what} cannot be laid whole beside the stairwell, which is "
                     f"{n['deep'] / 1000:g} m deep and runs from {n['from'] / 1000:g} to {n['to'] / 1000:g} m along the "

@@ -1443,10 +1443,15 @@ open, and its place here is its destination.
   its buildings is eight attributes named one by one. Lesson: twelve buildings by hand were 192
   numbers and 312 unseen faults; the unit an author writes in should be the kit's.
       (From K6 of docs/plan-kits.md, 2026-11-23.)
-- [ ] **A storey with another outline than its building's:** a set-back (K6 asked for it and did
-  not build it), an overhanging storey (K7). Every rule of `lay.py` takes one outline for all
-  storeys: the stair's side, the footing, the walls' corners, the floor's grid.
-      (From K6 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **A storey's own outline, and what does not close on it** (lay.py rule 14, K7). Built on
+  a rectangle, one side or two opposite ones, never the stair's. Left: a terrace is whole bays
+  less one wall deep, so no whole number of tiles, and its side parapets are two posts short of
+  whole pieces (`examples/block` `setback`: 14 tiles and 4.8 m of parapet, said); a jetty
+  smaller than the kit's half bay does not close and a deeper storey has no roof piece
+  (`examples/village` `jetty`). Lesson: the walls' outer face as the outline makes a storey's
+  inside whole tiles and a terrace's not; a kit that wants terraces needs the piece for the
+  difference, or its walls on the grid's lines.
+      (From K7 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **Three of four instances of a city block are floor tiles** (3,719 of 4,949). A floor of
   1.5 m tiles is whole only on the tile's grid and costs a tile each 2.25 m2; a block of twelve
   buildings takes about a minute to build, most of it in `lay`'s calls and their tiles. A floor

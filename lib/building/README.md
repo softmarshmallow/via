@@ -283,6 +283,25 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     open). A kit whose lane, landing and run are whole tiles gets whole stairwells on every
     storey, and `slab_open` then says how far to move a stair that stands between tiles.
   - *Not yet.* A building's `storey_h` is still its own; lib/town does not read `shared`.
+- **A storey with its own outline** (K7 of `docs/plan-kits.md`, second slice, from
+  examples/block and examples/village). Design note; the rule is `lay.py` rule 14. Source: ours;
+  the set-back of a city block and the jetty of a timber house are named in no developer's
+  account read.
+  - *What.* `setback` and `overhang`, each `[{ storey, sides, by }]`: from that storey up, those
+    sides stand `by` metres inside or outside the building's outline. A storey then has its own
+    outline and every rule is laid on it: its walls close on it, its floor is tiled inside it,
+    the roof covers the top storey's.
+  - *What is refused.* An outline that is no rectangle; two sides that meet at a corner; the
+    side a stair climbs and the two that meet it, so the stairwell stays where it is.
+  - *The terrace.* Where a storey stands inside the one below, the strip between is a `roof`
+    feature at its level, tiled, with the kit's parapet on its three outer sides.
+  - *Nothing is fitted.* A move that leaves a side no whole number of pieces is `wall_open`. And
+    on a kit laid from its walls' outer face a set-back of whole bays leaves a terrace one
+    wall's thickness short of whole tiles, with side parapets two posts short of whole pieces
+    (`examples/block`, `setback`); a jetty smaller than the smallest piece does not close and a
+    deeper storey has no roof piece (`examples/village`, `jetty`). Each is said.
+  - *Not yet.* A terrace round a corner; an outline that is no rectangle; a piece that closes a
+    terrace or a jetty.
 - **The wall's foot** (K7 of `docs/plan-kits.md`, first slice, from examples/village). Design
   note; the rule is `lay.py` rule 13. Source: the stone base under one studio's modular buildings
   and the foundation layer of another's facades are the only shipped accounts, and flat ground
@@ -333,8 +352,7 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   - *The parapet.* A kit's wall pieces tagged `storey:parapet` are laid round a flat roof as a
     storey's walls are, on the roof.
   - *Not yet.* A side only part of which a neighbour stands against is one word: where that
-    part is less than half, its windows stay (`examples/block`: 4). A set-back storey: a storey
-    still has its building's outline (K7, with overhanging storeys). A block as one feature.
+    part is less than half, its windows stay (`examples/block`: 4). A block as one feature.
 - **Building upward** (K4 of `docs/plan-kits.md`, from examples/kit). Design note; the rules are
   `lay.py` rules 2, 6, 9 and 10. Source: a facade read as base, ground storey, repeating storeys
   and top (docs/research/Modular city asset contracts.md, section 5); the studios' accounts of

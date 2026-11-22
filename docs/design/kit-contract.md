@@ -166,7 +166,8 @@ another side grows.
   rows of pieces along a street still read each piece's pitch alone and state nothing of a kit.
 - **A storey's height taken from the kit.** A building still writes `storey_h`; the kit's
   `storey` only holds the pieces to it.
-- **A storey with another outline than its building's:** a set-back, an overhang (K7).
+- **A piece that closes a terrace or a jetty.** A storey may have its own outline (K7); a
+  terrace of whole bays less a wall, and a jetty smaller than a half bay, close on no kit here.
 - **A wall's free end and a T-junction of walls** have no role.
 - **Sockets between two kits** (a door size shared across kits, a glue kit, a plug for a hole):
   K9. The core has typed connectors (`spec/assets.md` 2.7); no library kit uses one.

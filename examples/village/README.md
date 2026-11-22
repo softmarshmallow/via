@@ -2,8 +2,8 @@
 
 Two rows of timber-framed houses either side of a street that climbs a hill, walled from a grey
 kit made by code. It is K7 of `docs/plan-kits.md`: how a kit's building meets ground that is not
-level. This page covers the first slice, the ground; roofs on plans that are not rectangles and
-overhanging storeys come with the second.
+level, and what an overhanging storey asks of it. Roofs on plans that are not rectangles are
+not here yet.
 
 There is almost nothing to recreate from a studio here. The only shipped accounts are a stone
 base under PUBG's modular buildings and a foundation layer under Fallout 4's facades, and the
@@ -18,7 +18,7 @@ rule for the wall's foot is our own design, with its own measures to check it.
 |---|---|
 | `packs/make_kit.py`, `packs/village.toml` | The village kit: a framed bay, the same with a window, a half bay, a post and a door frame, 2.7 m high; a floor tile; a roof slope and half a gable for a house two bays deep; a bay, a half bay and a post of base, 1.5 m deep; a chest. `packs/bare.toml` is the kit with no base and `packs/shallow.toml` with a base 0.5 m deep. |
 | `world.toml`, `walls.toml` | The street: two rows (`lib/building/row.py`), eleven houses, on ground that rises 8 m in 100 along the street and falls 6 in 100 to the north. `walls.toml` is the layer above, with `lay`, the check, and a chest written inside one house. |
-| `changes/` | Five changes. |
+| `changes/` | Seven changes. |
 | `measure.py`, `expect.toml` | What each build is measured by, and the measured numbers with their protocol. |
 
 ```sh
@@ -86,6 +86,22 @@ name its floor, and a height chooses among the floors at that point.
 Nothing ties the chest to its house: it is tied to a point and a height. That is the studio's
 finding again, and the tool names the dependant only once the two disagree.
 
+## A jetty
+
+A timber house's upper storey stands out over the street. `overhang = [{ storey, sides, by }]`
+gives a storey its own outline (`lib/building/lay.py`, rule 14), and every rule is then that
+storey's on its own outline. Nothing is fitted to make it close.
+
+| Change | What it recreates | What the build says | What the build does |
+|---|---|---|---|
+| `jetty` | A jetty of 0.45 m on the three two-storey houses of the north row | `wall_open` for each side wall of the upper storey: 6.45 m does not close; `roof_none`: the house is 7.05 m deep and the slope piece is made for 6.6 m; `slab_open` on the flat roof laid in its place | Six side walls unbuilt, 38.7 m; three flat roofs where gables were |
+| `jetty_bay` | The jetty the kit can wall: half a bay, 1.5 m | `roof_none`: 8.1 m deep | Every wall closes, the storey's floor is its own underside over the street; three flat roofs |
+
+So this kit cannot make a jetty a house would have. Its smallest wall piece is a half bay, and
+its roof is one depth of house: a jettied storey needs a corner piece that takes the overhang,
+and a slope piece of its own span. Both are the kit's to add; the library says which length
+and which depth do not close.
+
 ## Pattern against archetype
 
 | Pattern of a village on a slope | Archetype (`docs/ledger/archetypes.md`) | Where it lives now | Verdict |
@@ -95,6 +111,7 @@ finding again, and the tool names the dependant only once the two disagree.
 | The wall's foot against the land | Meeting (a building and the ground) | `read_foot`, `foot_open` | Said. Nothing shapes the ground: no yard or pad of the building's own |
 | A door's threshold | Meeting | The doorway levels the ground along its own path | Holds on these slopes: 0 mm of step at 11 doors. A mound at the door on steeper ground; steps are not built |
 | A thing inside a house | Placement by a height, not by the house | `at = [x, y, z]` | Does not hold: the thing follows the point (the larger house) |
+| An overhanging storey | Grammar: a storey with its own outline | `overhang`, lay.py rule 14 | Holds as a mechanism. This kit has no piece that closes a jetty smaller than a half bay, and no roof for the deeper storey |
 
 ## Still open
 
@@ -105,12 +122,14 @@ finding again, and the tool names the dependant only once the two disagree.
 - **A thing inside a house is not the house's.** It is written by a point and a height.
 - **The ground is not shaped under a building.** Uphill the ground stands against the wall
   (0.49 m here, 1.7 m on the steep street), and nothing says so.
-- **Roofs on plans that are not rectangles, overhanging storeys, a set-back:** the second slice.
+- **A jetty this kit can close:** a corner piece that takes the overhang, a roof slope of the
+  deeper span.
+- **Roofs on plans that are not rectangles.**
 
 ## The record
 
 Measured 2026-11-23 on macOS arm64, release `via` of the tree at bc2ac73, lib/building of the
-working tree, one fresh store, one build each: 109 of 109 rows over 6 builds (`expect.toml`).
+working tree, one fresh store, one build each (`expect.toml`).
 
 ![The village](../../docs/reports/village-sheet.png)
 

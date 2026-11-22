@@ -7,9 +7,10 @@
 #   python3 examples/village/measure.py BUILD+<c> --base BUILD       # a change, built with --against
 #   python3.11 examples/village/measure.py BUILD+<c> --base BUILD --check <c>
 #
-# Protocol of the numbers below: macOS arm64, release `via` built from the tree at bc2ac73,
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at e469406,
 # VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's `row`, `lay` and
-# `check` of the working tree with K7's first slice (the wall's foot, lay.py rule 13). One fresh
+# `check` of the working tree with K7's two slices (the wall's foot, lay.py rule 13; a storey's
+# own outline, rule 14). One fresh
 # store: the base, then each change with --against the base, one build each. Measured 2026-11-23.
 # A band is the measured number: not a target, it says where someone looks.
 
@@ -422,6 +423,78 @@ band    = [0, 0]
 [flush.moved]
 measure = "moved"
 band    = [834, 834]
+
+# ------------------------------------------------------------------------------------------ jetty
+# A jetty of 0.45 m on the three two-storey houses of the north row (lay.py rule 14): the side
+# walls of the upper storey, 7.05 m, do not close on a kit whose smallest piece is 1.5 m (six
+# stretches, 38.7 m), and the gable is not laid: its slope is made for a house 6.6 m deep.
+
+[jetty.errors]
+measure = "errors"
+band    = [0, 0]
+
+[jetty.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[jetty.open]
+measure = "open"
+band    = [6, 6]
+
+[jetty.open_sum_mm]
+measure = "open_sum_mm"
+band    = [38700, 38700]
+
+[jetty.roof_none]
+measure = "roof_none"
+band    = [3, 3]
+
+[jetty.roof]
+measure = "roof"
+band    = [104, 104]
+
+[jetty.added]
+measure = "added"
+band    = [72, 72]
+
+[jetty.removed]
+measure = "removed"
+band    = [60, 60]
+
+# ------------------------------------------------------------------------------------------ jetty_bay
+# The jetty the kit can wall, half a bay: every wall closes. The gable still is not laid (8.1 m).
+
+[jetty_bay.errors]
+measure = "errors"
+band    = [0, 0]
+
+[jetty_bay.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[jetty_bay.open]
+measure = "open"
+band    = [0, 0]
+
+[jetty_bay.open_sum_mm]
+measure = "open_sum_mm"
+band    = [0, 0]
+
+[jetty_bay.roof_none]
+measure = "roof_none"
+band    = [3, 3]
+
+[jetty_bay.roof]
+measure = "roof"
+band    = [104, 104]
+
+[jetty_bay.added]
+measure = "added"
+band    = [114, 114]
+
+[jetty_bay.removed]
+measure = "removed"
+band    = [48, 48]
 
 # ------------------------------------------------------------------------------------------ wider
 # The first north house a bay wider: the five after it move 3 m up the street and onto other

@@ -59,8 +59,9 @@ Rules (ours):
    is `row_meets` (warning), naming every lot it stands in and, for a row's first or last lot,
    the `at` or `to` that clears them, and is not returned: two rows that both run to a block's
    corner would stand in each other there.
-8. **What is passed on.** `storey_h`, `ground_h`, `top_h`, `plinth`, `porch`, `walk_out`, `roof`
-   and `fill` of the row are each building's. Of a `fill` entry's `storeys` a building keeps
+8. **What is passed on.** `storey_h`, `ground_h`, `top_h`, `plinth`, `porch`, `walk_out`, `roof`,
+   `fill`, `setback` and `overhang` of the row are each building's (a `setback` or `overhang`
+   entry for a storey a lot has not is not passed to it). Of a `fill` entry's `storeys` a building keeps
    those it has, and an entry none of whose storeys it has is not passed to it: a row's lots
    differ in height, and one line may fill the fifth storey of those that have one. A building is named `<row>_<i>`, `i` its lot's
    number from 0, so a lot keeps its name whatever is written after it.
@@ -83,7 +84,7 @@ import math
 
 FIT = 5              # mm a row may differ from its frontage and still close
 SHARE = 1000         # mm of side two buildings share for it to be a party wall
-PASSED = ("storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "roof", "fill")
+PASSED = ("storey_h", "ground_h", "top_h", "plinth", "porch", "walk_out", "roof", "fill", "setback", "overhang")
 ATTRS = ["to", "kit", "depth", "lots", "heights", "storeys", *PASSED]
 
 EXPLAIN = {
@@ -303,6 +304,12 @@ def plan_row(name, path, attrs, facts):
                 a[key] = attrs[key]
         if a.get("fill"):
             a["fill"] = fill_for(a["fill"], high)
+        for key in ("setback", "overhang"):      # a storey a lot has not is not passed to it
+            if isinstance(a.get(key), list):
+                a[key] = [e for e in a[key] if not (isinstance(e, dict) and isinstance(e.get("storey"), (int, float))
+                                                    and e["storey"] >= high)]
+                if not a[key]:
+                    del a[key]
         if stair:
             a["stair"] = stair
         b = {"key": f"{name}_{i}", "ring": ring, "exact": exact, "attrs": a, "lot": i, "lots": len(lots),

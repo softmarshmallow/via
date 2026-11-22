@@ -444,5 +444,107 @@ class Foot(unittest.TestCase):
         self.assertFalse([a for a in walls if a.startswith("base")])
 
 
+class Outlines(unittest.TestCase):
+    """lay.py rule 14: a storey with its own outline."""
+
+    RING = [(0, 0), (12600, 0), (12600, 12600), (0, 12600)]
+
+    def lay(self, storeys=3, **attrs):
+        rows = kit()
+        a = {"storeys": storeys, "storey_h": 3.3, "plinth": 0.3, "porch": 2, "walk_out": 3, "kit": "k", "roof": "flat",
+             "doors": [{"storey": 0, "side": 0, "at": 4.05}], "stair": {"side": 2, "at": 1.8}, **attrs}
+        return L["plan"]("b", self.RING, a, 10.0, None, None, kits=lambda w, h: L["kit_pieces"](rows, w, h))
+
+    def test_a_ring_moved_side_by_side(self):
+        self.assertEqual(L["shift_ring"](self.RING, [3000, 0, 0, 0]), [(0, 3000), (12600, 3000), (12600, 12600), (0, 12600)])
+        self.assertEqual(L["shift_ring"](self.RING, [-1500, 0, 300, 0]), [(0, -1500), (12600, -1500), (12600, 12300), (0, 12300)])
+        turned = [(0, 0), (8000, 6000), (2000, 14000), (-6000, 8000)]                     # a 10 m square at 36.87 degrees
+        self.assertEqual(L["shift_ring"](turned, [2500, 0, 0, 0])[:2], [(-1500, 2000), (6500, 8000)])
+
+    def test_the_top_storey_set_back_a_bay(self):
+        """Storey 2 stands 3 m inside the front: its side walls are three bays where the building's
+        are four, its front stands on the line 3 m in, and the roof covers its own outline."""
+        out = self.lay(setback=[{"storey": 2, "sides": [0], "by": 3.0}])
+        self.assertEqual(out["storeys"][1]["region"][0], (0, 0))                          # storey 1: the footprint
+        count = {r["key"]: r["count"] for r in out["runs"]}
+        self.assertEqual((count["b_s1_w1_0"], count["b_s2_w1_0"], count["b_s2_w3_0"]), (4, 3, 3))
+        self.assertEqual(count["b_s2_w0_0"], 4)
+        front = next(r for r in out["runs"] if r["key"] == "b_s2_w0_0")
+        self.assertEqual(front["ref"], "b_s2")
+        ys = [p[1] for p in out["storeys"][2]["region"]]
+        self.assertEqual(min(ys), 3000)
+        self.assertEqual(out["roof"]["region"], [(0, 3000), (12600, 3000), (12600, 12600), (0, 12600)])
+        self.assertFalse([o for o in out["open"] if not o.get("parapet")])               # every storey's walls close
+
+    def test_the_terrace_is_a_roof_at_the_storeys_level_with_its_parapet_on_three_sides(self):
+        out = self.lay(setback=[{"storey": 2, "sides": [0], "by": 3.0}])
+        (t,) = out["terraces"]
+        self.assertEqual((t["key"], t["region"]), ("b_t2_0", [(0, 0), (12600, 0), (12600, 3000), (0, 3000)]))
+        self.assertEqual(t["eaves"], out["storeys"][2]["level"])
+        runs = sorted(r["key"] for r in out["runs"] if r["key"].startswith("b_t2_0_w"))
+        self.assertEqual(runs, ["b_t2_0_w0_0"])                                          # the front; none against the wall above
+        posts = [i for i in out["instances"] if i["key"].startswith("b_t2_0_c")]
+        self.assertEqual(len(posts), 4)
+        self.assertTrue(all(i["surface"] == "b_t2_0.garden" for i in posts))
+
+    def test_what_a_terrace_of_whole_bays_cannot_close_is_said(self):
+        """3 m of set-back is 2.7 m of terrace inside its parapet and 2.4 m of parapet between
+        two posts: no whole number of 1.5 m tiles or pieces. Both are said, neither is fitted."""
+        out = self.lay(setback=[{"storey": 2, "sides": [0], "by": 3.0}])
+        notes = [n for n in out["notes"] if n["code"] == "slab_open" and n.get("terrace")]
+        self.assertEqual([(n["storey"], n["deep"]) for n in notes], [(2, 2700)])
+        opens = sorted((o["side"], o["length"]) for o in out["open"] if o.get("parapet"))
+        self.assertEqual(opens, [(1, 2400), (3, 2400)])
+        tiles = [i for i in out["instances"] if i["key"].startswith("b_t2_0_f")]
+        self.assertEqual(len(tiles), 8)                                                  # one row of whole tiles, 12 m
+
+    def test_an_overhang_is_the_storeys_own_floor(self):
+        out = self.lay(storeys=2, overhang=[{"storey": 1, "sides": [0], "by": 1.5}])
+        self.assertEqual(min(p[1] for p in out["storeys"][1]["region"]), -1500)
+        self.assertEqual(out["terraces"], [])
+        count = {r["key"]: r["count"] for r in out["runs"]}
+        self.assertEqual(count["b_s1_w0_0"], 4)
+        tiles = [i for i in out["instances"] if i["key"].startswith("b_s1_f") and i["at"][1] < 0]
+        self.assertTrue(tiles)                                                           # the floor over the street
+        self.assertEqual(out["roof"]["region"][0], (0, -1500))
+
+    def test_an_overhang_the_kit_cannot_close_is_an_open_wall(self):
+        """A jetty of 0.45 m makes the side walls 13.05 m: no whole number of half bays."""
+        out = self.lay(storeys=2, overhang=[{"storey": 1, "sides": [0], "by": 0.45}])
+        opens = sorted((o["side"], o["storey"]) for o in out["open"] if not o.get("parapet"))
+        self.assertEqual(opens, [(1, 1), (3, 1)])
+        self.assertEqual(sorted(o["side"] for o in out["open"] if o.get("parapet")), [1, 3])   # and the parapet over them
+
+    def test_what_may_not_be_moved(self):
+        for attrs, word in (({"setback": [{"storey": 2, "sides": [2], "by": 3.0}]}, "the stair climbs side 2"),
+                            ({"setback": [{"storey": 2, "sides": [1], "by": 3.0}]}, "the stair climbs side 2"),
+                            ({"setback": [{"storey": 0, "sides": [0], "by": 3.0}]}, "is not"),
+                            ({"setback": [{"storey": 3, "sides": [0], "by": 3.0}]}, "names storey 3"),
+                            ({"setback": [{"storey": 1, "sides": [0], "by": -1}]}, "is not"),
+                            ({"setback": [{"storey": 1, "side": 0, "by": 3}]}, "is not"),
+                            ({"setback": "front"}, "list of tables"),
+                            ({"setback": [{"storey": 1, "sides": [0], "by": 12.0}]}, "less than a metre deep")):
+            with self.assertRaises(L["ParamError"]) as c:
+                self.lay(**attrs)
+            self.assertIn(word, c.exception.message, attrs)
+        with self.assertRaises(L["ParamError"]) as c:
+            self.lay(storeys=1, stair=None, setback=[{"storey": 1, "sides": [0], "by": 3.0}])
+        self.assertIn("names storey 1", c.exception.message)
+        ell = [(0, 0), (12600, 0), (12600, 6600), (6600, 6600), (6600, 12600), (0, 12600)]
+        rows = kit()
+        with self.assertRaises(L["ParamError"]) as c:
+            L["plan"]("b", ell, {"storeys": 2, "storey_h": 3.3, "kit": "k", "stair": {"side": 5, "at": 1.8},
+                                 "setback": [{"storey": 1, "sides": [0], "by": 3.0}]}, 10.0, None, None,
+                      kits=lambda w, h: L["kit_pieces"](rows, w, h))
+        self.assertIn("rectangle only", c.exception.message)
+
+    def test_a_row_passes_a_set_back_only_to_the_lots_that_have_the_storey(self):
+        lots = [{"bays": 4, "storeys": 3}, {"bays": 4, "storeys": 2}]
+        sb = [{"storey": 2, "sides": [0], "by": 3.0}]
+        got, _ = plan([("s", [(18000, 16000)], dict(SOUTH, lots=lots, to=[43.2, 16], setback=sb))])
+        self.assertEqual(got[0]["attrs"]["setback"], sb)
+        self.assertNotIn("setback", got[1]["attrs"])
+
+
 if __name__ == "__main__":
     unittest.main()

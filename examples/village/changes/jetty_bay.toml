@@ -1,0 +1,4 @@
+# The jetty the kit can wall: half a bay, 1.5 m, far more than a house's. The side walls close.
+# The roof still does not: its slope is made for a house 6.6 m deep, and this storey is 8.1 m.
+[feature.north]
+overhang = [{ storey = 1, sides = [0], by = 1.5 }]

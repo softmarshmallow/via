@@ -1,0 +1,6 @@
+# A jetty: the upper storey of the north row's two-storey houses standing 0.45 m out over the
+# street, as a timber house's does (lib/building/lay.py rule 14). The kit's smallest piece is a
+# half bay, 1.5 m, so the side walls of that storey, 0.45 m longer, do not close; and its roof
+# pieces are made for a house 6.6 m deep.
+[feature.north]
+overhang = [{ storey = 1, sides = [0], by = 0.45 }]

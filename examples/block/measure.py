@@ -23,7 +23,8 @@ says (`lay#<building>_s<k>_...`, or `lay#<building>_roof_...`).
   measured length to its origin plus half, along the side; a corner post covers its own width.
   The side from end to end, less the union, is open wall: each stretch longer than `TOL` (5 mm)
   counts in `open`, with `open_sum_mm`. `parapet_open` and `parapet_open_sum_mm` are the same
-  for the parapet of each building that has any of one, on the building's outline. A storey above a set-back is measured on its own outline
+  for the parapet round each building's roof, on the roof's own outline; a terrace's parapet is
+  not measured (`open_said` counts what the build says of it). A storey above a set-back is measured on its own outline
   (the `storey` feature's ring), since it is not the building's.
 - **What a side faces.** For each piece with an opening (a `role:wall` piece with no
   `variant:blank` or `storey:parapet` tag, or a `role:door` piece), the point `PROBE` (1 m) out from its origin along
@@ -163,11 +164,15 @@ def measures(d, world=None):
                 lay_of[n] = (by_key[kk], tail[len(kk) + 1:])
                 break
     eaves = {}
-    storey_ring = {}
+    storey_ring, footing_ring, roof_ring = {}, {}, {}
     for n, (b, rest) in lay_of.items():
         f = feats[n]
-        if f.get("kind") == "roof":
+        if f.get("kind") == "roof" and rest == "roof":
             eaves[b] = f["attrs"]["eaves"]
+            roof_ring[b] = ring_of(f)
+        m_ = re.fullmatch(r"s(\d+)_footing", rest)
+        if m_ and f.get("kind") == "footing":
+            footing_ring[(b, int(m_.group(1)))] = ring_of(f)
         m_ = re.fullmatch(r"s(\d+)", rest)
         if m_ and f.get("kind") == "storey":
             storey_ring[(b, int(m_.group(1)))] = ring_of(f)
@@ -218,21 +223,28 @@ def measures(d, world=None):
                 above += 1
     m.update({"party_windows": party, "yard_shopfronts": yard, "street_blank": blank, "blank_above": above})
 
+    def outline_of(b, k):
+        """Storey `k`'s outline: the box, along the building's own sides, of its floor and of the
+        footing beside it. That is the building's outline unless the storey is set back or
+        overhangs (lay.py rule 14); a stairwell cut from the floor does not change it."""
+        ring = rings[b]
+        pts = list(storey_ring.get((b, k)) or []) + list(footing_ring.get((b, k)) or [])
+        if not pts or len(ring) != 4:
+            return ring
+        (o, e, L), (_, f, M) = sides(ring)[0], sides(ring)[1]
+        us = [(p[0] - o[0]) * e[0] + (p[1] - o[1]) * e[1] for p in pts]
+        vs = [(p[0] - o[0]) * f[0] + (p[1] - o[1]) * f[1] for p in pts]
+        return [(o[0] + e[0] * u + f[0] * v, o[1] + e[1] * u + f[1] * v)
+                for u, v in ((min(us), min(vs)), (max(us), min(vs)), (max(us), max(vs)), (min(us), max(vs)))]
     gaps = []
     for b, f in sorted(buildings.items()):
         for k in range(int(f["attrs"].get("storeys") or 1)):
-            ring = rings[b]
-            own = storey_ring.get((b, k))
-            # A storey set back from the outline is walled on its own ring; one that only leaves
-            # out a stairwell is walled on the building's.
-            if own and all(inside(ring, p) or min(abs(p[0] - q[0]) + abs(p[1] - q[1]) for q in ring) < 20
-                           for p in own) and len(own) == 4 and size_of(own) != size_of(ring):
-                ring = own
-            gaps += open_of(ring, laid.get((b, k), []))
+            gaps += open_of(outline_of(b, k), laid.get((b, k), []))
     m["open"] = len(gaps)
     m["open_sum_mm"] = int(round(sum(gaps) * 1000))
     # The parapet round a flat roof, where the build laid any of it: measured as a storey's walls.
-    gaps = [g for b in sorted(buildings) if (b, "roof") in laid for g in open_of(rings[b], laid[(b, "roof")])]
+    gaps = [g for b in sorted(buildings) if (b, "roof") in laid
+            for g in open_of(roof_ring.get(b, rings[b]), laid[(b, "roof")])]
     m["parapet_open"] = len(gaps)
     m["parapet_open_sum_mm"] = int(round(sum(gaps) * 1000))
 

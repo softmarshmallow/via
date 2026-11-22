@@ -1,4 +1,4 @@
 # A set-back: the top storey of the east building drawn back from the street by a bay, with a
-# terrace before it. Not built: a storey has its building's outline (README.md, "Still open").
+# terrace before it (lib/building/lay.py rule 14).
 [feature.east]
-setback = [{ storey = 2, side = 0, by = 3.0 }]
+setback = [{ storey = 2, sides = [0], by = 3.0 }]
