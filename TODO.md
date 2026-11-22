@@ -1402,6 +1402,24 @@ open, and its place here is its destination.
 
 ### `lib/building`
 
+- [ ] **What the wall's foot leaves** (K7, first slice; lay.py rule 13). The base is one piece
+  of one depth: `base_short` says where it is too shallow and nothing stacks a second course.
+  A door has no steps: the doorway raises or cuts the ground to its sill, a mound on a steep
+  slope. Uphill the ground stands against the wall (1.7 m on `examples/village`'s steep street)
+  and nothing says so or shapes it: a yard or pad of the building's own. The kits of `kit`,
+  `block`, `station` and `college` have no base, so each of their buildings says `plinth_bare`
+  (info). And `lay`'s records of one code for the buildings of a row fold into one whose
+  numbers are the first building's. Lesson: the gap was in every sheet since M5 and no measure
+  looked under a wall.
+      (From K7 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **A thing inside a house is not the house's.** A world's text cannot name the floor of a
+  building a step made, so furniture is written by a point and a height (`surfaces.md` 4.1).
+  When the house moves or its ground changes the thing stays: in a wall (`examples/village`
+  `wider`: two wall bays gave way to a chest, 6 m open), or on the roof whose eaves are now at
+  that height (`steep`). The build names it only once the two disagree. A place inside a row's
+  lot that a world can write (a lot's own frame, or a mount the building returns) is the
+  question. Lesson: this is the studio's enlarged house that broke a quest.
+      (From K7 of docs/plan-kits.md, 2026-11-23.)
 - [ ] **What K6's review found and K6 did not mend.** (1) A diagnostic `lay` says of a building a
   row returned is located on `[step.rows]`, and records of one code on one building fold into
   the first: a second storey's `wall_open` is not shown. (2) `check` gives two `kit_variant`,
@@ -1492,7 +1510,7 @@ open, and its place here is its destination.
   its review.
       (From the review of K4, 2026-11-23.)
 - [ ] **A gable over a plan that is not a rectangle** is refused (`roof_none`) and the flat roof
-  laid: K7. A base course and steps to a door: K7 too. `STUB_MIN` (a stairwell 0.3 m short of a
+  laid: K7. The base came with K7's first slice (lay.py rule 13); steps to a door did not. `STUB_MIN` (a stairwell 0.3 m short of a
   corner is refused) was for the wall stub beside it; with a footing no stub exists, and the
   rule now only keeps a thin strip of floor from being cut. Revisit it with the stair above.
       (From K4 of docs/plan-kits.md, 2026-11-23.)

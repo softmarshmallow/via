@@ -1,0 +1,5 @@
+# A steeper street: the ground rises 24 m in 100 along it in place of 8. The houses step up it,
+# each on the mean of the ground under it, and the low end of the longer ones stands higher over
+# the ground than the kit's base is deep.
+[field.height]
+base = "= 5 + 0.24 * x - 0.06 * y"

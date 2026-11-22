@@ -452,7 +452,9 @@ class Profile(unittest.TestCase):
         self.assertEqual(codes(C["judge"]([], [], odd, P)), [("kit_uneven", "wall")])
 
     def test_floors_and_roofs_stand_in_no_doorway(self):
-        self.assertEqual(sorted(C["LIES_FLAT"]), ["role:door", "role:floor", "role:roof", "role:roof_gable", "role:roof_slope"])
+        # ... nor does what stands under the floor (the base) or over the roof (the parapet).
+        self.assertEqual(sorted(C["LIES_FLAT"]), ["role:door", "role:floor", "role:roof", "role:roof_gable", "role:roof_slope",
+                                                  "storey:base", "storey:parapet"])
         rows = [{"id": "floor", "tags": ["role:floor"], "bounds": [0, 0, 0, 1, 1, 1]},
                 {"id": "slope", "tags": ["role:roof_slope"], "bounds": [0, 0, 0, 1, 1, 1]},
                 {"id": "wall", "tags": ["role:wall"], "bounds": [0, 0, 0, 1, 1, 1]}]

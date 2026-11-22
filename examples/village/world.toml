@@ -1,0 +1,86 @@
+name       = "village"
+extent     = [0, 0, 96, 64]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/village.toml"             # the village kit, beside the world (packs/make_kit.py)
+
+# A village street on a slope: two rows of timber-framed houses, one either side of a street that
+# climbs to the east. The ground rises 8 m in 100 along the street and falls 6 in 100 to the
+# north, so no house stands on level ground: the subject is how a kit's building meets the land
+# (docs/plan-kits.md, K7; docs/research/Modular kit failures in studios.md, section 4, "Meeting
+# the ground"). The houses are two bays deep, two or three wide, under gable roofs.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]
+role = "surface"
+base = "= 12 + 0.08 * x - 0.06 * y"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ rows
+
+[feature.north]                               # the uphill side of the street, west to east
+kind     = "row"
+at       = [14, 34]
+to       = [62.6, 34]
+kit      = "structure/village"
+depth    = 2
+lots     = [{ bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }]
+storey_h = 2.7
+roof     = "gable"
+fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "wall"] }]
+
+[feature.south]                               # the downhill side, east to west
+kind     = "row"
+at       = [60, 26]
+to       = [21, 26]
+kit      = "structure/village"
+depth    = 2
+lots     = [{ bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }]
+storey_h = 2.7
+roof     = "gable"
+fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "wall"] }]
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.rows]                                   # every row's buildings (lib/building/row.py)
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:building/row.py"]
+
+# `lay` walls every building the rows return, from a layer above (protocol.md 3.3).
+[layer.walls]
+file  = "walls.toml"
+owner = "walls"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_street]
+at = [40, 30]
+
+[feature.look_low]
+at = [24, 34]
+
+[feature.up_street]                           # up the street from its low end, at eye height
+kind   = "bookmark"
+at     = [6, 30]
+toward = "look_street"
+
+[feature.low_end]                             # the north row's lowest house, from the street
+kind   = "bookmark"
+at     = [12, 24]
+toward = "look_low"
+
+[feature.over]                                # both rows from the south, above
+kind       = "bookmark"
+at         = [40, 2]
+toward     = "look_street"
+eye_height = 30

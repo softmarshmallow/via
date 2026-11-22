@@ -1,0 +1,7 @@
+# The larger house (docs/research/Modular kit failures in studios.md, section 12: a studio enlarged
+# its houses and broke a finished quest). The first house of the north row a bay wider: every
+# house after it moves 3 m up the street and stands on other ground. The chest was written inside
+# the second house, by its floor's height.
+[feature.north]
+lots = [{ bays = 4, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }]
+to   = [65.6, 34]

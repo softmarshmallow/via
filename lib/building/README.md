@@ -283,6 +283,24 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     open). A kit whose lane, landing and run are whole tiles gets whole stairwells on every
     storey, and `slab_open` then says how far to move a stair that stands between tiles.
   - *Not yet.* A building's `storey_h` is still its own; lib/town does not read `shared`.
+- **The wall's foot** (K7 of `docs/plan-kits.md`, first slice, from examples/village). Design
+  note; the rule is `lay.py` rule 13. Source: the stone base under one studio's modular buildings
+  and the foundation layer of another's facades are the only shipped accounts, and flat ground
+  is a stated precondition of the tools that say anything (docs/research/Modular kit failures in
+  studios.md, section 4, "Meeting the ground"). The rule is our own design.
+  - *What was wrong.* A floor is level and a wall piece stands on its floor, so wherever the
+    ground is lower than the floor the wall's foot is in the air: 0.3 m, the plinth, round every
+    building on level ground since M5, and up to 0.92 m along 190 m of wall on the village's
+    slope. Nothing said so.
+  - *The base.* A kit's wall pieces tagged `storey:base` are laid round the outline as a
+    storey's walls are, under the door too, on the ground storey's floor. The pack sinks each by
+    its own height, so its top is the floor. No new way of placing: a sunk piece on a floor.
+  - *What is said.* `lay` reads the ground along the outline every 0.5 m. `base_short` where the
+    ground lies lower than the base reaches; `foot_open` where a kit with no base stands over
+    ground that falls more than the plinth; `plinth_bare` (info) where only the plinth shows.
+    Nothing is stretched to reach the ground.
+  - *Not yet.* Courses of base stacked to a depth; steps to a door (the doorway shapes the
+    ground at its sill); a yard or pad that shapes the ground under the building.
 - **A row of buildings** (K6 of `docs/plan-kits.md`, from examples/block). Design note; the rules
   are `row.py`'s eight, `lay.py` rule 12 (`faces`) and rule 10 (the parapet). Source: a city block
   as lots along a frontage (docs/research/Modular city asset contracts.md, section 2); the

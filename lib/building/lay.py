@@ -199,6 +199,24 @@ The rules (ours, written for this library; README.md is the design note):
    none. A stretch that does not close is `wall_open`, said of the parapet. Source: ours;
    the research found no developer's account of roofs from pieces (docs/research/Modular kit
    failures in studios.md, section 9).
+13. **The wall's foot.** A wall piece stands on its storey's floor, and a floor is level: where
+   the ground is lower than the ground storey's floor, the wall's foot is in the air. The ground
+   is read along the outline every 0.5 m (`read_foot`: the terrain as this step sees it, before
+   the building's own doorways shape it). **The base** is the kit's wall pieces tagged
+   `storey:base` (a bay, and a filler and a corner where the kit has them), laid round the whole
+   outline exactly as a storey's walls are (rule 6), under the door too: runs
+   `<building>_base_w<side>_<j>`, corners `<building>_base_c<i>`, on the ground storey's floor.
+   The pack sinks each by its own height (`sink`), so its top is the floor and it reaches its
+   height below it. Where the ground lies lower than the base reaches, by more than 0.05 m, the
+   building says `base_short` (warning): the most the ground falls below the floor, the base's
+   depth, and the length of outline it stops short along. Nothing is stretched to reach the
+   ground. A kit with no base says `foot_open` (warning) where the ground falls more than the
+   building's `plinth` below the floor, and `plinth_bare` (info) where the floor only stands its
+   plinth above it: the walls' feet show that much air all round, as they have on every
+   building of a kit since M5. Source: the stone base under PUBG's modular buildings and the
+   foundation layer of Fallout 4's facade stack are the only shipped accounts; flat ground is a
+   stated precondition of the tools that say anything (docs/research/Modular kit failures in
+   studios.md, section 4, "Meeting the ground"). The rule is ours.
 11. **What a kit states.** A kit is a taxon's pieces, and what they share it says once: the
    `shared` table in that taxon's `defaults` (spec/assets.md 2.5; R66 of docs/doctrine.md; Asset
    law 5 of docs/ledger/archetypes.md). `lay` reads six of its keys, each optional: `wall`, the
@@ -209,7 +227,7 @@ The rules (ours, written for this library; README.md is the design note):
    further), in place of the width and `CLEAR` each side, so a kit whose lane is whole floor
    tiles gets stairwells that are; `door`, the width of the doorway its door piece is made for,
    which a door that writes no `width` takes; `module`, `storey` (one height or a list) and
-   `parapet` (the height of its `storey:parapet` pieces),
+   `parapet` and `base` (the heights of its `storey:parapet` and `storey:base` pieces),
    which `lay` does not lay by (a stretch closes by its pieces' pitches, a storey's height is
    the building's) and `check` holds the pieces to (`kit_stated`). What a piece alone takes of a
    layout stays on the piece: `params.pitch`, `reach`, `span` (R69). A kit that states nothing
@@ -221,8 +239,8 @@ The rules (ours, written for this library; README.md is the design note):
 
 `params` of the step: `inner_door` (0.9 m), `margin` (0.1 m). Codes are `step.<id>.<code>`: `params` (error, the
 building's attribute or a kit piece's param), `wall_open`, `side_short`, `corner_none`,
-`fillers_only`, `gap_wide`, `variant_none`, `bay_none`, `slab_open`, `roof_none` (warnings), `laid`
-(info, what was returned).
+`fillers_only`, `gap_wide`, `variant_none`, `bay_none`, `slab_open`, `roof_none`, `foot_open`,
+`base_short` (warnings), `plinth_bare` and `laid` (infos; `laid` is what was returned).
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -237,6 +255,8 @@ CLEAR = 100          # mm between a flight and the wall, and between two lanes
 LANDING = 1000       # mm of stairwell before an even flight's start and past an odd one's
 STUB_MIN = 300       # mm: the least wall a stairwell may leave before a corner (ours: a corner piece)
 FIT = 5              # mm a stretch may differ from its pieces' pitches and still close
+FOOT_STEP = 500      # mm between the points the ground is read at along an outline (rule 13)
+FOOT_SEEN = 0.05     # metres of wall foot above the ground that is said (rule 13)
 INNER_DOOR = 900     # mm, an opening between two rooms
 MIN_FLAT = 1500      # mm, the least flat ground beside a doorway
 MARGIN = 100         # mm a wall's gap is wider than the doorway or flight through it
@@ -274,6 +294,13 @@ EXPLAIN = {
     "roof_none": "The roof asked for cannot be laid from the kit's pieces on this plan. A roof piece is "
     "made for one depth of building and whole lengths of eave; nothing is stretched or cut. Where the "
     "kit has a floor tile the flat roof is laid in its place.",
+    "foot_open": "A wall piece stands on its storey's floor, and a floor is level. Where the ground falls away "
+    "under the building, the wall's foot is in the air unless a base stands under it: the kit's wall pieces "
+    "tagged `storey:base`, laid round the outline with their tops at the floor.",
+    "base_short": "The kit's base reaches a stated depth below the floor, and the ground under part of the "
+    "outline is lower than that. Nothing is stretched to reach it.",
+    "plinth_bare": "The floor stands its `plinth` above the ground, and with no base in the kit the walls' feet "
+    "show that much air all round.",
     "laid": "What the building library's lay step returned for one building: storeys, rooms, "
     "flights, doorways, footpaths, wall runs and pieces.",
 }
@@ -874,7 +901,7 @@ def variant_off(v, bay):
 
 
 BY_HEIGHT = ("wall", "filler", "corner", "corner_in", "door")      # the roles a storey's height chooses among
-SHARED = ("module", "wall", "door", "storey", "parapet", "stair")  # what a kit may state once (rule 11)
+SHARED = ("module", "wall", "door", "storey", "parapet", "base", "stair")  # what a kit may state once (rule 11)
 STAIR_KEYS = ("lane", "width", "run", "landing")
 
 
@@ -1582,10 +1609,12 @@ def _num(attrs, key, default, lo=None, integer=False):
     return v
 
 
-def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, margin=MARGIN, kits=None):
-    """Everything one building returns, as plain data (the step writes it): rules 1 to 10.
+def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, margin=MARGIN, kits=None, foot=None):
+    """Everything one building returns, as plain data (the step writes it): rules 1 to 13.
     `kit` is one kit for every storey (`kit_pieces`); `kits`, where given, is a function of a
-    storey's word and its height in mm that gives that storey's kit, and `kit` is not read."""
+    storey's word and its height in mm that gives that storey's kit, and `kit` is not read.
+    `foot` is the ground along the outline, [(x mm, y mm, metres)] (`read_foot`): with it the
+    wall's foot is held against the ground (rule 13)."""
     footprint = ccw(ring)
     prefix = key_of(name)
     storeys = _num(attrs, "storeys", 1, 1, integer=True)
@@ -1741,6 +1770,28 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                 out["notes"].append({"code": "bay_none", "index": b["index"], "storey": b["storey"],
                                      "side": b["side"], "at_m": b["at"] / 1000, "variant": b["variant"],
                                      "at": rnd(local(edges(footprint)[b["side"]], b["at"], 0))})
+    if kit and kit.get("wall") and foot:         # the wall's foot against the ground (rule 13)
+        base = kits("base", None) if kits else {}
+        has = (base.get("wall") or {}).get("storey") == "base"
+        deep = base["wall"]["high"] / 1000 if has else 0.0
+        if has:
+            runs, insts, opens = wall_plan(footprint, footprint, [], base, f"{prefix}_base", f"{prefix}_s0", (),
+                                           margin, out["notes"], None, name)
+            for it in insts:
+                it["surface"] = f"{prefix}_s0.floor"
+            for o_ in opens:
+                o_["base"] = True
+            out["runs"].extend(runs)
+            out["instances"].extend(insts)
+            out["open"].extend(opens)
+        hang = [(lv[0] - h, x, y) for x, y, h in foot]
+        worst = max(hang)
+        bare = [t for t in hang if t[0] - deep > FOOT_SEEN]
+        if bare:
+            step_ = math.hypot(foot[1][0] - foot[0][0], foot[1][1] - foot[0][1]) / 1000 if len(foot) > 1 else 0.0
+            out["notes"].append({"code": "foot_open" if not has else "base_short", "hang": round(worst[0], 3),
+                                 "deep": deep, "length": round(len(bare) * step_, 1), "plinth": plinth,
+                                 "at": (worst[1], worst[2])})
     for k in range(storeys):                     # floors (rule 9)
         tile = (kit_of[k] or {}).get("floor")
         if not tile:
@@ -1883,6 +1934,21 @@ def read_ground(step, ring):
     return sum(h) / len(h)
 
 
+def read_foot(step, ring):
+    """The terrain along the outline (rule 13): [(x mm, y mm, metres)] every `FOOT_STEP` along
+    each side, from half a step in. Empty where the world has no surface field."""
+    try:
+        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
+    except (LookupError, RpcError):
+        return []
+    pts = []
+    for e in edges(ccw(ring)):
+        n = max(1, int(round(e["L"] / FOOT_STEP)))
+        pts += [rnd(local(e, (i + 0.5) * e["L"] / n, 0)) for i in range(n)]
+    h = _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in pts], y=[p[1] for p in pts]))
+    return [(p[0], p[1], float(v)) for p, v in zip(pts, h)]
+
+
 def read_kit(step, taxon):
     if not taxon:
         return None
@@ -1933,7 +1999,8 @@ def generate(step):
         ring, attrs = read_building(step, name)
         rows = read_kit(step, attrs.get("kit"))
         kits = (lambda word, height: kit_pieces(rows, word, height)) if rows is not None else None
-        out = plan(name, ring, attrs, read_ground(step, ring), step.grid, None, inner, margin, kits)
+        ground, foot = read_ground(step, ring), read_foot(step, ring)
+        out = plan(name, ring, attrs, ground, step.grid, None, inner, margin, kits, foot)
     except ParamError as e:
         step.error("params", name, f"{name}: {e.message}", e.hint, explain=EXPLAIN["params"],
                    data={"attribute": e.key})
@@ -1946,7 +2013,8 @@ def generate(step):
         hint = (f"it ends at the stairwell: move the stair's `at`, or change its `run`, so this wall is {moves}"
                 if w.get("stairwell") and moves
                 else "resize the side to a length that closes, or move the door or stair that cuts it")
-        where_ = (f" on side {w['side']} of the parapet" if w.get("parapet")
+        where_ = (f" on side {w['side']} of the base" if w.get("base")
+                  else f" on side {w['side']} of the parapet" if w.get("parapet")
                   else f" on side {w['side']} of storey {w.get('storey', 0)}" if "side" in w else "")
         said = f"a wall stretch of {w['length'] / 1000:g} m{where_} does not close with the kit's pieces"
         if w.get("unfloored"):
@@ -2062,6 +2130,27 @@ def generate(step):
                      "size the building to the roof pieces, give the kit the pieces, or ask for a roof it can lay",
                      position=(n["at"][0] / 1000, n["at"][1] / 1000),
                      data={"roof": n["roof"], "fallback": "flat" if n["flat"] else ""}, explain=EXPLAIN["roof_none"])
+    for n in (n for n in out["notes"] if n["code"] in ("foot_open", "base_short")):
+        pos = (n["at"][0] / 1000, n["at"][1] / 1000)
+        if n["code"] == "base_short":
+            step.warning("base_short", name,
+                         f"the ground falls {n['hang']:g} m below the floor and the kit's base is {n['deep']:g} m deep: "
+                         f"{n['length']:g} m of the base stops short of the ground, by {n['hang'] - n['deep']:.3g} m at most",
+                         "level the ground under the building, lower its `plinth`, or give the kit a deeper base",
+                         position=pos, data={"hang": n["hang"], "base": n["deep"], "length": n["length"]},
+                         explain=EXPLAIN["base_short"])
+        elif n["hang"] <= n["plinth"] + FOOT_SEEN:
+            step.info("plinth_bare", name,
+                      f"the floor stands {n['hang']:g} m above the ground, its plinth, and the kit has no base: "
+                      f"{n['length']:g} m of wall has nothing under it",
+                      "give the kit wall pieces tagged `storey:base`, or set `plinth = 0`",
+                      position=pos, data={"hang": n["hang"], "length": n["length"]}, explain=EXPLAIN["plinth_bare"])
+        else:
+            step.warning("foot_open", name,
+                         f"the ground falls {n['hang']:g} m below the floor and the kit has no base: {n['length']:g} m "
+                         "of wall stands over nothing",
+                         "give the kit wall pieces tagged `storey:base`, or level the ground under the building",
+                         position=pos, data={"hang": n["hang"], "length": n["length"]}, explain=EXPLAIN["foot_open"])
     step.info("laid", name,
               f"{len(out['storeys'])} storeys, {len(out['rooms'])} rooms, {len(out['flights'])} flights, "
               f"{len(out['doorways'])} doorways, {len(out['runs'])} wall runs, {len(out['instances'])} pieces",

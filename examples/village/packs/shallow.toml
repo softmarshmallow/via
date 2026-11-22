@@ -1,0 +1,114 @@
+# The village kit with a base 0.5 m deep in place of 1.5 m (changes/shallow.toml). Written
+# by packs/make_kit.py from packs/village.toml: edit that.
+# The village kit (examples/village): pieces of one module, made by packs/make_kit.py.
+# Its facts file, village.facts.toml, is written by `via pack accept examples/village/packs/village.toml`.
+#
+# Every model is glTF's convention: +Y up, front +Z, origin at the base centre (packgen's).
+# lib/building's `lay` reads a piece's part from its `role:` tag and the length it repeats at from
+# `params.pitch` (docs/design/kit-contract.md).
+
+root = "village"
+
+[taxon."structure"]
+defaults = { collision = "box" }
+
+# What the kit's pieces share, stated once (spec/assets.md 2.5; lib/building/lay.py rule 11).
+[taxon."structure/village".defaults.shared]
+module = 3.0                     # the bay: a side is whole bays and half bays between its corners
+wall   = 0.3                     # every wall piece's thickness
+storey = 2.7                     # every wall piece's height
+door   = 1.0                     # the doorway the door piece is made for
+base   = 0.5                     # how far the base reaches below the floor
+
+# The kit's stair: a lane and a landing of one floor tile, a run of three.
+[taxon."structure/village".defaults.shared.stair]
+lane    = 1.5
+width   = 1.3
+run     = 4.5
+landing = 1.5
+
+# The bay: 3 m of framed wall, its panel filled.
+[asset.frame]
+file   = "frame.glb"
+taxon  = "structure/village"
+tags   = ["role:wall"]
+params = { pitch = 3.0 }
+
+# The same bay with a small window.
+[asset.frame_window]
+file   = "frame_window.glb"
+taxon  = "structure/village"
+tags   = ["role:wall", "variant:window"]
+params = { pitch = 3.0 }
+
+[asset.half]
+file   = "half.glb"
+taxon  = "structure/village"
+tags   = ["role:filler"]
+params = { pitch = 1.5 }
+
+[asset.post]
+file  = "post.glb"
+taxon = "structure/village"
+tags  = ["role:corner"]
+
+[asset.door]
+file   = "door.glb"
+taxon  = "structure/village"
+tags   = ["role:door"]
+params = { pitch = 1.5 }
+
+[asset.tile]
+file   = "tile.glb"
+taxon  = "structure/village"
+tags   = ["role:floor"]
+params = { pitch = 1.5 }
+sink   = 0.2
+
+# The roof: a slope 1.5 m along the eave and 3.3 m in plan to the ridge, climbing 3 m, for a house
+# 6.6 m deep; and half a gable.
+[asset.roof_slope]
+file   = "roof_slope.glb"
+taxon  = "structure/village"
+tags   = ["role:roof_slope"]
+params = { pitch = 1.5, span = 3.3 }
+
+[asset.roof_gable]
+file   = "roof_gable.glb"
+taxon  = "structure/village"
+tags   = ["role:roof_gable"]
+params = { span = 3.3 }
+
+# A chest: something a world's author puts inside a house.
+[taxon."prop"]
+
+[asset.chest]
+primitive = "box"
+size      = [0.9, 0.5, 0.5]
+taxon     = "prop"
+
+# ---- the base: the wall under the floor, down to the ground. Laid round the outline as a
+# storey's walls are, each piece sunk by its own height so its top is the floor (lay.py rule 13).
+
+[asset.base]
+file   = "shallow_base.glb"
+taxon  = "structure/village"
+tags   = ["role:wall", "storey:base"]
+params = { pitch = 3.0 }
+sink   = 0.5
+
+[asset.base_half]
+file   = "shallow_base_half.glb"
+taxon  = "structure/village"
+tags   = ["role:filler", "storey:base"]
+params = { pitch = 1.5 }
+sink   = 0.5
+
+[asset.base_post]
+file  = "shallow_base_post.glb"
+taxon = "structure/village"
+tags  = ["role:corner", "storey:base"]
+sink  = 0.5
+
+[material.ground]
+colour = [0.45, 0.5, 0.4]

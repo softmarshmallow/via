@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6's first step, the kit stating what its pieces share (aa93d3a); K6's city block follows them. Next: K7. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7's first slice, the wall's foot, follows them. Next: K7's roofs and storey outlines. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -109,6 +109,13 @@ Changed so far:
   independent review found eleven defects; the gravest was R71 as first written, which compared
   two heights at one point and hid real meetings. It now compares ranges of height over the
   ground both paths cover, with half a metre between them.
+- **K7, first slice, 2026-11-23.** The village is built on a slope before any roof work, since
+  the ground is where the evidence is thinnest and the tool said least: every wall of every
+  kit-built house stood over the ground with nothing under it and no word said. Built: the
+  base (a kit's `storey:base` pieces) and what `lay` says of a wall's foot. A stepped row
+  needed nothing. **Changed:** steps to a door are not built (the doorway already shapes the
+  ground to its sill; filed), and `market`'s rows are not mended here: they are lib/town's
+  whole-house pieces, another library, and stay filed under `examples/market`.
 
 Checks before each commit: the library's tests, `cargo run -p xtask -- check`, and, where a crate
 changed, `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace` and the

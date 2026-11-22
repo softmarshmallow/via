@@ -1,0 +1,4 @@
+# A kit with no base (docs/research/Modular kit failures in studios.md, section 4, "Meeting the
+# ground"): the village kit as it was first made, walls and roofs and nothing under the floor. On
+# a slope every wall's foot stands over the ground on its low side.
+pack = "packs/bare.toml"

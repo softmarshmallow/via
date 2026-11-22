@@ -92,8 +92,8 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    `kit_stated` (warning) for a `wall`, `filler` or `door` piece whose measured thickness is not
    the stated `wall`; a `role:wall` piece whose pitch is not the stated `module`, or a filler of
    whose pitch the module is no whole number; a `wall`, `filler` or `corner` piece whose height
-   is none of the stated `storey` heights, or, tagged `storey:parapet`, is not the stated
-   `parapet`; each by more than `pitch_slack`. So a piece
+   is none of the stated `storey` heights, or, tagged `storey:parapet` or `storey:base`, is not
+   the stated `parapet` or `base`; each by more than `pitch_slack`. So a piece
    re-exported a little thicker is told against the kit's own word, not against whichever piece
    was read first. A kit that states nothing is `kit_unstated` (info), once, with what was worked
    out of its bay and the line that would state it.
@@ -115,7 +115,10 @@ LOW, HIGH = 0.5, 2.0  # metres below and above a doorway's sill a piece's foot s
 REACH = 3000         # mm across a doorway past which a piece does not narrow it
 
 # What stands in no one's way across a doorway: the door's own piece, a floor tile, the roof.
-LIES_FLAT = ("role:door", "role:floor", "role:roof", "role:roof_slope", "role:roof_gable")
+# Pieces that stand in no doorway's way: they lie flat, hang in the opening, or stand under the floor
+# (the base, lay.py rule 13) or over the roof (the parapet, rule 10).
+LIES_FLAT = ("role:door", "role:floor", "role:roof", "role:roof_slope", "role:roof_gable", "storey:base",
+             "storey:parapet")
 
 DEFAULTS = {"riser_max": 0.19, "going_min": 0.25, "turn_max": 45.0, "inner_door": 0.9,
             "pitch_slack": 0.05, "kits": []}
@@ -691,11 +694,12 @@ def judge(features, meetings, kit_rows, p, pieces=()):
             if module_ and "filler" in roles and pitch_(r) > 0 and off(module_, pitch_(r)) > slack:
                 said.append((f"takes {pitch_(r):g} m of wall, of which the kit's module ({module_:g} m) is no "
                              "whole number", "module", pitch_(r), module_))
-            parapet_ = number(st.get("parapet"))
-            if tag(r, "storey:") == "parapet":   # the wall round a flat roof is no storey: held to its own height
-                if parapet_ and any(x in ("wall", "filler", "corner") for x in roles) and abs(high_(r) - parapet_) > slack:
-                    said.append((f"is {high_(r):g} m high where the kit states a parapet of {parapet_:g} m",
-                                 "parapet", high_(r), parapet_))
+            if tag(r, "storey:") in ("parapet", "base"):   # no storey: each is held to its own stated height
+                word_ = tag(r, "storey:")
+                own_ = number(st.get(word_))
+                if own_ and any(x in ("wall", "filler", "corner") for x in roles) and abs(high_(r) - own_) > slack:
+                    said.append((f"is {high_(r):g} m high where the kit states a {word_} of {own_:g} m",
+                                 word_, high_(r), own_))
             elif storeys_ and any(x in ("wall", "filler", "corner") for x in roles) and min(
                     abs(high_(r) - h) for h in storeys_) > slack:
                 said.append((f"is {high_(r):g} m high where the kit states a storey of "

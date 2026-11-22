@@ -367,5 +367,82 @@ class Faces(unittest.TestCase):
         self.assertFalse([a for a in walls if a.startswith("parapet")])
 
 
+class Foot(unittest.TestCase):
+    """lay.py rule 13: the wall's foot against the ground, and the kit's base."""
+
+    RING = [(18000, 16000), (30600, 16000), (30600, 28600), (18000, 28600)]
+
+    @staticmethod
+    def rows(base=1500):
+        rows = [r for r in kit() if "storey:parapet" not in r["tags"]]
+        if base:
+            rows += [row("base", "wall", (3000, 300), base, ("storey:base",), shared=CITY, pitch=3),
+                     row("base_half", "filler", (1500, 300), base, ("storey:base",), shared=CITY, pitch=1.5),
+                     row("base_post", "corner", (300, 300), base, ("storey:base",), shared=CITY)]
+        return rows
+
+    def lay(self, slope=0.0, base=1500, **attrs):
+        """The building on ground that rises `slope` metres a metre to the east, from 10 m at its
+        west side; `foot` as `read_foot` gives it."""
+        rows = self.rows(base)
+        a = {"storeys": 1, "storey_h": 3.3, "plinth": 0.3, "porch": 2, "walk_out": 3, "kit": "k",
+             "doors": [{"storey": 0, "side": 0, "at": 4.05}], **attrs}
+        es = L["edges"](self.RING)
+        foot = []
+        for e in es:
+            n = int(round(e["L"] / 500))
+            for i in range(n):
+                x, y = L["rnd"](L["local"](e, (i + 0.5) * e["L"] / n, 0))
+                foot.append((x, y, 10.0 + slope * (x - 18000) / 1000))
+        mean = sum(h for _, _, h in foot) / len(foot)
+        return L["plan"]("b", self.RING, a, mean, None, None, kits=lambda w, h: L["kit_pieces"](rows, w, h), foot=foot)
+
+    def test_the_base_is_laid_round_the_outline_under_the_door_too(self):
+        out = self.lay()
+        runs = sorted((r["key"], r["asset"], r["count"], r["ref"]) for r in out["runs"] if "_base_w" in r["key"])
+        self.assertEqual(runs, [(f"b_base_w{k}_0", "base", 4, "b_s0") for k in range(4)])
+        posts = [i for i in out["instances"] if i["key"].startswith("b_base_c")]
+        self.assertEqual([(i["asset"], i["surface"]) for i in posts], [("base_post", "b_s0.floor")] * 4)
+        self.assertFalse([n for n in out["notes"] if n["code"] in ("foot_open", "base_short")])
+
+    def test_a_base_that_reaches_the_ground_says_nothing_on_a_slope(self):
+        """A rise of 0.08 m a metre over 12.6 m: the floor is 0.3 m over the mean, so 0.8 m over
+        the ground at the low side. A base 1.5 m deep reaches it."""
+        out = self.lay(slope=0.08)
+        self.assertFalse([n for n in out["notes"] if n["code"] in ("foot_open", "base_short")])
+
+    def test_a_base_too_shallow_says_how_far_it_stops_short(self):
+        out = self.lay(slope=0.08, base=500)
+        (note,) = [n for n in out["notes"] if n["code"] == "base_short"]
+        self.assertAlmostEqual(note["hang"], 0.3 + 0.08 * 6.3, places=2)      # the plinth and half the rise, at the low side
+        self.assertEqual(note["deep"], 0.5)
+        self.assertGreater(note["length"], 12.0)
+        self.assertEqual(note["at"][0], 18000)                                               # the low, west side
+
+    def test_a_kit_with_no_base_says_the_foot_is_open(self):
+        level = self.lay(base=0)
+        (note,) = [n for n in level["notes"] if n["code"] == "foot_open"]
+        self.assertEqual((note["hang"], note["plinth"]), (0.3, 0.3))                         # the plinth alone: said as an info
+        self.assertFalse([r for r in level["runs"] if "_base_w" in r["key"]])
+        sloped = self.lay(slope=0.08, base=0)
+        (note,) = [n for n in sloped["notes"] if n["code"] == "foot_open"]
+        self.assertGreater(note["hang"], 0.7)
+        self.assertEqual(self.lay(base=0, plinth=0)["notes"], [n for n in self.lay(base=0, plinth=0)["notes"]
+                                                               if n["code"] not in ("foot_open", "base_short")])
+
+    def test_no_ground_read_means_nothing_said(self):
+        rows = self.rows(0)
+        a = {"storeys": 1, "storey_h": 3.3, "plinth": 0.3, "porch": 2, "walk_out": 3, "kit": "k",
+             "doors": [{"storey": 0, "side": 0, "at": 4.05}]}
+        out = L["plan"]("b", self.RING, a, 10.0, None, None, kits=lambda w, h: L["kit_pieces"](rows, w, h))
+        self.assertFalse([n for n in out["notes"] if n["code"] in ("foot_open", "base_short")])
+
+    def test_a_storeys_walls_never_take_a_base_piece(self):
+        out = self.lay()
+        walls = [r.get("asset") or r["assets"][0] for r in out["runs"] if "_s0_w" in r["key"]]
+        self.assertTrue(walls)
+        self.assertFalse([a for a in walls if a.startswith("base")])
+
+
 if __name__ == "__main__":
     unittest.main()

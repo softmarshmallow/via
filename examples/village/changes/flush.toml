@@ -1,0 +1,7 @@
+# No plinth: each floor on the mean of the ground under its house, not 0.3 m over it. The low
+# side hangs less and the high side is deeper in the ground.
+[feature.north]
+plinth = 0
+
+[feature.south]
+plinth = 0

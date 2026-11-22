@@ -1527,7 +1527,8 @@ class Step(unittest.TestCase):
     def test_generate_writes_the_house(self):
         s = FakeStep(dict(ATTRS, kit="building/kit/box", rooms=[{"storey": 0, "shares": [2, 1]}]))
         L["generate"](s)
-        self.assertEqual([x[:2] for x in s.said], [("info", "laid")])
+        # The floor stands its plinth above level ground and this kit has no base: said, as an info.
+        self.assertEqual([x[:2] for x in s.said], [("info", "plinth_bare"), ("info", "laid")])
         f = s.out.features
         self.assertEqual(sorted(f), ["hall_d0", "hall_f0", "hall_p0", "hall_s0", "hall_s0_r0", "hall_s0_r1",
                                      "hall_s1", "hall_s1_footing"])

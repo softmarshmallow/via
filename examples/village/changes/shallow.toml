@@ -1,0 +1,3 @@
+# A base too shallow for the slope: the kit's base 0.5 m deep in place of 1.5 m. It reaches the
+# ground on the high side of each house and stops short of it on the low side.
+pack = "packs/shallow.toml"

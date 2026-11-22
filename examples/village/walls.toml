@@ -1,0 +1,20 @@
+# The layer above the rows (world.toml): the steps that read what `rows` returned.
+
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay", "rows"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/village"] }
+
+# A chest in the second house of the north row, written by its place and its floor's height
+# (surfaces.md 4.1): the house is made by a step, so the world's text cannot name its floor.
+[instance.chest]
+asset = "chest"
+at    = [26.9, 37.3, 12.225]
