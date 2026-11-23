@@ -511,7 +511,9 @@ classifies assets only. A field's `taxon` is not checked against it: the core gi
 
 - A taxon is declared as `[taxon."<path>"]`. A path is ids joined by `/`: `"plant/tree"`. A segment
   that is not an id, an empty segment (`//`) or a leading or trailing `/` is `identity.bad_id`. Declaring
-  a taxon declares every taxon above it. Keys: `defaults` (2.5), or none. What the assets filed
+  a taxon declares every taxon above it. Keys: `defaults` (2.5), or none; another key, such as
+  `shared` written beside `defaults` and not in it, is `doc.unknown_key` (it reached no asset and
+  was said by nothing until the fix plan's F1). What the assets filed
   at a taxon share is said in its `defaults.shared` (2.5).
 - An asset is filed at one taxon: `taxon = "plant/tree"`. A taxon the pack does not declare is
   `pack.unknown_taxon`, naming the nearest declared path. An asset with no `taxon` is filed nowhere

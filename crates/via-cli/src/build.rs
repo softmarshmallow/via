@@ -151,6 +151,84 @@ fn worker_drift<V: PartialEq>(
     )
 }
 
+/// What a worker's recorded reads asked for (`graph.md` 5.1), from the requests kept in the store:
+/// every `select` of `build.features`, and whether it read any field (`build.field`, `expr.eval`).
+fn step_reads(
+    store: &via_graph::Store,
+    outs: &[&via_graph::NodeOutcome],
+) -> (std::collections::BTreeSet<String>, bool) {
+    let mut selects = std::collections::BTreeSet::new();
+    let mut fields = false;
+    for r in outs
+        .iter()
+        .filter_map(|o| o.step.as_ref())
+        .flat_map(|s| s.reads.iter())
+    {
+        let Some(req) = store
+            .get_object(&r.request)
+            .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+        else {
+            continue;
+        };
+        match r.method.as_str() {
+            "build.features" => match req.get("select") {
+                Some(serde_json::Value::String(s)) => {
+                    selects.insert(s.clone());
+                }
+                Some(serde_json::Value::Array(v)) => {
+                    selects.extend(v.iter().filter_map(|x| x.as_str().map(str::to_string)));
+                }
+                None => {
+                    selects.insert("*".to_string());
+                }
+                _ => {}
+            },
+            "build.field" | "expr.eval" => fields = true,
+            _ => {}
+        }
+    }
+    (selects, fields)
+}
+
+/// `graph.read_outside` for a worker whose value differed between the two graphs because a
+/// feature of its own layer is routed over what that layer's steps returned (`found`: each
+/// feature with the selector it reads). Its course in the step's view is not the build's, so the
+/// feature is outside the step's stratum (`graph.md` 4); the record names it and the layer.
+fn routed_drift(step: &str, world: &World, rank: i64, found: &[(String, String)]) -> Diag {
+    let layer = world
+        .home("step", step)
+        .map_or_else(|| format!("rank {rank}"), str::to_string);
+    let named: Vec<String> = found
+        .iter()
+        .map(|(f, sel)| format!("`{f}` (over `{sel}`)"))
+        .collect();
+    let names: Vec<String> = found.iter().map(|(f, _)| format!("`{f}`")).collect();
+    let one = found.len() == 1;
+    let message = format!(
+        "step `{step}` gave two values: it read {} of its own layer `{layer}`, laid over what steps \
+         of that layer return, so {} course or region differs between the step's view and the \
+         build",
+        named.join(", "),
+        if one { "its" } else { "their" },
+    );
+    let (first, sel) = &found[0];
+    let hint = format!(
+        "declare {} in a layer ranked above `{layer}`, where the step does not read {}; or lay \
+         `{first}` without `{sel}`",
+        names.join(", "),
+        if one { "it" } else { "them" },
+    );
+    Diag::new(
+        codes::graph::READ_OUTSIDE,
+        Subject::entity("step", step.to_string()),
+        Site::Header,
+        txt(message),
+        txt(hint),
+    )
+    .with("subject", format!("feature.{first}"))
+    .with("layer", layer)
+}
+
 fn run_diag(code: via_diag::Code, message: String, hint: &'static str) -> Diag {
     Diag::new(
         code,
@@ -960,8 +1038,12 @@ pub fn run(a: &Args) -> Outcome {
                 via_graph::run(&plan_k, &store, &gopts, &step_roots)
             });
             run_diags.extend(plan_k.stop_workers());
+            // Reused ones too: the final graph's value is compared with every one of them (F1's
+            // review: two reuses by two stored traces gave two values, and none was compared).
             for (id, o) in &run_k.nodes {
-                if id.as_str().starts_with("step:") && o.status == via_graph::Status::Ran {
+                if id.as_str().starts_with("step:")
+                    && matches!(o.status, via_graph::Status::Ran | via_graph::Status::Reused)
+                {
                     pre_nodes.insert(id.clone(), o.clone());
                 }
             }
@@ -1067,20 +1149,48 @@ pub fn run(a: &Args) -> Outcome {
     // (`graph.md` 4); said, never passed (TODO, "From building quay").
     for (id, o) in pre_nodes {
         if let Some(n) = run.nodes.get_mut(&id) {
-            if n.status == via_graph::Status::Reused && n.key == o.key {
+            let checked = !a.rerun.contains(&graph::split_step(&id).0)
+                && plan
+                    .ctx
+                    .lints
+                    .iter()
+                    .any(|l| l.decl.worker && l.decl.id == graph::split_step(&id).0);
+            // Compared whether or not the final graph reused the node under the same key: both
+            // graphs may reuse a worker under one static key by replaying two stored traces, one
+            // from each graph of an earlier build, and give two values (F1's review: a second
+            // build of a drifting world on the same store said nothing and published the layer
+            // pass's value).
+            let drift = worker_drift(&id.to_string(), n.value.as_ref(), o.value.as_ref(), checked);
+            let reused = n.status == via_graph::Status::Reused && n.key == o.key;
+            if let Some(d) = drift {
+                // The cause the engine can name: a feature of the step's own layer laid over what
+                // that layer's steps returned, which the step read (`graph.md` 4). Said as a read
+                // outside the stratum, not a defect.
+                let step = graph::split_step(&id).0;
+                let (selects, fields) = step_reads(&store, &[&o, n]);
+                let cause = world.rank("step", &step).map(|r| {
+                    let found: Vec<(String, String)> = model
+                        .routed_over_returned(r)
+                        .into_iter()
+                        .filter(|(name, _, kind, writes)| {
+                            (fields && *writes)
+                                || selects.iter().any(|s| {
+                                    s == "*"
+                                        || s == name
+                                        || kind.as_ref().is_some_and(|k| *s == format!("kind:{k}"))
+                                })
+                        })
+                        .map(|(name, sel, _, _)| (name, sel))
+                        .collect();
+                    (r, found)
+                });
+                run_diags.push(match cause {
+                    Some((r, found)) if !found.is_empty() => routed_drift(&step, &world, r, &found),
+                    _ => d,
+                });
+            }
+            if reused {
                 *n = o;
-            } else if let Some(d) = worker_drift(
-                &id.to_string(),
-                n.value.as_ref(),
-                o.value.as_ref(),
-                !a.rerun.contains(&graph::split_step(&id).0)
-                    && plan
-                        .ctx
-                        .lints
-                        .iter()
-                        .any(|l| l.decl.worker && l.decl.id == graph::split_step(&id).0),
-            ) {
-                run_diags.push(d);
             }
         }
     }

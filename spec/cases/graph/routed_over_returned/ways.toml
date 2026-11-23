@@ -1,0 +1,8 @@
+# The course a layer above the step: it is outside the step's stratum, routed over its mark.
+
+[feature.course]
+starts_at = "p_start"
+ends_at   = "p_end"
+path      = []
+route     = "= 1 + 100 * (1 - smoothstep(1, 3, dist('kind:mark', 4)))"
+

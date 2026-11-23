@@ -1,7 +1,7 @@
 format    = "via-case-1"
-summary   = "assets.md 2.5 (R66), protocol.md 3.3: `shared` in a taxon's defaults reaches every asset filed at or below it, the nearest taken whole, and pack.query gives it as the `shared` column. Two assets of one kit read one table, though one writes its own params; an asset of a taxon below with its own `shared` reads that one whole; an asset filed elsewhere reads none. The kit's module edited: the lint runs again. A colour edited: it is reused. `shared` on an asset: doc.unknown_key. `shared` that is no table: doc.type."
+summary   = "assets.md 2.5 (R66), protocol.md 3.3: `shared` in a taxon's defaults reaches every asset filed at or below it, the nearest taken whole, and pack.query gives it as the `shared` column. Two assets of one kit read one table, though one writes its own params; an asset of a taxon below with its own `shared` reads that one whole; an asset filed elsewhere reads none. The kit's module edited: the lint runs again. A colour edited: it is reused. `shared` on an asset: doc.unknown_key. `shared` that is no table: doc.type. `shared` beside a taxon's `defaults`, not in it: doc.unknown_key. A taxon, or its `defaults`, that is no table: doc.type."
 milestone = 7
-actions   = ["program", "trust", "first", "module", "again", "colour", "recoloured", "bad", "not_table"]
+actions   = ["program", "trust", "first", "module", "again", "colour", "recoloured", "bad", "not_table", "taxon_key", "taxon_number", "taxon_defaults"]
 
 [action.program]
 via  = ["config", "program", "python", "{python}"]
@@ -72,3 +72,30 @@ diagnostics = "includes"
 
 [action.not_table.diag.type]
 code = "doc.type"
+
+[action.taxon_key]
+via         = ["pack", "check", "taxon_key.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.taxon_key.diag.unknown]
+code    = "doc.unknown_key"
+subject = 'taxon."kit/plain".shared'
+
+[action.taxon_number]
+via         = ["pack", "check", "taxon_number.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.taxon_number.diag.type]
+code    = "doc.type"
+subject = 'taxon."kit/plain"'
+
+[action.taxon_defaults]
+via         = ["pack", "check", "taxon_defaults.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.taxon_defaults.diag.type]
+code    = "doc.type"
+subject = 'taxon."kit/plain".defaults'

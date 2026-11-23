@@ -1,0 +1,24 @@
+name       = "routed_over_returned_above"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= 0"
+
+[feature.p_start]
+at = [0, 8]
+
+[feature.p_end]
+at = [16, 8]
+
+[layer.ways]
+file  = "ways.toml"
+owner = "tests"
+rank  = 1
+
+[step.look]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/look.py"]

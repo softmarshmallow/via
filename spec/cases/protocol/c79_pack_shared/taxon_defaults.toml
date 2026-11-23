@@ -1,0 +1,8 @@
+# A taxon whose `defaults` is no table: doc.type (F1 review).
+[taxon."kit/plain"]
+defaults = 3
+
+[asset.bay]
+primitive = "box"
+size      = [3, 0.3, 3]
+taxon     = "kit/plain"

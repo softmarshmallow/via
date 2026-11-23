@@ -257,9 +257,6 @@ open, and its place here is its destination.
 - [ ] -> spec/geometry.md: **A path along another feature is a shape the core lacks.** The waterfront is written as a region
   and the tool offsets the water's edge. Lesson: "the bank of X", "the kerb of Y" are intent (R13).
       (From walking townland, 2026-11-13.)
-- [ ] -> spec/geometry.md: **A condition region keeps only its largest piece, silently.** The river's banks cut the `rows`
-  district in two and half the town vanished with no message. It should warn, or keep every piece.
-      (From walking townland, 2026-11-13.)
 - [ ] -> spec/geometry.md: Design frames that nest: a thing placed in a thing, turned and moved as one. Context: the
       `sidearm` stress test moved six parts by hand to draw one slide back; the same gap stops a
       placed part being turned and a set holding a set. See FINDINGS, "A hard-surface stress test".
@@ -277,14 +274,15 @@ open, and its place here is its destination.
 
 ### `spec/graph.md`
 
-- [ ] **A step that reads a field its layer's peers write is `diag.internal`.** `examples/realm`
-      (K11): the court step read the terrain (to find its plot's level) in the layer where the
-      roads, routed over that terrain, also stand: "`step:courts` gave another value in the
-      final graph than in its layer's pass: the value of its layer's pass is the one that
-      joined". Moving the ways to a layer above builds. The engine knows the cause and says an
-      internal fault; it should say which entry of which feature of its layer the step read,
-      and to move one of them up a layer.
-      (From K11 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **A diagnostic on a feature key the attributes' key does not hold.** `owners()` in
+      `crates/via-model/src/graph.rs` gives a feature's diagnostic to its `attr:` node unless its
+      key is in the placing list; `route` and `holds` were not, so an empty selection a route read
+      and a dry `holds` sat on a node whose key does not hold the step returns they read, and a warm
+      build after the step changed found the attributes "not stable" (cases
+      `graph/routed_over_returned`, `graph/holds_warm`). Not surveyed: every other key whose check
+      reads the shape, a field or another feature (`surface`, `face`, a name attribute's target).
+      Lesson: a diagnostic belongs to the node whose key holds what it was judged from.
+      (From the fix plan's F1 review, 2026-11-24.)
 - [ ] **Warm builds that differ from clean ones, found by K5's review and older than it.** Each
       reproduces on the engine before K5. (1) The debug check `change entry ... has no cause`
       (crates/via-cli/src/changes.rs) fires when a hand instance is added over a run's member,
@@ -1102,10 +1100,6 @@ open, and its place here is its destination.
       they are called does not. For K10's last review: a pack that includes another, or ids
       scoped by taxon.
       (From K11 of docs/plan-kits.md, 2026-11-23.)
-- [ ] An unknown key on a taxon is silent: `[taxon.x] shared = { ... }` written beside `defaults`
-      and not in it builds with exit 0 and states nothing (`assets.md` 5 says `defaults` or
-      none). Older than K6, which made it matter.
-      (From K6 of docs/plan-kits.md, 2026-11-23; the independent review.)
 - [ ] A mount with a height (spec/assets.md 12.2), half built at K9 (R75): an asset mount has
   `rise`, and a path end or another instance's mount is held to it. Still owed: a thing placed
   `on` a risen mount (`surface.on_rise` today). It needs an instance that stands at its host's
@@ -1500,8 +1494,6 @@ open, and its place here is its destination.
         lots exist only inside two tools; a clear did nothing, a pin stood inside a building, an id
         changed when another district did. Lesson: what a tool derives must be nameable by place.
   - [ ] -> spec/identity.md: `[[clear]]` and `[[pin]]` should speak to every producer, not scatters only, or say so.
-  - [ ] -> spec/geometry.md: A `where` region in several pieces keeps the largest silently; overlaps go by order
-        written. Both want a message or a stated rule.
   - [ ] -> spec/protocol.md: A step cannot ask for the pack; `lots.py` reads the committed file. Lesson: the SDK needs
         the pack and its taxonomy.
   - [ ] -> spec/diagnostics.md: `[[override]]` without `id` crashes (`KeyError`) instead of reporting.

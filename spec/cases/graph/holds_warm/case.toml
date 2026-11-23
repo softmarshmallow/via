@@ -1,0 +1,50 @@
+format    = "via-case-1"
+summary   = "A `where` region whose `holds` point a step's moved mark leaves dry, built warm on one store: `derive.dry` as a clean build gives, no diag.internal. A diagnostic on `holds` belongs to the feature's shape, whose key holds what the condition reads, not to its attributes."
+milestone = 7
+actions   = ["program", "trust", "base", "move", "trust_moved", "moved"]
+
+# From F1's review (docs/plan-fixes.md): `derive.dry` sat on `attr:zone`, whose key does not hold the
+# step's returns, so the warm build found the attributes "not stable" (exit 3) where a clean build
+# gave the warning alone. The same fault as a route's `formula.empty_selection`
+# (`graph/routed_over_returned`).
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.base.diag.dry]
+code    = "derive.dry"
+records = 0
+
+[action.move]
+replace = "steps/place.py"
+find    = "at=(8000, 8000)"
+with    = "at=(2000, 2000)"
+
+[action.trust_moved]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.moved]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.moved.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.moved.diag.dry]
+code    = "derive.dry"
+subject = "feature.zone"

@@ -1009,6 +1009,46 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
                 check_defaults(&mut r, &format!("taxon.\"{path}\".defaults"), d);
                 taxon_defaults.insert(path.clone(), d.clone());
             }
+            // 5: a taxon's keys are `defaults`, or none. A fact written beside `defaults` (K6's
+            // `shared`) reached no asset and was said by nothing; nor did a taxon, or its
+            // `defaults`, written as no table (F1's review).
+            let Some(keys) = v.as_table() else {
+                r.fault(
+                    codes::doc::TYPE,
+                    &format!("taxon.\"{path}\""),
+                    None,
+                    &format!("a taxon is a table; found {}", form_word(v)),
+                    &format!("write `[taxon.\"{path}\"]`, with `defaults` in it or nothing"),
+                );
+                continue;
+            };
+            if let Some(d) = keys.get("defaults").filter(|d| !d.is_table()) {
+                r.fault(
+                    codes::doc::TYPE,
+                    &format!("taxon.\"{path}\""),
+                    Some("defaults"),
+                    &format!("`defaults` takes a table; found {}", form_word(d)),
+                    "write `defaults = { ... }`",
+                );
+            }
+            {
+                for k in keys.keys().filter(|k| k.as_str() != "defaults") {
+                    let hint = if DEFAULT_KEYS.contains(&k.as_str()) {
+                        format!("write it in the taxon's `defaults` (`defaults = {{ {k} = ... }}`, or under `[taxon.\"{path}\".defaults]`)")
+                    } else if keys.get(k).is_some_and(toml::Value::is_table) {
+                        format!("a taxon's path is one quoted key: `[taxon.\"{path}/{k}\"]`, not `[taxon.{path}.{k}]`")
+                    } else {
+                        "a taxon holds `defaults`, or nothing".to_string()
+                    };
+                    r.fault(
+                        codes::doc::UNKNOWN_KEY,
+                        &format!("taxon.\"{path}\""),
+                        Some(k),
+                        &format!("`{k}` is not a key of a taxon, so no asset takes it"),
+                        &hint,
+                    );
+                }
+            }
         }
     }
     for (k, v) in &table {

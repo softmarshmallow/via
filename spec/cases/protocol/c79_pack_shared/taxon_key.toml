@@ -1,0 +1,9 @@
+# `shared` written beside the taxon's `defaults`, not in it: refused. It reached no asset and was
+# said by nothing (assets.md 5: a taxon's keys are `defaults`, or none; K6's review).
+[taxon."kit/plain"]
+shared = { module = 3.0 }
+
+[asset.bay]
+primitive = "box"
+size      = [3, 0.3, 3]
+taxon     = "kit/plain"

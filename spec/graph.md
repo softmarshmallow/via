@@ -387,7 +387,18 @@ joined before the next layer's steps read (`protocol.md` 5). The final graph the
 them, since a stratum's answers do not change when a higher layer joins. A worker that the final
 graph runs again and that gives another value is `diag.internal` naming the step's node, never
 passed: the world joined the first value, so the build would show one value beside the other's
-diagnostics (M3). A plain command is handed the build's files, not its stratum's (`authority.md`
+diagnostics (M3). The two values are compared whether the final graph ran the worker again or
+reused it: two stored traces, one from each graph of an earlier build, can each be replayed under
+one static key and give the two values again. One cause the engine names: a feature of the step's
+own layer whose `route`, or whose `where` region, reads a shape a step of that same layer returns
+(`dist('kind:building', 14)` where a step returns buildings), and which the step read (it selected
+the feature, or read a field and the feature's kind writes one). The view lays it without them and
+the build with them, so the feature reads a step's output through others and is outside the
+stratum: `graph.read_outside`, naming the feature with the selector (`data.subject`, the first)
+and its layer (`data.layer`), in place of `diag.internal`. A feature of a lower layer sees no
+return of the step's layer in either graph, and one of a higher layer is outside the view
+already; any other drift stays `diag.internal`. Declared a layer above, the feature is laid over
+them, and a step that reads it there is refused as any read of a higher layer is. A plain command is handed the build's files, not its stratum's (`authority.md`
 4.4), so it may run again in the final graph; that is owed with its view.
 
 A lint or export step reads the finished build (R29), whatever layer declares it. It runs after
@@ -881,6 +892,7 @@ for `examples/ford/` in M1; `ford_downstream.ran` is `spec/cases/graph/downstrea
 | step trace | M2 | a worker reads `height` in one window; a feature outside it moves, then one inside | rebuild each | first `reused` after its trace replays; then `ran`, a new trace added |
 | lint gate, traced | M2 | one layer; a formula typo in an attribute of a feature whose effect writes `height`; a worker lint reading `height`, one reading only the features of an unrelated kind | build | the first lint `skipped`, its findings dropped; the second ran and reports |
 | outside | M2 | a worker at layer 1 asks for a feature of layer 2 | build | `graph.read_outside` naming layer 2 |
+| routed over returned | M7 | a path of a worker's own layer routed to keep off the marks the worker returns, which the worker reads; built again; a `where` region doing the same; then the path a layer above and the worker mended to read nothing, built warm | build each on one store | `graph.read_outside` naming the path and its layer each time, then the region; no `diag.internal`; then the path goes round the mark (`graph/routed_over_returned`); a `holds` point a moved mark leaves dry gives `derive.dry` warm as clean (`graph/holds_warm`) |
 | returned file bytes | M2 | a worker step returning one field file whose bytes follow a param, its document text fixed; the param changed | build twice in one store | the step ran; the field holds the new bytes, as a fresh store gives |
 | refused read | M2 | a worker lint reads a field that does not exist, is refused and goes on; a change adds the field | build twice | the lint ran (its trace held the refusal) and read the field |
 | causes, let | M2 | a field whose `let` reads `dist` of a point; the point moved | rebuild | the field's entry names `feature.<point>.at` (6.4) |

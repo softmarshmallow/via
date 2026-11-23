@@ -157,7 +157,7 @@ Each archetype followed through the layers, and the holes that shows. Written by
 
 <!-- shows: begin -->
 
-Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1007 conformance cases.
+Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1009 conformance cases.
 
 | Archetype | Ledger rows that are ours: shown, partly, none | Chapters, with their cases | Kinds | Steps | Examples that use it |
 |---|---|---|---|---|---|
@@ -188,7 +188,7 @@ Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1007 con
 
 **Steps that do in code what the engine has a form for:** `lib/building/row.py` (Linear placement, Grammar, 473 lines); `lib/building/pipe.py` (Linear placement, Grammar, Meeting, 533 lines); `lib/land/uplands.py` (Field, 445 lines); `lib/town/houses.py` (Recipe, 1150 lines); `lib/town/kit.py` (Linear placement, 629 lines); `lib/town/streets.py` (Network, 936 lines); `lib/vegetation/clumps.py` (Scatter, 346 lines); `lib/water/fill.py` (Derivation, 123 lines); `lib/ways/parapet.py` (Linear placement, 161 lines).
 
-**Concepts as data and as code:** 1831 lines of kinds, 13547 lines of steps (tests left out).
+**Concepts as data and as code:** 1831 lines of kinds, 13716 lines of steps (tests left out).
 
 **One library naming another's kinds:** `building` names `town.terrace`; `review` names `town.main_street`; `review` names `town.street`; `review` names `town.waterfront`; `review` names `ways.crossing`; `review` names `ways.trail`; `ways` names `water.beck`.
 

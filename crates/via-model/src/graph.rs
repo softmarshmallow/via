@@ -3741,12 +3741,19 @@ impl<'w> ModelPlan<'w> {
                                     | "ends_at"
                                     | "follows"
                                     | "where"
+                                    | "holds"
+                                    | "route"
                                     | "smooth"
                                     | "face"
                                     | "kind"
                                     | "authority"
                             )
                         });
+                        // `route` decides the course and `holds` the piece kept, so what is said
+                        // of them (an empty selection a cost reads, a held point that is dry) is
+                        // the shape's, whose key holds what they read; on the attributes it
+                        // changed with a step's returns under a kept key (`diag.internal` "not
+                        // stable", from the fix plan's F1 and its review).
                         if late {
                             vec![Self::merge_id()]
                         } else if placing || !self.p.decls.features.contains_key(id) {
@@ -3969,7 +3976,6 @@ impl<'w> ModelPlan<'w> {
     /// (`Decls::stands_returned`, `geometry.md` 8.1). Then the build's values are not the step's.
     pub fn reads_returned_shape(&self, field: &str, rank: i64) -> bool {
         let d = &self.p.decls;
-        let placed = &self.p.placed;
         let Some(fd) = d.fields.get(field) else {
             return false;
         };
@@ -3982,8 +3988,57 @@ impl<'w> ModelPlan<'w> {
         for f in formulas {
             shapes.extend(d.where_reads(f).1);
         }
-        let out = |name: &str, r: i64| r >= rank && d.stands_returned(name);
-        shapes.iter().any(|sel| match sel.strip_prefix("kind:") {
+        shapes.iter().any(|sel| self.selects_returned(sel, rank))
+    }
+
+    /// The features of layer rank `rank`, written in the world and not returned, whose `route` or
+    /// `where` reads a shape selector one of whose members a generate step of that same rank
+    /// returned: each with the selector, its kind, and whether that kind has an effect (writes a
+    /// field). Such a feature is laid over its layer's
+    /// returns in the build and without them in the view of a step of its layer, so its course or
+    /// region, and what its kind writes there, are not that step's (`graph.md` 4: a statement that
+    /// reads a step's output through others is outside the step's stratum). A feature of a lower
+    /// layer sees no return of `rank` in either, and one of a higher layer is outside the step's
+    /// view already. In name order.
+    pub fn routed_over_returned(&self, rank: i64) -> Vec<(String, String, Option<String>, bool)> {
+        let d = &self.p.decls;
+        let mut out = Vec::new();
+        for (name, f) in &d.features {
+            if f.rank != rank || d.stands_returned(name) {
+                continue;
+            }
+            let formulas = f.route.into_iter().chain(match &f.shape {
+                crate::decl::ShapeDecl::Where(w) => Some(*w),
+                _ => None,
+            });
+            let found = formulas
+                .flat_map(|fid| d.where_reads(fid).1)
+                .find(|sel| self.selects_returned_at(sel, |r| r == rank));
+            if let Some(sel) = found {
+                let writes = f
+                    .kind
+                    .as_ref()
+                    .and_then(|k| d.kinds.get(k))
+                    .is_some_and(|k| !k.effects.is_empty());
+                out.push((name.clone(), sel, f.kind.clone(), writes));
+            }
+        }
+        out
+    }
+
+    /// Whether a shape selector has a member that stands outside the view of a generate step of
+    /// layer rank `rank`: a step's return or a maker table's made thing at `rank` or above
+    /// (`Decls::stands_returned`, `geometry.md` 8.1).
+    fn selects_returned(&self, sel: &str, rank: i64) -> bool {
+        self.selects_returned_at(sel, |r| r >= rank)
+    }
+
+    /// [`Self::selects_returned`] for returns whose layer rank `at` takes.
+    fn selects_returned_at(&self, sel: &str, at: impl Fn(i64) -> bool) -> bool {
+        let d = &self.p.decls;
+        let placed = &self.p.placed;
+        let out = |name: &str, r: i64| at(r) && d.stands_returned(name);
+        match sel.strip_prefix("kind:") {
             Some(k) => {
                 placed.made_writers.iter().any(|(n, (m, kind, _))| {
                     kind == k && out(n, d.maker_table_rank(m).unwrap_or(0))
@@ -4000,7 +4055,7 @@ impl<'w> ModelPlan<'w> {
                 let base = sel.split('.').next().unwrap_or(sel);
                 d.stands_returned(base)
             }
-        })
+        }
     }
 
     /// A scalar field's values in the head view of a generate step of layer rank `rank`

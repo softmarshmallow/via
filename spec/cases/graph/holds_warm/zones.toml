@@ -1,0 +1,6 @@
+# Within 3 m of a mark the step returns, and the piece that holds (8, 8): there while the mark is at
+# (8, 8), dry (`derive.dry`) once it moves to (2, 2).
+
+[feature.zone]
+where = "= 3 - dist('kind:mark', 4)"
+holds = [8, 8]

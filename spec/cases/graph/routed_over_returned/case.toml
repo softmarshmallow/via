@@ -1,0 +1,116 @@
+format    = "via-case-1"
+summary   = "graph.md 4 (built twice on one store, it is said each time): a feature of a step's own layer routed (or a `where` region laid) over what that layer's steps return is outside the step's stratum. A step that reads it gives two values (layer pass and final graph): graph.read_outside naming the feature and its layer, not diag.internal. Declared a layer above, a step that reads it is refused as before; the step mended to read nothing, built warm on the same store, the course goes round the step's mark, with no diag.internal."
+milestone = 7
+actions   = ["program", "trust", "same", "again", "trust_where", "where", "trust_above", "above", "mend", "trust_mended", "mended"]
+
+# From examples/realm (K11): the court step read the terrain in the layer where the roads, routed to
+# keep off buildings the court and row steps return, also stood. The step's view routes them with
+# no buildings and the build with them, so the step answered twice and the engine said
+# `diag.internal`. The fix plan's F1 names the cause instead. The warm half is a fault the case
+# found: the route's `formula.empty_selection` (no mark yet, the step having failed) was routed to
+# the feature's attributes, whose key does not hold the step's returns, so the mended build found
+# the attributes "not stable". It belongs to the shape, which reads what the route reads.
+
+[action.program]
+via  = ["config", "program", "python", "{python}"]
+exit = 0
+
+[action.trust]
+via  = ["trust", "world.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.same]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/same"]
+exit        = 1
+out         = "build/same"
+diagnostics = "includes"
+
+[action.same.diag.outside]
+code    = "graph.read_outside"
+subject = "step.look"
+data    = { subject = "feature.course", layer = "world" }
+
+[action.same.diag.internal]
+code    = "diag.internal"
+records = 0
+
+# Built again on the same store with nothing changed: both graphs reuse the step, each by a trace
+# the first build stored, and give its two values. Said again (F1's review: as first built, the
+# second build exited 0 and published the layer pass's mark beside the bent course).
+[action.again]
+via         = ["build", "world.toml", "--lib", "{work}/libs", "--out", "build/same"]
+exit        = 1
+out         = "build/same"
+diagnostics = "includes"
+
+[action.again.diag.outside]
+code    = "graph.read_outside"
+subject = "step.look"
+data    = { subject = "feature.course", layer = "world" }
+
+# A `where` region over the layer's returns is the same breach, and is named so.
+[action.trust_where]
+via  = ["trust", "where.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.where]
+via         = ["build", "where.toml", "--lib", "{work}/libs", "--out", "build/where"]
+exit        = 1
+out         = "build/where"
+diagnostics = "includes"
+
+[action.where.diag.outside]
+code    = "graph.read_outside"
+subject = "step.look"
+data    = { subject = "feature.zone", layer = "world" }
+
+[action.trust_above]
+via  = ["trust", "above.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.above]
+via         = ["build", "above.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 1
+out         = "build/w"
+diagnostics = "includes"
+
+[action.above.diag.outside]
+code    = "graph.read_outside"
+subject = "step.look"
+
+[action.above.diag.empty]
+code    = "formula.empty_selection"
+subject = "feature.course.route"
+
+[action.mend]
+replace = "above.toml"
+find    = "steps/look.py"
+with    = "steps/place.py"
+
+[action.trust_mended]
+via  = ["trust", "above.toml", "--yes", "--lib", "{work}/libs"]
+exit = 0
+
+[action.mended]
+via         = ["build", "above.toml", "--lib", "{work}/libs", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.mended.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.mended.diag.empty]
+code    = "formula.empty_selection"
+records = 0
+
+[action.mended.file.course]
+path    = "build/w/features.json"
+pointer = "/features/0/name"
+value   = "course"
+
+[action.mended.file.round]
+path    = "build/w/features.json"
+pointer = "/features/0/points/2/1"
+value   = 5

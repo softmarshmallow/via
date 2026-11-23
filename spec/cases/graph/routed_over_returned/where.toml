@@ -1,0 +1,18 @@
+name       = "routed_where"
+extent     = [0, 0, 16, 16]
+resolution = 1
+include    = ["marks"]
+
+[field.height]
+role = "surface"
+base = "= 0"
+
+# Within 3 m of the marks the step `zone` of this same layer returns: a region in the build, none in
+# the step's view.
+[feature.zone]
+where = "= 3 - dist('kind:mark', 4)"
+
+[step.look]
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "steps/zone.py"]
