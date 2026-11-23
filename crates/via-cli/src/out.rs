@@ -426,11 +426,19 @@ fn asset_json(a: &via_model::pack::Asset, stand_ins: bool) -> J {
             J::Arr(a.size.iter().map(|v| J::mm(*v)).collect())
         },
     );
-    // The quarter turn of `front` and `up`, then minus the pivot in exact metres.
+    // The quarter turn of `front` and `up` times the model's `scale` (`assets.md` 2.4; whole numbers
+    // where it is 1, so a manifest is as before), then minus the pivot in exact metres.
+    let s = a.model_scale();
     let mut to_asset = Vec::new();
     for row in a.to_asset() {
         for (k, v) in row.iter().enumerate() {
-            to_asset.push(if k == 3 { J::mm(*v) } else { J::int(*v) });
+            to_asset.push(if k == 3 {
+                J::mm(*v)
+            } else if s == 1.0 || *v == 0 {
+                J::int(*v)
+            } else {
+                J::dbl(*v as f64 * s).unwrap_or(J::int(*v))
+            });
         }
     }
     m.insert("to_asset".into(), J::Arr(to_asset));

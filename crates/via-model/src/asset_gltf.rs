@@ -334,6 +334,7 @@ impl Model {
         external: &BTreeMap<usize, Vec<u8>>,
         axes: Axes,
         want_plan: bool,
+        scale: f64,
     ) -> Result<Measure, Fault> {
         let buffers = self.buffers(external)?;
         let scenes = self.list("scenes");
@@ -364,6 +365,7 @@ impl Model {
             hi: [i64::MIN; 3],
             triangles: 0,
             want_plan,
+            scale,
             plan_tris: Vec::new(),
             on_path: BTreeSet::new(),
         };
@@ -493,6 +495,8 @@ struct Walk<'a> {
     /// Each triangle in plan, millimetres in the asset frame's axes (3.4); kept only where the
     /// asset asks for its plan, so a model that does not reads no index and keeps no triangle.
     want_plan: bool,
+    /// The model's units to metres (`assets.md` 2.4, `scale`).
+    scale: f64,
     plan_tris: Vec<[[i64; 2]; 3]>,
     on_path: BTreeSet<usize>,
 }
@@ -607,7 +611,7 @@ impl Walk<'_> {
                 let a = self.axes.map(p);
                 let mut mm_point = [0i64; 3];
                 for (k, ak) in a.iter().enumerate() {
-                    let mm = via_num::round_to_lattice(ak * 1000.0).map_err(|_| {
+                    let mm = via_num::round_to_lattice(ak * 1000.0 * self.scale).map_err(|_| {
                         bad(
                             Some(&format!("/accessors/{pos}")),
                             "a position lies outside the lattice, or is not finite",
@@ -1180,7 +1184,12 @@ mod tests {
         );
         let m = Model::open(&bytes).unwrap();
         let r = m
-            .measure(&BTreeMap::new(), Axes::parse("+z", "+y").unwrap(), false)
+            .measure(
+                &BTreeMap::new(),
+                Axes::parse("+z", "+y").unwrap(),
+                false,
+                1.0,
+            )
             .unwrap();
         assert_eq!(r.triangles, 1);
         assert_eq!(r.raw, [-2000, 0, 0, -1000, 1500, 1000]);

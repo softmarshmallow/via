@@ -1085,16 +1085,6 @@ open, and its place here is its destination.
       corner is bevelled, so its bevel then leaves a notch on the room side against the wall
       block beside it, and nothing says so: rule 16 (`kit_turn`) judges a corner only as `lay` sets
       it at an outside corner. (From F5b's review, 2026-11-24.)
-- [ ] **A model at another scale** (K10, `examples/borrowed`). Kenney's Modular Buildings is in
-      its own units: a building block 1 by 1 by 0.625, a doorway 0.25 by 0.5, about a quarter of a
-      person's size. The contract takes model units as metres and leaves another scale open
-      (2.3: "between a declared factor on the asset and a fit to a declared height"), so the
-      example is a town a quarter of a person's size, and every person's measure says so (four
-      `door_narrow`: a block stands over each doorway within a walker's head). Proposed: a factor
-      in the pack (a taxon's `defaults` or the asset), applied where the model is measured, so
-      bounds, origin, mounts and `sink` are the scaled ones and no library reads an unscaled
-      number; an instance's own `scale` multiplies it. lib/building would then need nothing.
-
 - [ ] **A kit is not a unit a second world can name.** A world has one pack (`pack` takes a
       string: a list is `doc.type`), and two kits' packs joined are `doc.syntax` (a taxon
       table twice) and then seven ids bound twice (`base`, `base_corner`, `door`, `post`,

@@ -157,13 +157,13 @@ Each archetype followed through the layers, and the holes that shows. Written by
 
 <!-- shows: begin -->
 
-Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1010 conformance cases.
+Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1011 conformance cases.
 
 | Archetype | Ledger rows that are ours: shown, partly, none | Chapters, with their cases | Kinds | Steps | Examples that use it |
 |---|---|---|---|---|---|
 | Field | 13, 5, 19 | fields 58, formulas 52 | 0 | 1 | 29 |
 | Shape | 3, 2, 5 | geometry 85 | 0 | 0 | 29 |
-| Asset | 13, 6, 28 | assets 88 | 0 | 0 | 19 |
+| Asset | 13, 6, 28 | assets 89 | 0 | 0 | 19 |
 | Derivation | 10, 9, 28 | formulas 52, derived 33 | 2 | 1 | 19 |
 | Simulation | 4, 1, 12 | derived 33, protocol 88 | 3 | 2 | 2 |
 | Profile | 14, 11, 10 | authority 57 | 19 | 0 | 20 |
@@ -186,9 +186,9 @@ Counted over 865 ledger rows, 58 kinds, 20 steps, 29 example worlds and 1010 con
 
 **Kinds no example writes (11):** `building.footing`, `building.pipe_leg`, `building.platform`, `building.roof`, `building.yard`, `land.firm_pad`, `terrain.terrain_course`, `vegetation.clearing`, `vegetation.green`, `vegetation.wood`, `water.weir`.
 
-**Steps that do in code what the engine has a form for:** `lib/building/row.py` (Linear placement, Grammar, 454 lines); `lib/building/pipe.py` (Linear placement, Grammar, Meeting, 509 lines); `lib/land/uplands.py` (Field, 445 lines); `lib/town/houses.py` (Recipe, 1150 lines); `lib/town/kit.py` (Linear placement, 612 lines); `lib/town/streets.py` (Network, 936 lines); `lib/vegetation/clumps.py` (Scatter, 346 lines); `lib/water/fill.py` (Derivation, 123 lines); `lib/ways/parapet.py` (Linear placement, 161 lines).
+**Steps that do in code what the engine has a form for:** `lib/building/row.py` (Linear placement, Grammar, 454 lines); `lib/building/pipe.py` (Linear placement, Grammar, Meeting, 509 lines); `lib/land/uplands.py` (Field, 445 lines); `lib/town/houses.py` (Recipe, 1150 lines); `lib/town/kit.py` (Linear placement, 616 lines); `lib/town/streets.py` (Network, 936 lines); `lib/vegetation/clumps.py` (Scatter, 346 lines); `lib/water/fill.py` (Derivation, 123 lines); `lib/ways/parapet.py` (Linear placement, 161 lines).
 
-**Concepts as data and as code:** 1831 lines of kinds, 13851 lines of steps (tests left out).
+**Concepts as data and as code:** 1831 lines of kinds, 13855 lines of steps (tests left out).
 
 **One library naming another's kinds:** `building` names `town.terrace`; `review` names `town.main_street`; `review` names `town.street`; `review` names `town.waterfront`; `review` names `ways.crossing`; `review` names `ways.trail`; `ways` names `water.beck`.
 

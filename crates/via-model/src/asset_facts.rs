@@ -14,7 +14,7 @@ use crate::text;
 pub const HEADER: &str = "# Written by via pack accept. Do not edit.";
 
 /// The keys of an entry, in the order 4.1 writes them.
-pub const KEYS: [&str; 20] = [
+pub const KEYS: [&str; 21] = [
     "bounds",
     "origin",
     "footprint",
@@ -24,6 +24,7 @@ pub const KEYS: [&str; 20] = [
     "front",
     "up",
     "pivot",
+    "scale",
     "solidity",
     "collision",
     "sink",
@@ -182,6 +183,10 @@ pub fn entry(a: &Asset) -> Vec<(&'static str, String)> {
         out.push(("front", basic(&m.front)));
         out.push(("up", basic(&m.up)));
         out.push(("pivot", basic(&m.pivot)));
+        // 2.4: only where it is not 1, so every facts file written before it is as it was.
+        if m.scale != 1.0 {
+            out.push(("scale", text::dbl(m.scale)));
+        }
     }
     out.push(("solidity", basic(a.solidity())));
     out.push(("collision", basic(&a.collision)));

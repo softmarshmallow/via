@@ -153,3 +153,19 @@ Changed so far:
   now; a post or a piece open all round is not), and the message naming the turn that mends where
   a reader takes it for the present turn: it now says the turn the piece stands at and the `front`
   to write, from the model's own axes, which `pack.query` now answers (`front`, `up`).
+- **F8 before F6 and F7, 2026-11-24.** The scale is the gate for T1, and it is medium where F6 is
+  large: the manifest's `to_asset` is already a full matrix that the Godot loader applies, so a
+  factor rides in it with no loader change. F6 and F7 follow F8.
+- **F8, 2026-11-24.** A declared fact `scale` (spec/assets.md 2.3, 2.4): the factor from a model's
+  units to metres, on the asset or in a taxon's `defaults`; the model is measured scaled, the facts
+  file writes it where it is not 1, and the manifest's `to_asset` carries it, so a loader draws the
+  model at its scaled size with no change of its own. Chosen over a fit to a declared height: a
+  factor is one number a kit states once, where a height differs piece by piece. And the ruling on
+  challenge 33, R79: a street of buildings is lib/building's `row`; lib/town's kit run is a run of
+  one piece along a path. Kenney's kit at a person's size is T1's to show, in its own world: the
+  borrowed example's world is drawn at the kit's quarter size, and stays the record of that.
+  The independent review loaded a scaled cube in Godot (4 m and 0.3 m, normals normalised after
+  the matrix) and found every unscaled pack's records byte-equal. It found a huge `scale` blamed
+  on the model (`pack.bad_model`) and a tiny one measuring silently to nothing: a factor outside
+  0.001 to 1000 is now `pack.range` on `scale`; and several branches untested (now cased: a
+  factor of 0.5 in a pack's `[defaults]`).

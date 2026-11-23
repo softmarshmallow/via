@@ -1,0 +1,12 @@
+name       = "scale_model"
+extent     = [0, 0, 16, 16]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = "= 0"
+
+[instance.big]
+asset = "cube"
+at    = [8, 8]

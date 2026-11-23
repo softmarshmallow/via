@@ -176,8 +176,11 @@ rotation, never a mirror. `front` and `up` on one axis, or a value outside the s
 `pack.bad_axes`. Only quarter turns are expressible; a model turned by another angle is fixed in the
 model.
 
-Model units are metres, as glTF requires. A model made at another scale is (open): decided by the
-first generated pack in M2, between a declared factor on the asset and a fit to a declared height.
+Model units are metres, as glTF requires. A model made at another scale declares `scale` (2.4), the
+factor from its units to metres: Kenney's Modular Buildings is made at a quarter of a person's
+size, so `scale = 4` (decided by the fix plan's F8, after K10 laid it unscaled; a fit to a declared
+height was the other way, and is not taken: a factor is one number a pack states once, in a
+taxon's `defaults`, where a height differs piece by piece).
 
 ### 2.4 Facts
 
@@ -195,6 +198,7 @@ held on the integer millimetre lattice (R24).
 | `footprint` | measured, or declared to override | list of points | The ground the asset claims, in plan. Measured: the rectangle of `bounds` in plan, counter-clockwise from `[x0, y0]` (section 6 for round primitives). Declare it when the claim is not the box (a trunk under a canopy, the ground a kit piece owns); `footprint = "plan"` declares it as the outer ring of the measured `plan` (3.4), for a piece whose claim is the ground it covers (an L-shaped corner). |
 | `plan` | measured (model, 3.4), where asked | list of rings | What the model covers in plan: the cells of a lattice (3.4) under its triangles, traced as rings in the asset frame, outer counter-clockwise, holes clockwise. Measured only for an asset that asks, with `plan = true` (on the asset, or in its taxon's `defaults`, so a kit asks once) or `footprint = "plan"`, and written only where it is not the rectangle of `bounds`: a tree's canopy would be hundreds of points no one reads, and every other asset's facts are as before. A `plan` that is not true or false is `doc.type`. The core places nothing by it; a library reads it (`pack.query`, column `plan`) to know what a piece covers (a corner turned the wrong way, a bevel left open). |
 | `front`, `up` | declared (model) | string | Model axes, 2.3. Default `"+z"`, `"+y"`. |
+| `scale` | declared (model) | number | The factor from the model's units to metres (2.3), above 0, default 1: the model is measured scaled, so `bounds`, `origin`, the measured `footprint` and `plan` are the scaled model's, and `to_asset` carries it (`build.md` 7). Declared facts (`footprint`, `sink`, mounts, `params`, `shared`) are written in metres, as every fact is. An instance's own `scale` multiplies it (`numbers.md` 5.2). Written in the facts file only where it is not 1. Written on a primitive or engine-made asset, or not a number above 0, it is `doc.type` (one a primitive takes from `defaults` is passed over: its `size` is metres); outside 0.001 to 1000 (ours: past that a model leaves the lattice or measures to nothing), `pack.range`. A change of `scale` alone moves `bounds`, so it is `asset.revised` naming them. |
 | `pivot` | declared (model) | string | The rule that puts the pivot: `"base_centre"` (default), `"base_corner"`, `"origin"`. |
 | `solidity` | declared | string | `"solid"` (default), `"passable"` (M5) or `"none"`. `passable` claims the footprint exactly as `solid` does; only a walk reads the difference (`surfaces.md` 4.4). See below. |
 | `collision` | declared | string | What the engine makes the instance collide as: `"none"` (default), `"box"` (the box of `bounds`), `"hull"` (the convex hull of the model's vertices), `"mesh"` (its triangles, static). See below. |

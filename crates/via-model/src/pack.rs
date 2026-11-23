@@ -25,7 +25,7 @@ const PRIMITIVES: [(&str, u64); 5] = [
 /// The keys of `[asset.<id>.mount.<name>]` (2.7).
 const MOUNT_KEYS: [&str; 4] = ["at", "connector", "face", "rise"];
 
-const ASSET_KEYS: [&str; 20] = [
+const ASSET_KEYS: [&str; 21] = [
     "collision",
     "colour",
     "detail",
@@ -39,6 +39,7 @@ const ASSET_KEYS: [&str; 20] = [
     "pivot",
     "plan",
     "primitive",
+    "scale",
     "sink",
     "size",
     "solidity",
@@ -110,7 +111,8 @@ impl Asset {
 
     /// The 3 by 4 matrix, row by row, taking a point of the model file's node space to the asset
     /// frame (`build.md` 7 `to_asset`): the quarter turn of `front` and `up`, then minus the
-    /// pivot, in millimetres. Identity for a primitive or engine-made asset.
+    /// pivot, in millimetres. Identity for a primitive or engine-made asset. The model's `scale`
+    /// (2.4) multiplies the 3 by 3 part: [`Asset::model_scale`].
     pub fn to_asset(&self) -> [[i64; 4]; 3] {
         match &self.model {
             None => [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]],
@@ -123,6 +125,11 @@ impl Asset {
                 out
             }
         }
+    }
+
+    /// The model's declared `scale` (2.4), 1 for a primitive or engine-made asset.
+    pub fn model_scale(&self) -> f64 {
+        self.model.as_ref().map_or(1.0, |m| m.scale)
     }
 
     /// The facts the change report compares (7), each as canonical text.
@@ -1214,7 +1221,7 @@ pub fn read(path: &Path, display: &str) -> (Option<Pack>, Vec<Diag>) {
 }
 
 /// The keys `defaults` may hold (2.5).
-const DEFAULT_KEYS: [&str; 11] = [
+const DEFAULT_KEYS: [&str; 12] = [
     "collision",
     "colour",
     "front",
@@ -1222,6 +1229,7 @@ const DEFAULT_KEYS: [&str; 11] = [
     "params",
     "pivot",
     "plan",
+    "scale",
     "shared",
     "sink",
     "solidity",
@@ -1462,6 +1470,16 @@ fn read_asset(
             "write `plan = true` to have the model's plan measured (assets.md 3.4)",
         );
     }
+    // 2.4: `scale` is a model's (its units to metres); a primitive's `size` is already metres.
+    if file.is_none() && a.get("scale").is_some() {
+        r.fault(
+            codes::doc::TYPE,
+            &subject,
+            Some("scale"),
+            "`scale` is a model's: a primitive or engine-made asset is made at its `size`",
+            "write the size in metres, and take `scale` out",
+        );
+    }
     let mut plan: Vec<Vec<(i64, i64)>> = Vec::new();
     let (size, triangles, bounds) = if let Some(file) = &file {
         let detail: Vec<String> = match a.get("detail") {
@@ -1521,6 +1539,35 @@ fn read_asset(
             "base_centre",
         );
         // 3.4: the plan only where the asset asks for it (checked for every asset, above).
+        // 2.3, 2.4: `scale`, the model's units to metres, a number above 0 (1 by default).
+        let scale = match declared("scale") {
+            None => 1.0,
+            Some(v) => match v.as_float().or_else(|| v.as_integer().map(|i| i as f64)) {
+                // 2.4: from 1/1000 to 1000 (ours): past it a model's points leave the lattice, or
+                // its bounds round to nothing, and the fault would be the model's (F8's review).
+                Some(x) if x.is_finite() && x > 0.0 && !(0.001..=1000.0).contains(&x) => {
+                    r.fault(
+                        codes::pack::RANGE,
+                        &subject,
+                        Some("scale"),
+                        &format!("`scale = {v}` is outside 0.001 to 1000"),
+                        "write the factor from the model's units to metres (a model in centimetres: 0.01)",
+                    );
+                    1.0
+                }
+                Some(x) if x.is_finite() && x > 0.0 => x,
+                _ => {
+                    r.fault(
+                        codes::doc::TYPE,
+                        &subject,
+                        Some("scale"),
+                        &format!("`scale` takes a number above 0; found {v}"),
+                        "write the factor from the model's units to metres, e.g. `scale = 4`",
+                    );
+                    1.0
+                }
+            },
+        };
         let want_plan = declared("plan")
             .and_then(toml::Value::as_bool)
             .unwrap_or(false)
@@ -1542,7 +1589,7 @@ fn read_asset(
                     site_of: &site_of,
                 };
                 let m = crate::asset::measure(
-                    files, file, &kept, &front, &up, &pivot, want_plan, &mut f,
+                    files, file, &kept, &front, &up, &pivot, want_plan, scale, &mut f,
                 );
                 own.extend(f.diags);
                 m
@@ -1562,6 +1609,7 @@ fn read_asset(
                     files: BTreeMap::new(),
                     copies: Vec::new(),
                     measured: false,
+                    scale,
                 },
                 raw: None,
                 triangles: 0,

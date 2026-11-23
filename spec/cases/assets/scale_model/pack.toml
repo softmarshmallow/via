@@ -1,0 +1,10 @@
+# assets.md 2.4 `scale`: a model made at a quarter of a metre's size, stated once in its taxon.
+[taxon."kit/small"]
+defaults = { scale = 4 }
+
+[asset.cube]
+file  = "cube.gltf"
+taxon = "kit/small"
+
+[asset.plain]                     # the same model, unscaled
+file = "cube.gltf"

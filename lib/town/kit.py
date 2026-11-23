@@ -2,6 +2,10 @@
 and steps (lib/town; the TODO's "kit contract": "kit run end pieces, filler and spacing" and
 "corners, ends and stepped runs are untested").
 
+What it is for (R79 of docs/doctrine.md): one piece repeated along a path, with ends, corners and
+gaps. A street of buildings is lib/building's (`row.py`, each house laid from a kit's pieces), not
+this run's.
+
 A generate step, run as a worker through the SDK. A world declares it with `params.runs` (path
 features: a garden wall, a town wall, a quay's railing) and `params.kit` (a taxon path whose
 pieces carry a `role:` tag and `params.pitch`, the length a piece repeats at along its x axis,

@@ -43,6 +43,9 @@ pub struct ModelFacts {
     /// Whether the model measured; when not, its facts are not known and the asset carries an
     /// error that fails any build using it.
     pub measured: bool,
+    /// The declared factor from the model's units to metres (2.4, `scale`; 1 by default): every
+    /// measured fact is the scaled model's, and `to_asset` carries it (`build.md` 7).
+    pub scale: f64,
 }
 
 /// Where a pack's files are: the pack file's folder, `root`, and `root` as written.
@@ -225,6 +228,7 @@ fn read_copy(
     parts: &[String],
     axes: Axes,
     want_plan: bool,
+    scale: f64,
     files: &mut BTreeMap<String, String>,
     f: &mut Faults<'_>,
 ) -> Option<(Copy, String)> {
@@ -328,7 +332,7 @@ fn read_copy(
     if !ok {
         return None;
     }
-    match model.measure(&external, axes, want_plan) {
+    match model.measure(&external, axes, want_plan, scale) {
         Ok(m) => Some((
             Copy {
                 untextured: m.untextured,
@@ -367,6 +371,7 @@ pub fn measure(
     up: &str,
     pivot: &str,
     want_plan: bool,
+    scale: f64,
     f: &mut Faults<'_>,
 ) -> Measured {
     // A pair that is no rotation was reported by the pack reader (`pack.bad_axes`); the model
@@ -387,6 +392,7 @@ pub fn measure(
         files: BTreeMap::new(),
         copies: Vec::new(),
         measured: false,
+        scale,
     };
     let mut out = Measured {
         facts: facts.clone(),
@@ -396,7 +402,16 @@ pub fn measure(
     };
     let main = match open_written(&root.root, file) {
         Ok((path, parts)) => {
-            let r = read_copy(root, &path, &parts, axes, want_plan, &mut facts.files, f);
+            let r = read_copy(
+                root,
+                &path,
+                &parts,
+                axes,
+                want_plan,
+                scale,
+                &mut facts.files,
+                f,
+            );
             if let Some((_, d)) = &r {
                 facts.copies.push((parts.join("/"), d.clone()));
             }
@@ -411,7 +426,7 @@ pub fn measure(
     for (k, d) in detail.iter().enumerate() {
         match open_written(&root.root, d) {
             Ok((path, parts)) => {
-                let r = read_copy(root, &path, &parts, axes, false, &mut facts.files, f);
+                let r = read_copy(root, &path, &parts, axes, false, scale, &mut facts.files, f);
                 if let Some((_, dg)) = &r {
                     facts.copies.push((parts.join("/"), dg.clone()));
                 }

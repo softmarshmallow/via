@@ -1,0 +1,6 @@
+# `scale` in the pack's `[defaults]`, not a whole number.
+[defaults]
+scale = 0.5
+
+[asset.cube]
+file = "cube.gltf"

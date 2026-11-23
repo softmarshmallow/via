@@ -1,0 +1,64 @@
+format    = "via-case-1"
+summary   = "assets.md 2.4 `scale` (the fix plan's F8): a model made at a quarter of a metre's size, `scale = 4` in its taxon's defaults, measures 4 m (bounds, and `scale` in the facts file, only where it is not 1); the same model unscaled is as before; the manifest's `to_asset` carries the factor in its 3 by 3 part. `scale = 0`, and `scale` on a primitive, are doc.type; outside 0.001 to 1000, pack.range; 0.5 in the pack's defaults measures half."
+milestone = 7
+actions   = ["accept", "bad", "half", "build"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.accept.file.facts]
+path   = "pack.facts.toml"
+equals = "expected/pack.facts.toml"
+
+[action.bad]
+via         = ["pack", "check", "bad.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.bad.diag.zero]
+code    = "doc.type"
+subject = "asset.cube.scale"
+
+[action.bad.diag.primitive]
+code    = "doc.type"
+subject = "asset.crate.scale"
+
+[action.bad.diag.huge]
+code    = "pack.range"
+subject = "asset.huge.scale"
+
+[action.bad.diag.tiny]
+code    = "pack.range"
+subject = "asset.tiny.scale"
+
+[action.half]
+via         = ["pack", "accept", "half.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.half.file.facts]
+path   = "half.facts.toml"
+equals = "expected/half.facts.toml"
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/w"]
+exit        = 0
+out         = "build/w"
+diagnostics = "includes"
+
+[action.build.file.turn]
+path    = "build/w/manifest.json"
+pointer = "/assets/cube/to_asset/0"
+value   = -4
+
+[action.build.file.up]
+path    = "build/w/manifest.json"
+pointer = "/assets/cube/to_asset/6"
+value   = 4
+
+[action.build.file.bounds]
+path    = "build/w/manifest.json"
+pointer = "/assets/cube/bounds/5"
+value   = 4

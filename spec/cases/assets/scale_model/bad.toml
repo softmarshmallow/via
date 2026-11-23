@@ -1,0 +1,16 @@
+[asset.cube]
+file  = "cube.gltf"
+scale = 0
+
+[asset.crate]
+primitive = "box"
+size      = [1, 1, 1]
+scale     = 2
+
+[asset.huge]                      # past the lattice: said on `scale`, not blamed on the model
+file  = "cube.gltf"
+scale = 1e12
+
+[asset.tiny]                      # rounds to nothing: said
+file  = "cube.gltf"
+scale = 1e-9
