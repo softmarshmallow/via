@@ -1,0 +1,65 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3, graph.md (meets.json), meets_pack_warm: the meetings follow the pack on a warm build. Two pieces joined and a path ending at a third piece's mount; the pack's connectors edited pipe to water: the joint's row says water. Then the left piece's mount moved a metre: the joint is gone, both ends surface.unmet, and the path's end row lies at the new point. Each as a clean build says (a warm build had kept every row as it was: the file's key held no statement of the pack)."
+milestone = 7
+actions   = ["base", "water", "warm1", "shift", "warm2"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[action.base]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.file.joint]
+path     = "build/base/meets.json"
+pointer  = "/meets/1"
+includes = { a = "p1.b", b = "p2.a", connector_a = "pipe", connector_b = "pipe", x = 62, y = 60 }
+
+[action.water]
+write = "pack.toml"
+text  = "[taxon.\"structure\"]\n\n[asset.left]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.left.mount.b]\nat        = [2, 0]\nface      = 90\nconnector = \"water\"\nrise      = 5\n\n[asset.right]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.right.mount.a]\nat        = [-2, 0]\nface      = 270\nconnector = \"water\"\nrise      = 5\n\n[asset.post]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.post.mount.b]\nat        = [2, 0]\nface      = 90\nrise      = 5\n\n"
+
+[action.warm1]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w1"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w1"
+
+[action.warm1.file.joint]
+path     = "build/w1/meets.json"
+pointer  = "/meets/1"
+includes = { a = "p1.b", b = "p2.a", connector_a = "water", connector_b = "water" }
+
+[action.shift]
+write = "pack.toml"
+text  = "[taxon.\"structure\"]\n\n[asset.left]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.left.mount.b]\nat        = [2, 1]\nface      = 90\nconnector = \"water\"\nrise      = 5\n\n[asset.right]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.right.mount.a]\nat        = [-2, 0]\nface      = 270\nconnector = \"water\"\nrise      = 5\n\n[asset.post]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.post.mount.b]\nat        = [2, 1]\nface      = 90\nrise      = 5\n\n"
+
+[action.warm2]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/w2"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/w2"
+
+[action.warm2.check.rows]
+fn      = "json_count"
+path    = "build/w2/meets.json"
+pointer = "/meets"
+count   = 1
+
+[action.warm2.file.line]
+path     = "build/w2/meets.json"
+pointer  = "/meets/0"
+includes = { a = "line.end", b = "p3.b", x = 62, y = 81 }
+
+[action.warm2.diag.p1]
+code    = "surface.unmet"
+subject = "instance.p1"
+data    = { place = "p1.b", near = "p2.a", miss = 1000 }
+
+[action.warm2.diag.p2]
+code    = "surface.unmet"
+subject = "instance.p2"
+data    = { place = "p2.a", near = "p1.b", miss = 1000 }

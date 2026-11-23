@@ -1,0 +1,4 @@
+# The ring's fifth piece replaced by the hall whose way out is 0.3 m to the right of its way in:
+# the piece for a ring that turns the other way.
+[instance.r5]
+asset = "hall_handed"

@@ -1,0 +1,36 @@
+# Two pipe pieces and a water piece whose ends can lie at one point, 5 m up (surfaces.md 3.3, R76).
+[taxon."structure"]
+
+[asset.left]
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.left.mount.b]
+at        = [2, 0]
+face      = 90
+connector = "pipe"
+rise      = 5
+
+[asset.right]
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.right.mount.a]
+at        = [-2, 0]
+face      = 270
+connector = "pipe"
+rise      = 5
+
+[asset.down]
+primitive = "box"
+size      = [0.4, 3.6, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.down.mount.c]
+at        = [0, -2]
+face      = 180
+connector = "water"
+rise      = 5
+

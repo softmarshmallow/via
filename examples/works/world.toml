@@ -1,0 +1,119 @@
+name       = "works"
+extent     = [0, 0, 72, 56]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/works.toml"               # the works kits, beside the world (packs/make_kit.py)
+
+# A works on level ground: a shed and a boiler house from two kits on two modules, a pipe from one
+# to the other 4.5 m up, over a road between them at 7.5 m, a spur that ends in a cap, and a ring
+# of rooms inside the shed. Our own design: the research found the pipe kit as the model of a kit
+# and pipes kept as the glue between kits, from one studio, and no account of pipes joined freely
+# in three dimensions (docs/research/Modular kit failures in studios.md, sections 3, 6 and 12).
+# The subject is a piece that joins another at a height and a ring of pieces that must close
+# (docs/plan-kits.md, K9).
+#
+# The shed is laid by posts, a bay 6.0 m; the boiler house's walls are at a pitch of 3.0 m. Each
+# has a bay with a port: a hole 4.5 m up, which the kit states as a mount with a connector and a
+# rise. A port lies on its building's outline at its bay's middle. Neither building knows the
+# other, and no pipe names a port: a pipe is written by its points, its flange comes to the port,
+# and the engine joins the two or says by how much they miss.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kits, not the land, are the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ the buildings
+
+[feature.shed]                                # four bays by three, and a post: 24.4 by 18.4 m
+kind     = "building"
+region   = [[8, 20], [32.4, 20], [32.4, 38.4], [8, 38.4]]
+storey_h = 7.2
+plinth   = 0
+roof     = "flat"
+kit      = "structure/shed"
+doors    = [{ storey = 0, side = 3, at = 9.2 }]
+bays     = [{ storey = 0, side = 1, at = 9.2, variant = "port" }, { storey = 0, side = 2, at = 3.2, variant = "port" }]
+
+[feature.boiler]                              # three bays by two, and two corners: 9.6 by 6.6 m
+kind     = "building"
+region   = [[50.4, 18.4], [60, 18.4], [60, 25], [50.4, 25]]
+storey_h = 6.0
+plinth   = 0
+roof     = "flat"
+kit      = "structure/boiler"
+doors    = [{ storey = 0, side = 0, at = 4.8 }]
+bays     = [{ storey = 0, side = 3, at = 1.8, variant = "port" }]
+
+# ------------------------------------------------------------------------------------------ the pipes
+
+# A pipe is its points and a height at each, above the ground at its first (lib/building/pipe.py).
+# A point with two heights is a riser. `main` leaves the shed's port on its east side, climbs
+# 3 m, crosses the road, comes down, turns south and then east into the boiler house's port.
+
+[feature.main]
+kind    = "pipe"
+kit     = "service/pipe"
+at      = [32.4, 29.2]
+to      = [[36.4, 29.2], [46.4, 29.2], [48.4, 29.2], [48.4, 23.2], [50.4, 23.2]]
+heights = [4.5, [4.5, 7.5], [7.5, 4.5], 4.5, 4.5, 4.5]
+
+[feature.spur]                                # out of the shed's north side, to a closed end
+kind    = "pipe"
+kit     = "service/pipe"
+at      = [29.2, 38.4]
+to      = [[29.2, 44.4]]
+heights = [4.5, 4.5]
+ends    = ["flange", "cap"]
+
+# ------------------------------------------------------------------------------------------ steps
+
+# `lay`, `pipes` and `check` stand in a layer above, with the ring of rooms on the shed's floor
+# (protocol.md 3.3).
+[layer.walls]
+file  = "walls.toml"
+owner = "walls"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_road]
+at = [42, 27]
+
+[feature.look_shed]
+at = [20, 29]
+
+[feature.look_spur]
+at = [29.2, 41.4]
+
+[feature.over]                                # from the south-east, above
+kind       = "bookmark"
+at         = [66, 4]
+toward     = "look_road"
+eye_height = 24
+
+[feature.road]                                # on the road, looking north under the pipe
+kind   = "bookmark"
+at     = [41.4, 14]
+toward = "look_road"
+
+[feature.rooms]                               # the ring of rooms, from above the shed's south wall
+kind       = "bookmark"
+at         = [20, 20.6]
+toward     = "look_shed"
+eye_height = 6.8
+
+[feature.spur_end]                            # the spur and its cap, from the north-east
+kind       = "bookmark"
+at         = [40, 50]
+toward     = "look_spur"
+eye_height = 5

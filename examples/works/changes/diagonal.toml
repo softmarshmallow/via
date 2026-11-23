@@ -1,0 +1,6 @@
+# The main pipe's last turn cut across: a leg at 45 degrees from the foot of the riser toward
+# the boiler house. It stops 2.2 m north of the house's corner and reaches no wall: the case is
+# the turn, which the kit's elbow, a quarter turn, does not make.
+[feature.main]
+to      = [[36.4, 29.2], [46.4, 29.2], [48.4, 29.2], [50.4, 27.2]]
+heights = [4.5, [4.5, 7.5], [7.5, 4.5], 4.5, 4.5]

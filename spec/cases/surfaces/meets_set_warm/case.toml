@@ -1,0 +1,47 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3 (R76), graph.md (meets.json), meets_set_warm: the meetings follow a set's item on a warm build. Two pieces of one set joined, and a third outside joined to the set; the set's east item moved 0.3 m: both joints are gone and four ends are surface.unmet, each naming the mount it missed, 300 mm away, as a clean build says (a warm build had kept both rows: the file's key held no statement of the set)."
+milestone = 7
+actions   = ["base", "move", "warm"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/base"
+
+[action.base.check.two]
+fn      = "json_count"
+path    = "build/base/meets.json"
+pointer = "/meets"
+count   = 2
+
+[action.base.diag.unmet]         # the set's west end and the third piece's east end are free
+code    = "surface.unmet"
+records = 2
+
+[action.move]
+replace = "world.toml"
+find    = "at    = [2, 0]"
+with    = "at    = [2.3, 0]"
+
+[action.warm]
+via         = ["build", "world.toml", "--out", "build/warm"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/warm"
+
+[action.warm.check.none]
+fn      = "json_count"
+path    = "build/warm/meets.json"
+pointer = "/meets"
+count   = 0
+
+[action.warm.diag.inner]
+code    = "surface.unmet"
+subject = "instance.d"
+data    = { place = "d.l.b", near = "d.r.a", miss = 300, miss_z = 0 }
+
+[action.warm.diag.outer]
+code    = "surface.unmet"
+subject = "instance.o"
+data    = { place = "o.a", near = "d.r.b", miss = 300, miss_z = 0 }

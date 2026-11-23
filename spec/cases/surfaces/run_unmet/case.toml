@@ -1,0 +1,56 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3, 3.4 (R76), run_unmet: a run's members join each other, and a record about a member is its run's. Four pipe pieces in a run, each end on the next one's: three joints, and the two free ends are surface.unmet on the run, naming the member's mount (it was diag.internal, exit 3: the record was raised on a feature named after the member, which the text does not hold). Then the run made five pieces on the same lane: no two ends meet, and every end is said."
+milestone = 7
+actions   = ["build", "five", "apart"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.check.three]
+fn      = "json_count"
+path    = "build/build/meets.json"
+pointer = "/meets"
+count   = 3
+
+[action.build.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.build.diag.west]
+code    = "surface.unmet"
+subject = "run.row"
+data    = { place = "row#r0.a", connector = "pipe" }
+
+[action.build.diag.east]
+code    = "surface.unmet"
+subject = "run.row"
+data    = { place = "row#r3.b", connector = "pipe" }
+
+[action.five]
+replace = "world.toml"
+find    = "count = 4"
+with    = "count = 5"
+
+[action.apart]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/apart"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/apart"
+
+[action.apart.check.none]
+fn      = "json_count"
+path    = "build/apart/meets.json"
+pointer = "/meets"
+count   = 0
+
+[action.apart.diag.unmet]
+code    = "surface.unmet"
+subject = "run.row"
+records = 10

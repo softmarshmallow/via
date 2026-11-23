@@ -1698,6 +1698,9 @@ impl<'a> View<'a> {
                                 if let Some(c) = a.connectors.get(k) {
                                     m["connector"] = json!(c);
                                 }
+                                if let Some(r) = a.rises.get(k) {
+                                    m["rise"] = json!(r);
+                                }
                                 o.insert(k.clone(), m);
                             }
                             Value::Object(o).to_string()

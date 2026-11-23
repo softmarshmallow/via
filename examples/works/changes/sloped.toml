@@ -1,0 +1,4 @@
+# The ground rising 2 m in 100 to the north, level under the main pipe's first point. Each
+# building stands level at the mean of its own ground; the pipes are written above one point.
+[field.height]
+base = "= 10 + 0.02 * (y - 29.2)"

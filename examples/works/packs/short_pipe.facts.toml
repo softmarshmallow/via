@@ -1,0 +1,417 @@
+# Written by via pack accept. Do not edit.
+
+[asset.boiler_corner]
+bounds = [-0.15, -0.15, 0, 0.15, 0.15, 6]
+origin = [0, 0, 0]
+footprint = [[-0.15, -0.15], [0.15, -0.15], [0.15, 0.15], [-0.15, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/boiler"
+tags = ["role:corner"]
+shared = "4bc5ee2c4754bd3c1d7527657136148afe53ab4eaad04dea1d2b40cf9127b8e7"
+files = { "boiler_corner.glb" = "d8253b162dee9509ba78059ed564fdef36e7af6bb26127cd5aa4075b223bb13c" }
+
+[asset.boiler_door]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 6]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 36
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/boiler"
+tags = ["role:door"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "4bc5ee2c4754bd3c1d7527657136148afe53ab4eaad04dea1d2b40cf9127b8e7"
+files = { "boiler_door.glb" = "aa615635a49b1e8b12f23001d0e18012508a6314599d586aae1f86b020410eea" }
+
+[asset.boiler_port]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 6]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 48
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/boiler"
+tags = ["role:wall", "variant:port"]
+mounts = { port = { at = [0, 0.15], connector = "pipe", face = 0, rise = 4.5 } }
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "4bc5ee2c4754bd3c1d7527657136148afe53ab4eaad04dea1d2b40cf9127b8e7"
+files = { "boiler_port.glb" = "6b3fea9969828f429f7346dfb8f562ec61632fba1adcf2e58f2b4b3ce2036d38" }
+
+[asset.boiler_tile]
+bounds = [-0.75, -0.75, 0, 0.75, 0.75, 0.15]
+origin = [0, 0, 0]
+footprint = [[-0.75, -0.75], [0.75, -0.75], [0.75, 0.75], [-0.75, 0.75]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0.15
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/boiler"
+tags = ["role:floor"]
+params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
+shared = "4bc5ee2c4754bd3c1d7527657136148afe53ab4eaad04dea1d2b40cf9127b8e7"
+files = { "boiler_tile.glb" = "ae1126b665bb7beb596ef46bcf733c70ac95e5740b2d58cfb8911d1d8b52e5bd" }
+
+[asset.boiler_wall]
+bounds = [-1.5, -0.15, 0, 1.5, 0.15, 6]
+origin = [0, 0, 0]
+footprint = [[-1.5, -0.15], [1.5, -0.15], [1.5, 0.15], [-1.5, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/boiler"
+tags = ["role:wall"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "4bc5ee2c4754bd3c1d7527657136148afe53ab4eaad04dea1d2b40cf9127b8e7"
+files = { "boiler_wall.glb" = "b717e5dc3d2d712165c7569f38bc41cf4d2b6e4ef49df3b1ee1e133adbec9c54" }
+
+[asset.hall]
+bounds = [-1.5, 0, 0, 1.5, 6, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, 0], [1.5, 0], [1.5, 6], [-1.5, 6]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "passable"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "interior/room"
+tags = []
+mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [0, 6], connector = "door", face = 0 } }
+shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
+files = { "hall.glb" = "7420d9c0dd75add52e4e2dd8fb1ee64b1e2ffdf9fb3419c57d2fe66ab756a210" }
+
+[asset.hall_corner]
+bounds = [-1.5, 0, 0, 1.5, 3, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, 0], [1.5, 0], [1.5, 3], [-1.5, 3]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "passable"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "interior/room"
+tags = []
+mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [1.5, 1.5], connector = "door", face = 90 } }
+shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
+files = { "hall_corner.glb" = "3bb9dece043d2b5dcf4458cfac48de17f69dff54b2280a4a2972497792623a3b" }
+
+[asset.hall_handed]
+bounds = [-1.5, 0, 0, 1.5, 6, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, 0], [1.5, 0], [1.5, 6], [-1.5, 6]]
+triangles = 36
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "passable"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "interior/room"
+tags = []
+mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [0.3, 6], connector = "door", face = 0 } }
+shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
+files = { "hall_handed.glb" = "8cf1be8cc3ec79fbc5e9275c1cb8bb177499b7c3a65f2c83e02a75833f6767f2" }
+
+[asset.hall_hatch]
+bounds = [-1.5, 0, 0, 1.5, 6, 3]
+origin = [0, 0, 0]
+footprint = [[-1.5, 0], [1.5, 0], [1.5, 6], [-1.5, 6]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "passable"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "interior/room"
+tags = []
+mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [0, 6], connector = "hatch", face = 0 } }
+shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
+files = { "hall.glb" = "7420d9c0dd75add52e4e2dd8fb1ee64b1e2ffdf9fb3419c57d2fe66ab756a210" }
+
+[asset.pipe]
+bounds = [-0.9, -0.15, -0.15, 0.9, 0.15, 0.15]
+origin = [0, 0, 0]
+footprint = [[-0.9, -0.15], [0.9, -0.15], [0.9, 0.15], [-0.9, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "service/pipe"
+tags = ["role:pipe"]
+params = "16a5610dc79c901a811c9d4468d423315ca10b108009b2e797e0de09bfbf35a7"
+shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
+files = { "pipe_short.glb" = "97e88159a55fde63b983398992d6dc4f2791346e7a43083c164945001ec93e9d" }
+
+[asset.pipe_cap]
+bounds = [-0.2, -0.5, -0.2, 0.2, 0, 0.2]
+origin = [0, 0, 0]
+footprint = [[-0.2, -0.5], [0.2, -0.5], [0.2, 0], [-0.2, 0]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "service/pipe"
+tags = ["role:cap"]
+params = "acce06f941836ef5bbc6a5cbae40470b3d8c5a9c8d0f8f9127d8669eb0436ce0"
+shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
+files = { "pipe_cap.glb" = "4bfc33f84714ed9139a142b958211c5a32fe5554dd2c39e8feffdf80f59fa4f9" }
+
+[asset.pipe_elbow]
+bounds = [-0.15, -0.5, -0.15, 0.5, 0.15, 0.15]
+origin = [0, 0, 0]
+footprint = [[-0.15, -0.5], [0.5, -0.5], [0.5, 0.15], [-0.15, 0.15]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "service/pipe"
+tags = ["role:elbow"]
+params = "60128e7e7f9e8531af76a4b4c14e88e9956ed6227b1247bb799b2571e19979fa"
+shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
+files = { "pipe_elbow.glb" = "a04ac412d655caf13e07c2a097585049e46b46bac5dcb016b6a1cc769de35b67" }
+
+[asset.pipe_flange]
+bounds = [-0.25, -0.5, -0.25, 0.25, 0, 0.25]
+origin = [0, 0, 0]
+footprint = [[-0.25, -0.5], [0.25, -0.5], [0.25, 0], [-0.25, 0]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "service/pipe"
+tags = ["role:flange"]
+mounts = { plug = { at = [0, 0], connector = "pipe", face = 0 } }
+params = "acce06f941836ef5bbc6a5cbae40470b3d8c5a9c8d0f8f9127d8669eb0436ce0"
+shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
+files = { "pipe_flange.glb" = "cabc828afaac38f8229f5ab8c76004286eb7494fd01ca166a46bc91349145e15" }
+
+[asset.pipe_riser]
+bounds = [-0.15, -0.5, -0.15, 0.15, 0.5, 3.15]
+origin = [0, 0, 0]
+footprint = [[-0.15, -0.5], [0.15, -0.5], [0.15, 0.5], [-0.15, 0.5]]
+triangles = 36
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "service/pipe"
+tags = ["role:riser"]
+mounts = { top = { at = [0, 0], connector = "pipe", face = 180, rise = 3 } }
+params = "63db570d9177f5bebc211eacc77741c650888c0fcc3c1c0d6652c69c9a61f24b"
+shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
+files = { "pipe_riser.glb" = "a0c6b23d1ecb58dd5b00c46c459510f9cba720059d3a87bad81be4edb703dec2" }
+
+[asset.pipe_slip]
+bounds = [-0.25, -0.15, -0.15, 0.25, 0.15, 0.15]
+origin = [0, 0, 0]
+footprint = [[-0.25, -0.15], [0.25, -0.15], [0.25, 0.15], [-0.25, 0.15]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "service/pipe"
+tags = ["role:slip"]
+params = "59fe5d8616d4983e5ae71ba098941d1097e18a07fd1b45b1162a843eed8a7a34"
+shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
+files = { "pipe_slip.glb" = "d378a1f76d3815646fb1440986afa1e63722c418c274e5ac254176bd21880b96" }
+
+[asset.pipe_support]
+bounds = [-0.3, -0.2, -4.5, 0.3, 0.2, -0.15]
+origin = [0, 0, 0]
+footprint = [[-0.3, -0.2], [0.3, -0.2], [0.3, 0.2], [-0.3, 0.2]]
+triangles = 24
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "service/pipe"
+tags = ["role:support"]
+params = "2003d254c7826b246fe397b2253e7d110c241b44ed17f2077b2d8344a7b9a4ac"
+shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
+files = { "pipe_support.glb" = "3787ae943cf1c35b9a3d6900bf8272900a1697dd7ae7b02358ea3c4d36529fb9" }
+
+[asset.room]
+bounds = [-3, 0, 0, 3, 6, 3]
+origin = [0, 0, 0]
+footprint = [[-3, 0], [3, 0], [3, 6], [-3, 6]]
+triangles = 72
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "passable"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "interior/room"
+tags = []
+mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [3, 3], connector = "door", face = 90 } }
+shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
+files = { "room.glb" = "ba35c96f0ac1bab8408114e16b36fb8e3f14d86be65f0758ba2cb56101a3856e" }
+
+[asset.room_long]
+bounds = [-3, 0, 0, 3.128, 6, 3]
+origin = [0, 0, 0]
+footprint = [[-3, 0], [3.128, 0], [3.128, 6], [-3, 6]]
+triangles = 72
+front = "+z"
+up = "+y"
+pivot = "origin"
+solidity = "passable"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "interior/room"
+tags = []
+mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [3.128, 3], connector = "door", face = 90 } }
+shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
+files = { "room_long.glb" = "c2d0ab3b93458f84a3f80dfcd93553281f435dc3cead5dd57e01077dc8262486" }
+
+[asset.shed_door]
+bounds = [-2.8, -0.1, 0, 2.8, 0.1, 7.2]
+origin = [0, 0, 0]
+footprint = [[-2.8, -0.1], [2.8, -0.1], [2.8, 0.1], [-2.8, 0.1]]
+triangles = 36
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/shed"
+tags = ["role:door"]
+params = "675dba90985185e4eeb9177fcc55b061b8d2787e02553f3e42dbc1ea2c2783ab"
+shared = "a25b3cf72f6a18a4df868967dc46db6ed919902a26e6d529125dd9394ca65584"
+files = { "shed_door.glb" = "668fb93e9ebefc3508b6e1e7a392a14343cecfebdb6ae4dc35a52c11ee7c7efc" }
+
+[asset.shed_panel]
+bounds = [-2.8, -0.1, 0, 2.8, 0.1, 7.2]
+origin = [0, 0, 0]
+footprint = [[-2.8, -0.1], [2.8, -0.1], [2.8, 0.1], [-2.8, 0.1]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/shed"
+tags = ["role:wall"]
+params = "675dba90985185e4eeb9177fcc55b061b8d2787e02553f3e42dbc1ea2c2783ab"
+shared = "a25b3cf72f6a18a4df868967dc46db6ed919902a26e6d529125dd9394ca65584"
+files = { "shed_panel.glb" = "4e15472fa7880275f6b11ad9471e1bd87acafe26d0e5aac43a82edd1223759d9" }
+
+[asset.shed_port]
+bounds = [-2.8, -0.1, 0, 2.8, 0.1, 7.2]
+origin = [0, 0, 0]
+footprint = [[-2.8, -0.1], [2.8, -0.1], [2.8, 0.1], [-2.8, 0.1]]
+triangles = 48
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/shed"
+tags = ["role:wall", "variant:port"]
+mounts = { port = { at = [0, 0.2], connector = "pipe", face = 0, rise = 4.5 } }
+params = "675dba90985185e4eeb9177fcc55b061b8d2787e02553f3e42dbc1ea2c2783ab"
+shared = "a25b3cf72f6a18a4df868967dc46db6ed919902a26e6d529125dd9394ca65584"
+files = { "shed_port.glb" = "b0f0391f6be8c37dca29f14fece0f3882007364e1c52cb4231d3cea66decdd31" }
+
+[asset.shed_post]
+bounds = [-0.2, -0.2, 0, 0.2, 0.2, 7.2]
+origin = [0, 0, 0]
+footprint = [[-0.2, -0.2], [0.2, -0.2], [0.2, 0.2], [-0.2, 0.2]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/shed"
+tags = ["role:post", "role:corner"]
+shared = "a25b3cf72f6a18a4df868967dc46db6ed919902a26e6d529125dd9394ca65584"
+files = { "shed_post.glb" = "4512773023964c89115725a0b7712b3d1ffae5e7362e6952dea8b3caba9bb296" }
+
+[asset.shed_tile]
+bounds = [-1.5, -1.5, 0, 1.5, 1.5, 0.15]
+origin = [0, 0, 0]
+footprint = [[-1.5, -1.5], [1.5, -1.5], [1.5, 1.5], [-1.5, 1.5]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "box"
+sink = 0.15
+colour = [0.8, 0.8, 0.8]
+taxon = "structure/shed"
+tags = ["role:floor"]
+params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
+shared = "a25b3cf72f6a18a4df868967dc46db6ed919902a26e6d529125dd9394ca65584"
+files = { "shed_tile.glb" = "8387567940b3bfa22453da6f7c38d9cb2aafc2f5c8f1b8b9680781ade3180bb2" }

@@ -1,0 +1,12 @@
+name       = "yard"
+extent     = [0, 0, 64, 64]
+resolution = 1
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[feature.track]
+kind = "rail"
+path = [[10, 10], [30, 10]]

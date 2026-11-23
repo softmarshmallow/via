@@ -1,0 +1,28 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+
+[field.height]
+role = "surface"
+base = 10
+
+[instance.p1]
+asset = "left"
+at    = [60, 60]
+
+[instance.p2]
+asset = "right"
+at    = [64, 60]
+
+[instance.p3]                    # a third piece, a path ending at its mount
+asset = "post"
+at    = [60, 80]
+
+[feature.line]
+kind    = "flight"
+z0      = 15
+z1      = 15
+path    = [[62, 100]]
+ends_at = "p3.b"

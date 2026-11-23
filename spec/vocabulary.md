@@ -438,7 +438,8 @@ A pack is a document users write. It may name files; a world may not (principle 
 | `max_relief` | number | The largest difference in surface height under the footprint the asset tolerates, metres, 0 or more. No default: without it nothing is checked (`place.relief`). | assets |
 | `colour` | 3 numbers | On an asset or material: linear red, green, blue, each 0 to 1. Required on a material. | assets |
 | `repeat` | number | On a material: metres one repeat of its `file` covers, above 0. Only with `file`. | assets |
-| `[asset.<id>.mount.<name>]` | table | A named place on an asset: `at`, `face` in the asset's frame. Named `<instance>.<name>`. No `t`, `offset` or `surface`. | assets |
+| `[asset.<id>.mount.<name>]` | table | A named place on an asset: `at`, `face` in the asset's frame, `connector`, `rise`. Named `<instance>.<name>`. No `t`, `offset` or `surface`. | assets |
+| `rise` | number | On an asset mount: metres the mount stands above the surface its instance stands on; default 0 (K9, R75; `assets.md` 2.7, `surfaces.md` 3.2). Not on a kind mount. | assets |
 | `[material.<name>]` | table | A material `paint` names: `colour`, `file`, `repeat`, `params`. | assets |
 
 Pack terms (`assets.md`): **declared fact** (written in the pack), **measured fact** (read from a

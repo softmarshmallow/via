@@ -1,0 +1,42 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.2, 4.1 (R75), rise_on: a thing placed `on` an asset mount with a rise is surface.on_rise, naming the mount and its rise in millimetres, scaled as its instance is (a piece at scale 2 with a rise of 5 says 10 000): an instance stands on a surface and there is none at that height. Placed on a mount of the same piece with no rise, it builds."
+milestone = 7
+actions   = ["build", "move", "move2", "again"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.on_rise]
+code    = "surface.on_rise"
+subject = "instance.lamp"
+data    = { place = "wall.port", rise = 5000 }
+
+[action.build.diag.scaled]       # the rise as it stands, scaled as the mount's `at` is
+code    = "surface.on_rise"
+subject = "instance.lamp2"
+data    = { place = "big.port", rise = 10000 }
+
+[action.move]
+replace = "world.toml"
+find    = "wall.port"
+with    = "wall.foot"
+
+[action.move2]
+replace = "world.toml"
+find    = "big.port"
+with    = "big.foot"
+
+[action.again]
+via         = ["build", "world.toml", "--out", "build/again"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/again"
+
+[action.again.check.lamp]
+fn    = "instance_at"
+build = "build/again"
+name  = "lamp"
+at    = [60, 61]

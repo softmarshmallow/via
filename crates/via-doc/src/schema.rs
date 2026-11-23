@@ -348,6 +348,13 @@ pub fn keys(shape: Shape) -> &'static [(&'static str, Rule)] {
             ("surface", Ok(T::Name)),
             ("meets", Ok(T::Name)),
             ("connector", Ok(T::Str)),
+            // An asset mount's (`assets.md` 2.7, R75): a kind mount's height is its surface's.
+            (
+                "rise",
+                Fixed(
+                    "a kind mount takes no `rise`: its `surface` gives its height; name the owner's surface it lies on",
+                ),
+            ),
         ],
         Shape::Effect => &[
             ("field", Ok(T::Str)),

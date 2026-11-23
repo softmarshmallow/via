@@ -593,6 +593,13 @@ open, and its place here is its destination.
   header (`place.keep_out`, rules.rs) still are: route them through `place::declared_at` too, with a
   case each.
       (From M5 slice 2, 2026-11-17.)
+- [ ] **A thing on the ground under a surface 4.5 m up is on one level with what stands on it**
+  (rules.md 8.1, 3: a kind surface is the ground where its bound meets the footprint of a thing
+  on the terrain; spans then compared from their own datums). K9's first pipe support, a post
+  4.35 m high on the terrain, was `place.crowded` with every straight piece of the leg over it.
+  `pipe.py` now stands a support on the leg's own surface, its model reaching down; a lamp post
+  under a gantry, a car under a pipe bridge, will meet the same. With the item below.
+      (From K9 of docs/plan-kits.md, second slice, 2026-11-23.)
 - [ ] The level test compares spans from two datums (terrain and floor) as one; a ground floor
   above the terrain by more than a piece's height still clashes. Read the floor's `base` at plan
   time once surfaces settle before placement.
@@ -609,6 +616,44 @@ open, and its place here is its destination.
       (From the list before the rewrite, Core model.)
 
 ### `spec/surfaces.md`
+
+- [x] **A record raised on a member of a run cannot be located** (`diag.internal`, exit 3).
+  Found by K9's `examples/works` for a run a step returned, and by K9's review for a plain
+  `[run.<id>]` in the world's text: `surface.unmet` of a member's mount was raised on a feature
+  named after the member. Mended in K9's fix pass: a record about a run's member is its run's
+  (`place_subject`, `crates/via-model/src/surfaces.rs`), naming the member's mount; case
+  `surfaces/run_unmet`. `lay`'s workaround (a port as its own instance) is taken out again.
+      (From K9 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **No joint across an import.** A mount of an instance inside an import and a mount of the
+  parent's at one point are not joined, and each is `surface.unmet` in its own world, naming
+  no other (K9's review, parent `q.m` and `town.p3.m`). An import's meetings are found in the
+  import's own build and brought; its asset mounts are not, and an import's `surface.unmet`
+  would have to be withdrawn in the parent when a parent's piece answers it. Stated in
+  `spec/surfaces.md` 3.3. Wanted: asset mounts brought through the import's frame as its
+  surfaces are, and joints found in the parent among both.
+      (From K9's review, 2026-11-23.)
+- [ ] **A leg cannot end on the piece that stands on it** (`graph.cycle`). A riser stands on the
+  lower of two legs (its surface) and its top is where the upper leg starts; the lower leg ending
+  at the riser's foot too is a loop of two statements, so the riser's foot has no connector and
+  nothing holds the lower leg to it (lib/building/pipe.py rule 3). A meeting that is checked
+  and gives no height to either side would not be a loop; today every `ends_at` is read as what
+  the path depends on.
+      (From K9, second slice, 2026-11-23.)
+- [ ] A joint (surfaces.md 3.3, R76) is found at one lattice point only. Two pieces whose mounts
+  are a millimetre apart are told the miss by `surface.unmet` and are not joined; pieces turned
+  off the lattice's axes round their mounts to the millimetre separately, so a ring of turned
+  pieces may not join where it closes on paper. No tolerance is given: R24's gap is exact too.
+  The evidence wanted is a kit of pieces at 30 degrees (K9's example, or K10's kit).
+      (From K9 of docs/plan-kits.md, first slice, 2026-11-23.)
+- [ ] A kind mount takes no part in a joint: two features' mounts at one point with one
+  connector say nothing to each other, and each is `surface.unmet` unless a path or `meets`
+  answers it. Decided so for K9 (two features meet by a path); reopen if a library's kinds want
+  to be set against each other as pieces are.
+      (From K9 of docs/plan-kits.md, first slice, 2026-11-23.)
+- [ ] `surface.unmet`'s nearest mount looks 2 m in plan and at open asset mounts only. A mount
+  that missed a kind mount, or one further off, is told nothing more than before. The 2 m is
+  ours, with no evidence yet from a kit with long pieces.
+      (From K9 of docs/plan-kits.md, first slice, 2026-11-23.)
 
 - [ ] **A connector that starts on a kind surface is not known as one.** A doorway's start is a
       free end, answered by nothing and checked for nothing (3.4). lib/building's second doorway
@@ -1018,10 +1063,17 @@ open, and its place here is its destination.
       and not in it builds with exit 0 and states nothing (`assets.md` 5 says `defaults` or
       none). Older than K6, which made it matter.
       (From K6 of docs/plan-kits.md, 2026-11-23; the independent review.)
-- [ ] A mount with a height (spec/assets.md 12.2, owed): parts lie on flat ground only, a part at
-  two heights is two assets, an accessory's asset states its socket's height. Build when a world
-  needs it.
-      (From M5 slice 2, 2026-11-17.)
+- [ ] A mount with a height (spec/assets.md 12.2), half built at K9 (R75): an asset mount has
+  `rise`, and a path end or another instance's mount is held to it. Still owed: a thing placed
+  `on` a risen mount (`surface.on_rise` today). It needs an instance that stands at its host's
+  surface plus the rise and not on a surface, so grounding, relief and `surface.through` each
+  need a rule for it; until then parts lie on flat ground only, a part at two heights is two
+  assets, and an accessory's asset states its socket's height.
+      (From M5 slice 2, 2026-11-17; K9 of docs/plan-kits.md, 2026-11-23.)
+- [ ] `rise = 0` and no `rise` are one pack: the facts file, the manifest and `pack.query` write
+  `rise` only where it is not 0, so facts files written before K9 stay byte-equal. A reader that
+  wants "this mount states its height" cannot tell the two apart.
+      (From K9 of docs/plan-kits.md, first slice, 2026-11-23.)
 - [ ] -> spec/assets.md: Design for assets that arrive fast and uneven (2026-11-12). Assumption: creators generate
       models and images quickly and replace them often. Consequences: stating an asset's facts must
       be nearly free (measure, do not ask); odd pivots, facings and sizes are the normal case;
@@ -1418,6 +1470,41 @@ open, and its place here is its destination.
 
 ### `lib/building`
 
+- [ ] **What pipes leave** (K9, second slice; lib/building/pipe.py, from `examples/works`). Said
+      or refused, not built: a leg that climbs along its length (`params`: a kit of straight
+      pieces has none that climbs); a turn that is no elbow of the kit; a climb that is no riser
+      of the kit; a tee, a valve, a reducer. Not said at all: a pipe's heights are above the
+      ground at its first point, so over ground that is not level its ports miss in height and
+      the only word is the engine's `surface.gap` at each (`sloped`: 149, 4 and 188 mm; an
+      error, so the build stops); a pipe that ends at a plain wall is told only that its flange
+      is answered by nothing (`no_port`); a pipe through a wall, a building or another pipe is
+      laid, since no piece's body is read against a wall's or a pipe's; a support is one length and its
+      foot is checked against the ground under the pipe's first point, not set on it. A pipe is
+      a point and its further points because a path over its own legs is
+      `geom.unowned_crossing` with each (as a row's frontage was, K6). `check` holds a pipe
+      kit only to its pitch (`kit_pitch` of the straight and the slip piece, with the kit's
+      taxon in `kits`; `examples/works` `short_pipe`): an elbow's, a riser's, a flange's and a
+      cap's `params.reach`, a riser's `params.rise` against its model and its `top` mount's
+      `rise`, and a support's `params.height` are read by nothing but the example's own
+      measure, which finds loose ends from the models' boxes. `kit_unit` and `kit_stated` are
+      for wall kits, and no room kit is read. Two legs that cross at one height are the core's
+      `geom.unowned_crossing`. Lesson: the pipe step
+      pairs nothing; a flange and a port with one word at one point are the core's to join
+      (R76), which is what lets a third kit's port take the same pipe.
+      (From K9 of docs/plan-kits.md, second slice, 2026-11-23.)
+- [ ] **A ring of whole rooms says where it misses, not which piece is wrong** (K9, second
+      slice, `examples/works` `long_room`, `flipped`). The closing join's two doors each name
+      the other and the miss in millimetres; a room 128 mm long and a hall of the other hand
+      read the same. A room kit has no step of its own: its pieces are written one `on` the
+      last, in the layer that makes their floor, and the first by a point and a height (no text
+      can name a floor a step made). A generator for a ring, as `row.py` and `court.py` are for
+      theirs, would know the pieces' sizes and could say which does not fit.
+      (From K9, second slice, 2026-11-23.)
+- [ ] **A port's hole is not held to its mount.** `examples/works` `low` restates the shed
+      port's `rise` as 3.5 m with the model's hole still 4.5 m up: the engine holds the pipe to
+      the mount (`surface.gap`, 1000 mm) and nothing reads the hole. `check` measures a piece's
+      box, not its openings (docs/design/kit-contract.md).
+      (From K9, second slice, 2026-11-23.)
 - [ ] **What posts and bays, and the colonnade, leave** (K8, first slice; lay.py rules 15 and
       16, from `examples/temple`). Each is refused or not laid, and says so:
       an inside corner in a kit laid by posts (`params`: the post in the notch, and the two
@@ -1981,6 +2068,13 @@ open, and its place here is its destination.
 ## Loaders
 
 ### `engines/godot`
+
+- [ ] A joint is a row of `meets.json` (surfaces.md 3.3, R76), and the loader makes a
+  `NavigationLink3D` of every row (build.md 15): two pipe pieces joined 5 m up get a link no
+  walker should take. The loader cannot tell a walk from a pipe: only the connector's word
+  differs. Decide who says which connectors are walked (a library, by the word), and have the
+  loader read it. It also reads no `rise` from the manifest's `mounts`.
+      (From K9 of docs/plan-kits.md, first slice, 2026-11-23.)
 
 - [ ] Sheet walks go straight at `toward`, so no walk climbs a spiral flight (station stair_1 to 3);
   a walk along a path (`toward` a flight's end, following its line) would. Closing a passage takes

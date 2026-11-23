@@ -1,0 +1,34 @@
+format    = "via-case-1"
+summary   = "assets.md 2.7, 4.1, 4.2 (R75): accepted, and the facts file's mounts line holds rise = 5; the mount's rise edited 5 to 4: asset.revised on the asset, naming every instance (a, b), because the meetings of each may change."
+milestone = 7
+actions   = ["accept", "base", "edit", "build"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.accept.file.facts]
+path   = "pack.facts.toml"
+equals = "expected/pack.facts.toml"
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+out         = "build/base"
+diagnostics = "includes"
+
+[action.edit]
+write = "pack.toml"
+text  = "[asset.cube]\nfile = \"cube.gltf\"\n\n[asset.cube.mount.port]\nat        = [0, 1]\nface      = 0\nconnector = \"pipe\"\nrise      = 4\n"
+
+[action.build]
+via         = ["build", "world.toml", "--against", "build/base", "--out", "build/next"]
+exit        = 0
+out         = "build/next"
+diagnostics = "includes"
+
+[action.build.diag.revised]
+code    = "asset.revised"
+subject = "asset.cube"
+data    = { count = 2, instances = ["a", "b"] }

@@ -1,0 +1,40 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3 (R76), joint_many: three instances' mounts with connectors at one plan point and one height: surface.joint_many on the first by name, naming the three; none is joined, and none is also surface.unmet. With the third moved a metre off: the first two join, and the third is surface.unmet, 1000 mm from nothing open (both others are answered), so it names no other."
+milestone = 7
+actions   = ["build", "move", "again"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.many]
+code    = "surface.joint_many"
+subject = "instance.p1"
+data    = { place = "p1.b", count = 3 }
+
+[action.build.diag.unmet]
+code    = "surface.unmet"
+records = 0
+
+[action.move]
+replace = "world.toml"
+find    = "at    = [62, 62]"
+with    = "at    = [62, 63]"
+
+[action.again]
+via         = ["build", "world.toml", "--out", "build/again"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/again"
+
+[action.again.diag.third]
+code    = "surface.unmet"
+subject = "instance.p3"
+
+[action.again.check.one]
+fn      = "json_count"
+path    = "build/again/meets.json"
+pointer = "/meets"
+count   = 1

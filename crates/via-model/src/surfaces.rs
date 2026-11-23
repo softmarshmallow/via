@@ -840,6 +840,10 @@ pub(crate) struct Side {
     pub connector: Option<String>,
     /// A kind mount or an asset mount: what `surface.unmet` reads.
     pub mount: bool,
+    /// For an asset mount, the instance it is a mount of (3.2): what a joint reads (3.3, R76).
+    pub owner: Option<String>,
+    /// For an asset mount, its `rise` in this instance, millimetres (3.2, R75): already in `z`.
+    pub rise: i64,
 }
 
 /// The surface a path's own end lies on (3.3): its kind's one surface, else the terrain.
@@ -930,6 +934,7 @@ pub(crate) fn kind_mounts(
                     face,
                     connector: m.connector.clone(),
                     mount: true,
+                    ..Default::default()
                 },
             );
         }
@@ -943,16 +948,149 @@ pub fn turn(arrival: i64, face: i64) -> i64 {
     e.min(360_000 - e)
 }
 
+/// How far a mount that nothing answers looks for the mount it missed (3.4): 2 m in plan.
+pub(crate) const NEAR_JOINT: i64 = 2_000;
+
+/// The joints of 3.3 (R76): which instances' mounts answer each other, and which share a point
+/// and a height with more than one other.
+#[derive(Debug, Default, PartialEq)]
+pub(crate) struct Joints {
+    /// Each joint, its two mounts ordered bytewise.
+    pub pairs: Vec<(String, String)>,
+    /// Each set of three or more mounts at one point and one height, sorted.
+    pub crowded: Vec<Vec<String>>,
+}
+
+/// The joints among `mounts` (3.3). The mounts that take part are asset mounts with a connector,
+/// a plan point and a height. Those at one plan point are taken together. First by height, to
+/// the millimetre, and connector: exactly two of one height and one connector, of two instances,
+/// are a joint; three or more that are not all one instance's are joined to nothing and
+/// reported. Then what is left at the point, whatever its heights and connectors: exactly two,
+/// of two instances, are a joint for `surface.gap` or `surface.connector` to report; any other
+/// number is left unjoined.
+pub(crate) fn joints(mounts: &BTreeMap<String, Side>, round_mm: &dyn Fn(f64) -> i64) -> Joints {
+    type Member<'a> = (&'a str, &'a str, i64, &'a str);
+    let mut at: BTreeMap<(i64, i64), Vec<Member<'_>>> = BTreeMap::new();
+    for (name, s) in mounts {
+        let (Some(owner), Some(c), Some(p), Some(z)) = (&s.owner, &s.connector, s.p, s.z) else {
+            continue;
+        };
+        at.entry((p.x, p.y)).or_default().push((
+            name.as_str(),
+            owner.as_str(),
+            round_mm(z),
+            c.as_str(),
+        ));
+    }
+    let two = |a: &Member<'_>, b: &Member<'_>| -> (String, String) {
+        if a.0.as_bytes() < b.0.as_bytes() {
+            (a.0.to_string(), b.0.to_string())
+        } else {
+            (b.0.to_string(), a.0.to_string())
+        }
+    };
+    let mut out = Joints::default();
+    for group in at.values() {
+        let mut alike: BTreeMap<(i64, &str), Vec<&Member<'_>>> = BTreeMap::new();
+        for m in group {
+            alike.entry((m.2, m.3)).or_default().push(m);
+        }
+        let mut left: Vec<&Member<'_>> = Vec::new();
+        for level in alike.values() {
+            let one_owner = level.iter().all(|m| m.1 == level[0].1);
+            if level.len() == 2 && !one_owner {
+                out.pairs.push(two(level[0], level[1]));
+            } else if level.len() >= 3 && !one_owner {
+                let mut names: Vec<String> = level.iter().map(|m| m.0.to_string()).collect();
+                names.sort();
+                out.crowded.push(names);
+            } else {
+                left.extend(level.iter().copied());
+            }
+        }
+        if left.len() == 2 && left[0].1 != left[1].1 {
+            out.pairs.push(two(left[0], left[1]));
+        }
+    }
+    out.pairs.sort();
+    out.crowded.sort();
+    out
+}
+
+/// The asset mounts of other instances, with a connector, at `s`'s own plan point (3.4): what a
+/// mount left unjoined at a point stands beside. Sorted by name.
+fn beside<'a>(
+    name: &str,
+    s: &Side,
+    mounts: &'a BTreeMap<String, Side>,
+) -> Vec<(&'a str, &'a Side)> {
+    let (Some(owner), Some(p)) = (s.owner.as_ref(), s.p) else {
+        return Vec::new();
+    };
+    mounts
+        .iter()
+        .filter(|(other, o)| {
+            other.as_str() != name
+                && o.mount
+                && o.connector.is_some()
+                && o.owner.as_ref().is_some_and(|oo| oo != owner)
+                && o.p == Some(p)
+        })
+        .map(|(n, o)| (n.as_str(), o))
+        .collect()
+}
+
+/// The mount nearest to `name` that could have answered it (3.4): an asset mount of another
+/// instance, with the same connector, that nothing answers either, within [`NEAR_JOINT`] in plan.
+/// Nearest in plan, then in height, then by name. Returns it with the miss in plan and in
+/// height, millimetres.
+fn nearest_open<'a>(
+    name: &str,
+    s: &Side,
+    mounts: &'a BTreeMap<String, Side>,
+    answered: &BTreeSet<&str>,
+    round_mm: &dyn Fn(f64) -> i64,
+) -> Option<(&'a str, i64, i64)> {
+    let (owner, c, p, z) = (s.owner.as_ref()?, s.connector.as_ref()?, s.p?, s.z?);
+    let mut best: Option<(i64, i64, &str)> = None;
+    for (other, o) in mounts {
+        if other == name || answered.contains(other.as_str()) {
+            continue;
+        }
+        let (Some(oo), Some(oc), Some(q), Some(oz)) = (&o.owner, &o.connector, o.p, o.z) else {
+            continue;
+        };
+        if oo == owner || oc != c {
+            continue;
+        }
+        let d2 = via_num::distance_sq_mm((p.x, p.y), (q.x, q.y));
+        if d2 > i128::from(NEAR_JOINT) * i128::from(NEAR_JOINT) {
+            continue;
+        }
+        let plan = via_num::round_to_lattice((d2 as f64).sqrt()).unwrap_or(NEAR_JOINT);
+        let up = (round_mm(oz) - round_mm(z)).abs();
+        let cand = (plan, up, other.as_str());
+        if best.is_none_or(|b| cand < b) {
+            best = Some(cand);
+        }
+    }
+    best.map(|(plan, up, other)| (other, plan, up))
+}
+
 /// The meetings' checks (3.4) and `surface.unmet`, as diagnostics.
 pub(crate) fn unmet(
     d: &Decls,
     mounts: &BTreeMap<String, Side>,
     meetings: &[crate::build::Meeting],
+    crowded: &[Vec<String>],
+    round_mm: &dyn Fn(f64) -> i64,
     diags: &mut Vec<Diag>,
 ) {
-    // A path end at a place answers it; a `meets` pair answers each side only when both have
-    // the same connector (3.4: a partner with no connector does not answer a mount).
-    let mut answered: BTreeSet<&str> = BTreeSet::new();
+    // A path end at a place answers it; a `meets` pair or a joint answers each side only when
+    // both have the same connector (3.4: a partner with no connector does not answer a mount).
+    // A mount among three or more at one point is `surface.joint_many`'s (3.3): said there,
+    // not here, and it is no mount another one missed.
+    let mut answered: BTreeSet<&str> = crowded.iter().flatten().map(String::as_str).collect();
     for m in meetings {
         if !m.pair {
             answered.insert(m.b.as_str());
@@ -966,27 +1104,76 @@ pub(crate) fn unmet(
             continue;
         }
         let Some(c) = &s.connector else { continue };
-        diags.push(
-            text::diag(
-                codes::surface::UNMET,
-                place_subject(d, name),
-                Site::Header,
-                &format!(
-                    "the mount `{name}` has connector `{c}` and no path end or paired mount answers it"
-                ),
-                &format!(
-                    "end a path whose kind has connector `{c}` here: `ends_at = \"{name}\"`"
-                ),
-            )
-            .with("connector", DValue::text(c.clone()))
-            .with("place", DValue::text(name.clone())),
+        let mut message = format!(
+            "the mount `{name}` has connector `{c}` and no path end or paired mount answers it"
         );
+        let mut hint =
+            format!("end a path whose kind has connector `{c}` here: `ends_at = \"{name}\"`");
+        let near = nearest_open(name, s, mounts, &answered, round_mm);
+        if let Some((other, plan, up)) = near {
+            // The joint it missed (R76): the nearest mount that could have answered it.
+            message.push_str(&format!(
+                "; the nearest `{c}` mount of another instance, `{other}`, is {plan} mm away in plan and {up} mm in height"
+            ));
+            hint = format!(
+                "bring `{name}` and `{other}` to one point and one height, facing opposite ways: \
+                 they miss by {plan} mm in plan and {up} mm in height. Or {hint}"
+            );
+        }
+        // What it stands beside (3.4): a mount left over at a point where others stand is told
+        // which, and what each is, so a third piece or a piece of another connector is named.
+        let others = beside(name, s, mounts);
+        if !others.is_empty() {
+            let list: Vec<String> = others
+                .iter()
+                .map(|(n, o)| {
+                    let z = o.z.map_or_else(String::new, |z| {
+                        format!(", at {} m", via_num::write_length(round_mm(z)))
+                    });
+                    format!("`{n}` (`{}`{z})", o.connector.as_deref().unwrap_or(""))
+                })
+                .collect();
+            message.push_str(&format!("; at its own point: {}", list.join(", ")));
+        }
+        let mut diag = text::diag(
+            codes::surface::UNMET,
+            place_subject(d, name),
+            Site::Header,
+            &message,
+            &hint,
+        )
+        .with("connector", DValue::text(c.clone()))
+        .with("place", DValue::text(name.clone()));
+        if !others.is_empty() {
+            let names: Vec<&str> = others.iter().map(|(n, _)| *n).collect();
+            diag = diag.with("beside", DValue::text(names.join(" ")));
+        }
+        if let Some((other, plan, up)) = near {
+            diag = diag
+                .with("near", DValue::text(other.to_string()))
+                .with("miss", DValue::Int(plan))
+                .with("miss_z", DValue::Int(up));
+        }
+        diags.push(diag);
     }
 }
 
 /// A place name's subject (`diagnostics.md` 1.1): the entity its first part names.
 pub(crate) fn place_subject(d: &Decls, name: &str) -> Subject {
     let head = name.split('.').next().unwrap_or(name);
+    // A run's member (`<run>#r<k>`, `rules.md` 5) is its run's, and a scatter's its scatter's:
+    // a member is no entity of the text, so a record named after it had nowhere to be found
+    // (`diag.internal`, K9's review: `surface.unmet` of a run of pieces with a connector).
+    if !d.features.contains_key(head) && !d.instances.contains_key(head) {
+        if let Some(r) = d.run_of(head) {
+            return Subject::entity("run", r);
+        }
+        if let Some((m, _)) = head.split_once('#') {
+            if d.scatters.contains_key(m) {
+                return Subject::entity("scatter", m);
+            }
+        }
+    }
     let top = if d.features.contains_key(head) {
         "feature"
     } else if d.instances.contains_key(head) {
@@ -2394,5 +2581,286 @@ impl Levels {
         }
         let (lo, hi) = (via_num::max(a.lo, b.lo), via_num::min(a.hi, b.hi));
         lo < hi || ((a.lo == a.hi || b.lo == b.hi) && lo <= hi)
+    }
+}
+
+#[cfg(test)]
+mod joint_tests {
+    use super::*;
+
+    fn round(z: f64) -> i64 {
+        via_num::round_to_lattice(z * 1000.0).unwrap_or(0)
+    }
+
+    /// An asset mount of `owner` at `(x, y)` mm and `z` m, with a connector unless `c` is empty.
+    fn mount(owner: &str, x: i64, y: i64, z: f64, c: &str) -> Side {
+        Side {
+            p: Some(P::new(x, y)),
+            z: Some(z),
+            face: Some(0),
+            connector: (!c.is_empty()).then(|| c.to_string()),
+            mount: true,
+            owner: Some(owner.to_string()),
+            rise: 0,
+        }
+    }
+
+    fn map(items: &[(&str, Side)]) -> BTreeMap<String, Side> {
+        items
+            .iter()
+            .map(|(n, s)| (n.to_string(), s.clone()))
+            .collect()
+    }
+
+    fn pair(a: &str, b: &str) -> (String, String) {
+        (a.to_string(), b.to_string())
+    }
+
+    #[test]
+    fn two_instances_at_one_point_join_and_are_ordered_bytewise() {
+        let m = map(&[
+            ("b.in", mount("b", 1000, 2000, 15.0, "pipe")),
+            ("a.out", mount("a", 1000, 2000, 15.0, "pipe")),
+        ]);
+        let j = joints(&m, &round);
+        assert_eq!(j.pairs, vec![pair("a.out", "b.in")]);
+        assert!(j.crowded.is_empty());
+    }
+
+    #[test]
+    fn a_millimetre_apart_in_plan_is_no_joint() {
+        let m = map(&[
+            ("a.out", mount("a", 1000, 2000, 15.0, "pipe")),
+            ("b.in", mount("b", 1001, 2000, 15.0, "pipe")),
+        ]);
+        assert_eq!(joints(&m, &round), Joints::default());
+    }
+
+    #[test]
+    fn no_connector_no_owner_no_height_take_no_part() {
+        let mut kind = mount("x", 0, 0, 15.0, "pipe");
+        kind.owner = None;
+        let mut blind = mount("d", 0, 0, 15.0, "pipe");
+        blind.z = None;
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("b.in", mount("b", 0, 0, 15.0, "")),
+            ("c.head", kind),
+            ("d.in", blind),
+        ]);
+        assert_eq!(joints(&m, &round), Joints::default());
+    }
+
+    #[test]
+    fn two_mounts_of_one_instance_never_join() {
+        let m = map(&[
+            ("a.low", mount("a", 0, 0, 13.0, "pipe")),
+            ("a.high", mount("a", 0, 0, 13.0, "pipe")),
+        ]);
+        assert_eq!(joints(&m, &round), Joints::default());
+        // Nor at two heights, as the two left over.
+        let m = map(&[
+            ("a.low", mount("a", 0, 0, 13.0, "pipe")),
+            ("a.high", mount("a", 0, 0, 15.0, "pipe")),
+        ]);
+        assert_eq!(joints(&m, &round), Joints::default());
+    }
+
+    #[test]
+    fn another_connector_still_joins_for_the_check_to_say_so() {
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("b.in", mount("b", 0, 0, 15.0, "steam")),
+        ]);
+        assert_eq!(joints(&m, &round).pairs, vec![pair("a.out", "b.in")]);
+    }
+
+    #[test]
+    fn four_at_a_point_join_in_twos_by_height() {
+        let m = map(&[
+            ("wall.low", mount("wall", 0, 0, 13.0, "pipe")),
+            ("wall.high", mount("wall", 0, 0, 15.0, "pipe")),
+            ("lo.c", mount("lo", 0, 0, 13.0, "pipe")),
+            ("hi.c", mount("hi", 0, 0, 15.0, "pipe")),
+        ]);
+        let j = joints(&m, &round);
+        assert_eq!(
+            j.pairs,
+            vec![pair("hi.c", "wall.high"), pair("lo.c", "wall.low")]
+        );
+        assert!(j.crowded.is_empty());
+    }
+
+    #[test]
+    fn the_two_left_over_join_at_two_heights() {
+        let m = map(&[
+            ("wall.low", mount("wall", 0, 0, 13.0, "pipe")),
+            ("wall.high", mount("wall", 0, 0, 15.0, "pipe")),
+            ("lo.c", mount("lo", 0, 0, 14.0, "pipe")),
+            ("hi.c", mount("hi", 0, 0, 15.0, "pipe")),
+        ]);
+        assert_eq!(
+            joints(&m, &round).pairs,
+            vec![pair("hi.c", "wall.high"), pair("lo.c", "wall.low")]
+        );
+        // Alone at the point, two at two heights are a joint too: its gap is the check's.
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("b.in", mount("b", 0, 0, 16.0, "pipe")),
+        ]);
+        assert_eq!(joints(&m, &round).pairs, vec![pair("a.out", "b.in")]);
+    }
+
+    #[test]
+    fn three_left_over_join_nothing() {
+        let m = map(&[
+            ("wall.low", mount("wall", 0, 0, 13.0, "pipe")),
+            ("wall.high", mount("wall", 0, 0, 15.0, "pipe")),
+            ("lo.c", mount("lo", 0, 0, 14.0, "pipe")),
+        ]);
+        assert_eq!(joints(&m, &round), Joints::default());
+    }
+
+    #[test]
+    fn three_at_one_height_are_crowded_and_join_nothing() {
+        let m = map(&[
+            ("c.end", mount("c", 0, 0, 15.0, "pipe")),
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("b.in", mount("b", 0, 0, 15.0, "pipe")),
+            // Another height at the same point is its own level: alone, it joins nothing.
+            ("d.in", mount("d", 0, 0, 12.0, "pipe")),
+        ]);
+        let j = joints(&m, &round);
+        assert!(j.pairs.is_empty());
+        assert_eq!(
+            j.crowded,
+            vec![vec![
+                "a.out".to_string(),
+                "b.in".to_string(),
+                "c.end".to_string()
+            ]]
+        );
+        // Three of which two are one instance's: still not all one instance's.
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("a.side", mount("a", 0, 0, 15.0, "pipe")),
+            ("b.in", mount("b", 0, 0, 15.0, "pipe")),
+        ]);
+        assert_eq!(joints(&m, &round).crowded.len(), 1);
+    }
+
+    #[test]
+    fn mounts_at_a_point_join_within_one_connector_first() {
+        // Two pipes and an end of another connector at one height: the pipes are a joint, and the third is
+        // left (as first built the three were crowded and the joint was lost; K9's review).
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("b.in", mount("b", 0, 0, 15.0, "pipe")),
+            ("c.end", mount("c", 0, 0, 15.0, "other")),
+        ]);
+        let j = joints(&m, &round);
+        assert_eq!(j.pairs, vec![pair("a.out", "b.in")]);
+        assert!(j.crowded.is_empty());
+        // Two of each: two joints.
+        let mut m = m;
+        m.insert("d.end".into(), mount("d", 0, 0, 15.0, "other"));
+        assert_eq!(
+            joints(&m, &round).pairs,
+            vec![pair("a.out", "b.in"), pair("c.end", "d.end")]
+        );
+        // One of each and nothing else: the two left over are a joint, for
+        // `surface.connector` to report.
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("c.end", mount("c", 0, 0, 15.0, "other")),
+        ]);
+        assert_eq!(joints(&m, &round).pairs, vec![pair("a.out", "c.end")]);
+    }
+
+    #[test]
+    fn a_mount_left_at_a_point_is_told_what_stands_beside_it() {
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0, "pipe")),
+            ("b.in", mount("b", 0, 0, 15.0, "pipe")),
+            ("c.end", mount("c", 0, 0, 16.0, "other")),
+            ("c.side", mount("c", 0, 0, 15.0, "other")), // its own: never named
+            ("d.far", mount("d", 1, 0, 15.0, "pipe")),   // a millimetre off: another point
+            ("e.plain", mount("e", 0, 0, 15.0, "")),     // no connector: no part
+        ]);
+        let got: Vec<&str> = beside("c.end", &m["c.end"], &m)
+            .into_iter()
+            .map(|(n, _)| n)
+            .collect();
+        assert_eq!(got, vec!["a.out", "b.in"]);
+        assert!(beside("d.far", &m["d.far"], &m).is_empty());
+    }
+
+    #[test]
+    fn heights_are_compared_to_the_millimetre() {
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 15.0004, "pipe")),
+            ("b.in", mount("b", 0, 0, 15.0, "pipe")),
+            ("c.in", mount("c", 0, 0, 15.001, "pipe")),
+        ]);
+        // 15.0004 rounds to 15.000: a joint with b at one height; c is left alone.
+        let j = joints(&m, &round);
+        assert_eq!(j.pairs, vec![pair("a.out", "b.in")]);
+        assert!(j.crowded.is_empty());
+    }
+
+    #[test]
+    fn the_nearest_open_mount_is_another_instances_with_the_same_connector() {
+        let m = map(&[
+            ("r1.in", mount("r1", 0, 0, 10.0, "slot")),
+            ("r1.out", mount("r1", 50, 0, 10.0, "slot")), // its own: never named
+            ("r4.out", mount("r4", 128, 0, 10.0, "slot")),
+            ("r3.out", mount("r3", 100, 0, 10.0, "slot")), // nearer, and answered
+            ("r2.out", mount("r2", 60, 0, 10.0, "other")), // another connector
+            ("r5.out", mount("r5", 0, 2001, 10.0, "slot")), // past 2 m
+        ]);
+        let answered: BTreeSet<&str> = ["r3.out"].into_iter().collect();
+        let got = nearest_open("r1.in", &m["r1.in"], &m, &answered, &round);
+        assert_eq!(got, Some(("r4.out", 128, 0)));
+        // At exactly 2 m it is still named; nothing in reach gives none.
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 10.0, "slot")),
+            ("b.in", mount("b", 0, 2000, 11.5, "slot")),
+        ]);
+        let none = BTreeSet::new();
+        assert_eq!(
+            nearest_open("a.out", &m["a.out"], &m, &none, &round),
+            Some(("b.in", 2000, 1500))
+        );
+        let alone = map(&[("a.out", mount("a", 0, 0, 10.0, "slot"))]);
+        assert_eq!(
+            nearest_open("a.out", &alone["a.out"], &alone, &none, &round),
+            None
+        );
+    }
+
+    #[test]
+    fn nearest_is_by_plan_then_height_then_name() {
+        let none = BTreeSet::new();
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 14.0, "pipe")),
+            ("w.low", mount("w", 0, 0, 13.0, "pipe")),
+            ("w.high", mount("w", 0, 0, 15.0, "pipe")),
+            ("x.far", mount("x", 300, 400, 14.0, "pipe")),
+        ]);
+        // Both of w's are at the point and 1 m off in height: the first by name. x is at the
+        // same height and 500 mm off in plan: plan comes first.
+        assert_eq!(
+            nearest_open("a.out", &m["a.out"], &m, &none, &round),
+            Some(("w.high", 0, 1000))
+        );
+        let m = map(&[
+            ("a.out", mount("a", 0, 0, 14.0, "pipe")),
+            ("w.low", mount("w", 0, 0, 13.5, "pipe")),
+            ("w.high", mount("w", 0, 0, 15.0, "pipe")),
+        ]);
+        assert_eq!(
+            nearest_open("a.out", &m["a.out"], &m, &none, &round),
+            Some(("w.low", 0, 500))
+        );
     }
 }

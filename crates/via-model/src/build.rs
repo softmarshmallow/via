@@ -783,17 +783,40 @@ fn png_samples(
 /// that stands on it to the other's height. A side a step returned (a produced name, R3: text may
 /// not write it) is named with its producer, whose inputs are what to change (M5 close: a fresh
 /// agent was told to change two names it could not write).
-fn gap_hint(m: &Meeting, surfaces: &BTreeMap<String, crate::surfaces::SurfaceOut>) -> String {
+fn gap_hint(
+    m: &Meeting,
+    surfaces: &BTreeMap<String, crate::surfaces::SurfaceOut>,
+    mounts: &BTreeMap<String, crate::surfaces::Side>,
+    joint: bool,
+) -> String {
     let side = |n: &str| match n.rsplit_once('#') {
         Some((producer, _)) => format!(
             "`{n}` (returned by `{producer}`: change what it read, the feature it was made for)"
         ),
         None => format!("`{n}`"),
     };
-    let on_ground = |n: &str| !surfaces.contains_key(n);
+    // A mount with a `rise` (`surfaces.md` 3.2, R75) stands that far above what its instance
+    // stands on: the ground under it is not what sets its height.
+    let risen = |n: &str| mounts.get(n).map(|s| s.rise).filter(|r| *r != 0);
+    if joint {
+        // Two instances' mounts (3.3, R76): each stands on its own surface, plus its rise.
+        let rise = |n: &str| match risen(n) {
+            Some(r) => format!(" (its `rise` is {} m)", via_num::write_length(r)),
+            None => String::new(),
+        };
+        return format!(
+            "make the two sides equal: stand the two instances so that {}{} and {}{} are at one \
+             height, or change a mount's `rise` in its asset",
+            side(&m.a),
+            rise(&m.a),
+            side(&m.b),
+            rise(&m.b)
+        );
+    }
+    let on_ground = |n: &str| !surfaces.contains_key(n) && risen(n).is_none();
     let ground = match (on_ground(&m.a), on_ground(&m.b)) {
-        (true, false) => Some((&m.a, m.z_b)),
-        (false, true) => Some((&m.b, m.z_a)),
+        (true, false) if risen(&m.b).is_none() => Some((&m.a, m.z_b)),
+        (false, true) if risen(&m.a).is_none() => Some((&m.b, m.z_a)),
         _ => None,
     };
     let mut h = format!(
@@ -807,6 +830,14 @@ fn gap_hint(m: &Meeting, surfaces: &BTreeMap<String, crate::surfaces::SurfaceOut
              reaches the end, a way's bed, may win there: move the thing away from it)",
             text::dbl(z)
         ));
+    }
+    for n in [&m.a, &m.b] {
+        if let Some(r) = risen(n) {
+            h.push_str(&format!(
+                "; `{n}` stands {} m above what its instance stands on (its asset's `rise`)",
+                via_num::write_length(r)
+            ));
+        }
     }
     h
 }
@@ -1237,14 +1268,32 @@ pub(crate) fn finish_from(
         for (mn, (at, face)) in &asset.mounts {
             let Ok(w) = f.to_world(*at) else { continue };
             let p = P::new(w.0, w.1);
+            // Its `rise` (3.2, R75), scaled as its `at` is: above what the instance stands on.
+            let rise = asset.rises.get(mn).map_or(0, |r| {
+                via_num::round_to_lattice(*r as f64 * pl.scale).unwrap_or(*r)
+            });
             mounts.insert(
                 format!("{iid}.{mn}"),
                 crate::surfaces::Side {
                     p: Some(p),
-                    z: stands_z(iid, p, &mut diags),
+                    // In millimetres, so a risen height is exact (10 + 4.499 was
+                    // 14.498999999999999 in `meets.json` and in `surface.gap`'s message). With
+                    // no rise the height is the surface's own, as it always was.
+                    z: stands_z(iid, p, &mut diags).map(|z| {
+                        if rise == 0 {
+                            z
+                        } else {
+                            match via_num::round_to_lattice(z * 1000.0) {
+                                Ok(mm) => (mm + rise) as f64 / 1000.0,
+                                Err(_) => z + rise as f64 / 1000.0,
+                            }
+                        }
+                    }),
                     face: Some(f.facing_to_world(*face)),
                     connector: asset.connectors.get(mn).cloned(),
                     mount: true,
+                    owner: Some(iid.clone()),
+                    rise,
                 },
             );
         }
@@ -1411,7 +1460,7 @@ pub(crate) fn finish_from(
                     z: end_z(other, oend, q, &mut diags),
                     face: None,
                     connector: crate::surfaces::path_connector(&decls, other),
-                    mount: false,
+                    ..Default::default()
                 }
             } else if let Some(Geo::Point { p: q, facing }) = placed.shapes.get(place.as_str()) {
                 // A point feature: its face when it writes one (M5).
@@ -1551,6 +1600,86 @@ pub(crate) fn finish_from(
             pair: true,
         });
     }
+    // Joints (3.3, R76): two instances' mounts with connectors at one plan point answer each
+    // other, with no `meets` and no path. `a` and `b` ordered bytewise, as a `meets` pair's.
+    let joints = crate::surfaces::joints(&mounts, &round_mm);
+    for names in &joints.crowded {
+        let Some(s) = mounts.get(&names[0]) else {
+            continue;
+        };
+        let list = names
+            .iter()
+            .map(|n| format!("`{n}`"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let mut d = text::diag(
+            codes::surface::JOINT_MANY,
+            crate::surfaces::place_subject(&decls, &names[0]),
+            Site::Header,
+            &format!(
+                "{} mounts with connectors share one point and height{}: {list}; a joint is two",
+                names.len(),
+                s.p.map(|p| format!(" at {}", pt_text(p)))
+                    .unwrap_or_default()
+            ),
+            "move all but two away, or take the connector off the mounts that join nothing",
+        )
+        .with("place", via_diag::Value::text(names[0].clone()))
+        .with("count", via_diag::Value::Int(names.len() as i64));
+        for n in &names[1..] {
+            d = d.related(via_diag::Related {
+                subject: crate::surfaces::place_subject(&decls, n),
+                site: Site::Header,
+                position: None,
+                note: via_diag::text!("another mount at the point"),
+            });
+        }
+        diags.push(d);
+    }
+    let mut joined: BTreeSet<(String, String)> = BTreeSet::new();
+    for (a, b) in &joints.pairs {
+        let (Some(sa), Some(sb)) = (mounts.get(a), mounts.get(b)) else {
+            continue;
+        };
+        let (Some(pa), Some(z_a), Some(z_b)) = (sa.p, sa.z, sb.z) else {
+            continue;
+        };
+        if let (Some(fa), Some(fb)) = (sa.face, sb.face) {
+            if (fa - fb).rem_euclid(360_000) != 180_000 {
+                diags.push(
+                    text::diag(
+                        codes::surface::FACING,
+                        crate::surfaces::place_subject(&decls, a),
+                        Site::Header,
+                        &format!(
+                            "`{a}` faces {} and `{b}` faces {}; two mounts that join face opposite ways",
+                            via_num::write_facing(fa),
+                            via_num::write_facing(fb)
+                        ),
+                        "turn one of the two instances, or the mount's `face` in its asset, until they are 180 degrees apart",
+                    )
+                    .with("place", via_diag::Value::text(a.clone()))
+                    .with("face_a", via_diag::Value::Int(fa))
+                    .with("face_b", via_diag::Value::Int(fb)),
+                );
+            }
+        }
+        joined.insert((a.clone(), b.clone()));
+        meetings.push(Meeting {
+            a: a.clone(),
+            b: b.clone(),
+            at: (pa.x, pa.y),
+            z_a,
+            z_b,
+            gap: (round_mm(z_a) - round_mm(z_b)).abs(),
+            face_a: sa.face,
+            face_b: sb.face,
+            turn: None,
+            connector_a: sa.connector.clone(),
+            connector_b: sb.connector.clone(),
+            pair: true,
+        });
+    }
     // What must hold at each (3.4): height and joint.
     for m in &meetings {
         if m.gap != 0 {
@@ -1567,7 +1696,12 @@ pub(crate) fn finish_from(
                         text::dbl(m.z_b),
                         m.gap
                     ),
-                    &gap_hint(m, &out.surfaces),
+                    &gap_hint(
+                        m,
+                        &out.surfaces,
+                        &mounts,
+                        joined.contains(&(m.a.clone(), m.b.clone())),
+                    ),
                 )
                 .with("place", via_diag::Value::text(m.a.clone()))
                 .with("gap", via_diag::Value::Int(m.gap)),
@@ -1590,7 +1724,14 @@ pub(crate) fn finish_from(
             }
         }
     }
-    crate::surfaces::unmet(&decls, &mounts, &meetings, &mut diags);
+    crate::surfaces::unmet(
+        &decls,
+        &mounts,
+        &meetings,
+        &joints.crowded,
+        &round_mm,
+        &mut diags,
+    );
     out.meetings = meetings;
     let surface = fields.surface();
     let z_at = |p: P| surface.and_then(|s| fields.read(s, View::Build, p));

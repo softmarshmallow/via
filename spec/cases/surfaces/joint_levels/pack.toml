@@ -1,0 +1,51 @@
+# A wall piece with two holes at one plan point, 3 m and 5 m up, and a pipe end made for each
+# height (surfaces.md 3.3, R76: the mounts at one plan point join in twos, by height).
+[taxon."structure"]
+
+[asset.panel]
+primitive = "box"
+size      = [4, 0.3, 6]
+taxon     = "structure"
+[asset.panel.mount.low]
+at        = [0, 0.15]
+face      = 0
+connector = "pipe"
+rise      = 3
+[asset.panel.mount.high]
+at        = [0, 0.15]
+face      = 0
+connector = "pipe"
+rise      = 5
+
+[asset.end_3]
+primitive = "box"
+size      = [0.4, 3.6, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.end_3.mount.c]
+at        = [0, -2]
+face      = 180
+connector = "pipe"
+rise      = 3
+
+[asset.end_5]                    # a short piece further off, so the two pieces do not share ground
+primitive = "box"
+size      = [0.4, 1, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.end_5.mount.c]
+at        = [0, -5]
+face      = 180
+connector = "pipe"
+rise      = 5
+
+[asset.end_4]                    # made for a hole the wall has not
+primitive = "box"
+size      = [0.4, 3.6, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.end_4.mount.c]
+at        = [0, -2]
+face      = 180
+connector = "pipe"
+rise      = 4

@@ -327,7 +327,9 @@ connector = "<word>"      # (new, M5) what joint it is; free word, compared only
   bearing is that direction's bearing plus `face`, normalised (`numbers.md` 2). No face means none.
   A face word is `surface.mount_face`, since a kind mount has no `on`. This is how a set item's
   `face` is added to its set's (`vocabulary.md`). Ours.
-- **Height.** Never written: it is `sample(surface, its plan point).z`.
+- **Height.** Never written: it is `sample(surface, its plan point).z`. A kind mount takes no
+  `rise` (3.2): its `surface` is what gives it a height, and a mount above its owner's surface is
+  a mount on another of its owner's surfaces. `rise` here is `doc.unknown_key`, with that hint.
 - **`meets`.** Names a mount of the same kind. One `meets` makes one meeting; both mounts naming
   each other is the same one meeting. A name the kind lacks is `surface.unknown_mount` (listing the
   kind's mounts); naming itself is `surface.meets_self`; a mount in two pairs is
@@ -339,6 +341,27 @@ connector = "<word>"      # (new, M5) what joint it is; free word, compared only
 `at` through the instance's transform. It lies on the surface its instance stands on (4.1), and its
 height is `sample` of that surface there. Its `at` and `face` are pack facts, so a pack swap may move
 it (R30): its meetings are checked again and what follows is reported. It has no `surface` key.
+
+**`rise` (K9, R75).** An asset mount may write `rise`, lattice metres, default 0, negative allowed
+(`assets.md` 2.7): the mount then stands that far above the surface its instance stands on. Its
+height is `sample` of that surface at the mount's plan point, plus `rise` times the instance's
+`scale`, rounded to the lattice as its `at` is (`assets.md` 2.4). The sum is taken in millimetres:
+the surface's height there rounded to the lattice, plus the rise, so a risen height is exact (10 m
+and a rise of 4.499 are 14.499 in `meets.json`, not 14.498999999999999; case `rise_mm`). A mount
+with no rise keeps its surface's own height, unrounded, as before. So a hole 5 m up a wall piece is
+a mount with `rise = 5`, and a path that ends there (3.3) is held to that height by `surface.gap`
+(3.4), whose hint then names the rise. A mount with a rise lies on no surface:
+
+- A thing placed `on` it is `surface.on_rise` (error), naming the mount and its rise as it stands
+  (scaled by the host's `scale`, as the mount's height is): an instance stands on a surface
+  (4.1), and there is none at that height. A path may end at it (`starts_at`,
+  `ends_at`) and another instance's mount may join it (3.3): neither stands on it.
+- `rise` is a placement fact with the mount's others: in the facts file and the manifest where it
+  is not 0, and an edit to it in an accepted pack is `asset.revised` (`assets.md` 4.1, 4.2).
+
+Before it, a mount's height was only its surface's, so a hole in a wall could be named in plan and
+not in height: a pipe 5 m up ending at it was `surface.gap`, 5000 mm (`docs/challenges.md` 64,
+K9). Ours; `assets.md` 12.2 had it as owed.
 
 **From M5** an asset mount takes `connector`, with the meaning and the checks of a kind mount (3.4:
 `surface.connector`, `surface.unmet`); `assets.md` 2.7 owns the key. So a door's "no path reaches
@@ -355,12 +378,47 @@ moved and turned building keeps its walk (challenge 48; case `moved_turned`).
 
 ### 3.3 Meetings
 
-A meeting is a pair of mounts (R31). There are two ways to make one, and no other:
+A meeting is a pair of mounts (R31). There are three ways to make one, and no other (two until
+K9; the third is R76):
 
 | Pair | Made by | `a`, `b` |
 |---|---|---|
 | Two mounts of one owner | `meets` | the two mounts, ordered bytewise |
 | A path end and a place | `starts_at` or `ends_at` (`vocabulary.md`) | `<path>.start` or `<path>.end`, and the place's default mount |
+| Two mounts of two instances (a **joint**, K9) | each has a `connector`, and both lie at one plan point | the two mounts, ordered bytewise |
+
+- **A joint (K9, R76).** Nothing is written for it: two asset mounts of two different placed
+  instances, each with a `connector`, at one plan point on the lattice, answer each other. It is
+  how two pieces of a kit that are set against each other are held to their sockets, with no path
+  between them. A mount with no connector takes no part, and two mounts of one instance never
+  join. The mounts at one plan point are taken together, in two passes:
+  1. **By height and connector**, each mount's own height (its `rise` included, 3.2), to the
+     millimetre. Exactly two of one height and one connector, of two instances, are a joint.
+     Three or more of one height and one connector, not all one instance's, are joined to
+     nothing: `surface.joint_many` (error), naming them all, and none of them is also
+     `surface.unmet`. A joint is two; a third piece at the point is a fault of the layout, and
+     choosing two of the three would hide it.
+  2. **What is left** at that point, whatever its heights and connectors. Exactly two, of two
+     instances, are a joint that does not hold, which `surface.gap` reports where their heights
+     differ and `surface.connector` where their connectors do (3.4). Any other number is left
+     unjoined, and each is `surface.unmet` (3.4), which names what stands at its own point and
+     the nearest mount that could have answered it, where there is one.
+
+  So two pipes that join beside a third piece of another connector are a joint, and the third is
+  told what it stands beside (as first built, the three were `surface.joint_many` and the joint
+  was lost; K9's review).
+  So two holes one above the other in one wall piece and a pipe piece at each join in twos, by
+  height; and one pipe piece at the wrong height beside one hole is a gap, not a silence. In
+  `meets.json` (2.4) a joint is a row like a `meets` pair's (both faces, `turn` null); it is told
+  apart by its two sides being mounts of two instances. Cost, stated: this is the first meeting
+  nobody wrote, so a world whose pieces happen to put two connectors at one point gains a row
+  and its checks; and a joint is found only at one lattice point, so two pieces a millimetre
+  apart are no joint (3.4's `surface.unmet` says by how much they miss). **Not across an
+  import (K9, stated):** a joint is found among the instances one world places. A mount of an
+  instance inside an import and a mount of the parent's at one point are not joined, and each
+  is `surface.unmet` in its own world, naming no other: an import's meetings are found in the
+  import's own build and brought (`composition.md` 6.1), and its mounts are not brought with
+  them (`TODO.md`).
 
 - **Default mount.** A path end is a mount of its path. A mount or a path end is its own default
   mount; a point feature's is its point on the surface it stands on (the terrain, or its `surface`,
@@ -398,13 +456,35 @@ A meeting is a pair of mounts (R31). There are two ways to make one, and no othe
 | Same height | `gap = 0`. | `surface.gap` | M3 |
 | Same joint | Where both sides have a connector, they are equal. A path end takes its kind's `connector` **(new)**. | `surface.connector` | M5 |
 | Direction | Two mounts with faces face opposite ways: `(face_a - face_b)` mod 360 000 is 180 000 millidegrees. | `surface.facing` | M5 |
-| Answered | A mount with a connector is the place of at least one path end, or meets a mount with the same connector. A `meets` pair whose other side has no connector does not count. | `surface.unmet` | M5 |
+| Answered | A mount with a connector is the place of at least one path end, or meets a mount with the same connector (by `meets`, or in a joint). A pair whose other side has no connector, or another, does not count. | `surface.unmet` | M5 |
 
-- **Which mounts each check reads (M5, decided).** `surface.facing` reads `meets` pairs only: a path
-  end's bearing is its tangent, judged by `turn`. `surface.unmet` reads kind mounts and asset mounts
-  only, never a path end: a path end is answered by being written at a place, or left free on
-  purpose (a lane that runs off into the fields). A kind surface named as a place (3.3) has no
-  connector, so a path end there is checked for place and height only.
+- **Which mounts each check reads (M5, decided).** `surface.facing` reads `meets` pairs and joints
+  (K9): a path end's bearing is its tangent, judged by `turn`. `surface.unmet` reads kind mounts
+  and asset mounts only, never a path end: a path end is answered by being written at a place, or
+  left free on purpose (a lane that runs off into the fields). A kind surface named as a place
+  (3.3) has no connector, so a path end there is checked for place and height only.
+- **Whose record it is.** A record about a mount is raised on the entity its place name starts
+  with: a feature, an instance, a pin. A mount of a run's member (`<run>#r<k>.<mount>`,
+  `rules.md` 5) is no entity of the text, so its record is its run's (`run.<id>`, a step's
+  returned run included) and a scatter's member's its scatter's; `data.place` and the message
+  name the member's mount. (As first built such a record was raised on a feature named after
+  the member, which nothing could locate: `diag.internal`. Case `run_unmet`.)
+- **A joint's checks (K9).** Same place holds by construction. Same height: `surface.gap`, each
+  mount's rise included, its hint naming the two instances and each rise. Same joint:
+  `surface.connector`, said of the two mounts left at a point with two connectors (3.3, pass 2);
+  they do not answer each other, so each is `surface.unmet` as well. Direction: an asset mount always has a face (default 0), so every joint is checked.
+- **The joint it missed (K9, R76).** Where `surface.unmet` is said of an asset mount, it also
+  names the nearest mount that could have answered it: an asset mount of another instance, with
+  the same connector, that nothing answers either, no more than 2 m away in plan. Nearest in
+  plan, then in height, then by name. The message and the hint give the miss in millimetres, in
+  plan and in height, and `data` holds `near`, `miss` and `miss_z`. So a ring of pieces that does
+  not close says by how much at its closing join, where before it said only that eight mounts
+  were unanswered, the closed ones and the open one alike. With none within 2 m it names no
+  other. A mount answered already is never named: it can take no second joint. **What it stands
+  beside.** Where other instances' mounts with connectors lie at the unanswered mount's own plan
+  point (a third piece beside a joint, a piece of another connector, a piece at another height
+  among three), the message lists each with its connector and height, and `data.beside` holds
+  their names, separated by a space.
 - **`turn`.** For a path end at a place with a face. The arrival bearing is the end tangent's for
   `ends_at` and the reversed start tangent's for `starts_at`. With `e = (arrival - face)` mod
   360 000, `turn = min(e, 360 000 - e)`: unsigned, 0 to 180 000 millidegrees. The core reports it and
@@ -444,7 +524,7 @@ library's convention, shown in 6.3 and illustrative only:
 |---|---|
 | `on` a thing that owns exactly one surface | that surface |
 | `on` a thing that owns two or more | `surface.which` (error), listing them. Hint: place it `on` a mount. |
-| `on` a mount | the mount's surface (3.1, 3.2) |
+| `on` a mount | the mount's surface (3.1, 3.2). An asset mount with a `rise` lies on none: `surface.on_rise` (3.2) |
 | `on` a place inside an import (M4) | as this table, for the thing the place names; its height found again on the parent's finished surface (`composition.md` 3) |
 | `on` anything else (a path, a region with no surface, an instance) | the terrain |
 | `at` | the terrain, unless `surface` names another (M5, below) |
@@ -1023,8 +1103,10 @@ has a place.
 | `surface.apart` | error | the meeting's `a`; `b` in `related` | Two paired mounts lie at different plan points; gives both. | M3 |
 | `surface.gap` | error | the meeting's `a`; `b` in `related` | The two sides differ in height; both heights, the gap in millimetres, and what sets each (3.4). Hint: "make the two sides equal: change <a> or <b>, or add an effect of <owner> that sets the ground to <z>". | M3 |
 | `surface.connector` | error | the meeting's `a`; `b` in `related` | Different connectors; names both. | M5 |
-| `surface.facing` | error | the meeting's `a`; `b` in `related` | Two paired mounts do not face opposite ways; both bearings. | M5 |
-| `surface.unmet` | warning | the mount | A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: `ends_at = \"<place>\"`". | M5 |
+| `surface.facing` | error | the meeting's `a`; `b` in `related` | Two paired mounts, or two mounts that join, do not face opposite ways; both bearings. | M5 |
+| `surface.unmet` | warning | the mount | A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector <c> here: `ends_at = \"<place>\"`". For an asset mount, also the nearest open mount of another instance with the same connector within 2 m, and the miss in millimetres (`near`, `miss`, `miss_z`), and the other instances' mounts at its own point (`beside`). | M5 |
+| `surface.joint_many` | error | the first mount; the others in `related` | Three or more instances' mounts with connectors share one point and height; a joint is two. Names them all. | M7 |
+| `surface.on_rise` | error | what is placed | Its `on` names an asset mount with a `rise`: nothing stands there (3.2). Names the mount and its rise. | M7 |
 | `surface.cut` | error | the feature | Its surface's `cut` is below 0 or not finite; gives the value. | M5 |
 | `surface.not_surface` | error | the placement | Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces. | M5 |
 | `surface.placed_twice` | error | the placement | `surface` written with `on`, or with a height in `at`: each already says the surface. Hint: drop `surface`, or place it by `at` with two numbers. | M5 |
@@ -1131,6 +1213,20 @@ whole: each copies `spec/vectors/surfaces/lib` (library `surfaces_test`, which h
 | level_third | M7 | Two storeys over one outline; a hut and a scatter on the upper one, a run and a pin on the terrain, nothing on the lower one; changes raising the lower one above the other, and placing a box on the terrain under the hut | build, then each change `--against` | Lower floor at 10: 28 members, nothing removed by the pin, no `place.overlap`. Raised to 16: four members under the hut gave way, the pin removed 12 shrubs, and the box clashes, exit 1. No `diag.internal`: every node that tests two levels reads every kind surface's height, also of a surface neither thing stands on (`graph.md` 3, level). |
 | level_crowded | M7 | Two storeys over one outline at 10 and 13; a terrain scatter in the base layer; a hut on the upper floor in a layer of rank 1; changes bringing the upper floor down to 10, and moving the hut 6 m | build, then each change `--against` | No `place.crowded`; with the floor down, eight, one for each shrub under the hut, exit 0; with the hut moved, exit 0. No `diag.internal`: a scatter's `held` reads the levels and the higher layer's instances, with or without a pin (`graph.md` 3, level; before the fix the warm build was exit 3). |
 | cross_levels | M7 | Two flights on one line in plan, at 10 to 13 and 16 to 19; a level walk (a flight at one height) across both at 11.5, the lower one's height there; a lane with no surface across both; a ramp on the lower flight's line the other way (13 to 10); changes raising the walk to 12 (within the lower flight's heights under it), to 14.5 and to 17.5 | build, then each change `--against` | No `geom.unowned_crossing` names the two stacked flights. The walk meets the lower flight at 11.5 and at 12; at 14.5, more than half a metre from both, it meets neither; at 17.5 the upper one. The ramp meets the lower flight, whose heights it shares, and not the upper. The lane meets all three throughout (`geometry.md` 2.7, R71). |
+| rise_met | M7 | A wall piece whose mount `port` has `rise = 5` and connector `foot`, on ground at 10, and the same piece at `scale = 2`; a `flight` level at 15 ending at the first, one at 20 ending at the second; then the first lowered to 14 at its end | build, then the edit | Gap 0 at both, `z_b` 15 and 20 (the rise scales as `at` does); then `surface.gap`, 1000 mm. |
+| rise_on | M7 | An instance placed `on` that mount, and one `on` the same mount of the piece at `scale = 2`; then each `on` a mount of the same piece with no rise | build twice | `surface.on_rise` on each instance, `data.rise` 5000 and 10000 (the rise as it stands, scaled), exit 1; then the first stands at the mount's point. |
+| rise_mm | M7 | A wall piece whose mount has `rise = 4.499`, on ground at 10; a `flight` level at 14.499 ending at it; then the flight a millimetre lower | build, then the edit | `z_b` is 14.499 and the gap 0: a risen height is added in millimetres. Then `surface.gap`, 1 mm. |
+| rise_kind | M7 | `rise = 1` on a kind mount, written into the test library | build | `doc.unknown_key` on the key; the hint says its `surface` gives its height. |
+| joint | M7 | Two pieces whose end mounts (connector `pipe`, `rise = 5`) lie at one plan point; then the second's end with connector `water`; facing the first's way; a metre higher; with no connector | build, then each edit | One row of `meets.json`, both faces, gap 0, no diagnostic. Then `surface.connector` and each end `surface.unmet`; `surface.facing`; `surface.gap` 1000 mm; no meeting and the first's end `surface.unmet`. |
+| joint_loop | M7 | Four rooms, each placed `on` the last's `next` mount round a ring, door mounts with connector `door`; the third room 128 mm longer | build; then the third room of the ring's size | Three joints; `surface.unmet` on the two open doors only, each naming the other, `miss` 128, `miss_z` 0. Then four joints, no diagnostic. |
+| joint_many | M7 | Three pieces' end mounts at one point and height; then the third a metre off | build twice | `surface.joint_many` on the first, `count` 3, no `surface.unmet`, exit 1. Then one joint, and the third `surface.unmet` naming no other (both are answered). |
+| joint_mixed | M7 | Two `pipe` ends and a `water` end at one point and height; then the third a `pipe` end a metre higher | build twice | One joint of the two pipes, no `surface.joint_many`; the third `surface.unmet` with `data.beside` naming the two it stands beside. Then the same joint, and the third `surface.unmet`, `beside` the two and `near` none. |
+| joint_levels | M7 | A wall piece with two mounts at one plan point, `rise` 3 and 5, and a pipe end at each height; then the lower end made for 4; then the upper end removed | build, then each edit | Two joints, by height. Then the upper joint and `surface.gap` 1000 mm on the two left. Then no joint, three `surface.unmet`, the end's `miss` 0 and `miss_z` 1000. |
+| joint_warm | M7 | Two pieces joined; a change moving the second 0.5 m on | build, the change clean, the change `--against` the base | The meeting gone; both ends `surface.unmet`, `miss` 500; the warm build's diagnostics byte-equal to the clean one's. |
+| run_unmet | M7 | Four pipe pieces in a `run` along a lane, each end on the next one's; then five on the same lane | build twice | Three joints; `surface.unmet` on `run.row` for the two free ends, naming the member's mount (`row#r0.a`), and no `diag.internal`. Then no joint and ten `surface.unmet`. |
+| mount_warm | M7 | A lamp and a point feature `on` a block's mount; the mount given `rise = 2` in the pack; then the rise taken away and the mount moved a metre | build; each edit clean on a fresh store and warm on the first | `surface.on_rise` on the warm build as on the clean one, no `diag.internal`; then the lamp at the new point, warm as clean, `features.json` equal. |
+| meets_pack_warm | M7 | Two pieces joined and a `flight` ending at a third piece's mount; the pack's connectors edited `pipe` to `water`; then the mounts moved a metre | build, then each edit warm | The joint's row says `water`; then no joint, both ends `surface.unmet` 1000 mm apart, and the path end's row at the new point. Each equal to a clean build (U6). |
+| meets_set_warm | M7 | Two pieces of one set joined and a third outside joined to the set; the set's east item moved 0.3 m | build, then the edit warm | Two joints; then none, and the ends `surface.unmet` naming what each missed, 300 mm. Equal to a clean build (U6). |
 
 ## Changed from the spike
 

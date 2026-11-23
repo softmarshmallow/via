@@ -5,7 +5,7 @@ use crate::registry::{CoveredBy, Row};
 use crate::Severity;
 
 /// Every core code, sorted bytewise by code.
-pub(crate) static ROWS: [Row; 361] = [
+pub(crate) static ROWS: [Row; 363] = [
     Row {
         code: "asset.bad_footprint",
         severity: Severity::Error,
@@ -3740,11 +3740,11 @@ pub(crate) static ROWS: [Row; 361] = [
         severity: Severity::Error,
         chapter: "surfaces",
         milestone: 5,
-        summary: "Two paired mounts do not face opposite ways; both bearings.",
+        summary: "Two paired mounts, or two mounts that join, do not face opposite ways; both bearings.",
         data: &[],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "Two mounts paired by meets both have a face, and their world bearings are not half a turn apart:\none should look into the joint and the other out of it.\nTo fix: Set one face 180 degrees from the other; 0 looks along travel, 180 against it.\nBad:   [kind.span.mount.end_top] face = 0 and [kind.span.mount.end_low] face = 0, paired by meets\nFixed: end_low face = 180\n",
+        explain: "Two mounts paired by meets, or two instances' mounts that join at one point, both have a face,\nand their world bearings are not half a turn apart: one should look into the joint and the other\nout of it.\nTo fix: Set one face 180 degrees from the other; 0 looks along travel, 180 against it. For two\ninstances, turn one of them.\nBad:   [kind.span.mount.end_top] face = 0 and [kind.span.mount.end_low] face = 0, paired by meets\nFixed: end_low face = 180\n",
     },
     Row {
         code: "surface.fold",
@@ -3789,6 +3789,17 @@ pub(crate) static ROWS: [Row; 361] = [
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "A thing is placed on something, or on a mount of something, that was not placed (it failed, or\nwas removed), so it has no surface to stand on.\nTo fix: Fix why the host was not placed, or place this thing elsewhere.\nBad:   on = { ref = \"a.m\" }   (instance a outside the extent)\nFixed: on = { ref = \"a.m\" }   with a moved inside the extent\n",
+    },
+    Row {
+        code: "surface.joint_many",
+        severity: Severity::Error,
+        chapter: "surfaces",
+        milestone: 7,
+        summary: "Three or more instances' mounts with connectors share one point and height; a joint is two. Names them all.",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "Two instances' mounts that each have a connector and lie at one plan point answer each other: a\njoint, with nothing written for it. Here three or more such mounts, not all of one instance, lie\nat one point and one height, so each would be in two joints. None is joined. They are named\nhere and not also reported as unanswered.\nTo fix: Move all but two of the pieces away, or take the connector off the mounts that join nothing.\nBad:   three pipe pieces whose end mounts all lie at [40, 40], 5 m up\nFixed: two pieces end there; the third ends one piece further on\n",
     },
     Row {
         code: "surface.meets_self",
@@ -3866,6 +3877,17 @@ pub(crate) static ROWS: [Row; 361] = [
         worst: None,
         covered_by: CoveredBy::Conformance,
         explain: "Part of its footprint lies outside its surface's bound; the share.\nTo fix: Move the instance so its footprint lies on the surface, or widen the surface's bound.\nBad:   on = { ref = \"span_a\", t = 0.5, offset = 2 }   (half the footprint off the 5 m surface)\nFixed: on = { ref = \"span_a\", t = 0.5, offset = 0 }\n",
+    },
+    Row {
+        code: "surface.on_rise",
+        severity: Severity::Error,
+        chapter: "surfaces",
+        milestone: 7,
+        summary: "Its `on` names an asset mount with a `rise`: nothing stands there (3.2). Names the mount and its rise.",
+        data: &[],
+        worst: None,
+        covered_by: CoveredBy::Conformance,
+        explain: "A thing placed on a mount stands on the surface that mount lies on. An asset mount with a rise\nstands above the surface its instance stands on, and lies on none: there is nothing there to\nstand on. A path may end at such a mount, and another instance's mount may join it.\nTo fix: Place the thing on a mount with no rise, or at a point, and give its own asset the mount\nthat joins this one.\nBad:   [instance.valve] on = { ref = \"tank.outlet\" }   (outlet has rise = 5)\nFixed: [instance.valve] at = [40, 42], with a mount of its own at the outlet's point and height\n",
     },
     Row {
         code: "surface.outside",
@@ -3960,11 +3982,11 @@ pub(crate) static ROWS: [Row; 361] = [
         severity: Severity::Warning,
         chapter: "surfaces",
         milestone: 5,
-        summary: "A mount with a connector is answered by nothing (R18: a stub). Hint: \"end a path whose kind has connector <c> here: `ends_at = \\\"<place>\\\"`\".",
-        data: &[],
+        summary: "A mount with a connector is answered by nothing (R18: a stub). Hint: \"end a path whose kind has connector <c> here: `ends_at = \\\"<place>\\\"`\". For an asset mount, also the nearest open mount of another instance with the same connector within 2 m, and the miss in millimetres (`near`, `miss`, `miss_z`), and the other instances' mounts at its own point (`beside`).",
+        data: &["nearest"],
         worst: None,
         covered_by: CoveredBy::Conformance,
-        explain: "A kind or asset mount with a connector is the place of no path end and meets no mount with the\nsame connector: a joint left open. A meets pair whose other side has no connector does not count.\nPath ends are never checked: a path end may be left free on purpose.\nTo fix: End a path whose kind has the same connector there, or remove the connector.\nBad:   an instance whose asset mount entry has connector = \"foot\", and no path ends at it\nFixed: [feature.walk] with ends_at = \"<instance>.entry\" and a kind with connector = \"foot\"\n",
+        explain: "A kind or asset mount with a connector is the place of no path end and meets no mount with the\nsame connector: a joint left open. A meets pair whose other side has no connector does not count.\nPath ends are never checked: a path end may be left free on purpose. For an asset mount it also\nnames the nearest open mount of another instance with the same connector within 2 m, and how far\nthe two miss in plan and in height: two instances' mounts at one point answer each other.\nWhere other instances' mounts lie at its own point (a third piece, a piece of another connector)\nit lists them.\nTo fix: End a path whose kind has the same connector there, bring the two mounts it names to one\npoint and height, or remove the connector.\nBad:   an instance whose asset mount entry has connector = \"foot\", and no path ends at it\nFixed: [feature.walk] with ends_at = \"<instance>.entry\" and a kind with connector = \"foot\"\n",
     },
     Row {
         code: "surface.which",
@@ -4751,7 +4773,7 @@ pub mod codes {
         pub const CUT: Code = Code::from_index(337);
         /// `surface.empty_region` (error): A region given to `relief` has zero area.
         pub const EMPTY_REGION: Code = Code::from_index(338);
-        /// `surface.facing` (error): Two paired mounts do not face opposite ways; both bearings.
+        /// `surface.facing` (error): Two paired mounts, or two mounts that join, do not face opposite ways; both bearings.
         pub const FACING: Code = Code::from_index(339);
         /// `surface.fold` (error): Its strip overlaps itself; position and the largest bound that holds.
         pub const FOLD: Code = Code::from_index(340);
@@ -4761,39 +4783,43 @@ pub mod codes {
         pub const GROUND_OFF_TERRAIN: Code = Code::from_index(342);
         /// `surface.host_missing` (error): What it is placed `on`, or the owner of the mount it is placed on, was not placed (4.1).
         pub const HOST_MISSING: Code = Code::from_index(343);
+        /// `surface.joint_many` (error): Three or more instances' mounts with connectors share one point and height; a joint is two. Names them all.
+        pub const JOINT_MANY: Code = Code::from_index(344);
         /// `surface.meets_self` (error): `meets` names the mount itself.
-        pub const MEETS_SELF: Code = Code::from_index(344);
+        pub const MEETS_SELF: Code = Code::from_index(345);
         /// `surface.meets_twice` (error): The mount is in two `meets` pairs; names both others.
-        pub const MEETS_TWICE: Code = Code::from_index(345);
+        pub const MEETS_TWICE: Code = Code::from_index(346);
         /// `surface.mount_face` (error): A face word on a kind mount. Hint: a number, 0 along travel, 180 against.
-        pub const MOUNT_FACE: Code = Code::from_index(346);
+        pub const MOUNT_FACE: Code = Code::from_index(347);
         /// `surface.name_clash` (error): A surface and a mount share a name.
-        pub const NAME_CLASH: Code = Code::from_index(347);
+        pub const NAME_CLASH: Code = Code::from_index(348);
         /// `surface.none_at` (error): Its `at` carries a height, and no kind surface's bound holds the plan point (4.1). Hint: drop the third number to stand on the terrain, or move it onto a surface.
-        pub const NONE_AT: Code = Code::from_index(348);
+        pub const NONE_AT: Code = Code::from_index(349);
         /// `surface.not_surface` (error): Its `surface` names a place that is not a kind surface (a mount, a feature, the terrain's field); lists the owner's surfaces.
-        pub const NOT_SURFACE: Code = Code::from_index(349);
+        pub const NOT_SURFACE: Code = Code::from_index(350);
         /// `surface.off_bound` (warning): Part of its footprint lies outside its surface's bound; the share.
-        pub const OFF_BOUND: Code = Code::from_index(350);
+        pub const OFF_BOUND: Code = Code::from_index(351);
+        /// `surface.on_rise` (error): Its `on` names an asset mount with a `rise`: nothing stands there (3.2). Names the mount and its rise.
+        pub const ON_RISE: Code = Code::from_index(352);
         /// `surface.outside` (error): Its plan point lies inside the extent but outside the bound of the kind surface it stands on. An origin outside the extent is `place.outside` (`rules.md` 8.4), never this code.
-        pub const OUTSIDE: Code = Code::from_index(351);
+        pub const OUTSIDE: Code = Code::from_index(353);
         /// `surface.owner_shape` (error): A surface on a point kind, a path owner without `bound`, or a region owner with one.
-        pub const OWNER_SHAPE: Code = Code::from_index(352);
+        pub const OWNER_SHAPE: Code = Code::from_index(354);
         /// `surface.placed_twice` (error): `surface` written with `on`, or with a height in `at`: each already says the surface. Hint: drop `surface`, or place it by `at` with two numbers.
-        pub const PLACED_TWICE: Code = Code::from_index(353);
+        pub const PLACED_TWICE: Code = Code::from_index(355);
         /// `surface.through` (warning): Its height reaches through another surface above its origin; names it.
-        pub const THROUGH: Code = Code::from_index(354);
+        pub const THROUGH: Code = Code::from_index(356);
         /// `surface.too_early` (error): `meetings()` called at `generate`.
-        pub const TOO_EARLY: Code = Code::from_index(355);
+        pub const TOO_EARLY: Code = Code::from_index(357);
         /// `surface.two_terrains` (error): Two surface fields at the top level. Hint: make one a kind's surface.
-        pub const TWO_TERRAINS: Code = Code::from_index(356);
+        pub const TWO_TERRAINS: Code = Code::from_index(358);
         /// `surface.unknown_mount` (error): `meets` names a mount the kind lacks; lists the kind's mounts.
-        pub const UNKNOWN_MOUNT: Code = Code::from_index(357);
+        pub const UNKNOWN_MOUNT: Code = Code::from_index(359);
         /// `surface.unknown_surface` (error): `surface` names a surface the kind lacks; lists the kind's surfaces.
-        pub const UNKNOWN_SURFACE: Code = Code::from_index(358);
-        /// `surface.unmet` (warning): A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector \<c\> here: `ends_at = \"<place>\"`".
-        pub const UNMET: Code = Code::from_index(359);
+        pub const UNKNOWN_SURFACE: Code = Code::from_index(360);
+        /// `surface.unmet` (warning): A mount with a connector is answered by nothing (R18: a stub). Hint: "end a path whose kind has connector \<c\> here: `ends_at = \"<place>\"`". For an asset mount, also the nearest open mount of another instance with the same connector within 2 m, and the miss in millimetres (`near`, `miss`, `miss_z`), and the other instances' mounts at its own point (`beside`).
+        pub const UNMET: Code = Code::from_index(361);
         /// `surface.which` (error): `on` a thing, or a path end on a kind, with two or more surfaces; lists them. Hint: place it `on` a mount.
-        pub const WHICH: Code = Code::from_index(360);
+        pub const WHICH: Code = Code::from_index(362);
     }
 }

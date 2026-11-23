@@ -1039,6 +1039,27 @@ impl<'w> ModelPlan<'w> {
                 }
                 ids.extend(d.instances.keys().map(|i| format!("instance.{i}")));
                 ids.extend(self.chosen_kinds());
+                // An asset mount's `at`, `face`, `connector` and `rise` (3.2) are its asset's
+                // statement, which no instance's value carries; a `facts` node stands only for
+                // a model, and its value is its records. So is where a set's item and a run's
+                // member stand (their set's and run's statements). Without these a warm build
+                // kept the meetings of the pack and the set as they were (K9's review: a rise,
+                // a connector and a mount's `at` edited, and a set's item moved).
+                ids.push(PACK.into());
+                for (a, x) in &self.p.pack.assets {
+                    if !x.mounts.is_empty() {
+                        ids.push(format!("asset:{a}"));
+                    }
+                }
+                for i in d.instances.values() {
+                    ids.extend(d.set_stmts(i.set.as_deref()));
+                }
+                for (r, run) in &d.runs {
+                    ids.push(format!("run.{r}"));
+                    if let crate::sets::What::Set(x) = &run.what {
+                        ids.extend(d.set_stmts(Some(x)));
+                    }
+                }
                 self.stmts_of(ids.iter().map(String::as_str))
             }
             // The surfaces' formulas (`base`, `bound`, `cut`, `material`) are their kinds'
@@ -1617,6 +1638,43 @@ impl<'w> ModelPlan<'w> {
         }
     }
 
+    /// The statements a thing placed `on` a mount of an instance reads besides the host's node
+    /// (`graph.md` 2, "mount"): the host's plan carries its origin and facing, not its asset's
+    /// mounts, so the mount's `at`, `face` and `rise` are the host asset's statement; for a set's
+    /// item, the set's statements and its items' assets. Without them a pack edit that moved or
+    /// raised a mount left the thing on it where it was, or unstable (K9's review: `rise`
+    /// added to a mount a lamp stood on was `diag.internal` on a warm build).
+    fn on_stmts(&self, place: &Place) -> Vec<String> {
+        match place {
+            Place::On(o) => self.ref_stmts(&o.reference),
+            _ => Vec::new(),
+        }
+    }
+
+    /// [`ModelPlan::on_stmts`] for a place name: `on.ref`, `starts_at`, `ends_at`, a way point.
+    fn ref_stmts(&self, reference: &str) -> Vec<String> {
+        let d = &self.p.decls;
+        let head = reference.split('.').next().unwrap_or(reference);
+        let Some(h) = d.instances.get(head) else {
+            return Vec::new();
+        };
+        let mut out = vec![PACK.to_string()];
+        if !h.asset.is_empty() {
+            out.push(format!("asset:{}", h.asset));
+        }
+        for s in d.set_stmts(h.set.as_deref()) {
+            if let Some(sd) = s.strip_prefix("set.").and_then(|n| d.sets.get(n)) {
+                for it in sd.items.values() {
+                    if let crate::sets::What::Asset(a) = &it.what {
+                        out.push(format!("asset:{a}"));
+                    }
+                }
+            }
+            out.push(s);
+        }
+        out
+    }
+
     fn put(&mut self, id: NodeId, def: Def) {
         self.defs.insert(id, def);
     }
@@ -1687,12 +1745,16 @@ impl<'w> ModelPlan<'w> {
                     .map(String::as_str)
                     .chain(kind.as_deref()),
             );
-            statements.sort();
             let subject = Some(Subject::entity("feature", id.clone()));
             let mut shape_edges = Vec::new();
             if let ShapeDecl::Point(p) = &f.shape {
                 self.place_edges(p, &mut shape_edges);
+                let on = self.on_stmts(p);
+                statements.extend(self.stmts_of(on.iter().map(String::as_str)));
+                statements.dedup();
             }
+            statements.sort();
+            statements.dedup();
             // `follows` (`graph.md` 2, "placement"): the shape reads the followed thing's. It
             // had no edge, so a row kept its old line when its street moved, on one store
             // (M5 `market` `move_street`: `diag.internal`, `shape:row_main_n1` unstable).
@@ -1726,11 +1788,13 @@ impl<'w> ModelPlan<'w> {
                 }
                 head_fields.extend(r.fields.iter().cloned());
             }
+            let mut named: Vec<String> = Vec::new();
             for (key, at) in [("starts_at", &f.starts_at), ("ends_at", &f.ends_at)] {
                 if let Some(at) = at {
                     for t in self.targets(at) {
                         shape_edges.push((key.to_string(), t));
                     }
+                    named.extend(self.ref_stmts(at));
                 }
             }
             // A named way point (`derived.md` 3): the shape reads the place it passes.
@@ -1738,6 +1802,13 @@ impl<'w> ModelPlan<'w> {
                 for t in self.targets(at) {
                     shape_edges.push(("path".to_string(), t));
                 }
+                named.extend(self.ref_stmts(at));
+            }
+            // An end or a way point at an instance's mount is where the host asset puts it.
+            if !named.is_empty() {
+                statements.extend(self.stmts_of(named.iter().map(String::as_str)));
+                statements.sort();
+                statements.dedup();
             }
             defs.push((
                 view(NodeId::of("shape", id)),
@@ -1893,6 +1964,7 @@ impl<'w> ModelPlan<'w> {
                 asset.clone(),
             ];
             stmts.extend(d.set_stmts(i.set.as_deref()));
+            stmts.extend(self.on_stmts(&i.place));
             let statements = self.stmts_of(stmts.iter().map(String::as_str));
             // The plan holds no choice by height (`surfaces.md` 4.1, R65): a thing's origin,
             // facing and frame are the same whichever surface its height chooses. The choice is
@@ -2070,6 +2142,7 @@ impl<'w> ModelPlan<'w> {
                     format!("asset:{}", pin.asset),
                 ]
                 .iter()
+                .chain(self.on_stmts(&pin.place).iter())
                 .map(String::as_str),
             );
             let mut edges = Vec::new();
@@ -2173,6 +2246,13 @@ impl<'w> ModelPlan<'w> {
                     statements: self.stmts_of(
                         [format!("clear.{id}"), "world".into()]
                             .iter()
+                            .chain(
+                                c.place
+                                    .as_ref()
+                                    .map(|p| self.on_stmts(p))
+                                    .unwrap_or_default()
+                                    .iter(),
+                            )
                             .map(String::as_str),
                     ),
                     edges,
@@ -3676,7 +3756,8 @@ impl<'w> ModelPlan<'w> {
                         }
                     }
                     // A meeting's check reads every path that ends at the mount (`surfaces.md`
-                    // 3.4), which the instance's height does not: the merge holds it.
+                    // 3.4), and a joint's every other instance's mounts (3.3), which the
+                    // instance's height does not: the merge holds it.
                     "instance"
                         if late
                             && [
@@ -3685,6 +3766,7 @@ impl<'w> ModelPlan<'w> {
                                 codes::surface::GAP,
                                 codes::surface::FACING,
                                 codes::surface::APART,
+                                codes::surface::JOINT_MANY,
                             ]
                             .iter()
                             .any(|c| *d.code() == via_diag::DiagCode::Core(*c)) =>

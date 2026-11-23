@@ -319,12 +319,19 @@ kind mount.
 |---|---|---|
 | `at` | point | Plan position in the asset frame, lattice metres. Required. It may lie outside `bounds` (a doorstep in front of a door). Its height is never written: it is the surface's (`surfaces.md` 3.1). |
 | `face` | number | A bearing in the asset frame, 0 = the asset's front, clockwise (`numbers.md` 2). Default 0. The way a walker faces as it enters through the mount (`surfaces.md` 3.4's `turn`). |
-| `connector` | string | (M5) What joint it is: a free word compared only for equality, as on a kind mount (`surfaces.md` 3.2, 3.4: `surface.connector`, `surface.unmet`). Default none. |
+| `connector` | string | (M5) What joint it is: a free word compared only for equality, as on a kind mount (`surfaces.md` 3.2, 3.4: `surface.connector`, `surface.unmet`). Default none. From K9 two instances' mounts with connectors at one plan point answer each other with nothing written (a joint, `surfaces.md` 3.3, R76). |
+| `rise` | number | (K9, R75) How far the mount stands above the surface its instance stands on, lattice metres; default 0, negative allowed. A hole 5 m up a wall piece is a mount with `rise = 5`. Its height in a build is that surface's at the mount's plan point plus `rise` times the instance's `scale` (`surfaces.md` 3.2). |
 
-- `t` and `offset` are not taken: an asset has no path. Each is `doc.unknown_key`.
-- A mount's `connector` is one of the mount's facts: in the facts file with `at` and `face`
-  (4.1), and an edit to it in an accepted pack is `asset.revised` (4.2's `mounts` row).
-- A mount takes no `surface`: it lies on what its instance stands on (`surfaces.md` 3.2).
+- No other key is taken: each is `doc.unknown_key` on the mount, with the nearest key. `t` and
+  `offset` are not taken because an asset has no path; `surface` and `meets` are a kind mount's
+  (`surfaces.md` 3.1), and each has its own hint.
+- A mount's `connector` and its `rise` are among the mount's facts: in the facts file with `at`
+  and `face` (4.1), and an edit to either in an accepted pack is `asset.revised` (4.2's `mounts`
+  row), naming every instance, because the meetings of each may change.
+- A mount takes no `surface`: it lies on what its instance stands on (`surfaces.md` 3.2). With a
+  `rise` it lies on nothing: a path may end at it and another instance's mount may join it, and a
+  thing placed `on` it is `surface.on_rise`.
+- `rise` that is not a number, or not on the lattice, is `doc.type`.
 - A mount named `start`, `end` or `ground` is `identity.reserved`.
 - Mounts are pack-wide checks (8.3) and facts of the facts file (section 4).
 
@@ -426,7 +433,9 @@ Two correct implementations write the same bytes.
 - `mounts` is an inline table by mount name, sorted: `{ door = { at = [0, 3.1], face = 0 } }`.
   From M5 a mount with a connector adds it: `{ at = [0, 3.1], connector = "foot", face = 0 }`,
   keys sorted; a mount without one writes no `connector`, so M2 facts files stay byte-equal.
-  Absent when the asset has none.
+  From K9 a mount whose `rise` is not 0 adds it, last: `{ at = [0, 0.15], connector = "pipe",
+  face = 180, rise = 5 }`; a mount with none, or with `rise = 0`, writes no `rise`, so a facts
+  file written before it stays byte-equal. Absent when the asset has none.
 - `params` is the BLAKE3 digest (`build.md` 3.3) of the canonical JSON (`documents.md` 8) of the
   resolved `params`. Absent when there are none. `shared` (K6) is the same digest of the resolved
   `shared`, and absent when there is none, so a facts file written before it stays byte-equal.
@@ -929,8 +938,11 @@ owner. Reason: grounding already reads it, and a pack is where a part's facts li
 every part grounds on the surface beneath its own origin, so a thing with parts must lie on flat
 ground to stay whole; a part at two heights is two assets; and an accessory's asset states the
 height of its host's socket (12.3). The fix, when a world needs it, is a mount with a height (a
-socket in three dimensions, a thing on it standing at its host's pivot plus that height); owed,
-not built (TODO).
+socket in three dimensions, a thing on it standing at its host's pivot plus that height). **Half
+built at K9 (R75):** a mount has its height, `rise` (2.7), and a path end or another instance's
+mount is held to it; a thing placed `on` a risen mount is still refused (`surface.on_rise`),
+because an instance stands on a surface and a part's own height is still its `sink`. Standing on
+a risen mount is owed (TODO).
 
 ### 12.3 Accessories
 
@@ -1043,6 +1055,8 @@ checks that a clean build equals the incremental one.
 | Bad footprint | 1 | A clockwise square; a square with its first point repeated | `via pack check` | Two `asset.bad_footprint`, exit 1. |
 | Mount reserved | 1 | `[asset.box.mount.start]`; again with `ground` | `via pack check` | `identity.reserved`, exit 1. |
 | Mount connector | 5 | `connector = "wall"` on an asset mount | `via pack check`; `via pack list` | Exit 0; the mount's `connector` is `wall`. |
+| Mount rise | 7 | `rise = 5` on one asset mount, `rise = 0` on another, none on a third; then `rise = "high"`, and `t = 0.5` | `via pack check`; `via pack list` | Exit 0; the first mount's `rise` is 5, and the other two list none. Then `doc.type` on `rise`; `doc.unknown_key` on `t`, exit 1 each. |
+| Rise revised | 7 | accepted; a mount's `rise` edited 5 to 4 in the pack | accept, build, edit, build `--against` | `asset.revised` on the asset, naming both instances; the facts file's `mounts` line holds `rise = 5`. |
 | Material | 1 | A material with `file` and no `repeat`; a `paint` naming `gras` | `via build` | `pack.material_repeat`; `pack.unknown_material` hint `grass`; exit 1. |
 | Dotted id | 1 | `[asset."house.low"]` | `via pack check` | `identity.bad_id`, exit 1. |
 | Unknown asset | 1 | A world on the primitive pack naming `house_lo` | `via build` | `asset.unknown`, hint `house_low`, exit 1. |

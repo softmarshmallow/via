@@ -794,6 +794,11 @@ takes = "number"
 chapter = "assets"
 sections = ["Pack"]
 
+[key."rise"]
+takes = "number"
+chapter = "assets"
+sections = ["Pack"]
+
 [key."max_relief"]
 takes = "number"
 chapter = "assets"

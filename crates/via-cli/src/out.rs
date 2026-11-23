@@ -458,6 +458,10 @@ fn asset_json(a: &via_model::pack::Asset, stand_ins: bool) -> J {
         if let (Some(c), J::Obj(m)) = (a.connectors.get(n), &mut o) {
             m.insert("connector".into(), J::s(c.clone()));
         }
+        // `rise` only where it is not 0 (`assets.md` 2.7, R75).
+        if let (Some(r), J::Obj(m)) = (a.rises.get(n), &mut o) {
+            m.insert("rise".into(), J::mm(*r));
+        }
         mounts.insert(n.clone(), o);
     }
     m.insert("mounts".into(), J::Obj(mounts));

@@ -1,0 +1,56 @@
+format    = "via-case-1"
+summary   = "assets.md 2.7 (R75): rise = 5 on an asset mount: exit 0, and the mount's rise is 5; a mount with rise = 0 and one with none list no rise. Then rise = \"high\": doc.type. Then t = 0.5 on an asset mount: doc.unknown_key."
+milestone = 7
+actions   = ["check", "list", "word", "bad", "key", "unknown"]
+
+[action.check]
+via  = ["pack", "check", "pack.toml"]
+exit = 0
+
+[action.list]
+via  = ["pack", "list", "pack.toml"]
+exit = 0
+
+[action.list.file.rise]
+stream  = "stdout"
+line    = 1
+pointer = "/mounts/port"
+value   = { at = [0, 0.15], connector = "pipe", face = 0, rise = 5 }
+
+[action.list.file.zero]
+stream  = "stdout"
+line    = 1
+pointer = "/mounts/low"
+value   = { at = [1, 0.15], face = 0 }
+
+[action.list.file.none]
+stream  = "stdout"
+line    = 1
+pointer = "/mounts/door"
+value   = { at = [-1, 0.15], face = 0 }
+
+[action.word]
+replace = "pack.toml"
+find    = "rise      = 5"
+with    = "rise      = \"high\""
+
+[action.bad]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.bad.diag.type]
+code = "doc.type"
+
+[action.key]
+replace = "pack.toml"
+find    = "rise      = \"high\""
+with    = "t         = 0.5"
+
+[action.unknown]
+via         = ["pack", "check", "pack.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.unknown.diag.key]
+code = "doc.unknown_key"

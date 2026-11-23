@@ -1,0 +1,4 @@
+# The ring's second piece replaced by the hall whose way out is a hatch, where the next piece's
+# way in is a door.
+[instance.r2]
+asset = "hall_hatch"

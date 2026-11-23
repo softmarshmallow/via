@@ -1,0 +1,23 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.1 (R75), rise_kind: `rise` on a kind mount is doc.unknown_key: a kind mount's height is its surface's. The hint says so."
+milestone = 7
+actions   = ["edit", "build"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[action.edit]
+replace = "lib/surfaces_test/kinds.toml"
+find    = "[kind.rail]\nconnector = \"rail\""
+with    = "[kind.rail]\nconnector = \"rail\"\n\n[kind.rail.mount.head]\nt    = 0\nrise = 1"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.rise]
+code    = "doc.unknown_key"
+subject = "kind.rail.mount.head.rise"

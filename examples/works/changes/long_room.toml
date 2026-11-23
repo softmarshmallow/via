@@ -1,0 +1,4 @@
+# The ring's fourth piece replaced by the room on another module, 128 mm longer to its way out.
+# Every piece after it stands 128 mm further on; the ring's first piece does not move.
+[instance.r4]
+asset = "room_long"

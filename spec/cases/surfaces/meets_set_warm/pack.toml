@@ -1,0 +1,19 @@
+# A pipe piece with a mount at each end, 5 m up (surfaces.md 3.3, R76).
+[taxon."structure"]
+
+[asset.both]
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.both.mount.a]
+at        = [-2, 0]
+face      = 270
+connector = "pipe"
+rise      = 5
+[asset.both.mount.b]
+at        = [2, 0]
+face      = 90
+connector = "pipe"
+rise      = 5
+

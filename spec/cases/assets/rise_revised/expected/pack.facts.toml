@@ -1,0 +1,17 @@
+# Written by via pack accept. Do not edit.
+
+[asset.cube]
+bounds = [-0.5, -0.5, 0, 0.5, 0.5, 1]
+origin = [0, 0, 0]
+footprint = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+tags = []
+mounts = { port = { at = [0, 1], connector = "pipe", face = 0, rise = 5 } }
+files = { "cube.gltf" = "4b602ec8d772f6dd067a9cf716c7c465eb5b1afa6687f666588bd305dc0d9ca9" }

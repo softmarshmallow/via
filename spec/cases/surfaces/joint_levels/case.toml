@@ -1,0 +1,74 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3 (R76), joint_levels: four mounts at one plan point, two holes of one wall piece at 3 m and 5 m and a pipe end at each height: they join in twos by height, gap 0 each, and the wall's two holes never join each other. The lower end made for 4 m: the upper pair still joins, and the two left over are a joint at two heights, surface.gap, 1000 mm. With the upper end taken away as well: three mounts are left at the point with no two at one height, none joins, and each is surface.unmet naming the miss in height."
+milestone = 7
+actions   = ["build", "to_four", "four", "drop", "three"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/build"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/build"
+
+# Rows by a, bytewise: hi.c, lo.c.
+[action.build.file.high]
+path     = "build/build/meets.json"
+pointer  = "/meets/0"
+includes = { a = "hi.c", b = "wall.high", gap = 0, z_a = 15, z_b = 15 }
+
+[action.build.file.low]
+path     = "build/build/meets.json"
+pointer  = "/meets/1"
+includes = { a = "lo.c", b = "wall.low", gap = 0, z_a = 13, z_b = 13 }
+
+[action.build.check.two]
+fn      = "json_count"
+path    = "build/build/meets.json"
+pointer = "/meets"
+count   = 2
+
+[action.to_four]
+replace = "world.toml"
+find    = "asset = \"end_3\""
+with    = "asset = \"end_4\""
+
+[action.four]
+via         = ["build", "world.toml", "--out", "build/four"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/four"
+
+[action.four.diag.gap]
+code    = "surface.gap"
+subject = "instance.lo"
+data    = { place = "lo.c", gap = 1000 }
+
+[action.four.diag.unmet]
+code    = "surface.unmet"
+records = 0
+
+[action.drop]
+replace = "world.toml"
+find    = "[instance.hi]\nasset = \"end_5\"\nat    = [60, 65.15]"
+with    = "# the upper end is gone"
+
+[action.three]
+via         = ["build", "world.toml", "--out", "build/three"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/three"
+
+[action.three.diag.end]
+code    = "surface.unmet"
+subject = "instance.lo"
+data    = { place = "lo.c", miss = 0, miss_z = 1000 }
+
+[action.three.diag.holes]
+code    = "surface.unmet"
+subject = "instance.wall"
+records = 2
+
+[action.three.check.none]
+fn      = "json_count"
+path    = "build/three/meets.json"
+pointer = "/meets"
+count   = 0

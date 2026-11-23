@@ -1,0 +1,3 @@
+# The spur 0.2 m longer: 6.2 m, of which its flange and its cap take 1 m.
+[feature.spur]
+to = [[29.2, 44.6]]

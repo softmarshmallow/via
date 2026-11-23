@@ -1,0 +1,54 @@
+# The layer above the buildings (world.toml): the steps that lay and check them.
+
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.pipes]                                  # one call per pipe: its legs and pieces (lib/building/pipe.py)
+when     = "generate"
+worker   = true
+for_each = "kind:pipe"
+command  = ["python", "-m", "viasdk", "lib:building/pipe.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay", "pipes"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/shed", "structure/boiler", "service/pipe"] }   # the pipe kit too: its pieces' pitch against their models
+
+# ------------------------------------------------------------------------------------------ the rooms
+
+# A ring of six whole pieces inside the shed, each standing on the way out of the one before
+# (spec/rules.md 3.2), so only the first has a place. The last piece's way out comes back to the
+# first piece's way in: the closing join, which nothing here writes. The engine finds it
+# (spec/surfaces.md 3.3, a joint), or says by how much it misses. They are written in this layer
+# because the shed's floor is made by `lay`, here: a thing in the world's own text cannot stand on
+# it, and its height is written, since no text can name a floor a step made (surfaces.md 4.1).
+
+[instance.r1]                                 # the first room, by its way in, on the shed's floor
+asset = "room"
+at    = [13, 26, 10]
+
+[instance.r2]
+asset = "hall"
+on    = { ref = "r1.out" }
+
+[instance.r3]
+asset = "hall_corner"
+on    = { ref = "r2.out" }
+
+[instance.r4]
+asset = "room"
+on    = { ref = "r3.out" }
+
+[instance.r5]
+asset = "hall"
+on    = { ref = "r4.out" }
+
+[instance.r6]
+asset = "hall_corner"
+on    = { ref = "r5.out" }
+

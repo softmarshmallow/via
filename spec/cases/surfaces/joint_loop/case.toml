@@ -1,0 +1,49 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3, 3.4 (R76), joint_loop: four rooms set one on the next round a ring, the third on another module. Three doors join; the ring misses at its closing join, and surface.unmet on each of the two open doors names the other and the miss, 128 mm in plan and 0 in height. The joined doors say nothing. With the third room on the ring's module: four joints and no diagnostic."
+milestone = 7
+actions   = ["build", "mend", "again"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/build"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/build"
+
+[action.build.diag.first]
+code     = "surface.unmet"
+severity = "warning"
+subject  = "instance.r1"
+data     = { place = "r1.in", near = "r4.out", miss = 128, miss_z = 0, connector = "door" }
+
+[action.build.diag.last]
+code    = "surface.unmet"
+subject = "instance.r4"
+data    = { place = "r4.out", near = "r1.in", miss = 128, miss_z = 0 }
+
+[action.build.check.three]
+fn      = "json_count"
+path    = "build/build/meets.json"
+pointer = "/meets"
+count   = 3
+
+[action.mend]
+replace = "world.toml"
+find    = "asset = \"room_b\""
+with    = "asset = \"room\""
+
+[action.again]
+via         = ["build", "world.toml", "--out", "build/again"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/again"
+
+[action.again.check.four]
+fn      = "json_count"
+path    = "build/again/meets.json"
+pointer = "/meets"
+count   = 4
+
+[action.again.file.closing]
+path     = "build/again/meets.json"
+pointer  = "/meets/0"
+includes = { a = "r1.in", b = "r4.out", gap = 0, face_a = 180000, face_b = 0 }

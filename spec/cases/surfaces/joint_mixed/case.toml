@@ -1,0 +1,51 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3, 3.4 (R76), joint_mixed: mounts at one point join within one connector first. Two pipe ends and a water end at one point and height: the two pipes are a joint, and the water end is surface.unmet, told what it stands beside (as first built the three were surface.joint_many and the joint was lost). Then the third a pipe end a metre higher: the joint holds, and the third is surface.unmet, naming the two it stands beside and no other."
+milestone = 7
+actions   = ["build", "higher", "again"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.check.one]
+fn      = "json_count"
+path    = "build/build/meets.json"
+pointer = "/meets"
+count   = 1
+
+[action.build.file.joint]
+path     = "build/build/meets.json"
+pointer  = "/meets/0"
+includes = { a = "p1.b", b = "p2.a", connector_a = "pipe", connector_b = "pipe", gap = 0 }
+
+[action.build.diag.many]
+code    = "surface.joint_many"
+records = 0
+
+[action.build.diag.water]
+code    = "surface.unmet"
+subject = "instance.p3"
+data    = { place = "p3.c", connector = "water", beside = "p1.b p2.a" }
+
+[action.higher]
+write = "pack.toml"
+text  = "[taxon.\"structure\"]\n\n[asset.left]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.left.mount.b]\nat        = [2, 0]\nface      = 90\nconnector = \"pipe\"\nrise      = 5\n\n[asset.right]\nprimitive = \"box\"\nsize      = [3.6, 0.4, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.right.mount.a]\nat        = [-2, 0]\nface      = 270\nconnector = \"pipe\"\nrise      = 5\n\n[asset.down]\nprimitive = \"box\"\nsize      = [0.4, 3.6, 0.4]\ntaxon     = \"structure\"\nsolidity  = \"passable\"\n[asset.down.mount.c]\nat        = [0, -2]\nface      = 180\nconnector = \"pipe\"\nrise      = 6\n\n"
+
+[action.again]
+via         = ["build", "world.toml", "--out", "build/again"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/again"
+
+[action.again.check.one]
+fn      = "json_count"
+path    = "build/again/meets.json"
+pointer = "/meets"
+count   = 1
+
+[action.again.diag.third]
+code    = "surface.unmet"
+subject = "instance.p3"
+data    = { place = "p3.c", connector = "pipe", beside = "p1.b p2.a" }

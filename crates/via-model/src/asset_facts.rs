@@ -193,8 +193,15 @@ pub fn entry(a: &Asset) -> Vec<(&'static str, String)> {
                     .get(n)
                     .map(|c| format!("connector = {}, ", basic(c)))
                     .unwrap_or_default();
+                // `rise` only where it is not 0 (R75), so a facts file written before it stays
+                // byte-equal.
+                let r = a
+                    .rises
+                    .get(n)
+                    .map(|r| format!(", rise = {}", len(*r)))
+                    .unwrap_or_default();
                 format!(
-                    "{n} = {{ at = [{}, {}], {c}face = {} }}",
+                    "{n} = {{ at = [{}, {}], {c}face = {}{r} }}",
                     len(*x),
                     len(*y),
                     via_num::write_facing(*face)

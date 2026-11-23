@@ -1,0 +1,3 @@
+# The straight piece's model exported 0.2 m short. The pack still says it repeats every 2 m, so
+# the step lays it as before: only the model has changed, as a re-export does.
+pack = "packs/short_pipe.toml"

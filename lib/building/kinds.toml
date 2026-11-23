@@ -91,6 +91,24 @@ porch    = 2
 walk_out = 3
 roof     = ""
 
+[kind.pipe]                              # a pipe between two kits, written by its points and their heights (pipe.py)
+authority = "anchored"
+
+[kind.pipe.defaults]                     # a point, `at`: where the pipe starts
+to       = []                            # [[x, y], ...]: the points it goes on through, in order
+heights  = []                            # one for `at` and each point of `to`: metres above the ground at `at`; `[arriving, leaving]` is a riser
+kit      = ""                            # the pipe kit's taxon
+ends     = ["flange", "flange"]          # what stands on the first and the last point: "flange" (a plug) or "cap"
+
+[kind.pipe_leg]                          # one level leg of a pipe: a path owning the surface its pieces stand on
+connector = "pipe"                       # a riser's `top` says the same word (pipe.py rule 3)
+requires  = ["level"]
+defaults  = { width = 0.3 }
+
+[kind.pipe_leg.surface.line]             # the pipe's middle line, level
+base  = "= level"
+bound = "= width / 2"
+
 [kind.storey]                            # one floor of a building: a region and its floor
 authority = "anchored"
 requires  = ["level"]

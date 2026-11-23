@@ -1,0 +1,13 @@
+# A wall piece with a hole 4.499 m up its front (assets.md 2.7, R75).
+[taxon."structure"]
+
+[asset.panel]
+primitive = "box"
+size      = [4, 0.3, 6]
+taxon     = "structure"
+solidity  = "passable"
+[asset.panel.mount.port]
+at        = [0, 0.15]
+face      = 0
+rise      = 4.499
+

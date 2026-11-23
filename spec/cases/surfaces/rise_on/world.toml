@@ -1,0 +1,25 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 10
+
+[instance.wall]
+asset = "panel"
+at    = [60, 60]
+
+[instance.lamp]
+asset = "lamp"
+on    = { ref = "wall.port" }
+
+[instance.big]                   # the same piece at twice the size: its port is 10 m up
+asset = "panel"
+at    = [80, 60]
+scale = 2
+
+[instance.lamp2]
+asset = "lamp"
+on    = { ref = "big.port" }

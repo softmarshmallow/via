@@ -1,0 +1,1429 @@
+# What a works build measures (docs/plan-kits.md, K9). Our own design: the research found the
+# pipe kit as the model of a kit and pipes kept as glue, from one studio, and no account of pipes
+# joined freely in three dimensions (docs/research/Modular kit failures in studios.md, sections
+# 3, 6 and 12). Measures, never bytes (R15): each row names a measure of `measure.py` and the band
+# it must fall in. Taken by
+#
+#   python3 examples/works/measure.py BUILD --world examples/works/world.toml         # base
+#   python3 examples/works/measure.py BUILD+<c> --base BUILD                          # a change, built with --against
+#   python3.11 examples/works/measure.py BUILD+<c> --base BUILD --check <c>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at 2d88999 with
+# K9's engine slice (a mount's `rise`, R75; joints, R76) and its fix pass, VIA_LIB=lib, Python 3.12
+# (sdk/python/.venv) for the steps, lib/building's `lay`, `pipes` and `check` of the working tree
+# with K9's second slice (pipe.py) and K9's fix pass. One fresh store: the
+# base, then each change with --against the base, one build each. Measured 2026-11-23 in one run
+# and checked in a second. A band is the measured number: not a target, it says where someone
+# looks.
+
+# ------------------------------------------------------------------------------------------ base
+# The works as written: two buildings, two pipes and six room pieces, 64 numbers. `pipes`
+# returns 6 legs and 36 pieces; every pipe piece's end lies on the next one's (27 joins, none
+# loose). Nine joints that nothing wrote: three flanges in three ports 4.5 m up, and the six doors
+# of the ring, the closing one among them. The upper leg's two ends meet its two risers' tops, each 3 m
+# above what its riser stands on. Nothing is said but that one leg, at 7.5 m, has no support.
+
+[base.built]
+measure = "built"
+band    = [1, 1]
+
+[base.instances]
+measure = "instances"
+band    = [228, 228]
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.gap]
+measure = "gap"
+band    = [0, 0]
+
+[base.unmet]
+measure = "unmet"
+band    = [0, 0]
+
+[base.connector]
+measure = "connector"
+band    = [0, 0]
+
+[base.facing]
+measure = "facing"
+band    = [0, 0]
+
+[base.joint_many]
+measure = "joint_many"
+band    = [0, 0]
+
+[base.crossing]
+measure = "crossing"
+band    = [0, 0]
+
+[base.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[base.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[base.pipe_open]
+measure = "pipe_open"
+band    = [0, 0]
+
+[base.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+[base.support_none]
+measure = "support_none"
+band    = [1, 1]
+
+[base.lay_params]
+measure = "lay_params"
+band    = [0, 0]
+
+[base.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[base.turn]
+measure = "turn"
+band    = [0, 0]
+
+[base.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[base.legs]
+measure = "legs"
+band    = [6, 6]
+
+[base.straights]
+measure = "straights"
+band    = [9, 9]
+
+[base.slips]
+measure = "slips"
+band    = [12, 12]
+
+[base.elbows]
+measure = "elbows"
+band    = [2, 2]
+
+[base.risers]
+measure = "risers"
+band    = [2, 2]
+
+[base.flanges]
+measure = "flanges"
+band    = [3, 3]
+
+[base.caps]
+measure = "caps"
+band    = [1, 1]
+
+[base.supports]
+measure = "supports"
+band    = [7, 7]
+
+[base.pipe_joins]
+measure = "pipe_joins"
+band    = [27, 27]
+
+[base.pipe_loose]
+measure = "pipe_loose"
+band    = [0, 0]
+
+[base.pipe_gap_mm]
+measure = "pipe_gap_mm"
+band    = [0, 0]
+
+[base.support_foot_mm]
+measure = "support_foot_mm"
+band    = [0, 0]
+
+[base.joints]
+measure = "joints"
+band    = [9, 9]
+
+[base.ports]
+measure = "ports"
+band    = [3, 3]
+
+[base.port_joints]
+measure = "port_joints"
+band    = [3, 3]
+
+[base.plugs_joined]
+measure = "plugs_joined"
+band    = [3, 3]
+
+[base.riser_meets]
+measure = "riser_meets"
+band    = [2, 2]
+
+[base.rooms]
+measure = "rooms"
+band    = [6, 6]
+
+[base.doors]
+measure = "doors"
+band    = [12, 12]
+
+[base.doors_joined]
+measure = "doors_joined"
+band    = [12, 12]
+
+[base.door_joints]
+measure = "door_joints"
+band    = [6, 6]
+
+[base.ring_miss_mm]
+measure = "ring_miss_mm"
+band    = [0, 0]
+
+[base.written_buildings]
+measure = "written_buildings"
+band    = [2, 2]
+
+[base.written_pipes]
+measure = "written_pipes"
+band    = [2, 2]
+
+[base.written_instances]
+measure = "written_instances"
+band    = [6, 6]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [64, 64]
+
+# ------------------------------------------------------------------------------------------ moved
+# The boiler house 0.3 m east. The pipe is laid as it was and whole; its flange and the port
+# are each `surface.unmet`, and each names the other and the miss: 300 mm in plan, 0 in height.
+
+[moved.built]
+measure = "built"
+band    = [1, 1]
+
+[moved.errors]
+measure = "errors"
+band    = [0, 0]
+
+[moved.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[moved.gap]
+measure = "gap"
+band    = [0, 0]
+
+[moved.unmet]
+measure = "unmet"
+band    = [2, 2]
+
+[moved.connector]
+measure = "connector"
+band    = [0, 0]
+
+[moved.facing]
+measure = "facing"
+band    = [0, 0]
+
+[moved.joint_many]
+measure = "joint_many"
+band    = [0, 0]
+
+[moved.crossing]
+measure = "crossing"
+band    = [0, 0]
+
+[moved.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[moved.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[moved.pipe_open]
+measure = "pipe_open"
+band    = [0, 0]
+
+[moved.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+[moved.support_none]
+measure = "support_none"
+band    = [1, 1]
+
+[moved.lay_params]
+measure = "lay_params"
+band    = [0, 0]
+
+[moved.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[moved.turn]
+measure = "turn"
+band    = [0, 0]
+
+[moved.unmet_named]
+measure = "unmet_named"
+band    = [2, 2]
+
+[moved.unmet_miss_mm]
+measure = "unmet_miss_mm"
+band    = [300, 300]
+
+[moved.unmet_miss_z_mm]
+measure = "unmet_miss_z_mm"
+band    = [0, 0]
+
+[moved.pipe_joins]
+measure = "pipe_joins"
+band    = [27, 27]
+
+[moved.pipe_loose]
+measure = "pipe_loose"
+band    = [0, 0]
+
+[moved.joints]
+measure = "joints"
+band    = [8, 8]
+
+[moved.ports]
+measure = "ports"
+band    = [3, 3]
+
+[moved.port_joints]
+measure = "port_joints"
+band    = [2, 2]
+
+[moved.plugs_joined]
+measure = "plugs_joined"
+band    = [2, 2]
+
+[moved.riser_meets]
+measure = "riser_meets"
+band    = [2, 2]
+
+[moved.moved]
+measure = "moved"
+band    = [62, 62]
+
+[moved.added]
+measure = "added"
+band    = [0, 0]
+
+[moved.removed]
+measure = "removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ no_port
+# The boiler house with no port bay. The flange is `surface.unmet` and names no other: no
+# mount with its connector is within 2 m. Nothing says the pipe ends at a plain wall.
+
+[no_port.built]
+measure = "built"
+band    = [1, 1]
+
+[no_port.errors]
+measure = "errors"
+band    = [0, 0]
+
+[no_port.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[no_port.gap]
+measure = "gap"
+band    = [0, 0]
+
+[no_port.unmet]
+measure = "unmet"
+band    = [1, 1]
+
+[no_port.connector]
+measure = "connector"
+band    = [0, 0]
+
+[no_port.facing]
+measure = "facing"
+band    = [0, 0]
+
+[no_port.joint_many]
+measure = "joint_many"
+band    = [0, 0]
+
+[no_port.crossing]
+measure = "crossing"
+band    = [0, 0]
+
+[no_port.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[no_port.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[no_port.pipe_open]
+measure = "pipe_open"
+band    = [0, 0]
+
+[no_port.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+[no_port.support_none]
+measure = "support_none"
+band    = [1, 1]
+
+[no_port.lay_params]
+measure = "lay_params"
+band    = [0, 0]
+
+[no_port.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[no_port.turn]
+measure = "turn"
+band    = [0, 0]
+
+[no_port.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[no_port.joints]
+measure = "joints"
+band    = [8, 8]
+
+[no_port.ports]
+measure = "ports"
+band    = [2, 2]
+
+[no_port.port_joints]
+measure = "port_joints"
+band    = [2, 2]
+
+[no_port.plugs_joined]
+measure = "plugs_joined"
+band    = [2, 2]
+
+[no_port.riser_meets]
+measure = "riser_meets"
+band    = [2, 2]
+
+[no_port.added]
+measure = "added"
+band    = [0, 0]
+
+[no_port.removed]
+measure = "removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ low
+# The shed's port restated 3.5 m up. `surface.gap`, an error, of each of the shed's two
+# ports: 1000 mm between the port and the flange that comes to it, the hint naming the port's
+# rise. The build stops.
+
+[low.built]
+measure = "built"
+band    = [0, 0]
+
+[low.errors]
+measure = "errors"
+band    = [2, 2]
+
+[low.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[low.gap]
+measure = "gap"
+band    = [2, 2]
+
+[low.gap_max_mm]
+measure = "gap_max_mm"
+band    = [1000, 1000]
+
+[low.gap_min_mm]
+measure = "gap_min_mm"
+band    = [1000, 1000]
+
+[low.unmet]
+measure = "unmet"
+band    = [0, 0]
+
+[low.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[low.connector]
+measure = "connector"
+band    = [0, 0]
+
+[low.connector_of_doors]
+measure = "connector_of_doors"
+band    = [0, 0]
+
+[low.connector_of_pipes]
+measure = "connector_of_pipes"
+band    = [0, 0]
+
+[low.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[low.params_turn_mdeg]
+measure = "params_turn_mdeg"
+band    = [-1, -1]
+
+[low.params_climb_mm]
+measure = "params_climb_mm"
+band    = [-1, -1]
+
+[low.params_leg_rise_mm]
+measure = "params_leg_rise_mm"
+band    = [-1, -1]
+
+[low.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ wrong_plug
+# The flange restated with the connector `steam`. `surface.connector`, an error, of each of
+# the three ports; and all six mounts are `surface.unmet`, since a joint of two connectors answers
+# neither. The build stops.
+
+[wrong_plug.built]
+measure = "built"
+band    = [0, 0]
+
+[wrong_plug.errors]
+measure = "errors"
+band    = [3, 3]
+
+[wrong_plug.warnings]
+measure = "warnings"
+band    = [6, 6]
+
+[wrong_plug.gap]
+measure = "gap"
+band    = [0, 0]
+
+[wrong_plug.gap_max_mm]
+measure = "gap_max_mm"
+band    = [0, 0]
+
+[wrong_plug.gap_min_mm]
+measure = "gap_min_mm"
+band    = [0, 0]
+
+[wrong_plug.unmet]
+measure = "unmet"
+band    = [6, 6]
+
+[wrong_plug.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[wrong_plug.connector]
+measure = "connector"
+band    = [3, 3]
+
+[wrong_plug.connector_of_doors]
+measure = "connector_of_doors"
+band    = [0, 0]
+
+[wrong_plug.connector_of_pipes]
+measure = "connector_of_pipes"
+band    = [3, 3]
+
+[wrong_plug.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[wrong_plug.params_turn_mdeg]
+measure = "params_turn_mdeg"
+band    = [-1, -1]
+
+[wrong_plug.params_climb_mm]
+measure = "params_climb_mm"
+band    = [-1, -1]
+
+[wrong_plug.params_leg_rise_mm]
+measure = "params_leg_rise_mm"
+band    = [-1, -1]
+
+[wrong_plug.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ diagonal
+# A leg at 45 degrees. The pipes step refuses `main` (`params`), naming the angle and the
+# kit's elbow of 90; the two ports it came to are `surface.unmet`. The spur, its own call of the
+# step, is laid. The build stops.
+
+[diagonal.built]
+measure = "built"
+band    = [0, 0]
+
+[diagonal.errors]
+measure = "errors"
+band    = [1, 1]
+
+[diagonal.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[diagonal.gap]
+measure = "gap"
+band    = [0, 0]
+
+[diagonal.gap_max_mm]
+measure = "gap_max_mm"
+band    = [0, 0]
+
+[diagonal.gap_min_mm]
+measure = "gap_min_mm"
+band    = [0, 0]
+
+[diagonal.unmet]
+measure = "unmet"
+band    = [2, 2]
+
+[diagonal.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[diagonal.connector]
+measure = "connector"
+band    = [0, 0]
+
+[diagonal.connector_of_doors]
+measure = "connector_of_doors"
+band    = [0, 0]
+
+[diagonal.connector_of_pipes]
+measure = "connector_of_pipes"
+band    = [0, 0]
+
+[diagonal.pipe_params]
+measure = "pipe_params"
+band    = [1, 1]
+
+[diagonal.params_turn_mdeg]
+measure = "params_turn_mdeg"
+band    = [45000, 45000]
+
+[diagonal.params_climb_mm]
+measure = "params_climb_mm"
+band    = [-1, -1]
+
+[diagonal.params_leg_rise_mm]
+measure = "params_leg_rise_mm"
+band    = [-1, -1]
+
+[diagonal.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ climb
+# The road crossed 2 m up. `main` is refused (`params`): the kit's riser makes 3 m. Its two
+# ports are `surface.unmet`. The build stops.
+
+[climb.built]
+measure = "built"
+band    = [0, 0]
+
+[climb.errors]
+measure = "errors"
+band    = [1, 1]
+
+[climb.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[climb.gap]
+measure = "gap"
+band    = [0, 0]
+
+[climb.gap_max_mm]
+measure = "gap_max_mm"
+band    = [0, 0]
+
+[climb.gap_min_mm]
+measure = "gap_min_mm"
+band    = [0, 0]
+
+[climb.unmet]
+measure = "unmet"
+band    = [2, 2]
+
+[climb.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[climb.connector]
+measure = "connector"
+band    = [0, 0]
+
+[climb.connector_of_doors]
+measure = "connector_of_doors"
+band    = [0, 0]
+
+[climb.connector_of_pipes]
+measure = "connector_of_pipes"
+band    = [0, 0]
+
+[climb.pipe_params]
+measure = "pipe_params"
+band    = [1, 1]
+
+[climb.params_turn_mdeg]
+measure = "params_turn_mdeg"
+band    = [-1, -1]
+
+[climb.params_climb_mm]
+measure = "params_climb_mm"
+band    = [2000, 2000]
+
+[climb.params_leg_rise_mm]
+measure = "params_leg_rise_mm"
+band    = [-1, -1]
+
+[climb.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ sloped_leg
+# The spur climbing along its leg. Refused (`params`): a leg is level; the hint says a
+# riser stands between two legs and this pipe has one, so a point is wanted. Its port is
+# `surface.unmet`. The build stops.
+
+[sloped_leg.built]
+measure = "built"
+band    = [0, 0]
+
+[sloped_leg.errors]
+measure = "errors"
+band    = [1, 1]
+
+[sloped_leg.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[sloped_leg.gap]
+measure = "gap"
+band    = [0, 0]
+
+[sloped_leg.gap_max_mm]
+measure = "gap_max_mm"
+band    = [0, 0]
+
+[sloped_leg.gap_min_mm]
+measure = "gap_min_mm"
+band    = [0, 0]
+
+[sloped_leg.unmet]
+measure = "unmet"
+band    = [1, 1]
+
+[sloped_leg.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[sloped_leg.connector]
+measure = "connector"
+band    = [0, 0]
+
+[sloped_leg.connector_of_doors]
+measure = "connector_of_doors"
+band    = [0, 0]
+
+[sloped_leg.connector_of_pipes]
+measure = "connector_of_pipes"
+band    = [0, 0]
+
+[sloped_leg.pipe_params]
+measure = "pipe_params"
+band    = [1, 1]
+
+[sloped_leg.params_turn_mdeg]
+measure = "params_turn_mdeg"
+band    = [-1, -1]
+
+[sloped_leg.params_climb_mm]
+measure = "params_climb_mm"
+band    = [-1, -1]
+
+[sloped_leg.params_leg_rise_mm]
+measure = "params_leg_rise_mm"
+band    = [500, 500]
+
+[sloped_leg.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ short_leg
+# The spur 0.2 m longer. `pipe_open`, a warning: 6.2 m less the metre its ends take is no
+# whole number of pieces; 6 m or 6.5 m would close. No straight piece and no support is laid on
+# it: its flange and its cap stand with 5.2 m of nothing between them (two loose ends).
+
+[short_leg.built]
+measure = "built"
+band    = [1, 1]
+
+[short_leg.errors]
+measure = "errors"
+band    = [0, 0]
+
+[short_leg.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[short_leg.gap]
+measure = "gap"
+band    = [0, 0]
+
+[short_leg.unmet]
+measure = "unmet"
+band    = [0, 0]
+
+[short_leg.connector]
+measure = "connector"
+band    = [0, 0]
+
+[short_leg.facing]
+measure = "facing"
+band    = [0, 0]
+
+[short_leg.joint_many]
+measure = "joint_many"
+band    = [0, 0]
+
+[short_leg.crossing]
+measure = "crossing"
+band    = [0, 0]
+
+[short_leg.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[short_leg.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[short_leg.pipe_open]
+measure = "pipe_open"
+band    = [1, 1]
+
+[short_leg.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+[short_leg.support_none]
+measure = "support_none"
+band    = [1, 1]
+
+[short_leg.lay_params]
+measure = "lay_params"
+band    = [0, 0]
+
+[short_leg.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[short_leg.turn]
+measure = "turn"
+band    = [0, 0]
+
+[short_leg.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[short_leg.legs]
+measure = "legs"
+band    = [6, 6]
+
+[short_leg.straights]
+measure = "straights"
+band    = [7, 7]
+
+[short_leg.slips]
+measure = "slips"
+band    = [10, 10]
+
+[short_leg.elbows]
+measure = "elbows"
+band    = [2, 2]
+
+[short_leg.risers]
+measure = "risers"
+band    = [2, 2]
+
+[short_leg.flanges]
+measure = "flanges"
+band    = [3, 3]
+
+[short_leg.caps]
+measure = "caps"
+band    = [1, 1]
+
+[short_leg.supports]
+measure = "supports"
+band    = [5, 5]
+
+[short_leg.pipe_joins]
+measure = "pipe_joins"
+band    = [22, 22]
+
+[short_leg.pipe_loose]
+measure = "pipe_loose"
+band    = [2, 2]
+
+[short_leg.pipe_gap_mm]
+measure = "pipe_gap_mm"
+band    = [5200, 5200]
+
+[short_leg.support_foot_mm]
+measure = "support_foot_mm"
+band    = [0, 0]
+
+[short_leg.joints]
+measure = "joints"
+band    = [9, 9]
+
+[short_leg.ports]
+measure = "ports"
+band    = [3, 3]
+
+[short_leg.port_joints]
+measure = "port_joints"
+band    = [3, 3]
+
+[short_leg.plugs_joined]
+measure = "plugs_joined"
+band    = [3, 3]
+
+[short_leg.riser_meets]
+measure = "riser_meets"
+band    = [2, 2]
+
+[short_leg.removed]
+measure = "removed"
+band    = [6, 6]
+
+# ------------------------------------------------------------------------------------------ short_pipe
+# The straight piece's model exported 0.2 m short, its pack still saying 2 m. The step lays
+# the pipes as before, from what the pack says. `check` says `kit_pitch` of the piece (the pipe
+# kit is under its `kits`), and the measure, which reads the models' boxes, finds 26 ends that
+# meet no other, 200 mm apart.
+
+[short_pipe.built]
+measure = "built"
+band    = [1, 1]
+
+[short_pipe.errors]
+measure = "errors"
+band    = [0, 0]
+
+[short_pipe.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[short_pipe.gap]
+measure = "gap"
+band    = [0, 0]
+
+[short_pipe.unmet]
+measure = "unmet"
+band    = [0, 0]
+
+[short_pipe.connector]
+measure = "connector"
+band    = [0, 0]
+
+[short_pipe.facing]
+measure = "facing"
+band    = [0, 0]
+
+[short_pipe.joint_many]
+measure = "joint_many"
+band    = [0, 0]
+
+[short_pipe.crossing]
+measure = "crossing"
+band    = [0, 0]
+
+[short_pipe.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[short_pipe.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[short_pipe.pipe_open]
+measure = "pipe_open"
+band    = [0, 0]
+
+[short_pipe.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+[short_pipe.support_none]
+measure = "support_none"
+band    = [1, 1]
+
+[short_pipe.lay_params]
+measure = "lay_params"
+band    = [0, 0]
+
+[short_pipe.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[short_pipe.turn]
+measure = "turn"
+band    = [0, 0]
+
+[short_pipe.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[short_pipe.kit_pitch]
+measure = "kit_pitch"
+band    = [1, 1]
+
+[short_pipe.legs]
+measure = "legs"
+band    = [6, 6]
+
+[short_pipe.straights]
+measure = "straights"
+band    = [9, 9]
+
+[short_pipe.slips]
+measure = "slips"
+band    = [12, 12]
+
+[short_pipe.elbows]
+measure = "elbows"
+band    = [2, 2]
+
+[short_pipe.risers]
+measure = "risers"
+band    = [2, 2]
+
+[short_pipe.flanges]
+measure = "flanges"
+band    = [3, 3]
+
+[short_pipe.caps]
+measure = "caps"
+band    = [1, 1]
+
+[short_pipe.supports]
+measure = "supports"
+band    = [7, 7]
+
+[short_pipe.pipe_joins]
+measure = "pipe_joins"
+band    = [14, 14]
+
+[short_pipe.pipe_loose]
+measure = "pipe_loose"
+band    = [26, 26]
+
+[short_pipe.pipe_gap_mm]
+measure = "pipe_gap_mm"
+band    = [200, 200]
+
+[short_pipe.support_foot_mm]
+measure = "support_foot_mm"
+band    = [0, 0]
+
+[short_pipe.port_joints]
+measure = "port_joints"
+band    = [3, 3]
+
+[short_pipe.moved]
+measure = "moved"
+band    = [0, 0]
+
+[short_pipe.removed]
+measure = "removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ sloped
+# The ground rising 2 m in 100 to the north. Each building stands level at the mean of its
+# own ground and each pipe at heights above its own first point, so no port is at its flange's
+# height: `surface.gap` of all three (149, 4 and 188 mm). `support_off` of both pipes; lay's
+# `foot_open` of both buildings. The build stops.
+
+[sloped.built]
+measure = "built"
+band    = [0, 0]
+
+[sloped.errors]
+measure = "errors"
+band    = [3, 3]
+
+[sloped.warnings]
+measure = "warnings"
+band    = [4, 4]
+
+[sloped.gap]
+measure = "gap"
+band    = [3, 3]
+
+[sloped.gap_max_mm]
+measure = "gap_max_mm"
+band    = [188, 188]
+
+[sloped.gap_min_mm]
+measure = "gap_min_mm"
+band    = [4, 4]
+
+[sloped.unmet]
+measure = "unmet"
+band    = [0, 0]
+
+[sloped.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[sloped.connector]
+measure = "connector"
+band    = [0, 0]
+
+[sloped.connector_of_doors]
+measure = "connector_of_doors"
+band    = [0, 0]
+
+[sloped.connector_of_pipes]
+measure = "connector_of_pipes"
+band    = [0, 0]
+
+[sloped.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[sloped.params_turn_mdeg]
+measure = "params_turn_mdeg"
+band    = [-1, -1]
+
+[sloped.params_climb_mm]
+measure = "params_climb_mm"
+band    = [-1, -1]
+
+[sloped.params_leg_rise_mm]
+measure = "params_leg_rise_mm"
+band    = [-1, -1]
+
+[sloped.support_off]
+measure = "support_off"
+band    = [2, 2]
+
+# ------------------------------------------------------------------------------------------ long_room
+# The ring's fourth piece 128 mm longer. Five doors join; the closing one does not, and
+# `surface.unmet` of each of its two doors names the other and the miss, 128 mm in plan.
+
+[long_room.built]
+measure = "built"
+band    = [1, 1]
+
+[long_room.errors]
+measure = "errors"
+band    = [0, 0]
+
+[long_room.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[long_room.gap]
+measure = "gap"
+band    = [0, 0]
+
+[long_room.unmet]
+measure = "unmet"
+band    = [2, 2]
+
+[long_room.connector]
+measure = "connector"
+band    = [0, 0]
+
+[long_room.facing]
+measure = "facing"
+band    = [0, 0]
+
+[long_room.joint_many]
+measure = "joint_many"
+band    = [0, 0]
+
+[long_room.crossing]
+measure = "crossing"
+band    = [0, 0]
+
+[long_room.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[long_room.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[long_room.pipe_open]
+measure = "pipe_open"
+band    = [0, 0]
+
+[long_room.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+[long_room.support_none]
+measure = "support_none"
+band    = [1, 1]
+
+[long_room.lay_params]
+measure = "lay_params"
+band    = [0, 0]
+
+[long_room.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[long_room.turn]
+measure = "turn"
+band    = [0, 0]
+
+[long_room.unmet_named]
+measure = "unmet_named"
+band    = [2, 2]
+
+[long_room.unmet_miss_mm]
+measure = "unmet_miss_mm"
+band    = [128, 128]
+
+[long_room.unmet_miss_z_mm]
+measure = "unmet_miss_z_mm"
+band    = [0, 0]
+
+[long_room.rooms]
+measure = "rooms"
+band    = [6, 6]
+
+[long_room.doors]
+measure = "doors"
+band    = [12, 12]
+
+[long_room.doors_joined]
+measure = "doors_joined"
+band    = [10, 10]
+
+[long_room.door_joints]
+measure = "door_joints"
+band    = [5, 5]
+
+[long_room.ring_miss_mm]
+measure = "ring_miss_mm"
+band    = [128, 128]
+
+[long_room.joints]
+measure = "joints"
+band    = [8, 8]
+
+[long_room.moved]
+measure = "moved"
+band    = [3, 3]
+
+# ------------------------------------------------------------------------------------------ flipped
+# The ring's fifth piece the handed hall. The closing join misses by 300 mm, and is told as
+# `long_room`'s is: by its two doors, in millimetres. Nothing says which piece is the wrong hand.
+
+[flipped.built]
+measure = "built"
+band    = [1, 1]
+
+[flipped.errors]
+measure = "errors"
+band    = [0, 0]
+
+[flipped.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[flipped.gap]
+measure = "gap"
+band    = [0, 0]
+
+[flipped.unmet]
+measure = "unmet"
+band    = [2, 2]
+
+[flipped.connector]
+measure = "connector"
+band    = [0, 0]
+
+[flipped.facing]
+measure = "facing"
+band    = [0, 0]
+
+[flipped.joint_many]
+measure = "joint_many"
+band    = [0, 0]
+
+[flipped.crossing]
+measure = "crossing"
+band    = [0, 0]
+
+[flipped.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[flipped.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[flipped.pipe_open]
+measure = "pipe_open"
+band    = [0, 0]
+
+[flipped.support_off]
+measure = "support_off"
+band    = [0, 0]
+
+[flipped.support_none]
+measure = "support_none"
+band    = [1, 1]
+
+[flipped.lay_params]
+measure = "lay_params"
+band    = [0, 0]
+
+[flipped.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[flipped.turn]
+measure = "turn"
+band    = [0, 0]
+
+[flipped.unmet_named]
+measure = "unmet_named"
+band    = [2, 2]
+
+[flipped.unmet_miss_mm]
+measure = "unmet_miss_mm"
+band    = [300, 300]
+
+[flipped.unmet_miss_z_mm]
+measure = "unmet_miss_z_mm"
+band    = [0, 0]
+
+[flipped.rooms]
+measure = "rooms"
+band    = [6, 6]
+
+[flipped.doors]
+measure = "doors"
+band    = [12, 12]
+
+[flipped.doors_joined]
+measure = "doors_joined"
+band    = [10, 10]
+
+[flipped.door_joints]
+measure = "door_joints"
+band    = [5, 5]
+
+[flipped.ring_miss_mm]
+measure = "ring_miss_mm"
+band    = [300, 300]
+
+[flipped.joints]
+measure = "joints"
+band    = [8, 8]
+
+[flipped.moved]
+measure = "moved"
+band    = [2, 2]
+
+# ------------------------------------------------------------------------------------------ other_door
+# The ring's second piece with a hatch for its way out. `surface.connector`, an error, at
+# the join it makes with the third piece's door; both are `surface.unmet`. The build stops.
+
+[other_door.built]
+measure = "built"
+band    = [0, 0]
+
+[other_door.errors]
+measure = "errors"
+band    = [1, 1]
+
+[other_door.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[other_door.gap]
+measure = "gap"
+band    = [0, 0]
+
+[other_door.gap_max_mm]
+measure = "gap_max_mm"
+band    = [0, 0]
+
+[other_door.gap_min_mm]
+measure = "gap_min_mm"
+band    = [0, 0]
+
+[other_door.unmet]
+measure = "unmet"
+band    = [2, 2]
+
+[other_door.unmet_named]
+measure = "unmet_named"
+band    = [0, 0]
+
+[other_door.connector]
+measure = "connector"
+band    = [1, 1]
+
+[other_door.connector_of_doors]
+measure = "connector_of_doors"
+band    = [1, 1]
+
+[other_door.connector_of_pipes]
+measure = "connector_of_pipes"
+band    = [0, 0]
+
+[other_door.pipe_params]
+measure = "pipe_params"
+band    = [0, 0]
+
+[other_door.params_turn_mdeg]
+measure = "params_turn_mdeg"
+band    = [-1, -1]
+
+[other_door.params_climb_mm]
+measure = "params_climb_mm"
+band    = [-1, -1]
+
+[other_door.params_leg_rise_mm]
+measure = "params_leg_rise_mm"
+band    = [-1, -1]
+
+[other_door.support_off]
+measure = "support_off"
+band    = [0, 0]

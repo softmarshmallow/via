@@ -1,0 +1,3 @@
+# The boiler house with no port bay: the pipe comes to a plain wall.
+[feature.boiler]
+bays = []

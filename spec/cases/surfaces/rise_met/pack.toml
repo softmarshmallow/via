@@ -1,0 +1,13 @@
+# A wall piece with a hole 5 m up its front: a mount with a rise (assets.md 2.7, R75).
+[taxon."structure"]
+
+[asset.panel]
+primitive = "box"
+size      = [4, 0.3, 6]
+taxon     = "structure"
+
+[asset.panel.mount.port]
+at        = [0, 0.15]            # on the front face
+face      = 0                    # out of the wall
+connector = "foot"
+rise      = 5

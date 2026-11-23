@@ -1,0 +1,58 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3, 3.4 (R76), joint_warm: a joint is found again when a piece moves. Two pieces joined; a change moves the second half a metre on, built against the base: the meeting is gone and each end is surface.unmet naming the other, 500 mm away in plan, exactly as a clean build of the change says."
+milestone = 7
+actions   = ["base", "clean", "warm"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/base"
+
+[action.base.check.one]
+fn      = "json_count"
+path    = "build/base/meets.json"
+pointer = "/meets"
+count   = 1
+
+[action.clean]
+via         = ["build", "world.toml", "--change", "open", "--out", "build/clean"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/clean"
+
+[action.clean.diag.first]
+code    = "surface.unmet"
+subject = "instance.p1"
+data    = { place = "p1.b", near = "p2.a", miss = 500, miss_z = 0 }
+
+[action.clean.diag.second]
+code    = "surface.unmet"
+subject = "instance.p2"
+data    = { place = "p2.a", near = "p1.b", miss = 500, miss_z = 0 }
+
+[action.warm]
+via         = ["build", "world.toml", "--change", "open", "--against", "build/base", "--out", "build/warm"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/warm"
+
+[action.warm.diag.first]
+code    = "surface.unmet"
+subject = "instance.p1"
+data    = { place = "p1.b", near = "p2.a", miss = 500, miss_z = 0 }
+
+[action.warm.diag.second]
+code    = "surface.unmet"
+subject = "instance.p2"
+data    = { place = "p2.a", near = "p1.b", miss = 500, miss_z = 0 }
+
+[action.warm.same.diagnostics]
+action = "clean"
+what   = "diagnostics"
+
+[action.warm.check.none]
+fn      = "json_count"
+path    = "build/warm/meets.json"
+pointer = "/meets"
+count   = 0

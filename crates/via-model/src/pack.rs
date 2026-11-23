@@ -22,6 +22,9 @@ const PRIMITIVES: [(&str, u64); 5] = [
     ("sphere", 224),
 ];
 
+/// The keys of `[asset.<id>.mount.<name>]` (2.7).
+const MOUNT_KEYS: [&str; 4] = ["at", "connector", "face", "rise"];
+
 const ASSET_KEYS: [&str; 19] = [
     "collision",
     "colour",
@@ -69,6 +72,9 @@ pub struct Asset {
     pub mounts: BTreeMap<String, ((i64, i64), i64)>,
     /// Each mount's `connector` (2.7, M5), where it writes one.
     pub connectors: BTreeMap<String, String>,
+    /// Each mount's `rise` (2.7, R75), lattice millimetres, where it is not 0: how far the mount
+    /// stands above the surface its instance stands on.
+    pub rises: BTreeMap<String, i64>,
     pub taxon: Option<String>,
     pub tags: Vec<String>,
     /// `collision` (2.4): `none`, `box`, `hull` or `mesh`. Carried to the loader; the core reads it
@@ -154,8 +160,14 @@ impl Asset {
                     .get(n)
                     .map(|c| format!(",\"connector\":{}", serde_json_str(c)))
                     .unwrap_or_default();
+                // `rise` only where it is not 0 (2.7), so a pack with none keeps its facts.
+                let r = self
+                    .rises
+                    .get(n)
+                    .map(|r| format!(",\"rise\":{}", mm(*r)))
+                    .unwrap_or_default();
                 format!(
-                    "{}:{{\"at\":[{},{}]{c},\"face\":{face}}}",
+                    "{}:{{\"at\":[{},{}]{c},\"face\":{face}{r}}}",
                     serde_json_str(n),
                     mm(*x),
                     mm(*y)
@@ -1710,6 +1722,7 @@ fn read_asset(
         .unwrap_or_default();
     let mut mounts = BTreeMap::new();
     let mut connectors = BTreeMap::new();
+    let mut rises = BTreeMap::new();
     if let Some(toml::Value::Table(ms)) = a.get("mount") {
         for (name, m) in ms {
             if matches!(name.as_str(), "start" | "end" | "ground") {
@@ -1739,6 +1752,45 @@ fn read_asset(
                     "`connector` is a word",
                     "write `connector = \"<word>\"`",
                 ),
+            }
+            // 2.7: the keys of an asset mount. A kind mount's (`t`, `offset`, `surface`, `meets`)
+            // are not taken: an asset has no path, and its mount lies on what its instance
+            // stands on.
+            if let Some(mt) = m.as_table() {
+                for k in mt.keys() {
+                    if !MOUNT_KEYS.contains(&k.as_str()) {
+                        r.fault(
+                            codes::doc::UNKNOWN_KEY,
+                            &format!("{subject}.mount.{name}"),
+                            Some(k),
+                            &format!("`{k}` is not a key of an asset mount"),
+                            &match k.as_str() {
+                                "t" | "offset" => "an asset has no path: write `at = [x, y]` in the asset frame".to_string(),
+                                "surface" => "remove it: an asset mount lies on what its instance stands on; `rise` lifts it above that".to_string(),
+                                "meets" => "remove it: an instance's mount meets a path end written at it, or another instance's mount at the same point".to_string(),
+                                _ => text::near_hint(k, MOUNT_KEYS, "see assets.md 2.7"),
+                            },
+                        );
+                        r.near(k, MOUNT_KEYS, text::undeclared);
+                    }
+                }
+            }
+            // `rise` (2.7, R75): lattice metres above the surface the instance stands on.
+            match m.get("rise") {
+                None => {}
+                Some(v) => match num_text(v).and_then(|t| via_num::parse_length(&t).ok()) {
+                    Some(0) => {}
+                    Some(rise) => {
+                        rises.insert(name.clone(), rise);
+                    }
+                    None => r.fault(
+                        codes::doc::TYPE,
+                        &format!("{subject}.mount.{name}"),
+                        Some("rise"),
+                        &format!("`rise` takes a length in metres; found {}", form_word(v)),
+                        "write `rise = <metres>`, the mount's height above what the instance stands on",
+                    ),
+                },
             }
             let at = m
                 .get("at")
@@ -1792,6 +1844,7 @@ fn read_asset(
         colour,
         mounts,
         connectors,
+        rises,
         taxon,
         tags,
         collision,
@@ -1950,5 +2003,101 @@ mod tests {
         assert_eq!(ring[0], (1000, 0));
         assert_eq!(ring[4], (0, 1000));
         assert!(is_ccw_simple(&ring));
+    }
+    /// A pack of one box with the given mount tables, read from a temporary folder.
+    fn mounted(tag: &str, mounts: &str) -> (Option<Pack>, Vec<Diag>) {
+        let dir = std::env::temp_dir().join(format!("via-pack-rise-{tag}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("a temporary folder");
+        let path = dir.join("p.toml");
+        std::fs::write(
+            &path,
+            format!("[asset.box]\nprimitive = \"box\"\nsize = [4, 0.3, 6]\n\n{mounts}"),
+        )
+        .expect("the pack is written");
+        let got = read(&path, "pack:p.toml");
+        let _ = std::fs::remove_dir_all(&dir);
+        got
+    }
+
+    #[test]
+    fn a_mounts_rise_is_a_fact_only_where_it_is_not_zero() {
+        let (p, diags) = mounted(
+            "facts",
+            "[asset.box.mount.port]\nat = [0, 0.15]\nconnector = \"pipe\"\nrise = 5\n\n\
+             [asset.box.mount.low]\nat = [1, 0.15]\nrise = 0\n\n\
+             [asset.box.mount.pit]\nat = [2, 0.15]\nrise = -0.5\n\n\
+             [asset.box.mount.side]\nat = [-1, 0.15]\n",
+        );
+        assert!(diags.is_empty(), "{diags:?}");
+        let p = p.expect("the pack reads");
+        let a = &p.assets["box"];
+        assert_eq!(a.rises.get("port"), Some(&5000));
+        assert_eq!(a.rises.get("pit"), Some(&-500));
+        assert_eq!(a.rises.get("low"), None);
+        assert_eq!(a.rises.get("side"), None);
+        // The facts a build's digests and the manifest read: `rise` last, and only where set.
+        let facts = a.facts();
+        assert_eq!(
+            facts["mounts"],
+            "{\"low\":{\"at\":[1,0.15],\"face\":0},\
+              \"pit\":{\"at\":[2,0.15],\"face\":0,\"rise\":-0.5},\
+              \"port\":{\"at\":[0,0.15],\"connector\":\"pipe\",\"face\":0,\"rise\":5},\
+              \"side\":{\"at\":[-1,0.15],\"face\":0}}"
+        );
+        // And the facts file's line (4.1).
+        let entry = crate::asset_facts::entry(a);
+        let line = &entry
+            .iter()
+            .find(|(k, _)| *k == "mounts")
+            .expect("mounts")
+            .1;
+        assert!(
+            line.contains("port = { at = [0, 0.15], connector = \"pipe\", face = 0, rise = 5 }"),
+            "{line}"
+        );
+        assert!(
+            line.contains("low = { at = [1, 0.15], face = 0 }"),
+            "{line}"
+        );
+    }
+
+    #[test]
+    fn a_rise_that_is_no_length_and_a_key_no_mount_takes_are_refused() {
+        let code = |d: &Diag| d.code().to_string();
+        let (_, diags) = mounted(
+            "word",
+            "[asset.box.mount.port]\nat = [0, 0.15]\nrise = \"high\"\n",
+        );
+        assert_eq!(diags.iter().map(code).collect::<Vec<_>>(), ["doc.type"]);
+        // Finer than the lattice is no lattice length.
+        let (_, diags) = mounted(
+            "fine",
+            "[asset.box.mount.port]\nat = [0, 0.15]\nrise = 0.0005\n",
+        );
+        assert_eq!(diags.iter().map(code).collect::<Vec<_>>(), ["doc.type"]);
+        for key in [
+            "t = 0.5",
+            "offset = 1",
+            "surface = \"top\"",
+            "meets = \"low\"",
+            "rize = 5",
+        ] {
+            let (_, diags) = mounted(
+                "key",
+                &format!("[asset.box.mount.port]\nat = [0, 0.15]\n{key}\n"),
+            );
+            assert_eq!(
+                diags.iter().map(code).collect::<Vec<_>>(),
+                ["doc.unknown_key"],
+                "{key}"
+            );
+        }
+        // The misspelt key is told its neighbour.
+        let (_, diags) = mounted("near", "[asset.box.mount.port]\nat = [0, 0.15]\nrize = 5\n");
+        assert!(
+            diags[0].hint().to_string().contains("rise"),
+            "{:?}",
+            diags[0]
+        );
     }
 }

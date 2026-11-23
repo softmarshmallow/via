@@ -1,0 +1,15 @@
+[asset.box]
+primitive = "box"
+size      = [4, 0.3, 6]
+
+[asset.box.mount.port]
+at        = [0, 0.15]
+connector = "pipe"
+rise      = 5
+
+[asset.box.mount.low]
+at   = [1, 0.15]
+rise = 0
+
+[asset.box.mount.door]
+at = [-1, 0.15]

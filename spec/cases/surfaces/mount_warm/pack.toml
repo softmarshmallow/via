@@ -1,0 +1,12 @@
+# A block with a mount beside it, and a lamp to stand there (surfaces.md 3.2).
+[asset.block]
+primitive = "box"
+size      = [2, 2, 2]
+
+[asset.block.mount.top]
+at   = [0, 3]
+face = 0
+
+[asset.lamp]
+primitive = "box"
+size      = [0.2, 0.2, 0.2]

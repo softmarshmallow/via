@@ -1,0 +1,45 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.2 (R75), rise_met: an asset mount with rise = 5 stands 5 m above what its instance stands on. A path whose own surface is at 15 over ground at 10 ends at it with gap 0, and at 20 at the same piece scaled by 2 (the rise scales as `at` does). The path lowered to 14 at its end: surface.gap, 1000 mm, the hint naming the rise."
+milestone = 7
+actions   = ["build", "lower", "low"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.diag.gap]
+code    = "surface.gap"
+records = 0
+
+# Rows by a, bytewise: high.end, line.end.
+[action.build.file.high]
+path     = "build/build/meets.json"
+pointer  = "/meets/0"
+includes = { a = "high.end", b = "tall.port", gap = 0, z_a = 20, z_b = 20, y = 60.3, connector_b = "foot" }
+
+[action.build.file.line]
+path     = "build/build/meets.json"
+pointer  = "/meets/1"
+includes = { a = "line.end", b = "wall.port", gap = 0, z_a = 15, z_b = 15, x = 60, y = 60.15 }
+
+[action.lower]
+replace = "world.toml"
+find    = "z1      = 15"
+with    = "z1      = 14"
+
+[action.low]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/low"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/low"
+
+[action.low.diag.gap]
+code    = "surface.gap"
+subject = "feature.line"
+data    = { gap = 1000 }

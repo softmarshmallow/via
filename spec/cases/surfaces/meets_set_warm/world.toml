@@ -1,0 +1,25 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 10
+
+# Two pieces of one set whose ends join, and a third outside that joins the set's east end.
+[set.duo.item.l]
+asset = "both"
+at    = [-2, 0]
+
+[set.duo.item.r]
+asset = "both"
+at    = [2, 0]
+
+[instance.d]
+set = "duo"
+at  = [50, 50]
+
+[instance.o]
+asset = "both"
+at    = [56, 50]

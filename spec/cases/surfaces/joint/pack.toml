@@ -1,0 +1,69 @@
+# Two pipe pieces 4 m between their ends, each end a mount 5 m up (assets.md 2.7; R75, R76).
+# `left` has the end at its +x side, `right` the one at its -x side; the others are `right`
+# with one thing wrong.
+[taxon."structure"]
+
+[asset.left]
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.left.mount.b]
+at        = [2, 0]
+face      = 90
+connector = "pipe"
+rise      = 5
+
+[asset.right]
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.right.mount.a]
+at        = [-2, 0]
+face      = 270
+connector = "pipe"
+rise      = 5
+
+[asset.right_water]              # another connector
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.right_water.mount.a]
+at        = [-2, 0]
+face      = 270
+connector = "water"
+rise      = 5
+
+[asset.right_back]               # its end faces the way the other's does
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.right_back.mount.a]
+at        = [-2, 0]
+face      = 90
+connector = "pipe"
+rise      = 5
+
+[asset.right_high]               # its end a metre higher
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.right_high.mount.a]
+at        = [-2, 0]
+face      = 270
+connector = "pipe"
+rise      = 6
+
+[asset.right_plain]              # no connector: it takes no part
+primitive = "box"
+size      = [3.6, 0.4, 0.4]
+taxon     = "structure"
+solidity  = "passable"
+[asset.right_plain.mount.a]
+at        = [-2, 0]
+face      = 270
+rise      = 5

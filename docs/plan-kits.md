@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. K8 is built and reviewed in one commit after it (the temple and the court). Next: K9. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. K8 is one commit after it (2d88999, the temple and the court), and K9 one after that (a mount's rise and joints in the core, pipes and the works). Next: K10. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -140,6 +140,18 @@ Changed so far:
   podium. The review found nine defects, all mended; the gravest were in the parts no example
   builds (two storeys by posts) and in what the messages offer. `block` was not rebuilt after
   the fix pass: the volume was full.
+
+- **K9, 2026-11-23.** The row said "sockets in three dimensions" and the evidence put the
+  work in the core, not the library: a mount had no height of its own and two pieces' mounts
+  could not meet, so a pipe at a height and a ring of rooms could be written and not checked.
+  Two rulings (R75 a mount's `rise`, R76 the joint) and then a small library: pipes are legs
+  that each own a surface, and the library pairs nothing. **Changed:** a pipe is a point and
+  the points it goes to, not a path, which crossed its own legs; a riser has one mount, since
+  a leg cannot end on the piece that stands on it; one commit, not an engine commit and a
+  library one, since the generated pages (`docs/layers.md`, the ledger) are of the whole tree.
+  The review's gravest findings were older than K9 and only met by it: warm builds after a
+  pack edit. They are mended in the core with their cases. **Not built, said and filed:** a
+  joint across an import, a veto of one pair, a pipe that takes its heights from its ports.
 
 - **K11 added, 2026-11-23.** The owner asked whether a fantasy map demo was in the plan. It was
   not: the word stood only in K7's title, and the dogfood map of `docs/plan.md` was proposed

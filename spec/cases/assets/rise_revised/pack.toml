@@ -1,0 +1,8 @@
+[asset.cube]
+file = "cube.gltf"
+
+[asset.cube.mount.port]
+at        = [0, 1]
+face      = 0
+connector = "pipe"
+rise      = 5

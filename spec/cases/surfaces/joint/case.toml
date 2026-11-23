@@ -1,0 +1,106 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.3, 3.4 (R76), joint: two instances' mounts, each with a connector, at one plan point answer each other with nothing written: one row of meets.json, gap 0, both faces, no surface.unmet. The second piece's end with another connector: surface.connector, and each end is unanswered. Its end facing the way the first's does: surface.facing. Its end a metre higher: surface.gap, 1000 mm. Its end with no connector: no meeting, and the first's end is surface.unmet."
+milestone = 7
+actions   = ["build", "to_water", "water", "to_back", "back", "to_high", "high", "to_plain", "plain"]
+
+[action.build]
+via         = ["build", "world.toml", "--out", "build/build"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/build"
+
+[action.build.file.joint]
+path     = "build/build/meets.json"
+pointer  = "/meets/0"
+includes = { a = "p1.b", b = "p2.a", gap = 0, x = 62, y = 60, z_a = 15, z_b = 15, face_a = 90000, face_b = 270000, connector_a = "pipe", connector_b = "pipe" }
+
+[action.build.check.one]
+fn      = "json_count"
+path    = "build/build/meets.json"
+pointer = "/meets"
+count   = 1
+
+[action.to_water]
+replace = "world.toml"
+find    = "asset = \"right\""
+with    = "asset = \"right_water\""
+
+[action.water]
+via         = ["build", "world.toml", "--out", "build/water"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/water"
+
+[action.water.diag.connector]
+code    = "surface.connector"
+subject = "instance.p1"
+data    = { connector_a = "pipe", connector_b = "water" }
+
+[action.water.diag.unmet_1]
+code    = "surface.unmet"
+subject = "instance.p1"
+
+[action.water.diag.unmet_2]
+code    = "surface.unmet"
+subject = "instance.p2"
+
+[action.to_back]
+replace = "world.toml"
+find    = "asset = \"right_water\""
+with    = "asset = \"right_back\""
+
+[action.back]
+via         = ["build", "world.toml", "--out", "build/back"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/back"
+
+[action.back.diag.facing]
+code    = "surface.facing"
+subject = "instance.p1"
+data    = { face_a = 90000, face_b = 90000 }
+
+[action.back.diag.unmet]
+code    = "surface.unmet"
+records = 0
+
+[action.to_high]
+replace = "world.toml"
+find    = "asset = \"right_back\""
+with    = "asset = \"right_high\""
+
+[action.high]
+via         = ["build", "world.toml", "--out", "build/high"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/high"
+
+[action.high.diag.gap]
+code    = "surface.gap"
+subject = "instance.p1"
+data    = { gap = 1000 }
+
+[action.high.diag.unmet]
+code    = "surface.unmet"
+records = 0
+
+[action.to_plain]
+replace = "world.toml"
+find    = "asset = \"right_high\""
+with    = "asset = \"right_plain\""
+
+[action.plain]
+via         = ["build", "world.toml", "--out", "build/plain"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/plain"
+
+[action.plain.diag.unmet]
+code    = "surface.unmet"
+subject = "instance.p1"
+
+[action.plain.check.none]
+fn      = "json_count"
+path    = "build/plain/meets.json"
+pointer = "/meets"
+count   = 0

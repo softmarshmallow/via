@@ -1,0 +1,35 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.2 (R75), numbers.md, rise_mm: a risen mount's height is exact to the millimetre. A rise of 4.499 over ground at 10: the meeting's z_b is 14.499 and the gap 0 (it was 14.498999999999999 in meets.json: the rise was added in floating metres). The path lowered a millimetre: surface.gap of 1, naming 14.499."
+milestone = 7
+actions   = ["build", "lower", "low"]
+
+[copy.lib]
+from = "spec/vectors/surfaces/lib"
+to   = "lib"
+
+[action.build]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/build"]
+exit        = 0
+diagnostics = "includes"
+out         = "build/build"
+
+[action.build.file.line]
+path     = "build/build/meets.json"
+pointer  = "/meets/0"
+includes = { a = "line.end", b = "wall.port", gap = 0, z_a = 14.499, z_b = 14.499 }
+
+[action.lower]
+replace = "world.toml"
+find    = "z1      = 14.499"
+with    = "z1      = 14.498"
+
+[action.low]
+via         = ["build", "world.toml", "--lib", "{work}/lib", "--out", "build/low"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/low"
+
+[action.low.diag.gap]
+code    = "surface.gap"
+subject = "feature.line"
+data    = { gap = 1 }

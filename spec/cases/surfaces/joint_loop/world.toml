@@ -1,0 +1,24 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+
+[field.height]
+role = "surface"
+base = 10
+
+[instance.r1]
+asset = "room"
+at    = [60, 60]
+
+[instance.r2]
+asset = "room"
+on    = { ref = "r1.next" }
+
+[instance.r3]
+asset = "room_b"
+on    = { ref = "r2.next" }
+
+[instance.r4]
+asset = "room"
+on    = { ref = "r3.next" }

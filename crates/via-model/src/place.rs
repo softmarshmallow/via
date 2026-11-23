@@ -836,6 +836,33 @@ impl<'a> Placer<'a> {
                 let asset = self.pack.assets.get(&pl.asset)?;
                 return match asset.mounts.get(part) {
                     Some((at, face)) => {
+                        // A mount with a `rise` lies on no surface (`surfaces.md` 3.2, R75):
+                        // a path may end at it, and nothing stands on it.
+                        // Scaled as the mount's height is (`build.rs`): the message names
+                        // where the mount is, not what the pack wrote.
+                        if let Some(rise) = asset
+                            .rises
+                            .get(part)
+                            .filter(|_| key == "on" && top != "clear")
+                            .map(|r| via_num::round_to_lattice(*r as f64 * pl.scale).unwrap_or(*r))
+                        {
+                            self.diags.push(
+                                at_key(
+                                    codes::surface::ON_RISE,
+                                    top,
+                                    id,
+                                    key,
+                                    &format!(
+                                        "`{name}` stands {} m above what `{host}` stands on (its asset's `rise`): nothing can stand on it",
+                                        via_num::write_length(rise)
+                                    ),
+                                    "place it on a mount with no `rise`, or at a point; a path may end at this mount, and another instance's mount may join it",
+                                )
+                                .with("place", via_diag::Value::text(name.to_string()))
+                                .with("rise", via_diag::Value::Int(rise)),
+                            );
+                            return None;
+                        }
                         let f = Frame::new((pl.origin.x, pl.origin.y), pl.facing, pl.scale).ok()?;
                         let w = f.to_world(*at).ok()?;
                         Some(Spot::At {

@@ -1,0 +1,19 @@
+name       = "yard"
+extent     = [0, 0, 128, 128]
+resolution = 1
+pack       = "pack.toml"
+include    = ["surfaces_test"]
+[field.height]
+role = "surface"
+base = 10
+
+[instance.wall]
+asset = "panel"
+at    = [60, 60]
+
+[feature.line]                   # a path whose own surface is level at 14.499
+kind    = "flight"
+z0      = 14.499
+z1      = 14.499
+path    = [[60, 80]]
+ends_at = "wall.port"

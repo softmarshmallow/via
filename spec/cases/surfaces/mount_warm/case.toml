@@ -1,0 +1,86 @@
+format    = "via-case-1"
+summary   = "surfaces.md 3.2, graph.md 2 (mount), mount_warm: a thing placed `on` an instance's mount is decided again when the host asset's mount changes. The mount given a rise: surface.on_rise on a warm build as on a clean one (it was diag.internal, exit 3: the lamp's node held no statement of its host's asset). The rise taken away and the mount moved a metre: the lamp stands at the new place on a warm build as on a clean one."
+milestone = 7
+actions   = ["base", "raise", "clean1", "warm1", "move", "clean2", "warm2"]
+
+[action.base]
+via         = ["build", "world.toml", "--out", "build/base"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/base"
+
+[action.base.check.lamp]
+fn    = "instance_at"
+build = "build/base"
+name  = "l"
+at    = [20, 23]
+
+[action.raise]
+write = "pack.toml"
+text  = "[asset.block]\nprimitive = \"box\"\nsize      = [2, 2, 2]\n\n[asset.block.mount.top]\nat   = [0, 3]\nface = 0\nrise = 2\n\n[asset.lamp]\nprimitive = \"box\"\nsize      = [0.2, 0.2, 0.2]\n"
+
+[action.clean1]
+via         = ["build", "world.toml", "--store", "store1", "--out", "build/x"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/x"
+
+[action.clean1.diag.on_rise]
+code    = "surface.on_rise"
+subject = "instance.l"
+data    = { place = "a.top", rise = 2000 }
+
+[action.warm1]
+via         = ["build", "world.toml", "--out", "build/x"]
+exit        = 1
+diagnostics = "includes"
+out         = "build/x"
+
+[action.warm1.diag.on_rise]
+code    = "surface.on_rise"
+subject = "instance.l"
+data    = { place = "a.top", rise = 2000 }
+
+[action.warm1.diag.internal]
+code    = "diag.internal"
+records = 0
+
+[action.warm1.same.diagnostics]
+action = "clean1"
+what   = "diagnostics"
+
+[action.move]
+write = "pack.toml"
+text  = "[asset.block]\nprimitive = \"box\"\nsize      = [2, 2, 2]\n\n[asset.block.mount.top]\nat   = [1, 3]\nface = 0\n\n[asset.lamp]\nprimitive = \"box\"\nsize      = [0.2, 0.2, 0.2]\n"
+
+[action.clean2]
+via         = ["build", "world.toml", "--store", "store2", "--out", "build/y"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/y"
+
+[action.clean2.check.lamp]
+fn    = "instance_at"
+build = "build/y"
+name  = "l"
+at    = [21, 23]
+
+[action.warm2]
+via         = ["build", "world.toml", "--out", "build/y"]
+exit        = 0
+diagnostics = "exact"
+out         = "build/y"
+
+[action.warm2.check.lamp]
+fn    = "instance_at"
+build = "build/y"
+name  = "l"
+at    = [21, 23]
+
+[action.warm2.same.diagnostics]
+action = "clean2"
+what   = "diagnostics"
+
+[action.warm2.same.features]
+action = "clean2"
+what   = "build/y/features.json"

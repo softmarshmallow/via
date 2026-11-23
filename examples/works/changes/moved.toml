@@ -1,0 +1,4 @@
+# The boiler house moved 0.3 m east, and the pipe left as it was: its last leg now stops 0.3 m
+# short of the port it was written to reach.
+[feature.boiler]
+region = [[50.7, 18.4], [60.3, 18.4], [60.3, 25], [50.7, 25]]

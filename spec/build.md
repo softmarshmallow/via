@@ -491,7 +491,7 @@ so a loader reads one rule. The terrain's manifest entry adds `cut` (the file's 
 | `primitive`, `size` | For a primitive (`assets.md` 6); `size` also for engine-made. |
 | `to_asset` | 12 numbers, row by row, of the 3 by 4 matrix taking a point of the model file's node space, as stored (glTF axes, before any engine's import), to the asset frame (`assets.md` 2.3). Its 3 by 3 part is the quarter turn of `front` and `up`: entries -1, 0 or 1. Its translation is minus the pivot, which `assets.md` 2.4 gives in integer millimetres from bounds rounded by `numbers.md` 3.1, written in exact metres. Identity for a primitive or engine-made asset. |
 | `bounds`, `footprint`, `origin`, `triangles` | Facts (`assets.md` 2.4), `triangles` per copy. |
-| `mounts` | `{ <name>: { "at": [x, y], "face" } }`, sorted by name: each asset mount (`assets.md` 2.7) in the asset frame, `at` in exact metres, `face` in integer millidegrees. `{}` when it has none. A loader finds an instance's mount from this and the instance columns (15.1). |
+| `mounts` | `{ <name>: { "at": [x, y], "face" } }`, sorted by name: each asset mount (`assets.md` 2.7) in the asset frame, `at` in exact metres, `face` in integer millidegrees. A mount with a connector adds `"connector"`, and one whose `rise` is not 0 adds `"rise"`, exact metres (K9, R75). `{}` when it has none. A loader finds an instance's mount from this and the instance columns (15.1). |
 | `solidity` | As declared (`solid`, `none`). What the core's own checks took it to be; a loader need not read it. |
 | `colour` | As resolved (`assets.md` 2.4): the colour of a primitive or stand-in. |
 | `collision` | As resolved (`assets.md` 2.4, M2): `none`, `box`, `hull` or `mesh`, for the loader to map to the engine's shapes. The core reads it for nothing. |
@@ -601,7 +601,8 @@ section 7) reaches a loader the same way, as a library output's attributes, pass
 `meets.json` is `{ "meets": [ ... ] }`: one row per meeting, the columns and order of `surfaces.md`
 2.4. Every meeting is a pair of mounts (R31); a path that ends at a place meets that place's default
 mount. In M1 its rows are path ends meeting places on the terrain, the world's surface (`ford`);
-kind mounts add rows from M3. A loader joins navigation only there.
+kind mounts add rows from M3, and joints, two instances' mounts that answer each other, from K9
+(`surfaces.md` 3.3: both sides are mounts of instances). A loader joins navigation only there.
 
 ### 9.4 The player map (M6)
 

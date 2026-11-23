@@ -127,6 +127,37 @@ They differ where a length is not whole pieces, and each for a reason:
 | Beside a gap | The wall is cut back to a length that closes; more than the margin left open is `gap_wide`, with where the door would close. | The cap piece moves into the gap. |
 | A fit with no bay | `fillers_only`. | Not checked. |
 
+## A kit that joins others (K9)
+
+A third reader, `lib/building/pipe.py`, lays a pipe: the glue between two kits
+(`examples/works`). It keeps its own small reader, as the other two do.
+
+| Role | The piece |
+|---|---|
+| `pipe` | The straight piece, `params.pitch` long along its x. Required. |
+| `slip` | A shorter straight piece for what whole pieces leave of a leg: the pipe kit's filler. |
+| `elbow` | A turn of `params.angle` degrees, one arm to its back and one to its right; it takes `params.reach` of each leg. One piece turned makes every quarter turn. |
+| `riser` | A climb of `params.rise` metres at one point; it takes `params.reach` of each leg. Its pack gives it a mount `top`, with `rise` the same height and the connector `pipe`, which is a leg's own word. |
+| `flange` | The plug on a pipe's end: a mount `plug` at its origin, facing out of the pipe, with the kit's connector. |
+| `cap` | A closed end. |
+| `support` | A post and saddle for a pipe `params.height` up, reaching that far down from the pipe's middle line. The kit states the most metres between two in `shared.support`. |
+
+Every pipe piece is made about the pipe's middle line and says `pivot = "origin"`: it stands on
+a surface at the pipe's height.
+
+**A port** is what a kit offers another: a wall piece's mount with a `connector`, and a `rise`
+where the hole is above the floor (`spec/assets.md` 2.7; R75). It is stated on a variant of the
+bay (`variant:port`, or any word), laid in its stretch's run as any variant is. By this library's
+convention a port lies on the building's outline: half a post in front of a panel laid by posts,
+on the outer face of a wall laid at a pitch. Two pieces whose mounts say one connector, at one
+point and one height, facing each other, are a joint, which the engine finds and nothing writes
+(`spec/surfaces.md` 3.3; R76). A kit of whole rooms joins the same way, door to door: a piece's
+origin is its way in, and the next stands on its way out.
+
+Not checked: that the hole in a port's model is where its mount says (a `rise` restated a metre
+low moved the mount and not the hole, `examples/works` `low`), and that a pipe or a room kit's
+stated sizes are whole numbers of anything (`check` reads wall kits).
+
 ## Choosing among pieces
 
 Written at K3. A world never names a piece; it names a variant's word, and where it goes by rule
@@ -172,7 +203,7 @@ another side grows.
 - **A piece that closes a terrace or a jetty.** A storey may have its own outline (K7); a
   terrace of whole bays less a wall, and a jetty smaller than a half bay, close on no kit here.
 - **A wall's free end and a T-junction of walls** have no role.
-- **Sockets between two kits** (a door size shared across kits, a glue kit, a plug for a hole):
-  K9. The core has typed connectors (`spec/assets.md` 2.7); no library kit uses one.
+- **A tee, a valve and a sloped piece** in a pipe kit; a pipe that follows the land. A port
+  that two kits each bring half of.
 - **Stretching a piece.** No reader stretches. The studios' tools that stretch by default say
   they regret it (the report, section 7).

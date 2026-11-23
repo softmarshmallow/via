@@ -1,0 +1,38 @@
+# A corner room 8 m square: in at the back, out on the right, and `next`, where the next room's
+# origin stands, a quarter turned. `room_b` is the same room on another module: 128 mm longer to
+# its way out (the room on a 384 footprint among halls on 256: docs/research, section 3).
+[taxon."structure"]
+
+[asset.room]
+primitive = "box"
+size      = [8, 8, 3]
+taxon     = "structure"
+solidity  = "passable"
+[asset.room.mount.in]
+at        = [0, -4]
+face      = 180
+connector = "door"
+[asset.room.mount.out]
+at        = [4, 0]
+face      = 90
+connector = "door"
+[asset.room.mount.next]
+at   = [8, 0]
+face = 90
+
+[asset.room_b]
+primitive = "box"
+size      = [8.128, 8, 3]
+taxon     = "structure"
+solidity  = "passable"
+[asset.room_b.mount.in]
+at        = [0, -4]
+face      = 180
+connector = "door"
+[asset.room_b.mount.out]
+at        = [4.128, 0]
+face      = 90
+connector = "door"
+[asset.room_b.mount.next]
+at   = [8.128, 0]
+face = 90

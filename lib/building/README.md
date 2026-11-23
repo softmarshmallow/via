@@ -76,6 +76,11 @@ Library text in the form a user writes. Attributes illustrative until the code; 
   `to`, `kit`, `yard`, `hall`, `wings`, and `storey_h`, `plinth`, `porch`, `walk_out`, `roof`
   for its halls. `court.py` returns a `building` for the yard and for each hall ("A court",
   below).
+- **`pipe`** (a point, anchored; K9). A pipe between two kits, written by its points and a height at
+  each: `at`, `to`, `heights`, `kit`, `ends`. `pipe.py` returns its legs and pieces ("Pipes", below).
+- **`pipe_leg`** (path owner, connector `pipe`; K9). `[kind.pipe_leg.surface.line] base = "= level"`,
+  `bound = "= width / 2"`: one level leg of a pipe, the surface its pieces stand on. Returned by
+  `pipe.py`; a world writes none.
 
 Asset side (packs, `spec/assets.md` 2.7): a door leaf asset has one mount, `entry`, on its doorstep,
 `face` 180 (into the building), `connector = "foot"`; a whole-building asset (the college's hall)
@@ -360,6 +365,52 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   - *Not built.* A second court behind the first on the same axis; halls that are not across
     or along the axis; `bays` (a pin on one bay) passed to a wing with its place reflected; a
     gate house.
+- **Pipes** (K9 of `docs/plan-kits.md`, second slice, from examples/works). Design note; the
+  rules are `pipe.py`'s docstring, 1 to 6. Our own design: the research found the pipe kit as
+  the model of a kit and pipes kept as the glue between two kits, from one studio
+  (docs/research/Modular kit failures in studios.md, sections 3 and 6), and no account of pipes
+  joined freely in three dimensions (section 12).
+  **What had to be decided.** *Where a pipe piece stands.* An instance stands on a surface, and
+  its height is that surface's (R25): nothing is placed in the air. So each level leg of a pipe
+  is a path that owns a surface at the leg's height, as a flight owns its tread, and every
+  piece of the leg stands on it; a pipe piece's model is made about its middle line. *How a
+  pipe climbs.* A kit of straight pieces has none that climbs, so a leg is level and the climb
+  is a piece: a riser, which stands on the lower leg and whose top is a mount with a `rise`
+  (R75). The upper leg starts on that mount, and the engine holds its height against the lower
+  leg's and the piece's own. The lower leg names nothing: a leg that ended on what stands on it
+  is a loop. *How a pipe meets a building.* It does not know one. Its end is a flange, whose
+  mount carries the kit's connector; a building's port is a wall piece's mount with the same
+  connector, at the hole's height. Where the two are at one point, at one height, facing each
+  other, the engine finds the joint (R76); where they are not, it says by how much. The step
+  reads no building, so a pipe kit is glue for any kit whose ports say its word. *Why a pipe is
+  not a path.* Its legs are paths, and a path written over them crosses each one
+  (`geom.unowned_crossing`), as a row's frontage crossed its doorways: a pipe is a point and
+  the points it goes on through. *Why one call a pipe.* A step that says an error returns
+  nothing, so with one call for all, one refused pipe took every other with it.
+  **What it does not do.** A pipe's heights are above the ground at its first point: over
+  ground that is not level it stays level and its ports do not (examples/works `sloped`). A
+  support is one length. There is no tee, no valve, no sloped piece, and little is checked
+  between its ends: a pipe through a wall with no port is laid; two legs that cross in plan at
+  one height are the core's `geom.unowned_crossing`, and nothing reads a piece's body against
+  a wall's or another pipe's.
+  **K9's review changed six things** (each with its test in `test_pipe.py`, `Reviewed`). A
+  climb is the riser's to the millimetre and a support's leg is its height to the millimetre:
+  within 5 mm passed here and was the engine's `surface.gap` of 1 mm, or a support 3 mm in the
+  ground. An elbow of any angle is laid to either hand (only a quarter turn was). A leg shorter
+  than its ends take names the one length that closes (its record held a null, which the
+  engine refuses). A point outside the extent is `params`. A support says its height. And the
+  hint for a leg that climbs writes the riser only where one can stand.
+  Nothing says a pipe ends at a plain wall, only that its flange is answered by nothing.
+- **A piece another joins** (K9, from examples/works). A wall piece with a mount (a port: a
+  hole another kit's piece plugs into) is a variant of the bay like any other: asked for by
+  `bays` or `fill`, laid as a member of its stretch's run and named by `assets` (`lay.py` rule
+  8, R68), so the bays beside it keep their names. The engine finds its joint (R76) and says
+  `surface.unmet` and `surface.gap` of the run, naming the member's mount. **As first built**
+  the engine could say nothing of a run's member (`diag.internal`, exit 3, three times for
+  three ports nothing answered), so `lay` returned a piece with a mount as its own instance,
+  `<stretch>_b<bay>`, and split the run round it; that renamed the bays after a port, which is
+  what R68 was made to stop. K9's fix pass mended the engine (a record about a member is its
+  run's) and took the library's mend out: `lay.py` is as K8 left it.
 - **Posts and bays** (K8 of `docs/plan-kits.md`, first slice, from examples/temple). Design
   note, written before the code; the rule is `lay.py` rule 15 (`post_bays`, `post_walls`).
   Source: ours. The research found no developer's account of post-and-bay or classical building,

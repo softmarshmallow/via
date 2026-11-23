@@ -1,0 +1,273 @@
+# The works kits with the flange saying another connector than the ports' (changes/wrong_plug.toml).
+# Written by packs/make_kit.py from packs/works.toml: edit that.
+# The works kits (examples/works): made by packs/make_kit.py.
+# Its facts file, works.facts.toml, is written by `via pack accept examples/works/packs/works.toml`.
+#
+# Every model is glTF's convention: +Y up, front +Z. lib/building's `lay` reads a wall piece's
+# part from its `role:` tag and the length it repeats at from `params.pitch`
+# (docs/design/kit-contract.md); lib/building's `pipes` reads the pipe kit the same way.
+
+root = "works"
+
+[taxon."structure"]
+defaults = { collision = "box" }
+
+# ---- the shed: laid by posts (lay.py rule 15). A post every 6.0 m and a panel between two.
+
+[taxon."structure/shed".defaults.shared]
+unit   = 0.2                     # a panel's thickness: every size of the kit is a whole number of it
+wall   = 0.2
+storey = 7.2
+door   = 3.0                     # the doorway the door frame is made for
+
+[asset.shed_post]
+file  = "shed_post.glb"
+taxon = "structure/shed"
+tags  = ["role:post", "role:corner"]
+
+[asset.shed_panel]                # 5.6 m of cladding between two posts, at a place that repeats every 6.0 m
+file   = "shed_panel.glb"
+taxon  = "structure/shed"
+tags   = ["role:wall"]
+params = { pitch = 6.0 }
+
+# The panel with a hole for a pipe, 4.5 m up. The hole is a place another piece joins: a mount
+# with a connector, at the hole's height (spec/assets.md 2.7, `rise`; R75). It lies on the
+# building's outline: a panel stands half a post inside it.
+[asset.shed_port]
+file   = "shed_port.glb"
+taxon  = "structure/shed"
+tags   = ["role:wall", "variant:port"]
+params = { pitch = 6.0 }
+
+[asset.shed_port.mount.port]
+at        = [0, 0.2]
+face      = 0
+rise      = 4.5                   # the shed's port
+connector = "pipe"
+
+[asset.shed_door]                 # a panel's length with an opening 3.0 m wide
+file   = "shed_door.glb"
+taxon  = "structure/shed"
+tags   = ["role:door"]
+params = { pitch = 6.0 }
+
+[asset.shed_tile]                 # half a bay square: a floor is whole tiles between two lines of posts
+file   = "shed_tile.glb"
+taxon  = "structure/shed"
+tags   = ["role:floor"]
+params = { pitch = 3.0 }
+sink   = 0.15
+
+# ---- the boiler house: walls at a pitch (lay.py rule 6), on another module than the shed's.
+
+[taxon."structure/boiler".defaults.shared]
+unit   = 0.3
+module = 3.0
+wall   = 0.3
+storey = 6.0
+door   = 1.5
+
+[asset.boiler_wall]
+file   = "boiler_wall.glb"
+taxon  = "structure/boiler"
+tags   = ["role:wall"]
+params = { pitch = 3.0 }
+
+[asset.boiler_port]               # its own panel with a port, at the same 4.5 m; on the outline, the wall's outer face
+file   = "boiler_port.glb"
+taxon  = "structure/boiler"
+tags   = ["role:wall", "variant:port"]
+params = { pitch = 3.0 }
+
+[asset.boiler_port.mount.port]
+at        = [0, 0.15]
+face      = 0
+rise      = 4.5
+connector = "pipe"
+
+[asset.boiler_corner]
+file  = "boiler_corner.glb"
+taxon = "structure/boiler"
+tags  = ["role:corner"]
+
+[asset.boiler_door]
+file   = "boiler_door.glb"
+taxon  = "structure/boiler"
+tags   = ["role:door"]
+params = { pitch = 3.0 }
+
+[asset.boiler_tile]
+file   = "boiler_tile.glb"
+taxon  = "structure/boiler"
+tags   = ["role:floor"]
+params = { pitch = 1.5 }
+sink   = 0.15
+
+# ---- the pipe: the glue between the two (lib/building/pipe.py). Every piece is placed by the
+# pipe's middle line, so its model's origin is its pivot.
+
+[taxon."service"]
+defaults = { collision = "none", pivot = "origin" }
+
+[taxon."service/pipe".defaults.shared]
+connector = "pipe"               # what its flange plugs into
+section   = 0.3
+support   = 4.0                  # metres from one support to the next, at most
+
+[asset.pipe]
+file   = "pipe.glb"
+taxon  = "service/pipe"
+tags   = ["role:pipe"]
+params = { pitch = 2.0 }
+
+[asset.pipe_slip]                 # the short piece that closes a leg: the kit's filler
+file   = "pipe_slip.glb"
+taxon  = "service/pipe"
+tags   = ["role:slip"]
+params = { pitch = 0.5 }
+
+[asset.pipe_elbow]                # a quarter turn; it takes 0.5 m of each leg it joins
+file   = "pipe_elbow.glb"
+taxon  = "service/pipe"
+tags   = ["role:elbow"]
+params = { angle = 90, reach = 0.5 }
+
+# The riser: up 3.0 m. It stands on the lower of two legs, and the upper one starts on its top,
+# 3.0 m above what the riser stands on (`rise`, R75). The word is a leg's own (lib/building's
+# `pipe_leg`).
+[asset.pipe_riser]
+file   = "pipe_riser.glb"
+taxon  = "service/pipe"
+tags   = ["role:riser"]
+params = { rise = 3.0, reach = 0.5 }
+
+[asset.pipe_riser.mount.top]
+at        = [0, 0]
+face      = 180                   # a leg arrives at it from the riser's front
+rise      = 3.0
+connector = "pipe"
+
+# The flange: the plug a port takes. Its mount is on the pipe's end, facing along it.
+[asset.pipe_flange]
+file   = "pipe_flange.glb"
+taxon  = "service/pipe"
+tags   = ["role:flange"]
+params = { reach = 0.5 }
+
+[asset.pipe_flange.mount.plug]
+at        = [0, 0]
+face      = 0
+connector = "steam"               # the flange
+
+[asset.pipe_cap]
+file   = "pipe_cap.glb"
+taxon  = "service/pipe"
+tags   = ["role:cap"]
+params = { reach = 0.5 }
+
+# The support: a post and a saddle under a pipe 4.5 m up. It is placed by the pipe, as every
+# piece here, and reaches 4.5 m down from the pipe's middle line: to the ground, where the ground
+# is where the pipe's heights are measured from.
+[asset.pipe_support]
+file   = "pipe_support.glb"
+taxon  = "service/pipe"
+tags   = ["role:support"]
+params = { height = 4.5 }
+
+# ---- the rooms: whole pieces joined door to door. A piece's origin is its way in; the next
+# piece stands on its way out (`on = { ref = "<piece>.out" }`), and the two doors are a joint
+# (spec/surfaces.md 3.3; R76).
+
+[taxon."interior"]
+defaults = { collision = "none", pivot = "origin", solidity = "passable" }
+
+[taxon."interior/room".defaults.shared]
+unit = 1.5                       # half a hall's width: every door stands on a lattice of it
+
+[asset.room]                      # 6 m square: in at the back, out to the right
+file  = "room.glb"
+taxon = "interior/room"
+
+[asset.room.mount.in]
+at        = [0, 0]
+face      = 180
+connector = "door"
+
+[asset.room.mount.out]
+at        = [3, 3]
+face      = 90
+connector = "door"
+
+[asset.room_long]                 # the same room on another module: 128 mm longer to its way out
+file  = "room_long.glb"
+taxon = "interior/room"
+
+[asset.room_long.mount.in]
+at        = [0, 0]
+face      = 180
+connector = "door"
+
+[asset.room_long.mount.out]
+at        = [3.128, 3]
+face      = 90
+connector = "door"
+
+[asset.hall]                      # 3 m wide and 6 m long, straight
+file  = "hall.glb"
+taxon = "interior/room"
+
+[asset.hall.mount.in]
+at        = [0, 0]
+face      = 180
+connector = "door"
+
+[asset.hall.mount.out]
+at        = [0, 6]
+face      = 0
+connector = "door"
+
+[asset.hall_handed]               # a hall whose way out is 0.3 m to the right of its way in
+file  = "hall_handed.glb"
+taxon = "interior/room"
+
+[asset.hall_handed.mount.in]
+at        = [0, 0]
+face      = 180
+connector = "door"
+
+[asset.hall_handed.mount.out]
+at        = [0.3, 6]
+face      = 0
+connector = "door"
+
+[asset.hall_hatch]                # the hall with another opening at its way out
+file  = "hall.glb"
+taxon = "interior/room"
+
+[asset.hall_hatch.mount.in]
+at        = [0, 0]
+face      = 180
+connector = "door"
+
+[asset.hall_hatch.mount.out]
+at        = [0, 6]
+face      = 0
+connector = "hatch"
+
+[asset.hall_corner]               # a hall's corner, 3 m square: in at the back, out to the right
+file  = "hall_corner.glb"
+taxon = "interior/room"
+
+[asset.hall_corner.mount.in]
+at        = [0, 0]
+face      = 180
+connector = "door"
+
+[asset.hall_corner.mount.out]
+at        = [1.5, 1.5]
+face      = 90
+connector = "door"
+
+[material.ground]
+colour = [0.5, 0.5, 0.45]
