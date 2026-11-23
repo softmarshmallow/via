@@ -36,7 +36,7 @@
 authority = "anchored"
 
 [kind.building.defaults]                 # every attribute a building takes is declared here
-storeys  = 1                             # how many storeys
+storeys  = 1                             # how many storeys; 0: its walls alone, on the ground (a yard)
 storey_h = 3.2                           # metres from one floor to the next
 ground_h = 0                             # the ground storey's height; 0: as storey_h
 top_h    = 0                             # the top storey's height (of two or more); 0: as storey_h
@@ -47,11 +47,12 @@ doors    = []                            # [{ storey, t, width }]
 stair    = {}                            # { t, width, run }: needed from two storeys
 rooms    = []                            # [{ storey, shares }]
 kit      = ""                            # a taxon path of wall pieces; "" places none
-roof     = ""                            # "garden": a walkable roof; else the kit's `role:roof`
+roof     = ""                            # "flat", "gable", "hip": from the kit's pieces; "garden": a walkable roof; else the kit's `role:roof`
 bays     = []                            # [{ storey, side, at, variant }]: one bay's variant, by a point along a side
 fill     = []                            # [{ storeys, sides, pattern }]: the bays' variants in turn along each wall
 setback  = []                            # [{ storey, sides, by }]: from that storey up, those sides stand `by` metres inside the outline
 overhang = []                            # [{ storey, sides, by }]: the same, outside it
+colonnade = []                           # [{ sides, depth }]: on those sides the walls stand `depth` metres inside the outline, behind the kit's posts
 faces    = []                            # a word for each side of the outline, in order: what it faces ("front", "party", "back", "end"); `fill` may choose by it
 
 [kind.row]                               # buildings side by side along a frontage, written in bays (row.py)
@@ -75,6 +76,21 @@ fill     = []
 setback  = []
 overhang = []
 
+[kind.court]                             # a walled yard and the halls in it, written about one axis (court.py)
+authority = "anchored"
+
+[kind.court.defaults]                    # a point, `at`: the middle of the gate, on the yard wall's outer face
+to       = []                            # [x, y]: any other point on the axis, further into the court
+kit      = ""                            # the kit the hall and the wings are laid from
+yard     = {}                            # { kit, bays = [across, along], storey_h }: the wall round the court, its gate on the axis
+hall     = {}                            # { bays = [across, deep], from, veranda, fill }: across the axis, facing the gate
+wings    = []                            # [{ bays = [along, deep], from, off, veranda, fill }]: each laid twice, mirror images about the axis
+storey_h = 3.2                           # these five are the hall's and each wing's (kind.building, above)
+plinth   = 0.3
+porch    = 2
+walk_out = 3
+roof     = ""
+
 [kind.storey]                            # one floor of a building: a region and its floor
 authority = "anchored"
 requires  = ["level"]
@@ -90,6 +106,16 @@ requires  = ["level"]
 
 [kind.footing.surface.top]
 base = "= level"
+
+[kind.platform]                             # the floor under a colonnade: the building's whole outline at the
+authority = "anchored"                   # ground storey's level (lay.py rule 16). The room inside has its own
+requires  = ["level"]                    # storey over part of it, at the same height.
+
+[kind.platform.surface.floor]
+base = "= level"
+
+[kind.yard]                              # the outline of a building of no storeys (lay.py rule 18): its walls
+authority = "anchored"                   # stand round it on the terrain. It owns no surface and writes no field.
 
 [kind.room]                              # a named space on a storey; the storey's floor is its floor
 authority = "anchored"

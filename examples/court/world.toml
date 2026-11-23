@@ -1,0 +1,75 @@
+name       = "court"
+extent     = [0, 0, 64, 64]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/timber.toml"              # the timber kit, beside the world (packs/make_kit.py)
+
+# A walled court of timber halls on level ground: a gate on the axis, the main hall across it
+# with a veranda along its front, and two side halls that face each other. Our own design: the
+# research found no developer's account of East Asian building from pieces (docs/research/Modular
+# kit failures in studios.md, section 12). The subject is a kit whose walls are posts and panels
+# and whose main piece is its roof, and a plan that is one half and its mirror image
+# (docs/plan-kits.md, K8).
+#
+# The gate is in the south wall and the axis runs north. Every size is the kit's: a bay is 3.0 m
+# from one post's middle to the next, a post 0.3 m, and the roof stands 1.35 m beyond the posts.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ the court
+
+[feature.court]
+kind     = "court"
+at       = [32, 10]                           # the middle of the gate
+to       = [32, 20]                           # the axis: north
+kit      = "structure/timber"
+storey_h = 3.6
+plinth   = 0.6                                # the stone platform
+roof     = "hip"
+yard     = { kit = "structure/yard", bays = [13, 12] }
+hall     = { bays = [5, 3], from = 24, veranda = 1, fill = [{ sides = [0], pattern = ["doors"] }, { sides = [1, 3], pattern = ["lattice"] }] }
+wings    = [{ bays = [3, 2], from = 9, off = 9, fill = [{ sides = [0], pattern = ["lattice"] }, { sides = [1], pattern = ["doors", "wall"] }, { sides = [2], pattern = ["lattice", "wall", "wall"] }] }]
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.courts]                                 # every court's buildings (lib/building/court.py)
+when    = "generate"
+worker  = true
+command = ["python", "-m", "viasdk", "lib:building/court.py"]
+
+# `lay` walls every building the court returns, from a layer above (protocol.md 3.3).
+[layer.walls]
+file  = "walls.toml"
+owner = "walls"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_court]
+at = [32, 30]
+
+[feature.look_hall]
+at = [32, 40]
+
+[feature.inside]                              # from just inside the gate, at eye height
+kind   = "bookmark"
+at     = [32, 13]
+toward = "look_hall"
+
+[feature.over]                                # from the south-west, above
+kind       = "bookmark"
+at         = [8, 4]
+toward     = "look_court"
+eye_height = 22

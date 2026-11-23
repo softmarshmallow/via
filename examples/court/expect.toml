@@ -1,0 +1,1080 @@
+# What a court build measures (docs/plan-kits.md, K8: the East Asian half). Our own design: the
+# research found no developer's account of East Asian building from pieces (docs/research/Modular
+# kit failures in studios.md, section 12). Measures, never bytes (R15): each row names a measure
+# of `measure.py` and the band it must fall in. Taken by
+#
+#   python3 examples/court/measure.py BUILD --world examples/court/world.toml         # base
+#   python3 examples/court/measure.py BUILD+<c> --base BUILD                          # a change, built with --against
+#   python3 examples/court/measure.py HAND --world examples/court/by_hand.toml        # by_hand.toml, built alone
+#   python3.11 examples/court/measure.py BUILD+<c> --base BUILD --check <c>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at 26cb33f,
+# VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's `court`, `lay` and
+# `check` of the working tree with K8's second slice (a hipped roof, eaves and roof pieces by
+# span, lay.py rule 17; a wall on the ground, rule 18; the floor under posts, rule 15; court.py)
+# and the mends of K8's one review (lib/building/test_k8fix.py).
+# One fresh store: the base, then each change with --against the base, one build each;
+# by_hand.toml in a store of its own. Measured 2026-11-23 in one run and checked in a second. A
+# band is the measured number: not a target, it says where someone looks.
+
+# ------------------------------------------------------------------------------------------ base
+# The court written about its axis (lib/building/court.py): one `court` table, 22 numbers. The
+# step returns four buildings: the yard, of no storeys, its 54 pieces on the ground; the main hall
+# and two side halls, laid by posts (40 posts, 31 panels) and floored from post middle to post
+# middle; three hipped roofs that stand 1.35 m beyond their walls and cover their 432 m2 once.
+# Every piece has its image across the axis, to the millimetre. Nothing is said.
+
+[base.built]
+measure = "built"
+band    = [1, 1]
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.params]
+measure = "params"
+band    = [0, 0]
+
+[base.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[base.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[base.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[base.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[base.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[base.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[base.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[base.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[base.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[base.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[base.buildings]
+measure = "buildings"
+band    = [4, 4]
+
+[base.halls]
+measure = "halls"
+band    = [3, 3]
+
+[base.yards]
+measure = "yards"
+band    = [1, 1]
+
+[base.instances]
+measure = "instances"
+band    = [311, 311]
+
+[base.posts]
+measure = "posts"
+band    = [40, 40]
+
+[base.panels]
+measure = "panels"
+band    = [31, 31]
+
+[base.tiles]
+measure = "tiles"
+band    = [108, 108]
+
+[base.base]
+measure = "base"
+band    = [48, 48]
+
+[base.yard_wall]
+measure = "yard_wall"
+band    = [54, 54]
+
+[base.roof]
+measure = "roof"
+band    = [20, 20]
+
+[base.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[base.pitched]
+measure = "pitched"
+band    = [3, 3]
+
+[base.flat]
+measure = "flat"
+band    = [0, 0]
+
+[base.roof_dm2]
+measure = "roof_dm2"
+band    = [43200, 43200]
+
+[base.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[base.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[base.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[base.eaves_mm]
+measure = "eaves_mm"
+band    = [1350, 1350]
+
+[base.floor_open_dm2]
+measure = "floor_open_dm2"
+band    = [0, 0]
+
+[base.mirror_mm]
+measure = "mirror_mm"
+band    = [0, 0]
+
+[base.mirror_alone]
+measure = "mirror_alone"
+band    = [0, 0]
+
+[base.yard_z_mm]
+measure = "yard_z_mm"
+band    = [0, 0]
+
+[base.hall_z_mm]
+measure = "hall_z_mm"
+band    = [0, 0]
+
+[base.written_buildings]
+measure = "written_buildings"
+band    = [0, 0]
+
+[base.written_courts]
+measure = "written_courts"
+band    = [1, 1]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [22, 22]
+
+# ------------------------------------------------------------------------------------------ hand
+# The same court as four `building` tables written by hand (by_hand.toml): 63 numbers, 32 of
+# them corner coordinates. It lays what world.toml lays, piece for piece, because its author
+# worked the reflection out; nothing in the build holds it to that.
+
+[hand.built]
+measure = "built"
+band    = [1, 1]
+
+[hand.errors]
+measure = "errors"
+band    = [0, 0]
+
+[hand.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[hand.params]
+measure = "params"
+band    = [0, 0]
+
+[hand.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[hand.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[hand.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[hand.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[hand.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[hand.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[hand.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[hand.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[hand.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[hand.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[hand.buildings]
+measure = "buildings"
+band    = [4, 4]
+
+[hand.halls]
+measure = "halls"
+band    = [3, 3]
+
+[hand.yards]
+measure = "yards"
+band    = [1, 1]
+
+[hand.instances]
+measure = "instances"
+band    = [311, 311]
+
+[hand.posts]
+measure = "posts"
+band    = [40, 40]
+
+[hand.panels]
+measure = "panels"
+band    = [31, 31]
+
+[hand.tiles]
+measure = "tiles"
+band    = [108, 108]
+
+[hand.base]
+measure = "base"
+band    = [48, 48]
+
+[hand.yard_wall]
+measure = "yard_wall"
+band    = [54, 54]
+
+[hand.roof]
+measure = "roof"
+band    = [20, 20]
+
+[hand.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[hand.pitched]
+measure = "pitched"
+band    = [3, 3]
+
+[hand.flat]
+measure = "flat"
+band    = [0, 0]
+
+[hand.roof_dm2]
+measure = "roof_dm2"
+band    = [43200, 43200]
+
+[hand.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[hand.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[hand.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[hand.eaves_mm]
+measure = "eaves_mm"
+band    = [1350, 1350]
+
+[hand.floor_open_dm2]
+measure = "floor_open_dm2"
+band    = [0, 0]
+
+[hand.mirror_mm]
+measure = "mirror_mm"
+band    = [0, 0]
+
+[hand.mirror_alone]
+measure = "mirror_alone"
+band    = [0, 0]
+
+[hand.yard_z_mm]
+measure = "yard_z_mm"
+band    = [0, 0]
+
+[hand.hall_z_mm]
+measure = "hall_z_mm"
+band    = [0, 0]
+
+[hand.written_buildings]
+measure = "written_buildings"
+band    = [4, 4]
+
+[hand.written_courts]
+measure = "written_courts"
+band    = [0, 0]
+
+[hand.written_numbers]
+measure = "written_numbers"
+band    = [63, 63]
+
+# ------------------------------------------------------------------------------------------ deep
+# The side halls three bays deep. Their roofs are 12 m deep and take the kit's other slope and
+# hip (span 6.0 m): nothing is written of the roof and nothing is said. 504 m2 of roof, covered once.
+
+[deep.built]
+measure = "built"
+band    = [1, 1]
+
+[deep.errors]
+measure = "errors"
+band    = [0, 0]
+
+[deep.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[deep.params]
+measure = "params"
+band    = [0, 0]
+
+[deep.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[deep.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[deep.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[deep.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[deep.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[deep.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[deep.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[deep.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[deep.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[deep.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[deep.roof]
+measure = "roof"
+band    = [16, 16]
+
+[deep.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[deep.pitched]
+measure = "pitched"
+band    = [3, 3]
+
+[deep.flat]
+measure = "flat"
+band    = [0, 0]
+
+[deep.roof_dm2]
+measure = "roof_dm2"
+band    = [50400, 50400]
+
+[deep.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[deep.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[deep.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[deep.eaves_mm]
+measure = "eaves_mm"
+band    = [1350, 1350]
+
+[deep.posts]
+measure = "posts"
+band    = [44, 44]
+
+[deep.panels]
+measure = "panels"
+band    = [35, 35]
+
+[deep.mirror_mm]
+measure = "mirror_mm"
+band    = [0, 0]
+
+[deep.mirror_alone]
+measure = "mirror_alone"
+band    = [0, 0]
+
+[deep.added]
+measure = "added"
+band    = [36, 36]
+
+[deep.removed]
+measure = "removed"
+band    = [4, 4]
+
+# ------------------------------------------------------------------------------------------ shallow
+# The side halls one bay deep: a roof 6 m deep, which no piece of the kit is made for.
+# `roof_none`, of each, names the depths the kit roofs (9 and 12 m) and the eaves; a flat roof is
+# laid on each outline in its place, with no eaves. The main hall keeps its roof.
+
+[shallow.built]
+measure = "built"
+band    = [1, 1]
+
+[shallow.errors]
+measure = "errors"
+band    = [0, 0]
+
+[shallow.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[shallow.params]
+measure = "params"
+band    = [0, 0]
+
+[shallow.roof_none]
+measure = "roof_none"
+band    = [2, 2]
+
+[shallow.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[shallow.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[shallow.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[shallow.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[shallow.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[shallow.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[shallow.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[shallow.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[shallow.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[shallow.roof]
+measure = "roof"
+band    = [8, 8]
+
+[shallow.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[shallow.pitched]
+measure = "pitched"
+band    = [1, 1]
+
+[shallow.flat]
+measure = "flat"
+band    = [2, 2]
+
+[shallow.roof_dm2]
+measure = "roof_dm2"
+band    = [27738, 27738]
+
+[shallow.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [6138, 6138]
+
+[shallow.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[shallow.roofed_pct]
+measure = "roofed_pct"
+band    = [77.85, 77.95]
+
+[shallow.eaves_mm]
+measure = "eaves_mm"
+band    = [0, 0]
+
+[shallow.mirror_mm]
+measure = "mirror_mm"
+band    = [0, 0]
+
+[shallow.mirror_alone]
+measure = "mirror_alone"
+band    = [0, 0]
+
+[shallow.added]
+measure = "added"
+band    = [24, 24]
+
+[shallow.removed]
+measure = "removed"
+band    = [48, 48]
+
+# ------------------------------------------------------------------------------------------ even
+# The main hall four bays across: a post stands on the axis. The court is refused (`params`,
+# from the court step), naming the 3 or 5 bays that have a bay on their middle, and the build stops.
+
+[even.built]
+measure = "built"
+band    = [0, 0]
+
+[even.errors]
+measure = "errors"
+band    = [1, 1]
+
+[even.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[even.court_params]
+measure = "court_params"
+band    = [1, 1]
+
+[even.params]
+measure = "params"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ close
+# The side halls 4 m further in: their walls stand 1.7 m short of the main hall's, their roofs a
+# metre into its roof. `court_meets`, of each, says so in metres and says what to move; the
+# engine's `place.crowded`, twice, names the two pairs of hip pieces. All four buildings are
+# laid. 5.6 m2 of roof is counted twice: the 2.7 m2 the two pairs share, in each roof's region.
+
+[close.built]
+measure = "built"
+band    = [1, 1]
+
+[close.errors]
+measure = "errors"
+band    = [0, 0]
+
+[close.warnings]
+measure = "warnings"
+band    = [4, 4]
+
+[close.params]
+measure = "params"
+band    = [0, 0]
+
+[close.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[close.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[close.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[close.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[close.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[close.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[close.court_meets]
+measure = "court_meets"
+band    = [2, 2]
+
+[close.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[close.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[close.crowded]
+measure = "crowded"
+band    = [2, 2]
+
+[close.roof]
+measure = "roof"
+band    = [20, 20]
+
+[close.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[close.pitched]
+measure = "pitched"
+band    = [3, 3]
+
+[close.flat]
+measure = "flat"
+band    = [0, 0]
+
+[close.roof_dm2]
+measure = "roof_dm2"
+band    = [43200, 43200]
+
+[close.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[close.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [560, 560]
+
+[close.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[close.eaves_mm]
+measure = "eaves_mm"
+band    = [1350, 1350]
+
+[close.mirror_mm]
+measure = "mirror_mm"
+band    = [0, 0]
+
+[close.mirror_alone]
+measure = "mirror_alone"
+band    = [0, 0]
+
+[close.added]
+measure = "added"
+band    = [0, 0]
+
+[close.removed]
+measure = "removed"
+band    = [0, 0]
+
+[close.moved]
+measure = "moved"
+band    = [128, 128]
+
+# ------------------------------------------------------------------------------------------ turned
+# The axis turned 16.7 degrees off the lattice. The court keeps its lengths and its mirror
+# (each piece's image within 4 mm of its twin: outlines and places are rounded to the millimetre),
+# every side still closes and every roof is laid. What is said is what any turned building is
+# told: no floor tile (`slab_open`, of each hall; 108 tiles are not laid) and `place.crowded` 40
+# times, of pieces that abut by the rounding (owed since K5: R69). `roof_double_dm2` here is the
+# measure's own 5 mm round each turned piece, along the seams, not roof laid twice.
+
+[turned.built]
+measure = "built"
+band    = [1, 1]
+
+[turned.errors]
+measure = "errors"
+band    = [0, 0]
+
+[turned.warnings]
+measure = "warnings"
+band    = [41, 41]
+
+[turned.params]
+measure = "params"
+band    = [0, 0]
+
+[turned.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[turned.slab_open]
+measure = "slab_open"
+band    = [3, 3]
+
+[turned.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[turned.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[turned.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[turned.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[turned.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[turned.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[turned.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[turned.crowded]
+measure = "crowded"
+band    = [40, 40]
+
+[turned.roof]
+measure = "roof"
+band    = [20, 20]
+
+[turned.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[turned.pitched]
+measure = "pitched"
+band    = [3, 3]
+
+[turned.flat]
+measure = "flat"
+band    = [0, 0]
+
+[turned.roof_dm2]
+measure = "roof_dm2"
+band    = [43196, 43196]
+
+[turned.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[turned.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [112, 112]
+
+[turned.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[turned.eaves_mm]
+measure = "eaves_mm"
+band    = [1350, 1350]
+
+[turned.posts]
+measure = "posts"
+band    = [40, 40]
+
+[turned.panels]
+measure = "panels"
+band    = [31, 31]
+
+[turned.tiles]
+measure = "tiles"
+band    = [0, 0]
+
+[turned.yard_wall]
+measure = "yard_wall"
+band    = [54, 54]
+
+[turned.mirror_mm]
+measure = "mirror_mm"
+band    = [4, 4]
+
+[turned.mirror_alone]
+measure = "mirror_alone"
+band    = [0, 0]
+
+[turned.removed]
+measure = "removed"
+band    = [108, 108]
+
+# ------------------------------------------------------------------------------------------ short_eaves
+# The kit restated with eaves of 0.9 m over roof pieces made for 1.35 m. `check` names both
+# slopes with the depth each would then roof (`kit_stated`); `lay` refuses all three roofs, naming
+# the depths the kit roofs and the eaves it sized by, and lays flat roofs on the outlines.
+
+[short_eaves.built]
+measure = "built"
+band    = [1, 1]
+
+[short_eaves.errors]
+measure = "errors"
+band    = [0, 0]
+
+[short_eaves.warnings]
+measure = "warnings"
+band    = [3, 3]
+
+[short_eaves.params]
+measure = "params"
+band    = [0, 0]
+
+[short_eaves.roof_none]
+measure = "roof_none"
+band    = [3, 3]
+
+[short_eaves.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[short_eaves.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[short_eaves.base_short]
+measure = "base_short"
+band    = [0, 0]
+
+[short_eaves.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[short_eaves.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[short_eaves.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[short_eaves.kit_stated]
+measure = "kit_stated"
+band    = [2, 2]
+
+[short_eaves.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[short_eaves.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[short_eaves.roof]
+measure = "roof"
+band    = [0, 0]
+
+[short_eaves.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[short_eaves.pitched]
+measure = "pitched"
+band    = [0, 0]
+
+[short_eaves.flat]
+measure = "flat"
+band    = [3, 3]
+
+[short_eaves.roof_dm2]
+measure = "roof_dm2"
+band    = [25947, 25947]
+
+[short_eaves.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [25947, 25947]
+
+[short_eaves.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[short_eaves.roofed_pct]
+measure = "roofed_pct"
+band    = [-0.05, 0.05]
+
+[short_eaves.eaves_mm]
+measure = "eaves_mm"
+band    = [0, 0]
+
+[short_eaves.tiles]
+measure = "tiles"
+band    = [216, 216]
+
+[short_eaves.added]
+measure = "added"
+band    = [108, 108]
+
+[short_eaves.removed]
+measure = "removed"
+band    = [20, 20]
+
+# ------------------------------------------------------------------------------------------ sloped
+# The ground falling 5 m in 100 to the east. The yard's wall follows it: its pieces stand
+# 1.965 m apart in height from the east side to the west. Each hall stands level on the mean of
+# its ground, and `base_short` says of each that its base stops 0.15 m short of the ground at its
+# low side. The plan's mirror holds; the heights do not, and nothing asks them to.
+
+[sloped.built]
+measure = "built"
+band    = [1, 1]
+
+[sloped.errors]
+measure = "errors"
+band    = [0, 0]
+
+[sloped.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[sloped.params]
+measure = "params"
+band    = [0, 0]
+
+[sloped.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[sloped.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[sloped.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[sloped.base_short]
+measure = "base_short"
+band    = [3, 3]
+
+[sloped.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[sloped.court_params]
+measure = "court_params"
+band    = [0, 0]
+
+[sloped.court_meets]
+measure = "court_meets"
+band    = [0, 0]
+
+[sloped.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[sloped.kit_deck]
+measure = "kit_deck"
+band    = [0, 0]
+
+[sloped.crowded]
+measure = "crowded"
+band    = [0, 0]
+
+[sloped.roof]
+measure = "roof"
+band    = [20, 20]
+
+[sloped.roofs]
+measure = "roofs"
+band    = [3, 3]
+
+[sloped.pitched]
+measure = "pitched"
+band    = [3, 3]
+
+[sloped.flat]
+measure = "flat"
+band    = [0, 0]
+
+[sloped.roof_dm2]
+measure = "roof_dm2"
+band    = [43200, 43200]
+
+[sloped.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[sloped.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[sloped.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[sloped.eaves_mm]
+measure = "eaves_mm"
+band    = [1350, 1350]
+
+[sloped.yard_z_mm]
+measure = "yard_z_mm"
+band    = [1965, 1965]
+
+[sloped.hall_z_mm]
+measure = "hall_z_mm"
+band    = [0, 0]
+
+[sloped.mirror_mm]
+measure = "mirror_mm"
+band    = [0, 0]
+
+[sloped.mirror_alone]
+measure = "mirror_alone"
+band    = [0, 0]
+
+[sloped.moved]
+measure = "moved"
+band    = [180, 180]

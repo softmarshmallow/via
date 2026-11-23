@@ -1,0 +1,6 @@
+# A front of four bays in place of five: 11.7 m, five columns. The classical rule is an even
+# number of columns, so that a bay, and not a column, stands on the axis: here the door's middle
+# is the middle column's.
+[feature.temple]
+region = [[16.8, 12], [28.5, 12], [28.5, 31.8], [16.8, 31.8]]
+doors  = [{ storey = 0, side = 0, at = 5.85 }]

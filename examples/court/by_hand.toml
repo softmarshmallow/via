@@ -1,0 +1,111 @@
+name       = "court_by_hand"
+extent     = [0, 0, 64, 64]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/timber.toml"              # the timber kit, beside the world (packs/make_kit.py)
+
+# The court of world.toml as an author writes it without the `court` kind (lib/building/court.py):
+# four buildings, each outline a sum of the kit's bay (3.0 m) and post (0.3 m) and of the
+# distances from the gate and from the axis, and the two side halls the same numbers reflected
+# about x = 32 by hand, with their sides renumbered (README.md, "Before"). It is kept beside
+# world.toml, the same court written about its axis, so that what the two say and lay can be
+# measured against each other.
+#
+# The gate is at (32, 10) and the axis runs north. The yard is 13 by 12 bays of its own kit
+# (39.6 by 36.6 m); the main hall 5 by 3 bays (15.3 by 9.3 m), its front 24 m in; each side hall
+# 3 by 2 bays (9.3 by 6.3 m), its front 9 m from the axis and its near end 9 m in.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ the yard
+
+[feature.yard]
+kind     = "building"
+region   = [[12.2, 10], [51.8, 10], [51.8, 46.6], [12.2, 46.6]]
+storeys  = 0                                  # its walls alone, on the ground (lay.py rule 18)
+storey_h = 2.4
+kit      = "structure/yard"
+doors    = [{ storey = 0, side = 0, at = 19.8 }]
+
+# ------------------------------------------------------------------------------------------ the halls
+
+[feature.hall]
+kind      = "building"
+region    = [[24.35, 34], [39.65, 34], [39.65, 43.3], [24.35, 43.3]]
+storey_h  = 3.6
+plinth    = 0.6
+roof      = "hip"
+kit       = "structure/timber"
+colonnade = [{ sides = [0], depth = 3.0 }]
+doors     = [{ storey = 0, side = 0, at = 7.65 }]
+fill      = [{ sides = [0], pattern = ["doors"] }, { sides = [1, 3], pattern = ["lattice"] }]
+
+[feature.east]
+kind     = "building"
+region   = [[41, 28.3], [41, 19], [47.3, 19], [47.3, 28.3]]
+storey_h = 3.6
+plinth   = 0.6
+roof     = "hip"
+kit      = "structure/timber"
+doors    = [{ storey = 0, side = 0, at = 4.65 }]
+fill     = [{ sides = [0], pattern = ["lattice"] },
+            { sides = [3], pattern = ["doors", "wall"], mirror = true },       # its far end is its side 3
+            { sides = [2], pattern = ["lattice", "wall", "wall"], mirror = true }]
+
+[feature.west]
+kind     = "building"
+region   = [[23, 19], [23, 28.3], [16.7, 28.3], [16.7, 19]]
+storey_h = 3.6
+plinth   = 0.6
+roof     = "hip"
+kit      = "structure/timber"
+doors    = [{ storey = 0, side = 0, at = 4.65 }]
+fill     = [{ sides = [0], pattern = ["lattice"] },
+            { sides = [1], pattern = ["doors", "wall"], mirror = true },       # its far end is its side 1
+            { sides = [2], pattern = ["lattice", "wall", "wall"], mirror = true }]
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/timber", "structure/yard"] }
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_court]
+at = [32, 30]
+
+[feature.look_hall]
+at = [32, 40]
+
+[feature.inside]                              # from just inside the gate, at eye height
+kind   = "bookmark"
+at     = [32, 13]
+toward = "look_hall"
+
+[feature.over]                                # from the south-west, above
+kind       = "bookmark"
+at         = [8, 4]
+toward     = "look_court"
+eye_height = 22

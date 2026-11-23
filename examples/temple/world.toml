@@ -1,0 +1,72 @@
+name       = "temple"
+extent     = [0, 0, 48, 48]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/order.toml"               # the order kit, beside the world (packs/make_kit.py)
+
+# A classical temple on level ground: a room (the cella) inside a colonnade on all four sides,
+# on a podium, under one gable roof. Our own design: the research found no developer's account of
+# classical building (docs/research/Modular kit failures in studios.md, section 12). The subject
+# is a kit in which a line of posts stands outside the walls and the roof covers both
+# (docs/plan-kits.md, K8).
+#
+# Every length is a whole number of one unit, the column's width, 0.9 m. The outline is the
+# colonnade's: five bays of 2.7 m across the front and seven along the flank, and one column's
+# width, 14.4 by 19.8 m. The walls stand one bay inside it. The front is the south side, side 0.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ the temple
+
+[feature.temple]
+kind      = "building"
+region    = [[16.8, 12], [31.2, 12], [31.2, 31.8], [16.8, 31.8]]
+storey_h  = 9.0                               # ten units: a column of eight and its entablature of two
+plinth    = 0.9                               # the podium
+roof      = "gable"
+kit       = "structure/order"
+colonnade = [{ sides = "all", depth = 2.7 }]  # the walls one bay inside the columns (lay.py rule 16)
+doors     = [{ storey = 0, side = 0, at = 7.2 }]          # on the axis, between the two middle columns
+fill      = [{ sides = [1, 2, 3], pattern = ["wall", "niche"], mirror = true }]
+
+# ------------------------------------------------------------------------------------------ steps
+
+# `lay` and `check` stand in a layer above, as in every example of a kit (protocol.md 3.3).
+[layer.walls]
+file  = "walls.toml"
+owner = "walls"
+rank  = 1
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_temple]
+at = [24, 21.9]
+
+[feature.front]                               # the front from the south, at eye height
+kind   = "bookmark"
+at     = [24, 1]
+toward = "look_temple"
+
+[feature.corner]                              # the south-west corner, above
+kind       = "bookmark"
+at         = [4, 2]
+toward     = "look_temple"
+eye_height = 14
+
+[feature.over]                                # from the south, above
+kind       = "bookmark"
+at         = [24, 0.5]
+toward     = "look_temple"
+eye_height = 30

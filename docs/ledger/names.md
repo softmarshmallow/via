@@ -109,8 +109,11 @@ has and on which fields, its surfaces, its mounts, and whether it is an exit or 
 |---|---|---|---|
 | `building` | `building` | Grammar | anchored |
 | `row` | `building` | Linear placement, Grammar | anchored |
+| `court` | `building` | Grammar | anchored |
 | `storey` | `building` | Grammar, Representation switch | anchored; surface floor with a cut |
 | `footing` | `building` | Grammar, Representation switch | anchored; surface top |
+| `platform` | `building` | Grammar, Representation switch | anchored; surface floor |
+| `yard` | `building` | Grammar | anchored |
 | `room` | `building` | Grammar | anchored |
 | `doorway` | `building` | Meeting | 1 effect on role:surface |
 | `flight` | `building` | Meeting, Representation switch | surface tread |
@@ -168,6 +171,7 @@ A library declares no step; a world restates the step's table (`spec/protocol.md
 |---|---|---|---|
 | `lib/building/lay.py` | generate | Grammar | One building becomes storeys, their footings, rooms, flights, doorways, footpaths, wall runs, floor tiles and a roof |
 | `lib/building/row.py` | generate | Linear placement, Grammar | Every row becomes its buildings: each lot sized in the kit's bays, wall to wall, told what each side faces |
+| `lib/building/court.py` | generate | Grammar | Every court becomes its buildings: the yard and each hall sized in the kit's bays about one axis, a wing written once and returned as two mirror images |
 | `lib/building/check.py` | lint | Measure | Whether every storey and room can be reached, and stairs, doors and kit are within their limits |
 | `lib/land/uplands.py` | generate | Field | A hillside made from noise and the water that runs off it |
 | `lib/land/weather.py` | generate | Simulation | Ground steeper than its angle of repose sheds downhill |

@@ -1,0 +1,4 @@
+# The side halls 4 m further along the axis: their walls stand 1.7 m short of the main hall's
+# front, and their roofs, 1.35 m beyond the walls, a metre into the main hall's.
+[feature.court]
+wings = [{ bays = [3, 2], from = 13, off = 9, fill = [{ sides = [0], pattern = ["lattice"] }, { sides = [1], pattern = ["doors", "wall"] }, { sides = [2], pattern = ["lattice", "wall", "wall"] }] }]

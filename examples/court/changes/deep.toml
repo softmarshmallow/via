@@ -1,0 +1,5 @@
+# The side halls three bays deep in place of two, and a metre nearer the axis: 9.3 m deep, so
+# their roofs are 12 m deep with the eaves and take the kit's other slope and hip, the pieces
+# with a span of 6.0 m. Nothing is written of the roof: the building's depth chooses it.
+[feature.court]
+wings = [{ bays = [3, 3], from = 9, off = 8, fill = [{ sides = [0], pattern = ["lattice"] }, { sides = [1], pattern = ["doors", "wall"] }, { sides = [2], pattern = ["lattice", "wall", "wall"] }] }]

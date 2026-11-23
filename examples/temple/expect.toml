@@ -1,0 +1,819 @@
+# What a temple build measures (docs/plan-kits.md, K8: the classical half). Our own design: the
+# research found no developer's account of classical building (docs/research/Modular kit failures
+# in studios.md, section 12). Measures, never bytes (R15): each row names a measure of
+# `measure.py` and the band it must fall in. Taken by
+#
+#   python3 examples/temple/measure.py BUILD --world examples/temple/world.toml        # base
+#   python3 examples/temple/measure.py BUILD+<c> --base BUILD                          # a change, built with --against
+#   python3 examples/temple/measure.py HAND --world examples/temple/by_hand.toml       # by_hand.toml, built alone
+#   python3.11 examples/temple/measure.py BUILD+<c> --base BUILD --check <c>
+#
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at 26cb33f,
+# VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's `lay` and `check` of
+# the working tree with K8's first slice (posts and bays, lay.py rule 15; the colonnade, rule 16;
+# a mirrored `fill`, rule 8; a kit's unit, check.py rule 11) and the mends of K8's one review
+# (lib/building/test_k8fix.py). One fresh store: the base, then each
+# change with --against the base, one build each; by_hand.toml in a store of its own. Measured
+# 2026-11-23. A band is the measured number: not a target, it says where someone looks.
+
+# ------------------------------------------------------------------------------------------ base
+# The temple with its colonnade stated (lay.py rule 16): one `building` table, 17 numbers. 24
+# columns and 24 lintels stand on its outline, on the podium; the walls stand one bay inside; one
+# gable roof covers the whole outline once; the podium's top is covered edge to edge; the door
+# on the axis is 1.8 m clear between the two middle columns; and nothing is said.
+
+[base.built]
+measure = "built"
+band    = [1, 1]
+
+[base.buildings]
+measure = "buildings"
+band    = [1, 1]
+
+[base.instances]
+measure = "instances"
+band    = [367, 367]
+
+[base.errors]
+measure = "errors"
+band    = [0, 0]
+
+[base.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[base.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[base.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[base.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[base.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[base.kit_unit]
+measure = "kit_unit"
+band    = [0, 0]
+
+[base.kit_pitch]
+measure = "kit_pitch"
+band    = [0, 0]
+
+[base.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[base.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[base.door_narrow]
+measure = "door_narrow"
+band    = [0, 0]
+
+[base.columns]
+measure = "columns"
+band    = [24, 24]
+
+[base.lintels]
+measure = "lintels"
+band    = [24, 24]
+
+[base.walls]
+measure = "walls"
+band    = [21, 21]
+
+[base.tiles]
+measure = "tiles"
+band    = [232, 232]
+
+[base.roof]
+measure = "roof"
+band    = [24, 24]
+
+[base.base]
+measure = "base"
+band    = [38, 38]
+
+[base.outline_dm]
+measure = "outline_dm"
+band    = [144, 198]
+
+[base.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[base.pitched_pct]
+measure = "pitched_pct"
+band    = [99.95, 100.05]
+
+[base.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[base.floor_open_dm2]
+measure = "floor_open_dm2"
+band    = [0, 0]
+
+[base.podium_mm]
+measure = "podium_mm"
+band    = [900, 900]
+
+[base.columns_low_mm]
+measure = "columns_low_mm"
+band    = [0, 0]
+
+[base.door_clear_mm]
+measure = "door_clear_mm"
+band    = [1800, 1800]
+
+[base.mirror_off]
+measure = "mirror_off"
+band    = [0, 0]
+
+[base.onto_platform]
+measure = "onto_platform"
+band    = [1, 1]
+
+[base.from_platform]
+measure = "from_platform"
+band    = [1, 1]
+
+[base.written_buildings]
+measure = "written_buildings"
+band    = [1, 1]
+
+[base.written_instances]
+measure = "written_instances"
+band    = [0, 0]
+
+[base.written_numbers]
+measure = "written_numbers"
+band    = [17, 17]
+
+# ------------------------------------------------------------------------------------------ hand
+# The same temple written with what the library had before K8 (by_hand.toml): the room is the
+# building and 48 instances are written by hand, 136 numbers. They stand on the terrain, so there
+# is no podium (a height written outside the room was `surface.none_at`, 48 errors on the first
+# try). The gable is refused (the room is 9 m deep, the slope is made for 14.4 m) and a flat
+# roof covers the room inside its walls: 31.8% of the temple is under a roof, none of it pitched,
+# and 136 m2 between the columns and the room has no floor. Its niches are not mirrored (2 pairs).
+
+[hand.built]
+measure = "built"
+band    = [1, 1]
+
+[hand.buildings]
+measure = "buildings"
+band    = [1, 1]
+
+[hand.instances]
+measure = "instances"
+band    = [323, 323]
+
+[hand.errors]
+measure = "errors"
+band    = [0, 0]
+
+[hand.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[hand.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[hand.roof_none]
+measure = "roof_none"
+band    = [1, 1]
+
+[hand.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[hand.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[hand.kit_unit]
+measure = "kit_unit"
+band    = [0, 0]
+
+[hand.kit_pitch]
+measure = "kit_pitch"
+band    = [0, 0]
+
+[hand.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[hand.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[hand.door_narrow]
+measure = "door_narrow"
+band    = [0, 0]
+
+[hand.none_at]
+measure = "none_at"
+band    = [0, 0]
+
+[hand.columns]
+measure = "columns"
+band    = [24, 24]
+
+[hand.lintels]
+measure = "lintels"
+band    = [24, 24]
+
+[hand.walls]
+measure = "walls"
+band    = [21, 21]
+
+[hand.tiles]
+measure = "tiles"
+band    = [224, 224]
+
+[hand.roof]
+measure = "roof"
+band    = [0, 0]
+
+[hand.base]
+measure = "base"
+band    = [26, 26]
+
+[hand.outline_dm]
+measure = "outline_dm"
+band    = [144, 198]
+
+[hand.roofed_pct]
+measure = "roofed_pct"
+band    = [31.75, 31.85]
+
+[hand.pitched_pct]
+measure = "pitched_pct"
+band    = [-0.05, 0.05]
+
+[hand.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[hand.floor_open_dm2]
+measure = "floor_open_dm2"
+band    = [13608, 13608]
+
+[hand.podium_mm]
+measure = "podium_mm"
+band    = [0, 0]
+
+[hand.columns_low_mm]
+measure = "columns_low_mm"
+band    = [0, 0]
+
+[hand.door_clear_mm]
+measure = "door_clear_mm"
+band    = [1800, 1800]
+
+[hand.mirror_off]
+measure = "mirror_off"
+band    = [2, 2]
+
+[hand.onto_platform]
+measure = "onto_platform"
+band    = [0, 0]
+
+[hand.from_platform]
+measure = "from_platform"
+band    = [0, 0]
+
+[hand.written_buildings]
+measure = "written_buildings"
+band    = [1, 1]
+
+[hand.written_instances]
+measure = "written_instances"
+band    = [48, 48]
+
+[hand.written_numbers]
+measure = "written_numbers"
+band    = [136, 136]
+
+# ------------------------------------------------------------------------------------------ even
+# A front of four bays: a column stands on the axis, in the doorway. The building is refused
+# (`params`): no place on that front is both between two columns and where the wall behind takes
+# the door's frame, and the hint says both. The build stops.
+
+[even.built]
+measure = "built"
+band    = [0, 0]
+
+[even.errors]
+measure = "errors"
+band    = [1, 1]
+
+[even.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[even.params]
+measure = "params"
+band    = [1, 1]
+
+# ------------------------------------------------------------------------------------------ fat
+# The column re-exported 1.0 m wide. `check` names the column (`kit_unit`) and the lintel that
+# no longer fits between two of them (`kit_pitch`); `lay` says of each of the four sides that it is
+# no whole number of bays and by how much to resize it (+0.1 m), lays no colonnade but the four
+# corner columns, and refuses the gable, whose ends stand a column's width in.
+
+[fat.built]
+measure = "built"
+band    = [1, 1]
+
+[fat.errors]
+measure = "errors"
+band    = [0, 0]
+
+[fat.warnings]
+measure = "warnings"
+band    = [8, 8]
+
+[fat.wall_open]
+measure = "wall_open"
+band    = [4, 4]
+
+[fat.roof_none]
+measure = "roof_none"
+band    = [1, 1]
+
+[fat.slab_open]
+measure = "slab_open"
+band    = [1, 1]
+
+[fat.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[fat.kit_unit]
+measure = "kit_unit"
+band    = [1, 1]
+
+[fat.kit_pitch]
+measure = "kit_pitch"
+band    = [1, 1]
+
+[fat.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[fat.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[fat.door_narrow]
+measure = "door_narrow"
+band    = [0, 0]
+
+[fat.columns]
+measure = "columns"
+band    = [4, 4]
+
+[fat.lintels]
+measure = "lintels"
+band    = [0, 0]
+
+[fat.roof]
+measure = "roof"
+band    = [0, 0]
+
+[fat.roofed_pct]
+measure = "roofed_pct"
+band    = [70.15, 70.25]
+
+[fat.pitched_pct]
+measure = "pitched_pct"
+band    = [-0.05, 0.05]
+
+[fat.door_clear_mm]
+measure = "door_clear_mm"
+band    = [-1, -1]
+
+[fat.added]
+measure = "added"
+band    = [247, 247]
+
+[fat.removed]
+measure = "removed"
+band    = [68, 68]
+
+# ------------------------------------------------------------------------------------------ front
+# A colonnade across the front only: six columns, the front's five lintels and one on each
+# flank, from the corner column to the wall's own corner. The walls stand on the outline on the
+# other three sides. `mirror_none`, twice: each flank's wall is eight bays and a half bay, so the
+# mirrored niches have no image there (K8's review).
+
+[front.built]
+measure = "built"
+band    = [1, 1]
+
+[front.errors]
+measure = "errors"
+band    = [0, 0]
+
+[front.warnings]
+measure = "warnings"
+band    = [2, 2]
+
+[front.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[front.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[front.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[front.mirror_none]
+measure = "mirror_none"
+band    = [2, 2]
+
+[front.kit_unit]
+measure = "kit_unit"
+band    = [0, 0]
+
+[front.kit_pitch]
+measure = "kit_pitch"
+band    = [0, 0]
+
+[front.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[front.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[front.door_narrow]
+measure = "door_narrow"
+band    = [0, 0]
+
+[front.columns]
+measure = "columns"
+band    = [6, 6]
+
+[front.lintels]
+measure = "lintels"
+band    = [7, 7]
+
+[front.walls]
+measure = "walls"
+band    = [32, 32]
+
+[front.tiles]
+measure = "tiles"
+band    = [266, 266]
+
+[front.roof]
+measure = "roof"
+band    = [24, 24]
+
+[front.base]
+measure = "base"
+band    = [38, 38]
+
+[front.outline_dm]
+measure = "outline_dm"
+band    = [144, 198]
+
+[front.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[front.pitched_pct]
+measure = "pitched_pct"
+band    = [99.95, 100.05]
+
+[front.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[front.floor_open_dm2]
+measure = "floor_open_dm2"
+band    = [0, 0]
+
+[front.podium_mm]
+measure = "podium_mm"
+band    = [900, 900]
+
+[front.columns_low_mm]
+measure = "columns_low_mm"
+band    = [0, 0]
+
+[front.door_clear_mm]
+measure = "door_clear_mm"
+band    = [1800, 1800]
+
+[front.mirror_off]
+measure = "mirror_off"
+band    = [0, 0]
+
+[front.onto_platform]
+measure = "onto_platform"
+band    = [1, 1]
+
+[front.from_platform]
+measure = "from_platform"
+band    = [1, 1]
+
+[front.added]
+measure = "added"
+band    = [137, 137]
+
+[front.removed]
+measure = "removed"
+band    = [127, 127]
+
+# ------------------------------------------------------------------------------------------ no_colonnade
+# No colonnade: the walls on the building's own outline, as before K8. Nothing is said.
+
+[no_colonnade.built]
+measure = "built"
+band    = [1, 1]
+
+[no_colonnade.errors]
+measure = "errors"
+band    = [0, 0]
+
+[no_colonnade.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[no_colonnade.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[no_colonnade.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[no_colonnade.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[no_colonnade.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[no_colonnade.kit_unit]
+measure = "kit_unit"
+band    = [0, 0]
+
+[no_colonnade.kit_pitch]
+measure = "kit_pitch"
+band    = [0, 0]
+
+[no_colonnade.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[no_colonnade.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[no_colonnade.door_narrow]
+measure = "door_narrow"
+band    = [0, 0]
+
+[no_colonnade.columns]
+measure = "columns"
+band    = [0, 0]
+
+[no_colonnade.lintels]
+measure = "lintels"
+band    = [0, 0]
+
+[no_colonnade.walls]
+measure = "walls"
+band    = [34, 34]
+
+[no_colonnade.tiles]
+measure = "tiles"
+band    = [280, 280]
+
+[no_colonnade.roof]
+measure = "roof"
+band    = [24, 24]
+
+[no_colonnade.base]
+measure = "base"
+band    = [38, 38]
+
+[no_colonnade.outline_dm]
+measure = "outline_dm"
+band    = [144, 198]
+
+[no_colonnade.roofed_pct]
+measure = "roofed_pct"
+band    = [99.95, 100.05]
+
+[no_colonnade.pitched_pct]
+measure = "pitched_pct"
+band    = [99.95, 100.05]
+
+[no_colonnade.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[no_colonnade.floor_open_dm2]
+measure = "floor_open_dm2"
+band    = [0, 0]
+
+[no_colonnade.podium_mm]
+measure = "podium_mm"
+band    = [900, 900]
+
+[no_colonnade.columns_low_mm]
+measure = "columns_low_mm"
+band    = [0, 0]
+
+[no_colonnade.door_clear_mm]
+measure = "door_clear_mm"
+band    = [-1, -1]
+
+[no_colonnade.mirror_off]
+measure = "mirror_off"
+band    = [0, 0]
+
+[no_colonnade.onto_platform]
+measure = "onto_platform"
+band    = [0, 0]
+
+[no_colonnade.from_platform]
+measure = "from_platform"
+band    = [0, 0]
+
+[no_colonnade.added]
+measure = "added"
+band    = [181, 181]
+
+[no_colonnade.removed]
+measure = "removed"
+band    = [168, 168]
+
+# ------------------------------------------------------------------------------------------ plain
+# The niches with no `mirror`: the back wall's four bays read wall, niche, wall, niche. Two
+# pieces change, two pairs are not each other's image, and nothing is said: a pattern is not a fault.
+
+[plain.built]
+measure = "built"
+band    = [1, 1]
+
+[plain.errors]
+measure = "errors"
+band    = [0, 0]
+
+[plain.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[plain.wall_open]
+measure = "wall_open"
+band    = [0, 0]
+
+[plain.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[plain.slab_open]
+measure = "slab_open"
+band    = [0, 0]
+
+[plain.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[plain.kit_unit]
+measure = "kit_unit"
+band    = [0, 0]
+
+[plain.kit_pitch]
+measure = "kit_pitch"
+band    = [0, 0]
+
+[plain.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[plain.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[plain.door_narrow]
+measure = "door_narrow"
+band    = [0, 0]
+
+[plain.mirror_off]
+measure = "mirror_off"
+band    = [2, 2]
+
+[plain.added]
+measure = "added"
+band    = [0, 0]
+
+[plain.removed]
+measure = "removed"
+band    = [0, 0]
+
+[plain.moved]
+measure = "moved"
+band    = [2, 2]
+
+# ------------------------------------------------------------------------------------------ short
+# The flanks 0.5 m longer: six stretches do not close (two of the colonnade, two of the walls,
+# two of the base), each said with the lengths that would; the gable is refused and tiles are left out.
+
+[short.built]
+measure = "built"
+band    = [1, 1]
+
+[short.errors]
+measure = "errors"
+band    = [0, 0]
+
+[short.warnings]
+measure = "warnings"
+band    = [10, 10]
+
+[short.wall_open]
+measure = "wall_open"
+band    = [6, 6]
+
+[short.roof_none]
+measure = "roof_none"
+band    = [1, 1]
+
+[short.slab_open]
+measure = "slab_open"
+band    = [3, 3]
+
+[short.mirror_none]
+measure = "mirror_none"
+band    = [0, 0]
+
+[short.kit_unit]
+measure = "kit_unit"
+band    = [0, 0]
+
+[short.kit_pitch]
+measure = "kit_pitch"
+band    = [0, 0]
+
+[short.kit_stated]
+measure = "kit_stated"
+band    = [0, 0]
+
+[short.unreached]
+measure = "unreached"
+band    = [0, 0]
+
+[short.door_narrow]
+measure = "door_narrow"
+band    = [0, 0]
+
+[short.columns]
+measure = "columns"
+band    = [12, 12]
+
+[short.lintels]
+measure = "lintels"
+band    = [10, 10]
+
+[short.roof]
+measure = "roof"
+band    = [0, 0]
+
+[short.outline_dm]
+measure = "outline_dm"
+band    = [144, 203]
+
+[short.roofed_pct]
+measure = "roofed_pct"
+band    = [77.55, 77.65]
+
+[short.pitched_pct]
+measure = "pitched_pct"
+band    = [-0.05, 0.05]
+
+[short.floor_open_dm2]
+measure = "floor_open_dm2"
+band    = [7038, 7038]

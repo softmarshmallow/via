@@ -1,0 +1,148 @@
+# The timber kit and the yard kit (examples/court): made by packs/make_kit.py.
+# Its facts file, timber.facts.toml, is written by `via pack accept examples/court/packs/timber.toml`.
+#
+# Every model is glTF's convention: +Y up, front +Z, origin at the base centre (packgen's).
+# lib/building's `lay` reads a piece's part from its `role:` tag and the length it repeats at from
+# `params.pitch` (docs/design/kit-contract.md).
+
+root = "timber"
+
+[taxon."structure"]
+defaults = { collision = "box" }
+
+# What the halls' pieces share, stated once (spec/assets.md 2.5; lib/building/lay.py rule 11).
+[taxon."structure/timber".defaults.shared]
+unit   = 0.15                    # half a post: every size of the kit is a whole number of it
+wall   = 0.15                    # a panel's thickness
+storey = 3.6                     # a storey: the post and the beam in its top
+door   = 1.5                     # the doorway the door frame is made for
+base   = 0.6                     # how far the base reaches below the floor: the platform
+eaves  = 1.35                    # how far the roof stands beyond the posts, on every side
+
+# ---- the walls: laid by posts (lay.py rule 15). A post every 3.0 m and a panel between two.
+
+[asset.post]
+file  = "post.glb"
+taxon = "structure/timber"
+tags  = ["role:post", "role:corner"]
+
+# The panel: 2.7 m of plaster between two posts, at a place that repeats every 3.0 m.
+[asset.panel]
+file   = "panel.glb"
+taxon  = "structure/timber"
+tags   = ["role:wall"]
+params = { pitch = 3.0 }
+
+[asset.panel_lattice]             # the same panel with a lattice window
+file   = "panel_lattice.glb"
+taxon  = "structure/timber"
+tags   = ["role:wall", "variant:lattice"]
+params = { pitch = 3.0 }
+
+[asset.panel_doors]               # the same panel as four door leaves, closed
+file   = "panel_doors.glb"
+taxon  = "structure/timber"
+tags   = ["role:wall", "variant:doors"]
+params = { pitch = 3.0 }
+
+# The door frame: a panel's length with an opening 1.5 m wide. It takes a panel's place, so its
+# place repeats as a panel's does.
+[asset.door]
+file   = "door.glb"
+taxon  = "structure/timber"
+tags   = ["role:door"]
+params = { pitch = 3.0 }
+
+# The floor tile: half a bay square, so a floor is whole tiles from one line of posts' middles
+# to the next.
+[asset.tile]
+file   = "tile.glb"
+taxon  = "structure/timber"
+tags   = ["role:floor"]
+params = { pitch = 1.5 }
+sink   = 0.1
+
+# ---- the roof: hipped, 1.35 m beyond the posts. A slope a bay long along the eave and a hip one
+# span square, for each of two depths of hall: three bays (a roof 12 m deep, span 6.0) and two
+# (9 m, span 4.5).
+
+[asset.roof_slope_6]
+file   = "roof_slope_6.glb"
+taxon  = "structure/timber"
+tags   = ["role:roof_slope"]
+params = { pitch = 3.0, span = 6.0 }
+
+[asset.roof_hip_6]
+file   = "roof_hip_6.glb"
+taxon  = "structure/timber"
+tags   = ["role:roof_hip"]
+params = { span = 6.0 }
+
+[asset.roof_slope_45]
+file   = "roof_slope_45.glb"
+taxon  = "structure/timber"
+tags   = ["role:roof_slope"]
+params = { pitch = 3.0, span = 4.5 }
+
+[asset.roof_hip_45]
+file   = "roof_hip_45.glb"
+taxon  = "structure/timber"
+tags   = ["role:roof_hip"]
+params = { span = 4.5 }
+
+# ---- the base: the platform's face under the outline, half a post thick, each piece sunk by its
+# own height so its top is the floor (lay.py rule 13).
+
+[asset.base]
+file   = "base.glb"
+taxon  = "structure/timber"
+tags   = ["role:wall", "storey:base"]
+params = { pitch = 3.0 }
+sink   = 0.6
+
+[asset.base_corner]
+file  = "base_corner.glb"
+taxon = "structure/timber"
+tags  = ["role:corner", "storey:base"]
+sink  = 0.6
+
+# ---- the veranda: the post again, and the beam from one post to the next (lay.py rule 16).
+
+[asset.veranda_post]
+file  = "post.glb"
+taxon = "structure/timber"
+tags  = ["role:post", "role:corner", "storey:colonnade"]
+
+[asset.beam]
+file   = "beam.glb"
+taxon  = "structure/timber"
+tags   = ["role:wall", "storey:colonnade"]
+params = { pitch = 3.0 }
+pivot  = "origin"                # the beam is in the storey's top: placed by the floor under it
+
+# ---- the yard: the wall round the court, its corner post and its gate.
+
+[taxon."structure/yard".defaults.shared]
+wall   = 0.3
+storey = 2.4
+door   = 2.4                     # the opening of the gate
+
+[asset.yard_wall]
+file   = "yard_wall.glb"
+taxon  = "structure/yard"
+tags   = ["role:wall"]
+params = { pitch = 3.0 }
+
+[asset.yard_corner]
+file  = "yard_corner.glb"
+taxon = "structure/yard"
+tags  = ["role:corner"]
+
+[asset.yard_gate]
+file   = "yard_gate.glb"
+taxon  = "structure/yard"
+tags   = ["role:door"]
+params = { pitch = 3.0 }
+
+[material.ground]
+colour = [0.5, 0.5, 0.45]

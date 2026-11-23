@@ -1,0 +1,3 @@
+# The main hall four bays across in place of five: a post stands on the axis, where its door is.
+[feature.court]
+hall = { bays = [4, 3], from = 24, veranda = 1, fill = [{ sides = [0], pattern = ["doors"] }, { sides = [1, 3], pattern = ["lattice"] }] }

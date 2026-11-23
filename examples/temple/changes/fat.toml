@@ -1,0 +1,3 @@
+# The column re-exported 1.0 m wide in place of 0.9 m: off the kit's unit. Nothing else changes:
+# the plan, the lintels and every other piece are still sized to a column of 0.9 m.
+pack = "packs/fat.toml"

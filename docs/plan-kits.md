@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. Next: K8. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. K8 is built and reviewed in one commit after it (the temple and the court). Next: K9. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -127,6 +127,19 @@ Changed so far:
   K7's one review found the roof sound and six defects elsewhere, two of them in the village's
   own measure (it read the ground inside the neighbour at a party wall, and a door's step where
   the doorway sets the ground): the first slice's numbers are corrected in its README.
+
+- **K8, 2026-11-23.** Two examples, not one: a classical temple and an East Asian court, each
+  with its own kit, since they share one mechanism and nothing else. What both forced is a
+  line of posts that is not the wall's line, under a roof that is neither's: a bay counted from
+  post middle to post middle, walls inside the outline, a roof beyond it. **Changed:** the
+  kit's finest length is `unit`, not `module`, which has been the bay since K6 (R72); the
+  colonnade's floor is one platform, not a strip a side, since a colonnade turns the corner;
+  the yard is a building of no storeys, since as one storey it laid a floor under the halls
+  (R73). "Symmetry" became three small things and no archetype (R74). **Not built, said and
+  filed:** a wider middle bay, layered roofs, curved eaves, a hip over an L, steps up a
+  podium. The review found nine defects, all mended; the gravest were in the parts no example
+  builds (two storeys by posts) and in what the messages offer. `block` was not rebuilt after
+  the fix pass: the volume was full.
 
 - **K11 added, 2026-11-23.** The owner asked whether a fantasy map demo was in the plan. It was
   not: the word stood only in K7's title, and the dogfood map of `docs/plan.md` was proposed

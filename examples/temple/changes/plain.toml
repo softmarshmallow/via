@@ -1,0 +1,4 @@
+# The same niches with no `mirror`: the pattern is read from each wall's start, so the back wall,
+# four bays, is wall, niche, wall, niche, and its two halves are not each other's image.
+[feature.temple]
+fill = [{ sides = [1, 2, 3], pattern = ["wall", "niche"] }]

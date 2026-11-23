@@ -1,0 +1,4 @@
+# The side halls one bay deep: 3.3 m, a roof 6 m deep with the eaves. The kit has roof pieces for
+# roofs 9 and 12 m deep and none for this one.
+[feature.court]
+wings = [{ bays = [3, 1], from = 9, off = 9, fill = [{ sides = [0], pattern = ["lattice"] }, { sides = [1], pattern = ["doors", "wall"] }, { sides = [2], pattern = ["lattice", "wall", "wall"] }] }]

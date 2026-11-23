@@ -1,0 +1,5 @@
+# The ground falling 5 m in 100 to the east in place of level ground. Each hall stands level on
+# the mean of the ground under it; the yard's wall has no floor to stand level on and follows
+# the land (lay.py rule 18).
+[field.height]
+base = "= 11.6 - 0.05 * x"

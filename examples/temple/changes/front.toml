@@ -1,0 +1,4 @@
+# A colonnade across the front only (a prostyle temple): the walls stand on the outline on the
+# other three sides, and the platform shows one bay deep behind six columns.
+[feature.temple]
+colonnade = [{ sides = [0], depth = 2.7 }]

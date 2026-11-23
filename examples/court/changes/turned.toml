@@ -1,0 +1,4 @@
+# The axis turned off the lattice's axes: three metres east for every ten north, 16.7 degrees.
+# Every outline is the same lengths in the court's own frame, rounded to the millimetre.
+[feature.court]
+to = [35, 20]

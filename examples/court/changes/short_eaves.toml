@@ -1,0 +1,3 @@
+# The kit restated with eaves of 0.9 m in place of 1.35 m, and its roof pieces left as they were:
+# made for a roof that stands 1.35 m beyond the posts.
+pack = "packs/short_eaves.toml"

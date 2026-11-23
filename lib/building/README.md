@@ -69,6 +69,13 @@ Library text in the form a user writes. Attributes illustrative until the code; 
   nothing, `surfaces.md` 3.4) beside the way, or ends at a point feature there.
 - **`roof`** (region owner). `[kind.roof.surface.garden] base = "= eaves"` when the roof is walkable;
   pitched roofs own no surface and are assets.
+- **`yard`** (region owner, anchored; K8). The outline of a building of no storeys
+  (`storeys = 0`): its walls stand round it on the terrain. It owns no surface and writes no
+  field ("A wall on the ground", below).
+- **`court`** (a point, anchored; K8). A walled yard and the halls in it, written about one axis:
+  `to`, `kit`, `yard`, `hall`, `wings`, and `storey_h`, `plinth`, `porch`, `walk_out`, `roof`
+  for its halls. `court.py` returns a `building` for the yard and for each hall ("A court",
+  below).
 
 Asset side (packs, `spec/assets.md` 2.7): a door leaf asset has one mount, `entry`, on its doorstep,
 `face` 180 (into the building), `connector = "foot"`; a whole-building asset (the college's hall)
@@ -283,6 +290,181 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     open). A kit whose lane, landing and run are whole tiles gets whole stairwells on every
     storey, and `slab_open` then says how far to move a stair that stands between tiles.
   - *Not yet.* A building's `storey_h` is still its own; lib/town does not read `shared`.
+- **The roof beyond the walls** (K8 of `docs/plan-kits.md`, second slice, from examples/court).
+  Design note; the rule is `lay.py` rule 17. Our own design: the research found one mention of
+  a separate node for layered roofs and no account of deep eaves or hipped roofs from pieces.
+  - *Why.* In the timber kit the roof is the main piece: it is hipped and stands 1.35 m beyond
+    the posts on every side. Before, with the library as it stood: `roof = "hip"` was `params`
+    (three errors, the build stopped); `roof = "gable"` was refused, the kit having no gable,
+    and a flat roof laid in its place on the outline; nothing could be laid beyond a building's
+    outline at all; and a kit held one slope piece, so one depth of building.
+  - *Hipped.* `roof = "hip"`, on a rectangle: the kit's `role:roof_hip` piece on each corner
+    (the piece the L's outer corner already takes: one span square, its eaves on its front and
+    its +x side), at vertex `i` with its front out of side `i`; and a run of slopes along each
+    side between its two hips. The roof is twice the span deep, so the hips of a short side
+    meet. Whole pieces or `roof_none`, with the lengths that close.
+  - *Eaves.* The kit states them once, `shared.eaves`, because they are the roof pieces' own
+    size and no building's choice: a slope made for a hall 9.3 m deep under eaves of 1.35 m has
+    a span of 6 m. The roof is then laid on the building's outline grown by the eaves, and its
+    `roof` feature has that region. A gable under eaves has its slopes run the roof's whole
+    length and its gable halves the eaves in from each end, over the wall; the kit makes that
+    half for the slope's span less the eaves, and one of the whole span is refused with the
+    span it should have. A gable under eaves over an L is not built.
+  - *Pieces by span.* A kit may hold a slope and its ends for each depth of building it roofs.
+    Of several slopes of different spans the one whose span is half the roof's depth is taken,
+    and the hip, gable and valley of that span; with none, `roof_none` names the depths the
+    kit's slopes roof. A kit of one span is laid as before.
+  - *`check`.* A hip is held to one span square, a slope to an end of its span (a gable half,
+    or a hip), and under stated eaves each slope to a depth a building of the kit can have
+    (`kit_stated`: restate the eaves at 0.9 m and both slopes are named, with the depth each
+    would roof).
+  - *Not built.* Layered roofs (a lower roof round a storey set back above it), curved eaves,
+    a hipped roof over an L, eaves under a flat roof, and a building's own `eaves` over its
+    kit's.
+- **A wall on the ground** (K8, second slice, from examples/court). Design note; the rule is
+  `lay.py` rule 18.
+  - *Before.* A walled yard was tried as a building of one storey from a kit with a wall, a
+    corner and a gate and no floor or roof piece, with three halls standing inside its outline.
+    The engine and the library said nothing: no error, no warning. But a storey is a floor, so
+    the court had a second surface across it at the mean of its ground, drawn as a slab from
+    wall to wall under the halls, and on any slope it would be a level deck with the wall
+    standing level on it.
+  - *What.* `storeys = 0`: the building is its walls alone. Its outline is a `yard` feature,
+    which owns no surface; the walls are laid round it by the same rule as a storey's, on the
+    terrain, each piece on the ground under it; a door is a gap with the kit's door piece in
+    it, a gate, and returns no doorway. It is the smallest thing that holds a wall and a gate:
+    one branch in `lay` and one kind with nothing in it.
+  - *Not built.* The base under such a wall on a slope (each piece stands at its own middle's
+    height, so on a slope the ends of one piece are above and below the ground by half its
+    length times the slope); a wall along an open line that is no outline.
+- **A court** (K8, second slice, from examples/court). Design note; the rules are in
+  `court.py`'s docstring.
+  - *Why.* A compound is one half and its mirror image about an axis. By hand that was four
+    buildings and 61 numbers, 32 of them corner coordinates worked out from the kit's bay and
+    post and the distances from the gate and the axis, the east hall the west hall's numbers
+    reflected by the author, with its sides renumbered so that its far end, not its near end,
+    took the doors. Nothing held the two to each other.
+  - *What.* A `court` is a point, the gate, and `to`, a point that gives the axis. `yard`,
+    `hall` and `wings` are written in bays and in metres along the axis and from it; a wing is
+    written once and returned twice. The step returns `building` features, as `row.py` does,
+    and `lay` walls them from a layer above. 21 numbers in place of 61.
+  - *A door on the axis.* Every front has its door on its middle, so it has an odd number of
+    bays where the door takes one: an even number has a post there, and is refused with the
+    two numbers next to it.
+  - *The image.* The right-hand wing's outline starts at its far end so that side 0 is its
+    front; its sides 1 and 3 change places in `fill`; and every `fill` entry of a wing is laid
+    mirrored. `test_court.py` lays both and compares them piece for piece.
+  - *What stands in what.* The step knows each hall's eaves from its kit and says
+    `court_meets` where two halls' roofs, or a roof and the yard's wall, would stand in one
+    place. Before, two roofs that met were two `place.crowded` warnings naming roof pieces.
+  - *Not built.* A second court behind the first on the same axis; halls that are not across
+    or along the axis; `bays` (a pin on one bay) passed to a wing with its place reflected; a
+    gate house.
+- **Posts and bays** (K8 of `docs/plan-kits.md`, first slice, from examples/temple). Design
+  note, written before the code; the rule is `lay.py` rule 15 (`post_bays`, `post_walls`).
+  Source: ours. The research found no developer's account of post-and-bay or classical building,
+  and reasons only that a visible member on every module line is where a kit hides its seams
+  (docs/research/Modular kit failures in studios.md, section 12).
+  - *The count.* `N` bays have `N + 1` posts. Every rule before this one lays a side as bays
+    and fillers between two corner pieces, so a kit of posts had to hide a post in its bay (a
+    panel with its post) and close the side with a filler that is a panel without one: the last
+    bay of every side was then not a bay, took no variant, and a door between two posts left
+    the wall after it starting with a post, which no piece is.
+  - *What.* A kit with a `role:post` piece of its bay's own group is laid by posts. The bay's
+    pitch `B` is from one post's middle to the next; the post is `p` wide; the `role:wall`
+    piece is a panel `B - p` long. A corner is a post. A side closes at `N * B + p`.
+  - *Two runs.* The panels: `N` members over the stretch widened by half a post at each end. A
+    run's members stand evenly over its span, so a piece shorter than its pitch leaves the post
+    its room, and no run needs a pitch of its own. The posts: `N - 1` members at the joints.
+  - *A door* stands in one bay, between two posts, and the kit's door piece takes the panel's
+    place, so its middle is the bay's middle; otherwise the error names the middles.
+  - *No fillers.* A side that is not whole bays is `wall_open`, with the two lengths next to it
+    that close.
+  - *What `check` holds.* A panel to its pitch less the post's width (`kit_pitch`); a corner
+    that states no reach to the post's width (`kit_corner`).
+  - *The floor* (second slice, from examples/court, the first building walled by posts). A bay
+    is from one post's middle to the next, so a floor of whole tiles is too: a storey walled
+    by posts is tiled to the middle of its line of posts, half a post in, whatever its panels'
+    thickness, and where a veranda stands before it the platform's tiles come to that same line
+    from outside. Tiled inside its walls' inner face, as a storey of whole wall pieces is, a
+    hall of five bays was 14.7 m of floor between posts, no whole number of any tile but the
+    post's own width, and its veranda 2.7 m: 11 tiles of the platform could not be laid. The
+    platform's own edge is its base's thickness in, where the kit has a base.
+  - *Not yet.* An inside corner (refused, `params`); bays of two widths on one side (a wider
+    middle bay), which a run of one pitch cannot hold.
+- **The colonnade** (K8, first slice, from examples/temple). Design note; the rule is `lay.py`
+  rule 16. Source: ours, as above.
+  - *The structure.* In a temple, and under the deep eaves of a timber hall, the roof's outline
+    is not the walls': a line of posts stands on the building's outline, the walls stand inside
+    it, and one roof covers both. Before this rule a building's walls, floor and roof were all
+    laid on its one outline, so the room inside was the `building` and every column was an
+    instance written by hand, on the terrain: a height written outside the room is
+    `surface.none_at`, since no surface holds the point (`examples/temple/by_hand.toml`).
+  - *What.* `colonnade = [{ sides, depth }]`: on those sides the walls stand `depth` inside
+    the outline, from the ground storey. It is rule 14's moved outline, on the ground storey,
+    with all four sides free to move. One storey, a rectangle.
+  - *The platform.* The building's whole outline is a `platform` feature at the ground storey's
+    level, and the posts, the base and the platform's own tiles stand on it. **Changed from the
+    first design**, which made each strip between the two outlines a feature of its own, as a
+    terrace is: a colonnade turns the corner, so a lintel beside a corner post would stand on
+    two strips. One surface under the whole colonnade, with the room's storey over part of it
+    at the same height, is what R70 already calls one level.
+  - *The posts* are the kit's pieces tagged `storey:colonnade`, laid by posts and bays along
+    the outline where the walls left it: a whole side, and on a side the walls keep, the
+    platform's end beside it, from the corner post to the face of the wall's own corner.
+  - *A door through it* is two doorways on one axis. The first ends on the platform at the
+    outline's edge, and must pass between two posts: a front with an even number of bays has a
+    post on its axis, and the error names the bays' middles. The second starts on the platform
+    and ends on the room's floor, through the wall's opening. **Found by trying:** the core
+    needs nothing more. A doorway whose path lies on a kind surface is accepted, its end meets
+    the room's floor with gap 0, and its start is a free end, checked for nothing
+    (surfaces.md 3.4). `check` walks it from the platform (rule 1), so a room behind a platform
+    with no way onto the platform is `unreached`.
+  - *The roof* covers the outline, and its ends stand a post's width in, over the colonnade.
+  - *Not yet.* Two storeys; a plan that is no rectangle; eaves beyond the posts; a doorway's
+    steps up a podium (the doorway holds the ground at its sill, as on every building: K7).
+- **A mirrored fill** (K8, first slice). `fill = [{ ..., mirror = true }]` reads its pattern
+  from both ends of a side toward its middle (`lay.py` rule 8). Before it, a pattern was read
+  from each stretch's start: an even side read `wall, niche, wall, niche`, and the wall after a
+  door on the axis was the wall before it moved along, not turned about. Symmetry about an
+  axis is what a classical front is; it is one word here because the choice of a bay's piece
+  was already a function of the bay's place.
+- **Every size from one unit** (K8, first slice). A classical kit takes every length from one,
+  the column's width. `shared.module` could not say it: since K6 it is the bay, and `check`
+  holds every `role:wall` piece to it, so a kit that stated `module = 0.9` was told its 1.8 m
+  bay, its niche bay, its base and its 2.7 m lintel were each wrong (`kit_stated`, four times
+  on the first build of `examples/temple`; a fifth there was of the lintel's height). So the unit is its own key, `shared.unit`, which `check` holds
+  every stated size and every wall piece's measured plan to (`kit_unit`, check.py rule 11).
+  `module` keeps its meaning.
+- **K8's one independent review** (2026-11-23), and what it changed. Each mend has the case
+  that showed it in `test_k8fix.py`.
+  - *A stair beside a wall of posts.* The flight was set off the panel's thickness and the
+    crossing read off the post's width, so a stair took every panel it ran along, on both
+    storeys, and nothing was said. The wall's band is the post's width for all three: the
+    stair's lane, the footing over the stairwell, and what counts as crossing.
+  - *A door behind a colonnade* is held twice on one axis, by the colonnade's posts and by the
+    wall behind. It was refused by whichever rule met it first, in the wall's own measure, and
+    was offered places the other rule then refused. It is one error now (`through_door`), in
+    the measure the door was written in, and it offers only the places both take.
+  - *A gable half under eaves* is chosen by the slope's span less the eaves. It was matched to
+    the slope's own span, so a kit with the right half was told it had none.
+  - *The colonnade's end* on a side the walls keep is as long as the colonnade is deep:
+    `wall_open` named the side's length as what to change, and now names `depth`. A `depth`
+    less than a post is refused as that.
+  - *The platform's tiles.* With no base they started a post's width in, and a veranda one
+    bay deep before a room of posts could not be tiled. They start on the middle of the
+    colonnade's line of posts there, as that kit's floors do; and `slab_open` names the depth,
+    or the side's length, that would be whole tiles, where it had named a sum that was not.
+  - *A door on a court's axis* (`court.py`): an odd number of bays left over was said to be a
+    joint on the middle, which is false of a door two bays wide. It says how many are left.
+  - *A post is chosen by its storey's height,* as a panel is; `check` holds it (`kit_height`),
+    and holds a hipped building's pieces too.
+  - *How short a stretch may be.* K8's second slice let a stretch close up to 5 mm short, for a
+    court turned off the axes; a yard side 4 mm short then closed with its pieces in each
+    other and no word but the core's. A stretch may be 5 mm long (`FIT`) and 1.5 mm short
+    (`FIT_SHORT`: two corners rounded to the millimetre), for walls, bays and eaves alike.
+  - *A mirrored fill is an image only where the bays are.* A side with a half bay at one end,
+    or a door off its middle, is laid by the same reading and said (`mirror_none`).
 - **A gable roof over an L** (K7 of `docs/plan-kits.md`, third slice). Design note, written
   before the code; the rule is `lay.py` rule 10, "Over an L" (`ell_plan`). Source: the forum rule of
   thumb that a roof kit is built like a hallway kit (middle, inner corner, outer corner, end

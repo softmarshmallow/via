@@ -18,8 +18,9 @@ A kit is the pieces under one taxon of a pack (`spec/assets.md` 5). A world name
 | Stated or measured | Where | Meaning |
 |---|---|---|
 | `role:<word>` | a tag | The part the piece plays. One piece per role is read: a piece with no `variant:` tag before one with, then the first id, bytewise. |
-| `storey:<word>` | a tag | The kind of storey the piece is made for: `ground`, `upper` or `top`. It is laid there only, and read there before an untagged piece of its role. `storey:parapet` marks the wall round a flat roof: a bay, and a filler and a corner where the kit has them, laid on the roof as a storey's walls are (K6). `storey:base` marks the wall under the ground storey's floor, laid the same way on that floor, each piece sunk by its own height in the pack (`sink`) so that its top is the floor (K7). |
+| `storey:<word>` | a tag | The kind of storey the piece is made for: `ground`, `upper` or `top`. It is laid there only, and read there before an untagged piece of its role. `storey:parapet` marks the wall round a flat roof: a bay, and a filler and a corner where the kit has them, laid on the roof as a storey's walls are (K6). `storey:base` marks the wall under the ground storey's floor, laid the same way on that floor, each piece sunk by its own height in the pack (`sink`) so that its top is the floor (K7). `storey:colonnade` marks the pieces that stand along a building's outline outside its walls: a `role:post` and the `role:wall` piece that spans from one post to the next, a lintel, placed by the floor under it (`pivot = "origin"`) with its box at the storey's top (K8). |
 | `params.span` | the pack, on a roof piece | The plan distance from the eave to the ridge the piece is made for: half the depth of the building it roofs. |
+| `role:post` | a tag | The kit, or the group of its pieces that carry one `storey:` tag, is laid by posts (lay.py rule 15): the bay's `params.pitch` is then from one post's middle to the next, the `role:wall` piece is a panel that long less the post's measured width, a `role:door` piece the same, and a corner is a post. There are no fillers. |
 | `variant:<word>` | a tag, beside `role:wall` | A variant of the bay: a piece that may stand where a bay stands. The bay is the first `role:wall` piece with no such tag. |
 | `params.pitch` | the pack | The length of wall the piece takes, metres. Without it, the measured width. |
 | `params.reach` | the pack, on a corner | The length of each wall a corner takes, from the outline's vertex. |
@@ -40,9 +41,9 @@ A piece lies along its x axis with its front on +y. A wall piece is as thick as 
 | `door` | lib/building | What stands in a doorway: a frame or a leaf. Its width is the kit's door size. |
 | `roof` | lib/building | One piece for a whole roof, where a building asks for none by name. |
 | `floor` | lib/building | A square tile, one module on a side, sunk by its thickness. It tiles each storey's floor inside the walls, and a flat roof. |
-| `roof_slope` | lib/building | A wedge from the eave to the ridge, `params.pitch` along the eave and `params.span` deep. |
+| `roof_slope` | lib/building | A wedge from the eave to the ridge, `params.pitch` along the eave and `params.span` deep. A kit may hold several, one for each depth of building it roofs: the one whose span is half the roof's depth is taken, and the gable, hip and valley of that span with it (K8). |
 | `roof_gable` | lib/building | Half a gable: a wall one span long, as thick as the bay, rising to the ridge. Two stand at each end of a gable roof, the second turned about. |
-| `roof_hip` | lib/building | The roof over the outer corner of an L: one span square, eaves on its front and its +x side, climbing to the hip between them (K7). |
+| `roof_hip` | lib/building | The roof over an outer corner: one span square, eaves on its front and its +x side, climbing to the hip between them. One on the outer corner of an L under a gable (K7); one on each corner of a rectangle under a hipped roof, `roof = "hip"` (K8). |
 | `roof_valley` | lib/building | The roof at the inside corner of an L, placed by the corner itself (`pivot = "origin"`): the span-square quarter where the two inner slopes meet, and `params.reach` of each inner eave beyond the corner, with the footprint it covers declared (K7). |
 | `end` | lib/town | The piece at a row's free end and either side of a gap. |
 
@@ -96,6 +97,8 @@ landing = 1.5
 | `wall` | It is the wall's thickness in every rule, in place of the bay's measured box. |
 | `stair` | `width` and `run` are a building's stair's where it writes none; `landing` and `lane` size the stairwell. A lane, a landing and a run of whole floor tiles give stairwells of whole tiles on every storey. |
 | `door` | A door that writes no `width` takes it. |
+| `unit` | Not laid by. The length of which every size of the kit is a whole number (a classical kit's column width): `check` holds each piece's `params.pitch`, `reach` and `span`, each wall piece's measured plan, and the kit's other stated lengths to it (`kit_unit`, K8). `module` is the bay; a kit whose sizes come from something smaller states that here. |
+| `eaves` | How far the kit's roof stands beyond a building's outline on every side. A gable or a hipped roof is laid on the outline grown by it, so a roof piece's span is half of a building's depth and the eaves together. `check` holds each slope to a depth a building of the kit can have. |
 | `module`, `storey`, `parapet`, `base` | Not laid by: a stretch closes by its pieces' pitches and a storey's height is the building's. `check` holds the pieces to them (`parapet`, `base`: the heights of the pieces tagged `storey:parapet` and `storey:base`). |
 
 Every key is optional. What one piece alone takes of a layout stays on the piece (`params.pitch`,

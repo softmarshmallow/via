@@ -1,0 +1,3 @@
+# No colonnade: the walls stand on the building's own outline, as on every building before K8.
+[feature.temple]
+colonnade = []

@@ -1,0 +1,304 @@
+name       = "temple_by_hand"
+extent     = [0, 0, 48, 48]                   # metres: x east, y north
+resolution = 0.5
+seed       = 7
+include    = ["building", "review"]
+pack       = "packs/order.toml"               # the order kit, beside the world (packs/make_kit.py)
+
+# The temple as an author writes it with what the building library had before K8 of
+# docs/plan-kits.md (README.md, "Before"). The library walls a building's own outline and nothing
+# else, so the room inside the colonnade (the cella) is the `building`, and every column and
+# every lintel between two columns is an instance written by hand, its place worked out from the
+# column's width (0.9 m) and the 2.7 m from one column's middle to the next. They stand on the
+# terrain: a height written outside the cella is `surface.none_at` (no surface holds the point),
+# 48 errors on the first try, so the temple has no podium and its floor is the ground's height.
+# It is kept beside world.toml, the same temple with its colonnade stated, so that what the build
+# says of this one can be measured again.
+#
+# The temple's outline is 14.4 by 19.8 m (five column bays by seven, and one column's width); the
+# cella stands 2.7 m inside it on every side, 9.0 by 14.4 m. Its front is to the south.
+
+# ------------------------------------------------------------------------------------------ fields
+
+[field.height]                                # level ground: the kit, not the land, is the subject
+role = "surface"
+base = "= 10"
+
+[field.ground]
+type = "weights"
+role = "material"
+
+[field.ground.then.ground]
+paint = "ground"
+
+# ------------------------------------------------------------------------------------------ the cella
+
+[feature.cella]
+kind     = "building"
+region   = [[19.5, 14.7], [28.5, 14.7], [28.5, 29.1], [19.5, 29.1]]
+storey_h = 9.0
+plinth   = 0                          # no podium: nothing outside the cella can stand at its height
+roof     = "gable"
+doors    = [{ storey = 0, side = 0, at = 4.5 }]
+kit      = "structure/order"
+fill     = [{ sides = [1, 2, 3], pattern = ["wall", "niche"] }]
+
+# ------------------------------------------------------------------------------------------ the colonnade
+# 24 columns: one on each corner, four more along the front and the back, six more along each
+# flank. Each stands with its middle 0.45 m inside the outline.
+
+[instance.col_e1]
+asset = "column"
+at    = [30.75, 15.15]
+
+[instance.col_e2]
+asset = "column"
+at    = [30.75, 17.85]
+
+[instance.col_e3]
+asset = "column"
+at    = [30.75, 20.55]
+
+[instance.col_e4]
+asset = "column"
+at    = [30.75, 23.25]
+
+[instance.col_e5]
+asset = "column"
+at    = [30.75, 25.95]
+
+[instance.col_e6]
+asset = "column"
+at    = [30.75, 28.65]
+
+[instance.col_n0]
+asset = "column"
+at    = [17.25, 31.35]
+
+[instance.col_n1]
+asset = "column"
+at    = [19.95, 31.35]
+
+[instance.col_n2]
+asset = "column"
+at    = [22.65, 31.35]
+
+[instance.col_n3]
+asset = "column"
+at    = [25.35, 31.35]
+
+[instance.col_n4]
+asset = "column"
+at    = [28.05, 31.35]
+
+[instance.col_n5]
+asset = "column"
+at    = [30.75, 31.35]
+
+[instance.col_s0]
+asset = "column"
+at    = [17.25, 12.45]
+
+[instance.col_s1]
+asset = "column"
+at    = [19.95, 12.45]
+
+[instance.col_s2]
+asset = "column"
+at    = [22.65, 12.45]
+
+[instance.col_s3]
+asset = "column"
+at    = [25.35, 12.45]
+
+[instance.col_s4]
+asset = "column"
+at    = [28.05, 12.45]
+
+[instance.col_s5]
+asset = "column"
+at    = [30.75, 12.45]
+
+[instance.col_w1]
+asset = "column"
+at    = [17.25, 15.15]
+
+[instance.col_w2]
+asset = "column"
+at    = [17.25, 17.85]
+
+[instance.col_w3]
+asset = "column"
+at    = [17.25, 20.55]
+
+[instance.col_w4]
+asset = "column"
+at    = [17.25, 23.25]
+
+[instance.col_w5]
+asset = "column"
+at    = [17.25, 25.95]
+
+[instance.col_w6]
+asset = "column"
+at    = [17.25, 28.65]
+
+# 24 lintels, one from each column to the next: its middle half way between the two, turned to
+# face out of its side.
+
+[instance.lintel_e0]
+asset = "lintel"
+at    = [30.75, 13.8]
+face  = 90
+
+[instance.lintel_e1]
+asset = "lintel"
+at    = [30.75, 16.5]
+face  = 90
+
+[instance.lintel_e2]
+asset = "lintel"
+at    = [30.75, 19.2]
+face  = 90
+
+[instance.lintel_e3]
+asset = "lintel"
+at    = [30.75, 21.9]
+face  = 90
+
+[instance.lintel_e4]
+asset = "lintel"
+at    = [30.75, 24.6]
+face  = 90
+
+[instance.lintel_e5]
+asset = "lintel"
+at    = [30.75, 27.3]
+face  = 90
+
+[instance.lintel_e6]
+asset = "lintel"
+at    = [30.75, 30]
+face  = 90
+
+[instance.lintel_n0]
+asset = "lintel"
+at    = [18.6, 31.35]
+face  = 0
+
+[instance.lintel_n1]
+asset = "lintel"
+at    = [21.3, 31.35]
+face  = 0
+
+[instance.lintel_n2]
+asset = "lintel"
+at    = [24, 31.35]
+face  = 0
+
+[instance.lintel_n3]
+asset = "lintel"
+at    = [26.7, 31.35]
+face  = 0
+
+[instance.lintel_n4]
+asset = "lintel"
+at    = [29.4, 31.35]
+face  = 0
+
+[instance.lintel_s0]
+asset = "lintel"
+at    = [18.6, 12.45]
+face  = 180
+
+[instance.lintel_s1]
+asset = "lintel"
+at    = [21.3, 12.45]
+face  = 180
+
+[instance.lintel_s2]
+asset = "lintel"
+at    = [24, 12.45]
+face  = 180
+
+[instance.lintel_s3]
+asset = "lintel"
+at    = [26.7, 12.45]
+face  = 180
+
+[instance.lintel_s4]
+asset = "lintel"
+at    = [29.4, 12.45]
+face  = 180
+
+[instance.lintel_w0]
+asset = "lintel"
+at    = [17.25, 13.8]
+face  = 270
+
+[instance.lintel_w1]
+asset = "lintel"
+at    = [17.25, 16.5]
+face  = 270
+
+[instance.lintel_w2]
+asset = "lintel"
+at    = [17.25, 19.2]
+face  = 270
+
+[instance.lintel_w3]
+asset = "lintel"
+at    = [17.25, 21.9]
+face  = 270
+
+[instance.lintel_w4]
+asset = "lintel"
+at    = [17.25, 24.6]
+face  = 270
+
+[instance.lintel_w5]
+asset = "lintel"
+at    = [17.25, 27.3]
+face  = 270
+
+[instance.lintel_w6]
+asset = "lintel"
+at    = [17.25, 30]
+face  = 270
+
+# ------------------------------------------------------------------------------------------ steps
+
+[step.lay]                                    # one call per building (lib/building/kinds.toml)
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+params  = { kits = ["structure/order"] }
+
+# ------------------------------------------------------------------------------------------ views
+
+[feature.look_temple]
+at = [24, 21.9]
+
+[feature.front]                               # the front from the south, at eye height
+kind   = "bookmark"
+at     = [24, 1]
+toward = "look_temple"
+
+[feature.corner]                              # the south-west corner, above
+kind       = "bookmark"
+at         = [4, 2]
+toward     = "look_temple"
+eye_height = 14
+
+[feature.over]                                # from the south, above
+kind       = "bookmark"
+at         = [24, 0.5]
+toward     = "look_temple"
+eye_height = 30

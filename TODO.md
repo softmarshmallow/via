@@ -577,6 +577,10 @@ open, and its place here is its destination.
       Until the overlap test can tell, lib/building lays no floor tile off the axes. Candidates:
       a tolerance of a lattice unit for two things one step returned; rows of tiles as runs.
       (From K5 of docs/plan-kits.md, 2026-11-23.)
+      K8 evidence (`examples/court`, `turned`, 16.7 degrees off the axes): it is not only
+      tiles. 40 `place.crowded` of pieces that only abut: a corner post and the first panel of
+      the run beside it, a hip and the slope beside it, two hips of a short side, a door frame
+      and its post. Every wall and roof of a turned kit laid by posts is told so.
 - [ ] **Clumps of different parents and scatters still interpenetrate** (rules.md 15). Members now
   give way to their parent and earlier siblings; a scatter giving way to lower layers' scatters is
   the next question, decided at eye height.
@@ -605,6 +609,16 @@ open, and its place here is its destination.
       (From the list before the rewrite, Core model.)
 
 ### `spec/surfaces.md`
+
+- [ ] **A connector that starts on a kind surface is not known as one.** A doorway's start is a
+      free end, answered by nothing and checked for nothing (3.4). lib/building's second doorway
+      behind a colonnade starts on the `platform` and ends on the room's floor (lay.py rule 16):
+      the core accepts it and reports one meeting, at its end. That the walk goes platform to room
+      is known only to lib/building's `check`, which reads where the path starts. A start could
+      take `starts_at = "<platform>.floor"` as a flight's does; it was not tried, since a doorway's
+      kind has an effect on the terrain and a flight's has none. Lesson: found by trying, the
+      core needed nothing for two surfaces at one height that overlap (R70).
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
 
 - [ ] **Facing for every named place, not only exits.** `onward` works because an exit faces somewhere.
   Mounts and path ends still face nowhere (the same gap as challenge 48).
@@ -1403,6 +1417,75 @@ open, and its place here is its destination.
       (From the list before the rewrite, Surface and delivery; was -> by item below.)
 
 ### `lib/building`
+
+- [ ] **What posts and bays, and the colonnade, leave** (K8, first slice; lay.py rules 15 and
+      16, from `examples/temple`). Each is refused or not laid, and says so:
+      an inside corner in a kit laid by posts (`params`: the post in the notch, and the two
+      stretches that start from it, are not worked out); bays of two widths on one side (a
+      wider middle bay: a run holds one pitch, and a variant must be the bay's size); a
+      colonnade on two storeys or on a plan that is no rectangle; steps up a podium (the doorway holds the ground at its
+      sill, as K7 filed). `row.py` does not pass `colonnade` to its buildings. Lesson: a line
+      of posts outside the walls was one more use of rule 14's moved outline, and `N` bays with
+      `N + 1` posts needed no pitch on a run, only two runs over one stretch.
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **What the roof beyond the walls leaves** (K8, second slice; lay.py rule 17, from
+      `examples/court`). Not built, and each says so where it is asked for or is simply not a
+      word yet: layered roofs (a lower roof round a storey set back above it: a roof on rule
+      14's terrace); curved eaves (the kit's own modelling); a hipped roof over an L; a gable
+      under eaves over an L (`roof_none`); eaves under a flat roof; a building's own `eaves`
+      over its kit's. A gable under eaves on a rectangle is built and tested with made-up rows
+      only: no kit here has the gable half it needs (the slope's span less the eaves). Lesson:
+      eaves belong to the kit, not the building, because a roof piece's span is half of one
+      depth of building and the eaves together.
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **Only a court knows what a roof stands in.** A roof under `shared.eaves` is the first
+      thing a building owns outside its outline. `court.py` says `court_meets` where two of its
+      halls' roofs, or a roof and its yard's wall, share ground. Two buildings written by
+      hand, two rows, or a row and a court are told nothing by the library; the engine says
+      `place.crowded` of two roof pieces, and only where two pieces' boxes overlap
+      (`examples/court`, `close`). `row.py`'s party walls and `row_meets` read outlines, not
+      roofs. Rule, or a check in `check.py` over every `roof` feature.
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **A yard is a wall, not yet a place** (K8, second slice; lay.py rule 18). A building of
+      no storeys is its walls on the terrain round a `yard` feature with no surface. Left: its
+      ground is the land as it lies (nothing levels a court, and each hall's doorway raises
+      the ground to its own sill inside it); on a slope each wall piece stands at the height
+      under its middle, so its ends are in and over the ground by half its length times the
+      slope, with no base and no word said (`examples/court`, `sloped`: 7.5 cm); a wall along
+      an open line that is no outline is not laid; the gate returns no doorway, so nothing
+      measures its clear width and no way can end at it by name. `lib/town`'s `enclosure`
+      still writes its wall on the terrain as a stand-in: it could return a building of no
+      storeys instead.
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **What a court leaves** (K8, second slice; `lib/building/court.py`). One yard, one hall
+      across the axis, wings along it in pairs. Not built: a second court behind the first; a
+      gate house; halls at other angles; a wing's `bays` (a pin on one bay) passed on with its
+      place reflected (`fill` is, with sides 1 and 3 changed and every entry mirrored);
+      `faces` for a hall, so a `fill` cannot say "the side that faces the court". The mirror
+      is the generator's and is measured (`mirror_mm`), not held: a twin edited by a change
+      file afterwards is not told.
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **What K8's review left** (lib/building, 2026-11-23). Three things, said and not mended.
+      `examples/temple`'s measure `mirror_off` reads 0 on `front`, where each flank ends in a
+      half bay and `mirror_none` is said: it pairs pieces by their distance from the two ends,
+      and a half bay has no partner at its distance. A mirrored `fill` on a stretch that starts
+      part way along a side (beside a stairwell cut from the outline) counts its bays from the
+      side's end, untested. And `examples/block` was not rebuilt after the review's mends (a
+      run is 4.5 GB and the disk had 1.6 GB free): `fit` now refuses a stretch more than
+      1.5 mm short, which block's by-hand lengths have not been run against.
+      (From K8's review of docs/plan-kits.md, 2026-11-23.)
+- [ ] **`shared.module` and `shared.unit`: two words for two things, to be ruled.** Since K6
+      `module` is the kit's bay and `check` holds every `role:wall` piece to it. A classical kit
+      takes every size from its column's width, which is smaller than any bay, so K8 added
+      `shared.unit` beside it (`kit_unit`, check.py rule 11) and left `module` alone. Studios
+      use "module" for the grid unit (a 256 or 384 footprint), which is `unit`'s meaning here,
+      not `module`'s. Renaming `module` to `bay` would touch four packs, their facts and the
+      kit contract. Context: `examples/temple/README.md`, "Before", third row.
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
+- [ ] **A plan is not held symmetric.** `mirror` on a `fill` mirrors a wall's pieces about its
+      side's middle. Nothing says that a door is off its building's axis, or that two wings
+      differ: the temple's door is on the axis because its author wrote 7.2.
+      (From K8 of docs/plan-kits.md, 2026-11-23.)
 
 - [ ] **What the wall's foot leaves** (K7, first slice; lay.py rule 13). The base is one piece
   of one depth: `base_short` says where it is too shallow and nothing stacks a second course.
