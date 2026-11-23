@@ -25,6 +25,10 @@
 # two unmirrored niche pairs, two pieces each). The base, mirrored, stays 0. Measured with the
 # release `via` of c759f02, one fresh store, one build each.
 
+# The fix plan's F3 (docs/plan-fixes.md), 2026-11-24: a building takes its kit's storey and plinth,
+# a door on its side's middle needs no `at`, and a door's `storey` is 0 unless written, so the
+# world no longer writes them. The written numbers fell; nothing built moved.
+
 # ------------------------------------------------------------------------------------------ base
 # The temple with its colonnade stated (lay.py rule 16): one `building` table, 17 numbers. 24
 # columns and 24 lintels stand on its outline, on the podium; the walls stand one bay inside; one
@@ -165,7 +169,7 @@ band    = [0, 0]
 
 [base.written_numbers]
 measure = "written_numbers"
-band    = [17, 17]
+band    = [13, 13]
 
 # ------------------------------------------------------------------------------------------ hand
 # The same temple written with what the library had before K8 (by_hand.toml): the room is the
@@ -313,7 +317,7 @@ band    = [48, 48]
 
 [hand.written_numbers]
 measure = "written_numbers"
-band    = [136, 136]
+band    = [133, 133]
 
 # ------------------------------------------------------------------------------------------ even
 # A front of four bays: a column stands on the axis, in the doorway. The building is refused

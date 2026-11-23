@@ -18,6 +18,7 @@ defaults = { collision = "box" }
 unit   = 0.2                     # a panel's thickness: every size of the kit is a whole number of it
 wall   = 0.2
 storey = 7.2
+plinth = 0                       # no base: the floor on the ground (fix plan F3)
 door   = 3.0                     # the doorway the door frame is made for
 
 [asset.shed_post]
@@ -67,6 +68,7 @@ module = 3.0
 wall   = 0.3
 storey = 6.0
 door   = 1.5
+plinth = 0                       # no base: the floor on the ground (fix plan F3)
 
 [asset.boiler_wall]
 file   = "boiler_wall.glb"

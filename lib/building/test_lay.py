@@ -16,6 +16,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 L = runpy.run_path(os.path.join(HERE, "lay.py"))
+C = runpy.run_path(os.path.join(HERE, "check.py"))
 ParamError = L["ParamError"]
 GRID = {"extent_mm": [0, 0, 64000, 64000], "resolution_mm": 1000, "nx": 65, "ny": 65}
 HALL = [(20000, 20000), (32000, 20000), (32000, 28000), (20000, 28000)]
@@ -367,7 +368,13 @@ class Walls(unittest.TestCase):
         longer = L["edges"]([(0, 0), (13600, 0), (13600, 9600), (0, 9600)])
         self.assertEqual(L["where"](longer, {"side": 0, "at": 4.05}, "doors"), (0, 4050.0))
         self.assertAlmostEqual(L["where"](longer, {"t": 4.05 / 44.4}, "doors")[1], 4232.4, delta=0.1)
-        for bad in ({"side": 4, "at": 1}, {"side": 0, "at": 13}, {"side": 0}, {"side": 0, "at": 1, "t": 0.1}, {},
+        # A door with its side and no `at` stands on the side's middle (the fix plan's F3); a stair
+        # with no `at` says no place.
+        self.assertEqual(L["where"](es, {"side": 0}, "doors"), (0, 6300.0))
+        self.assertEqual(L["where"](es, {"side": 1}, "doors"), (1, 4800.0))
+        with self.assertRaises(ParamError):
+            L["where"](es, {"side": 0}, "stair")
+        for bad in ({"side": 4, "at": 1}, {"side": 0, "at": 13}, {"side": 4}, {"side": 0, "at": 1, "t": 0.1}, {},
                     {"side": 1.7, "at": 1}, {"side": -1, "at": 1}, {"side": True, "at": 1}, {"side": 0, "at": True},
                     {"side": "0", "at": 1}, {"side": 0, "at": [1]}, {"side": 0, "at": float("nan")},
                     {"t": "x"}, {"t": None}, {"t": True}):
@@ -1374,12 +1381,32 @@ class Stated(unittest.TestCase):
 
     def test_what_a_kit_states_is_read_in_millimetres(self):
         got = L["kit_shared"](self.rows(dict(self.PLAIN, storey=[4.0, 3.0])))
-        self.assertEqual(got, {"module": 3000, "wall": 300, "storey": [3000, 4000], "door": 1400,
-                               "stair": {"lane": 1500, "width": 1300, "run": 4500, "landing": 1500}})
+        self.assertEqual(got, {"module": 3000, "wall": 300, "storey": [3000, 4000], "storey_first": 4000,
+                               "door": 1400, "stair": {"lane": 1500, "width": 1300, "run": 4500, "landing": 1500}})
         self.assertEqual(L["kit_shared"](self.rows()), {})
         self.assertEqual(L["kit_shared"](None), {})
         # A key `lay` does not read is another library's: `shared` holds any keys.
         self.assertEqual(L["kit_shared"](self.rows({"wall": 0.3, "street": {"kerb": 0.15}})), {"wall": 300})
+
+    def test_a_building_takes_the_kits_storey_and_plinth_where_it_writes_none(self):
+        """Rule 2, the fix plan's F3: `storey_h = 0` and `plinth = -1` (the defaults) are the kit's
+        first stated storey and its stated plinth, else 3.2 and 0.3; a number written wins."""
+        st = L["kit_shared"](self.rows(dict(self.PLAIN, storey=[4.0, 3.0], plinth=0)))
+        self.assertEqual(st["plinth"], 0)
+        a = L["kit_heights"]({"storey_h": 0, "plinth": -1}, st)
+        self.assertEqual((a["storey_h"], a["plinth"]), (4.0, 0.0))
+        a = L["kit_heights"]({"storey_h": 3.5, "plinth": 0.45}, st)
+        self.assertEqual((a["storey_h"], a["plinth"]), (3.5, 0.45))
+        a = L["kit_heights"]({}, {})
+        self.assertEqual((a["storey_h"], a["plinth"]), (3.2, 0.3))
+        with self.assertRaises(L["ParamError"]):
+            L["kit_shared"](self.rows(dict(self.PLAIN, plinth=-0.1)))
+        # `storey = []` states no storey, as before F3 (its review): the building's own, else 3.2
+        self.assertNotIn("storey_first", L["kit_shared"](self.rows(dict(self.PLAIN, storey=[]))))
+        self.assertEqual(C["kit_storey"](self.rows(dict(self.PLAIN, storey=[]))), 3.2)
+        self.assertEqual(C["kit_storey"](self.rows(dict(self.PLAIN, storey=[4.0, 3.0]))), 4.0)
+        self.assertEqual(C["kit_plinth"](self.rows(dict(self.PLAIN, plinth=0))), 0.0)
+        self.assertEqual((C["kit_storey"]([]), C["kit_plinth"]([])), (3.2, 0.3))
 
     def test_a_kit_says_a_thing_once_and_as_a_length(self):
         two = self.rows(self.PLAIN)
@@ -1526,6 +1553,18 @@ class FakeStep:
 
 
 class Step(unittest.TestCase):
+    def test_a_kit_with_no_piece_is_said_and_nothing_laid(self):
+        """F3's review: a misspelt kit laid a building with no walls and said nothing, and would
+        take the default heights. It is `params` now."""
+        class Empty(FakeStep):
+            def pack(self, select, columns=()):
+                return {"id": []}
+        s = Empty(dict(ATTRS, kit="building/kit/nope"))
+        L["generate"](s)
+        self.assertEqual([x[:2] for x in s.said], [("error", "params")])
+        self.assertEqual(s.said[0][3], {"attribute": "kit"})
+        self.assertEqual(s.out.features, {})
+
     def test_generate_writes_the_house(self):
         s = FakeStep(dict(ATTRS, kit="building/kit/box", rooms=[{"storey": 0, "shares": [2, 1]}]))
         L["generate"](s)

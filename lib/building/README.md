@@ -32,8 +32,9 @@ Words. The building-information vocabulary, as the TODO's lesson asks: building,
 Library text in the form a user writes. Attributes illustrative until the code; the shapes are fixed.
 
 - **`building`** (region owner, anchored). The one feature a world writes. Attributes: `storeys`
-  (integer, default 1), `storey_h` (default 3.2), `plinth` (height of the ground floor above the
-  mean ground under the outline, default 0.3), `front` (a bearing, the main door's side: not
+  (integer, default 1), `storey_h` (default 0: the kit's first stated storey, else 3.2), `plinth`
+  (height of the ground floor above the mean ground under the outline; default -1: the kit's
+  stated plinth, else 0.3; `features.json` keeps what was written, the step what it laid by), `front` (a bearing, the main door's side: not
   taken yet, `kinds.toml` has no default for it and `lay` reads `doors`), `doors`
   (a list of `{ storey, t, width }` on the outline, `t` as `on` takes it), `stair` (`{ t, width,
   run }`, where along the inner outline the stair climbs), `kit` (a taxon of pieces), `fill` and
@@ -298,7 +299,8 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     stairwell of a three-storey building whole 1.5 m tiles (`examples/kit`, `tower`: 5.25 m2
     open). A kit whose lane, landing and run are whole tiles gets whole stairwells on every
     storey, and `slab_open` then says how far to move a stair that stands between tiles.
-  - *Not yet.* A building's `storey_h` is still its own; lib/town does not read `shared`.
+  - Since the fix plan's F3 a building takes its kit's storey and plinth where it writes none
+    (below, "What a kit states, read"). *Not yet:* lib/town does not read `shared` (F4).
 - **The roof beyond the walls** (K8 of `docs/plan-kits.md`, second slice, from examples/court).
   Design note; the rule is `lay.py` rule 17. Our own design: the research found one mention of
   a separate node for layered roofs and no account of deep eaves or hipped roofs from pieces.
@@ -799,6 +801,17 @@ edge raised and the step ended in a traceback. And a kit piece whose `params` ho
 step reads is `kit_param` (check.py rule 15), with the key it may be a misspelling of.
 Not built: a plot that keeps trees off (it has no `keep_out`; a kit's pieces would be warned
 of, as on a pad), and one plot for several buildings that are not a court.
+
+### What a kit states, read (the fix plan's F3)
+
+A building that names its kit and writes no height takes the kit's: `storey_h = 0` (the default)
+is the kit's first stated `storey`, and `plinth = -1` (the default) its stated `plinth` (a new
+key of `shared`, 0 or more: a kit of blocks with no base states 0; a podium kit states its
+base's height), else 3.2 m and 0.3 m as before (lay.py rule 2). A door that names its side and no
+`at` stands on the side's middle (rule 4), and `storey` is 0 unless written. `check` judges every
+kit a building names, not only those its `kits` lists. In the examples this took out 36
+`storey_h`, 12 `plinth`, 27 `storey = 0` and 9 `at` that restated what the kit or the library
+already gave; the builds are unchanged.
 
 ### Someone else's kit (K10)
 

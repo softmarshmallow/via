@@ -15,6 +15,10 @@
 # target, it says where someone looks. `hand_setback` is not here: it was written before the key
 # existed, as an author guessed it, and is exit 1 (`params`), with no build to measure.
 
+# The fix plan's F3 (docs/plan-fixes.md), 2026-11-24: a building takes its kit's storey and plinth,
+# a door on its side's middle needs no `at`, and a door's `storey` is 0 unless written, so the
+# world no longer writes them. The written numbers fell; nothing built moved.
+
 # ------------------------------------------------------------------------------------------ base
 # The block as four rows: every wall closes, no shopfront on the yard, no two neighbours alike.
 # Four openings still face a neighbour: one bay of two north buildings' backs, on two storeys each,
@@ -95,7 +99,7 @@ band    = [4, 4]
 
 [base.written_numbers]
 measure = "written_numbers"
-band    = [52, 52]
+band    = [48, 48]
 
 # ------------------------------------------------------------------------------------------ frontage
 # The south frontage 2 m longer than its lots: said once (row_open), and nothing moves.
@@ -474,7 +478,7 @@ band    = [0, 0]
 
 [by_hand.written_numbers]
 measure = "written_numbers"
-band    = [192, 192]
+band    = [168, 168]
 
 # ------------------------------------------------------------------------------------------ hand_lots
 # The south side as five lots of 12 m: no side of them closes.

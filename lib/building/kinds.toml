@@ -37,13 +37,13 @@ authority = "anchored"
 
 [kind.building.defaults]                 # every attribute a building takes is declared here
 storeys  = 1                             # how many storeys; 0: its walls alone, on the ground (a yard)
-storey_h = 3.2                           # metres from one floor to the next
+storey_h = 0                             # metres from one floor to the next; 0: the kit's first stated storey, else 3.2
 ground_h = 0                             # the ground storey's height; 0: as storey_h
 top_h    = 0                             # the top storey's height (of two or more); 0: as storey_h
-plinth   = 0.3                           # the ground floor above the mean ground under the outline
+plinth   = -1                            # the ground floor above the mean ground under the outline; -1: the kit's stated plinth, else 0.3
 porch    = 2                             # metres a doorway runs out from the wall
 walk_out = 3                             # metres of footpath beyond each doorway (0: none)
-doors    = []                            # [{ storey, t, width }]
+doors    = []                            # [{ storey, side, at, width }] or `t` for side and at; storey 0, and no `at` the side's middle, by default
 stair    = {}                            # { t, width, run }: needed from two storeys
 rooms    = []                            # [{ storey, shares }]
 kit      = ""                            # a taxon path of wall pieces; "" places none
@@ -68,10 +68,10 @@ depth    = 4                             # bays deep
 lots     = []                            # [{ bays, storeys, door }]: the buildings in order along the path
 heights  = []                            # storeys a lot takes when it writes none: never its neighbour's
 storeys  = 1                             # a lot's storeys with no `heights`
-storey_h = 3.2                           # these ten are each building's (kind.building, above)
+storey_h = 0                             # these ten are each building's (kind.building, above)
 ground_h = 0
 top_h    = 0
-plinth   = 0.3
+plinth   = -1
 porch    = 2
 walk_out = 3
 roof     = ""
@@ -88,8 +88,8 @@ kit      = ""                            # the kit the hall and the wings are la
 yard     = {}                            # { kit, bays = [across, along], storey_h }: the wall round the court, its gate on the axis
 hall     = {}                            # { bays = [across, deep], from, veranda, fill }: across the axis, facing the gate
 wings    = []                            # [{ bays = [along, deep], from, off, veranda, fill }]: each laid twice, mirror images about the axis
-storey_h = 3.2                           # these five are the hall's and each wing's (kind.building, above)
-plinth   = 0.3
+storey_h = 0                             # these five are the hall's and each wing's (kind.building, above)
+plinth   = -1
 porch    = 2
 walk_out = 3
 roof     = ""

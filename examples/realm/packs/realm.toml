@@ -29,6 +29,7 @@ landing = 1.5
 unit = 0.15
 wall = 0.15
 storey = 3.6
+plinth = 0.6
 door = 1.5
 base = 0.6
 eaves = 1.35
@@ -42,6 +43,7 @@ door = 2.4
 unit = 0.9
 wall = 0.9
 storey = 9.0
+plinth = 0.9
 door = 1.8
 base = 0.9
 

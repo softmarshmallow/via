@@ -35,31 +35,26 @@ paint = "ground"
 kind     = "building"
 region   = [[12.2, 10], [51.8, 10], [51.8, 46.6], [12.2, 46.6]]
 storeys  = 0                                  # its walls alone, on the ground (lay.py rule 18)
-storey_h = 2.4
 kit      = "structure/yard"
-doors    = [{ storey = 0, side = 0, at = 19.8 }]
+doors    = [{ side = 0 }]
 
 # ------------------------------------------------------------------------------------------ the halls
 
 [feature.hall]
 kind      = "building"
 region    = [[24.35, 34], [39.65, 34], [39.65, 43.3], [24.35, 43.3]]
-storey_h  = 3.6
-plinth    = 0.6
 roof      = "hip"
 kit       = "structure/timber"
 colonnade = [{ sides = [0], depth = 3.0 }]
-doors     = [{ storey = 0, side = 0, at = 7.65 }]
+doors     = [{ side = 0 }]
 fill      = [{ sides = [0], pattern = ["doors"] }, { sides = [1, 3], pattern = ["lattice"] }]
 
 [feature.east]
 kind     = "building"
 region   = [[41, 28.3], [41, 19], [47.3, 19], [47.3, 28.3]]
-storey_h = 3.6
-plinth   = 0.6
 roof     = "hip"
 kit      = "structure/timber"
-doors    = [{ storey = 0, side = 0, at = 4.65 }]
+doors    = [{ side = 0 }]
 fill     = [{ sides = [0], pattern = ["lattice"] },
             { sides = [3], pattern = ["doors", "wall"], mirror = true },       # its far end is its side 3
             { sides = [2], pattern = ["lattice", "wall", "wall"], mirror = true }]
@@ -67,11 +62,9 @@ fill     = [{ sides = [0], pattern = ["lattice"] },
 [feature.west]
 kind     = "building"
 region   = [[23, 19], [23, 28.3], [16.7, 28.3], [16.7, 19]]
-storey_h = 3.6
-plinth   = 0.6
 roof     = "hip"
 kit      = "structure/timber"
-doors    = [{ storey = 0, side = 0, at = 4.65 }]
+doors    = [{ side = 0 }]
 fill     = [{ sides = [0], pattern = ["lattice"] },
             { sides = [1], pattern = ["doors", "wall"], mirror = true },       # its far end is its side 1
             { sides = [2], pattern = ["lattice", "wall", "wall"], mirror = true }]

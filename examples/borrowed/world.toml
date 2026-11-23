@@ -32,9 +32,7 @@ paint = "ground"
 kind     = "building"
 region   = [[10, 10], [16, 10], [16, 14], [10, 14]]   # counter-clockwise from the south-west
 storeys  = 2
-storey_h = 0.625                                       # the kit's block
-plinth   = 0                                           # the blocks stand on the ground
-doors    = [{ storey = 0, side = 0, at = 2.5 }]        # the middle of the second block
+doors    = [{ side = 0, at = 2.5 }]        # the middle of the second block
 stair    = { side = 2, at = 2.0, width = 0.4, run = 2.0 }
 roof     = "flat"
 kit      = "structure/kenney"
@@ -45,8 +43,6 @@ fill     = [{ storeys = [1], sides = "all", pattern = ["window", "windows"] }]
 [feature.cottage]
 kind     = "building"
 region   = [[10, 20], [15, 20], [15, 22], [10, 22]]
-storey_h = 0.625
-plinth   = 0
 roof     = "hip"
 kit      = "structure/kenney"
 fill     = [{ sides = [1, 2, 3], pattern = ["wide"] }]
@@ -59,8 +55,6 @@ to       = [35, 10]
 kit      = "structure/kenney"
 depth    = 2
 lots     = [{ bays = 3 }, { bays = 3 }, { bays = 3 }]
-storey_h = 0.625
-plinth   = 0
 roof     = "flat"
 fill     = [{ faces = ["front", "back", "end"], pattern = ["window"] }]
 

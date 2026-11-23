@@ -474,6 +474,25 @@ class OffPlot(unittest.TestCase):
         self.assertIn("it stands at its floor (10.3 m), within 0.05 m", r[3])
         self.assertNotIn("-0.", r[3])
 
+    def test_the_kits_judged_are_those_named_and_every_kit_a_building_names(self):
+        f = [feat("a", "building", self.RING, kit="k/b"), feat("b", "building", self.RING, kit="k/a"),
+             feat("c", "building", self.RING, kit=""), feat("r", "row", self.RING, kit="k/row")]
+        self.assertEqual(C["kits_judged"](f, []), ["k/a", "k/b"])
+        self.assertEqual(C["kits_judged"](f, ["k/z", "k/b"]), ["k/z", "k/b", "k/a"])
+
+    def test_a_plinth_left_out_is_the_kits(self):
+        """F3: `plinth = -1` (the default) is the kit's stated plinth, else 0.3 (lay.py rule 2), in
+        rule 12 as in `lay`: the ground may fall below the floor by that much and not be said."""
+        f = PlotHeld().features(plinth=-1)
+        stands = C["on_plots"](f)
+        foot = {"h": [(x, y, 9.5) for x, y in C["foot_points"](PlotHeld.RING)]}     # 0.8 m under the floor
+        said = lambda plinths: C["plots_lost"](stands, foot, {"k": 0.0}, None, plinths)
+        self.assertEqual(said({"k": 0.9}), [])                # a podium kit's 0.9 m reaches it
+        (r,) = said({"k": 0.0})                               # a kit of blocks: 0.8 m past nothing
+        self.assertEqual(r[5]["reach"], 0.0)
+        (r,) = said(None)                                     # none given: 0.3
+        self.assertEqual(r[5]["reach"], 0.3)
+
     def test_the_explain_and_the_codes(self):
         for code in ("ground_over", "in_water", "kit_param"):
             self.assertIn(code, C["EXPLAIN"])

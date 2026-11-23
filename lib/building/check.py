@@ -160,7 +160,8 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    `bay = true` left from a rule taken out again).
 
 `params`: `riser_max` (0.19 m), `going_min` (0.25 m), `turn_max` (45), `inner_door` (0.9 m),
-`pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
+`pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none: the kits judged
+are these and every kit a building names, since the fix plan's F3). Codes are `step.<id>.<code>`;
 `checked` (info) counts what was judged.
 
 The clear width is the plan's: two boxes' footprints, not their collision meshes (the engine's).
@@ -247,7 +248,7 @@ EXPLAIN = {
     "storey has no piece to be walled with. An untagged bay serves every storey with none of its own.",
     "kit_height": "A kit piece's measured height is not the storey height of a building that stacks "
     "it: on a storey below another it stands into the one above, or stops short of it. Make the "
-    "piece one storey high, or set the building's `storey_h` to the kit's.",
+    "piece one storey high, or leave the building's `storey_h` out so it takes the kit's stated storey.",
     "plot_lost": "A building stands on a plot (`ground = \"level\"`), and `lay` reckoned its floor and "
     "judged its wall's foot against the plot's level. Something shaped the ground after that: a second "
     "plot over the same ground, an anchored kind, or an entry ordered after the plot. Along part of "
@@ -568,8 +569,9 @@ def judge(features, meetings, kit_rows, p, pieces=()):
         return sorted(rows, key=lambda r: (tag(r, "variant:") is not None, tag(r, "storey:") is None, r["id"]))
 
     def storeys_of(a):
-        """`[(word, height mm)]` of a building's storeys: lay.py's `storey_kinds`."""
-        n, h = int(a.get("storeys") or 1), float(a.get("storey_h") or 3.2)
+        """`[(word, height mm)]` of a building's storeys: lay.py's `storey_kinds`, with its
+        `storey_h` of 0 as the kit's first stated storey, else 3.2 (lay.py rule 2)."""
+        n, h = int(a.get("storeys") or 1), float(a.get("storey_h") or 0) or kit_storey(by_taxon.get(a.get("kit"), []))
         g, top = float(a.get("ground_h") or 0) or h, float(a.get("top_h") or 0) or h
         return [("ground", int(round(g * 1000))) if k == 0 else ("top", int(round(top * 1000))) if k == n - 1
                 else ("upper", int(round(h * 1000))) for k in range(n)]
@@ -1060,6 +1062,36 @@ def read_pieces(step, taxons, kit_rows):
     return out
 
 
+def kits_judged(features, kits):
+    """The kits `check` judges: those `kits` names, in its order, then every other kit a building
+    names, in name order (the fix plan's F3)."""
+    named = sorted({f["attrs"].get("kit") for f in features
+                    if f["kind"] == "building" and isinstance(f["attrs"].get("kit"), str) and f["attrs"].get("kit")})
+    return list(kits) + [t for t in named if t not in kits]
+
+
+def kit_storey(rows):
+    """A kit's first stated storey, metres, else 3.2: what a building of it with `storey_h = 0`
+    takes (lay.py rule 2)."""
+    for r in rows:
+        v = (r.get("shared") or {}).get("storey")
+        if isinstance(v, list):
+            v = v[0] if v else None
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+            return float(v)
+    return 3.2
+
+
+def kit_plinth(rows):
+    """A kit's stated plinth, metres, else 0.3: what a building of it with `plinth = -1` takes
+    (lay.py rule 2)."""
+    for r in rows:
+        v = (r.get("shared") or {}).get("plinth")
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0:
+            return float(v)
+    return 0.3
+
+
 def edits(a, b):
     """The edit distance of two words (insertions, deletions, substitutions), for a hint."""
     row = list(range(len(b) + 1))
@@ -1105,17 +1137,20 @@ def on_plots(features):
     return out
 
 
-def plots_lost(stands, foot, bases, cut_by=None):
+def plots_lost(stands, foot, bases, cut_by=None, plinths=None):
     """Rule 12's records. `stands` is `on_plots`'s; `foot` maps a building's name to its points
     `[(x mm, y mm, ground m)]`; `bases` a kit's taxon to its base's depth in metres (0: none);
     `cut_by(building, (x, y))` names what shaped the ground there, `(name, kind, metres off)` or
-    None."""
+    None; `plinths` a kit's taxon to its stated plinth, for a building whose `plinth` is -1, the
+    default (lay.py rule 2; 0.3 where none is given)."""
     out = []
     for b, pl, floor in stands:
         pts = foot.get(b["name"]) or []
         if not pts:
             continue
-        plinth = float(b["attrs"].get("plinth") or 0.0)
+        written = b["attrs"].get("plinth")
+        stated = plinths.get(b["attrs"].get("kit"), 0.3) if plinths is not None else 0.3
+        plinth = stated if written is None or written == -1 else float(written or 0.0)
         base = float(bases.get(b["attrs"].get("kit"), 0.0) or 0.0)
         reach = max(plinth, base)
         step_ = (math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) / 1000.0) if len(pts) > 1 else 0.0
@@ -1277,6 +1312,12 @@ def read_along(step, buildings, selector):
     return out
 
 
+def read_plinths(step, stands):
+    """Each standing building's kit's stated plinth, metres, else 0.3 (lay.py rule 2)."""
+    return {t: kit_plinth(read_kits(step, [t]))
+            for t in sorted({b["attrs"].get("kit") for b, _, _ in stands if b["attrs"].get("kit")})}
+
+
 def read_bases(step, stands):
     """The depth of each standing building's kit's base, metres (0: none)."""
     out = {}
@@ -1318,14 +1359,19 @@ def lint(step):
         step.error("params", "step." + step.id, str(e), "see lib/building/check.py", explain=EXPLAIN["params"])
         return
     said = set()
-    kits = read_kits(step, p["kits"])
     features = read_features(step)
-    recs = judge(features, read_meetings(step), kits, p, read_pieces(step, p["kits"], kits))
+    # The kits judged: those `kits` names, and every kit a building names (the fix plan's F3: a
+    # world wrote again in `kits` the kits its buildings name, four in examples/realm).
+    taxons = kits_judged(features, p["kits"])
+    p = dict(p, kits=taxons)
+    kits = read_kits(step, taxons)
+    recs = judge(features, read_meetings(step), kits, p, read_pieces(step, taxons, kits))
     stands = on_plots(features)                  # rule 12: the ground under a plot, as it ended
     if stands:
         own = {b["name"]: pl["name"] for b, pl, _ in stands}
         lost = plots_lost(stands, read_foot(step, stands), read_bases(step, stands),
-                          lambda b, pt: nearest_cutter(read_cutters(step, b, pt), b, pt, own[b["name"]]))
+                          lambda b, pt: nearest_cutter(read_cutters(step, b, pt), b, pt, own[b["name"]]),
+                          read_plinths(step, stands))
         recs = recs[:-1] + lost + recs[-1:] if recs and recs[-1][1] == "checked" else recs + lost
     every = standing(features)                   # rules 13 and 14: every building, off a plot and in water
     if every:

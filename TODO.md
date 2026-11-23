@@ -1727,12 +1727,12 @@ open, and its place here is its destination.
       (From the list before the rewrite, Assets and buildings; was -> M5.)
 - [ ] **What a kit states, where it is not yet read.** lib/building lays by a kit's
   `defaults.shared` (R66, K6: `wall`, `stair`, `door`; `module` and `storey` are checked). Left:
-  lib/town's rows read each piece's pitch alone; a building still writes `storey_h`, which the
-  kit's `storey` could give; the kits of `station`, `college`, `market` and `quay` state nothing
+  lib/town's rows read each piece's pitch alone (F4 of docs/plan-fixes.md); the kits of `station`, `college`, `market` and `quay` state nothing
   (`kit_unstated`, info). Lesson: the first statement written for the plain kit was wrong (one
   storey height of two) and the check caught it: a stated fact is only worth having with the
   check that holds the pieces to it.
-      (From K6 of docs/plan-kits.md, 2026-11-23.)
+      (From K6 of docs/plan-kits.md, 2026-11-23. A building's `storey_h` and `plinth` come from
+      the kit since the fix plan's F3.)
 - [ ] **No floor tile on a building turned off the axes.** A tile is an instance on the
   millimetre lattice; off the axes two that abut overlap by the rounding, and two instances of
   one step in one place are `place.overlap`, an error (49 on the annex at 30 degrees). Walls

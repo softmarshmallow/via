@@ -36,10 +36,9 @@ paint = "ground"
 kind     = "building"
 region   = [[18, 16], [30.6, 16], [30.6, 28.6], [18, 28.6]]
 storeys  = 4
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 0, at = 4.05 }]
+doors    = [{ side = 0, at = 4.05 }]
 stair    = { side = 2, at = 1.8 }
 kit      = "structure/city"
 
@@ -47,10 +46,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[30.6, 16], [40.2, 16], [40.2, 28.6], [30.6, 28.6]]
 storeys  = 3
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 0, at = 4.05 }]
+doors    = [{ side = 0, at = 4.05 }]
 stair    = { side = 2, at = 1.8 }
 kit      = "structure/city"
 
@@ -58,10 +56,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[40.2, 16], [55.8, 16], [55.8, 28.6], [40.2, 28.6]]
 storeys  = 5
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 0, at = 4.05 }]
+doors    = [{ side = 0, at = 4.05 }]
 stair    = { side = 2, at = 1.8 }
 kit      = "structure/city"
 
@@ -69,10 +66,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[55.8, 16], [65.4, 16], [65.4, 28.6], [55.8, 28.6]]
 storeys  = 3
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 0, at = 4.05 }]
+doors    = [{ side = 0, at = 4.05 }]
 stair    = { side = 2, at = 1.8 }
 kit      = "structure/city"
 
@@ -80,10 +76,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[65.4, 16], [78, 16], [78, 28.6], [65.4, 28.6]]
 storeys  = 4
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 0, at = 4.05 }]
+doors    = [{ side = 0, at = 4.05 }]
 stair    = { side = 2, at = 1.8 }
 kit      = "structure/city"
 
@@ -91,10 +86,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[18, 28.6], [30.6, 28.6], [30.6, 50.2], [18, 50.2]]
 storeys  = 3
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 3, at = 4.05 }]
+doors    = [{ side = 3, at = 4.05 }]
 stair    = { side = 1, at = 1.8 }
 kit      = "structure/city"
 
@@ -102,10 +96,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[65.4, 28.6], [78, 28.6], [78, 50.2], [65.4, 50.2]]
 storeys  = 3
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 1, at = 4.05 }]
+doors    = [{ side = 1, at = 4.05 }]
 stair    = { side = 3, at = 1.8 }
 kit      = "structure/city"
 
@@ -113,10 +106,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[18, 50.2], [27.6, 50.2], [27.6, 62.8], [18, 62.8]]
 storeys  = 4
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 2, at = 4.05 }]
+doors    = [{ side = 2, at = 4.05 }]
 stair    = { side = 0, at = 1.8 }
 kit      = "structure/city"
 
@@ -124,10 +116,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[27.6, 50.2], [43.2, 50.2], [43.2, 62.8], [27.6, 62.8]]
 storeys  = 3
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 2, at = 4.05 }]
+doors    = [{ side = 2, at = 4.05 }]
 stair    = { side = 0, at = 1.8 }
 kit      = "structure/city"
 
@@ -135,10 +126,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[43.2, 50.2], [55.8, 50.2], [55.8, 62.8], [43.2, 62.8]]
 storeys  = 5
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 2, at = 4.05 }]
+doors    = [{ side = 2, at = 4.05 }]
 stair    = { side = 0, at = 1.8 }
 kit      = "structure/city"
 
@@ -146,10 +136,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[55.8, 50.2], [68.4, 50.2], [68.4, 62.8], [55.8, 62.8]]
 storeys  = 5
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 2, at = 4.05 }]
+doors    = [{ side = 2, at = 4.05 }]
 stair    = { side = 0, at = 1.8 }
 kit      = "structure/city"
 
@@ -157,10 +146,9 @@ kit      = "structure/city"
 kind     = "building"
 region   = [[68.4, 50.2], [78, 50.2], [78, 62.8], [68.4, 62.8]]
 storeys  = 4
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
-doors    = [{ storey = 0, side = 2, at = 4.05 }]
+doors    = [{ side = 2, at = 4.05 }]
 stair    = { side = 0, at = 1.8 }
 kit      = "structure/city"
 

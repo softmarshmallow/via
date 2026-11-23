@@ -37,22 +37,18 @@ paint = "ground"
 [feature.shed]                                # four bays by three, and a post: 24.4 by 18.4 m
 kind     = "building"
 region   = [[8, 20], [32.4, 20], [32.4, 38.4], [8, 38.4]]
-storey_h = 7.2
-plinth   = 0
 roof     = "flat"
 kit      = "structure/shed"
-doors    = [{ storey = 0, side = 3, at = 9.2 }]
-bays     = [{ storey = 0, side = 1, at = 9.2, variant = "port" }, { storey = 0, side = 2, at = 3.2, variant = "port" }]
+doors    = [{ side = 3 }]
+bays     = [{ side = 1, at = 9.2, variant = "port" }, { side = 2, at = 3.2, variant = "port" }]
 
 [feature.boiler]                              # three bays by two, and two corners: 9.6 by 6.6 m
 kind     = "building"
 region   = [[50.4, 18.4], [60, 18.4], [60, 25], [50.4, 25]]
-storey_h = 6.0
-plinth   = 0
 roof     = "flat"
 kit      = "structure/boiler"
-doors    = [{ storey = 0, side = 0, at = 4.8 }]
-bays     = [{ storey = 0, side = 3, at = 1.8, variant = "port" }]
+doors    = [{ side = 0 }]
+bays     = [{ side = 3, at = 1.8, variant = "port" }]
 
 # ------------------------------------------------------------------------------------------ the pipes
 

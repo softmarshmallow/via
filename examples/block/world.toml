@@ -41,7 +41,6 @@ kit      = "structure/city"
 depth    = 4
 lots     = [{ bays = 4 }, { bays = 3 }, { bays = 5 }, { bays = 3 }, { bays = 4 }]
 heights  = [3, 4, 5]
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
 fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]
@@ -53,7 +52,6 @@ to       = [78, 50.2]
 kit      = "structure/city"
 depth    = 4
 lots     = [{ bays = 7, storeys = 3 }]
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
 fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]
@@ -66,7 +64,6 @@ kit      = "structure/city"
 depth    = 4
 lots     = [{ bays = 3 }, { bays = 4 }, { bays = 4 }, { bays = 5 }, { bays = 3 }]
 heights  = [3, 4, 5]
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
 fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]
@@ -78,7 +75,6 @@ to       = [18, 28.6]
 kit      = "structure/city"
 depth    = 4
 lots     = [{ bays = 7, storeys = 3 }]
-storey_h = 3.3
 ground_h = 4.5
 roof     = "flat"
 fill     = [{ faces = ["party"], pattern = ["blank"] }, { faces = ["back"], storeys = [0], pattern = ["blank"] }]

@@ -9,7 +9,6 @@ to       = [388.6, 238]
 kit      = "structure/village"
 depth    = 2
 lots     = [{ bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }]
-storey_h = 2.7
 walk_out = 0                                 # the doorway comes to the footway's back edge
 roof     = "gable"
 fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "wall"] }]
@@ -21,7 +20,6 @@ to       = [347, 226]
 kit      = "structure/village"
 depth    = 2
 lots     = [{ bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }]
-storey_h = 2.7
 walk_out = 0                                 # the doorway comes to the footway's back edge
 roof     = "gable"
 fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "wall"] }]
@@ -33,8 +31,6 @@ kind     = "court"
 at       = [672, 362]                         # the middle of the gate
 to       = [672, 372]                         # the axis: north
 kit      = "structure/timber"
-storey_h = 3.6
-plinth   = 0.6
 roof     = "hip"
 ground   = "level"                           # one plot under the whole court (lib/building/court.py rule 9)
 yard     = { kit = "structure/yard", bays = [13, 12] }
@@ -49,13 +45,11 @@ at = [672, 353]
 [feature.fane]
 kind      = "building"
 region    = [[189.8, 503.1], [204.2, 503.1], [204.2, 522.9], [189.8, 522.9]]
-storey_h  = 9.0
-plinth    = 0.9
 roof      = "gable"
 ground    = "level"                          # a plot under the temple (lib/building/lay.py rule 19)
 kit       = "structure/order"
 colonnade = [{ sides = "all", depth = 2.7 }]
-doors     = [{ storey = 0, side = 0, at = 7.2 }]
+doors     = [{ side = 0 }]
 fill      = [{ sides = [1, 2, 3], pattern = ["wall", "niche"], mirror = true }]
 
 [feature.fane_foot]                           # where the path arrives, before the steps

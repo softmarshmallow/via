@@ -30,6 +30,7 @@ defaults = { collision = "box" }
 module = 1.0                     # every building block is 1 by 1 in plan
 wall   = 1.0                     # a block is the wall: a building is blocks round its outline
 storey = 0.625                   # every building block's height
+plinth = 0                       # no base: a block stands its floor on the ground (fix plan F3)
 door   = 0.25                    # the doorway through the door block
 eaves  = 0.139                   # how far the slanted roof reaches past the wall's face
 

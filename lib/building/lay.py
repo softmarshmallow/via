@@ -20,7 +20,11 @@ The rules (ours, written for this library; README.md is the design note):
    heights.** Storey 0 is the `ground` storey, the last of two or more the `top`, the rest `upper`.
    `ground_h` and `top_h` (0: as `storey_h`) are the heights of the ground and the top storey, and
    a level is then the ground, the plinth and the heights of the storeys below. The eaves are the
-   top storey's level and its own height.
+   top storey's level and its own height. **From the kit** (the fix plan's F3): `storey_h = 0`,
+   the default, is the kit's first stated `storey` (rule 11, as the pack writes it), else 3.2 m;
+   `plinth = -1`, the default, is the kit's stated `plinth`, else 0.3 m. So a world names its
+   kit and writes neither, and a building of another kit is that kit's height (K10's review
+   counted 23 restatements of a kit's storey in eight worlds). A number written still wins.
 3. **Stair.** `stair = { side, at, width, run }` (or `{ t, width, run }`): the flights climb along the outline edge holding that place (`where`: `side` and `at` are a side of the outline and the metres along it; `t` is a share of the whole outline, and moves when any side grows),
    from `s0` (the point at `t`, along that edge) to `s1 = s0 + run`, in lanes `CLEAR` (0.1 m) off
    the wall's inner face and off each other: lane 0's centre is `T + CLEAR + width / 2` in, lane
@@ -51,7 +55,7 @@ The rules (ours, written for this library; README.md is the design note):
    kit there is no wall and no footing; with a corner that is not square there is no footing,
    and the side stands open over the stairwell (`wall_open`). Every flight `starts_at = "<storey k>.floor"`, `ends_at = "<storey
    k+1>.floor"`, with `z0`, `z1` the two levels (surfaces.md 6.4).
-4. **Doors.** `doors = [{ storey, side, at, width }]` (or `t` for `side` and `at`, as rule 3): a doorway square to the outline there, from
+4. **Doors.** `doors = [{ storey, side, at, width }]` (or `t` for `side` and `at`, as rule 3; `storey` 0 by default, and with no `at` the side's middle, the fix plan's F3): a doorway square to the outline there, from
    `porch` metres outside to the outline (its end moved in up to 3 mm where rounding left it
    outside, as rule 3's), `ends_at = "<storey>.floor"`, `sill_z` its level, `flat`
    at least the posts' diagonal so the sill effect holds every post round the end (kinds.toml). A
@@ -415,7 +419,9 @@ The rules (ours, written for this library; README.md is the design note):
    further), in place of the width and `CLEAR` each side, so a kit whose lane is whole floor
    tiles gets stairwells that are; `door`, the width of the doorway its door piece is made for,
    which a door that writes no `width` takes; `module`, `storey` (one height or a list) and
-   `parapet` and `base` (the heights of its `storey:parapet` and `storey:base` pieces),
+   `parapet` and `base` (the heights of its `storey:parapet` and `storey:base` pieces), `plinth`
+   (the floor's height over the ground the kit is made for, 0 or more: a kit of blocks with no
+   base stands its floor on the ground, which a building of it takes for its `plinth`, rule 2),
    which `lay` does not lay by (a stretch closes by its pieces' pitches, a storey's height is
    the building's) and `check` holds the pieces to (`kit_stated`); and `unit`, the length of
    which every size of the kit is a whole number (a classical kit's column width), which
@@ -569,13 +575,17 @@ def where(es, spec, key):
     """(edge index, mm along it) of a door or a stair: `t`, a share of the whole outline, or
     `side` and `at`, a side of the outline (side `k` runs from its point `k` to the next, counter-
     clockwise) and the metres along it from where it starts. The second keeps its place when
-    another side grows."""
+    another side grows. A door with `side` and no `at` stands on that side's middle."""
     def number(v):
         return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
     if "side" in spec or "at" in spec:
         if "t" in spec:
             raise ParamError(key, f"`{key}` says both `t` and `side`", "write `side` and `at`, or `t`")
         k, at = spec.get("side"), spec.get("at")
+        # A door that names its side and no place stands on its middle (the fix plan's F3): the one
+        # place a door between posts may stand (R74), and where most doors of the examples stood.
+        if key == "doors" and "at" not in spec and isinstance(k, int) and not isinstance(k, bool) and 0 <= k < len(es):
+            return k, es[k]["L"] / 2
         if not (isinstance(k, int) and not isinstance(k, bool)) or not number(at):
             raise ParamError(key, f"`{key}` needs `side` (a whole number) and `at` (metres along that side)",
                              "write both, as `side = 0, at = 4.05`")
@@ -1122,7 +1132,7 @@ def variant_off(v, bay):
 
 
 BY_HEIGHT = ("wall", "filler", "corner", "corner_in", "door", "post")  # the roles a storey's height chooses among
-SHARED = ("module", "unit", "wall", "door", "storey", "parapet", "base", "stair", "eaves")  # what a kit may state once (rule 11)
+SHARED = ("module", "unit", "wall", "door", "storey", "parapet", "base", "stair", "eaves", "plinth")  # what a kit may state once (rule 11)
 STAIR_KEYS = ("lane", "width", "run", "landing")
 ROOF_ROLES = ("roof_slope", "roof_gable", "roof_hip", "roof_valley")   # the roles a roof's depth chooses among (rule 17)
 
@@ -1158,6 +1168,13 @@ def kit_shared(rows):
             continue
         if k == "storey":
             out[k] = sorted({mm(x, k) for x in (v if isinstance(v, list) else [v])})
+            if not isinstance(v, list) or v:     # `storey = []` states no storey, as before F3
+                out["storey_first"] = mm(v[0] if isinstance(v, list) else v, k)
+        elif k == "plinth":
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
+                raise ParamError("kit", f"the kit states `shared.plinth = {v!r}`, not a height of 0 or more",
+                                 "write `shared.plinth` as metres")
+            out[k] = int(round(v * 1000))
         elif k == "stair":
             if not isinstance(v, dict) or any(x not in STAIR_KEYS for x in v):
                 raise ParamError("kit", f"the kit states `shared.stair = {v!r}`",
@@ -1170,6 +1187,20 @@ def kit_shared(rows):
         raise ParamError("kit", f"the kit's stair is {st['width'] / 1000:g} m wide in a lane of "
                          f"{st['lane'] / 1000:g} m", "make `shared.stair.lane` at least its `width`")
     return out
+
+
+def kit_heights(attrs, stated):
+    """Rule 2, from the kit: `attrs` with `storey_h` 0 (the default) as the kit's first stated
+    storey, else 3.2, and `plinth` -1 (the default) as its stated plinth, else 0.3. `stated` is
+    `kit_shared`'s. A number the building writes is kept."""
+    a = dict(attrs)
+    h = a.get("storey_h")
+    if h is None or (isinstance(h, (int, float)) and not isinstance(h, bool) and h == 0):
+        a["storey_h"] = stated["storey_first"] / 1000 if stated.get("storey_first") else 3.2
+    p = a.get("plinth")
+    if p is None or (isinstance(p, (int, float)) and not isinstance(p, bool) and p == -1):
+        a["plinth"] = stated["plinth"] / 1000 if "plinth" in stated else 0.3
+    return a
 
 
 def kit_rows(rows, word=None, height=None):
@@ -2437,14 +2468,14 @@ def hip_plan(ring, kit, prefix):
     return runs, insts
 
 
-def _num(attrs, key, default, lo=None, integer=False):
+def _num(attrs, key, default, lo=None, integer=False, hint=None):
     v = attrs.get(key, default)
     try:
         v = int(v) if integer else float(v)
     except (TypeError, ValueError):
         raise ParamError(key, f"`{key}` is not a number", f"write `{key}` as a number")
     if lo is not None and v < lo:
-        raise ParamError(key, f"`{key}` is {v}, below {lo}", f"write `{key}` as {lo} or more")
+        raise ParamError(key, f"`{key}` is {v}, below {lo}", hint or f"write `{key}` as {lo} or more")
     return v
 
 
@@ -2507,12 +2538,12 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
         return yard_plan(name, footprint, attrs, kit, kits, margin)
     if level and foot:                       # the ground the plot will hold, all round (rule 19)
         foot = [(x, y, ground_m) for x, y, _ in foot]
-    storey_h = _num(attrs, "storey_h", 3.2, 0.5)
+    storey_h = _num(attrs, "storey_h", 3.2, 0.5, hint="write `storey_h` as 0.5 or more, or leave it out for the kit's storey")
     ground_h, top_h = _num(attrs, "ground_h", 0, 0), _num(attrs, "top_h", 0, 0)
     for key, v in (("ground_h", ground_h), ("top_h", top_h)):
         if 0 < v < 0.5:
             raise ParamError(key, f"`{key}` is {v}, below 0.5", f"write `{key}` as 0.5 or more, or 0 for `storey_h`")
-    plinth = _num(attrs, "plinth", 0.3, 0)
+    plinth = _num(attrs, "plinth", 0.3, 0, hint="write `plinth` as 0 or more, or leave it out for the kit's plinth")
     porch = int(round(_num(attrs, "porch", 2, 0.5) * 1000))
     walk_out = int(round(_num(attrs, "walk_out", 3, 0) * 1000))
     kinds = storey_kinds(storeys, storey_h, ground_h, top_h)
@@ -3132,6 +3163,12 @@ def generate(step):
                              "at": [far[1][0] / 1000, far[1][1] / 1000]}, explain=EXPLAIN["outside"])
             return
         rows = read_kit(step, attrs.get("kit"))
+        if rows is not None and not rows:
+            # A kit the pack has no piece of (a misspelt taxon): the building was laid with no walls
+            # and said nothing, and since F3 it would also take the default heights (F3's review).
+            raise ParamError("kit", f"the kit `{attrs.get('kit')}` has no piece in the pack",
+                             "name a taxon the pack files pieces at (`via pack list`), or write `kit = \"\"` for none")
+        attrs = kit_heights(attrs, kit_shared(rows) if rows else {})     # rule 2: the kit's storey and plinth
         kits = (lambda word, height: kit_pieces(rows, word, height)) if rows is not None else None
         ground, foot = read_ground(step, ring), read_foot(step, ring)
         out = plan(name, ring, attrs, ground, step.grid, None, inner, margin, kits, foot)

@@ -36,10 +36,9 @@ paint = "ground"
 [feature.cella]
 kind     = "building"
 region   = [[19.5, 14.7], [28.5, 14.7], [28.5, 29.1], [19.5, 29.1]]
-storey_h = 9.0
 plinth   = 0                          # no podium: nothing outside the cella can stand at its height
 roof     = "gable"
-doors    = [{ storey = 0, side = 0, at = 4.5 }]
+doors    = [{ side = 0 }]
 kit      = "structure/order"
 fill     = [{ sides = [1, 2, 3], pattern = ["wall", "niche"] }]
 

@@ -11,4 +11,4 @@ when    = "lint"
 worker  = true
 checks  = ["lay", "rows", "courts"]
 command = ["python", "-m", "viasdk", "lib:building/check.py"]
-params  = { kits = ["structure/village", "structure/timber", "structure/yard", "structure/order"] }
+# No `kits`: check judges every kit a building names (the fix plan's F3), the four here.

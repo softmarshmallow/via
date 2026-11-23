@@ -15,6 +15,7 @@ defaults = { collision = "box" }
 unit   = 0.15                    # half a post: every size of the kit is a whole number of it
 wall   = 0.15                    # a panel's thickness
 storey = 3.6                     # a storey: the post and the beam in its top
+plinth = 0.6                     # the floor over the ground: the podium its base is (fix plan F3)
 door   = 1.5                     # the doorway the door frame is made for
 base   = 0.6                     # how far the base reaches below the floor: the platform
 eaves  = 1.35                    # how far the roof stands beyond the posts, on every side

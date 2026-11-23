@@ -24,6 +24,10 @@
 # gate skips the whole check (spec/diagnostics.md 4), its kit rules with it. Filed in TODO.md: the
 # ground's rules as a lint of their own.
 
+# The fix plan's F3 (docs/plan-fixes.md), 2026-11-24: a building takes its kit's storey and plinth,
+# a door on its side's middle needs no `at`, and a door's `storey` is 0 unless written, so the
+# world no longer writes them. The written numbers fell; nothing built moved.
+
 # ------------------------------------------------------------------------------------------ base
 # The base: three buildings and a row from Kenney's blocks, every wall closed, every flat roof
 # covered once. The cottage's hipped roof is open over the bevel of each of its four corners, as
@@ -119,7 +123,7 @@ band    = [17, 17]
 
 [base.written_numbers]
 measure = "written_numbers"
-band    = [67, 67]
+band    = [60, 60]
 
 [base.laid_features]
 measure = "laid_features"

@@ -280,7 +280,7 @@ def plan_court(name, at, attrs, kits):
         yf = kits(yard["kit"])
         across, along = _bays(yard, "yard", "the yard", "write `bays = [across, along]`, two whole numbers of bays")
         on_axis(across, yf, "yard", "the yard's front")
-        high = yard.get("storey_h", yf["storey"] / 1000.0)
+        high = yard.get("storey_h") or yf["storey"] / 1000.0      # 0: the kit's, as a building's (F3)
         if _mm(high, 0.5) is None:
             raise ParamError("yard", f"the yard has `storey_h = {high!r}`", "write the wall's height in metres, 0.5 or more")
         W, D = side(across, yf), side(along, yf)

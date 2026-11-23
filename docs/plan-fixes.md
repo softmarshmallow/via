@@ -30,6 +30,7 @@ Then the town (T1), which needs the scale from F8 and closes challenge 33.
 | F1 | **The engine's silences.** A condition region that keeps only its largest piece (half a town vanished, `TODO.md` `spec/geometry.md`); an unknown key on a taxon (`shared` beside `defaults` builds and states nothing); a step reading a field its layer's peers write, which is `diag.internal` where the cause is known (`spec/graph.md`, from `realm`). | Each has a conformance case that was silent or internal before and is said now, naming what to change. |
 | F2 | **The library's silences.** A house standing in water (`realm` `flood`: 32 pieces, nothing said); ground over a floor at every building, after a ruling on a house that steps with its land (5 houses of `realm`, 11 of `village`); a kit param no library reads (`bay = true`); a building partly outside the extent (a traceback today); the temple's mirror measure on a half bay and a mirrored fill that starts part way along a side. | Each case is said by `lay` or `check` with its numbers; recorded rows that move are re-recorded with the reason. |
 | F3 | **What the kit states, read.** The storey's height and the plinth from the kit (review item 1, 28 numbers); pitch and span from the model in every reader (item 4, 80 numbers); a door with no `at` on its side's middle; `storey = 0` dropped from examples; `check` reads the kits off the features it judges; the records of item 7. | The review's counts are taken again by one protocol and fall by what was removed; every example's rows hold. |
+| F3b | **Pitch and span from the model.** Split from F3 on 2026-11-24 (below): every reader defaults a piece's pitch and span to its measured box (a panel between posts: its box and the post), and the packs drop the restatements (review item 4, 80 numbers). | The review's pack counts fall by what was removed; every example's rows hold. |
 | F4 | **One kit reader in the SDK.** `viasdk` reads a kit (pieces, tags, bounds, params, the taxon's `shared` once), folds a feature's attributes, and reads the ground at points (review section 4). lib/building and lib/town use it; lib/town reads `shared`. | The six copies, five folds and six ground reads are one each; all library tests and example rows hold. |
 | F5 | **A plan from the model's geometry.** An outline measured from the model's triangles at `via pack accept`, a fact beside `bounds`. `check` holds a corner's turn with it; a library says an open corner; declared footprints are no longer typed (item 5). | Kenney's corner turned a quarter wrong is said; the bevelled hip's open eaves are said by `lay`, not only by the example's script; the 48 declared footprint numbers are gone. |
 | F6 | **A kit a second world can name.** A pack that takes another pack, or ids scoped by their taxon, so two kits' `base` and `door` are not one id (item 9). | `realm` builds from its three kits with no merge script, and its rows hold. |
@@ -77,3 +78,16 @@ Changed so far:
   clearance in a message, a distance past the extent measured per axis, and no test of the
   steps' wiring (now a world built by the engine, `test_ground.Wiring`). The temple's measure
   counts pieces on every side, mirrored or not; its new figures are recorded with that protocol.
+- **F3 split, 2026-11-24.** Pitch and span from the model is its own slice, F3b: it changes how
+  a kit laid by posts is read and touches most packs, so it gets its own review and commit.
+  F3 is the storey and the plinth from the kit, a door on its side's middle, `storey = 0` left
+  out, `check` judging every kit a building names, and the records of review item 7 (two of
+  which, the works asset count and the kit contract's stale paragraph, were already mended in
+  K10's fix pass; challenge 32's summary row is corrected).
+- **F3, 2026-11-24.** Built as the split says. In the examples it took out 36 `storey_h`, 12
+  `plinth`, 27 `storey = 0`, 9 door `at` and realm's four restated `kits`; every built row of the
+  eight kit examples held, and only their written counts fell (realm 141 to 133, temple 17 to 13,
+  court 22 to 20, borrowed 67 to 60, block 52 to 48). The independent review compared 63 change
+  builds with HEAD and found every one the same; it found a misspelt kit laid with no walls and
+  no word, now `params` (older, and worse once the kit gives the heights), `shared.storey = []`
+  refused where it had been no storey (put back), untested paths (now tested) and stale wording.

@@ -17,6 +17,10 @@
 # by_hand.toml in a store of its own. Measured 2026-11-23 in one run and checked in a second. A
 # band is the measured number: not a target, it says where someone looks.
 
+# The fix plan's F3 (docs/plan-fixes.md), 2026-11-24: a building takes its kit's storey and plinth,
+# a door on its side's middle needs no `at`, and a door's `storey` is 0 unless written, so the
+# world no longer writes them. The written numbers fell; nothing built moved.
+
 # ------------------------------------------------------------------------------------------ base
 # The court written about its axis (lib/building/court.py): one `court` table, 22 numbers. The
 # step returns four buildings: the yard, of no storeys, its 54 pieces on the ground; the main hall
@@ -182,7 +186,7 @@ band    = [1, 1]
 
 [base.written_numbers]
 measure = "written_numbers"
-band    = [22, 22]
+band    = [20, 20]
 
 # ------------------------------------------------------------------------------------------ hand
 # The same court as four `building` tables written by hand (by_hand.toml): 63 numbers, 32 of
@@ -347,7 +351,7 @@ band    = [0, 0]
 
 [hand.written_numbers]
 measure = "written_numbers"
-band    = [63, 63]
+band    = [48, 48]
 
 # ------------------------------------------------------------------------------------------ deep
 # The side halls three bays deep. Their roofs are 12 m deep and take the kit's other slope and

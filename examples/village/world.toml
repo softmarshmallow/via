@@ -33,7 +33,6 @@ to       = [62.6, 34]
 kit      = "structure/village"
 depth    = 2
 lots     = [{ bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }]
-storey_h = 2.7
 roof     = "gable"
 fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "wall"] }]
 
@@ -44,7 +43,6 @@ to       = [21, 26]
 kit      = "structure/village"
 depth    = 2
 lots     = [{ bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }, { bays = 3, storeys = 2 }, { bays = 2 }]
-storey_h = 2.7
 roof     = "gable"
 fill     = [{ faces = ["front", "back", "end"], pattern = ["window", "wall"] }]
 

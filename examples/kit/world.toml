@@ -44,8 +44,7 @@ paint = "ground"
 kind     = "building"
 region   = [[10, 10], [22.6, 10], [22.6, 19.6], [10, 19.6]]   # counter-clockwise from the south-west
 storeys  = 2
-storey_h = 3.0
-doors    = [{ storey = 0, side = 0, at = 4.05 }]                 # its middle 4.05 m along the south side
+doors    = [{ side = 0, at = 4.05 }]                 # 4.05 m along the south side
 stair    = { side = 2, at = 3.3 }                               # from 3.3 m along the north side
 kit      = "structure/plain"
 
@@ -54,8 +53,7 @@ kit      = "structure/plain"
 [feature.annex]
 kind     = "building"
 region   = [[32, 10], [41.6, 10], [41.6, 19.6], [32, 19.6]]
-storey_h = 3.0
-doors    = [{ storey = 0, side = 0, at = 4.05 }]                 # its middle 4.05 m along the south side
+doors    = [{ side = 0, at = 4.05 }]                 # 4.05 m along the south side
 kit      = "structure/plain"
 
 # ------------------------------------------------------------------------------------------ steps
