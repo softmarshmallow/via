@@ -140,3 +140,16 @@ Changed so far:
   (and newly refusable: only where asked now), `footprint = "plan"` on a cylinder giving its box
   (its own round one now), `plan` unchecked on a primitive, a misspelt word told to reverse its
   points, and the outward rounding by up to a cell unstated (3.4 says it). All mended, with cases.
+- **F5b, 2026-11-24.** `check` rule 16, `kit_turn`: an outside corner piece whose pack asks for its
+  plan is held to the way `lay` sets it (its front outward from the wall after the corner, so the
+  building's own corner is the piece's front right); a plan open at any other corner of its box is a
+  piece turned, and the record names the turn that mends it. Kenney's corner asks for its plan;
+  the new case `turned` (its `front` taken out, as exported) is said, the base is not. Not built:
+  a roof's corner left open over a bevel said by `lay` (filed in TODO.md): it needs every roof
+  piece's plan placed and read against the outline and the eaves.
+  The independent review checked the convention in world space (every corner instance of the
+  base and `turned`, outlines of both windings, an L) and every `front` read back: right. It found
+  an L corner and a round corner post flagged (only corners that stand against a wall are judged
+  now; a post or a piece open all round is not), and the message naming the turn that mends where
+  a reader takes it for the present turn: it now says the turn the piece stands at and the `front`
+  to write, from the model's own axes, which `pack.query` now answers (`front`, `up`).

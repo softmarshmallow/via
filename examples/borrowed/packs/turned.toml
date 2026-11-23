@@ -1,0 +1,97 @@
+# Written by make_cases.py from kenney.toml: the corner with no `front`, as the model was exported. Do not edit; edit kenney.toml.
+
+# Kenney's Modular Buildings 2.1 (CC0 1.0, www.kenney.nl; credit is not required, and given here):
+# the pack lib/building lays it by. The models are fetched by ../fetch.py into packs/kenney/ and
+# never committed; this file and kenney.facts.toml (written by `via pack accept`) are.
+#
+# Every number here is read off the files (README.md, "The kit as it is"), in the kit's own units:
+# a building block is 1 by 1 in plan and 0.625 high, a door 0.25 by 0.5. The contract takes model
+# units as metres and leaves a model at another scale open (spec/assets.md 2.3), so a world built
+# from this pack is the kit's size: a town at about a quarter of a person's (README.md, "Scale").
+#
+# What this pack says that plain.toml (the kit as handed over) does not, each for a reason the
+# before build gave (README.md, "Before"):
+# - `[material.ground]`: a world paints its ground by name, and every pack binds the name.
+# - `front = "+x"` on the corner, the hip and the parapet's corner: Kenney's corners have their
+#   outside faces on +x and +z; lib/building's on the front and the front turned a quarter right.
+# - `shared.door = 0.25`: Kenney's door is a block with the doorway through it, which stands
+#   where a bay would; stated as the doorway it is, lay.py rule 6 shortens the wall beside it to
+#   whole blocks and the door block fills what is left (README.md, "What the pack states").
+# - `role:roof_flat`: the flat roof's tile is a roof piece, not a floor; the kit has no floor.
+# - `shared.eaves` and the slopes' `span`: the slope and the hip reach 0.139 past the wall's face.
+
+root = "kenney"
+
+[material.ground]
+colour = [0.45, 0.5, 0.4]
+
+[taxon."structure"]
+defaults = { collision = "box" }
+
+[taxon."structure/kenney".defaults.shared]
+module = 1.0                     # every building block is 1 by 1 in plan
+wall   = 1.0                     # a block is the wall: a building is blocks round its outline
+storey = 0.625                   # every building block's height
+plinth = 0                       # no base: a block stands its floor on the ground (fix plan F3)
+door   = 0.25                    # the doorway through the door block
+eaves  = 0.139                   # how far the slanted roof reaches past the wall's face
+
+# The bay: a block, plain on every face.
+[asset.block]
+file   = "building-block.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall"]
+
+[asset.window]
+file   = "building-window.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall", "variant:window"]
+params = { pitch = 1.0 }
+
+[asset.windows]
+file   = "building-windows.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall", "variant:windows"]
+
+[asset.wide]
+file   = "building-window-wide.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall", "variant:wide"]
+
+[asset.corner]
+file  = "building-corner.glb"
+taxon = "structure/kenney"
+tags  = ["role:corner"]
+plan  = true                     # its bevel measured, so `check` holds its turn (fix plan F5b)
+
+[asset.door]
+file   = "building-door.glb"
+taxon  = "structure/kenney"
+tags   = ["role:door"]
+
+[asset.roof_tile]
+file   = "roof-flat-center.glb"
+taxon  = "structure/kenney"
+tags   = ["role:roof_flat"]
+
+[asset.slope]
+file   = "roof-slanted.glb"
+taxon  = "structure/kenney"
+tags   = ["role:roof_slope"]
+
+[asset.hip]
+file   = "roof-slanted-corner-a.glb"
+taxon  = "structure/kenney"
+tags   = ["role:roof_hip"]
+front  = "+x"
+
+[asset.parapet]
+file   = "roof-flat-border-side.glb"
+taxon  = "structure/kenney"
+tags   = ["role:wall", "storey:parapet"]
+
+[asset.parapet_corner]
+file  = "roof-flat-border-corner.glb"
+taxon = "structure/kenney"
+tags  = ["role:corner", "storey:parapet"]
+front = "+x"

@@ -159,6 +159,14 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    (warning), naming the key and, within two letters, the one it may be. Before the fix plan's
    F2 a misspelt `pitch` was laid at the piece's box and nothing said why (K10's review found a
    `bay = true` left from a rule taken out again).
+16. **A corner turned.** An outside corner piece (`role:corner`, no variant) whose pack asks for its
+   plan (`plan = true`, spec/assets.md 3.4) is held to the way `lay` sets it: front outward from
+   the wall after the corner, so the building's own corner is the piece's front right (+x, +y) and
+   its back right and front left stand against the walls (its back left too where the piece is no
+   larger than the wall is thick). A plan open at one of those is `kit_turn` (warning), naming the
+   turn it stands at and the `front` that sets it right; a post, or a piece open at all four
+   corners (round), is not judged. Before the fix
+   plan's F5b nothing checked the turn worked out by hand from Kenney's bevelled corner (K10).
 
 `params`: `riser_max` (0.19 m), `going_min` (0.25 m), `turn_max` (45), `inner_door` (0.9 m),
 `pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none: the kits judged
@@ -267,6 +275,10 @@ EXPLAIN = {
     "water_many": "More than one field is tagged `water_level`, so the building check cannot tell which "
     "is the water's surface, and judges no building standing in water (lib/building/check.py rule 14). "
     "Tag one field.",
+    "kit_turn": "An outside corner piece's measured plan (spec/assets.md 3.4, asked with `plan = true`) is open "
+    "at a corner of its box other than its front right. `lay` sets a corner with its front outward from the "
+    "wall after it, so the building's corner is the piece's front right and the other three stand against "
+    "the walls: the piece is turned. Correct its `front` (lib/building/check.py rule 16).",
     "kit_param": "A piece of a kit under `kits` writes a param no step of the building library reads, so "
     "it does nothing here (an exporter may read its own, as `collision` in spec/build.md): a misspelt `pitch` is laid at the piece's box, and a key left from an earlier "
     "rule reads as if it still held. Drop it, or correct it to the param the hint names "
@@ -968,6 +980,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                     f"{storey_h:g} m storeys of {', '.join('`' + n + '`' for n in names)}: {how}",
                     "make the piece the storey's height, or the storey the piece's (`storey_h`, `ground_h`, `top_h`)",
                     {"asset": r["id"], "height": high, "storey_h": storey_h, "buildings": names}, None))
+    out += corner_turns(sorted(kit_rows, key=lambda r: (r.get("taxon") or "", r["id"])))    # rule 16
     for r in sorted(kit_rows, key=lambda r: (r.get("taxon") or "", r["id"])):     # rule 15
         for k in sorted(set(r.get("params") or {}) - set(PARAMS_READ)):
             near = min(PARAMS_READ, key=lambda w: (edits(k, w), w))
@@ -1023,8 +1036,10 @@ def read_meetings(step):
 
 
 def read_kits(step, taxons):
-    """Every piece of the kits `taxons` names, in that order (viasdk.kit)."""
-    return [r for taxon in taxons for r in viasdk.kit(step, taxon)]
+    """Every piece of the kits `taxons` names, in that order (viasdk.kit), with its measured
+    `plan` where the pack asks for one (spec/assets.md 3.4; rule 16)."""
+    return [r for taxon in taxons
+            for r in viasdk.kit(step, taxon, columns=("bounds", "params", "shared", "plan", "front", "up"))]
 
 
 def read_pieces(step, taxons, kit_rows):
@@ -1072,6 +1087,84 @@ def model_span(r):
     if "role:roof_slope" in tags or "role:roof_hip" in tags:
         return (b[4] - b[1]) / 1000.0
     return None
+
+
+def inside_rings(rings, p):
+    """Whether `p` lies inside the region `rings` bound (outer rings counter-clockwise, holes
+    clockwise: the winding number is not 0)."""
+    w = 0
+    for r in rings:
+        n = len(r)
+        for k in range(n):
+            (x0, y0), (x1, y1) = r[k], r[(k + 1) % n]
+            if y0 <= p[1] < y1 and (x1 - x0) * (p[1] - y0) - (p[0] - x0) * (y1 - y0) > 0:
+                w += 1
+            elif y1 <= p[1] < y0 and (x1 - x0) * (p[1] - y0) - (p[0] - x0) * (y1 - y0) < 0:
+                w -= 1
+    return w != 0
+
+
+AXES = {"+x": (1, 0, 0), "-x": (-1, 0, 0), "+y": (0, 1, 0), "-y": (0, -1, 0), "+z": (0, 0, 1), "-z": (0, 0, -1)}
+
+
+def axis_word(v):
+    return next(k for k, a in AXES.items() if a == tuple(v))
+
+
+def corner_turns(rows):
+    """Rule 16's records: an outside corner piece (`role:corner`, no variant, no post) whose
+    measured plan is open at a corner of its box that stands against a wall. lay.py sets a corner
+    with its front outward from the wall after it (rule 6), so the building's own corner is the
+    piece's front right (+x, +y in the asset frame, spec/assets.md 2.3): its back right meets the
+    wall before the corner and its front left the wall after it, and its back left meets them
+    only where the piece is no larger than the wall is thick (a larger corner, an L, has room
+    behind it). Each corner is read at one point, 1/32 of the piece's smaller side in. The record
+    names the turn the piece stands at and the `front` that sets it right."""
+    walls = {}                                       # taxon -> the wall's thickness, mm
+    for r in rows:
+        tags = r.get("tags") or []
+        if "role:wall" in tags and r.get("bounds") and not any(t.startswith("variant:") for t in tags):
+            st = number((r.get("shared") or {}).get("wall"))
+            walls.setdefault(r.get("taxon"), int(round(st * 1000)) if st else r["bounds"][4] - r["bounds"][1])
+    out = []
+    for r in rows:
+        tags = r.get("tags") or []
+        plan, b = r.get("plan"), r.get("bounds")
+        if ("role:corner" not in tags or "role:post" in tags or any(t.startswith("variant:") for t in tags)
+                or not plan or not b):
+            continue
+        w, d = b[3] - b[0], b[4] - b[1]
+        inset = max(1, min(w, d) // 32)              # 31 mm on a metre block: inside a bevel
+        at = {"back left": (b[0] + inset, b[1] + inset), "back right": (b[3] - inset, b[1] + inset),
+              "front left": (b[0] + inset, b[4] - inset), "front right": (b[3] - inset, b[4] - inset)}
+        open_ = [k for k, p in at.items() if not inside_rings(plan, p)]
+        if len(open_) == 4:
+            continue                                 # round, or no corners at all: nothing turned
+        T = walls.get(r.get("taxon"))
+        judged = ["back right", "front left"] + (["back left"] if T and max(w, d) <= T + 5 else [])
+        wrong = [k for k in open_ if k in judged]
+        if not wrong:
+            continue
+        # The turn it stands at: what carries its front right (its outside corner) to where it is open.
+        now = {"back left": "a half", "back right": "a quarter right", "front left": "a quarter left"}
+        turn = now.get(wrong[0]) if len(wrong) == 1 and "front right" not in open_ else None
+        front, up = r.get("front") or "+z", r.get("up") or "+y"
+        fix = None
+        if turn and front in AXES and up in AXES:
+            f, u = AXES[front], AXES[up]
+            cross = lambda a, c: (a[1] * c[2] - a[2] * c[1], a[2] * c[0] - a[0] * c[2], a[0] * c[1] - a[1] * c[0])
+            mend = {"a half": tuple(-x for x in f), "a quarter right": cross(f, u), "a quarter left": cross(u, f)}[turn]
+            fix = axis_word(mend)
+        said = (f"it stands turned {turn}" + (f": write `front = \"{fix}\"` (now \"{front}\")" if fix else "")
+                if turn else "no one turn explains it")
+        out.append(("warning", "kit_turn", r["id"],
+                    f"`{r['id']}` is open in plan at its {' and '.join(wrong)} corner (its measured `plan`), where "
+                    "`lay` sets a corner piece against a wall: only its front right, the building's own corner, "
+                    f"may be open; {said}",
+                    (f"write `front = \"{fix}\"` on the piece in the pack" if fix else
+                     "re-export the piece with its outside corner at its front right (spec/assets.md 2.3)"),
+                    {"asset": r["id"], "open": open_, "turned": turn, "front": fix}, None))
+    return out
 
 
 def kits_judged(features, kits):

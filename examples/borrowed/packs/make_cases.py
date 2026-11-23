@@ -3,6 +3,7 @@ thing only (README.md, "Cases"). Ours. Standard library only.
 
     python3 examples/borrowed/packs/make_cases.py
 
+- turned.toml: kenney.toml with the corner's `front` taken out, as Kenney exported it (fix plan F5b).
 - sill.toml: kenney.toml and one more variant, Kenney's window with a sill 0.05 proud of the
   block's face (`building-window-sill.glb`).
 - revised.toml: kenney.toml with the window block re-exported 1.1 times as long
@@ -24,7 +25,13 @@ def main():
         raise SystemExit("kenney.toml: the window's file line is not where make_cases.py looks")
     revised = HEAD.format(why="the window block re-exported 1.1 times as long") + base.replace(
         old, 'file   = "building-window-revised.glb"')
-    for name, text in (("sill.toml", sill), ("revised.toml", revised)):
+    # The corner as a pack that did not turn it: Kenney's model as exported, its bevel at its front left.
+    front = 'tags  = ["role:corner"]\nfront = "+x"\n'
+    if base.count(front) != 1:
+        raise SystemExit("kenney.toml: the corner's `front` is not where make_cases.py looks")
+    turned = HEAD.format(why="the corner with no `front`, as the model was exported") + base.replace(
+        front, 'tags  = ["role:corner"]\n')
+    for name, text in (("sill.toml", sill), ("revised.toml", revised), ("turned.toml", turned)):
         open(os.path.join(HERE, name), "w").write(text)
         print(f"wrote {name}")
 

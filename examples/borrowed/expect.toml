@@ -464,3 +464,30 @@ band    = [178, 178]
 [revised.moved]
 measure = "moved"
 band    = [25, 25]
+
+# ------------------------------------------------------------------------------------------ turned
+# The fix plan's F5b: the corner with no `front`, as Kenney exported it (packs/turned.toml). Its
+# bevel faces front left where `lay` stands the piece against its walls, and `check` says so from
+# the corner's measured plan (`kit_turn`, rule 16), naming the quarter left it stands turned and the `front = "+x"` that sets it right. Nothing
+# else differs from the base: its five warnings are the base's own. Measured with the release `via`
+# of the working tree after 4cacfd0, one fresh store, the base then this change --against it.
+
+[turned.errors]
+measure = "errors"
+band    = [0, 0]
+
+[turned.warnings]
+measure = "warnings"
+band    = [6, 6]
+
+[turned.kit_turn]
+measure = "kit_turn"
+band    = [1, 1]
+
+[turned.instances]
+measure = "instances"
+band    = [178, 178]
+
+[turned.moved]
+measure = "moved"
+band    = [0, 0]

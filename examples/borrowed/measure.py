@@ -362,7 +362,7 @@ def measures(d, models=MODELS):
                        ("kit_variant", "step.check.kit_variant"), ("kit_pitch", "step.check.kit_pitch"),
                        ("kit_stated", "step.check.kit_stated"), ("unknown_material", "pack.unknown_material"),
                        ("gap_wide", "step.lay.gap_wide"), ("slab_open", "step.lay.slab_open"),
-                       ("kit_deck", "step.check.kit_deck")):
+                       ("kit_deck", "step.check.kit_deck"), ("kit_turn", "step.check.kit_turn")):
         m[word] = count(diags, code)
     gw = [r for r in diags if r["code"] == "step.lay.gap_wide"]
     m["gap_left_mm"] = max((int(round(float((r.get("data") or {}).get("left", 0)) * 1000)) for r in gw), default=0)

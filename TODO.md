@@ -1073,14 +1073,18 @@ open, and its place here is its destination.
 
 ### `spec/assets.md`
 
-- [ ] A piece's plan is its measured box; nothing reads its shape. Kenney's corner block and hip
-      are bevelled, so a corner turned the wrong way (`front`) and a roof left open over each
-      bevel are the same box, and neither `lay` nor `check` can tell: only `examples/borrowed`'s
-      measure does, from the triangles (55 dm2 of the cottage's roof open inside its outline,
-      81 in its eaves, all over the bevels). A measured plan from the geometry (an outline of the
-      model's triangles in plan, a facts-file fact like `bounds`) would let `check` hold a turn
-      and a library say an open corner. (From K10's review, 2026-11-24; the closing review's
-      `docs/design/kit-review.md`, section 6, item 5.)
+- [ ] **A roof's corner left open over a bevel is said only by the example.** Since the fix plan's F5
+      a pack can ask for a piece's measured `plan` (spec/assets.md 3.4), and `check` holds a
+      corner's turn by it (rule 16, F5b). Not yet: `lay` or `check` reading the roof pieces' plans
+      over a building's outline and eaves, so Kenney's bevelled hip leaves 81 dm2 of its eaves open
+      and only `examples/borrowed`'s measure says so. It needs each roof piece's plan turned and
+      placed as `lay` places it, and the union read against the outline moved out by the eaves.
+      (From K10's review, 2026-11-24; F5 and F5b of docs/plan-fixes.md.)
+- [ ] **A bevelled corner set as a post in a notch.** Where a kit has no inside corner piece,
+      `lay` sets its outside corner in an L's notch as a post (reach 0, lay.py rule 6). Kenney's
+      corner is bevelled, so its bevel then leaves a notch on the room side against the wall
+      block beside it, and nothing says so: rule 16 (`kit_turn`) judges a corner only as `lay` sets
+      it at an outside corner. (From F5b's review, 2026-11-24.)
 - [ ] **A model at another scale** (K10, `examples/borrowed`). Kenney's Modular Buildings is in
       its own units: a building block 1 by 1 by 0.625, a doorway 0.25 by 0.5, about a quarter of a
       person's size. The contract takes model units as metres and leaves another scale open

@@ -1,0 +1,3 @@
+# The corner with no `front`, as Kenney exported it (packs/turned.toml): the bevel at its front left,
+# against the walls. `check` says the corner is turned, from its measured plan (fix plan F5b).
+pack = "packs/turned.toml"

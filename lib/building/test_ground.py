@@ -523,6 +523,58 @@ class KitParam(unittest.TestCase):
         self.assertEqual(C["edits"]("pich", "pitch"), 1)
 
 
+class CornerTurn(unittest.TestCase):
+    """check.py rule 16 (the fix plan's F5b): a corner piece turned, by its measured plan."""
+
+    B = [-500, -500, 0, 500, 500, 625]
+    WALL = {"id": "block", "taxon": "k", "tags": ["role:wall"], "bounds": [-500, -500, 0, 500, 500, 625],
+            "params": {}, "shared": {}}
+
+    def corner(self, plan, front="+z", tags=("role:corner",), bounds=None):
+        return [self.WALL, {"id": "corner", "taxon": "k", "tags": list(tags), "bounds": bounds or self.B,
+                            "params": {}, "shared": {}, "plan": plan, "front": front, "up": "+y"}]
+
+    def bevel(self, at):
+        """A metre square less a 139 mm bevel at its corner `at`, counter-clockwise."""
+        return [{(1, 1): [(-500, -500), (500, -500), (500, 361), (361, 500), (-500, 500)],
+                 (-1, -1): [(-361, -500), (500, -500), (500, 500), (-500, 500), (-500, -361)],
+                 (1, -1): [(-500, -500), (361, -500), (500, -361), (500, 500), (-500, 500)],
+                 (-1, 1): [(-500, -500), (500, -500), (500, 500), (-361, 500), (-500, 361)]}[at]]
+
+    def test_a_bevel_at_the_front_right_is_the_building_corner(self):
+        self.assertEqual(C["corner_turns"](self.corner(self.bevel((1, 1)))), [])
+
+    def test_a_bevel_anywhere_else_names_the_turn_and_the_front_to_write(self):
+        """Kenney's corner exported with `front = "+z"`: whichever way it stands, `+x` sets it right
+        (F5b's review, each front accepted and read back)."""
+        for at, front, turn in (((-1, 1), "+z", "a quarter left"), ((1, -1), "-z", "a quarter right"),
+                                ((-1, -1), "-x", "a half")):
+            (r,) = C["corner_turns"](self.corner(self.bevel(at), front=front))
+            self.assertEqual((r[0], r[1], r[2]), ("warning", "kit_turn", "corner"))
+            self.assertEqual((r[5]["turned"], r[5]["front"]), (turn, "+x"))
+            self.assertIn(f"stands turned {turn}", r[3])
+
+    def test_what_stands_against_no_wall_is_not_judged(self):
+        # an L corner, 2 m square on a 1 m wall: its back left, inside the room, may be open
+        big = [-1500, -500, 0, 500, 1500, 625]
+        notched = [[(-1300, -500), (500, -500), (500, 1500), (-1500, 1500), (-1500, -300)]]
+        self.assertEqual(C["corner_turns"](self.corner(notched, bounds=big)), [])
+        # a round post, open at all four corners, and a piece that is also a post
+        disc = [[(0, -500), (350, -350), (500, 0), (350, 350), (0, 500), (-350, 350), (-500, 0), (-350, -350)]]
+        self.assertEqual(C["corner_turns"](self.corner(disc)), [])
+        self.assertEqual(C["corner_turns"](self.corner(self.bevel((-1, 1)), tags=("role:corner", "role:post"))), [])
+        # no plan, or an inside corner
+        self.assertEqual(C["corner_turns"](self.corner(None)), [])
+        self.assertEqual(C["corner_turns"](self.corner(self.bevel((-1, -1)), tags=("role:corner_in",))), [])
+        self.assertIn("kit_turn", C["EXPLAIN"])
+
+    def test_two_opposite_bevels_name_no_turn(self):
+        both = [[(-361, -500), (500, -500), (500, 361), (361, 500), (-500, 500), (-500, -361)]]
+        (r,) = C["corner_turns"](self.corner(both))
+        self.assertIsNone(r[5]["turned"])
+        self.assertIn("no one turn explains it", r[3])
+
+
 class Outside(unittest.TestCase):
     """lay.py rule 20: a building past the world's extent."""
 

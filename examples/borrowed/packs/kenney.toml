@@ -61,6 +61,7 @@ file  = "building-corner.glb"
 taxon = "structure/kenney"
 tags  = ["role:corner"]
 front = "+x"
+plan  = true                     # its bevel measured, so `check` holds its turn (fix plan F5b)
 
 [asset.door]
 file   = "building-door.glb"

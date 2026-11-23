@@ -1559,6 +1559,8 @@ impl<'a> View<'a> {
                     "sink",
                     "footprint",
                     "plan",
+                    "front",
+                    "up",
                     "mounts",
                     "collision",
                     "primitive",
@@ -1686,6 +1688,22 @@ impl<'a> View<'a> {
                                 &a.footprint.iter().map(|p| [p.0, p.1]).collect::<Vec<_>>(),
                             )
                             .unwrap_or_default()
+                        })
+                        .collect(),
+                )),
+                // `assets.md` 2.3: a model's `front` and `up`, the words its pack declares (or
+                // their defaults); `""` for a primitive or engine-made asset, which has no model axes.
+                "front" | "up" => Shaped::flat(Column::Str(
+                    assets
+                        .iter()
+                        .map(|a| {
+                            a.model.as_ref().map_or_else(String::new, |m| {
+                                if c == "front" {
+                                    m.front.clone()
+                                } else {
+                                    m.up.clone()
+                                }
+                            })
                         })
                         .collect(),
                 )),

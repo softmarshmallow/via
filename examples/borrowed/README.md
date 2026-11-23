@@ -197,6 +197,7 @@ ground. `measure.py`'s protocol is in its header; every figure here is from `exp
 | `deep_hip` | The cottage three blocks deep | `roof_none`: "the roof is 3.278 m deep and the kit's slope piece is made for 2.278 m (twice its span)" | The flat roof inside the walls; the wall tops and the eaves not roofed by pieces |
 | `sill` | The window with a sill asked for | `variant_none`, `kit_variant` and `kit_stated`: 1.05 m thick for the block's 1 m | The plain block in its place |
 | `revised` | The window block re-exported 1.1 times as long | `variant_none` twice; `kit_variant`, `kit_pitch` | The plain block wherever the window was asked; nothing stands over its neighbour |
+| `turned` | The corner with no `front`, as Kenney exported it (fix plan F5b) | `kit_turn`: its measured plan open at its front left, standing a quarter left; `front = "+x"` named | Every corner turned a quarter: its bevel against the walls, unsaid before |
 
 ## What each author wrote
 
