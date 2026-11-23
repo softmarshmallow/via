@@ -418,7 +418,9 @@ class Profile(unittest.TestCase):
                                ([dict(floor, bounds=[-500, -500, 0, 500, 500, 200], params={"pitch": 1}), slope, gable], ["floor"]),
                                ([dict(floor, bounds=[-1500, -1500, 0, 1500, 1500, 200], params={"pitch": 3}), slope, gable], ["floor"]),
                                ([floor, dict(slope, params={"pitch": 1.5, "span": 4.5}), gable], ["gable", "slope"]),
-                               ([floor, dict(slope, params={"pitch": 1.5}), gable], ["slope"]),
+                               # a slope that states no span is as deep as its model (the fix plan's F3b)
+                               ([floor, dict(slope, params={"pitch": 1.5}), gable], []),
+                               ([floor, dict(slope, params={"pitch": 1.5}), dict(gable, params={})], []),
                                ([floor, slope, dict(gable, bounds=[-2400, -150, 0, 2400, 150, 2000])], ["gable"]),
                                ([floor, slope, dict(gable, bounds=[-2400, -100, 0, 2400, 100, 2400])], ["gable"]),
                                ([floor, slope, half], ["gable"]),               # each true to itself, made for two spans

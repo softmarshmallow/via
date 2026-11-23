@@ -813,6 +813,13 @@ kit a building names, not only those its `kits` lists. In the examples this took
 `storey_h`, 12 `plinth`, 27 `storey = 0` and 9 `at` that restated what the kit or the library
 already gave; the builds are unchanged.
 
+**Pitch and span from the model** (the fix plan's F3b). A piece's pitch is its box's length
+where the pack states none, and a panel's or a door's between posts its box and the post; a
+slope's and a hip's span is its depth from eave to ridge, a gable half's its length. The packs of
+the kit plan's examples stated 76 of these again; they are gone, and every build held. What a
+pack still states is a claim, held by `check` (`kit_pitch`, `kit_deck`): the village valley's
+3.3 m span, and the cases whose pack says one thing and whose model another.
+
 ### Someone else's kit (K10)
 
 Asked by `examples/borrowed`: Kenney's Modular Buildings 2.1 (CC0), 109 models nobody here made,

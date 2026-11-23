@@ -279,7 +279,8 @@ The rules (ours, written for this library; README.md is the design note):
    of a city block and the jetty of a timber house are named in no developer's account read.
 15. **Posts and bays.** A kit is laid by posts when it has a `role:post` piece of its bay's own
    group (both tagged `storey:<word>` alike, or neither tagged). The bay's pitch `B`
-   (`params.pitch` of the `role:wall` piece) is then the distance from one post's middle to the
+   (`params.pitch` of the `role:wall` piece; where the pack states none, the panel's box and the
+   post's width, as for the door piece: the fix plan's F3b) is then the distance from one post's middle to the
    next, the post is `p` wide (its measured box), and the wall piece is a panel `B - p` long
    that stands between two posts: `check` holds it to that (`kit_pitch`). A corner is a post
    (the kit's `role:corner`, else its post), reaching `p`. A side from corner to corner closes
@@ -1243,7 +1244,14 @@ def kit_pieces(rows, word=None, height=None):
         width = b[3] - b[0] if b else 0
         pitch, reach = (kit_number(r, k) for k in ("pitch", "reach"))
         span = kit_number(r, "span")
-        return {"id": r["id"], "pitch": int(round(pitch * 1000)) if pitch else width,
+        if span is None and b:
+            # The span the model gives (the fix plan's F3b): a slope's and a hip's depth from eave to
+            # ridge, a gable half's length; what check's `kit_deck` measures a stated one against.
+            if "role:roof_gable" in r["tags"]:
+                span = width / 1000
+            elif "role:roof_slope" in r["tags"] or "role:roof_hip" in r["tags"]:
+                span = (b[4] - b[1]) / 1000
+        return {"id": r["id"], "pitch": int(round(pitch * 1000)) if pitch else width, "pitch_stated": bool(pitch),
                 "thick": b[4] - b[1] if b else 0, "width": width, "high": b[5] - b[2] if b else 0,
                 "box": list(b) if b else None,
                 "storey": next((t[7:] for t in r["tags"] if t.startswith("storey:")), None),
@@ -1267,13 +1275,22 @@ def kit_pieces(rows, word=None, height=None):
                 roofs.setdefault(role, []).append(piece(r))
             if role not in out:
                 out[role] = piece(r)
+    def between_posts(p):
+        # A panel or a door between posts stands from one post's middle to the next: its pitch,
+        # where the pack states none, is its box and the post's width (rule 15; the fix plan's
+        # F3b, where the packs had stated it 29 times, as check.py's `kit_pitch` reads it). Only
+        # in the post's own group, and before a variant is matched to the bay (F3b's review).
+        if p and not p.get("pitch_stated") and by_posts(out) and p.get("storey") == out["post"].get("storey"):
+            p["pitch"] = p["width"] + out["post"]["width"]
+        return p
     if walls:
         bay = dict(piece(walls[0]), variants={}, refused={})
         out["wall"] = bay
+        between_posts(bay)
         for w in words(walls[0]):
-            bay["variants"][w] = piece(walls[0])
+            bay["variants"][w] = between_posts(piece(walls[0]))
         for r in walls[1:]:
-            v = piece(r)
+            v = between_posts(piece(r))
             off = variant_off(v, bay)
             for w in words(r):
                 if w in bay["variants"]:
@@ -1287,6 +1304,7 @@ def kit_pieces(rows, word=None, height=None):
                     bay["refused"].pop(w, None)
     if roofs:
         out["roofs"] = roofs
+    between_posts(out.get("door"))
     stated = kit_shared(rows)
     if "wall" in out:
         # What the kit states is what a wall is laid by (rule 11); the bay's own measure stays in

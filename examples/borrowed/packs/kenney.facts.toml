@@ -14,7 +14,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:wall"]
-params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-block.glb" = "50b49e9bba5ed1f9593b8e71d01bdd395950b53660f4bb713ceb59c181934602" }
 
@@ -49,7 +48,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:door"]
-params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-door.glb" = "cb0d232d9ff11d56f1d4b9b5900c4200ebedd643fda62afaa1ab5b188371bc04" }
 
@@ -67,7 +65,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:roof_hip"]
-params = "dbd432a63a99ea5a73c944888d4885663a2afe34972bfd05dcf8733d252ea2e8"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-slanted-corner-a.glb" = "ad85637d4dafcbacc9aab452059d373552742dd78e3ad31e9f98396b9be6b8c1" }
 
@@ -85,7 +82,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:wall", "storey:parapet"]
-params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-flat-border-side.glb" = "74793ee2c1638a0ced823c1fa10b6c0ab830d53daa2f55f9ffad33f81750413d" }
 
@@ -120,7 +116,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:roof_flat"]
-params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-flat-center.glb" = "233055f29a18523881f5b6ca0a2a5b0c8ce6048ee7fc752c3da5c92d3cbded8b" }
 
@@ -138,7 +133,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:roof_slope"]
-params = "dfbbcb57b36ea3bb14164d74d985891413fa16006c928f9e350183c1196676e1"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "roof-slanted.glb" = "032cea72789e1288fd34d1cfd29fc1045493d9add5208e6ba9211b9ecbc0de7a" }
 
@@ -156,7 +150,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:wall", "variant:wide"]
-params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-window-wide.glb" = "8680da341124cb4001881b79d22b2ee2e323d3f6fa43ed51f0d03999da8f6892" }
 
@@ -192,6 +185,5 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/kenney"
 tags = ["role:wall", "variant:windows"]
-params = "f5836aee9d3ab51ef87ba9dd4c9503783b4d005ba2cee961ebc9e52cd0831b75"
 shared = "ebfe40f6e2d0044e9acf01458ac03ae8e0578980ff000a8804add99807024dc5"
 files = { "Textures/colormap.png" = "dceeb918167fd389a1e0c02ccb0786fb1dcc002ee406b8e99b0a67fddc23f390", "building-windows.glb" = "b0c3545cccfd5980905a333e86cdeab2a3f3f0550b746964d94fec76d3e028c7" }

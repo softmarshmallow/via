@@ -74,7 +74,8 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
      tagged `variant:wall`: `wall` is the bay's own word.
    - `kit_deck` (warning): a `role:floor` tile that is not square, or of which `m` is no whole
      number (a floor inside walls sized to the kit is then not whole tiles); a `role:roof_slope`
-     whose measured depth is not its `params.span`, or a `role:roof_gable` whose length is not; a
+     whose measured depth is not its stated `params.span`, or a `role:roof_gable` whose length is
+     not (a span not stated is the model's, lay.py's: the fix plan's F3b); a
      gable half that does not rise as the slope does, is not `T` thick, or is made for another
      span than the slope; a kit with one of the two roof pieces and not the other.
    - `kit_bay` (warning): a kind of storey some building has, for which the kit has no bay: its
@@ -661,8 +662,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                     role.setdefault(t[5:], r)
 
         def pitch_of(r):
-            v = number((r.get("params") or {}).get("pitch"))
-            return v if v is not None else (r["bounds"][3] - r["bounds"][0]) / 1000.0
+            return pitch_or_model(r, posts.get(group(r)))
         if "wall" not in role:
             continue
         wall = role["wall"]
@@ -700,8 +700,9 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                         {"asset": r["id"], "pitch": m, "thick": T}, None))
         def mm(r):
             """A wall piece's sizes in whole mm, as lay.py's `kit_pieces` reads them."""
-            v, b = number((r.get("params") or {}).get("pitch")), r["bounds"]
-            return {"pitch": int(round(v * 1000)) if v else b[3] - b[0], "length": b[3] - b[0],
+            b = r["bounds"]
+            # A panel's pitch between posts is its box and the post (lay.py, the fix plan's F3b).
+            return {"pitch": int(round(pitch_or_model(r, posts.get(group(r))) * 1000)), "length": b[3] - b[0],
                     "thickness": b[4] - b[1], "height": b[5] - b[2]}
         for r in walls:
             words = [t[8:] for t in r["tags"] if t.startswith("variant:")]
@@ -738,8 +739,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                              "or a floor sized to the walls is not whole tiles"))
         # Every roof piece of the kit: a kit may hold a slope and its ends for each of several
         # depths of building (lay.py rule 17).
-        def span_of(r):
-            return number((r.get("params") or {}).get("span"))
+        span_of = model_span
         slopes, gables, hips = ([r for r in rows if f"role:{w}" in (r.get("tags") or []) and r.get("bounds")]
                                 for w in ("roof_slope", "roof_gable", "roof_hip"))
         eaves_ = number(((wall.get("shared") or {}).get("eaves"))) or 0.0
@@ -753,8 +753,10 @@ def judge(features, meetings, kit_rows, p, pieces=()):
             span = span_of(r)
             w, d = (r["bounds"][3] - r["bounds"][0]) / 1000.0, (r["bounds"][4] - r["bounds"][1]) / 1000.0
             if span is None or abs(w - span) > slack or abs(d - span) > slack:
-                deck.append((r, f"`{r['id']}` measures {w:g} by {d:g} m in plan and states "
-                             + ("no `params.span`" if span is None else f"a span of {span:g} m") + ": a hip is one span square"))
+                stated_ = number((r.get("params") or {}).get("span")) is not None
+                deck.append((r, f"`{r['id']}` measures {w:g} by {d:g} m in plan and "
+                             + ("states no `params.span`" if span is None else f"states a span of {span:g} m" if stated_
+                                else "states no span, so its depth is taken for one") + ": a hip is one span square"))
         for slope in slopes:
             ss = span_of(slope)
             if ss is None:
@@ -818,8 +820,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
         plain = [r for r in bays if tag(r, "variant:") is None] or bays
 
         def pitch_(r):
-            v = number((r.get("params") or {}).get("pitch"))
-            return v if v is not None else (r["bounds"][3] - r["bounds"][0]) / 1000.0
+            return pitch_or_model(r, posts.get(group(r)))
 
         def thick_(r):
             return (r["bounds"][4] - r["bounds"][1]) / 1000.0
@@ -899,7 +900,7 @@ def judge(features, meetings, kit_rows, p, pieces=()):
             blocks_ = post_ is None and abs(reach_ - pitch_(plain[0])) <= slack
             least_ = 0.0 if blocks_ else step_
             for r in rows:
-                span = number((r.get("params") or {}).get("span"))
+                span = model_span(r)
                 if "role:roof_slope" not in (r.get("tags") or []) or not span:
                     continue
                 deep = 2 * span - 2 * eaves_
@@ -1060,6 +1061,35 @@ def read_pieces(step, taxons, kit_rows):
                         "face": int(_list(t["face"])[r]), "z": float(_list(t["z"])[r]) if "z" in t else None,
                         "scale": float(_list(t["scale"])[r]) if "scale" in t else 1.0, "bounds": bounds[asset]})
     return out
+
+
+def pitch_or_model(r, post=None):
+    """A piece's pitch, metres: its stated `params.pitch`, else its box's length, and for a wall or
+    door piece of a group laid by posts (`post`, that group's post) the post's width with it, as
+    lay.py's `kit_pieces` reads it (the fix plan's F3b)."""
+    v = number((r.get("params") or {}).get("pitch"))
+    if v is not None:
+        return v
+    w = (r["bounds"][3] - r["bounds"][0]) / 1000.0
+    tags = r.get("tags") or []
+    if post is not None and post is not r and ("role:wall" in tags or "role:door" in tags):
+        w += (post["bounds"][3] - post["bounds"][0]) / 1000.0
+    return w
+
+
+def model_span(r):
+    """A roof piece's span: its stated `params.span`, else what the model gives (lay.py's
+    `kit_pieces`, the fix plan's F3b): a gable half's length, a slope's and a hip's depth. None
+    for another piece that states none."""
+    v = number((r.get("params") or {}).get("span"))
+    if v is not None or not r.get("bounds"):
+        return v
+    b, tags = r["bounds"], r.get("tags") or []
+    if "role:roof_gable" in tags:
+        return (b[3] - b[0]) / 1000.0
+    if "role:roof_slope" in tags or "role:roof_hip" in tags:
+        return (b[4] - b[1]) / 1000.0
+    return None
 
 
 def kits_judged(features, kits):

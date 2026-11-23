@@ -41,7 +41,6 @@ eaves  = 0.139                   # how far the slanted roof reaches past the wal
 file   = "building-block.glb"
 taxon  = "structure/kenney"
 tags   = ["role:wall"]
-params = { pitch = 1.0 }
 
 [asset.window]
 file   = "building-window.glb"
@@ -53,13 +52,11 @@ params = { pitch = 1.0 }
 file   = "building-windows.glb"
 taxon  = "structure/kenney"
 tags   = ["role:wall", "variant:windows"]
-params = { pitch = 1.0 }
 
 [asset.wide]
 file   = "building-window-wide.glb"
 taxon  = "structure/kenney"
 tags   = ["role:wall", "variant:wide"]
-params = { pitch = 1.0 }
 
 [asset.corner]
 file  = "building-corner.glb"
@@ -71,32 +68,27 @@ front = "+x"
 file   = "building-door.glb"
 taxon  = "structure/kenney"
 tags   = ["role:door"]
-params = { pitch = 1.0 }
 
 [asset.roof_tile]
 file   = "roof-flat-center.glb"
 taxon  = "structure/kenney"
 tags   = ["role:roof_flat"]
-params = { pitch = 1.0 }
 
 [asset.slope]
 file   = "roof-slanted.glb"
 taxon  = "structure/kenney"
 tags   = ["role:roof_slope"]
-params = { pitch = 1.0, span = 1.139 }
 
 [asset.hip]
 file   = "roof-slanted-corner-a.glb"
 taxon  = "structure/kenney"
 tags   = ["role:roof_hip"]
-params = { span = 1.139 }
 front  = "+x"
 
 [asset.parapet]
 file   = "roof-flat-border-side.glb"
 taxon  = "structure/kenney"
 tags   = ["role:wall", "storey:parapet"]
-params = { pitch = 1.0 }
 
 [asset.parapet_corner]
 file  = "roof-flat-border-corner.glb"

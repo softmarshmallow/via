@@ -39,7 +39,6 @@ params = { pitch = 3.0 }
 file   = "wall_half.glb"
 taxon  = "structure/plain"
 tags   = ["role:filler"]
-params = { pitch = 1.5 }
 
 # The window bay and the vent bay: the bay with an opening, on the bay's footprint. Variants of
 # the bay (lib/building/lay.py rule 8): a building asks for them by word, in `fill` or `bays`.
@@ -53,7 +52,6 @@ params = { pitch = 3.0 }
 file   = "wall_vent.glb"
 taxon  = "structure/plain"
 tags   = ["role:wall", "variant:vent"]
-params = { pitch = 3.0 }
 
 # The outside corner: a post as thick as the wall. It takes its own 0.3 m from each wall.
 [asset.corner]
@@ -77,7 +75,6 @@ footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15,
 file   = "door.glb"
 taxon  = "structure/plain"
 tags   = ["role:door"]
-params = { pitch = 1.5 }
 
 # ---- the ground storey 4 m high (lib/building/README.md, "Building upward"). A storey takes the
 # pieces of its own height, so these stand only where a building says `ground_h = 4`.
@@ -86,13 +83,11 @@ params = { pitch = 1.5 }
 file   = "ground_wall.glb"
 taxon  = "structure/plain"
 tags   = ["role:wall", "storey:ground"]
-params = { pitch = 3.0 }
 
 [asset.ground_half]
 file   = "ground_half.glb"
 taxon  = "structure/plain"
 tags   = ["role:filler", "storey:ground"]
-params = { pitch = 1.5 }
 
 [asset.ground_corner]
 file  = "ground_corner.glb"
@@ -103,7 +98,6 @@ tags  = ["role:corner", "storey:ground"]
 file   = "ground_door.glb"
 taxon  = "structure/plain"
 tags   = ["role:door", "storey:ground"]
-params = { pitch = 1.5 }
 
 # ---- floors and roofs
 
@@ -113,7 +107,6 @@ params = { pitch = 1.5 }
 file   = "floor.glb"
 taxon  = "structure/plain"
 tags   = ["role:floor"]
-params = { pitch = 1.5 }
 sink   = 0.2
 
 # The roof slope: 1.5 m along the eave, 4.8 m in plan from the eave to the ridge, climbing 2.4 m.
@@ -122,14 +115,12 @@ sink   = 0.2
 file   = "roof_slope.glb"
 taxon  = "structure/plain"
 tags   = ["role:roof_slope"]
-params = { pitch = 1.5, span = 4.8 }
 
 # Half a gable: the wall under the roof's edge at each end, 4.8 m long, as thick as the walls.
 [asset.roof_gable]
 file   = "roof_gable.glb"
 taxon  = "structure/plain"
 tags   = ["role:roof_gable"]
-params = { span = 4.8 }
 
 [material.ground]
 colour = [0.5, 0.5, 0.48]

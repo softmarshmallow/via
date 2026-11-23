@@ -14,7 +14,6 @@ sink = 0.6
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:wall", "storey:base"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "base.glb" = "9407e5884778eb45fc151a255d71a7004fd7be2d7548df2c4906155f5818e54c" }
 
@@ -49,7 +48,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:wall", "storey:colonnade"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "beam.glb" = "0b9e6e8c27c2097e3a5276755838ef582fe18812be8bb5fead6d68e159e0b076" }
 
@@ -67,7 +65,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:door"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "door.glb" = "da55e17c54eaa7600a26919128f7e7b707e192ae6b302ed6424cc4796c83c575" }
 
@@ -85,7 +82,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:wall"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "panel.glb" = "d3ac5c62ef05e3b86c56bb5c53f3f541c4edbc7bf8363f682ab3d4824b396d71" }
 
@@ -103,7 +99,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:wall", "variant:doors"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "panel_doors.glb" = "8105d2d6cfc694ed7a3d5133cc91f6a8879851b34453116f20fbd59a2aec0a3b" }
 
@@ -121,7 +116,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:wall", "variant:lattice"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "panel_lattice.glb" = "c181bd246bba66278ec0fd452c1167d87882b06e860ea49665527fd4b6e97ad5" }
 
@@ -156,7 +150,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:roof_hip"]
-params = "9606dc8741dbdae3f2e304ddfe01a0fbe2d1e7d8334861404e303b8aaf325964"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "roof_hip_45.glb" = "29f77ed03805fc03be7d1b2798782b5d8887949edb69c134882c19038a8cea33" }
 
@@ -174,7 +167,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:roof_hip"]
-params = "fa9e0021e4419d7c6cbe235073e5f69cfe9318d4aaef05789a36c816a5bc62d3"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "roof_hip_6.glb" = "20d9ed6936af169f3a496c4e000ef2660f0c31bf55dca08be3b8cb89a11d9e55" }
 
@@ -192,7 +184,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:roof_slope"]
-params = "1bad5a7f17543ce6fbb4bff4850c0f01fc57693173f1b4e6afa57d5ef4f860cc"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "roof_slope_45.glb" = "b1f23a4b5d6607afad017c008ba1c3e618c2fc1f12287a30a54767c7165ad841" }
 
@@ -210,7 +201,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:roof_slope"]
-params = "666a2d16d1dc7c8755695a284d7362fb112282dea995ced02009877365b2aaac"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "roof_slope_6.glb" = "fb410c83cfce6f1c8b28524ef0cb4e2cf40ec3b3185a1bb5493971d4c7311623" }
 
@@ -228,7 +218,6 @@ sink = 0.1
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/timber"
 tags = ["role:floor"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "dc673c4fdbe8bf1cce47b17d24cd4e3ef0b891e494de4ae2a23e245acf7d46c3"
 files = { "tile.glb" = "d0f66a89ac2b0e216337dd2d16b81e73f6f7cc2a0838401791377d8bc1979f97" }
 
@@ -280,7 +269,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/yard"
 tags = ["role:door"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "1e72e569163f6628c95b57f8db0128a6bd3e5321b76c593e76c9e43916348304"
 files = { "yard_gate.glb" = "6e88c9813cd21d681a04d82a677ab1b206960ecbdc7069b6f1d98561cf0f9716" }
 
@@ -298,6 +286,5 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/yard"
 tags = ["role:wall"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "1e72e569163f6628c95b57f8db0128a6bd3e5321b76c593e76c9e43916348304"
 files = { "yard_wall.glb" = "c7e7039b08f3f0cbf6449cbd6a0617146d4e07b273ed1047bff56863d066b2df" }

@@ -34,19 +34,16 @@ tags  = ["role:post", "role:corner"]
 file   = "panel.glb"
 taxon  = "structure/timber"
 tags   = ["role:wall"]
-params = { pitch = 3.0 }
 
 [asset.panel_lattice]             # the same panel with a lattice window
 file   = "panel_lattice.glb"
 taxon  = "structure/timber"
 tags   = ["role:wall", "variant:lattice"]
-params = { pitch = 3.0 }
 
 [asset.panel_doors]               # the same panel as four door leaves, closed
 file   = "panel_doors.glb"
 taxon  = "structure/timber"
 tags   = ["role:wall", "variant:doors"]
-params = { pitch = 3.0 }
 
 # The door frame: a panel's length with an opening 1.5 m wide. It takes a panel's place, so its
 # place repeats as a panel's does.
@@ -54,7 +51,6 @@ params = { pitch = 3.0 }
 file   = "door.glb"
 taxon  = "structure/timber"
 tags   = ["role:door"]
-params = { pitch = 3.0 }
 
 # The floor tile: half a bay square, so a floor is whole tiles from one line of posts' middles
 # to the next.
@@ -62,7 +58,6 @@ params = { pitch = 3.0 }
 file   = "tile.glb"
 taxon  = "structure/timber"
 tags   = ["role:floor"]
-params = { pitch = 1.5 }
 sink   = 0.1
 
 # ---- the roof: hipped, 1.35 m beyond the posts. A slope a bay long along the eave and a hip one
@@ -73,25 +68,21 @@ sink   = 0.1
 file   = "roof_slope_6.glb"
 taxon  = "structure/timber"
 tags   = ["role:roof_slope"]
-params = { pitch = 3.0, span = 6.0 }
 
 [asset.roof_hip_6]
 file   = "roof_hip_6.glb"
 taxon  = "structure/timber"
 tags   = ["role:roof_hip"]
-params = { span = 6.0 }
 
 [asset.roof_slope_45]
 file   = "roof_slope_45.glb"
 taxon  = "structure/timber"
 tags   = ["role:roof_slope"]
-params = { pitch = 3.0, span = 4.5 }
 
 [asset.roof_hip_45]
 file   = "roof_hip_45.glb"
 taxon  = "structure/timber"
 tags   = ["role:roof_hip"]
-params = { span = 4.5 }
 
 # ---- the base: the platform's face under the outline, half a post thick, each piece sunk by its
 # own height so its top is the floor (lay.py rule 13).
@@ -100,7 +91,6 @@ params = { span = 4.5 }
 file   = "base.glb"
 taxon  = "structure/timber"
 tags   = ["role:wall", "storey:base"]
-params = { pitch = 3.0 }
 sink   = 0.6
 
 [asset.base_corner]
@@ -120,7 +110,6 @@ tags  = ["role:post", "role:corner", "storey:colonnade"]
 file   = "beam.glb"
 taxon  = "structure/timber"
 tags   = ["role:wall", "storey:colonnade"]
-params = { pitch = 3.0 }
 pivot  = "origin"                # the beam is in the storey's top: placed by the floor under it
 
 # ---- the yard: the wall round the court, its corner post and its gate.
@@ -134,7 +123,6 @@ door   = 2.4                     # the opening of the gate
 file   = "yard_wall.glb"
 taxon  = "structure/yard"
 tags   = ["role:wall"]
-params = { pitch = 3.0 }
 
 [asset.yard_corner]
 file  = "yard_corner.glb"
@@ -145,7 +133,6 @@ tags  = ["role:corner"]
 file   = "yard_gate.glb"
 taxon  = "structure/yard"
 tags   = ["role:door"]
-params = { pitch = 3.0 }
 
 [material.ground]
 colour = [0.5, 0.5, 0.45]

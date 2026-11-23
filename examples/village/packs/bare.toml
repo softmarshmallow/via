@@ -31,20 +31,17 @@ landing = 1.5
 file   = "frame.glb"
 taxon  = "structure/village"
 tags   = ["role:wall"]
-params = { pitch = 3.0 }
 
 # The same bay with a small window.
 [asset.frame_window]
 file   = "frame_window.glb"
 taxon  = "structure/village"
 tags   = ["role:wall", "variant:window"]
-params = { pitch = 3.0 }
 
 [asset.half]
 file   = "half.glb"
 taxon  = "structure/village"
 tags   = ["role:filler"]
-params = { pitch = 1.5 }
 
 [asset.post]
 file  = "post.glb"
@@ -55,13 +52,11 @@ tags  = ["role:corner"]
 file   = "door.glb"
 taxon  = "structure/village"
 tags   = ["role:door"]
-params = { pitch = 1.5 }
 
 [asset.tile]
 file   = "tile.glb"
 taxon  = "structure/village"
 tags   = ["role:floor"]
-params = { pitch = 1.5 }
 sink   = 0.2
 
 # The roof: a slope 1.5 m along the eave and 3.3 m in plan to the ridge, climbing 3 m, for a house
@@ -70,13 +65,11 @@ sink   = 0.2
 file   = "roof_slope.glb"
 taxon  = "structure/village"
 tags   = ["role:roof_slope"]
-params = { pitch = 1.5, span = 3.3 }
 
 [asset.roof_gable]
 file   = "roof_gable.glb"
 taxon  = "structure/village"
 tags   = ["role:roof_gable"]
-params = { span = 3.3 }
 
 # The roof over an L (lib/building/lay.py rule 10): the hip at its outer corner, one span square;
 # and the valley at its inside corner, placed by the corner itself, which takes 1.2 m of each
@@ -85,7 +78,6 @@ params = { span = 3.3 }
 file   = "roof_hip.glb"
 taxon  = "structure/village"
 tags   = ["role:roof_hip"]
-params = { span = 3.3 }
 
 [asset.roof_valley]
 file   = "roof_valley.glb"

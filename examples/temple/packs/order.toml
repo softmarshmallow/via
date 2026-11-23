@@ -26,21 +26,18 @@ base   = 0.9                     # how far the base reaches below the floor: the
 file   = "wall.glb"
 taxon  = "structure/order"
 tags   = ["role:wall"]
-params = { pitch = 1.8 }
 
 # The same bay with a niche in its front.
 [asset.wall_niche]
 file   = "wall_niche.glb"
 taxon  = "structure/order"
 tags   = ["role:wall", "variant:niche"]
-params = { pitch = 1.8 }
 
 # The half bay: one unit of wall, for a side that is an odd number of units between its corners.
 [asset.wall_half]
 file   = "wall_half.glb"
 taxon  = "structure/order"
 tags   = ["role:filler"]
-params = { pitch = 0.9 }
 
 [asset.corner]
 file  = "corner.glb"
@@ -52,14 +49,12 @@ tags  = ["role:corner"]
 file   = "door.glb"
 taxon  = "structure/order"
 tags   = ["role:door"]
-params = { pitch = 3.6 }
 
 # The floor tile: one unit square.
 [asset.tile]
 file   = "tile.glb"
 taxon  = "structure/order"
 tags   = ["role:floor"]
-params = { pitch = 0.9 }
 sink   = 0.3
 
 # ---- the roof: a slope two units along the eave and eight in plan to the ridge, climbing three,
@@ -69,13 +64,11 @@ sink   = 0.3
 file   = "roof_slope.glb"
 taxon  = "structure/order"
 tags   = ["role:roof_slope"]
-params = { pitch = 1.8, span = 7.2 }
 
 [asset.roof_gable]
 file   = "roof_gable.glb"
 taxon  = "structure/order"
 tags   = ["role:roof_gable"]
-params = { span = 7.2 }
 
 # ---- the base: the podium's face under the outline, each piece sunk by its own height so its
 # top is the floor (lay.py rule 13).
@@ -84,7 +77,6 @@ params = { span = 7.2 }
 file   = "base.glb"
 taxon  = "structure/order"
 tags   = ["role:wall", "storey:base"]
-params = { pitch = 1.8 }
 sink   = 0.9
 
 [asset.base_corner]
@@ -105,7 +97,7 @@ tags  = ["role:post", "role:corner", "storey:colonnade"]
 file   = "lintel.glb"
 taxon  = "structure/order"
 tags   = ["role:wall", "storey:colonnade"]
-params = { pitch = 2.7 }
+params = { pitch = 2.7 }         # stated, though the model and the column give it: `fat` holds a re-exported column to it
 pivot  = "origin"                # the beam is at the storey's top: placed by the floor under it
 
 [material.ground]

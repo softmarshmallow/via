@@ -14,7 +14,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:wall"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "bay.glb" = "93b6aab020f1a74307c0a5a66e1c8499bd46b1cf0266bf8564ba569d97de1297" }
 
@@ -32,7 +31,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:wall", "variant:blank"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "bay_blank.glb" = "21cee0af64cab965dbf8d8280f78493ded4b8b62d0da68865d8bbe875f614b61" }
 
@@ -50,7 +48,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:wall", "variant:slot"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "bay_slot.glb" = "139d76c55ad76434a29d773f69d52e6820c655e332862e3e55762a7abf3d6729" }
 
@@ -68,7 +65,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:door"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "door.glb" = "6edede96ffec35d6b2082818e023209b0e95f46e124a67fe3f56bbb3e0e07e57" }
 
@@ -86,7 +82,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:wall", "storey:ground"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "ground_bay.glb" = "37c438ca7c954ae90ef3068b54174892bdadfe6760abf161d5f9257eebe587a7" }
 
@@ -104,7 +99,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:wall", "storey:ground", "variant:blank"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "ground_blank.glb" = "b59937084990ca3a220db7e2f487169017c0f843b2e575c1c5a479df78049390" }
 
@@ -122,7 +116,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:door", "storey:ground"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "ground_door.glb" = "0d50b8d9a8e73ec5becada488ff159ed0f0cefe02ca087848e346af120b1d482" }
 
@@ -140,7 +133,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:filler", "storey:ground"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "ground_half.glb" = "f72def6af98b6fee72c35a857dfa8d264b23a1680be1e403e2a226374c410f52" }
 
@@ -175,7 +167,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:filler"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "half.glb" = "750766abe70d07afaee074ed7fabe1eeda82999503434bdd089be3299d732dbe" }
 
@@ -193,7 +184,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:wall", "storey:parapet"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "parapet.glb" = "c1c39967d6c3f9316b9259e400f5dde87bf2a01d4cba98ff52ace489daf0bf7f" }
 
@@ -211,7 +201,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:filler", "storey:parapet"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "parapet_half.glb" = "0f199a36387056029a543e117811edfaf2c3e576845bb8b7a13f0dc0e691b56e" }
 
@@ -263,6 +252,5 @@ sink = 0.2
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/city"
 tags = ["role:floor"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "93033b9e461791a189feb1bcca859f093b8f239dc1d065fcecce148a50584144"
 files = { "tile.glb" = "f4409a6172d18ddb76eea2ad046cfe6baa362b2ea1d2f16bc6aa7dc5947c205d" }

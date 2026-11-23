@@ -91,3 +91,20 @@ Changed so far:
   builds with HEAD and found every one the same; it found a misspelt kit laid with no walls and
   no word, now `params` (older, and worse once the kit gives the heights), `shared.storey = []`
   refused where it had been no storey (put back), untested paths (now tested) and stale wording.
+- **F3b, 2026-11-24.** Every reader takes a pitch and a span the pack leaves out from the model:
+  lay.py (a panel's and a door's between posts with the post), court.py's bay between posts,
+  check.py's span (a slope that states none is no longer `kit_deck`). Of 249 pitches and 54 spans
+  the eight kit examples' packs stated, 230 and 49 equalled the box; 76 were taken out of the seven
+  main packs (variants regenerated, facts re-accepted). Kept, as claims a case tests: the plain
+  kit's bay and window (`module`, `wide_window`), Kenney's window (`revised`), the works pipe
+  (`short_pipe`), the temple's lintel (`fat`), the village valley's 3.3 m span. The first rebuild
+  found `check` still reading a missing pitch as the box alone and a missing span as none
+  (a timber floor tile said to fit no bay, the eaves rule judging nothing): both read as `lay`
+  does now.
+  The independent review found my own fault: accepting every pack had overwritten the plain
+  kit's variant facts (`pivot`, `stub`, `tall`, `module`, `wide_window`), which `make_kit.py`
+  writes as copies of the plain kit's facts from before each re-export, so the three cases lost
+  their `asset.revised`. Restored by running the generator; those packs are never accepted. It
+  also found a posts bay's variant refused when only one of the two stated its pitch (the post
+  is now added before a variant is matched, in `lay` and in `check`), a door of another storey's
+  group given the post's width (now only the post's own group), and a hip's message wording.

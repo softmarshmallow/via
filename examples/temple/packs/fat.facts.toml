@@ -14,7 +14,6 @@ sink = 0.9
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:wall", "storey:base"]
-params = "e18ae83b0cb407061d38c3c3eeeb951220b06622b45d01490591c80fbc6c1097"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "base.glb" = "7ddc29f8817e0ccf5fc7e2c0dbc302fbef42ed8d6bfd04f66f25aca0a12ffb27" }
 
@@ -83,7 +82,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:door"]
-params = "5deca1553b14b6063552df9c2d796fbc7b4db79a084d9f7c5bdb80da653188e3"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "door.glb" = "52b377315732eefaaafdabda472cd2c5ebb63d5bf7ec0d2f2b5dbbbda8e4aa4a" }
 
@@ -119,7 +117,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:roof_gable"]
-params = "395340625dc4409224dc6e9167e1fe9cbf62c1a8c4ed83a479d0a5fd123987a3"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "roof_gable.glb" = "e0c58d46566d79d127dde9858925a349971f51bc94076ff0a6279dfac0957dd8" }
 
@@ -137,7 +134,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:roof_slope"]
-params = "1e5112c207223699889f6c0666a76f1dd5eb6991d40fc9b063ee61d5c91c19fb"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "roof_slope.glb" = "bdc1d445225f081c77264cf4c873f174b62381cec21563e4c9d0a066f2047cf9" }
 
@@ -155,7 +151,6 @@ sink = 0.3
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:floor"]
-params = "a359debef9a1df397069a1907f9f82c8eb6b39bb4c156ca8a110f399b65c4960"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "tile.glb" = "fc8084d7f6ff467491292664c279b4a20a31d456efee2b48992e002e596afaf6" }
 
@@ -173,7 +168,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:wall"]
-params = "e18ae83b0cb407061d38c3c3eeeb951220b06622b45d01490591c80fbc6c1097"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "wall.glb" = "b9abdd6311604a827baa8b7dae1f9f6d532a580ba177e497e10d2742de568d1e" }
 
@@ -191,7 +185,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:filler"]
-params = "a359debef9a1df397069a1907f9f82c8eb6b39bb4c156ca8a110f399b65c4960"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "wall_half.glb" = "4bc77dc27c75b7e977576aa51a19030c23bf5baae5e73a642469554e4ba3bade" }
 
@@ -209,6 +202,5 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/order"
 tags = ["role:wall", "variant:niche"]
-params = "e18ae83b0cb407061d38c3c3eeeb951220b06622b45d01490591c80fbc6c1097"
 shared = "90ed2449cea85f31b51f4b1f05fcf8202e43263b6fb5d573e19b74e47f52f1e8"
 files = { "wall_niche.glb" = "164dc274d3ecb290167ee402b89808feea67a3de39dfb1589bdcffa706f13ee4" }

@@ -153,7 +153,10 @@ def kit_facts(rows, taxon):
            "storey": mm(storeys[0], "shared.storey") if storeys else bay["bounds"][5] - bay["bounds"][2]}
     if post is not None:
         p = post["bounds"][3] - post["bounds"][0]
-        out.update(bay=pitch(bay), ends=p, wall=p, door=1)
+        # A bay between posts: its box and the post, where the pack states no pitch (lay.py rule 15,
+        # the fix plan's F3b).
+        bay_pitch = pitch(bay) if (bay.get("params") or {}).get("pitch") is not None else pitch(bay) + p
+        out.update(bay=bay_pitch, ends=p, wall=p, door=1)
     else:
         module = mm(shared["module"], "shared.module") if "module" in shared else pitch(bay)
         corner = next((r for r in sorted(rows, key=lambda r: r["id"]) if role(r, "corner") and untagged(r)), None)

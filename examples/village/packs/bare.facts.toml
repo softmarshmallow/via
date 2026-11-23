@@ -32,7 +32,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:door"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "door.glb" = "3eda2373a09f46b45c37eb4fc756a4c020b7450109fbc16bcc68d6f9e317ade2" }
 
@@ -50,7 +49,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:wall"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "frame.glb" = "55eea665654a634fb3f1f6656317dd7d4e15a2bb363505838de3a3725cdb03ea" }
 
@@ -68,7 +66,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:wall", "variant:window"]
-params = "493dd1ebd6ab9fa0ef6393e3d2d796aa6624656fffb9ec086b27b167913831a7"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "frame_window.glb" = "2555d29d3480bf5905568c6a79798d0ff137f8adb8b450fc0e73bb090c93ca11" }
 
@@ -86,7 +83,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:filler"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "half.glb" = "6c4ab6a13d42f58227dcdc02a8ddc57a66a2abd6c0a1272e8f5c930bbcb06725" }
 
@@ -121,7 +117,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:roof_gable"]
-params = "5529ea68787f85933601dae6141277bd67e54a0e544009b414c2d703b14ff040"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "roof_gable.glb" = "f068bf44f6030bf4d1cea5acc33c121aa5fd43e7ccbe6b6c1afcc9b19639eb4c" }
 
@@ -139,7 +134,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:roof_hip"]
-params = "5529ea68787f85933601dae6141277bd67e54a0e544009b414c2d703b14ff040"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "roof_hip.glb" = "a531cf7e876d5b6438fe1b5c70cf51d2c4b604d2260e42bd7cf8dbbd95fc6d4d" }
 
@@ -157,7 +151,6 @@ sink = 0
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:roof_slope"]
-params = "26a507f471a0136d6c38997b330b10d4f9ce328d22bcf7ccabbec6ad108a1cba"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "roof_slope.glb" = "f52f799d4ce001b5ae5336956446fd692b2b76264475959f4f40b042dc71efae" }
 
@@ -193,6 +186,5 @@ sink = 0.2
 colour = [0.8, 0.8, 0.8]
 taxon = "structure/village"
 tags = ["role:floor"]
-params = "9970578ca7f55c00a9006b2167be263de96a60f6cdbf098937a6763fb2cf2908"
 shared = "bfc8c95f2c77468f5d5ce090027706a0bc8971499acc6ecf88cb8008d0079af6"
 files = { "tile.glb" = "f4409a6172d18ddb76eea2ad046cfe6baa362b2ea1d2f16bc6aa7dc5947c205d" }

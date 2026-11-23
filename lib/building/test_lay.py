@@ -1388,6 +1388,42 @@ class Stated(unittest.TestCase):
         # A key `lay` does not read is another library's: `shared` holds any keys.
         self.assertEqual(L["kit_shared"](self.rows({"wall": 0.3, "street": {"kerb": 0.15}})), {"wall": 300})
 
+    def test_a_pitch_and_a_span_the_pack_leaves_out_are_the_models(self):
+        """The fix plan's F3b: a piece's pitch is its box's length; between posts a panel's and a
+        door's pitch is its box and the post; a slope's and a hip's span is its depth, a gable
+        half's its length. A stated number wins."""
+        def row(i, role, b, **params):
+            return {"id": i, "tags": [f"role:{role}"], "bounds": b, "params": params, "shared": {}}
+        rows = [row("bay", "wall", [-1200, -150, 0, 1200, 150, 3000]), row("post", "post", [-150, -150, 0, 150, 150, 3000]),
+                row("door", "door", [-1200, -150, 0, 1200, 150, 3000]),
+                row("slope", "roof_slope", [-1350, -3000, 0, 1350, 3000, 1500]),
+                row("gable", "roof_gable", [-2850, -150, 0, 2850, 150, 1500]),
+                row("hip", "roof_hip", [-3000, -3000, 0, 3000, 3000, 1500])]
+        k = L["kit_pieces"](rows, "ground", 3000)
+        self.assertEqual((k["wall"]["pitch"], k["door"]["pitch"]), (2700, 2700))      # 2.4 m and a 0.3 m post
+        self.assertEqual(k["roofs"]["roof_slope"][0]["span"], 6000)
+        self.assertEqual(k["roofs"]["roof_gable"][0]["span"], 5700)
+        self.assertEqual(k["roofs"]["roof_hip"][0]["span"], 6000)
+        rows[0] = row("bay", "wall", [-1200, -150, 0, 1200, 150, 3000], pitch=2.6)       # stated: kept
+        rows[3] = row("slope", "roof_slope", [-1350, -3000, 0, 1350, 3000, 1500], span=5.5)
+        k = L["kit_pieces"](rows, "ground", 3000)
+        self.assertEqual((k["wall"]["pitch"], k["roofs"]["roof_slope"][0]["span"]), (2600, 5500))
+        # with no post a panel's pitch is its box alone
+        k = L["kit_pieces"]([r for r in rows if r["id"] != "post"], "ground", 3000)
+        self.assertEqual(k["door"]["pitch"], 2400)
+        # F3b's review: a variant is matched after the post is added, whichever of the two states it
+        bay = row("bay", "wall", [-1200, -150, 0, 1200, 150, 3000], pitch=2.7)
+        var = dict(row("arch", "wall", [-1200, -150, 0, 1200, 150, 3000]), tags=["role:wall", "variant:arch"])
+        k = L["kit_pieces"]([bay, var, rows[1]], "ground", 3000)
+        self.assertIn("arch", k["wall"]["variants"])
+        self.assertEqual(k["wall"]["variants"]["arch"]["pitch"], 2700)
+        # and a door of another storey's group takes no post's width
+        door = dict(row("door", "door", [-1200, -150, 0, 1200, 150, 3000]))
+        tagged = [dict(r, tags=r["tags"] + ["storey:colonnade"]) for r in (row("bay", "wall", [-1200, -150, 0, 1200, 150, 3000]),
+                                                                          row("post", "post", [-150, -150, 0, 150, 150, 3000]))]
+        k = L["kit_pieces"](tagged + [door], "colonnade", 3000)
+        self.assertEqual((k["wall"]["pitch"], k["door"]["pitch"]), (2700, 2400))
+
     def test_a_building_takes_the_kits_storey_and_plinth_where_it_writes_none(self):
         """Rule 2, the fix plan's F3: `storey_h = 0` and `plinth = -1` (the defaults) are the kit's
         first stated storey and its stated plinth, else 3.2 and 0.3; a number written wins."""

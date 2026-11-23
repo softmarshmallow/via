@@ -30,7 +30,6 @@ tags  = ["role:post", "role:corner"]
 file   = "shed_panel.glb"
 taxon  = "structure/shed"
 tags   = ["role:wall"]
-params = { pitch = 6.0 }
 
 # The panel with a hole for a pipe, 4.5 m up. The hole is a place another piece joins: a mount
 # with a connector, at the hole's height (spec/assets.md 2.7, `rise`; R75). It lies on the
@@ -39,7 +38,6 @@ params = { pitch = 6.0 }
 file   = "shed_port.glb"
 taxon  = "structure/shed"
 tags   = ["role:wall", "variant:port"]
-params = { pitch = 6.0 }
 
 [asset.shed_port.mount.port]
 at        = [0, 0.2]
@@ -51,13 +49,11 @@ connector = "pipe"
 file   = "shed_door.glb"
 taxon  = "structure/shed"
 tags   = ["role:door"]
-params = { pitch = 6.0 }
 
 [asset.shed_tile]                 # half a bay square: a floor is whole tiles between two lines of posts
 file   = "shed_tile.glb"
 taxon  = "structure/shed"
 tags   = ["role:floor"]
-params = { pitch = 3.0 }
 sink   = 0.15
 
 # ---- the boiler house: walls at a pitch (lay.py rule 6), on another module than the shed's.
@@ -74,13 +70,11 @@ plinth = 0                       # no base: the floor on the ground (fix plan F3
 file   = "boiler_wall.glb"
 taxon  = "structure/boiler"
 tags   = ["role:wall"]
-params = { pitch = 3.0 }
 
 [asset.boiler_port]               # its own panel with a port, at the same 4.5 m; on the outline, the wall's outer face
 file   = "boiler_port.glb"
 taxon  = "structure/boiler"
 tags   = ["role:wall", "variant:port"]
-params = { pitch = 3.0 }
 
 [asset.boiler_port.mount.port]
 at        = [0, 0.15]
@@ -97,13 +91,11 @@ tags  = ["role:corner"]
 file   = "boiler_door.glb"
 taxon  = "structure/boiler"
 tags   = ["role:door"]
-params = { pitch = 3.0 }
 
 [asset.boiler_tile]
 file   = "boiler_tile.glb"
 taxon  = "structure/boiler"
 tags   = ["role:floor"]
-params = { pitch = 1.5 }
 sink   = 0.15
 
 # ---- the pipe: the glue between the two (lib/building/pipe.py). Every piece is placed by the
@@ -127,7 +119,6 @@ params = { pitch = 2.0 }
 file   = "pipe_slip.glb"
 taxon  = "service/pipe"
 tags   = ["role:slip"]
-params = { pitch = 0.5 }
 
 [asset.pipe_elbow]                # a quarter turn; it takes 0.5 m of each leg it joins
 file   = "pipe_elbow.glb"

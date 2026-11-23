@@ -34,27 +34,23 @@ landing = 1.5
 file   = "bay.glb"
 taxon  = "structure/city"
 tags   = ["role:wall"]
-params = { pitch = 3.0 }
 
 # The same bay with no window, for a wall another building stands against.
 [asset.bay_blank]
 file   = "bay_blank.glb"
 taxon  = "structure/city"
 tags   = ["role:wall", "variant:blank"]
-params = { pitch = 3.0 }
 
 # The bay with two narrow windows.
 [asset.bay_slot]
 file   = "bay_slot.glb"
 taxon  = "structure/city"
 tags   = ["role:wall", "variant:slot"]
-params = { pitch = 3.0 }
 
 [asset.half]
 file   = "half.glb"
 taxon  = "structure/city"
 tags   = ["role:filler"]
-params = { pitch = 1.5 }
 
 [asset.post]
 file  = "post.glb"
@@ -65,7 +61,6 @@ tags  = ["role:corner"]
 file   = "door.glb"
 taxon  = "structure/city"
 tags   = ["role:door"]
-params = { pitch = 1.5 }
 
 # ---- the ground storey, 4.5 m: a storey takes the pieces of its own height and word
 
@@ -74,19 +69,16 @@ params = { pitch = 1.5 }
 file   = "ground_bay.glb"
 taxon  = "structure/city"
 tags   = ["role:wall", "storey:ground"]
-params = { pitch = 3.0 }
 
 [asset.ground_blank]
 file   = "ground_blank.glb"
 taxon  = "structure/city"
 tags   = ["role:wall", "storey:ground", "variant:blank"]
-params = { pitch = 3.0 }
 
 [asset.ground_half]
 file   = "ground_half.glb"
 taxon  = "structure/city"
 tags   = ["role:filler", "storey:ground"]
-params = { pitch = 1.5 }
 
 [asset.ground_post]
 file  = "ground_post.glb"
@@ -97,7 +89,6 @@ tags  = ["role:corner", "storey:ground"]
 file   = "ground_door.glb"
 taxon  = "structure/city"
 tags   = ["role:door", "storey:ground"]
-params = { pitch = 1.5 }
 
 # ---- the floor
 
@@ -107,7 +98,6 @@ params = { pitch = 1.5 }
 file   = "tile.glb"
 taxon  = "structure/city"
 tags   = ["role:floor"]
-params = { pitch = 1.5 }
 sink   = 0.2
 
 # ---- the parapet: the wall round a flat roof, laid as a storey's walls are
@@ -116,13 +106,11 @@ sink   = 0.2
 file   = "parapet.glb"
 taxon  = "structure/city"
 tags   = ["role:wall", "storey:parapet"]
-params = { pitch = 3.0 }
 
 [asset.parapet_half]
 file   = "parapet_half.glb"
 taxon  = "structure/city"
 tags   = ["role:filler", "storey:parapet"]
-params = { pitch = 1.5 }
 
 [asset.parapet_post]
 file  = "parapet_post.glb"
