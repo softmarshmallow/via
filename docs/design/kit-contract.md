@@ -42,6 +42,8 @@ A piece lies along its x axis with its front on +y. A wall piece is as thick as 
 | `floor` | lib/building | A square tile, one module on a side, sunk by its thickness. It tiles each storey's floor inside the walls, and a flat roof. |
 | `roof_slope` | lib/building | A wedge from the eave to the ridge, `params.pitch` along the eave and `params.span` deep. |
 | `roof_gable` | lib/building | Half a gable: a wall one span long, as thick as the bay, rising to the ridge. Two stand at each end of a gable roof, the second turned about. |
+| `roof_hip` | lib/building | The roof over the outer corner of an L: one span square, eaves on its front and its +x side, climbing to the hip between them (K7). |
+| `roof_valley` | lib/building | The roof at the inside corner of an L, placed by the corner itself (`pivot = "origin"`): the span-square quarter where the two inner slopes meet, and `params.reach` of each inner eave beyond the corner, with the footprint it covers declared (K7). |
 | `end` | lib/town | The piece at a row's free end and either side of a gap. |
 
 ## The kit as a whole
@@ -158,10 +160,8 @@ another side grows.
 - **Variants of a filler, a corner or a door,** and a variant of another length than the bay.
 - **Steps to a door,** and a base of more than one course (the base itself came with K7).
   Storeys by height and by word, floors, and gable roofs on rectangles came with K4.
-- **A pitched roof on a plan that is not a rectangle** (K7). On the plain kit the slopes beside a
-  valley must be whole pieces from the inside corner, and the walls there are whole pieces from
-  1.5 m off it, so a wing that closes its walls cannot close its roof: the roof needs a reach of
-  its own at a valley.
+- **A pitched roof on a plan that is neither a rectangle nor an L:** a T, a U, an oblique wall,
+  wings of two depths. The L came with K7 (`role:roof_hip`, `role:roof_valley`, above).
 - **The kit's facts in lib/town.** lib/building lays by what a kit states (below); lib/town's
   rows of pieces along a street still read each piece's pitch alone and state nothing of a kit.
 - **A storey's height taken from the kit.** A building still writes `storey_h`; the kit's

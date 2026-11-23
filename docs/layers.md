@@ -188,7 +188,7 @@ Counted over 865 ledger rows, 52 kinds, 18 steps, 24 example worlds and 991 conf
 
 **Steps that do in code what the engine has a form for:** `lib/building/row.py` (Linear placement, Grammar, 473 lines); `lib/land/uplands.py` (Field, 445 lines); `lib/town/houses.py` (Recipe, 1150 lines); `lib/town/kit.py` (Linear placement, 629 lines); `lib/town/streets.py` (Network, 936 lines); `lib/vegetation/clumps.py` (Scatter, 346 lines); `lib/water/fill.py` (Derivation, 123 lines); `lib/ways/parapet.py` (Linear placement, 161 lines).
 
-**Concepts as data and as code:** 1742 lines of kinds, 11099 lines of steps (tests left out).
+**Concepts as data and as code:** 1742 lines of kinds, 11218 lines of steps (tests left out).
 
 **One library naming another's kinds:** `building` names `town.terrace`; `review` names `town.main_street`; `review` names `town.street`; `review` names `town.waterfront`; `review` names `ways.crossing`; `review` names `ways.trail`; `ways` names `water.beck`.
 

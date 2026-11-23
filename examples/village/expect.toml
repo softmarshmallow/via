@@ -7,17 +7,18 @@
 #   python3 examples/village/measure.py BUILD+<c> --base BUILD       # a change, built with --against
 #   python3.11 examples/village/measure.py BUILD+<c> --base BUILD --check <c>
 #
-# Protocol of the numbers below: macOS arm64, release `via` built from the tree at e469406,
+# Protocol of the numbers below: macOS arm64, release `via` built from the tree at 26cb33f, after the review's fix pass,
 # VIA_LIB=lib, Python 3.12 (sdk/python/.venv) for the steps, lib/building's `row`, `lay` and
-# `check` of the working tree with K7's two slices (the wall's foot, lay.py rule 13; a storey's
-# own outline, rule 14). One fresh
+# `check` of the working tree with K7's three slices (the wall's foot, lay.py rule 13; a storey's
+# own outline, rule 14; a gable roof over an L, rule 10). One fresh
 # store: the base, then each change with --against the base, one build each. Measured 2026-11-23.
 # A band is the measured number: not a target, it says where someone looks.
 
 # ------------------------------------------------------------------------------------------ base
 # The village on its slope with the kit's base: every house's floor stands over the ground on its
-# low side (0.92 m at most), and the base, 1.5 m deep, reaches the ground under all of it. Each
-# floor is on the mean of its own ground, so the rows step: 0.66 m at most between neighbours.
+# low side, and the base, 1.5 m deep, reaches the ground under all of it (open_foot_m 0). The
+# ground is read on the outline; a stretch against a neighbour is a party wall and left out
+# (party_m). Each floor is on the mean of its own ground, so the rows step.
 
 [base.errors]
 measure = "errors"
@@ -57,11 +58,15 @@ band    = [11, 11]
 
 [base.hang_m]
 measure = "hang_m"
-band    = [190.05, 190.15]
+band    = [125.55, 125.65]
+
+[base.party_m]
+measure = "party_m"
+band    = [118.75, 118.85]
 
 [base.hang_max_mm]
 measure = "hang_max_mm"
-band    = [922, 922]
+band    = [869, 869]
 
 [base.open_foot_m]
 measure = "open_foot_m"
@@ -73,15 +78,15 @@ band    = [0, 0]
 
 [base.buried_max_mm]
 measure = "buried_max_mm"
-band    = [490, 490]
+band    = [273, 273]
 
 [base.row_step_max_mm]
 measure = "row_step_max_mm"
 band    = [660, 660]
 
-[base.door_step_max_mm]
-measure = "door_step_max_mm"
-band    = [0, 0]
+[base.door_rise_max_mm]
+measure = "door_rise_max_mm"
+band    = [1039, 1039]
 
 [base.foot_open]
 measure = "foot_open"
@@ -89,6 +94,14 @@ band    = [0, 0]
 
 [base.base_short]
 measure = "base_short"
+band    = [0, 0]
+
+[base.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[base.roof_double_dm2]
+measure = "roof_double_dm2"
 band    = [0, 0]
 
 [base.off_bound]
@@ -100,8 +113,9 @@ measure = "gave_way"
 band    = [0, 0]
 
 # ------------------------------------------------------------------------------------------ bare
-# The kit with no base: 190 m of wall foot over the ground, said of each house (foot_open; the
-# build folds the eleven into one record, with a count). Before K7 nothing was said.
+# The kit with no base: every metre of wall foot that stands over the ground is open, said of
+# each house (foot_open; the build folds the eleven into one record, with a count). Before K7
+# nothing was said.
 
 [bare.errors]
 measure = "errors"
@@ -141,31 +155,35 @@ band    = [11, 11]
 
 [bare.hang_m]
 measure = "hang_m"
-band    = [190.05, 190.15]
+band    = [125.55, 125.65]
+
+[bare.party_m]
+measure = "party_m"
+band    = [118.75, 118.85]
 
 [bare.hang_max_mm]
 measure = "hang_max_mm"
-band    = [922, 922]
+band    = [869, 869]
 
 [bare.open_foot_m]
 measure = "open_foot_m"
-band    = [190.05, 190.15]
+band    = [125.55, 125.65]
 
 [bare.open_foot_max_mm]
 measure = "open_foot_max_mm"
-band    = [922, 922]
+band    = [869, 869]
 
 [bare.buried_max_mm]
 measure = "buried_max_mm"
-band    = [490, 490]
+band    = [273, 273]
 
 [bare.row_step_max_mm]
 measure = "row_step_max_mm"
 band    = [660, 660]
 
-[bare.door_step_max_mm]
-measure = "door_step_max_mm"
-band    = [0, 0]
+[bare.door_rise_max_mm]
+measure = "door_rise_max_mm"
+band    = [1039, 1039]
 
 [bare.foot_open]
 measure = "foot_open"
@@ -173,6 +191,14 @@ band    = [11, 11]
 
 [bare.base_short]
 measure = "base_short"
+band    = [0, 0]
+
+[bare.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[bare.roof_double_dm2]
+measure = "roof_double_dm2"
 band    = [0, 0]
 
 [bare.removed]
@@ -221,31 +247,35 @@ band    = [11, 11]
 
 [shallow.hang_m]
 measure = "hang_m"
-band    = [190.05, 190.15]
+band    = [125.55, 125.65]
+
+[shallow.party_m]
+measure = "party_m"
+band    = [118.75, 118.85]
 
 [shallow.hang_max_mm]
 measure = "hang_max_mm"
-band    = [922, 922]
+band    = [869, 869]
 
 [shallow.open_foot_m]
 measure = "open_foot_m"
-band    = [95.25, 95.35]
+band    = [34.85, 34.95]
 
 [shallow.open_foot_max_mm]
 measure = "open_foot_max_mm"
-band    = [922, 922]
+band    = [869, 869]
 
 [shallow.buried_max_mm]
 measure = "buried_max_mm"
-band    = [490, 490]
+band    = [273, 273]
 
 [shallow.row_step_max_mm]
 measure = "row_step_max_mm"
 band    = [660, 660]
 
-[shallow.door_step_max_mm]
-measure = "door_step_max_mm"
-band    = [0, 0]
+[shallow.door_rise_max_mm]
+measure = "door_rise_max_mm"
+band    = [1039, 1039]
 
 [shallow.foot_open]
 measure = "foot_open"
@@ -255,13 +285,21 @@ band    = [0, 0]
 measure = "base_short"
 band    = [11, 11]
 
+[shallow.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[shallow.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
 [shallow.moved]
 measure = "moved"
 band    = [142, 142]
 
 # ------------------------------------------------------------------------------------------ steep
-# The street three times as steep: neighbours step 1.98 m at most; five houses' low ends stand
-# further over the ground than the base is deep (base_short). And the chest, written by a height
+# The street three times as steep: five houses' low ends stand further over the ground than the
+# base is deep (base_short). And the chest, written by a height
 # (12.225 m), is at the eaves of its house here: it stands on the roof, and four roof pieces give
 # way to it.
 
@@ -303,31 +341,35 @@ band    = [11, 11]
 
 [steep.hang_m]
 measure = "hang_m"
-band    = [155.55, 155.65]
+band    = [95.65, 95.75]
+
+[steep.party_m]
+measure = "party_m"
+band    = [118.75, 118.85]
 
 [steep.hang_max_mm]
 measure = "hang_max_mm"
-band    = [1817, 1817]
+band    = [1626, 1626]
 
 [steep.open_foot_m]
 measure = "open_foot_m"
-band    = [31.45, 31.55]
+band    = [3.95, 4.05]
 
 [steep.open_foot_max_mm]
 measure = "open_foot_max_mm"
-band    = [1817, 1817]
+band    = [1626, 1626]
 
 [steep.buried_max_mm]
 measure = "buried_max_mm"
-band    = [1702, 1702]
+band    = [1016, 1016]
 
 [steep.row_step_max_mm]
 measure = "row_step_max_mm"
 band    = [1980, 1980]
 
-[steep.door_step_max_mm]
-measure = "door_step_max_mm"
-band    = [0, 0]
+[steep.door_rise_max_mm]
+measure = "door_rise_max_mm"
+band    = [1167, 1167]
 
 [steep.foot_open]
 measure = "foot_open"
@@ -336,6 +378,14 @@ band    = [0, 0]
 [steep.base_short]
 measure = "base_short"
 band    = [5, 5]
+
+[steep.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [1980, 1980]
+
+[steep.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
 
 [steep.gave_way]
 measure = "gave_way"
@@ -346,7 +396,7 @@ measure = "moved"
 band    = [830, 830]
 
 # ------------------------------------------------------------------------------------------ flush
-# No plinth: the low side hangs 0.3 m less and the high side is 0.14 m deeper in the ground.
+# No plinth: the low side hangs 0.3 m less and the high side is 0.3 m deeper in the ground.
 
 [flush.errors]
 measure = "errors"
@@ -386,11 +436,15 @@ band    = [11, 11]
 
 [flush.hang_m]
 measure = "hang_m"
-band    = [129.25, 129.35]
+band    = [65.75, 65.85]
+
+[flush.party_m]
+measure = "party_m"
+band    = [118.75, 118.85]
 
 [flush.hang_max_mm]
 measure = "hang_max_mm"
-band    = [622, 622]
+band    = [569, 569]
 
 [flush.open_foot_m]
 measure = "open_foot_m"
@@ -402,15 +456,15 @@ band    = [0, 0]
 
 [flush.buried_max_mm]
 measure = "buried_max_mm"
-band    = [626, 626]
+band    = [573, 573]
 
 [flush.row_step_max_mm]
 measure = "row_step_max_mm"
 band    = [660, 660]
 
-[flush.door_step_max_mm]
-measure = "door_step_max_mm"
-band    = [0, 0]
+[flush.door_rise_max_mm]
+measure = "door_rise_max_mm"
+band    = [739, 739]
 
 [flush.foot_open]
 measure = "foot_open"
@@ -418,6 +472,14 @@ band    = [0, 0]
 
 [flush.base_short]
 measure = "base_short"
+band    = [0, 0]
+
+[flush.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[flush.roof_double_dm2]
+measure = "roof_double_dm2"
 band    = [0, 0]
 
 [flush.moved]
@@ -495,6 +557,87 @@ band    = [114, 114]
 [jetty_bay.removed]
 measure = "removed"
 band    = [48, 48]
+
+# ------------------------------------------------------------------------------------------ ell
+# A house on an L under one gable roof (lay.py rule 10, 'Over an L'): its walls close with the
+# kit's inside corner, and its roof is 14 slopes, four gable halves, a hip on its outer corner and
+# a valley on its inside one, covering its outline once.
+
+[ell.errors]
+measure = "errors"
+band    = [0, 0]
+
+[ell.warnings]
+measure = "warnings"
+band    = [0, 0]
+
+[ell.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[ell.open]
+measure = "open"
+band    = [0, 0]
+
+[ell.open_foot_m]
+measure = "open_foot_m"
+band    = [-0.05, 0.05]
+
+[ell.roof]
+measure = "roof"
+band    = [172, 172]
+
+[ell.roof_none]
+measure = "roof_none"
+band    = [0, 0]
+
+[ell.roof_open_dm2]
+measure = "roof_open_dm2"
+band    = [0, 0]
+
+[ell.roof_double_dm2]
+measure = "roof_double_dm2"
+band    = [0, 0]
+
+[ell.added]
+measure = "added"
+band    = [101, 101]
+
+[ell.removed]
+measure = "removed"
+band    = [0, 0]
+
+# ------------------------------------------------------------------------------------------ ell_wide
+# The L with one wing 9.6 m deep: the roof is refused (the slope piece is made for 6.6 m) and
+# the flat roof laid in its place.
+
+[ell_wide.errors]
+measure = "errors"
+band    = [0, 0]
+
+[ell_wide.warnings]
+measure = "warnings"
+band    = [1, 1]
+
+[ell_wide.buildings]
+measure = "buildings"
+band    = [12, 12]
+
+[ell_wide.open]
+measure = "open"
+band    = [0, 0]
+
+[ell_wide.roof]
+measure = "roof"
+band    = [152, 152]
+
+[ell_wide.roof_none]
+measure = "roof_none"
+band    = [1, 1]
+
+[ell_wide.added]
+measure = "added"
+band    = [129, 129]
 
 # ------------------------------------------------------------------------------------------ wider
 # The first north house a bay wider: the five after it move 3 m up the street and onto other

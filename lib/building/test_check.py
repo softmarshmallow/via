@@ -255,6 +255,23 @@ class Profile(unittest.TestCase):
         self.assertEqual(said(kit(1400)), [("parapet", "parapet", 1.4, 1.1)])
         self.assertEqual(said(kit(1400, {"module": 3.0, "wall": 0.3, "storey": 3.0})), [])
 
+    def test_a_base_is_held_to_its_own_depth(self):
+        """The wall under the floor is no storey either (lay.py rule 13): held to the stated
+        `base`, and to none of the storeys' heights."""
+        stated = {"module": 3.0, "wall": 0.3, "storey": 3.0, "base": 1.5}
+
+        def kit(high, shared=stated):
+            return [dict(r, shared=shared) for r in self.PLAIN] + [
+                {"id": "base", "taxon": "k", "tags": ["role:wall", "storey:base"],
+                 "bounds": [-1500, -150, 0, 1500, 150, high], "params": {"pitch": 3}, "shared": shared}]
+
+        def said(rows):
+            return [(r[2], r[5]["fact"], r[5]["piece"], r[5]["stated"]) for r in C["judge"]([], [], rows, P)
+                    if r[1] == "kit_stated"]
+        self.assertEqual(said(kit(1500)), [])
+        self.assertEqual(said(kit(900)), [("base", "base", 0.9, 1.5)])
+        self.assertEqual(said(kit(900, {"module": 3.0, "wall": 0.3, "storey": 3.0})), [])
+
     def test_kit_corner(self):
         """A post is as thick as the wall; an inside corner spans its reach along each wall from
         the notch it is placed by. A post re-exported with a 0.6 m stub is 0.9 by 0.3 m and is

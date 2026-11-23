@@ -79,6 +79,32 @@ taxon  = "structure/village"
 tags   = ["role:roof_gable"]
 params = { span = 3.3 }
 
+# The roof over an L (lib/building/lay.py rule 10): the hip at its outer corner, one span square;
+# and the valley at its inside corner, placed by the corner itself, which takes 1.2 m of each
+# inner eave beyond it, so the slopes either side are whole pieces.
+[asset.roof_hip]
+file   = "roof_hip.glb"
+taxon  = "structure/village"
+tags   = ["role:roof_hip"]
+params = { span = 3.3 }
+
+[asset.roof_valley]
+file   = "roof_valley.glb"
+taxon  = "structure/village"
+tags   = ["role:roof_valley"]
+params = { span = 3.3, reach = 1.2 }
+pivot  = "origin"
+footprint = [[-1.2, -3.3], [3.3, -3.3], [3.3, 1.2], [0, 1.2], [0, 0], [-1.2, 0]]   # the two slopes and the quarter between
+
+# The inside corner of an L's walls: the notch and 1.2 m of each wall, placed by the notch's middle.
+[asset.corner_in]
+file   = "corner_in.glb"
+taxon  = "structure/village"
+tags   = ["role:corner_in"]
+params = { reach = 1.2 }
+pivot  = "origin"
+footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]
+
 # A chest: something a world's author puts inside a house.
 [taxon."prop"]
 
@@ -109,6 +135,15 @@ file  = "shallow_base_post.glb"
 taxon = "structure/village"
 tags  = ["role:corner", "storey:base"]
 sink  = 0.5
+
+[asset.base_corner_in]
+file   = "shallow_base_corner_in.glb"
+taxon  = "structure/village"
+tags   = ["role:corner_in", "storey:base"]
+params = { reach = 1.2 }
+pivot  = "origin"
+footprint = [[-1.35, -0.15], [0.15, -0.15], [0.15, 1.35], [-0.15, 1.35], [-0.15, 0.15], [-1.35, 0.15]]
+sink   = 0.5
 
 [material.ground]
 colour = [0.45, 0.5, 0.4]

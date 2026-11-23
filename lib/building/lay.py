@@ -188,8 +188,19 @@ The rules (ours, written for this library; README.md is the design note):
    the slope at its -x end. Two stand on each short side (`<building>_roof_g<side>_0`, `_1`),
    half a span and a span and a half along it, the first's front out and the second's in, so
    their high ends meet under the ridge. A rectangle is four sides each square to the next
-   (`square`), turned or not. A roof that cannot be laid (no kit; a flat roof on a building
-   turned off the axes, as rule 9; for a gable: not a rectangle, a depth that is not twice a slope's span, an eave that is not whole pieces, a
+   (`square`), turned or not. **Over an L** (six sides, each square to the next, one inside
+   corner, both wings twice the span deep): the square where the wings cross is mitred along
+   its diagonal from the outer corner to the inside one. `role:roof_hip`, one span square with
+   eaves on its front and its +x side, stands on the outer corner (`<building>_roof_hip`), its
+   front out of the outer eave that starts there. `role:roof_valley` is placed by the inside
+   corner itself (`<building>_roof_valley`), its front out of the side that follows the
+   corner: the quarter of the roof beside the corner, where the two inner slopes meet along
+   the valley, and `params.reach` of each inner eave beyond it. Each of the four eaves then
+   holds one run of slopes: an outer eave from one span past the outer corner to `T` short of
+   its wing's free end, an inner eave from the valley's reach to the same; and two gable
+   halves stand on each free end. Each run must be whole pieces, or the roof is refused with
+   the lengths that would close. A roof that cannot be laid (no kit; a flat roof on a building
+   turned off the axes, as rule 9; for a gable: a plan that is neither a rectangle nor an L, a depth that is not twice a slope's span, an eave that is not whole pieces, a
    gable piece of another span, a kit without the pieces) is `roof_none` (warning) with its
    reason, and the flat roof is laid in its place where the kit has a floor tile. **The
    parapet.** Round a flat roof that was asked for, the kit's wall pieces tagged
@@ -224,7 +235,9 @@ The rules (ours, written for this library; README.md is the design note):
    it (rule 6), its floor is tiled inside it (rule 9), and the roof covers the top storey's
    (rule 10). On a rectangle only. Sides that meet at a corner are not moved together, and the
    side a stair climbs and the two that meet it keep the building's outline, so the stairwell
-   is where it was on every storey. Each is `params` (error) otherwise. **The terrace.** Where a
+   is where it was on every storey: since a building of two storeys has a stair, the side that
+   can move is the one opposite the stair. Each is `params` (error) otherwise. A bay's `at`
+   (rule 8) on a moved storey is measured along that storey's own side. **The terrace.** Where a
    storey stands inside the one below, the strip between the two outlines is a `roof` feature
    at that storey's level, `<building>_t<storey>_<side>`, tiled (rule 9) from inside its parapet
    to the wall above, with the kit's parapet (rule 10) on its three outer sides. Under an
@@ -1610,13 +1623,13 @@ def offsets_of(attrs, storeys, footprint, stair_side=None):
             if e["storey"] >= storeys:
                 raise ParamError(key, f"{key} {i} names storey {int(e['storey'])} of a building with {storeys}",
                                  "count storeys from 0")
-            sides = sorted({int(x) for x in e["sides"]})
-            if any((b_ - a_) % n in (1, n - 1) for a_ in sides for b_ in sides if a_ != b_):
-                raise ParamError(key, f"{key} {i} moves two sides that meet at a corner",
-                                 "move opposite sides, or one side: a terrace round a corner is not laid")
             for k in range(int(e["storey"]), storeys):
-                for x in sides:
+                for x in sorted({int(x) for x in e["sides"]}):
                     out[k][x] += sign * int(round(e["by"] * 1000))
+    for k in range(storeys):                     # over every entry: no two sides that meet at a corner
+        if any(out[k][x] and out[k][(x + 1) % n] for x in range(n)):
+            raise ParamError("setback", f"storey {k} moves two sides that meet at a corner",
+                             "move one side: a terrace or an overhang round a corner is not laid")
     if stair_side is not None:
         for k in range(storeys):
             for x in (stair_side - 1, stair_side, (stair_side + 1) % n):
@@ -1649,7 +1662,7 @@ def gable_plan(footprint, kit, T, prefix):
     if slope is None or gable is None:
         return None, "the kit has no `role:roof_slope` and `role:roof_gable` pieces"
     if not rectangle(footprint):
-        return None, "the plan is not a rectangle, and a gable over any other plan is not built"
+        return ell_plan(footprint, kit, T, prefix)
     es = edges(footprint)
     long = max(range(4), key=lambda i: (es[i]["L"], -i))
     L, D = es[long]["L"], es[(long + 1) % 4]["L"]
@@ -1682,6 +1695,87 @@ def gable_plan(footprint, kit, T, prefix):
                       "face": out, "surface": f"{prefix}.garden"})
         insts.append({"key": f"{prefix}_g{i}_1", "asset": gable["id"], "at": rnd(local(e, D - span / 2, T / 2)),
                       "face": round((out + 180.0) % 360.0, 3), "surface": f"{prefix}.garden"})
+    return runs, insts
+
+
+def ell_plan(footprint, kit, T, prefix):
+    """A gable roof over an L (rule 10, "Over an L"): (runs, instances), or (None, why).
+    With `c` the outline's inside corner, its sides in order from `c` are: `c`, an inner eave;
+    `c + 1`, a wing's free end; `c + 2` and `c + 3`, the two outer eaves, which meet at the
+    outer corner; `c + 4`, the other free end; `c + 5` (that is `c - 1`), the other inner eave."""
+    n = len(footprint)
+    es = edges(footprint)
+    turns = [es[i - 1]["e"][0] * es[i]["e"][1] - es[i - 1]["e"][1] * es[i]["e"][0] for i in range(n)]
+    inner = [i for i, t in enumerate(turns) if t < 0]
+    if n != 6 or len(inner) != 1 or not all(square(es[i - 1], es[i]) for i in range(n)):
+        return None, ("the plan is neither a rectangle nor an L (six sides, each square to the next, one inside corner), "
+                      "and a gable over any other plan is not built")
+    slope, gable, hip, valley = (kit.get(k) for k in ("roof_slope", "roof_gable", "roof_hip", "roof_valley"))
+    if hip is None or valley is None:
+        return None, "the plan is an L, and the kit has no `role:roof_hip` and `role:roof_valley` pieces for its corner"
+    span, pitch = slope.get("span"), slope["pitch"]
+    for piece, word in ((gable, "gable"), (hip, "hip"), (valley, "valley")):
+        if not span or not piece.get("span") or abs(piece["span"] - span) > FIT:
+            return None, (f"the {word} piece is made for a span of {(piece.get('span') or 0) / 1000:g} m and the slope "
+                          f"piece for {(span or 0) / 1000:g} m")
+    c = inner[0]
+    side = [es[(c + k) % n] for k in range(6)]       # 0 and 5 inner eaves, 1 and 4 free ends, 2 and 3 outer eaves
+    for k in (1, 4):
+        if abs(side[k]["L"] - 2 * span) > FIT:
+            return None, (f"a wing of the L is {side[k]['L'] / 1000:g} m deep and the kit's slope piece is made for "
+                          f"{2 * span / 1000:g} m (twice its span): both wings must be that deep")
+    reach = valley.get("reach") or 0
+    if not pitch or pitch <= 0:
+        return None, "the kit's slope piece states no length along the eave (`params.pitch`)"
+    # Each eave's stretch of slope pieces, in mm along its side: what the gable's wall, the hip
+    # and the valley leave of it.
+    stretch = {0: (reach, side[0]["L"] - T), 5: (T, side[5]["L"] - reach),
+               2: (T, side[2]["L"] - span), 3: (span, side[3]["L"] - T)}
+    counts = {}
+    for k, (a, b) in stretch.items():
+        i = (c + k) % n
+        what = "inner" if k in (0, 5) else "outer"
+        took = "the valley piece" if k in (0, 5) else "the hip"
+        if b - a < -FIT:
+            # The side is shorter than what stands on it: no length of it is an L's wing.
+            need = (reach if k in (0, 5) else span) + T
+            return None, (f"side {i} of the L, an {what} eave, is {side[k]['L'] / 1000:g} m long, and {took} and the "
+                          f"gable's wall take {need / 1000:g} m of it: a side of {need / 1000:g} m or more, by whole "
+                          f"{pitch / 1000:g} m, would close")
+        m = max(0, int(round((b - a) / pitch)))
+        if abs(m * pitch - (b - a)) > FIT:
+            lo = int((b - a) // pitch) * pitch
+            return None, (f"side {i} of the L, an {what} eave, holds {(b - a) / 1000:g} m of slope between {took} "
+                          f"and its gable, no whole number of {pitch / 1000:g} m slope pieces: a side "
+                          f"{(b - a - lo) / 1000:g} m shorter or {(lo + pitch - (b - a)) / 1000:g} m longer would close")
+        counts[k] = m
+    starts, total = [], 0.0
+    for e in es:
+        starts.append(total)
+        total += e["L"]
+    runs, insts = [], []
+    for k, (a, b) in sorted(stretch.items()):
+        if not counts[k]:
+            continue
+        i = (c + k) % n
+        runs.append({"key": f"{prefix}_e{i}", "asset": slope["id"], "count": counts[k], "ref": prefix,
+                     "span": [round((starts[i] + a) / total, 9), round((starts[i] + b) / total, 9)],
+                     "face": outward(side[k]), "offset": round(span / 2000, 3), "ends": "half"})
+    surface = f"{prefix}.garden"
+    for k in (1, 4):                                 # the free ends: two gable halves each, as on a rectangle
+        e, i = side[k], (c + k) % n
+        out = outward(e)
+        insts.append({"key": f"{prefix}_g{i}_0", "asset": gable["id"], "at": rnd(local(e, span / 2, T / 2)),
+                      "face": out, "surface": surface})
+        insts.append({"key": f"{prefix}_g{i}_1", "asset": gable["id"], "at": rnd(local(e, 2 * span - span / 2, T / 2)),
+                      "face": round((out + 180.0) % 360.0, 3), "surface": surface})
+    # The hip: on the outer corner, where side 2 ends and side 3 starts, its front out of side 3,
+    # so its other eave (the asset's +x, against that side's travel) lies on side 2.
+    insts.append({"key": f"{prefix}_hip", "asset": hip["id"], "at": rnd(local(side[3], span / 2, span / 2)),
+                  "face": outward(side[3]), "surface": surface})
+    # The valley: at the inside corner itself, its front out of the side that follows it.
+    insts.append({"key": f"{prefix}_valley", "asset": valley["id"], "at": rnd(side[0]["a"]),
+                  "face": outward(side[0]), "surface": surface})
     return runs, insts
 
 
@@ -1936,15 +2030,25 @@ def plan(name, ring, attrs, ground_m, grid=None, kit=None, inner=INNER_DOOR, mar
                                          "deep": (now - was) - wall_t})
             pk = kits("parapet", None) if kits else {}
             if (pk.get("wall") or {}).get("storey") == "parapet":
+                seen = len(out["notes"])
                 runs, insts, opens = wall_plan(strip, strip, [], pk, key, key, (), margin, out["notes"], None, name)
-                runs = [r for r in runs if "_w2_" not in r["key"]]       # no parapet against the wall above
+                # No parapet against the wall above: the strip's side 2. A run is `<key>_w<side>_<j>`.
+                runs = [r for r in runs if not r["key"].startswith(f"{key}_w2_")]
                 for it in insts:
                     it["surface"] = f"{key}.garden"
+                # What is said of the strip is said in the building's own sides: the strip's
+                # side 0 is the building's side `i`, its sides 1 and 3 the two next to that.
+                own = {0: i, 1: (i + 1) % n_, 2: i, 3: (i - 1) % n_}
                 for o_ in opens:
-                    o_["parapet"] = True
+                    o_["parapet"], o_["terrace"] = True, k
+                for x in list(opens) + out["notes"][seen:]:
+                    if "side" in x:
+                        x["strip"], x["side"] = x["side"], own[x["side"]]
+                    x["terrace"] = k
+                out["notes"][seen:] = [x for x in out["notes"][seen:] if x.get("strip") != 2]
                 out["runs"].extend(runs)
                 out["instances"].extend(insts)
-                out["open"].extend(o_ for o_ in opens if o_.get("side") != 2)
+                out["open"].extend(o_ for o_ in opens if o_.get("strip") != 2)
     top = storeys - 1
     roof = attrs.get("roof") or ""
     if not isinstance(roof, str) or roof not in ("", "garden", "flat", "gable"):
@@ -2061,6 +2165,15 @@ def read_ground(step, ring):
     return sum(h) / len(h)
 
 
+def foot_word(note):
+    """What a note of the wall's foot is said as (rule 13): `base_short` (warning) where the
+    kit's base stops short of the ground; with no base, `plinth_bare` (info) where the floor
+    only stands its plinth above the ground, else `foot_open` (warning)."""
+    if note["code"] == "base_short":
+        return "base_short"
+    return "plinth_bare" if note["hang"] <= note["plinth"] + FOOT_SEEN else "foot_open"
+
+
 def read_foot(step, ring):
     """The terrain along the outline (rule 13): [(x mm, y mm, metres)] every `FOOT_STEP` along
     each side, from half a step in. Empty where the world has no surface field."""
@@ -2143,7 +2256,11 @@ def generate(step):
                 if w.get("stairwell") and moves
                 else "resize the side to a length that closes, or move the door or stair that cuts it")
         where_ = (f" on side {w['side']} of the base" if w.get("base")
-                  else f" on side {w['side']} of the parapet" if w.get("parapet")
+                  else f" of the parapet of the terrace before storey {w['terrace']}, beside side {w['side']}"
+                  if w.get("parapet") and w.get("terrace") is not None and w.get("strip") != 0
+                  else f" of the parapet of the terrace before storey {w['terrace']}, on side {w['side']}"
+                  if w.get("parapet") and w.get("terrace") is not None
+                  else f" on side {w['side']} of the roof's parapet" if w.get("parapet")
                   else f" on side {w['side']} of storey {w.get('storey', 0)}" if "side" in w else "")
         said = f"a wall stretch of {w['length'] / 1000:g} m{where_} does not close with the kit's pieces"
         if w.get("unfloored"):
@@ -2158,8 +2275,10 @@ def generate(step):
                                "stairwell": bool(w.get("stairwell"))} if "side" in w else {})},
                      **({"explain": EXPLAIN["wall_open"]} if i == 0 else {}))
     for n in (n for n in out["notes"] if n["code"] == "side_short"):
+        whose = (f"the parapet of the terrace before storey {n['terrace']}, by side {n['side']}," if n.get("terrace") is not None
+                 else f"side {n['side']}")
         step.warning("side_short", name,
-                     f"side {n['side']} is {n['length'] / 1000:g} m long and its two corners take "
+                     f"{whose} is {n['length'] / 1000:g} m long and its two corners take "
                      f"{n['takes'] / 1000:g} m of it: no wall is laid there",
                      "lengthen the side, or use corner pieces that take less",
                      position=(n["at"][0] / 1000, n["at"][1] / 1000),
@@ -2266,14 +2385,14 @@ def generate(step):
                      data={"roof": n["roof"], "fallback": "flat" if n["flat"] else ""}, explain=EXPLAIN["roof_none"])
     for n in (n for n in out["notes"] if n["code"] in ("foot_open", "base_short")):
         pos = (n["at"][0] / 1000, n["at"][1] / 1000)
-        if n["code"] == "base_short":
+        if foot_word(n) == "base_short":
             step.warning("base_short", name,
                          f"the ground falls {n['hang']:g} m below the floor and the kit's base is {n['deep']:g} m deep: "
                          f"{n['length']:g} m of the base stops short of the ground, by {n['hang'] - n['deep']:.3g} m at most",
                          "level the ground under the building, lower its `plinth`, or give the kit a deeper base",
                          position=pos, data={"hang": n["hang"], "base": n["deep"], "length": n["length"]},
                          explain=EXPLAIN["base_short"])
-        elif n["hang"] <= n["plinth"] + FOOT_SEEN:
+        elif foot_word(n) == "plinth_bare":
             step.info("plinth_bare", name,
                       f"the floor stands {n['hang']:g} m above the ground, its plinth, and the kit has no base: "
                       f"{n['length']:g} m of wall has nothing under it",

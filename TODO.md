@@ -28,6 +28,8 @@ open, and its place here is its destination.
   is in the step's static key (graph.md 5.1), so a revised binary re-runs basin.
       (From the M2 review fixes, 2026-11-14; was -> owner (doctrine).)
 - [ ] Pick the dogfood target: which game, which kind of map, at what scale.
+      2026-11-23: the owner added a fantasy map as K11 of `docs/plan-kits.md`, after K10. That
+      settles the kind of map; the game and the scale are proposed in K11's design note.
       (From the list before the rewrite, Framing; was -> M4 (`county` proposed in docs/plan.md, the owner's to redirect).)
 - [ ] Design reference matching: a bookmark solved from an image (horizon, lens, anchor points), a
       render-beside-reference sheet, and measured differences (palette, horizon, silhouette).
@@ -1514,8 +1516,8 @@ open, and its place here is its destination.
   0.3 m of the far wall: 50 mm of that wall opens on both storeys). Older than K4; met again in
   its review.
       (From the review of K4, 2026-11-23.)
-- [ ] **A gable over a plan that is not a rectangle** is refused (`roof_none`) and the flat roof
-  laid: K7. The base came with K7's first slice (lay.py rule 13); steps to a door did not. `STUB_MIN` (a stairwell 0.3 m short of a
+- [ ] **A gable over a plan that is neither a rectangle nor an L** is refused (`roof_none`) and
+  the flat roof laid (the L came with K7, lay.py rule 10: a hip, and a valley with a reach). The base came with K7's first slice (lay.py rule 13); steps to a door did not. `STUB_MIN` (a stairwell 0.3 m short of a
   corner is refused) was for the wall stub beside it; with a footing no stub exists, and the
   rule now only keeps a thin strip of floor from being cut. Revisit it with the stair above.
       (From K4 of docs/plan-kits.md, 2026-11-23.)

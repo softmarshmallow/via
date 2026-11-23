@@ -12,29 +12,36 @@ instances/ and fields/height.npy. Standard library only.
 How each is taken (ours).
 
 - `buildings`, `storeys`, `instances`, `pieces` (instances of an asset with a `role:` tag that is
-  not `role:floor`), `tiles`, `roof` (pieces tagged `role:roof_slope` or `role:roof_gable`), `base`
-  (pieces tagged `storey:base`), `steps` (pieces tagged `role:steps`).
+  not `role:floor`), `tiles`, `roof` (pieces tagged `role:roof_slope`, `role:roof_gable`,
+  `role:roof_hip` or `role:roof_valley`), `base` (pieces tagged `storey:base`).
 - **The ground at a wall.** The built ground is `fields/height.npy`, read between its posts. A
-  building's outline is walked every `STEP` (0.5 m), and at each point the ground is read `OUT`
-  (0.6 m) outside the outline: beside the wall, clear of the floor the storey cuts. The building's
-  floor is its ground storey's `level`. `hang` at a point is the floor less the ground: how far
-  the wall's foot stands above the ground there. `hang_max_mm` is the most over every building;
-  `hang_m` the length of outline, summed, where it is more than `SEEN` (0.05 m); `hang_houses`
-  the buildings with any such stretch. `buried_max_mm` is the most the ground stands above a
-  floor at its wall.
+  building's outline is walked every `STEP` (0.5 m) and the ground read on the outline itself,
+  where `lay` reads it (lay.py rule 13). A point that lies on another building's outline too is
+  a party wall: its foot is not seen, and it is left out (`party_m`, the length so left out).
+  The building's floor is its ground storey's `level`. `hang` at a point is the floor less the
+  ground: how far the wall's foot stands above the ground there. `hang_max_mm` is the most over
+  every building; `hang_m` the length of outline, summed, where it is more than `SEEN` (0.05 m,
+  `lay`'s own threshold); `hang_houses` the buildings with any such stretch. `buried_max_mm` is
+  the most the ground stands above a floor at its wall.
 - **What covers the hang.** A point's hang is covered when a piece tagged `storey:base` of that
-  building stands within 0.3 m of the side there, spans the point along the side, and reaches
-  the ground or below it: its `z`, which is its foot since the pack sinks it by its height, is
-  at or under the ground read there. `open_foot_m` is the outline's length with a hang over `SEEN` and no
-  such piece; `open_foot_max_mm` the largest uncovered hang.
-- **Doors.** For each `doorway` feature `lay` returned, its sill is `sill_z` and the ground is
-  read at the path's outer end (the porch's far end) and `OUT` outside the wall. `door_step_max_mm`
-  is the most the sill stands above the ground `OUT` outside the wall; `doors_high`, the doors
-  where that is more than `STEP_UP` (0.25 m, one riser and a little: a walker's step); and
-  `doors_served`, those of them with a piece tagged `role:steps` of the building within 1.5 m.
+  building spans the point along the side (between the corners of its plan that lie within
+  0.3 m of the side's line) and reaches the ground: its `z`, which is its foot since the pack
+  sinks it by its height, is no more than `SEEN` over the ground read there. `open_foot_m` is
+  the outline's length with a hang over `SEEN` and no such piece; `open_foot_max_mm` the largest
+  uncovered hang.
+- **Doors.** The doorway holds the ground at its sill along its own path (lib/building's
+  `doorway` kind), so no step can be read at the wall. `door_rise_max_mm` is the most a sill
+  stands over the ground `APPROACH` (8 m) out from its wall, past the doorway's path and its
+  shaping: the climb the land makes to the door.
+- **The roof's cover.** For each building with a `roof` feature and a roof piece, points every
+  0.1 m over the roof's outline: `roof_open_dm2` counts those no roof piece's plan holds
+  (the pack's declared footprint, else the box of its measured bounds), `roof_double_dm2` those
+  two or more hold. One point is a square decimetre. A flat roof's tiles are not roof pieces:
+  a building whose gable fell back to tiles is not counted.
 - `row_step_max_mm`: the most two buildings whose outlines share a metre of side differ in floor.
-- **Walls.** As examples/block's measure: each building, storey and side, the pieces named for
-  it, on the storey's own outline (the box of its floor and its footing: the building's unless
+- **Walls.** For each building, storey and side, the pieces named for it: a piece covers the
+  side between the corners of its plan that lie within 0.3 m of the side's line. Measured on
+  the storey's own outline (the box of its floor and its footing: the building's unless
   the storey overhangs); `open`, `open_sum_mm`.
 - `errors`, `warnings`: the build's records. `base_short`, `foot_open`, `roof_none`: the
   buildings `lay` said each of, the `count` of the folded record. `off_bound`:
@@ -53,9 +60,10 @@ from pathlib import Path
 TOL = 0.005
 NEAR = 0.3
 STEP = 0.5
-OUT = 0.6
 SEEN = 0.05
-STEP_UP = 0.25
+APPROACH = 8.0
+COVER = 0.1
+ROOF = ("role:roof_slope", "role:roof_gable", "role:roof_hip", "role:roof_valley")
 
 
 def _npy(path):
@@ -119,14 +127,18 @@ def shared(r1, r2):
 
 
 def open_of(ring, laid):
+    """Open stretches (metres) of each side of `ring`, given `laid`, each piece's plan: a piece
+    covers a side from the least to the greatest of its plan's corners that lie within `NEAR` of
+    the side's line (so an inside corner's piece, an L placed by its notch, covers a leg's
+    length of each of its two walls)."""
     out = []
     for a, e, L in sides(ring):
         spans = []
-        for x, y, half in laid:
-            u = (x - a[0]) * e[0] + (y - a[1]) * e[1]
-            v = abs((x - a[0]) * e[1] - (y - a[1]) * e[0])
-            if v <= NEAR and -half - TOL <= u <= L + half + TOL:
-                spans.append((max(0.0, u - half), min(L, u + half)))
+        for plan in laid:
+            us = [(x - a[0]) * e[0] + (y - a[1]) * e[1] for x, y in plan
+                  if abs((x - a[0]) * e[1] - (y - a[1]) * e[0]) <= NEAR]
+            if len(us) >= 2 and max(us) > -TOL and min(us) < L + TOL:
+                spans.append((max(0.0, min(us)), min(L, max(us))))
         at = 0.0
         for lo, hi in sorted(spans):
             if lo - at > TOL:
@@ -135,6 +147,27 @@ def open_of(ring, laid):
         if L - at > TOL:
             out.append(L - at)
     return out
+
+
+def inside(ring, p):
+    x, y = p
+    hit = False
+    for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1]):
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            hit = not hit
+    return hit
+
+
+def plan_of(r, asset):
+    """An instance's plan in world metres: its asset's footprint where the pack declares one,
+    else the box of its measured bounds, turned by its `face` (degrees clockwise from north, the
+    way its front, the asset frame's +y, points; +x is a quarter turn clockwise from it)."""
+    f = math.radians(r["face"])
+    fx, fy = math.sin(f), math.cos(f)
+    rx, ry = math.cos(f), -math.sin(f)
+    x0, y0, _, x1, y1, _ = asset["bounds"]
+    pts = [tuple(q) for q in asset.get("footprint") or []] or [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    return [(r["x"] + ax * rx + ay * fx, r["y"] + ax * ry + ay * fy) for ax, ay in pts]
 
 
 def measures(d):
@@ -172,8 +205,8 @@ def measures(d):
             doors.append((o[0], [(p[0], p[1]) for p in f["points"]], f["attrs"]["sill_z"]))
     kit = {a for a in assets if any(t.startswith("role:") for t in tags(a))}
     m = {"buildings": len(buildings), "storeys": sum(int(f["attrs"].get("storeys") or 1) for f in buildings.values()),
-         "instances": len(rows), "pieces": 0, "tiles": 0, "roof": 0, "base": 0, "steps": 0}
-    laid, bases, stoops = {}, {}, {}
+         "instances": len(rows), "pieces": 0, "tiles": 0, "roof": 0, "base": 0}
+    laid, bases, roofs = {}, {}, {}
     for n, r in rows.items():
         a = r["asset"]
         if a not in kit:
@@ -184,35 +217,45 @@ def measures(d):
             m["tiles"] += 1
             continue
         m["pieces"] += 1
-        if "role:roof_slope" in tags(a) or "role:roof_gable" in tags(a):
+        if any(t in tags(a) for t in ROOF):
             m["roof"] += 1
-        elif "role:steps" in tags(a):
-            m["steps"] += 1
             if o:
-                stoops.setdefault(o[0], []).append((r["x"], r["y"]))
+                roofs.setdefault(o[0], []).append(plan_of(r, assets[a]))
         elif "storey:base" in tags(a):
             m["base"] += 1
             if o:
-                bases.setdefault(o[0], []).append((r["x"], r["y"], (b0[3] - b0[0]) / 2, r["z"], b0[5] - b0[2]))
+                bases.setdefault(o[0], []).append((plan_of(r, assets[a]), r["z"]))
         elif o:
             st = re.match(r"s(\d+)_", o[1])
             if st:
-                laid.setdefault((o[0], int(st.group(1))), []).append((r["x"], r["y"], (b0[3] - b0[0]) / 2))
+                laid.setdefault((o[0], int(st.group(1))), []).append(plan_of(r, assets[a]))
 
+    def beside(b, p):
+        """Whether `p`, on the outline of `b`, lies on another building's outline too: a party wall."""
+        for o, ring in rings.items():
+            if o == b:
+                continue
+            for a, e, L in sides(ring):
+                u = (p[0] - a[0]) * e[0] + (p[1] - a[1]) * e[1]
+                if -TOL <= u <= L + TOL and abs((p[0] - a[0]) * e[1] - (p[1] - a[1]) * e[0]) <= SEEN:
+                    return True
+        return False
     hang_max = buried = open_max = 0.0
-    hang_m = open_m = 0.0
+    hang_m = open_m = party_m = 0.0
     hang_houses = 0
     for b, ring in sorted(rings.items()):
         if b not in floor:
             continue
         any_hang = False
         for a, e, L in sides(ring):
-            n_out = (e[1], -e[0])                 # the outline is counter-clockwise: its right is outside
             k = max(1, int(round(L / STEP)))
             for i in range(k):
                 u = (i + 0.5) * L / k
                 px, py = a[0] + e[0] * u, a[1] + e[1] * u
-                g = ground(px + n_out[0] * OUT, py + n_out[1] * OUT)
+                if beside(b, (px, py)):
+                    party_m += L / k
+                    continue
+                g = ground(px, py)
                 hang = floor[b] - g
                 buried = max(buried, -hang)
                 hang_max = max(hang_max, hang)
@@ -220,31 +263,35 @@ def measures(d):
                     continue
                 any_hang = True
                 hang_m += L / k
-                # A base piece is sunk by its own height (the pack's `sink`), so an instance's `z`
-                # is its foot: it reaches the ground where its foot is at or under it.
-                covered = any(abs((x - px) * e[0] + (y - py) * e[1]) <= half + TOL
-                              and abs((x - px) * e[1] - (y - py) * e[0]) <= NEAR and z <= g + TOL
-                              for x, y, half, z, high in bases.get(b, []))
+                # A base piece covers the point where its plan spans it along the side (the
+                # corners of its plan within `NEAR` of the side's line: an inside corner's base
+                # is an L placed by its notch) and its foot, its `z` since the pack sinks it by
+                # its height, is no more than `SEEN` over the ground there.
+                covered = False
+                for plan, z in bases.get(b, []):
+                    us = [(x - a[0]) * e[0] + (y - a[1]) * e[1] for x, y in plan
+                          if abs((x - a[0]) * e[1] - (y - a[1]) * e[0]) <= NEAR]
+                    if len(us) >= 2 and min(us) - TOL <= u <= max(us) + TOL and z - g <= SEEN:
+                        covered = True
+                        break
                 if not covered:
                     open_m += L / k
                     open_max = max(open_max, hang)
         hang_houses += any_hang
     m.update({"hang_max_mm": int(round(hang_max * 1000)), "hang_m": round(hang_m, 1), "hang_houses": hang_houses,
-              "buried_max_mm": int(round(max(buried, 0.0) * 1000)), "open_foot_m": round(open_m, 1),
-              "open_foot_max_mm": int(round(open_max * 1000))})
+              "party_m": round(party_m, 1), "buried_max_mm": int(round(max(buried, 0.0) * 1000)),
+              "open_foot_m": round(open_m, 1), "open_foot_max_mm": int(round(open_max * 1000))})
 
-    step_max, high, served = 0.0, 0, 0
+    # A door: the doorway holds the ground at its sill along its own path, so no step is to be
+    # read at the wall. What is read is how far the ground climbs to it: the sill less the
+    # ground `APPROACH` out from the wall, past the doorway and its footpath.
+    rise = 0.0
     for b, path, sill in doors:
         (x0, y0), (x1, y1) = path[0], path[-1]     # from outside to the wall
         L = math.hypot(x1 - x0, y1 - y0) or 1.0
         e = ((x0 - x1) / L, (y0 - y1) / L)        # out of the wall
-        up = sill - ground(x1 + e[0] * OUT, y1 + e[1] * OUT)
-        step_max = max(step_max, up)
-        if up > STEP_UP:
-            high += 1
-            served += any(math.hypot(x - x1, y - y1) <= 1.5 for x, y in stoops.get(b, []))
-    m.update({"doors": len(doors), "door_step_max_mm": int(round(step_max * 1000)), "doors_high": high,
-              "doors_served": served})
+        rise = max(rise, sill - ground(x1 + e[0] * APPROACH, y1 + e[1] * APPROACH))
+    m.update({"doors": len(doors), "door_rise_max_mm": int(round(rise * 1000))})
 
     names = sorted(b for b in buildings if b in floor)
     m["row_step_max_mm"] = int(round(1000 * max([abs(floor[p] - floor[q]) for i, p in enumerate(names)
@@ -267,6 +314,28 @@ def measures(d):
     m["open_sum_mm"] = int(round(sum(gaps) * 1000))
     # A step's records of one code on the things it returned are folded into one, with a `count`
     # (diagnostics.md): the count is what is measured.
+    # The roof's cover: points every `COVER` over each roofed building's top outline (the `roof`
+    # feature `lay` returned), counted where no roof piece's plan holds them, and where two do.
+    bare = twice = 0
+    for n, f in feats.items():
+        o = owner(n)
+        if not o or o[1] != "roof" or f.get("kind") != "roof" or o[0] not in roofs:
+            continue
+        ring = ring_of(f)
+        xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+        i = 0
+        while min(xs) + (i + 0.5) * COVER < max(xs):
+            px = min(xs) + (i + 0.5) * COVER
+            j = 0
+            while min(ys) + (j + 0.5) * COVER < max(ys):
+                py = min(ys) + (j + 0.5) * COVER
+                if inside(ring, (px, py)):
+                    k = sum(1 for plan in roofs[o[0]] if inside(plan, (px, py)))
+                    bare += k == 0
+                    twice += k >= 2
+                j += 1
+            i += 1
+    m["roof_open_dm2"], m["roof_double_dm2"] = bare, twice
     codes = Counter()
     for x in diags:
         codes[x["code"]] += int(x.get("count", 1))

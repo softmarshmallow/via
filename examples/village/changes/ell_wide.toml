@@ -1,0 +1,19 @@
+# An L whose wings are two depths: the same house with its west wing 9.6 m wide, where the kit's
+# roof slope is made for wings 6.6 m deep. The roof is refused with its reason, and the flat roof
+# laid in its place.
+[feature.manor]
+kind     = "building"
+region   = [[70, 30], [82.6, 30], [82.6, 36.6], [79.6, 36.6], [79.6, 39.6], [70, 39.6]]
+storey_h = 2.7
+roof     = "gable"
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+kit      = "structure/village"
+
+[feature.look_manor]
+at = [76, 34]
+
+[feature.at_manor]
+kind       = "bookmark"
+at         = [62, 20]
+toward     = "look_manor"
+eye_height = 14

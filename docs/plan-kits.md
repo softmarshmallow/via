@@ -1,7 +1,7 @@
 # via: the kit plan
 
 Status: approved 2026-11-20, running. Committed: the research (cc99109), K1 and K2 (f529008),
-K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two slices (e469406, the wall's foot; then a storey's own outline). Next: K7's roof on an L, and its review. The plan after the first cut (`docs/plan.md`): own the
+K3 (38b8822), K4 (bf60bb0), K5 (660ec5b); K6 in two commits (aa93d3a, the kit stating what its pieces share; bc2ac73, the city block). K7 so far in two commits (e469406, the wall's foot; 26cb33f, a storey's own outline); its third slice, the roof on an L, is built and follows them with K7's review. Next: K8. K11 (a fantasy map) was added on 2026-11-23. The plan after the first cut (`docs/plan.md`): own the
 modular building system, not only where a settlement stands, and review the archetypes and the
 SDK against what it shows.
 
@@ -40,6 +40,7 @@ styles.
 | K8 | **East Asian and classical.** The roof as the main kit, posts and bays, a walled compound; every size from one module, symmetry, a colonnade. | As K6. Labelled as our own design: the research found no account by a developer of either. |
 | K9 | **Industrial.** Pipes and gantries joined by sockets in three dimensions, a glue kit between two kits, an interior kit. | As K6, with a socket at a height. |
 | K10 | **Someone else's kit, and the last review.** A freely licensed kit fetched on demand and never committed. Then the archetypes and the SDK again: what a kit's author and a world's author had to write, and what should be shorter. | The kit fits or the report says where it does not; challenge 33 closes or says what is owed. |
+| K11 | **A fantasy map.** One world on simulated land that places settlements built from this plan's kits (the village, the East Asian and classical kits, a walled compound), joined by roads and water, with the player map as data. Added by the owner on 2026-11-23, after K10. | One world a person can walk from one settlement to the next; its sheet; its measures with their protocol; and the count of what the map's author had to write against what the build laid. |
 
 ## How every milestone runs
 
@@ -120,6 +121,18 @@ Changed so far:
   set-back K6 did not build and the jetty are one mechanism, as K6's note said. It is built on
   a rectangle and closes nothing by fitting; what it showed is that a terrace and a jetty do
   not close on either kit, which is said and filed, not mended with new pieces.
+- **K7, third slice, 2026-11-23.** The gable roof over an L, which K4 put off: a hip piece at
+  the outer corner and a valley piece at the inside one, the valley with a stated reach along
+  both inner eaves. A T, a U and wings of two depths are still refused with their reasons.
+  K7's one review found the roof sound and six defects elsewhere, two of them in the village's
+  own measure (it read the ground inside the neighbour at a party wall, and a door's step where
+  the doorway sets the ground): the first slice's numbers are corrected in its README.
+
+- **K11 added, 2026-11-23.** The owner asked whether a fantasy map demo was in the plan. It was
+  not: the word stood only in K7's title, and the dogfood map of `docs/plan.md` was proposed
+  (`county`) and never chosen. The owner added one, after K10 ("Yes, after K10"). It comes last
+  because it places what K7 to K9 build: before them it would be a map of grey boxes from one
+  kit. Its size and what stands on it are proposed in its own design note when it starts.
 
 Checks before each commit: the library's tests, `cargo run -p xtask -- check`, and, where a crate
 changed, `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace` and the

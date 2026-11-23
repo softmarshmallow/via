@@ -1329,7 +1329,9 @@ class Decks(unittest.TestCase):
         ell = [(0, 0), (9600, 0), (9600, 5100), (5100, 5100), (5100, 9600), (0, 9600)]
         no_gable = [r for r in self.ROWS if r["id"] != "gable"]
         short = [dict(r, params={"span": 4.5}) if r["id"] == "gable" else r for r in self.ROWS]
-        for ring, rows, word in ((ell, None, "not a rectangle"),
+        zed = [(0, 0), (9600, 0), (9600, 5100), (14100, 5100), (14100, 9600), (5100, 9600), (5100, 5100), (0, 5100)]
+        for ring, rows, word in ((ell, None, "has no `role:roof_hip` and `role:roof_valley`"),
+                                 (zed, None, "neither a rectangle nor an L"),
                                  ([(0, 0), (12600, 0), (12600, 11100), (0, 11100)], None, "11.1 m deep"),
                                  ([(0, 0), (13100, 0), (13100, 9600), (0, 9600)], None, "12.5 m, no whole number"),
                                  (None, no_gable, "has no `role:roof_slope` and `role:roof_gable`"),

@@ -283,6 +283,40 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
     open). A kit whose lane, landing and run are whole tiles gets whole stairwells on every
     storey, and `slab_open` then says how far to move a stair that stands between tiles.
   - *Not yet.* A building's `storey_h` is still its own; lib/town does not read `shared`.
+- **A gable roof over an L** (K7 of `docs/plan-kits.md`, third slice). Design note, written
+  before the code; the rule is `lay.py` rule 10, "Over an L" (`ell_plan`). Source: the forum rule of
+  thumb that a roof kit is built like a hallway kit (middle, inner corner, outer corner, end
+  cap) is all that was found; no developer's account of pitched-roof pieces on an L was
+  (docs/research/Modular kit failures in studios.md, section 4, "Roofs depend on the whole
+  plan"). The decomposition is our own.
+  - *The plan.* An L whose two wings are one depth, twice the slope piece's span `s`. Its
+    outline has six sides and one inside corner. Take the square of side `2 s` where the wings
+    cross. The two ridges meet at its middle.
+  - *The corner square is mitred along its diagonal,* from the L's outer corner to its inside
+    corner. The half of the diagonal from the outer corner to the middle is a hip; the half from
+    the middle to the inside corner is a valley. Each wing's roof is an ordinary gable roof up
+    to that diagonal.
+  - *Two new pieces.* `role:roof_hip`: one span square, climbing from its two outer edges to
+    the hip, placed at the L's outer corner; the eaves run on from it with no gable there.
+    `role:roof_valley`: the span-square quarter beside the inside corner, where the two inner
+    slopes meet along the valley, and `params.reach` of each inner eave beyond the corner, as
+    the wall's inside corner piece reaches along both walls. It is the same from both wings
+    (it is its own mirror about the diagonal), so one piece serves, placed by the inside corner.
+  - *Runs.* Each outer eave: slope pieces from one span along (past the hip) to the wall's
+    thickness short of the wing's free end, where two gable halves stand. Each inner eave: from
+    the valley piece's reach past the inside corner to the same. The other two quarters of the
+    corner square are ordinary slope pieces of the outer runs.
+  - *Closure.* On a kit whose bay is 3 m, post 0.3 m and span 3.3 m, an outer eave is
+    `3 a + 0.6 - 0.3 - 3.3 = 3 a - 3`, whole 1.5 m pieces. An inner eave is the inside side,
+    `3 a + 0.6 - 6.6`, less the wall's thickness at the free end and the reach: `3 a - 6.3 -
+    reach`, which a reach of 1.2 m closes. It is the reach the wall's inside corner piece has on
+    the same kit, for the same reason. This is what K4 found and filed: slopes beside a valley
+    are whole pieces only if the valley piece takes a stated length of each eave.
+  - *Refused, with its reason* (`roof_none`): wings of two depths; a plan with more than one
+    inside corner, or that is neither a rectangle nor an L; a kit without the hip or the valley
+    piece; an eave that is no whole number of slope pieces, with the lengths that would close.
+  - *As built* (`examples/village`, `ell`): an L of 12.6 by 9.6 m is 14 slopes, four gable
+    halves, the hip and the valley, covering the outline once, measured on a 0.1 m lattice.
 - **A storey with its own outline** (K7 of `docs/plan-kits.md`, second slice, from
   examples/block and examples/village). Design note; the rule is `lay.py` rule 14. Source: ours;
   the set-back of a city block and the jetty of a timber house are named in no developer's
@@ -309,7 +343,7 @@ no distant edit shifts a key (`spec/protocol.md` 5, `identity.md` 2.2).
   studios.md, section 4, "Meeting the ground"). The rule is our own design.
   - *What was wrong.* A floor is level and a wall piece stands on its floor, so wherever the
     ground is lower than the floor the wall's foot is in the air: 0.3 m, the plinth, round every
-    building on level ground since M5, and up to 0.92 m along 190 m of wall on the village's
+    building on level ground since M5, and up to 0.87 m along 126 m of exposed wall on the village's
     slope. Nothing said so.
   - *The base.* A kit's wall pieces tagged `storey:base` are laid round the outline as a
     storey's walls are, under the door too, on the ground storey's floor. The pack sinks each by

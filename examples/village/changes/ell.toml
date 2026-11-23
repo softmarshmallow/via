@@ -1,0 +1,21 @@
+# A house on an L, written by hand at the top of the street: two wings 6.6 m deep, 12.6 m along
+# the south and 9.6 m along the west, under one gable roof (lib/building/lay.py rule 10, "Over an
+# L"). Its walls close with the kit's inside corner piece, and its roof with the hip at its outer
+# corner and the valley at its inside one.
+[feature.manor]
+kind     = "building"
+region   = [[70, 30], [82.6, 30], [82.6, 36.6], [76.6, 36.6], [76.6, 39.6], [70, 39.6]]
+storey_h = 2.7
+roof     = "gable"
+doors    = [{ storey = 0, side = 0, at = 4.05 }]
+kit      = "structure/village"
+fill     = [{ sides = [0, 5], pattern = ["window", "wall"] }]
+
+[feature.look_manor]
+at = [76, 34]
+
+[feature.at_manor]                            # the L from the south-west, above
+kind       = "bookmark"
+at         = [62, 20]
+toward     = "look_manor"
+eye_height = 14

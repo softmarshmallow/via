@@ -430,6 +430,40 @@ class Foot(unittest.TestCase):
         self.assertEqual(self.lay(base=0, plinth=0)["notes"], [n for n in self.lay(base=0, plinth=0)["notes"]
                                                                if n["code"] not in ("foot_open", "base_short")])
 
+    def test_five_centimetres_of_air_is_not_said(self):
+        """`FOOT_SEEN`: on the 0.08 slope the floor is 0.804 m over the ground at the low side. A
+        base 0.8 m deep is 4 mm short of it, and nothing is said; one 0.7 m deep is."""
+        self.assertFalse([n for n in self.lay(slope=0.08, base=800)["notes"] if n["code"] == "base_short"])
+        self.assertTrue([n for n in self.lay(slope=0.08, base=700)["notes"] if n["code"] == "base_short"])
+
+    def test_what_a_foot_note_is_said_as(self):
+        self.assertEqual(L["foot_word"]({"code": "base_short", "hang": 0.9, "plinth": 0.3}), "base_short")
+        self.assertEqual(L["foot_word"]({"code": "foot_open", "hang": 0.3, "plinth": 0.3}), "plinth_bare")
+        self.assertEqual(L["foot_word"]({"code": "foot_open", "hang": 0.34, "plinth": 0.3}), "plinth_bare")
+        self.assertEqual(L["foot_word"]({"code": "foot_open", "hang": 0.36, "plinth": 0.3}), "foot_open")
+        self.assertEqual(L["foot_word"]({"code": "foot_open", "hang": 0.04, "plinth": 0}), "plinth_bare")
+
+    def test_the_ground_is_read_along_every_side(self):
+        """`read_foot`: a point every 0.5 m from a quarter metre in, on all four sides."""
+        class Field:
+            name = "height"
+
+        class Fake:
+            def fields(self, roles, window=None):
+                return [Field()]
+
+            def eval(self, formula, x, y):
+                self.formula = formula
+                return [10.0 + 0.001 * a for a in x]
+        step = Fake()
+        foot = L["read_foot"](step, self.RING)
+        self.assertEqual(step.formula, "= f('height')")
+        self.assertEqual(len(foot), 2 * (25 + 25))                    # 12.6 m a side: 25 points each
+        self.assertEqual(foot[0], (18252, 16000, 10.0 + 18.252))
+        self.assertEqual({(x == 18000, x == 30600, y == 16000, y == 28600) for x, y, _ in foot},
+                         {(True, False, False, False), (False, True, False, False),
+                          (False, False, True, False), (False, False, False, True)})
+
     def test_no_ground_read_means_nothing_said(self):
         rows = self.rows(0)
         a = {"storeys": 1, "storey_h": 3.3, "plinth": 0.3, "porch": 2, "walk_out": 3, "kit": "k",
@@ -515,9 +549,64 @@ class Outlines(unittest.TestCase):
         self.assertEqual(opens, [(1, 1), (3, 1)])
         self.assertEqual(sorted(o["side"] for o in out["open"] if o.get("parapet")), [1, 3])   # and the parapet over them
 
+    def test_a_set_back_holds_from_its_storey_up(self):
+        out = self.lay(storeys=4, setback=[{"storey": 2, "sides": [0], "by": 3.0}])
+        low = [min(p[1] for p in st["region"]) for st in out["storeys"]]
+        self.assertEqual(low, [0, 0, 3000, 3000])
+        self.assertEqual([t["key"] for t in out["terraces"]], ["b_t2_0"])                 # one terrace, not one a storey
+
+    def test_the_roof_covers_the_top_storeys_outline(self):
+        """The flat roof's tiles and parapet, and a gable's slopes and gable halves, stand over
+        the set-back storey and not over the terrace before it."""
+        out = self.lay(setback=[{"storey": 2, "sides": [0], "by": 3.0}])
+        tiles = [i for i in out["instances"] if i["key"].startswith("b_roof_f")]
+        self.assertTrue(tiles)
+        self.assertGreaterEqual(min(i["at"][1] for i in tiles), 3000 + 300)
+        posts = sorted(i["at"] for i in out["instances"] if i["key"].startswith("b_roof_c"))
+        self.assertEqual(posts[0], (150, 3150))
+        rows = kit() + [row("slope", "roof_slope", (1500, 4800), 3000, pitch=1.5, span=4.8),
+                        row("gable", "roof_gable", (4800, 300), 3000, span=4.8)]
+        a = {"storeys": 3, "storey_h": 3.3, "plinth": 0.3, "porch": 2, "walk_out": 3, "kit": "k", "roof": "gable",
+             "doors": [{"storey": 0, "side": 0, "at": 4.05}], "stair": {"side": 2, "at": 1.8},
+             "setback": [{"storey": 2, "sides": [0], "by": 3.0}]}
+        out = L["plan"]("b", self.RING, a, 10.0, None, None, kits=lambda w, h: L["kit_pieces"](rows, w, h))
+        self.assertFalse([n for n in out["notes"] if n["code"] == "roof_none"])            # 9.6 m deep: twice the span
+        gables = [i["at"] for i in out["instances"] if i["asset"] == "gable"]
+        self.assertEqual(len(gables), 4)
+        self.assertGreaterEqual(min(y for _, y in gables), 3000)
+
+    def test_a_terrace_is_named_by_its_own_key_whatever_the_building_is_called(self):
+        """A building whose name holds `_w2_` kept no parapet on its terrace's front: the runs
+        against the wall above were dropped by a search of the whole key."""
+        rows = kit()
+        a = {"storeys": 3, "storey_h": 3.3, "plinth": 0.3, "porch": 2, "walk_out": 3, "kit": "k", "roof": "flat",
+             "doors": [{"storey": 0, "side": 0, "at": 4.05}], "stair": {"side": 2, "at": 1.8},
+             "setback": [{"storey": 2, "sides": [0], "by": 3.0}]}
+        out = L["plan"]("a_w2_b", self.RING, a, 10.0, None, None, kits=lambda w, h: L["kit_pieces"](rows, w, h))
+        self.assertEqual(sorted(r["key"] for r in out["runs"] if r["key"].startswith("a_w2_b_t2_0_w")), ["a_w2_b_t2_0_w0_0"])
+
+    def test_what_is_said_of_a_terrace_names_the_buildings_own_sides(self):
+        out = self.lay(setback=[{"storey": 2, "sides": [0], "by": 3.0}])
+        opens = sorted((o["side"], o["strip"], o["terrace"]) for o in out["open"] if o.get("terrace") is not None)
+        self.assertEqual(opens, [(1, 1, 2), (3, 3, 2)])            # the building's sides 1 and 3, not the strip's
+
+    def test_sides_that_meet_at_a_corner_are_not_moved_together(self):
+        for sb in ([{"storey": 1, "sides": [0, 1], "by": 1.5}],
+                   [{"storey": 1, "sides": [0], "by": 1.5}, {"storey": 1, "sides": [1], "by": 1.5}],
+                   [{"storey": 1, "sides": [3], "by": 1.5}, {"storey": 1, "sides": [0], "by": 1.5}]):
+            with self.assertRaises(L["ParamError"]) as c:
+                L["offsets_of"]({"setback": sb}, 2, self.RING)
+            self.assertIn("two sides that meet at a corner", c.exception.message)
+        self.assertEqual(L["offsets_of"]({"setback": [{"storey": 1, "sides": [0, 2], "by": 1.5}]}, 2, self.RING),
+                         [[0, 0, 0, 0], [1500, 0, 1500, 0]])
+        self.assertEqual(L["offsets_of"]({"setback": [{"storey": 1, "sides": [0], "by": 1.5}],
+                                          "overhang": [{"storey": 1, "sides": [2], "by": 0.6}]}, 3, self.RING)[2],
+                         [1500, 0, -600, 0])
+
     def test_what_may_not_be_moved(self):
         for attrs, word in (({"setback": [{"storey": 2, "sides": [2], "by": 3.0}]}, "the stair climbs side 2"),
                             ({"setback": [{"storey": 2, "sides": [1], "by": 3.0}]}, "the stair climbs side 2"),
+                            ({"setback": [{"storey": 2, "sides": [3], "by": 3.0}]}, "the stair climbs side 2"),
                             ({"setback": [{"storey": 0, "sides": [0], "by": 3.0}]}, "is not"),
                             ({"setback": [{"storey": 3, "sides": [0], "by": 3.0}]}, "names storey 3"),
                             ({"setback": [{"storey": 1, "sides": [0], "by": -1}]}, "is not"),
@@ -544,6 +633,131 @@ class Outlines(unittest.TestCase):
         got, _ = plan([("s", [(18000, 16000)], dict(SOUTH, lots=lots, to=[43.2, 16], setback=sb))])
         self.assertEqual(got[0]["attrs"]["setback"], sb)
         self.assertNotIn("setback", got[1]["attrs"])
+        ov = [{"storey": 1, "sides": [0], "by": 1.5}]
+        got, _ = plan([("s", [(18000, 16000)], dict(SOUTH, lots=lots, to=[43.2, 16], overhang=ov))])
+        self.assertEqual((got[0]["attrs"]["overhang"], got[1]["attrs"]["overhang"]), (ov, ov))
+
+
+class EllRoof(unittest.TestCase):
+    """lay.py rule 10, "Over an L": a hip at the outer corner, a valley at the inside one."""
+
+    # The village kit's roof: 1.5 m slopes of 3.3 m span, for wings 6.6 m deep; walls 0.3 m.
+    KIT = {"roof_slope": {"id": "slope", "pitch": 1500, "span": 3300}, "roof_gable": {"id": "gable", "span": 3300},
+           "roof_hip": {"id": "hip", "span": 3300}, "roof_valley": {"id": "valley", "span": 3300, "reach": 1200}}
+    # An L of two wings 6.6 m deep: 12.6 m along the south, 9.6 m along the west; the inside corner
+    # is (6600, 6600), the outer one (0, 0).
+    ELL = [(0, 0), (12600, 0), (12600, 6600), (6600, 6600), (6600, 9600), (0, 9600)]
+
+    def roof(self, ring=None, **kit):
+        return L["ell_plan"](ring or self.ELL, dict(self.KIT, **kit), 300, "h_roof")
+
+    def test_the_four_eaves_each_hold_whole_slopes(self):
+        """South (outer): 12.6 m less the hip's span and the gable's wall is 9 m, six pieces from
+        3.3 m. West (outer): 9.6 m less the same is 6 m, four pieces ending 3.3 m short of the
+        outer corner. The inner eaves: 6 m and 3 m less the wall and the valley's 1.2 m reach
+        are 4.5 m and 1.5 m, three pieces and one."""
+        runs, insts = self.roof()
+        got = {r["key"]: (r["count"], r["face"]) for r in runs}
+        self.assertEqual(got, {"h_roof_e0": (6, 180.0), "h_roof_e5": (4, 270.0), "h_roof_e2": (3, 0.0),
+                               "h_roof_e3": (1, 90.0)})
+        total = 12600 + 6600 + 6000 + 3000 + 6600 + 9600
+        span = {r["key"]: [round(v * total) for v in r["span"]] for r in runs}
+        self.assertEqual(span["h_roof_e0"], [3300, 12300])                                  # past the hip, to the gable's wall
+        self.assertEqual(span["h_roof_e5"], [total - 9600 + 300, total - 3300])             # from the gable's wall to the hip
+        self.assertEqual(span["h_roof_e2"], [12600 + 6600 + 300, 12600 + 6600 + 6000 - 1200])  # to the valley's reach
+        self.assertEqual(span["h_roof_e3"], [12600 + 6600 + 6000 + 1200, 12600 + 6600 + 6000 + 3000 - 300])
+        self.assertTrue(all(r["offset"] == 1.65 and r["ends"] == "half" and r["ref"] == "h_roof" for r in runs))
+
+    def test_the_hip_stands_on_the_outer_corner_and_the_valley_on_the_inside_one(self):
+        _, insts = self.roof()
+        at = {i["key"]: (i["asset"], i["at"], i["face"]) for i in insts}
+        # The hip's middle is half a span in from both outer eaves; its front is out of the south
+        # side, which starts at the outer corner, so its +x eave lies on the west side.
+        self.assertEqual(at["h_roof_hip"], ("hip", (1650, 1650), 180.0))
+        # The valley is placed by the inside corner, its front out of the side that follows it
+        # (the west wing's inner eave, which faces east).
+        self.assertEqual(at["h_roof_valley"], ("valley", (6600, 6600), 90.0))
+        gables = sorted(k for k in at if "_g" in k)
+        self.assertEqual(gables, ["h_roof_g1_0", "h_roof_g1_1", "h_roof_g4_0", "h_roof_g4_1"])
+        self.assertEqual(at["h_roof_g1_0"][1:], ((12450, 1650), 90.0))                      # the east end: low at the south eave
+        self.assertEqual(at["h_roof_g1_1"][1:], ((12450, 4950), 270.0))
+        self.assertEqual(at["h_roof_g4_0"][1:], ((4950, 9450), 0.0))                        # the north end
+        self.assertTrue(all(i["surface"] == "h_roof.garden" for i in insts))
+
+    def test_the_same_roof_whichever_vertex_the_ring_starts_at_and_the_other_hand(self):
+        for k in range(6):
+            ring = self.ELL[k:] + self.ELL[:k]
+            runs, insts = self.roof(ring)
+            self.assertEqual(sorted(r["count"] for r in runs), [1, 3, 4, 6], k)
+            at = {i["asset"]: i["at"] for i in insts if i["asset"] in ("hip", "valley")}
+            self.assertEqual(at, {"hip": (1650, 1650), "valley": (6600, 6600)}, k)
+        # The mirror L, its long wing to the north: the inside corner follows the other way round.
+        other = [(0, 0), (6600, 0), (6600, 3000), (12600, 3000), (12600, 9600), (0, 9600)]
+        runs, insts = self.roof(other)
+        at = {i["asset"]: (i["at"], i["face"]) for i in insts if i["asset"] in ("hip", "valley")}
+        self.assertEqual(at["valley"][0], (6600, 3000))
+        self.assertEqual(at["hip"][0], (1650, 9600 - 1650))
+        self.assertEqual(sorted(r["count"] for r in runs), [1, 3, 4, 6])
+
+    def test_what_is_refused_says_why(self):
+        deep = [(0, 0), (12600, 0), (12600, 8100), (6600, 8100), (6600, 9600), (0, 9600)]   # one wing 8.1 m deep
+        off = [(0, 0), (13100, 0), (13100, 6600), (6600, 6600), (6600, 9600), (0, 9600)]    # the south 0.5 m longer
+        for ring, kit, word in ((deep, {}, "both wings must be that deep"),
+                                (off, {}, "side 2 of the L, an inner eave, holds 5 m"),      # the first of the two eaves it lengthens
+                                (None, {"roof_valley": {"id": "valley", "span": 3300, "reach": 300}}, "an inner eave, holds"),
+                                (None, {"roof_slope": {"id": "slope", "pitch": 0, "span": 3300}}, "states no length along the eave"),
+                                (None, {"roof_hip": None}, "has no `role:roof_hip`"),
+                                (None, {"roof_valley": {"id": "valley", "span": 4500, "reach": 1200}}, "the valley piece is made for a span of 4.5 m")):
+            got, why = self.roof(ring, **kit)
+            self.assertIsNone(got, word)
+            self.assertIn(word, why)
+        self.assertIn("0.5 m shorter or 1 m longer", self.roof(off)[1])
+
+    def test_a_wing_shorter_than_what_stands_on_it_is_told_the_length_it_needs(self):
+        """An inner side of 0.9 m, where the valley's reach and the gable's wall take 1.5 m: no
+        "shorter" length is offered, since none is an L."""
+        stub = [(0, 0), (12600, 0), (12600, 6600), (6600, 6600), (6600, 7500), (0, 7500)]
+        got, why = self.roof(stub)
+        self.assertIsNone(got)
+        self.assertIn("side 3 of the L, an inner eave, is 0.9 m long", why)
+        self.assertIn("take 1.5 m of it", why)
+        self.assertNotIn("shorter", why)
+
+    def test_an_eave_with_no_room_for_a_slope_gets_no_run(self):
+        """An inner side of exactly the reach and the wall: the valley's ear meets the gable's
+        wall, and no run of no pieces is returned for that side."""
+        snug = [(0, 0), (12600, 0), (12600, 6600), (6600, 6600), (6600, 8100), (0, 8100)]
+        runs, insts = self.roof(snug)
+        self.assertEqual(sorted(r["key"] for r in runs), ["h_roof_e0", "h_roof_e2", "h_roof_e5"])
+        self.assertTrue(all(r["count"] > 0 for r in runs))
+        self.assertEqual(len(insts), 6)
+
+    def test_an_l_must_be_square_at_every_corner(self):
+        skew = [(0, 0), (12600, 0), (12600, 6600), (6600, 6600), (6900, 9600), (0, 9600)]
+        got, why = self.roof(skew)
+        self.assertIsNone(got)
+        self.assertIn("neither a rectangle nor an L", why)
+
+    def test_a_building_asks_for_it_as_any_gable(self):
+        def row_(id_, role, size, high=2700, tags=(), **params):
+            return row(id_, role, size, high, tags, **params)
+        rows = [row_("frame", "wall", (3000, 300), pitch=3), row_("half", "filler", (1500, 300), pitch=1.5),
+                row_("post", "corner", (300, 300)), row_("door", "door", (1500, 300), pitch=1.5),
+                {"id": "corner_in", "tags": ["role:corner_in"], "bounds": [-1350, -150, 0, 150, 1350, 2700],
+                 "params": {"reach": 1.2}, "shared": {}},
+                row_("slope", "roof_slope", (1500, 3300), 3000, pitch=1.5, span=3.3),
+                row_("gable", "roof_gable", (3300, 300), 3000, span=3.3),
+                row_("hip", "roof_hip", (3300, 3300), 3000, span=3.3),
+                {"id": "valley", "tags": ["role:roof_valley"], "bounds": [-1200, -3300, 0, 3300, 1200, 3000],
+                 "params": {"span": 3.3, "reach": 1.2}, "shared": {}}]
+        a = {"storeys": 1, "storey_h": 2.7, "plinth": 0.3, "porch": 2, "walk_out": 3, "kit": "k", "roof": "gable",
+             "doors": [{"storey": 0, "side": 0, "at": 4.05}]}
+        out = L["plan"]("h", self.ELL, a, 10.0, None, None, kits=lambda w, h: L["kit_pieces"](rows, w, h))
+        self.assertFalse([n for n in out["notes"] if n["code"] == "roof_none"])
+        self.assertEqual(out["open"], [])                                                   # the L's walls close too
+        self.assertEqual(sorted(i["asset"] for i in out["instances"] if "_roof_" in i["key"]),
+                         ["gable"] * 4 + ["hip", "valley"])
+        self.assertEqual(sum(r["count"] for r in out["runs"] if r["asset"] == "slope"), 14)
 
 
 if __name__ == "__main__":

@@ -109,7 +109,56 @@ def stone(width, high):
     return [("stone", packgen.box(-w, 0.0, -t, w, high, t))]
 
 
+REACH = 1.2        # metres of each wall, and of each inner eave, an inside corner's piece takes
+
+
+def inside_corner(high, part="timber"):
+    """The piece for an inside corner of a wall: the notch the two walls leave (`T` square) and
+    `REACH` of each wall from it, an L. Placed by the notch's middle, which is the model's own
+    origin (the pack says `pivot = "origin"`); one leg runs along +x and one along +z."""
+    t = T / 2
+    return [(part, packgen.box(-t, 0.0, -t, t, high, REACH + t)),
+            (part, packgen.box(t, 0.0, -t, REACH + t, high, t))]
+
+
+def roof_hip(span, rise):
+    """The roof over the outer corner of an L: one span square, its eaves on its front (+y) and
+    its +x side, climbing from both to the hip, the diagonal from that corner to the opposite
+    one, which is as high as the ridge. Two solids, one either side of the hip."""
+    h = span / 2
+    low, far, top = (h, h, 0.0), (-h, -h, 0.0), (-h, -h, rise)
+    a, b = (-h, h, 0.0), (h, -h, 0.0)             # the two other corners
+    return [("slate", solid([[far, low, a], [far, a, top], [a, low, top], [far, low, top]])),
+            ("slate", solid([[far, b, low], [far, b, top], [b, low, top], [far, low, top]]))]
+
+
+def roof_valley(span, rise, reach):
+    """The roof at the inside corner of an L, placed by the corner itself (the model's own
+    origin): the span-square quarter of the roof beside the corner, where the two wings' inner
+    slopes meet along the valley, and `reach` of each inner eave beyond the corner. In the
+    asset's frame the corner is (0, 0), one wing's eave runs along y = 0 towards -x and climbs
+    towards -y, the other's along x = 0 towards +y and climbs towards +x; the valley is the
+    diagonal from (0, 0) to (span, -span). Two solids, one for each slope."""
+    s, r, R = span, reach, rise
+    one = [[(-r, -s, 0.0), (s, -s, 0.0), (0.0, 0.0, 0.0), (-r, 0.0, 0.0)],          # under
+           [(-r, -s, R), (s, -s, R), (0.0, 0.0, 0.0), (-r, 0.0, 0.0)],              # the slope
+           [(-r, -s, 0.0), (s, -s, 0.0), (s, -s, R), (-r, -s, R)],                   # under the ridge
+           [(-r, -s, 0.0), (-r, 0.0, 0.0), (-r, -s, R)],                              # its end
+           [(s, -s, 0.0), (0.0, 0.0, 0.0), (s, -s, R)]]                               # the valley's plane
+    two = [[(0.0, 0.0, 0.0), (s, -s, 0.0), (s, r, 0.0), (0.0, r, 0.0)],
+           [(0.0, 0.0, 0.0), (s, -s, R), (s, r, R), (0.0, r, 0.0)],
+           [(s, -s, 0.0), (s, r, 0.0), (s, r, R), (s, -s, R)],
+           [(0.0, r, 0.0), (s, r, 0.0), (s, r, R)],
+           [(0.0, 0.0, 0.0), (s, -s, 0.0), (s, -s, R)]]
+    return [("slate", solid(one)), ("slate", solid(two))]
+
+
 VILLAGE = {
+    # an L: the inside corner of the walls and of the base, the hip and the valley of the roof
+    "corner_in.glb": inside_corner(H),
+    "base_corner_in.glb": inside_corner(BASE, part="stone"),
+    "roof_hip.glb": roof_hip(SPAN, RISE),
+    "roof_valley.glb": roof_valley(SPAN, RISE, REACH),
     # the base: the wall under the floor, down to the ground
     "base.glb": stone(BAY, BASE),
     "base_half.glb": stone(HALF, BASE),
@@ -144,6 +193,7 @@ def revised(name):
         return head.replace("base   = 1.5                     # how far the base reaches below the floor\n", "") + tail
     base = base.replace('"base.glb"', '"shallow_base.glb"').replace('"base_half.glb"', '"shallow_base_half.glb"')
     base = base.replace('"base_post.glb"', '"shallow_base_post.glb"').replace("sink   = 1.5", "sink   = 0.5")
+    base = base.replace('"base_corner_in.glb"', '"shallow_base_corner_in.glb"')
     base = base.replace("sink  = 1.5", "sink  = 0.5")
     return head.replace("base   = 1.5 ", "base   = 0.5 ") + base + tail
 
@@ -151,7 +201,8 @@ def revised(name):
 def main():
     (HERE / "village").mkdir(exist_ok=True)
     files = dict(VILLAGE, **{"shallow_base.glb": stone(BAY, SHALLOW), "shallow_base_half.glb": stone(HALF, SHALLOW),
-                             "shallow_base_post.glb": stone(T, SHALLOW)})
+                             "shallow_base_post.glb": stone(T, SHALLOW),
+                             "shallow_base_corner_in.glb": inside_corner(SHALLOW, part="stone")})
     for name, parts in sorted(files.items()):
         (HERE / "village" / name).write_bytes(packgen.glb(parts))
     for name in ("bare", "shallow"):
