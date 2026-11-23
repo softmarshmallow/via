@@ -50,7 +50,7 @@ taxon = "structure/boiler"
 tags = ["role:wall", "variant:port"]
 mounts = { port = { at = [0, 0.15], connector = "pipe", face = 0, rise = 4.5 } }
 shared = "fcc06a9fde31421acd949824b44838a014db548a61908f510d3bf2dbc8090294"
-files = { "boiler_port.glb" = "6b3fea9969828f429f7346dfb8f562ec61632fba1adcf2e58f2b4b3ce2036d38" }
+files = { "boiler_port.glb" = "c77bf3a1bfc2facf2e97d9f9908657b2b7493c61ebd736d77051cf36b29e0783" }
 
 [asset.boiler_tile]
 bounds = [-0.75, -0.75, 0, 0.75, 0.75, 0.15]
@@ -102,7 +102,7 @@ taxon = "interior/room"
 tags = []
 mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [0, 6], connector = "door", face = 0 } }
 shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
-files = { "hall.glb" = "7420d9c0dd75add52e4e2dd8fb1ee64b1e2ffdf9fb3419c57d2fe66ab756a210" }
+files = { "hall.glb" = "d37875f7fd19f23388c8b8a5038d29297b55c7560cb02f3de580ad1ee902c10a" }
 
 [asset.hall_corner]
 bounds = [-1.5, 0, 0, 1.5, 3, 3]
@@ -120,7 +120,7 @@ taxon = "interior/room"
 tags = []
 mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [1.5, 1.5], connector = "door", face = 90 } }
 shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
-files = { "hall_corner.glb" = "3bb9dece043d2b5dcf4458cfac48de17f69dff54b2280a4a2972497792623a3b" }
+files = { "hall_corner.glb" = "98e8e50afd6411c6c8477d4845e5750f5c0451472d067ccbb1a686b33302e269" }
 
 [asset.hall_handed]
 bounds = [-1.5, 0, 0, 1.5, 6, 3]
@@ -138,7 +138,7 @@ taxon = "interior/room"
 tags = []
 mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [0.3, 6], connector = "door", face = 0 } }
 shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
-files = { "hall_handed.glb" = "8cf1be8cc3ec79fbc5e9275c1cb8bb177499b7c3a65f2c83e02a75833f6767f2" }
+files = { "hall_handed.glb" = "c937fc421f32bf0e197c96f525ecbdf9a3c6c8af8809259454f829b8049a8b06" }
 
 [asset.hall_hatch]
 bounds = [-1.5, 0, 0, 1.5, 6, 3]
@@ -156,7 +156,7 @@ taxon = "interior/room"
 tags = []
 mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [0, 6], connector = "hatch", face = 0 } }
 shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
-files = { "hall.glb" = "7420d9c0dd75add52e4e2dd8fb1ee64b1e2ffdf9fb3419c57d2fe66ab756a210" }
+files = { "hall.glb" = "d37875f7fd19f23388c8b8a5038d29297b55c7560cb02f3de580ad1ee902c10a" }
 
 [asset.pipe]
 bounds = [-1, -0.15, -0.15, 1, 0.15, 0.15]
@@ -229,7 +229,7 @@ tags = ["role:flange"]
 mounts = { plug = { at = [0, 0], connector = "steam", face = 0 } }
 params = "acce06f941836ef5bbc6a5cbae40470b3d8c5a9c8d0f8f9127d8669eb0436ce0"
 shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
-files = { "pipe_flange.glb" = "cabc828afaac38f8229f5ab8c76004286eb7494fd01ca166a46bc91349145e15" }
+files = { "pipe_flange.glb" = "fc8fec172876edc063fc3362133cb9ed56835a253439b86bef770830bd8c4c54" }
 
 [asset.pipe_riser]
 bounds = [-0.15, -0.5, -0.15, 0.15, 0.5, 3.15]
@@ -248,7 +248,7 @@ tags = ["role:riser"]
 mounts = { top = { at = [0, 0], connector = "pipe", face = 180, rise = 3 } }
 params = "63db570d9177f5bebc211eacc77741c650888c0fcc3c1c0d6652c69c9a61f24b"
 shared = "762081a3fd93f894b998676f987a75d847dbf12c4149413945e84488e8ad32b3"
-files = { "pipe_riser.glb" = "a0c6b23d1ecb58dd5b00c46c459510f9cba720059d3a87bad81be4edb703dec2" }
+files = { "pipe_riser.glb" = "dc3dbf4e0240e62040d50fa8b9486f897d18b368d25e498293adc2da771c132d" }
 
 [asset.pipe_slip]
 bounds = [-0.25, -0.15, -0.15, 0.25, 0.15, 0.15]
@@ -301,7 +301,7 @@ taxon = "interior/room"
 tags = []
 mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [3, 3], connector = "door", face = 90 } }
 shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
-files = { "room.glb" = "ba35c96f0ac1bab8408114e16b36fb8e3f14d86be65f0758ba2cb56101a3856e" }
+files = { "room.glb" = "8d2e8afaae63925d062596db42c91ecbde9d3e66938e4145287d6492991f8edb" }
 
 [asset.room_long]
 bounds = [-3, 0, 0, 3.128, 6, 3]
@@ -319,7 +319,7 @@ taxon = "interior/room"
 tags = []
 mounts = { in = { at = [0, 0], connector = "door", face = 180 }, out = { at = [3.128, 3], connector = "door", face = 90 } }
 shared = "96362b5ca9839776e9b7219fa5a1dca4174d7d3f9e823c57a32117a9e56806f9"
-files = { "room_long.glb" = "c2d0ab3b93458f84a3f80dfcd93553281f435dc3cead5dd57e01077dc8262486" }
+files = { "room_long.glb" = "7ced9d54585a1a885075bce75d60ccb430d9c3ce8f7fc205cda0ea09e6473093" }
 
 [asset.shed_door]
 bounds = [-2.8, -0.1, 0, 2.8, 0.1, 7.2]
@@ -371,7 +371,7 @@ taxon = "structure/shed"
 tags = ["role:wall", "variant:port"]
 mounts = { port = { at = [0, 0.2], connector = "pipe", face = 0, rise = 4.5 } }
 shared = "a05bb9b06a45cf499155235c68699bc59b29ed3423dda53ab2571938df32fd3e"
-files = { "shed_port.glb" = "b0f0391f6be8c37dca29f14fece0f3882007364e1c52cb4231d3cea66decdd31" }
+files = { "shed_port.glb" = "31e0d952b4f95f1ba0b93710428f7bdb98892f3810441d91f479b12bc47fb449" }
 
 [asset.shed_post]
 bounds = [-0.2, -0.2, 0, 0.2, 0.2, 7.2]

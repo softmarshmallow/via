@@ -174,6 +174,8 @@ pub struct Measured {
     /// What the main model covers in plan (3.4), in `raw`'s axes and millimetres; `None` where
     /// it is the rectangle of `raw` or nothing has area in plan.
     pub plan: Option<Vec<Vec<[i64; 2]>>>,
+    /// The main model's `mount_<name>` empties (2.7), in `raw`'s axes: name, origin, face.
+    pub mounts: Vec<(String, [i64; 3], i64)>,
 }
 
 /// Collects the diagnostics of one model asset.
@@ -399,6 +401,7 @@ pub fn measure(
         raw: None,
         triangles: 0,
         plan: None,
+        mounts: Vec::new(),
     };
     let main = match open_written(&root.root, file) {
         Ok((path, parts)) => {
@@ -501,6 +504,7 @@ pub fn measure(
     out.facts = facts;
     out.raw = Some(raw);
     out.triangles = main.measure.triangles;
+    out.mounts = main.measure.mounts.clone();
     // 3.4: traced only for an asset that asks (`plan = true`, or `footprint = "plan"`).
     out.plan = if want_plan {
         crate::asset_gltf::plan_rings(

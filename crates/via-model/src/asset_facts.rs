@@ -217,6 +217,15 @@ pub fn entry(a: &Asset) -> Vec<(&'static str, String)> {
                     .get(n)
                     .map(|r| format!(", rise = {}", len(*r)))
                     .unwrap_or_default();
+                // A name that is no bare key is quoted (F7's review: `door.001` wrote a dotted key).
+                let n = if !n.is_empty()
+                    && n.chars()
+                        .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+                {
+                    n.clone()
+                } else {
+                    basic(n)
+                };
                 format!(
                     "{n} = {{ at = [{}, {}], {c}face = {}{r} }}",
                     len(*x),
@@ -680,6 +689,30 @@ fn fill_from_facts(
     m.copies = copies;
     a.bounds = bounds;
     a.origin = origin;
+    // 2.7: mounts measured from the model are in the facts file; a stand-in takes them from there
+    // (the pack's own keys, read already, kept). F7's review: stand-ins lost every measured mount.
+    if let Some(t) = old.get("mounts").and_then(|t| fact_value(t)) {
+        for (n, m) in t.as_table()?.iter() {
+            if a.mounts.contains_key(n) {
+                continue;
+            }
+            let at = m.get("at")?.as_array()?;
+            let at = (fact_mm(at.first()?)?, fact_mm(at.get(1)?)?);
+            let face = m
+                .get("face")
+                .and_then(|f| via_num::parse_facing(&f.to_string()).ok())
+                .unwrap_or(0);
+            a.mounts.insert(n.clone(), (at, face));
+            if let Some(r) = m.get("rise").and_then(fact_mm).filter(|r| *r != 0) {
+                a.rises.insert(n.clone(), r);
+            }
+            if let Some(c) = m.get("connector").and_then(|c| c.as_str()) {
+                a.connectors
+                    .entry(n.clone())
+                    .or_insert_with(|| c.to_string());
+            }
+        }
+    }
     a.footprint = if a.footprint_plan {
         crate::pack::plan_footprint(&plan, &bounds).unwrap_or(footprint)
     } else {

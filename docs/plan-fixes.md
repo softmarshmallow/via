@@ -169,3 +169,17 @@ Changed so far:
   on the model (`pack.bad_model`) and a tiny one measuring silently to nothing: a factor outside
   0.001 to 1000 is now `pack.range` on `scale`; and several branches untested (now cased: a
   factor of 0.5 in a pack's `[defaults]`).
+- **F7, 2026-11-24.** Mounts measured from the model (spec/assets.md 2.7): an empty node named
+  `mount_<name>` is the asset's mount, its `at`, `rise` and `face` from its origin and its +Z, in
+  the asset frame as every measured fact is; the pack adds what a model cannot say (`connector`),
+  and what it also states is held to the node (`asset.mount_off`, new). The works kit's 51 mount
+  numbers moved into its models (packgen writes empties; the table in make_kit.py was worked from
+  the old pack and every mount re-measures as it was stated); the `low` case, a port's `rise`
+  restated a metre under its hole, is now said at `via pack accept`, which is the review's "a
+  port's hole held to its mount".
+  The independent review found `--stand-ins` broken (measured mounts were written to the facts
+  file and never read back), a node named `mount_door.001` writing a dotted key that corrupted the
+  facts file (names are quoted now, and a node that names no id, a reserved name or a second node
+  of one name is `pack.bad_model`), a malformed `at` or `face` silent beside a node (`doc.type`),
+  `face` lost on a Z-up model (now read from the node's own axis the pack's `front` names) and
+  `sink` left out of a measured `rise` (subtracted). All mended, with cases.

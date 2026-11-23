@@ -185,8 +185,10 @@ def f32(x: float) -> float:
     return struct.unpack("<f", struct.pack("<f", x))[0]
 
 
-def glb(parts: list[tuple[str, list[Tri]]]) -> bytes:
-    """One mesh, one primitive per part, flat normals, planar UVs, one shared texture."""
+def glb(parts: list[tuple[str, list[Tri]]], mounts: list[tuple[str, tuple[float, float, float], float]] = ()) -> bytes:
+    """One mesh, one primitive per part, flat normals, planar UVs, one shared texture; and each of
+    `mounts`, `(name, (x, y, z), turn)` in glTF axes, as an empty node `mount_<name>` at that point
+    whose +Z is turned `turn` degrees about +Y (spec/assets.md 2.7)."""
     bin_ = bytearray()
     views: list[dict] = []
     accessors: list[dict] = []
@@ -243,8 +245,12 @@ def glb(parts: list[tuple[str, list[Tri]]]) -> bytes:
     doc = {
         "asset": {"version": "2.0", "generator": "via tools/packgen"},
         "scene": 0,
-        "scenes": [{"nodes": [0]}],
-        "nodes": [{"mesh": 0}],
+        "scenes": [{"nodes": list(range(1 + len(mounts)))}],
+        "nodes": [{"mesh": 0}] + [
+            {"name": f"mount_{n}", "translation": [float(x) for x in at],
+             "rotation": [0.0, math.sin(math.radians(turn) / 2), 0.0, math.cos(math.radians(turn) / 2)]}
+            for n, at, turn in mounts
+        ],
         "meshes": [{"primitives": primitives}],
         "materials": [
             {

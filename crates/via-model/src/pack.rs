@@ -1481,6 +1481,8 @@ fn read_asset(
         );
     }
     let mut plan: Vec<Vec<(i64, i64)>> = Vec::new();
+    let mut measured_mounts: BTreeMap<String, ((i64, i64), i64, i64)> = BTreeMap::new();
+    let mut model_measured = false;
     let (size, triangles, bounds) = if let Some(file) = &file {
         let detail: Vec<String> = match a.get("detail") {
             None => Vec::new(),
@@ -1614,8 +1616,46 @@ fn read_asset(
                 raw: None,
                 triangles: 0,
                 plan: None,
+                mounts: Vec::new(),
             },
         };
+        // 2.7: the model's mount empties, moved by the pivot as `bounds` is: `at` in plan, `rise`
+        // its height over the pivot, and its face.
+        // `rise` is counted from what the instance stands on, its pivot lowered by `sink`.
+        let sink_mm = declared("sink")
+            .and_then(double)
+            .map_or(0, |v| via_num::round_to_lattice(v * 1000.0).unwrap_or(0));
+        for (n, q, face) in &m.mounts {
+            let p = m.facts.pivot_mm;
+            if !via_doc::is_id(n)
+                || matches!(n.as_str(), "start" | "end" | "ground")
+                || measured_mounts.contains_key(n)
+            {
+                let why = if measured_mounts.contains_key(n) {
+                    format!("two nodes of the model are named `mount_{n}`")
+                } else if via_doc::is_id(n) {
+                    format!("the node `mount_{n}` names a mount `{n}`, a name a mount may not take")
+                } else {
+                    format!("the node `mount_{n}` names no id (an exporter's `.001`?)")
+                };
+                own.push(text::diag(
+                    codes::pack::BAD_MODEL,
+                    header.0.clone(),
+                    header.1.clone(),
+                    &why,
+                    &format!(
+                        "rename the node in the model, e.g. `mount_{}`",
+                        via_doc::repair_id(n)
+                    ),
+                ));
+                continue;
+            }
+            measured_mounts.insert(
+                n.clone(),
+                ((q[0] - p[0], q[1] - p[1]), q[2] - p[2] - sink_mm, *face),
+            );
+        }
+        model_measured = m.raw.is_some();
         // 3.4: the plan moved by the pivot as `bounds` is, rings of points in the asset frame.
         plan = m.plan.as_ref().map_or_else(Vec::new, |rings| {
             let p = m.facts.pivot_mm;
@@ -1949,9 +1989,14 @@ fn read_asset(
                     }
                 }
             }
+            let node = measured_mounts.get(name).copied();
             // `rise` (2.7, R75): lattice metres above the surface the instance stands on.
             match m.get("rise") {
-                None => {}
+                None => {
+                    if let Some((_, rz, _)) = node.filter(|n| n.1 != 0) {
+                        rises.insert(name.clone(), rz);
+                    }
+                }
                 Some(v) => match num_text(v).and_then(|t| via_num::parse_length(&t).ok()) {
                     Some(0) => {}
                     Some(rise) => {
@@ -1971,15 +2016,84 @@ fn read_asset(
                 .and_then(lengths)
                 .filter(|l| l.len() == 2)
                 .map(|l| (l[0], l[1]));
+            if m.get("at").is_some() && at.is_none() {
+                r.fault(
+                    codes::doc::TYPE,
+                    &format!("{subject}.mount.{name}"),
+                    Some("at"),
+                    "`at` takes two lengths, `[x, y]` in the asset frame",
+                    "write `at = [x, y]`, or take it out to build by the model's node",
+                );
+            }
             let face = m
                 .get("face")
                 .and_then(num_text)
-                .and_then(|t| via_num::parse_facing(&t).ok())
-                .unwrap_or(0);
+                .and_then(|t| via_num::parse_facing(&t).ok());
+            if m.get("face").is_some() && face.is_none() {
+                r.fault(
+                    codes::doc::TYPE,
+                    &format!("{subject}.mount.{name}"),
+                    Some("face"),
+                    "`face` takes a bearing in degrees",
+                    "write `face = <degrees>`, or take it out to build by the model's node",
+                );
+            }
+            // 2.7: what the pack writes is held to the model's node, and built.
+            if let Some(((nx, ny), nr, nf)) = node {
+                let mut off: Vec<String> = Vec::new();
+                if let Some((x, y)) = at.filter(|(x, y)| (x - nx).abs() > 1 || (y - ny).abs() > 1) {
+                    off.push(format!(
+                        "`at` [{}, {}] where the node is at [{}, {}]",
+                        via_num::write_length(x),
+                        via_num::write_length(y),
+                        via_num::write_length(nx),
+                        via_num::write_length(ny)
+                    ));
+                }
+                let stated_rise = rises.get(name).copied().unwrap_or(0);
+                let rise_read = m
+                    .get("rise")
+                    .and_then(num_text)
+                    .is_some_and(|t| via_num::parse_length(&t).is_ok());
+                if rise_read && (stated_rise - nr).abs() > 1 {
+                    off.push(format!(
+                        "`rise` {} where the node is {} up",
+                        via_num::write_length(stated_rise),
+                        via_num::write_length(nr)
+                    ));
+                }
+                if let Some(f) = face {
+                    let d = (f - nf).rem_euclid(360_000);
+                    if d.min(360_000 - d) > 500 {
+                        off.push(format!(
+                            "`face` {} where the node faces {}",
+                            f as f64 / 1000.0,
+                            nf as f64 / 1000.0
+                        ));
+                    }
+                }
+                if !off.is_empty() {
+                    own.push(
+                        text::diag(
+                            codes::asset::MOUNT_OFF,
+                            header.0.clone(),
+                            header.1.clone(),
+                            &format!("the mount `{name}` is not where the model's node `mount_{name}` is: {}", off.join("; ")),
+                            "take the key out of the pack to build by the model, or move the node in the model",
+                        )
+                        .with("mount", name.as_str()),
+                    );
+                }
+            }
+            let at = at.or(node.map(|n| n.0));
+            let face = face.or(node.map(|n| n.2)).unwrap_or(0);
             match at {
                 Some(at) => {
                     mounts.insert(name.clone(), (at, face));
                 }
+                // A model not measured here (its files absent, `--stand-ins`): the facts file gives
+                // a measured mount's `at` (asset_facts.rs), or says the entry is stale.
+                None if file.is_some() && !model_measured => {}
                 None => r.fault(
                     codes::doc::MISSING_KEY,
                     &subject,
@@ -1987,6 +2101,15 @@ fn read_asset(
                     &format!("the mount `{name}` has no `at`"),
                     "write `at = [x, y]` in the asset frame",
                 ),
+            }
+        }
+    }
+    // 2.7: a mount the model carries and the pack does not name is the asset's all the same.
+    for (n, ((x, y), rz, f)) in &measured_mounts {
+        if !mounts.contains_key(n) {
+            mounts.insert(n.clone(), ((*x, *y), *f));
+            if *rz != 0 {
+                rises.insert(n.clone(), *rz);
             }
         }
     }

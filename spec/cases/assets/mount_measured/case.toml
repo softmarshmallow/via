@@ -1,0 +1,45 @@
+format    = "via-case-1"
+summary   = "assets.md 2.7 (the fix plan's F7): a model's `mount_<name>` empties are its mounts, `at`, `rise` and `face` measured (a port on the front 1.5 m up; one on the right side facing right that the pack never names); the pack adds the connector. A mount the pack states off its node is asset.mount_off, naming both; a mount with neither node nor `at` is doc.missing_key; a node named `mount_door.001` or `mount_start` is pack.bad_model; `sink` lowers a measured rise; an `at` of the wrong form beside a node is doc.type (F7 review)."
+milestone = 7
+actions   = ["accept", "off", "names", "sink"]
+
+[action.accept]
+via         = ["pack", "accept", "pack.toml"]
+exit        = 0
+diagnostics = "includes"
+
+[action.accept.file.facts]
+path   = "pack.facts.toml"
+equals = "expected/pack.facts.toml"
+
+[action.off]
+via         = ["pack", "check", "off.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.off.diag.off]
+code    = "asset.mount_off"
+subject = "asset.block"
+data    = { mount = "port" }
+
+[action.off.diag.missing]
+code    = "doc.missing_key"
+subject = "asset.block.mount"
+
+[action.names]
+via         = ["pack", "check", "names.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.names.diag.bad]
+code    = "pack.bad_model"
+subject = "asset.n"
+
+[action.sink]
+via         = ["pack", "check", "sink.toml"]
+exit        = 1
+diagnostics = "includes"
+
+[action.sink.diag.type]
+code    = "doc.type"
+subject = "asset.block.mount.port.at"

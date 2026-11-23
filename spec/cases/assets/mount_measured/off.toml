@@ -1,0 +1,11 @@
+# The port restated a metre low and a quarter turned (works' `low`, K9): held to the node.
+[asset.block]
+file = "block.glb"
+
+[asset.block.mount.port]
+connector = "pipe"
+rise      = 0.5
+face      = 90
+
+[asset.block.mount.door]          # no such node, and no `at`: as before
+connector = "door"

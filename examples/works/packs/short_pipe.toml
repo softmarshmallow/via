@@ -40,9 +40,6 @@ taxon  = "structure/shed"
 tags   = ["role:wall", "variant:port"]
 
 [asset.shed_port.mount.port]
-at        = [0, 0.2]
-face      = 0
-rise      = 4.5                   # the shed's port
 connector = "pipe"
 
 [asset.shed_door]                 # a panel's length with an opening 3.0 m wide
@@ -77,9 +74,6 @@ taxon  = "structure/boiler"
 tags   = ["role:wall", "variant:port"]
 
 [asset.boiler_port.mount.port]
-at        = [0, 0.15]
-face      = 0
-rise      = 4.5
 connector = "pipe"
 
 [asset.boiler_corner]
@@ -136,9 +130,6 @@ tags   = ["role:riser"]
 params = { rise = 3.0, reach = 0.5 }
 
 [asset.pipe_riser.mount.top]
-at        = [0, 0]
-face      = 180                   # a leg arrives at it from the riser's front
-rise      = 3.0
 connector = "pipe"
 
 # The flange: the plug a port takes. Its mount is on the pipe's end, facing along it.
@@ -149,8 +140,6 @@ tags   = ["role:flange"]
 params = { reach = 0.5 }
 
 [asset.pipe_flange.mount.plug]
-at        = [0, 0]
-face      = 0
 connector = "pipe"                # the flange
 
 [asset.pipe_cap]
@@ -183,13 +172,9 @@ file  = "room.glb"
 taxon = "interior/room"
 
 [asset.room.mount.in]
-at        = [0, 0]
-face      = 180
 connector = "door"
 
 [asset.room.mount.out]
-at        = [3, 3]
-face      = 90
 connector = "door"
 
 [asset.room_long]                 # the same room on another module: 128 mm longer to its way out
@@ -197,13 +182,9 @@ file  = "room_long.glb"
 taxon = "interior/room"
 
 [asset.room_long.mount.in]
-at        = [0, 0]
-face      = 180
 connector = "door"
 
 [asset.room_long.mount.out]
-at        = [3.128, 3]
-face      = 90
 connector = "door"
 
 [asset.hall]                      # 3 m wide and 6 m long, straight
@@ -211,13 +192,9 @@ file  = "hall.glb"
 taxon = "interior/room"
 
 [asset.hall.mount.in]
-at        = [0, 0]
-face      = 180
 connector = "door"
 
 [asset.hall.mount.out]
-at        = [0, 6]
-face      = 0
 connector = "door"
 
 [asset.hall_handed]               # a hall whose way out is 0.3 m to the right of its way in
@@ -225,13 +202,9 @@ file  = "hall_handed.glb"
 taxon = "interior/room"
 
 [asset.hall_handed.mount.in]
-at        = [0, 0]
-face      = 180
 connector = "door"
 
 [asset.hall_handed.mount.out]
-at        = [0.3, 6]
-face      = 0
 connector = "door"
 
 [asset.hall_hatch]                # the hall with another opening at its way out
@@ -239,13 +212,9 @@ file  = "hall.glb"
 taxon = "interior/room"
 
 [asset.hall_hatch.mount.in]
-at        = [0, 0]
-face      = 180
 connector = "door"
 
 [asset.hall_hatch.mount.out]
-at        = [0, 6]
-face      = 0
 connector = "hatch"
 
 [asset.hall_corner]               # a hall's corner, 3 m square: in at the back, out to the right
@@ -253,13 +222,9 @@ file  = "hall_corner.glb"
 taxon = "interior/room"
 
 [asset.hall_corner.mount.in]
-at        = [0, 0]
-face      = 180
 connector = "door"
 
 [asset.hall_corner.mount.out]
-at        = [1.5, 1.5]
-face      = 90
 connector = "door"
 
 [material.ground]

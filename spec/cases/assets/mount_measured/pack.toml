@@ -1,0 +1,6 @@
+# assets.md 2.7 (the fix plan's F7): mounts measured from the model's `mount_<name>` empties.
+[asset.block]
+file = "block.glb"
+
+[asset.block.mount.port]          # what the model cannot say: its connector
+connector = "pipe"

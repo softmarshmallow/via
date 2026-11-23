@@ -98,6 +98,16 @@ Bad:   assets = ["@prop/b"]   (no asset has taxon prop/b)
 Fixed: assets = ["@prop/a"]
 """
 
+[asset.mount_off]
+severity = "warning"
+chapter = "assets"
+milestone = 7
+summary = "A mount the pack writes differs from the model's `mount_<name>` node (2.7): its `at` or `rise` by more than 1 mm, or its `face` by more than 0.5 degrees; names both. The pack's value is built."
+explain = """
+A mount the pack writes differs from the model's mount_<name> node (2.7): its at or rise by more than 1 mm, or its face by more than 0.5 degrees; names both. The pack's value is built.
+To fix: Take the key out of the pack to build by the model, or move the node in the model.
+"""
+
 [asset.pivot_moved]
 severity = "info"
 chapter = "assets"

@@ -132,6 +132,9 @@ pub struct Measure {
     /// Every triangle in plan, in `raw`'s axes and millimetres: what [`plan_rings`] traces where
     /// an asset asks for its plan (3.4).
     pub plan_tris: Vec<[[i64; 2]; 3]>,
+    /// Each `mount_<name>` empty (`assets.md` 2.7): its name, its origin in `raw`'s axes and
+    /// millimetres, and the bearing of its +Z in plan, millidegrees clockwise from the front.
+    pub mounts: Vec<(String, [i64; 3], i64)>,
 }
 
 /// A model read: its JSON, and the binary chunk of a `.glb`.
@@ -366,6 +369,7 @@ impl Model {
             triangles: 0,
             want_plan,
             scale,
+            mounts: Vec::new(),
             plan_tris: Vec::new(),
             on_path: BTreeSet::new(),
         };
@@ -394,6 +398,7 @@ impl Model {
             triangles: walk.triangles,
             untextured,
             plan_tris: walk.plan_tris,
+            mounts: walk.mounts,
         })
     }
 }
@@ -497,6 +502,7 @@ struct Walk<'a> {
     want_plan: bool,
     /// The model's units to metres (`assets.md` 2.4, `scale`).
     scale: f64,
+    mounts: Vec<(String, [i64; 3], i64)>,
     plan_tris: Vec<[[i64; 2]; 3]>,
     on_path: BTreeSet<usize>,
 }
@@ -514,6 +520,40 @@ impl Walk<'_> {
             return Err(bad(Some(&here), "the glTF nodes form a cycle"));
         }
         let world = mul(parent, &local(node, &here)?);
+        // 2.7: an empty named `mount_<name>` is a mount, measured as a vertex is.
+        if node.get("mesh").is_none() {
+            if let Some(name) = node
+                .get("name")
+                .and_then(Json::as_str)
+                .and_then(|n| n.strip_prefix("mount_"))
+                .filter(|n| !n.is_empty())
+            {
+                let o = self.axes.map([world[0][3], world[1][3], world[2][3]]);
+                let mut at = [0i64; 3];
+                for (k, v) in o.iter().enumerate() {
+                    at[k] = via_num::round_to_lattice(v * 1000.0 * self.scale).map_err(|_| {
+                        bad(
+                            Some(&here),
+                            "a mount node lies outside the lattice, or is not finite",
+                        )
+                    })?;
+                }
+                // The node faces the way its own axis named by the pack's `front` points, so a node
+                // at rest faces the asset's front whatever `up` is (F7's review: +Z lost every turn
+                // of a Z-up model).
+                let (fi, fs) = (self.axes.front.index, self.axes.front.sign as f64);
+                let d = self
+                    .axes
+                    .map([world[0][fi] * fs, world[1][fi] * fs, world[2][fi] * fs]);
+                let face = if d[0].abs() < 1e-9 && d[1].abs() < 1e-9 {
+                    0
+                } else {
+                    let deg = via_num::atan2(d[0], d[1]) * (180.0 / via_num::PI);
+                    via_num::normalise_facing(via_num::round_to_lattice(deg * 1000.0).unwrap_or(0))
+                };
+                self.mounts.push((name.to_string(), at, face));
+            }
+        }
         if let Some(mesh) = node.get("mesh") {
             let mi = mesh
                 .as_index()

@@ -25,6 +25,10 @@
 # no longer writes 11 numbers (64 to 53). Nothing built moved. Recorded with F3b: F3's rebuild did
 # not show this row, which F3b's review found failing at F3's commit.
 
+# The fix plan's F7: the models carry their mounts (empty nodes, spec/assets.md 2.7), and the pack
+# states only connectors. `low` states its port's `rise` (3.5) against the node (4.5): one
+# `asset.mount_off` warning, the port's hole held to its mount; it builds as before.
+
 # ------------------------------------------------------------------------------------------ base
 # The works as written: two buildings, two pipes and six room pieces, 64 numbers. `pipes`
 # returns 6 legs and 36 pieces; every pipe piece's end lies on the next one's (27 joins, none
@@ -455,7 +459,7 @@ band    = [2, 2]
 
 [low.warnings]
 measure = "warnings"
-band    = [0, 0]
+band    = [1, 1]
 
 [low.gap]
 measure = "gap"

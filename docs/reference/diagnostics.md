@@ -11,12 +11,12 @@ Diagnostics table holds its row, and the `data` fields its records carry. `data.
 added where the row gives a nearest name (`spec/diagnostics.md` 1.4); a row that gives the
 nearest value, resolution, candidate or instance does not count as one.
 
-363 codes in 23 groups. 0 have no bad and fixed example yet; their explain text is the
+364 codes in 23 groups. 1 have no bad and fixed example yet; their explain text is the
 chapter's summary and hint.
 
 | Group | Chapter | Codes |
 |---|---|---|
-| [`asset`](#asset) | `spec/assets.md` | 18 |
+| [`asset`](#asset) | `spec/assets.md` | 19 |
 | [`authority`](#authority) | `spec/authority.md` | 19 |
 | [`build`](#build) | `spec/build.md` | 12 |
 | [`check`](#check) | `spec/build.md` | 14 |
@@ -51,6 +51,7 @@ chapter's summary and hint.
 | `asset.detail_pivot` | warning | 2 |  | A lower-detail copy's pivot differs from the main model's by more than 1 mm. |
 | `asset.empty` | error | 2 |  | A model has no scene or no triangles. |
 | `asset.empty_selection` | error | 1 | `nearest` | A selection or list filter names a declared taxon, or a tag, with no asset. |
+| `asset.mount_off` | warning | 7 |  | A mount the pack writes differs from the model's `mount_<name>` node (2.7): its `at` or `rise` by more than 1 mm, or its `face` by more than 0.5 degrees; names both. The pack's value is built. |
 | `asset.pivot_moved` | info | 2 |  | A model's origin is not where its pivot rule puts the pivot; the build moved it by `origin`. |
 | `asset.point_footprint` | info | 2 |  | A measured footprint has zero area; the asset has a point footprint. |
 | `asset.refiled` | info | 2 |  | An asset's `taxon` or `tags` differ from the facts file. |
@@ -147,6 +148,15 @@ assets.
 To fix: Select the taxon or tag the hint names, or give an asset that taxon.
 Bad:   assets = ["@prop/b"]   (no asset has taxon prop/b)
 Fixed: assets = ["@prop/a"]
+```
+
+### `asset.mount_off`
+
+warning, milestone 7, `spec/assets.md`.
+
+```text
+A mount the pack writes differs from the model's mount_<name> node (2.7): its at or rise by more than 1 mm, or its face by more than 0.5 degrees; names both. The pack's value is built.
+To fix: Take the key out of the pack to build by the model, or move the node in the model.
 ```
 
 ### `asset.pivot_moved`

@@ -1,0 +1,8 @@
+# Sunk 0.5 m: the port's rise is counted from what the instance stands on, 1.5 - 0.5.
+[asset.block]
+file = "block.glb"
+sink = 0.5
+
+[asset.block.mount.port]
+connector = "pipe"
+at        = "here"                # not two lengths: said, the node built

@@ -322,11 +322,22 @@ kind mount.
 
 | Key | Takes | Meaning |
 |---|---|---|
-| `at` | point | Plan position in the asset frame, lattice metres. Required. It may lie outside `bounds` (a doorstep in front of a door). Its height is never written: it is the surface's (`surfaces.md` 3.1). |
+| `at` | point | Plan position in the asset frame, lattice metres. Required, unless the model carries the mount (below). It may lie outside `bounds` (a doorstep in front of a door). Its height is never written: it is the surface's (`surfaces.md` 3.1). |
 | `face` | number | A bearing in the asset frame, 0 = the asset's front, clockwise (`numbers.md` 2). Default 0. The way a walker faces as it enters through the mount (`surfaces.md` 3.4's `turn`). |
 | `connector` | string | (M5) What joint it is: a free word compared only for equality, as on a kind mount (`surfaces.md` 3.2, 3.4: `surface.connector`, `surface.unmet`). Default none. From K9 two instances' mounts with connectors at one plan point answer each other with nothing written (a joint, `surfaces.md` 3.3, R76). |
 | `rise` | number | (K9, R75) How far the mount stands above the surface its instance stands on, lattice metres; default 0, negative allowed. A hole 5 m up a wall piece is a mount with `rise = 5`. Its height in a build is that surface's at the mount's plan point plus `rise` times the instance's `scale` (`surfaces.md` 3.2). |
 
+- **Measured from the model** (the fix plan's F7). A node of a model's scene with no mesh, named
+  `mount_<name>` (an empty, as an engine's socket is), is the asset's mount `<name>`: its origin,
+  mapped by `front`, `up` and `scale` and moved by the pivot as `bounds` is, gives `at` (its plan
+  position, on the lattice) and `rise` (its height over the pivot); its own +Z, the way a glTF
+  asset faces, gives `face` (the bearing of that axis in plan, to the millidegree; 0 where it
+  points straight up or down). The pack's table for that mount, where there is one, adds what a
+  model cannot say (`connector`). A key the pack also writes is held to the model: an `at` or a
+  `rise` more than 1 mm from the node's, or a `face` more than 0.5 degrees from it, is
+  `asset.mount_off` (warning), naming both; the pack's value is the one built, as every declared
+  fact overrides a measured one (2.5). A mount the pack writes and the model does not carry needs
+  its `at`, as before. Measured mounts are in the facts file with the rest (4.1).
 - No other key is taken: each is `doc.unknown_key` on the mount, with the nearest key. `t` and
   `offset` are not taken because an asset has no path; `surface` and `meets` are a kind mount's
   (`surfaces.md` 3.1), and each has its own hint.
@@ -1052,6 +1063,7 @@ has the "file" location form with `data.pointer` (3.1). Codes of other chapters 
 | `asset.remodelled` | info | 2 | An asset's files, triangles, colour or params changed and its placement facts did not. | None needed; accept to record it. |
 | `asset.refiled` | info | 2 | An asset's `taxon` or `tags` differ from the facts file. | Review what selections now pick, then accept. |
 | `asset.revised` | warning | 2 | An asset's placement facts differ from the facts file; names every instance in the build. | Review the change report, then run `via pack accept PACK`. |
+| `asset.mount_off` | warning | 7 | A mount the pack writes differs from the model's `mount_<name>` node (2.7): its `at` or `rise` by more than 1 mm, or its `face` by more than 0.5 degrees; names both. The pack's value is built. | Take the key out of the pack to build by the model, or move the node in the model. |
 | `asset.stand_in_stale` | error | 2 | With `--stand-ins`, the facts file is missing a used asset or disagrees with the pack. | Run `via pack accept PACK` with the files present. |
 
 ## Conformance

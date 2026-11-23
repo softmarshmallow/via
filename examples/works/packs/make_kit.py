@@ -205,10 +205,28 @@ WORKS = {
     "hall_corner.glb": corner_hall(),
 }
 
+# Each model's mounts as empty nodes `mount_<name>` (spec/assets.md 2.7, the fix plan's F7), in glTF
+# axes: `(name, (x, y, z), turn)`, the node's +Z turned `turn` degrees about +Y. The pack then names
+# only what a model cannot say, a mount's connector. Worked once from what works.toml had stated
+# (asset x = -model x, y = model z, z = model y; a face of f is a turn of -f) and held to it: every
+# mount measures as it was stated.
+MOUNTS = {
+    "boiler_port.glb": [('port', (0, 4.5, 0.15), 0)],
+    "hall.glb": [('in', (0, 0, 0), -180), ('out', (0, 0, 6), 0)],
+    "hall_corner.glb": [('in', (0, 0, 0), -180), ('out', (-1.5, 0, 1.5), -90)],
+    "hall_handed.glb": [('in', (0, 0, 0), -180), ('out', (-0.3, 0, 6), 0)],
+    "pipe_flange.glb": [('plug', (0, 0, 0), 0)],
+    "pipe_riser.glb": [('top', (0, 3.0, 0), -180)],
+    "room.glb": [('in', (0, 0, 0), -180), ('out', (-3, 0, 3), -90)],
+    "room_long.glb": [('in', (0, 0, 0), -180), ('out', (-3.128, 0, 3), -90)],
+    "shed_port.glb": [('port', (0, 4.5, 0.2), 0)],
+}
+
 REVISED = {
     # name: (what the pack is, the text it changes, what it changes it to)
     "low": ("the shed's port stated 3.5 m up, a metre under the pipe it is made for",
-            "rise      = 4.5                   # the shed's port", "rise      = 3.5                   # the shed's port"),
+            "[asset.shed_port.mount.port]\n",
+            "[asset.shed_port.mount.port]\nrise      = 3.5                   # stated, a metre under the model's node\n"),
     "short_pipe": ("the straight piece's model exported 0.2 m short of the pitch its pack still states",
                    'file   = "pipe.glb"', 'file   = "pipe_short.glb"'),
     "wrong_plug": ("the flange saying another connector than the ports'",
@@ -230,7 +248,7 @@ def revised(name):
 def main():
     (HERE / "works").mkdir(exist_ok=True)
     for name, parts in sorted(WORKS.items()):
-        (HERE / "works" / name).write_bytes(packgen.glb(parts))
+        (HERE / "works" / name).write_bytes(packgen.glb(parts, MOUNTS.get(name, ())))
     if (HERE / "works.toml").exists():
         for name in REVISED:
             (HERE / f"{name}.toml").write_text(revised(name))

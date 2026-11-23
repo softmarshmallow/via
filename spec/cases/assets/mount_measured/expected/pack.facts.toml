@@ -1,0 +1,17 @@
+# Written by via pack accept. Do not edit.
+
+[asset.block]
+bounds = [-1, -1, 0, 1, 1, 2]
+origin = [0, 0, 0]
+footprint = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+triangles = 12
+front = "+z"
+up = "+y"
+pivot = "base_centre"
+solidity = "solid"
+collision = "none"
+sink = 0
+colour = [0.8, 0.8, 0.8]
+tags = []
+mounts = { port = { at = [0, 1], connector = "pipe", face = 0, rise = 1.5 }, side = { at = [1, 0], face = 90, rise = 0.5 } }
+files = { "block.glb" = "ffd5b0abeafc7a903e65bbd6bc67ef487c09b10f198e6603a8fc71b9153db8b1" }
