@@ -7,6 +7,7 @@
 
 import os
 import runpy
+import shutil
 import tomllib
 import unittest
 
@@ -160,6 +161,16 @@ class CourtPlot(unittest.TestCase):
             def fields(self, names, **kw):
                 raise LookupError("no surface")
         self.assertEqual(K["read_level"](NoField({}), ring), 0.0)
+
+        # a plot past the world's edge is read inside it only: its corners out there are left out
+        # (F2's review: the corners were read, and the step raised `formula.outside_field`)
+        class Edge(TC["FakeStep"]):
+            def eval(self, formula, x, y):
+                assert all(0 <= v <= 4000 for v in x + y), (x, y)
+                return [10.0] * len(x)
+        e = Edge({})
+        e.grid = {"extent_mm": [0, 0, 4000, 4000], "resolution_mm": 1000, "nx": 5, "ny": 5}
+        self.assertEqual(K["read_level"](e, [(3000, 1000), (6000, 1000), (6000, 2000), (3000, 2000)]), 10.0)
 
     def test_the_step_returns_the_plot_and_counts_the_buildings_alone(self):
         s = TC["CourtStep"]().run_step(ground="level")
@@ -406,6 +417,213 @@ class PlotHeld(unittest.TestCase):
         self.assertIn("plot_lost", C["EXPLAIN"])
         self.assertEqual(C["FOOT_STEP"], 500)
         self.assertEqual(C["FOOT_SEEN"], 0.05)
+
+
+
+class OffPlot(unittest.TestCase):
+    """check.py rules 13 and 14 (the fix plan's F2): ground over a floor off a plot, and water at a
+    wall, for every building."""
+
+    RING = PlotHeld.RING
+
+    def features(self, plot=False, **b):
+        a = {"storeys": 1, "plinth": 0.3, "kit": "k", **b}
+        f = [feat("h", "building", self.RING, **a), feat("lay#h_s0", "storey", self.RING, level=10.3)]
+        return f + ([feat("lay#h_plot", "plot", PlotHeld.PLOT, level=10.0)] if plot else [])
+
+    def foot(self, heights):
+        return {"h": [(x, y, heights(x, y)) for x, y in C["foot_points"](self.RING)]}
+
+    def test_every_building_with_a_ground_storey_stands_and_a_yard_does_not(self):
+        (b, floor), = C["standing"](self.features())
+        self.assertEqual((b["name"], floor), ("h", 10.3))
+        self.assertEqual(C["standing"](self.features(storeys=0)), [])
+        self.assertEqual(C["standing"](self.features(), skip={"h"}), [])
+
+    def test_ground_over_the_floor_off_a_plot_is_said(self):
+        """A house stepping with its land: 0.25 m over its floor along its uphill (north) wall."""
+        (r,) = C["grounds_over"](C["standing"](self.features()), self.foot(lambda x, y: 10.55 if y >= 18000 else 10.0))
+        sev, code, subject, msg, hint, data, pos = r
+        self.assertEqual((sev, code, subject), ("warning", "ground_over", "h"))
+        self.assertAlmostEqual(data["over"], 0.25, places=6)
+        self.assertEqual(data["length"], 10.0)
+        self.assertIn("the land shows through the floor", msg)
+        self.assertIn('`ground = "level"`', hint)
+        self.assertEqual(pos[1], 18.0)
+        # within 0.05 m of the floor: nothing
+        self.assertEqual(C["grounds_over"](C["standing"](self.features()), self.foot(lambda x, y: 10.349)), [])
+
+    def test_a_wall_in_water_is_said_whether_or_not_the_floor_is_dry(self):
+        st = C["standing"](self.features())
+        ground = self.foot(lambda x, y: 10.0)
+        # 0.2 m of water along the south wall: the floor (10.3) stands 0.1 m above it
+        (r,) = C["in_water"](st, ground, self.foot(lambda x, y: 10.2 if y <= 10000 else 10.0))
+        self.assertEqual((r[0], r[1], r[2]), ("warning", "in_water", "h"))
+        self.assertAlmostEqual(r[5]["depth"], 0.2, places=6)
+        self.assertEqual(r[5]["over"], 0.0)
+        self.assertEqual(r[5]["length"], 10.0)
+        self.assertIn("stands 0.100 m above the water", r[3])
+        # 0.5 m of water: over the floor by 0.2 m, the room flooded
+        (r,) = C["in_water"](st, ground, self.foot(lambda x, y: 10.5 if y <= 10000 else 10.0))
+        self.assertAlmostEqual(r[5]["over"], 0.2, places=6)
+        self.assertIn("the room is flooded", r[3])
+        # dry: the water's surface is the ground
+        self.assertEqual(C["in_water"](st, ground, ground), [])
+        # 0.335 m of water: within 0.05 m of the floor, said as at it, not as a negative clearance
+        (r,) = C["in_water"](st, ground, self.foot(lambda x, y: 10.335 if y <= 10000 else 10.0))
+        self.assertIn("it stands at its floor (10.3 m), within 0.05 m", r[3])
+        self.assertNotIn("-0.", r[3])
+
+    def test_the_explain_and_the_codes(self):
+        for code in ("ground_over", "in_water", "kit_param"):
+            self.assertIn(code, C["EXPLAIN"])
+
+
+class KitParam(unittest.TestCase):
+    """check.py rule 15: a param no step of the library reads."""
+
+    def kit(self, params):
+        return [{"id": "bay", "taxon": "k", "tags": ["role:wall"], "bounds": [0, 0, 0, 3000, 300, 3000],
+                 "params": params, "shared": {}}]
+
+    def said(self, params):
+        recs = C["judge"]([], [], self.kit(params), C["params_of"]({"kits": ["k"]}))
+        return [r for r in recs if r[1] == "kit_param"]
+
+    def test_a_misspelt_pitch_is_named_with_the_word_it_may_be(self):
+        (r,) = self.said({"pich": 3.0})
+        self.assertEqual((r[0], r[2], r[5]), ("warning", "bay", {"asset": "bay", "param": "pich"}))
+        self.assertIn("did you mean `pitch`?", r[4])
+
+    def test_a_key_far_from_any_is_named_without_a_guess(self):
+        (r,) = self.said({"bay": True})
+        self.assertNotIn("did you mean", r[4])
+
+    def test_the_params_read_say_nothing(self):
+        self.assertEqual(self.said({"pitch": 3.0, "reach": 0.3, "span": 2.0}), [])
+        self.assertEqual(C["edits"]("pich", "pitch"), 1)
+
+
+class Outside(unittest.TestCase):
+    """lay.py rule 20: a building past the world's extent."""
+
+    GRID = {"extent_mm": [0, 0, 40000, 32000]}
+
+    def test_the_vertex_furthest_out(self):
+        ring = [(30000, 8000), (45000, 8000), (45000, 12000), (30000, 12000)]
+        self.assertEqual(L["past_extent"](ring, self.GRID), (5000, (45000, 8000)))
+
+    def test_a_corner_out_on_both_axes_is_as_far_as_it_is(self):
+        """F2's review: measured per axis, a corner 4 m out each way read 4 m; it is 5.657 m."""
+        ring = [(30000, 20000), (44000, 20000), (44000, 36000), (30000, 36000)]
+        self.assertEqual(L["past_extent"](ring, self.GRID), (5657, (44000, 36000)))
+
+    def test_on_the_edge_is_inside(self):
+        self.assertIsNone(L["past_extent"]([(0, 0), (40000, 0), (40000, 32000), (0, 32000)], self.GRID))
+        self.assertIsNone(L["past_extent"]([(0, 0), (1, 0), (1, 1)], None))
+
+
+
+VIA = os.environ.get("VIA_BIN") or shutil.which("via")
+WET = """name = "wet"
+extent = [0, 0, 48, 32]
+resolution = 1
+include = ["building"]
+
+[field.height]                 # rising north, 0.1 a metre
+role = "surface"
+base = "= 10 + 0.1 * y"
+{water}
+[feature.uphill]               # on the slope: its uphill wall below the ground
+kind    = "building"
+region  = [[4, 22], [14, 22], [14, 30], [4, 30]]
+storeys = 1
+
+[feature.wet]                  # in the water, which stands at 12 m south of y = 20
+kind    = "building"
+region  = [[20, 4], [30, 4], [30, 10], [20, 10]]
+storeys = 1
+
+{past}
+[step.lay]
+when     = "generate"
+worker   = true
+for_each = "kind:building"
+command  = ["python", "-m", "viasdk", "lib:building/lay.py"]
+
+[step.check]
+when    = "lint"
+worker  = true
+checks  = ["lay"]
+command = ["python", "-m", "viasdk", "lib:building/check.py"]
+"""
+PAST = """
+[feature.past]                 # its east wall 4 m past the extent
+kind    = "building"
+region  = [[40, 12], [52, 12], [52, 18], [40, 18]]
+storeys = 1
+"""
+WATER = """
+[field.water]
+tags = ["water_level"]
+base = "= max(f('height'), 12)"
+"""
+
+
+class Wiring(unittest.TestCase):
+    """check.py's `lint` and lay.py's `generate` as the engine runs them (F2's review: the parts were
+    tested, not their wiring): ground over a floor, a house in water, a building past the extent,
+    and two fields tagged `water_level`."""
+
+    def build(self, water, past=""):
+        import subprocess
+        import sys
+        import tempfile
+        self.assertIsNotNone(VIA, "set VIA_BIN")
+        lib = os.path.dirname(HERE)
+        with tempfile.TemporaryDirectory() as d:
+            env = dict(os.environ, VIA_CONFIG_DIR=os.path.join(d, ".config"))
+            subprocess.run([VIA, "config", "program", "python", sys.executable], cwd=d, check=True,
+                           env=env, stdout=subprocess.DEVNULL)
+            with open(os.path.join(d, "world.toml"), "w") as f:
+                f.write(WET.replace("{water}", water).replace("{past}", past))
+            subprocess.run([VIA, "trust", "world.toml", "--yes", "--lib", lib], cwd=d, check=True,
+                           env=env, stdout=subprocess.DEVNULL)
+            r = subprocess.run([VIA, "build", "world.toml", "--lib", lib, "--out", "build/w"], cwd=d,
+                               env=env, capture_output=True, text=True)
+            return r.returncode, r.stdout + r.stderr
+
+    def codes(self, text):
+        return sorted(line.split("]")[0].split("[")[1] + " " + line.split("]")[1].split(":")[0].strip()
+                      for line in text.splitlines() if line.startswith(("error[", "warning[")))
+
+    def test_each_rule_says_its_building(self):
+        code, text = self.build(WATER)
+        self.assertEqual(code, 0)
+        got = self.codes(text)
+        self.assertIn('step.check.ground_over feature.uphill', got)
+        self.assertIn('step.check.in_water feature.wet', got)
+        self.assertIn("the room is flooded", text)
+
+    def test_a_building_past_the_extent_is_an_error_not_a_traceback(self):
+        """An error skips the lints (diagnostics.md 4), so this is a world of its own."""
+        code, text = self.build(WATER, PAST)
+        self.assertNotEqual(code, 0)
+        self.assertIn('step.lay.outside feature.past', self.codes(text))
+        self.assertNotIn("protocol.raised", text)
+        self.assertIn("4 m past the world's extent", text)
+
+    def test_two_water_fields_are_said_and_judge_nothing(self):
+        _, text = self.build(WATER + WATER.replace("[field.water]", "[field.water2]"))
+        got = self.codes(text)
+        self.assertTrue(any(c.startswith("step.check.water_many") for c in got), got)
+        self.assertFalse(any(c.startswith("step.check.in_water") for c in got), got)
+
+    def test_with_no_water_field_rule_14_says_nothing(self):
+        _, text = self.build("")
+        got = self.codes(text)
+        self.assertFalse(any("in_water" in c or "water_many" in c for c in got), got)
+        self.assertIn('step.check.ground_over feature.uphill', got)
 
 
 if __name__ == "__main__":

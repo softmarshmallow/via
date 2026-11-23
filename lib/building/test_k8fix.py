@@ -480,6 +480,18 @@ class MirrorHeld(unittest.TestCase):
         self.assertEqual(self.words(out, 2), ["wall", "wall_niche", "wall_niche", "wall"])
         self.assertEqual(T.notes(out, "mirror_none"), [])
 
+    def test_a_stretch_that_starts_part_way_counts_its_bays_from_the_sides_ends(self):
+        """K8's review: a mirrored fill on a stretch that starts part way along a side (beside a
+        stairwell cut from the outline) was untested. Its bays take the words the whole side's bays
+        take at the same places, so the side is still its own image (fix plan F2)."""
+        picks = {"fill": [{"storeys": "all", "sides": "all", "pattern": ["a", "b"], "mirror": True}], "bays": []}
+        whole = L["bay_variants"](8, 0, 1500, 0, 0, picks, "h", side_len=12000)
+        self.assertEqual(whole, ["a", "b", "a", "b", "b", "a", "b", "a"])
+        part = L["bay_variants"](6, 3000, 1500, 0, 0, picks, "h", side_len=12000)
+        self.assertEqual(part, whole[2:])
+        # and from the far end: a stretch that stops 3 m short
+        self.assertEqual(L["bay_variants"](6, 0, 1500, 0, 0, picks, "h", side_len=12000), whole[:6])
+
     def test_a_side_with_no_mirrored_fill_is_not_held(self):
         out = self.order([(0, 0), (9900, 0), (9900, 9000), (0, 9000)],
                          fill=[{"sides": [2], "pattern": ["wall", "niche", "wall"]}])

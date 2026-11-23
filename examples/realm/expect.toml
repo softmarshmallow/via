@@ -20,6 +20,13 @@
 # and the case `shrine`. A band is the measured number: not a target, it says where someone looks. A time's band
 # is wide: it is the machine's, and the row says only that the build finished in that time.
 
+# The fix plan's F2 (docs/plan-fixes.md), 2026-11-24: check.py's rules 13 and 14 (R78) say what
+# nothing said before. Every change's `warnings` grew by exactly its new `ground_over` and
+# `in_water` and by nothing else, and those two rows were added: five houses of the village rows
+# with ground over their floor at their uphill wall (up to 0.255 m), eleven once the village is
+# moved, six on the new seed's land; the two houses `flood` puts in water. Measured with the release
+# `via` of c759f02 and the working tree's lib/building, one fresh store, one build each.
+
 # ------------------------------------------------------------------------------------------ base
 # The realm as written: 29 feature tables and 141 numbers, 104 of them in the places and the
 # ways. The steps return 87 features (15 buildings, 20 storeys, 17 doorways, 15 roofs, 2 plots...;
@@ -40,7 +47,15 @@ band    = [0, 0]
 
 [base.warnings]
 measure = "warnings"
-band    = [2, 2]
+band    = [7, 7]
+
+[base.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[base.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [base.surface_gap]
 measure = "surface_gap"
@@ -287,7 +302,15 @@ band    = [0, 0]
 
 [warm.warnings]
 measure = "warnings"
-band    = [2, 2]
+band    = [7, 7]
+
+[warm.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[warm.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [warm.added]
 measure = "added"
@@ -323,7 +346,15 @@ band    = [0, 0]
 
 [flood.warnings]
 measure = "warnings"
-band    = [3, 3]
+band    = [10, 10]
+
+[flood.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[flood.in_water]
+measure = "in_water"
+band    = [2, 2]
 
 [flood.halls_in_water]
 measure = "halls_in_water"
@@ -383,7 +414,15 @@ band    = [0, 0]
 
 [larger_court.warnings]
 measure = "warnings"
-band    = [2, 2]
+band    = [7, 7]
+
+[larger_court.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[larger_court.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [larger_court.added]
 measure = "added"
@@ -457,7 +496,15 @@ band    = [0, 0]
 
 [new_seed.warnings]
 measure = "warnings"
-band    = [25, 25]
+band    = [31, 31]
+
+[new_seed.ground_over]
+measure = "ground_over"
+band    = [6, 6]
+
+[new_seed.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [new_seed.moved]
 measure = "moved"
@@ -533,7 +580,15 @@ band    = [0, 0]
 
 [no_ford.warnings]
 measure = "warnings"
-band    = [1, 1]
+band    = [6, 6]
+
+[no_ford.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[no_ford.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [no_ford.unowned_crossing]
 measure = "unowned_crossing"
@@ -573,7 +628,15 @@ band    = [0, 0]
 
 [no_level.warnings]
 measure = "warnings"
-band    = [4, 4]
+band    = [9, 9]
+
+[no_level.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[no_level.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [no_level.plots]
 measure = "plots"
@@ -649,7 +712,15 @@ band    = [0, 0]
 
 [through_fane.warnings]
 measure = "warnings"
-band    = [110, 110]
+band    = [115, 115]
+
+[through_fane.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[through_fane.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [through_fane.keep_out]
 measure = "keep_out"
@@ -700,7 +771,15 @@ band    = [0, 0]
 
 [shrine.warnings]
 measure = "warnings"
-band    = [3, 3]
+band    = [8, 8]
+
+[shrine.ground_over]
+measure = "ground_over"
+band    = [5, 5]
+
+[shrine.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [shrine.plot_lost]
 measure = "plot_lost"
@@ -761,7 +840,15 @@ band    = [0, 0]
 
 [village_moved.warnings]
 measure = "warnings"
-band    = [2, 2]
+band    = [13, 13]
+
+[village_moved.ground_over]
+measure = "ground_over"
+band    = [11, 11]
+
+[village_moved.in_water]
+measure = "in_water"
+band    = [0, 0]
 
 [village_moved.moved]
 measure = "moved"

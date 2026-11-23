@@ -18,6 +18,12 @@
 # one run and checked against a second, 2026-11-24. A band is the measured number: not a target,
 # it says where someone looks.
 
+# The fix plan's F2 (docs/plan-fixes.md), 2026-11-24: in `handed_over` the check is now skipped, so
+# its two `kit_deck` are not said. check.py reads the ground along every building since F2 (rules
+# 13, 14), and that build's ground is part of what failed (`pack.unknown_material`), so the lint
+# gate skips the whole check (spec/diagnostics.md 4), its kit rules with it. Filed in TODO.md: the
+# ground's rules as a lint of their own.
+
 # ------------------------------------------------------------------------------------------ base
 # The base: three buildings and a row from Kenney's blocks, every wall closed, every flat roof
 # covered once. The cottage's hipped roof is open over the bevel of each of its four corners, as
@@ -183,7 +189,7 @@ band    = [1, 1]
 
 [handed_over.kit_deck]
 measure = "kit_deck"
-band    = [2, 2]
+band    = [0, 0]
 
 [handed_over.crowded]
 measure = "crowded"

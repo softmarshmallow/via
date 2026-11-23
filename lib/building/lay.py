@@ -429,10 +429,16 @@ The rules (ours, written for this library; README.md is the design note):
    list of assets, and of the metrics written down before the first piece (docs/research/
    Modular kit failures in studios.md, sections 1 and 2).
 
+20. **Inside the world.** A building whose outline reaches past the world's extent (the grid's
+   `extent_mm`, protocol.md 2) is `outside` (error), with how far and the vertex furthest out,
+   and nothing of it is laid: the ground there cannot be read, and a wall half laid is not a
+   building. A `row` that runs past its street's end is `row.py`'s `row_open` first; this is what
+   then stops each building past the edge. Before the fix plan's F2 the ground read raised and the
+   step ended with `protocol.raised` and a traceback (K10, `examples/borrowed`, a row past x = 40 m).
 `params` of the step: `inner_door` (0.9 m), `margin` (0.1 m). Codes are `step.<id>.<code>`: `params` (error, the
 building's attribute or a kit piece's param), `wall_open`, `side_short`, `corner_none`,
 `fillers_only`, `gap_wide`, `variant_none`, `bay_none`, `slab_open`, `roof_none`, `foot_open`,
-`base_short`, `colonnade_none`, `mirror_none` (warnings), `plinth_bare` and `laid` (infos; `laid` is what was returned).
+`base_short`, `colonnade_none`, `mirror_none` (warnings), `outside` (error, rule 20), `plinth_bare` and `laid` (infos; `laid` is what was returned).
 
 Library code imports only viasdk and the standard library (R19b).
 """
@@ -458,6 +464,10 @@ MARGIN = 100         # mm a wall's gap is wider than the doorway or flight throu
 EXPLAIN = {
     "params": "An attribute of a building is outside what the building library's lay step takes; "
     "the message names the attribute and what it must be (lib/building/lay.py, its rules).",
+    "outside": "A building's outline reaches past the world's extent, where the ground cannot be "
+    "read, so nothing of it is laid (lib/building/lay.py rule 20). The message gives how far and the "
+    "vertex furthest out. Move the building inside the extent, or shorten what lays it there: a row's "
+    "`to` or its lots, a court's halls; or widen the world's `extent`.",
     "wall_open": "A stretch of wall cannot be closed with whole wall pieces and fillers at their "
     "pitch: the pieces would leave a gap or overlap. The data lists the lengths near it that would "
     "close: resize that side, or move the door or stair that cuts it. A stretch is its side less "
@@ -2994,6 +3004,23 @@ def read_building(step, name):
     return ring, attrs
 
 
+def past_extent(ring, grid):
+    """How far an outline reaches past the world's extent (rule 20): `(mm, (x, y))` for the vertex
+    furthest from it (the distance to the extent's rectangle), or None where every vertex lies
+    inside (on the edge is inside)."""
+    ext = (grid or {}).get("extent_mm")
+    if not ext:
+        return None
+    x0, y0, x1, y1 = ext
+    worst = None
+    for x, y in ring:
+        dx, dy = max(x0 - x, 0, x - x1), max(y0 - y, 0, y - y1)
+        d = int(round(math.hypot(dx, dy)))       # how far from the extent, not along one axis
+        if d > 0 and (worst is None or d > worst[0]):
+            worst = (d, (x, y))
+    return worst
+
+
 def read_ground(step, ring):
     """The mean terrain height over the outline's posts and vertices (rule 2), metres."""
     try:
@@ -3089,6 +3116,21 @@ def generate(step):
         inner = int(round(float((step.params or {}).get("inner_door", INNER_DOOR / 1000)) * 1000))
         margin = int(round(float((step.params or {}).get("margin", MARGIN / 1000)) * 1000))
         ring, attrs = read_building(step, name)
+        far = past_extent(ring, step.grid)
+        if far is not None:
+            ext = [v / 1000 for v in step.grid["extent_mm"]]
+            step.error("outside", name,
+                       f"`{name}` reaches {far[0] / 1000:g} m past the world's extent "
+                       f"[{', '.join(f'{v:g}' for v in ext)}] at ({far[1][0] / 1000:g}, {far[1][1] / 1000:g}): "
+                       "the ground there cannot be read, so nothing of it is laid",
+                       "move the building inside the extent, or shorten what lays it there (a row's `to` "
+                       "or its lots, a court's halls)",
+                       # A record's position lies inside the extent: the edge nearest that vertex.
+                       position=(min(max(far[1][0] / 1000, ext[0]), ext[2]),
+                                 min(max(far[1][1] / 1000, ext[1]), ext[3])),
+                       data={"past": round(far[0] / 1000, 3), "extent": ext,
+                             "at": [far[1][0] / 1000, far[1][1] / 1000]}, explain=EXPLAIN["outside"])
+            return
         rows = read_kit(step, attrs.get("kit"))
         kits = (lambda word, height: kit_pieces(rows, word, height)) if rows is not None else None
         ground, foot = read_ground(step, ring), read_foot(step, ring)

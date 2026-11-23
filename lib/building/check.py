@@ -135,7 +135,29 @@ What it judges (ours, written for this library; surfaces.md 4.4 is what a walk m
    shaped after `lay` ran. The yard of a court (a building of no storeys) is not judged: its wall
    stands on the ground as it lies (lay.py rule 18). Buildings on no plot are not judged here:
    `lay` judged them against the ground it read, which nothing levels afterwards but what a
-   world writes in a layer above (TODO). Source: ours; asked by K11's review (examples/realm).
+   world writes in a layer above (rule 13). Source: ours; asked by K11's review (examples/realm).
+13. **Ground over a floor, off a plot.** A building of one storey or more that stands on no plot
+   (rule 12 judges those) is read the same way along its outline, against its ground storey's
+   floor. Where the ground stands over the floor by more than 0.05 m the land shows through it:
+   `ground_over` (warning), once, with the worst figure and the length of wall it holds along.
+   `lay` reckons a floor from the mean of the ground under the outline (lay.py rule 2), so a
+   house stepping with its land has ground over its floor at its uphill wall; no kit here has a
+   piece that holds the ground back (a retaining course, a cellar wall), so it is said. Ruled
+   R78 (docs/doctrine.md): said everywhere, until a kit states such a piece. Before the fix
+   plan's F2 nothing said it (examples/realm, 5 houses up to 0.255 m; examples/village, 11).
+14. **Standing in water.** Where the world has a field tagged `water_level` (lib/water,
+   lib/terrain: the water's surface, which is the ground where it is dry), every building of one
+   storey or more is read along its outline: where the water stands more than 0.05 m above the
+   ground there, the building is `in_water` (warning), once, with the worst depth, the length of
+   wall in water, and how far the water stands over the ground storey's floor (the room is
+   flooded) or below it. A wall standing in the sea is the fault whether or not the floor is dry:
+   no kit here has a piece made to stand in water (a pier, a pile). Before the fix plan's F2 a house the sea came up to was said by nothing but
+   lib/review's depth at a ford (examples/realm `flood`).
+15. **A param read by nothing.** A piece under `kits` whose `params` holds a key no step of this
+   library reads (`pitch`, `reach`, `span`; a pipe's `angle`, `rise`, `height`) is `kit_param`
+   (warning), naming the key and, within two letters, the one it may be. Before the fix plan's
+   F2 a misspelt `pitch` was laid at the piece's box and nothing said why (K10's review found a
+   `bay = true` left from a rule taken out again).
 
 `params`: `riser_max` (0.19 m), `going_min` (0.25 m), `turn_max` (45), `inner_door` (0.9 m),
 `pitch_slack` (0.05 m, for every kit measure), `kits` (taxon paths, default none). Codes are `step.<id>.<code>`;
@@ -167,6 +189,10 @@ OWN = ("building", "court", "row", "storey", "room", "flight", "doorway", "footp
 # (the base, lay.py rule 13) or over the roof (the parapet, rule 10).
 LIES_FLAT = ("role:door", "role:floor", "role:roof", "role:roof_slope", "role:roof_gable", "storey:base",
              "storey:parapet")
+
+# Rule 15: the params of a piece some step of this library reads (lay, row, court: `pitch`, `reach`,
+# `span`; pipe: `angle`, `rise`, `height` too). Any other is read by nothing here.
+PARAMS_READ = ("angle", "height", "pitch", "reach", "rise", "span")
 
 DEFAULTS = {"riser_max": 0.19, "going_min": 0.25, "turn_max": 45.0, "inner_door": 0.9,
             "pitch_slack": 0.05, "kits": []}
@@ -227,12 +253,36 @@ EXPLAIN = {
     "plot over the same ground, an anchored kind, or an entry ordered after the plot. Along part of "
     "its wall the ground now stands over the floor, or falls below it further than the plinth and the "
     "kit's base reach. Move what shaped it off the plot, or the building away from it.",
+    "ground_over": "A building stands on no plot, and along part of its wall the ground as the build "
+    "ended stands over its ground storey's floor: the land shows through the floor. `lay` reckons a "
+    "floor from the mean of the ground under the outline, so a house on a slope has ground over its "
+    "floor at its uphill wall. Level the building's ground (`ground = \"level\"`), set it on gentler "
+    "ground, or give its kit a piece that holds the ground back (lib/building/check.py rule 13, R78).",
+    "in_water": "Water (the field tagged `water_level`) stands more than 0.05 m deep along part of a "
+    "building's wall; the message says whether it also stands over the ground storey's floor. No kit "
+    "of this library has a piece made to stand in water. Move the building, or keep the water off it "
+    "(lib/building/check.py rule 14).",
+    "water_many": "More than one field is tagged `water_level`, so the building check cannot tell which "
+    "is the water's surface, and judges no building standing in water (lib/building/check.py rule 14). "
+    "Tag one field.",
+    "kit_param": "A piece of a kit under `kits` writes a param no step of the building library reads, so "
+    "it does nothing here (an exporter may read its own, as `collision` in spec/build.md): a misspelt `pitch` is laid at the piece's box, and a key left from an earlier "
+    "rule reads as if it still held. Drop it, or correct it to the param the hint names "
+    "(lib/building/check.py rule 15).",
     "checked": "What the building check judged: storeys, rooms, flights, meetings and kit pieces.",
 }
 
 
 class ParamError(ValueError):
     pass
+
+
+class Several(ValueError):
+    """A selector of `read_along` that matches more than one field: their names."""
+
+    def __init__(self, names):
+        super().__init__(", ".join(names))
+        self.names = names
 
 
 def params_of(raw):
@@ -915,6 +965,14 @@ def judge(features, meetings, kit_rows, p, pieces=()):
                     f"{storey_h:g} m storeys of {', '.join('`' + n + '`' for n in names)}: {how}",
                     "make the piece the storey's height, or the storey the piece's (`storey_h`, `ground_h`, `top_h`)",
                     {"asset": r["id"], "height": high, "storey_h": storey_h, "buildings": names}, None))
+    for r in sorted(kit_rows, key=lambda r: (r.get("taxon") or "", r["id"])):     # rule 15
+        for k in sorted(set(r.get("params") or {}) - set(PARAMS_READ)):
+            near = min(PARAMS_READ, key=lambda w: (edits(k, w), w))
+            out.append(("warning", "kit_param", r["id"],
+                        f"`{r['id']}` writes `params.{k}`, which no step of the building library reads",
+                        (f"did you mean `{near}`? " if edits(k, near) <= 2 else "")
+                        + f"a piece's params are {', '.join('`' + w + '`' for w in PARAMS_READ)}; drop `{k}`",
+                        {"asset": r["id"], "param": k}, None))
     out.append(("info", "checked", None, f"{len(storeys)} storeys, {len(rooms)} rooms, {len(flights)} "
                 f"flights, {len(meetings)} meetings ({nturn} with a turn), {measured} doorways measured, "
                 f"{len(kit_rows)} kit pieces", "none needed",
@@ -1002,6 +1060,16 @@ def read_pieces(step, taxons, kit_rows):
     return out
 
 
+def edits(a, b):
+    """The edit distance of two words (insertions, deletions, substitutions), for a hint."""
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
 def key_of(name):
     """A key from a building's name, as lay.py makes it (identity.md 2.1)."""
     return "".join(c if c.isalnum() or c in "_-" else "_" for c in str(name))
@@ -1086,6 +1154,65 @@ def plots_lost(stands, foot, bases, cut_by=None):
     return out
 
 
+def standing(features, skip=()):
+    """Every building of one storey or more with its ground storey's floor (rules 13, 14):
+    `(building, floor)`, in name order, leaving out those named in `skip`."""
+    levels = {f["name"].split("#", 1)[-1]: f["attrs"].get("level") for f in features if f["kind"] == "storey"}
+    out = []
+    for b in sorted((f for f in features if f["kind"] == "building"), key=lambda f: f["name"]):
+        if (b["attrs"].get("storeys") or 0) < 1 or b["name"] in skip:
+            continue
+        floor = levels.get(key_of(b["name"]) + "_s0")
+        if floor is not None:
+            out.append((b, float(floor)))
+    return out
+
+
+def grounds_over(stands, foot):
+    """Rule 13's records. `stands` is `standing`'s (buildings on no plot); `foot` maps a
+    building's name to its points `[(x mm, y mm, ground m)]`."""
+    out = []
+    for b, floor in stands:
+        pts = foot.get(b["name"]) or []
+        high = [(h - floor, x, y) for x, y, h in pts if h - floor > FOOT_SEEN]
+        if not high:
+            continue
+        step_ = (math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) / 1000.0) if len(pts) > 1 else 0.0
+        w = max(high)
+        out.append(("warning", "ground_over", b["name"],
+                    f"`{b['name']}` has its floor at {floor:g} m, and the ground along its wall stands up to "
+                    f"{w[0]:.3f} m over it along {len(high) * step_:.1f} m: the land shows through the floor",
+                    "level the building's ground (`ground = \"level\"`), or set it on gentler ground",
+                    {"floor": floor, "over": round(w[0], 3), "length": round(len(high) * step_, 1)},
+                    (w[1] / 1000, w[2] / 1000)))
+    return out
+
+
+def in_water(stands, foot, water):
+    """Rule 14's records. `stands` is `standing`'s (every building); `foot` and `water` map a
+    building's name to its points with the ground and with the water's surface there, in one order."""
+    out = []
+    for b, floor in stands:
+        pts, wet = foot.get(b["name"]) or [], water.get(b["name"]) or []
+        deep = [(w - h, x, y, w - floor) for (x, y, h), (_, _, w) in zip(pts, wet) if w - h > FOOT_SEEN]
+        if not deep:
+            continue
+        step_ = (math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) / 1000.0) if len(pts) > 1 else 0.0
+        d = max(deep)
+        over = max(o for _, _, _, o in deep)
+        room = (f", and over its floor ({floor:g} m) by up to {over:.3f} m: the room is flooded" if over > FOOT_SEEN
+                else f"; it stands at its floor ({floor:g} m), within {FOOT_SEEN:g} m" if over > -FOOT_SEEN
+                else f"; its floor ({floor:g} m) stands {-over:.3f} m above the water at least")
+        out.append(("warning", "in_water", b["name"],
+                    f"`{b['name']}` stands in water along {len(deep) * step_:.1f} m of its wall, up to "
+                    f"{d[0]:.3f} m deep" + room,
+                    "move the building out of the water, or keep the water off it",
+                    {"floor": floor, "depth": round(d[0], 3), "over": round(max(over, 0.0), 3),
+                     "length": round(len(deep) * step_, 1)},
+                    (d[1] / 1000, d[2] / 1000)))
+    return out
+
+
 def seg_dist(p, a, b):
     ax, ay, bx, by_ = a[0], a[1], b[0], b[1]
     dx, dy = bx - ax, by_ - ay
@@ -1117,17 +1244,33 @@ def nearest_cutter(cands, b, p, own_plot):
 
 def read_foot(step, stands):
     """The ground as the build ended, along each standing building's outline (rule 12)."""
+    return read_along(step, [b for b, _, _ in stands], "role:surface")
+
+
+def read_along(step, buildings, selector):
+    """A field as the build ended along each building's outline, at `foot_points` (rules 12 to
+    14): `{name: [(x mm, y mm, value)]}`. Empty where the world has no field `selector` matches."""
     try:
-        (surface,) = step.fields(["role:surface"], window=[0, 0, 1, 1])
-    except (LookupError, RpcError):
+        found = step.fields([selector], window=[0, 0, 1, 1])
+    except LookupError:
         return {}
-    pts = {b["name"]: foot_points(b["ring"]) for b, _, _ in stands}
-    allp = [p for b, _, _ in stands for p in pts[b["name"]]]
+    except RpcError as e:
+        # The engine refuses a selector that matches several fields (`... matches 2 fields`).
+        if " fields" in str(e) and "matches" in str(e) and "matches 0" not in str(e):
+            raise Several([selector]) from e
+        return {}
+    if len(found) != 1:
+        # Several fields under one tag: which is the water is not this step's to choose (F2's
+        # review: two `water_level` fields silenced rule 14). Said by the caller.
+        raise Several([f.name for f in found])
+    (field,) = found
+    pts = {b["name"]: foot_points(b["ring"]) for b in buildings}
+    allp = [p for b in buildings for p in pts[b["name"]]]
     if not allp:
         return {}
-    h = _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in allp], y=[p[1] for p in allp]))
+    h = _list(step.eval(f"= f('{field.name}')", x=[p[0] for p in allp], y=[p[1] for p in allp]))
     out, i = {}, 0
-    for b, _, _ in stands:
+    for b in buildings:
         n = len(pts[b["name"]])
         out[b["name"]] = [(x, y, float(v)) for (x, y), v in zip(pts[b["name"]], h[i:i + n])]
         i += n
@@ -1184,6 +1327,24 @@ def lint(step):
         lost = plots_lost(stands, read_foot(step, stands), read_bases(step, stands),
                           lambda b, pt: nearest_cutter(read_cutters(step, b, pt), b, pt, own[b["name"]]))
         recs = recs[:-1] + lost + recs[-1:] if recs and recs[-1][1] == "checked" else recs + lost
+    every = standing(features)                   # rules 13 and 14: every building, off a plot and in water
+    if every:
+        on_plot = {b["name"] for b, _, _ in stands}
+        try:
+            ground = read_along(step, [b for b, _ in every], "role:surface")
+        except Several:                          # the core holds one surface field: not reached
+            ground = {}
+        more = grounds_over([(b, f) for b, f in every if b["name"] not in on_plot], ground)
+        try:
+            water = read_along(step, [b for b, _ in every], "tag:water_level") if ground else {}
+        except Several as e:
+            water = {}
+            more.append(("warning", "water_many", None,
+                         "more than one field is tagged `water_level`: which is the water is not known, so no "
+                         "building is judged standing in it (rule 14)",
+                         "tag one field `water_level`: the water's surface", {"selector": "tag:water_level"}, None))
+        more += in_water(every, ground, water) if water else []
+        recs = recs[:-1] + more + recs[-1:] if recs and recs[-1][1] == "checked" else recs + more
     for sev, code, subject, msg, hint, data, pos in recs:
         kw = {"data": data}
         if pos is not None:

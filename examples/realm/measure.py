@@ -47,7 +47,8 @@ How each is taken (ours).
 - `errors`, `warnings`: the build's records. `surface_gap`, `unowned_crossing`, `keep_out`,
   `max_change`, `squeezed`, `conflict`, `internal`, `outside_field` (the core's); `base_short`,
   `foot_open`, `wall_open`, `roof_none`, `slab_open`, `params` (lay's); `court_meets` (the court
-  step's); `unreached`, `kit_stated`, `plot_lost` (check's): each code's records, a folded record
+  step's); `unreached`, `kit_stated`, `plot_lost`, `ground_over`, `in_water` (check's; the last two
+  since the fix plan's F2): each code's records, a folded record
   counted by its `count`. `_codes`: every code's count.
 - With `--world`: `written_features`, the `feature` tables in that world's text and its
   layers'; `written_numbers`, the number literals in their lines (comments left out), which is
@@ -199,7 +200,7 @@ def said(diags, m):
     for code in ("base_short", "foot_open", "wall_open", "roof_none", "slab_open", "params"):
         m[code] = codes.get(f"step.lay.{code}", 0)
     m["court_meets"] = codes.get("step.courts.court_meets", 0)
-    for code in ("unreached", "kit_stated", "plot_lost"):
+    for code in ("unreached", "kit_stated", "plot_lost", "ground_over", "in_water"):
         m[code] = codes.get(f"step.check.{code}", 0)
     walked = [x for x in diags if x["code"] == "step.reach.walked"]
     if walked:

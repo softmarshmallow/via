@@ -477,6 +477,12 @@ def read_level(step, ring):
     except (LookupError, RpcError):                # as lay.py's read_ground: no surface field
         return 0.0
     pts = posts_in(ring, step.grid)
+    # A plot reaches 1.5 m past its halls, and may reach past the world's extent, where the
+    # ground cannot be read: its level is the land inside (F2's review: it raised). A hall past
+    # the edge is then lay.py's `outside` (its rule 20).
+    ext = (step.grid or {}).get("extent_mm")
+    if ext:
+        pts = [p for p in pts if ext[0] <= p[0] <= ext[2] and ext[1] <= p[1] <= ext[3]] or pts
     h = [float(v) for v in _list(step.eval(f"= f('{surface.name}')", x=[p[0] for p in pts], y=[p[1] for p in pts]))]
     return round(sum(h) / len(h), 3)
 

@@ -16,6 +16,10 @@
 # and checked in a second. A band is the measured number: not a target, it says where someone
 # looks.
 
+# The fix plan's F2 (docs/plan-fixes.md), 2026-11-24: `sloped` says two more warnings, check.py's
+# `ground_over` (rule 13, R78) for the shed and the boiler, whose uphill walls stand in the ground
+# (0.188 m and 0.065 m) beside the `foot_open` their downhill walls already had. Nothing else moved.
+
 # ------------------------------------------------------------------------------------------ base
 # The works as written: two buildings, two pipes and six room pieces, 64 numbers. `pipes`
 # returns 6 legs and 36 pieces; every pipe piece's end lies on the next one's (27 joins, none
@@ -1082,7 +1086,7 @@ band    = [3, 3]
 
 [sloped.warnings]
 measure = "warnings"
-band    = [4, 4]
+band    = [6, 6]
 
 [sloped.gap]
 measure = "gap"

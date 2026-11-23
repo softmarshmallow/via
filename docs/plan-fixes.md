@@ -28,7 +28,7 @@ Then the town (T1), which needs the scale from F8 and closes challenge 33.
 | # | Milestone | Done when |
 |---|---|---|
 | F1 | **The engine's silences.** A condition region that keeps only its largest piece (half a town vanished, `TODO.md` `spec/geometry.md`); an unknown key on a taxon (`shared` beside `defaults` builds and states nothing); a step reading a field its layer's peers write, which is `diag.internal` where the cause is known (`spec/graph.md`, from `realm`). | Each has a conformance case that was silent or internal before and is said now, naming what to change. |
-| F2 | **The library's silences.** A house standing in water (`realm` `flood`: 32 pieces, nothing said); ground over a floor at every building, after a ruling on a house that steps with its land (5 houses of `realm`, 11 of `village`); a pipe over uneven ground whose ports miss in height; a kit param no library reads (`bay = true`); a building partly outside the extent (a traceback today); the temple's mirror measure on a half bay and a mirrored fill that starts part way along a side. | Each case is said by `lay` or `check` with its numbers; recorded rows that move are re-recorded with the reason. |
+| F2 | **The library's silences.** A house standing in water (`realm` `flood`: 32 pieces, nothing said); ground over a floor at every building, after a ruling on a house that steps with its land (5 houses of `realm`, 11 of `village`); a kit param no library reads (`bay = true`); a building partly outside the extent (a traceback today); the temple's mirror measure on a half bay and a mirrored fill that starts part way along a side. | Each case is said by `lay` or `check` with its numbers; recorded rows that move are re-recorded with the reason. |
 | F3 | **What the kit states, read.** The storey's height and the plinth from the kit (review item 1, 28 numbers); pitch and span from the model in every reader (item 4, 80 numbers); a door with no `at` on its side's middle; `storey = 0` dropped from examples; `check` reads the kits off the features it judges; the records of item 7. | The review's counts are taken again by one protocol and fall by what was removed; every example's rows hold. |
 | F4 | **One kit reader in the SDK.** `viasdk` reads a kit (pieces, tags, bounds, params, the taxon's `shared` once), folds a feature's attributes, and reads the ground at points (review section 4). lib/building and lib/town use it; lib/town reads `shared`. | The six copies, five folds and six ground reads are one each; all library tests and example rows hold. |
 | F5 | **A plan from the model's geometry.** An outline measured from the model's triangles at `via pack accept`, a fact beside `bounds`. `check` holds a corner's turn with it; a library says an open corner; declared footprints are no longer typed (item 5). | Kenney's corner turned a quarter wrong is said; the bevelled hip's open eaves are said by `lay`, not only by the example's script; the 48 declared footprint numbers are gone. |
@@ -63,3 +63,17 @@ Changed so far:
   hid the drift (both graphs reused the step by two stored traces, and only a step that ran in the
   layer pass was compared), and `holds` had the attributes fault `route` had. Both mended, with
   cases. A taxon, or its `defaults`, that is no table is `doc.type`.
+- **F2, 2026-11-24.** Built: `lay`'s `outside` (rule 20, a building past the extent, which had
+  ended in a traceback), `check`'s `ground_over` (rule 13, ground over a floor off a plot, ruled
+  R78: said everywhere until a kit states a piece that holds the ground back), `in_water` (rule
+  14, a wall in water, whether or not the floor is dry) and `kit_param` (rule 15, a piece's param
+  no step reads). The temple's `mirror_off` now counts a piece with no image, and a mirrored fill
+  on a stretch that starts part way is tested (it was right). Not a silence after all: a pipe over
+  uneven ground (its supports' feet are `support_off`, and a port missed in height is the
+  engine's `surface.gap`, an error with the miss); what is owed there is naming the cause, which
+  stays filed. Kenney's dead `bay = true` was already gone (K10's fix pass). The independent review found
+  that a court levelled past the edge still raised (its plot's level was read past it: now only
+  inside), that two fields tagged `water_level` silenced rule 14 (now `water_many`), a negative
+  clearance in a message, a distance past the extent measured per axis, and no test of the
+  steps' wiring (now a world built by the engine, `test_ground.Wiring`). The temple's measure
+  counts pieces on every side, mirrored or not; its new figures are recorded with that protocol.

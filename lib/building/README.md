@@ -785,8 +785,18 @@ rule 12) with the worst figure, the length, and the nearest thing that shaped it
 2 m apart, "stands 0.600 m over the floor along 23.9 m; the nearest thing that shapes the
 ground there is `lay#bfane_plot`"; an anchored pad against a temple's back wall, 0.189 m over
 the floor along 13.4 m, naming the pad. What is not judged: a court's yard away from its halls,
-and the yard wall, which stands on the ground as it lies (rule 18); and buildings on no plot,
-which `lay` judged against the ground it read.
+and the yard wall, which stands on the ground as it lies (rule 18).
+
+Since the fix plan's F2 every building of one storey or more is read the same way (check.py
+rules 13 and 14, R78). Off a plot, ground over the floor is `ground_over`: a house stepping with
+its land has it at its uphill wall, since `lay` reckons the floor from the mean of the ground
+under the outline, and no kit here has a piece that holds the ground back (`examples/realm`,
+five houses, up to 0.255 m; `examples/village`). Water more than 0.05 m deep along a wall (the
+field tagged `water_level`) is `in_water`, with how far it stands over or under the floor
+(`examples/realm` `flood`: two houses). A building that reaches past the world's extent is
+`lay`'s `outside` (error, rule 20), and nothing of it is laid: before, the ground read past the
+edge raised and the step ended in a traceback. And a kit piece whose `params` holds a key no
+step reads is `kit_param` (check.py rule 15), with the key it may be a misspelling of.
 Not built: a plot that keeps trees off (it has no `keep_out`; a kit's pieces would be warned
 of, as on a pad), and one plot for several buildings that are not a court.
 

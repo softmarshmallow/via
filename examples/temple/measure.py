@@ -34,8 +34,11 @@ How each is taken (ours).
   3 m of the line across it: `door_clear_mm` is the gap between the nearest column's face on
   each side of the line, 0 where a column stands on the line, -1 where a side has none.
 - `mirror_off`: of the wall pieces of each side of each storey's outline (those whose plan's
-  middle lies within 0.6 m of the side's line), the pairs at one distance from the side's two
-  ends that are two different assets. A side whose two halves are each other's image has none.
+  middle lies within 0.6 m of the side's line), the pieces whose image (the same distance from the
+  side's other end, within 2 mm) is no piece or another asset; a pair of two assets counts two.
+  Every side is measured, whether or not a fill asks it to mirror: an asymmetry anywhere counts
+  (fix plan F2, its review; as first written only a pair of two assets counted, once, and a side
+  ending in a half bay read 0). A side whose two halves are each other's image has none.
 - **The way in**, from the build's own meetings (`meets.json`, gap 0), not from `check`:
   `onto_platform`, the doorways that end on a platform's floor; `from_platform`, the doorways
   that end on a storey's floor and start inside a platform's outline. A temple entered through
@@ -293,8 +296,11 @@ def measures(d, world=None):
                 if abs(v) <= 0.6 and assets[r["asset"]].get("tags") and "role:door" not in tags(r["asset"]):
                     along[int(round(((r["x"] - a[0]) * e[0] + (r["y"] - a[1]) * e[1]) * 1000))] = r["asset"]
             for u, asset in along.items():
-                twin = along.get(int(round(L * 1000)) - u)
-                off += twin is not None and twin != asset and u < L * 500
+                image = int(round(L * 1000)) - u
+                twin = next((along[w] for w in range(image - 2, image + 3) if w in along), None)
+                # A piece with nothing at its image is off too (a half bay ending one flank): as first
+                # written only a pair of two assets counted, and such a side read 0 (fix plan F2).
+                off += twin != asset
     m["mirror_off"] = off
     return m, rows
 

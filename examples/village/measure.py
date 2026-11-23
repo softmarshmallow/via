@@ -46,7 +46,9 @@ How each is taken (ours).
 - `errors`, `warnings`: the build's records. `base_short`, `foot_open`, `roof_none`: the
   buildings `lay` said each of, the `count` of the folded record. `off_bound`:
   `surface.off_bound` records (a thing partly off the floor it stands on). `gave_way`: members
-  of runs that gave way by overlap (`place.gave_way`, summed). `_codes`: every code's count.
+  of runs that gave way by overlap (`place.gave_way`, summed). `ground_over`: the buildings
+  `check` says the ground stands over the floor of (its rule 13, R78; since the fix plan's F2).
+  `_codes`: every code's count.
 """
 
 import json
@@ -344,6 +346,7 @@ def measures(d):
     for code in ("base_short", "foot_open", "roof_none"):
         m[code] = codes.get(f"step.lay.{code}", 0)
     m["off_bound"] = codes.get("surface.off_bound", 0)
+    m["ground_over"] = codes.get("step.check.ground_over", 0)
     m["gave_way"] = sum(int((x.get("data") or {}).get("overlap", 0)) for x in diags if x["code"] == "place.gave_way")
     m["_codes"] = dict(sorted(codes.items()))
     return m, rows

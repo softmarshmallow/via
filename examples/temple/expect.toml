@@ -16,6 +16,15 @@
 # change with --against the base, one build each; by_hand.toml in a store of its own. Measured
 # 2026-11-23. A band is the measured number: not a target, it says where someone looks.
 
+# The fix plan's F2 (docs/plan-fixes.md), 2026-11-24, and its review: `mirror_off` counts pieces,
+# on every side, whose image is no piece or another asset (measure.py). As first written it counted
+# a pair of two assets once and a piece with no image not at all, so `front`, whose flanks end in a
+# half bay where `lay` says `mirror_none`, read 0. Now: `front` 24 (18 on its two half-bay flanks,
+# 6 on the door's side, which no fill mirrors and whose half bay stands by the door on one flank
+# and at the corner on the other), `no_colonnade` 6 (that same door side), `plain` and `hand` 4 (the
+# two unmirrored niche pairs, two pieces each). The base, mirrored, stays 0. Measured with the
+# release `via` of c759f02, one fresh store, one build each.
+
 # ------------------------------------------------------------------------------------------ base
 # The temple with its colonnade stated (lay.py rule 16): one `building` table, 17 numbers. 24
 # columns and 24 lintels stand on its outline, on the podium; the walls stand one bay inside; one
@@ -284,7 +293,7 @@ band    = [1800, 1800]
 
 [hand.mirror_off]
 measure = "mirror_off"
-band    = [2, 2]
+band    = [4, 4]
 
 [hand.onto_platform]
 measure = "onto_platform"
@@ -525,7 +534,7 @@ band    = [1800, 1800]
 
 [front.mirror_off]
 measure = "mirror_off"
-band    = [0, 0]
+band    = [24, 24]
 
 [front.onto_platform]
 measure = "onto_platform"
@@ -652,7 +661,7 @@ band    = [-1, -1]
 
 [no_colonnade.mirror_off]
 measure = "mirror_off"
-band    = [0, 0]
+band    = [6, 6]
 
 [no_colonnade.onto_platform]
 measure = "onto_platform"
@@ -724,7 +733,7 @@ band    = [0, 0]
 
 [plain.mirror_off]
 measure = "mirror_off"
-band    = [2, 2]
+band    = [4, 4]
 
 [plain.added]
 measure = "added"

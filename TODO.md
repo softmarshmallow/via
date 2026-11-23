@@ -1512,33 +1512,27 @@ open, and its place here is its destination.
       sill as a piece of its own, placed on a bay, would take them. Kenney's gable is a whole
       ridge for a building one block deep, not our two slopes and gable halves. Not built: a hip
       over an L (Kenney's inner corner), steps to a door (four step blocks), and a leaf that sits
-      in a block's hole (six doors, 22 windows). A building that `row.py` returns partly outside
-      the extent is `protocol.raised` from `lay`'s ground read, with a traceback, where a
-      `params` naming the row and the extent is owed (found when the example's row first ran
-      past x = 32 m).
+      in a block's hole (six doors, 22 windows).
 
 - [ ] **What the realm left** (K11, `examples/realm`). Not built: a plot that keeps trees off (it
       has no `keep_out`: a pad's would warn of every piece of a kit); one plot for buildings that
       are not a court; a row on a plot (its houses step, and on the realm's slope the ground
-      stands up to 0.26 m over a house's floor on its uphill side, 0.70 m once the village is
-      moved up the valley: nothing says so, since rule 13 reads only a foot in the air). Not
-      said at all: a house that stands in water (`flood`: 2 halls and 32 pieces in water, 66 m
-      of road under more than 0.3 m, and the only word is lib/review's that the ford is 3.2 m
-      deep); a settlement whose land a new seed changed under it (`new_seed`: every instance
+      stands up to 0.26 m over a house's floor on its uphill side, now said by check.py rule 13,
+      `ground_over`, R78, and a house in water by rule 14, `in_water`: the fix plan's F2). Not
+      said at all: 66 m of road under more than 0.3 m of water in `flood` (lib/review says only
+      that the ford is 3.2 m deep); a settlement whose land a new seed changed under it (`new_seed`: every instance
       moves, the floors with the land, and only the roads' crossings of the new stream are
       said, 25). A way that keeps off what stands is written in each route (`+ 60 * (1 -
       smoothstep(6, 12, dist('kind:building', 14)))`); without it the trail went through the
       temple (`through_fane`: 15.2 m of trail inside it, 108 `place.keep_out`).
       (From K11 of docs/plan-kits.md, 2026-11-23.)
-- [ ] **Ground over a floor, for every building.** check.py rule 12 (`plot_lost`, K11's review)
-      reads the ground as the build ended only along buildings that stand on a plot. Read along
-      every building it costs one more `expr.eval` of a few thousand points, and it would say
-      the ground stands over a floor by more than 0.05 m at 5 houses of `examples/realm` (0.255
-      m at most), 11 once the village is moved, and 11 of `examples/village` (0.278 m), whose
-      recorded rows would move. Rule: whether a house stepping with its land may have ground
-      over its floor at its uphill wall (a cellar wall, a retaining course: a kit piece), and
-      then say it everywhere or nowhere.
-      (From K11's review fix pass, 2026-11-24.)
+- [ ] **The ground's rules skip the kit's.** Since the fix plan's F2 `check` reads the ground along
+      every building (rules 13 and 14), so a build whose ground failed skips the whole lint
+      (spec/diagnostics.md 4), the kit's rules too, which read no ground: `examples/borrowed`
+      `handed_over` lost its two `kit_deck`. The ground's rules (12 to 14) as a lint step of their
+      own, beside `check`, would keep the kit's said; every world's walls layer would then
+      declare two steps.
+      (From the fix plan's F2, 2026-11-24.)
 - [ ] **Two plots over one ground are said, not avoided.** Two buildings with `ground =
       "level"` laid in one layer each return a plot, and neither `lay` call sees the other's;
       where they overlap the later by name holds the ground (`examples/realm` `shrine`: the
@@ -1627,15 +1621,6 @@ open, and its place here is its destination.
       is the generator's and is measured (`mirror_mm`), not held: a twin edited by a change
       file afterwards is not told.
       (From K8 of docs/plan-kits.md, 2026-11-23.)
-- [ ] **What K8's review left** (lib/building, 2026-11-23). Three things, said and not mended.
-      `examples/temple`'s measure `mirror_off` reads 0 on `front`, where each flank ends in a
-      half bay and `mirror_none` is said: it pairs pieces by their distance from the two ends,
-      and a half bay has no partner at its distance. A mirrored `fill` on a stretch that starts
-      part way along a side (beside a stairwell cut from the outline) counts its bays from the
-      side's end, untested. And `examples/block` was not rebuilt after the review's mends (a
-      run is 4.5 GB and the disk had 1.6 GB free): `fit` now refuses a stretch more than
-      1.5 mm short, which block's by-hand lengths have not been run against.
-      (From K8's review of docs/plan-kits.md, 2026-11-23.)
 - [ ] **`shared.module` and `shared.unit`: two words for two things, to be ruled.** Since K6
       `module` is the kit's bay and `check` holds every `role:wall` piece to it. A classical kit
       takes every size from its column's width, which is smaller than any bay, so K8 added
